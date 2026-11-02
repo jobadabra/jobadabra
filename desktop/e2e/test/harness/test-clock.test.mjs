@@ -54,6 +54,19 @@ test('a close that fails is named in the hang, never swallowed', async () => {
   onHang(() => { throw new Error('outside a clocked test nothing is registered'); });
 });
 
+// Gitar on #2996: a wedged browser's page.close() never settles; the hang message must still arrive, naming the close that ran out, and the closes after it still run.
+test('a close that never ends runs out on the close limit, is named, and the closes after it still run', async () => {
+  const closed = [];
+  const body = clocked(30, async () => {
+    onHang(async () => { closed.push('its browser'); });
+    onHang(never);
+    at('waiting for the extension to fill');
+    await never();
+  }, {closeMs: 40});
+  await assert.rejects(body(), /while waiting for the extension to fill \| no wait ran out: a call with no cap of its own hung \| closing what it opened failed: a close did not end within 0\.04 s$/);
+  assert.deepEqual(closed, ['its browser']);
+});
+
 test('a wait\'s own cap is cut to the time the test has left', async () => {
   await clocked(10000, async () => {
     const cap = capOf(60000);
