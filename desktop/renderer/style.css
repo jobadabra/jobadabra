@@ -2064,7 +2064,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .feedback-attach label.inline-label input { width: auto; margin: 0; }
 .feedback-shot { position: relative; margin: 0; max-width: 300px; }
 .feedback-shot img { display: block; width: 100%; border: 1px solid var(--line); border-radius: var(--r-md); }
-.feedback-shot .icon-button { position: absolute; top: 6px; right: 6px; background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .3); }
+.feedback-shot .icon-button { position: absolute; top: 6px; right: 6px; background: var(--surface); box-shadow: var(--shadow-sm); }
 /* "Stuck? Tell us" (pages/why-stop.js): at the bottom of the setup sidebar, under "Back to the app" when it shows. */
 .wizard-stuck { -webkit-app-region: no-drag; margin-top: auto; margin-bottom: var(--sp-3); align-self: flex-start; color: var(--on-navy); opacity: .75; }
 .wizard-exit:not([hidden]) + .wizard-stuck { margin-top: 0; }
