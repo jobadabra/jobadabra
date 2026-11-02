@@ -19,18 +19,18 @@ const words = count => `${count} application${count === 1 ? ' is' : 's are'} wai
 
 /**
  * -> {add({id, title, company, note, open?})}. `add` queues an application that needs the person; the window (WINDOW_MS) and the hour since `settings.waitingMessageAt` (the only persisted state,
- * so a restart keeps the cap) decide when the one message goes. Invariants: at most one message an hour; an application the person handled meanwhile (`stillWaiting`) is left out; with no
+ * so a restart keeps the cap) decide when the one message goes. Invariants: at most one message an hour; an application the person handled meanwhile (`item.open`) is left out; with no
  * working channel nothing is sent and the hour is not used up; a failed send is logged and dropped (the app's own notification already showed it). Everything else is injectable for tests.
  */
-export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), clearTimer = clearTimeout, channels = () => notifyChannel.channelsOf(storage), stillWaiting = () => true,
+export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), clearTimer = clearTimeout, channels = () => notifyChannel.channelsOf(storage),
   sendEmail = mail => notifyChannel.sendEmail(storage, {...mail, urgent: true}), sendTelegram = text => sendBot(storage, text), log = appLog} = {}) {
   const pending = new Map();
-  let timer = null;
+  let timer = null, sending = false;
   const lastAt = () => Date.parse(storage.settings().waitingMessageAt) || 0;
-  const arm = () => { if (!timer && pending.size) timer = setTimer(flush, Math.max(WINDOW_MS, lastAt() ? lastAt() + HOUR_MS - now() : 0)); };
+  const arm = () => { if (!timer && !sending && pending.size) timer = setTimer(flush, Math.max(WINDOW_MS, lastAt() ? lastAt() + HOUR_MS - now() : 0)); };
   async function flush() {
-    timer = null;
-    const items = [...pending.values()].filter(item => stillWaiting(item.id) && item.open?.() !== false);   // `open`: the caller's own check that the person has not handled it
+    timer = null; sending = true;   // Why (#3008, Gitar, 2 Nov 2026): while a send is in flight `waitingMessageAt` is not yet saved, so an arm() now would count from the old time and send a second message ~60 s later; the finally re-arms with the fresh one
+    const items = [...pending.values()].filter(item => item.open?.() !== false);   // `open`: the caller's own check that the person has not handled it
     pending.clear();
     try {
       if (!items.length) return;
@@ -42,11 +42,10 @@ export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, m
       const done = await Promise.all([mail && sendEmail({subject, text}), bot && sendTelegram(`${subject}\n${text}`)].map(sent => Promise.resolve(sent).catch(() => false)));
       if (done.some(Boolean)) storage.saveSettings({waitingMessageAt: new Date(now()).toISOString()});
       log('apply', 'waiting application message', {count: items.length, email: !!done[0], telegram: !!done[1]});
-    } finally { arm(); }   // an application that came while this one was sending
+    } finally { sending = false; arm(); }   // an application that came while this one was sending
   }
   return {
     add(item) { pending.set(item.id, item); arm(); },
-    cancel() { if (timer) clearTimer(timer); timer = null; pending.clear(); },
   };
 }
 

@@ -5,24 +5,24 @@ import {createWaitingMessage, HOUR_MS, useBotApi, WINDOW_MS} from '../lib/waitin
 
 // A fake clock and timers: advance(ms) runs every timer that falls due, in order, with `now` set to its time.
 const START = Date.parse('2026-11-02T09:00:00Z');
-function world({channels = ['email', 'telegram', 'app'], settings = {}, waiting = () => true} = {}) {
-  const clock = {t: START}, timers = [], sent = {email: [], telegram: []}, saved = {...settings};
+function world({channels = ['email', 'telegram', 'app'], settings = {}, hold = null} = {}) {
+  const clock = {t: START}, timers = [], runs = [], sent = {email: [], telegram: []}, saved = {...settings};
   const storage = {settings: () => saved, saveSettings: patch => Object.assign(saved, patch)};
   const message = createWaitingMessage(storage, {
     now: () => clock.t, setTimer: (fn, ms) => { const timer = {at: clock.t + ms, fn}; timers.push(timer); return timer; }, clearTimer: timer => { timers.splice(timers.indexOf(timer), 1); },
-    channels: () => channels, stillWaiting: id => waiting(id),
-    sendEmail: async mail => { sent.email.push(mail); return true; }, sendTelegram: async text => { sent.telegram.push(text); return true; }, log: () => {}});
+    channels: () => channels,
+    sendEmail: async mail => { if (hold) await hold.promise; sent.email.push(mail); return true; }, sendTelegram: async text => { sent.telegram.push(text); return true; }, log: () => {}});
   const advance = async ms => {
     const end = clock.t + ms;
     for (;;) {
       timers.sort((a, b) => a.at - b.at);
       const next = timers[0];
       if (!next || next.at > end) break;
-      timers.shift(); clock.t = next.at; await next.fn();
+      timers.shift(); clock.t = next.at; const run = next.fn(); runs.push(run); if (!hold) await run;   // with `hold` a send stays in flight: do not wait for it
     }
     clock.t = end;
   };
-  return {message, advance, sent, saved, clock, timers};
+  return {message, advance, sent, saved, clock, timers, runs};
 }
 const job = (id, extra = {}) => ({id, title: `Role ${id}`, company: `Acme ${id}`, note: 'Solve the check and press Submit yourself.', ...extra});
 
@@ -85,14 +85,14 @@ test('no channel that works (no address, no bot, only the app): nothing is sent 
 
 test('an application the person handled meanwhile is left out; none left, no message', async () => {
   const handled = new Set();
-  const {message, advance, sent} = world({waiting: id => !handled.has(id)});
-  message.add(job('a')); message.add(job('b'));
+  const {message, advance, sent} = world();
+  message.add(job('a', {open: () => !handled.has('a')})); message.add(job('b', {open: () => !handled.has('b')}));
   handled.add('a');
   await advance(WINDOW_MS + 1);
   assert.equal(sent.email[0].subject, '1 application is waiting for you');
   assert.doesNotMatch(sent.email[0].text, /Acme a/);
-  const second = world({waiting: () => false});
-  second.message.add(job('c'));
+  const second = world();
+  second.message.add(job('c', {open: () => false}));
   await second.advance(WINDOW_MS + 1);
   assert.equal(second.sent.email.length, 0);
 });
@@ -133,4 +133,21 @@ test('Telegram goes through the sender the app registered, to the person\'s own 
   assert.deepEqual([calls[0][0], calls[0][1], calls[0][2].chat_id], ['tok', 'sendMessage', '42']);
   assert.match(calls[0][2].text, /1 application is waiting for you/);
   assert.equal(sent.length, 1, 'e-mail alongside');
+});
+
+test('an application handed over while the message is being sent waits for the hour: no second message a minute later (Gitar on #3008)', async () => {
+  let release;
+  const hold = {promise: new Promise(resolve => { release = resolve; })};
+  const {message, advance, sent, runs} = world({hold});
+  message.add(job('a'));
+  await advance(WINDOW_MS + 1);   // the send is now in flight, waitingMessageAt not yet saved
+  message.add(job('b'));
+  release();
+  await Promise.all(runs);
+  assert.equal(sent.email.length, 1, 'positive control: the first message went');
+  await advance(5 * 60000);
+  assert.equal(sent.email.length, 1, 'the second one is not sent a minute or five after the first');
+  await advance(HOUR_MS);
+  assert.equal(sent.email.length, 2, 'it goes when the hour is over');
+  assert.equal(sent.email[1].subject, '1 application is waiting for you');
 });
