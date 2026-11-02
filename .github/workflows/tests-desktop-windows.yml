@@ -30,6 +30,7 @@ on:
       - 'desktop/lib/credentials.js'
       - 'desktop/lib/e2e-hidden.js'
       - 'desktop/lib/extension-install.js'
+      - 'desktop/lib/feedback-handlers.js'
       - 'desktop/lib/form-tab.js'
       - 'desktop/lib/fresh-path.js'
       - 'desktop/lib/github.js'

@@ -2242,11 +2242,22 @@
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="chat"></i></span><h2>Send feedback</h2>
       <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead">What works, what's confusing, what's missing? It goes straight to the maker, Igor. Your job data isn't sent: only
-      what you write here, the app version and a random install id.</p>
+      what you write here, the app version and a random install id, plus the two things below, which you can turn off.</p>
     <label for="app-feedback-text">Your feedback</label>
     <textarea id="app-feedback-text" data-about-notion rows="7" maxlength="2000" placeholder="e.g. Setup took 20 minutes; the Notion step was unclear…"></textarea>
     <label for="app-feedback-contact">Email or handle, if you'd like a reply <span class="muted">(optional)</span></label>
     <input id="app-feedback-contact" type="text" maxlength="200" autocomplete="email">
+    <div class="feedback-attach" id="app-feedback-attach">
+      <label class="check-row inline-label"><input type="checkbox" id="app-feedback-include-shot" checked><span>Include screenshot</span></label>
+      <figure class="feedback-shot" id="app-feedback-shot" hidden>
+        <img id="app-feedback-shot-img" alt="Screenshot of the Jobadabra window, as it is sent">
+        <button type="button" class="icon-button" id="app-feedback-shot-remove" title="Remove the screenshot" aria-label="Remove the screenshot"><i data-icon="close"></i></button>
+      </figure>
+      <p class="muted small" id="app-feedback-shot-note">It shows what is on screen in Jobadabra right now (only this window, nothing else on your computer). Remove it if it shows anything private.</p>
+      <label class="check-row inline-label"><input type="checkbox" id="app-feedback-include-logs" checked><span>Include logs</span></label>
+      <p class="muted small">The app's recent log lines, your last few runs and which AI engine, store and browser extension are set up. Keys, tokens, e-mail addresses and your folder name are removed first.</p>
+      <details class="telemetry-shown"><summary>See what's sent</summary><pre class="log" id="app-feedback-logs">Nothing yet.</pre></details>
+    </div>
     <p id="app-feedback-message" class="message"></p>
     <div class="dialog-foot">
       <button class="secondary" value="cancel" formnovalidate>Cancel</button>
