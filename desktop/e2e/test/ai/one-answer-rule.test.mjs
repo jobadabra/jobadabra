@@ -9,6 +9,7 @@ import test from 'node:test';
 import {requestKey} from '../../lib/ai-meter.mjs';
 import {startAiProxy} from '../../lib/ai-proxy.mjs';
 import {createRunner} from '../../lib/runner.mjs';
+import {suiteAnswersMode} from '../../lib/suite-main.mjs';
 import {setStep, stepNow} from '../../lib/step-now.mjs';
 
 const E2E = path.resolve(import.meta.dirname, '..', '..'), REPO = path.resolve(E2E, '..', '..');
@@ -82,8 +83,13 @@ test('no e2e or integration code starts a live stand-in except a live measuremen
   const live = callers.filter(line => /\blive:/.test(line)).map(line => `${line.split(':')[0]} ${line.match(/\blive: [\w.]+/)[0]}`);
   assert.deepEqual([...new Set(live)].sort(), ['desktop/e2e/lib/context.mjs live: liveAi', 'desktop/e2e/lib/live-row.mjs live: true']);
   assert.match(fs.readFileSync(path.join(E2E, 'lib', 'suite-main.mjs'), 'utf8'), /liveAi: suite\.realAi === true/);
-  // A run by hand answers like CI: the suite's own aiAnswers, not 'off' (a local wizard run refused its declared organize ask, 2 Nov 2026).
-  assert.match(fs.readFileSync(path.join(E2E, 'lib', 'suite-main.mjs'), 'utf8'), /process\.env\.E2E_AI_ANSWERS \|\|= suite\.aiAnswers \|\| 'off';/);
+});
+
+// A run by hand answers like CI: the suite's own aiAnswers, not 'off' (a local wizard run refused its declared organize ask, 2 Nov 2026; Gitar on #2976: test the mode, not the line).
+test('a run answers by the mode CI gives it, the suite\'s own aiAnswers, or off', () => {
+  assert.equal(suiteAnswersMode({aiAnswers: 'backbone'}, {}), 'backbone', 'a run by hand takes the suite\'s declaration');
+  assert.equal(suiteAnswersMode({aiAnswers: 'backbone'}, {E2E_AI_ANSWERS: 'record'}), 'record', 'a set env wins');
+  assert.equal(suiteAnswersMode({}, {}), 'off', 'no declaration answers nothing by name');
 });
 
 test('a suite that may reach a model is a live measurement, never a gate', async () => {
