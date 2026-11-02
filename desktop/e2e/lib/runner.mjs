@@ -11,7 +11,7 @@ import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
 import {providerLine} from './ai-provider.mjs';
-import {stepClock} from './wait-on-state.mjs';
+import {lastWaitRunOut, stepClock} from './wait-on-state.mjs';
 import {appPicture} from './window-shot.mjs';
 import {backboneSuite} from './hang-caps.mjs';
 import {turnedAway} from './ai-miss-name.mjs';
@@ -30,6 +30,8 @@ export async function hangReport(session) {
   return `the window ${window ? 'answers' : 'does NOT answer'}, the main process ${main ? 'answers' : 'does NOT answer'}`;
 }
 /** Bound a step. `hangError(ms)` (optional, may be async) gives the step's evidence as text; the runner alone says the step was cut off, by its own limit or the suite's budget. */
+// The running step's last wait that ran out (lib/wait-on-state.mjs), for its hang message: what it waited for and the last value it read.
+const waitRunOut = (ran = lastWaitRunOut()) => (ran ? ` | its last wait that ran out: ${ran.what || 'a state wait'}, last seen ${JSON.stringify(ran.value).slice(0, 400)}` : '');
 export function withLimit(promise, ms, name, getSession = () => null, budget = 0, hangError) {   // budget: set when the suite's budget, not the step's own limit, is what cuts it
   let timer;
   stepClock(ms);   // the step's own waits run until this cap, never to a shorter one of their own (lib/wait-on-state.mjs)
@@ -39,7 +41,7 @@ export function withLimit(promise, ms, name, getSession = () => null, budget = 0
   const limit = new Promise((_, fail) => { timer = setTimeout(async () => {
     const cut = budget ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it)`
       : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung)`;
-    const error = new Error(`${cut}: ${hangError ? await hangError(ms) : await hangReport(getSession())}${turnedAway(ARTIFACTS)}`); error.stepHang = true; fail(error); }, ms); });
+    const error = new Error(`${cut}: ${hangError ? await hangError(ms) : await hangReport(getSession())}${waitRunOut()}${turnedAway(ARTIFACTS)}`); error.stepHang = true; fail(error); }, ms); });
   return Promise.race([promise, limit]).finally(() => { clearTimeout(timer); stepClock(null); });
 }
 
