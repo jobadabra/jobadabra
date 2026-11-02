@@ -43,10 +43,10 @@ const chipOfRow = (page, title) => page.evaluate(({text, selector}) => [...docum
 /** Every chip text now on the Jobs list, for a failure message. */
 const allChips = page => page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
 
-/** Wait for a read's observable state within the current step's deadline; a cap is only a hang failure. */
-async function readState(why, check) {
-  const result = await pollUntil(check, value => value, {capMs: stepTimeLeft()});
-  if (!result.value) throw new Error(why);
+/** Wait until `accepts(read())` within the current step's deadline; a cap is only a hang failure, and the hang message names `why` and the last value read. */
+async function readState(why, read, accepts) {
+  const result = await pollUntil(read, accepts, {capMs: stepTimeLeft(), what: why});
+  if (!accepts(result.value)) throw new Error(why);
 }
 
 /**
@@ -79,19 +79,19 @@ export async function runReadSteps(ctx) {
         await stepWait('the app window showed its view after the reload', timeout => page.locator('.view:not([hidden])').waitFor({timeout}));
         await page.click('.nav[data-view="jobs"]');
         await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the default "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
-        await readState('the fixture job never appeared on the Jobs list', async () => (await chipOfRow(page, form.title)) !== '');
+        await readState('the fixture job never appeared on the Jobs list', () => chipOfRow(page, form.title), chip => chip !== '');
         if (await chipOfRow(page, form.title) !== 'Not checked') throw new Error('the job already had a chip before any read');
         const sessions = sessionsNow(ctx), posted = forms.posts.length;
         await page.click('#triage-open');
         await stepWait('the triage dialog opened', timeout => page.waitForSelector('#triage-dialog[open]', {timeout}));
         await page.fill('#triage-n', '1');   // Why (2026-10-30, owner: the popup is becoming one field, the first N best matching jobs): the default "best" choice ranks by fit; this job is fit 90 and the suite's other fixture jobs sit below it, so the first 1 is this job
         await page.click('#triage-start');
-        await readState('the chip never showed the form read', async () => (await chipOfRow(page, form.title)) !== 'Not checked')
+        await readState('the chip never showed the form read', () => chipOfRow(page, form.title), chip => chip !== 'Not checked')
           .catch(async error => { throw new Error(`${error.message} | chips: ${JSON.stringify(await allChips(page))} | ${await describeHidden(ctx.profile)}`); });
         const chip = await chipOfRow(page, form.title);
         if (chip !== expected) throw new Error(`the fixture should read "${expected}", the chip says "${chip}"`);
         if (asked < 1) throw new Error('the verdict never went through the form judge');
-        await readState('the read tab was never closed', async () => !(await hiddenPages(ctx.profile)).some(onHost(form.host)));
+        await readState('the read tab was never closed', async () => (await hiddenPages(ctx.profile)).filter(onHost(form.host)).map(tab => tab.url), open => !open.length);
         await watch.stop();
         assertReadUntyped(watch.seen);
         if (forms.posts.length !== posted) throw new Error('a read posted the form');

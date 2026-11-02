@@ -10,8 +10,14 @@ let stepEndsAt = null;
 // Why (30 Oct 2026, Gitar on #2620): a wait that ran to the cap itself lost the race to the step's hang timer, so a missing decision read as "it hung" and
 // the step's own check ("not in the extension's decisions") never ran. The wait ends this much earlier; it is the step's time to report, not a wait.
 const REPORT_MS = 2000;
-/** Note that the running step's hang cap ends `ms` from now (lib/runner.mjs withLimit); null when the step is over. */
-export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + ms; };
+// Why (2 Nov 2026, a8; apply-1of3 run 41412195017): the chip wait ran out 2 s before the step's cap, but the step's own message came after its cleanup, so the
+// red said only "it hung: the window answers". The running step's last wait that ran out is kept here and the runner's hang message names it (lib/runner.mjs).
+let lastRunOut = null;
+const ranOut = (what, value) => { if (stepEndsAt !== null) lastRunOut = {what, value}; };
+/** The running step's last wait that ran out: {what it waited for, the last value it read}, or null. */
+export const lastWaitRunOut = () => lastRunOut;
+/** Note that the running step's hang cap ends `ms` from now (lib/runner.mjs withLimit); null when the step is over. A new or ended step forgets the last wait that ran out. */
+export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + ms; lastRunOut = null; };
 /** Milliseconds a wait in the running step may take, leaving REPORT_MS for the step to name what was missing; with no runner step (a unit test), undefined. */
 export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now() - REPORT_MS));
 /**
@@ -22,8 +28,8 @@ export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0,
  */
 export async function stepWait(what, run) {
   const left = stepTimeLeft();
-  if (left !== undefined && left <= 0) throw new Error(`the step's clock ran out before ${what}`);
-  return run(left);
+  if (left !== undefined && left <= 0) { ranOut(what, 'no time left'); throw new Error(`the step's clock ran out before ${what}`); }
+  try { return await run(left); } catch (error) { if (error?.name === 'TimeoutError') ranOut(what, 'not seen'); throw error; }
 }
 
 /** Describe only an expired wait, using the timing wording owned by TIMEOUT_FAILURE; lastSeen retains the rejected observation. */
@@ -93,21 +99,21 @@ export async function stageWithin(what, ms, promise) {
 /**
  * Poll fresh reads until accepts succeeds or elapsed ms reaches capMs; return the last value and elapsed ms.
  * Read errors propagate unless the reader is composed with tolerant; unread values skip accepts.
- * Ticks are clipped to the remaining cap. The label formats slow successes; now/pause allow clock-free tests.
+ * Ticks are clipped to the remaining cap. The label formats slow successes; now/pause allow clock-free tests. `what` names the state in a hang message if this wait runs out.
  */
-export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep, readGraceMs = READ_GRACE_MS} = {}) {
+export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep, readGraceMs = READ_GRACE_MS, what = ''} = {}) {
   const start = now();
   let value = '';
   for (;;) {
     const result = await withinCap(read(), capMs - (now() - start), readGraceMs), unread = result?.[UNREAD] === true;
-    if (result === HUNG) return {value, ms: Math.max(now() - start, capMs), hung: true};
+    if (result === HUNG) { ranOut(what, value); return {value, ms: Math.max(now() - start, capMs), hung: true}; }
     value = unread ? result.value : result;
     const ms = now() - start;
     if (!unread && accepts(value)) {
       if (ms > 300) log(`  ${label(ms)}`);
       return {value, ms};
     }
-    if (ms >= capMs) return {value, ms};
+    if (ms >= capMs) { ranOut(what, value); return {value, ms}; }
     await pause(Math.min(tickMs, capMs - ms));
   }
 }
