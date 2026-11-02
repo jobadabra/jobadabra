@@ -11,13 +11,13 @@ const STEP_FILE = /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/;
 
 /**
  * The steps each changed file of steps touches, in the suite that runs them (a file several suites share goes by each suite's `ownsStep`; applyflows runs apply.mjs's 'flows' steps).
- * A line outside a named step (an import, a helper, the suite's frame) is no step: its file lands in `outside`, not in `own`.
+ * A line outside a named step (an import, a helper, the suite's frame) is no step: its file lands in `outside`, not in `own`; the steps the same change edits land in `mixed`.
  * Invariant: a comment-only or blank changed line touches nothing (stepsTouched); a file with no `ctx.run` is a plain helper and is skipped.
  * changedFiles: repo paths; diff: `git diff -U0` of suites/ and lib/; sources: {'suites/x.mjs': text}; users: suitesUsing(); all: every suite; map: the coverage map;
- * ownsStepOf: async suite => (name => bool). -> {own: {suite: [names]}, direct: Set, byStep: Set, outside: [{file, suites}]}
+ * ownsStepOf: async suite => (name => bool). -> {own: {suite: [names]}, mixed: {suite: [names]}, direct: Set, byStep: Set, outside: [{file, suites}]}
  */
 export async function ownSteps({changedFiles, diff, sources, users, all, map = {}, ownsStepOf = async () => () => true}) {
-  const added = newSideRanges(diff), out = {own: {}, direct: new Set(), byStep: new Set(), outside: []};
+  const added = newSideRanges(diff), out = {own: {}, mixed: {}, direct: new Set(), byStep: new Set(), outside: []};
   for (const file of changedFiles.filter(name => STEP_FILE.test(name))) await ownStepsOfFile({file, ranges: added[file] || [], sources, users, all, map, ownsStepOf, out});
   return out;
 }
@@ -32,12 +32,15 @@ async function ownStepsOfFile({file, ranges, sources, users, all, map, ownsStepO
   for (const user of users[rel] || []) out.direct.add(user);
   const touched = stepsTouched(text, ranges);
   const suites = [...new Set([...(suiteFile ? [suiteFile] : []), ...(users[rel] || [])])].filter(name => all.includes(name));
-  if (touched.whole) { out.outside.push({file, suites}); return; }
-  out.byStep.add(file);
+  // Why (2 Nov 2026, #2976, the PR check's first real PR): a file changed outside a step AND inside one still names the steps it edits. They go to `mixed`, which
+  // only the PR check runs; the file stays out of byStep and its steps out of `own`, so the after-merge picker runs its suites whole, as before.
+  if (touched.whole) out.outside.push({file, suites});
+  else out.byStep.add(file);
+  const into = touched.whole ? out.mixed : out.own;
   for (const suite of suites) {
     const ownsStep = await ownsStepOf(suite);
     // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
-    for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (all.includes(home)) (out.own[home] ||= []).push(name);
+    for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (all.includes(home)) (into[home] ||= []).push(name);
   }
 }
 
@@ -48,7 +51,8 @@ async function ownStepsOfFile({file, ranges, sources, users, all, map, ownsStepO
  * facts: {all, cadence, linux: suite => bool}. -> {none, suites: [suite], steps: {suite: [names], '(stores)', '(why)'}, lines: [log line]}
  */
 export async function pickChangedSteps({changedFiles, diff, sources, users, facts, map = {}, ownsStepOf}) {
-  const {own, outside} = await ownSteps({changedFiles, diff, sources, users, all: facts.all, map, ownsStepOf});
+  const found = await ownSteps({changedFiles, diff, sources, users, all: facts.all, map, ownsStepOf}), {outside} = found, own = {...found.own};
+  for (const [suite, names] of Object.entries(found.mixed)) own[suite] = [...(own[suite] || []), ...names];
   const steps = {}, stores = {}, dropped = {}, later = [];
   for (const [suite, names] of Object.entries(own)) {
     const wanted = [...new Set(names)];
