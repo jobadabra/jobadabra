@@ -6,8 +6,10 @@ Why (2 Nov 2026, owner: "The harness tests for sure should not be run in the bet
 Mac unit leg took 9.6 min, and its slowest tests were the repo's own tooling (ship, the PR watcher, the push hook, the locks, the e2e reliability check). CI · Tests
 (build.yml) still runs every test on every push, and a beta builds a commit that passed it.
 One rule per language, each from how its tests reach the code (measured on 2 Nov 2026):
-- Python: a module is kept when its imports reach the engine (src/), which every engine test imports. The tooling tests run their script as a process and import
-  nothing of it, so "imports tooling" would keep them (it left out 16 modules, 8 s; this rule 233, the slowest five among them).
+- Python: a module is kept when its imports reach the engine (src/): it runs the engine's code. The tooling tests run their script as a process and import
+  nothing of it, so "imports tooling" would keep them (it left out 16 modules, 8 s; this rule 233, the slowest five among them). A module that reads src/ or the
+  app as text (test_exit_hooks_stderr parses src/ with ast) checks a rule about the code, the same on every OS: it is left out here and runs in CI · Tests.
+  "Names a shipped path" would keep it but also test_ship_pr and test_affected_tests (435 s), whose fixtures name src/ files (Gitar on #3009).
 - desktop: a file is left out when its imports reach the repo's tooling (TOOLING) and none of what ships. A screen test often loads renderer files as text into
   jsdom and imports nothing, so "imports the app" would drop it (116 files that test screens); when in doubt, a file is kept.
 What ships: the app's own files (desktop/package.json build.files), the extension and app-core (staged into desktop/shared/). An import is judged by its path, so

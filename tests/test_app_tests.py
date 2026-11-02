@@ -1,4 +1,5 @@
-"""tools/app-tests.py: the release pipeline's unit legs leave out the repo's own tooling tests and keep every test of what ships.
+"""tools/app-tests.py: the release pipeline's unit legs leave out the repo's own tooling tests and keep every test that runs what ships (a Python test that
+only reads shipped code as text is left out too); CI · Tests still runs them all.
 
 Why (2 Nov 2026, owner: "The harness tests for sure should not be run in the beta pipeline" … "THat's not a blocker or a reliability gate for the release"):
 beta 0.9.1's Mac unit leg took 9.6 min; its slowest Python modules (test_ship_pr 220 s, test_affected_tests 215 s, test_ship_watch 152 s, test_pr_red_hook 134 s,
@@ -66,6 +67,15 @@ class ReleaseLegsTests(unittest.TestCase):
         runs = [line for line in ACTION.splitlines() if 'bash tools/check.sh --area' in line and not line.lstrip().startswith('#')]
         self.assertTrue(runs, 'the action runs tools/check.sh per area')
         self.assertEqual([line for line in runs if '--app-only' not in line], [])
+
+    def test_ci_tests_still_runs_every_test_left_out_here(self):
+        # The trade-off (Gitar on #3009): a test that reads shipped code as text (test_exit_hooks_stderr parses src/) leaves the beta; CI · Tests runs it on every push.
+        self.assertIn('test_exit_hooks_stderr', app_tests.python_tooling_tests())
+        build = (ROOT / '.github/workflows/build.yml').read_text()
+        for area in ('python', 'desktop'):
+            runs = [line for line in build.splitlines() if f'bash tools/check.sh --area {area}' in line]
+            self.assertTrue(runs, f'CI · Tests runs the {area} suite')
+            self.assertEqual([line for line in runs if '--app-only' in line], [], f'CI · Tests runs every {area} test')
 
     def test_the_legs_print_the_machine_at_the_start_and_the_end(self):   # the proof for the desktop half that ran serially in 0.9.1 (503 s for 430 s of files)
         self.assertIn("machine 'Machine at the start'", ACTION)
