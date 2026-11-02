@@ -76,6 +76,8 @@ test('an e-mail the app sends itself needs e-mail chosen, and never throws', asy
   assert.equal(await sendEmail(on, {subject: 'Few <new> jobs', text: 'a & b'}, site([{ok: true}], asked)), true);
   assert.equal(asked[0].body.html, '<b>Few &lt;new&gt; jobs</b>\na &amp; b');
   assert.equal(asked[0].body.kind, 'activity', 'the app\'s own notices wait for the digest');
+  assert.equal(await sendEmail(on, {subject: 'An application is waiting for you', text: 't', urgent: true}, site([{ok: true}], asked)), true);
+  assert.equal(asked[1].body.kind, 'urgent', 'an application waiting for the person goes at once, not in the digest (lib/waiting-message.js)');
   assert.equal(await sendEmail(on, {subject: 's', text: 't'}, site([new Error('offline')])), false);
   assert.equal(await sendEmail(storage(), {subject: 's', text: 't'}, site([])), false);
 });

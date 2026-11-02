@@ -10,6 +10,7 @@ import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
 import {notify as notifyDefault, stopAsked} from './server-hooks.js';
 import {log as appLog} from './log.js';
+import {waitingMessageFor} from './waiting-message.js';
 
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
@@ -36,6 +37,7 @@ export function backgroundApplyFor(storage) {
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
+ waiting = null,   // the waiting-application message sender, injectable for tests (lib/waiting-message.js)
  log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
@@ -58,13 +60,22 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
     terminals.report(item.id, {event: 'note', message: words});
   };
+  // The person who is away: the app's own notification is not enough, so the chosen e-mail and Telegram hear it too (lib/waiting-message.js: one an hour, a burst is one message).
+  // It never breaks the hand-over: a failure to queue it is logged.
+  const tellAway = (item, note) => {
+    try {
+      (waiting ||= waitingMessageFor(storage)).add({id: item.id, title: item.title, company: item.company, note, open: () => { const record = terminals.record(item.id); return !!record && !record.outcome; }});
+    } catch (error) { log('apply', 'waiting message not queued', {error: error.message}); }
+  };
   const itemFor = session => { const item = terminals.record(String(session || '')); return item?.background ? item : null; };
   async function markManual(item, reason) {
     const state = await store.handoff(item.url, item.id, owner, reason);
     if (state.ok === false) return state;
     cache(item, state);
     log('apply', 'background application handed to the person', {session: item.id, mode: state.mode, reason});
-    notify('Application needs you', NOTICES[reason] || 'Review and submit this application yourself.', {view: 'sessions', session: item.id}, 'warn');
+    const note = NOTICES[reason] || 'Review and submit this application yourself.';
+    notify('Application needs you', note, {view: 'sessions', session: item.id}, 'warn');
+    tellAway(item, note);
     return state;
   }
   async function enqueue(jobs, mode) {
@@ -169,7 +180,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (options.quit) unsaved[threw ? 'add' : 'delete'](item.id);
     if (!state) return null;
     cache(item, state);
-    notify('Application needs you', NOTICES[state.reason] || NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');
+    const note = NOTICES[state.reason] || NOTICES.submission_outcome_unknown;
+    notify('Application needs you', note, {view: 'sessions', session: item.id}, 'warn');
+    tellAway(item, note);
     log('apply', 'background application cut off handed to the person', {session: item.id, mode: state.mode, reason: state.reason, afterMs: options.afterMs || 0});
     return state;
   }

@@ -65,9 +65,10 @@ export async function save(storage, {by, email, marketing, cadence}, fetcher = g
   return {ok: true};
 }
 
-// One message the app itself sends (not an engine run): by the chosen channels' e-mail form. Plain text in, never throws. It joins the digest (kind 'activity'), never a mail of its own. -> true when the site took it.
-export async function sendEmail(storage, {subject, text}, fetcher = globalThis.fetch) {
+// One message the app itself sends (not an engine run): by the chosen channels' e-mail form. Plain text in, never throws. It joins the digest (kind 'activity'), never a mail of its own,
+// unless `urgent` (an application waits for the person: lib/waiting-message.js): then it goes at once. -> true when the site took it.
+export async function sendEmail(storage, {subject, text, urgent = false}, fetcher = globalThis.fetch) {
   if (!channelsOf(storage).includes('email')) return false;
   const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return (await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${escape(subject)}</b>\n${escape(text)}`, kind: 'activity'}, fetcher)).ok === true;
+  return (await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${escape(subject)}</b>\n${escape(text)}`, kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
 }
