@@ -28,7 +28,7 @@ import os
 import re
 import sys
 
-from ..paths import CONFIG, whole_word
+from ..paths import CONFIG, whole_word, write_whole
 
 PAGE_ID = os.getenv('NOTION_SEARCH_SETTINGS_PAGE', '')
 TITLE = '⚙️ Search settings'
@@ -275,7 +275,7 @@ def apply(values, files=None):
         return files
     CONFIG.mkdir(parents=True, exist_ok=True)
     for name in ('search', 'preferences'):
-        (CONFIG / f'{name}.json').write_text(json.dumps(files[name], indent=2, ensure_ascii=False) + '\n')
+        write_whole(CONFIG / f'{name}.json', json.dumps(files[name], indent=2, ensure_ascii=False) + '\n')   # whole: an engine started beside this one reads it at import (src/paths.py)
     return files
 
 

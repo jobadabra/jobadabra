@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import tempfile
 import unittest
@@ -64,6 +65,31 @@ class SearchSettingsTests(unittest.TestCase):
         values = s.parse(text)
         self.assertEqual(values[('search', ('locations', 'relocation'))], ['no'])
         self.assertEqual(values[('search', ('locations', 'search_override'))], ['netherlands', r'\bgermany\b'])
+
+    def test_the_sync_swaps_each_settings_file_in_whole_so_a_reader_never_sees_it_empty(self):
+        # Main e2e run 41537996714 (2 Nov 2026): src.focus synced the settings while src.desktop jobs read config/search.json at import, started 20 ms apart at the
+        # window's reload; the in-place write had emptied the file, the read failed ("Expecting value") and the Jobs list stayed at 0. At the moment each file is
+        # swapped, the live file must still hold the old settings whole.
+        values = s.parse(s.render(json.loads(json.dumps(FILES))))
+        real_replace, seen, incoming = os.replace, {}, {}
+
+        def watching(source, target):
+            seen[Path(target).name] = json.loads(Path(target).read_text())   # what a reader gets at that moment
+            incoming[Path(target).name] = json.loads(Path(source).read_text())   # and what it gets right after: the new settings, already whole
+            real_replace(source, target)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(s, 'CONFIG', Path(tmp)), mock.patch('os.replace', watching):
+            for name in ('search', 'preferences'):
+                (Path(tmp) / f'{name}.json').write_text(json.dumps(FILES[name]))
+            s.apply(values)
+            written = {name: json.loads((Path(tmp) / f'{name}.json').read_text()) for name in ('search', 'preferences')}
+            modes = {oct((Path(tmp) / f'{name}.json').stat().st_mode & 0o777) for name in ('search', 'preferences')}
+            left = sorted(item.name for item in Path(tmp).iterdir())
+        self.assertEqual(seen, {'search.json': FILES['search'], 'preferences.json': FILES['preferences']}, 'a settings file was written in place, not swapped in whole')
+        self.assertEqual(incoming, {'search.json': WITH_ROLES['search'], 'preferences.json': WITH_ROLES['preferences']}, 'the file swapped in was not yet whole')
+        self.assertEqual(written, WITH_ROLES)
+        if os.name != 'nt':   # Windows has no such modes
+            self.assertEqual(modes, {'0o600'}, 'the settings are no longer this user\'s only, as the app writes them (desktop/lib/private-file.js)')
+        self.assertEqual(left, ['preferences.json', 'search.json'], 'a temporary file was left beside the settings')
 
     def test_the_sync_writes_no_note_of_the_example_files(self):
         # A "_" key is a note of the repo's example settings, never a setting (desktop/lib/config-text.js): a cache that kept one must not keep it (11 Oct 2026).
