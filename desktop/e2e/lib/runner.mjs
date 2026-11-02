@@ -206,7 +206,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
       if (keepGoing && !critical && !ownedHang(error, stopOnHang)) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;
-    } finally { await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }
+    } finally { setStep(''); await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }   // an ask after the step (teardown, the next setup) names no step
   }
   const summary = () => {
     const lost = picked.filter(name => name !== PICK_SETUP && !found.has(name));

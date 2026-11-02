@@ -8,7 +8,8 @@ import path from 'node:path';
 import test from 'node:test';
 import {requestKey} from '../../lib/ai-meter.mjs';
 import {startAiProxy} from '../../lib/ai-proxy.mjs';
-import {setStep} from '../../lib/step-now.mjs';
+import {createRunner} from '../../lib/runner.mjs';
+import {setStep, stepNow} from '../../lib/step-now.mjs';
 
 const E2E = path.resolve(import.meta.dirname, '..', '..'), REPO = path.resolve(E2E, '..', '..');
 const ASK = JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 50, messages: [{role: 'user', content: 'Which roles fit this CV?'}]});
@@ -92,4 +93,19 @@ test('a suite that may reach a model is a live measurement, never a gate', async
     assert.ok(['manual', 'night-report'].includes(suite.cadence), `${file}: realAi = true only on a measurement suite (cadence manual or night-report), not ${suite.cadence}`);
   }
   assert.deepEqual(live.sort(), ['explore', 'personas', 'qualityai']);
+});
+
+// Gitar on #2976: the step name was never cleared, so an ask after a step (teardown, the next setup) named the step before it.
+test('a step names asks only while it runs, also when it fails', async () => {
+  const quiet = console.log;
+  console.log = () => {};
+  try {
+    const runner = createRunner(() => null, {keepGoing: true});
+    let during = '';
+    await runner.run('the strategy is built from the CV', async () => { during = stepNow(); });
+    assert.equal(during, 'the strategy is built from the CV');
+    assert.equal(stepNow(), '', 'after a passed step');
+    await runner.run('a step that fails', async () => { throw new Error('red'); });
+    assert.equal(stepNow(), '', 'after a failed step');
+  } finally { console.log = quiet; setStep(''); }
 });
