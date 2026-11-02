@@ -14,8 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / '.github/workflows'
-# Workflows beside the list tools/e2e-reliability-check.mjs names: desktop.yml runs the same suites in the release gate, e2e-weekly.yml runs them weekly.
-ALSO = ('desktop', 'e2e-weekly')
+# Workflows beside the list tools/e2e-reliability-check.mjs names: desktop.yml runs the same suites in the release gate.
+# Why (2 Nov 2026): e2e-weekly.yml left this list when it became the summary post (tools/ci-intel); the old one ran suites weekly, the new one runs none.
+ALSO = ('desktop',)
 # (file, step name) -> why it has no `timeout-minutes`. Empty on purpose: a stale entry fails the test, so an exemption cannot outlive its step.
 EXEMPT = {}
 FLOOR = 5  # minutes; rule B in docs/superpowers/specs/2026-10-28-e2e-reliability-design.md

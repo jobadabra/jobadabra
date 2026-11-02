@@ -34,6 +34,8 @@ CLASSIFIED = {
     # Why (2 Nov 2026, owner: "the same workflow on all repos"): the shared PR-description check other org repos call (workflow_call); it never runs on this repo's main.
     'CI · PR description (reusable)': 'ignored: workflow_call only, run for another repo\'s pull request; checks that PR\'s description, never runs on a push to main',
     # Why (2 Nov 2026, owner: "One script + weekly check"): the weekly org-setup check is report only (one issue), started by the Worker timer or by hand, never a push or PR check.
+    'CI · E2E weekly summary': 'ignored: Mondays and by hand only; posts the week\'s e2e issue and Telegram message from the site snapshot, never runs on a push to main',
+    'CI · Integration intelligence': 'ignored: hourly and by hand only; reads finished integration runs and publishes one snapshot to the site, never runs on a push to main',
     'CI · Org repos on the shared setup (weekly, report only)': 'ignored: weekly report of org repos that drift from templates/org-repo; keeps one issue, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     # Why (2 Nov 2026, owner: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check"): the planner of a PR's changed e2e steps; pull_request only, never runs on main.

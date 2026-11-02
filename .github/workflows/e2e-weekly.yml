@@ -1,40 +1,39 @@
-name: E2E · Weekly root causes
-# The week's e2e reds by root cause, as one GitHub issue (gate G6, owner's yes 26 Oct 2026: "GitHub issue now"): each red suite job of the betas, main checks and
-# Windows runs gets its cause from its log, a mass event (one cause, 5+ suites) counts once, and each row says which gate catches it now (G1 PR plan, G2a red main,
-# G4 Windows, G5 intermittent) or "nothing yet": the next gate to build (tools/e2e_weekly.py). By hand too: `gh workflow run e2e-weekly.yml` (no waiting for Monday).
-# Why: 26 Oct 2026, the owner: "why still we have problems with e2e? What's wrong in our process", "I want to emphasize on the root causes".
+name: CI · E2E weekly summary
+# The week's e2e numbers for the owner (spec rule D, 28 Oct 2026): one GitHub issue here and one Telegram message on the CI alerts bot, drawn from the snapshot
+# https://www.jobadabra.top/admin/testing/e2e draws (tools/ci-intel/jobs/e2e-weekly.mjs; e2e-intel.yml refreshes it hourly). By hand too: `gh workflow run e2e-weekly.yml`.
+# Replaces the Python report that sat here (tools/e2e_weekly.py, its own classifier; "E2E · Weekly root causes") and jobadabra-web's copy of this job, so one job writes the report.
+# Why here (2 Nov 2026, owner): it reads only the snapshot the e2e-intel job here publishes.
 on:
   schedule:
-    - cron: '17 7 * * 1'   # Mondays 07:17 UTC
+    - cron: '23 7 * * 1'   # Mondays 07:23 UTC, after e2e-intel's 06:41 and 07:41 refreshes have started
   workflow_dispatch:
-    inputs:
-      days:
-        description: 'How many days back'
-        required: false
-        default: '7'
 
 permissions:
   contents: read
-  actions: read   # runs, jobs and their logs
-  issues: write   # the weekly issue
+  issues: write
 
 concurrency:
   group: e2e-weekly
   cancel-in-progress: false
 
 jobs:
-  report:
-    name: Weekly root causes
+  post:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
-          sparse-checkout: tools
-      - name: Read the week's reds and write the issue
-        timeout-minutes: 26
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DAYS: ${{ inputs.days || '7' }}
-        run: python3 tools/e2e_weekly.py --days "$DAYS"
+          sparse-checkout: tools/ci-intel
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - name: Post the weekly summary
+        timeout-minutes: 5
+        run: node tools/ci-intel/jobs/e2e-weekly.mjs

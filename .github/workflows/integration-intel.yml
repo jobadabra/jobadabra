@@ -1,0 +1,41 @@
+name: CI · Integration intelligence
+# The integration tests' page (owner, 1 Nov 2026), https://www.jobadabra.top/admin/testing/integrations: reads the finished runs of "CI · Integration tests"
+# (integration.yml) and their artifacts integration-results-<layer>, builds one snapshot (tools/ci-intel/jobs/integration-intel.mjs) and PUTs it (Bearer SELFHEAL_PUBLISH_KEY).
+# Hourly; a run is read once, the site keeps one snapshot row.
+# Why here (2 Nov 2026, owner): it reads this repo's own runs and artifacts, so it runs beside integration.yml and no longer lays this repo's tree under jobadabra-web every hour (it was that repo's integration-intel.yml).
+# Why (1 Nov 2026, owner: the page read "No data yet"): GitHub's schedule below is best-effort (0 runs in the first 3 h), so the Worker starts it on time at :15 (shared/intel-start.js in jobadabra-web); the cron is the backup.
+# The title says who started the run, as in e2e-intel.yml.
+run-name: Integration intelligence · ${{ github.event_name == 'workflow_dispatch' && 'on time (Worker timer)' || 'GitHub schedule' }}
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: integration-intel
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+        with:
+          sparse-checkout: tools/ci-intel
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - name: Read the new runs and publish the snapshot
+        timeout-minutes: 25
+        run: node tools/ci-intel/jobs/integration-intel.mjs
