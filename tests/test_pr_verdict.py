@@ -107,10 +107,12 @@ class Verdict(unittest.TestCase):
         always_on = ['.github/workflows/daily.yml', '.github/workflows/scout.yml', '.github/workflows/mail.yml']
         self.assertFalse(pv.ci_change(always_on))
         self.assertEqual(pv.verdict(slow, files=always_on)[0], 'success')
-        # Why (1 Nov 2026, owner: "I'd like to avoid e2e at the PR at all / Cause they're very slow", option "No e2e on PRs"): no PR starts an e2e run, so editing e2e.yml or e2e-windows.yml is no CI change of a PR.
-        for name in ['e2e.yml', 'e2e-windows.yml', 'beta-approve.yml']:
+        # Why (2 Nov 2026, owner: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check" — "the only exception when we run e2e on the PR level"): pr-e2e-steps.yml dispatches
+        # e2e.yml for a PR that changes a step, so the e2e workflows are workflows a PR can run again. The ones no PR starts (the merge's planner, the nightly) stay no CI change.
+        for name in ['e2e.yml', 'e2e-windows.yml', 'pr-e2e-steps.yml', 'tests-python.yml']:
+            self.assertTrue(pv.ci_change([f'.github/workflows/{name}']), name)
+        for name in ['main-steps.yml', 'e2e-revert.yml']:
             self.assertFalse(pv.ci_change([f'.github/workflows/{name}']), name)
-        self.assertTrue(pv.ci_change(['.github/workflows/tests-python.yml']), 'positive control: a workflow a PR runs is a CI change')
 
     def test_the_pr_workflows_list_is_every_workflow_a_pr_can_start(self):
         # A pull_request trigger, or started by a workflow a PR runs (gh workflow run X, pr-suites' dispatch X, uses: ./.github/workflows/X), followed to the end. A new PR workflow fails here.
@@ -140,8 +142,9 @@ class Workflows(unittest.TestCase):
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
         self.assertEqual(prs - listed, set(), 'add it to pr-verdict.yml workflow_run.workflows')
-        self.assertNotIn('CI · End-to-end on Mac + Linux', listed, 'no PR starts an e2e run: the journeys run after each merge')
-        self.assertNotIn('CI · E2E suites for a PR', listed)
+        self.assertIn('CI · End-to-end on Mac + Linux', listed, 'a PR that changes a step starts e2e.yml (pr-e2e-steps.yml): its run is judged when it ends')
+        self.assertIn('CI · E2E steps a PR changes', listed)
+        self.assertNotIn('CI · E2E suites for a PR', listed, 'the old every-suite PR workflow is gone')
         self.assertNotIn('CI · Prompt cases (Haiku re-ask)', listed, 'a manual run must not participate in the PR verdict')
 
     def test_no_pr_job_polls_for_other_workflows(self):
@@ -162,31 +165,14 @@ class Workflows(unittest.TestCase):
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
         self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD\n', verdict, 'positive control: the one writer runs it, with no --job-status')
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
-        for path in ('e2e.yml', 'e2e-windows.yml'):   # no PR dispatches them any more (1 Nov 2026): the verdict neither listens for them nor waits on them
-            name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
-            self.assertNotIn(name, listed, f'{path}: no PR starts it')
+        # e2e.yml is dispatched by pr-e2e-steps.yml, so no pull_request trigger names it: it is listed by hand. Windows is never started by a PR (2 Nov 2026).
+        name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / 'e2e.yml').read_text()).group(1).strip('\'"')
+        self.assertIn(name, listed, 'e2e.yml: the PR e2e run it makes is judged only when a listed workflow ends')
+        name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / 'e2e-windows.yml').read_text()).group(1).strip('\'"')
+        self.assertNotIn(name, listed, 'e2e-windows.yml: no PR starts it')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
         for name in ('main_e2e_state', 'pr_ai_number', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_greys', 'pr_flaky'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
-
-    # Why (1 Nov 2026, owner: "I'd like to avoid e2e at the PR at all / Cause they're very slow", option "No e2e on PRs"): the journeys run after each merge (main-steps.yml),
-    # a red merge is reverted by e2e-revert.yml; a PR starts no e2e run, and its verdict must not wait for one that never comes.
-    def test_no_pr_starts_an_e2e_run(self):
-        self.assertFalse((WORKFLOWS / 'pr-suites.yml').exists(), 'pr-suites.yml started the PR e2e run')
-        for path in WORKFLOWS.glob('*.yml'):
-            text = path.read_text(encoding='utf-8')
-            if re.search(r'(?m)^  pull_request(_target)?:|^on:.*\bpull_request\b', text):
-                self.assertNotRegex(text, r'(?m)^[^#\n]*(\bworkflow run\s+|\bdispatch\s+|uses:\s*\./\.github/workflows/)e2e(-windows)?\.yml', f'{path.name}: a PR workflow starts an e2e run')
-        self.assertIn('node desktop/e2e/pr-suites.mjs --base "$BEFORE" --plan', (WORKFLOWS / 'main-steps.yml').read_text(), 'positive control: the merge still plans its e2e steps')
-
-    def test_pr_checks_decide_with_no_e2e_run_at_all(self):
-        # The verdict waits for nothing it cannot see: every run of the PR is a PR workflow and none is an e2e run.
-        runs = [run(name, id=i) for i, name in enumerate(['CI · Pull request', 'CI · Tests · python', 'CI · Tests · desktop', 'CI · Page cases (all cases, real extension, Linux)'], 1)]
-        state, why, counted_runs, *_ = pv.verdict(runs, files=['tools/pr-verdict.py', '.github/workflows/pr-verdict.yml'])
-        self.assertEqual((state, len(counted_runs)), ('success', 4), why)
-        self.assertEqual(pv.verdict(runs + [run('CI · Tests · worker', status='in_progress', id=9)])[0], 'pending', 'positive control: a running PR check still holds it')
-        self.assertEqual(pv.verdict(runs + [run('CI · Tests · worker', conclusion='failure', id=9)])[0], 'failure', 'positive control: a red PR check still fails it')
-        self.assertTrue({'e2e.yml', 'e2e-windows.yml', 'pr-suites.yml'}.isdisjoint(pv.PR_WORKFLOWS))
 
     def test_verdicts_queue_per_commit_and_skipped_events_have_unique_groups(self):
         text = (WORKFLOWS / 'pr-verdict.yml').read_text()

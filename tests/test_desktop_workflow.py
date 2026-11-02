@@ -284,3 +284,14 @@ class PrSuitesDispatchInputs(unittest.TestCase):
         dispatch = text.split('workflow_dispatch:')[1].split('\n  schedule:')[0].split('\n  workflow_call:')[0]
         declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
         self.assertEqual(passed - declared, set())
+
+    def test_dispatch_declares_what_pr_e2e_steps_passes(self):
+        """The PR check (2 Nov 2026, owner: "the only exception when we run e2e on the PR level") dispatches e2e.yml with pr_suites and pr_steps: both must be workflow_dispatch inputs."""
+        root = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+        lines = re.findall(r'gh workflow run e2e\.yml[^\n]*', (root / 'pr-e2e-steps.yml').read_text())
+        passed = {flag for line in lines for flag in re.findall(r'-f (\w+)=', line)}
+        self.assertEqual(passed, {'pr_suites', 'pr_steps'})
+        text = (root / 'e2e.yml').read_text()
+        dispatch = text.split('workflow_dispatch:')[1].split('\n  schedule:')[0].split('\n  workflow_call:')[0]
+        declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
+        self.assertEqual(passed - declared, set())

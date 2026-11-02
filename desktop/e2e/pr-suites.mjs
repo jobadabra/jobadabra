@@ -1,13 +1,15 @@
-// Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites pr-suites.yml starts and waits for (they block the merge since 26 Oct 2026, gate G1a). Always exits 0: the e2e run decides.
+// Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites main-steps.yml starts after a merge (pr-suites.yml, which ran them on every PR, is gone since 1 Nov 2026). Exits 0 (the e2e run decides), except --changed-steps (the PR check, pr-e2e-steps.yml), which exits 1 when it cannot read the diff: it fails closed, never as "no step changed".
 // Job: pick the suites
 //   node pr-suites.mjs --base origin/main          the table
 //   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` and `steps={suite: [step names]}` for the run (workflow pr-suites.yml with --pull-request: no step names, every suite whole;
 //                                                  main-steps.yml after a merge: the picked steps). Optional --catches <file>: public {suite: count} snapshot. Needs the staged app files and installs, like e2e.yml's plan
+//   node pr-suites.mjs --base origin/main --plan --changed-steps   the PR check (pr-e2e-steps.yml): `suites=` and `steps=` hold only the steps this diff adds or edits, on Linux; both empty when none (lib/own-steps.mjs)
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, deferredLines, ownedStepNames} from './lib/pr-suites.mjs';
+import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, rehomeQuotes, pointedWithMap, deferredLines} from './lib/pr-suites.mjs';
+import {ownSteps, pickChangedSteps} from './lib/own-steps.mjs';
 import {suitePartsFor, suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {suitesReading} from './lib/page-reach.mjs';
@@ -73,7 +75,20 @@ try {
   for (const dir of ['suites', 'lib']) for (const name of fs.readdirSync(path.join(here, dir))) if (name.endsWith('.mjs')) sources[`${dir}/${name}`] = fs.readFileSync(path.join(here, dir, name), 'utf8');
   const out = report({strings, hits: suitesExpecting(strings, sources), changedFiles, sources});
   console.log(out.text);
-  if (process.argv.includes('--plan')) {
+  if (process.argv.includes('--changed-steps')) {
+    // The PR check (pr-e2e-steps.yml, owner, 2 Nov 2026: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check"): only the steps this diff adds or edits, on Linux.
+    // No other rule of --plan applies: nothing here picks a step by the app lines it runs; that is main-steps.yml, after the merge.
+    (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(here, '..'));
+    const {suiteFacts} = await import('./plan-run.mjs');
+    const facts = await suiteFacts();
+    const linux = Object.fromEntries(await Promise.all(facts.all.map(async suite => [suite, (await facts.os(suite)) === 'ubuntu-24.04'])));
+    const stepDiff = git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/']);
+    const picked = await pickChangedSteps({changedFiles, diff: stepDiff, sources, users: suitesUsing(here), facts: {all: facts.all, cadence: facts.cadence, linux: suite => linux[suite]}, map: changedFiles.some(file => /^desktop\/e2e\/(suites|lib)\//.test(file)) ? loadMap() : {}, ownsStepOf: async suite => (await import(`./suites/${suite}.mjs`)).ownsStep});
+    console.log(`\n### E2E steps this PR adds or changes\n${picked.lines.map(line => `- ${line}`).join('\n')}\n`);
+    const suites = picked.suites.join(','), stepsOut = picked.none ? '' : JSON.stringify(picked.steps);
+    console.log(`suites=${suites}\nsteps=${stepsOut}`);
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${suites}\nsteps=${stepsOut}\n`);
+  } else if (process.argv.includes('--plan')) {
     (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(here, '..'));   // the suites imported below need desktop/shared/, which a PR job never staged (test/ensure-staged.test.mjs)
     const {suiteFacts} = await import('./plan-run.mjs');
     const facts = await suiteFacts();
@@ -91,24 +106,8 @@ try {
     // (owner, 26 Oct 2026: "a change to a suite runs that suite's affected steps (apply/applyflows included)"); a file several suites share goes by each suite's
     // `ownsStep` (applyflows runs apply.mjs's 'flows' steps). A change outside a named step, or any other file (a plain helper, the extension, a watched file the map
     // has not seen), runs its suites whole.
-    const added = newSideRanges(git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/'])), users = suitesUsing(here), own = {}, direct = new Set(), byStep = new Set();
-    for (const file of changedFiles.filter(name => /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/.test(name))) {
-      const rel = file.slice('desktop/e2e/'.length), text = sources[rel] || '';
-      const suiteFile = /^suites\/([^/]+)\.mjs$/.exec(rel)?.[1];
-      if (suiteFile) direct.add(suiteFile);
-      if (!stepCalls(text).length) continue;   // no steps here: a plain helper (suitesFor below)
-      // A changed file holding steps is stronger reach than a plain imported helper.
-      for (const user of users[rel] || []) direct.add(user);
-      const touched = stepsTouched(text, added[file] || []);
-      if (touched.whole) continue;
-      byStep.add(file);
-      const suites = [...new Set([...(rel.startsWith('suites/') ? [rel.slice(7, -4)] : []), ...(users[rel] || [])])].filter(name => facts.all.includes(name));
-      for (const suite of suites) {
-        const {ownsStep} = await import(`./suites/${suite}.mjs`);
-        // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
-        for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (facts.all.includes(home)) (own[home] ||= []).push(name);
-      }
-    }
+    const stepDiff = git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/']), users = suitesUsing(here);
+    const {own, direct, byStep} = await ownSteps({changedFiles, diff: stepDiff, sources, users, all: facts.all, map, ownsStepOf: async suite => (await import(`./suites/${suite}.mjs`)).ownsStep});   // lib/own-steps.mjs
     const exactWatches = {...pointing, watches: Object.fromEntries(Object.entries(pointing.watches).map(([suite, paths]) => [suite, paths.filter(path => !path.endsWith('/'))]))};
     const pointsAt = file => pointedWithMap(file, suitesFor([file], facts.all, pointing), suitesFor([file], facts.all, exactWatches), map);   // lib/pr-suites.mjs
     const pointedBy = stillWholeBy(changedFiles.filter(file => !byStep.has(file)), pointsAt, map), pointedElse = Object.keys(pointedBy);
@@ -154,4 +153,6 @@ try {
   }
 } catch (error) {
   console.log(`pr-suites: could not read the diff (${error.message.split('\n')[0]}); nothing reported`);
+  // Why (2 Nov 2026, Gitar on #2980): --changed-steps is a PR gate, so an error must never read as "no step changed" (pr-e2e-steps.yml would go green with no e2e run: #2954, #2963). Exit non-zero; the other modes keep the soft fallback.
+  if (process.argv.includes('--changed-steps')) process.exitCode = 1;
 }

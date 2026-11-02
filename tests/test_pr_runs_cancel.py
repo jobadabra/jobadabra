@@ -41,6 +41,20 @@ class PrRunsCancel(unittest.TestCase):
             
         self.assertEqual(offenders, [])
 
+    def test_a_run_started_for_a_pr_cancels_that_pr_s_older_run_too(self):
+        # pr-e2e-steps.yml starts e2e.yml for a PR (workflow_dispatch, so the check above never reads it): a newer push must cancel the older run of the same PR,
+        # else two runs of one branch fight for the same suites. Was pr-suites.yml's guard until 1 Nov 2026; back with the one PR e2e (2 Nov 2026, owner).
+        dispatched = set(re.findall(r'gh workflow run ([\w.-]+\.yml)', (WORKFLOWS / 'pr-e2e-steps.yml').read_text(encoding='utf-8')))
+        self.assertEqual(dispatched, {'e2e.yml'})
+        text = (WORKFLOWS / 'e2e.yml').read_text(encoding='utf-8')
+        groups, cancels = re.findall(r'group:\s*([^\n#]+)', text), re.findall(r'cancel-in-progress:\s*([^\n#]+)', text)
+        pr = lambda value: 'inputs.pr_suites' in value or 'inputs.pr_steps' in value
+        self.assertTrue(any(pr(g) and 'github.ref' in g for g in groups), 'e2e.yml: no group per PR branch for a PR run')
+        self.assertTrue(any(pr(c) for c in cancels), 'e2e.yml: a PR run never cancels its older one')
+        steps = (WORKFLOWS / 'pr-e2e-steps.yml').read_text(encoding='utf-8')
+        self.assertRegex(steps, r'group: pr-e2e-steps-\$\{\{ github\.event\.pull_request\.number \}\}')
+        self.assertRegex(steps, r'cancel-in-progress: true')
+
     def test_the_called_suites_keep_a_group_per_commit_inside_the_caller(self):
         # build.yml (CI · Tests) is the one group on main (ci-tests-main, a started run finishes; only the waiting one is replaced); the suites it calls only need a group of their own
         for name in ('tests-python.yml', 'tests-worker.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml'):

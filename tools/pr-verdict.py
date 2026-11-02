@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timezone
 
 CONTEXT = 'All checks passed'
-E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-suites.yml started
+E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-e2e-steps.yml started
 BUDGET_MIN = 10
 STEP = "Write the PR's verdict"   # the old per-job writer, gone 30 Oct 2026 (one writer); a branch not yet rebased still has it: job_state reads it as ending
 # TODO(AI): drop STEP, job_state's 'finishing' and verdict()'s me/my_status once no open PR predates the one-writer change (30 Oct 2026)
@@ -38,12 +38,13 @@ GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey',
                    # Why (31 Oct 2026, owner: "Grey: not known yet"): budget refusal is not a quality judgment.
                    'ai-budget': ('qualityai', 'AI budget refused, not judged')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
-# The workflows a pull request can start: a pull_request trigger, or started by one of them (no PR starts an e2e run since 1 Nov 2026: the journeys run after each merge, main-steps.yml). A workflow outside it (the users' Always On daily/scout/mail.yml,
+# The workflows a pull request can start: a pull_request trigger, or started by one of them (a PR starts an e2e run only when it adds or changes a step: pr-e2e-steps.yml, owner, 2 Nov 2026;
+# the other journeys run after each merge, main-steps.yml). A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
-PR_WORKFLOWS = {'conflict-label.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml', 'integration.yml', 'key-org-proof.yml',
-                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'search-personas.yml', 'smoke.yml', 'tests-desktop-windows.yml',
-                'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
+PR_WORKFLOWS = {'beta-approve.yml', 'clock-moved.yml', 'conflict-label.yml', 'coverage-report.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml',
+                'integration.yml', 'key-org-proof.yml', 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-e2e-steps.yml', 'pr-gate.yml', 'prompt-cases-night.yml', 'search-personas.yml',
+                'smoke.yml', 'tests-desktop-windows.yml', 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 
 def ci_change(files):
