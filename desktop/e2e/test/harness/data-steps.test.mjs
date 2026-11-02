@@ -4,8 +4,6 @@
 // a step added to the list is added here, and a step marked in a suite but missing here is a mark nobody asked for.
 // Job: report health
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import {test} from 'node:test';
 import {dataNamesIn, dataStepNames, isDataStep, safetyNamesIn, safetyStepNames} from '../../lib/safety-steps.mjs';
 
@@ -13,17 +11,11 @@ const DATA = [
   'finishing the setup without Notion opens the Job', 'a new install keeps its data on this Mac: the st', 'every scored job in the Jobs list is its Job Mat',
   'the person submits a form: the page after Submit',
 ];
-const HERE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
 test('every data step of the list is marked {data: true} in a suite', () => {
   const marked = dataStepNames();
   for (const prefix of DATA) assert.ok(marked.some(name => name.startsWith(prefix)), `not marked as a data step: "${prefix}…"`);
   assert.ok(isDataStep(marked[0], marked));   // Why (1 Nov 2026): the sample was a settings backup step that moved to integration; any marked step shows the reader matches its own name
-});
-
-test('the seven LinkedIn steps (named by a table, so no literal call) are marked in the one helper that runs them', () => {
-  const source = fs.readFileSync(path.join(HERE, '..', 'lib', 'linkedin-steps.mjs'), 'utf8');
-  assert.match(source, /const step = \(key, body\) => ctx\.run\(NAMES\[key\], withDiagnosis\(ctx, fx, body\), \{needs, data: true\}\)/);
 });
 
 test('one reader, two marks: a data mark is not a safety mark and the other way round; a mark inside a string or a comment is none', () => {

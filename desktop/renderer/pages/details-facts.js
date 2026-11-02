@@ -132,9 +132,10 @@ function drawWhich(aside = [], tidied = null) {
 // moves the facts in: copy and backup first, lib/profile-move.js) and the screen draws again with what they did. 'details-sorting' tells the cards (the Voluntary surveys card
 // shows "Sorting your answers…", then reads its lines again); the first paint never waits on an AI call. Guarded by test/details-facts.test.js.
 let settledFor = 0, redrawing = false;
-const paintFacts = (result, kept) => {
+const paintFacts = result => {
   skeletons(false);
-  if (!kept && !redrawing && factsDirty()) return;   // a refresh never redraws under unsaved edits (Discard all redraws on purpose)
+  // Why (pf, 2 Nov 2026, same cause as showContact): the kept copy used to draw over unsaved edits and factsRead() then took the wiped boxes as saved; only Discard all (redrawing) paints over drafts.
+  if (!redrawing && factsDirty()) return;   // a refresh never redraws under unsaved edits (Discard all redraws on purpose)
   $('facts-message').textContent = '';
   draw(result.sections || {}, result.formats || {});
   factsRead();   // the drafts count from what is drawn now (details-drafts.js)
@@ -151,7 +152,7 @@ export async function showFacts({redraw = false} = {}) {
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: true}}));
   const settled = await window.pilot.detailsFacts().catch(error => ({ok: false, error: error.message}));
   if (turn === settledFor && settled?.ok !== undefined) {
-    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false); } else if (settled.error) $('facts-message').textContent = plainError(settled.error);
+    if (settled.ok) { keep('details-facts', settled); paintFacts(settled); } else if (settled.error) $('facts-message').textContent = plainError(settled.error);
   }
   redrawing = false;
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: false, changed: settled?.changed || 0}}));
