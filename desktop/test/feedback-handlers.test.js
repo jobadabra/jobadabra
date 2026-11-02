@@ -9,6 +9,7 @@ const image = {isEmpty: () => false, getSize: () => ({width: 800, height: 500}),
 const win = {isDestroyed: () => false, webContents: {capturePage: async () => image}};
 const app = {getVersion: () => '0.5.71', getLocale: () => 'en-GB', getPath: () => '/nonexistent-userdata'};
 const storage = {settings: () => ({theme: 'dark', telemetryId: 'install-aaaa-bbbb'}), secret: () => '', saveSettings: () => {}, readText: () => '[]'};
+const PAGE = {screen: 'jobs', source: 'registry', data: {view: {filters: ['inbound'], sort: 'best'}, jobs: [{id: 'j1', title: 'Designer', company: 'Acme'}], note: 'mail ana@example.org key sk-ant-api03-FAKEFAKEFAKEFAKEFAKE1234567890'}};
 const setup = (extra = {}) => {
   const tracked = [];
   registerFeedbackHandlers({DEMO: false, app, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, storage, track: (...args) => tracked.push(args), getWindow: () => win, getPlan: () => ({state: () => ({plan: 'free'})}), ...extra});
@@ -33,7 +34,7 @@ test('opening holds a picture and the logs; sending uses exactly those, and only
   assert.ok(!('screenshot' in bodies[0])); assert.equal(bodies[0].logs, prepared.logs.text);
   assert.equal(bodies[0].screen, 'actions');
   assert.match(bodies[1].screenshot, /^data:image\/jpeg/); assert.ok(!('logs' in bodies[1])); assert.equal(bodies[1].screen, 'jobs');
-  assert.deepEqual(tracked[0], ['feedback_sent', {screenshot: false, logs: true}]);
+  assert.deepEqual(tracked[0], ['feedback_sent', {screenshot: false, logs: true, page: false, profile: false}]);
 });
 
 test('a window that cannot be captured still sends the note; demo mode sends nothing', async () => {
@@ -45,4 +46,44 @@ test('a window that cannot be captured still sends the note; demo mode sends not
   globalThis.fetch = async () => { called = true; return Response.json({ok: true}); };
   try { assert.deepEqual(await handlers.sendFeedback({}, 'words', '', {screenshot: true, logs: true}), {ok: true}); } finally { globalThis.fetch = realFetch; }
   assert.equal(called, false);
+});
+
+test('the screen data is held redacted at open and sent only when it is left on; the identity block is what is always sent', async () => {
+  setup();
+  const prepared = await handlers.feedbackPrepare({}, 'jobs', PAGE);
+  assert.match(prepared.page.text, /"id": "j1"/); assert.match(prepared.page.text, /"filters": \[\n\s+"inbound"/);
+  assert.ok(!prepared.page.text.includes('ana@example.org') && !prepared.page.text.includes('sk-ant'), 'the redactor ran over the page data');
+  assert.deepEqual(Object.keys(prepared.identity).sort(), ['email', 'install', 'platform', 'version']);
+  assert.equal(prepared.identity.install, 'install-aaaa-bbbb'); assert.match(prepared.identity.platform, new RegExp(`^${process.platform} \\S+ ${process.arch}$`));
+  const bodies = [], realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ok: true}); };
+  try {
+    await handlers.sendFeedback({}, 'words', '', {page: true});
+    await handlers.feedbackPrepare({}, 'jobs', PAGE);
+    await handlers.sendFeedback({}, 'words', '', {page: false});
+  } finally { globalThis.fetch = realFetch; }
+  assert.equal(bodies[0].page, prepared.page.text); assert.ok(!('page' in bodies[1]));
+  assert.equal(bodies[0].platform, prepared.identity.platform);
+});
+
+test('the Profile snapshot is read only when asked, held redacted, and sent only when it is on; a failed read sends nothing', async () => {
+  let reads = 0;
+  setup({profileOf: async () => { reads++; return {reader: 'portrait', parts: {details: [{label: 'E-mail', value: 'ana@example.org'}, {label: 'City', value: 'Porto'}]}, lacked: ['voice']}; }});
+  await handlers.feedbackPrepare({}, 'jobs', PAGE);
+  assert.equal(reads, 0);   // opening the dialog never reads the Profile
+  const {profile} = await handlers.feedbackProfile();
+  assert.equal(reads, 1); assert.match(profile.text, /Porto/); assert.ok(!profile.text.includes('ana@example.org'));
+  assert.deepEqual(profile.parts, ['details']);
+  const bodies = [], realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ok: true}); };
+  try {
+    await handlers.sendFeedback({}, 'words', '', {profile: true});
+    await handlers.feedbackPrepare({}, 'jobs', PAGE);   // a new open forgets the old snapshot
+    await handlers.sendFeedback({}, 'words', '', {profile: true});
+    setup({profileOf: async () => { throw new Error('store down'); }});
+    await handlers.feedbackPrepare({}, 'jobs', PAGE);
+    assert.deepEqual(await handlers.feedbackProfile(), {profile: null});
+    await handlers.sendFeedback({}, 'words', '', {profile: true});
+  } finally { globalThis.fetch = realFetch; }
+  assert.equal(bodies[0].profile, profile.text); assert.ok(!('profile' in bodies[1])); assert.ok(!('profile' in bodies[2]));
 });

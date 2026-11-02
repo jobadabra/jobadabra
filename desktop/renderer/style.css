@@ -2062,7 +2062,8 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .feedback-attach { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 0; min-width: 0; }
 .feedback-attach .log { white-space: pre-wrap; overflow-wrap: anywhere; }
 .feedback-attach .muted { margin: 0; }
-.feedback-shot { position: relative; margin: 0; max-width: 300px; }
+.feedback-privacy { margin: 0; }
+.feedback-shot { position: relative; margin: 0; max-width: 240px; }
 .feedback-shot img { display: block; width: 100%; border: 1px solid var(--line); border-radius: var(--r-md); }
 .feedback-shot .icon-button { position: absolute; top: 6px; right: 6px; background: var(--surface); box-shadow: var(--shadow-sm); }
 /* "Stuck? Tell us" (pages/why-stop.js): at the bottom of the setup sidebar, under "Back to the app" when it shows. */

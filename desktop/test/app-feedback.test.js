@@ -29,7 +29,15 @@ test('the screenshot, the logs and the screen go only when given; a skipped part
   const fetcher = async (url, init) => { sent.push(JSON.parse(init.body)); return Response.json({ok: true, skipped: ['screenshot']}); };
   const plain = await send({text: 'hi'}, {storage: storage(), version: '1', fetcher});
   assert.deepEqual(plain, {ok: true, skipped: ['screenshot']});
-  assert.ok(!('screenshot' in sent[0]) && !('logs' in sent[0]) && !('screen' in sent[0]));
+  assert.ok(!('screenshot' in sent[0]) && !('logs' in sent[0]) && !('screen' in sent[0]) && !('page' in sent[0]) && !('profile' in sent[0]));
+  assert.match(sent[0].platform, new RegExp(`^${process.platform} \\S+ ${process.arch}$`));   // OS version and architecture always go (owner, 2 Nov 2026)
   await send({text: 'hi', screen: 'actions', screenshot: 'data:image/jpeg;base64,AAAA', logs: '== Support state =='}, {storage: storage(), version: '1', fetcher});
   assert.equal(sent[1].screen, 'actions'); assert.equal(sent[1].screenshot, 'data:image/jpeg;base64,AAAA'); assert.equal(sent[1].logs, '== Support state ==');
+});
+
+test('this screen\'s data and the Profile snapshot go as their own fields, only when given', async () => {
+  const sent = [];
+  const fetcher = async (url, init) => { sent.push(JSON.parse(init.body)); return Response.json({ok: true}); };
+  await send({text: 'hi', page: '{"jobs": []}', profile: '{"parts": {}}'}, {storage: storage(), version: '1', fetcher});
+  assert.equal(sent[0].page, '{"jobs": []}'); assert.equal(sent[0].profile, '{"parts": {}}');
 });

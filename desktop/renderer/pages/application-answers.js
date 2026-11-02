@@ -21,6 +21,7 @@ import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
 import {input, labelled, select} from './form-controls.js';
 import {SHOWN, evidenceFor, shortDay} from '../learning-evidence.js';
+import {answersData} from '../feedback-data.js';
 
 const TEXT = 'answers';
 const VIEWS = ['all', 'new', 'confirmed'];
@@ -228,6 +229,13 @@ export function addQuestion() {
 let wanted = null;   // the view a jump named (Confirmed, New), used by the next load instead of All
 /** Plan an explicit answer-search jump; omitted view opens All, while data refresh preserves the selected view. */
 export function searchAnswers(query = '', view = null) { filters.query = String(query || ''); wanted = view || 'all'; }
+
+/** What "Send feedback" carries from this tab (renderer/feedback-data.js): the questions as drawn, with their ids, fields, saved values and verdicts, and the ones still to check. */
+export function screenData() {
+  if (!lastView) return null;
+  return answersData({sections: sections(lastView.items[TEXT] || []).filter(section => !isStyle(section.title)), learned: questionsNow().learned || [], view: filters.view, query: filters.query,
+    kindOf: item => formatOf(item)?.kind || ''});
+}
 
 export async function loadApplicationAnswers() {
   const node = document.getElementById('answers-body');
