@@ -1,5 +1,6 @@
 """Run consistent fast, area or full project verification with supported runtimes and actionable failures."""
 import argparse
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -51,6 +52,16 @@ def affected(base):
         return None
 
 
+def desktop_app_only(folder, node):
+    """The desktop area for the release pipeline: `npm test`'s own node command on every test but the tooling ones (tools/app-tests.py), without its lint (a rule
+    about the code that CI · Tests checks on every push, not a release gate)."""
+    spec = importlib.util.spec_from_file_location('app_tests', ROOT / 'tools/app-tests.py')
+    app_tests = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app_tests)
+    words = json.loads((folder / 'package.json').read_text())['scripts']['test'].split('&&')[-1].split()
+    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *[w for w in words[1:] if w != 'test/*.test.js'], app_tests.desktop_glob()])]
+
+
 def commands(area, fast, node, npm, picked='all', app_only=False):
     """picked: 'all' or the list of this area's test files/modules to run (everything else is left to CI)."""
     if area == 'python':
@@ -66,6 +77,8 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
         pre = {'desktop': [(folder, [node, 'scripts/stage.mjs']), (folder, [npm, 'run', 'lint'])],
                'worker': [(folder, [node, 'scripts/stage-shared.mjs'])]}.get(area, [])
         return pre + ([(folder, [node, '--test', *picked])] if picked else [])
+    if app_only and area == 'desktop':
+        return desktop_app_only(folder, node)
     if fast and area == 'desktop':
         return [(folder, [node, 'scripts/stage.mjs']),
                 (folder, [npm, 'run', 'lint']),
@@ -76,7 +89,7 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--area', choices=AREAS, action='append', help='repeat to select suites; default: all')
-    parser.add_argument('--app-only', action='store_true', help='python: leave out the tests of the repo\'s own dev tooling (the release run\'s Build box); other areas ignore it')
+    parser.add_argument('--app-only', action='store_true', help='python, desktop: leave out the tests of the repo\'s own tooling (tools/app-tests.py; the release pipeline\'s unit legs); other areas ignore it')
     parser.add_argument('--fast', action='store_true', help='desktop lint and focused lifecycle/contract checks (default area: desktop)')
     parser.add_argument('--affected-from', metavar='REF', help='local pushes: run only the tests this change (HEAD vs REF) can break; without it everything runs, as on CI')
     parser.add_argument('--clean-install', action='store_true', help='verify desktop/Worker/site lockfiles in temporary folders before checks')

@@ -1,6 +1,7 @@
 name: Desktop app unit tests
 description: >-
-  The desktop app's unit tests (tools/check.sh --area <each of `areas`>, side by side) with one result table and one `::error title=Unit tests · <area>` annotation per red area.
+  The desktop app's unit tests (tools/check.sh --area <each of `areas`> --app-only, side by side: the tests of what ships, not of the repo's tooling) with one result table and one
+  `::error title=Unit tests · <area>` annotation per red area.
   One body for the Unit tests leg of the Test matrix in desktop.yml and for the Build jobs of a run that is not tested (no gate), so no copy grows (a8, 1 Nov 2026).
   The tests run with every token of the calling job's environment removed (the e2e jobs hold live Notion, AI and GitHub tokens that a unit test must never reach).
 inputs:
@@ -34,8 +35,14 @@ runs:
           esac
         done
         if [ -n "$PY_JOBS" ]; then export JOBADABRA_PY_JOBS="$PY_JOBS"; fi
+        # Why (2 Nov 2026, beta 0.9.1): the desktop half took 503 s for 430 s of test files (128 s the night before, same image), so its files ran one after another.
+        # node --test runs (cores - 1) files at once: the machine's cores and load at the start and the end say whether the runner was smaller or busier.
+        machine() { node -e "const os = require('os'); console.log('$1: ' + os.availableParallelism() + ' cores, load ' + os.loadavg().map(n => n.toFixed(1)).join(' '))"; }
+        machine 'Machine at the start' | tee -a unit-machine.md
         pids=""
-        for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
+        # Why (2 Nov 2026, owner: "The harness tests for sure should not be run in the beta pipeline" … "THat's not a blocker or a reliability gate for the release"):
+        # only the tests of what ships; the repo's own tooling tests run on every push in CI · Tests (tools/app-tests.py has the rule).
+        for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" --app-only > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
         status=0
         # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
         # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
@@ -47,5 +54,6 @@ runs:
           if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
           else echo "::error title=Unit tests · $area::The $area unit tests failed (the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
         done
-        { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
+        machine 'Machine at the end' | tee -a unit-machine.md
+        { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; echo; cat unit-machine.md; }
         exit $status
