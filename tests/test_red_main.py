@@ -36,6 +36,8 @@ CLASSIFIED = {
     # Why (2 Nov 2026, owner: "One script + weekly check"): the weekly org-setup check is report only (one issue), started by the Worker timer or by hand, never a push or PR check.
     'CI · Org repos on the shared setup (weekly, report only)': 'ignored: weekly report of org repos that drift from templates/org-repo; keeps one issue, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
+    # Why (2 Nov 2026, owner: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check"): the planner of a PR's changed e2e steps; pull_request only, never runs on main.
+    'CI · E2E steps a PR changes': 'ignored: pull_request only; plans and starts e2e for the steps a PR adds or edits, never runs on a push to main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     'CI · Prompt cases (Haiku re-ask)': 'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',
     'CI · Integration · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
