@@ -10,6 +10,7 @@ import * as setupFunnel from './setup-funnel.js';
 import * as sharedLog from './shared-log.js';
 import * as updater from './updater.js';
 import {registerBuildHandlers} from './build-handlers.js';
+import {registerFeedbackHandlers} from './feedback-handlers.js';
 import {log as appLog} from './log.js';
 import {joinProWaitlist} from './pro-waitlist.js';
 
@@ -91,7 +92,6 @@ export function registerAppMetaHandlers(ctx) {
     if (answer.mode === 'quit') setTimeout(() => app.quit(), 100);
     return {ok: true};
   });
-  // Send feedback… (lib/app-feedback.js): to the owner, through the website. Demo mode sends nothing.
-  ipcMain.handle('sendFeedback', (_, text, contact) => DEMO ? {ok: true}
-    : appFeedback.send({text, contact}, {storage, version: app.getVersion()}).then(result => { if (result?.ok) track('feedback_sent', {}); return result; }));
+  // Send feedback… (lib/feedback-handlers.js → lib/app-feedback.js): to the owner, through the website, with the window's screenshot and the redacted logs when the person keeps them on. Demo mode sends nothing.
+  registerFeedbackHandlers({DEMO, app, ipcMain, storage, track, getWindow: ctx.getWindow, getPlan});
 }

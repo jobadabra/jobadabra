@@ -297,7 +297,7 @@ function handlers() {
   registerSessionHandlers({ipcMain, appLog, storage, getWindow: () => window, dialog, nativeImage, here,
     DEMO, extensionGate, apply, pipeline, review, server, notion, claudeConsent, getRecipeReporter: () => recipeReporterRef, version: app.getVersion()});
   registerAppMetaHandlers({DEMO, FROM_SOURCE, FROM_STORE, restartAfterQuitGuard: reason => restarter.restart(reason), app, betaOn, checkForUpdate, cloud, dialog, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track,
-    getLicense: () => license, getPlan, aiCaps, shell, getTelemetry: () => telemetry, getUpdateOffer, setUpdateOffer,
+    getLicense: () => license, getPlan, getWindow: () => window, aiCaps, shell, getTelemetry: () => telemetry, getUpdateOffer, setUpdateOffer,
     getUpdateCheckedAt, getWindow: () => window, channels});   // lib/app-meta-handlers.js
   const {showForm} = registerApplyHandlers({DEMO, extensionGate, allowanceBlock: allowanceGate, claudeConsent, cloud, here, ipcMain, log, nativeTheme, needsNotion, prepareKitFor, getRecipeReporter: () => recipeReporterRef, shell, startClaude, storage, toWindow, track});   // lib/apply-handlers.js
   registerCvAndLettersHandlers({BrowserWindow, DEMO, cvOf, handleImportant, ipcMain, keepLook, openTailoredCv, printPdf, shell, storage, tailorCv, tailoring, toWindow});   // lib/cv-handlers.js
