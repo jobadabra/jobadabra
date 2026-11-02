@@ -2,7 +2,9 @@
 Why (2 Nov 2026, owner, option "Budget skips Search check"): #2994 went red only on "checks ran 14.0 min running … over the 10-min budget"; every job ended by
 14:24 except the Search check, whose six personas run two at a time (owner, 30 Oct 2026: the broker has four slots), ~13.5 min whatever the PR changed."""
 import json
+import re
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from tests.test_pr_verdict import pv, run
@@ -32,6 +34,11 @@ class BudgetSkipsTheSearchCheck(unittest.TestCase):
         state, why, *_ = pv.verdict([run('CI · Tests · python', id=1), dict(search(), conclusion='failure')], files=CI_FILES)
         self.assertEqual(state, 'failure', why)
         self.assertIn('Search check', why)
+
+    def test_budget_skips_names_the_real_search_workflow(self):
+        # Gitar on #3001: a renamed workflow would silently stop matching and bring #2994's false red back.
+        text = (Path(__file__).resolve().parents[1] / '.github/workflows/search-personas.yml').read_text(encoding='utf-8')
+        self.assertEqual(re.search(r'(?m)^name: (.+)$', text).group(1).strip(), pv.BUDGET_SKIPS[0])
 
     def test_job_spans_leave_out_the_search_check_s_jobs(self):
         listed = {1: [{'name': 'python', 'started_at': '2026-11-02T14:18:56Z', 'completed_at': '2026-11-02T14:23:42Z'}],
