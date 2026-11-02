@@ -1,7 +1,7 @@
 # E2E reliability: expectations and plumbing
 
 Why (28 Oct 2026, owner): 149 red runs included 19 product bugs; 604 of 847 harness commits were plumbing. Loosening a test to turn it green hides the bug.
-Source: docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules B, E, F and K.
+Source: docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules B, E, F, G and K.
 
 ## Rule B: a step's only clock is its measured hang cap
 Owner, 30 Oct 2026 (#2612): "wait on the state, not on a specific time". A wait inside an e2e step polls a state (`pollUntil`, `waitForDecisions` in desktop/e2e/lib/wait-on-state.mjs) and has no bound of its own;
@@ -31,6 +31,13 @@ run the backbone; serve stored answers; wait on state; pick the suites; run tole
 The PR's commits need `Harness-job: <job>` or `Fixes-backbone-red: <run ID or URL>`.
 Raise a blocking finding for a missing or inaccurate job or trailer, or an unsupported backbone red: it must be red twice on the same commit.
 Untouched legacy modules are labelled during the planned inventory/shrink PRs; this check is incremental.
+
+## Rule G: no swallowed error on a line the PR adds (desktop/e2e, desktop/integration)
+
+Owner, 2 Nov 2026 (plan 3/4 of the flakiness guardrails). `.catch(() => {})`, `.catch(() => null)`, `.catch(() => undefined)` and an empty `catch {}` turned three reds into "state: null"
+or a silent wrong tab (beta 41250138244, beta 40748263936, runs 41264415439..). The mechanical gate refuses one on an added line, unless an identical one was removed elsewhere in the PR (a move)
+or a `Why:` comment sits on the same or previous line; no trailer clears it. Old lines go when they go red. Raise a blocking finding for the forms it cannot see: a catch that returns a bare
+`null`/`''`/`false` or only logs without the call's name. CSS/nth locators, `networkidle` and `pages()[n]` are not gated (no escape in the 30 days before); skill e2e-harness rules 3, 5, 6 still apply in review.
 
 ## Rule K: no fix circles
 
