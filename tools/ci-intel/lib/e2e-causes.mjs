@@ -26,6 +26,10 @@ export const groupOf = id => CAUSES.find(cause => cause.id === id)?.group || 'no
 export const LEGACY = {credit: 'ai', infra: 'runner'};
 /** A stored cause id read under today's ids: a legacy id maps to its new one, anything else unknown is 'unknown'. */
 export const causeId = id => LEGACY[id] || (CAUSE_IDS.includes(id) ? id : 'unknown');
+/** The cause id of a red that caught a bug: the app was wrong (2 Nov 2026; before, only pull-request runs counted). */
+export const CATCH_CAUSE = 'product';
+/** cause id -> true when that red caught a bug (the product); false for any other id or none. One definition for the Testing card, the E2E scorecard and the collector's `caught` flag, on every run kind. */
+export const isCatch = cause => cause === CATCH_CAUSE;
 export const RULES_VERSION = 3;   // 3: every run kind, the failure line, trailers and the AI (27 Oct 2026)
 
 // The causes the AI may give for a red that no fact names (the rest are facts the code reads).
@@ -39,11 +43,12 @@ const BUDGET = /budget ran out|over its \d+-minute budget|did not finish within|
 const NOT_RUN = /not run: the suite was over/;
 const STAMP = /^﻿?\d{4}-\d\d-\d\dT[\d:.]+Z\s/;
 
-// "E2E · Windows · apply" (a release run calls e2e.yml) or a job with the step "Run the apply suite (first try)" (e2e.yml on its own) -> {suite, platform}; else null.
+// "E2E · Windows · apply" (a release run calls e2e.yml) or a job with the step "Run the apply suite (the only try)" (e2e.yml on its own; "(first try)" before 31 Oct 2026) -> {suite, platform}; else null.
+// Why (2 Nov 2026, owner: "has this caught bug been counted?"): the step was renamed on 31 Oct (91976ad7) and this matched the old name only, so no red of a standalone e2e.yml run was read for two days.
 export function suiteOfJob(name = '', steps = [], windows = false) {
   const match = /^E2E · (Windows|Mac \+ Linux) · (.+)$/.exec(name);
   if (match) return {suite: match[2].trim(), platform: match[1] === 'Windows' ? 'windows' : 'mac'};
-  const step = (steps || []).map(item => /^Run the (\S+) suite(?: on Windows)?(?: \(first try\))?$/.exec(item.name || '')).find(Boolean);
+  const step = (steps || []).map(item => /^Run the (\S+) suite(?: on Windows)?(?: \((?:first|the only) try\))?$/.exec(item.name || '')).find(Boolean);
   return step ? {suite: step[1], platform: windows || /Windows/.test(name) ? 'windows' : 'mac'} : null;
 }
 const isSuiteStep = name => /\bsuite\b|harness test/i.test(name || '');
@@ -70,17 +75,28 @@ export function factCause({jobConclusion, failedStep = '', log = '', line = '', 
 }
 
 // "E2E-cause: drift apply, applyflows" in a fix's message -> 'drift' for those suites (no suite listed = every suite the commit fixes). Cause ids only.
+// Why (2 Nov 2026, owner: "has this caught bug been counted?"): digits of 6+ are GitHub run ids, never suite names ("E2E-cause: product apply 41412195017"): the runs the fix closes.
+/** A GitHub run id as the trailer writes it (6+ digits): never a suite name. The trailer gate imports this one. */
+export const RUN_ID = /^\d{6,}$/;
 export function trailerCauses(message = '') {
   return String(message).split('\n').map(line => /^E2E-cause:\s*([a-z]+)\b(.*)$/i.exec(line.trim())).filter(Boolean)
-    .map(match => ({cause: match[1].toLowerCase(), suites: match[2].split(/[\s,]+/).map(word => word.trim()).filter(Boolean)}))
+    .map(match => { const words = match[2].split(/[\s,]+/).map(word => word.trim()).filter(Boolean); return {cause: match[1].toLowerCase(), suites: words.filter(word => !RUN_ID.test(word)), runs: words.filter(word => RUN_ID.test(word))}; })
     .filter(item => CAUSE_IDS.includes(item.cause) && !['open', 'unknown'].includes(item.cause));
 }
 const baseOf = suite => String(suite).replace(/-\d+of\d+$/, '');   // "applyflows-1of2" is a slice of applyflows
-/** The first fix commit whose E2E-cause trailer covers `suite` (or names no suite): {cause, sha...} or null. `commits` = [{message, sha}], newest first. */
+const forSuite = (item, suite) => !item.suites.length || item.suites.some(name => name === baseOf(suite) || name === suite);
+/** The window rule: commits between a red and the suite's next green, oldest first -> the first trailer for the suite. A trailer that names runs answers only those runs (namedCause). */
 export function trailerCause(commits = [], suite = '') {
-  for (const commit of commits) for (const item of trailerCauses(commit.message)) if (!item.suites.length || item.suites.some(name => name === baseOf(suite) || name === suite)) return {cause: item.cause, sha: commit.sha};
+  for (const commit of commits) for (const item of trailerCauses(commit.message)) if (!item.runs.length && forSuite(item, suite)) return {cause: item.cause, sha: commit.sha};
   return null;
 }
+/** A fix that names the red's run id, in any main commit (newest first: a later word corrects an earlier one) -> {cause, sha}, or null. Wins over the window rule: an intermittent red gets its next green before its fix (2 Nov 2026: apply-1of3, #2986 was read for #2988). */
+export function namedCause(commits = [], suite = '', runId = '') {
+  for (const commit of commits) for (const item of trailerCauses(commit.message)) if (item.runs.includes(String(runId)) && forSuite(item, suite)) return {cause: item.cause, sha: commit.sha};
+  return null;
+}
+/** The run ids a message's trailers name. */
+export const namedRuns = (message = '') => trailerCauses(message).flatMap(item => item.runs);
 
 // What a commit changed, in the AI's words: the app, the e2e tests, CI, or several.
 const APP = /^(src\/|desktop\/(lib|renderer|main\.js|preload)|extension\/|worker\/src\/)/;

@@ -13,7 +13,7 @@ import path from 'node:path';
 import {nightOf, promptCasesOf} from '../lib/e2e-quality.mjs';
 import {pathToFileURL} from 'node:url';
 import {CAUSES, DIFF_MAX, RULES_VERSION} from '../lib/e2e-causes.mjs';
-import {answerText, betaRunRow, betaRunsToRead, kindOf, rateJobs, redJobs, rowsOf, runsToRead, nightRunsToRead} from './e2e-intel-rows.mjs';
+import {answerText, betaRunRow, betaRunsToRead, kindOf, namedToRedo, rateJobs, redJobs, rowsOf, runsToRead, nightRunsToRead} from './e2e-intel-rows.mjs';
 import {WORK_IDS, parseLog, workRows, weekOf} from '../lib/e2e-work.mjs';
 import {cleanLanes} from '../lib/e2e-grey.mjs';
 
@@ -146,6 +146,16 @@ const deps = {
   ask,
 };
 
+// Why (2 Nov 2026, owner: "has this caught bug been counted?"): the main commits whose "E2E-cause:" trailer may name run ids, newest first (tools/ci-intel/lib/e2e-causes.mjs namedCause reads the exact words;
+// this filter only keeps the list short). A read that fails gives none: the window rule answers this pass and the next pass asks again.
+async function readNamedCommits(since) {
+  try {
+    const out = (await execAsync('gh', ['api', '--paginate', `repos/${repo}/commits?sha=main&since=${since}T00:00:00Z&per_page=100`, '--jq',
+      '.[] | select(.commit.message | test("(^|\\n)[ \\t]*E2E-cause:[^\\n]*[0-9]{6}"; "i")) | {sha, message: .commit.message} | tojson'], {maxBuffer: 1 << 26, timeout: 120000})).stdout;
+    return out.split('\n').filter(Boolean).map(line => JSON.parse(line));
+  } catch (error) { console.log(`::warning::named fixes not read this pass (${String(error?.message || error).slice(0, 120)}): the window rule answers; the next pass asks again`); return []; }
+}
+
 async function main() {
   const key = process.env.SELFHEAL_PUBLISH_KEY, dry = process.argv.includes('--dry');
   if (!key && !dry) { console.log('::warning::SELFHEAL_PUBLISH_KEY is not set: nothing published.'); return; }
@@ -155,11 +165,12 @@ async function main() {
     .map(run => ({...run, workflow, kind: kindOf(run, workflow)})))
     .filter(run => run.kind && ['success', 'failure', 'cancelled'].includes(run.conclusion)).map(run => ({...run, pr: run.kind === 'pr' ? prOf[run.headBranch] || null : null}))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  let have = [], pending = [], quality = [], suiteNights = [], betaStored = [];
-  if (key) ({have, pending, quality = [], suiteNights = [], betaRuns: betaStored = []} = await (await fetch(`${base}?v=${RULES_VERSION}`, {headers: {Authorization: `Bearer ${key}`}})).json());
+  let have = [], pending = [], reds = [], quality = [], suiteNights = [], betaStored = [];
+  if (key) ({have, pending, reds = [], quality = [], suiteNights = [], betaRuns: betaStored = []} = await (await fetch(`${base}?v=${RULES_VERSION}`, {headers: {Authorization: `Bearer ${key}`}})).json());
   const settled = new Set(have), waiting = new Set(pending);
   const nights = await readNights(liveNights(listed.filter(run => run.workflow === 'e2e.yml'), new Set(quality)).slice(0, 40));
-  const todo = runsToRead(listed, settled, waiting, MAX_RUNS);
+  const namedCommits = await readNamedCommits(since);
+  const todo = runsToRead(listed, settled, waiting, MAX_RUNS, namedToRedo(namedCommits, reds));   // a trailer that names a run reads it again, once
   const lanes = await readLanes();
   const work = readWork(new Date(Date.now() - 35 * 86400000).toISOString().slice(0, 10));
   console.log(`${listed.length} finished e2e runs in 30 days, ${settled.size} stored, ${todo.length} to read; ${nights.length} new live quality night(s); ${work.work.length / WORK_IDS.length} days of commits`);
@@ -175,7 +186,7 @@ async function main() {
   const wanted = new Set(todo.map(run => run.databaseId));
   // Why (1 Nov 2026, mac-07 for the owner): the nights not stored yet also give their interactions job's log, green or red, for its rates (tools/ci-intel/lib/e2e-rates.mjs); a stored night is not read again.
   const logs = new Map([...await readLogs(needed.filter(run => wanted.has(run.databaseId)).reverse()), ...await readLogs(history, rateJobs)]);
-  const rows = await rowsOf(needed, {logOf: id => (logs.has(id) ? logs.get(id) : null), ...deps});
+  const rows = await rowsOf(needed, {logOf: id => (logs.has(id) ? logs.get(id) : null), ...deps, namedCommits});
   const send = {runs: rows.runs.filter(row => wanted.has(row.runId)), fails: rows.fails.filter(row => wanted.has(row.runId)), quality: nights, work: work.work, workFiles: work.files, escapes: work.escapes, lanes, suiteNights: rows.suiteNights, betaRuns: betas.map(run => betaRunRow(run)).filter(Boolean)};
   console.log(JSON.stringify(Object.fromEntries(CAUSES.map(cause => [cause.id, send.fails.filter(fail => fail.cause === cause.id).length]))));
   console.log(`AI: ${aiCalls} call(s), ${aiNeurons} tokens on ${MODEL}${process.env.E2E_CAUSE_CF_TOKEN ? '' : ' (no E2E_CAUSE_CF_TOKEN: reds no fact names stay unknown)'}`);

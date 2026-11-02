@@ -45,7 +45,7 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
 6. **Ship** with `tools/ship.sh --background [--title="<the whole PR>" if 2+ commits]`. The merge is what starts the journeys of step 5.
    **After the fix merges** (owner, 31 Oct 2026: "when we fix e2e on main. We should run first only the failing e2e suite, then rerun a beta full e2e suite. This should be part of the skill … or of the tooling/workflow"): the next beta (`tools/beta-release.sh` by hand, or the nightly) re-runs ONLY main's red suites on main first (`tools/red-main-gate.sh`) and starts the full beta only when they are green. Never start a full beta, or a whole-suite run, to check a fix.
 7. **Say the cause in the fix's commit** (before step 6 pushes it), so /admin/operations/e2e reads it instead of guessing (owner, 27 Oct 2026): `E2E-cause: <drift | test | product | flake | timing | ai | ci | picker | runner> [suite, suite]`.
-   A product fix that touches no test says it too (`E2E-cause: product apply`). A suite or lib change with no red behind it: `E2E-cause: none <why>`.
+   A product fix that touches no test says it too (`E2E-cause: product apply`). **Name the red run ids the fix closes** (`E2E-cause: product apply 41412195017`, ids from the red's Actions URL): a red that comes and goes gets its next green before the real fix, and without the id /admin reads the wrong fix and does not count the bug as caught (2 Nov 2026, owner: "has this caught bug been counted?"). A suite or lib change with no red behind it: `E2E-cause: none <why>`.
    The push gate refuses an e2e suite or lib change without it (`tools/e2e-cause-trailer.mjs`).
 
 ## Never

@@ -1,7 +1,7 @@
 // tools/ci-intel/jobs/e2e-intel-rows.mjs: from workflow runs of every kind to red suites and their causes, with no network (GitHub and the AI are stubs). Shapes from the runs of 26-27 Oct 2026.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {answerText, jobMinutes, kindOf, passedFirst, redJobs, rowsOf, runsToRead} from '../../tools/ci-intel/jobs/e2e-intel-rows.mjs';
+import {answerText, jobMinutes, kindOf, namedToRedo, passedFirst, redJobs, rowsOf, runsToRead} from '../../tools/ci-intel/jobs/e2e-intel-rows.mjs';
 
 const step = (name, conclusion) => ({name, conclusion});
 const job = (name, conclusion, steps = [], id = 1, at = {}) => ({id, name, conclusion, steps, created_at: '2026-10-26T20:00:00Z', started_at: '2026-10-26T20:02:00Z', completed_at: '2026-10-26T20:12:00Z', ...at});
@@ -184,4 +184,73 @@ test('run rows carry bounded successful suite job seconds, never red/retried job
   assert.deepEqual(rows.runs[0].suiteJobs, [{suite: 'jobs', seconds: 307}]);
   const branch = await rowsOf([run(2, '2026-10-29T20:01:00Z', 'b', jobs, {kind: 'nightly', headBranch: 'release-experiment'})], none);
   assert.deepEqual(branch.runs[0].suiteJobs, [], 'main timings never include a release branch');
+});
+
+// 2 Nov 2026 (owner: "has this caught bug been counted?"): apply-1of3 went red on main (run 41412195017), came and went; #2982 and #2986 sit between it and its next green, the real fix #2988 after.
+const WINDOW = [{sha: '3c7df52c', message: 'Rules say a PR runs the e2e steps it changes (#2982)\n\nE2E-cause: none rule texts only; no suite was red'}, {sha: '0f360260', message: 'A hung step names the wait (#2986)\n\nE2E-cause: runner apply'}];
+const REAL_FIX = {sha: '9d511a1c9d511a1c9d511a1c9d511a1c9d511a1c', message: 'Start picks jobs from the kept list only (#2988)\n\nE2E-cause: product apply 41412195017'};
+const onlyTry = (suite, conclusion = 'success') => step(`Run the ${suite} suite (the only try)`, conclusion);   // the step's name since 31 Oct 2026 (91976ad7); no second try
+const applyRuns = (kind = 'scheduled', second = null) => [
+  run(41412195017, '2026-11-02T08:19:00Z', 'cfe7a113', [job('apply-1of3', 'failure', second ? [first('apply-1of3', 'failure'), once('apply-1of3', second)] : [onlyTry('apply-1of3', 'failure')], 30)], {kind}),
+  run(41419999999, '2026-11-02T09:19:00Z', '0f360260', [job('apply-1of3', 'success', [onlyTry('apply-1of3')], 31)], {kind, conclusion: 'success'})];
+const applyLog = {30: '✗ [apply] Start: it picked jobs from the kept list'};
+
+test('a main red takes the fix that names its run id, not the one the window reads; and it counts as a caught bug whatever the run kind', async () => {
+  const deps = {...none, commitsBetween: async () => WINDOW, ask: async () => { throw new Error('a named fix needs no AI'); }};
+  const today = await rowsOf(applyRuns(), {logOf: id => applyLog[id] ?? '', ...deps});
+  assert.deepEqual([today.fails[0].cause, today.fails[0].fix, today.fails[0].caught], ['runner', '0f360260', 0], 'without the naming commit the window answer stays (the fallback)');
+  const named = await rowsOf(applyRuns(), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [REAL_FIX]});
+  assert.deepEqual([named.fails[0].cause, named.fails[0].fix, named.fails[0].caught, named.fails[0].kind, named.fails[0].named], ['product', REAL_FIX.sha, 1, 'scheduled', 1]);
+  for (const kind of ['after-merge', 'nightly', 'beta']) {
+    const other = await rowsOf(applyRuns(kind), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [REAL_FIX]});
+    assert.equal(other.fails[0].caught, 1, `${kind}: caught`);
+  }
+  const noNext = await rowsOf(applyRuns().slice(0, 1), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [REAL_FIX]});
+  assert.equal(noNext.fails[0].cause, 'product', 'a named fix needs no later green');
+  const flake = await rowsOf(applyRuns('scheduled', 'success'), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [REAL_FIX]});
+  assert.equal(flake.fails[0].cause, 'product', 'an intermittent bug passes on the second try: the fix that names the run says what it was');
+  const hang = await rowsOf(applyRuns(), {logOf: () => '✗ [apply] Start: the suite\'s 7-minute budget ran out during this step', ...deps, namedCommits: [REAL_FIX]});
+  assert.equal(hang.fails[0].cause, 'product', 'a hang reads "timing" from its words; the fix that names the run says it was the app (the real red of 2 Nov)');
+  const hangUnnamed = await rowsOf(applyRuns(), {logOf: () => '✗ [apply] Start: the suite\'s 7-minute budget ran out during this step', ...deps});
+  assert.equal(hangUnnamed.fails[0].cause, 'timing', 'and without a naming fix it stays timing');
+  const unread = await rowsOf(applyRuns(), {logOf: () => null, ...deps, namedCommits: [REAL_FIX]});
+  assert.equal(unread.fails[0].cause, 'unknown', 'a log not read is still read again later: the failure line is stored with the cause');
+  const infra = await rowsOf(applyRuns(), {logOf: () => 'The runner has received a shutdown signal', ...deps, namedCommits: [REAL_FIX]});
+  assert.equal(infra.fails[0].cause, 'runner', 'a lost runner is a fact no trailer overrides');
+  const other = await rowsOf(applyRuns(), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [{...REAL_FIX, message: 'x\n\nE2E-cause: product apply 41400000000'}]});
+  assert.equal(other.fails[0].cause, 'runner', 'a trailer naming another run changes nothing');
+});
+
+test('a product red on a night or a beta counts as caught; so does a PR\'s; a test-bug red does not', async () => {
+  const deps = {...none, commitsBetween: async () => [{sha: 'p1', message: 'Fix the app\n\nE2E-cause: product apply'}]};
+  for (const [kind, cause, caught] of [['nightly', 'product', 1], ['beta', 'product', 1], ['scheduled', 'test', 0]]) {
+    const rows = await rowsOf(applyRuns(kind), {logOf: id => applyLog[id] ?? '', ...deps, commitsBetween: async () => [{sha: 'p1', message: `Fix\n\nE2E-cause: ${cause} apply`}]});
+    assert.equal(rows.fails[0].caught, caught, `${kind} ${cause}`);
+  }
+});
+
+test('a named run is read again only when one of its stored reds would take the name, so it settles (Gitar on #2995: a run that never takes it looped every hour)', () => {
+  const second = {sha: 'b', message: 'x\n\nE2E-cause: product apply 41412195017'};
+  const stored = (cause, fix = '', suite = 'apply-1of3', kind = 'scheduled', run = 41412195017) => [[run, suite, cause, fix, kind]];
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('timing'))], [41412195017], 'the real red read as timing: the name changes it');
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('runner', '0f360260'))], [], 'a lost runner is a fact no name changes: never read again');
+  for (const hard of ['ci', 'picker', 'ai']) assert.deepEqual([...namedToRedo([REAL_FIX], stored(hard))], [], hard);
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('product', REAL_FIX.sha))], [], 'it took the name: settled');
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('timing', '', 'apply-1of3', 'pr'))], [], 'a pull-request run never takes a main commit\'s name');
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('timing', '', 'quality'))], [], 'the named suite was not the red one: nothing would change');
+  assert.deepEqual([...namedToRedo([REAL_FIX], stored('timing', '', 'apply-1of3', 'scheduled', 41400000000))], [], 'another run');
+  assert.deepEqual([...namedToRedo([second, REAL_FIX], stored('product', REAL_FIX.sha))], [41412195017], 'a newer commit that names it corrects the older word: read once');
+  assert.deepEqual([...namedToRedo([second, REAL_FIX], stored('product', 'b'))], [], 'and then it is settled');
+  assert.deepEqual([...namedToRedo([{sha: 'c', message: 'no trailer'}], stored('timing'))], []);
+  const listed = [1, 2, 3, 4, 5].map(id => ({databaseId: id}));
+  assert.deepEqual(runsToRead(listed, new Set([1, 2, 3, 4, 5]), new Set([2]), 200, new Set([4])).map(r => r.databaseId), [2, 4], 'a named run is read again with the waiting ones');
+  assert.deepEqual(runsToRead(listed, new Set([1, 2, 3, 4]), new Set(), 200, new Set([1])).map(r => r.databaseId), [1, 5], 'and with the new ones');
+});
+
+test('the newest commit that names a run speaks for all its reds: a suite it does not list keeps its own cause and the run still settles', async () => {
+  const other = {sha: 'n1', message: 'x\n\nE2E-cause: drift quality 41412195017'};
+  const deps = {...none, commitsBetween: async () => WINDOW};
+  const rows = await rowsOf(applyRuns(), {logOf: id => applyLog[id] ?? '', ...deps, namedCommits: [other, REAL_FIX]});
+  assert.equal(rows.fails[0].cause, 'runner', 'the newest naming commit lists only quality: the older apply word does not apply to this red');
+  assert.deepEqual([...namedToRedo([other, REAL_FIX], [[41412195017, 'apply-1of3', 'runner', '0f360260', 'scheduled']])], [], 'and it is not read again: nothing the name says would change it');
 });
