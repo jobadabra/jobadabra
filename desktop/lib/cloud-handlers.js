@@ -6,6 +6,7 @@ import * as github from './github.js';
 import * as telegram from './telegram.js';
 import * as telegramCloud from './telegram-cloud.js';
 import {cleanSecret} from './secrets.js';
+import {osText} from '../renderer/os.js';
 import {log as appLog} from './log.js';
 import {registerHostedHandlers} from './hosted-handlers.js';
 
@@ -52,7 +53,7 @@ export function registerCloudHandlers(ctx) {
     if (!repo) return {ok: true, already: true};
     const {response} = await dialog.showMessageBox(getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined,
       {type: 'question', buttons: ['Turn Always on off', 'Cancel'], defaultId: 1, cancelId: 1, message: 'Turn Always on off?',
-        detail: `Scheduled searches, kits, insights and mail checks run on this Mac while Jobadabra is open. Your repository ${repo} stays on GitHub.`});
+        detail: `${osText('Scheduled searches, kits, insights and mail checks run on this Mac while Jobadabra is open.', process.platform)} Your repository ${repo} stays on GitHub.`});   // a native dialog: renderer/os.js never runs in it (test/mac-words.test.js)
     if (response !== 0) return {ok: false, cancelled: true};
     await turnCloudOff();
     return {ok: true};
