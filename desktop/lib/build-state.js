@@ -45,14 +45,30 @@ export function appBuild({repo, running, run = execFileSync, now = Date.now()}) 
   return {label, commit: running.commit, ahead};
 }
 
-const patchOf = version => { const m = /^\d+\.\d+\.(\d+)$/.exec(String(version || '')); return m ? Number(m[1]) : null; };
+// The commits that changed extension/, oldest first, as {commit, time}: the n-th is the build a stamped patch n names (scripts/extension-stamp.mjs).
+// Why (#2910, 2 Nov 2026): it was two history walks per check-in (one per label, a 20 s cache, a check-in every 30 s), ~1-5 s each inside the request.
+// A HEAD's commits never change, so one walk per HEAD; `rev-parse HEAD` costs milliseconds.
+const extensionHistory = new Map();
+function extensionCommits(repo, run) {
+  const git = gitIn(repo, run), key = `${repo}:${git('rev-parse', 'HEAD')}`;
+  if (!extensionHistory.has(key)) {
+    for (const old of [...extensionHistory.keys()]) if (old.startsWith(`${repo}:`)) extensionHistory.delete(old);   // one HEAD kept per checkout
+    extensionHistory.set(key, git('log', '--reverse', '--format=%H %cI', 'HEAD', '--', 'extension').split('\n').filter(Boolean).map(line => {
+      const [sha, time] = line.split(' ');
+      return {commit: sha.slice(0, 7), time};
+    }));
+  }
+  return extensionHistory.get(key);
+}
+
+const patchOf = version =>{ const m = /^\d+\.\d+\.(\d+)$/.exec(String(version || '')); return m ? Number(m[1]) : null; };
 
 // The extension at `version` (what it reports) against `latest` (the checkout's, or the package's). packaged: {commit, time} of an installed app, whose extension is the app's own build.
 // -> {label, latestLabel, behind}: behind = 0 current, N fixes, or null when it is behind by an unknown number (a copy that never reloaded reports the manifest's base "0.9").
-export function extensionBuild({repo, version, latest, packaged = null, run = execFileSync, now = Date.now()}) {
+export function extensionBuild({repo, version, latest, packaged = null, run = execFileSync}) {
   if (packaged) return {label: labelOf(packaged), latestLabel: labelOf(packaged), behind: 0, reloadLabel: ''};
   const mine = patchOf(version), newest = patchOf(latest);
   const behind = newest === null ? 0 : mine === null ? (version && version !== latest ? null : 0) : Math.max(0, newest - mine);
-  const at = n => { try { return cached(`ext:${repo}:${n}`, now, () => { const git = gitIn(repo, run), sha = git('rev-list', '--reverse', 'HEAD', '--', 'extension').split('\n')[n - 1]; return sha ? labelOf({commit: sha.slice(0, 7), time: git('log', '-1', '--format=%cI', sha)}) : ''; }); } catch { return ''; } };
+  const at = n => { try { return labelOf(extensionCommits(repo, run)[n - 1]); } catch { return ''; } };
   return {label: mine === null ? '' : at(mine), latestLabel: newest === null ? '' : at(newest), behind, reloadLabel: behind === 0 ? '' : reloadLabel(behind)};
 }
