@@ -3,8 +3,10 @@
 # that touch what the app ships), plus install steps. Usage: release-notes.sh [commit] > notes.md
 set -euo pipefail
 sha=$(git rev-parse "${1:-HEAD}")
-cd "$(git rev-parse --show-toplevel)"  # the paths below are from the repo root (CI runs this from desktop/)
+# Why (2 Nov 2026, beta 0.9.0 run 41476774292): sourced BEFORE the cd. CI runs this as scripts/release-notes.sh from desktop/, so the path is relative to
+# where it was started; after the cd it pointed outside the repo and the beta died at "Release" ("scripts/../../tools/repos.sh: No such file").
 . "$(dirname "${BASH_SOURCE[0]}")/../../tools/repos.sh"
+cd "$(git rev-parse --show-toplevel)"  # the paths below are from the repo root (CI runs this from desktop/)
 repo=${GITHUB_REPOSITORY:-$JOBADABRA_PUBLIC_REPO}
 max=40
 prev=$(git describe --tags --match 'desktop-v*' --abbrev=0 "$sha^" 2>/dev/null || true)

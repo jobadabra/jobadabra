@@ -85,5 +85,30 @@ class ReposOwnerTests(unittest.TestCase):
             self.assertIn(f"'{PUBLIC_REPO}'", (ROOT / name).read_text(encoding='utf-8'), name)
 
 
+# `. "$(dirname "${BASH_SOURCE[0]}")/…repos.sh"`: the path is relative to where the script was started, so a cd before it sends it elsewhere.
+SOURCES_REPOS = re.compile(r'^\s*\.\s+"\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)/[^"]*repos\.sh"')
+
+
+class ReposShFoundFromAnyFolderTests(unittest.TestCase):
+    """Why (2 Nov 2026, beta 0.9.0 run 41476774292): release-notes.sh did cd to the repo root, then sourced tools/repos.sh through its own relative path; CI runs it
+    as scripts/release-notes.sh from desktop/, so the path pointed outside the repo and the beta died at "Release" before building anything."""
+
+    def test_the_release_notes_run_as_the_beta_runs_them(self):
+        out = subprocess.run(['bash', 'scripts/release-notes.sh', 'HEAD'], cwd=ROOT / 'desktop', capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("## What's changed", out.stdout)
+
+    def test_every_script_sources_repos_sh_before_any_cd(self):
+        late = []
+        for name in tracked():
+            if not name.endswith('.sh') or TEST_PATH.search(name):
+                continue
+            lines = (ROOT / name).read_text(encoding='utf-8').split('\n')
+            at = next((n for n, line in enumerate(lines) if SOURCES_REPOS.match(line)), None)
+            if at is not None and any(re.match(r'\s*cd\s', line) for line in lines[:at]):
+                late.append(f'{name}:{at + 1}')
+        self.assertEqual(late, [], 'source repos.sh before the first cd: after it, a script started by a relative path no longer finds it')
+
+
 if __name__ == '__main__':
     unittest.main()
