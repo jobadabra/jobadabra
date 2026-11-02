@@ -24,6 +24,9 @@ from datetime import datetime, timezone
 CONTEXT = 'All checks passed'
 E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-e2e-steps.yml started
 BUDGET_MIN = 10
+# Why (2 Nov 2026, owner, option "Budget skips Search check"): its six personas run two at a time (owner, 30 Oct 2026: the broker has four slots), ~13.5 min
+# whatever the PR changed, so every CI change touching src/ went red on the budget (#2994). Its result still decides the PR; only its time is not budgeted.
+BUDGET_SKIPS = ('CI · Search check (6 personas)',)
 STEP = "Write the PR's verdict"   # the old per-job writer, gone 30 Oct 2026 (one writer); a branch not yet rebased still has it: job_state reads it as ending
 # TODO(AI): drop STEP, job_state's 'finishing' and verdict()'s me/my_status once no open PR predates the one-writer change (30 Oct 2026)
 # Jobs that only report (an HTML report, a results upload) never hold or turn the verdict: on #2044 the settings suite was green at 04:36 and the PR waited on
@@ -161,7 +164,8 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         since = clock(min(_at(r['createdAt']) for r, _ in running))
         first = next((r for r, _ in running if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)), running[0][0])
         return 'pending', f'{short(label(r, names) for r, names in running)} running since {since}'[:140], live, [], first.get('databaseId')
-    minutes = (max(_at(r['updatedAt']) if r.get('status') == 'completed' else now for r in live) - min(_at(r['createdAt']) for r in live)).total_seconds() / 60
+    timed = [r for r in live if r.get('workflowName') not in BUDGET_SKIPS]
+    minutes = (max(_at(r['updatedAt']) if r.get('status') == 'completed' else now for r in timed) - min(_at(r['createdAt']) for r in timed)).total_seconds() / 60 if timed else 0.0
     ran = running_minutes(spans, now) if spans else None
     took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
     if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
@@ -175,6 +179,8 @@ def job_spans(repo, runs, reports=()):
     """[(started_at, completed_at)] of every job of the counted runs (one call per run; only for a CI change, the one kind of PR with a budget)."""
     spans = []
     for r in counted(runs):
+        if r.get('workflowName') in BUDGET_SKIPS:
+            continue
         for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
             if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports:
                 spans.append((j.get('started_at'), j.get('completed_at')))
