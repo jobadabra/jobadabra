@@ -100,7 +100,7 @@ class SingleTryVerdict(unittest.TestCase):
 
 class BetaRetryIsTheRunnersAndOnlyInBetas(unittest.TestCase):
     """Why (1 Nov 2026, owner): "PR, main and night runs keep one try, so flakes are still counted and fixed." The flag that gives a step its retry is set in desktop.yml's two beta
-    E2E jobs from the beta / nightly / schedule inputs, and in no other workflow; the job-level bans above still hold."""
+    E2E jobs from the beta / nightly inputs, and in no other workflow; the job-level bans above still hold."""
     FLAG = 'E2E_BETA_RETRY'
 
     def test_only_desktop_yml_sets_the_flag_and_only_in_its_two_e2e_jobs_from_a_beta(self):
@@ -109,10 +109,10 @@ class BetaRetryIsTheRunnersAndOnlyInBetas(unittest.TestCase):
             lines = [line for line in path.read_text(encoding='utf-8').splitlines() if re.match(rf'^\s+{self.FLAG}:', line)]
             if lines:
                 setters[path.name] = lines
-        self.assertEqual(list(setters), ['desktop.yml'], 'a PR, main, night-pass or scheduled E2E check run sets no retry flag')
+        self.assertEqual(list(setters), ['desktop.yml'], 'a PR, main or night-pass run sets no retry flag')
         self.assertEqual(len(setters['desktop.yml']), 2, 'the Mac + Linux and the Windows beta E2E job')
         for line in setters['desktop.yml']:
-            self.assertRegex(line, r"\(github\.event_name == 'schedule' \|\| inputs\.nightly \|\| inputs\.beta\) && '1' \|\| ''")
+            self.assertRegex(line, r"\(inputs\.nightly \|\| inputs\.beta\) && '1' \|\| ''")
 
     def test_the_runner_retries_only_a_step_that_is_neither_safety_nor_data(self):
         root = WORKFLOWS.parent.parent / 'desktop' / 'e2e' / 'lib'

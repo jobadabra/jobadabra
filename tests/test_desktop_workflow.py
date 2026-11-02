@@ -32,28 +32,19 @@ class DesktopWorkflowTest(unittest.TestCase):
         # 2 Oct 2026: a release per push was a macOS + Windows build for every commit. Nightly, plus gh workflow run desktop.yml.
         triggers = WORKFLOW.split('permissions:')[0]
         self.assertIsNone(re.search(r'^\s*push:', triggers, re.M))   # a trigger key, not the word inside a comment
-        # 04:00 in Zurich all year (2 Oct 2026): UTC+2 in summer, UTC+1 in winter, so both UTC hours are scheduled and a guard lets the one at 04:xx/05:xx Zurich time go on.
-        # Not on the hour (5 Oct 2026): 0 2 and 0 3 were started six hours late two days running. ONE backup slot at :17 (owner, 10 Oct 2026: "the nightly beta should run
-        # only once"): the Worker's cron starts the nightly; the GitHub cron is the backup and skips when a nightly already ran today.
-        self.assertEqual(re.findall(r"cron: '([^']+)'", triggers), ['17 5 * * *'])
-        self.assertIn('select(.displayTitle == \\"Nightly beta\\")', WORKFLOW)
-        self.assertIn('A nightly beta already ran today', WORKFLOW)
-        self.assertNotRegex(triggers, r"cron: '0 \d+ ")
-        self.assertIn('TZ=Europe/Zurich date +%H', WORKFLOW)
-        # A late start still builds (4 Oct 2026: both runs came six hours late and the old 04-05 guard skipped them): 04:00-15:59.
-        self.assertIn('[ $((10#$hour)) -lt 4 ] || [ $((10#$hour)) -gt 15 ]', WORKFLOW)
+        # Why (2 Nov 2026, owner: "If yers, let's delete this second gate"): the Worker's cron (app-core/src/scheduler.js) is the one start of the nightly; the GitHub
+        # backup cron ran late every day 23 Oct-2 Nov and did nothing. No schedule, so no event that can start a second build.
+        self.assertIsNone(re.search(r'^\s*schedule:', triggers, re.M))
+        self.assertNotIn("event_name == 'schedule'", WORKFLOW)
+        self.assertNotIn('GITHUB_EVENT_NAME', WORKFLOW)
         self.assertIn('workflow_dispatch:', triggers)
-        # The Worker's cron starts the nightly on time (app-core/src/scheduler.js): named, diffed like the schedule, and with no 04:00-15:59 window of its own.
-        # ONE "Nightly beta" a day, the Worker's 04:00 start (owner, 12 Oct 2026): GitHub's backup schedule run is an "E2E check", never a second "Nightly beta".
-        self.assertIn("run-name: ${{ inputs.nightly && 'Nightly beta' || github.event_name == 'schedule' && 'E2E check · nightly backup'", WORKFLOW)
+        self.assertIn("'desktop.yml': 'Nightly beta'", (pathlib.Path(__file__).resolve().parent.parent / 'app-core/src/scheduler.js').read_text())
+        self.assertIn("run-name: ${{ inputs.nightly && 'Nightly beta' || inputs.beta && 'Beta by hand'", WORKFLOW)
         self.assertEqual(WORKFLOW.split('run-name:', 1)[1].split('\n', 1)[0].count("'Nightly beta'"), 1, "only the Worker's nightly is named Nightly beta")
-        self.assertIn("inputs.beta && 'Beta by hand'", WORKFLOW)
         self.assertIn('select(.displayTitle == "Beta by hand")', (pathlib.Path(__file__).resolve().parent.parent / 'tools/beta-release.sh').read_text())
-        self.assertIn('[ "$GITHUB_EVENT_NAME" != schedule ] && [ "$NIGHTLY" != true ]', WORKFLOW)
-        self.assertIn('[ "$GITHUB_EVENT_NAME" = schedule ] && { [ $((10#$hour)) -lt 4 ]', WORKFLOW)
+        self.assertIn('if [ "$NIGHTLY" != true ]; then echo "build=true"', WORKFLOW)   # a run by hand always builds; a nightly diffs
         self.assertIn("if: steps.diff.outputs.build == 'true'", WORKFLOW)   # nothing new: no version, no tag, no release
         self.assertIn("if: needs.changes.outputs.released == 'true'", WORKFLOW)   # and so no lane
-        self.assertIn('[ "$GITHUB_EVENT_NAME" != schedule ]', WORKFLOW)   # a manual run always builds
 
     def test_a_night_when_only_the_apps_tests_changed_builds_nothing(self):
         # desktop/ holds the app and its tests: the tests are not in the app, and the e2e pipeline promotes whatever the nightly builds.
@@ -89,7 +80,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('is already published (another build took this version)', WORKFLOW)
         # the fresh build keeps what the refused one was: a beta stays a beta (gated and approved), a nightly a nightly (6 Oct 2026)
         self.assertIn("-f beta=${{ inputs.beta && 'true' || 'false' }}", WORKFLOW)
-        self.assertIn("-f nightly=${{ (inputs.nightly || github.event_name == 'schedule') && 'true' || 'false' }}", WORKFLOW)
+        self.assertIn("-f nightly=${{ inputs.nightly && 'true' || 'false' }}", WORKFLOW)
 
     def test_each_lane_is_build_then_e2e_then_release_one_box_each(self):
         # Owner, 7 Oct 2026: "Anything new? -> Build -> E2E -> Release" per platform, "literally that clean": each step one box (a job or one matrix), no called workflows.
@@ -146,7 +137,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         for e2e in ('test-mac', 'test-windows'):   # the gate's settings: the fixed path
             self.assertIn("E2E_SEED: '0'", job(e2e))
         # The paid AI judge (owner, 7 Oct 2026: "$30 a week"): the nightly beta's Mac lane only, and not once today's e2e budget is spent; never on Windows.
-        self.assertIn("E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}", job('test-mac'))
+        self.assertIn("E2E_FULL: ${{ inputs.nightly && needs.changes.outputs.over != 'true' && '1' || '' }}", job('test-mac'))
         self.assertIn("E2E_FULL: ''", job('test-windows'))
         self.assertIn('node ai-spend.mjs', job('changes'))
         for name, script in (('release-mac', 'tools/beta-approve.sh "$TAG"'), ('release-windows', 'tools/beta-approve.sh --windows "$TAG"')):
@@ -210,7 +201,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')
         self.assertIn("github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json')", WORKFLOW)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
-        self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))
+        self.assertIn("(inputs.nightly || inputs.beta)", job('changes'))
         self.assertIn('node plan-run.mjs', job('changes'))
         # the Windows fallback is a step of Build · Windows, not a box
         self.assertIn('if: failure()', job('windows'))
