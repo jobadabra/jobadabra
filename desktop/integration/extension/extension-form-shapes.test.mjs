@@ -13,13 +13,14 @@ import {waitForFill} from '../../e2e/lib/fill-attempt.mjs';
 import {cvProblems, fillProblems, leftProblems, submitProblems} from '../../e2e/lib/applycheck.mjs';
 import {FORMS, MENU_FIRST, MENU_AGAIN, MENU_PAGE, REAL_FORMS, SIGNUP, SIGNUP_PAGES, formHtml, realFieldId, realPage} from '../../e2e/lib/forms.mjs';
 import {FAKE_CONTACT, FIXTURE_CV, startRealExtension} from '../../e2e/lib/real-extension.mjs';
-import {at, capOf, clocked} from '../../e2e/lib/test-clock.mjs';
+import {CLOSE_MS, at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 
 // Hang guards (1 Nov 2026, main 47580bb run 41342226333: this file printed no subtest and died at the run's 180 s file limit). Slowest measured test here: 5.9 s (run 41341289580), so 100 s is 17x.
 // Each test gets its own limit below the file's, so a hung one is named by the runner; the waits inside end earlier still and say which state they waited for.
 // Why (2 Nov 2026, a8; run 41458837502): the sign-up test's waits (60 + 20 + 30 s) outran its 100 s, so it said only "test timed out". Each test now runs on one
 // clock (lib/test-clock.mjs): its waits are cut to the time left (capOf) and a hang names its stage and the last wait that ran out; node's timeout is a backstop.
-const TEST_MS = 100000, TEST_CAP = {timeout: TEST_MS + 15000}, FILL_CAP_MS = 60000, PANEL_CAP_MS = 20000;
+// A hang also closes the test's own pages and extension (onHang; Gitar on #2996), so a hung test's browser never holds the file to its 180 s limit and the tests after it still run.
+const TEST_MS = 100000, TEST_CAP = {timeout: TEST_MS + CLOSE_MS + 5000}, FILL_CAP_MS = 60000, PANEL_CAP_MS = 20000;
 const KIND = {ok: true, kind: 'form', role: 'form', by: 'ai', confidence: 0.95, rung: 2};
 const CONTACT = FAKE_CONTACT;   // the applicant the stand-in app serves (lib/real-extension.mjs)
 let run;
@@ -35,6 +36,7 @@ async function fillForm(form, html, via = run) {
   const url = `https://${form.host}${form.path}`;
   at(`opening ${form.title}`);
   const page = await via.context.newPage();
+  onHang(() => page.close());
   await page.route(`https://${form.host}/**`, route => {
     if (route.request().url().includes('/__fired')) { const query = new URL(route.request().url()).searchParams; fired.push({kind: query.get('kind'), form: query.get('form')}); return route.fulfill({status: 204, body: ''}); }
     return route.fulfill({status: 200, contentType: 'text/html; charset=utf-8', body: html});
@@ -89,7 +91,7 @@ test('a form whose app hands it a tailored CV gets that file attached, under its
   const general = fs.readFileSync(FIXTURE_CV);
   const NAME = 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf';
   at('starting its own extension');
-  const tailoredRun = await startRealExtension({offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []})},
+  const tailoredRun = await startRealExtension({onCleanup: onHang, offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []})},
     resume: {data: tailored.toString('base64'), name: NAME, type: 'application/pdf'}});
   try {
     const form = FORMS.greenhouse;
@@ -109,7 +111,7 @@ const ACCOUNT_KIND = {ok: true, by: 'ai', rung: 2, signal: 'confident', applyBut
 const sentLines = (via, ...phrases) => phrases.filter(phrase => via.requests.some(request => request.route === '/extension/log' && request.body.includes(phrase)));
 test('a sign-up page before the form: the account step is kept apart from the application form', TEST_CAP, clocked(TEST_MS, async () => {
   at('starting its own extension');
-  const accountRun = await startRealExtension({offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => ACCOUNT_KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []}),
+  const accountRun = await startRealExtension({onCleanup: onHang, offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => ACCOUNT_KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []}),
     '/extension/site-password': () => ({ok: true, email: CONTACT.email, mode: 'sign-up', automation: 'assist', session: ''})}});
   try {
     const form = {title: SIGNUP.title, host: SIGNUP.accountHost, path: SIGNUP.accountPath};
@@ -143,7 +145,7 @@ const MENU_ANSWER = {ok: true, eligible: true, answers: [{field: 'country_code',
 async function menuFormAfterFill(fixture, menuChoices) {
   const picks = [];
   at('starting its own extension');
-  const menuRun = await startRealExtension({offline: true, allowAllSites: true, menuChoices, answer: {'/extension/page-kind': () => KIND, '/extension/answer': () => MENU_ANSWER,
+  const menuRun = await startRealExtension({onCleanup: onHang, offline: true, allowAllSites: true, menuChoices, answer: {'/extension/page-kind': () => KIND, '/extension/answer': () => MENU_ANSWER,
     '/extension/review': body => {
       if (!body.includes('Suisse') || !body.includes('+41') || !body.includes('Indicatif de pays')) return {};
       picks.push(body.slice(0, 100));
