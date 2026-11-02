@@ -17,6 +17,8 @@ on:
     types: [completed]
     workflows:
       - 'CI · Pull request'
+      - 'CI · E2E steps a PR changes'
+      - 'CI · End-to-end on Mac + Linux'
       - 'CI · Control tests (measure, not required)'
       - 'CI · Harness tests'
       - 'CI · Integration tests'
