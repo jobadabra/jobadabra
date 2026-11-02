@@ -133,5 +133,40 @@ class RunLockTests(unittest.TestCase):
         self.assertIn('waiting for another run;', paths._waiting_line({}, time.time()))
 
 
+class OutdatedAppTests(unittest.TestCase):
+    """The app was updated while it was open (2 Nov 2026, #2926 renamed the env names): its engine runs still send JOB_PILOTTO_*, so no data
+    folder reaches the engine, which then read the checkout's own data/ and config/ (no strategy, no Profile, 0 scores) and the Jobs list was
+    wrong without a word. The engine now refuses, in words the app turns into a Restart card."""
+    OLD_APP = {'JOB_PILOTTO_NO_DOTENV': '1', 'JOB_PILOTTO_DATA_DIR': '/app/data', 'JOB_PILOTTO_CONFIG_DIR': '/app/config'}
+
+    def follow(self, env):
+        with mock.patch.dict(sys.modules):   # tests lift the unittest guard: a real run has none
+            sys.modules.pop('unittest')
+            return paths.follow_app(env, Path(tempfile.mkdtemp()))
+
+    def test_a_run_started_by_an_older_app_is_refused_not_read_from_the_checkout(self):
+        with self.assertRaises(SystemExit) as caught:
+            self.follow(dict(self.OLD_APP))
+        self.assertIn(paths.OUTDATED_APP, str(caught.exception))
+
+    def test_a_run_whose_app_speaks_an_older_env_protocol_is_refused(self):
+        """The reachable case: an app that has the Restart card but was started before the next env change (it sends JOBADABRA_ENV_VERSION)."""
+        env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_ENV_VERSION': str(paths.ENV_VERSION - 1)}
+        with self.assertRaises(SystemExit) as caught:
+            self.follow(env)
+        self.assertIn(paths.OUTDATED_APP, str(caught.exception))
+
+    def test_an_app_on_the_engines_env_protocol_is_not_refused(self):
+        env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_ENV_VERSION': str(paths.ENV_VERSION), 'JOBADABRA_DATA_DIR': '/a', 'JOBADABRA_CONFIG_DIR': '/b'}
+        self.assertEqual(self.follow(env), {})
+
+    def test_a_run_started_by_this_app_is_not_refused(self):
+        env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_DATA_DIR': '/app/data', 'JOBADABRA_CONFIG_DIR': '/app/config'}
+        self.assertEqual(self.follow(env), {})
+
+    def test_a_terminal_run_without_the_old_marker_is_unchanged(self):
+        self.assertEqual(self.follow({}), {})
+
+
 if __name__ == '__main__':
     unittest.main()

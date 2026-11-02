@@ -38,6 +38,8 @@ import {jobPlace} from '../targets.js';
 import {wireApplyDialog} from './jobs-apply.js';
 import {wireTriage} from './jobs-triage.js';
 import {plainError} from '../run-warnings.js';
+import {isOutdated} from '../errors.js';
+import {showOutdatedJobs} from './jobs-outdated.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -90,10 +92,11 @@ export async function loadJobs() {
       if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += ` · saved ${savedAgo(saved.at)}, updating…`; jobsState.jobsLoading = true; }
     }
     const fresh = await writes.read();
-    if (fresh) { showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
+    if (fresh) { showOutdatedJobs(false); showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
     else await writes.settled();   // that write's reread paints the fresh list: a Start waits for it too (jobs-state.js)
   } catch (error) {
-    $('jobs-stats').textContent = plainError(`Couldn't read your jobs: ${error.message}`);
+    if (isOutdated(error)) { shared.allJobs = []; showOutdatedJobs(true); $('jobs-stats').textContent = ''; }   // the app is older than its engine: the Restart card, not the saved list
+    else $('jobs-stats').textContent = plainError(`Couldn't read your jobs: ${error.message}`);
   }
   jobsState.jobsLoading = false;
   jobsState.jobsRead = true;   // read or failed: the Find jobs card stops waiting for the count

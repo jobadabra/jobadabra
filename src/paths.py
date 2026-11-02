@@ -72,6 +72,32 @@ def workspace_repo(folder=None):
     return str((settings.get('cloud') or {}).get('repo') or '').strip()
 
 
+# What the app turns into its Restart card (desktop/lib/pipeline-commands.js, renderer/pages/jobs-outdated.js): same words on both sides.
+OUTDATED_APP = 'Jobadabra was updated while it was open. Restart it to finish the update.'
+
+
+# The env protocol between the app and the engine: the app sends it as JOBADABRA_ENV_VERSION (desktop/lib/pipeline-env.js ENV_VERSION, the same number: guard
+# desktop/test/env-version.test.js). Bump BOTH when the app's env changes in a way an older app's runs cannot work with (a variable renamed or required).
+ENV_VERSION = 1
+
+
+def refuse_outdated_app(env=os.environ):
+    """An engine run started by an app older than this engine is refused, never answered from the checkout's own folders.
+    Why (2 Nov 2026, owner: the Jobs list showed 212 jobs with no score after a strategy change): #2926 renamed the folder variables
+    JOB_PILOTTO_* -> JOBADABRA_*; a Jobadabra started before it still sent the old ones (the marker is its JOB_PILOTTO_NO_DOTENV), so
+    every run read the checkout's data/ and config/ (no strategy, no Profile, 0 scores) and the list was wrong without a word.
+    Two cases: the old marker (an app from before the protocol, which cannot show a card: the engine's line is all it gets), and an app
+    that sends JOBADABRA_ENV_VERSION lower than ENV_VERSION (the next change: that app has the Restart card, Gitar on #3015: a check on the old marker alone
+    could never reach any app that can show it). A run with no version and no old marker (a terminal, a test, a workflow) is never refused here."""
+    old_marker = env.get('JOB_PILOTTO_NO_DOTENV') and not env.get('JOBADABRA_NO_DOTENV')
+    try:
+        older = 'JOBADABRA_ENV_VERSION' in env and int(env['JOBADABRA_ENV_VERSION']) < ENV_VERSION
+    except ValueError:
+        older = True
+    if old_marker or older:
+        raise SystemExit(OUTDATED_APP)
+
+
 def follow_app(env=os.environ, folder=None):
     """The terminal follows the Desktop App: same Notion workspace, same job cache and search settings.
 
@@ -83,6 +109,7 @@ def follow_app(env=os.environ, folder=None):
     Taking the app's folders is opt-in (18 Oct 2026: an agent's terminal call to read_board() with no folder set used the owner's
     live data folder). With the app set up and nothing set, the run is REFUSED here, before any file is opened, unless
     JOBADABRA_FOLLOW_APP=1 says "yes, this is the owner's own run". Every entry point imports this module, so all are guarded."""
+    refuse_outdated_app(env)
     if env.get('JOBADABRA_NO_DOTENV') or env.get('JOBADABRA_FOLLOW_APP') == '0' or 'unittest' in sys.modules:
         return {}
     folder = Path(folder) if folder else app_folder()
