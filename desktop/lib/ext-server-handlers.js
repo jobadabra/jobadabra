@@ -76,12 +76,14 @@ export function registerExtServerHandlers(ctx) {
   });
   // The code a confirmation page asks for (owner, 10 Oct 2026): in "Do it for me" only, read from the mail sent to the account's email (Gmail, read-only; the AI picks the
   // code) and handed to the extension, which types it; never logged. "Let me check each step", no email or no code: nothing, the person types it.
-  // Gmail not connected (any mode): the job waits with its reason and the window offers Gmail once per run (lib/gmail-offer.js); the mail is not read (it would wait 90 s for nothing).
+  // Gmail not connected (Full automation): the job waits with its reason and the window offers Gmail once per run (lib/gmail-offer.js); the mail is not read (it would wait 90 s for nothing).
   const codeOffer = createCodeOffer({tell: (...args) => tellWindow(...args), park: (...args) => terminals.noteStuck(...args)})   // late-bound: main.js sets the window signal after this runs;
   server.setAccountCodeHandler(async ({host, session: carried, job, url, boot} = {}) => {
     const email = DEMO ? '' : await Promise.resolve(notionGate.tracking(storage) ? contactDetails.read(storage) : {}).then(contact => contact?.email || '').catch(() => '');
-    if (codeOffer({session: resolveSession({session: carried, job, url, boot}, ids), host, email})) return {ok: false, why: 'gmail not connected'};
-    return accountCodeAnswer({mode: automationOf(storage.settings()), host, email, read: found => codeFromMail({...found, run: args => pipeline.run(storage, args)})});
+    const mode = automationOf(storage.settings());
+    // Why (2 Nov 2026, Gitar on #3007): only in Full automation does a connected Gmail type the code (accountCodeAnswer), so only there is it offered and the job parked.
+    if (mode === 'full' && codeOffer({session: resolveSession({session: carried, job, url, boot}, ids), host, email})) return {ok: false, why: 'gmail not connected'};
+    return accountCodeAnswer({mode, host, email, read: found => codeFromMail({...found, run: args => pipeline.run(storage, args)})});
   });
   server.setAccountFactHandler(({fact, text, session: carried, job, url, boot} = {}) => {   // the card's account record: a consent accepted (the page's own wording), a code typed
     const session = resolveSession({session: carried, job, url, boot}, ids);

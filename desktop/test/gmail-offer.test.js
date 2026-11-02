@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {fileURLToPath} from 'node:url';
 import {MAX_ASKS, WAITING, afterApply, createCodeOffer, gmailConnected, state} from '../lib/gmail-offer.js';
 import * as server from '../lib/server.js';
 import {KEY, gmailEntries, offerWords} from '../renderer/gmail-offer-words.js';
@@ -80,6 +81,7 @@ test('the words: what the first Submit buys, and the code case promises typing i
   const code = offerWords({why: 'code', host: 'www.acme.test'});
   assert.match(code.title, /Connect Gmail and I'll type the code for you/);
   assert.match(code.lead, /acme\.test/);
+  assert.match(code.lead, /This job waits for you/, 'no promise to type this job\'s code: connecting does not re-request it');
   for (const words of [applied, code]) { assert.equal(words.yes, 'Connect Gmail'); assert.equal(words.no, 'Not now'); }
 });
 
@@ -98,11 +100,12 @@ test('the Suggestions card: always there while Gmail is not connected (no Not no
 });
 
 test('the doors: the dialog, the card and ⌘K all end in the Settings button, and the setup wizard offers nothing', () => {
-  const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'renderer');
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'renderer');
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('pages/gmail-offer.js'), /\$\('google-connect'\)\.click\(\)/, 'one sign-in flow');
   assert.match(read('pages/focus-suggestions.js'), /connect_gmail: \(\) => connectGmail\(\)/);
   assert.match(read('pages/nav.js'), /addGmailCommand\(add\)/, '⌘K');
+  assert.match(fs.readFileSync(path.join(root, '..', 'lib', 'ext-server-handlers.js'), 'utf8'), /mode === 'full' && codeOffer\(/, 'the code offer only where a connected Gmail types the code');
   assert.match(read('index.html'), /id="gmail-offer-dialog"/);
   for (const day of ['pages/wizard.js', 'onboarding.js']) assert.doesNotMatch(read(day), /gmail|google/i, `${day}: nothing is asked on day one`);
 });
