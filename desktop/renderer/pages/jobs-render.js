@@ -33,6 +33,8 @@ import {renderFilterMenu} from './jobs-filter-menu.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {kitLabel} from './jobs-kit-label.js';
+import {paintScoreCall} from './jobs-score-call.js';
+import {staleLabel, staleTip} from '../rescore-words.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
 const stuck = job => isStuck(job, entry => sessionList.some(item => pageKey(item.url) === pageKey(entry.url)));
@@ -50,6 +52,7 @@ const busyNotes = new Map();
 const claudeStarted = new Set();
 
 document.addEventListener('sessions-loaded', () => renderStuck());
+
 const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
 // clean-code-ok: Why (31 Oct 2026): the 252 complexity is the whole Jobs row draw, unchanged; this PR adds two lines to it (hold and restore the open ⋯ menu); splitting the draw is its own refactor.
 export function renderJobs() {
@@ -78,8 +81,7 @@ export function renderJobs() {
   // rows show "Not scored" and a friend took that for a bug (2 Oct 2026, a search whose AI calls had stalled).
   // A job whose place is unclear is not the AI failing: its row says why (unscoredWhy).
   const unscored = shared.allJobs.filter(job => job.fit == null && job.status === 'unreviewed' && !job.place_unclear).length;
-  show($('jobs-unscored'), unscored >= 5 && !searchingNow());   // while the search runs they are being scored: the card on top says so
-  $('jobs-unscored-text').textContent = `${unscored} jobs are not scored yet. The AI scores new jobs during each check; if this stays, open Recent activity to see why (Claude Code not answering, a usage limit), or Settings → Connections → AI.`;
+  paintScoreCall(unscored, searchingNow());   // the one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card
   const body = $('jobs-body');
   body.replaceChildren();
   for (const job of rows) {
@@ -87,15 +89,16 @@ export function renderJobs() {
     Object.assign(row.dataset, {code: job.code || '', url: job.url || ''});   // a notification's click scrolls to it (pages/open-target.js)
     // Fit: a ring filled to the score (the compact list adds "Strong match" under it). A row whose score has a
     // breakdown behind it says so with a caret, and the ring opens it.
-    const fit = el('div', `fit-cell ${band(job.fit)}`);
+    const fit = el('div', `fit-cell ${band(job.fit)}${job.stale && job.fit != null ? ' is-stale' : ''}`);   // the old score stays, muted (owner, 2 Nov 2026), until the re-score replaces it
     const ring = fitRing(job.fit);
     const canOpen = job.fit != null && !!job.fit_detail;
     const caret = icon('chevron', `icon fit-caret${canOpen ? '' : ' is-hidden'}`);  // on every row: the rings line up
     const ringRow = el('div', 'fit-ring-row');
     ringRow.append(ring, caret);
     const scoring = job.fit == null && searchingNow() && !job.place_unclear;   // found by the search that is running: its score comes next
-    fit.append(ringRow, el('span', 'fit-label', scoring ? 'Scoring…' : matchLabel(job.fit)));
-    fit.title = scoring ? 'Being scored now: the fit appears in a moment' : job.fit == null ? unscoredWhy(job) : fitTooltip(job.fit, canOpen ? 'Click to see why' : '');
+    const old = !!job.stale && job.fit != null;
+    fit.append(ringRow, el('span', 'fit-label', scoring ? 'Scoring…' : old ? staleLabel : matchLabel(job.fit)));
+    fit.title = scoring ? 'Being scored now: the fit appears in a moment' : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? 'Click to see why' : '')}`;
     const live = sessionFor(job.url);
     const {label: statusLabel, tone: statusTone} = live && !live.endedAt ? SESSION_PILL[live.status] || statusPill(job) : statusPill(job);
 

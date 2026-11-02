@@ -18,6 +18,9 @@ import {searchSelect} from '../search-select.js';
 import {jobsState, MORE, fullKey, startListRead} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
 import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
+import {wireScoreCall} from './jobs-score-call.js';
+import {scoreFirst} from './score-first.js';
+import {confirmRescore, noteOutdated} from './rescore-run.js';
 import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
 import {paintJobsSuggestionsFirst} from './focus-suggestions.js';
 export {renderJobs} from './jobs-render.js';
@@ -169,6 +172,7 @@ export function showJobsData(data) {
       toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job), 'warn');
     }
     shared.allJobs = data.jobs;
+    noteOutdated(data.outdated);   // the scores from the previous strategy: Strategy's own count, kept by rescore-run.js (after the rows: its redraw reads them)
     markReady(data.jobs);   // the jobs the night filled, from the codes known so far
     refreshReady(data.jobs, () => renderJobs());   // then the app's answer; the list is drawn again when it differs
     document.dispatchEvent(new Event('menu:refresh'));   // pages/nav.js: Interviews appears with the first application
@@ -222,7 +226,13 @@ export function showJobsIn(label, urls, from = '') {
 // Every Find jobs press (the card, Refresh, Strategy, Re-score, Find employers, search changed) comes here. A refusal (no AI credit, trial over,
 // Always on could not start it) is said on the Find jobs card, or in a pop-up when the card is not on screen (26 Oct 2026: the press was silent).
 // -> the main process's answer.
+// The plain Find jobs press while scores are from the previous strategy asks "Score first" (pages/score-first.js scoreFirst) before anything starts.
 export async function startSearch(why = undefined) {
+  const held = await scoreFirst(why, {search: startSearch, reload: loadJobs, toast: toastMessage});   // Find jobs only finds: with scores from the previous strategy it asks "Score first" (owner, 2 Nov 2026)
+  return held || runSearch(why);
+}
+// The search itself, once the person went on (or nothing was outdated): the one place a refresh starts.
+async function runSearch(why) {
   refreshBusy(true);   // "Your search changed": this refresh applies it
   $('refresh').disabled = true;
   showFindRefused(null);
@@ -373,7 +383,8 @@ export async function init() {
   paintFindCardFirst();
 
   wireProfileEmpty();
-  $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
+  wireScoreCall({rescore: count => confirmRescore(count, {search: startSearch, reload: loadJobs, toast: toastMessage}), find: () => $('refresh').click()});
+  document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying});
   wireTriage({read: job => window.pilot.triageRead({url: job.url}), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
 }

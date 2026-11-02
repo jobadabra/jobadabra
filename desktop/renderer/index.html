@@ -362,6 +362,10 @@
       <!-- The Find jobs card sits where the list appears (owner, 24 Oct 2026): the big card on a first run, the live search above the list as it fills. -->
       <!-- In the first paint (renderer/late-blocks.js): the card as last drawn, else this skeleton of the compact card holds its place until the runs answer. -->
       <div class="callout tone-warn" id="jobs-outdated" role="alert" hidden></div>
+      <!-- One call to action for scores to refresh (pages/jobs-score-call.js): the previous strategy's scores (data-kind="stale", owner 2 Nov 2026) or jobs not scored yet. -->
+      <div class="callout tone-warn" id="jobs-unscored" role="alert" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button" data-wand>Check now</button></div>
+      <!-- A re-score has its own card (pages/jobs-score-call.js); <body data-rescoring> shows it in place of the Find jobs card (style.css), one state, no draw order. -->
+      <section class="card find-card is-rescoring" id="rescore-card" aria-live="polite"></section>
       <section class="card find-card is-none is-loading" id="find-card" aria-live="polite" aria-busy="true">
         <div class="find-head-box"><div class="find-head"><h3 class="find-title"><span class="skeleton tall w-name"></span></h3></div><p class="muted find-lead"><span class="skeleton w-60"></span></p></div><span class="skeleton button"></span>
       </section>
@@ -370,7 +374,6 @@
       <div class="job-split" id="jobs-split">
         <div class="job-list" id="jobs-body"></div>
       </div>
-      <div class="callout tone-warn" id="jobs-unscored" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button" data-wand>Check now</button></div>
       <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs data-wand><b>Find jobs</b></button>.</p>
     </div>
 
@@ -2159,6 +2162,18 @@
   </form>
 </dialog>
 <!-- The free allowance is over (pages/license.js): new work pauses, everything else keeps working. -->
+<!-- Find jobs while scores are from the previous strategy (pages/score-first.js; owner, 2 Nov 2026): re-score first, or find without. -->
+<dialog id="score-first-dialog" class="panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="refresh"></i></span><h2 id="score-first-title">Score first</h2></div>
+    <p class="dialog-lead" id="score-first-lead"></p>
+    <div class="dialog-foot">
+      <button class="secondary" value="cancel">Cancel</button>
+      <button class="secondary" value="find" id="score-first-find">Find jobs without re-scoring</button>
+      <button class="primary" value="go" id="score-first-go" data-wand>Re-score</button>
+    </div>
+  </form>
+</dialog>
 <!-- Re-score the older scores (Strategy → Improve your search): the cost, said before anything is spent. -->
 <dialog id="rescore-dialog" class="panel-dialog">
   <form method="dialog">

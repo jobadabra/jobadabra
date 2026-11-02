@@ -39,6 +39,23 @@ def outdated(db, stage_map):
     return {'count': len(method | places), 'method': len(method), 'places': len(places)}
 
 
+def mark_outdated(result, db):
+    """The Jobs read says which fits are from the previous strategy (owner, 2 Nov 2026: "there should be the old scored"): every row of
+    `result['jobs']` keeps its fit and gets `stale` (True: re-scoring would replace it), and `result['outdated']` is Strategy's own summary, from
+    the same ids (`_outdated_ids`), so the Jobs call to action and Strategy's notice count the same jobs. Applications (rows with a stage)
+    are the stage map of THIS read's rows; Strategy reads the whole store, so an application beyond the listed rows can differ by one (parked as JOB-230). Reading queues nothing."""
+    rows = result.get('jobs') or []
+    stage_map = {(row.get('url') or '').strip(): row.get('stage') or None for row in rows if row.get('url')}
+    method, places = _outdated_ids(db, stage_map)
+    ids = method | places
+    # By URL, never the row's `id`: a row listed from a store (Notion or this Mac's) is built from the store's item, which has no job id (desktop_jobs.py: rows carry id None there).
+    stale_urls = {(url or '').strip() for job_id, url in db.execute('SELECT id, url FROM jobs') if job_id in ids}
+    for row in rows:
+        row['stale'] = (row.get('url') or '').strip() in stale_urls
+    result['outdated'] = {'count': len(ids), 'method': len(method), 'places': len(places)}
+    return result
+
+
 def rescore_outdated(db, stage_map):
     """The notice's Re-score: queue every outdated job once for a new score (the next searches do it, 60 per search). -> how many."""
     ids = set().union(*_outdated_ids(db, stage_map))

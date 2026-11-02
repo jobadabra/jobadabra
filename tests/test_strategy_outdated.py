@@ -63,5 +63,41 @@ class CommandTests(unittest.TestCase):
         self.assertIn("rescore_outdated(db, stages)", handlers)
 
 
+class JobsListKeepsTheOldFitsTests(unittest.TestCase):
+    """Owner, 2 Nov 2026: "I don't think we should clear all the scoring instantly ... there should be the old scored." The Jobs read keeps every fit
+    and marks the ones from the previous strategy; its count is Strategy's, from the same ids."""
+    def setUp(self):
+        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(locations, 'active_ids', return_value={1, 2, 3, 5})):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def rows(self):
+        # The shape a store's Jobs read really has: a url and a stage, and NO job id (src/desktop_jobs.py builds the row from the store's item): the first version matched on id and marked nothing.
+        return {'jobs': [{'id': None, 'url': f'https://x.test/{job_id}', 'fit': 80 + job_id, 'stage': 'Applied' if job_id == 4 else ''} for job_id in SCORES]}
+
+    def db(self):
+        db = db_with(SCORES)
+        db.execute('CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT)')
+        db.executemany('INSERT INTO jobs VALUES (?, ?)', [(job_id, f'https://x.test/{job_id}') for job_id in SCORES])
+        return db
+
+    def test_every_fit_stays_and_the_outdated_ones_are_marked(self):
+        result = desktop_strategy.mark_outdated(self.rows(), self.db())
+        self.assertEqual({row['url']: row['fit'] for row in result['jobs']}, {f'https://x.test/{job_id}': 80 + job_id for job_id in SCORES})
+        self.assertEqual({row['url'] for row in result['jobs'] if row['stale']}, {f'https://x.test/{job_id}' for job_id in (1, 2, 3)})
+
+    def test_the_count_is_strategy_s_count(self):
+        db = self.db()
+        result = desktop_strategy.mark_outdated(self.rows(), db)
+        self.assertEqual(result['outdated'], desktop_strategy.outdated(db, {'https://x.test/4': 'Applied'}))
+
+    def test_a_strategy_save_that_queues_a_re_score_keeps_the_fits_visible(self):
+        db = self.db()
+        desktop_strategy.rescore_outdated(db, {})   # blanks input_hash only
+        result = desktop_strategy.mark_outdated(self.rows(), db)
+        self.assertEqual(sum(row['stale'] for row in result['jobs']), 3, 'queued for a new score, still marked until the new score replaces it')
+        self.assertEqual(len(score.load(db)), len(SCORES), 'no stored fit was removed')
+
+
 if __name__ == '__main__':
     unittest.main()

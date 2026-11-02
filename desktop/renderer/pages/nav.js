@@ -203,6 +203,7 @@ export function paletteCommands() {
     setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopActing, shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
   });
   button('jobs', 'refresh', 'find jobs scan');
+  button('jobs', 'jobs-unscored-go', 're-score rescore scores stale previous strategy search settings outdated');   // shown only while scores wait (pages/jobs-score-call.js)
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
   // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.
   add('Jobs', 'Fill your details', 'The details forms ask every time, one at a time', 'questions missing facts details contact name email phone notice period permit eligibility languages fill',
