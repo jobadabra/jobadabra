@@ -387,3 +387,29 @@ test('a job still filling (or claimed) holds the queue in either list order; the
   const moved = await pollWith({a: job('a', 'waiting_to_submit'), b: job('b', 'queued', '')}, ['a', 'b']);
   assert.deepEqual(moved.launched, ['b'], 'once the first job left filling, the next starts');
 });
+
+// Owner, 2 Nov 2026 ("the app sends one e-mail/Telegram message when an application is stuck waiting for you"): both hand-over sites tell the waiting message; it never breaks the hand-over.
+test('a hand-over to the person (Stop, cut off at start) also queues the message to e-mail and Telegram, and a failing message does not break it', async () => {
+  const queued = [], handoffs = [], waiting = {add: item => queued.push(item)};
+  const records = {s1: {id: 's1', title: 'Nurse', company: 'Demo Klinik', outcome: ''}};
+  const build = (extra = {}, startedAt = '2020-01-01T00:00:00Z') => createBackgroundApplyController({}, {
+    store: {interrupted: async () => ({state: 'needs_user_handoff', reason: 'submission_outcome_unknown', mode: 'auto', manualOverride: true}),
+      read: async () => ({session: 's1', mode: 'auto', chosenAt: 'c1', state: 'waiting_to_submit', readyAt: 0, manualOverride: false}),
+      handoff: async (_url, _id, _owner, reason) => { handoffs.push(reason); return {mode: 'auto', state: 'needs_user_handoff', manualOverride: true, reason}; }},
+    browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/1', title: 'Nurse', company: 'Demo Klinik', background: {}, outcome: '', startedAt}], record: id => records[id] || null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 10}}), token: () => 't', notify: () => {}, stop: () => 'stopped', log: () => {}, waiting, ...extra});
+  await build().sweepInterrupted();
+  assert.equal(queued.length, 1, 'cut off at start: queued');
+  assert.deepEqual([queued[0].id, queued[0].title, queued[0].company], ['s1', 'Nurse', 'Demo Klinik']);
+  assert.match(queued[0].note, /Check whether it went through/);
+  assert.equal(queued[0].open(), true, 'still waiting: the message may name it');
+  records.s1.outcome = 'Applied';
+  assert.equal(queued[0].open(), false, 'handled meanwhile: left out of the message');
+  records.s1.outcome = '';
+  await build({}, new Date().toISOString()).handle({action: 'poll', owner: 'o1'});   // Stop during the wait (a job this run started): markManual
+  assert.deepEqual(handoffs, ['stopped']);
+  assert.equal(queued.length, 2, 'Stop: queued too');
+  const broken = build({waiting: {add: () => { throw new Error('boom'); }}});
+  assert.deepEqual(await broken.sweepInterrupted(), ['s1'], 'a failing message never breaks the hand-over');
+});

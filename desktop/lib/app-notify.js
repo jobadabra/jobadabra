@@ -10,6 +10,7 @@ import * as pipeline from './pipeline.js';
 import * as runHistory from './run-history.js';
 import {notCheckedNotice} from './not-checked-notice.js';
 import * as telegram from './telegram.js';
+import {useBotApi} from './waiting-message.js';
 import {cloudNextAt, nextAt, nextMailAt} from './schedule.js';
 import {log as appLog} from './log.js';
 import {runState} from './run-state.js';
@@ -17,6 +18,7 @@ import {runTone, toneOf} from '../renderer/toast-tone.js';
 
 export function createAppNotify(ctx) {
   const {DEMO, Notification, app, getStorage, targets, toWindow, getWindow} = ctx;
+  useBotApi(telegram.api);   // the waiting-application message reaches the person's own bot through the same sender (lib/waiting-message.js)
   // A macOS notification; clicking it brings the app to the front and, with a target (renderer/targets.js: a page, a section, a run's result, a job's row),
   // opens it. The target may also be a function (the older callers). The same message as a window toast carries the target too.
   // If macOS blocks notifications (common for an app run with npm start: "Electron" is off in System
