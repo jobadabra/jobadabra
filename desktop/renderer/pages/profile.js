@@ -117,7 +117,7 @@ export async function loadSettings() {
   for (const [id, name, empty] of [['set-anthropic', 'ANTHROPIC_API_KEY', 'sk-ant-…'], ['set-openai', 'OPENAI_API_KEY', 'sk-…'], ['set-notion', 'NOTION_TOKEN', 'ntn_…'],
     ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', 'SerpApi key'], ['set-brave', 'BRAVE_SEARCH_API_KEY', 'Brave Search key'], ['set-adzuna-id', 'ADZUNA_APP_ID', 'Adzuna app id'],
     ['set-adzuna-key', 'ADZUNA_APP_KEY', 'Adzuna app key'], ['set-jooble', 'JOOBLE_API_KEY', 'Jooble key']]) {
-    if ($(id)) $(id).placeholder = hints[name] && (shared.state.ownSecrets || shared.state.secrets)[name] ? `${hints[name]} · saved (paste a new one to replace it)` : empty;
+    if ($(id)) $(id).placeholder = hints[name] ? `${hints[name]} · saved (paste a new one to replace it)` : empty;
   }
   renderNotionLinks();
   showEngineSettings();

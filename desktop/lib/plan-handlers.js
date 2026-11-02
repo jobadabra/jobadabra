@@ -35,19 +35,22 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
     const last = settings[SETTINGS_KEY[family]] || {};
     // authenticated: a real check said so (Verify), and nothing since contradicts it; the chooser verifies once when a CLI looks ready but was never checked.
     return {family, state, installed: found.installed, path: found.path, version: found.version || last.version || null, authenticated: !!last.checkedAt && ['ready', 'limit'].includes(state),
-      checkedAt: last.checkedAt || null, desktopApp: found.desktopApp};
+      checkedAt: last.checkedAt || null, desktopApp: found.desktopApp, login: last.login || ''};
   }
   const verify = {claude: () => claudeCode.verify(storage), openai: () => verifyCodex(storage), ...verifyFns};   // verifyFns: a test's stand-ins (never the real CLI)
   const DEMO_READY = family => ({family, state: 'ready', installed: true, path: family === 'claude' ? '/usr/local/bin/claude' : '/usr/local/bin/codex', version: '2.1.0', authenticated: true, checkedAt: '2026-09-30T09:00:00Z', desktopApp: true});
 
-  for (const [family, statusName, verifyName] of [['claude', 'claudeCodeStatus', 'verifyClaudeCode'], ['openai', 'codexStatus', 'verifyCodex']]) {
-    ipcMain.handle(statusName, () => (DEMO ? DEMO_READY(family) : status(family)));
-    ipcMain.handle(verifyName, async () => {
-      if (DEMO) return DEMO_READY(family);
-      await verify[family]();
-      return status(family);
-    });
-  }
+  // Literal channel names (not a loop over names): test/ipc.test.js finds each handler by its quoted name.
+  const handleStatus = family => () => (DEMO ? DEMO_READY(family) : status(family));
+  const handleVerify = family => async () => {
+    if (DEMO) return DEMO_READY(family);
+    await verify[family]();
+    return status(family);
+  };
+  ipcMain.handle('claudeCodeStatus', handleStatus('claude'));
+  ipcMain.handle('verifyClaudeCode', handleVerify('claude'));
+  ipcMain.handle('codexStatus', handleStatus('openai'));
+  ipcMain.handle('verifyCodex', handleVerify('openai'));
   ipcMain.handle('planChooseFile', async (_, family) => {
     if (!FAMILY[family]) return {ok: false, reason: 'unknown'};
     const f = FAMILY[family], win = platform === 'win32';

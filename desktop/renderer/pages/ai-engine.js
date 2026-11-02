@@ -159,11 +159,11 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   render();
   // Each CLI's status is read now and again whenever it could have changed: the window regains focus (the user came back from installing it),
   // and every few seconds while one is still missing. Installing Codex or Claude Code never needs an app restart.
-  // `again`: the window regained focus, so a CLI that was not ready is checked for real (free for a signed-out one: no AI call, lib/plan-login.js); the timer only re-reads files.
+  // `again`: the window regained focus: a CLI that said "signed out" is checked again (free: no AI call, lib/plan-login.js); the timer and every other state only re-read files.
   const recheck = (again = false) => {
     if (busy) return;   // a Verify in progress owns the status
     for (const which of Object.keys(CLI)) {
-      if (again === true && family === which && ['sign-in', 'check-failed', 'broken'].includes(statuses[which]?.state)) { check(); continue; }
+      if (again === true && family === which && statuses[which]?.state === 'sign-in' && statuses[which]?.login === 'signed-out') { check(); continue; }   // the person came back from signing in: `auth status` answers free; a failed or unknown check is the person's "Check again" (a paid call per focus otherwise; review of #3014)
       CLI[which].status().then(found => {
         if (busy || JSON.stringify(found) === JSON.stringify(statuses[which])) return;
         statuses[which] = found; render(); onChange(picked);
