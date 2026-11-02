@@ -11,6 +11,15 @@ export function pickForTriage(jobs = [], {n = 10, isChecked = () => false} = {})
   return ranked.slice(0, Math.max(0, Math.floor(n)));
 }
 
+/**
+ * The jobs a Start checks: waits for `listReady()` (the fresh read of the list under way), then picks from `listNow()` as it is then, never from the kept copy
+ * painted before the read landed (pages/jobs-state.js). Resolves with pickForTriage's array.
+ */
+export async function pickWhenFresh(listNow, listReady, choice) {
+  await listReady();
+  return pickForTriage(listNow(), choice);
+}
+
 export const CHIPS = {
   auto: {label: 'Can apply automatically', tone: 'good'},
   fill: {label: 'You review and submit', tone: 'info'},

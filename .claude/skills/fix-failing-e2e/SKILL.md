@@ -22,6 +22,11 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
    every step, evidence that survives a cut, the flip detector (plan row 33). Never patch only the step, never re-run, never call it "the next layer".
    31 Oct 2026: the beta gate went red three times on apply in one day; the third (the triage read step, stalled on code that had passed twice) was flaky, and the owner saw it first.
 1. **Read before you run.** `suite-failures.json`, the suite's step table (`steps.json`), the run log, the screenshot (`gh run download <run> -n e2e-artifacts-<suite>`). A failure that says only `""` or "not found" is missing evidence: add the log line first. **A "⚠ one cause, N steps" line comes first** (the log's end and the run's Summary page, gate G3, 26 Oct 2026): those reds are one fix (e.g. a click on one locator that was not visible), and their own checks never ran, so expect a next layer after it: fix the cause, then read the run on your PR before calling the suite fixed.
+   **Same inputs, then same actions, before any hypothesis** (2 Nov 2026, apply-1of3 runs 41412195017 and 41447682988: two wrong causes and 7 CI runs first).
+   (a) A re-run, a local run or a bisect is evidence only when it ran the red's inputs: read `seed.json` (seeded or fixed path), `notion-standin.json` (there = the
+   Notion stand-in) and the AI family line in the red and in every green you compare. The automatic bisect runs the fixed path on its own store: its greens cleared
+   every commit twice. (b) Then diff what the red and a green acted on at the step, in `logs/app.log` (the page the hidden browser opened: `page kind: form {"shape"…}`,
+   the job, the tab) and the trace's action times against the app's lines: the red had read another job, its Start pressed 0.67 s before the fresh list landed.
 2. **Name the cause in one line, from this list** (the /admin/operations/e2e page uses the same words; the id in brackets is what step 7's trailer says):
    - **Test drift** (`drift`): the app's words, roles or timing changed. Fix the test to read the app's own name (a shared constant), never a new copy.
    - **Product bug** (`product`): the app is wrong. Fix the app, add the test first.

@@ -11,6 +11,18 @@ export const jobsState = {
   filters: ['open'],   // the ticked filters of the one Show menu (jobs-filters.js): a job shows when any of them holds it
   mode: 'list',   // 'list' or 'board' (pages/jobs-views.js, remembered on this computer)
 };
+// Why (2 Nov 2026, a8; apply e2e runs 41412195017, 41447682988): the list opens on the kept copy and the fresh read replaces it 0.3-1.8 s later; a Start pressed
+// in between picked from the kept copy (the job just saved at fit 90 was still "applied" at 80 there) and read the wrong job. One owner (loadJobs) marks the read
+// under way and lands it; an action that picks jobs to work on waits for it (renderer/apply-triage-pick.js pickWhenFresh).
+let listRead = Promise.resolve();
+/** Marks the fresh read of the list as under way (pages/jobs.js loadJobs). Returns `landed()`, which ends the wait whether the read worked or failed; a later call replaces the wait. */
+export function startListRead() {
+  let landed;
+  listRead = new Promise(resolve => { landed = resolve; });
+  return () => landed();
+}
+/** Resolves once the fresh read of the list under way has landed; at once when none is. Never rejects. */
+export const listReady = () => listRead;
 export const MORE = 500;   // rows each "Show more" adds
 export const pageKey = url => String(url || '').split('#')[0].replace(/\/$/, '');
 // The whole link, #part included: recruiter leads differ only there (linkedin.com/messaging/#jp-…, a Gmail thread).

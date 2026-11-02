@@ -2,7 +2,8 @@
 // The form read itself is the hidden browser's (lib/triage-reader.js); a job that was not read keeps its "Not checked" chip.
 import {chip} from '../components.js';
 import {$} from './core.js';
-import {KEEP_TIMINGS, chipOf, estimateOf, pickForTriage} from '../apply-triage-pick.js';
+import {KEEP_TIMINGS, chipOf, estimateOf, pickForTriage, pickWhenFresh} from '../apply-triage-pick.js';
+import {listReady} from './jobs-state.js';
 import {shared} from './shared.js';
 
 // The reads this window knows, by job URL: {read, at}. PR C fills it from the hidden browser's reads; nothing is stored here yet.
@@ -78,8 +79,8 @@ export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () 
   $('triage-n').addEventListener('input', paintCount);
   $('triage-cancel').addEventListener('click', () => { cancelled = true; cancel(); });
   $('triage-start').addEventListener('click', async () => {
-    const jobs = pickForTriage(shared.allJobs || [], choiceNow());
     $('triage-start').disabled = true;
+    const jobs = await pickWhenFresh(() => shared.allJobs || [], listReady, choiceNow());   // never the kept copy painted before the fresh read (jobs-state.js)
     const done = await runTriage(jobs, read);
     $('triage-progress').hidden = true;
     paintCount();

@@ -15,7 +15,7 @@ import {sayRefused, toastMessage} from './startup.js';
 import {refusal} from '../refusal.js';
 import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
-import {jobsState, MORE, fullKey} from './jobs-state.js';
+import {jobsState, MORE, fullKey, startListRead} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
 import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
 import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
@@ -77,6 +77,7 @@ function setDensity(value) {
 let freshJobs = false;
 let leftOpenAsked = false;  // the start-up question about sessions left open was asked (once per launch)
 export async function loadJobs() {
+  const landed = startListRead();   // before the kept copy paints: a Start pressed on it waits for the fresh list (jobs-state.js)
   loadQuestions();
   freshJobs = false;
   showLoading();
@@ -95,6 +96,7 @@ export async function loadJobs() {
   }
   jobsState.jobsLoading = false;
   jobsState.jobsRead = true;   // read or failed: the Find jobs card stops waiting for the count
+  landed();
   renderFindCard();
   renderJobs();
   if (freshJobs) {
