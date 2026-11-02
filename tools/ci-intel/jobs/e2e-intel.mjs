@@ -79,8 +79,7 @@ async function readNights(runs) {
 const ESCAPE = /^Escaped-e2e:[ \t]*([^\r\n]*)$/im;
 
 /** Parse an escape trailer without I/O; absent or malformed records return null. */
-// Copy of public tools/owner-report.mjs escapeOf (PR 1, branch escapes): not on public main yet.
-// desktop/test/ci-intel-e2e-intel-collector.test.js pins the same fixture strings as public desktop/test/owner-report.test.js.
+// Guard: desktop/test/ci-intel-e2e-intel-collector.test.js.
 export function escapeOf(message) {
   const value = ESCAPE.exec(String(message))?.[1].trim() || '';
   const parts = /^(.+?)[ \t]+—[ \t]+(\S.*)$/.exec(value);
@@ -114,7 +113,7 @@ export function readWork(since, git = execFileSync) {
   } finally { rmSync(dir, {recursive: true, force: true}); }
 }
 
-/** Read the PUBLIC registry from main, even when this job runs on a private PR; an unreadable registry is omitted so the snapshot retains its last read. */
+/** Read this repo's lane registry from main; an unreadable registry is omitted so the snapshot retains its last read. */
 export async function readLanes(read = ghAsync) {
   const lanes = cleanLanes(await read('api', `repos/${repo}/contents/desktop/e2e/lanes.json?ref=main`, '-H', 'Accept: application/vnd.github.raw+json'));
   if (!lanes) console.log('::warning::lane registry not read this hour');

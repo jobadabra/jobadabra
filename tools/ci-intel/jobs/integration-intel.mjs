@@ -3,7 +3,7 @@
 // "CI · Integration tests" (integration.yml) and each run's artifacts integration-results-<layer>[-<platform>] (tools/ci-intel/jobs/integration-intel-rows.mjs says what a file holds),
 // finds flaky tests, the slowest ones, and the e2e -> integration move from the public repo's folders. A run is read once: its rows stay in the stored snapshot (GET /integration/data).
 //   node tools/ci-intel/jobs/integration-intel.mjs [--dry [--out snapshot.json]]    needs gh with GH_TOKEN; publishing needs SELFHEAL_PUBLISH_KEY (optional INTEGRATION_INTEL_URL)
-// Guard: desktop/test/ci-intel-integration-intel-collector.test.js (the pure part) and test/jobs-read-public-repo.test.js (the repo it reads).
+// Guard: desktop/test/ci-intel-integration-intel-collector.test.js (the pure part).
 import {execFile, execFileSync} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';

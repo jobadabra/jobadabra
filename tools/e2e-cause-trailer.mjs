@@ -11,8 +11,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-// The same ids as the site's admin/e2e-causes.js (CAUSES): the page drops any other word.
-export const E2E_CAUSES = ['drift', 'test', 'product', 'flake', 'timing', 'ai', 'ci', 'picker', 'runner'];
+import {CAUSE_IDS} from './ci-intel/lib/e2e-causes.mjs';
+
+// Why (2 Nov 2026, Gitar on #2989): the collector that reads these trailers moved into this repo, so its CAUSE_IDS is the one owner; the words are its ids minus the two it assigns itself (open, unknown). Was a second list kept in step by hand.
+export const E2E_CAUSES = CAUSE_IDS.filter(id => !['open', 'unknown'].includes(id));
 const E2E_CODE = /^desktop\/e2e\/(suites|lib)\//;
 const LINE = /^E2E-cause:[ \t]*(.*)$/gm;
 const HOW = `Add to a commit message of the push (skill fix-failing-e2e, step 7):

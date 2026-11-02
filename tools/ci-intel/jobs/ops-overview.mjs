@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Publishes the merged PRs of the last 30 days to the owner's page /admin/agents/overview (ops-overview.yml: every push to main, hourly). Only PRs the site does not hold yet are looked up
+// Publishes the merged PRs of the last 30 days to the owner's page /admin/agents/overview (ops-overview.yml: hourly). Only PRs the site does not hold yet are looked up
 // (GET /ops/data lists the stored ones), at most 150 a run, newest first: a PR is read once. Category and row come from tools/ci-intel/lib/ops-categories.mjs (guard: desktop/test/ci-intel-ops-overview.test.js).
 // CI minutes = the wall time of each workflow run on the PR's branch, summed (not GitHub's billed minutes: parallel jobs are not multiplied).
 //   node tools/ci-intel/jobs/ops-overview.mjs [--dry [--out rows.json]]     needs gh with GH_TOKEN; publishing needs SELFHEAL_PUBLISH_KEY (optional OPS_URL); --dry prints the counts, --out saves the rows
