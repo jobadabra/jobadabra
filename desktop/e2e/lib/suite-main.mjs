@@ -90,6 +90,13 @@ async function suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChang
   }, {critical: true});
 }
 
+/**
+ * The stored-answer mode a run uses: a set E2E_AI_ANSWERS wins (CI's matrix, plan-run.mjs), else the suite's own aiAnswers, else 'off'.
+ * Why (2 Nov 2026, a8; a local wizard run refused its declared organize ask as unkeyable): only CI's matrix turned a suite's aiAnswers into E2E_AI_ANSWERS,
+ * so a run by hand took 'off', and with unanswered asks refused (#2976) every declared kind failed. The suite's own declaration holds wherever it runs.
+ */
+export const suiteAnswersMode = (suite, env) => env.E2E_AI_ANSWERS || suite.aiAnswers || 'off';
+
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
   const {SUITES, openContext} = await import('./context.mjs');
@@ -98,12 +105,13 @@ export async function runSuite(name, report = null) {
   if (!SUITES.includes(name)) { console.error(`usage: node suite.mjs ${SUITES.join('|')}`); return {code: 2}; }
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));   // a suite may import app code that needs desktop/shared/ (apply.mjs: rung2-sketch), which a CI job never staged (21 Oct 2026)
   const suite = await import(`../suites/${name}.mjs`);
+  process.env.E2E_AI_ANSWERS = suiteAnswersMode(suite, process.env);   // before openContext: the stand-in reads it
   let ctx, code = 0;
   try {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.
     const {keychainChanges, snapshot} = await import('./keychain-guard.mjs');
     const keychainBefore = snapshot();   // the owner's real Keychain, names and dates only (lib/keychain-guard.mjs); null on CI
-    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, offlineAi: !!suite.offlineAi, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, aggregateBudget: suite.aggregateBudget, hangCaps: suite.hangCaps, cadence: suite.cadence, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
+    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, offlineAi: !!suite.offlineAi, liveAi: suite.realAi === true, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, aggregateBudget: suite.aggregateBudget, hangCaps: suite.hangCaps, cadence: suite.cadence, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
     ctx = await (report ? report.step('Start the app and its test services', open) : open());
     if (ctx.skipAll) {
       const message = skipMessage(name, ctx.needs.filter(item => !item.value).map(item => item.name));
