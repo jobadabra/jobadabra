@@ -269,6 +269,11 @@ test('Rule G leaves old lines, moved lines, comments, strings and a Why: line al
   assert.equal(push({[swallowFile]: old}, {[swallowFile]: `// moved below\nconst a = 1;\n\n${swallowed[0]}\n`}), '', 'edits around an old line');
   assert.equal(push({[swallowFile]: old}, {[swallowFile]: null, [swallowOld]: old}), '', 'a pure move to another file');
   assert.match(push({[swallowFile]: old}, {[swallowFile]: `${old}${swallowed[0]}\n`}), /Rule G[\s\S]*forms\.test\.mjs:3: /, 'a second copy of an old line is new');
+  // Gitar on #2979: the move exemption keyed on the catch alone, so deleting any old swallow let an unrelated new one through.
+  const oldClose = 'await old.close().catch(() => {});\n', newGoto = 'await tab.goto(url).catch(() => {});\n';
+  assert.match(push({[swallowFile]: oldClose}, {[swallowFile]: newGoto}), /Rule G[\s\S]*forms\.test\.mjs:1: await tab\.goto/, 'a different call with the same catch is new');
+  assert.match(push({[swallowOld]: oldClose}, {[swallowFile]: newGoto}), /Rule G/, 'also across files');
+  assert.equal(push({[swallowFile]: `${oldClose}\n`}, {[swallowFile]: `\n  ${oldClose.trim()}\n`}), '', 'the same line re-indented is a move');
   for (const line of ['// await tab.goto(url).catch(() => {});', 'const note = "catch {} and .catch(() => null)";', 'await tab.goto(url).catch(error => log(error));',
     'await tab.goto(url).catch(() => assert.fail("the form did not load"));', 'try { await stop(); } catch (error) { throw new Error(`stop: ${error.message}`); }']) {
     assert.equal(push({}, {[swallowFile]: `${line}\n`}), '', line);

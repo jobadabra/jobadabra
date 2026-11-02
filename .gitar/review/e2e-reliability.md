@@ -35,7 +35,7 @@ Untouched legacy modules are labelled during the planned inventory/shrink PRs; t
 ## Rule G: no swallowed error on a line the PR adds (desktop/e2e, desktop/integration)
 
 Owner, 2 Nov 2026 (plan 3/4 of the flakiness guardrails). `.catch(() => {})`, `.catch(() => null)`, `.catch(() => undefined)` and an empty `catch {}` turned three reds into "state: null"
-or a silent wrong tab (beta 41250138244, beta 40748263936, runs 41264415439..). The mechanical gate refuses one on an added line, unless an identical one was removed elsewhere in the PR (a move)
+or a silent wrong tab (beta 41250138244, beta 40748263936, runs 41264415439..). The mechanical gate refuses one on an added line, unless the identical whole line was removed elsewhere in the PR (a move)
 or a `Why:` comment sits on the same or previous line; no trailer clears it. Old lines go when they go red. Raise a blocking finding for the forms it cannot see: a catch that returns a bare
 `null`/`''`/`false` or only logs without the call's name. CSS/nth locators, `networkidle` and `pages()[n]` are not gated (no escape in the 30 days before); skill e2e-harness rules 3, 5, 6 still apply in review.
 

@@ -147,11 +147,15 @@ const swallows = (raw, lines) => {
   const text = mask(raw), starts = [0];
   for (const match of text.matchAll(/\n/g)) starts.push(match.index + 1);
   const lineOf = index => starts.findLastIndex(start => start <= index) + 1;
-  return [...text.matchAll(SWALLOW)].map(match => ({first: lineOf(match.index), last: lineOf(match.index + match[0].length - 1), key: match[0].replace(/\s+/g, ' ')}))
-    .filter(found => { for (let n = found.first; n <= found.last; n++) if (lines.has(n)) return true; return false; });
+  const source = raw.split('\n');
+  // Why (2 Nov 2026, Gitar on #2979): a move is the same whole line, not the same catch; keyed on `.catch(() => {})` alone, deleting any old swallow exempted an unrelated new one.
+  return [...text.matchAll(SWALLOW)].map(match => {
+    const first = lineOf(match.index), last = lineOf(match.index + match[0].length - 1);
+    return {first, last, key: source.slice(first - 1, last).join(' ').replace(/\s+/g, ' ').trim()};
+  }).filter(found => { for (let n = found.first; n <= found.last; n++) if (lines.has(n)) return true; return false; });
 };
 
-/** Changed {file, before, after, added, removed} records -> "file:line: text" for each swallowed error on an added line with no identical one removed elsewhere in the PR and no Why: beside it. */
+/** Changed {file, before, after, added, removed} records -> "file:line: text" for each swallowed error on an added line with no identical whole line removed elsewhere in the PR and no Why: beside it. */
 export function newSwallowedErrors(changes) {
   const test = changes.filter(change => TEST_CODE.test(change.file));
   const gone = new Map();
