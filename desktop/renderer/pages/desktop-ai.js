@@ -15,7 +15,14 @@ export const setDesktopAiSeams = value => { seams = {...seams, ...value}; };
 export async function copyDesktopAi(family) {
   const done = await window.pilot.desktopAiHelp().catch(() => null);
   const say = words(done?.family || family, window.pilot.platform);
-  return done?.ok ? {ok: true, text: say.done(!!done.opened)} : {ok: false, text: say.gone};
+  if (done?.ok) return {ok: true, text: say.done(!!done.opened)};
+  return {ok: false, text: done?.reason === 'none' ? say.gone : say.failed};   // only a missing app is "gone"; a refused clipboard or a failed call is "try again" (Gitar on #3023)
+}
+
+/** Puts the banner into a page when it is offered (kept here so a long page function does not grow: clean-code on #3023). */
+export function appendDesktopAiOffer(into) {
+  const offer = desktopAiBanner();
+  if (offer) into.append(offer);
 }
 
 /** Whether the offer shows now: the app is here, a learned question is open, Focus has been read, and it was not set aside (Not now). */

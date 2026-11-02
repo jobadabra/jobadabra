@@ -13,7 +13,7 @@ globalThis.window.pilot = new Proxy({platform: 'win32', desktopAiHelp: async () 
   {get: (target, key) => target[key] ?? (async () => ({}))});
 globalThis.document.addEventListener ??= () => {};
 const {questionsNow} = await import('../renderer/pages/jobs-questions.js');
-const {addDesktopAiCommands, desktopAiBanner, offered, setDesktopAiSeams} = await import('../renderer/pages/desktop-ai.js');
+const {addDesktopAiCommands, appendDesktopAiOffer, desktopAiBanner, offered, setDesktopAiSeams} = await import('../renderer/pages/desktop-ai.js');
 
 const learned = [{question: 'Why this company?', key: 'a'}];
 const set = (state, seams = {}) => {
@@ -62,6 +62,28 @@ test('a press that finds the app gone says nothing was copied, never "copied"', 
   banner.querySelector('#desktop-ai-copy').click();
   await new Promise(resolve => setImmediate(resolve));
   assert.match(banner.querySelector('[role="status"]').textContent, /ChatGPT is not on this computer any more\. Nothing was copied\./);
+});
+
+test('a press whose copy failed says so, and does not claim the app is gone', async () => {
+  globalThis.window.pilot.desktopAiHelp = async () => ({ok: false, reason: 'error'});
+  set({desktopAi: {family: 'claude'}, learned});
+  const banner = desktopAiBanner();
+  banner.querySelector('#desktop-ai-copy').click();
+  await new Promise(resolve => setImmediate(resolve));
+  const text = banner.querySelector('[role="status"]').textContent;
+  assert.match(text, /Could not copy the instruction/);
+  assert.doesNotMatch(text, /not on this computer/);
+});
+
+test('appendDesktopAiOffer puts the banner in a page only while it is offered', () => {
+  set({desktopAi: {family: 'claude'}, learned});
+  const into = document.createElement('div');
+  appendDesktopAiOffer(into);
+  assert.equal(into.querySelectorAll('.qa-desktop-ai').length, 1);
+  set({desktopAi: null, learned});
+  const empty = document.createElement('div');
+  appendDesktopAiOffer(empty);
+  assert.equal(empty.querySelectorAll('.qa-desktop-ai').length, 0);
 });
 
 test('Focus and the Jobs bar get one row with the same words and button, only while learned questions are open', () => {

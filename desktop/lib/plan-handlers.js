@@ -114,7 +114,7 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
     const quiet = DEMO || process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE;
     const result = await copyAndOpen({clipboard: clipboard || {writeText() {}}, platform, found: findDesktopAi({...pc, platform}),
       openFile: quiet ? async () => 'test' : file => shell.openPath(file), run: quiet ? async () => false : openApp});
-    log('plan', 'desktop AI help', {ok: result.ok, family: result.family || '', opened: !!result.opened});
+    log('plan', 'desktop AI help', {ok: result.ok, reason: result.reason || '', family: result.family || '', opened: !!result.opened});
     return result;
   });
   return {status};

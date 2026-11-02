@@ -22,6 +22,7 @@ export function words(family, platform = 'darwin') {
     button: `Copy the instruction and open ${name}`,
     notNow: 'Not now',
     gone: `${name} is not on this computer any more. Nothing was copied.`,
+    failed: 'Could not copy the instruction. Try again.',
     short: `Let ${name} answer your questions`,
     done: opened => (opened
       ? `Copied, and ${name} is open. Paste it in a new chat with ${paste(platform)} and send.`

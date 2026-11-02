@@ -16,7 +16,7 @@ import {isStyle} from './letter-style.js';
 import {keyOf} from '../question-filter.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 import {fromDetailsLine} from '../answered-from-details.js';
-import {desktopAiBanner} from './desktop-ai.js';
+import {appendDesktopAiOffer} from './desktop-ai.js';
 import {ASKS} from '../question-nav.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
@@ -193,8 +193,7 @@ function draw(view, into) {
     words.append(icon('sparkle'), el('b', '', countText.learned(learned.length)));
     banner.append(words, go);
     into.append(banner);
-    const offer = desktopAiBanner();   // the Claude or ChatGPT desktop app can answer them (pages/desktop-ai.js)
-    if (offer) into.append(offer);
+    appendDesktopAiOffer(into);   // the Claude or ChatGPT desktop app can answer them (pages/desktop-ai.js)
   }
 
   const box = el('section', 'answer-item qa-section qa-learned');

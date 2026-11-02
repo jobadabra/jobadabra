@@ -14,13 +14,13 @@ const WIN = {platform: 'win32', env: {USERPROFILE: W, LOCALAPPDATA: LOCAL, APPDA
 const MAC = {platform: 'darwin', env: {HOME: '/Users/ann', PATH: '/usr/bin'}, home: '/Users/ann'};
 
 /** The handlers on a fake computer: `has` = the files and folders that exist, `list` = folder names inside a folder. Records what was copied and started. */
-function pcWith(t, system, {has = [], list = {}, openApp = async () => true, shellOpen = async () => ''} = {}) {
+function pcWith(t, system, {has = [], list = {}, openApp = async () => true, shellOpen = async () => '', copyThrows = false} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-desktop-ai-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const handlers = new Map(), copied = [], started = [];
   const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});
   registerSetupHandlers({storage, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, handleImportant: () => {}, toWindow: () => {}, track: () => {}, getWindow: () => null,
-    dialog: {}, shell: {openExternal() {}, openPath: async file => { started.push(file); return shellOpen(file); }}, clipboard: {writeText: text => copied.push(text)},
+    dialog: {}, shell: {openExternal() {}, openPath: async file => { started.push(file); return shellOpen(file); }}, clipboard: {writeText: text => { if (copyThrows) throw new Error('clipboard busy'); copied.push(text); }},
     plan: {pc: {...system, registry: () => [], exists: file => has.includes(file), list: folder => list[folder] || [], read: () => { throw new Error('ENOENT'); }}, platform: system.platform,
       openApp: async (command, args) => { started.push([command, ...args].join(' ')); return openApp(command, args); }}});
   return {copied, started, invoke: (name, ...args) => handlers.get(name)(null, ...args)};
@@ -40,6 +40,20 @@ test('Windows: an installer that keeps versions in app-x.y.z folders starts the 
   const pc = pcWith(t, WIN, {has: [folder, newest, `${folder}\\app-1.3.0\\claude.exe`], list: {[folder]: ['app-1.3.0', 'app-1.4.0', 'packages']}});
   assert.equal((await pc.invoke('desktopAiHelp')).opened, true);
   assert.deepEqual(pc.started, [newest]);
+});
+
+test('Windows: 1.10.0 is newer than 1.9.0 (the folders are compared as numbers, not as text; Gitar on #3023)', async t => {
+  const folder = `${LOCAL}\\AnthropicClaude`, newest = `${folder}\\app-1.10.0\\claude.exe`;
+  const pc = pcWith(t, WIN, {has: [folder, newest, `${folder}\\app-1.9.0\\claude.exe`], list: {[folder]: ['app-1.10.0', 'app-1.9.0']}});
+  await pc.invoke('desktopAiHelp');
+  assert.deepEqual(pc.started, [newest]);
+});
+
+test('a clipboard that refuses is its own answer: the app is there, nothing was copied, nothing was started (Gitar on #3023)', async t => {
+  const exe = `${LOCAL}\\AnthropicClaude\\claude.exe`;
+  const pc = pcWith(t, WIN, {has: [`${LOCAL}\\AnthropicClaude`, exe], copyThrows: true});
+  assert.deepEqual(await pc.invoke('desktopAiHelp'), {ok: false, reason: 'error'});
+  assert.deepEqual(pc.started, []);
 });
 
 test('Windows with only a Store package (no file to start): copied, and honestly not "opened"', async t => {

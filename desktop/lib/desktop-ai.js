@@ -10,6 +10,9 @@ import {instruction} from '../renderer/desktop-ai-words.js';
 
 const ORDER = ['claude', 'openai'];   // both apps on one PC: Claude first (the owner named it first)
 const EXE = {claude: 'claude.exe', openai: 'ChatGPT.exe'};
+// app-1.10.0 is newer than app-1.9.0: the parts are numbers, not text (Gitar on #3023). Missing parts count as 0.
+const parts = name => name.slice(4).split('.').map(Number);
+const newer = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (y[i] || 0) - (x[i] || 0); if (d) return d; } return 0; };
 
 /**
  * The app's file to start: the .app bundle on the Mac, the .exe inside its folder (or inside its newest app-x.y.z folder, as an installer that keeps versions does) on Windows; '' when none is there.
@@ -22,7 +25,7 @@ export function desktopAppFile(family, {env = process.env, platform = process.pl
   const w = path.win32.join;
   for (const folder of app.win(env).filter(Boolean)) {
     let versions = [];
-    try { versions = exists(folder) ? list(folder).filter(name => /^app-/i.test(name)).sort().reverse().map(name => w(folder, name)) : []; } catch { versions = []; }
+    try { versions = exists(folder) ? list(folder).filter(name => /^app-/i.test(name)).sort(newer).map(name => w(folder, name)) : []; } catch { versions = []; }
     const found = [folder, ...versions].map(dir => w(dir, EXE[family])).find(file => exists(file));
     if (found) return found;
   }
@@ -41,11 +44,11 @@ export const runOpen = (command, args) => new Promise(resolve => execFile(comman
 
 /**
  * Copies the instruction and starts the app. `clipboard.writeText`, `openFile(file)` (Electron's shell.openPath: resolves to '' when it worked) and `run(cmd, args)` (the Mac's open) are injected.
- * -> {ok: true, opened} or {ok: false, reason: 'none'}; `opened` is true only when the start call said so.
+ * -> {ok: true, opened}, {ok: false, reason: 'none'} (no app here) or {ok: false, reason: 'error'} (the copy failed: nothing is started); `opened` is true only when the start call said so.
  */
 export async function copyAndOpen({clipboard, openFile, run, found = findDesktopAi(), platform = process.platform}) {
   if (!found) return {ok: false, reason: 'none'};
-  clipboard.writeText(instruction());
+  try { clipboard.writeText(instruction()); } catch { return {ok: false, reason: 'error'}; }   // Why (Gitar on #3023): a clipboard that refuses is not "the app is gone"; nothing was copied, so nothing is started
   let opened = false;
   try {
     if (!found.file) opened = false;
