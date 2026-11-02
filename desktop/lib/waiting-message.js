@@ -22,7 +22,7 @@ const words = count => `${count} application${count === 1 ? ' is' : 's are'} wai
  * so a restart keeps the cap) decide when the one message goes. Invariants: at most one message an hour; an application the person handled meanwhile (`item.open`) is left out; with no
  * working channel nothing is sent and the hour is not used up; a failed send is logged and dropped (the app's own notification already showed it). Everything else is injectable for tests.
  */
-export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), clearTimer = clearTimeout, channels = () => notifyChannel.channelsOf(storage),
+export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), channels = () => notifyChannel.channelsOf(storage),
   sendEmail = mail => notifyChannel.sendEmail(storage, {...mail, urgent: true}), sendTelegram = text => sendBot(storage, text), log = appLog} = {}) {
   const pending = new Map();
   let timer = null, sending = false;

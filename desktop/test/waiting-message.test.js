@@ -9,7 +9,7 @@ function world({channels = ['email', 'telegram', 'app'], settings = {}, hold = n
   const clock = {t: START}, timers = [], runs = [], sent = {email: [], telegram: []}, saved = {...settings};
   const storage = {settings: () => saved, saveSettings: patch => Object.assign(saved, patch)};
   const message = createWaitingMessage(storage, {
-    now: () => clock.t, setTimer: (fn, ms) => { const timer = {at: clock.t + ms, fn}; timers.push(timer); return timer; }, clearTimer: timer => { timers.splice(timers.indexOf(timer), 1); },
+    now: () => clock.t, setTimer: (fn, ms) => { const timer = {at: clock.t + ms, fn}; timers.push(timer); return timer; },
     channels: () => channels,
     sendEmail: async mail => { if (hold) await hold.promise; sent.email.push(mail); return true; }, sendTelegram: async text => { sent.telegram.push(text); return true; }, log: () => {}});
   const advance = async ms => {
