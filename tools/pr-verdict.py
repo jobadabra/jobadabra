@@ -176,15 +176,9 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
 
 
 def job_spans(repo, runs, reports=()):
-    """[(started_at, completed_at)] of every job of the counted runs (one call per run; only for a CI change, the one kind of PR with a budget)."""
-    spans = []
-    for r in counted(runs):
-        if r.get('workflowName') in BUDGET_SKIPS:
-            continue
-        for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
-            if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports:
-                spans.append((j.get('started_at'), j.get('completed_at')))
-    return spans
+    """[(started_at, completed_at)] of the counted runs' jobs that the budget times (tools/pr_verdict_runs.py): no report job, no BUDGET_SKIPS run."""
+    return main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').job_spans(repo, runs, gh, counted, BUDGET_SKIPS,
+                                                                                                        lambda name: name not in REPORT_JOBS and suite_of(name) not in reports)
 
 
 RETRY_AFTER = (2, 6)   # waits before a GitHub 5xx's 2nd and 3rd try
