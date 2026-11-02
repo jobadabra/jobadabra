@@ -20,6 +20,8 @@ For each old release `R` of the last three (the three newest non-draft, non-beta
 
 Per run the result is one row per `R`: `{from, to, ok, rows: {before, after}, lost: [...], changed: [...]}` and a short summary; the job fails (red in Actions) on any loss, nothing else reacts to it.
 
+- **Only releases built after the rename (owner, 2 Nov 2026: "We don't want to support JOB_PILOTTO_ anymore").** The check drives the installed app through `JOBADABRA_*` env names; a release from before #2926 reads only the old ones, so `tools/release-after-rename.sh` keeps the check to releases whose commit contains the rename. While the newest stable is older, the run ends green with a notice and resumes with the next stable (delete the script then).
+
 ## Cadence by risk (owner, 1 Nov 2026)
 "Test a few scenarios, but their frequency should be different, based on the probability for that thing to break or to be modified." Measured on the history (git log, 15 Sep to 1 Nov): row-level loss never happened (the store only adds columns), while the data-folder code (rename of 25 Oct, "installed twice" and "old Store data moves once" of 31 Oct) was touched and nearly broke three times.
 

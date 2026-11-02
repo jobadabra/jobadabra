@@ -12,6 +12,8 @@ Every build is smoke-tested once, when it is built (`desktop.yml`: `mac-smoke.mj
 - Red = the job fails; the result line goes to the job log (no `$GITHUB_STEP_SUMMARY`, `tests/test_no_step_summaries.py`) and the screenshots are kept 14 days. Nothing blocks a merge or a beta (`tests/test_red_main.py`: ignored, report only).
 - GitHub's cron is the start (`23 3 * * *`); the Worker timer replaces it when the bot Worker has moved to `jobadabra-web` (GitHub cron is unreliable, memory `feedback-github-cron-unreliable-use-worker`).
 
+- **Only releases built after the rename (owner, 2 Nov 2026: "We don't want to support JOB_PILOTTO_ anymore").** The check drives the installed app through `JOBADABRA_*` env names; a release from before #2926 reads only the old ones, so `tools/release-after-rename.sh` keeps the check to releases whose commit contains the rename. While the newest stable is older, the run ends green with a notice and resumes with the next stable (delete the script then).
+
 ## Cadence by risk (owner, 1 Nov 2026: "their frequency should be different")
 | Scenario | Likelihood of breaking without our change | Runs |
 |---|---|---|
