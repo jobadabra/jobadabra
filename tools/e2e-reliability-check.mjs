@@ -148,7 +148,7 @@ const swallows = (raw, lines) => {
   for (const match of text.matchAll(/\n/g)) starts.push(match.index + 1);
   const lineOf = index => starts.findLastIndex(start => start <= index) + 1;
   const source = raw.split('\n');
-  // Why (2 Nov 2026, Gitar on #2979): a move is the same whole line, not the same catch; keyed on `.catch(() => {})` alone, deleting any old swallow exempted an unrelated new one.
+  // Why (2 Nov 2026, Gitar on #2979): a move is the same whole line, not the same catch; keyed on the catch alone, deleting any old swallow exempted an unrelated new one.
   return [...text.matchAll(SWALLOW)].map(match => {
     const first = lineOf(match.index), last = lineOf(match.index + match[0].length - 1);
     return {first, last, key: source.slice(first - 1, last).join(' ').replace(/\s+/g, ' ').trim()};
