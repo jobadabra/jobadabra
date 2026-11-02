@@ -53,7 +53,7 @@ export function wizardFixture() {
     cachedDraft: async () => cached, cacheDraftEdits: async edits => Object.assign(cached.draft, edits)};
   const context = {document, window, el, $, show: (node, on = true) => { node.hidden = !on; },
     shared: {state, draft: {}}, STEPS: [...read('pages/core.js').match(/STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]),
-    hideCards() {}, refreshCv() {}, mountEngine: () => ({picked: () => null, status: () => null}), canContinue: () => false, setTimeout: fn => fn(), clearTimeout() {}, saveState: {},
+    hideCards() {}, refreshCv() {}, mountEngine: () => ({picked: () => null, status: () => null}), canContinue: () => false, ownKeys: state => state?.secrets || {}, setTimeout: fn => fn(), clearTimeout() {}, saveState: {},
     message() {}, byStore: (_, local) => local, osText: text => text, loadJobs() {}, openView: name => opened.push(name),
     getComputedStyle: node => ({display: node.style.display || 'list-item', visibility: node.style.visibility || 'visible'})};
   const wizard = vm.runInNewContext(`${script('pages/wizard.js')}\n({goStep, showSetupFinish, labels: setupStepLabels})`, context);

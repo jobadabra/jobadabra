@@ -16,6 +16,7 @@ test('every key panel Save button has a handler', () => {
 
 test('every secret a panel shows has a hint', () => {
   const names = [...new Set([...html.matchAll(/data-secret="([A-Z_]+)"/g)].map(match => match[1]))];
-  const hints = handlers.match(/ipcMain\.handle\('secretHints'[\s\S]*?\.map\(/)[0];
+  assert.match(handlers, /ipcMain\.handle\('secretHints', \(\) => ownSecretHints\(storage\)\)/, 'the handler answers with the person\'s own keys (lib/secrets.js)');
+  const hints = fs.readFileSync(new URL('../lib/secrets.js', import.meta.url), 'utf8').match(/export function ownSecretHints\(storage, names = \[[^\]]*\]/)[0];
   for (const name of names) assert.ok(hints.includes(`'${name}'`), `${name} is in secretHints`);
 });
