@@ -102,7 +102,7 @@ test('the doors: the dialog, the card and ⌘K all end in the Settings button, a
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('pages/gmail-offer.js'), /\$\('google-connect'\)\.click\(\)/, 'one sign-in flow');
   assert.match(read('pages/focus-suggestions.js'), /connect_gmail: \(\) => connectGmail\(\)/);
-  assert.match(read('pages/nav.js'), /gmailCommand\(\)/, '⌘K');
+  assert.match(read('pages/nav.js'), /addGmailCommand\(add\)/, '⌘K');
   assert.match(read('index.html'), /id="gmail-offer-dialog"/);
   for (const day of ['pages/wizard.js', 'onboarding.js']) assert.doesNotMatch(read(day), /gmail|google/i, `${day}: nothing is asked on day one`);
 });

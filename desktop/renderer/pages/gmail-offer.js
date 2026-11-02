@@ -50,6 +50,7 @@ export function initGmailOffer() {
   refreshGmail().catch(() => {});
 }
 
-/** The ⌘K command (pages/nav.js): only while Gmail is not connected. */
-export const gmailCommand = () => (view.loaded && !view.connected
-  ? {label: 'Connect Gmail', hint: 'Replies move your jobs; mailed codes are typed for you', keywords: 'gmail google connect mail email calendar sign in', run: connectGmail} : null);
+/** The ⌘K command (pages/nav.js), only while Gmail is not connected. `add` is the palette's (group, label, hint, keywords, run). Why (2 Nov 2026): the branch lives here so nav.js's over-limit function does not grow. */
+export const addGmailCommand = add => {
+  if (view.loaded && !view.connected) add('Settings', 'Connect Gmail', 'Replies move your jobs; mailed codes are typed for you', 'gmail google connect mail email calendar sign in', connectGmail);
+};
