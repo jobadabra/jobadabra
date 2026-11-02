@@ -1,0 +1,75 @@
+// The window's side of the readiness states (lib/plan-readiness.js): the status of each family's own CLI (Claude Code, Codex) with its state, Verify, the file picker, the official install page and "Copy details for support".
+// Moved out of setup-handlers.js (2 Nov 2026) so the states have one place. Guards: test/plan-readiness.test.js, integration/app/ai-plan-states.test.js.
+// Invariants: the window never receives a raw message (the check's text stays in settings and in the support details); a file the person chose must be the real CLI (right name, starts, not the chat app);
+// one anonymous counted event per state reached (family, state, system only): it follows the "Technical reports" switch like every analytics event (lib/analytics.js).
+import path from 'node:path';
+import * as claudeCode from './claude-code.js';
+import {SETTING, rememberLogin, setChosenFile} from './cli-files.js';
+import {refreshPath} from './fresh-path.js';
+import {facts, readiness, supportDetails} from './plan-readiness.js';
+import {verifyCodex} from './ai/codex-cli.js';
+import {FAMILY, GIT_PAGE} from '../renderer/ai-plan-guide.js';
+
+const SETTINGS_KEY = {claude: 'claudeCode', openai: 'codex'};
+const FILE_NAME = {claude: /^claude(?:\.exe|\.cmd)?$/i, openai: /^codex(?:\.exe|\.cmd)?$/i};
+const CHAT_APP = /[\\/](?:AnthropicClaude|WindowsApps)[\\/]|\.app[\\/]/i;
+
+/** Test seams: pc {env, home, exists, list, read, registry} is a fake computer; runVersion(file) -> '1.2.3' | null; platform; verifyFns {claude, openai}. */
+export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, track = () => {}, DEMO = false, pc = {}, runVersion = claudeCode.version, appVersion = '', platform = process.platform, verifyFns = {}}) {
+  const reached = new Set();
+  for (const [family, file] of Object.entries(SETTING)) { setChosenFile(family, storage.settings()[file]); rememberLogin(family, storage.settings()[SETTINGS_KEY[family]]); }
+
+  // The status the window draws: state + the few facts it shows. Never `error`.
+  async function status(family) {
+    const settings = storage.settings();
+    const read = ran => facts(family, {...pc, platform, settings, ran});
+    let found = read();
+    if (!pc.exists && !found.path && platform === 'win32' && await refreshPath()) found = read();   // installed since the app started (Windows PATH)
+    if (found.path && family === 'claude') {
+      const version = await runVersion(found.path);
+      found = read(!!version);
+      found.version = version;
+    }
+    const state = readiness(found);
+    if (!DEMO && !reached.has(`${family}:${state}`)) { reached.add(`${family}:${state}`); track('ai_setup_state', {family, state, os: found.platform}); }
+    const last = settings[SETTINGS_KEY[family]] || {};
+    // authenticated: a real check said so (Verify), and nothing since contradicts it; the chooser verifies once when a CLI looks ready but was never checked.
+    return {family, state, installed: found.installed, path: found.path, version: found.version || last.version || null, authenticated: !!last.checkedAt && ['ready', 'limit'].includes(state),
+      checkedAt: last.checkedAt || null, desktopApp: found.desktopApp};
+  }
+  const verify = {claude: () => claudeCode.verify(storage), openai: () => verifyCodex(storage), ...verifyFns};   // verifyFns: a test's stand-ins (never the real CLI)
+  const DEMO_READY = family => ({family, state: 'ready', installed: true, path: family === 'claude' ? '/usr/local/bin/claude' : '/usr/local/bin/codex', version: '2.1.0', authenticated: true, checkedAt: '2026-09-30T09:00:00Z', desktopApp: true});
+
+  for (const [family, statusName, verifyName] of [['claude', 'claudeCodeStatus', 'verifyClaudeCode'], ['openai', 'codexStatus', 'verifyCodex']]) {
+    ipcMain.handle(statusName, () => (DEMO ? DEMO_READY(family) : status(family)));
+    ipcMain.handle(verifyName, async () => {
+      if (DEMO) return DEMO_READY(family);
+      await verify[family]();
+      return status(family);
+    });
+  }
+  ipcMain.handle('planChooseFile', async (_, family) => {
+    if (!FAMILY[family]) return {ok: false, reason: 'unknown'};
+    const f = FAMILY[family], win = platform === 'win32';
+    const picked = await dialog.showOpenDialog(getWindow(), {title: `Choose ${f.file}${win ? '.exe' : ''}`, properties: ['openFile'], ...(win ? {filters: [{name: 'Program', extensions: ['exe', 'cmd']}]} : {})});
+    if (picked.canceled || !picked.filePaths?.[0]) return {ok: false, reason: 'cancelled'};
+    const file = picked.filePaths[0];
+    if (!FILE_NAME[family].test((platform === 'win32' ? path.win32 : path.posix).basename(file)) || CHAT_APP.test(file)) return {ok: false, reason: 'not-the-cli'};
+    if (family === 'claude' && !await runVersion(file)) return {ok: false, reason: 'did-not-start'};
+    storage.saveSettings({[SETTING[family]]: file, [SETTINGS_KEY[family]]: {}});   // a new file is a new CLI: the last check said nothing about it, so it is checked again (review of [cc] 1/2)
+    rememberLogin(family, null);
+    setChosenFile(family, file);
+    return {ok: true, status: await status(family)};
+  });
+  ipcMain.handle('planOpenGuide', (_, which) => {
+    const url = which === 'git' ? GIT_PAGE : FAMILY[which]?.page;
+    if (url) shell.openExternal(url);
+    return !!url;
+  });
+  ipcMain.handle('planSupportDetails', async (_, family) => {
+    if (!FAMILY[family]) return '';
+    const settings = storage.settings(), found = facts(family, {...pc, platform, settings});
+    return supportDetails(family, found, {env: pc.env, settings, version: appVersion, state: readiness(found)});
+  });
+  return {status};
+}

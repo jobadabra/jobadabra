@@ -8,6 +8,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'desktop/integration/app/ai-plan-states.test.js'
       - 'desktop/integration/results-reporter.mjs'   # separators of a test file's path (desktop/test/integration-results-reporter.test.js)
       - 'desktop/lib/ai/codex-cli.js'
       - 'desktop/lib/analytics.js'
@@ -25,6 +26,7 @@ on:
       - 'desktop/lib/browser-profile.js'
       - 'desktop/lib/claude-code.js'
       - 'desktop/lib/claude-session.js'
+      - 'desktop/lib/cli-files.js'
       - 'desktop/lib/credentials.js'
       - 'desktop/lib/e2e-hidden.js'
       - 'desktop/lib/extension-install.js'
@@ -41,6 +43,8 @@ on:
       - 'desktop/lib/pdf-edit/fonts.js'
       - 'desktop/lib/pipeline-env.js'
       - 'desktop/lib/pipeline-run.js'
+      - 'desktop/lib/plan-handlers.js'
+      - 'desktop/lib/plan-readiness.js'
       - 'desktop/lib/private-file.js'
       - 'desktop/lib/reports.js'
       - 'desktop/lib/sentry.js'
@@ -74,6 +78,8 @@ on:
       - 'desktop/start.js'
       - 'desktop/package.json'
       - 'desktop/package-lock.json'
+      - 'desktop/renderer/ai-plan-guide.js'
+      - 'desktop/renderer/pages/ai-engine.js'
       - 'desktop/scripts/stage.mjs'
       - 'desktop/scripts/sign.cjs'
       - 'desktop/test/**'

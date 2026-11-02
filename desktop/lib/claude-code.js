@@ -11,6 +11,9 @@ import os from 'node:os';
 import path from 'node:path';
 import * as ai from './ai/index.js';
 import {cleanEnv, runJson} from './ai/claude-code-cli.js';
+import {failureOf} from './plan-failure.js';
+import {loginStatus} from './plan-login.js';
+import {rememberLogin} from './cli-files.js';
 // Moved to lib/ai/claude-code-cli.js (9 Oct 2026), re-exported so callers are unchanged.
 export {alias, cleanEnv, cliClient, parseJson, problem, promptAndFiles, runJson} from './ai/claude-code-cli.js';
 
@@ -18,8 +21,9 @@ export {alias, cleanEnv, cliClient, parseJson, problem, promptAndFiles, runJson}
 // and apply.js imports pipeline.js.
 const claudeBinary = async () => (await import('./apply.js')).claudeBinary();
 
-export const NOTICE = 'Jobadabra will run your own Claude Code on this Mac. It uses your Claude plan\'s usage limits, not API credits. '
-  + 'Scheduled runs in your GitHub repository (Always on) still use your API key. '
+// Why (2 Nov 2026, owner): Always on now runs on our servers with Jobadabra's own AI, so it never uses the person's plan or key (the old line said "still use your API key").
+export const NOTICE = 'Jobadabra will run your own Claude Code on this computer. It uses your Claude plan\'s usage limits, not API credits. '
+  + 'Always on (on our servers) uses Jobadabra\'s own AI, not your plan. '
   + 'You stay in control: switch back to an API key any time.';
 export const ENGINES = ai.NAMES;
 const VERIFY_TIMEOUT_MS = 90 * 1000;
@@ -66,32 +70,35 @@ export async function detect({binary = claudeBinary, run = execFile} = {}) {
 
 const freshFolder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
 
-// Windows: the Claude Desktop app is a chat app and does not include Claude Code (the `claude` command); what installs it is told here.
-const hint = (platform = process.platform) => platform === 'win32'
-  ? ' The Claude Desktop app does not include Claude Code: in a Command Prompt run  winget install Anthropic.ClaudeCode  (answer Y to the terms), then restart Jobadabra and press Verify.' : '';
-// Where it looked, so a miss can be told from a stale PATH or an unusual install (a few folders; shown only in the user's own window).
-async function looked() {
-  try { const dirs = (await import('./apply.js')).claudeSearchDirs(); return ` Looked in: ${[...new Set(dirs)].slice(0, 8).join(', ')}.`; } catch { return ''; }
-}
 // Installed? Signed in? One tiny call (the haiku model, one word, no tools), on the user's own plan. The result is
 // kept on this Mac (settings.claudeCode) for the status block and for jobs: the path, the version, when, ok.
 export async function verify(storage, {binary = claudeBinary, run = execFile, spawnFn = spawn, now = () => new Date()} = {}) {
   const found = await detect({binary, run});
   let result;
   if (!found.installed) {
-    result = {...found, authenticated: false, error: found.path ? 'Claude Code did not start (claude --version failed).'
-      : `Claude Code is not installed on this Mac. Install it from claude.com/claude-code, sign in, then Verify.${hint()}${await looked()}`};
+    // Raw detail stays here for "Copy details for support" (plan-readiness supportDetails); the screen draws the state from the files (plan-readiness readiness).
+    result = {...found, authenticated: false, failure: found.path ? 'did-not-start' : '', error: found.path ? 'claude --version failed' : 'claude was not found'};
   } else {
-    const cwd = freshFolder();
-    try {
-      const answer = await runJson(found.path, ['--model', 'haiku', '--tools', '', '--max-turns', '1', '--no-session-persistence'],
-        'Reply with the single word OK.', {cwd, timeout: VERIFY_TIMEOUT_MS, spawnFn});
-      // Over the plan's limit still means installed and signed in: say so, it works again later.
-      result = {...found, authenticated: !answer.error || answer.error.kind === 'limit', error: answer.error?.text || ''};
-    } finally { fs.rmSync(cwd, {recursive: true, force: true}); }
+    const login = await loginStatus('claude', found.path, {run, env: cleanEnv()});   // the CLI's own answer (lib/plan-login.js)
+    if (login === 'signed-out') {
+      // Not signed in: no AI call (it would only fail); the person signs in on Anthropic's page.
+      result = {...found, authenticated: false, failure: 'signed-out', login, error: 'claude auth status: not logged in'};
+    } else {
+      const cwd = freshFolder();
+      try {
+        const answer = await runJson(found.path, ['--model', 'haiku', '--tools', '', '--max-turns', '1', '--no-session-persistence'],
+          'Reply with the single word OK.', {cwd, timeout: VERIFY_TIMEOUT_MS, spawnFn});
+        // Over the plan's limit still means installed and signed in: say so, it works again later.
+        // A call that says "signed out" while the CLI says it is signed in is not a sign-in problem: a neutral failed check, the raw words kept for support.
+        const contradiction = answer.error?.kind === 'signed-out' && login === 'signed-in';
+        result = {...found, authenticated: !answer.error || answer.error.kind === 'limit', login, failure: contradiction ? 'failed' : failureOf(answer.error),
+          error: contradiction ? `claude auth status says signed in, the test call said: ${answer.error.text}` : answer.error?.text || ''};
+      } finally { fs.rmSync(cwd, {recursive: true, force: true}); }
+    }
   }
   storage.saveSettings({claudeCode: {installed: result.installed, path: result.path, version: result.version,
-    authenticated: result.authenticated, error: result.error, checkedAt: now().toISOString()}});
+    authenticated: result.authenticated, login: result.login || '', failure: result.failure, error: result.error, checkedAt: now().toISOString()}});
+  rememberLogin('claude', {login: result.login});
   return result;
 }
 

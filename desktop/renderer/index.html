@@ -35,6 +35,7 @@
 <link rel="stylesheet" href="run-result.css">
 <link rel="stylesheet" href="session-live.css">
 <link rel="stylesheet" href="setup-steps.css">
+<link rel="stylesheet" href="ai-plan.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 </head>
 <body>
@@ -1307,12 +1308,12 @@
         <div class="engine" id="ai-engine-settings"></div>
         <div class="conn-foot" data-family="claude">
           <div class="conn-foot-head"><h3>API key</h3><span class="status-line" data-secret="ANTHROPIC_API_KEY"></span></div>
-          <p class="muted small">Always on (GitHub) requires an API key, regardless of the engine selected on this Mac.</p>
+          <p class="muted small">Always on (on our servers) uses Jobadabra's own AI, not this key.</p>
           <div class="inline"><input type="password" id="set-anthropic" placeholder="sk-ant-…"><button class="secondary" id="set-anthropic-save">Save</button></div>
         </div>
         <div class="conn-foot" data-family="openai" hidden>
           <div class="conn-foot-head"><h3>OpenAI API key</h3><span class="status-line" data-secret="OPENAI_API_KEY"></span></div>
-          <p class="muted small">Always on (GitHub) requires an API key, regardless of the engine selected on this Mac.</p>
+          <p class="muted small">Always on (on our servers) uses Jobadabra's own AI, not this key.</p>
           <div class="inline"><input type="password" id="set-openai" placeholder="sk-…"><button class="secondary" id="set-openai-save">Save</button></div>
         </div>
       </div>

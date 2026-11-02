@@ -12,6 +12,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {AiError, usage as usageOf} from './contract.js';
 import {CliAdapter, cliError, conversation, runProcess, slots} from './cli-base.js';
+import {chosenFile} from '../cli-files.js';
+import {failureOf} from '../plan-failure.js';
+import {loginStatus} from '../plan-login.js';
 import {openaiModel} from './models.js';
 import {dropNulls, strict} from './schema.js';
 
@@ -34,14 +37,16 @@ export const MISSING_TEXT = 'Codex was not found on this computer: install it (d
 // Where the user's Codex may be: PATH, then where its installers put it.
 export function codexSearchDirs(env = process.env, platform = process.platform) {
   const p = platform === 'win32' ? path.win32 : path.posix;
-  const home = env.USERPROFILE && platform === 'win32' ? env.USERPROFILE : os.homedir();
+  const home = platform === 'win32' ? env.USERPROFILE || os.homedir() : env.HOME || os.homedir();
   return [...String(env.PATH || '').split(platform === 'win32' ? ';' : ':').filter(Boolean), p.join(home, '.local', 'bin'),
     ...(platform === 'win32' ? [env.APPDATA && p.join(env.APPDATA, 'npm')].filter(Boolean)
       : [p.join(home, '.npm-global', 'bin'), p.join(home, '.codex', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'])];
 }
-export function codexBinary(env = process.env, exists = fs.existsSync, platform = process.platform) {
+/** The Codex file to run: the file the person chose, else the first codex[.exe|.cmd] in PATH and the installers' folders (HOME read from env); '' when none exists. Reads files only (exists is injectable). */
+export function codexBinary(env = process.env, exists = fs.existsSync, platform = process.platform, chosen = chosenFile('openai')) {
   const p = platform === 'win32' ? path.win32 : path.posix;
   const names = platform === 'win32' ? ['codex.exe', 'codex.cmd'] : ['codex'];
+  if (chosen && exists(chosen)) return chosen;   // the file the person chose (lib/cli-files.js)
   return codexSearchDirs(env, platform).flatMap(dir => names.map(name => p.join(dir, name))).find(file => exists(file)) || '';
 }
 
@@ -177,8 +182,10 @@ export const codexClient = (binary, options = {}) => new Codex({binary, ...optio
 // Kept on this computer (settings.codex) for the status block and for jobs.
 export async function verifyCodex(storage, {binary = codexBinary, spawnFn, run = execFile, now = () => new Date()} = {}) {
   const file = binary();
-  let result = {installed: !!file, path: file, authenticated: false, error: file ? '' : MISSING_TEXT};
-  if (file) {
+  let result = {installed: !!file, path: file, authenticated: false, failure: '', error: file ? '' : 'codex was not found'};
+  const login = file ? await loginStatus('openai', file, {run, env: codexEnv()}) : '';   // Codex's own answer (lib/plan-login.js): signed out needs no AI call
+  if (file && login === 'signed-out') result = {...result, failure: 'signed-out', login, error: 'codex login status: not logged in'};
+  else if (file) {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-codex-'));
     try {
       const args = [...lockedArgs(folder, openaiModel('claude-haiku').model, await features(file, run)), '-'];
@@ -189,7 +196,8 @@ export async function verifyCodex(storage, {binary = codexBinary, spawnFn, run =
       const failure = finished.error || ((failed.length || finished.code !== 0)
         ? classify(`${failed.map(item => item.error?.message || item.message || '').join(' ')}\n${finished.stderr || ''}`) : null);
       // Over the plan's limit still means installed and signed in: say so, it works again later.
-      result = {...result, installed: failure?.kind !== 'missing', authenticated: !failure || failure.kind === 'limit', error: failure?.text || ''};
+      result = {...result, installed: failure?.kind !== 'missing', authenticated: !failure || failure.kind === 'limit', login, failure: failure?.kind === 'signed-out' && login === 'signed-in' ? 'failed' : failureOf(failure),
+        error: failure?.kind === 'signed-out' && login === 'signed-in' ? `codex login status says signed in, the test call said: ${failure.text}` : failure?.text || ''};
     } finally { fs.rmSync(folder, {recursive: true, force: true}); }
   }
   storage.saveSettings({codex: {...result, checkedAt: now().toISOString()}});

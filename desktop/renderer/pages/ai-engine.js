@@ -6,12 +6,14 @@
 import {refreshClaudeHelp} from '../claude-help.js';
 import {choiceCards, el, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {API_OF, CLI_OF, FAMILY_CARDS, TEXT, afterClick, chosen, cliStatus, defaultMethod, familyOf, fallbackOn, selection, showFallback} from '../ai-engine-view.js';
+import {API_OF, CLI_OF, FAMILY_CARDS, TEXT, afterClick, chosen, cliStatus, defaultMethod, familyOf, fallbackOn, ownKeys, selection, showFallback, statusLines} from '../ai-engine-view.js';
 import {applyAiNames} from '../ai-name.js';
+import {FAMILY, guide} from '../ai-plan-guide.js';
+import {planCard} from '../ai-plan-card.js';
 import {shared} from './shared.js';
 
-const hasKey = () => !!shared.state?.secrets?.ANTHROPIC_API_KEY;
-const hasOpenAiKey = () => !!shared.state?.secrets?.OPENAI_API_KEY;
+const hasKey = () => !!ownKeys(shared.state).ANTHROPIC_API_KEY;
+const hasOpenAiKey = () => !!ownKeys(shared.state).OPENAI_API_KEY;
 const COMPANY_LOGO = {claude: 'anthropic', openai: 'openai'};   // the companies' own marks (renderer/assets/ai/)
 const ICONS = {api: 'key', cli: 'terminal', openai: 'key', codex: 'terminal'};
 export const RECHECK_MS = 3000;   // how often a missing CLI is looked for again while its chooser is on screen
@@ -21,7 +23,7 @@ const CLI = {claude: {name: 'Claude Code CLI', short: 'Claude Code', status: () 
 
 // mountEngine(box, {context: 'wizard' | 'settings', onChange(picked)}) -> {picked(), refresh()}
 export function mountEngine(box, {context = 'settings', onChange = () => {}} = {}) {
-  let picked = chosen(shared.state?.settings, hasKey(), context), busy = false, problem = '';
+  let picked = chosen(shared.state?.settings, hasKey(), context), busy = false, problem = '', copied = false;
   let family = picked && picked !== 'free' ? familyOf(picked) : null;   // null: no family open (Free picked, or nothing yet)
   const statuses = {claude: null, openai: null};   // each family's CLI, found and verified separately
   const statusOf = () => statuses[family];   // family is null while Free leads: nothing to read
@@ -48,7 +50,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     free.classList.add('is-single');
     // The engine cards of the open family (API key / its own CLI), only once a family is open.
     const cards = family ? choiceCards(FAMILY_CARDS[family].map(id => ({id, icon: ICONS[id], title: TEXT[id].title, text: context === 'settings' ? TEXT[id].short : TEXT[id].text,
-      note: id === CLI_OF[family] && status && !status.installed ? 'Not found on this Mac' : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
+      note: id === CLI_OF[family] && status && ['app-only', 'nothing', 'elsewhere', 'broken'].includes(status.state) ? `Needs ${FAMILY[family].cli}` : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
     // Settings: the key box under the chooser shows only for the API key card of the open family (owner, 16 Oct 2026: hide technical details until asked).
     if (context === 'settings') for (const foot of document.querySelectorAll('#setting-ai [data-family]')) foot.hidden = selection({picked, family}).keyBox !== API_OF[foot.dataset.family] || foot.dataset.family !== family;
     const head = el('div', 'engine-head');
@@ -59,11 +61,31 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     if (selection({picked, family}).note) parts.push(cliNote());   // what the old confirm said, now a note under the selected card
     // Only the picked subscription card says more: one line (ready, or what is missing), the rest folded under "More about this".
     const aboutCli = !!family && picked === CLI_OF[family];
-    if (aboutCli) parts.push(statusBlock(cli));
-    if (problem) parts.push(el('p', 'message error', problem));
-    if (aboutCli) parts.push(moreAbout(cli));
+    if (aboutCli) parts.push(cli.checking || busy ? statusBlock(cli) : planBlock(status));
+    if (aboutCli && copied) parts.push(el('p', 'muted small', 'Details copied. Paste them into your message to support.'));
+    if (problem) parts.push(el('p', 'message error', problem));   // our own words only (a file refused, Free AI could not start): never a CLI's raw message
+    if (aboutCli && cli.usable) parts.push(moreAbout(cli));
     box.replaceChildren(...parts);
   };
+  // One readiness state, drawn from lib/plan-readiness.js (the status carries it): the words and the one next step are renderer/ai-plan-guide.js.
+  const stateOf = found => found.state || (found.installed ? (found.authenticated ? 'ready' : 'sign-in') : 'nothing');
+  const planBlock = found => planCard(guide(stateOf(found), {family, platform: window.pilot.platform, inApp: false}), {onAction: act});
+  const REFUSED = {'not-the-cli': file => `That is not ${file}. Choose the ${file} file.`, 'did-not-start': () => 'That file did not start. Choose another one.'};
+  async function act(id) {
+    const which = family;
+    problem = ''; copied = false;
+    if (id === 'check') return check();
+    if (id === 'free') return pick('free');
+    if (id === 'install') await window.pilot.planOpenGuide(which);
+    else if (id === 'install-git') await window.pilot.planOpenGuide('git');
+    else if (id === 'details') { copied = await navigator.clipboard?.writeText(await window.pilot.planSupportDetails(which)).then(() => true, () => false) ?? false; }
+    else if (id === 'choose-file') {
+      const result = await window.pilot.planChooseFile(which);
+      if (result.ok) { statuses[which] = result.status; onChange(picked); if (picked === CLI_OF[which] && !result.status.authenticated) return check(); }
+      else if (REFUSED[result.reason]) problem = REFUSED[result.reason](`${FAMILY[which].file}${window.pilot.platform === 'win32' ? '.exe' : ''}`);
+    }
+    render();
+  }
   const statusBlock = cli => {
     const block = el('div', 'engine-status');  // one tinted line: ready, or what is missing, then "Check again"
     const row = el('div', 'engine-status-row');
@@ -71,7 +93,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     Object.assign(again, {type: 'button', disabled: busy});
     again.addEventListener('click', () => check());
     const lines = el('div', 'engine-status-lines');
-    for (const line of cli.usable ? [{tone: 'good', text: 'Ready to use'}] : cli.lines.filter(each => each.tone !== 'good')) lines.append(pill(line.text, line.tone, {dot: true}));
+    for (const line of statusLines(cli, busy)) lines.append(pill(line.text, line.tone, {dot: true}));
     row.append(el('b', '', CLI[family].short), lines, again);
     block.append(row);
     return block;
@@ -104,14 +126,13 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   async function check() {
     busy = true; problem = ''; render();
     const which = family;
-    try { statuses[which] = await CLI[which].verify(); } catch (error) { problem = error.message; }
+    try { statuses[which] = await CLI[which].verify(); } catch { statuses[which] = {...statuses[which], installed: !!statuses[which]?.installed, authenticated: false, state: 'check-failed'}; }   // a failed check is a state, never its message
     busy = false;
-    if (statuses[which]?.error && !statuses[which].authenticated) problem = statuses[which].error;
     render();
     return cliStatus(statuses[which], which).usable;
   }
   async function pick(id) {
-    problem = '';
+    problem = ''; copied = false;
     if (id === 'cli' || id === 'codex') {
       ({picked, family} = afterClick({picked, family}, id)); render();   // selected at once; Settings saves it only once it can run
       if (!cliStatus(statusOf(), family).usable && !(await check())) { render(); onChange(picked); return; }
@@ -138,20 +159,24 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   render();
   // Each CLI's status is read now and again whenever it could have changed: the window regains focus (the user came back from installing it),
   // and every few seconds while one is still missing. Installing Codex or Claude Code never needs an app restart.
-  const recheck = () => {
+  // `again`: the window regained focus, so a CLI that was not ready is checked for real (free for a signed-out one: no AI call, lib/plan-login.js); the timer only re-reads files.
+  const recheck = (again = false) => {
     if (busy) return;   // a Verify in progress owns the status
     for (const which of Object.keys(CLI)) {
+      if (again === true && family === which && ['sign-in', 'check-failed', 'broken'].includes(statuses[which]?.state)) { check(); continue; }
       CLI[which].status().then(found => {
         if (busy || JSON.stringify(found) === JSON.stringify(statuses[which])) return;
         statuses[which] = found; render(); onChange(picked);
+        if (found.state === 'checking' && family === which) check();   // found but never checked: one real check decides signed in or not (no guess from a file)
       }, () => { if (!statuses[which]) { statuses[which] = {installed: false}; render(); } });
     }
   };
   recheck();
-  const watch = () => { if (!box.isConnected) { clearInterval(timer); removeEventListener('focus', recheck); document.removeEventListener('visibilitychange', onVisible); } };
-  const onVisible = () => { if (!document.hidden) recheck(); };
+  const watch = () => { if (!box.isConnected) { clearInterval(timer); removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVisible); } };
+  const onFocus = () => recheck(true);
+  const onVisible = () => { if (!document.hidden) recheck(true); };
   const timer = setInterval(() => { watch(); if (box.isConnected && Object.values(statuses).some(found => !found?.installed)) recheck(); }, RECHECK_MS);
-  addEventListener('focus', recheck);
+  addEventListener('focus', onFocus);
   document.addEventListener('visibilitychange', onVisible);
   return {picked: () => picked, family: () => family, status: () => statuses[familyOf(picked || CLI_OF[family])],
     refresh: () => { picked = chosen(shared.state?.settings, hasKey(), context) || picked; if (picked === 'free') family = null; else if (picked) family = familyOf(picked); render(); }};

@@ -1,0 +1,10 @@
+/* The readiness card of the person's own AI plan (renderer/ai-plan-card.js): title, text, numbered install steps with the official line, buttons. Built from the shared .alert. */
+.engine-guide { align-items: flex-start !important; }
+.engine-guide b { font-size: var(--fs-md); color: var(--ink); }
+.engine-steps { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); color: var(--ink-2); }
+.engine-steps li { margin: var(--sp-1) 0; }
+.engine-command { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-2) 0 0; padding: var(--sp-2) var(--sp-3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.engine-command code { flex: 1; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); word-break: break-all; }
+.engine-command button { flex: none; }
+.engine-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); margin-top: var(--sp-3); }
