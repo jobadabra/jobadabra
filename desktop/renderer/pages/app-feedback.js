@@ -23,6 +23,7 @@ async function open() {
   prepared = await window.pilot.feedbackPrepare(screen).catch(() => ({shot: null, logs: null}));
   $('app-feedback-include-shot').checked = !!prepared.shot;
   $('app-feedback-include-logs').checked = !!prepared.logs;
+  $('app-feedback-logs').closest('details').hidden = !prepared.logs;   // the preview shows whenever the logs are ticked, also after an earlier open unticked them
   $('app-feedback-logs').textContent = prepared.logs?.text || 'No logs could be read.';
   $('app-feedback-include-logs').disabled = !prepared.logs;
   drawShot();

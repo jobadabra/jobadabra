@@ -34,7 +34,7 @@ export function redact(text, {home = os.homedir()} = {}) {
   return out.split('\n').map(line => (line.length > LINE_CHARS ? `${line.slice(0, LINE_CHARS)}… (+${line.length - LINE_CHARS} chars)` : line)).join('\n');
 }
 
-// The last `count` lines of a file, oldest first ('' when it is missing). Reads at most the last 512 KB.
+// The last `count` lines of a file, oldest first ([] when it is missing or unreadable). Reads at most the last 512 KB.
 export function lastLines(file, count) {
   let fd;
   try { fd = fs.openSync(file, 'r'); } catch { return []; }
