@@ -6,6 +6,7 @@ import path from 'node:path';
 import * as claudeCode from './claude-code.js';
 import {SETTING, rememberLogin, setChosenFile} from './cli-files.js';
 import {refreshPath} from './fresh-path.js';
+import {log} from './log.js';
 import {facts, readiness, supportDetails} from './plan-readiness.js';
 import {verifyCodex} from './ai/codex-cli.js';
 import * as installer from './plan-install.js';
@@ -71,10 +72,13 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
   async function run(kind, options) {
     if (blocked()) return blocked();
     let result;
+    const began = Date.now();
+    log('plan', `${kind} started`);   // Why (Gitar on #3018, 2 Nov 2026): a hung or failed install must be traceable from the log; kind, verdict and seconds only, never the process's text
     try {
       running = startFn(kind, {platform, env: pc.env || process.env, ...options});
       result = await running.done;
     } catch { result = {ok: false, reason: 'failed'}; } finally { running = null; }
+    log('plan', `${kind} ended`, {ok: result.ok, reason: result.reason || '', seconds: Math.round((Date.now() - began) / 1000)});
     if (platform === 'win32') await refreshPath();   // the installer added its folder to this person's PATH: the app started before that
     return result;
   }

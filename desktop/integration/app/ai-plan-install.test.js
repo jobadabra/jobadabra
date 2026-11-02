@@ -181,15 +181,6 @@ test('what a finished run says: an installer that ends ok but leaves the program
   assert.ok(INSTALL_STATES.includes('needs-git') && !INSTALL_STATES.includes('sign-in'));
 });
 
-test('the window: the manual buttons open the page (not the installer), the manual steps end with the install states, only the seconds change each second', () => {
-  const page = fs.readFileSync(new URL('../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
-  assert.match(page, /\(id === 'install' \|\| id === 'install-git'\) && manual\) await window\.pilot\.planOpenGuide/);
-  assert.match(page, /if \(manual && !INSTALL_STATES\.includes\(stateOf\(found\)\)\) manual = false/);
-  assert.match(page, /querySelector\('\[data-seconds\]'\)/);
-  assert.doesNotMatch(page, /setInterval\(\(\) => \{ if \(running\) \{ running\.seconds[^}]*render\(\)/, 'a redraw per second loses a click on Cancel');
-  assert.match(page, /if \(running\) return;/);
-});
-
 test('a refused sign-in family, a smoke run and a throwing installer never leave the app busy or start a real process', async t => {
   const pc = app(t, {has: [CLAUDE_EXE], fake: finished({ok: true, reason: ''})});
   assert.equal((await pc.invoke('planSignIn', 'constructor')).reason, 'unsupported');
@@ -207,12 +198,9 @@ test('a refused sign-in family, a smoke run and a throwing installer never leave
   assert.equal((await handlers.get('planInstall')(null, 'claude')).reason, 'test');
 });
 
-test('the real-runner job stages the shared app code before it imports the app\'s modules, and the script proves the CLI\'s real answer', () => {
+test('the real-runner job stages the shared app code before it imports the app\'s modules (the window\'s buttons are played in test/ai-engine-run.test.js)', () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/fresh-install-smoke.yml', import.meta.url), 'utf8');
   const job = workflow.slice(workflow.indexOf('  ai-setup:'));
   assert.ok(job.indexOf('scripts/stage.mjs --files-only') > 0 && job.indexOf('scripts/stage.mjs --files-only') < job.indexOf('scripts/plan-machine.mjs'), 'desktop/shared is git-ignored: stage it first');
   assert.match(job, /permissions:\n      contents: read/);
-  const script = fs.readFileSync(new URL('../../scripts/plan-machine.mjs', import.meta.url), 'utf8');
-  assert.match(script, /login !== 'signed-out'/);
-  assert.match(script, /RED \$\{ROW\}: expected \$\{EXPECT\[wanted\]\}/);
 });

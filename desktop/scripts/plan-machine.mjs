@@ -40,7 +40,10 @@ if (wanted === 'nothing') {
     say(state);
   } finally { fs.rmSync(MARKER[family], {recursive: true, force: true}); }
 } else {
-  const run = start(`install:${family}`, {stdio: 'inherit'});
+  // Why (2 Nov 2026, first dispatch): a person's PowerShell finds Windows' own tar first; this job's bash step put Git's GNU tar first and the Codex installer died ("tar: Cannot connect to C: resolve failed"). The row tries the person's PATH, not the runner's.
+  const pathKey = Object.keys(process.env).find(key => key.toLowerCase() === 'path') || 'PATH';   // a plain copy of process.env is case-sensitive; Windows calls it "Path"
+  const env = win ? {...process.env, [pathKey]: [path.join(process.env.SystemRoot || 'C:\\Windows', 'System32'), process.env[pathKey]].join(path.delimiter)} : process.env;
+  const run = start(`install:${family}`, {stdio: 'inherit', env});
   const result = await run.done;
   if (!result.ok) fail('installer-' + result.reason, 'the official installer did not finish on this runner');
   let found = read();   // a fresh process: Windows PATH comes from the registry (lib/fresh-path.js), the Mac's from the installers' folders
