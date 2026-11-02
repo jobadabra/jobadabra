@@ -78,6 +78,16 @@ test('a change outside a named step (import, helper) is no changed step: it runs
   assert.ok(result.lines.some(line => line.startsWith('not a step: desktop/e2e/suites/jobs.mjs')), result.lines.join('\n'));
 });
 
+// #2976 (2 Nov 2026), the PR check's first real PR: lib/wizard.mjs changed an import and the step "Jobs opens on the Find jobs card…", and the check ran nothing.
+test('a step edited beside a change outside any step still runs on the PR; the outside change runs its suite after the merge', async () => {
+  const result = await pick([JOBS_FILE], diffOf(JOBS_FILE, [1, 1], [9, 9]), {'suites/jobs.mjs': JOBS});
+  assert.equal(result.none, false, result.lines.join('\n'));
+  assert.deepEqual(result.steps.jobs, ['second step']);
+  assert.ok(result.lines.some(line => line.startsWith('not a step: desktop/e2e/suites/jobs.mjs')), result.lines.join('\n'));
+  const out = await ownSteps({changedFiles: [JOBS_FILE], diff: diffOf(JOBS_FILE, [1, 1], [9, 9]), sources: {'suites/jobs.mjs': JOBS}, users: {}, all: ['jobs']});
+  assert.deepEqual([[...out.byStep], out.own], [[], {}], 'the after-merge picker still runs the file\'s suites whole');
+});
+
 test('a Mac suite, a manual suite and a night-report suite are not run on a PR; the Linux suite beside them is', async () => {
   const sources = {'suites/jobs.mjs': JOBS, 'suites/settings.mjs': JOBS.replace('first step', 'settings first'), 'suites/wizard.mjs': JOBS.replace('first step', 'wizard first'), 'suites/apply.mjs': JOBS.replace('first step', 'apply first')};
   const files = ['jobs', 'settings', 'wizard', 'apply'].map(name => `desktop/e2e/suites/${name}.mjs`);
