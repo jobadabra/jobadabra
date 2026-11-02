@@ -10,7 +10,7 @@ Titles get a prefix (GitHub has no way to pin a release; the only badge it gives
                                    and soaking towards stable
     🔨 Build · …                   any other pre-release (every push and nightly makes one): not offered to anyone
     📦 Previous stable · …         a release that was stable once and was replaced: where a manual rollback goes (tools/release-stable.sh <tag>)
-Why (2 Nov 2026, owner: "let's disable this gh issue creation about \"Release channels\".. Its too noisy. and we see this information on the website on telegram"): no pinned issue any more; the site and Telegram show the channels.
+Why (2 Nov 2026, owner, of the pinned Release channels issue: "Its too noisy. and we see this information on the website on telegram"): no pinned issue any more.
 Run by canary-promote.yml every 8 hours and after an approval or a promotion; safe to run any time (it only edits what differs).
 """
 import json
