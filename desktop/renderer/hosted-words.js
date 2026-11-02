@@ -36,10 +36,10 @@ function heldLine(mine, now) {
 //   mine: the app's own record {on, skipped, email}; schedule: the server's {state, pause_reason, next_run_at, email_channel} or null;
 //   shared: the address Settings → Notifications keeps, the one Always on uses (#1711, owner 27 Oct 2026: one shared e-mail). asksEmail: there is none yet,
 //   and the button goes to Notifications to add it.
-export function model(mine = {}, schedule = null, now = new Date(), shared = '') {
-  return {...view(mine, schedule, now, shared), held: heldLine(mine, now), erase: !mine.on && !!mine.copiedAt};
+export function model(mine = {}, schedule = null, now = new Date(), shared = '', mail = null) {
+  return {...view(mine, schedule, now, shared, mail), held: heldLine(mine, now), erase: !mine.on && !!mine.copiedAt};
 }
-function view(mine, schedule, now, shared) {
+function view(mine, schedule, now, shared, mail) {
   const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;
   if (!email && (skipped || !mine.on)) return {state: 'needs-email', pill: skipped ? ['Off', 'neutral'] : ['On', 'good'], line: 'Add your e-mail in Notifications to get the matches. Then turn it on here.', asksEmail: true, button: 'email', off: false, download: false};
   if (skipped) return {state: 'off', pill: ['Off', 'neutral'], line: `Turn it on to get new matches every morning at ${email}, even when your Mac is off.`, asksEmail: false, button: 'on', off: false, download: false};
@@ -54,8 +54,10 @@ function view(mine, schedule, now, shared) {
     return {state: `paused-${schedule.pause_reason || 'other'}`, pill: ['Paused', 'warn'], line: why[0], asksEmail: false, button: why[1], off: true, download: true};
   }
   const next = schedule?.next_run_at ? ` Next search: ${when(schedule.next_run_at, now)}.` : '';
-  const mail = schedule && schedule.email_channel === 0 ? ' E-mail is off for this address; matches still appear here.' : '';
-  return {state: 'on', pill: ['On', 'good'], line: `Searches every day and e-mails ${email}.${next}${mail}`, asksEmail: false, button: null, off: true, download: true};
+  const mailOff = schedule && schedule.email_channel === 0 ? ' E-mail is off for this address; matches still appear here.' : '';
+  const unconfirmed = mail?.reached && !mail.confirmed;   // `mail`: notifyState's answer; the site holds an unconfirmed address's mail, so the matches would not arrive
+  if (unconfirmed) return {state: 'on', pill: ['On', 'good'], line: `Searches every day. The matches wait for you to press the link in our e-mail to ${email}.${next}`, asksEmail: false, button: null, off: true, download: true};
+  return {state: 'on', pill: ['On', 'good'], line: `Searches every day and e-mails ${email}.${next}${mailOff}`, asksEmail: false, button: null, off: true, download: true};
 }
 
 // The dialog after a scheduled check did not run (lib/always-on-moments.js): the due time on the person's own clock. The app cannot tell asleep from off, so it says both.
@@ -64,3 +66,6 @@ export function missedWords(iso) {
   return {title: `Your ${at.getHours()}:${two(at.getMinutes())} check didn't run`,
     body: 'Your Mac was asleep or off. Always on runs it on our servers, even when your Mac is off, and e-mails you the new matches.'};
 }
+
+/** The line after Always on was turned on: matches go out only to a confirmed address (the site holds the mail of one nobody confirmed), so an unconfirmed one is told to press its link. */
+export const turnedOnLine = (email, confirmed) => (confirmed ? `New matches every morning to ${email}.` : `Press the link in our e-mail to ${email} to start the matches.`);

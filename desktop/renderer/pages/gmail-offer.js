@@ -3,6 +3,7 @@
 // Invariants: one dialog at a time; the main process decides when (lib/gmail-offer.js) and the window only shows what it is told; connected → nothing is shown. Guard: test/gmail-offer.test.js.
 import {$} from './core.js';
 import {offerWords} from '../gmail-offer-words.js';
+import {slot} from '../popup-slot.js';
 
 export const view = {loaded: false, connected: false};
 
@@ -46,7 +47,14 @@ export async function openGmailOffer(offer) {
 
 /** Start-up: the main process tells the window (first Submit, a mailed code). */
 export function initGmailOffer() {
-  window.pilot.onGmailOffer?.(offer => { openGmailOffer(offer).catch(() => {}); });
+  // One connection pop-up per app open (renderer/popup-slot.js): the e-mailed code outranks the first Submit's ask (the job waits on it).
+  window.pilot.onGmailOffer?.(offer => {
+    slot.offer({id: `gmail-${offer.why}`, rank: offer.why === 'code' ? 2 : 1, open: async () => {
+      if ($('gmail-offer-dialog').open || (await refreshGmail()).connected) return false;
+      openGmailOffer(offer).catch(() => {});
+      return true;
+    }});
+  });
   refreshGmail().catch(() => {});
 }
 

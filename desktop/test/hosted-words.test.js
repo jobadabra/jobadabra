@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {NAME, model, when} from '../renderer/hosted-words.js';
+import {NAME, model, turnedOnLine, when} from '../renderer/hosted-words.js';
 
 const now = new Date(2026, 9, 17, 9, 0);   // local time
 const tomorrow7 = new Date(2026, 9, 18, 7, 0).toISOString();
@@ -57,4 +57,21 @@ test('one name: "Always on", with the two told apart, and nothing user-visible s
   assert.match(view, /'Turn on Always on'/); assert.match(view, /'Turn off and delete'/); assert.match(view, /'Delete our copy of your data'/); assert.match(view, /'Download my data'/); assert.match(view, /'Resume Always on'/);
   assert.match(view, /el\('h3', '', NAME\)/);   // the Settings card retains the shared name
   assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /[Dd]aily searches|[Hh]osted search|GitHub|container|\$\d/);
+});
+
+// Owner, 2 Nov 2026: "By the time he activated always on, the email/telegram notifications should be obligatory". Always on e-mails only, and the site holds an unconfirmed address's mail,
+// so "On" with an address nobody confirmed promises matches that do not arrive: it says they wait for the link (spec docs/superpowers/specs/2026-11-02-notify-moments-design.md).
+test('Always on with an unconfirmed address says the matches wait for the link; confirmed or unknown says what it always said', () => {
+  const mine = {on: true, email: 'a@example.com'}, schedule = {state: 'on', next_run_at: tomorrow7, email_channel: 1};
+  const waiting = model(mine, schedule, now, '', {reached: true, confirmed: false});
+  assert.equal(waiting.state, 'on');
+  assert.match(waiting.line, /wait for you to press the link in our e-mail to a@example\.com/);
+  assert.match(model(mine, schedule, now, '', {reached: true, confirmed: true}).line, /^Searches every day and e-mails a@example\.com\./, 'confirmed: unchanged');
+  assert.match(model(mine, schedule, now).line, /^Searches every day and e-mails a@example\.com\./, 'the website not asked: unchanged');
+  assert.match(model(mine, schedule, now, '', {reached: false, confirmed: false}).line, /^Searches every day and e-mails/, 'offline: no claim on a guess');
+});
+
+test('the line after turning Always on on tells the truth about the address', () => {
+  assert.equal(turnedOnLine('a@example.com', true), 'New matches every morning to a@example.com.');
+  assert.match(turnedOnLine('a@example.com', false), /Press the link in our e-mail to a@example\.com to start the matches/);
 });

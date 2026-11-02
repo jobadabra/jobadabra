@@ -2004,6 +2004,17 @@
     </div>
   </form>
 </dialog>
+<dialog id="notify-moment-dialog" class="save-dialog panel-dialog">
+  <form method="dialog">
+    <h2 id="notify-moment-title"></h2>
+    <p id="notify-moment-text"></p>
+    <p class="message" id="notify-moment-note" role="status"></p>
+    <div class="actions">
+      <button class="secondary" id="notify-moment-later" type="button">Not now</button>
+      <button class="primary" id="notify-moment-go" type="button">Send the link again</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="extension-needed-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <h2 id="extension-needed-title">Install the Chrome extension first</h2>
@@ -2158,6 +2169,12 @@
     </div>
     <p class="dialog-lead">Jobadabra then fills in and submits applications in its hidden browser, one at a time, when these checks pass. You can turn it off at any time in Settings → Apply.</p>
     <ul class="dialog-steps" id="auto-confirm-checks"></ul>
+    <div class="step-field" id="auto-confirm-channel" hidden>
+      <label for="auto-confirm-email"><b>Where should we tell you when something needs you?</b></label>
+      <input id="auto-confirm-email" type="email" autocomplete="email" placeholder="you@example.com">
+      <p class="muted small">An application can stop for a check only you can do. We e-mail you a link: press it to start. Prefer Telegram? Set it up in Settings → Notifications.</p>
+      <p class="message" id="auto-confirm-channel-note" role="status"></p>
+    </div>
     <div class="panel-actions"><button type="button" class="secondary" id="auto-confirm-cancel" value="cancel">Not now</button><button type="button" class="primary" id="auto-confirm-go" value="yes">Turn on Full automation</button></div>
   </form>
 </dialog>

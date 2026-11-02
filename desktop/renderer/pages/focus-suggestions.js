@@ -22,8 +22,10 @@ import {openActivity} from './activity.js';
 import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
-import {bindHostedOffer, hostedEntries} from '../hosted-suggestion.js';
+import {bindHostedOffer, hostedEntries, turnedOnText} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
+import {notifyEntries, saveChoice} from '../notify-suggestion.js';
+import {setNotifyState} from './notify-commands.js';
 import {linkedinEntries} from '../linkedin-words.js';
 import {gmailEntries} from '../gmail-offer-words.js';
 import {connectGmail, refreshGmail, view as gmailView} from './gmail-offer.js';
@@ -41,6 +43,12 @@ const started = (what, result) => { if (result?.started) openActivity(true); els
 // One handler per actions[].do (suggestions.js DOES): what the button names, done in one press.
 export const RUN = {
   turn_on_hosted: (_action, _event, row) => row.turnOn(),
+  add_email: (_action, _event, row) => row.addEmail(),
+  resend_confirm: async () => {
+    const done = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
+    toastMessage(done?.ok ? 'Sent again ✓' : 'Not sent', done?.ok ? 'Check your inbox (and your spam folder) for the link.' : done?.error || 'Try again in a minute.', NO_PLACE.itself, done?.ok ? 'good' : 'warn');
+  },
+  open_notifications: () => import('./settings.js').then(({openSetting}) => openSetting('notify')),
   connect_gmail: () => connectGmail(),   // Settings' own button: one sign-in flow
   turn_on_linkedin: () => openLinkedinConsent({mode: 'turn-on'}),   // the same consent as Settings, the Find jobs ask and ⌘K
   // Its page when the store has one (as Focus's Insight card did), else the same thing here: Reports, or the job's Review tab.
@@ -120,11 +128,19 @@ export function entryRow(entry) {
     if (action.do === 'turn_on_hosted') {
       node.id = 'focus-hosted-on';
       context.turnOn = bindHostedOffer({body, button: node, email: entry.email, emailField: () => emailField('focus-hosted-email'), draft: hostedDraft,
-        turnOn: given => window.pilot.hostedOn(given), onSuccess: sentTo => {
+        turnOn: given => window.pilot.hostedOn(given), onSuccess: async sentTo => {
           hostedRead++;
           hostedContext.hosted.on = true;
-          toastMessage('Always on ✓', `New matches every morning to ${sentTo}.`, NO_PLACE.itself, 'good');
+          toastMessage('Always on ✓', await turnedOnText(sentTo), NO_PLACE.itself, 'good');
           redraw();
+          loadNotifyOffer();   // the address is new and unconfirmed: the notification card asks again
+        }});
+    }
+    if (action.do === 'add_email') {
+      context.addEmail = bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
+        turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
+          toastMessage('Check your inbox ✓', `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
+          window.dispatchEvent(new Event('notify-changed'));
         }});
     }
     actions.append(AI.has(action.do) ? wand(node) : node);
@@ -145,6 +161,13 @@ let bank = null;
 const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; redraw(); }).catch(() => {});
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
 const rowsNow = () => drawerRows([...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys});
+const FIELD_HINT = 'We e-mail you a link to confirm it. Nothing is sent until you press it.';   // Why (2 Nov 2026): not Always on's hint "We send the daily matches here": this card promises no matches
+let notifyContext = {state: null};
+const notifyDraft = {};
+// Read with the Focus load and again after Notifications saved (`notify-changed`): the website says whether the address is confirmed.
+async function loadNotifyOffer() {
+  try { notifyContext = {state: await window.pilot.notifyState()}; setNotifyState(notifyContext.state); redraw(); } catch { /* no card until the state can be read */ }
+}
 let hostedContext = {};
 const hostedDraft = {};   // ephemeral form state for hosted:first-matches, shared by every redraw of the offer
 let hostedRead = 0;
@@ -159,7 +182,7 @@ async function loadHostedOffer() {
     redraw();
   } catch { /* no offer until its state and matches can be read */ }
 }
-const withRows = () => [...hostedEntries({...hostedContext, held, hidden: hiddenKeys}), ...linkedinEntries({view: linkedinView, held, hidden: hiddenKeys}), ...gmailEntries({view: gmailView}), ...withQuestions(shownPool(), rowsNow())];
+const withRows = () => [...notifyEntries({state: notifyContext.state, held, hidden: hiddenKeys}), ...hostedEntries({...hostedContext, held, hidden: hiddenKeys}), ...linkedinEntries({view: linkedinView, held, hidden: hiddenKeys}), ...gmailEntries({view: gmailView}), ...withQuestions(shownPool(), rowsNow())];
 let lastArgs = null;
 let questionsAsked = false;
 /** The engine's entries for a home screen (Strategy's Tune row), answered ones left out. */
@@ -172,7 +195,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
-  if (refreshHosted) { loadHostedOffer(); refreshLinkedin().then(redraw).catch(() => {}); refreshGmail().catch(() => {}); }
+  if (refreshHosted) { loadHostedOffer(); loadNotifyOffer(); refreshLinkedin().then(redraw).catch(() => {}); refreshGmail().catch(() => {}); }
   if (!bank) loadBank();
   if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)
   const rows = focusRows(withRows(), items);
@@ -223,6 +246,7 @@ export function initSuggestions() {
   window.addEventListener('experience-changed', () => { loadBank(); });
   window.addEventListener('linkedin-changed', () => { if (lastArgs) redraw(); });
   window.addEventListener('gmail-changed', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });
+  window.addEventListener('notify-changed', () => { loadNotifyOffer(); });
   window.addEventListener('hosted-changed', () => { if (lastArgs) loadHostedOffer(); });   // turned on from the dialog (pages/hosted-moment.js): the card goes
   document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }
