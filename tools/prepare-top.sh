@@ -9,6 +9,7 @@
 # Usage: tools/prepare-top.sh 5          # default N = 3
 #        tools/prepare-top.sh 5 --dry-run
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/repos.sh"   # before the cd: the path is relative to where the script was started (release-notes.sh, 2 Nov 2026)
 cd "$(dirname "$0")/.."
 
 n="${1:-3}"
@@ -29,7 +30,6 @@ fi
 
 cents=$(( ${#urls[@]} * 4 ))
 printf 'Preparing %d kit(s), ~USD %d.%02d:\n' "${#urls[@]}" $((cents / 100)) $((cents % 100))
-. "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
 for url in "${urls[@]}"; do
   echo "  $url"
   [ "${2:-}" = "--dry-run" ] && continue
