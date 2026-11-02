@@ -60,6 +60,15 @@ test('the state hands the window the day the address was saved', async () => {
   assert.equal(answer.emailAt, '2026-11-02T09:00:00.000Z');
 });
 
+// 2/2: the "nothing can reach you" pop-up is only for Full automation, which the person turned on and confirmed (apply.autoConfirmedAt): Auto without the confirmation does not submit, so nothing waits.
+test('the state says whether Full automation is on: the mode AND its confirmation', async () => {
+  const answerFor = async apply => (await state(storage({settings: {apply}}), site([{ok: true}]))).automation;
+  assert.equal(await answerFor({mode: 'auto', autoConfirmedAt: '2026-11-01T09:00:00Z'}), true, 'positive control');
+  assert.equal(await answerFor({mode: 'auto'}), false, 'no confirmation');
+  assert.equal(await answerFor({mode: 'hybrid', autoConfirmedAt: '2026-11-01T09:00:00Z'}), false, 'another mode');
+  assert.equal(await answerFor(undefined), false);
+});
+
 // Gitar on #3011: the website call had no time limit, so a hanging connection kept Full automation's confirmation from opening. A call that is not answered in time ends as "not reached".
 test('a website call that never answers ends after its time limit as not reached, so nothing waits on it', async t => {
   t.mock.timers.enable({apis: ['setTimeout']});

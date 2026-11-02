@@ -2010,9 +2010,15 @@
   <form method="dialog">
     <h2 id="notify-moment-title"></h2>
     <p id="notify-moment-text"></p>
+    <div class="step-field" id="notify-moment-field" hidden>
+      <label for="notify-moment-email"><b>Where should we tell you?</b></label>
+      <input id="notify-moment-email" type="email" autocomplete="email" placeholder="you@example.com">
+      <p class="muted small">We e-mail you a link to confirm it. Nothing is sent until you press it.</p>
+    </div>
     <p class="message" id="notify-moment-note" role="status"></p>
     <div class="actions">
       <button class="secondary" id="notify-moment-later" type="button">Not now</button>
+      <button class="secondary" id="notify-moment-telegram" type="button" hidden>Use Telegram</button>
       <button class="primary" id="notify-moment-go" type="button">Send the link again</button>
     </div>
   </form>

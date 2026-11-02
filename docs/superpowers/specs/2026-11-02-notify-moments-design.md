@@ -61,6 +61,20 @@ Owner: `lib/notify-moments.js` (state in `settings.notifyOffer`, written only th
 1. **1/2** the definition, `popup-slot.js` (Gmail and Always on use it), the card, Resend, day 3/10/14, the Full automation and Always on gates.
 2. **2/2** moments 1–4 and the channel-lost pop-up.
 
+## 2/2 design: how each moment is detected (checked 2 Nov 2026)
+
+One owner: `lib/notify-moments.js` (the same `settings.notifyOffer.moments`, once each, never while a channel works, never in setup, one per app open through `popup-slot.js`). The main process answers `notifyMoment`; the window shows what it is told.
+
+| Moment (rank) | Detected from | Real numbers in the words | Gap found |
+|---|---|---|---|
+| **Waited** (3) | `lib/waiting-message.js` keeps each handed-over application (id, time, `open()`); at ask time one that is still open and older than 1 hour | hours = now − first hand-over | in memory only: after an app restart the controller hands the jobs over again, so hours restart (understated, never overstated) |
+| **Match** (1) | the last scheduled search run on this Mac that finished after `windowSeenAt`; best `fit` ≥ 85 among jobs first seen on or after that run's date | the fit, the time the run finished | jobs carry `first_seen_at` as a **date** only; run rows carry no best score; "away" is not recorded anywhere |
+| **Reply** (1) | the last Gmail check (`kind` mail) that finished after `windowSeenAt` with `updates.length > 0` | N updates | the check does not say reply vs confirmation (judging that from text is a keyword rule: not built); words say "updates", never "reply" |
+| **Recruiter** (1) | the window: a Focus item of kind `reply` ("Reply today": `src/focus_items.py:110`) | none (no day count) | none |
+| **Lost** (2) | Full automation on (`autoConfirmedAt`) and no working channel while the website answers | none | none: card text changes too; automation stays on |
+
+`windowSeenAt`: **new**, one setting, stamped by the main process when the window loses focus, is hidden, or the app quits (at most once a minute); "away" = a run finished after it. Without it moments Match and Reply cannot say "while you were away" truthfully.
+
 ## Progress
 
 - [x] Spec (proof: docs/superpowers/specs/2026-11-02-notify-moments-design.md)
@@ -72,5 +86,10 @@ Owner: `lib/notify-moments.js` (state in `settings.notifyOffer`, written only th
 - [x] Full automation asks for a channel; Always on says matches wait (proof: desktop/test/hosted-words.test.js)
 - [x] ⌘K commands (proof: desktop/test/notify-commands.test.js)
 - [x] Side-by-side preview (light + dark), owner's yes "Ship 1/2" (proof: none: the owner's answer in the session, 2 Nov 2026)
-- [ ] 1/2 PR READY
-- [ ] 2/2
+- [x] 1/2 merged (#3011) (proof: none: merged on main, the PR record)
+- [x] 2/2 tests first: when the person was away, the waited hours, the detections, the words (proof: desktop/test/window-seen.test.js, desktop/test/notify-detect.test.js, desktop/test/notify-moment-words.test.js)
+- [x] 2/2 the waited and channel-lost moments, one gate for all pop-ups (proof: desktop/test/notify-moments.test.js)
+- [x] 2/2 `waitedFor` from the handed-over applications (proof: desktop/test/waiting-message.test.js)
+- [x] 2/2 the state says whether Full automation is on and confirmed (proof: desktop/test/notify-resend.test.js)
+- [ ] 2/2 side-by-side preview (light + dark) and the owner's yes
+- [ ] 2/2 PR READY

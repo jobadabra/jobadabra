@@ -9,6 +9,9 @@ export const setNotifyState = value => { state = value; };
 /** The card's own two actions: `open` shows Settings → Notifications, `resend` sends the confirm mail again and says the result. */
 export const setNotifyActions = value => { actions = value; };
 
+/** Shows Settings → Notifications (the card's own action), for the pop-ups' "Use Telegram" and "Open Notifications". */
+export const openNotifications = () => actions.open();
+
 /** Adds the palette commands for the current state (none while a channel works or the state is unread). */
 export function addNotifyCommands(add) {
   const card = offerCard(state);

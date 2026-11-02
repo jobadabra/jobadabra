@@ -24,7 +24,7 @@ const words = count => `${count} application${count === 1 ? ' is' : 's are'} wai
  */
 export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), channels = () => notifyChannel.channelsOf(storage),
   sendEmail = mail => notifyChannel.sendEmail(storage, {...mail, urgent: true}), sendTelegram = text => sendBot(storage, text), log = appLog} = {}) {
-  const pending = new Map();
+  const pending = new Map(), handed = new Map();   // `handed`: every application handed over and when (in memory), whether or not a message went: the pop-up "waited N hours" (waitedFor)
   let timer = null, sending = false;
   const lastAt = () => Date.parse(storage.settings().waitingMessageAt) || 0;
   const arm = () => { if (!timer && !sending && pending.size) timer = setTimer(flush, Math.max(WINDOW_MS, lastAt() ? lastAt() + HOUR_MS - now() : 0)); };
@@ -45,7 +45,14 @@ export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, m
     } finally { sending = false; arm(); }   // an application that came while this one was sending
   }
   return {
-    add(item) { pending.set(item.id, item); arm(); },
+    add(item) { pending.set(item.id, item); if (!handed.has(item.id)) handed.set(item.id, {...item, at: now()}); arm(); },
+    /** -> {hours, count, title, company} of the applications still waiting for over an hour (the oldest named), or null. Only an application whose `open()` says yes counts; in memory, so after a restart the hours start again. */
+    waitedFor() {
+      const waiting = [...handed.entries()].filter(([, item]) => typeof item.open === 'function' && item.open() === true && now() - item.at >= HOUR_MS).map(([, item]) => item);
+      if (!waiting.length) return null;
+      const oldest = waiting.reduce((a, b) => (b.at < a.at ? b : a));
+      return {hours: Math.floor((now() - oldest.at) / HOUR_MS), count: waiting.length, title: oldest.title, company: oldest.company};
+    },
   };
 }
 

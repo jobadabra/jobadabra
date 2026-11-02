@@ -74,3 +74,55 @@ test('never while setup is not done (the wizard stays AI, CV, Strategy; owner, 2
 test('the website did not answer (offline): nothing is shown on a guess about the confirmation', () => {
   assert.equal(world().moments.next(pending({reached: false}), SAVED + 11 * DAY), null);
 });
+
+// 2/2: the pop-ups for what waits for the person (an application) and for Full automation that nobody can be told about. Both offer the way to be told, so they need no address.
+const nobody = (extra = {}) => ({reached: true, by: ['app'], telegram: false, email: '', confirmed: false, serviceOff: false, unconfirmedStopped: false, sending: null, emailAt: '', automation: false, ...extra});
+const WAITED = {hours: 3, count: 2, title: 'Designer', company: 'Acme'};
+
+test('an application that waited over an hour with no way to tell the person: the first moment, with the real hours and what waits; once', () => {
+  const {moments} = world({notifyEmailAt: ''});
+  assert.equal(moments.next(nobody(), SAVED, {waited: null}), null, 'positive control: nothing waits');
+  const first = moments.next(nobody(), SAVED, {waited: WAITED});
+  assert.deepEqual({moment: first.moment, hours: first.hours, count: first.count, title: first.title, company: first.company}, {moment: 'waited', ...WAITED});
+  moments.shown('waited', SAVED);
+  assert.equal(moments.next(nobody(), SAVED + DAY, {waited: WAITED}), null, 'once');
+});
+
+test('waited comes before an address reminder, and a reminder before channel-lost', () => {
+  const {moments} = world();
+  const state = pending({automation: true});
+  assert.equal(moments.next(state, SAVED + 3 * DAY, {waited: WAITED}).moment, 'waited');
+  moments.shown('waited', SAVED + 3 * DAY);
+  assert.equal(moments.next(state, SAVED + 3 * DAY, {waited: WAITED}).moment, 'day3');
+  moments.shown('day3', SAVED + 3 * DAY);
+  assert.equal(moments.next(state, SAVED + 3 * DAY, {waited: WAITED}).moment, 'lost');
+});
+
+test('channel lost: only Full automation (on and confirmed) with nobody who can be told; once; never with a working channel, in setup or offline', () => {
+  const {moments} = world();
+  assert.equal(moments.next(nobody(), SAVED), null, 'automation off: nothing');
+  const lost = moments.next(nobody({automation: true}), SAVED);
+  assert.equal(lost?.moment, 'lost');
+  assert.equal(moments.next(nobody({automation: true, by: ['email', 'app'], email: 'me@example.com', confirmed: true}), SAVED), null, 'a confirmed address is a working channel');
+  assert.equal(moments.next(nobody({automation: true, reached: false}), SAVED), null, 'offline: nothing on a guess');
+  assert.equal(world({setupDone: false}).moments.next(nobody({automation: true}), SAVED), null, 'never in setup');
+  moments.shown('lost', SAVED);
+  assert.equal(moments.next(nobody({automation: true}), SAVED + DAY), null, 'once');
+});
+
+test('the moments the window detects (match, reply, recruiter) are recorded once too, and a new address starts them over', () => {
+  const {moments, kept} = world();
+  for (const name of ['match', 'reply', 'recruiter']) moments.shown(name, SAVED);
+  assert.deepEqual(Object.keys(moments.done()).sort(), ['match', 'recruiter', 'reply']);
+  kept.notifyEmailAt = new Date(SAVED + DAY).toISOString();
+  assert.deepEqual(moments.done(), {}, 'new address: void');
+});
+
+test('allowed: the one gate every pop-up shares (set up, the website answered, no working channel)', () => {
+  const {moments} = world();
+  assert.equal(moments.allowed(nobody()), true);
+  assert.equal(moments.allowed(nobody({reached: false})), false);
+  assert.equal(moments.allowed(pending({confirmed: true})), false, 'a confirmed address works');
+  assert.equal(moments.allowed(null), false);
+  assert.equal(world({setupDone: false}).moments.allowed(nobody()), false);
+});

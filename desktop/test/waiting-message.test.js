@@ -151,3 +151,28 @@ test('an application handed over while the message is being sent waits for the h
   assert.equal(sent.email.length, 2, 'it goes when the hour is over');
   assert.equal(sent.email[1].subject, '1 application is waiting for you');
 });
+
+// 2/2 (docs/superpowers/specs/2026-11-02-notify-moments-design.md): the "waited N hours" pop-up needs a number that is true.
+test('waitedFor: how long the oldest application still waiting has waited, counted from when it was handed over, whether or not a message went', async () => {
+  const {message, clock, advance} = world({channels: ['app']});   // no working channel: nothing is sent, the wait is still counted
+  assert.equal(message.waitedFor(), null, 'nothing waiting: nothing claimed');
+  message.add(job(1, {open: () => true}));
+  await advance(2 * HOUR_MS);
+  message.add(job(2, {open: () => true}));
+  const waited = message.waitedFor();   // job 2 was handed over just now: under an hour, not counted
+  assert.deepEqual({hours: waited.hours, count: waited.count, title: waited.title, company: waited.company}, {hours: 2, count: 1, title: 'Role 1', company: 'Acme 1'});
+  assert.equal(clock.t, START + 2 * HOUR_MS);
+});
+
+test('waitedFor: under an hour, a handled application, and one with no way to ask "still waiting?" are not claimed', async () => {
+  const {message, advance} = world({channels: ['app']});
+  let handled = false;
+  message.add(job(1, {open: () => !handled}));
+  message.add(job(2));   // no `open`: nothing says it still waits
+  await advance(30 * 60 * 1000);
+  assert.equal(message.waitedFor(), null, 'under an hour');
+  await advance(40 * 60 * 1000);
+  assert.equal(message.waitedFor().count, 1, 'job 2 has no open(): not counted');
+  handled = true;
+  assert.equal(message.waitedFor(), null, 'handled meanwhile');
+});
