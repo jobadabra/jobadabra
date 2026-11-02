@@ -279,14 +279,16 @@ def held(stores, app_id, notes='', *, now=None):
     return {'ok': True, 'id': row['id'], 'url': _url(stores, row['id']), 'stage': stage, 'review': len(notes) >= 40}
 
 
-def moved(stores, app_id, at):
-    """Focus → "No: moved": Next interview is the new time, and an Interview scheduled event says so."""
+def moved(stores, app_id, at, now=None):
+    """Focus → "No: moved": Next interview is the new time, and an Interview scheduled event says so.
+    `now` (default: the real clock) is when the person moved it; the event's time is judged against it."""
     if not _moment(at):
         raise ValueError('Pick the new date and time')
     at = tz.local_iso(at)  # the picker has no offset: the owner's clock with the offset of that date
     app = _app(stores, app_id)
     stores.applications.update(app['id'], {'next_interview': at})
-    rules.add_event(stores, app, 'Interview scheduled', APP_SOURCE, note=f'Moved to {at} (from Focus)', interview_at=at)
+    rules.add_event(stores, app, 'Interview scheduled', APP_SOURCE, note=f'Moved to {at} (from Focus)', interview_at=at,
+                    at=now.isoformat(timespec='seconds') if now else None)
     return {'ok': True}
 
 

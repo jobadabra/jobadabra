@@ -28,7 +28,8 @@ class FocusAnswerTests(unittest.TestCase):
     def test_moved_updates_the_next_interview_and_cancelled_logs_it_without_moving_the_stage(self):
         stores = store_with(huxley_job())
         app_id = only_app(stores)['id']
-        interviews.moved(stores, app_id, '2026-10-03T09:00:00+02:00')
+        # Why (2 Nov 2026): without now=NOW the real clock judged this fixed date, and it went red 30 days after it (no code change).
+        interviews.moved(stores, app_id, '2026-10-03T09:00:00+02:00', now=NOW)
         self.assertEqual(only_app(stores)['next_interview'], '2026-10-03T09:00:00+02:00')
         self.assertEqual([(e['kind'], e['interview_at']) for e in stores.events.list()],
                          [('Interview scheduled', '2026-10-03T09:00:00+02:00')])
