@@ -4,13 +4,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {ENV_VERSION, pipelineEnv} from '../lib/pipeline-env.js';
 import {jobs} from '../lib/pipeline-commands.js';
 import {install} from './tiny-dom.js';
 
 install();
 const {OUTDATED_LINE} = await import('../renderer/errors.js');
-const root = new URL('../../', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../../', import.meta.url));
 
 test('the app sends the number the engine requires', () => {
   const engine = Number(/^ENV_VERSION = (\d+)/m.exec(fs.readFileSync(`${root}src/paths.py`, 'utf8'))?.[1]);

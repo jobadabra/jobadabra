@@ -9,7 +9,6 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {keepListHidden} from './jobs-outdated.js';
 import {ago, avatar, band, byStat, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
@@ -423,7 +422,6 @@ export function renderJobs() {
     : anyStatus ? 'That job isn\'t in your list: not found by a search yet, or hidden by your language or company filters.'
     : !text && !jobsState.statFilter && emptyFor[filter] ? emptyFor[filter]
     : text || jobsState.statFilter || filter !== 'all' ? 'No job matches this filter.' : 'No open jobs right now.';
-  keepListHidden();   // the restart card replaces the list while the app is older than its engine (pages/jobs-outdated.js)
   // The board shows applications only (rows with a Stage); the stage filters ticked, a counter and the words narrow it.
   const onBoard = boardIds(filters);   // the ticked filters that name a stage; none: every application
   paintViews((counted || shared.allJobs).filter(job => columnOf(job) && (counted || !onBoard.length || inFilters(job, onBoard, now)) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)
