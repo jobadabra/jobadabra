@@ -4,7 +4,7 @@ name: Extension · Chrome Web Store publish
 # updates every copy by itself. Keyless: GitHub's OIDC token signs in to Google (project jobadabra-release, pool github, provider jobadabra-repo, this repo only)
 # as webstore-publisher@, which the Web Store dashboard lists as its service account. Why (2 Nov 2026, owner chose "Repo ID"): Google trusts this repo by its id
 # (provider condition assertion.repository_id=='1384333762', and webstore-publisher's binding on attribute.repository_id/1384333762), never by its name: the
-# name rule ('GarryOne/jobadabra') refused every publish after the 1 Nov org move ("credential is rejected by the attribute condition", run 41463002482).
+# rule on the repo's old name (under the personal account) refused every publish after the 1 Nov org move ("credential is rejected by the attribute condition", run 41463002482).
 # A change to either takes Google up to ~7 min: a run 2 min after it was refused ("iam.serviceAccounts.getAccessToken denied"), one 8 min after passed.
 # A PR that edits this file, or a by-hand run without a tag, only reads
 # the store's versions (proves the access). By hand: gh workflow run extension-store-publish.yml --ref main [-f tag=desktop-vX.Y.Z]
