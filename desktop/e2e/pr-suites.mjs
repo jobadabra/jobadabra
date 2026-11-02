@@ -153,4 +153,6 @@ try {
   }
 } catch (error) {
   console.log(`pr-suites: could not read the diff (${error.message.split('\n')[0]}); nothing reported`);
+  // Why (2 Nov 2026, Gitar on #2980): --changed-steps is a PR gate, so an error must never read as "no step changed" (pr-e2e-steps.yml would go green with no e2e run: #2954, #2963). Exit non-zero; the other modes keep the soft fallback.
+  if (process.argv.includes('--changed-steps')) process.exitCode = 1;
 }
