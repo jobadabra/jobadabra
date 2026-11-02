@@ -79,7 +79,7 @@ test('the words: what the first Submit buys, and the code case promises typing i
   assert.match(applied.lead, /Your confirmation from Acme will land in Gmail\. Connect it, and Jobadabra moves this job to Interview or Rejected when they reply\./);
   assert.doesNotMatch(offerWords({why: 'applied'}).lead, /from \./, 'no employer: no dangling "from"');
   const code = offerWords({why: 'code', host: 'www.acme.test'});
-  assert.match(code.title, /Connect Gmail and I'll type the code for you/);
+  assert.match(code.title, /Connect Gmail and I'll type the codes from the next job on/, 'scoped: this job\'s code is not re-requested (JOB-223)');
   assert.match(code.lead, /acme\.test/);
   assert.match(code.lead, /This job waits for you/, 'no promise to type this job\'s code: connecting does not re-request it');
   for (const words of [applied, code]) { assert.equal(words.yes, 'Connect Gmail'); assert.equal(words.no, 'Not now'); }

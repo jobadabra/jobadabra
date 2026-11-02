@@ -26,7 +26,7 @@ export function afterApply({storage, tell, connected = gmailConnected, employer 
 
 /**
  * The extension's AI judged that a page asks for a code mailed to the person (/extension/account-code); the caller asks only in Full automation, the one mode where Gmail types it. Gmail not connected → the job waits with a clear reason
- * (the one existing parked state, `park`) and the window is told once per app run; other jobs in the queue are not touched. TODO(AI): re-request the code for a parked job once Gmail connects (needs the extension to ask again; parked in Linear) (2 Nov 2026). -> true when Gmail is missing (the caller then skips reading the mail).
+ * (the one existing parked state, `park`) and the window is told once per app run; other jobs in the queue are not touched. TODO(AI): re-request the code for a parked job once Gmail connects (needs the extension to ask again; JOB-223) (2 Nov 2026). -> true when Gmail is missing (the caller then skips reading the mail).
  */
 export function createCodeOffer({tell, park, connected = gmailConnected}) {
   let told = false;

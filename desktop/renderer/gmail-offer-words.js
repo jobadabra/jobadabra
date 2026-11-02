@@ -6,7 +6,7 @@ export const KEY = 'gmail:connect';
 export function offerWords({why, employer = '', host = ''} = {}) {
   if (why === 'code') {
     const site = String(host || '').replace(/^www\./, '');
-    return {title: 'Connect Gmail and I\'ll type the code for you', yes: 'Connect Gmail', no: 'Not now',
+    return {title: 'Connect Gmail and I\'ll type the codes from the next job on', yes: 'Connect Gmail', no: 'Not now',
       lead: `${site ? `${site} sent` : 'The site sent'} a code to your e-mail. Connect Gmail (read-only) and Jobadabra reads the codes and types them from the next job on. This job waits for you: type its code from your e-mail. The other jobs go on.`};
   }
   const from = String(employer || '').trim();
