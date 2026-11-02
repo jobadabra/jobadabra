@@ -164,7 +164,7 @@ every 30 seconds. Keep the guardrails that catch real breakage; stop paying the 
 - **Heavy runs queue in one lock per Mac** (`tools/heavy-lock.sh`, every worktree runs the primary checkout's copy): e2e suites, `run-all`, `smoke`, `npm run real-extension`
   and `recorded` take it in arrival order (a run that re-asks never jumps a waiter), say who holds it, start a 2nd beside the first only while free+inactive
   memory is over 7 GB and swap is low (never a 3rd), and wait while the 1-minute load is above 1.5 x the cores. No slot messaging between sessions. Unit tests never wait. `JOBADABRA_HEAVY=0` skips it.
-- PRs run unit + integration; journeys run after each merge on main, in the night burn-in and the beta (owner, 1 Nov 2026: "No e2e on PRs"); the Finder files what they find. Do not run one to "be sure" at Tier 0/1.
+- PRs run unit + integration, plus the e2e steps a PR adds or changes, on Linux (owner, 2 Nov 2026; `pr-e2e-steps.yml`); journeys run after each merge on main, in the night burn-in and the beta (owner, 1 Nov 2026: "No e2e on PRs"); the Finder files what they find. Do not run one to "be sure" at Tier 0/1.
 
 ### Which test for which question (owner, 8 Oct 2026: "the right test method for the right case")
 The tier says how much to check; this says **how**. Pick the cheapest method that can actually show the thing, and say it with the tier
