@@ -9,6 +9,7 @@ import {readScreenData} from '../feedback-data.js';
 import './feedback-screens.js';   // registers each page's data
 
 let prepared = {shot: null, logs: null, page: null, profile: null, identity: null};
+const PAGE_NOTE = "Its rows or questions with their ids, states and filters, so the problem can be reproduced. Never a job posting's text.";
 const EMPTY = {shot: null, logs: null, page: null, profile: null, identity: null};
 
 // One state: the checkbox. The thumbnail shows while it is on and a picture exists; the × turns it off.
@@ -36,10 +37,12 @@ async function profileChanged() {
   const box = $('app-feedback-include-profile');
   if (box.checked && !prepared.profile) {
     box.disabled = true;
+    $('app-feedback-send').disabled = true;   // Why (Gitar on #3021): a Send during the read would leave the snapshot out without saying so
     drawPreview();
     const {profile} = await window.pilot.feedbackProfile().catch(() => ({profile: null}));
     prepared.profile = profile;
     box.disabled = false;
+    $('app-feedback-send').disabled = false;
     if (!profile) { box.checked = false; $('app-feedback-message').textContent = 'Your Profile could not be read, so it is not included.'; }
   }
   drawPreview();
@@ -48,12 +51,13 @@ async function profileChanged() {
 async function open() {
   $('app-feedback-message').textContent = '';
   const read = readScreenData();
-  prepared = await window.pilot.feedbackPrepare(read.screen, read).catch(() => EMPTY);
+  prepared = await window.pilot.feedbackPrepare(read.screen, read.data ? read : null).catch(() => ({...EMPTY}));
   $('app-feedback-include-shot').checked = !!prepared.shot;
   $('app-feedback-include-logs').checked = !!prepared.logs;
   $('app-feedback-include-logs').disabled = !prepared.logs;
   $('app-feedback-include-page').checked = !!prepared.page;   // on by default (owner, 2 Nov 2026)
   $('app-feedback-include-page').disabled = !prepared.page;
+  $('app-feedback-page-note').textContent = prepared.page ? PAGE_NOTE : 'This screen has no data to send: Settings and your Profile are only sent through the snapshot below.';
   $('app-feedback-include-profile').checked = false;   // off by default, with its privacy note
   $('app-feedback-include-profile').disabled = false;
   const email = prepared.identity?.email || '';
@@ -84,7 +88,7 @@ export async function init() {
     button.disabled = false;
     if (!result?.ok) { $('app-feedback-message').textContent = plainError(result?.error || 'Couldn\'t send it.'); return; }
     $('app-feedback-text').value = '';
-    prepared = EMPTY;
+    prepared = {...EMPTY};
     $('app-feedback-dialog').close();
     const left = result.skipped?.length ? ` (without the ${result.skipped.join(' and the ')}: too big)` : '';
     toastMessage('Thank you!', `Your feedback went straight to the maker${left}. If you left a contact, expect a reply.`, NO_PLACE.done, 'good');

@@ -4,6 +4,9 @@
 // does not show ids, filters, states or what a list hid. Never a posting's text (owner, 20 Oct 2026: no job texts stored centrally): ids, titles, companies, fit, status only.
 const entries = new Map();
 export const MAX_ROWS = 300, VISIBLE_TEXT = 20000;
+// Why (Gitar on #3021, 3 Nov 2026): Settings and every Profile tab show the person's CV, details, letters and connections; their text must never ride along as "this screen's data".
+// Profile contents go only through the opt-in snapshot, so these views send nothing unless a page registers a safe summary.
+const PRIVATE_VIEWS = new Set(['settings', 'profile']);
 
 /** Registers what a page sends: `read()` returns a JSON-able object (or null when the page has nothing yet). One entry per key. */
 export function registerScreenData(key, read) { entries.set(String(key), read); }
@@ -16,12 +19,14 @@ export function screenKey(doc = document) {
   return view;
 }
 
-/** What this screen sends: {screen, source: 'registry' | 'visible text', data}. A registered page that throws or has nothing falls back to its visible text, never to nothing. */
+/** What this screen sends: {screen, source: 'registry' | 'visible text' | 'none', data}. A registered page that throws or has nothing falls back to its visible text, except Settings and the
+ *  Profile tabs (PRIVATE_VIEWS), which fall back to nothing: data is null. */
 export function readScreenData(key = screenKey(), doc = document) {
   let data = null;
   try { data = entries.get(key)?.() ?? null; if (data) data = JSON.parse(JSON.stringify(data)); } catch { data = null; }   // plain JSON or nothing: a page's data crosses to the main process
   if (data) return {screen: key, source: 'registry', data};
   const view = key.split(':')[0];
+  if (PRIVATE_VIEWS.has(view)) return {screen: key, source: 'none', data: null};
   const text = (doc.querySelector(`.view[data-view="${view}"]`)?.innerText || '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, VISIBLE_TEXT);
   return {screen: key, source: 'visible text', data: {text}};
 }

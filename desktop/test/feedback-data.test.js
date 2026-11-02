@@ -30,6 +30,14 @@ test('a registered page sends its data; no entry, an empty one or one that throw
   }
 });
 
+test('Settings and the Profile tabs never fall back to their visible text (the Profile goes only through the opt-in snapshot)', () => {
+  for (const key of ['settings', 'profile:cv', 'profile:details', 'profile:letter']) {
+    assert.deepEqual(readScreenData(key, doc({text: 'Ana Fake, +351 900 000 000, 1 Fake Street'})), {screen: key, source: 'none', data: null});
+  }
+  registerScreenData('profile:answers', () => ({questions: []}));
+  assert.equal(readScreenData('profile:answers', doc()).source, 'registry');
+});
+
 test('the Jobs data names how the list is narrowed and each row by id, title, company, source, fit and status; never a posting text, a long text is cut', () => {
   const rows = [{code: 'JB-1', url: 'https://boards.example.com/jobs/1', title: 'Product Designer', company: 'Acme', source: 'Gmail', status: 'unreviewed', fit: 82, description: 'FULL POSTING TEXT', notes: 'x'.repeat(5000), place_unclear: false},
     {code: 'JB-2', title: 'T'.repeat(400), company: 'Beta', source: 'LinkedIn', status: 'applied', fit: null}];

@@ -87,3 +87,20 @@ test('the Profile snapshot is read only when asked, held redacted, and sent only
   } finally { globalThis.fetch = realFetch; }
   assert.equal(bodies[0].profile, profile.text); assert.ok(!('profile' in bodies[1])); assert.ok(!('profile' in bodies[2]));
 });
+
+test('a Send while the Profile is being read leaves the old dialog alone: the late read neither throws nor lands on a new dialog', async () => {
+  let release;
+  setup({profileOf: () => new Promise(resolve => { release = () => resolve({reader: 'portrait', parts: {details: [{label: 'City', value: 'Porto'}]}, lacked: []}); })});
+  await handlers.feedbackPrepare({}, 'jobs', PAGE);
+  const late = handlers.feedbackProfile();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ok: true});
+  try { await handlers.sendFeedback({}, 'words', '', {profile: true}); } finally { globalThis.fetch = realFetch; }   // sent while the read is pending: no snapshot, held is cleared
+  release();
+  assert.match((await late).profile.text, /Porto/);   // resolves for its own dialog, no TypeError
+  await handlers.feedbackPrepare({}, 'jobs', PAGE);   // a new dialog starts without the old snapshot
+  const bodies = [];
+  globalThis.fetch = async (url, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ok: true}); };
+  try { await handlers.sendFeedback({}, 'words', '', {profile: true}); } finally { globalThis.fetch = realFetch; }
+  assert.ok(!('profile' in bodies[0]));
+});

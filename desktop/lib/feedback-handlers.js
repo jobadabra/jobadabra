@@ -47,9 +47,10 @@ export function registerFeedbackHandlers({DEMO, app, ipcMain, storage, track, ge
   });
   // The person turned "Include a snapshot of my whole Profile" on: read it now (a Notion store takes a few seconds). -> {profile: {text, bytes, parts, cut} | null}
   ipcMain.handle('feedbackProfile', async () => {
-    if (!held) return {profile: null};
-    try { held.profile = profileText(await profileOf(storage)); } catch { held.profile = null; }
-    return {profile: held.profile};
+    const mine = held;   // Why (Gitar on #3021): a Send or a new open during the read replaces `held`; this read lands on the dialog it was asked by
+    if (!mine) return {profile: null};
+    try { mine.profile = profileText(await profileOf(storage)); } catch { mine.profile = null; }
+    return {profile: mine.profile};
   });
   ipcMain.handle('sendFeedback', (_, text, contact, include = {}) => {
     if (DEMO) return {ok: true};
