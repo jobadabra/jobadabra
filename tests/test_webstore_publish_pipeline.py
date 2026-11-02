@@ -90,7 +90,8 @@ class StorePublishOnStable(unittest.TestCase):
         self.assertIn('isPrerelease', publish, 'refuses a beta tag')
         self.assertIn('webstore-publish.mjs publish', publish)
         self.assertNotIn('webstore-publish.mjs publish', check)
-        self.assertNotIn('secrets.', flow, 'keyless: GitHub OIDC to Google, no stored key')
+        self.assertNotIn('secrets.', flow[:flow.index('\n  alert:')], 'keyless: GitHub OIDC to Google, no stored key')
+        self.assertEqual(set(re.findall(r'secrets\.(\w+)', flow)), {'CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'}, 'only the failure alert holds a secret: the alerts bot')
 
 
 class MicrosoftStoreOnStable(unittest.TestCase):
@@ -150,6 +151,48 @@ class MicrosoftStoreOnStable(unittest.TestCase):
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$\{\{ *secrets\.')
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$MS_STORE_CLIENT_SECRET')
 
+
+
+class StorePublishFailureReachesTheOwner(unittest.TestCase):
+    """Owner, 2 Nov 2026: "I didn't get a telegram notification about that failure" … "so it was silent to me". Run 41463002482 (0.8.86, Chrome Web Store) failed after it
+    started; only a refused start alerted. The class: every store workflow a promotion starts sends one message with its run when it fails."""
+    STORES = {'extension-store-publish.yml': ('Chrome Web Store', {'publish'}), 'msix-store.yml': ('Microsoft Store', {'msix', 'submit'})}
+
+    def test_every_store_workflow_tells_the_owner_when_its_publish_fails(self):
+        script = (ROOT / 'tools' / 'release-stable.sh').read_text()
+        started = set(re.findall(r'start_store "[^"]+" ([\w-]+\.yml)', script))
+        self.assertEqual(started, set(self.STORES), 'positive control: the stores release-stable.sh starts are the ones checked here')
+        for name, (store, jobs) in self.STORES.items():
+            flow = (WORKFLOWS / name).read_text()
+            with self.subTest(workflow=name):
+                alert = flow[flow.index('\n  alert:'):]
+                needs = set(re.search(r'needs: \[([^\]]+)\]', alert).group(1).replace(' ', '').split(','))
+                self.assertEqual(needs, jobs, 'it waits for every job that publishes, so a failure in any of them reaches it')
+                self.assertIn("if: ${{ failure() && inputs.tag != '' }}", alert, 'only a real publish (a tag), never the PR check')
+                self.assertIn("import {send} from './desktop/e2e/ci-alert.mjs'", alert, 'the one alert path')
+                self.assertIn('actions/runs/${{ github.run_id }}', alert, 'the message links the run')
+                self.assertIn(store, alert)
+                for secret in ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'):
+                    self.assertIn(f'{secret}: ${{{{ secrets.{secret} }}}}', alert)
+
+
+class PromotionByHandRunsInGitHub(unittest.TestCase):
+    """Owner, 2 Nov 2026: "It can be in this workflow" … "we just promote the latest beta". 0.8.86 was promoted from a Mac with no Telegram secrets."""
+    FLOW = (WORKFLOWS / 'canary-promote.yml').read_text()
+
+    def test_the_workflow_promotes_the_latest_beta_through_the_one_script_with_the_alert_secrets(self):
+        step = self.FLOW[self.FLOW.index('- name: The latest beta to stable'):self.FLOW.index('- name: End-to-end top-up')]
+        self.assertIn('promote_latest_beta:', self.FLOW)
+        self.assertIn('python3 tools/e2e_gate.py latest-beta "$REPO"', step)
+        self.assertIn('tools/release-stable.sh "$tag"', step, 'the same proof and store starts as every route')
+        self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}', step)
+        self.assertIn("DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}", step, 'Gitar on #3003: "Only print the decision" (on by default) never promotes')
+
+    def test_the_soak_steps_stay_out_of_a_by_hand_promotion(self):
+        for name in ('End-to-end top-up on the candidate', 'Decide (and promote when switched on)', 'A canary that stays unproven for 5 days needs a person'):
+            step = self.FLOW[self.FLOW.index(f'- name: {name}'):]
+            with self.subTest(step=name):
+                self.assertIn("(inputs.force_tag != '' || inputs.promote_latest_beta)", step[:step.index('run:')])
 
 if __name__ == '__main__':
     unittest.main()

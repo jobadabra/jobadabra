@@ -1,12 +1,26 @@
 #!/usr/bin/env bash
 # Promote a desktop build to the stable release: friends' apps offer it as an update ("Update to …" in the menu),
 # and the website's download links serve it. Every push to main only makes a pre-release.
-#   tools/release-stable.sh                 # the newest build
-#   tools/release-stable.sh desktop-v0.5.3
+#   tools/release-stable.sh                 # by hand: starts "Release · Promote to stable" for the latest beta (below)
+#   tools/release-stable.sh desktop-v0.5.3  # in GitHub (that workflow, the release run, beta-approve): this tag
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
 repo=$JOBADABRA_PUBLIC_REPO
-tag=${1:-$(gh release list -R "$repo" -L 20 --json tagName,isDraft -q '[.[] | select(.isDraft | not)][0].tagName')}
+# Why (2 Nov 2026, owner: "are we going to move the promotion to stable on a workflow? … It can be in this workflow … we just promote the latest beta"): 0.8.86 was promoted
+# from a Mac, where the Telegram secrets do not exist, so its stable alert never went out and no run showed the promotion. Started by hand outside GitHub, this starts
+# "Release · Promote to stable" (canary-promote.yml, promote_latest_beta), which runs this same script with the secrets; DRY_RUN=1 still only prints, here.
+if [ -z "${GITHUB_ACTIONS:-}" ] && [ "${DRY_RUN:-0}" != 1 ]; then
+  if [ -n "${1:-}" ]; then
+    echo "By hand, the promotion runs in GitHub and takes the latest beta: run tools/release-stable.sh with no tag. Another tag goes through the hot path:
+gh workflow run canary-promote.yml -R $repo --ref main -f force_tag=$1 -f force_reason='<why>'" >&2
+    exit 1
+  fi
+  gh workflow run canary-promote.yml -R "$repo" --ref main -f promote_latest_beta=true -f dry_run=false
+  echo "Started \"Release · Promote to stable\" for the latest beta: ${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/workflows/canary-promote.yml"
+  exit 0
+fi
+tag=${1:-$(python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" latest-beta "$repo")}   # no tag: the latest beta, the one the workflow promotes
+[ -n "$tag" ] || { echo "No pre-release newer than stable is approved on both Mac and Windows: nothing to promote." >&2; exit 1; }
 
 # The Windows installer must be THIS build's own. When the windows job fails, desktop.yml's mac-only fallback
 # uploads the previous release's generic Jobadabra-/Job-Pilotto-windows-x64.exe, so the release looks promotable while its
