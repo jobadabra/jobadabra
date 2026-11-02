@@ -149,6 +149,17 @@ class OutdatedAppTests(unittest.TestCase):
             self.follow(dict(self.OLD_APP))
         self.assertIn(paths.OUTDATED_APP, str(caught.exception))
 
+    def test_a_run_whose_app_speaks_an_older_env_protocol_is_refused(self):
+        """The reachable case: an app that has the Restart card but was started before the next env change (it sends JOBADABRA_ENV_VERSION)."""
+        env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_ENV_VERSION': str(paths.ENV_VERSION - 1)}
+        with self.assertRaises(SystemExit) as caught:
+            self.follow(env)
+        self.assertIn(paths.OUTDATED_APP, str(caught.exception))
+
+    def test_an_app_on_the_engines_env_protocol_is_not_refused(self):
+        env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_ENV_VERSION': str(paths.ENV_VERSION), 'JOBADABRA_DATA_DIR': '/a', 'JOBADABRA_CONFIG_DIR': '/b'}
+        self.assertEqual(self.follow(env), {})
+
     def test_a_run_started_by_this_app_is_not_refused(self):
         env = {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_DATA_DIR': '/app/data', 'JOBADABRA_CONFIG_DIR': '/app/config'}
         self.assertEqual(self.follow(env), {})

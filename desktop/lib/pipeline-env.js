@@ -65,6 +65,8 @@ const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'L
 // unhandled errors to it (src/crash_reporting.py). The install id and version ride along as tags.
 let crashReports = null;
 export const setCrashReports = value => { crashReports = value; };
+/** The env protocol number the app sends; src/paths.py ENV_VERSION is the engine's minimum. Bump both together (test/env-version.test.js). */
+export const ENV_VERSION = 1;
 export function pipelineEnv(storage, parent = process.env) {
   const settings = storage.settings();
   const env = {
@@ -72,6 +74,7 @@ export function pipelineEnv(storage, parent = process.env) {
     PYTHONUNBUFFERED: '1',
     PYTHONUTF8: '1',  // files and pipes in UTF-8 on Windows too (its default is the ANSI code page)
     JOBADABRA_NO_DOTENV: '1',
+    JOBADABRA_ENV_VERSION: String(ENV_VERSION),   // the app's side of the env protocol: an engine that needs a newer one refuses the run and Jobs says "Restart" (src/paths.py)
     ...(parent.JOBADABRA_E2E ? {JOBADABRA_E2E: '1'} : {}),
     ...(parent.JOBADABRA_TWIN ? {JOBADABRA_TWIN: '1'} : {}),
     ...(isolatedFile(parent) ? {JOBADABRA_ISOLATED_SECRETS: isolatedFile(parent)} : {}),   // their secrets: the run's own file, never the Keychain (lib/keychain.js)  // a live-test twin (lib/twin.js): the engine sees no Keychain either  // the end-to-end journey: the engine ignores this Mac's Keychain (src/secret_store.py)

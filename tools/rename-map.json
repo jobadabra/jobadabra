@@ -56,6 +56,13 @@
    "expires": "never"
   },
   {
+   "id": "keep-outdated-app-check",
+   "match": "^JOB_PILOTTO_",
+   "paths": "^(src/paths\\.py|tests/test_follow_app\\.py)$",
+   "keep": "the engine refuses a run from an app that still sends the old env names (src/paths.py refuse_outdated_app); it must spell them to detect them",
+   "expires": "never"
+  },
+  {
    "id": "keep-safe-storage",
    "match": "^Job Pilotto$",
    "after": "^ Safe Storage",

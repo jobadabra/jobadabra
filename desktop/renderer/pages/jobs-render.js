@@ -423,11 +423,11 @@ export function renderJobs() {
     : anyStatus ? 'That job isn\'t in your list: not found by a search yet, or hidden by your language or company filters.'
     : !text && !jobsState.statFilter && emptyFor[filter] ? emptyFor[filter]
     : text || jobsState.statFilter || filter !== 'all' ? 'No job matches this filter.' : 'No open jobs right now.';
+  keepListHidden();   // the restart card replaces the list while the app is older than its engine (pages/jobs-outdated.js)
   // The board shows applications only (rows with a Stage); the stage filters ticked, a counter and the words narrow it.
   const onBoard = boardIds(filters);   // the ticked filters that name a stage; none: every application
   paintViews((counted || shared.allJobs).filter(job => columnOf(job) && (counted || !onBoard.length || inFilters(job, onBoard, now)) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)
   restoreMenu();
-  keepListHidden();   // the restart card replaces the list while the app is older than its engine (pages/jobs-outdated.js)
 }
 
 // "Refresh jobs" in the empty list is the same trigger as the header button (a disabled one, while a refresh runs, ignores it).
