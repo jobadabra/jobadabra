@@ -1,5 +1,5 @@
 // Your data: where it lives, export, import, backup, reset.
-import {$, message, show} from './core.js';
+import {$, message, osText, show} from './core.js';
 import {openInNotion, openNotionConnect} from './notion-connect.js';
 import {shared} from './shared.js';
 import {MOVE_WORDS, movedText} from '../store-move-text.js';
@@ -20,7 +20,7 @@ function savedLine(id, words, file) {
   const line = $(id);
   line.className = 'message ok';
   const link = document.createElement('button');
-  link.className = 'arrow-link'; link.textContent = navigator.platform.startsWith('Win') ? 'Show in Explorer' : 'Show in Finder';
+  link.className = 'arrow-link'; link.textContent = osText('Show in Finder');   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
   link.addEventListener('click', () => window.pilot.showFile(file));
   line.replaceChildren(`${words} ${file.split(/[\\/]/).pop()} `, link);
 }

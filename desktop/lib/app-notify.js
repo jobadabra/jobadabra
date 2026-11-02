@@ -10,6 +10,7 @@ import * as pipeline from './pipeline.js';
 import * as runHistory from './run-history.js';
 import {notCheckedNotice} from './not-checked-notice.js';
 import * as telegram from './telegram.js';
+import {osText} from '../renderer/os.js';
 import {useBotApi} from './waiting-message.js';
 import {cloudNextAt, nextAt, nextMailAt} from './schedule.js';
 import {log as appLog} from './log.js';
@@ -33,7 +34,8 @@ export function createAppNotify(ctx) {
     const onClick = typeof target === 'function' ? target : () => openTarget(target);
     const toast = hint => toWindow('toast', {title, body, hint, target: typeof target === 'function' ? null : targets.clean(target), tone: toneOf(tone)});
     if (!Notification.isSupported() || notificationsBlocked) { appLog('notify', 'window toast only', {title, blocked: notificationsBlocked}); toast(false); return; }
-    const note = new Notification({title, body, silent: false});
+    // The native notification is not a window os.js runs in; the toast above is (Why (2 Nov 2026, owner): Mac words on Windows). Callers' literals are swapped here, once.
+    const note = new Notification({title: osText(title, process.platform), body: osText(body, process.platform), silent: false});
     note.on('click', () => { getWindow()?.show(); getWindow()?.focus(); onClick(); });
     // Titles only in the log, never the body (it can name an employer or an interview).
     notifyWatch.watch(note, {

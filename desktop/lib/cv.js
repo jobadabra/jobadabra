@@ -15,6 +15,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {isFormOf} from './apply.js';
 import {render} from '../cv/template.js';
+import {osText} from '../renderer/os.js';
 import {pagesDocument} from './cv-inplace-review.js';
 import {writePrivate} from './private-file.js';
 import {log as appLog} from './log.js';
@@ -357,7 +358,11 @@ export function finalCopy(storage, record) {
   return target;
 }
 
-export function reviewPage(storage, record) {
+/**
+ * The review window's HTML file. That window has no preload, so renderer/os.js never runs in it: its fixed words are swapped here for `platform`
+ * (Why (2 Nov 2026, owner): the Windows screenshot read "Show in Finder"). Only fixed labels go through osText, never the CV's or the job's own text.
+ */
+export function reviewPage(storage, record, {platform = process.platform} = {}) {
   // Marks are recomputed from the model's answer when it's kept, so older reviews get later diff improvements.
   const base = baseCv(storage);
   let marked = record.review, warnings = record.warnings;
@@ -377,7 +382,7 @@ export function reviewPage(storage, record) {
     ${final ? `<div class="jp-final"><div class="jp-final-h">Final CV: send this one</div>
       <div class="jp-final-name">${esc(path.basename(final))}</div>
       <div class="jp-actions"><a href="${esc(pathToFileURL(final).href)}" target="_blank">Open</a>
-        <a href="jobadabra-cv:reveal">Show in Finder</a> <a href="jobadabra-cv:copy">Copy path</a></div>
+        <a href="jobadabra-cv:reveal">${osText('Show in Finder', platform)}</a> <a href="jobadabra-cv:copy">Copy path</a></div>
       <div class="jp-note">Clean: no highlights or notes. The page on the right is only a preview of what changed.</div></div>` : ''}
     <div class="jp-title">Preview of changes · ${esc(record.job.title)} · ${esc(record.job.company)}</div>
     <div class="jp-meta">${new Date(record.createdAt).toLocaleString()} · ${esc(record.model)}</div>

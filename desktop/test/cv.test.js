@@ -7,6 +7,7 @@ import * as cv from '../lib/cv.js';
 import {me} from '../lib/server.js';
 import {createStorage} from '../lib/storage.js';
 import {render, pages} from '../cv/template.js';
+import {osText} from '../renderer/os.js';
 
 const fakeCrypto = {encrypt: v => v, decrypt: v => v};
 const tempStorage = () => createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-cv-')), fakeCrypto);
@@ -165,4 +166,20 @@ test('the extension gets the tailored CV on that job\'s page and the base CV els
   const finalPdf = cv.finalCopy(storage, cv.load(storage, 'ab12cd34'));
   assert.match(path.basename(finalPdf), /^CV_.*Acme\.pdf$/);
   assert.equal(fs.readFileSync(finalPdf, 'utf8'), 'TAILORED');
+});
+
+// Owner, 2 Nov 2026 (Windows screenshot): the tailored CV's review window said "Show in Finder". That window is built in the main process and
+// has no preload, so renderer/os.js never swaps its words: the page itself is written for the platform (lib/cv.js reviewPage).
+test('the review window names File Explorer on Windows and Finder on a Mac', () => {
+  const storage = tempStorage();
+  fs.writeFileSync(storage.path('cv.pdf'), 'BASE');
+  const {cv: tailored, review} = cv.applyTailoring(BASE, answer());
+  cv.save(storage, 'ab12cd34', {job: {code: 'ab12cd34', url: 'https://boards.example/jobs/1', title: 'SRE', company: 'Acme'},
+    createdAt: new Date().toISOString(), model: cv.MODEL, usd: 0.05, changes: [], warnings: [], cv: tailored, review}, Buffer.from('TAILORED'));
+  const pageOn = platform => fs.readFileSync(cv.reviewPage(storage, cv.load(storage, 'ab12cd34'), {platform}), 'utf8');
+  const win = pageOn('win32'), mac = pageOn('darwin');
+  assert.match(win, />Show in File Explorer</);
+  assert.doesNotMatch(win, /Finder/, 'a PC has no Finder');
+  assert.match(mac, />Show in Finder</);
+  assert.equal(osText(win, 'win32'), win, 'nothing on the Windows page is still a Mac word');   // the same swap the other windows get
 });
