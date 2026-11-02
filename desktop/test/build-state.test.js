@@ -34,31 +34,38 @@ test('the app run from source: its start commit, and how many merged desktop/ext
 
 test('the extension: its commit from the version a checkout stamps, and how many fixes it lacks', () => {
   const run = fakeGit({'rev-parse HEAD': 'c'.repeat(40), 'log --reverse --format=%H %cI HEAD -- extension': `aaa1111 ${T}\nbbb2222 ${T}\nccc3333 2026-10-16T15:00:00Z\n`});
-  const behind = extensionBuild({repo: '/r', version: '0.9.2', latest: '0.9.3', run, now: 5e6});
+  const behind = extensionBuild({repo: '/r', version: '0.9.2', latest: '0.9.3', run});
   assert.deepEqual({behind: behind.behind, label: behind.label, latest: behind.latestLabel}, {behind: 1, label: 'bbb2222 · 16 Oct 14:02', latest: 'ccc3333 · 16 Oct 15:00'});
-  assert.equal(extensionBuild({repo: '/r', version: '0.9.3', latest: '0.9.3', run, now: 6e6}).behind, 0);
-  assert.equal(extensionBuild({repo: '/r', version: '0.9', latest: '0.9.3', run, now: 7e6}).behind, null, 'a copy that never reloaded: how many is unknown, but it IS behind');
-  assert.equal(extensionBuild({repo: '/r', version: '0.9', latest: '0.9.3', run, now: 8e6}).label, '', 'no commit is invented for a version that names none');
+  assert.equal(extensionBuild({repo: '/r', version: '0.9.3', latest: '0.9.3', run}).behind, 0);
+  assert.equal(extensionBuild({repo: '/r', version: '0.9', latest: '0.9.3', run}).behind, null, 'a copy that never reloaded: how many is unknown, but it IS behind');
+  assert.equal(extensionBuild({repo: '/r', version: '0.9', latest: '0.9.3', run}).label, '', 'no commit is invented for a version that names none');
 });
 
 // Why (#2910, 2 Nov 2026): every extension check-in (each 30 s) walked extension/'s history twice, one walk per label, with a 20 s cache: ~1 s each on this
-// repo (8,263 commits), up to 5 s each on a cold worktree, inside the request. The commits a HEAD has never change, so the walk runs once per HEAD.
+// repo (8,263 commits), up to git's 5 s limit each on a cold worktree, inside the request. The commits a HEAD has never change, so the walk runs once per HEAD.
+const walkingGit = (state, walk) => (cmd, args) => {
+  const key = args.slice(2).join(' ');
+  if (key === 'rev-parse HEAD') return `${state.head}\n`;
+  if (key === 'log --reverse --format=%H %cI HEAD -- extension') { state.walks += 1; return walk(); }
+  throw new Error(`unexpected git ${key}`);
+};
+const checkIn = (repo, run) => extensionBuild({repo, version: '0.9.2', latest: '0.9.3', run});
+
 test('the extension history is walked once per HEAD, not on every check-in', () => {
-  let head = 'h1'.padEnd(40, '0'), walks = 0;
-  const shas = ['aaa1111', 'bbb2222', 'ccc3333'].map(sha => sha.padEnd(40, '0'));
-  const run = (cmd, args) => {
-    const key = args.slice(2).join(' ');
-    if (key === 'rev-parse HEAD') return `${head}\n`;
-    if (args.at(-1) === 'extension') { walks += 1; return key.startsWith('log') ? shas.map(sha => `${sha} ${T}`).join('\n') : shas.join('\n'); }
-    if (key.startsWith('log -1 --format=%cI')) return `${T}\n`;
-    throw new Error(`unexpected git ${key}`);
-  };
-  const checkIn = now => extensionBuild({repo: '/walks', version: '0.9.2', latest: '0.9.3', run, now});
-  assert.deepEqual([checkIn(1e7).label, checkIn(1e7 + 30000).latestLabel], ['bbb2222 · 16 Oct 14:02', 'ccc3333 · 16 Oct 14:02']);
-  assert.equal(walks, 1, 'two labels, two check-ins 30 s apart, one HEAD: one walk');
-  head = 'h2'.padEnd(40, '0');
-  checkIn(1e7 + 60000);
-  assert.equal(walks, 2, 'a pull moves HEAD: the history is walked again');
+  const state = {head: 'h1', walks: 0};
+  const run = walkingGit(state, () => ['aaa1111', 'bbb2222', 'ccc3333'].map(sha => `${sha.padEnd(40, '0')} ${T}`).join('\n'));
+  assert.deepEqual([checkIn('/walks', run).label, checkIn('/walks', run).latestLabel], ['bbb2222 · 16 Oct 14:02', 'ccc3333 · 16 Oct 14:02']);
+  assert.equal(state.walks, 1, 'two labels, two check-ins, one HEAD: one walk');
+  state.head = 'h2';
+  checkIn('/walks', run);
+  assert.equal(state.walks, 2, 'a pull moves HEAD: the history is walked again');
+});
+
+test('a walk that fails (git hit its time limit) is not retried until HEAD moves; the labels say nothing', () => {
+  const state = {head: 'h1', walks: 0};
+  const run = walkingGit(state, () => { throw new Error('spawnSync git ETIMEDOUT'); });
+  assert.deepEqual([checkIn('/slow', run).label, checkIn('/slow', run).latestLabel], ['', '']);
+  assert.equal(state.walks, 1, 'two labels, two check-ins, one failed walk: never 2 x 5 s per check-in');
 });
 
 test('a packaged app and its extension are one build: the stamped commit, never behind', () => {
