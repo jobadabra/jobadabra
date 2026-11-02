@@ -1,4 +1,4 @@
-"""tools/sync_release_labels.py: what each release is called, and the pinned issue's table."""
+"""tools/sync_release_labels.py: what each release is called."""
 import importlib.util
 import unittest
 from pathlib import Path
@@ -29,32 +29,15 @@ class TitleTests(unittest.TestCase):
         self.assertEqual(labels.state_of(release(1, isLatest=True), True), 'stable')
 
 
-class BodyTests(unittest.TestCase):
-    def test_the_pinned_issue_names_stable_beta_previous_and_the_newest_builds(self):
-        rels = [release(256), release(255), release(254), release(253), release(252, isPrerelease=False, isLatest=True), release(249, isPrerelease=False)]
-        body = labels.channels_body(rels, {'desktop-v0.5.253'})
-        self.assertIn('releases/tag/desktop-v0.5.252)', body.split('Beta')[0])
-        self.assertRegex(body, r'Beta \(release candidate\)\*\* \| \[0\.5\.253')
-        self.assertRegex(body, r'Previous stable\*\* \| \[0\.5\.249')
-        self.assertIn('0.5.256', body)
-        self.assertIn('0.5.254', body)
-        self.assertNotIn('0.5.249 · 2 Oct](https://github.com/GarryOne/jobadabra/releases/tag/desktop-v0.5.256', body)
-
-    def test_empty_states_say_so(self):
-        body = labels.channels_body([release(252, isPrerelease=False, isLatest=True)], set())
-        self.assertIn('none right now', body)
-        self.assertIn('| none |', body)
-
-    def test_newest_builds_are_only_those_newer_than_stable(self):
-        # 3 Oct 2026: the pinned issue listed 0.4 Alpha 253 and 251 beside stable 0.5.0; an older build can never become stable.
-        rels = [release(256), release(255, isPrerelease=False, isLatest=True), release(254), release(253)]
-        body = labels.channels_body(rels, set())
-        newest = [line for line in body.splitlines() if 'Newest builds' in line][0]
-        self.assertIn('0.5.256', newest)
-        self.assertNotIn('0.5.254', newest)
-        self.assertNotIn('0.5.253', newest)
-        only_old = labels.channels_body([release(255, isPrerelease=False, isLatest=True), release(254)], set())
-        self.assertIn('none since 0.5.255', [line for line in only_old.splitlines() if 'Newest builds' in line][0])
+class ArgumentTests(unittest.TestCase):
+    def test_an_unknown_flag_makes_no_github_call(self):
+        calls = []
+        real, labels._gh = labels._gh, lambda *args: calls.append(args) or '[]'
+        try:
+            self.assertEqual(labels.main(['sync_release_labels.py', '--help']), 2)
+        finally:
+            labels._gh = real
+        self.assertEqual(calls, [], 'a --help must never reach GitHub')
 
 
 if __name__ == '__main__':
