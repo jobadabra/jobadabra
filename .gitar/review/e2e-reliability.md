@@ -9,6 +9,10 @@ the runner hands it the step's measured hang cap (desktop/e2e/hang-caps.json, 3x
 (`waited < N`, `capMs`/`limitMs`/`timeout: N`, `until(…, N)`, `Date.now() - t < N`), and no trailer clears it. Raise a blocking finding for the forms it cannot see:
 a bound in a variable or constant, a fixed sleep used as the wait (`pause(5000)` then one read), or a step that reads a state through a slower copy of it
 (an extension decision from app.log instead of the extension's store: 3 tries in a row, 10 s, 45 s and 60 s, each raised the bound under a 14-62 s delivery lag).
+An integration test (`desktop/integration/`, node:test) has the same one clock (owner, 2 Nov 2026: "Add it in #2996"): its body runs in `clocked(ms, …)` (desktop/e2e/lib/test-clock.mjs), each wait's cap goes through
+`capOf(…)`, its stages are named with `at('…')`, and whatever it opens itself (its own extension, a page) is registered with `onHang`. Raise a blocking finding for a new or changed integration test whose
+waits keep caps of their own that can add up past its timeout, or that opens a browser it closes only in its own `finally`: node's timeout then fires first and the red names nothing
+(extension-form-shapes hung with no evidence on 1 and 2 Nov, runs 41342226333 and 41458837502).
 
 ## Rule E: a backbone expectation changes deliberately
 
