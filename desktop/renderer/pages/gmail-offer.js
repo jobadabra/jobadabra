@@ -1,0 +1,55 @@
+// Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the ONE dialog behind the first Submit and a page that asks for a mailed code,
+// the window's copy of "is Gmail connected" (for the Suggestions card and ⌘K), and the connect press, which is Settings' own button so there is one sign-in flow.
+// Invariants: one dialog at a time; the main process decides when (lib/gmail-offer.js) and the window only shows what it is told; connected → nothing is shown. Guard: test/gmail-offer.test.js.
+import {$} from './core.js';
+import {offerWords} from '../gmail-offer-words.js';
+
+export const view = {loaded: false, connected: false};
+
+/** Set the connection's state (Settings' Gmail card read it, or this module asked); tells the pages (Suggestions) when it changed. */
+export function setGmailConnected(connected) {
+  const before = view.connected, was = view.loaded;
+  Object.assign(view, {loaded: true, connected: !!connected});
+  if (!was || before !== view.connected) window.dispatchEvent(new Event('gmail-changed'));
+}
+/** Read the connection from the app. */
+export async function refreshGmail() {
+  const google = await window.pilot.googleStatus().catch(() => null);
+  if (google) setGmailConnected(!!google.connected);
+  return view;
+}
+
+/** Start the connect flow: the Settings card's own button (its warning dialog, the sign-in and the "Connected" line), whichever door was used. */
+export const connectGmail = () => $('google-connect').click();
+
+/** Show the dialog for `offer` ({why, employer, host}); resolves true when Connect was chosen. Never shown twice at once or once connected. */
+export async function openGmailOffer(offer) {
+  const dialog = $('gmail-offer-dialog');
+  if (dialog.open) return false;
+  const known = await refreshGmail();
+  if (known.connected) return false;
+  const words = offerWords(offer);
+  $('gmail-offer-title').textContent = words.title;
+  $('gmail-offer-lead').textContent = words.lead;
+  $('gmail-offer-yes').textContent = words.yes;
+  $('gmail-offer-no').textContent = words.no;
+  dialog.returnValue = '';
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => {
+      const yes = dialog.returnValue === 'default';
+      if (yes) connectGmail();
+      resolve(yes);
+    }, {once: true});
+    dialog.showModal();
+  });
+}
+
+/** Start-up: the main process tells the window (first Submit, a mailed code). */
+export function initGmailOffer() {
+  window.pilot.onGmailOffer?.(offer => { openGmailOffer(offer).catch(() => {}); });
+  refreshGmail().catch(() => {});
+}
+
+/** The ⌘K command (pages/nav.js): only while Gmail is not connected. */
+export const gmailCommand = () => (view.loaded && !view.connected
+  ? {label: 'Connect Gmail', hint: 'Replies move your jobs; mailed codes are typed for you', keywords: 'gmail google connect mail email calendar sign in', run: connectGmail} : null);

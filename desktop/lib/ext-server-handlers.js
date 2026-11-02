@@ -24,6 +24,8 @@ import {pageStepHandler} from './page-step.js';
 import * as visits from './visits.js';
 import {flowState, leftCounts, missedQuestions, submitCounts, unplaced} from './question-labels.js';
 import {log as appLog} from './log.js';
+import {createCodeOffer} from './gmail-offer.js';
+import {tellWindow} from './server-hooks.js';
 import {markedSession} from './session-tab.js';
 import {accountCodeAnswer, codeFromMail, confirmAccount} from './account-confirm.js';
 import {createAccountCheck} from './account-check.js';
@@ -74,8 +76,11 @@ export function registerExtServerHandlers(ctx) {
   });
   // The code a confirmation page asks for (owner, 10 Oct 2026): in "Do it for me" only, read from the mail sent to the account's email (Gmail, read-only; the AI picks the
   // code) and handed to the extension, which types it; never logged. "Let me check each step", no email or no code: nothing, the person types it.
-  server.setAccountCodeHandler(async ({host} = {}) => {
+  // Gmail not connected (any mode): the job waits with its reason and the window offers Gmail once per run (lib/gmail-offer.js); the mail is not read (it would wait 90 s for nothing).
+  const codeOffer = createCodeOffer({tell: (...args) => tellWindow(...args), park: (...args) => terminals.noteStuck(...args)})   // late-bound: main.js sets the window signal after this runs;
+  server.setAccountCodeHandler(async ({host, session: carried, job, url, boot} = {}) => {
     const email = DEMO ? '' : await Promise.resolve(notionGate.tracking(storage) ? contactDetails.read(storage) : {}).then(contact => contact?.email || '').catch(() => '');
+    if (codeOffer({session: resolveSession({session: carried, job, url, boot}, ids), host, email})) return {ok: false, why: 'gmail not connected'};
     return accountCodeAnswer({mode: automationOf(storage.settings()), host, email, read: found => codeFromMail({...found, run: args => pipeline.run(storage, args)})});
   });
   server.setAccountFactHandler(({fact, text, session: carried, job, url, boot} = {}) => {   // the card's account record: a consent accepted (the page's own wording), a code typed

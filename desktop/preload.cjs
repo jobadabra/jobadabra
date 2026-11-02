@@ -114,4 +114,5 @@ contextBridge.exposeInMainWorld('pilot', {
   openExternal: call('openExternal'), openVisit: call('openVisit'), visitsList: call('visitsList'), visitsStuck: call('visitsStuck'), visitsDismiss: call('visitsDismiss'), visitsRun: call('visitsRun'), refusedReadStart: call('refusedReadStart'), visitWithClaude: call('visitWithClaude'), visitsWithClaude: call('visitsWithClaude'), focusBrowser: call('focusBrowser'), visitShowTab: call('visitShowTab'), visitAgain: call('visitAgain'), showBrowser: call('showBrowser'), openNotion: call('openNotion'), showFolder: call('showFolder'), extensionInfo: call('extensionInfo'),
   onLog: callback => ipcRenderer.on('log', (_, line) => callback(line)),
   onMoved: callback => ipcRenderer.on('moved', (_, steps) => callback(steps)),
+  onGmailOffer: callback => ipcRenderer.on('gmail-offer', (_, offer) => callback(offer)),   // lib/gmail-offer.js: the first Submit, or a page asking for a mailed code
 });

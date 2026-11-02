@@ -1806,6 +1806,19 @@
   </form>
 </dialog>
 
+<!-- Gmail offered at the right moment (pages/gmail-offer.js, renderer/gmail-offer-words.js): after the first Submit, and when a page asks for a code mailed to the person -->
+<dialog id="gmail-offer-dialog" class="save-dialog panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="mail"></i></span><h2 id="gmail-offer-title"></h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="dialog-lead" id="gmail-offer-lead"></p>
+    <div class="dialog-foot">
+      <button class="secondary" id="gmail-offer-no" value="cancel" formnovalidate></button>
+      <button class="primary" id="gmail-offer-yes" value="default"></button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Build a CV with the AI (pages/cv-build.js, lib/cv-build.js): a short form, the AI's draft to edit, then it becomes the main CV -->
 <dialog id="cvb-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span>
