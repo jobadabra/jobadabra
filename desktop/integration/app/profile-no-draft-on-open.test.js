@@ -40,14 +40,14 @@ before(() => {
     out.profileLeave = {asks: asks(), onFocus: Boolean(document.querySelector('.view[data-view="focus"]:not([hidden])'))};
     document.querySelector('dialog[open] button[value="discard"]')?.click();   // a question left open is answered so the rest can run
     await kit.until(() => document.querySelector('.view[data-view="focus"]:not([hidden])'), 'Focus after the answer');
-    // The person's own press is a draft: back on Profile, "Fill N from your CV" fills the boxes and the bar counts them.
+    // The person's own yes is a draft: back on Profile, "Review N from your CV" lists what changes, and "Fill them in" fills the boxes and the bar counts them.
     settled = false;
     document.querySelector('.nav[data-view="settings"][data-settings="profile"]').click();
     await kit.until(() => settled, 'Your details to settle on the second open');   // the open's own paint of the boxes is done before the person presses
     await kit.until(() => document.querySelector('#setting-contact .cv-proposals-badge'), 'the offer again');
     document.querySelector('#setting-contact button.cv-proposals-badge').click();
     await kit.until(() => document.querySelector('dialog[open]'), 'the question that lists what will change');
-    out.dialog = {text: document.querySelector('dialog[open]').innerText.replace(/\\s+/g, ' ').trim(), bars: bars(), filled: document.querySelectorAll('#setting-contact [data-proposed]').length};
+    out.dialog = {text: document.querySelector('dialog[open]').innerText.replace(/\s+/g, ' ').trim(), bars: bars(), filled: document.querySelectorAll('#setting-contact [data-proposed]').length};
     document.querySelector('dialog[open] button[value="no"]').click();
     await kit.until(() => !document.querySelector('dialog[open]'), 'Not now closes it');
     out.notNow = {bars: bars(), filled: document.querySelectorAll('#setting-contact [data-proposed]').length};

@@ -37,10 +37,9 @@ test('wiring: both sources on the Profile bar, a refresh never draws over drafts
   assert.match(profile, /if \(!kept && painted && contactDirty\(\)\) return;/);
   assert.match(facts, /if \(!kept && !redrawing && factsDirty\(\)\) return;/);
   assert.match(proposals, /detailsChanged\(\);   \/\/ the person pressed Fill or said yes: they are drafts/);
-  assert.match(proposals, /again \? showProposals\(result\?\.proposals \|\| \[\]\) : await offerProposals/, 'opening Profile saves what the CV states plainly and only offers the rest: a yes fills them (owner, 2 Nov 2026)');
-  assert.match(proposals, /if \(!sure \|\| !emptyBox\(field\)\) continue;/, 'only a sure value, in a box nobody typed in, is saved on open');
-  assert.doesNotMatch(proposals, /saveContact\(/, 'an unsure proposal is never saved by itself, and no proposal saves the whole form');
-  assert.equal((proposals.match(/saveContactField\(/g) || []).length, 1, 'the one save is a sure value, one detail at a time (owner, 2 Nov 2026: fill and save when confident)');
+  assert.match(proposals, /again \? showProposals\(result\?\.proposals \|\| \[\]\) : offerProposals/, 'opening Profile shows what the app saved and only offers the rest: a yes fills them (owner, 2 Nov 2026)');
+    assert.doesNotMatch(proposals, /saveContact\(/, 'an unsure proposal is never saved by itself, and no proposal saves the whole form');
+  assert.doesNotMatch(proposals, /saveContactField\(/, 'the window never saves a CV value: the engine saves a sure one once (lib/contact-from-cv.js settleSure)');
   const html = read('index.html');
   for (const gone of ['contact-savebar', 'contact-save"', 'contact-discard']) assert.ok(!html.includes(`id="${gone.replace('"', '')}"`), `#${gone} is gone: the page bar saves`);
 });

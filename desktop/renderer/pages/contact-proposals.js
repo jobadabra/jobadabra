@@ -99,14 +99,12 @@ export function showProposals(proposals = []) {
   syncBadge();
   return shown;
 }
-// A value the CV states plainly is saved at once, in an empty box nobody typed in, and said once in a pop-up (one detail at a time, merged into the saved ones: saveContactField).
-async function settleSure(proposals) {
+// What the app saved from the CV on this open (lib/contact-from-cv.js settleSure: once per value, so a box the person clears later stays empty): it shows in its box, is no draft, and is said once.
+function sayApplied(applied = []) {
   const done = [];
-  for (const {field, value, sure} of proposals) {
-    if (!sure || !emptyBox(field)) continue;
-    const saved = await window.pilot.saveContactField(field, value).catch(() => ({ok: false}));
+  for (const {field, value} of applied) {
     const input = box(field);
-    if (!saved?.ok || !input || input.value.trim()) continue;   // not saved, or typed in meanwhile: left alone
+    if (!input || input.value.trim()) continue;   // typed in meanwhile: left alone
     input.value = value;
     contactSavedAs(field, value);
     done.push(`${nameOf(field)}: ${value}`);
@@ -114,8 +112,8 @@ async function settleSure(proposals) {
   if (done.length) toastMessage({title: 'Filled in from your CV', body: `${done.join(' · ')}. Check them in Your details.`, target: {view: 'settings', section: 'profile'}, tone: 'good'});
 }
 // On opening Profile: what the CV states plainly is saved and said; the rest is only offered, never put in the boxes (no draft without the person's own yes).
-async function offerProposals(proposals = []) {
-  await settleSure(proposals);
+function offerProposals(proposals = [], applied = []) {
+  sayApplied(applied);
   waiting = proposals;
   syncBadge();
   return waiting.filter(each => emptyBox(each.field)).length;
@@ -126,8 +124,8 @@ async function offerProposals(proposals = []) {
 // found nothing or failed (#409: a press that said nothing at all).
 export async function loadProposals({again = false} = {}) {
   if (again) message('contact-panel-message', 'Reading your CV for missing details… (about 15 s)');
-  const result = await window.pilot.contactProposals({again}).catch(error => ({proposals: [], error: error.message}));
-  const shown = again ? showProposals(result?.proposals || []) : await offerProposals(result?.proposals || []);   // "Fill from my CV" is the person's press: it fills; opening only offers
+  const result = await window.pilot.contactProposals({again, settle: !again}).catch(error => ({proposals: [], error: error.message}));
+  const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {
     message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === 'no AI' ? 'choose your AI in Settings → Connections first' : result.error}.`
       : 'Your CV has nothing for the empty boxes: type them once here.', result?.error ? 'error' : '');

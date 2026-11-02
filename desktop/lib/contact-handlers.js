@@ -30,7 +30,6 @@ export function registerContactHandlers({ipcMain, storage, DEMO, connected, need
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));
   // One detail confirmed on the session page ("Use" on a row): merged into the others, never replacing them.
   ipcMain.handle('saveContactField', async (_, key, value) => {
-    if (DEMO) return {ok: true};   // the demo window keeps nothing (a CV value saved on open: pages/contact-proposals.js settleSure)
     const gate = needsNotion('profile');
     if (gate) return gate;
     if (!contactDetails.LABELS[key] || !String(value || '').trim()) return {ok: false, error: 'Nothing to save'};
@@ -47,13 +46,17 @@ export function registerContactHandlers({ipcMain, storage, DEMO, connected, need
   // The form's own choice for an answer, when the field is a menu (lib/option-pick.js).
   ipcMain.handle('formChoiceFor', (_, ask) => (DEMO ? {choice: '', how: 'none'} : pickOption(storage, ask || {}, {client: aiClient(storage), log})));
   // {again}: read the CV anew (the button); otherwise what was proposed for this CV, or one Claude call when it was never read for this.
-  ipcMain.handle('contactProposals', async (_, {again = false} = {}) => {
-    if (DEMO) return {proposals: DEMO_PROPOSALS, fresh: false};
+  ipcMain.handle('contactProposals', async (_, {again = false, settle = false} = {}) => {
+    // settle: Profile opening saves the sure ones once (fromCv.settleSure); the nudge after Apply only counts, it never saves. The demo keeps nothing.
+    if (DEMO) return settle ? {proposals: DEMO_PROPOSALS.filter(item => !item.sure), applied: DEMO_PROPOSALS.filter(item => item.sure), fresh: false} : {proposals: DEMO_PROPOSALS, fresh: false};
     if (!connected()) return {proposals: [], error: 'notion'};
     const contact = await contactDetails.read(storage).catch(() => null);
     if (!contact) return {proposals: [], error: byStore(storage, 'Couldn\'t read your details from Notion', 'Couldn\'t read your details from your Profile')};
     // What you stated beside the CV (Profile, Answers, Knowledge: contact-from-cv.js statedText): the town etc. the CV doesn't give.
     const {profile, answers} = await profileTexts(storage).catch(() => ({profile: '', answers: ''}));
-    return fromCv.forCv(storage, {contact, client: aiClient(storage), cvHash: hashOf(storage), profile: fromCv.statedText({profile, answers}), again, log});
+    const result = await fromCv.forCv(storage, {contact, client: aiClient(storage), cvHash: hashOf(storage), profile: fromCv.statedText({profile, answers}), again, log});
+    if (!settle || again || result.error || !result.proposals?.length) return result;
+    return fromCv.settleSure(storage, {contact, result, save: async merged => { contactSaved(await contactDetails.save(storage, merged) || merged); }})
+      .catch(error => { log('profile', `details from the CV: not saved: ${error.message}`); return result; });
   });
 }
