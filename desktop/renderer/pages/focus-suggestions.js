@@ -25,7 +25,7 @@ import {wand} from '../magic.js';
 import {bindHostedOffer, hostedEntries, turnedOnText} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
 import {notifyEntries, saveChoice} from '../notify-suggestion.js';
-import {setNotifyState} from './notify-commands.js';
+import {setNotifyActions, setNotifyState} from './notify-commands.js';
 import {linkedinEntries} from '../linkedin-words.js';
 import {gmailEntries} from '../gmail-offer-words.js';
 import {connectGmail, refreshGmail, view as gmailView} from './gmail-offer.js';
@@ -85,6 +85,8 @@ export const RUN = {
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
   retry_questions: () => loadQuestions({force: true}).catch(() => {}),
 };
+
+setNotifyActions({open: () => RUN.open_notifications(), resend: () => RUN.resend_confirm()});   // ⌘K's two commands run the card's own buttons (pages/notify-commands.js)
 
 /** Keeps a person's Not now / Not true for one entry; it leaves every place at once, and comes back if the store refuses it. */
 export async function answerEntry(entry, state) {
