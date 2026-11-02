@@ -118,3 +118,46 @@ jobs:
           path: desktop/smoke
           if-no-files-found: ignore
           retention-days: 14
+
+  # The AI chooser's machine setups on a REAL runner (owner, 2 Nov 2026, Windows testers: "yes. Let's do"): the code of this commit, not the published build, so it needs no release.
+  # Each family (Claude Code, Codex) on Windows and macOS: nothing installed -> `nothing`; only the chat app's marker -> `app-only`; the app's own installer (lib/plan-install.js, the official
+  # line) for real -> the CLI is found by the app's finders and, signed out like every fresh runner, the CLI's own answer gives `sign-in`. Never signs in, never calls an AI. Report only, like the rest.
+  # The script (desktop/scripts/plan-machine.mjs) prints the state, the folders looked in and what the installer did when it is red: that is how the next installer's moved folder is learned.
+  ai-setup:
+    name: AI setup · ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15   # a hang guard, tuned from the first dispatch (a8, 2 Nov 2026: about 3x the slowest row)
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-latest, family: claude, label: Windows · Claude Code}
+          - {os: windows-latest, family: openai, label: Windows · Codex}
+          - {os: macos-latest, family: claude, label: Mac · Claude Code}
+          - {os: macos-latest, family: openai, label: Mac · Codex}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install the app's packages (no Electron download)
+        working-directory: desktop
+        run: npm ci --ignore-scripts
+      - name: Stage the shared app code (git-ignored; the app's modules import it)
+        working-directory: desktop
+        run: node scripts/stage.mjs --files-only
+      - name: Nothing installed gives "nothing"
+        working-directory: desktop
+        run: node scripts/plan-machine.mjs ${{ matrix.family }} nothing
+      - name: Only the chat app gives "app-only"
+        working-directory: desktop
+        run: node scripts/plan-machine.mjs ${{ matrix.family }} app-only
+      - name: The app's own installer, then the CLI is found and not signed in
+        timeout-minutes: 8   # the installer is the step that can hang (the app's own guard is 10 minutes)
+        working-directory: desktop
+        run: node scripts/plan-machine.mjs ${{ matrix.family }} install

@@ -6,8 +6,13 @@
 This screen had 5 fixes in 30 days (ab13bccb, c52d1c10, 46f072cf and the two testers), so this is a redesign, not a patch: the `Design:` block below is the intended behaviour.
 
 ## Progress
-- [ ] 1/2 States, detection (the chat apps, the chosen file), words, the CLI's own sign-in answer, the API-key fix, field counter, per-state tests
-- [ ] 2/2 In-app install with progress and Cancel (Claude Code, Codex, Git), in-app Sign in, a real Windows and Mac CI check
+- [x] 1/2 (#3014, merged 2 Nov 2026) States, detection (the chat apps, the chosen file), words, the CLI's own sign-in answer, the API-key fix, field counter, per-state tests (proof: desktop/test/plan-readiness.test.js @267b1c1)
+- [ ] 2/2 In-app install with progress and Cancel (Claude Code, Codex, Git), in-app Sign in, a real Windows and Mac CI check (this PR: handlers, card, tests, `ai-setup` job; evidence = one dispatch)
+
+## 2/2 Design: Install, Sign in, a real machine
+**Two buttons, one runner (`lib/plan-install.js`).** Install (Claude Code, Codex; Git for Windows through winget, else the official page opens) and Sign in (`claude auth login`, `codex login`: the CLI opens its own page in the person's browser). One run at a time (`planInstall`, `planSignIn`, `planCancel` in `lib/plan-handlers.js`); the window gets a verdict (`ok`, or `failed | not-found | timeout | cancelled | busy | unsupported`) and the new status, never the process's text. While it runs the card shows the title, an indeterminate bar, the seconds and Cancel (`renderer/ai-plan-card.js progressCard`). A failed install is one plain sentence and the manual steps; a cancel is silent. A hang guard (10 min install, 5 min sign-in) only frees the next press. The end-to-end run and the demo never start a real installer or login.
+**The verdicts that leave a state stay the same:** the install ends -> the files are read again (Windows PATH refreshed) -> `checking` -> the CLI's own answer; the sign-in ends -> `verify` -> the CLI's own answer.
+**Real machines:** job `ai-setup` in `fresh-install-smoke.yml` (daily, report only; a8's asks: own timeouts, `contents: read`, first red line names row and step): Windows and macOS x Claude Code and Codex: `nothing`, `app-only` (a planted marker), and the app's own installer for real then `sign-in` from the CLI's real answer. `desktop/scripts/plan-machine.mjs`.
 
 ## Design:
 **One owner.** `lib/plan-readiness.js`: `facts(family, deps)` reads the computer (files, no AI call); `readiness(facts)` is pure and returns ONE state. The chooser only draws it (`renderer/ai-plan-guide.js` words, `ai-plan-card.js` box). `family` is `claude` (Claude Code, a Claude plan) or `openai` (Codex, a ChatGPT plan); Windows and Mac behave the same, only the install line differs.

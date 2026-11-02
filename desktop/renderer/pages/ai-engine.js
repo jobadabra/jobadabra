@@ -6,10 +6,10 @@
 import {refreshClaudeHelp} from '../claude-help.js';
 import {choiceCards, el, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {API_OF, CLI_OF, FAMILY_CARDS, TEXT, afterClick, chosen, cliStatus, defaultMethod, familyOf, fallbackOn, ownKeys, selection, showFallback, statusLines} from '../ai-engine-view.js';
+import {API_OF, CLI_OF, FAMILY_CARDS, TEXT, afterClick, chosen, INSTALL_STATES, cliStatus, defaultMethod, familyOf, fallbackOn, ownKeys, runOutcome, selection, showFallback, statusLines} from '../ai-engine-view.js';
 import {applyAiNames} from '../ai-name.js';
 import {FAMILY, guide} from '../ai-plan-guide.js';
-import {planCard} from '../ai-plan-card.js';
+import {clock, planCard, progressCard} from '../ai-plan-card.js';
 import {shared} from './shared.js';
 
 const hasKey = () => !!ownKeys(shared.state).ANTHROPIC_API_KEY;
@@ -24,6 +24,7 @@ const CLI = {claude: {name: 'Claude Code CLI', short: 'Claude Code', status: () 
 // mountEngine(box, {context: 'wizard' | 'settings', onChange(picked)}) -> {picked(), refresh()}
 export function mountEngine(box, {context = 'settings', onChange = () => {}} = {}) {
   let picked = chosen(shared.state?.settings, hasKey(), context), busy = false, problem = '', copied = false;
+  let running = null, manual = false;   // running: the person's own Install / Sign in {what, family, since, seconds}; manual: an install did not finish, so its numbered steps are shown
   let family = picked && picked !== 'free' ? familyOf(picked) : null;   // null: no family open (Free picked, or nothing yet)
   const statuses = {claude: null, openai: null};   // each family's CLI, found and verified separately
   const statusOf = () => statuses[family];   // family is null while Free leads: nothing to read
@@ -69,15 +70,43 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   };
   // One readiness state, drawn from lib/plan-readiness.js (the status carries it): the words and the one next step are renderer/ai-plan-guide.js.
   const stateOf = found => found.state || (found.installed ? (found.authenticated ? 'ready' : 'sign-in') : 'nothing');
-  const planBlock = found => planCard(guide(stateOf(found), {family, platform: window.pilot.platform, inApp: false}), {onAction: act});
+  const RUNNING = {install: f => ({title: `Installing ${CLI[f].short}…`, text: 'This usually takes about a minute. Jobadabra notices when it is done.'}),
+    'install-git': () => ({title: 'Installing Git for Windows…', text: 'This can take a minute. Windows may ask you to allow it.'}),
+    'sign-in': () => ({title: 'Waiting for you to sign in…', text: 'Finish signing in on the page that opened in your browser.'})};
+  const planBlock = found => {
+    if (manual && !INSTALL_STATES.includes(stateOf(found))) manual = false;   // the manual steps belong to the install states only: another state gets its own buttons
+    return running && running.family === family ? progressCard({...RUNNING[running.what](family), seconds: running.seconds, onCancel: () => window.pilot.planCancel()})
+      : planCard(guide(stateOf(found), {family, platform: window.pilot.platform, inApp: !manual}), {onAction: act});
+  };
+  // One Install / Sign in at a time (lib/plan-install.js): a card with the seconds and Cancel, then the verdict: the new state, or one plain sentence (never the installer's text).
+  async function run(what) {
+    if (running) return;   // one at a time here too; main refuses a second as busy
+    const which = what === 'install-git' ? 'claude' : family, name = what === 'install-git' ? 'git' : which;
+    const mine = running = {what, family: which, since: Date.now(), seconds: 0};
+    const tick = setInterval(() => {   // only the seconds change: a click on Cancel is never lost to a redraw
+      mine.seconds = Math.floor((Date.now() - mine.since) / 1000);
+      const node = box.querySelector('[data-seconds]');
+      if (node) node.textContent = clock(mine.seconds);
+    }, 1000);
+    render();
+    let result = {ok: false, reason: 'failed'};
+    try { result = await (what === 'sign-in' ? window.pilot.planSignIn(which) : window.pilot.planInstall(name)); } catch { /* shown as "did not finish" */ }
+    clearInterval(tick);
+    if (running === mine) running = null;
+    if (result.status) statuses[which] = result.status;
+    const outcome = runOutcome(what, result, result.status?.state);
+    ({problem, manual} = outcome);
+    render(); onChange(picked);
+    if (outcome.check && family === which) check();   // it appeared (or Git was added): one real check decides signed in or not
+  }
   const REFUSED = {'not-the-cli': file => `That is not ${file}. Choose the ${file} file.`, 'did-not-start': () => 'That file did not start. Choose another one.'};
   async function act(id) {
     const which = family;
     problem = ''; copied = false;
     if (id === 'check') return check();
     if (id === 'free') return pick('free');
-    if (id === 'install') await window.pilot.planOpenGuide(which);
-    else if (id === 'install-git') await window.pilot.planOpenGuide('git');
+    if ((id === 'install' || id === 'install-git') && manual) await window.pilot.planOpenGuide(id === 'install' ? which : 'git');   // the person chose the steps: the button opens the official page
+    else if (id === 'install' || id === 'install-git' || id === 'sign-in') return run(id);
     else if (id === 'details') { copied = await navigator.clipboard?.writeText(await window.pilot.planSupportDetails(which)).then(() => true, () => false) ?? false; }
     else if (id === 'choose-file') {
       const result = await window.pilot.planChooseFile(which);

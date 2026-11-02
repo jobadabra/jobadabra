@@ -6,6 +6,32 @@ import {icon} from './icons.js';
 
 const ICON = {good: 'check-circle', info: 'info', warn: 'info'};
 
+/** m:ss for a count of seconds (the run card and its once-a-second update). */
+export const clock = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+/**
+ * The card while the person's own Install / Sign in runs: what runs (title), an indeterminate bar, the seconds since the press and Cancel. onCancel() ends the run.
+ * No installer text is ever shown: only that it is running, for how long, and that it can be stopped.
+ */
+export function progressCard({title, text = '', seconds = 0, onCancel = () => {}}) {
+  const box = el('div', 'alert tone-info engine-guide engine-progress');
+  box.dataset.state = 'running';
+  const body = el('div');
+  const bar = el('div', 'engine-bar');
+  bar.setAttribute('role', 'progressbar');
+  bar.setAttribute('aria-label', title);
+  const timer = el('p', 'muted small', clock(seconds));
+  timer.dataset.seconds = '';
+  body.append(el('b', '', title), ...(text ? [el('p', '', text)] : []), bar, timer);
+  const cancel = Object.assign(el('button', 'secondary', 'Cancel'), {type: 'button'});
+  cancel.dataset.action = 'cancel';
+  cancel.addEventListener('click', () => onCancel());
+  const actions = el('div', 'engine-actions');
+  actions.append(cancel);
+  body.append(actions);
+  box.append(icon('info'), body);
+  return box;
+}
+
 /** Draw one readiness guide (renderer/ai-plan-guide.js `guide`) as a card: title, text, numbered steps, command with Copy, buttons that call onAction(id); returns the element. */
 export function planCard(g, {onAction = () => {}, copy = text => navigator.clipboard?.writeText(text), busy = ''} = {}) {
   const box = el('div', `alert tone-${g.tone} engine-guide`);

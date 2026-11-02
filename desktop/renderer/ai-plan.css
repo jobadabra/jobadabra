@@ -8,3 +8,8 @@
 .engine-command code { flex: 1; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); word-break: break-all; }
 .engine-command button { flex: none; }
 .engine-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); margin-top: var(--sp-3); }
+/* The run card (Install / Sign in in progress): an indeterminate bar, the seconds, Cancel. The bar moves only when the person allows motion. */
+.engine-bar { height: 6px; margin: var(--sp-3) 0 var(--sp-2); border-radius: var(--r-sm); background: var(--line); overflow: hidden; position: relative; min-width: 240px; }
+.engine-bar::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--accent); border-radius: var(--r-sm); }
+@media (prefers-reduced-motion: no-preference) { .engine-bar::after { animation: engine-bar-slide 1.4s ease-in-out infinite; } }
+@keyframes engine-bar-slide { 0% { left: -40%; } 100% { left: 100%; } }

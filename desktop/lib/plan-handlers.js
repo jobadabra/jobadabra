@@ -8,14 +8,15 @@ import {SETTING, rememberLogin, setChosenFile} from './cli-files.js';
 import {refreshPath} from './fresh-path.js';
 import {facts, readiness, supportDetails} from './plan-readiness.js';
 import {verifyCodex} from './ai/codex-cli.js';
+import * as installer from './plan-install.js';
 import {FAMILY, GIT_PAGE} from '../renderer/ai-plan-guide.js';
 
 const SETTINGS_KEY = {claude: 'claudeCode', openai: 'codex'};
 const FILE_NAME = {claude: /^claude(?:\.exe|\.cmd)?$/i, openai: /^codex(?:\.exe|\.cmd)?$/i};
 const CHAT_APP = /[\\/](?:AnthropicClaude|WindowsApps)[\\/]|\.app[\\/]/i;
 
-/** Test seams: pc {env, home, exists, list, read, registry} is a fake computer; runVersion(file) -> '1.2.3' | null; platform; verifyFns {claude, openai}. */
-export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, track = () => {}, DEMO = false, pc = {}, runVersion = claudeCode.version, appVersion = '', platform = process.platform, verifyFns = {}}) {
+/** Test seams: pc {env, home, exists, list, read, registry} is a fake computer; runVersion(file) -> '1.2.3' | null; platform; verifyFns {claude, openai}; startFn: lib/plan-install.js `start` (a test gives a fake, never the real installers). */
+export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, track = () => {}, DEMO = false, pc = {}, runVersion = claudeCode.version, appVersion = '', platform = process.platform, verifyFns = {}, startFn = installer.start}) {
   const reached = new Set();
   for (const [family, file] of Object.entries(SETTING)) { setChosenFile(family, storage.settings()[file]); rememberLogin(family, storage.settings()[SETTINGS_KEY[family]]); }
 
@@ -64,6 +65,33 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
     setChosenFile(family, file);
     return {ok: true, status: await status(family)};
   });
+  // The person's own Install / Sign in (2/2): one run at a time, ended by Cancel; the window gets {ok, reason, status} and never the process's text. The end-to-end run never starts a real installer or login.
+  let running = null;
+  const blocked = () => ((DEMO || ((process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE) && startFn === installer.start)) ? {ok: false, reason: 'test'} : running ? {ok: false, reason: 'busy'} : null);
+  async function run(kind, options) {
+    if (blocked()) return blocked();
+    let result;
+    try {
+      running = startFn(kind, {platform, env: pc.env || process.env, ...options});
+      result = await running.done;
+    } catch { result = {ok: false, reason: 'failed'}; } finally { running = null; }
+    if (platform === 'win32') await refreshPath();   // the installer added its folder to this person's PATH: the app started before that
+    return result;
+  }
+  ipcMain.handle('planInstall', async (_, which) => {
+    if (!['claude', 'openai', 'git'].includes(which)) return {ok: false, reason: 'unsupported'};
+    const result = await run(`install:${which}`);
+    if (result.reason === 'not-found' && which === 'git') { shell.openExternal(GIT_PAGE); result.reason = 'opened-page'; }   // no winget on this PC: the official page is the way
+    return {...result, status: await status(which === 'git' ? 'claude' : which)};
+  });
+  ipcMain.handle('planSignIn', async (_, family) => {
+    if (!Object.hasOwn(FAMILY, family)) return {ok: false, reason: 'unsupported'};
+    const found = facts(family, {...pc, platform, settings: storage.settings()});
+    const result = found.path ? await run(`sign-in:${family}`, {binary: found.path}) : {ok: false, reason: 'unsupported'};
+    if (result.ok) await verify[family]();   // the CLI's own answer decides, free when signed out (lib/plan-login.js)
+    return {...result, status: await status(family)};
+  });
+  ipcMain.handle('planCancel', () => { running?.cancel(); return !!running; });
   ipcMain.handle('planOpenGuide', (_, which) => {
     const url = which === 'git' ? GIT_PAGE : FAMILY[which]?.page;
     if (url) shell.openExternal(url);
