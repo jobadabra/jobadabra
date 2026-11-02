@@ -98,6 +98,9 @@ export async function runSuite(name, report = null) {
   if (!SUITES.includes(name)) { console.error(`usage: node suite.mjs ${SUITES.join('|')}`); return {code: 2}; }
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));   // a suite may import app code that needs desktop/shared/ (apply.mjs: rung2-sketch), which a CI job never staged (21 Oct 2026)
   const suite = await import(`../suites/${name}.mjs`);
+  // Why (2 Nov 2026, a8; a local wizard run refused its declared organize ask as unkeyable): only CI's matrix (plan-run.mjs) turned a suite's aiAnswers into E2E_AI_ANSWERS,
+  // so a run by hand took 'off', and with unanswered asks refused (#2976) every declared kind failed. The suite's own declaration holds wherever it runs; a set env wins.
+  process.env.E2E_AI_ANSWERS ||= suite.aiAnswers || 'off';
   let ctx, code = 0;
   try {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.

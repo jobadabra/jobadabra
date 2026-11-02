@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {pageText} from './notion.mjs';
-import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, stepWait} from './wait-on-state.mjs';
 
 // The strategy the wizard builds from the CV is the fictional draft the demo shows. Why (2 Nov 2026, owner: "I think we agreed to move the variable things outside of e2e"): the stand-in matched
 // this ask by the request's full text and beta 16 hung 30 s on one miss; answered by its schema, no key can miss. What the app does with a real draft: integration/store/wizard-strategy-from-cv.test.mjs.
@@ -129,6 +129,13 @@ export async function runWizard(ctx) {
   // Nothing starts behind the person's back (owner, 24 Oct 2026): Jobs shows the big Find jobs card, and the first search starts when it is pressed.
   await ctx.run('Jobs opens on the Find jobs card; pressing it starts the first search', async () => {
     await page.waitForFunction(() => document.body.dataset.findCard === 'empty', null, {timeout: 30000});
+    // Why (2 Nov 2026, run 41392139479's trace: the review drawer "intercepts pointer events" on this press for 30 s): right after setup the app opens Fill your details
+    // once on the first missing fact (renderer/pages/missing-facts-open.js; owner, 18 Oct 2026: "be proactive"), and the fictional applicant always has some. The person
+    // closes it, then presses Find jobs. A slow live AI ask had opened it after the press; answered by name, it opens before.
+    const drawer = page.getByRole('dialog', {name: 'Questions to review'});
+    await stepWait('Fill your details opened after setup', timeout => drawer.waitFor({state: 'visible', timeout}));
+    await drawer.getByRole('button', {name: 'Close', exact: true}).first().click();
+    await stepWait('Fill your details closed', timeout => drawer.waitFor({state: 'hidden', timeout}));
     if (!(await page.locator('#find-card .magic-go').count())) throw new Error('the Find jobs card has no button');
     await page.click('#find-card .magic-go');
     await page.waitForFunction(() => document.body.dataset.findCard === 'searching', null, {timeout: 30000});

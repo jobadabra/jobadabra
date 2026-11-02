@@ -82,6 +82,8 @@ test('no e2e or integration code starts a live stand-in except a live measuremen
   const live = callers.filter(line => /\blive:/.test(line)).map(line => `${line.split(':')[0]} ${line.match(/\blive: [\w.]+/)[0]}`);
   assert.deepEqual([...new Set(live)].sort(), ['desktop/e2e/lib/context.mjs live: liveAi', 'desktop/e2e/lib/live-row.mjs live: true']);
   assert.match(fs.readFileSync(path.join(E2E, 'lib', 'suite-main.mjs'), 'utf8'), /liveAi: suite\.realAi === true/);
+  // A run by hand answers like CI: the suite's own aiAnswers, not 'off' (a local wizard run refused its declared organize ask, 2 Nov 2026).
+  assert.match(fs.readFileSync(path.join(E2E, 'lib', 'suite-main.mjs'), 'utf8'), /process\.env\.E2E_AI_ANSWERS \|\|= suite\.aiAnswers \|\| 'off';/);
 });
 
 test('a suite that may reach a model is a live measurement, never a gate', async () => {
