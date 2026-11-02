@@ -367,3 +367,15 @@ test('night pass 1 reviews the screenshots once; passes 2 to 5, a skipped pass a
   const workflow = fs.readFileSync(new URL('../../../../.github/workflows/ui-findings.yml', import.meta.url), 'utf8');
   assert.match(workflow, /!startsWith\(github\.event\.workflow_run\.display_title, 'Night burn-in'\)/, 'report only: a night run files no issue');
 });
+
+// Why (triage, 2 Nov 2026): the probe that lets a tripped noise breaker recover ran only on `schedule` plans (104358ff). The release gate plans as `gate` and no
+// e2e.yml run reaches ui-findings.yml, so from 1 Nov 19:00 every filed run had the review paused: 13 Finder runs in a row found 0 and the breaker could never clear.
+test('a tripped noise breaker still lets the nightly gate review as a probe; a beta by hand stays paused', async () => {
+  const noise = Array.from({length: 10}, (_, n) => ({number: n + 1, state: 'CLOSED', stateReason: 'NOT_PLANNED', createdAt: '2026-11-01T12:00:00Z', labels: [{name: 'auto-ui'}, {name: 'source:ai-review'}], comments: []}));
+  const gate = kind => plan({EVENT: 'gate', SHA: HEAD, TARGET_REF: 'desktop-v9.9', GATE_TAG: 'desktop-v9.9', GATE_KIND: kind}, {issues: noise, releases: [['desktop-v9.9', HEAD]]}, []);
+  const nightly = await gate('nightly'), byHand = await gate('beta');
+  assert.equal(nightly.review, '1', 'the nightly beta is filed: it is the one run a day that can show the review is right again');
+  assert.match(nightly.why, /AI review on as a probe/);
+  assert.equal(byHand.review, '0', 'a beta by hand keeps the pause: it can run many times a day');
+  assert.match(byHand.why, /AI review paused/);
+});

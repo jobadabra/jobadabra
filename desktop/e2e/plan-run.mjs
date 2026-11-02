@@ -130,7 +130,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
       const judged = asIssues(registerEntries(JSON.parse(gh(REGISTER_LIST))[0]?.body));
       const noise = noiseTripped([...issues, ...judged]);
       // While tripped, a scheduled run (and night pass 1: its findings are never filed, so it cannot add noise) still reviews (a probe, 9 Oct 2026): a paused review finds nothing real, so it could never earn its way back.
-      if (noise.tripped && (event === 'schedule' || night)) why = `${why ? `${why} · ` : ''}AI review on as a probe: ${noise.noise} of the last ${noise.judged} judged review issues were noise (the noise breaker, lib/plan.mjs)`;
+      // Why (triage, 2 Nov 2026): the nightly beta probes too. It plans as `gate`, not `schedule`, and is the one filed run a day; without it the pause never ended (13 Finder runs found 0).
+      const probe = event === 'schedule' || night || env.GATE_KIND === 'nightly';
+      if (noise.tripped && probe) why = `${why ? `${why} · ` : ''}AI review on as a probe: ${noise.noise} of the last ${noise.judged} judged review issues were noise (the noise breaker, lib/plan.mjs)`;
       else if (noise.tripped) { review = false; why = `${why ? `${why} · ` : ''}AI review paused: ${noise.noise} of the last ${noise.judged} judged review issues were noise (the noise breaker, lib/plan.mjs)`; }
     } catch { /* cannot tell: the review runs */ }
   }
