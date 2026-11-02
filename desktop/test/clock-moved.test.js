@@ -106,6 +106,30 @@ test('helpers: the first failure line, the pool order, the file lists the unit j
   assert.notEqual(slow.code, 0);
 });
 
+// Why (2 Nov 2026, a8; night 41349741346): the python job hit its 38-minute step limit in the +1 d pass and printed nothing, so main went red the next morning on
+// test_interviews_focus, a time bomb the finder exists to report. A hung file is named as it happens, and the run stops starting files at its deadline and still reports.
+test('a file the cap kills is logged at once and named; past the deadline files are not judged and the report never says clean', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clock-moved-test-'));
+  fs.mkdirSync(path.join(root, 'test'));
+  for (const name of ['a', 'b', 'c', 'hangs']) fs.writeFileSync(path.join(root, 'test', `${name}.test.js`), '');
+  const areas = [{name: 'a', cwd: '.', dir: 'test', match: /\.test\.js$/, command: file => [file]}];
+  let clock = 0;
+  const run = async (argv, {days}) => { clock += 1000; return days && argv[0].includes('hangs') ? {code: 137, output: '', killed: true, ms: 180000} : {code: 0, output: '', ms: 1000}; };
+  const lines = [];
+  const full = await findTimeBombs({root, areas, shifts: [1], run, concurrency: 1, log: line => lines.push(line), now: () => clock});
+  assert.deepEqual(full.bombs.map(b => [b.file, b.why]), [['test/hangs.test.js', 'killed after 180 s (hung)']]);
+  assert.ok(lines.some(line => /\+1 d: test\/hangs\.test\.js killed after 180 s/.test(line)), lines.join('\n'));
+  assert.deepEqual(full.notJudged, []);
+  assert.deepEqual(full.slowest.filter(item => item.file === 'test/hangs.test.js').map(item => item.s), [180], 'one entry per file and shift, though the second look ran it again (Gitar on #2993)');
+  clock = 0;
+  const cut = await findTimeBombs({root, areas, shifts: [1], run, concurrency: 1, log: () => {}, now: () => clock, deadlineMs: 5500});
+  fs.rmSync(root, {recursive: true, force: true});
+  assert.ok(cut.notJudged.length > 0, 'the deadline left files unjudged');
+  const text = reportText(cut);
+  assert.doesNotMatch(text, /No test depends on today's date/);
+  assert.match(text, new RegExp(`${cut.notJudged.length} not judged before the deadline`));
+});
+
 test('the report names the file, the shift and the first failure; an empty night is one line', () => {
   const text = reportText({judged: 10, redToday: 2, bombs: [{area: 'e2e', file: 'desktop/e2e/test/x.test.mjs', days: 1, why: 'AssertionError: stale'}], unstable: [], seconds: 5});
   assert.match(text, /- `desktop\/e2e\/test\/x\.test\.mjs` · \+1 d · AssertionError: stale/);
