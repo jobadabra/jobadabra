@@ -163,19 +163,26 @@ function fitDetailsToCandidate(contact) {
     showLinks();
   }).catch(() => {});
 }
-export function showContact() {
+/**
+ * Reads Your details' Contact and draws it: the kept copy at once, the fresh read behind it. → the promise of the read (its fresh paint is done when it settles).
+ * redraw: true is only Discard all (details-drafts.js repaintContact): the one paint that replaces unsaved edits. Any other paint, the kept copy included, leaves them.
+ * Why (pf, 2 Nov 2026; flaky profile-no-draft-on-open "the bar after Fill them in"): the guard below was `!kept && painted && dirty`; a read that started from a kept copy never
+ * set `painted` before its fresh paint, so that paint wiped a Fill pressed in between and contactRead() took the wiped boxes as the saved baseline: no draft, no bar, the filled value lost.
+ */
+export function showContact({redraw = false} = {}) {
   mountContactControls();   // the salutation, date of birth and links as their typed controls (contact-kinds.js)
   // The kept contact fills the boxes at once; with none kept the shared skeleton stands in until it is read (contact-reading.js); never empty boxes that look like lost data.
-  let painted = false;
-  swr('contact', async () => ({ok: true, contact: (await window.pilot.contact()) || {}}), {
+  let painted = false;   // this call has started the page's other readers (once, at its first fresh paint)
+  const read = swr('contact', async () => ({ok: true, contact: (await window.pilot.contact()) || {}}), {
     loading: () => reading(true),
     paint: ({contact}, kept) => {
-      if (!kept && painted && contactDirty()) return;   // a refresh never redraws under unsaved edits (details-drafts.js)
       reading(false);
-      document.querySelectorAll('[data-contact]').forEach(input => { input.value = contact[input.dataset.contact] || ''; });
-      fitDetailsToCandidate(contact);
-      showLinks();
-      contactRead();   // the drafts count from what is shown now
+      if (redraw || !contactDirty()) {   // a refresh never redraws under unsaved edits (details-drafts.js)
+        document.querySelectorAll('[data-contact]').forEach(input => { input.value = contact[input.dataset.contact] || ''; });
+        fitDetailsToCandidate(contact);
+        showLinks();
+        contactRead();   // the drafts count from what is shown now
+      }
       if (kept || painted) return;
       painted = true;
       loadProposals();   // the empty boxes, filled in from the CV for you to check (contact-proposals.js)
@@ -185,6 +192,7 @@ export function showContact() {
     fail: result => { reading(false); message('contact-panel-message', `${byStore('Couldn\'t read them from Notion', 'Couldn\'t read them from your Profile')}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
   });
   $('contact-cv').textContent = shared.state.settings.cvName || 'None yet';
+  return read;
 }
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
@@ -240,7 +248,7 @@ export async function init() {
     message('telegram-message', `Connected to @${result.username} ✓ Matches arrive there after each search.`, 'ok');
     loadSettings();
   });
-  registerDetails({repaintContact: showContact});   // Contact and the fact sections save through the Profile page's one bar (details-drafts.js)
+  registerDetails({repaintContact: () => showContact({redraw: true})});   // Contact and the fact sections save through the Profile page's one bar (details-drafts.js)
   guardLeave('settings', proceed => !document.querySelector('.view[data-view="settings"]')?.classList.contains('is-profile') || profileBar().leave(proceed));   // leaving Profile with drafts asks
   showStoreParts();   // every [data-notion-only] in the window (index.html's Notion-only words too), from the start, not only once a Profile tab opens
 }
