@@ -31,7 +31,7 @@ export const movedItems = items => (items || []).filter(item => item.place === '
 export const focusRows = (entries, items) => [...(entries || []).map(entry => ({entry})), ...movedItems(items).map(item => ({item}))];
 
 /** The Jobs bar's entries: the search- and applying-related ones. */
-export const jobsEntries = entries => (entries || []).filter(entry => JOBS_TOPICS.includes(entry.topic));
+export const jobsEntries = entries => (entries || []).filter(entry => entry.alsoJobs || JOBS_TOPICS.includes(entry.topic));   // alsoJobs: Always on's card is on Jobs too (2 Nov 2026)
 
 /**
  * What the Jobs bar shows, from its four states (the one owner of that decision): kept paint = the line last drawn, until Focus is read; Focus unavailable = hidden

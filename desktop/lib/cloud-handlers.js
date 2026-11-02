@@ -10,8 +10,8 @@ import {log as appLog} from './log.js';
 import {registerHostedHandlers} from './hosted-handlers.js';
 
 export function registerCloudHandlers(ctx) {
-  const {DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, restartTelegram, shell, storage, toWindow, getWindow} = ctx;
-  registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, storage, toWindow});   // hosted Always on: daily searches on our servers (lib/hosted-handlers.js)
+  const {DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, powerMonitor, restartTelegram, shell, storage, toWindow, getWindow} = ctx;
+  registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerMonitor, storage, toWindow});   // hosted Always on: daily searches on our servers (lib/hosted-handlers.js)
   // Always on: sign in to GitHub (code approved in the browser), then set up
   // the user's private repo. Also re-run after a key or setting changes ("Update").
   handleImportant('cloudConnect', 'Setting up Always on', async (_, chosen = '') => {

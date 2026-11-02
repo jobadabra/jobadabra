@@ -284,7 +284,7 @@ function handlers() {
   registerFormFillsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/form-fills-handlers.js: Reports → Form fills
   registerJobsExportHandlers({DEMO, app, dialog, getWindow: () => window, ipcMain, licenseState, storage});   // lib/jobs-export-handlers.js
   registerJobsHandlers({DEMO, JOBS_PAGE, activity, aiGate, allowanceBlock: allowanceGate, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track});   // lib/jobs-handlers.js
-  registerCloudHandlers({DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, restartTelegram, shell, storage, toWindow, getWindow: () => window});   // lib/cloud-handlers.js
+  registerCloudHandlers({DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, powerMonitor, restartTelegram, shell, storage, toWindow, getWindow: () => window});   // lib/cloud-handlers.js
   registerJobActionsHandlers({DEMO, allowanceBlock: allowanceGate, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter: () => recipeReporterRef, storage});   // lib/job-actions-handlers.js
   const settingsDeps = settingsDepsFor(toWindow);   // lib/settings-deps.js
   registerSearchTuningHandlers({DEMO, activity, here, ipcMain, needsNotion, getRecipeReporter: () => recipeReporterRef, storage, toWindow});   // lib/search-tuning-handlers.js
