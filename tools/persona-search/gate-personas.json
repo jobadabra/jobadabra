@@ -1,5 +1,5 @@
 {
- "_from": "GarryOne/jobadabra-benchmarks search-bench/personas.json (e14f9a1, seed search-2026-10-27), personas 1-6: the search round the owner reviewed on 27 Oct 2026. Fictional; the CV comes from draws.json (draw.cv).",
+ "_from": "jobadabra/jobadabra-benchmarks search-bench/personas.json (e14f9a1, seed search-2026-10-27), personas 1-6: the search round the owner reviewed on 27 Oct 2026. Fictional; the CV comes from draws.json (draw.cv).",
  "personas": [
   {
    "family": "driver",

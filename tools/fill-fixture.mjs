@@ -1,7 +1,7 @@
 // Turns a fill-failure issue's snapshot into a replay test fixture (app-core/test/fixtures/fill/<site>--<label>.html + .json).
 //   node tools/fill-fixture.mjs <issue> [--answer "Master's"] [--expect-picked "Master's Degree" | --expect-checked Yes | --expect-value …]
 //   node tools/fill-fixture.mjs --body-file issue.md --issue 16 …    (offline: the issue's text saved in a file)
-//   node tools/fill-fixture.mjs 12 --repo GarryOne/jobadabra-lab   (a private triage issue: one fixture per reported field)
+//   node tools/fill-fixture.mjs 12 --repo jobadabra/jobadabra-lab   (a private triage issue: one fixture per reported field)
 // Then run `cd app-core && node --test test/fill-replay.test.js`: the new fixture should fail until the fix lands.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';

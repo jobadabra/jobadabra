@@ -114,6 +114,7 @@ class BetaReleaseFallback(unittest.TestCase):
         tools = base / 'tools'
         tools.mkdir()
         (tools / 'beta-release.sh').write_text((ROOT / 'tools' / 'beta-release.sh').read_text())
+        (tools / 'repos.sh').write_text((ROOT / 'tools' / 'repos.sh').read_text())
         (tools / 'red-main-gate.sh').write_text('#!/bin/sh\necho "Main\'s e2e: no suite red."\n')
         (tools / 'beta_pick.py').write_text('import sys\nprint("No commit of main qualifies: stub", file=sys.stderr)\nsys.exit(1)\n')
         bin_dir = base / 'bin'
@@ -138,7 +139,7 @@ class BetaReleaseFallback(unittest.TestCase):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("Building main's head instead", done.stdout)
-        self.assertIn('workflow run desktop.yml -R GarryOne/jobadabra --ref main -f beta=true', self.log.read_text())
+        self.assertIn('workflow run desktop.yml -R jobadabra/jobadabra --ref main -f beta=true', self.log.read_text())
 
     def test_a_named_commit_that_does_not_qualify_still_stops(self):
         done = self.run_script('--commit', 'abc1234')
@@ -170,6 +171,7 @@ class BetaPickTag(unittest.TestCase):
         tools = base / 'tools'
         tools.mkdir()
         (tools / 'beta-release.sh').write_text((ROOT / 'tools' / 'beta-release.sh').read_text())
+        (tools / 'repos.sh').write_text((ROOT / 'tools' / 'repos.sh').read_text())
         (tools / 'red-main-gate.sh').write_text('#!/bin/sh\necho "Main\'s e2e: no suite red."\n')
         (tools / 'beta_took.py').write_text((ROOT / 'tools' / 'beta_took.py').read_text())
         bin_dir = base / 'bin'

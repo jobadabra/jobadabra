@@ -25,8 +25,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.e2e_causes import ENVIRONMENT_CAUSES, classify  # noqa: E402
 from tools.main_e2e_state import NOT_SUITE, counts_green, lane_suites, suite_of  # noqa: E402
+from src.repos import PUBLIC_REPO  # noqa: E402
 
-REPO = os.environ.get('GITHUB_REPOSITORY', 'GarryOne/jobadabra')
+REPO = os.environ.get('GITHUB_REPOSITORY', PUBLIC_REPO)
 LABEL = 'red-main'
 MAX_STEPS = 8          # 2^8 = 256 commits between green and red
 POLL = int(os.environ.get('E2E_BISECT_POLL', '30'))

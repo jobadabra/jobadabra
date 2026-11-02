@@ -13,6 +13,7 @@ import {buildRequest, parseFindings, usageCost} from './lib/vision.mjs';
 import {FREE_MODEL, askFree, judgeVerdict, judgedRow} from './lib/review-free.mjs';
 import {checklistRequest, checksToFindings} from './lib/review-checklist.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
+import {PUBLIC_REPO} from './lib/repos.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
@@ -20,7 +21,7 @@ if (!OUT) { console.error('usage: node review-eval.mjs --out <dir> [--models a,b
 const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may carry its effort and the checklist prompt: claude-haiku-5-5:high, claude-haiku-5-5+checklist
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
-const REPO = process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+const REPO = process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
 // A Claude model answers in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}.
 async function askClaude(request, {model}) {
   const response = await fetch(`${process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com'}/v1/messages`, {method: 'POST', signal: AbortSignal.timeout(120000),

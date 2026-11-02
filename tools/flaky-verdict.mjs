@@ -12,6 +12,7 @@ import {fileURLToPath} from 'node:url';
 import {stepCauses} from '../desktop/e2e/ci-alert.mjs';
 import {ghIo, verdictsForCauses} from '../desktop/e2e/lib/flaky-evidence.mjs';
 import {sayLine} from '../desktop/e2e/lib/flaky-verdict.mjs';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -31,7 +32,7 @@ async function main(argv) {
   const value = flag => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : undefined);
   const runId = value('--run');
   if (!/^\d+$/.test(runId || '')) { console.error('usage: node tools/flaky-verdict.mjs --run <run id> [--repo owner/repo] [--window <runs>] [--deadline <seconds>] [--json]'); return 2; }
-  const repo = value('--repo') || process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+  const repo = value('--repo') || process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
   const window = Number(value('--window')) || 0;
   const deadlineAt = Date.now() + (Number(value('--deadline')) || Number(process.env.DEADLINE_S) || DEADLINE_S) * 1000;
   const out = await verdictsOfRun({runId, repo, window, deadlineAt, say: line => console.error(`flaky-verdict: ${line}`)});

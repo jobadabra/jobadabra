@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-URL = 'https://github.com/GarryOne/jobadabra/actions/runs/'
+URL = 'https://github.com/jobadabra/jobadabra/actions/runs/'
 # What `gh api .../matching-refs/tags/desktop-v --jq '.[] | "\(.ref) \(.object.sha)"'` prints: the tags of the repo, the one of this run's head commit among them.
 TAGS = '''refs/tags/desktop-v0.8.65 894a706aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 refs/tags/desktop-v0.8.66 59b9a0cba1b8b7b12eac7ce303c1c6a4fa5a9add
@@ -43,7 +43,7 @@ NOTES_NONE = '**Version 0.8.66**\n\n## What\'s changed\n\n- A thing (abc)\n'
 FAKE_GH = '''#!/bin/sh
 case "$1 $2" in
   "run view") case "$*" in *--log*) cat "$FAKE_LOG" ;; *createdAt*) printf '%s\\n' "$FAKE_STARTED" ;; *) printf '%s\\n' "$FAKE_HEAD" ;; esac ;;
-  "api repos/GarryOne/jobadabra/git/matching-refs/tags/desktop-v") cat "$FAKE_TAGS" ;;
+  "api repos/jobadabra/jobadabra/git/matching-refs/tags/desktop-v") cat "$FAKE_TAGS" ;;
   "release view") [ -f "$FAKE_NOTES" ] || exit 1; case "$*" in *publishedAt*) printf '%s\\n' "$FAKE_PUBLISHED" ;; *) cat "$FAKE_NOTES" ;; esac ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac

@@ -69,7 +69,7 @@ class LabCiTest(unittest.TestCase):
         self.assertIn('lab-ci-dispatch.sh', ship)
         script = (ROOT / 'tools/lab-ci-dispatch.sh').read_text()
         self.assertIn('*/jobadabra-lab', script)
-        self.assertIn('lab-ci.yml -R GarryOne/jobadabra', script)
+        self.assertIn('lab-ci.yml -R "$JOBADABRA_PUBLIC_REPO"', script)
 
 
 if __name__ == '__main__':

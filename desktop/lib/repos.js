@@ -3,8 +3,9 @@
 // the engine name and the starter, and GitHub redirects a GET after a transfer but not a POST or a workflow `uses:`.
 // Spec: docs/superpowers/specs/2026-11-01-github-org-move-design.md. Guarded by desktop/test/repos.test.js.
 
-// The owner of the public engine and the starter template. Still the personal account until the repos are transferred.
-export const OWNER = 'GarryOne';
+// The owner of the engine, the website and the lab: the organization since the transfer (2 Nov 2026). tools/*.mjs and desktop/e2e/*.mjs import these names too,
+// src/repos.py and tools/repos.sh mirror OWNER (tests/test_repos_owner.py keeps the three equal and the old owner out of everything else).
+export const OWNER = 'jobadabra';
 // Owners this project had before: a workflow file an older app wrote names one of them, and engine-repo.js rewrites it to the current name.
 export const PREVIOUS_OWNERS = ['GarryOne'];
 export const ENGINE_NAME = 'jobadabra';
@@ -13,9 +14,14 @@ export const ENGINE_NAME = 'jobadabra';
 // (github.js resolveStarter), newest name first, so it works before and after the rename; the old name is dropped from here once the move is done.
 export const STARTER_ORG = 'jobadabra';
 export const STARTER_NAME = 'jobadabra-user-template';
-export const OLD_STARTER = `${OWNER}/job-pilotto-starter`;
+// The starter has not moved yet: it is still under the personal account (it goes with its transfer; entry in tests/test_repos_owner.py).
+export const OLD_STARTER = 'GarryOne/job-pilotto-starter';
 
 export const ENGINE = `${OWNER}/${ENGINE_NAME}`;
+// The private website repo, the lab (prompts, records) and the benchmarks, all in the same organization.
+export const WEB = `${OWNER}/jobadabra-web`;
+export const LAB = `${OWNER}/jobadabra-lab`;
+export const BENCHMARKS = `${OWNER}/jobadabra-benchmarks`;
 export const STARTER = `${STARTER_ORG}/${STARTER_NAME}`;
 export const STARTER_CANDIDATES = [STARTER, OLD_STARTER];
 // A regex source matching any owner the project has had (and the current one), for rewriting a file an older app wrote.

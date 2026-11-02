@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = 'GarryOne/jobadabra'
+REPO = 'jobadabra/jobadabra'   # a standalone copy (pr-verdict fetches it alone) cannot import src/repos.py; tests/test_repos_owner.py pins this to it
 LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
 SUITES = 'desktop/e2e/suites'   # the suites main can run: the folder the plan lists (desktop/e2e/lib/context.mjs SUITES), read on main
 # Runs that do not check main's own code as it is.

@@ -29,10 +29,11 @@ fi
 
 cents=$(( ${#urls[@]} * 4 ))
 printf 'Preparing %d kit(s), ~USD %d.%02d:\n' "${#urls[@]}" $((cents / 100)) $((cents % 100))
+. "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
 for url in "${urls[@]}"; do
   echo "  $url"
   [ "${2:-}" = "--dry-run" ] && continue
-  gh workflow run daily.yml -R GarryOne/jobadabra -f mode=prepare -f job="$url"
+  gh workflow run daily.yml -R "$JOBADABRA_PUBLIC_REPO" -f mode=prepare -f job="$url"
   sleep 2
 done
 [ "${2:-}" = "--dry-run" ] || echo "Started. Kits appear on the Notion rows in 1–2 min; then: tools/apply-batch-claude.sh --max ${#urls[@]}"

@@ -177,6 +177,37 @@ class EveryFileAStepRunsIsThere(unittest.TestCase):
                 missing.append(f'{workflow} {job}: runs {file}, but no checkout before it brings {bare}' + (f' into {where}/' if where else ''))
         self.assertEqual(sorted(set(missing)), [], 'add an actions/checkout step (sparse-checkout: the file) before the step; a job with no checkout has no repo files')
 
+    def deps(self, file, seen=None):
+        """The repo files `file` loads by a static import: Python `from src.x` / `from tools.x`, a Node relative `import ... from './x.mjs'`, a shell `. "$(dirname ...)/x.sh"`; and theirs."""
+        seen = set() if seen is None else seen
+        if not (ROOT / file).is_file():
+            return seen
+        text, here = (ROOT / file).read_text(encoding='utf-8', errors='replace'), posixpath.dirname(file)
+        found = []
+        if file.endswith('.py'):
+            found = [module.replace('.', '/') + '.py' for module in re.findall(r'^\s*(?:from|import)\s+((?:src|tools)\.[\w.]+)', text, re.M)]
+        elif file.endswith(('.mjs', '.js')):
+            found = [posixpath.normpath(posixpath.join(here, spec)) for spec in re.findall(r"""(?:from|import\()\s*['"](\.{1,2}/[^'"]+)['"]""", text)]
+        elif file.endswith('.sh'):
+            found = [posixpath.normpath(posixpath.join(here, spec)) for spec in re.findall(r'^\s*(?:\.|source)\s+"\$\(dirname "(?:\$0|\$\{BASH_SOURCE\[0\]\})"\)/([\w./-]+)"', text, re.M)]
+        for dep in found:
+            if dep not in seen and dep != file and (ROOT / dep).is_file():
+                seen.add(dep)
+                self.deps(dep, seen)
+        return seen
+
+    def test_the_job_checked_out_what_the_file_imports(self):
+        """Why (2 Nov 2026, Gitar on #2994): the org-owner constants (src/repos.py, desktop/e2e/lib/repos.mjs, tools/repos.sh) are imported by tools that run in jobs with a sparse
+        checkout; the first guard followed only `tools/*.py` siblings, so the e2e alert job (`from src.repos`) and two Node jobs would have died on a missing module, one behind `|| true`."""
+        missing = []
+        for workflow, job, file, seen in self.steps_that_run_a_file():
+            if file.startswith('lock-tools/') or not self.exists(file):
+                continue
+            for dep in sorted(self.deps(file)):
+                if not any(path == '' and (sparse is None or any(dep == e or dep.startswith(e.rstrip('/') + '/') for e in sparse)) for path, sparse, _ in seen):
+                    missing.append(f'{workflow} {job}: runs {file}, which imports {dep}, but no checkout before it brings {dep}')
+        self.assertEqual(sorted(set(missing)), [], 'list the imported file in the job\'s sparse-checkout')
+
     def test_the_workflows_own_tools_come_from_the_workflows_own_commit(self):
         wrong = []
         for workflow, job, file, seen in self.steps_that_run_a_file():

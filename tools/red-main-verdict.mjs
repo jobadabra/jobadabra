@@ -13,6 +13,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {judgeReds} from '../desktop/e2e/lib/red-main-verdict.mjs';
 import {suiteOfKey} from '../desktop/e2e/lib/suite-shards.mjs';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe']});
 
@@ -67,7 +68,7 @@ const parseRuns = argv => argv.flatMap((arg, at) => (arg === '--run' ? [argv[at 
 async function main(argv) {
   const reds = parseRuns(argv);
   if (!reds.length || reds.includes(null)) { console.error('usage: node tools/red-main-verdict.mjs --repo owner/repo --run <run id>=<suite>[,<suite>…] [--run …]'); return 2; }
-  const repo = argv.includes('--repo') ? argv[argv.indexOf('--repo') + 1] : process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+  const repo = argv.includes('--repo') ? argv[argv.indexOf('--repo') + 1] : process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
   const verdict = await verdictOfReds(reds, ghStepsIo(repo));
   if (verdict.block) {
     for (const reason of verdict.reasons) console.log(`Stops the beta: ${reason}`);   // no leading spaces: desktop.yml's nightly reads the indented lines after "Main's e2e is red:" as suite names

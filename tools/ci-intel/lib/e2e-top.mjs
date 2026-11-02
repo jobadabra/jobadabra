@@ -3,6 +3,7 @@
 // with test drift always named, the top suites, the biggest breaks (one cause copied onto many suites), PR e2e's cost against what it caught, and main's green share per day.
 // Pure: draws the window jobadabra-web admin/e2e-page.js computes. Guard: jobadabra-web test/admin/e2e-page.test.js.
 import {esc} from './html.mjs';
+import {PUBLIC_REPO} from '../../../desktop/e2e/lib/repos.mjs';
 import {CAUSES, GROUPS, groupOf} from './e2e-causes.mjs';
 import {CHIP_STYLE, chip} from './chip.mjs';
 
@@ -45,7 +46,7 @@ export function summary(w) {
 const bar = (parts, total) => `<div class="stack">${parts.filter(part => part.n).map(part => `<span style="width:${(part.n / total) * 100}%;background:${part.color}" title="${esc(part.label)} ${part.n}">${part.n / total >= 0.08 ? `${esc(part.label)} ${num(part.n)}` : ''}</span>`).join('')}</div>`;
 
 /** The "top" block of the e2e page and nothing else: `w` = windowOf()'s result; '' when the window holds no red suite. `repo` builds the links (the page passes its own). */
-export function top(w, {repo = 'GarryOne/jobadabra'} = {}) {
+export function top(w, {repo = PUBLIC_REPO} = {}) {
   const s = summary(w);
   if (!s.reds) return '';
   const groups = GROUPS.filter(group => group.id !== 'none' || s.byGroup.none);

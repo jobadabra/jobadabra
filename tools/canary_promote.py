@@ -46,8 +46,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from github_limit import GitHubLimit, expect_list, run_gh  # noqa: E402
 from canary_beta_kept import approved_tags, beta_kept  # noqa: E402,F401  (re-exported: tests and tools/prune-releases.sh call them through canary_promote)
 from release_guard import is_desktop  # noqa: E402  (only desktop-v* tags are ever stable or candidates)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.repos import PUBLIC_REPO  # noqa: E402
 
-REPO = 'GarryOne/jobadabra'
+REPO = PUBLIC_REPO
 MIN_AGE = timedelta(hours=48)
 CANARY_WINDOW = timedelta(days=7)   # a canary not promoted within 7 days is dropped; the next build takes over
 # Builds older than this can't pass the trial (no run counts in health reports, or no Get Test Builds in the app),

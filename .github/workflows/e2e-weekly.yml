@@ -29,7 +29,9 @@ jobs:
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
-          sparse-checkout: tools/ci-intel
+          sparse-checkout: |   # cone mode: the repo-name constant tools/ci-intel imports is in desktop/e2e/lib
+            tools/ci-intel
+            desktop/e2e/lib
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:

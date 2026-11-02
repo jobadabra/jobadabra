@@ -4,7 +4,8 @@
 set -euo pipefail
 sha=$(git rev-parse "${1:-HEAD}")
 cd "$(git rev-parse --show-toplevel)"  # the paths below are from the repo root (CI runs this from desktop/)
-repo=${GITHUB_REPOSITORY:-GarryOne/jobadabra}
+. "$(dirname "${BASH_SOURCE[0]}")/../../tools/repos.sh"
+repo=${GITHUB_REPOSITORY:-$JOBADABRA_PUBLIC_REPO}
 max=40
 prev=$(git describe --tags --match 'desktop-v*' --abbrev=0 "$sha^" 2>/dev/null || true)
 # Keep in sync with the paths that trigger .github/workflows/desktop.yml.

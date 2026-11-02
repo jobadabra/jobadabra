@@ -12,7 +12,8 @@
 # No beta while main's e2e is red on a safety or data step (gate G2, 26 Oct 2026; tools/red-main-gate.sh; any other red goes on and is listed, 1 Nov 2026): fixes landed since → only the red suites re-run on main first; --force "<why>" starts it
 # anyway and the reason shows in the beta run's log. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
 set -euo pipefail
-repo=GarryOne/jobadabra
+. "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
+repo=$JOBADABRA_PUBLIC_REPO
 watch=1 force="" at="" commit=""
 while [ $# -gt 0 ]; do
   case "$1" in

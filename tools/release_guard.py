@@ -15,8 +15,12 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
-REPO = 'GarryOne/jobadabra'
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.repos import PUBLIC_REPO  # noqa: E402
+
+REPO = PUBLIC_REPO
 DESKTOP = re.compile(r'^desktop-v\d')
 
 

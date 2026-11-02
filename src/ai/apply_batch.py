@@ -31,6 +31,7 @@ from pathlib import Path
 from ..notion import client as notion
 from ..sources import ats
 from .. import ledger_store
+from ..repos import PUBLIC_REPO
 from ..stores import base, open_stores, rules
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -300,7 +301,7 @@ def main():
 
     print(f"\nQueued {len(pairs)} chat(s) in the ChatGPT/Codex app. For each: review, attach the "
           "résumé if it didn't, click Submit yourself, then run:\n"
-          "  gh workflow run daily.yml -R GarryOne/jobadabra -f mode=apply -f job=<job URL> -f action=applied")
+          f"  gh workflow run daily.yml -R {PUBLIC_REPO} -f mode=apply -f job=<job URL> -f action=applied")
     checks = [(record, kit_data) for record, kit_data in pairs if kit_data.get('check_before_sending')]
     if checks and not args.dry_run:
         print('\nThings to double-check before you submit, one job at a time:')

@@ -8,6 +8,7 @@
 import {execFileSync} from 'node:child_process';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 // Why (1 Nov 2026, owner: "changes CI or tooling"): the same three roots as the owner's hand count of 31 Oct (267 of 356 PRs).
 export const CI_PATH = /^(\.github\/|tools\/|desktop\/e2e\/)/;
@@ -91,8 +92,8 @@ const numstat = block => {
 
 // The PRs merged to main in the window -> [{pr, day, at, title, branch, files, commits}] (commits oldest first). `git` and `api` (gh) are seams for tests.
 // Why (1 Nov 2026, owner: all 3 repos squash-merge only): main's first-parent history has two shapes: the old "Merge pull request #n from owner/branch" (its commits are <sha>^1..<sha>^2) and, from 1 Nov,
-// one squash commit "<PR title> (#n)" whose branch and per-commit list exist only on GitHub (pulls/<n>, pulls/<n>/commits, commits/<sha>); the run's head_sha is still one of those commits, so reds join as before.
-export function fetchMerges({days, now, repo = process.env.REPO || 'GarryOne/jobadabra', git = (...args) => run('git', args), api = gh, lowWater = 300}) {
+// one squash commit "<PR title> (#n)" whose branch and per-commit list exist only on GitHub (pulls/<n>, pulls/<n>/commits, commits/<sha>); the run's head_sha is still one of those commits, so reds join as before (the repo read by default is the org's since 2 Nov 2026, same two shapes).
+export function fetchMerges({days, now, repo = process.env.REPO || PUBLIC_REPO, git = (...args) => run('git', args), api = gh, lowWater = 300}) {
   const since = new Date(now.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const merges = [];
   let calls = 0, stopped = false;
@@ -149,7 +150,7 @@ export function fetchRuns({repo, days, now, lowWater = 300}) {
 function main(argv) {
   const arg = name => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
   const days = Math.min(14, Math.max(1, Number(arg('--days')) || 3)), now = arg('--now') ? new Date(arg('--now')) : arg('--end') ? new Date(`${arg('--end')}T23:59:59Z`) : new Date();
-  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {runs: fetchRuns({repo: process.env.REPO || 'GarryOne/jobadabra', days, now}), merges: fetchMerges({days, now, repo: process.env.REPO || 'GarryOne/jobadabra'})};
+  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {runs: fetchRuns({repo: process.env.REPO || PUBLIC_REPO, days, now}), merges: fetchMerges({days, now, repo: process.env.REPO || PUBLIC_REPO})};
   const cards = compute(input, {days, now});
   if (arg('--out')) writeFileSync(arg('--out'), JSON.stringify({kind: 'ci', days: cards}));
   console.log(`agent-coding-stats: ${cards.length} days, ${cards.reduce((n, card) => n + card.prs.merged, 0)} merged PRs, ${(input.runs || []).length} runs`);

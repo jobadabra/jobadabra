@@ -5,10 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {lessonsBlock, reversalsFrom} from './lib/reversals.mjs';
 import {fetchCorrectionEvents} from './lib/reversal-events.mjs';
+import {PUBLIC_REPO} from './lib/repos.mjs';
 
 const args = process.argv.slice(2), out = args[args.indexOf('--out') + 1] || '.heal/lessons.md';
 const gh = list => execFileSync('gh', list, {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024});
-const repo = process.env.REPO || process.env.GITHUB_REPOSITORY || process.env.GH_REPO || 'GarryOne/jobadabra';
+const repo = process.env.REPO || process.env.GITHUB_REPOSITORY || process.env.GH_REPO || PUBLIC_REPO;
 let text = '';
 try {
   const events = fetchCorrectionEvents(gh, repo);   // ~18 pages, not all 170 (lib/reversal-events.mjs)

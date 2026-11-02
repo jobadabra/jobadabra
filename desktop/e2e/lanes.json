@@ -81,7 +81,7 @@
         "platforms": ["win32"],
         "since": "2026-10-31",
         "owner": "GarryOne",
-        "issue": "https://github.com/GarryOne/jobadabra/issues/2717",
+        "issue": "https://github.com/jobadabra/jobadabra/issues/2717",
         "why": "Red on Windows in beta 41220959824 (6acc69d: the data folder stayed held by a process after the app exited, EPERM on rename) and green on 229195f (run 41221090559) with none of its files changed between them. Windows only; when it fails it leaves the app closed, so the suite ends there quietly (the backup step after it, #2716, is that same red).",
         "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
       }

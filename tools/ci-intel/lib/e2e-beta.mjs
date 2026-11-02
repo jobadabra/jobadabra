@@ -2,6 +2,7 @@
 // green = e2e suite jobs that passed, red = failed, grey = did not run or did not finish; a ✓ above a bar = that beta was released. Built only from the snapshot row's `betaRuns`
 // (jobadabra-web admin/e2e-intel.js keeps it, tools/ci-intel/jobs/e2e-intel.mjs sends it hourly); the page never calls GitHub. Drawn by jobadabra-web admin/e2e-page.js (betaCard). Guards: test/admin/e2e-{beta,intel,page}.test.js.
 import {esc} from './html.mjs';
+import {PUBLIC_REPO} from '../../../desktop/e2e/lib/repos.mjs';
 import {CHIP_STYLE, chip} from './chip.mjs';
 
 const DAY = 86400000, KEEP_DAYS = 30, MAX_RUNS = 600;
@@ -89,7 +90,7 @@ function table(rows, repo) {
 }
 
 /** The "Suites per beta run" card: four tiles, the bars, a legend and the table. `days` = the page's range; `repo` for the run links. */
-export function betaCard(snapshot, {days = 7, now = new Date(), repo = 'GarryOne/jobadabra', scopeName = ''} = {}) {
+export function betaCard(snapshot, {days = 7, now = new Date(), repo = PUBLIC_REPO, scopeName = ''} = {}) {
   const head = `<h2>Suites per beta run · ${esc(scopeName)}</h2>`;
   if (!Array.isArray(snapshot?.betaRuns)) return `<section class="card">${head}<p class="muted">Not collected yet: the hourly collector adds each beta run's suites on its next pass.</p></section>`;
   const rows = betaRuns(snapshot, {days, now});
