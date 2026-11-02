@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {FIELDS, cleanProposals, emptyFields, forCv, pending, sourceKey, statedText} from '../lib/contact-from-cv.js';
+import {FIELDS, cleanProposals, emptyFields, forCv, pending, settleSure, sourceKey, statedText} from '../lib/contact-from-cv.js';
 
 const memoryStorage = () => { const files = {}; return {files, readText: name => files[name] ?? null, writeText: (name, text) => { files[name] = text; }, path: name => `/x/${name}`}; };
 const fakeClient = (answer, calls = []) => ({messages: {create: async request => { calls.push(request); return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(answer)}]}; }}});
@@ -53,11 +53,12 @@ test('a failure is kept for that CV (no paying again on every open) and said; no
   assert.deepEqual(pending({cv: 'old', proposals: [{field: 'phone', value: '1'}]}, 'new', coop), []);
 });
 
-test('the window shows proposals in the Your details boxes and Save is the only way they are kept', () => {
+test('the window offers unsure proposals and Save is the only way they are kept; a sure value is saved one detail at a time', () => {
   const page = fs.readFileSync(new URL('../renderer/pages/contact-proposals.js', import.meta.url), 'utf8');
   const profile = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
-  assert.ok(!/saveContact/.test(page), 'proposals never save by themselves');
+  assert.ok(!/saveContact\(/.test(page), 'no proposal saves the whole form');
+  assert.match(page, /contactProposals\(\{again, settle: !again\}\)/, 'only opening Profile asks the engine to save the sure values; a press (again) fills drafts');
   assert.match(profile, /loadProposals\(\);/);
   assert.match(fs.readFileSync(new URL('../renderer/pages/profile-menu.js', import.meta.url), 'utf8'), /label: 'Fill empty details from my CV', run: \(\) => fillFromCv/, 'Fill from my CV lives in the Profile ⋯ menu');
   assert.match(html, /data-contact="salutation"/);
@@ -122,4 +123,41 @@ test('contact extraction from a CV names its AI request', async () => {
   const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
   await forCv(memoryStorage(), {contact: {}, client, cvHash: 'cv-action', read: pdf});
   assert.equal(sent?.headers?.['x-jp-action'], 'contact_from_cv');
+});
+
+// Owner, 2 Nov 2026: "if we have confidence, we just fill and save… and inform the user"; Gitar on #2987: a value the person later clears must not come back; a detail saved meanwhile is never overwritten.
+const CV_ANSWER = {proposals: [{field: 'phone', value: '+41 79 000 00 00', sure: true, source: 'cv', how: 'stated'}, {field: 'postal_code', value: '1260', sure: true, source: 'cv', how: 'stated'},
+  {field: 'location', value: 'Nyon', sure: true, source: 'profile', how: 'stated'}, {field: 'salutation', value: 'Mr', sure: true, source: 'cv', how: 'stated'}]};
+// One Profile open: the engine reads the CV (kept after the first time), then settles against the details as they are NOW.
+const openProfile = async (storage, {now, profile = '', saves = []}) => {
+  const result = await forCv(storage, {contact: now, client: fakeClient(CV_ANSWER), cvHash: 'cv1', profile, read: pdf});
+  return settleSure(storage, {result, read: async () => now, save: async merged => { saves.push(merged); }});
+};
+
+test('settleSure: a plainly stated value is saved once per CV; unsure, Profile-only and cleared values are not', async () => {
+  const storage = memoryStorage(), saves = [];
+  const first = await openProfile(storage, {now: coop, saves});
+  assert.deepEqual(first.applied, [{field: 'phone', value: '+41 79 000 00 00'}, {field: 'postal_code', value: '1260'}], 'the CV states them plainly');
+  assert.deepEqual(first.proposals.map(item => item.field), ['location', 'salutation'], 'a Profile-only value and a salutation are offered, never saved');
+  assert.deepEqual(saves, [{...coop, phone: '+41 79 000 00 00', postal_code: '1260'}], 'one write: the kept details plus these');
+  // The person saved them, then cleared the phone: opening Profile again saves nothing and offers nothing for it.
+  const second = await openProfile(storage, {now: {...coop, postal_code: '1260'}, saves});
+  assert.deepEqual([second.applied, second.proposals.map(item => item.field)], [[], ['location', 'salutation']]);
+  assert.equal(saves.length, 1, 'no second write');
+  // A failed save records nothing: the next open tries again.
+  const other = memoryStorage(), result = await forCv(other, {contact: coop, client: fakeClient(CV_ANSWER), cvHash: 'cv2', read: pdf});
+  await assert.rejects(settleSure(other, {result, read: async () => coop, save: async () => { throw new Error('offline'); }}), /offline/);
+  assert.equal((await settleSure(other, {result, read: async () => coop, save: async merged => merged})).applied.length, 2);
+});
+
+test('settleSure: a detail saved while the CV was read is never overwritten; editing the Profile text does not bring a cleared value back', async () => {
+  const storage = memoryStorage(), saves = [];
+  // The person typed the phone during the CV read: only the postal code is added, on top of the details as they are now.
+  const first = await openProfile(storage, {now: {...coop, phone: '+44 1'}, saves});
+  assert.deepEqual(first.applied, [{field: 'postal_code', value: '1260'}]);
+  assert.deepEqual(saves, [{...coop, phone: '+44 1', postal_code: '1260'}]);
+  // They cleared the postal code, then edited their Profile text: the AI is asked again (a new key), the value is not saved again.
+  const second = await openProfile(storage, {now: {...coop, phone: '+44 1'}, profile: 'I live in Nyon', saves});
+  assert.deepEqual(second.applied, [], 'the CV file is the same: the postal code it settled stays cleared');
+  assert.equal(saves.length, 1);
 });

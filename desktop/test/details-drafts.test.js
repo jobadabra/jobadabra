@@ -1,5 +1,5 @@
 // Your details on the Profile page's one save bar (pages/details-drafts.js, renderer/details-count.js; owner, 18 Oct 2026, UI redesign D2): the bar counts the
-// fields that differ from what was read or saved, a refresh never draws over drafts, a proposal from the CV is a draft (never saved by itself), and nothing
+// fields that differ from what was read or saved, a refresh never draws over drafts, a proposal from the CV is a draft only once the person presses Fill (never saved by itself, never filled on open), and nothing
 // on the tab has its own Save any more.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -30,14 +30,16 @@ test('facts: a changed line is one change, an added or removed line one', () => 
   assert.equal(countFacts(saved, {...saved, eligibility: []}), 1);
 });
 
-test('wiring: both sources on the Profile bar, a refresh never draws over drafts, a CV proposal is only a draft', () => {
+test('wiring: both sources on the Profile bar, a refresh never draws over drafts, a CV proposal is a draft only after the person presses Fill', () => {
   const drafts = read('pages/details-drafts.js'), profile = read('pages/profile.js'), facts = read('pages/details-facts.js'), proposals = read('pages/contact-proposals.js');
   assert.match(drafts, /bar\.register\(\{id: 'details-contact', tab: 'details'/);
   assert.match(drafts, /bar\.register\(\{id: 'details-facts', tab: 'details'/);
   assert.match(profile, /if \(!kept && painted && contactDirty\(\)\) return;/);
   assert.match(facts, /if \(!kept && !redrawing && factsDirty\(\)\) return;/);
-  assert.match(proposals, /detailsChanged\(\);   \/\/ they are drafts/);
-  assert.doesNotMatch(proposals, /saveContact/, 'a proposal never saves by itself');
+  assert.match(proposals, /detailsChanged\(\);   \/\/ the person pressed Fill or said yes: they are drafts/);
+  assert.match(proposals, /again \? showProposals\(result\?\.proposals \|\| \[\]\) : offerProposals/, 'opening Profile shows what the app saved and only offers the rest: a yes fills them (owner, 2 Nov 2026)');
+    assert.doesNotMatch(proposals, /saveContact\(/, 'an unsure proposal is never saved by itself, and no proposal saves the whole form');
+  assert.doesNotMatch(proposals, /saveContactField\(/, 'the window never saves a CV value: the engine saves a sure one once (lib/contact-from-cv.js settleSure)');
   const html = read('index.html');
   for (const gone of ['contact-savebar', 'contact-save"', 'contact-discard']) assert.ok(!html.includes(`id="${gone.replace('"', '')}"`), `#${gone} is gone: the page bar saves`);
 });
