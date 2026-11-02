@@ -1,0 +1,56 @@
+name: CI · E2E intelligence
+# Why e2e goes red (owner, 18 Oct 2026; every run kind and a cause for every red, 27 Oct 2026), for https://www.jobpilotto.top/admin/testing/e2e: every finished e2e run
+# (beta, nightly, main after merge, scheduled, soak, PR, the daily harness tests) and the cause of each red suite (tools/ci-intel/jobs/e2e-intel.mjs: facts, then the fix's E2E-cause trailer,
+# then a small Workers AI call on its OWN token, never production's: E2E_CAUSE_CF_TOKEN / E2E_CAUSE_CF_ACCOUNT; without them those reds stay "unknown", so a run refuses to publish without them).
+# Runs hourly (a red's cause "open" becomes "test" or "product" once its fix has run); each run is read once, the site keeps one row per run and one snapshot row.
+# Why here (2 Nov 2026, owner: "they can be either jobadabra (because that's where the main source code is, and e2e)"): it only reads this repo's own CI and publishes to the site,
+# so it runs beside the tests it measures and no longer lays this repo's tree under another repo every hour (it was jobadabra-web's e2e-intel.yml). The site's pages and validators stay in jobadabra-web.
+# Why (31 Oct 2026): the title says who started the run, so an on-time Worker start (shared/intel-start.js in jobadabra-web) and GitHub's late backup can be told apart on the Actions page.
+run-name: E2E intelligence · ${{ github.event_name == 'workflow_dispatch' && 'on time (Worker timer)' || 'GitHub schedule' }}
+
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: e2e-intel
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+      E2E_CAUSE_CF_TOKEN: ${{ secrets.E2E_CAUSE_CF_TOKEN }}
+      E2E_CAUSE_CF_ACCOUNT: ${{ secrets.E2E_CAUSE_CF_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+        with:
+          sparse-checkout: |   # cone mode: the files of desktop/e2e itself (critical-journeys.json, lanes.json) come with its listed folders
+            tools/ci-intel
+            desktop/e2e/lib
+            desktop/e2e/suites
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - name: Refuse to publish without the cause AI token
+        timeout-minutes: 5
+        # Why (2 Nov 2026): without E2E_CAUSE_CF_* every red no fact names is written "unknown", which would overwrite the causes jobadabra-web's copy of this job decided while both run.
+        run: |
+          [ -n "$E2E_CAUSE_CF_TOKEN" ] && [ -n "$E2E_CAUSE_CF_ACCOUNT" ] || { echo "::error::E2E_CAUSE_CF_TOKEN / E2E_CAUSE_CF_ACCOUNT are not set on this repository: the owner sets them (names only here)"; exit 1; }
+      - name: Read the new runs and publish them
+        timeout-minutes: 40
+        run: node tools/ci-intel/jobs/e2e-intel.mjs
+      - name: Read each journey's steps and publish GTM readiness
+        timeout-minutes: 30
+        if: always()   # a red e2e read must not hide this one, nor the other way round (report only: no gate)
+        run: node tools/ci-intel/jobs/gtm-readiness.mjs

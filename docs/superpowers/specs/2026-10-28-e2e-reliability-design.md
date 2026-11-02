@@ -271,7 +271,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] Scorecard and the "Where e2e work goes" card on /admin/operations/e2e. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @e4ecceb, web#210, private repo)
 - [x] Weekly Telegram message and GitHub issue from the site's one classifier. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @bed82a7, web#211, private repo)
 - [ ] Grey tracking: page + weekly + returns (row 30, owner `a8`).
-- [ ] Retire the public `tools/e2e_weekly.py` and `e2e-weekly.yml` after the first Monday post (bisect keeps only its fact check).
+- [x] Retire the public `tools/e2e_weekly.py` and the old `e2e-weekly.yml` (bisect keeps only its fact check). (proof: none: deleted in the PR that moves the CI collectors here; `tools/ci-intel/jobs/e2e-weekly.mjs` posts the Monday issue and Telegram from this repo, 2 Nov 2026)
 - [ ] Bug Tracker "escaped e2e" field.
 - [ ] One week of the weekly summary read by the owner.
 
