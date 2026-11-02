@@ -34,8 +34,9 @@ test('wiring: both sources on the Profile bar, a refresh never draws over drafts
   const drafts = read('pages/details-drafts.js'), profile = read('pages/profile.js'), facts = read('pages/details-facts.js'), proposals = read('pages/contact-proposals.js');
   assert.match(drafts, /bar\.register\(\{id: 'details-contact', tab: 'details'/);
   assert.match(drafts, /bar\.register\(\{id: 'details-facts', tab: 'details'/);
-  assert.match(profile, /if \(!kept && painted && contactDirty\(\)\) return;/);
-  assert.match(facts, /if \(!kept && !redrawing && factsDirty\(\)\) return;/);
+  assert.match(profile, /if \(redraw \|\| !contactDirty\(\)\) \{/, 'no paint, the kept copy included, draws over drafts; only Discard all (redraw) does');
+  assert.match(profile, /repaintContact: \(\) => showContact\(\{redraw: true\}\)/);
+  assert.match(facts, /if \(!redrawing && factsDirty\(\)\) return;/, 'the kept copy does not draw over drafts either');
   assert.match(proposals, /detailsChanged\(\);   \/\/ the person pressed Fill or said yes: they are drafts/);
   assert.match(proposals, /again \? showProposals\(result\?\.proposals \|\| \[\]\) : offerProposals/, 'opening Profile shows what the app saved and only offers the rest: a yes fills them (owner, 2 Nov 2026)');
     assert.doesNotMatch(proposals, /saveContact\(/, 'an unsure proposal is never saved by itself, and no proposal saves the whole form');
