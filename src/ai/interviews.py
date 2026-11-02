@@ -279,14 +279,18 @@ def held(stores, app_id, notes='', *, now=None):
     return {'ok': True, 'id': row['id'], 'url': _url(stores, row['id']), 'stage': stage, 'review': len(notes) >= 40}
 
 
-def moved(stores, app_id, at):
-    """Focus → "No: moved": Next interview is the new time, and an Interview scheduled event says so."""
+def moved(stores, app_id, at, *, now=None):
+    """Focus → "No: moved": Next interview is the new time, and an Interview scheduled event says so. now: when the
+    owner moved it (default: the real clock); the event is dated then, and a time over 30 days before it is not saved."""
     if not _moment(at):
         raise ValueError('Pick the new date and time')
     at = tz.local_iso(at)  # the picker has no offset: the owner's clock with the offset of that date
     app = _app(stores, app_id)
     stores.applications.update(app['id'], {'next_interview': at})
-    rules.add_event(stores, app, 'Interview scheduled', APP_SOURCE, note=f'Moved to {at} (from Focus)', interview_at=at)
+    # Why (2 Nov 2026, a8; main red on test_interviews_focus): the event's time came from the real clock inside add_event, so a test's fixed
+    # interview time went out of plausible_interview's 30 days on its own one day and every PR went red. The caller's now dates the event.
+    said = (now or datetime.now(timezone.utc)).isoformat(timespec='seconds')
+    rules.add_event(stores, app, 'Interview scheduled', APP_SOURCE, at=said, note=f'Moved to {at} (from Focus)', interview_at=at)
     return {'ok': True}
 
 
