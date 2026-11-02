@@ -1,7 +1,8 @@
 // The popup picks the best N jobs by fit that were not checked before (owner, 30 Oct 2026), and each read's chip says its mode, never a guess (lib/apply-triage-pick.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {chipOf, estimateOf, pickForTriage} from '../renderer/apply-triage-pick.js';
+import {chipOf, estimateOf, pickForTriage, pickWhenFresh} from '../renderer/apply-triage-pick.js';
+import {listReady, startListRead} from '../renderer/pages/jobs-state.js';
 
 const jobs = [
   {url: 'https://a.example/1', fit: 66}, {url: 'https://a.example/2', fit: 88}, {url: 'https://a.example/3', fit: 79},
@@ -52,4 +53,35 @@ test('a short check says seconds, nothing to check says nothing, and bad timings
   assert.equal(estimateOf(0, [50]).text, '');
   assert.equal(estimateOf(1, [2]).text, 'about 5 seconds', 'a very fast read never says about 0 seconds');
   assert.equal(estimateOf(5, [NaN, -3, 0, Infinity]).measured, false, 'no usable timing is a first guess');
+});
+
+// Apply e2e runs 41412195017 and 41447682988 (2 Nov 2026): Start was pressed on the kept copy of the list, 0.67 s before the fresh read landed. There the job just
+// saved at fit 90 was still applied at 80, tied with the real-form jobs, so the first of those was read and the saved job's chip never changed.
+test('Start picks from the fresh list, never from the kept copy painted before the fresh read landed', async () => {
+  const saved = 'https://e2e.recruitee.com/o/submit-form', other = 'https://e2e.recruitee.com/real/other-9b0bc5b0';
+  const kept = [{url: other, fit: 80}, {url: 'https://e2e.recruitee.com/real/greenhouse-e36f249d', fit: 80}, {url: saved, fit: 80, status: 'applied'}];
+  const fresh = [kept[0], kept[1], {url: saved, fit: 90, status: 'saved'}];
+  assert.equal(pickForTriage(kept, {n: 1})[0].url, other, 'a pick from the kept copy reads the wrong job');
+  let shown = kept, settled = false;
+  const landed = startListRead();
+  const picking = pickWhenFresh(() => shown, listReady, {n: 1});
+  picking.then(() => { settled = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(settled, false, 'Start waits while the fresh read is under way');
+  shown = fresh;
+  landed();
+  assert.deepEqual((await picking).map(job => job.url), [saved]);
+});
+
+test('with no read under way Start picks at once; a later read makes the next Start wait again', async () => {
+  const jobs = [{url: 'https://a.example/1', fit: 70}, {url: 'https://a.example/2', fit: 95}];
+  const landed = startListRead();
+  landed();
+  assert.deepEqual((await pickWhenFresh(() => jobs, listReady, {n: 1})).map(job => job.fit), [95]);
+  const again = startListRead();
+  let settled = false;
+  pickWhenFresh(() => jobs, listReady, {n: 1}).then(() => { settled = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(settled, false);
+  again();
 });

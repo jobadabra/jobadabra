@@ -49,6 +49,27 @@ for (const [action, landed] of [['Cancel', 'Kit ready'], ['Skip', 'Dismissed'], 
   });
 }
 
+// Gitar on #2988: the window's start read returns null when a write lands while it runs; the fresh list comes only from that write's reread, so a
+// Start waiting for the fresh list (pages/jobs-state.js) must wait for that reread, not for the start read.
+test('settled() resolves only after the reread of a write that overtook a read has painted', async () => {
+  const store = fakeStore('Saved');
+  const start = store.writes.read();
+  store.writes.changed();
+  store.answer(0, 'Applied');
+  assert.equal(await start, null);
+  let settled = false;
+  const waiting = store.writes.settled().then(() => { settled = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(settled, false, 'the reread has not answered yet');
+  store.answer(1, 'Saved');
+  await waiting;
+  assert.deepEqual(store.painted.map(fresh => fresh.jobs[0].stage), ['Saved'], 'the fresh list painted before settled() resolved');
+});
+
+test('settled() resolves at once when no write is being read again', async () => {
+  await fakeStore('Saved').writes.settled();
+});
+
 test('the row the action came from shows the change at once, before the store answers', () => {
   const store = fakeStore('Applying');
   const row = {url: URL_A, stage: 'Applying', status: 'applied'};
