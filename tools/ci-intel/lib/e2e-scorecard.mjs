@@ -3,7 +3,7 @@
 // Pure: draws the snapshot rows jobadabra-web admin/e2e-intel.js keeps. Guard: desktop/test/ci-intel-e2e-scorecard.test.js.
 import {esc} from './html.mjs';
 import {CHIP_STYLE, chip} from './chip.mjs';
-import {groupOf} from './e2e-causes.mjs';
+import {groupOf, isCatch} from './e2e-causes.mjs';
 import {barRows, legend} from './day-bars.mjs';
 import {PLUMBING_TARGET, WORK_KINDS, weekOf} from './e2e-work.mjs';
 
@@ -23,7 +23,7 @@ export function scoreRows(fails, escapes = []) {
   for (const fail of fails) {
     const suite = baseSuite(fail.suite), row = rowOf(suite);
     const group = groupOf(fail.cause), n = Number(fail.n) || 0;
-    if (group === 'app') row.caught += n; else if (group === 'tests') row.noise += n; else if (group === 'ours') row.ours += n; else row.unnamed += n;
+    if (isCatch(fail.cause)) row.caught += n; else if (group === 'tests') row.noise += n; else if (group === 'ours') row.ours += n; else row.unnamed += n;
     row.min += Number(fail.min) || 0; rows.set(suite, row);
   }
   for (const escape of escapes) for (const suite of new Set(escape.suites.map(baseSuite))) {

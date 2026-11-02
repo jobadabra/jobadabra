@@ -1,7 +1,7 @@
 // The e2e cause rules (admin/e2e-causes.js), on the real reds of 20-27 Oct 2026 (measured 27 Oct: 220 red suites; rules 1-2 left 49% "unknown"/"not fixed yet" and "test bug" at 0).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {AI_CAUSES, CAUSES, CAUSE_IDS, causeId, causePrompt, changedKinds, factCause, failureLine, groupOf, likelyFixes, prCause, readAnswer, suiteOfJob, trailerCause, trailerCauses} from '../../tools/ci-intel/lib/e2e-causes.mjs';
+import {AI_CAUSES, CAUSES, CAUSE_IDS, causeId, causePrompt, changedKinds, factCause, failureLine, groupOf, likelyFixes, prCause, readAnswer, suiteOfJob, namedCause, trailerCause, trailerCauses} from '../../tools/ci-intel/lib/e2e-causes.mjs';
 
 test('a suite comes from a release run\'s job name, and from a standalone e2e.yml job\'s "Run the X suite (first try)" step (rules 1-2 missed every PR and after-merge red)', () => {
   assert.deepEqual(suiteOfJob('E2E · Windows · apply'), {suite: 'apply', platform: 'windows'});
@@ -36,7 +36,7 @@ test('facts name a red before any fix is read: runner, a CI step before the suit
 });
 
 test('a fix that names its cause in an "E2E-cause:" trailer decides it; a harness-only fix is no longer "unknown" (rules 1-2 read none)', () => {
-  assert.deepEqual(trailerCauses('Expect the backup message to name the file\n\nE2E-cause: drift settings, apply\nE2E-issue: none x'), [{cause: 'drift', suites: ['settings', 'apply']}]);
+  assert.deepEqual(trailerCauses('Expect the backup message to name the file\n\nE2E-cause: drift settings, apply\nE2E-issue: none x'), [{cause: 'drift', suites: ['settings', 'apply'], runs: []}]);
   assert.deepEqual(trailerCauses('E2E-cause: because settings'), [], 'only cause ids');
   const commits = [{sha: 'a1', message: 'Unrelated\n\nE2E-cause: product quality'}, {sha: 'b2', message: 'Fix the test\n\nE2E-cause: test applyflows'}];
   assert.deepEqual(trailerCause(commits, 'applyflows-2of2'), {cause: 'test', sha: 'b2'}, 'a slice is its suite');
@@ -78,4 +78,37 @@ test('every cause has a group, a label, a colour and a hint; old rows read under
   assert.equal(causeId('nonsense'), 'unknown');
   assert.equal(groupOf('drift'), 'tests');
   assert.equal(groupOf('ci'), 'ours');
+});
+
+// 2 Nov 2026 (owner: "has this caught bug been counted?"): apply-1of3 went red on main (run 41412195017), came and went; the window up to its next green held #2982 and #2986,
+// and the real fix #2988 landed after it. A run id in the trailer names the red a fix closes.
+const APPLY_RED = '41412195017';
+const WINDOW = [{sha: '3c7df52c', message: '[a8] Rules say a PR runs the e2e steps it adds or changes (#2982)\n\nE2E-cause: none rule texts only; no suite was red'},
+  {sha: '0f360260', message: '[a8] A hung step names the wait that ran out and what it last saw (#2986)\n\nE2E-cause: runner apply\nE2E-cause: runner apply'}];
+const REAL_FIX = {sha: '9d511a1c', message: 'Start picks jobs from the kept list only (#2988)\n\nE2E-cause: product apply 41412195017 41447682988'};
+
+test('a run id in an "E2E-cause:" trailer names the red a fix closes; ids never read as suite names', () => {
+  assert.deepEqual(trailerCauses(REAL_FIX.message), [{cause: 'product', suites: ['apply'], runs: ['41412195017', '41447682988']}]);
+  assert.deepEqual(trailerCauses('E2E-cause: drift settings, apply'), [{cause: 'drift', suites: ['settings', 'apply'], runs: []}], 'old trailers parse as before');
+  assert.deepEqual(trailerCauses('E2E-cause: test 41412195017'), [{cause: 'test', suites: [], runs: ['41412195017']}], 'ids alone: every suite of those runs');
+});
+
+test('the window rule skips a trailer that names runs; namedCause finds it for those runs and suites only', () => {
+  assert.deepEqual(trailerCause(WINDOW, 'apply-1of3'), {cause: 'runner', sha: '0f360260'}, 'today: the window reads the wrong fix (the replay of 2 Nov)');
+  assert.equal(trailerCause([REAL_FIX], 'apply-1of3'), null, 'a trailer with run ids is not a window answer');
+  assert.deepEqual(namedCause([REAL_FIX], 'apply-1of3', APPLY_RED), {cause: 'product', sha: '9d511a1c'});
+  assert.equal(namedCause([REAL_FIX], 'apply-1of3', '41400000000'), null, 'another run');
+  assert.equal(namedCause([REAL_FIX], 'quality', APPLY_RED), null, 'another suite of the same run');
+  assert.deepEqual(namedCause([{sha: 'a', message: 'x\n\nE2E-cause: test 41412195017'}], 'quality', APPLY_RED), {cause: 'test', sha: 'a'}, 'no suite listed: every suite');
+  assert.equal(namedCause(WINDOW, 'apply-1of3', APPLY_RED), null, 'a trailer without ids names no run');
+  assert.deepEqual(namedCause([{sha: 'new', message: 'x\n\nE2E-cause: drift apply 41412195017'}, REAL_FIX], 'apply', APPLY_RED), {cause: 'drift', sha: 'new'}, 'newest first: a later word corrects an earlier one');
+});
+
+// 2 Nov 2026: since 31 Oct (91976ad7, "a suite's one try is the verdict") e2e.yml's step reads "Run the apply-1of3 suite (the only try)". The collector knew only "(first try)", so
+// no red of a standalone e2e.yml run was read for two days: the apply-1of3 red of 08:19 (run 41412195017) was never stored, let alone counted.
+test('a suite job is found by its step whether it says "(first try)" or "(the only try)"', () => {
+  assert.deepEqual(suiteOfJob('apply-1of3', [{name: 'Run the apply-1of3 suite (the only try)', conclusion: 'failure'}]), {suite: 'apply-1of3', platform: 'mac'});
+  assert.deepEqual(suiteOfJob('apply', [{name: 'Run the apply suite (first try)'}]), {suite: 'apply', platform: 'mac'});
+  assert.deepEqual(suiteOfJob('E2E · Windows · apply', []), {suite: 'apply', platform: 'windows'});
+  assert.equal(suiteOfJob('Windows follows', [{name: 'Run the Windows follow-up'}]), null);
 });

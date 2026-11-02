@@ -3,7 +3,7 @@
 // No network here: GitHub and the AI come in as functions. Guard: desktop/test/ci-intel-e2e-intel-collector.test.js.
 import {cleanBetaRun} from '../lib/e2e-beta.mjs';
 import {RATE_SUITES, ratesOf} from '../lib/e2e-rates.mjs';
-import {causePrompt, factCause, failureLine, likelyFixes, prCause, readAnswer, suiteOfJob, trailerCause} from '../lib/e2e-causes.mjs';
+import {causePrompt, factCause, failureLine, isCatch, likelyFixes, namedCause, namedRuns, prCause, readAnswer, suiteOfJob, trailerCause} from '../lib/e2e-causes.mjs';
 
 /** Minutes between two ISO times to one decimal; 0 when either is missing or the order is wrong. */
 export const minutesOf = (from, to) => (from && to ? Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 6000) / 10) || 0 : 0);
@@ -89,12 +89,19 @@ export function betaRunRow(run, now = new Date()) {
 }
 
 // One red's cause. deps (async, may return null = could not read): commitsBetween(a, b) -> [{sha, message}], filesOf(sha) -> [file], filesBetween(a, b) -> [file],
-// prFiles(pr) -> [file], diffOf(sha) -> text, ask({system, user}) -> text or null (no AI token: null). log === null: the log was not read this pass (the red is read again later).
+// prFiles(pr) -> [file], diffOf(sha) -> text, ask({system, user}) -> text or null (no AI token: null); namedCommits (newest first): the main commits whose "E2E-cause:" trailer names run ids.
+// log === null: the log was not read this pass (the red is read again later).
+const SYMPTOM = ['flake', 'timing'];
 export async function causeOfRed({run, red, log, next}, deps) {
   const line = failureLine(log || '');
   const fact = factCause({...red, log, line});
-  if (fact) return {cause: fact, line};
+  // Why (2 Nov 2026, owner: "has this caught bug been counted?"): a fix that names the red's run id wins over the window up to the next green, which an intermittent red reaches
+  // before its real fix (apply-1of3: #2986 was read for #2988). It beats the facts that only read the symptom, "flake" (a green second try cannot tell an intermittent bug from noise) and "timing" (the hang's own words: the real apply-1of3 red of 2 Nov read "timing"), never a lost runner, a CI step or the picker.
+  const naming = namingCommit(deps.namedCommits, run.databaseId);   // the newest commit that names this run speaks for all of its reds (namedToRedo reads the same one)
+  const named = run.kind === 'pr' || log === null || !naming ? null : namedCause([naming], red.suite, run.databaseId);
+  if (fact && !(SYMPTOM.includes(fact) && named)) return {cause: fact, line};
   if (log === null) return {cause: 'unknown', line};
+  if (named) return {cause: named.cause, line, fix: named.sha, named: true};
   if (!next) return {cause: 'open', line};
   if (run.kind === 'pr') {
     const sameCommit = next.headSha === run.headSha;
@@ -103,8 +110,8 @@ export async function causeOfRed({run, red, log, next}, deps) {
   }
   const commits = await deps.commitsBetween(run.headSha, next.headSha);
   if (!commits) return {cause: 'unknown', line};
-  const named = trailerCause(commits, red.suite);
-  if (named) return {cause: named.cause, line, fix: named.sha};
+  const windowed = trailerCause(commits, red.suite);
+  if (windowed) return {cause: windowed.cause, line, fix: windowed.sha};
   const fixes = likelyFixes(commits, {suite: red.suite, line});
   if (!fixes.length) return {cause: 'unknown', line};   // no commit to judge: the AI would only guess
   for (const [i, fix] of fixes.entries()) { fix.files = (await deps.filesOf(fix.sha)) || []; if (i < 2 && deps.diffOf) fix.diff = (await deps.diffOf(fix.sha)) || ''; }
@@ -134,18 +141,41 @@ export async function rowsOf(runs, {logOf = () => '', ...deps} = {}) {
     for (const red of redJobs(run)) {
       const next = runs.slice(index + 1).find(later => streamOf(later) === streamOf(run) && passedFirst(later, red.suite, red.platform));
       const log = logOf(red.jobId);   // a flake's log too: its first try may be the picker's or the credit's red
-      const {cause, line, fix} = await causeOfRed({run, red, log, next}, deps);
+      const {cause, line, fix, named} = await causeOfRed({run, red, log, next}, deps);
       out.fails.push({runId: run.databaseId, suite: red.suite, platform: red.platform, day: run.createdAt.slice(0, 10), kind: run.kind, cause, line, fix: fix || '', minutes: red.minutes,
-        caught: run.kind === 'pr' && cause === 'product' ? 1 : 0});
+        caught: isCatch(cause) ? 1 : 0, ...(named ? {named: 1} : {})});
     }
   }
   return out;
 }
 
 // New runs first, newest first, at most `max` a pass: the page fills from today backwards; with nothing new, the runs whose reds are still open or unknown are read again.
-export function runsToRead(listed, settled, waiting, max = 200) {
+// redo: the runs a new trailer names (namedToRedo), read again whatever is stored.
+export function runsToRead(listed, settled, waiting, max = 200, redo = new Set()) {
   const fresh = listed.filter(run => !settled.has(run.databaseId) && !waiting.has(run.databaseId));
-  return (fresh.length ? fresh : listed.filter(run => waiting.has(run.databaseId))).slice(-max);
+  const again = fresh.length ? new Set(fresh.map(run => run.databaseId)) : waiting;
+  return listed.filter(run => again.has(run.databaseId) || redo.has(run.databaseId)).slice(-max);
+}
+
+/** The newest main commit whose trailer names this run id, or undefined (commits come newest first). */
+export const namingCommit = (commits = [], runId = '') => commits.find(commit => namedRuns(commit.message).includes(String(runId)));
+
+// Causes a name never changes: no app step ran (runner, ci, picker) or the AI itself failed (ai). A run whose reds are all these is not read again for a name.
+const NAME_CANNOT_CHANGE = ['runner', 'ci', 'picker', 'ai'];
+
+/**
+ * Main commits (newest first) and the stored reds [[runId, suite, cause, fix, kind]] (pull-request runs left out by the Worker) -> the run ids to read again: those where the
+ * naming commit would change a red that is stored (another cause or fix, and a cause a name may change). Read once: after it every such red holds the named cause and fix, or none
+ * would change (Why, 2 Nov 2026, Gitar on #2995: the first rule, "no stored fix is the naming commit", re-read runs that never take the name every hour for 30 days).
+ */
+export function namedToRedo(commits = [], reds = []) {
+  const redo = new Set();
+  for (const [runId, suite, cause, fix, kind] of reds) {
+    if (kind === 'pr' || NAME_CANNOT_CHANGE.includes(cause)) continue;
+    const naming = namingCommit(commits, runId), want = naming && namedCause([naming], suite, runId);
+    if (want && (cause !== want.cause || fix !== want.sha)) redo.add(Number(runId));
+  }
+  return redo;
 }
 
 /** Oldest-first listed runs -> the beta runs whose suite counts the site lacks, newest first (the page fills from today back), at most `max` a pass. */

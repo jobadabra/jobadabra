@@ -28,7 +28,8 @@ export function summary(w) {
     .map(row => ({...row, main: Object.entries(row.causes).sort((a, b) => b[1] - a[1])[0]}));
   const prDays = w.allDays.filter(day => day.kind === 'pr'), prFails = w.allFails.filter(fail => fail.kind === 'pr');
   const sumOf = (rows, field) => rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
-  const pr = {runs: sumOf(prDays, 'runs'), queueMin: sumOf(prDays, 'queueMin'), runMin: sumOf(prDays, 'runMin'), caught: w.caught.length,
+  const prCaught = w.caught.filter(item => item.kind === 'pr');   // the caught list holds every run kind since 2 Nov 2026; this card is the cost of PR e2e only
+  const pr = {runs: sumOf(prDays, 'runs'), queueMin: sumOf(prDays, 'queueMin'), runMin: sumOf(prDays, 'runMin'), caught: prCaught.length, caughtList: prCaught,
     drift: sumOf(prFails.filter(fail => fail.cause === 'drift'), 'n'), noise: sumOf(prFails.filter(fail => groupOf(fail.cause) === 'ours'), 'n'), flakes: sumOf(prFails.filter(fail => fail.cause === 'flake'), 'n')};
   pr.perBug = pr.caught ? Math.round((pr.queueMin + pr.runMin) / pr.caught) : null;
   const green = new Map();
@@ -58,7 +59,7 @@ export function top(w, {repo = 'GarryOne/jobadabra'} = {}) {
   const breakRows = s.breaks.map(item => `<tr><td class="num">${num(item.n)}</td><td>${chip(esc(item.kind))}</td><td>${chip(esc(label(item.cause)))}</td><td><a href="https://github.com/${esc(repo)}/actions/runs/${Number(item.runId)}">${esc(item.day)}</a></td><td class="muted line">${esc(item.line || '(no failure line)')}</td></tr>`).join('');
   const p = s.pr;
   const prLine = p.runs ? `<p><b>${p.caught ? `${num(p.perBug)} runner-minutes per caught bug` : 'No bug caught yet'}:</b> ${num(p.runs)} PR e2e runs, ${num(p.queueMin)} min waiting for a runner + ${num(p.runMin)} min running; caught ${num(p.caught)} bug${p.caught === 1 ? '' : 's'} and ${num(p.drift)} test drift before merge; its own CI and AI reds: ${num(p.noise)}, flakes ${num(p.flakes)}.</p>` : '<p class="muted">No PR e2e run in this range.</p>';
-  const caught = w.caught.map(item => `<li>${item.pr ? `<a href="https://github.com/${esc(repo)}/pull/${Number(item.pr)}">#${Number(item.pr)}</a>` : 'a PR'} · <code>${esc(item.suite)}</code> · <span class="muted">${esc(item.line)}</span></li>`).join('');
+  const caught = p.caughtList.map(item => `<li>${item.pr ? `<a href="https://github.com/${esc(repo)}/pull/${Number(item.pr)}">#${Number(item.pr)}</a>` : 'a PR'} · <code>${esc(item.suite)}</code> · <span class="muted">${esc(item.line)}</span></li>`).join('');
   const share = ([green, runs]) => (runs ? `${pct(green, runs)} <span class="muted">(${green}/${runs})</span>` : '<span class="muted">–</span>');
   const greenRows = s.green.map(row => `<tr${row.day === PR_START ? ' class="mark"' : ''}><td>${esc(row.day)}${row.day === PR_START ? ' · PR e2e starts' : ''}</td><td class="num">${share(row.full)}</td><td class="num">${share(row.merge)}</td><td class="num">${row.prMin ? num(row.prMin) : '–'}</td></tr>`).join('');
   return `<section class="card top"><p class="verdict">${verdict}</p>${bar(groups.map(group => ({n: s.byGroup[group.id], label: group.label, color: GROUP_COLOR[group.id]})), s.reds)}

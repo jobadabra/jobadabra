@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {CAUSE_IDS} from './ci-intel/lib/e2e-causes.mjs';
+import {CAUSE_IDS, RUN_ID} from './ci-intel/lib/e2e-causes.mjs';
 
 // Why (2 Nov 2026, Gitar on #2989): the collector that reads these trailers moved into this repo, so its CAUSE_IDS is the one owner; the words are its ids minus the two it assigns itself (open, unknown). Was a second list kept in step by hand.
 export const E2E_CAUSES = CAUSE_IDS.filter(id => !['open', 'unknown'].includes(id));
@@ -32,7 +32,8 @@ export function causeProblems(values, suites = []) {
     const [word = '', ...rest] = value.split(/[\s,]+/).filter(Boolean);
     if (word.toLowerCase() === 'none') { if (rest.join(' ').length < 3) problems.push('"E2E-cause: none" needs a reason ("E2E-cause: none <why>")'); continue; }
     if (!E2E_CAUSES.includes(word)) { problems.push(`"E2E-cause: ${value}" starts with "${word}", not one of ${E2E_CAUSES.join(', ')} or none <why>`); continue; }
-    const unknown = suites.length ? rest.filter(name => !suites.includes(name.replace(/-\d+of\d+$/, ''))) : [];
+    // Why (2 Nov 2026, owner: "has this caught bug been counted?"): 6+ digits are the GitHub run ids the fix closes ("E2E-cause: product apply 41412195017"), read by this repo's collector (tools/ci-intel/jobs/e2e-intel.mjs), never suite names.
+    const unknown = suites.length ? rest.filter(name => !RUN_ID.test(name) && !suites.includes(name.replace(/-\d+of\d+$/, ''))) : [];
     if (unknown.length) problems.push(`"E2E-cause: ${value}": no suite ${unknown.map(name => `"${name}"`).join(', ')} in desktop/e2e/suites/`);
   }
   return problems;

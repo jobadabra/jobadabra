@@ -24,6 +24,13 @@ test('the cause is one of the page\'s ids with optional suites, or "none <why>"'
   assert.deepEqual(causeProblems(['product'], SUITES), []);
 });
 
+test('run ids name the red runs a fix closes: they pass beside suites, and a wrong suite beside them still fails', () => {
+  assert.deepEqual(causeProblems(['product apply 41412195017 41447682988'], SUITES), [], 'the 2 Nov 2026 case: apply-1of3 went green before its real fix landed');
+  assert.deepEqual(causeProblems(['product 41412195017'], SUITES), []);
+  assert.match(causeProblems(['product setings 41412195017'], SUITES)[0], /no suite "setings"/);
+  assert.match(causeProblems(['product apply 4141'], SUITES)[0], /no suite "4141"/, 'short digits are not a run id');
+});
+
 test('the ids are the site\'s cause ids (jobadabra-web admin/e2e-causes.js), never "infra" or "credit" (rules 1-2 words)', () => {
   assert.deepEqual([...E2E_CAUSES].sort(), ['ai', 'ci', 'drift', 'flake', 'picker', 'product', 'runner', 'test', 'timing']);
 });
