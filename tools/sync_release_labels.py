@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_guard import desktop_only, is_desktop  # noqa: E402  (only desktop-v* releases are ever stable, 17 Oct 2026)
 
-REPO = os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # Why (2 Nov 2026): the old GarryOne/ name made issue lookups come back empty after the org move
+REPO = os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # Why (2 Nov 2026): the repo moved to the jobadabra org; an Actions run names its own repo
 STABLE, BETA, BUILD, PREVIOUS = '✅ STABLE', '🧪 BETA (release candidate)', '🔨 Build', '📦 Previous stable'
 PREFIX = re.compile(r'^(?:✅ STABLE|🧪 BETA(?: \(release candidate\))?|🔨 Build|📦 Previous stable) · ')
 

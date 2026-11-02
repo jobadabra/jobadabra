@@ -7,12 +7,6 @@ from pathlib import Path
 WORKFLOWS = Path(__file__).resolve().parents[1] / '.github' / 'workflows'
 
 
-def permissions(block):
-    """{scope: level} of the first `permissions:` mapping in `block` (indented lines under it)."""
-    match = re.search(r'^( *)permissions:[ \t]*\n((?:\1  +[\w-]+: *[\w-]+.*\n)+)', block, re.M)
-    return dict(re.findall(r'^ +([\w-]+): *([\w-]+)', match.group(2), re.M)) if match else None
-
-
 def jobs(text):
     """(name, text) of each job: the two-space keys under `jobs:`."""
     body = text.split('\njobs:\n', 1)[1]
@@ -20,8 +14,8 @@ def jobs(text):
     return list(zip(parts[1::2], parts[2::2]))
 
 
-class ReleaseJobsMayWriteIssues(unittest.TestCase):
-    def test_every_job_that_runs_a_release_script_has_issues_write(self):
+class ScreenshotReviewRunsInOnePlace(unittest.TestCase):
+    def test_every_e2e_lane_uses_the_shared_review_action(self):
         # Since 26 Oct 2026 the review runs in one place, .github/actions/e2e-review (all of a lane's pages in one batch), used by every lane.
         action = (WORKFLOWS.parent / 'actions' / 'e2e-review' / 'action.yml').read_text()
         self.assertIn('node review-ui.mjs', action)
