@@ -25,8 +25,9 @@ test('the registry holds the journeys J0-J2, J4-J12, the tier additions J13-J19 
 test('every journey has tier 1 or 2, and the owner\'s first-tier journeys are tier 1', () => {
   for (const journey of registry.journeys) assert.ok([1, 2].includes(journey.tier), `${journey.id} has a tier`);
   const tier = id => registry.journeys.find(journey => journey.id === id)?.tier;
-  for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
-  for (const id of ['J8', 'J9', 'J10', 'J11', 'J15', 'J16', 'J17', 'J18', 'J19', ...Array.from({length: 20}, (_, i) => `J${20 + i}`)]) assert.equal(tier(id), 2, id);
+  for (const id of ['J0', 'J1', 'J2', 'J5', 'J6', 'J7', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
+  // Why (2 Nov 2026, owner via mac-07, J4 LinkedIn moved to tier 2): an opt-in source beside Find jobs; a broken read loses LinkedIn's jobs, not the search (integration/app/linkedin-read.test.js).
+  for (const id of ['J4', 'J8', 'J9', 'J10', 'J11', 'J15', 'J16', 'J17', 'J18', 'J19', ...Array.from({length: 20}, (_, i) => `J${20 + i}`)]) assert.equal(tier(id), 2, id);
   assert.equal(tier('J8'), 2, 'Tailor CV: a failed tailor leaves the base CV, so it degrades but does not block');
 });
 

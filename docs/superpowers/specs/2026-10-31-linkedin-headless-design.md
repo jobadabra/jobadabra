@@ -95,6 +95,6 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 - [x] Owner's answers, 31 Oct 2026: signed-in proof on local main; Web Store fallback desktop-only; three doors (proof: none: AskUserQuestion answers relayed by the coordinator)
 - [x] Owner's yes on spec + sketch (proof: none: the owner's answers of 31 Oct 2026, relayed by the coordinator)
 - [x] PR 1/3 Session: switch, ask dialog, Suggestions entry, ⌘K, consent, cookie copy → Keychain, delete on off (no reading yet; #2694) (proof: desktop/lib/linkedin-session.js @f9e9652)
-- [ ] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, e2e on fixtures (reader #2699 merged; the e2e suite is PR 2b)
+- [x] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, proven on stand-ins (reader #2699; the e2e suite of PR 2b became integration tests when J4 went to tier 2, 2 Nov 2026) (proof: desktop/integration/app/linkedin-read.test.js)
 - [x] PR 3/3 Rules and docs: CLAUDE.md, why.md, applying.md, Decision Log row (#2709; Notion row 40a62be8-fd86-815f-b622-ccdcee530c3c) (proof: docs/rules/why.md @33fc161)
 - [ ] Owner's signed-in try on local main
