@@ -59,6 +59,16 @@ test('the catch-up search that runs a minute later does not cancel the offer: th
   assert.equal(moments.next()?.moment, 'missed');
 });
 
+test('a search that started on time and is still running is not a missed check (the Mac woke mid-search: lastSearchAt is written when it ends)', () => {
+  let running = true;
+  const moments = createMoments(fake(base()), {available: () => true, busy: () => running});
+  moments.note(at(8));
+  assert.equal(moments.next(), null);
+  running = false;
+  moments.note(at(9));
+  assert.equal(moments.next()?.moment, 'missed', 'idle and still overdue: it did not run');
+});
+
 test('the words: the due time in the person\'s own clock, honest about asleep or off', () => {
   const words = missedWords(new Date(at(7)).toISOString());
   assert.equal(words.title, 'Your 7:00 check didn\'t run');

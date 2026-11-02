@@ -5,6 +5,7 @@ import * as pipeline from './pipeline.js';
 import {emailOf} from './notify-channel.js';
 import {turnOnShared} from './hosted-email.js';
 import {createMoments} from './always-on-moments.js';
+import {isTwin} from './twin.js';
 
 /**
  * Registers the hosted Always on IPC. Takes main's shared services (`powerMonitor` only for the wake check of the dialog moments); returns nothing. At start it notes a missed check and
@@ -13,8 +14,8 @@ import {createMoments} from './always-on-moments.js';
 export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerMonitor, storage, toWindow}) {
   const engine = args => pipeline.run(storage, args);
   // The dialog moments (lib/always-on-moments.js): noted when the app starts and when the Mac wakes, before the catch-up search (30 s / 60 s later) makes the missed time look fine.
-  const moments = createMoments(storage, {available: () => hosted.canRun(storage)});
-  if (!DEMO) {
+  const moments = createMoments(storage, {available: () => hosted.canRun(storage), busy: () => !!pipeline.running() || pipeline.queued().length > 0});
+  if (!DEMO && !isTwin()) {   // a twin runs no schedule (lib/twin.js), so its due time is always in the past
     moments.note();
     powerMonitor?.on('resume', () => { moments.note(); if (moments.next()) toWindow('hostedMoment'); });
   }

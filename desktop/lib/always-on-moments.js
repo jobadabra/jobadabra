@@ -14,13 +14,13 @@ export function missedCheck(settings, now = Date.now()) {
 
 /**
  * -> {note(now), next(), shown(moment, now)}. Invariants: a moment opens at most once for the install (`moments[name]` is set when it opens and never cleared, not even by Turn off or a delete);
- * never while Always on is on, nor when `available()` is false (no in-house key: the site would refuse it); a check noted stays offered until shown, whether or not the catch-up search made it up.
+ * never while Always on is on, nor when `available()` is false (no in-house key: the site would refuse it); a check is not noted while a search runs (`busy()`: `lastSearchAt` is written when a search ENDS, so a search that started on time and is still going would look missed; Gitar on #3006, 2 Nov 2026); a check noted stays offered until shown, whether or not the catch-up search made it up.
  */
-export function createMoments(storage, {available = () => true} = {}) {
+export function createMoments(storage, {available = () => true, busy = () => false} = {}) {
   let missed = null;
   const mine = () => storage.settings().hostedSearch || {};
   return {
-    note(now = Date.now()) { const found = missedCheck(storage.settings(), now); if (found && !missed) missed = found; },
+    note(now = Date.now()) { if (busy()) return; const found = missedCheck(storage.settings(), now); if (found && !missed) missed = found; },
     next() {
       if (!missed || mine().on || !available() || mine().moments?.missed) return null;
       return {moment: 'missed', at: new Date(missed.at).toISOString()};
