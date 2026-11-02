@@ -5,6 +5,7 @@
 import {markFinished} from './job-flags.js';
 import {jobFrom, jobFromResult} from './job-line.js';
 import {log as appLog} from './log.js';
+import {OUTDATED_LINE} from '../renderer/errors.js';   // the one restart line, the same on both sides
 
 import {dailyArgs, deliveryReady, triggerEnv} from './pipeline-args.js';
 import {readable} from './pipeline-env.js';
@@ -18,8 +19,10 @@ import * as viewCache from './view-cache.js';
 export const jobs = sharedRead('engine jobs', async (storage, limit = 200, run = engineRun) => {
   // Until the first search has ended, the jobs it found and has not scored yet are listed too (they say "Scoring…"): the list grows while it runs.
   const firstRun = !storage.settings().lastSearchAt;
-  const {code, stdout} = await run(storage, ['src.desktop', 'jobs', '--limit', String(limit), ...(firstRun ? ['--first-run'] : [])]);
-  if (code !== 0) throw new Error('Could not read the job list');
+  // Why (2 Nov 2026, owner): an engine newer than this app refuses the run (src/paths.py OUTDATED_APP); the list says "Restart it", never a wrong or an empty list.
+  let outdated = false;
+  const {code, stdout} = await run(storage, ['src.desktop', 'jobs', '--limit', String(limit), ...(firstRun ? ['--first-run'] : [])], line => { if (/was updated while it was open/.test(line)) outdated = true; });
+  if (code !== 0) throw new Error(outdated ? OUTDATED_LINE : 'Could not read the job list');
   return viewCache.withHeldWrites(storage, markFinished(storage, JSON.parse(stdout.trim().split('\n').pop())));   // Why (#2758): the app's own recent writes, for every caller of the list (view-cache.js)
 }, {keyOf: (storage, limit) => limit ?? 200});
 

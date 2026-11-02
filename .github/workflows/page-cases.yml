@@ -90,6 +90,7 @@ on:
       - 'desktop/renderer/answers-model.js'
       - 'desktop/renderer/apply-settings-model.js'
       - 'desktop/renderer/countries.js'
+      - 'desktop/renderer/errors.js'
       - 'desktop/renderer/fragment-words.js'
       - 'desktop/renderer/preferences-model.js'
       - 'desktop/renderer/profile-model.js'
