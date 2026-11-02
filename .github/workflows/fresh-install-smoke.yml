@@ -44,7 +44,7 @@ jobs:
           for asset in Jobadabra-mac-arm64.dmg Jobadabra-mac-arm64.zip Jobadabra-windows-x64.exe; do   # the .dmg is the Mac link the website serves; the smoke installs the .zip the updater uses
             echo "$names" | grep -qx "$asset" || { echo "::error::No $asset in $TAG: the Download link would be broken"; exit 1; }
           done
-          # Why (2 Nov 2026, owner: no JOB_PILOTTO_ support): the smoke drives the app by JOBADABRA_* names; a release built before #2926 ignores them. Only a newer one is installed.
+          # Why (2 Nov 2026, owner: no old-name support): the smoke drives the app by JOBADABRA_* names; a release built before #2926 ignores them. Only a newer one is installed.
           rc=0; tools/release-after-rename.sh "$TAG" || rc=$?
           [ "$rc" = 0 ] || [ "$rc" = 1 ] || { echo "::error::Could not tell whether $TAG is after the rename"; exit "$rc"; }
           if [ "$rc" = 0 ]; then
