@@ -1,18 +1,10 @@
-"""Every workflow job that runs a release script can do all of it: tools/beta-approve.sh, tools/release-stable.sh and
-tools/sync_release_labels.py rewrite the pinned Release channels issue, so the job needs `issues: write`. The release gate's
-promote job had `issues: read`: alpha.254 was approved, then the label sync failed (3 Oct 2026)."""
+"""The screenshot review runs in one place (.github/actions/e2e-review), used by every e2e lane. (Until 2 Nov 2026 this file also
+checked that release jobs could write issues, for the pinned Release channels issue; that issue is gone.)"""
 import re
 import unittest
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / '.github' / 'workflows'
-RELEASE_SCRIPTS = re.compile(r'beta-approve\.sh|release-stable\.sh|sync_release_labels\.py')
-
-
-def permissions(block):
-    """{scope: level} of the first `permissions:` mapping in `block` (indented lines under it)."""
-    match = re.search(r'^( *)permissions:[ \t]*\n((?:\1  +[\w-]+: *[\w-]+.*\n)+)', block, re.M)
-    return dict(re.findall(r'^ +([\w-]+): *([\w-]+)', match.group(2), re.M)) if match else None
 
 
 def jobs(text):
@@ -22,8 +14,8 @@ def jobs(text):
     return list(zip(parts[1::2], parts[2::2]))
 
 
-class ReleaseJobsMayWriteIssues(unittest.TestCase):
-    def test_every_job_that_runs_a_release_script_has_issues_write(self):
+class ScreenshotReviewRunsInOnePlace(unittest.TestCase):
+    def test_every_e2e_lane_uses_the_shared_review_action(self):
         # Since 26 Oct 2026 the review runs in one place, .github/actions/e2e-review (all of a lane's pages in one batch), used by every lane.
         action = (WORKFLOWS.parent / 'actions' / 'e2e-review' / 'action.yml').read_text()
         self.assertIn('node review-ui.mjs', action)
