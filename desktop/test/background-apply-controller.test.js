@@ -407,7 +407,7 @@ test('a hand-over to the person (Stop, cut off at start) also queues the message
   records.s1.outcome = 'Applied';
   assert.equal(queued[0].open(), false, 'handled meanwhile: left out of the message');
   records.s1.outcome = '';
-  await build({}, new Date().toISOString()).handle({action: 'poll', owner: 'o1'});   // Stop during the wait (a job this run started): markManual
+  await build({}, '2099-01-01T00:00:00Z').handle({action: 'poll', owner: 'o1'});   // a start after the app's own start (a job this run started), Stop during the wait: markManual
   assert.deepEqual(handoffs, ['stopped']);
   assert.equal(queued.length, 2, 'Stop: queued too');
   const broken = build({waiting: {add: () => { throw new Error('boom'); }}});
