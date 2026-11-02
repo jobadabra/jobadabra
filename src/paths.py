@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -271,6 +272,35 @@ def local_text(variable):
     if not path or not Path(path).is_file():
         return None
     return Path(path).read_text(encoding='utf-8').strip() or None
+
+
+def write_whole(path, text):
+    """Write `text` to `path` whole or not at all: a temporary file beside it, flushed to disk, then swapped in. A process that reads
+    `path` meanwhile gets the old file or the new one, never an empty or half-written one.
+
+    Why (2 Nov 2026, a8; main e2e run 41537996714): src.focus rewrote config/search.json in place while src.desktop jobs read it at import, both
+    started at the window's reload; the read got '' and the Jobs list stayed empty. The app's own writes swap files the same way (desktop/lib/private-file.js).
+    Like them the file is this user's only (0600), and the temporary one ends in .private-tmp, which an export leaves out (desktop/lib/reset.js)."""
+    path = Path(path)
+    part = path.with_name(f'{path.name}.{os.getpid()}-{threading.get_ident()}.private-tmp')   # one per writer: two never share it
+    try:
+        with open(os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w', encoding='utf-8') as out:
+            out.write(text)
+            out.flush()
+            os.fsync(out.fileno())
+        os.chmod(part, 0o600)   # a leftover of the same name keeps its own mode on open
+        for tries in range(1, 11):
+            try:
+                os.replace(part, path)
+                return
+            except PermissionError:
+                # Why: Windows refuses a swap over a file another process holds open for a moment (a reader, an antivirus), as the app's writer handles it (isHeld).
+                if os.name != 'nt' or tries == 10:
+                    raise
+                time.sleep(0.02)
+    finally:
+        with contextlib.suppress(FileNotFoundError):   # swapped in: nothing is left to remove
+            part.unlink()
 
 
 def local_profile():
