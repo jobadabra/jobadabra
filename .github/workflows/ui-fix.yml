@@ -128,8 +128,8 @@ jobs:
           FIXER_OUTCOME: ${{ steps.fixer.outcome }}
           AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused (budget, login, down): says nothing about the finding
           SHOT_OUTCOME: ${{ steps.shot.outcome }}
-          AUTOMERGE: ${{ vars.JOB_PILOTTO_FIXER_AUTOMERGE }}   # "on": a small UI-only fix that passed every suite merges itself (off by default)
-          AUTOMERGE_ENGINE: ${{ vars.JOB_PILOTTO_FIXER_AUTOMERGE_ENGINE }}   # "on": also a small, confirmed fix in src/ or desktop/lib/ that brings its own test
+          AUTOMERGE: ${{ vars.JOBADABRA_FIXER_AUTOMERGE }}   # "on": a small UI-only fix that passed every suite merges itself (off by default)
+          AUTOMERGE_ENGINE: ${{ vars.JOBADABRA_FIXER_AUTOMERGE_ENGINE }}   # "on": also a small, confirmed fix in src/ or desktop/lib/ that brings its own test
           DEPS_OUTCOME: ${{ steps.deps.outcome }}
         run: |
           set -euo pipefail

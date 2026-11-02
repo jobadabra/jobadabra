@@ -68,7 +68,7 @@ test('turning it on fills the repo the app was installed on: schedules, settings
     .map(c => [c.route.split('/').pop(), gh.open(c.data.encrypted_value)]));
   assert.deepEqual(secrets, {ANTHROPIC_API_KEY: 'sk-ant-test', NOTION_TOKEN: 'ntn_test', TELEGRAM_BOT_TOKEN: '123:bot', TELEGRAM_CHAT_ID: '42'});
   assert.ok(gh.calls.some(c => c.method === 'PATCH' && c.route.endsWith('/actions/variables/NOTION_MATCHES_DB')));  // existing: updated
-  assert.ok(gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOB_PILOTTO_SCORE_MODEL'));
+  assert.ok(gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOBADABRA_SCORE_MODEL'));
   assert.equal(storage.settings().cloud.repo, 'ada/job-pilotto-private');
 });
 
@@ -135,8 +135,8 @@ test('the schedule and job choices reach the repo: crons, kits on, insights off'
   assert.match(file('daily.yml'), /- cron: '\d+ [\d,]+ \* \* \*'/);
   assert.equal(file('daily.yml').match(/- cron: '\d+ ([\d,]+)/)[1].split(',').length, 12);  // every 2 hours
   assert.doesNotMatch(file('scout.yml'), /schedule:/);
-  assert.ok(gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOB_PILOTTO_AUTO_KIT_MAX' && c.data.value === '3'));
-  assert.ok(gh.calls.some(c => c.method === 'DELETE' && c.route.endsWith('/actions/variables/JOB_PILOTTO_INSIGHT_MODEL')));
+  assert.ok(gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOBADABRA_AUTO_KIT_MAX' && c.data.value === '3'));
+  assert.ok(gh.calls.some(c => c.method === 'DELETE' && c.route.endsWith('/actions/variables/JOBADABRA_INSIGHT_MODEL')));
 });
 
 test('not installed yet: it says so, with the two setup links', async () => {

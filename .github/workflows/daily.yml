@@ -55,28 +55,28 @@ permissions:
 # e.g. repository variable JOBADABRA_DISABLE=google_jobs,mail.
 env:
   # The model of the small AI steps (title and page checks, triage, search picks), as the app sets it in this repo (desktop/lib/github.js).
-  JOBADABRA_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
+  JOBADABRA_SMALL_MODEL: ${{ vars.JOBADABRA_SMALL_MODEL }}
   # The AI engine the user chose for Always on (api: Anthropic key, openai: OpenAI key; never a CLI here) and the OpenAI tiers' models,
   # as the app sets them in this repo (desktop/lib/github.js; src/ai/providers, src/ai/models.py).
-  JOBADABRA_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
-  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
-  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
-  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
+  JOBADABRA_AI_ENGINE: ${{ vars.JOBADABRA_AI_ENGINE }}
+  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOBADABRA_OPENAI_SMALL_MODEL }}
+  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOBADABRA_OPENAI_MAIN_MODEL }}
+  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOBADABRA_OPENAI_BIG_MODEL }}
   # Help the pool grow, as the app sets it in this repo (desktop/lib/pool-share.js): an Always on run shares like the app (6 Oct 2026: it never did).
-  JOBADABRA_SHARE_EMPLOYERS: ${{ vars.JOB_PILOTTO_SHARE_EMPLOYERS }}
-  JOBADABRA_INSTALL_ID: ${{ vars.JOB_PILOTTO_INSTALL_ID }}
+  JOBADABRA_SHARE_EMPLOYERS: ${{ vars.JOBADABRA_SHARE_EMPLOYERS }}
+  JOBADABRA_INSTALL_ID: ${{ vars.JOBADABRA_INSTALL_ID }}
   # The free trial, as the app sets it in this repo (desktop/lib/github.js): the install's key, the first-run day and a license key; src/trial.py asks the website
   # whether new work may start. JOBADABRA_AI_BASE_URL points the AI at Free AI (src/ai/providers/anthropic_api.py) when the key is a Free AI one.
-  JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
-  JOBADABRA_LICENSE_KEY: ${{ secrets.JOB_PILOTTO_LICENSE_KEY }}
-  JOBADABRA_FIRST_RUN: ${{ vars.JOB_PILOTTO_FIRST_RUN }}
-  JOBADABRA_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
+  JOBADABRA_TRIAL_KEY: ${{ secrets.JOBADABRA_TRIAL_KEY }}
+  JOBADABRA_LICENSE_KEY: ${{ secrets.JOBADABRA_LICENSE_KEY }}
+  JOBADABRA_FIRST_RUN: ${{ vars.JOBADABRA_FIRST_RUN }}
+  JOBADABRA_AI_BASE_URL: ${{ vars.JOBADABRA_AI_BASE_URL }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
   JOBADABRA_NOTION_GAP_MS: '700'
   MODE: ${{ inputs.mode || 'scheduled' }}
-  JOBADABRA_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
+  JOBADABRA_DISABLE: ${{ vars.JOBADABRA_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
-  JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
+  JOBADABRA_NOTIFY: ${{ vars.JOBADABRA_NOTIFY }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}
@@ -138,11 +138,11 @@ jobs:
       - name: Install the headless browser
         # Job boards and careers pages built by scripts are read in it (src/sources/render.py; owner, 19 Oct 2026). Downloaded here in the
         # run, never in the app's installer. A failure never stops the search: those pages stay "open it yourself" visits.
-        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOB_PILOTTO_RENDER != '0'
+        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOBADABRA_RENDER != '0'
         continue-on-error: true
         run: pip install --quiet -r requirements-render.txt
       - name: Chromium for the render (cached)
-        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOB_PILOTTO_RENDER != '0'
+        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOBADABRA_RENDER != '0'
         continue-on-error: true
         uses: ./.github/actions/playwright-browser
         with: {runtime: python, mode: both}
@@ -174,28 +174,28 @@ jobs:
           JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
           # AI stage 1 stays off until this repository variable names a model,
           # so no API credits are spent by accident.
-          JOBADABRA_ENRICH_MODEL: ${{ vars.JOB_PILOTTO_ENRICH_MODEL }}
+          JOBADABRA_ENRICH_MODEL: ${{ vars.JOBADABRA_ENRICH_MODEL }}
           # AI stage 2 (fit scoring) is switched on the same way by its own variable.
-          JOBADABRA_SCORE_MODEL: ${{ vars.JOB_PILOTTO_SCORE_MODEL }}
+          JOBADABRA_SCORE_MODEL: ${{ vars.JOBADABRA_SCORE_MODEL }}
           # Application kits run only when asked (📝 Prepare); optional model override.
-          JOBADABRA_KIT_MODEL: ${{ vars.JOB_PILOTTO_KIT_MODEL || 'claude-sonnet-5-5' }}
+          JOBADABRA_KIT_MODEL: ${{ vars.JOBADABRA_KIT_MODEL || 'claude-sonnet-5-5' }}
           # Your digest's display name; the tool's own name stays generic (Jobadabra).
           DIGEST_BRAND_NAME: ${{ vars.DIGEST_BRAND_NAME }}
           # Auto-draft kits for the best new matches each run; 0/unset = off (📝 Prepare still works manually).
-          JOBADABRA_AUTO_KIT_MAX: ${{ vars.JOB_PILOTTO_AUTO_KIT_MAX }}
-          JOBADABRA_AUTO_KIT_MIN_SCORE: ${{ vars.JOB_PILOTTO_AUTO_KIT_MIN_SCORE }}
+          JOBADABRA_AUTO_KIT_MAX: ${{ vars.JOBADABRA_AUTO_KIT_MAX }}
+          JOBADABRA_AUTO_KIT_MIN_SCORE: ${{ vars.JOBADABRA_AUTO_KIT_MIN_SCORE }}
           # Daily insight (first scheduled run after 04:00 UTC); off until this names a model.
-          JOBADABRA_INSIGHT_MODEL: ${{ vars.JOB_PILOTTO_INSIGHT_MODEL }}
+          JOBADABRA_INSIGHT_MODEL: ${{ vars.JOBADABRA_INSIGHT_MODEL }}
           # Lets apply/add runs start the Gmail check 5 minutes later (mail.yml).
           GITHUB_TOKEN: ${{ github.token }}
           # AI budget guard and the daily health check (optional Admin key: exact spend from Anthropic).
-          JOBADABRA_MONTHLY_BUDGET_USD: ${{ vars.JOB_PILOTTO_MONTHLY_BUDGET_USD }}
+          JOBADABRA_MONTHLY_BUDGET_USD: ${{ vars.JOBADABRA_MONTHLY_BUDGET_USD }}
           ANTHROPIC_ADMIN_KEY: ${{ secrets.ANTHROPIC_ADMIN_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_SCOPES: ${{ secrets.GOOGLE_SCOPES }}   # which of Gmail / Calendar the user allowed (src/sources/google_scopes.py)
-          JOBADABRA_GOOGLE_AUTH_AT: ${{ vars.JOB_PILOTTO_GOOGLE_AUTH_AT }}
+          JOBADABRA_GOOGLE_AUTH_AT: ${{ vars.JOBADABRA_GOOGLE_AUTH_AT }}
           GH_TOKEN: ${{ github.token }}
           JOB: ${{ inputs.job }}
           ACTION: ${{ inputs.action || 'applied' }}

@@ -79,7 +79,7 @@ jobs:
       # Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"): this step ran claude-code-action on an API key; desktop/e2e/judge-codex.mjs asks the broker instead.
       - name: New findings to judge before filing
         id: pending
-        if: vars.JOB_PILOTTO_FIXER_VERDICTS == 'on' && env.PLANT == ''
+        if: vars.JOBADABRA_FIXER_VERDICTS == 'on' && env.PLANT == ''
         run: |
           mkdir -p .heal
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json

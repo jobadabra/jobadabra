@@ -1475,7 +1475,7 @@ jobs:
       - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
         timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
-          JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          JOBADABRA_SOAK: ${{ vars.JOBADABRA_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
       - if: always()
@@ -1520,7 +1520,7 @@ jobs:
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
-          SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          SOAK: ${{ vars.JOBADABRA_SOAK }}
           RETRY: ${{ needs.release-mac.outputs.retry }}   # tools/beta-approve.sh adds its line to the notes
           RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |
@@ -1642,7 +1642,7 @@ jobs:
       - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
         timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
-          JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          JOBADABRA_SOAK: ${{ vars.JOBADABRA_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
       - if: always()
@@ -1687,7 +1687,7 @@ jobs:
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
-          SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          SOAK: ${{ vars.JOBADABRA_SOAK }}
           RETRY: ${{ needs.release-windows.outputs.retry }}   # tools/beta-approve.sh adds its line to the notes
           RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |

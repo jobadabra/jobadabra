@@ -43,7 +43,7 @@ test('the models reach the repo as variables, the small one included, and nothin
   const storage = setUp();
   const gh = fakeGitHub();
   const changed = await github.updateRepo(storage, {fetcher: gh.fetcher});
-  assert.ok(changed.includes('variable JOB_PILOTTO_SMALL_MODEL') && changed.includes('variable JOB_PILOTTO_ENRICH_MODEL'), changed.join(', '));
+  assert.ok(changed.includes('variable JOBADABRA_SMALL_MODEL') && changed.includes('variable JOBADABRA_ENRICH_MODEL'), changed.join(', '));
   assert.ok(gh.calls.some(call => call === 'PUT /repos/me/job-pilotto-private/actions/secrets/ANTHROPIC_API_KEY'));
   assert.equal(MODELS.small, 'claude-haiku-5-5');
   const again = fakeGitHub(gh.files);

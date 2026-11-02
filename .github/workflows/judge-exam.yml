@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   exam:
-    if: vars.JOB_PILOTTO_JUDGE_EXAM == 'on'
+    if: vars.JOBADABRA_JUDGE_EXAM == 'on'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
