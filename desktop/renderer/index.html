@@ -2247,13 +2247,13 @@
     <label for="app-feedback-contact">Email or handle, if you'd like a reply <span class="muted">(optional)</span></label>
     <input id="app-feedback-contact" type="text" maxlength="200" autocomplete="email">
     <div class="feedback-attach" id="app-feedback-attach">
-      <label class="inline-label"><input type="checkbox" id="app-feedback-include-shot" checked> Include screenshot</label>
+      <label class="check-row inline-label"><input type="checkbox" id="app-feedback-include-shot" checked><span>Include screenshot</span></label>
       <figure class="feedback-shot" id="app-feedback-shot" hidden>
         <img id="app-feedback-shot-img" alt="Screenshot of the Jobadabra window, as it is sent">
         <button type="button" class="icon-button" id="app-feedback-shot-remove" title="Remove the screenshot" aria-label="Remove the screenshot"><i data-icon="close"></i></button>
       </figure>
       <p class="muted small" id="app-feedback-shot-note">It shows what is on screen in Jobadabra right now (only this window, nothing else on your computer). Remove it if it shows anything private.</p>
-      <label class="inline-label"><input type="checkbox" id="app-feedback-include-logs" checked> Include logs</label>
+      <label class="check-row inline-label"><input type="checkbox" id="app-feedback-include-logs" checked><span>Include logs</span></label>
       <p class="muted small">The app's recent log lines, your last few runs and which AI engine, store and browser extension are set up. Keys, tokens, e-mail addresses and your folder name are removed first.</p>
       <details class="telemetry-shown"><summary>See what's sent</summary><pre class="log" id="app-feedback-logs">Nothing yet.</pre></details>
     </div>
