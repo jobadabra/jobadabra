@@ -993,11 +993,13 @@ jobs:
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
+          # src: tools/e2e_bisect.py imports src/repos.py (the repo-name constant)
           sparse-checkout: |
             desktop/e2e
             tools/gh-ledger.sh
             .github/actions/gh-ledger
             tools
+            src
       - uses: ./.github/actions/gh-ledger
         with:
           phase: start

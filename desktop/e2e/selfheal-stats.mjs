@@ -16,9 +16,10 @@ import {breakerState} from './lib/breaker.mjs';
 import {collectChanges} from './lib/finder-changes.mjs';
 import {LABEL as BUDGET_LABEL, budgetState} from './ai-budget.mjs';
 import {SIGNATURE_LABEL, signaturesFromBody} from './lib/signatures.mjs';
+import {PUBLIC_REPO} from './lib/repos.mjs';
 
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024});
-const repo = () => process.env.REPO || process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+const repo = () => process.env.REPO || process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
 
 // How many test mistakes the loop has taught itself (the pinned issue, lib/signatures.mjs).
 function learnedCount() {

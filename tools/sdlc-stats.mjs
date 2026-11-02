@@ -8,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {areaOf, classifyFix, fetchMerges, isFixPr, kindOfFile} from './agent-coding-stats.mjs';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const run = (command, args) => execFileSync(command, args, {encoding: 'utf8', maxBuffer: 256 * 1024 * 1024});
 const gh = path => JSON.parse(run('gh', ['api', path]));
@@ -115,7 +116,7 @@ const bugIssues = repo => gh(`repos/${repo}/issues?state=all&labels=bug&since=${
 
 function main(argv) {
   const arg = name => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
-  const days = Math.min(14, Math.max(1, Number(arg('--days')) || 3)), now = arg('--now') ? new Date(arg('--now')) : arg('--end') ? new Date(`${arg('--end')}T23:59:59Z`) : new Date(), repo = process.env.REPO || 'GarryOne/jobadabra';
+  const days = Math.min(14, Math.max(1, Number(arg('--days')) || 3)), now = arg('--now') ? new Date(arg('--now')) : arg('--end') ? new Date(`${arg('--end')}T23:59:59Z`) : new Date(), repo = process.env.REPO || PUBLIC_REPO;
   const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {merges: fetchMerges({days, now, repo}), closedUnmerged: closedUnmerged(repo), bugs: bugIssues(repo),
     runs: [...fetchRuns({repo, days, now, event: 'pull_request'}), ...fetchRuns({repo, days, now, event: 'push', filter: '&branch=main'}), ...fetchRuns({repo, days, now, event: 'schedule'}), ...fetchRuns({repo, days, now, event: 'workflow_dispatch'})]};
   if (!input.compares) input.compares = fetchCompares(repo, pendingPairs(input, {days, now}));

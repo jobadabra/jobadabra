@@ -36,7 +36,7 @@ def gh_json(*args):
 
 
 def main(argv):
-    run_id, repo = argv[0], os.environ.get('GITHUB_REPOSITORY', 'GarryOne/jobadabra')
+    run_id, repo = argv[0], os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # sparse checkout of this one file: no src/repos.py; tests/test_repos_owner.py pins it
     attempt = int(os.environ.get('RUN_ATTEMPT', '1'))
     if attempt > 1:
         print(f'run {run_id} is attempt {attempt}: never-started jobs are re-run once only')

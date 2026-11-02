@@ -6,6 +6,7 @@
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const SUITE_STEP = /^Run the .* suite/;
 const JOB = /^E2E · (Mac \+ Linux|Windows) · (.+)$/;
@@ -48,7 +49,7 @@ export function slowestByLeg(runs) {
 
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024});
 /** One run's jobs and store, read from GitHub. */
-export function readRun(id, {repo = process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra', run = gh} = {}) {
+export function readRun(id, {repo = process.env.GITHUB_REPOSITORY || PUBLIC_REPO, run = gh} = {}) {
   const jobs = run(['api', '--paginate', `repos/${repo}/actions/runs/${id}/jobs?per_page=100`, '--jq', '.jobs[] | {name, steps: [.steps[] | {name, conclusion, started_at, completed_at}]}'])
     .split('\n').filter(Boolean).map(line => JSON.parse(line));
   const names = run(['api', '--paginate', `repos/${repo}/actions/runs/${id}/artifacts?per_page=100`, '--jq', '.artifacts[].name']).split('\n').filter(Boolean);

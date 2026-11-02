@@ -1,12 +1,14 @@
+// Job: report health
 // Labels a Finder issue that a fix closed ("Fixes #N"): reads how it was closed and applies lib/fixed-close.mjs. Run by issue-fixed.yml on every closed issue.
-//   node desktop/e2e/fixed-close.mjs --issue <number> [--dry-run]      (needs gh; --dry-run says what it would add; GH_REPO or REPO names the repository, default GarryOne/jobadabra)
+//   node desktop/e2e/fixed-close.mjs --issue <number> [--dry-run]      (needs gh; --dry-run says what it would add; GH_REPO or REPO names the repository, default jobadabra/jobadabra)
 import {execFileSync} from 'node:child_process';
 import {labelsForClose} from './lib/fixed-close.mjs';
+import {PUBLIC_REPO} from './lib/repos.mjs';
 
 const args = process.argv.slice(2);
 const number = Number(args[args.indexOf('--issue') + 1]);
 if (!number) { console.error('usage: fixed-close.mjs --issue <number>'); process.exit(2); }
-const repo = process.env.GH_REPO || process.env.REPO || 'GarryOne/jobadabra';
+const repo = process.env.GH_REPO || process.env.REPO || PUBLIC_REPO;
 const [owner, name] = repo.split('/');
 const gh = list => execFileSync('gh', list, {encoding: 'utf8'});
 const query = `query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) {

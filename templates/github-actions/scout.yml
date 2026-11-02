@@ -17,9 +17,9 @@ permissions:
 
 jobs:
   scout:
-    uses: GarryOne/jobadabra/.github/workflows/scout.yml@main
+    uses: jobadabra/jobadabra/.github/workflows/scout.yml@main
     with:
       batch: ${{ inputs.batch || '40' }}
-      code_repository: GarryOne/jobadabra
+      code_repository: jobadabra/jobadabra
       code_ref: main   # the Jobadabra app writes its own release here, so this repo runs the code of the installed app
     secrets: inherit

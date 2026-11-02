@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Job: report health
 # Applies one verdict to one GitHub issue, the same way wherever it was judged: the CI verdict pass (ui-verdict.yml) and the triage-github-open-issues skill (a person's session).
 #   desktop/e2e/apply-verdict.sh <issue number> <verdict file> [repo]      (needs gh; prints one line per action, for the job log)
 #   JUDGE="triage session (Claude Code, with the owner)" names who judged in the comment's footer; the default is the CI verdict pass. Runs from the repo root (evidence is checked there).
@@ -7,7 +8,8 @@
 # finding (severity.mjs); the labels the stats read (confirmed, wontfix-auto, harness, needs-human, resolution:<why>, lib/resolution.mjs); closing a false positive, a harness
 # finding or a fixed one. Guarded by desktop/e2e/test/apply-verdict.test.mjs.
 set -euo pipefail
-NUMBER="$1"; FILE="$2"; REPO="${3:-${REPO:-GarryOne/jobadabra}}"
+. "$(dirname "${BASH_SOURCE[0]}")/../../tools/repos.sh"
+NUMBER="$1"; FILE="$2"; REPO="${3:-${REPO:-$JOBADABRA_PUBLIC_REPO}}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 case "$FILE" in /*) ;; *) FILE="$PWD/$FILE" ;; esac
 cd "$HERE/../.."

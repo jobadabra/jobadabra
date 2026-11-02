@@ -6,6 +6,7 @@
 # sets NET_RECORDS_BUNDLES=<that artifact's folder> and so makes no release call (15 Oct 2026: ~20 jobs each downloading dozens of assets tripped GitHub's burst limit for every session).
 # Job: serve stored answers
 set -u
+. "$(dirname "${BASH_SOURCE[0]}")/../../tools/repos.sh"
 bundles_only=0; [ "${1:-}" = "--bundles-only" ] && { bundles_only=1; shift; }
 out="${1:?usage: net-records-fetch.sh [--bundles-only] <records dir>}"
 # Each run its own private folder, removed on any exit: two sessions fetching at once on the Mac shared /tmp/enc and /tmp/key.pem (15 Oct 2026), and an aborted run left the key behind.
@@ -43,7 +44,7 @@ mac_records() {   # the run's shared bundles when given (no gh call); else the p
     mkdir -p "$enc/mac" && cp "$NET_RECORDS_BUNDLES"/net-records* "$enc/mac/" && { echo "net-records-fetch: Mac records from the run's shared bundles"; return 0; }
   fi
   echo "net-records-fetch: read token: $([ -n "${NET_RECORDS_READ_TOKEN:-}" ] && echo set || echo EMPTY) (the private repo is read with it; without it only this repo's own release is tried)" >&2
-  [ -n "${NET_RECORDS_READ_TOKEN:-}" ] && gh_get "$NET_RECORDS_READ_TOKEN" "${NET_RECORDS_REPO:-GarryOne/jobadabra-lab}" -R "${NET_RECORDS_REPO:-GarryOne/jobadabra-lab}" && { echo "net-records-fetch: Mac records from ${NET_RECORDS_REPO:-GarryOne/jobadabra-lab}"; return 0; }
+  [ -n "${NET_RECORDS_READ_TOKEN:-}" ] && gh_get "$NET_RECORDS_READ_TOKEN" "${NET_RECORDS_REPO:-$JOBADABRA_LAB_REPO}" -R "${NET_RECORDS_REPO:-$JOBADABRA_LAB_REPO}" && { echo "net-records-fetch: Mac records from ${NET_RECORDS_REPO:-$JOBADABRA_LAB_REPO}"; return 0; }
   gh_get "" "${GITHUB_REPOSITORY:-this repo}" && { echo "net-records-fetch: Mac records from this repo's release (fallback)"; return 0; }
   echo "net-records-fetch: no Mac records"; return 1
 }

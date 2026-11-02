@@ -7,8 +7,12 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+from pathlib import Path
 
-LAB = 'GarryOne/jobadabra-lab'
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.repos import LAB_REPO  # noqa: E402
+
+LAB = LAB_REPO
 CONTEXT = 'lab-ci'
 DESCRIPTION = 'pr-description'   # the lab's own Actions cannot run until 1 Nov 2026: the description check runs here and reports on the lab PR
 API = 'https://api.github.com'

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FAKE_GH = '''#!/bin/sh
 case "$1 $2" in
   "release view") printf 'Version 0.8.70\\n' ;;
-  "api repos/GarryOne/jobadabra/commits/desktop-v0.8.70") printf 'abc1234\\n' ;;
+  "api repos/jobadabra/jobadabra/commits/desktop-v0.8.70") printf 'abc1234\\n' ;;
   "release edit") printf '%s\\n' "$7" > "$FAKE_NOTES" ;;
   *) exit 0 ;;
 esac

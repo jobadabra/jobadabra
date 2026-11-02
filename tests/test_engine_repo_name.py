@@ -1,4 +1,4 @@
-"""The engine repo is GarryOne/jobadabra since 24 Oct 2026: no tracked file names the old slug, except dated specs (history)."""
+"""The engine repo is jobadabra/jobadabra (renamed 24 Oct 2026, moved to the org 2 Nov 2026): no tracked file names the old slug, except dated specs (history). The old owner is tests/test_repos_owner.py."""
 import re
 import subprocess
 import unittest
@@ -22,7 +22,7 @@ class EngineRepoNameTests(unittest.TestCase):
             except (UnicodeDecodeError, OSError):
                 continue
             hits += [f'{name}:{n}' for n, line in enumerate(text.split('\n'), 1) if OLD.search(line)]
-        self.assertEqual(hits, [], 'say GarryOne/jobadabra (the old name only redirects, and a workflow `uses:` is not redirected)')
+        self.assertEqual(hits, [], 'say jobadabra/jobadabra (the old name only redirects, and a workflow `uses:` is not redirected)')
 
 
 if __name__ == '__main__':

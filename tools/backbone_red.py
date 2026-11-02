@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.e2e_causes import classify  # noqa: E402
 from tools.main_e2e_state import AFTER_MERGE, suite_of  # noqa: E402
+from src.repos import PUBLIC_REPO  # noqa: E402
 
 WORKFLOW = '.github/workflows/e2e.yml'
 
@@ -173,7 +174,7 @@ def collect(repo, sha, read=gh_json, log_of=None):
 def main(argv=None):
     """Validate current main and PR provenance, then print proof or request an owner-reviewed PR."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--repo', default='GarryOne/jobadabra')
+    parser.add_argument('--repo', default=PUBLIC_REPO)
     parser.add_argument('--sha')
     parser.add_argument('--run', type=int)
     parser.add_argument('--runs-json', type=Path, help='offline recorded REST evidence (tests and dry-run)')

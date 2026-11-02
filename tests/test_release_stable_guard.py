@@ -248,7 +248,7 @@ class PromoteGuardTests(unittest.TestCase):
                 self.assertIn('Stable:', done.stdout, 'the release is promoted before, and stays stable')
                 for flow, store in self.STORES.items():
                     self.assertEqual(self.store.count(f'workflow run {flow}'), 1, 'the other store is still tried')
-                    command = f'gh workflow run {flow} -R GarryOne/jobadabra --ref main -f tag={TAG}'
+                    command = f'gh workflow run {flow} -R jobadabra/jobadabra --ref main -f tag={TAG}'
                     for where, text in (('annotation', '\n'.join(line for line in done.stdout.splitlines() if line.startswith('::error'))), ('alert', self.alert)):
                         if flow in failing:
                             self.assertIn(store, text, f'{where} names the store')

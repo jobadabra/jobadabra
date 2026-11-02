@@ -11,6 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {stepEntryProblems} from './lanes-check.mjs';
 import {isSafetyStep, safetyStepNames} from '../desktop/e2e/lib/safety-steps.mjs';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RETURNS = 'Back to the backbone when its fix PR lands and the next 3 main runs pass it.';
@@ -66,7 +67,7 @@ function main(argv) {
     return argv[i + 1];
   };
   if (argv.includes('--open') && argv.includes('--dry-run')) throw new Error('Choose --open or --dry-run.');
-  const repo = value('--repo') || process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+  const repo = value('--repo') || process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
   if (!value('--run') && !value('--verdicts')) throw new Error('Pass --run <red e2e run id> or --verdicts <recorded JSON file>, and --owner <login>.');
   const registry = JSON.parse(fs.readFileSync(value('--registry') || path.join(ROOT, 'desktop/e2e/lanes.json'), 'utf8'));
   return (async () => {

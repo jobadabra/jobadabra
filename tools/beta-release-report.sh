@@ -5,7 +5,8 @@
 # (desktop-v0.8.67, approved on both platforms) was reported as finished without a release. It reads what the run leaves behind instead: the version tag the build made at the run's head commit, the
 # release notes' approval lines, and the release gate's own one line of why (tools/beta_rate_gate.py).
 set -euo pipefail
-repo=${BETA_REPO:-GarryOne/jobadabra}
+. "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
+repo=${BETA_REPO:-$JOBADABRA_PUBLIC_REPO}
 id=${1:?usage: beta-release-report.sh <run id> <run url>}
 url=${2:-}
 head=$(gh run view "$id" -R "$repo" --json headSha -q .headSha)

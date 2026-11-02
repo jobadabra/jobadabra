@@ -5,7 +5,7 @@ import http from 'node:http';
 import {test} from 'node:test';
 import * as github from '../lib/github.js';
 import {pinned, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from '../lib/engine-repo.js';
-import {ENGINE, STARTER, STARTER_CANDIDATES, OLD_STARTER, OWNER, OWNER_PATTERN} from '../lib/repos.js';
+import {ENGINE, STARTER, STARTER_CANDIDATES, OLD_STARTER, OWNER, OWNER_PATTERN, PREVIOUS_OWNERS} from '../lib/repos.js';
 import {REPO, check, resetLimit} from '../lib/updater.js';
 
 test('the updater, the engine and the starter all take their owner from lib/repos.js', () => {
@@ -39,14 +39,14 @@ test('the starter is whichever candidate GitHub shows as a template: works befor
   assert.ok(seen.signal, 'a stalled network cannot hold the setup reply for minutes');
 });
 
-test('the updater follows the 301 GitHub answers on the old path after a transfer (a real HTTP round trip)', async () => {
+test('the updater follows the 301 GitHub answers on the old path after a later transfer (a real HTTP round trip)', async () => {
   const release = {tag_name: 'desktop-v9.9.9', name: '9.9.9', body: '', html_url: 'https://example.test/r',
     assets: [{name: 'Jobadabra-9.9.9-arm64.zip', browser_download_url: 'https://dl/zip', size: 1}]};
   const seen = [];
   const server = http.createServer((request, response) => {
     seen.push(request.url);
-    if (request.url === `/repos/${REPO}/releases/latest`) { response.writeHead(301, {Location: '/repos/jobadabra/jobadabra/releases/latest'}); return response.end(); }
-    if (request.url === '/repos/jobadabra/jobadabra/releases/latest') { response.writeHead(200, {'Content-Type': 'application/json'}); return response.end(JSON.stringify(release)); }
+    if (request.url === `/repos/${REPO}/releases/latest`) { response.writeHead(301, {Location: '/repos/moved-again/jobadabra/releases/latest'}); return response.end(); }
+    if (request.url === '/repos/moved-again/jobadabra/releases/latest') { response.writeHead(200, {'Content-Type': 'application/json'}); return response.end(JSON.stringify(release)); }
     response.writeHead(404); response.end();
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -57,7 +57,7 @@ test('the updater follows the 301 GitHub answers on the old path after a transfe
     resetLimit();
     const offer = await check('0.1.0', {platform: 'darwin'});
     assert.equal(offer?.version, '9.9.9', 'the release behind the redirect is offered');
-    assert.deepEqual(seen, [`/repos/${REPO}/releases/latest`, '/repos/jobadabra/jobadabra/releases/latest']);
+    assert.deepEqual(seen, [`/repos/${REPO}/releases/latest`, '/repos/moved-again/jobadabra/releases/latest']);
   } finally {
     for (const [key, value] of [['JOBADABRA_E2E', saved.e2e], ['JOBADABRA_E2E_UPDATES_URL', saved.url]]) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
@@ -69,13 +69,14 @@ test('the updater follows the 301 GitHub answers on the old path after a transfe
 test('a transfer reaches the user\'s Always-on workflows: the API names the new owner, and a file an older app wrote is rewritten', async () => {
   const before = currentEngineRepo();
   try {
-    const moved = async () => new Response(JSON.stringify({full_name: 'jobadabra/jobadabra'}), {status: 200});
+    const moved = async () => new Response(JSON.stringify({full_name: 'moved-again/jobadabra'}), {status: 200});   // a later move: the API names the new owner
     assert.equal(await resolveEngineRepo(moved), true);
-    const old = `jobs:\n  run:\n    uses: ${OWNER}/jobadabra/.github/workflows/daily.yml@main\n    with:\n      code_repository: ${OWNER}/jobadabra\n`;
+    const previous = PREVIOUS_OWNERS[0];
+    const old = `jobs:\n  run:\n    uses: ${previous}/jobadabra/.github/workflows/daily.yml@main\n    with:\n      code_repository: ${previous}/jobadabra\n`;
     const out = pinned(old);
-    assert.match(out, /uses: jobadabra\/jobadabra\/\.github\/workflows\/daily\.yml@/);
-    assert.match(out, /code_repository: jobadabra\/jobadabra$/m);
-    assert.ok(OWNER_PATTERN.includes(OWNER), 'the current owner is always matched');
+    assert.match(out, /uses: moved-again\/jobadabra\/\.github\/workflows\/daily\.yml@/);
+    assert.match(out, /code_repository: moved-again\/jobadabra$/m);
+    assert.ok(OWNER_PATTERN.includes(OWNER) && OWNER_PATTERN.includes(previous), 'the current owner and the one before it are always matched');
   } finally {
     await resolveEngineRepo(async () => new Response(JSON.stringify({full_name: before}), {status: 200}));
   }

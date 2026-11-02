@@ -9,6 +9,7 @@
 // All three are what fetchInput() collects, so a test or a re-run needs no network.
 import {execFileSync} from 'node:child_process';
 import {readFileSync, writeFileSync} from 'node:fs';
+import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 export const SETUP_STEP = /checkout|set ?up|install|download|fetch|cache|artifact|paths|bundle|restore|upload/i;
 export const TEST_PATH = /(^|\/)(tests?|__tests__|e2e|fixtures|recorded|docs|zoo)\/|\.(test|spec)\.|\.md$|^\.github\/|^tools\/githooks\//;
@@ -91,7 +92,7 @@ export function message(card) {
   return [`PR checks, last ${card.days} days`, ...rows, ...(review.length ? ['', ...review] : [])].join('\n');
 }
 
-const repo = process.env.GITHUB_REPOSITORY || process.env.REPO || 'GarryOne/jobadabra';
+const repo = process.env.GITHUB_REPOSITORY || process.env.REPO || PUBLIC_REPO;
 const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 1 << 28});
 
 // Everything the counting needs, from GitHub: PR runs of the window, the jobs of the red ones, and the changed files of each red→green sha pair.

@@ -15,6 +15,8 @@ class RevertRedTest(ShipFixture):
         (self.main / 'tools' / 'pre-push-check.sh').write_text('#!/bin/sh\ncat > "$PAYLOAD_FILE"\n')   # records the push command ship.sh asks the hook about
         for name in ('backbone_red.py', 'e2e_causes.py', 'main_e2e_state.py'):
             shutil.copy(ROOT / 'tools' / name, self.main / 'tools' / name)
+        (self.main / 'src').mkdir(exist_ok=True)
+        shutil.copy(ROOT / 'src' / 'repos.py', self.main / 'src' / 'repos.py')   # backbone_red.py imports the repo-name constant
         registry = self.main / 'desktop/e2e/lanes.json'
         registry.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / 'desktop/e2e/lanes.json', registry)
