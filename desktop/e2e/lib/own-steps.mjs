@@ -17,25 +17,28 @@ const STEP_FILE = /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/;
  * ownsStepOf: async suite => (name => bool). -> {own: {suite: [names]}, direct: Set, byStep: Set, outside: [{file, suites}]}
  */
 export async function ownSteps({changedFiles, diff, sources, users, all, map = {}, ownsStepOf = async () => () => true}) {
-  const added = newSideRanges(diff), own = {}, direct = new Set(), byStep = new Set(), outside = [];
-  for (const file of changedFiles.filter(name => STEP_FILE.test(name))) {
-    const rel = file.slice('desktop/e2e/'.length), text = sources[rel] || '';
-    const suiteFile = /^suites\/([^/]+)\.mjs$/.exec(rel)?.[1];
-    if (suiteFile) direct.add(suiteFile);
-    if (!stepCalls(text).length) continue;   // no steps here: a plain helper
-    // A changed file holding steps is stronger reach than a plain imported helper.
-    for (const user of users[rel] || []) direct.add(user);
-    const touched = stepsTouched(text, added[file] || []);
-    const suites = [...new Set([...(rel.startsWith('suites/') ? [rel.slice(7, -4)] : []), ...(users[rel] || [])])].filter(name => all.includes(name));
-    if (touched.whole) { outside.push({file, suites}); continue; }
-    byStep.add(file);
-    for (const suite of suites) {
-      const ownsStep = await ownsStepOf(suite);
-      // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
-      for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (all.includes(home)) (own[home] ||= []).push(name);
-    }
+  const added = newSideRanges(diff), out = {own: {}, direct: new Set(), byStep: new Set(), outside: []};
+  for (const file of changedFiles.filter(name => STEP_FILE.test(name))) await ownStepsOfFile({file, ranges: added[file] || [], sources, users, all, map, ownsStepOf, out});
+  return out;
+}
+
+// One changed file of the loop above, added to `out`. Why (2 Nov 2026, clean-code on #2980): the whole loop in one function had cognitive complexity 25 (limit 20).
+async function ownStepsOfFile({file, ranges, sources, users, all, map, ownsStepOf, out}) {
+  const rel = file.slice('desktop/e2e/'.length), text = sources[rel] || '';
+  const suiteFile = /^suites\/([^/]+)\.mjs$/.exec(rel)?.[1];
+  if (suiteFile) out.direct.add(suiteFile);
+  if (!stepCalls(text).length) return;   // no steps here: a plain helper
+  // A changed file holding steps is stronger reach than a plain imported helper.
+  for (const user of users[rel] || []) out.direct.add(user);
+  const touched = stepsTouched(text, ranges);
+  const suites = [...new Set([...(suiteFile ? [suiteFile] : []), ...(users[rel] || [])])].filter(name => all.includes(name));
+  if (touched.whole) { out.outside.push({file, suites}); return; }
+  out.byStep.add(file);
+  for (const suite of suites) {
+    const ownsStep = await ownsStepOf(suite);
+    // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
+    for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (all.includes(home)) (out.own[home] ||= []).push(name);
   }
-  return {own, direct, byStep, outside};
 }
 
 /**
