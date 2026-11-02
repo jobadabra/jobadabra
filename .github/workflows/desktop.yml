@@ -1396,7 +1396,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      issues: write     # block-check.mjs reads the UI-loop issues
+      issues: read      # block-check.mjs reads the UI-loop issues
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         CI_ALERTS_TELEGRAM_BOT_TOKEN
@@ -1510,7 +1510,6 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # release-stable.sh starts the Chrome Web Store publish
-      issues: write     # TODO(AI): lower to read; only the pinned Release channels issue needed write, gone 2 Nov 2026
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
@@ -1568,7 +1567,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      issues: write     # block-check.mjs reads the UI-loop issues
+      issues: read      # block-check.mjs reads the UI-loop issues
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         GH_TOKEN
@@ -1678,7 +1677,6 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # release-stable.sh starts the Chrome Web Store publish
-      issues: write     # TODO(AI): lower to read; only the pinned Release channels issue needed write, gone 2 Nov 2026
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
@@ -1726,7 +1724,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write   # delete the older test builds, retitle releases
-      issues: write     # TODO(AI): lower to read; only the pinned Release channels issue needed write, gone 2 Nov 2026
       actions: read     # the credit alert downloads this run's suite artifacts
     env:
       E2E_ARTIFACT_SECRET_NAMES: |

@@ -1,12 +1,10 @@
-"""Every workflow job that runs a release script can do all of it: tools/beta-approve.sh, tools/release-stable.sh and
-tools/sync_release_labels.py rewrote the pinned Release channels issue (gone 2 Nov 2026), so the job needed `issues: write`. The release gate's
-promote job had `issues: read`: alpha.254 was approved, then the label sync failed (3 Oct 2026)."""
+"""The screenshot review runs in one place (.github/actions/e2e-review), used by every e2e lane. (Until 2 Nov 2026 this file also
+checked that release jobs could write issues, for the pinned Release channels issue; that issue is gone.)"""
 import re
 import unittest
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / '.github' / 'workflows'
-RELEASE_SCRIPTS = re.compile(r'beta-approve\.sh|release-stable\.sh|sync_release_labels\.py')
 
 
 def permissions(block):

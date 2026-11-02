@@ -14,6 +14,7 @@ Why (2 Nov 2026, owner: "let's disable this gh issue creation about \"Release ch
 Run by canary-promote.yml every 8 hours and after an approval or a promotion; safe to run any time (it only edits what differs).
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -22,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_guard import desktop_only, is_desktop  # noqa: E402  (only desktop-v* releases are ever stable, 17 Oct 2026)
 
-REPO = 'GarryOne/jobadabra'
+REPO = os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # Why (2 Nov 2026): the old GarryOne/ name made issue lookups come back empty after the org move
 STABLE, BETA, BUILD, PREVIOUS = '✅ STABLE', '🧪 BETA (release candidate)', '🔨 Build', '📦 Previous stable'
 PREFIX = re.compile(r'^(?:✅ STABLE|🧪 BETA(?: \(release candidate\))?|🔨 Build|📦 Previous stable) · ')
 

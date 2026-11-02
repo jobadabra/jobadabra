@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: write   # gh release edit (the approval line; release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      issues: write     # block-check.mjs reads the UI-loop issues
+      issues: read      # block-check.mjs reads the UI-loop issues
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both platforms edit the same body
       cancel-in-progress: false
