@@ -3,9 +3,10 @@
 // Guarded by test/question-entries.test.js.
 import {fromDetailsLine} from './answered-from-details.js';
 import {questionsProblem} from './questions-view.js';
+import {KEY as DESKTOP_AI_KEY, words as desktopAiWords} from './desktop-ai-words.js';
 
 // Every actions[].do these rows write, each run by pages/focus-suggestions.js RUN (listed in suggestions.js DOES).
-export const QUESTION_DOES = ['open_letter', 'open_details', 'open_learned', 'retry_questions'];
+export const QUESTION_DOES = ['open_letter', 'open_details', 'open_learned', 'retry_questions', 'copy_desktop_ai'];
 const COUNT = {details: n => `${n} missing`, learned: n => `${n} to check`};   // pages/jobs-questions.js countText: one wording on the card, the tab and here
 
 // A row of the pool's shape (src/suggestions.py _entry) built in the window; `short` is its words in the folded bar's line. Counts, not guesses: ⋯ holds Not now only (spec).
@@ -16,7 +17,7 @@ const row = (kind, fields) => ({kind, home: 'jobs', topic: 'applying', source: '
  * nothing saved to show (and the store is connected), else letter, details, learned. A failed refresh keeps the counts saved on this Mac, as the old cards
  * did (Gitar on #2366). Never throws: a window that has not read yet has nothing to say.
  */
-export function questionEntries({details = [], learned = [], letter = null, error = '', fromDetails = 0} = {}) {
+export function questionEntries({details = [], learned = [], letter = null, error = '', fromDetails = 0, desktopAi = null} = {}) {
   if (error && !details.length && !learned.length && !letter) {
     if (questionsProblem(error).hide) return [];   // the store not connected yet (trying only): no error row, as the card
     return [row('questions-error', {key: 'questions:error', title: 'Couldn\'t load your details', short: 'Couldn\'t load your details', detail: questionsProblem(error).text,
@@ -34,6 +35,11 @@ export function questionEntries({details = [], learned = [], letter = null, erro
   if (learned.length) {
     found.push(row('learned', {key: 'learned:open', title: 'What we learned', short: COUNT.learned(learned.length), detail: COUNT.learned(learned.length),
       actions: [{label: 'Check what we learned', do: 'open_learned'}]}));
+  }
+  // The Claude or ChatGPT desktop app is here and What we learned has open questions: offer to let it answer them (owner, 2 Nov 2026; words: desktop-ai-words.js). Not now hides it 14 days like the others.
+  if (desktopAi?.family && learned.length) {
+    const say = desktopAiWords(desktopAi.family);
+    found.push(row('desktop-ai', {key: DESKTOP_AI_KEY, title: say.title, short: say.short, detail: say.lead, actions: [{label: say.button, do: 'copy_desktop_ai'}]}));
   }
   return found;
 }

@@ -21,6 +21,7 @@ import {runCommand, startTailor} from './actions.js';
 import {openActivity} from './activity.js';
 import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
+import {pressDesktopAi, setDesktopAiSeams} from './desktop-ai.js';
 import {wand} from '../magic.js';
 import {bindHostedOffer, hostedEntries, turnedOnText} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
@@ -85,8 +86,10 @@ export const RUN = {
   open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
   retry_questions: () => loadQuestions({force: true}).catch(() => {}),
+  copy_desktop_ai: () => pressDesktopAi(),   // the Claude or ChatGPT desktop app answers the questions (pages/desktop-ai.js)
 };
 
+setDesktopAiSeams({answerEntry: (...given) => answerEntry(...given), answered: key => answered(key), focusIsRead: () => focusIsRead(), toast: (title, text, tone) => toastMessage(title, text, NO_PLACE.itself, tone)});
 setNotifyActions({open: () => RUN.open_notifications(), resend: () => RUN.resend_confirm()});   // ⌘K's two commands run the card's own buttons (pages/notify-commands.js)
 
 /** Keeps a person's Not now / Not true for one entry; it leaves every place at once, and comes back if the store refuses it. */
@@ -195,6 +198,8 @@ let questionsAsked = false;
 export const homeSuggestions = home => homeEntries(shownPool(), home);
 /** Whether a Strategy row's key was answered (Not now, Not true), here or as Focus last read it. */
 export const answered = key => held.has(key) || hiddenKeys.has(key);
+/** Whether Focus has been read: until then a hidden (Not now) card cannot be told from a new one, so a page outside Focus draws none. */
+export const focusIsRead = () => Boolean(lastArgs);
 
 /** Focus's Suggestions section: entries, then the moved items drawn by Focus's own `card`; 3 shown, "Show all N" opens the rest in place. */
 export function renderFocusSuggestions({entries, items, card, hidden, refreshHosted = true}) {

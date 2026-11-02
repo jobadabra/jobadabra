@@ -273,7 +273,7 @@ function handlers() {
   registerStoreHandlers({ipcMain, storage, DEMO, log: appLog, toWindow});   // lib/store-handlers.js: Settings → Your data
   registerContactHandlers({ipcMain, storage, DEMO, connected: () => notionGate.tracking(storage), needsNotion, log: appLog,   // lib/contact-handlers.js
     contactSaved: saved => server.contactSaved(storage, saved)});
-  registerSetupHandlers({app, DEMO, connectNotion, dialog, handleImportant, ipcMain, licenseState, needsNotion, shell, storage, syncCv, getTelemetry: () => telemetry, track, trackSetup, getWindow: () => window, keepLook, renderDocx, toWindow,
+  registerSetupHandlers({app, clipboard, DEMO, connectNotion, dialog, handleImportant, ipcMain, licenseState, needsNotion, shell, storage, syncCv, getTelemetry: () => telemetry, track, trackSetup, getWindow: () => window, keepLook, renderDocx, toWindow,
     setNotionFrom: value => { notionFrom = value; }});   // lib/setup-handlers.js
   registerStrategyDraftHandlers({DEMO, here, ipcMain, storage, syncCv, toWindow, trackSetup});   // lib/strategy-draft-handlers.js
   registerDraftEditHandlers({ipcMain});   // lib/draft-edit-handlers.js: the draft edited through the Strategy cards

@@ -71,7 +71,7 @@ export function registerSetupHandlers(ctx) {
     return forWindow(storage.settings());
   });
   // The status, Verify, file picker, install page and support details of Claude Code and Codex: lib/plan-handlers.js (the readiness states).
-  registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, track: ctx.track, DEMO, appVersion: ctx.app?.getVersion?.() || '', ...(ctx.plan || {})});
+  registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, clipboard: ctx.clipboard, track: ctx.track, DEMO, appVersion: ctx.app?.getVersion?.() || '', ...(ctx.plan || {})});
   ipcMain.handle('checkOpenAI', async (_, pasted) => {
     const {value: key, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};

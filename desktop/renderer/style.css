@@ -2620,3 +2620,11 @@ details.qa-section { margin-top: var(--sp-3); }
 /* Why (2026-10-30, owner: Export's icon sat high): every toolbar button is a flex row, so its icon, label and Pro pill share one centre line (an inline icon sat 1 px low next to the label, and `vertical-align: middle` put it lower still beside the taller pill); one rule for the class, not one per button id. */
 .toolbar > button.secondary { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .toolbar > button.secondary .icon { flex: none; }
+
+/* "Let the Claude or ChatGPT desktop app answer your questions" (pages/desktop-ai.js): the banner is a .qa-banner with the words on the left, the two buttons on the right; it wraps on a narrow window. */
+.qa-desktop-ai { flex-wrap: wrap; gap: var(--sp-3); }
+.qa-desktop-ai .qa-banner-words { align-items: flex-start; flex-wrap: nowrap; }   /* the icon stays beside the title, never above it */
+.qa-desktop-ai .qa-banner-words > .icon { margin-top: 2px; }
+.qa-desktop-ai-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.qa-desktop-ai-text p { margin: 0; }
+.qa-desktop-ai-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
