@@ -32,14 +32,17 @@ const WORDS = {
   pro: 'That account is a Pro account; its address changes through Pro sign-in.',
   unauthorized: 'This install could not be recognised by the website. Try again in a minute.',
 };
+// Why (#3011, Gitar, 2 Nov 2026): a hanging connection kept this call, and so the Full automation confirmation that waits on the state, open for minutes: no call to the site outlasts SLOW_MS.
+export const SLOW_MS = 8000;
 async function call(storage, method, path, body, fetcher) {
   const key = installKey(storage);
   if (!key) return {ok: false, error: 'No install key yet: open the app online once, then try again.'};
+  const limit = new AbortController(), timer = setTimeout(() => limit.abort(), SLOW_MS);
   try {
-    const response = await fetcher(`${BASE}${path}`, {method, headers: {'x-api-key': key, ...(body ? {'content-type': 'application/json'} : {})}, ...(body ? {body: JSON.stringify(body)} : {})});
+    const response = await fetcher(`${BASE}${path}`, {method, signal: limit.signal, headers: {'x-api-key': key, ...(body ? {'content-type': 'application/json'} : {})}, ...(body ? {body: JSON.stringify(body)} : {})});
     const answer = await response.json().catch(() => ({}));
     return answer.ok ? answer : {ok: false, error: WORDS[answer.error] || answer.error || 'The website did not accept it.'};
-  } catch { return {ok: false, error: 'The website could not be reached. Try again when you are online.'}; }
+  } catch { return {ok: false, error: 'The website could not be reached. Try again when you are online.'}; } finally { clearTimeout(timer); }
 }
 
 // What the window shows: the choice, the address and whether it is confirmed (asked of the site; the cached address when offline).

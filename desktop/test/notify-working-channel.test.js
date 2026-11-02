@@ -76,3 +76,16 @@ test('Full automation asks for a channel only when none was given: an address (e
 test('offline: no card', () => {
   assert.equal(offerCard(mail({confirmed: false, reached: false})), null);
 });
+
+// Gitar on #3011: the Full automation confirmation must open at once even when the website is slow: its read of the state is bounded, and an unanswered one asks nothing.
+test('answeredWithin: the answer in time wins; a slow one is null after the limit', async () => {
+  const {answeredWithin} = await import('../renderer/notify-words.js');
+  const timers = [];
+  const setTimer = (fn, ms) => { timers.push({fn, ms}); return timers.length; };
+  assert.deepEqual(await answeredWithin(Promise.resolve({reached: true}), 2000, setTimer), {reached: true});
+  const slow = answeredWithin(new Promise(() => {}), 2000, setTimer);
+  assert.equal(timers.at(-1).ms, 2000);
+  timers.at(-1).fn();
+  assert.equal(await slow, null);
+  assert.equal(await answeredWithin(Promise.reject(new Error('offline')), 2000, setTimer), null, 'a failed read is the same as no answer');
+});

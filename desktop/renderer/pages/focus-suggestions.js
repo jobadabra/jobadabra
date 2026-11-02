@@ -109,6 +109,15 @@ const button = (label, className, run) => {
   node.addEventListener('click', run);
   return node;
 };
+// The notification card's e-mail field and its Send button: saves the address (its confirm mail goes out), then the card asks again (`notify-changed`).
+function bindNotifyEmail(body, node) {
+  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
+    turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
+      toastMessage('Check your inbox ✓', `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
+      window.dispatchEvent(new Event('notify-changed'));
+    }});
+}
+
 /** One engine entry as an Up next row: icon, headline and badge, where it comes from, its buttons, and ⋯ (Not now, Not true, its evidence). */
 export function entryRow(entry) {
   const parts = entryParts(entry);
@@ -138,13 +147,7 @@ export function entryRow(entry) {
           loadNotifyOffer();   // the address is new and unconfirmed: the notification card asks again
         }});
     }
-    if (action.do === 'add_email') {
-      context.addEmail = bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
-        turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
-          toastMessage('Check your inbox ✓', `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
-          window.dispatchEvent(new Event('notify-changed'));
-        }});
-    }
+    if (action.do === 'add_email') context.addEmail = bindNotifyEmail(body, node);
     actions.append(AI.has(action.do) ? wand(node) : node);
   }
   const more = [];

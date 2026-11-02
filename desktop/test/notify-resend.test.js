@@ -2,7 +2,7 @@
 // Spec docs/superpowers/specs/2026-11-02-notify-moments-design.md. The site refuses with a code; the person is told in words, never the code.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {resend, save, state} from '../lib/notify-channel.js';
+import {SLOW_MS, resend, save, state} from '../lib/notify-channel.js';
 
 const storage = ({settings = {}, secrets = {JOBADABRA_TRIAL_KEY: 'JPF1.install-0001.tok'}} = {}) => {
   const kept = {...settings};
@@ -58,4 +58,22 @@ test('the state hands the window the day the address was saved', async () => {
   const kept = storage({settings: {notifyEmail: 'me@example.com', notifyEmailAt: '2026-11-02T09:00:00.000Z'}});
   const answer = await state(kept, site([{ok: true, email: 'me@example.com', confirmed: false}]));
   assert.equal(answer.emailAt, '2026-11-02T09:00:00.000Z');
+});
+
+// Gitar on #3011: the website call had no time limit, so a hanging connection kept Full automation's confirmation from opening. A call that is not answered in time ends as "not reached".
+test('a website call that never answers ends after its time limit as not reached, so nothing waits on it', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  const hang = (url, init) => new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted'))));
+  const pending = state(storage({settings: {notifyEmail: 'me@example.com'}}), hang);
+  t.mock.timers.tick(SLOW_MS);
+  const answer = await pending;
+  assert.equal(answer.reached, false);
+  assert.equal(answer.email, 'me@example.com', 'the address this Mac knows is still shown');
+});
+
+test('the answer that comes in time is used (positive control for the limit)', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  const answer = await state(storage({settings: {notifyEmail: 'me@example.com'}}), site([{ok: true, email: 'me@example.com', confirmed: true}]));
+  assert.equal(answer.reached, true);
+  assert.equal(answer.confirmed, true);
 });

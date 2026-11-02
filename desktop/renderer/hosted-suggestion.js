@@ -4,7 +4,8 @@ import {SUBTITLE, turnedOnLine} from './hosted-words.js';
 import {jobCounts} from './jobs-view.js';
 
 const KEY = 'hosted:first-matches';
-const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+/** The one check of a typed address (Always on's card and dialog, the notification card, Full automation's question). */
+export const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 /** One Suggestions entry (Focus and the Jobs bar) from the first finished search with matches, for as long as Always on is off; jobCounts is the Jobs view's definition (excludes applications and inbound).
  *  Why (2 Nov 2026, owner: "It should still be always present as in the Suggestions card"): an earlier Skip no longer hides it, and there is no "Not true"; Not now hides it 14 days. */

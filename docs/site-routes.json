@@ -6,6 +6,10 @@
    "kind": "app"
   },
   {
+   "path": "/api/account/email/resend",
+   "kind": "app"
+  },
+  {
    "path": "/api/ai/",
    "prefix": true,
    "kind": "app"

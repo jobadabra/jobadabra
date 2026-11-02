@@ -1,6 +1,6 @@
 // The pop-up for an e-mail address that waits for its confirm link (lib/notify-moments.js; spec docs/superpowers/specs/2026-11-02-notify-moments-design.md): day 3, day 10, and the day-14 stop.
 // Shown once per moment (the app records it when it opens), through the one pop-up slot (renderer/popup-slot.js); its button sends the link again (jobadabra-web #333).
-import {$} from './core.js';
+import {$, message} from './core.js';
 import {NO_PLACE} from '../targets.js';
 import {momentWords} from '../notify-words.js';
 import {slot} from '../popup-slot.js';
@@ -31,7 +31,7 @@ export function init() {
   $('notify-moment-later').addEventListener('click', () => dialog.close());
   $('notify-moment-go').addEventListener('click', async () => {
     const done = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    if (!done?.ok) { $('notify-moment-note').textContent = done?.error || 'Try again in a minute.'; return; }
+    if (!done?.ok) { message('notify-moment-note', done?.error || 'Try again in a minute.', 'bad'); return; }   // message(): the one place a result reaches the screen (plainError)
     dialog.close();
     toastMessage('Sent again ✓', 'Check your inbox (and your spam folder) for the link.', NO_PLACE.itself, 'good');
   });

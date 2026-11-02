@@ -80,3 +80,9 @@ export function momentWords({moment, days = 0, email = ''}) {
  * Why (2 Nov 2026): a state the website did not answer (offline, no install key yet) asks nothing; a gate that cannot judge must not lock the person out of the setting they chose.
  */
 export const automationNeedsChannel = state => Boolean(state?.reached) && !state.email && !((state.by || []).includes('telegram') && state.telegram);
+
+/**
+ * `promise`'s answer, or null when it fails or is not there within `ms`: a read of the website's state that must never hold a dialog (Gitar on #3011: Full automation's confirmation waited on it).
+ * `setTimer` is injectable for the test.
+ */
+export const answeredWithin = (promise, ms, setTimer = setTimeout) => Promise.race([Promise.resolve(promise).catch(() => null), new Promise(resolve => { setTimer(() => resolve(null), ms); })]);
