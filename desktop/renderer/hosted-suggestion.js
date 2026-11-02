@@ -1,10 +1,11 @@
 // Always on's first-matches Suggestions entry and its inline activation controls.
 import {el} from './components.js';
-import {SUBTITLE} from './hosted-words.js';
+import {SUBTITLE, turnedOnLine} from './hosted-words.js';
 import {jobCounts} from './jobs-view.js';
 
 const KEY = 'hosted:first-matches';
-const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+/** The one check of a typed address (Always on's card and dialog, the notification card, Full automation's question). */
+export const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 /** One Suggestions entry (Focus and the Jobs bar) from the first finished search with matches, for as long as Always on is off; jobCounts is the Jobs view's definition (excludes applications and inbound).
  *  Why (2 Nov 2026, owner: "It should still be always present as in the Suggestions card"): an earlier Skip no longer hides it, and there is no "Not true"; Not now hides it 14 days. */
@@ -18,7 +19,8 @@ export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held
 }
 
 /** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; news stays off; a shared draft paints replies into the latest row. */
-export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess, draft = {}}) {
+export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess, draft = {}, words = {}}) {
+  const busyNote = words.busy || 'Turning on…', failedNote = words.failed || 'Could not turn it on just now.';
   let input = null;
   if (!email) {
     const field = emailField();
@@ -40,13 +42,19 @@ export function bindHostedOffer({body, button, email, emailField, turnOn, onSucc
   return async () => {
     if (draft.busy || !validEmail(address())) return;
     const sentTo = address();
-    Object.assign(draft, {busy: true, bad: false, note: 'Turning on…'}); draft.paint();
+    Object.assign(draft, {busy: true, bad: false, note: busyNote}); draft.paint();
     try {
       const result = await turnOn({email: sentTo, marketing: false});
       if (result?.ok) { draft.note = ''; onSuccess(sentTo); return; }
-      Object.assign(draft, {bad: true, note: result?.error || 'Could not turn it on just now.'});
+      Object.assign(draft, {bad: true, note: result?.error || failedNote});
     } catch (error) {
-      Object.assign(draft, {bad: true, note: error.message || 'Could not turn it on just now.'});
+      Object.assign(draft, {bad: true, note: error.message || failedNote});
     } finally { draft.busy = false; draft.paint(); }
   };
+}
+
+/** The toast line after Always on was turned on from a card or dialog: the site holds the mail of an address nobody confirmed, so it says so (hosted-words.js turnedOnLine). Never throws. */
+export async function turnedOnText(sentTo) {
+  const mail = await window.pilot.notifyState().catch(() => null);
+  return turnedOnLine(sentTo, !(mail?.reached && !mail.confirmed));
 }

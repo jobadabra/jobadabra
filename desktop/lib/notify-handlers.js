@@ -2,11 +2,23 @@
 // Guarded by test/notify-channel.test.js and test/ipc.test.js.
 import * as channel from './notify-channel.js';
 import {followNotify} from './hosted-email.js';
+import {createNotifyMoments} from './notify-moments.js';
 
 export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
+  const moments = createNotifyMoments(storage);
   ipcMain.handle('notifyState', async () => {
     if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, marketing: true, cadence: 'daily', reached: true};
     return channel.state(storage);
+  });
+  // The pop-up for an address that waits for its link (day 3, day 10, the stop): the next one not shown yet, or null. Demo mode shows none.
+  ipcMain.handle('notifyMoment', async () => (DEMO ? null : moments.next(await channel.state(storage).catch(() => null))));
+  ipcMain.handle('notifyMomentShown', async (_, moment) => { if (!DEMO && ['day3', 'day10', 'stopped'].includes(moment)) moments.shown(moment); });
+  // The card's Resend: the confirm mail again (jobadabra-web #333). Demo mode never reaches our site.
+  ipcMain.handle('notifyResend', async () => {
+    if (DEMO) return {ok: true};
+    const result = await channel.resend(storage);
+    log('notify', result.ok ? 'confirm mail sent again' : 'confirm mail not sent again', {code: result.code || ''});
+    return result;
   });
   ipcMain.handle('notifySave', async (_, choice) => {
     if (DEMO) return {ok: true};

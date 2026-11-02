@@ -57,6 +57,7 @@ import {init as whyStop} from './pages/why-stop.js';
 import {init as notionConnect} from './pages/notion-connect.js';
 import {init as extensionNeeded} from './pages/extension-needed.js';
 import {init as hostedMoment} from './pages/hosted-moment.js';
+import {init as notifyMoment} from './pages/notify-moment.js';
 import {init as employers} from './pages/employers.js';
 import {startListening as saveProgress} from './save-progress.js';
 import {openJobPanel} from './pages/job-panel.js';
@@ -66,6 +67,7 @@ await core();
 notionConnect();
 extensionNeeded();
 hostedMoment();
+notifyMoment();
 saveProgress();   // Search settings saves say how far they are (save-progress.js)
 await wizard();
 cvBuild();   // Build a CV with the AI: its dialog and buttons (pages/cv-build.js)

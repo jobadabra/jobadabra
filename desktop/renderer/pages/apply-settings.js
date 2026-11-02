@@ -8,6 +8,7 @@ import {ANSWERS_TEXT, MODES, applyOf, modeBuilt, needsBrowser} from '../apply-se
 import {saveApply} from '../apply-save.js';
 import {offerBrowser} from './browser-progress.js';
 import {openSetting} from './settings.js';
+import {prepareChannel} from './auto-confirm-channel.js';
 
 let current = {};   // the saved settings, as the app last answered them
 let ready = Promise.resolve();
@@ -65,15 +66,16 @@ export async function save(change = {}, {chosen = false} = {}) {
 }
 
 /** The one confirmation for Full automation: the checks it will run under, one button to turn it on. Resolves true only on that button. */
-export function askFullAutomation() {
+export async function askFullAutomation() {
   const dialog = $('auto-confirm-dialog');
+  const channel = await prepareChannel();   // no way to be told yet: the same step asks for one (pages/auto-confirm-channel.js)
   const auto = applyOf(current).auto;
   $('auto-confirm-checks').replaceChildren(...[
     auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)',
   ].map(text => Object.assign(document.createElement('li'), {textContent: text})));
   return new Promise(resolve => {
     const finish = yes => { dialog.close(); resolve(yes); };
-    $('auto-confirm-go').onclick = () => finish(true);
+    $('auto-confirm-go').onclick = async () => { if (await channel.save()) finish(true); };
     dialog.addEventListener('cancel', () => finish(false), {once: true});
     $('auto-confirm-cancel').onclick = () => finish(false);
     dialog.showModal();

@@ -38,6 +38,7 @@ export function bindNotify({savedToast, updateRepo}) {
       const result = await window.pilot.notifySave({by, email: $('notify-address').value, marketing: $('notify-marketing').checked, cadence: $('notify-cadence').value});
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
+      window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
       if (result.ok) { savedToast('Saved ✓', `Tell me by: ${by.join(', ') || 'nothing'}`); updateRepo(); }
     } finally { busy = false; }
     await showNotify(error);

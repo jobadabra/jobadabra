@@ -3,9 +3,9 @@ import {el} from './components.js';
 import {HELPER} from './hosted-words.js';
 
 /** The shared e-mail field: label, full-width input and helper, used by Always on's Focus entry. */
-export function emailField(id, label = 'Where should we send them?') {
+export function emailField(id, label = 'Where should we send them?', hint = HELPER) {
   const input = Object.assign(document.createElement('input'), {type: 'email', id, placeholder: 'you@example.com', autocomplete: 'email'});
   const field = el('div', 'step-field');
-  field.append(Object.assign(document.createElement('label'), {htmlFor: id, textContent: label}), input, el('p', 'muted small field-hint', HELPER));
+  field.append(Object.assign(document.createElement('label'), {htmlFor: id, textContent: label}), input, el('p', 'muted small field-hint', hint));
   return field;
 }

@@ -2,9 +2,10 @@
 // because the Mac was asleep or off. Shown once per moment (the app records it when it opens); the card on Focus and Jobs stays whatever is answered here.
 import {$} from './core.js';
 import {NO_PLACE} from '../targets.js';
-import {bindHostedOffer} from '../hosted-suggestion.js';
+import {bindHostedOffer, turnedOnText} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
 import {missedWords} from '../hosted-words.js';
+import {slot} from '../popup-slot.js';
 import {toastMessage} from './startup.js';
 
 const RETRY_MS = 20 * 1000, RETRIES = 5, FIRST_MS = 3000;
@@ -20,20 +21,25 @@ export function init() {
     const [moment, hosted] = await Promise.all([window.pilot.hostedMoment(), window.pilot.hostedState()]).catch(() => []);
     if (!moment || !hosted?.canRun || hosted.on) return;
     if (document.querySelector('dialog[open]')) { if (tries > 0) setTimeout(() => ask(tries - 1), RETRY_MS); return; }
-    const words = missedWords(moment.at);
-    $('hosted-moment-title').textContent = words.title;
-    $('hosted-moment-text').textContent = words.body;
-    const go = $('hosted-moment-go'), email = hosted.email || hosted.shared || '';
-    $('hosted-moment-body').replaceChildren();
-    const turnOn = bindHostedOffer({body: $('hosted-moment-body'), button: go, email, emailField: () => emailField('hosted-moment-email'), draft,
-      turnOn: given => window.pilot.hostedOn(given), onSuccess: sentTo => {
-        dialog.close();
-        toastMessage('Always on ✓', `New matches every morning to ${sentTo}.`, NO_PLACE.itself, 'good');
-        window.dispatchEvent(new Event('hosted-changed'));
-      }});
-    go.onclick = turnOn;
-    await window.pilot.hostedMomentShown(moment.moment);   // once: recorded as it opens, so Escape or Not now never brings it back
-    dialog.showModal();
+    // One connection pop-up per app open (renderer/popup-slot.js): this one waits its turn; "shown once" is written only when it really opens.
+    slot.offer({id: 'always-on-missed', rank: 1, open: async () => {
+      if (dialog.open || document.querySelector('dialog[open]')) return false;
+      const words = missedWords(moment.at);
+      $('hosted-moment-title').textContent = words.title;
+      $('hosted-moment-text').textContent = words.body;
+      const go = $('hosted-moment-go'), email = hosted.email || hosted.shared || '';
+      $('hosted-moment-body').replaceChildren();
+      const turnOn = bindHostedOffer({body: $('hosted-moment-body'), button: go, email, emailField: () => emailField('hosted-moment-email'), draft,
+        turnOn: given => window.pilot.hostedOn(given), onSuccess: async sentTo => {
+          dialog.close();
+          toastMessage('Always on ✓', await turnedOnText(sentTo), NO_PLACE.itself, 'good');
+          window.dispatchEvent(new Event('hosted-changed'));
+        }});
+      go.onclick = turnOn;
+      await window.pilot.hostedMomentShown(moment.moment);   // once: recorded as it opens, so Escape or Not now never brings it back
+      dialog.showModal();
+      return true;
+    }});
   }
   $('hosted-moment-later').addEventListener('click', () => dialog.close());
   window.pilot.onHostedMoment(() => ask());

@@ -63,9 +63,9 @@ export function draw(view, email = '') {
 const hostedAddress = now => now.email || now.shared || '';
 
 export async function refresh() {
-  const now = await window.pilot.hostedState();
+  const [now, mail] = await Promise.all([window.pilot.hostedState(), window.pilot.notifyState().catch(() => null)]);
   shared.hosted = now;
-  if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared), hostedAddress(now));
+  if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared, mail), hostedAddress(now));
 }
 
 /** Mount the Always on Settings card and subscribe to its status refreshes. */

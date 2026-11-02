@@ -9,6 +9,7 @@ export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', '
 // Each producer's row: its icon, its edge colour and its badge.
 export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, rejection: {icon: 'alert', tone: 'warn', badge: 'Rejection'},
   hosted: {icon: 'cloud', tone: 'info', badge: 'Always on'},
+  notify: {icon: 'bell', tone: 'info', badge: 'Notifications'},   // "Get a message when something needs you" (renderer/notify-suggestion.js): always there while no channel works
   gmail: {icon: 'mail', tone: 'info', badge: 'Gmail'},   // Gmail offered at the right moment (renderer/gmail-offer-words.js): always there while it is not connected
   linkedin: {icon: 'linkedin', tone: 'info', badge: 'New'},   // LinkedIn jobs (renderer/linkedin-words.js): the switch is off
   week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'},
