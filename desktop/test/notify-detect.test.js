@@ -9,7 +9,7 @@ const T0 = Date.parse('2026-11-02T09:00:00Z');
 const iso = ms => new Date(ms).toISOString();
 const away = {seenAt: iso(T0), backAt: iso(T0 + 600 * MIN)};   // gone 09:00, back 19:00
 const search = (extra = {}) => ({kind: 'search', trigger: 'schedule', ok: true, startedAt: iso(T0 + 100 * MIN), endedAt: iso(T0 + 110 * MIN), ...extra});
-const job = (fit, extra = {}) => ({title: `Role ${fit}`, company: 'Acme', fit, first_seen_at: '2026-11-02', ...extra});
+const job = (fit, extra = {}) => ({title: `Role ${fit}`, company: 'Acme', fit, first_seen_at: iso(T0 + 105 * MIN), ...extra});   // first seen while the run was running (the store writes a full UTC timestamp: src/store.py _now)
 
 test('match: a scheduled search that ended while away found a job at 85 or better -> the best fit and when the check ran', () => {
   const found = matchWhileAway({...away, runs: [search()], jobs: [job(72), job(91), job(86)]});
@@ -26,7 +26,9 @@ test('match: no claim when the search was run by the person, failed, ended befor
   assert.equal(matchWhileAway({...away, runs: [search({endedAt: iso(T0 - MIN)})], jobs}), null, 'ended before they left');
   assert.equal(matchWhileAway({...away, runs: [search({endedAt: iso(T0 + 700 * MIN)})], jobs}), null, 'ended after they came back');
   assert.equal(matchWhileAway({...away, runs: [search()], jobs: [job(84)]}), null, 'under 85');
-  assert.equal(matchWhileAway({...away, runs: [search()], jobs: [job(91, {first_seen_at: '2026-11-01'})]}), null, 'an older job is not this run\'s news');
+  assert.equal(matchWhileAway({...away, runs: [search()], jobs: [job(91, {first_seen_at: '2026-11-01T09:00:00+00:00'})]}), null, 'an older job is not this run\'s news');
+  assert.equal(matchWhileAway({...away, runs: [search()], jobs: [job(91, {first_seen_at: iso(T0 + 50 * MIN)})]}), null, 'Gitar on #3022: found earlier the SAME day (a search the person watched) is not this scheduled run\'s news');
+  assert.equal(matchWhileAway({...away, runs: [search()], jobs: [job(91, {first_seen_at: '2026-11-02'})]}), null, 'a date alone cannot prove it came after the run started: no claim');
   assert.equal(matchWhileAway({seenAt: '', backAt: '', runs: [search()], jobs}), null, 'no stamps (an install from before this version)');
 });
 
