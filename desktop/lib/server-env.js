@@ -25,6 +25,7 @@ import {captureAnswer} from './live-capture.js';
 import {client as engineClient, keptAnswerClient} from './ai/index.js';
 import * as learnings from './learnings.js';
 import {nightAnswers} from './ready-handoff.js';
+import * as gmailOffer from './gmail-offer.js';
 import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
 import {NAMES} from './ai/names.js';
 import {cvFactsText} from '../shared/app-core/cv-facts.js';
@@ -146,6 +147,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
       // The fill's row says it was submitted (what the recap reads): the same row in every Apply mode. A row that cannot be stamped never undoes Applied.
       if (runs) await runs.receiptRun(job.url, new Date().toISOString()).then(stamped => { if (!stamped.ok) appLog('extension', `no fill row to stamp as submitted: ${job.url}`); }, error => appLog('extension', `run row not stamped as submitted: ${error.message}`));
       appliedHook({how: 'extension'});
+      try { gmailOffer.afterApply({storage, tell: tellWindow, employer: job.company}); } catch (error) { appLog('extension', `Gmail offer not made: ${error.message}`); }   // Why (2 Nov 2026, owner): the first Submit is the moment to offer Gmail; an offer that fails never undoes Applied
       const where = notionGate.notionInUse(storage) ? 'in your Notion' : 'in Jobadabra';   // about Notion
       notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');
       return {ok: true, message: `Marked Applied ${where}.`};

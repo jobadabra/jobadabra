@@ -10,6 +10,7 @@ import {loadSettings} from './profile.js';
 import {noteCheck, openSetting, refreshServices, renderOverview, showRunMode} from './settings.js';
 import {toastMessage} from './startup.js';
 import {goStep} from './wizard.js';
+import {initGmailOffer, setGmailConnected} from './gmail-offer.js';
 import {bindNotify} from './notify-settings.js';
 import {showClaudePrereqs} from './claude-prereqs.js';
 import {storeName} from '../store-words.js';
@@ -214,6 +215,7 @@ export async function showGoogle() {
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").
   $('google-more').hidden = !google.connected;
   $('google-more').replaceChildren(...(google.connected ? [wayOut('Disconnect Gmail', disconnectGoogle)] : []));
+  setGmailConnected(google.connected);   // the Suggestions card and ⌘K follow (pages/gmail-offer.js)
   noteCheck({google: {connected: !!google.connected, email: google.email || ''}});  // the cards above follow
 }
 // Telegram's way out, the same ⋯ menu as Gmail's (owner, 7 Oct 2026).
@@ -242,6 +244,7 @@ function alertLine(name, text) { const line = document.querySelector(`[data-secr
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
+  initGmailOffer();   // the first Submit and a page asking for a mailed code open the Gmail dialog (lib/gmail-offer.js tells the window)
   paintExtensionCardFirst();   // the last known state at once; the live read below confirms or corrects it
   // No "Check again": the checklist refreshes by itself when you come back to the window (e.g. after installing
   // Claude Code or the Chrome extension), while the Settings checklist is open.
