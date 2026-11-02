@@ -21,7 +21,7 @@ def paths(text, event):
 class MainSteps(unittest.TestCase):
     def test_a_push_to_main_with_the_files_the_steps_watch(self):
         self.assertRegex(FLOW, r"(?m)^  push:\n    branches: \[main\]")
-        # Why (1 Nov 2026, owner: "No e2e on PRs"): pr-suites.yml is gone, so the steps of a change run only here, after its merge; the files that reach a step must start this workflow.
+        # Why (1 Nov 2026, owner: "No e2e on PRs"): pr-suites.yml is gone, so the steps a change reaches run here, after its merge (a PR runs only the steps it adds or changes, pr-e2e-steps.yml, 2 Nov 2026); the files that reach a step must start this workflow.
         push = paths(FLOW, 'push')
         for watched in ('desktop/renderer/**', 'desktop/lib/**', 'desktop/main.js', 'desktop/e2e/suites/**', 'desktop/e2e/lib/**', 'extension/**', 'src/ai/**'):
             self.assertIn(watched, push)

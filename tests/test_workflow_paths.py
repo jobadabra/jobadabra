@@ -164,7 +164,7 @@ class TheClass(unittest.TestCase):
 
     def test_every_file_a_suite_watches_starts_the_steps_after_a_merge(self):
         # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; the PR e2e workflow had no src/ path, so it never started and quality never ran.
-        # Since 1 Nov 2026 no PR runs e2e (owner: "No e2e on PRs"): main-steps.yml plans the merge's steps. A suite's `watches` (lib/plan.mjs) only works when the file also starts it.
+        # Since 1 Nov 2026 no PR runs a journey (owner: "No e2e on PRs"; since 2 Nov 2026 a PR runs only the steps it adds or changes): main-steps.yml plans the merge's steps. A suite's `watches` (lib/plan.mjs) only works when the file also starts it.
         missing = []
         for suite in sorted((ROOT / 'desktop' / 'e2e' / 'suites').glob('*.mjs')):
             found = re.search(r'(?m)^export const watches = \[([^\]]*)\]', suite.read_text())

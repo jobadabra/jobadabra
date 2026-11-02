@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
 class PrSuitesDispatchInputs(unittest.TestCase):
     """Every input main-steps.yml passes with `gh workflow run e2e.yml -f name=` is declared under e2e.yml's workflow_dispatch (a workflow_call-only input is refused with HTTP 422, #1754).
-    Why (1 Nov 2026, owner: "No e2e on PRs"): no PR dispatches e2e any more; the one dispatcher is the after-merge planner."""
+    Why (1 Nov 2026, owner: "No e2e on PRs"): no PR runs a journey; the dispatchers are the after-merge planner and, since 2 Nov 2026, the PR check of a PR's own changed steps (below)."""
 
     def test_dispatch_declares_what_main_steps_passes(self):
         root = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
