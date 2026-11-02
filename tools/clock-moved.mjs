@@ -120,7 +120,9 @@ export async function findTimeBombs({root = ROOT, areas = AREAS, shifts = SHIFTS
     if (today.skipped || moved.skipped) continue;
     (today.code === 0 && moved.code !== 0 ? bombs : unstable).push({area: job.area.name, file: job.label, days, why: today.code === 0 && moved.code !== 0 ? firstFailure(moved) : why});
   }
-  const slowest = timings.sort((a, b) => b.s - a.s).slice(0, 8);
+  const longest = new Map();   // one entry per file and shift: the second look runs a candidate again (Gitar on #2993)
+  for (const item of timings) if ((longest.get(`${item.file} ${item.days}`)?.s ?? -1) < item.s) longest.set(`${item.file} ${item.days}`, item);
+  const slowest = [...longest.values()].sort((a, b) => b.s - a.s).slice(0, 8);
   return {judged: jobs.length - redToday - new Set(notJudged).size, redToday, bombs, unstable, notJudged: [...new Set(notJudged)], slowest, seconds: Math.round((now() - started) / 1000)};
 }
 

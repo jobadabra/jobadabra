@@ -120,6 +120,7 @@ test('a file the cap kills is logged at once and named; past the deadline files 
   assert.deepEqual(full.bombs.map(b => [b.file, b.why]), [['test/hangs.test.js', 'killed after 180 s (hung)']]);
   assert.ok(lines.some(line => /\+1 d: test\/hangs\.test\.js killed after 180 s/.test(line)), lines.join('\n'));
   assert.deepEqual(full.notJudged, []);
+  assert.deepEqual(full.slowest.filter(item => item.file === 'test/hangs.test.js').map(item => item.s), [180], 'one entry per file and shift, though the second look ran it again (Gitar on #2993)');
   clock = 0;
   const cut = await findTimeBombs({root, areas, shifts: [1], run, concurrency: 1, log: () => {}, now: () => clock, deadlineMs: 5500});
   fs.rmSync(root, {recursive: true, force: true});
