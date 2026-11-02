@@ -28,12 +28,12 @@ class FocusAnswerTests(unittest.TestCase):
     def test_moved_updates_the_next_interview_and_cancelled_logs_it_without_moving_the_stage(self):
         stores = store_with(huxley_job())
         app_id = only_app(stores)['id']
-        interviews.moved(stores, app_id, '2026-10-03T09:00:00+02:00')
+        interviews.moved(stores, app_id, '2026-10-03T09:00:00+02:00', now=NOW)
         self.assertEqual(only_app(stores)['next_interview'], '2026-10-03T09:00:00+02:00')
         self.assertEqual([(e['kind'], e['interview_at']) for e in stores.events.list()],
                          [('Interview scheduled', '2026-10-03T09:00:00+02:00')])
         with self.assertRaises(ValueError):
-            interviews.moved(stores, app_id, '')
+            interviews.moved(stores, app_id, '', now=NOW)
         stores = store_with(huxley_job())
         interviews.cancelled(stores, only_app(stores)['id'])
         self.assertEqual([e['kind'] for e in stores.events.list()], ['Interview cancelled'])
