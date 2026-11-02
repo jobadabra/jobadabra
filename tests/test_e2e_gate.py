@@ -3,6 +3,7 @@
 A human promotion needs a green, fresh run of THIS build's commit; the daily canary auto-promote, which cannot start a run, may accept the latest run on main.
 A cancelled or skipped run says nothing about the product, so it never counts as red (2 Oct 2026: cancelling a superseded run would have blocked a release).
 """
+import json
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -121,3 +122,33 @@ class BetaApprovalTests(unittest.TestCase):
 
     def test_no_notes_is_none(self):
         self.assertEqual(e2e_gate.beta_verdict('', self.SHA), 'none')
+
+
+class LatestBetaTests(unittest.TestCase):
+    """The by-hand promotion takes the newest beta both platforms approved (owner, 2 Nov 2026: "we just promote the latest beta")."""
+    MAC, WIN = BetaApprovalTests.MAC, BetaApprovalTests.WIN
+
+    def pick(self, releases):
+        """releases: (tag, kind, notes, sha) newest first, kind = build | beta | stable | draft; a fake gh answers from them."""
+        def gh(*args):
+            if args[:2] == ('release', 'list'):
+                return json.dumps([{'tagName': tag, 'isPrerelease': kind != 'stable', 'isDraft': kind == 'draft'} for tag, kind, _, _ in releases])
+            if args[:2] == ('release', 'view'):
+                return next(notes for tag, _, notes, _ in releases if tag == args[2])
+            if args[0] == 'api':
+                return next(sha for tag, _, _, sha in releases if args[1].endswith(f'/commits/{tag}')) + '\n'
+            raise AssertionError(f'unexpected gh {args}')
+        return e2e_gate.latest_beta('jobadabra/jobadabra', gh)
+
+    def test_a_newer_build_no_platform_approved_is_passed_over_for_the_approved_beta(self):
+        both = f'{self.MAC}\n{self.WIN}'
+        self.assertEqual(self.pick([('desktop-v0.8.87', 'build', 'notes', 'a' * 40), ('desktop-v0.8.86', 'beta', both, BetaApprovalTests.SHA),
+                                    ('desktop-v0.8.60', 'stable', both, BetaApprovalTests.SHA)]), 'desktop-v0.8.86')
+
+    def test_one_platform_alone_or_a_draft_is_not_the_latest_beta(self):
+        self.assertEqual(self.pick([('desktop-v0.8.88', 'draft', f'{self.MAC}\n{self.WIN}', BetaApprovalTests.SHA),
+                                    ('desktop-v0.8.87', 'beta', self.MAC, BetaApprovalTests.SHA), ('desktop-v0.8.60', 'stable', '', 'b' * 40)]), '')
+
+    def test_the_list_stops_at_stable_so_an_older_approved_beta_is_never_promoted_over_it(self):
+        both = f'{self.MAC}\n{self.WIN}'
+        self.assertEqual(self.pick([('desktop-v0.8.86', 'stable', both, BetaApprovalTests.SHA), ('desktop-v0.8.85', 'beta', both, BetaApprovalTests.SHA)]), '')

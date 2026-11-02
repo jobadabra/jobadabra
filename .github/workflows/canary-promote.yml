@@ -1,6 +1,6 @@
 name: Release · Promote to stable
 # Each run says what it did (owner, 7 Oct 2026: "I don't see stable in this name"): a hot path names the tag it made stable.
-run-name: ${{ inputs.force_tag && format('Hot path · {0} to stable', inputs.force_tag) || github.event_name == 'schedule' && 'Soak check · beta to stable' || 'Promote to stable (dry run)' }}
+run-name: ${{ inputs.force_tag && format('Hot path · {0} to stable', inputs.force_tag) || inputs.promote_latest_beta && 'Latest beta to stable (by hand)' || github.event_name == 'schedule' && 'Soak check · beta to stable' || 'Promote to stable (dry run)' }}
 
 # The last stretch before stable (2 Oct 2026 pipeline, soak added 4 Oct). With the repository variable JOBADABRA_SOAK = on, e2e.yml no longer promotes a build the moment
 # it passes: it APPROVES it for beta testers (tools/beta-approve.sh), and this workflow decides when it becomes stable, every 8 hours:
@@ -13,11 +13,19 @@ run-name: ${{ inputs.force_tag && format('Hot path · {0} to stable', inputs.for
 #      `release-decision` issue: a person promotes it (hot path below), waits, or drops it.
 # HOT PATH: a security or data-loss fix must not wait for the soak. Run this workflow by hand with `force_tag` and `force_reason`: it promotes that tag with SKIP_E2E=1
 # and writes the reason into the release notes. By hand without them it prints the decision (dry run).
+# BY HAND, THE LATEST BETA: `promote_latest_beta` promotes the newest beta both platforms approved (tools/e2e_gate.py latest-beta) through tools/release-stable.sh, the same proof and
+# store starts as before. Why (2 Nov 2026, owner: "are we going to move the promotion to stable on a workflow? … It can be in this workflow … we just promote the latest beta"):
+# 0.8.86 was promoted from a Mac with no Telegram secrets, so neither its stable alert nor anything else reached the owner, and no run here showed it. The script, started by
+# hand outside GitHub, now starts this instead.
 on:
   schedule:
     - cron: '17 1,9,17 * * *'
   workflow_dispatch:
     inputs:
+      promote_latest_beta:
+        description: 'Promote the latest beta (approved on Mac and Windows) to stable now'
+        type: boolean
+        default: false
       dry_run:
         description: 'Only print the decision'
         type: boolean
@@ -61,8 +69,18 @@ jobs:
           gh release edit "$FORCE_TAG" -R "$REPO" --notes "$(printf '%s\n\nPromoted by hand, soak and end-to-end gate skipped: %s' "$body" "$FORCE_REASON")"
           SKIP_E2E=1 tools/release-stable.sh "$FORCE_TAG"
           echo "HOT PATH: $FORCE_TAG is stable (soak skipped: $FORCE_REASON)"
+      - name: The latest beta to stable (by hand with promote_latest_beta)
+        if: github.event_name == 'workflow_dispatch' && inputs.force_tag == '' && inputs.promote_latest_beta
+        env:
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # the stable alert and a refused store start (tools/release-stable.sh)
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: |
+          tag=$(python3 tools/e2e_gate.py latest-beta "$REPO")
+          [ -n "$tag" ] || { echo "::error title=No beta to promote::No pre-release newer than stable is approved on both Mac and Windows."; exit 1; }
+          echo "The latest beta: $tag"
+          tools/release-stable.sh "$tag"
       - name: End-to-end top-up on the candidate
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.force_tag != '' || inputs.promote_latest_beta)) }}
         run: |
           tag=$(python3 tools/canary_promote.py --candidate)
           [ -n "$tag" ] || { echo "No canary build: nothing to soak."; exit 0; }
@@ -79,7 +97,7 @@ jobs:
           if [ "${recent:-0}" = 0 ]; then gh workflow run e2e.yml -R "$REPO" --ref main -f soak=true -f target_ref="$tag"; echo "Top-up end-to-end run started on $tag."
           else echo "$tag had an end-to-end run in the last 7 hours: no top-up."; fi
       - name: Decide (and promote when switched on)
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.force_tag != '' || inputs.promote_latest_beta)) }}
         env:
           JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOBADABRA_TELEMETRY_KEY }}
           JOBADABRA_REQUIRE_BETA: ${{ vars.JOB_PILOTTO_REQUIRE_BETA }}
@@ -103,7 +121,7 @@ jobs:
           echo "$out" > decision.txt
           exit "$status"
       - name: A canary that stays unproven for 5 days needs a person
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.force_tag != '' || inputs.promote_latest_beta)) }}
         run: |
           tag=$(python3 tools/canary_promote.py --candidate)
           [ -n "$tag" ] || exit 0

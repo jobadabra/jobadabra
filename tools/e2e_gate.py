@@ -83,8 +83,30 @@ def newer_running(repo, sha):
     return _newer_main_build(repo, sha, 'per_page=30', '.workflow_runs[] | select(.status != "completed") | .head_sha')
 
 
+def latest_beta(repo, gh=None):
+    """The tag of the newest pre-release newer than stable that BOTH platforms approved on its own commit (beta_verdict green), or ''.
+    Why (2 Nov 2026, owner: "we just promote the latest beta"): the by-hand promotion in "Release · Promote to stable" takes this tag, the same proof
+    tools/release-stable.sh accepts; a newer build no platform approved is passed over, and the list stops at stable (nothing older is newer than it)."""
+    if gh is None:
+        def gh(*args):
+            return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
+    releases = json.loads(gh('release', 'list', '-R', repo, '-L', '30', '--json', 'tagName,isPrerelease,isDraft') or '[]')
+    for release in releases:
+        if release.get('isDraft'):
+            continue
+        if not release.get('isPrerelease'):
+            return ''
+        tag = release['tagName']
+        notes = gh('release', 'view', tag, '-R', repo, '--json', 'body', '-q', '.body')
+        if beta_verdict(notes, gh('api', f'repos/{repo}/commits/{tag}', '-q', '.sha').strip()) == 'green':
+            return tag
+    return ''
+
+
 if __name__ == '__main__':
-    if sys.argv[1] == 'beta':   # gh release view <tag> --json body -q .body | python3 tools/e2e_gate.py beta <commit-sha>
+    if sys.argv[1] == 'latest-beta':   # python3 tools/e2e_gate.py latest-beta <repo>: the newest beta both platforms approved, or nothing
+        print(latest_beta(sys.argv[2]))
+    elif sys.argv[1] == 'beta':   # gh release view <tag> --json body -q .body | python3 tools/e2e_gate.py beta <commit-sha>
         print(beta_verdict(sys.stdin.read(), sys.argv[2] if len(sys.argv) > 2 else ''))
     elif sys.argv[1] == 'ci':   # gh run list --workflow build.yml --commit <sha> --status completed --json conclusion | python3 tools/e2e_gate.py ci
         print(ci_verdict(json.load(sys.stdin)))

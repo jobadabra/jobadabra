@@ -145,3 +145,26 @@ jobs:
           cp "$file" "$msix"
           echo "Submitting $msix (version ${{ needs.msix.outputs.version }})"
           msstore publish "$msix" --appId 9NW1JJ7Z90MP --verbose
+
+  # Why (2 Nov 2026, owner: "I didn't get a telegram notification about that failure" … "so it was silent to me"): run 41463002482 (0.8.86) failed after it started, and only a
+  # refused start alerted (tools/release-stable.sh). A publish that fails now sends one message with its run and the command that runs it again (desktop/e2e/ci-alert.mjs).
+  # Guard: tests/test_webstore_publish_pipeline.py
+  alert:
+    name: Tell the owner the Microsoft Store publish failed
+    needs: [msix, submit]
+    if: ${{ failure() && inputs.tag != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: desktop/e2e   # main's alert path, whatever the tag holds
+      - name: One message to the CI alerts chat
+        env:
+          TAG: ${{ inputs.tag }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: |
+          message="⚠️ $TAG is stable, but its Microsoft Store publish failed."$'\n'"Run: $RUN"$'\n'"Once its cause is fixed: gh workflow run msix-store.yml -R $GITHUB_REPOSITORY --ref main -f tag=$TAG"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))"

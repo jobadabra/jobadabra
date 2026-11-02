@@ -2,7 +2,8 @@
 
 > **In short:** **every night at 04:00 Zurich**, if the app changed, a build is made, **every end-to-end suite runs on it, and when all pass it becomes the stable release**
 > (friends' apps offer it, the website serves it, their Notion and GitHub runs follow by themselves). Red or no build: nothing changes. A build on demand
-> (`gh workflow run desktop.yml`) is only a pre-release to try; promote it with **`tools/release-stable.sh`** (which runs the same gate).
+> (`gh workflow run desktop.yml`) is only a pre-release to try. **Promote the latest beta by hand in GitHub:** Actions → "Release · Promote to stable" → Run workflow →
+> "Promote the latest beta" (or `tools/release-stable.sh` with no tag, which starts that run); the run is listed there and its Telegram alerts go out.
 > **A beta by hand, in one shot: `tools/beta-release.sh`** (= `gh workflow run desktop.yml -f beta=true`): always builds, then the nightly's gate approves it for beta testers or leaves it a pre-release.
 
 ## 1 · Channels
@@ -10,7 +11,7 @@
 | Channel | Who gets it | How it's made |
 |---|---|---|
 | 🔨 **Build** (a GitHub pre-release) | nobody until approved; 🧪 **Beta** once the gate approves it: people who switched the beta on | nightly at 04:00 Zurich (cron: 02:00 and 03:00 UTC, the step lets the one at 04:xx/05:xx Zurich go on) if anything the app bundles changed since the last release, or on demand: `gh workflow run desktop.yml` (always builds). Not per push (`.github/workflows/desktop.yml`) |
-| ✅ **Stable** ("Latest" on GitHub) | friends' apps + the website's Download buttons | **the nightly pipeline** (below), or you with `tools/release-stable.sh` |
+| ✅ **Stable** ("Latest" on GitHub) | friends' apps + the website's Download buttons | **the nightly pipeline** (below), or you: "Release · Promote to stable" with "Promote the latest beta" |
 
 ### File names: Jobadabra-* only (owner, 31 Oct 2026: "We want only Jobadabra")
 Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64.dmg/.zip`, `Jobadabra-<version>-x64.exe`, `Jobadabra-windows-x64.exe`
@@ -42,14 +43,18 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
 
 1. Push to `main`. The build takes ~20–30 min: Mac `.dmg` + `.zip`, then the Windows installer; it's published as a pre-release.
 2. Try it yourself: download it from GitHub Releases (or wait for your own app to offer it once it's stable).
-3. Promote it:
+3. Promote the latest beta, in GitHub (owner, 2 Nov 2026: "It can be in this workflow … we just promote the latest beta"):
    ```sh
-   tools/release-stable.sh                              # the newest build
-   tools/release-stable.sh desktop-v0.5.3      # a specific one
+   gh workflow run canary-promote.yml -f promote_latest_beta=true -f dry_run=false   # or Actions → "Release · Promote to stable" → Run workflow
+   tools/release-stable.sh                                                          # the same: by hand, the script starts that run
+   DRY_RUN=1 tools/release-stable.sh [desktop-v0.5.3]                               # only prints, on this Mac
    ```
+   The run promotes the newest pre-release both platforms approved (`tools/e2e_gate.py latest-beta`) through `tools/release-stable.sh`, so its stable alert, the store
+   starts and each store's failure alert (with the run's link) reach the CI alerts chat. A promotion run from a Mac had none of these (0.8.86). Another tag: the hot path
+   (`force_tag` + `force_reason`).
    **A beta that both platforms approved is promoted as it is** (owner, 12 Oct 2026, the manual hot path): the same tag, the same version, the same build. The script reads the
-   release notes, and when `Beta-approved:` (Mac) and `Beta-approved (Windows):` both name this build's commit it asks for no fresh run. `FRESH_E2E=1 tools/release-stable.sh <tag>`
-   asks for one as before. The canary and a staged rollout come with more installs (about 5 now); the daily auto-promote and the e2e promote job keep the rules below.
+   release notes, and when `Beta-approved:` (Mac) and `Beta-approved (Windows):` both name this build's commit it asks for no fresh run. `FRESH_E2E=1` on the script
+   (in a workflow step) asks for one as before. The canary and a staged rollout come with more installs (about 5 now); the daily auto-promote and the e2e promote job keep the rules below.
    Without both approval lines (a build the beta gate never approved), the rule below applies.
 
    The **end-to-end journey** is the gate, and it runs here rather than on every push: the script needs a green run of *that build's commit*, no older than two

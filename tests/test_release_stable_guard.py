@@ -80,7 +80,7 @@ def run_alone(command, env, timeout=60):
 
 
 class PromoteGuardTests(unittest.TestCase):
-    def promote(self, assets, e2e='green', skip=False, after='green', no_start=False, extra=None):
+    def promote(self, assets, e2e='green', skip=False, after='green', no_start=False, extra=None, args=(TAG,)):
         """Run the real script against these (name, size) assets, with a fake gh standing in for GitHub."""
         with tempfile.TemporaryDirectory() as folder:
             binary = Path(folder) / 'gh'
@@ -94,10 +94,12 @@ class PromoteGuardTests(unittest.TestCase):
             env = {**{name: value for name, value in os.environ.items() if name not in OWN_SWITCHES and not name.startswith('E2E_')},
                    'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_ALERT': str(Path(folder) / 'alert.txt'), 'FAKE_RELEASE_ALERT': str(Path(folder) / 'release-alert.txt'), 'FAKE_STARTED': str(Path(folder) / 'started'),
                    'FAKE_ASSETS': '\n'.join(f'{name}\t{size}' for name, size in assets), 'FAKE_E2E': e2e, 'FAKE_E2E_AFTER': after, 'E2E_POLL_SECONDS': '0',
+                   # Every route that promotes runs in GitHub (owner, 2 Nov 2026: the promotion moved into a workflow); the by-hand start is played with GITHUB_ACTIONS=''.
+                   'GITHUB_ACTIONS': 'true',
                    **({'SKIP_E2E': '1'} if skip else {}), **({'E2E_NO_START': '1'} if no_start else {}), **(extra or {})}
             # The real gh would edit a real release: the script must find the fake first.
             self.assertEqual(shutil.which('gh', path=env['PATH']), str(binary))
-            done = run_alone(['bash', str(SCRIPT), TAG], env)
+            done = run_alone(['bash', str(SCRIPT), *args], env)
             lines = (self.log.read_text() if self.log.exists() else '').splitlines(keepends=True)
             # The store publish it starts once the release is stable (tests/test_webstore_publish_pipeline.py) is kept apart: calls = the end-to-end runs only.
             stores = ('extension-store-publish.yml', 'msix-store.yml')
@@ -290,6 +292,30 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(self.release_alert, '')
         self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'DRY_RUN': '1'})
         self.assertEqual(self.release_alert, '')
+
+    # By hand (owner, 2 Nov 2026: "It can be in this workflow … we just promote the latest beta"): 0.8.86 was promoted from a Mac with no Telegram secrets, so its stable
+    # alert and the store result never reached the owner. Outside GitHub, the script starts "Release · Promote to stable" and promotes nothing itself.
+    ASSETS = [(OWN, 1), (GENERIC, 1)]
+
+    def test_by_hand_it_starts_the_workflow_for_the_latest_beta_and_edits_no_release(self):
+        done = self.promote(self.ASSETS, extra={'GITHUB_ACTIONS': ''}, args=())
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.calls, 'workflow run canary-promote.yml -R jobadabra/jobadabra --ref main -f promote_latest_beta=true -f dry_run=false\n')
+        self.assertEqual((self.store, self.alert, self.release_alert), ('', '', ''), 'the workflow does the store starts and the alerts')
+        self.assertNotIn('edited', done.stdout)
+        self.assertIn('actions/workflows/canary-promote.yml', done.stdout)
+
+    def test_by_hand_with_a_tag_it_refuses_and_names_the_hot_path(self):
+        done = self.promote(self.ASSETS, extra={'GITHUB_ACTIONS': ''})
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(f'force_tag={TAG}', done.stderr)
+        self.assertEqual(self.calls, '', 'nothing is started for a tag given by hand')
+
+    def test_a_dry_run_by_hand_still_only_prints_here(self):
+        done = self.promote(self.ASSETS, extra={'GITHUB_ACTIONS': '', 'DRY_RUN': '1', 'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('Dry run: would make', done.stdout)
+        self.assertEqual(self.calls, '')
 
 
 if __name__ == '__main__':
