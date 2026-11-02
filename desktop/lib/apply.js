@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as pipeline from './pipeline.js';
 import {registryPathDirs} from './win-path.js';
+import {chosenFile, knownSignedIn} from './cli-files.js';
 import * as session from './claude-session.js';
 import * as terminals from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
@@ -149,16 +150,20 @@ export function extensionBrowser(find = extensionInstall.installed) {
 // On Windows: claude.exe (native installer, ~/.local/bin) or claude.cmd (npm, %APPDATA%\npm).
 export function claudeSearchDirs(env = process.env, platform = process.platform, registry = registryPathDirs) {
   const p = platform === 'win32' ? path.win32 : path.posix;
-  const home = env.USERPROFILE && platform === 'win32' ? env.USERPROFILE : os.homedir();
+  const home = platform === 'win32' ? env.USERPROFILE || os.homedir() : env.HOME || os.homedir();   // HOME from env so a test can give a computer its own home
   // The registry's PATH too (lib/win-path.js): a Claude Code installed after this app started is on it, not on process.env.PATH.
   return [...String(env.PATH || '').split(platform === 'win32' ? ';' : ':').filter(Boolean), ...(env === process.env ? registry({env, platform}) : []),
     p.join(home, '.local', 'bin'), p.join(home, '.claude', 'local'),
     ...(platform === 'win32' ? [env.APPDATA && p.join(env.APPDATA, 'npm')].filter(Boolean) : ['/opt/homebrew/bin', '/usr/local/bin'])];
 }
-export function claudeBinary(env = process.env, exists = fs.existsSync, platform = process.platform, registry = registryPathDirs) {
+// The Claude app's own folders (Windows): a claude.exe there is the chat app, not Claude Code (it would open a window); never taken for it.
+const CHAT_APP = /[\\/](?:AnthropicClaude|WindowsApps)[\\/]/i;
+// The file the person chose comes first (lib/cli-files.js), then PATH and the installers' folders. '' when none exists.
+export function claudeBinary(env = process.env, exists = fs.existsSync, platform = process.platform, registry = registryPathDirs, chosen = chosenFile('claude')) {
   const p = platform === 'win32' ? path.win32 : path.posix;
   const names = platform === 'win32' ? ['claude.exe', 'claude.cmd'] : ['claude'];
-  return claudeSearchDirs(env, platform, registry).flatMap(dir => names.map(name => p.join(dir, name))).find(file => exists(file)) || '';
+  if (chosen && exists(chosen)) return chosen;
+  return claudeSearchDirs(env, platform, registry).flatMap(dir => names.map(name => p.join(dir, name))).find(file => exists(file) && !CHAT_APP.test(file)) || '';
 }
 
 // Git for Windows: Claude Code on Windows runs its commands in its bash. Where the installer puts it, or
@@ -168,8 +173,9 @@ export function gitBash(env = process.env, exists = fs.existsSync) {
     env.LOCALAPPDATA && path.win32.join(env.LOCALAPPDATA, 'Programs', 'Git', 'bin', 'bash.exe')].filter(Boolean).find(file => exists(file)) || '';
 }
 
-// Signed in to Claude Code: its settings file names the Claude account after `claude` → /login.
-export function claudeSignedIn(home = os.homedir(), read = fs.readFileSync) {
+// Signed in to Claude Code: the CLI's own last answer (lib/plan-login.js, kept by lib/cli-files.js) when it was asked; else its settings file names the Claude account after `claude` → /login.
+export function claudeSignedIn(home = os.homedir(), read = fs.readFileSync, known = knownSignedIn('claude')) {
+  if (known !== null && known !== undefined) return known;
   try { return !!JSON.parse(read(path.join(home, '.claude.json'), 'utf8')).oauthAccount; } catch { return false; }
 }
 

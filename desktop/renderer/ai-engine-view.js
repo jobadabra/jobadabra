@@ -28,18 +28,19 @@ export const TEXT = {
     short: 'Use the plan you already pay for.'},
   free: {title: 'Free', text: 'Nothing to set up: no account, no key, no cost. Jobadabra\'s AI tasks just work. '
     + `${FREE_WEAKER} Want the best results? Add your own key any time.`, short: `No account, no key, no cost. ${FREE_WEAKER_SHORT[0].toUpperCase()}${FREE_WEAKER_SHORT.slice(1)}.`},
-  note: 'AI tasks run through your Claude Code and bill to your Claude subscription, not to API credits. Always on (GitHub) '
-    + 'uses an API key. Tasks are retried later when your Claude usage window is exhausted.',
-  codexNote: 'AI tasks run through your Codex and count against your ChatGPT plan, not API credits. Always on (GitHub) uses your OpenAI API key. '
+  // Why (2 Nov 2026, owner): Always on runs on our servers with Jobadabra's own AI; the old lines said it "uses an API key".
+  note: 'AI tasks run through your Claude Code and bill to your Claude subscription, not to API credits. Always on (on our servers) '
+    + 'uses Jobadabra\'s own AI, not your plan. Tasks are retried later when your Claude usage window is exhausted.',
+  codexNote: 'AI tasks run through your Codex and count against your ChatGPT plan, not API credits. Always on (on our servers) uses Jobadabra\'s own AI, not your plan. '
     + 'Tasks are retried later when your plan\'s limit is reached.',
   fallback: 'Use my API key if Claude Code reaches its limit',
   codexFallback: 'Use my OpenAI API key if Codex reaches its limit',
   fallbackHint: 'Otherwise, tasks retry when your usage window resets.',
-  notice: 'Jobadabra will run your own Claude Code on this Mac. It uses your Claude plan\'s usage limits, not API credits. '
-    + 'Scheduled runs in your GitHub repository (Always on) still use your API key. '
+  notice: 'Jobadabra will run your own Claude Code on this computer. It uses your Claude plan\'s usage limits, not API credits. '
+    + 'Always on (on our servers) uses Jobadabra\'s own AI, not your plan. '
     + 'You stay in control: switch back to an API key any time.',
-  codexNotice: 'Jobadabra will run your own Codex on this Mac, signed in with your ChatGPT account. It uses your plan\'s limits, not API credits. '
-    + 'It runs read-only, in a fresh folder for each task, with its tools switched off. Scheduled runs (Always on) still use your OpenAI API key.',
+  codexNotice: 'Jobadabra will run your own Codex on this computer, signed in with your ChatGPT account. It uses your plan\'s limits, not API credits. '
+    + 'It runs read-only, in a fresh folder for each task, with its tools switched off. Always on (on our servers) uses Jobadabra\'s own AI, not your plan.',
   offer: 'New: run these AI tasks on your own Claude Code (your Claude plan) instead of API credits. Your API key stays as it is until you switch.',
 };
 
@@ -116,6 +117,14 @@ export function cliStatus(status = null, family = 'claude') {
   if (status.error && status.authenticated) lines.push({tone: 'warn', text: plainError(status.error)});  // e.g. the usage window
   return {lines, path: status.path || '', usable: !!(status.installed && status.authenticated), checking: false};
 }
+
+// The pills under the picked CLI card. While a check runs the last answer's words are old ("Not installed on this Mac"): only "Checking…" shows (review of [cc] 1/2).
+export function statusLines(cli, busy = false) {
+  if (cli.usable) return [{tone: 'good', text: 'Ready to use'}];
+  return busy ? [{tone: 'neutral', text: 'Checking…'}] : cli.lines.filter(each => each.tone !== 'good');
+}
+// The keys the person saved themselves: Free AI's token in the same slot is not one (state.ownSecrets, lib/secrets.js).
+export const ownKeys = state => state?.ownSecrets || state?.secrets || {};
 
 // Wizard: Continue once a card is picked and it can run (Claude Code verified; the API card with a key saved or typed;
 // Free AI always (nothing to type).

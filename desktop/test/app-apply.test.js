@@ -257,3 +257,10 @@ test('the picker and Background automation share one eligibility rule', async ()
   }
   assert.deepEqual(STARTABLE_STAGES, ['Saved', 'Kit ready', 'Applying']);
 });
+
+test('Apply with Claude\'s "signed in" follows the CLI\'s own answer, so it agrees with the AI chooser (a Windows tester: `claude -p` said "Not logged in" while ~/.claude.json still held an oauthAccount, 2 Nov 2026)', () => {
+  const noFile = () => { throw new Error('no file'); }, withAccount = () => JSON.stringify({oauthAccount: {emailAddress: 'a@b.c'}});
+  assert.equal(apply.claudeSignedIn('C:\\Users\\Ann', noFile, true), true, 'the CLI said signed in, no account file');
+  assert.equal(apply.claudeSignedIn('C:\\Users\\Ann', withAccount, false), false, 'the CLI said signed out, an old account file does not overrule it');
+  assert.equal(apply.claudeSignedIn('C:\\Users\\Ann', withAccount, null), true, 'never asked: the file, as before');
+});

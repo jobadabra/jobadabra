@@ -1,4 +1,5 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
+import {ownSecretsPresent} from './lib/secrets.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
 import {aiNameOf, claudeFamily} from './lib/ai/names.js';
@@ -193,7 +194,7 @@ function handlers() {
   ipcMain.handle('state', () => ({
     about,
     settings: forWindow(storage.settings()),   // the window shows the effective choice, whatever was never saved
-    secrets: storage.secretsPresent(), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
+    secrets: storage.secretsPresent(), ownSecrets: ownSecretsPresent(storage), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
     hasCv: fs.existsSync(storage.path('cv.pdf')), hasProfile: !!(storage.settings().setupDone && (storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID || storage.readText('profile.md'))),
     folder: storage.dir,
     store: storeState(storage),   // where the data lives (lib/store): {label, caps, trying}
@@ -272,7 +273,7 @@ function handlers() {
   registerStoreHandlers({ipcMain, storage, DEMO, log: appLog, toWindow});   // lib/store-handlers.js: Settings → Your data
   registerContactHandlers({ipcMain, storage, DEMO, connected: () => notionGate.tracking(storage), needsNotion, log: appLog,   // lib/contact-handlers.js
     contactSaved: saved => server.contactSaved(storage, saved)});
-  registerSetupHandlers({DEMO, connectNotion, dialog, handleImportant, ipcMain, licenseState, needsNotion, shell, storage, syncCv, getTelemetry: () => telemetry, track, trackSetup, getWindow: () => window, keepLook, renderDocx, toWindow,
+  registerSetupHandlers({app, DEMO, connectNotion, dialog, handleImportant, ipcMain, licenseState, needsNotion, shell, storage, syncCv, getTelemetry: () => telemetry, track, trackSetup, getWindow: () => window, keepLook, renderDocx, toWindow,
     setNotionFrom: value => { notionFrom = value; }});   // lib/setup-handlers.js
   registerStrategyDraftHandlers({DEMO, here, ipcMain, storage, syncCv, toWindow, trackSetup});   // lib/strategy-draft-handlers.js
   registerDraftEditHandlers({ipcMain});   // lib/draft-edit-handlers.js: the draft edited through the Strategy cards

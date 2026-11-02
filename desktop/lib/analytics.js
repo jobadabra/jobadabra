@@ -7,7 +7,8 @@
 import {scrub} from './telemetry.js';
 
 export const EVENTS = ['app_start', 'page_view', 'setup_step', 'search_done', 'first_search_done', 'kit_prepared', 'apply_started', 'applied',
-  'feedback_sent', 'update_installed', 'screen_time', 'ui_click'];
+  'feedback_sent', 'update_installed', 'screen_time', 'ui_click',
+  'ai_setup_state'];   // ai_setup_state {family, state, os}: a readiness state of the person's own AI plan reached (lib/plan-handlers.js; owner, 2 Nov 2026: count who sits at "only the Claude app")
 export const PAGES = ['focus', 'jobs', 'sessions', 'actions', 'calendar', 'interviews', 'strategy', 'settings', 'reports'];
 // What the window may report about use (renderer/usage-signals.js): seconds on a screen, split active/idle, and a click as a control's own name plus its place in the window
 // (whole percents). Anything else is dropped; no label, text or content ever travels.

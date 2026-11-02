@@ -12,7 +12,7 @@ test('Free leads as one big card, then two small logo cards for Claude and OpenA
   assert.ok(family && !family.includes("'free'"), 'Free is not one of the family cards');
   assert.match(src, /id: 'free', icon: 'sparkle', title: TEXT\.free\.title, size: 'hero'/);
   assert.match(src, /logo: COMPANY_LOGO\[id\][^\n]*size: 'compact'/);
-  assert.ok(src.indexOf("parts.push(free,") > 0 && src.indexOf("parts.push(free,") < src.indexOf('parts.push(statusBlock'), 'Free comes first');
+  assert.ok(src.indexOf("parts.push(free,") > 0 && src.indexOf("parts.push(free,") < src.indexOf('if (aboutCli) parts.push('), 'Free comes first');
   assert.match(src, /classList\.add\('is-single'\)/);
   const css = read('../renderer/components.css');
   assert.match(css, /\.ui-choices\.is-single \{ grid-template-columns: minmax\(0, 1fr\); \}/);

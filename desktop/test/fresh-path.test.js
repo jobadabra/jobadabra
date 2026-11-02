@@ -24,12 +24,11 @@ test('refreshPath adds the registry folders the running PATH lacks, never remove
 });
 
 test('both status handlers refresh PATH when their CLI is missing, and the chooser re-reads every CLI on focus and on a timer', () => {
-  const handlers = fs.readFileSync(new URL('../lib/setup-handlers.js', import.meta.url), 'utf8');
-  for (const name of ['claudeCodeStatus', 'codexStatus']) {
-    const body = handlers.slice(handlers.indexOf(`'${name}'`), handlers.indexOf(`'${name}'`) + 700);
-    assert.match(body, /refreshPath\(\)/, `${name} looks again after a PATH refresh`);
-  }
+  // Moved with the status handlers to lib/plan-handlers.js (2 Nov 2026): one status function for both families, so one look at the refresh covers both.
+  const handlers = fs.readFileSync(new URL('../lib/plan-handlers.js', import.meta.url), 'utf8');
+  assert.match(handlers, /refreshPath\(\)/, 'the status looks again after a PATH refresh');
+  for (const name of ['claudeCodeStatus', 'codexStatus']) assert.ok(handlers.includes(`'${name}'`), name);
   const page = fs.readFileSync(new URL('../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
-  assert.match(page, /for \(const which of Object\.keys\(CLI\)\) \{\s*CLI\[which\]\.status\(\)/, 'one loop over every CLI');
-  for (const hook of ["addEventListener('focus', recheck)", "addEventListener('visibilitychange', onVisible)", 'setInterval(']) assert.ok(page.includes(hook), hook);
+  assert.match(page, /for \(const which of Object\.keys\(CLI\)\) \{[^]*?CLI\[which\]\.status\(\)/, 'one loop over every CLI');
+  for (const hook of ["addEventListener('focus', onFocus)", 'recheck(true)', "addEventListener('visibilitychange', onVisible)", 'setInterval(']) assert.ok(page.includes(hook), hook);
 });

@@ -34,6 +34,12 @@ const fs = require('fs');
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log('2.1.7 (Claude Code)'); process.exit(0); }
 if (args[0] === '--help') { console.log('--output-format --model --tools --allowedTools --permission-mode --json-schema --no-session-persistence --disable-slash-commands --setting-sources'); process.exit(0); }
+if (args[0] === 'auth') {   // claude auth status --json: the CLI's own answer (lib/plan-login.js); an old CLI has no such command
+  const mode = ${JSON.stringify(mode)};
+  if (mode === 'old') { console.error("error: unknown command 'auth'"); process.exit(1); }
+  console.log(JSON.stringify({loggedIn: mode !== 'signed-out', authMethod: 'claude.ai', email: 'someone@example.com'}));
+  process.exit(mode === 'signed-out' ? 1 : 0);
+}
 let input = '';
 process.stdin.on('data', d => { input += d; });
 process.stdin.on('end', () => {
@@ -42,11 +48,11 @@ process.stdin.on('end', () => {
   fs.writeFileSync(${JSON.stringify(log)}, JSON.stringify(calls));
   const usage = {input_tokens: 9, output_tokens: 4};
   const mode = ${JSON.stringify(mode)};
-  if (mode === 'ok') console.log(JSON.stringify({type: 'result', subtype: 'success', is_error: false, result: 'OK', usage}));
+  if (mode === 'ok' || mode === 'old') console.log(JSON.stringify({type: 'result', subtype: 'success', is_error: false, result: 'OK', usage}));
   if (mode === 'schema') console.log(JSON.stringify({type: 'result', subtype: 'success', is_error: false, result: '', structured_output: {summary: 'done'}, usage}));
   if (mode === 'repair') console.log(JSON.stringify({type: 'result', subtype: 'success', is_error: false, usage,
     result: calls.length === 1 ? 'no json here' : '{"summary": "fixed"}'}));
-  if (mode === 'signed-out') { console.log(JSON.stringify({type: 'result', is_error: true, result: 'Invalid API key · Please run /login'})); process.exit(1); }
+  if (mode === 'signed-out' || mode === 'contradiction') { console.log(JSON.stringify({type: 'result', is_error: true, result: 'Invalid API key · Please run /login'})); process.exit(1); }
   if (mode === 'limit') { console.log(JSON.stringify({type: 'result', is_error: true, result: 'Claude AI usage limit reached|1760000000'})); process.exit(1); }
 });
 `, {mode: 0o755});
@@ -101,12 +107,14 @@ test('detect: installed with its version and path; missing', {skip: FAKE_ONLY_PO
 });
 
 test('verify: one tiny haiku call, no tools; signed in, signed out, over the limit, not installed', {skip: FAKE_ONLY_POSIX}, async () => {
-  for (const [mode, authenticated, error] of [['ok', true, ''], ['signed-out', false, /run claude in Terminal|sign in/i], ['limit', true, /usage window/]]) {
+  for (const [mode, authenticated, error] of [['ok', true, ''], ['old', true, ''], ['signed-out', false, /not logged in/], ['limit', true, /usage window/], ['contradiction', false, /says signed in/]]) {
     const fake = fakeClaude(mode), st = storage({}, {ANTHROPIC_API_KEY: 'sk-test'});
     try {
       const result = await claudeCode.verify(st, {binary: () => fake.file});
       assert.equal(result.authenticated, authenticated, mode);
+      assert.equal(result.failure, {ok: '', old: '', 'signed-out': 'signed-out', limit: 'limit', contradiction: 'failed'}[mode], mode);
       if (error) assert.match(result.error, error); else assert.equal(result.error, '');
+      if (mode === 'signed-out') { assert.equal(fake.calls().length, 0, 'the CLI says it is signed out: no AI call is made'); continue; }
       const [call] = fake.calls();
       assert.deepEqual(call.args.slice(0, 5), ['-p', '--output-format', 'json', '--model', 'haiku']);
       assert.equal(call.args[call.args.indexOf('--tools') + 1], '');
@@ -114,12 +122,18 @@ test('verify: one tiny haiku call, no tools; signed in, signed out, over the lim
       assert.equal(st.settings().claudeCode.version, '2.1.7');
       assert.equal(st.settings().claudeCode.authenticated, authenticated);
       assert.ok(!JSON.stringify(st.settings()).includes('sk-test'));
+      assert.ok(!JSON.stringify(st.settings()).includes('someone@example.com'), 'the e-mail the CLI prints is never kept');
     } finally { fake.cleanup(); }
   }
   const st = storage();
   const missing = await claudeCode.verify(st, {binary: () => ''});
   assert.equal(missing.installed, false);
-  assert.match(missing.error, /not installed/);
+  // The result keeps only a short neutral detail (the window draws a state from the files, never this text; docs/superpowers/specs/2026-11-02-claude-code-guided-setup-design.md):
+  // no install advice, no winget line, no list of folders (2 Nov 2026, owner: "We should never show a raw error").
+  assert.equal(missing.error, 'claude was not found');
+  assert.doesNotMatch(JSON.stringify(missing), /winget|Looked in|claude\.com\/claude-code/);
+  assert.equal(missing.failure, '');
+  assert.equal((await claudeCode.verify(storage(), {binary: () => '/x/claude', run: (file, args, options, done) => done(new Error('spawn failed'))})).failure, 'did-not-start');
 });
 
 test('the app\'s own calls on Claude Code: a PDF becomes a file only Read may open; structured answers; one repair', {skip: FAKE_ONLY_POSIX}, async () => {

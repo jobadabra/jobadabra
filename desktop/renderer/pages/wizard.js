@@ -7,7 +7,7 @@ import {loadJobs} from './jobs.js';
 import {toDraft} from './strategy-review.js';
 import {hideCards} from './setup-strategy.js';
 import {mountEngine} from './ai-engine.js';
-import {canContinue} from '../ai-engine-view.js';
+import {canContinue, ownKeys} from '../ai-engine-view.js';
 import {initMagic, initWandBurst} from '../magic.js';
 
 // The AI step's engine chooser (pages/ai-engine.js): mounted the first time the step opens. Nothing is pre-selected;
@@ -87,7 +87,7 @@ export function goStep(name) {
   show($('setup-finish'), false);
   const index = STEPS.indexOf(name);
   window.pilot.saveSettings({wizardStep: name});  // reopening the app continues here
-  if (name === 'ai' && shared.state.secrets.ANTHROPIC_API_KEY && !$('anthropic-key').value) {
+  if (name === 'ai' && ownKeys(shared.state).ANTHROPIC_API_KEY && !$('anthropic-key').value) {
     message('ai-message', '✓ Your key is saved. Continue, or paste a new key to replace it.', 'ok');
     // The saved key, masked (dots and its last 4 characters), as in Settings.
     window.pilot.secretHints().then(hints => {
@@ -149,7 +149,7 @@ export async function init() {
     }
     if (chooser?.picked() === 'openai') { await saveOpenAiKey(); return; }
     const key = $('anthropic-key').value.trim();
-    if (!key && shared.state.secrets.ANTHROPIC_API_KEY) {  // saved earlier: just continue
+    if (!key && ownKeys(shared.state).ANTHROPIC_API_KEY) {  // saved earlier (their own key, not Free AI's token): just continue
       shared.state.settings = await window.pilot.setAiEngine('api');
       goStep('cv');
       return;

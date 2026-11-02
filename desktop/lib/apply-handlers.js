@@ -32,6 +32,7 @@ import {extensionGate as installedGate} from './extension-gate.js';
 import {listTabs, openFormTab} from './form-tab.js';
 import {sessionsNamedIn, sessionsWithTab} from './session-tab.js';
 import {sharedCheck} from './shared-check.js';
+import {ownSecretHints} from './secrets.js';
 import {withAccounts, withCompanies, withoutHost} from './site-accounts.js';
 import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
@@ -305,7 +306,6 @@ export function registerApplyHandlers(ctx) {
   ipcMain.handle('rememberAnswer', (_, question, answer) => (DEMO ? Promise.resolve({ok: true}) : needsNotion('profile') || questions.remember(storage, question, answer, undefined, {ai: claudeAi(storage)}))
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));
   // Saved keys as dots plus their last 4 characters, so Settings can show which key is stored (never the key).
-  ipcMain.handle('secretHints', () => Object.fromEntries(['ANTHROPIC_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY', 'OPENAI_API_KEY', 'BRAVE_SEARCH_API_KEY']
-    .map(name => [name, storage.secret(name)]).filter(([, value]) => value).map(([name, value]) => [name, `${'•'.repeat(12)}${value.slice(-4)}`])));
+  ipcMain.handle('secretHints', () => ownSecretHints(storage));   // not Free AI's token in the same slot (lib/secrets.js; review of #3014)
   return {showForm};   // the browser handlers (lib/browser-handlers.js) show a job's form tab through it
 }
