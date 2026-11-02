@@ -10,9 +10,9 @@ name: Release · Build, test, beta
 # Three distinct steps per lane (owner, 7 Oct 2026): Build publishes the files to the one pre-release (offered to nobody), E2E runs the gate suites on it, Release
 # offers it to that platform's beta testers ("Beta-approved:" / "Beta-approved (Windows):", desktop/lib/updater.js). A lane never waits for the other. The same suite on both platforms takes turns (it owns one Notion test page: concurrency group e2e-<suite>).
 # The run is red when a lane is red; that platform's testers are then not offered it.
-# Names: the Worker's cron (app-core/src/scheduler.js) starts the one "Nightly beta" a day; GitHub's schedule is only the backup start, an "E2E check · nightly backup" (owner, 12 Oct 2026); tools/beta-release.sh (-f beta=true) a "Beta by hand"; a plain
+# Names: the Worker's cron (app-core/src/scheduler.js) starts the one "Nightly beta" a day; tools/beta-release.sh (-f beta=true) a "Beta by hand"; a plain
 # gh workflow run desktop.yml is a "Build only": built and published as a pre-release for trying, never tested here, offered to nobody.
-run-name: ${{ inputs.nightly && 'Nightly beta' || github.event_name == 'schedule' && 'E2E check · nightly backup' || inputs.beta && 'Beta by hand' || 'Build only (by hand, not tested)' }}
+run-name: ${{ inputs.nightly && 'Nightly beta' || inputs.beta && 'Beta by hand' || 'Build only (by hand, not tested)' }}
 
 # Builds the Mac app (Apple Silicon .dmg + .zip, bundled Python and pipeline) and publishes it as a
 # GitHub Release: nightly at 04:00 Zurich (only when something that goes into the app changed on main since the last release) or on
@@ -23,12 +23,8 @@ run-name: ${{ inputs.nightly && 'Nightly beta' || github.event_name == 'schedule
 on:
   # Nightly, and by hand (gh workflow run desktop.yml). Not on every push: with several pushes an hour, a release per push
   # was mostly noise and a macOS + Windows build each (2 Oct 2026). A night with nothing new for the app builds nothing.
-  schedule:
-    # ONE backup start only (owner, 10 Oct 2026: "the nightly beta should run only once"). The nightly is started on time by the Worker's cron (app-core/src/scheduler.js, 04:00
-    # Zurich); this GitHub cron exists for the day the Worker fails, and runs only if no nightly has run yet today (the diff step below). It used to be four slots at :17 (02-05 UTC),
-    # because GitHub starts scheduled runs late, up to six hours: all four then ran every night, each one listed as a "Nightly beta" and, after a nightly whose gate failed, able to
-    # rebuild. A scheduled run is always recorded, so fewer crons is the only way to a shorter list. Not on the hour: :00 is GitHub's busiest minute.
-    - cron: '17 5 * * *'
+  # Why (2 Nov 2026, owner: "If yers, let's delete this second gate"): no GitHub schedule. The Worker's cron (app-core/src/scheduler.js) started the
+  # "Nightly beta" every day 23 Oct-2 Nov at 02:00/03:00 UTC; the backup cron '17 5 * * *' ran 4-10 h late on each of those days and did nothing (0 min, "already ran today").
   workflow_dispatch:
     inputs:
       ai_provider:
@@ -129,18 +125,7 @@ jobs:
           ALERT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           ALERT_CHAT: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" != schedule ] && [ "$NIGHTLY" != true ]; then echo "build=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          # A nightly already ran today (the Worker's, on time): this backup schedule has nothing to do. Without the check every backup run compared against the last APPROVED
-          # release, so after a nightly whose gate failed it built the same night again (10 Oct 2026: four "Nightly beta" runs listed for one night).
-          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
-            earlier=$(gh run list -R "$GITHUB_REPOSITORY" --workflow desktop.yml --limit 30 --json databaseId,displayTitle,createdAt \
-              -q "[.[] | select(.displayTitle == \"Nightly beta\") | select(.createdAt >= \"$(date -u +%Y-%m-%d)T00:00:00Z\") | select(.databaseId != $GITHUB_RUN_ID)] | length" || echo 0)
-            if [ "${earlier:-0}" -gt 0 ]; then echo "A nightly beta already ran today: the backup schedule has nothing to do."; echo "build=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          fi
-          hour=$(TZ=Europe/Zurich date +%H)
-          # 04:00-15:59: GitHub starts scheduled runs late, on 4 Oct 2026 by six hours (07:52 and 09:29 UTC), and the old 04:xx-05:xx guard skipped
-          # both, so no build and no beta that day. A late run still builds; the second of the two finds nothing new since the first one's release.
-          if [ "$GITHUB_EVENT_NAME" = schedule ] && { [ $((10#$hour)) -lt 4 ] || [ $((10#$hour)) -gt 15 ]; }; then echo "It is $hour:xx in Zurich: outside the nightly window (04:00-15:59): not this schedule's turn."; echo "build=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$NIGHTLY" != true ]; then echo "build=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           # Against the newest release that reached someone (a stable, or a build a platform's gate approved as beta), never a build that failed
           # its gate: 9 Oct 2026 the failed 0.6.12 counted as "the last release", the nightly built nothing and the fix waited for a manual beta.
           tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
@@ -163,7 +148,7 @@ jobs:
       # something to build (the diff step above), so a night with nothing new does not start re-checks. Guard: tests/test_workflow_nightly_red_gate.py
       - name: Main's e2e red? Re-check its red suites first (nightly)
         id: redmain
-        if: steps.diff.outputs.build == 'true' && (github.event_name == 'schedule' || inputs.nightly) && inputs.over_red_main == ''
+        if: steps.diff.outputs.build == 'true' && inputs.nightly && inputs.over_red_main == ''
         timeout-minutes: 55   # Why (31 Oct 2026, a8; beta 41246139016): the gate may wait RED_MAIN_FIND_S 300 + RED_MAIN_WAIT_S 2700 = 50 min; a cap equal to the wait kills it before its own "no beta" line
         env:
           GH_TOKEN: ${{ github.token }}
@@ -259,7 +244,7 @@ jobs:
             echo "::warning::Workflows changed on main during this build: not released; a new build of main starts."
             echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main during the build)."
             # what this run was, as below: a beta stays a beta, a nightly a nightly
-            gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ (inputs.nightly || github.event_name == 'schedule') && 'true' || 'false' }}
+            gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ inputs.nightly && 'true' || 'false' }}
             echo "released=false" >> "$GITHUB_OUTPUT"
             # This run built nothing and must not read "success" (18 Oct 2026: a Beta by hand ended green with 7 of 8 jobs skipped): it ends cancelled, the reason in its summary.
             gh run cancel "$GITHUB_RUN_ID" || true
@@ -287,7 +272,7 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true   # a half-made draft, if any
               echo "::warning::Release refused (403) after main moved: not released; a new build of main starts."
               # Keep what this build was (6 Oct 2026: a beta by hand came back as a plain build, which no gate approves): a beta stays a beta, a nightly a nightly.
-              gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ (inputs.nightly || github.event_name == 'schedule') && 'true' || 'false' }}
+              gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ inputs.nightly && 'true' || 'false' }}
               echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main)."
               echo "released=false" >> "$GITHUB_OUTPUT"
               gh run cancel "$GITHUB_RUN_ID" || true   # ends cancelled, never "success" (see above)
@@ -300,7 +285,7 @@ jobs:
       - name: Today's e2e AI budget
         timeout-minutes: 5
         id: spend
-        if: steps.release.outputs.released == 'true' && (github.event_name == 'schedule' || inputs.nightly || inputs.beta)
+        if: steps.release.outputs.released == 'true' && (inputs.nightly || inputs.beta)
         working-directory: desktop/e2e
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -311,7 +296,7 @@ jobs:
       - name: Plan the E2E suites for both lanes
         timeout-minutes: 5
         id: plan
-        if: steps.release.outputs.released == 'true' && (github.event_name == 'schedule' || inputs.nightly || inputs.beta)
+        if: steps.release.outputs.released == 'true' && (inputs.nightly || inputs.beta)
         working-directory: desktop/e2e
         env:
           GH_TOKEN: ${{ github.token }}
@@ -322,7 +307,7 @@ jobs:
           GATE_TAG: desktop-v${{ steps.version.outputs.version }}
           GATE_UNIT: '1'   # Why (1 Nov 2026, owner): the desktop unit tests are one more leg of each lane's Test matrix (lib/unit-leg.mjs), not a step of Build; e2e.yml never sets this
           GATE_STORE_LEGS: one   # one Mac job per suite: this workflow's copy of the job does not pass the leg's store to the suite (desktop/e2e/plan-run.mjs says why)
-          GATE_KIND: ${{ (github.event_name == 'schedule' || inputs.nightly) && 'nightly' || 'beta' }}   # a beta by hand runs quality only when what it watches changed
+          GATE_KIND: ${{ inputs.nightly && 'nightly' || 'beta' }}   # a beta by hand runs quality only when what it watches changed
           OVER: ${{ steps.spend.outputs.over }}
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
@@ -705,9 +690,9 @@ jobs:
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
-      E2E_BETA_RETRY: ${{ (github.event_name == 'schedule' || inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta (nightly or by hand) gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
+      E2E_BETA_RETRY: ${{ (inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"; 2 Nov 2026: the Worker's nightly and a beta by hand are the only betas, no schedule event): a beta gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
       E2E_SEED: '0'   # the fixed path (lib/variation.mjs), on both platforms
-      E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}   # the paid AI judge steps: the nightly beta only, under today's budget (7 Oct 2026)
+      E2E_FULL: ${{ inputs.nightly && needs.changes.outputs.over != 'true' && '1' || '' }}   # the paid AI judge steps: the nightly beta only, under today's budget (7 Oct 2026)
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
@@ -1057,7 +1042,7 @@ jobs:
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
-      E2E_BETA_RETRY: ${{ (github.event_name == 'schedule' || inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta (nightly or by hand) gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
+      E2E_BETA_RETRY: ${{ (inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"; 2 Nov 2026: the Worker's nightly and a beta by hand are the only betas, no schedule event): a beta gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)

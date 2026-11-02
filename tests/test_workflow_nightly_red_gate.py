@@ -35,7 +35,7 @@ class NightlyRedGate(unittest.TestCase):
 
     def test_only_a_nightly_runs_it_never_a_beta_by_hand(self):
         condition = re.search(r'if: (.*)', step('id: redmain')).group(1)
-        self.assertIn("github.event_name == 'schedule' || inputs.nightly", condition)
+        self.assertIn('inputs.nightly', condition)
         self.assertNotIn('inputs.beta', condition, 'a beta by hand is gated by tools/beta-release.sh, not twice')
         self.assertIn("inputs.over_red_main == ''", condition, 'a --force beta skips the gate')
         self.assertIn('tools/red-main-gate.sh', (ROOT / 'tools/beta-release.sh').read_text())
