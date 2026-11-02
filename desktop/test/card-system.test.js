@@ -13,6 +13,7 @@ const source = file => fs.readFileSync(new URL(file, root), 'utf8');
 // A button whose words are a card's own save step, drawn in code.
 const OWN_SAVE = /(?:el\('button',\s*'[^']*',\s*'(?:Save|Save changes|Cancel|Discard|Discard changes)'|button\('(?:Save|Save changes|Cancel|Discard|Discard changes)'|textContent = 'Save changes')/;
 const NOT_A_CARD = {
+  'ai-plan-card.js': 'Cancel stops a running install or sign-in, not a save step',
   'save-bar.js': 'the page save bar itself',
   'gallery.js': 'the component gallery shows every button kind',
   'claude-offer.js': 'Cancel a pending Claude offer, a row of the session page',

@@ -123,6 +123,23 @@ export function statusLines(cli, busy = false) {
   if (cli.usable) return [{tone: 'good', text: 'Ready to use'}];
   return busy ? [{tone: 'neutral', text: 'Checking…'}] : cli.lines.filter(each => each.tone !== 'good');
 }
+// The states whose card is about getting the program, and what a finished Install / Sign in says (one plain sentence, never the process's text).
+export const INSTALL_STATES = ['nothing', 'app-only', 'broken', 'elsewhere', 'needs-git'];
+const SENTENCE = {failed: 'The install did not finish. Try again, or install it by hand with the steps below.', notFound: 'The install did not finish. Install it by hand with the steps below.',
+  openedGit: 'We opened the Git download page. Install it there, then come back: Jobadabra checks again by itself.', signIn: 'Sign-in did not finish. Press Sign in to try again.'};
+/**
+ * what ('install' | 'install-git' | 'sign-in'), the run's result {ok, reason}, the family's state after it -> {problem, manual, check}
+ * problem: one sentence or ''; manual: show the numbered steps and the page buttons; check: verify the CLI now (it appeared, or Git was added).
+ * An installer that ends ok but leaves the program missing is a failure (review of [cc] 2/2: the person saw a minute of progress and the same card).
+ */
+export function runOutcome(what, result, stateAfter) {
+  if (['cancelled', 'test', 'busy'].includes(result.reason)) return {problem: '', manual: false, check: false};
+  if (what === 'sign-in') return {problem: result.ok ? '' : SENTENCE.signIn, manual: false, check: false};
+  if (result.reason === 'opened-page') return {problem: SENTENCE.openedGit, manual: true, check: false};
+  const missing = what === 'install' && INSTALL_STATES.includes(stateAfter) && stateAfter !== 'needs-git';
+  if (result.ok && !missing) return {problem: '', manual: false, check: true};
+  return {problem: result.reason === 'not-found' ? SENTENCE.notFound : SENTENCE.failed, manual: true, check: false};
+}
 // The keys the person saved themselves: Free AI's token in the same slot is not one (state.ownSecrets, lib/secrets.js).
 export const ownKeys = state => state?.ownSecrets || state?.secrets || {};
 

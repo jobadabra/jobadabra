@@ -39,7 +39,8 @@ export function codexSearchDirs(env = process.env, platform = process.platform) 
   const p = platform === 'win32' ? path.win32 : path.posix;
   const home = platform === 'win32' ? env.USERPROFILE || os.homedir() : env.HOME || os.homedir();
   return [...String(env.PATH || '').split(platform === 'win32' ? ';' : ':').filter(Boolean), p.join(home, '.local', 'bin'),
-    ...(platform === 'win32' ? [env.APPDATA && p.join(env.APPDATA, 'npm')].filter(Boolean)
+    // Why (2 Nov 2026, real Windows runner): the official installer (chatgpt.com/codex/install.ps1) puts codex.exe in %LOCALAPPDATA%\Programs\OpenAI\Codex\bin and only edits the person's PATH for NEW windows, so a running app never saw it.
+    ...(platform === 'win32' ? [env.APPDATA && p.join(env.APPDATA, 'npm'), env.LOCALAPPDATA && p.join(env.LOCALAPPDATA, 'Programs', 'OpenAI', 'Codex', 'bin')].filter(Boolean)
       : [p.join(home, '.npm-global', 'bin'), p.join(home, '.codex', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'])];
 }
 /** The Codex file to run: the file the person chose, else the first codex[.exe|.cmd] in PATH and the installers' folders (HOME read from env); '' when none exists. Reads files only (exists is injectable). */
