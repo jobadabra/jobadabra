@@ -96,6 +96,12 @@ test('Codex found in a chosen file', () => {
   assert.equal(codexBinary({PATH: ''}, file => file === chosen, 'win32', chosen), chosen);
 });
 
+test('Codex put by its official Windows installer is found without any PATH (the real-runner row "Windows · Codex", 2 Nov 2026: installed, then "nothing")', () => {
+  const folder = 'C:\\Users\\runneradmin\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin';   // the folder the installer script names (install.ps1: Programs\\OpenAI\\Codex\\bin)
+  const file = `${folder}\\codex.exe`;
+  assert.equal(codexBinary({PATH: '', LOCALAPPDATA: 'C:\\Users\\runneradmin\\AppData\\Local', USERPROFILE: 'C:\\Users\\runneradmin'}, candidate => candidate === file, 'win32', ''), file);
+});
+
 test('every failure a check can return has one state, and every state has a name', () => {
   const computer = pc(WIN, {has: [CLAUDE_EXE]});
   for (const failure of FAILURES) {
