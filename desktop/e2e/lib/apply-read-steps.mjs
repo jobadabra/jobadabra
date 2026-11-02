@@ -43,10 +43,14 @@ const chipOfRow = (page, title) => page.evaluate(({text, selector}) => [...docum
 /** Every chip text now on the Jobs list, for a failure message. */
 const allChips = page => page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
 
-/** Wait until `accepts(read())` within the current step's deadline; a cap is only a hang failure, and the hang message names `why` and the last value read. */
-async function readState(why, read, accepts) {
-  const result = await pollUntil(read, accepts, {capMs: stepTimeLeft(), what: why});
-  if (!accepts(result.value)) throw new Error(why);
+/**
+ * Wait until `accepts(read())` within the current step's deadline; a cap is only a hang failure, and the hang message names `why` and the last value read.
+ * `wait`: pollUntil options over the step's own (a test's short cap).
+ */
+export async function readState(why, read, accepts, wait = {}) {
+  const result = await pollUntil(read, accepts, {capMs: stepTimeLeft(), what: why, ...wait});
+  // Why (Gitar on #2986): a read that never answered leaves the starting value '', which two checks accept; a hung read is a failure whatever its value.
+  if (result.hung || !accepts(result.value)) throw new Error(why);
 }
 
 /**

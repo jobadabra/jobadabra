@@ -25,6 +25,26 @@ test('a hang names the step\'s wait that ran out and the last value it read', as
   });
 });
 
-test('a hang with no wait run out keeps its old message; a wait from the step before is not named', async () => {
+test('a hang with no wait run out keeps its old message', async () => {
   await assert.rejects(withLimit(never(), 30, 'x'), error => { assert.equal(error.message, 'the step did not finish within 0.03 s (it hung): no app session'); return true; });
+});
+
+// Gitar on #2986: a hung step's promise runs on after its cap (Promise.race cancels nothing), so its wait can run out while the next step runs.
+test('a wait of a hung step that runs out during the next step is not named in that step\'s hang', async () => {
+  const hungStep = async () => {
+    await pollUntil(async () => 'Not checked', chip => chip !== 'Not checked', {capMs: 60, tickMs: 5, log: () => {}, what: 'the hung step\'s chip wait'});
+    await never();
+  };
+  await assert.rejects(withLimit(Promise.resolve().then(hungStep), 30, 'x'), /it hung/);
+  // The hung step's wait runs out at 60 ms, inside this step's 120 ms.
+  await assert.rejects(withLimit(never(), 120, 'y'), error => { assert.equal(error.message, 'the step did not finish within 0.12 s (it hung): no app session'); return true; });
+});
+
+// Gitar on #2986: a read that never answers leaves pollUntil's starting value '', which "no read tab open" (and "not Not checked") would accept.
+test('a read that never answers fails the read step, though its starting value would pass the check', async () => {
+  const {readState} = await import('../../lib/apply-read-steps.mjs');
+  await assert.rejects(readState('the read tab was never closed', never, open => !open.length, {capMs: 20, readGraceMs: 10, log: () => {}}), error => {
+    assert.equal(error.message, 'the read tab was never closed');
+    return true;
+  });
 });
