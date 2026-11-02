@@ -1,5 +1,6 @@
 """The shared checker selects compatible runtimes, preserves failure status and uses the same suite commands as CI."""
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -42,6 +43,17 @@ class CheckTests(unittest.TestCase):
         picked = check.commands('desktop', False, 'node', 'npm', ['test/a.test.js'])
         self.assertEqual([c[1][:3] for c in picked], [['node', 'scripts/stage.mjs'], ['npm', 'run', 'lint'], ['node', '--test', 'test/a.test.js']])
         self.assertEqual([c[1][1] for c in check.commands('desktop', False, 'node', 'npm', [])], ['scripts/stage.mjs', 'run'])
+
+    def test_app_only_desktop_runs_npm_tests_node_command_without_the_tooling_and_the_lint(self):
+        # 2 Nov 2026 (owner: the harness tests are "not a blocker or a reliability gate for the release"): the release pipeline's desktop half.
+        app = check.commands('desktop', False, 'node', 'npm', app_only=True)
+        self.assertEqual(app[0][1], ['node', 'scripts/stage.mjs'])
+        self.assertNotIn(['npm', 'run', 'lint'], [c[1][:3] for c in app])
+        node = app[-1][1]
+        npm_test = json.loads((check.ROOT / 'desktop/package.json').read_text())['scripts']['test']
+        self.assertIn(' '.join(node[1:-1]) + ' test/*.test.js', npm_test, 'the same flags as `npm test` (its reporter prints the summary line the action reads)')
+        self.assertRegex(node[-1], r'^test/!\(.*\bclean-code-js\b.*\)\.test\.js$')
+        self.assertEqual(check.commands('desktop', False, 'node', 'npm')[0][1], ['npm', 'test'], 'without --app-only (CI · Tests) every test still runs')
 
     def test_failure_propagates_and_external_services_are_disabled(self):
         with mock.patch.object(check.subprocess, 'run', return_value=mock.Mock(returncode=3)) as run:

@@ -57,13 +57,17 @@ class ShardTests(unittest.TestCase):
     def test_the_bootstrap_module_that_sets_the_fake_ids_exists(self):
         self.assertIn(shards.BOOTSTRAP, shards.all_modules())
 
-    def test_the_dev_tooling_left_out_of_the_build_exist_and_are_the_only_difference(self):
-        everything = shards.all_modules()
-        for name in shards.DEV_TOOLING:
-            self.assertIn(name, everything, f'{name} is listed as dev tooling but there is no tests/{name}.py: a renamed file would silently join the Build box')
-        app = [m for m in everything if m not in shards.DEV_TOOLING]
-        self.assertEqual(len(app) + len(shards.DEV_TOOLING), len(everything))
-        self.assertGreater(len(app), 150, 'the Build box still runs the product\'s Python tests')
+    def test_app_only_leaves_out_exactly_the_tooling_modules(self):
+        # 2 Nov 2026: the rule is tools/app-tests.py's (tests/test_app_tests.py); a hand list here had missed beta 0.9.1's five slowest tooling modules.
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {'JOBADABRA_PY_DRY_RUN': '1'}), contextlib.redirect_stdout(out):
+            self.assertEqual(shards.main(['--app-only', '--jobs', '1']), 0)
+        ran = set(out.getvalue().split('modules: ', 1)[1].strip().split(', '))
+        tooling = shards.tooling_modules()
+        self.assertIn('test_ship_pr', tooling)
+        self.assertEqual(ran & tooling, set())
+        self.assertEqual(sorted(m for m in set(shards.all_modules()) - ran - tooling if not shards.is_lock_module(m)), [], 'nothing else is left out (the lock family has its own rule)')
+        self.assertGreater(len(ran), 300, 'the release pipeline still runs the engine\'s Python tests')
 
 
 class SlowestTests(unittest.TestCase):

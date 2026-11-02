@@ -7,6 +7,7 @@ Width: cores / push-check slots, +2 while free memory is over 3 GB (default_jobs
 Exit 0 when every shard passed (exit 0 and unittest's own summary); otherwise 1 with each failing shard's output on stderr.
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -21,10 +22,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TESTS = ROOT / 'tests'
 BOOTSTRAP = 'test_0_notion_ids'
-# Tests of this repo's own scripts and hooks (git, bash, the push hook, ship, worktrees): not the desktop app. The release run's Build box leaves them out with --app-only
-# (owner, 10 Oct 2026: "unit tests only related to the desktop app"); CI · Tests, without the flag, still runs them on every push.
-DEV_TOOLING = ('test_affected_tests', 'test_check', 'test_check_slot', 'test_commit_subject', 'test_pre_push_areas', 'test_pre_push_budget', 'test_pre_push_check',
-               'test_release_stable_guard', 'test_ship', 'test_ship_background', 'test_stop_means_stop', 'test_worktree')
+# --app-only leaves out the tests of this repo's own tooling (owner, 10 Oct 2026: "unit tests only related to the desktop app"): the release pipeline's unit legs pass it,
+# CI · Tests still runs them on every push. Why (2 Nov 2026, a8): a hand list here (12 modules) had missed the 5 slowest of beta 0.9.1 (test_ship_pr 220 s …); the rule
+# is tools/app-tests.py's, which reads each module's imports.
+
+
+def tooling_modules():
+    """The modules --app-only leaves out (tools/app-tests.py)."""
+    spec = importlib.util.spec_from_file_location('app_tests', ROOT / 'tools/app-tests.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return set(module.python_tooling_tests())
 
 
 # The lock family (owner, 12 Oct 2026): the heavy lock's, landing queue's and check slot's own tests (~150 s of shard time and the day's top flake) run on a PR only when it touches
@@ -168,12 +176,14 @@ def wait_with_progress(threads, shard_list, results, bad, started):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('modules', nargs='*', help='test modules to run (default: all)')
-    parser.add_argument('--app-only', action='store_true', help='leave out the tests of this repo\'s own dev tooling (DEV_TOOLING)')
+    parser.add_argument('--app-only', action='store_true', help='leave out the tests of this repo\'s own tooling (tools/app-tests.py)')
     parser.add_argument('--jobs', type=int, default=int(os.environ.get('JOBADABRA_PY_JOBS', 0)) or default_jobs(os.cpu_count() or 4, int(os.environ.get('JOBADABRA_CHECK_SLOTS', 2) or 0), free_gb()))   # JOBADABRA_PY_JOBS=4 (or --jobs 4) is the old width; JOBADABRA_PY_SERIAL=1 (tools/check.py) one process
     args = parser.parse_args(argv)
     modules = args.modules or all_modules()
     if args.app_only:
-        modules = [m for m in modules if m not in DEV_TOOLING]
+        tooling = tooling_modules()
+        modules = [m for m in modules if m not in tooling]
+        print(f'py-shards: tooling tests left out: {len(tooling)} modules (--app-only; tools/app-tests.py)', flush=True)
     if not args.modules and not lock_tests_needed(changed_files()):
         left = [m for m in modules if is_lock_module(m)]
         modules = [m for m in modules if not is_lock_module(m)]
