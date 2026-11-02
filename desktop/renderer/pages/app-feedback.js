@@ -32,14 +32,18 @@ function drawPreview() {
   $('app-feedback-logs').textContent = sections.map(([title, text]) => `===== ${title} =====\n${text}`).join('\n\n');
 }
 
-// The Profile is read only when the person turns it on (a Notion store takes seconds); a failed read turns the switch back off and says so.
+// Design (Gitar on #3021, 3 Nov 2026; the third race in this read): the main process holds the one snapshot, for the dialog that asked (feedback-handlers.js `mine`); this page only mirrors it
+// for the SAME dialog. Each open() makes a new `prepared`, so a read that finishes after the dialog was closed and reopened (asked !== prepared) is dropped: it neither fills the
+// new dialog's mirror (main would not hold it) nor touches its switch or its Send button, which the new open() has already reset. Send is off only while this dialog's read runs.
 async function profileChanged() {
   const box = $('app-feedback-include-profile');
   if (box.checked && !prepared.profile) {
+    const asked = prepared;
     box.disabled = true;
     $('app-feedback-send').disabled = true;   // Why (Gitar on #3021): a Send during the read would leave the snapshot out without saying so
     drawPreview();
     const {profile} = await window.pilot.feedbackProfile().catch(() => ({profile: null}));
+    if (asked !== prepared) return;
     prepared.profile = profile;
     box.disabled = false;
     $('app-feedback-send').disabled = false;
@@ -60,6 +64,7 @@ async function open() {
   $('app-feedback-page-note').textContent = prepared.page ? PAGE_NOTE : 'This screen has no data to send: Settings and your Profile are only sent through the snapshot below.';
   $('app-feedback-include-profile').checked = false;   // off by default, with its privacy note
   $('app-feedback-include-profile').disabled = false;
+  $('app-feedback-send').disabled = false;   // a read left pending by the last dialog never holds this one
   const email = prepared.identity?.email || '';
   $('app-feedback-contact').value = email;
   $('app-feedback-contact-note').hidden = !email;
