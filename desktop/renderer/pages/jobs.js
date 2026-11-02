@@ -91,6 +91,7 @@ export async function loadJobs() {
     }
     const fresh = await writes.read();
     if (fresh) { showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
+    else await writes.settled();   // that write's reread paints the fresh list: a Start waits for it too (jobs-state.js)
   } catch (error) {
     $('jobs-stats').textContent = plainError(`Couldn't read your jobs: ${error.message}`);
   }

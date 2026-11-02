@@ -24,6 +24,8 @@ export function jobWrites({read, paint}) {
       if (!rereading) rereading = reread().finally(() => { rereading = null; });
       return rereading;
     },
+    /** Resolves once the reread of the latest write has painted (at once when none runs). Why (Gitar on #2988): a start read a write overtook returns null, and only this reread paints the fresh list. */
+    settled: () => rereading || Promise.resolve(),
     // Any other read of the list (start, Show more, a refresh's live reload): its answer, or null when a write landed while it ran.
     async read(options) {
       const at = writes;
