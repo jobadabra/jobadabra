@@ -1,4 +1,4 @@
-// Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites pr-suites.yml starts and waits for (they block the merge since 26 Oct 2026, gate G1a). Always exits 0: the e2e run decides.
+// Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites main-steps.yml starts after a merge (pr-suites.yml, which ran them on every PR, is gone since 1 Nov 2026). Exits 0 (the e2e run decides), except --changed-steps (the PR check, pr-e2e-steps.yml), which exits 1 when it cannot read the diff: it fails closed, never as "no step changed".
 // Job: pick the suites
 //   node pr-suites.mjs --base origin/main          the table
 //   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` and `steps={suite: [step names]}` for the run (workflow pr-suites.yml with --pull-request: no step names, every suite whole;
