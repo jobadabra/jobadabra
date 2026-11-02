@@ -16,6 +16,8 @@ const tell = name => globalThis.document?.dispatchEvent?.(new Event(name));
 export function contactRead() { savedContact = contactNow(); contact?.changed(); tell('details-changed'); }
 /** The facts on screen are now the baseline the drafts count from: reads the boxes, minus a zone only suggested (a draft, not saved); no failure path. */
 export function factsRead() { savedFacts = factsNow({saved: true}); facts?.changed(); tell('details-changed'); }
+/** One box's value was just saved by the app itself (a CV value it was sure of): the drafts count from it, other drafts untouched. */
+export function contactSavedAs(field, value) { savedContact = {...savedContact, [field]: value}; contact?.changed(); tell('details-changed'); }
 export const contactDirty = () => countContact(savedContact, contactNow()) > 0;
 export const factsDirty = () => countFacts(savedFacts, factsNow()) > 0;
 // One card's own changes (its Done shows only at 0): Contact's or Links' fields, one fact section.

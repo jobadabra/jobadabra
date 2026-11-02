@@ -53,11 +53,12 @@ test('a failure is kept for that CV (no paying again on every open) and said; no
   assert.deepEqual(pending({cv: 'old', proposals: [{field: 'phone', value: '1'}]}, 'new', coop), []);
 });
 
-test('the window shows proposals in the Your details boxes and Save is the only way they are kept', () => {
+test('the window offers unsure proposals and Save is the only way they are kept; a sure value is saved one detail at a time', () => {
   const page = fs.readFileSync(new URL('../renderer/pages/contact-proposals.js', import.meta.url), 'utf8');
   const profile = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
-  assert.ok(!/saveContact/.test(page), 'proposals never save by themselves');
+  assert.ok(!/saveContact\(/.test(page), 'no proposal saves the whole form');
+  assert.match(page, /if \(!sure \|\| !emptyBox\(field\)\) continue;/, 'only a sure value in an empty box is saved by itself');
   assert.match(profile, /loadProposals\(\);/);
   assert.match(fs.readFileSync(new URL('../renderer/pages/profile-menu.js', import.meta.url), 'utf8'), /label: 'Fill empty details from my CV', run: \(\) => fillFromCv/, 'Fill from my CV lives in the Profile ⋯ menu');
   assert.match(html, /data-contact="salutation"/);

@@ -30,6 +30,7 @@ export function registerContactHandlers({ipcMain, storage, DEMO, connected, need
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));
   // One detail confirmed on the session page ("Use" on a row): merged into the others, never replacing them.
   ipcMain.handle('saveContactField', async (_, key, value) => {
+    if (DEMO) return {ok: true};   // the demo window keeps nothing (a CV value saved on open: pages/contact-proposals.js settleSure)
     const gate = needsNotion('profile');
     if (gate) return gate;
     if (!contactDetails.LABELS[key] || !String(value || '').trim()) return {ok: false, error: 'Nothing to save'};
