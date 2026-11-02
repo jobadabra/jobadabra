@@ -37,6 +37,7 @@ jobs:
     outputs:
       tags: ${{ steps.pick.outputs.tags }}
     steps:
+      - uses: actions/checkout@v5   # tools/release-after-rename.sh
       - id: pick
         env:
           GH_TOKEN: ${{ github.token }}
@@ -46,16 +47,19 @@ jobs:
           tags=""
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 40 --json tagName,isDraft,isPrerelease -q '.[] | select((.isDraft | not) and (.isPrerelease | not)) | .tagName'); do
             names=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+            # Why (2 Nov 2026, owner: no JOB_PILOTTO_ support): the proof seeds and opens the old release through JOBADABRA_* names; a release built before #2926 ignores them, so only newer ones are tested
+            if tools/release-after-rename.sh "$tag"; then :; else rc=$?; [ "$rc" = 1 ] && continue; echo "::error::Could not tell whether $tag is after the rename"; exit "$rc"; fi
             if echo "$names" | grep -qx 'Jobadabra-mac-arm64.zip' && echo "$names" | grep -qx 'Jobadabra-windows-x64.exe'; then tags="$tags $tag"; fi
             [ "$(echo $tags | wc -w)" -ge "$want" ] && break
           done
-          [ -n "$tags" ] || { echo "::error::No stable release with both installers"; exit 1; }
           echo "tags=$(echo $tags)" >> "$GITHUB_OUTPUT"
-          echo "Testing updates from:$tags"
+          if [ -n "$tags" ]; then echo "Testing updates from:$tags"
+          else echo "::notice::Skipped: no stable release with both installers was built after the rename (#2926); this check resumes with the next stable."; fi
 
   mac:
     name: Upgrade · Mac
     needs: releases
+    if: needs.releases.outputs.tags != ''
     runs-on: macos-latest   # Apple Silicon, the image the Mac build and its e2e run on
     timeout-minutes: 60
     steps:
@@ -76,18 +80,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release download "${{ inputs.new_tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-mac-arm64.zip' -D desktop/dist
-      - name: The build to update to · build main
+      - name: The build to update to · stage main
         if: inputs.new_tag == ''
         working-directory: desktop
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
-          MAC_SIGN_P12: ${{ secrets.MAC_SIGN_P12 }}
-          MAC_SIGN_PASSWORD: ${{ secrets.MAC_SIGN_PASSWORD }}
         run: |
           if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > ../config/google_oauth_client.json; fi
           scripts/audiotee.sh && test -x build/bin/audiotee
           node scripts/stage.mjs --app && scripts/python.sh
+      - name: The build to update to · build main
+        if: inputs.new_tag == ''
+        working-directory: desktop
+        env:
+          MAC_SIGN_P12: ${{ secrets.MAC_SIGN_P12 }}
+          MAC_SIGN_PASSWORD: ${{ secrets.MAC_SIGN_PASSWORD }}
+        # Why (2 Nov 2026, upgrade-data run 41448169074: "Cannot read properties of null (reading 'channel')"): no GITHUB_TOKEN/GH_TOKEN here, as in desktop.yml's Compile step. With one in the
+        # environment electron-builder picks GitHub as the publisher, cannot find the repository (it reads desktop/.git/config, the repo's .git is one level up) and crashes in createUpdateInfoTasks.
+        run: |
           npm run build -- -c.buildVersion="${{ github.run_number }}"
           cp dist/Jobadabra-*-arm64.zip dist/Jobadabra-mac-arm64.zip
       - name: Update each release to it, and compare the data
@@ -121,6 +132,7 @@ jobs:
   windows:
     name: Upgrade · Windows
     needs: releases
+    if: needs.releases.outputs.tags != ''
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -144,7 +156,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release download "${{ inputs.new_tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-windows-x64.exe' -D desktop/dist
-      - name: The build to update to · build main
+      - name: The build to update to · stage main
         if: inputs.new_tag == ''
         working-directory: desktop
         env:
@@ -154,6 +166,11 @@ jobs:
         run: |
           if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > ../config/google_oauth_client.json; fi
           node scripts/stage.mjs --app && scripts/python.sh
+      - name: The build to update to · build main
+        if: inputs.new_tag == ''
+        working-directory: desktop
+        # Why (2 Nov 2026): no GITHUB_TOKEN here, same as the Mac job above (electron-builder crashes on an unresolvable GitHub publisher).
+        run: |
           npm run build:win -- -c.buildVersion="${{ github.run_number }}"
           cp dist/Jobadabra-*-x64.exe dist/Jobadabra-windows-x64.exe
       - name: Update each release to it, and compare the data
