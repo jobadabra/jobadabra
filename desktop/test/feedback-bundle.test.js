@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {buildLogs, redact, runLines, shotDataUrl, MAX_LOGS_BYTES} from '../lib/feedback-bundle.js';
+import {buildLogs, redact, runLines, shotDataUrl, pageText, profileText, MAX_LOGS_BYTES, MAX_DATA_BYTES} from '../lib/feedback-bundle.js';
 
 const HOME = '/Users/ana.fake';
 const FAKE = {
@@ -108,4 +108,24 @@ test('the screenshot is shrunk, then its quality lowered, until it fits; an empt
   assert.ok(sizes.length > 1 && sizes[0][0] === 1600);
   assert.equal(shotDataUrl({isEmpty: () => true}), null);
   assert.equal(shotDataUrl(image, {maxBytes: 10}), null);
+});
+
+test('the screen data is redacted like the logs, lists the last runs, and an over-cap list is halved until it fits', () => {
+  const data = {jobs: Array.from({length: 4000}, (_, i) => ({id: `j${i}`, title: `Engineer ${i}`, company: 'Acme', note: i === 0 ? `mail ${FAKE.email} key ${FAKE.anthropic}` : ''}))};
+  const small = pageText({screen: 'jobs', source: 'registry', data: {jobs: data.jobs.slice(0, 2)}}, {home: HOME, runs: [{startedAt: '2026-11-02T09:00:00Z', endedAt: '2026-11-02T09:00:10Z', kind: 'refresh', trigger: 'you', ok: false, summary: 'never finished'}]});
+  assert.ok(!small.text.includes(FAKE.email) && !small.text.includes(FAKE.anthropic));
+  assert.match(small.text, /refresh · by you · failed · 10s · never finished/);
+  assert.equal(small.cut, false);
+  const big = pageText({screen: 'jobs', source: 'registry', data}, {home: HOME, max: 30 * 1024});
+  assert.ok(big.bytes <= 30 * 1024 && big.cut, `${big.bytes} bytes`);
+  assert.match(big.text, /"id": "j0"/); assert.match(big.text, /the longest list was shortened/);
+  assert.ok(MAX_DATA_BYTES < 200 * 1024);
+});
+
+test('the Profile snapshot keeps its parts, loses e-mail addresses and secrets, and names what was lacking', () => {
+  const out = profileText({reader: 'portrait', parts: {details: [{label: 'E-mail', value: FAKE.email}, {label: 'City', value: 'Porto'}], cv: {summary: `key ${FAKE.anthropic}`}}, lacked: ['voice']}, {home: HOME});
+  assert.deepEqual(out.parts, ['details', 'cv']);
+  assert.match(out.text, /Porto/); assert.match(out.text, /"voice"/);
+  assert.ok(!out.text.includes(FAKE.email) && !out.text.includes(FAKE.anthropic));
+  assert.ok(profileText({parts: {cv: Array.from({length: 100}, (_, i) => `a line of the CV, number ${i}`)}}, {max: 1000}).cut);
 });

@@ -7,6 +7,8 @@ import path from 'node:path';
 
 export const MAX_LOGS_BYTES = 190 * 1024;   // the site refuses over 200 KB (api/feedback.js); a little room for the note about what was cut
 export const MAX_SHOT_BYTES = 1800 * 1024;  // the site's cap is 2 MB, counted on the decoded bytes
+export const MAX_DATA_BYTES = 190 * 1024;   // the site's cap for the screen data and for the profile snapshot is 200 KB each (api/feedback.js TEXT_FILES)
+export const PROFILE_CHARS = 60000;   // the snapshot's budget for aboutYou (the portrait's own is 12000)
 export const APP_LINES = 400, ENGINE_LINES = 150, RUN_COUNT = 5, LINE_CHARS = 500;
 
 const SECRET_SHAPES = [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, /\bsk-[\w-]{16,}/g, /\bntn_\w+/g, /\bsecret_\w{10,}/g, /\bgh[pousr]_\w+/g, /github_pat_\w+/g,
@@ -104,4 +106,40 @@ export function shotDataUrl(image, {maxBytes = MAX_SHOT_BYTES} = {}) {
     }
   }
   return null;
+}
+
+const bytesOf = value => Buffer.byteLength(value);
+
+// The longest list inside `data` (at most two levels deep): [holder, key] or null. The one a too-big screen halves first.
+function longestList(data) {
+  let best = null;
+  const look = holder => { for (const [key, value] of Object.entries(holder || {})) { if (Array.isArray(value) && value.length > 1 && (!best || value.length > best[0][best[1]].length)) best = [holder, key]; } };
+  look(data);
+  for (const value of Object.values(data || {})) if (value && typeof value === 'object' && !Array.isArray(value)) look(value);
+  return best;
+}
+
+/** The screen's data as the redacted JSON text that leaves: {screen, source, data, recentRuns}. Over the cap its longest list is halved (newest first stays) and `cut` says so; a page that
+ *  is one long text is cut at the cap. -> {text, bytes, cut}. Why (2 Nov 2026, owner): the same redactor as the logs, because a saved answer or a title can hold an e-mail or a key. */
+export function pageText({screen = '', source = '', data = null} = {}, {runs = [], home = os.homedir(), max = MAX_DATA_BYTES} = {}) {
+  const body = {screen, source, recentRuns: runLines(runs, 3), data: JSON.parse(JSON.stringify(data ?? {}))};
+  let cut = false, text = redact(JSON.stringify(body, null, 1), {home});
+  while (bytesOf(text) > max) {
+    const found = longestList(body.data);
+    if (!found) { text = `${text.slice(0, Math.max(0, max - 200))}\n… (cut: the cap is ${Math.round(max / 1024)} KB)`; cut = true; break; }
+    const [holder, key] = found;
+    holder[key] = holder[key].slice(0, Math.ceil(holder[key].length / 2));
+    body.cut = 'the longest list was shortened to fit the cap'; cut = true;
+    text = redact(JSON.stringify(body, null, 1), {home});
+  }
+  return {text, bytes: bytesOf(text), cut};
+}
+
+/** The Profile snapshot as redacted JSON text: the parts aboutYou read (details, CV, what we learned, strategy, history, voice), what it lacked, nothing sensitive (aboutYou drops sensitive and
+ *  conflicting answers). -> {text, bytes, parts: [names], cut}. */
+export function profileText(bundle, {home = os.homedir(), max = MAX_DATA_BYTES} = {}) {
+  const body = {note: 'Snapshot of the Profile the person chose to send; sensitive answers are left out.', parts: bundle?.parts || {}, lacked: bundle?.lacked || []};
+  let text = redact(JSON.stringify(body, null, 1), {home}), cut = false;
+  if (bytesOf(text) > max) { text = `${text.slice(0, Math.max(0, max - 200))}\n… (cut: the cap is ${Math.round(max / 1024)} KB)`; cut = true; }
+  return {text, bytes: bytesOf(text), parts: Object.keys(body.parts), cut};
 }

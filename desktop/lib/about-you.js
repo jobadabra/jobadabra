@@ -90,9 +90,9 @@ function shorter(value) {
  * The bundle one reader gets, pure. sources: {details: [{label, value, kind}], learned: [{question, answer, state, sensitive, kind}], strategy: [{label, value, group}],
  * cv, history, voice, this_job} (a part the gatherer could not read is absent). -> {reader, parts, lacked: the reader's parts that were absent, learnedUse}.
  * Invariants: a conflict (two answers) reaches no reader; a sensitive learning, or one not judged yet, reaches no reader; a reader with noSalary gets no
- * line the AI judged a salary, no learning whose kind was never judged, and no Strategy pay line (a pay field, or a rule under Compensation).
+ * line the AI judged a salary, no learning whose kind was never judged, and no Strategy pay line (a pay field, or a rule under Compensation). `budget` (characters) replaces the reader's own.
  */
-export function bundleOf(sources, reader, {skip = []} = {}) {
+export function bundleOf(sources, reader, {skip = [], budget: wanted = 0} = {}) {
   const rule = READERS[reader];
   if (!rule) throw new Error(`about-you: no reader ${reader}`);
   const salary = item => rule.noSalary && (item.kind === 'salary' || item.group === 'pay');
@@ -106,7 +106,7 @@ export function bundleOf(sources, reader, {skip = []} = {}) {
     if (sources[name] === undefined || sources[name] === null) { lacked.push(name); continue; }
     parts[name] = keep[name] ? keep[name](sources[name]) : sources[name];
   }
-  const budget = rule.budget || BUDGET;
+  const budget = wanted || rule.budget || BUDGET;   // Why (2 Nov 2026, owner: "a snapshot of the entire profile"): the feedback snapshot asks for a bigger budget than the portrait's 12000
   for (const name of [...PRIORITY].reverse()) {
     // Why (Gitar on #2337): a part keeps its shape (the CV stays an object a reader can read) and shrinks before any higher part does.
     for (let next = parts[name]; sizeOf(parts) > budget && parts[name] !== undefined && (next = shorter(parts[name])) !== null;) parts[name] = next;
@@ -142,7 +142,7 @@ function strategyOf(profile) {
  * sensitive verdict and kind per question), Strategy (the Profile's search fields and rules), the main CV with the Experience bank, Voice (Writing preferences + the approved base letter). history and
  * this_job come with their readers (PR D2). -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
  */
-export async function aboutYou(storage, reader, {fetcher, skip = [], example = true} = {}) {
+export async function aboutYou(storage, reader, {fetcher, skip = [], example = true, budget = 0} = {}) {
   const takes = new Set((READERS[reader]?.parts || []).filter(part => !skip.includes(part)));
   const opened = openStore(storage, {fetcher});
   const read = (part, load) => (takes.has(part) ? load().catch(() => undefined) : undefined);
@@ -163,7 +163,7 @@ export async function aboutYou(storage, reader, {fetcher, skip = [], example = t
   if (profile) sources.strategy = strategyOf(profile);
   if (voice) sources.voice = voice;
   if (takes.has('cv')) sources.cv = cvOf(storage);
-  return bundleOf(sources, reader, {skip});
+  return bundleOf(sources, reader, {skip, budget});
 }
 
 // Parts read from this Mac's files without a store call: an engine run starts synchronously (lib/pipeline-run.js), so its bundle comes from these.
