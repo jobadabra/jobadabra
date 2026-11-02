@@ -175,7 +175,7 @@ test('the review window names File Explorer on Windows and Finder on a Mac', () 
   fs.writeFileSync(storage.path('cv.pdf'), 'BASE');
   const {cv: tailored, review} = cv.applyTailoring(BASE, answer());
   cv.save(storage, 'ab12cd34', {job: {code: 'ab12cd34', url: 'https://boards.example/jobs/1', title: 'SRE', company: 'Acme'},
-    createdAt: new Date().toISOString(), model: cv.MODEL, usd: 0.05, changes: [], warnings: [], cv: tailored, review}, Buffer.from('TAILORED'));
+    createdAt: '2026-11-02T12:00:00.000Z', model: cv.MODEL, usd: 0.05, changes: [], warnings: [], cv: tailored, review}, Buffer.from('TAILORED'));
   const pageOn = platform => fs.readFileSync(cv.reviewPage(storage, cv.load(storage, 'ab12cd34'), {platform}), 'utf8');
   const win = pageOn('win32'), mac = pageOn('darwin');
   assert.match(win, />Show in File Explorer</);
