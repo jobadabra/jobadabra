@@ -120,6 +120,57 @@ export function newClockWaits(changes) {
   return found;
 }
 
+// Rule G (owner, 2 Nov 2026, plan 3/4 of the flakiness guardrails; escapes counted in the PR): an error swallowed in test code turned three reds into "state: null"
+// or a silent wrong tab (beta 41250138244 goto, beta 40748263936, runs 41264415439..). Only a swallow ON A LINE THE PR ADDS is refused; the old ones go when they go red.
+// CSS/nth locators, networkidle and pages()[n] had no escape in the 30 days before, so they are not gated (skill e2e-harness rules 3, 5, 6 stay text).
+const TEST_CODE = /^desktop\/(?:e2e|integration)\/.*\.[cm]?js$/;
+const SWALLOW = /\.catch\(\s*(?:\(\s*\w*\s*\)|\w+)\s*=>\s*(?:\{\s*\}|null|undefined|void 0)\s*\)|\bcatch\s*(?:\(\s*\w*\s*\))?\s*\{\s*\}/g;
+const JUSTIFIED = /(?:\/\/|\/\*|^\s*\*)[^\n]*\bWhy\b[^:\n]*:/m;
+
+/** `git diff -U0` text -> Map(file -> {added, removed}) of the 1-based line numbers each side touched. */
+export function touchedLines(diff) {
+  const out = new Map();
+  let at;
+  for (const line of diff.split('\n')) {
+    const head = /^diff --git a\/(.+) b\/\1$/.exec(line), hunk = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
+    if (head) out.set(head[1], at = {added: new Set(), removed: new Set()});
+    else if (hunk && at) {
+      for (const [set, start, count] of [[at.removed, hunk[1], hunk[2]], [at.added, hunk[3], hunk[4]]]) {
+        for (let i = 0; i < (count === undefined ? 1 : +count); i++) set.add(+start + i);
+      }
+    }
+  }
+  return out;
+}
+
+const swallows = (raw, lines) => {
+  const text = mask(raw), starts = [0];
+  for (const match of text.matchAll(/\n/g)) starts.push(match.index + 1);
+  const lineOf = index => starts.findLastIndex(start => start <= index) + 1;
+  const source = raw.split('\n');
+  // Why (2 Nov 2026, Gitar on #2979): a move is the same whole line, not the same catch; keyed on the catch alone, deleting any old swallow exempted an unrelated new one.
+  return [...text.matchAll(SWALLOW)].map(match => {
+    const first = lineOf(match.index), last = lineOf(match.index + match[0].length - 1);
+    return {first, last, key: source.slice(first - 1, last).join(' ').replace(/\s+/g, ' ').trim()};
+  }).filter(found => { for (let n = found.first; n <= found.last; n++) if (lines.has(n)) return true; return false; });
+};
+
+/** Changed {file, before, after, added, removed} records -> "file:line: text" for each swallowed error on an added line with no identical whole line removed elsewhere in the PR and no Why: beside it. */
+export function newSwallowedErrors(changes) {
+  const test = changes.filter(change => TEST_CODE.test(change.file));
+  const gone = new Map();
+  for (const {before, removed} of test) for (const found of before === null ? [] : swallows(before, removed)) gone.set(found.key, (gone.get(found.key) || 0) + 1);
+  const found = [];
+  for (const {file, after, added} of test) {
+    const rawLines = (after ?? '').split('\n');
+    for (const item of after === null ? [] : swallows(after, added)) {
+      if (gone.get(item.key) > 0) { gone.set(item.key, gone.get(item.key) - 1); continue; }
+      if (!JUSTIFIED.test(rawLines.slice(Math.max(0, item.first - 2), item.last).join('\n'))) found.push(`${file}:${item.first}: ${item.key}`);
+    }
+  }
+  return found;
+}
+
 // Old/new JS source -> mechanical expectation changes; extra assertions alone are free. Semantic rewrites need review.
 export function expectationChanges(before, after, file = '') {
   const available = signatures(after, file), changes = [];
@@ -160,6 +211,8 @@ export function checkPush({root, base = 'origin/main'}) {
   };
   const changes = git('diff', '--name-only', '--no-renames', '-z', `${from}..HEAD`).split('\0').filter(Boolean)
     .map(file => ({file, before: show(from, file), after: show('HEAD', file)}));
+  const touched = touchedLines(git('diff', '-U0', '--no-renames', `${from}..HEAD`, '--', 'desktop/e2e', 'desktop/integration'));
+  for (const change of changes) Object.assign(change, touched.get(change.file) || {added: new Set(), removed: new Set()});
   const messages = git('log', '--format=%B%x00', `${from}..HEAD`).split('\0');
   const lanes = JSON.parse(show(from, REGISTRY) || '{"suites":{}}');
   const needsCitation = [];
@@ -193,6 +246,8 @@ export function checkPush({root, base = 'origin/main'}) {
   }
   const found = harnessProblems(changes, messages).map(problem => `Rule F: ${problem}`);
   const clocks = newClockWaits(changes);
+  const swallowed = newSwallowedErrors(changes);
+  if (swallowed.length) found.unshift(`Rule G: a test must say what failed, so no swallowed error on a line this PR adds. Let it throw, or catch it and name the call in the message (a tab: context.waitForEvent('page') with the click in one Promise.all, then wait for the app's state). Cleanup that may find nothing left: a Why: comment on the same or previous line, and still log it. No trailer clears this:\n  ${swallowed.join('\n  ')}`);
   if (clocks.length) found.unshift(`Rule B: a step's only clock is its measured hang cap (desktop/e2e/hang-caps.json); wait on the state with pollUntil or waitForDecisions (lib/wait-on-state.mjs), with no bound of its own. No trailer clears this:\n  ${clocks.join('\n  ')}`);
   if (needsCitation.length && !citation(messages)) found.unshift(`Rule E: expectation changes need Expect-changed-by: <sha or owner's request> or Test-was-wrong: <why> in a commit message:\n  ${needsCitation.join('\n  ')}`);
   return found.join('\n');

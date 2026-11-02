@@ -248,6 +248,44 @@ test('an unchanged bound moved to another file or removed is free; a raised or n
   assert.deepEqual(newClockWaits([{file: journeys, before: '', after: '// waited < 10000 in a comment, and "capMs: 1" in a string'}]), []);
 });
 
+// Rule G (owner, 2 Nov 2026, plan 3/4): a swallowed error in test code made three reds say nothing (beta 41250138244 goto, beta 40748263936 "state: null",
+// runs 41264415439.. null poll worker). Only lines the PR adds are refused; the other cheap patterns had no escape in 30 days and are not gated.
+const swallowFile = 'desktop/integration/extension/forms.test.mjs', swallowOld = 'desktop/e2e/test/harness/old-helper.test.mjs';
+const swallowed = ['await tab.goto(url).catch(() => {});', 'const worker = await context.waitForEvent(\'serviceworker\').catch(() => null);',
+  'await close().catch(_ => undefined);', 'try { await stop(); } catch {}', 'try { await stop(); } catch (error) { }', 'await read().catch(() => {\n  });'];
+
+test('Rule G refuses a swallowed error on an added line, naming file:line and what to do', () => {
+  for (const line of swallowed) {
+    const found = push({[swallowFile]: 'const a = 1;\n'}, {[swallowFile]: `const a = 1;\n${line}\n`});
+    assert.match(found, /Rule G[\s\S]*desktop\/integration\/extension\/forms\.test\.mjs:2: /, line);
+    assert.match(found, /say what failed/, line);
+  }
+  assert.match(push({}, {[swallowOld]: `${swallowed[0]}\n`}), /Rule G[\s\S]*desktop\/e2e\/test\/harness\/old-helper\.test\.mjs:1: /, 'a new file counts as added');
+});
+
+test('Rule G leaves old lines, moved lines, comments, strings and a Why: line alone', () => {
+  const old = `const a = 1;\n${swallowed[0]}\n`;
+  assert.equal(push({[swallowFile]: old}, {[swallowFile]: `${old}const b = 2;\n`}), '', 'an unchanged old line');
+  assert.equal(push({[swallowFile]: old}, {[swallowFile]: `// moved below\nconst a = 1;\n\n${swallowed[0]}\n`}), '', 'edits around an old line');
+  assert.equal(push({[swallowFile]: old}, {[swallowFile]: null, [swallowOld]: old}), '', 'a pure move to another file');
+  assert.match(push({[swallowFile]: old}, {[swallowFile]: `${old}${swallowed[0]}\n`}), /Rule G[\s\S]*forms\.test\.mjs:3: /, 'a second copy of an old line is new');
+  // Gitar on #2979: the move exemption keyed on the catch alone, so deleting any old swallow let an unrelated new one through.
+  const oldClose = 'await old.close().catch(() => {});\n', newGoto = 'await tab.goto(url).catch(() => {});\n';
+  assert.match(push({[swallowFile]: oldClose}, {[swallowFile]: newGoto}), /Rule G[\s\S]*forms\.test\.mjs:1: await tab\.goto/, 'a different call with the same catch is new');
+  assert.match(push({[swallowOld]: oldClose}, {[swallowFile]: newGoto}), /Rule G/, 'also across files');
+  assert.equal(push({[swallowFile]: `${oldClose}\n`}, {[swallowFile]: `\n  ${oldClose.trim()}\n`}), '', 'the same line re-indented is a move');
+  for (const line of ['// await tab.goto(url).catch(() => {});', 'const note = "catch {} and .catch(() => null)";', 'await tab.goto(url).catch(error => log(error));',
+    'await tab.goto(url).catch(() => assert.fail("the form did not load"));', 'try { await stop(); } catch (error) { throw new Error(`stop: ${error.message}`); }']) {
+    assert.equal(push({}, {[swallowFile]: `${line}\n`}), '', line);
+  }
+  for (const text of [`// Why: the tab may already be gone; the close is logged below.\n${swallowed[0]}\n`,
+    `${swallowed[0]} // Why (2 Nov 2026): cleanup finds nothing left\n`, `/* Why: a browser that is already closed */\n${swallowed[3]}\n`]) {
+    assert.equal(push({}, {[swallowFile]: text}), '', text);
+  }
+  assert.match(push({}, {[swallowFile]: `// Why: x\n\n${swallowed[0]}\n`}), /Rule G/, 'a Why two lines up does not cover it');
+  assert.equal(push({}, {'desktop/lib/outside.js': `${swallowed[0]}\n`}), '', 'only e2e and integration test code is gated');
+});
+
 test('a changed harness file needs one valid Job line and a harness trailer independently', () => {
   const before = {[lib]: '// Existing runner\nexport const x = 1;'};
   const after = {[lib]: '// Existing runner\nexport const x = 2;'};
