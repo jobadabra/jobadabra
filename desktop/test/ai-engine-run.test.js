@@ -84,9 +84,10 @@ test('Sign in: runs once, shows its own card; after a failed install by hand, Si
   hold.install({ok: false, reason: 'failed', status: status('app-only')});
   await settle();
   now = status('sign-in', {login: 'signed-out'});   // the person installed it by hand; the files are read again
-  box.querySelector('[data-action="check"]')?.click();
+  const again = box.querySelector('[data-action="check"]');
+  assert.ok(again, 'Check again is offered after a failed install');
+  again.click();
   await settle();
-  hold.signInSeen = true;
   const signIn = button(box, 'sign-in');
   assert.ok(signIn, 'the Sign in button is offered (the manual flag ended with the install states)');
   signIn.click();
