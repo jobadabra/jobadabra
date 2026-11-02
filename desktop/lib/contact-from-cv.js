@@ -77,18 +77,21 @@ export function cvFallbackFor(storage, cvFile, contact) {
 
 // What the CV states plainly (sure, never from the Profile) for the details you left empty is saved once, by the app, when Profile opens (owner, 2 Nov 2026: "if we have confidence,
 // we just fill and save… and inform the user"). Why (2 Nov 2026, Gitar on #2987): once per CV, recorded in `settled` next to its proposals, so a value the person later clears stays
-// empty and is not offered again (a new read of the CV, `again`, starts a new list). `save(merged)` writes the whole contact (kept details + these). Throws when it fails, nothing recorded.
+// empty and is not offered again (a new press of "Fill from my CV", `again`, starts a new list). `read()` gives the kept details, `save(merged)` writes the whole contact. Throws when it fails, nothing recorded.
 // -> {...result, proposals: the others (unsure, never a settled field), applied: [{field, value}]}
-export async function settleSure(storage, {contact, result, save}) {
+export async function settleSure(storage, {result, read, save}) {
   let kept = null;
   try { kept = JSON.parse(storage.readText(FILE) || 'null'); } catch {}
   if (!result?.cv || kept?.cv !== result.cv) return {...result, applied: []};
   const settled = new Set(kept.settled || []), left = (result.proposals || []).filter(item => !settled.has(item.field));
   const sure = left.filter(item => item.sure === true && item.source !== 'profile' && String(item.value || '').trim());
   if (!sure.length) return {...result, proposals: left, applied: []};
-  await save({...contact, ...Object.fromEntries(sure.map(item => [item.field, item.value]))});
+  // Why (2 Nov 2026, Gitar on #2987): the details are read again right before the write (the CV read before it can take ~15 s, and the write replaces the whole section): only a still-empty box is filled.
+  const now = await read();
+  const add = sure.filter(item => !String(now?.[item.field] || '').trim());
+  if (add.length) await save({...now, ...Object.fromEntries(add.map(item => [item.field, item.value]))});
   storage.writeText(FILE, JSON.stringify({...kept, settled: [...settled, ...sure.map(item => item.field)]}));
-  return {...result, proposals: left.filter(item => !sure.includes(item)), applied: sure.map(({field, value}) => ({field, value}))};
+  return {...result, proposals: left.filter(item => !sure.includes(item)), applied: add.map(({field, value}) => ({field, value}))};
 }
 
 // One Claude call on the CV PDF. → {proposals, usd?} ; throws on an AI failure (the caller says why).
@@ -132,7 +135,9 @@ async function forCvNow(storage, {contact, client, cvHash: cvFile, profile = '',
   const wanted = emptyFields(contact), started = Date.now();
   let proposals = [], error = '';
   try { ({proposals} = await propose(client, read(storage.path('cv.pdf')), wanted, profile)); } catch (failure) { error = String(failure?.message || failure).slice(0, 200); }
-  storage.writeText(FILE, JSON.stringify({cv: cvHash, at: new Date().toISOString(), proposals, ...(error ? {error} : {})}));
+  // Why (2 Nov 2026, Gitar on #2987): `settled` belongs to the CV FILE, not to the Profile text beside it (the key's part before "+"): editing the Profile asks the AI again, and a value the person cleared must not come back.
+  const sameFile = String(saved?.cv || '').split('+')[0] === cvFile;
+  storage.writeText(FILE, JSON.stringify({cv: cvHash, at: new Date().toISOString(), proposals, ...(error ? {error} : {}), ...(sameFile && !again && saved?.settled ? {settled: saved.settled} : {})}));
   // Which fields, never their values (lib/log.js): enough to tell "nothing in the CV" from "Claude failed".
   log('profile', error ? `details from the CV: failed: ${error}` : `details from the CV: ${proposals.length} of ${wanted.length} proposed`,
     {cv: cvHash, asked: wanted, proposed: proposals.map(item => item.field), fromProfile: proposals.filter(item => item.source === 'profile').map(item => item.field), ms: Date.now() - started});

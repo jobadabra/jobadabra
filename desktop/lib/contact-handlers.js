@@ -56,7 +56,7 @@ export function registerContactHandlers({ipcMain, storage, DEMO, connected, need
     const {profile, answers} = await profileTexts(storage).catch(() => ({profile: '', answers: ''}));
     const result = await fromCv.forCv(storage, {contact, client: aiClient(storage), cvHash: hashOf(storage), profile: fromCv.statedText({profile, answers}), again, log});
     if (!settle || again || result.error || !result.proposals?.length) return result;
-    return fromCv.settleSure(storage, {contact, result, save: async merged => { contactSaved(await contactDetails.save(storage, merged) || merged); }})
+    return fromCv.settleSure(storage, {result, read: () => contactDetails.read(storage), save: async merged => { contactSaved(await contactDetails.save(storage, merged) || merged); }})
       .catch(error => { log('profile', `details from the CV: not saved: ${error.message}`); return result; });
   });
 }
