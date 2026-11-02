@@ -97,12 +97,22 @@ if [ "$was_beta" = true ]; then GITHUB_REPOSITORY="$repo" node "$here/../desktop
 # (SKIP_E2E, E2E_NO_START, ...) only skip the end-to-end gate, and only DRY_RUN stops before this point. A start that fails never undoes the promotion, but it is no longer one echoed line
 # in a green run. Why (31 Oct 2026, owner: "We should have this always, even if we go on the hot path"): the job ends red (exit 4 below), with an annotation and one Telegram alert.
 failed=(); by_hand=()
+# Why (2 Nov 2026, owner on run 41484802919: "BUt where the publishing to Chrome web store, to microsoft store... is happening?"): each store is its own run, so the
+# run's summary page links both (gh prints the run it created). A summary that cannot be written never fails a promotion.
+summary() { if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then echo "$1" >> "$GITHUB_STEP_SUMMARY" || true; fi; }
+summary "### Store publishes of $tag"
 start_store() {   # <store name> <workflow file> <what it does>
-  local command="gh workflow run $2 -R $repo --ref main -f tag=$tag"
-  if gh workflow run "$2" -R "$repo" --ref main -f tag="$tag"; then echo "$1: $3"
+  local command="gh workflow run $2 -R $repo --ref main -f tag=$tag" out url
+  if out=$(gh workflow run "$2" -R "$repo" --ref main -f tag="$tag" 2>&1); then
+    [ -z "$out" ] || echo "$out"
+    echo "$1: $3"
+    url=$(printf '%s\n' "$out" | grep -oE 'https://[^ ]+/actions/runs/[0-9]+' | tail -1 || true)
+    summary "- **$1** → ${url:-started (no link from gh: Actions → $2)}"
   else
+    echo "$out" >&2
     failed+=("$1"); by_hand+=("$command")
     echo "::error title=$1 publish not started::$tag is stable, but its $1 publish did not start. Start it by hand: $command"
+    summary "- **$1** → ❌ did not start: \`$command\`"
   fi
 }
 start_store "Chrome Web Store" extension-store-publish.yml "publishing its extension (Extension · Chrome Web Store publish; the store reviews it, then Chrome updates every copy)"

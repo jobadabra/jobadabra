@@ -33,6 +33,8 @@ FAKE_GH = textwrap.dedent('''\
       echo "$*" >> "$FAKE_LOG"; touch "$FAKE_STARTED"
       # FAKE_FAIL=<workflow file name(s)>: that start is refused, as GitHub does when the token cannot start workflows or the API is down.
       if [ -n "${FAKE_FAIL:-}" ] && [[ "$*" == *"$FAKE_FAIL"* || " $FAKE_FAIL " == *" $3 "* ]]; then echo "HTTP 403: Resource not accessible by integration" >&2; exit 1; fi
+      # gh prints the run it created (as on the runner, run 41484802919); FAKE_NO_LINK: an older gh that prints nothing.
+      [ -n "${FAKE_NO_LINK:-}" ] || case "$3" in extension-store-publish.yml) echo "https://github.com/$5/actions/runs/111";; msix-store.yml) echo "https://github.com/$5/actions/runs/222";; esac
       exit 0
     fi
     if [ "$1" = run ] && [ "$2" = watch ]; then echo "watched $3" >> "$FAKE_LOG"; exit 0; fi
@@ -95,7 +97,7 @@ class PromoteGuardTests(unittest.TestCase):
                    'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_ALERT': str(Path(folder) / 'alert.txt'), 'FAKE_RELEASE_ALERT': str(Path(folder) / 'release-alert.txt'), 'FAKE_STARTED': str(Path(folder) / 'started'),
                    'FAKE_ASSETS': '\n'.join(f'{name}\t{size}' for name, size in assets), 'FAKE_E2E': e2e, 'FAKE_E2E_AFTER': after, 'E2E_POLL_SECONDS': '0',
                    # Every route that promotes runs in GitHub (owner, 2 Nov 2026: the promotion moved into a workflow); the by-hand start is played with GITHUB_ACTIONS=''.
-                   'GITHUB_ACTIONS': 'true',
+                   'GITHUB_ACTIONS': 'true', 'GITHUB_STEP_SUMMARY': str(Path(folder) / 'summary.md'),   # never the summary page of the CI job running this suite
                    **({'SKIP_E2E': '1'} if skip else {}), **({'E2E_NO_START': '1'} if no_start else {}), **(extra or {})}
             # The real gh would edit a real release: the script must find the fake first.
             self.assertEqual(shutil.which('gh', path=env['PATH']), str(binary))
@@ -109,6 +111,8 @@ class PromoteGuardTests(unittest.TestCase):
             self.alert = alert.read_text() if alert.exists() else ''
             released = Path(folder) / 'release-alert.txt'
             self.release_alert = released.read_text() if released.exists() else ''
+            summary = Path(folder) / 'summary.md'
+            self.summary = summary.read_text() if summary.exists() else ''
             return done
 
     def test_its_own_installer_at_the_same_size_promotes(self):
@@ -219,6 +223,24 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(self.store.count('workflow run extension-store-publish.yml'), 1, self.store)
         self.assertEqual(self.store.count('workflow run msix-store.yml'), 1, 'the Microsoft Store gets the same release')
         self.assertEqual(self.store.count(f'tag={TAG}'), 2, self.store)
+
+    def test_the_summary_page_links_each_store_run(self):
+        # 2 Nov 2026, owner on run 41484802919: "BUt where the publishing to Chrome web store, to microsoft store... is happening?" (each store is its own run).
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn(f'Store publishes of {TAG}', self.summary)
+        self.assertIn('**Chrome Web Store** → https://github.com/jobadabra/jobadabra/actions/runs/111', self.summary)
+        self.assertIn('**Microsoft Store** → https://github.com/jobadabra/jobadabra/actions/runs/222', self.summary)
+        self.assertIn('https://github.com/jobadabra/jobadabra/actions/runs/111', done.stdout, 'the log keeps gh\'s own line')
+
+    def test_the_summary_page_says_when_a_store_did_not_start_or_gh_gave_no_link(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'msix-store.yml'})
+        self.assertEqual(done.returncode, 4)
+        self.assertIn('**Chrome Web Store** → https://github.com/jobadabra/jobadabra/actions/runs/111', self.summary)
+        self.assertIn(f'**Microsoft Store** → ❌ did not start: `gh workflow run msix-store.yml -R jobadabra/jobadabra --ref main -f tag={TAG}`', self.summary)
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'FAKE_NO_LINK': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('**Chrome Web Store** → started (no link from gh: Actions → extension-store-publish.yml)', self.summary)
 
     def test_a_refused_promotion_sends_nothing_to_the_store(self):
         done = self.promote([(DMG, 1), (GENERIC, 2)], extra={'E2E_ALREADY_GREEN': '1'})
