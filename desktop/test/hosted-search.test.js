@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {wizardFixture} from './setup-step-fixture.js';
-import {config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../lib/hosted-search.js';
+import {canRun, config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../lib/hosted-search.js';
 
 const FREE = 'JPF1.install-0001.tok';
 function store(settings = {}) {
@@ -90,4 +90,10 @@ test('Always on stays in Settings while setup ends after strategy with the share
   assert.match(page, /export function init\(\) \{ mountCard\(\); \}/);
   assert.match(page, /\$\('setting-cloud'\)\.after\(card\)/);
   assert.match(page, /window\.pilot\.hostedOn\(\{\}\)/, 'Settings retains the shared notification-address turn-on action');
+});
+
+test('an install can run Always on only with the in-house key; an own API key alone cannot (the offers never show then)', () => {
+  assert.equal(canRun(store()), true);
+  assert.equal(canRun({...store(), secret: name => (name === 'ANTHROPIC_API_KEY' ? 'sk-ant-own' : '')}), false);
+  assert.equal(canRun({...store(), secret: () => ''}), false);
 });

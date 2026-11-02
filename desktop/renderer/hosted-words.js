@@ -57,3 +57,10 @@ function view(mine, schedule, now, shared) {
   const mail = schedule && schedule.email_channel === 0 ? ' E-mail is off for this address; matches still appear here.' : '';
   return {state: 'on', pill: ['On', 'good'], line: `Searches every day and e-mails ${email}.${next}${mail}`, asksEmail: false, button: null, off: true, download: true};
 }
+
+// The dialog after a scheduled check did not run (lib/always-on-moments.js): the due time on the person's own clock. The app cannot tell asleep from off, so it says both.
+export function missedWords(iso) {
+  const at = new Date(iso);
+  return {title: `Your ${at.getHours()}:${two(at.getMinutes())} check didn't run`,
+    body: 'Your Mac was asleep or off. Always on runs it on our servers, even when your Mac is off, and e-mails you the new matches.'};
+}

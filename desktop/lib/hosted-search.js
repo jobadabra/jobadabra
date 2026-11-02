@@ -12,6 +12,8 @@ const EVERY = 10 * 60 * 1000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const keyOf = storage => storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
+// Whether this install can run Always on at all: it holds the in-house key (Free AI or Pro) and the site is not switched off for it. No offer is made when not (spec 2026-11-02-always-on-moments-design.md).
+export const canRun = storage => { const key = keyOf(storage); return !!key && isFreeKey(key) && !siteOffForUser(); };
 export const state = storage => ({on: false, skipped: false, email: '', marketing: false, ...storage.settings().hostedSearch});
 const save = (storage, patch) => storage.saveSettings({hostedSearch: {...state(storage), ...patch}});
 

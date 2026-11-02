@@ -223,5 +223,6 @@ export function initSuggestions() {
   window.addEventListener('experience-changed', () => { loadBank(); });
   window.addEventListener('linkedin-changed', () => { if (lastArgs) redraw(); });
   window.addEventListener('gmail-changed', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });
+  window.addEventListener('hosted-changed', () => { if (lastArgs) loadHostedOffer(); });   // turned on from the dialog (pages/hosted-moment.js): the card goes
   document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }

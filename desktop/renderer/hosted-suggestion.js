@@ -6,14 +6,15 @@ import {jobCounts} from './jobs-view.js';
 const KEY = 'hosted:first-matches';
 const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-/** One Focus entry after a finished search has matches; jobCounts is the Jobs view's definition (excludes applications and inbound). */
+/** One Suggestions entry (Focus and the Jobs bar) from the first finished search with matches, for as long as Always on is off; jobCounts is the Jobs view's definition (excludes applications and inbound).
+ *  Why (2 Nov 2026, owner: "It should still be always present as in the Suggestions card"): an earlier Skip no longer hides it, and there is no "Not true"; Not now hides it 14 days. */
 export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held = new Set()} = {}) {
   const finished = runs.lastSearchAt || runs.runs?.some(run => (run.kind || 'search') === 'search' && run.ok !== false);
-  if (!hosted?.available || hosted.on || hosted.skipped || !finished || !jobCounts(jobs).total || hidden.has(KEY) || held.has(KEY)) return [];
+  if (!hosted?.available || hosted.canRun === false || hosted.on || !finished || !jobCounts(jobs).total || hidden.has(KEY) || held.has(KEY)) return [];
   const email = hosted.email || hosted.shared || '';
   return [{kind: 'hosted', home: 'focus', topic: 'profile', key: KEY, title: SUBTITLE, source: '',
     detail: email ? `A short list of what is new, by e-mail to ${email}.` : 'A short list of what is new, by e-mail.', email,
-    evidence: [], answers: ['Not now', 'Not true'], actions: [{label: 'Turn on Always on', do: 'turn_on_hosted'}]}];
+    evidence: [], answers: ['Not now'], alsoJobs: true, actions: [{label: 'Turn on Always on', do: 'turn_on_hosted'}]}];
 }
 
 /** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; news stays off; a shared draft paints replies into the latest row. */

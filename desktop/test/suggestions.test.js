@@ -19,17 +19,18 @@ const TOPICS = {insight: 'profile', rejection: 'applying', week: 'search', analy
 const entry = kind => ({kind, home: HOMES[kind], topic: TOPICS[kind], title: `${kind} title`, source: 'From', detail: 'What it says', evidence: ['seen'],
   actions: [{label: 'Go', do: DOES[0]}], key: `${kind}:k`, answers: ['Not now', 'Not true']});
 
-test('Always on is offered only after finished matches, while available and unanswered', async () => {
+test('Always on stays on Focus and Jobs once there are finished matches, while it is off and available; Skip never removes it, Not now hides it for a while', async () => {
   install();
   const {hostedEntries} = await import('../renderer/hosted-suggestion.js');
   const ready = {hosted: {available: true, on: false, skipped: false, shared: 'alex@example.com'},
     jobs: {jobs: [{stage: 'Saved', fit: 81}]}, runs: {lastSearchAt: '2026-10-31T08:00:00Z'}};
   for (const [name, patch, shown] of [
     ['all clear', {}, true], ['on', {hosted: {...ready.hosted, on: true}}, false],
-    ['skipped', {hosted: {...ready.hosted, skipped: true}}, false], ['no matches', {jobs: {jobs: []}}, false],
+    ['skipped earlier (owner, 2 Nov 2026: always present)', {hosted: {...ready.hosted, skipped: true}}, true], ['no matches', {jobs: {jobs: []}}, false],
     ['applications only', {jobs: {jobs: [{stage: 'Applied', status: 'applied', fit: 90}]}}, false],
     ['inbound only', {jobs: {jobs: [{origin: 'Inbound', fit: 90}]}}, false],
     ['not available', {hosted: {...ready.hosted, available: false}}, false],
+    ['cannot run (no in-house key)', {hosted: {...ready.hosted, canRun: false}}, false],
     ['no finished search', {runs: {}}, false],
     ['first search running', {runs: {running: {kind: 'search'}}}, false],
     ['Not now', {hidden: new Set(['hosted:first-matches'])}, false],
@@ -37,7 +38,10 @@ test('Always on is offered only after finished matches, while available and unan
   ]) assert.equal(hostedEntries({...ready, ...patch}).length, Number(shown), name);
   const [offer] = hostedEntries(ready);
   assert.match(offer.detail, /to alex@example.com/);
-  assert.deepEqual(offer.answers, ['Not now', 'Not true']);
+  assert.deepEqual(offer.answers, ['Not now'], 'Not now hides it 14 days; there is no Not true that removes it for good');
+  const {jobsEntries, homeEntries} = await import('../renderer/suggestions.js');
+  assert.equal(jobsEntries([offer]).length, 1, 'the Jobs bar shows it too');
+  assert.equal(homeEntries([offer], 'focus').length, 1);
   assert.equal(entryParts(offer).badge, 'Always on');
 });
 
