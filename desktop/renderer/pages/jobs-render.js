@@ -32,6 +32,7 @@ import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
+import {kitLabel} from './jobs-kit-label.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
 const stuck = job => isStuck(job, entry => sessionList.some(item => pageKey(item.url) === pageKey(entry.url)));
@@ -440,14 +441,4 @@ export function showLoading() {
     el('div', 'muted small', 'Job Matches and Applications, usually a few seconds'));
   $('jobs-body').replaceChildren(box);
   $('jobs-stats').textContent = byStore('Loading from Notion…', 'Loading…');
-}
-
-const INPUT_NAMES = {cv: 'CV', profile: 'Profile', answers: 'standard answers'};
-function kitLabel(state = '') {
-  if (state === 'current') return {label: '📝 Kit', title: 'Current: drafted from your current CV, Profile and standard answers.'};
-  if (state.startsWith('earlier')) {
-    const changed = state.split(':')[1]?.split(',').map(name => INPUT_NAMES[name] || name).join(', ') || 'inputs';
-    return {label: '📝 Kit · earlier inputs', title: `Drafted with earlier inputs: your ${changed} changed since. Redraft it from the ⋯ menu if you still want it.`};
-  }
-  return {label: '📝 Kit', title: 'Inputs unknown: drafted before Jobadabra recorded which CV, Profile and answers a kit came from.'};
 }
