@@ -186,6 +186,7 @@ class PromotionByHandRunsInGitHub(unittest.TestCase):
         self.assertIn('python3 tools/e2e_gate.py latest-beta "$REPO"', step)
         self.assertIn('tools/release-stable.sh "$tag"', step, 'the same proof and store starts as every route')
         self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}', step)
+        self.assertIn("DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}", step, 'Gitar on #3003: "Only print the decision" (on by default) never promotes')
 
     def test_the_soak_steps_stay_out_of_a_by_hand_promotion(self):
         for name in ('End-to-end top-up on the candidate', 'Decide (and promote when switched on)', 'A canary that stays unproven for 5 days needs a person'):

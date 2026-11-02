@@ -27,7 +27,7 @@ on:
         type: boolean
         default: false
       dry_run:
-        description: 'Only print the decision'
+        description: 'Only print the decision (untick to promote)'
         type: boolean
         default: true
       force_tag:
@@ -72,6 +72,7 @@ jobs:
       - name: The latest beta to stable (by hand with promote_latest_beta)
         if: github.event_name == 'workflow_dispatch' && inputs.force_tag == '' && inputs.promote_latest_beta
         env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}   # Why (Gitar on #3003): "Only print the decision" (on by default) holds here too; release-stable.sh stops before promoting
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # the stable alert and a refused store start (tools/release-stable.sh)
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |

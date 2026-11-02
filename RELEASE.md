@@ -3,7 +3,7 @@
 > **In short:** **every night at 04:00 Zurich**, if the app changed, a build is made, **every end-to-end suite runs on it, and when all pass it becomes the stable release**
 > (friends' apps offer it, the website serves it, their Notion and GitHub runs follow by themselves). Red or no build: nothing changes. A build on demand
 > (`gh workflow run desktop.yml`) is only a pre-release to try. **Promote the latest beta by hand in GitHub:** Actions → "Release · Promote to stable" → Run workflow →
-> "Promote the latest beta" (or `tools/release-stable.sh` with no tag, which starts that run); the run is listed there and its Telegram alerts go out.
+> tick "Promote the latest beta", untick "Only print the decision" (or `tools/release-stable.sh` with no tag, which starts that run); the run is listed there and its Telegram alerts go out.
 > **A beta by hand, in one shot: `tools/beta-release.sh`** (= `gh workflow run desktop.yml -f beta=true`): always builds, then the nightly's gate approves it for beta testers or leaves it a pre-release.
 
 ## 1 · Channels
@@ -45,7 +45,7 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
 2. Try it yourself: download it from GitHub Releases (or wait for your own app to offer it once it's stable).
 3. Promote the latest beta, in GitHub (owner, 2 Nov 2026: "It can be in this workflow … we just promote the latest beta"):
    ```sh
-   gh workflow run canary-promote.yml -f promote_latest_beta=true -f dry_run=false   # or Actions → "Release · Promote to stable" → Run workflow
+   gh workflow run canary-promote.yml -f promote_latest_beta=true -f dry_run=false   # or Actions → "Release · Promote to stable" → Run workflow (untick "Only print")
    tools/release-stable.sh                                                          # the same: by hand, the script starts that run
    DRY_RUN=1 tools/release-stable.sh [desktop-v0.5.3]                               # only prints, on this Mac
    ```
