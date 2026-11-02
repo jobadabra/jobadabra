@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   pick:
-    if: vars.JOB_PILOTTO_FIXER_VERDICTS == 'on'
+    if: vars.JOBADABRA_FIXER_VERDICTS == 'on'
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}

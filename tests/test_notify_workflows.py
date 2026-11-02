@@ -40,8 +40,8 @@ class FailureNoticeTests(unittest.TestCase):
         for name in USER_WORKFLOWS:
             text = (ROOT / '.github' / 'workflows' / name).read_text(encoding='utf-8')
             with self.subTest(name):
-                self.assertIn('JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}', text)
-                self.assertIn('JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}', text)
+                self.assertIn('JOBADABRA_NOTIFY: ${{ vars.JOBADABRA_NOTIFY }}', text)
+                self.assertIn('JOBADABRA_TRIAL_KEY: ${{ secrets.JOBADABRA_TRIAL_KEY }}', text)
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ class WorkflowEnvZeroTests(unittest.TestCase):
     def test_the_pattern_catches_the_shapes_that_broke_main(self):
         for line in ("if: env.E2E_AI_REPLAY == '0'", "if: env.MEDIA_TOOLS != '0'", 'if: env.X == 0', "if: '0' == env.X"):
             self.assertTrue(ENV_ZERO.search(line), line)
-        for line in ("if: env.E2E_AI_REPLAY != '1'", "if: vars.JOB_PILOTTO_RENDER != '0'", "if: needs.plan.outputs.count != '0'", "if: env.X == '0.5'"):
+        for line in ("if: env.E2E_AI_REPLAY != '1'", "if: vars.JOBADABRA_RENDER != '0'", "if: needs.plan.outputs.count != '0'", "if: env.X == '0.5'"):
             self.assertFalse(ENV_ZERO.search(line), line)
 
 

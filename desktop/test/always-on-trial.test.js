@@ -10,19 +10,19 @@ const store = (settings, secrets) => ({settings: () => settings, saveSettings: (
 test('a Free AI install sends its key, the Free AI address and the first-run day: the runs debit the same install budget', () => {
   const {secrets, variables} = github.payload(store({aiFree: true, firstRunAt: '2026-10-01T00:00:00.000Z'}, {ANTHROPIC_API_KEY: FREE}));
   assert.equal(secrets.ANTHROPIC_API_KEY, FREE);
-  assert.equal(secrets.JOB_PILOTTO_TRIAL_KEY, FREE);
-  assert.equal(variables.JOB_PILOTTO_AI_BASE_URL, FREE_BASE);
-  assert.equal(variables.JOB_PILOTTO_FIRST_RUN, '2026-10-01T00:00:00.000Z');
-  assert.ok(variables.JOB_PILOTTO_SCORE_MODEL, 'scoring is on: the runs have an AI now');
+  assert.equal(secrets.JOBADABRA_TRIAL_KEY, FREE);
+  assert.equal(variables.JOBADABRA_AI_BASE_URL, FREE_BASE);
+  assert.equal(variables.JOBADABRA_FIRST_RUN, '2026-10-01T00:00:00.000Z');
+  assert.ok(variables.JOBADABRA_SCORE_MODEL, 'scoring is on: the runs have an AI now');
 });
 
 test('an own key goes to Anthropic directly; the trial key and license still go, so the wall holds', () => {
   const {secrets, variables, removed} = github.payload(store({license: {key: 'JP1.a.b'}}, {ANTHROPIC_API_KEY: OWN, [TRIAL_KEY]: FREE}));
   assert.equal(secrets.ANTHROPIC_API_KEY, OWN);
-  assert.equal(secrets.JOB_PILOTTO_TRIAL_KEY, FREE);
-  assert.equal(secrets.JOB_PILOTTO_LICENSE_KEY, 'JP1.a.b');
-  assert.equal(variables.JOB_PILOTTO_AI_BASE_URL, undefined);
-  assert.ok(removed.includes('JOB_PILOTTO_AI_BASE_URL') && removed.includes('JOB_PILOTTO_FIRST_RUN'));
+  assert.equal(secrets.JOBADABRA_TRIAL_KEY, FREE);
+  assert.equal(secrets.JOBADABRA_LICENSE_KEY, 'JP1.a.b');
+  assert.equal(variables.JOBADABRA_AI_BASE_URL, undefined);
+  assert.ok(removed.includes('JOBADABRA_AI_BASE_URL') && removed.includes('JOBADABRA_FIRST_RUN'));
 });
 
 test('the older credit key (JP1.…) is still never sent as an Anthropic key', () => {

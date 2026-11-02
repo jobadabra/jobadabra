@@ -89,13 +89,6 @@
    "owner": "go: a line that names the owner and the repo is part of go's sweep (1e)"
   },
   {
-   "id": "keep-vars-secrets",
-   "match": "^JOB_PILOTTO",
-   "before": "(vars|secrets)\\.$",
-   "keep": "GitHub variable/secret name: mac-07 renames it (the owner's call), then this reference changes",
-   "expires": "when mac-07 has renamed the variable or secret"
-  },
-  {
    "id": "keep-sentry-slugs",
    "match": "^job-pilotto(-app)?$",
    "line": "org job-pilotto|project job-pilotto|sentry\\.io|SENTRY_",
@@ -216,14 +209,6 @@
    "step": 4,
    "kind": "in-page",
    "readers": "extension and app: attribute prefix"
-  },
-  {
-   "id": "keep-repo-var-names",
-   "match": "^JOB_PILOTTO_",
-   "paths": "^desktop/(lib/github\\.js|test/(github|cloud|engine-repo|ai-contract|always-on-trial|notify-choice|telegram-cloud|pool-share)[^/]*)$",
-   "line": "^(?!.*process\\.env)",
-   "keep": "names of the GitHub secrets and variables the app writes into a user's repo; the public workflows read them as vars./secrets.; they change together with the GitHub-side rename",
-   "expires": "when mac-07 has renamed the variables and secrets"
   },
   {
    "id": "keep-sentry-short-ids",

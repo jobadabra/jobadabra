@@ -33,21 +33,21 @@ permissions:
 # e.g. repository variable JOBADABRA_DISABLE=google_jobs,mail.
 env:
   # Free AI for a Free AI install (desktop/lib/github.js): src/ai/providers/anthropic_api.py points the SDK there. Tracking goes on after the free trial.
-  JOBADABRA_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
+  JOBADABRA_AI_BASE_URL: ${{ vars.JOBADABRA_AI_BASE_URL }}
   # The model of the small AI steps (title and page checks, triage, search picks), as the app sets it in this repo (desktop/lib/github.js).
-  JOBADABRA_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
+  JOBADABRA_SMALL_MODEL: ${{ vars.JOBADABRA_SMALL_MODEL }}
   # The AI engine the user chose for Always on (api: Anthropic key, openai: OpenAI key; never a CLI here) and the OpenAI tiers' models,
   # as the app sets them in this repo (desktop/lib/github.js; src/ai/providers, src/ai/models.py).
-  JOBADABRA_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
-  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
-  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
-  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
+  JOBADABRA_AI_ENGINE: ${{ vars.JOBADABRA_AI_ENGINE }}
+  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOBADABRA_OPENAI_SMALL_MODEL }}
+  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOBADABRA_OPENAI_MAIN_MODEL }}
+  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOBADABRA_OPENAI_BIG_MODEL }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
   JOBADABRA_NOTION_GAP_MS: '700'
-  JOBADABRA_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
+  JOBADABRA_DISABLE: ${{ vars.JOBADABRA_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
-  JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
-  JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
+  JOBADABRA_NOTIFY: ${{ vars.JOBADABRA_NOTIFY }}
+  JOBADABRA_TRIAL_KEY: ${{ secrets.JOBADABRA_TRIAL_KEY }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}
@@ -129,7 +129,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          JOBADABRA_MAIL_MODEL: ${{ vars.JOB_PILOTTO_MAIL_MODEL || 'claude-haiku-5-5' }}
+          JOBADABRA_MAIL_MODEL: ${{ vars.JOBADABRA_MAIL_MODEL || 'claude-haiku-5-5' }}
           JOBADABRA_RUN_ID: ${{ github.run_id }}
         run: |
           echo "run_id=${JOBADABRA_RUN_ID}"

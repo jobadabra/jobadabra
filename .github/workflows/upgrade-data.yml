@@ -47,7 +47,7 @@ jobs:
           tags=""
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 40 --json tagName,isDraft,isPrerelease -q '.[] | select((.isDraft | not) and (.isPrerelease | not)) | .tagName'); do
             names=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
-            # Why (2 Nov 2026, owner: no JOB_PILOTTO_ support): the proof seeds and opens the old release through JOBADABRA_* names; a release built before #2926 ignores them, so only newer ones are tested
+            # Why (2 Nov 2026, owner: no old-name support): the proof seeds and opens the old release through JOBADABRA_* names; a release built before #2926 ignores them, so only newer ones are tested
             if tools/release-after-rename.sh "$tag"; then :; else rc=$?; [ "$rc" = 1 ] && continue; echo "::error::Could not tell whether $tag is after the rename"; exit "$rc"; fi
             if echo "$names" | grep -qx 'Jobadabra-mac-arm64.zip' && echo "$names" | grep -qx 'Jobadabra-windows-x64.exe'; then tags="$tags $tag"; fi
             [ "$(echo $tags | wc -w)" -ge "$want" ] && break

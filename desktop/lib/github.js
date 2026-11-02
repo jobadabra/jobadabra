@@ -65,8 +65,8 @@ export const SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'NOTION_TOKE
 let extraSecrets = () => ({});
 export const setExtraSecrets = read => { extraSecrets = read; };
 const MODEL_VARIABLES = {
-  JOB_PILOTTO_ENRICH_MODEL: 'enrich', JOB_PILOTTO_SCORE_MODEL: 'score', JOB_PILOTTO_KIT_MODEL: 'kit',
-  JOB_PILOTTO_INSIGHT_MODEL: 'insight', JOB_PILOTTO_MAIL_MODEL: 'enrich', JOB_PILOTTO_SMALL_MODEL: 'small',
+  JOBADABRA_ENRICH_MODEL: 'enrich', JOBADABRA_SCORE_MODEL: 'score', JOBADABRA_KIT_MODEL: 'kit',
+  JOBADABRA_INSIGHT_MODEL: 'insight', JOBADABRA_MAIL_MODEL: 'enrich', JOBADABRA_SMALL_MODEL: 'small',
 };
 const CONFIG_FILES = ['search.json', 'preferences.json'];
 
@@ -215,31 +215,30 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   if (isFreeKey(secrets.ANTHROPIC_API_KEY) && !free) delete secrets.ANTHROPIC_API_KEY;
   // The free trial (src/trial.py): the install's key tells the website who asks; a license key lifts the wall as in the app.
   const trialKey = free ? secrets.ANTHROPIC_API_KEY : storage.secret(TRIAL_KEY);
-  if (trialKey) secrets.JOB_PILOTTO_TRIAL_KEY = trialKey;
-  if (settings.license?.key) secrets.JOB_PILOTTO_LICENSE_KEY = settings.license.key;
+  if (trialKey) secrets.JOBADABRA_TRIAL_KEY = trialKey;
+  if (settings.license?.key) secrets.JOBADABRA_LICENSE_KEY = settings.license.key;
   if (settings.telegramChatId) secrets.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
   const variables = Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, value]) => value));
   const removed = [];
-  if (free) variables.JOB_PILOTTO_AI_BASE_URL = FREE_BASE; else removed.push('JOB_PILOTTO_AI_BASE_URL');
+  if (free) variables.JOBADABRA_AI_BASE_URL = FREE_BASE; else removed.push('JOBADABRA_AI_BASE_URL');
   // How the person wants to be told: the workflows' --send and src/notify.py follow it. Unset = Telegram only, so it is set for e-mail AND for Telegram turned off (26 Oct 2026: GitHub kept messaging the bot).
   const notify = channelsOf(storage), telegramOff = Array.isArray(storage.settings().notifyBy) && !notify.includes('telegram');
-  if (notify.includes('email') || telegramOff) variables.JOB_PILOTTO_NOTIFY = notify.join(','); else removed.push('JOB_PILOTTO_NOTIFY');
-  if (settings.firstRunAt) variables.JOB_PILOTTO_FIRST_RUN = settings.firstRunAt; else removed.push('JOB_PILOTTO_FIRST_RUN');
+  if (notify.includes('email') || telegramOff) variables.JOBADABRA_NOTIFY = notify.join(','); else removed.push('JOBADABRA_NOTIFY');
+  if (settings.firstRunAt) variables.JOBADABRA_FIRST_RUN = settings.firstRunAt; else removed.push('JOBADABRA_FIRST_RUN');
   // The engine GitHub runs use (never a CLI there): the chosen family's API engine, on its own key (lib/ai/index.js alwaysOnEngine).
   // 'api' is the workflows' default, so it is only set for OpenAI (and removed otherwise, so a switch back to Claude takes effect).
   const engine = ai.alwaysOnEngine(settings, ai.keysOf(storage));
-  if (engine === 'openai') variables.JOB_PILOTTO_AI_ENGINE = engine; else removed.push('JOB_PILOTTO_AI_ENGINE');
+  if (engine === 'openai') variables.JOBADABRA_AI_ENGINE = engine; else removed.push('JOBADABRA_AI_ENGINE');
   if (secrets[ai.ENGINES[engine].key]) {
     for (const [name, stage] of Object.entries(MODEL_VARIABLES)) variables[name] = MODELS[stage];
     const {insights, kits} = cadence(settings);
-    if (insights === 'off') { delete variables.JOB_PILOTTO_INSIGHT_MODEL; removed.push('JOB_PILOTTO_INSIGHT_MODEL'); }
-    if (kits > 0) variables.JOB_PILOTTO_AUTO_KIT_MAX = String(kits); else removed.push('JOB_PILOTTO_AUTO_KIT_MAX');
+    if (insights === 'off') { delete variables.JOBADABRA_INSIGHT_MODEL; removed.push('JOBADABRA_INSIGHT_MODEL'); }
+    if (kits > 0) variables.JOBADABRA_AUTO_KIT_MAX = String(kits); else removed.push('JOBADABRA_AUTO_KIT_MAX');
   }
   // "Help the pool grow" (opt-in): Always-on runs follow the same choice.
-  // Why (1 Nov 2026, rename to Jobadabra; Gitar found the class): pool-share names its keys as the engine's env (JOBADABRA_*), but the repo's variables keep the JOB_PILOTTO_ names the workflows read as vars.* until the GitHub-side rename (mac-07); drop repoName when it lands.
-  const repoName = name => name.replace(/^JOBADABRA_/, 'JOB_PILOTTO_');
+  // Why (2 Nov 2026, owner: no old-name support anywhere): the repo's variables carry the engine's own JOBADABRA_* names, the same the workflows read as vars.*; the old names a repo made before keeps are left unread (owner chose "leave them").
   const share = poolShare.variables(storage);
-  if (share) Object.assign(variables, Object.fromEntries(Object.entries(share).map(([name, value]) => [repoName(name), value]))); else removed.push(...poolShare.NAMES.map(repoName));
+  if (share) Object.assign(variables, share); else removed.push(...poolShare.NAMES);
   return {files, secrets, variables, removed};
 }
 
