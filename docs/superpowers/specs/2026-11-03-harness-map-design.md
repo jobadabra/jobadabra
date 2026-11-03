@@ -8,6 +8,7 @@ Session hm, 3 Nov 2026. Plan: `docs/superpowers/plans/2026-11-03-harness-map.md`
 - "How can I build a relevant knowledge graph around you … without polluting your context, but rather giving you the information in layers/levels … The nodes can [be] markdown files (skills, rules, knowledge), they can be MCPs, they can be Linear/Notion."
 - "We want to develop a framework for the harness that will be performant and very efficient both locally and on the CI … and we can reuse the framework."
 - Agent options sketch: pack first, live MCP only on a measured miss, RAG parked, Mac memory distilled into the repo, not copied.
+- Owner's answers on the design sketch (3 Nov 2026, relayed by the coordinator): places "Yes, as proposed (Recommended)"; areas "Yes, these 10 (Recommended)"; the map checker's unit test "Allow it (Recommended)" with `Guard: data — a hub pointing at a vanished file sends the fixer agent nowhere`, one unit test in the existing suite, no new CI job, no gate; `AGENTS.md` over Codex's cap "Yes, in hm's PR 2 (Recommended)": 2/8 moves area detail out of `AGENTS.md` into the hubs as a pure move (wording unchanged) until it is under 32 KiB, and the checker asserts `AGENTS.md` ≤ 32768 bytes so it cannot grow back. 2/8's PR body says which sections moved where.
 - Unit of work: this spec, its plan, PRs `[hm] n/N`. No Linear task per PR; Linear only for parked ideas.
 
 ## Today (3 Nov 2026, measured on origin/main)
@@ -114,7 +115,7 @@ Total ≤ 80 KB (about 20k tokens). The hub itself is **not copied**: `INDEX.md`
 
 ## Staying current (who updates a hub, and how we know)
 - **Who:** the PR that changes an area's rule, key file or spec updates that hub in the same PR (a line in the PR template's checklist is not added; the check below makes the miss visible). The distilled lessons come from the session that learned them, as they do into skills.
-- **Check (one script, `tools/context/check-map.mjs`, run by one unit test in the existing suite, no new CI job):** every link in L0/L1 resolves; every `paths:` entry exists; L0 ≤ 3 KB, each hub ≤ 6 KB; every `ask:` source is known; the leak scan is clean.
+- **Check (one script, `tools/context/check-map.mjs`, run by one unit test in the existing suite, no new CI job):** every link in L0/L1 resolves; every `paths:` entry exists; L0 ≤ 3 KB, each hub ≤ 6 KB; every `ask:` source is known; the leak scan is clean; `AGENTS.md` ≤ 32768 bytes (Codex's cap, so it cannot grow back).
 - **Staleness is a report, not a gate:** `check-map.mjs --stale` lists hubs whose `paths:` changed in more commits than the hub did since its `updated:` date. The coordinator reads it at each round-up. A gate for it is not built: no escape has been counted (`docs/rules/change-loop.md` "Gate only if it pays"); revisit after the eval shows hubs misleading an agent.
 - **Rot-proof by shape:** pointers and one-liners, facts via `ask:` lines, nothing copied.
 
@@ -132,12 +133,11 @@ Stays in `~/.claude` (memory, `rules-why.md`, quotes). **Distil** product lesson
 - RAG / vector index: parked until knowledge outgrows grep (JOB issue).
 - Live MCP inside the CI box: only if (c) misses facts the fix needed; read-only then.
 - Extracting the framework into its own package or repo: when a second project wants it (JOB issue).
-- Shrinking `AGENTS.md` under 32 KiB: it hides ~5 KB from Codex today; reported to the coordinator, outside this initiative.
 - A hub-staleness gate (see above).
 
 ## Progress
 - [ ] 1/8 This spec and plan, sketch to the owner
-- [ ] 2/8 L0 + hubs `feedback`, `ai`, `ci` + `check-map.mjs` and its one unit test + the two import/link lines in `CLAUDE.md`/`AGENTS.md`
+- [ ] 2/8 L0 + hubs `feedback`, `ai`, `ci` + `check-map.mjs` and its one unit test + the two import/link lines in `CLAUDE.md`/`AGENTS.md` + `AGENTS.md` under 32 KiB by a pure move of area detail into the hubs
 - [ ] 3/8 Hubs `apply`, `search`, `data` with distilled lessons
 - [ ] 4/8 Hubs `desktop`, `release`, `site`, `growth` with distilled lessons
 - [ ] 5/8 `tools/context/` fetchers Linear, Sentry, GitHub + `pack.mjs` + the read-only/scrub tests

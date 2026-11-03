@@ -5,13 +5,13 @@ Session hm, 3 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-harness-map-des
 ## Owner decisions (3 Nov 2026)
 - Layers L0 index, L1 area hub, L2 detail, L3 raw sources; plain markdown links; no graph database, no RAG now.
 - One framework for local sessions and the CI agent; project-neutral; extraction parked until a second project wants it.
-- "I approve" on both sketches. Nothing past PR 1/8 is built before the owner's yes on the spec.
+- "I approve" on both sketches. Design sketch answered 3 Nov 2026 (relayed by the coordinator): places yes, 10 areas yes, checker test allowed (`Guard: data`), `AGENTS.md` moves under Codex's 32 KiB in PR 2/8 by a pure move into the hubs, the checker asserts the size. 2/8 may start.
 
 ## PRs
 | n/N | What | Who gets what | Review |
 |---|---|---|---|
 | 1/8 | This spec and plan | The owner decides the places, areas and budgets before any build | docs-only: skips `/code-review` |
-| 2/8 | `docs/map/index.md` (L0) + hubs `feedback`, `ai`, `ci`; `tools/context/check-map.mjs` + one unit test; `@docs/map/index.md` in `CLAUDE.md`, one link line atop `AGENTS.md` | The fixer agent and every session reach the three pilot areas in 2 short reads | check script is a tool: `/code-review` |
+| 2/8 | `docs/map/index.md` (L0) + hubs `feedback`, `ai`, `ci`; `tools/context/check-map.mjs` + one unit test; `@docs/map/index.md` in `CLAUDE.md`, one link line atop `AGENTS.md`; area detail moves out of `AGENTS.md` into the hubs (pure move) until it is ≤ 32768 bytes, asserted by the checker | The fixer agent and every session reach the three pilot areas in 2 short reads | check script is a tool: `/code-review` |
 | 3/8 | Hubs `apply`, `search`, `data` + distilled lessons | Same, for the three biggest product areas | docs-only |
 | 4/8 | Hubs `desktop`, `release`, `site`, `growth` + distilled lessons | Same, rest of the areas | docs-only |
 | 5/8 | `tools/context/`: sources Linear, Sentry, GitHub; `pack.mjs`; tests for read-only, scrub, bounds, fail-closed | The fixer core gets a context pack before the run; tokens only in the trusted step | `/code-review` (holds tokens) |
@@ -31,7 +31,7 @@ Session hm, 3 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-harness-map-des
 
 ## Progress
 - [ ] 1/8 Spec and plan
-- [ ] 2/8 L0 + pilot hubs + checker
+- [ ] 2/8 L0 + pilot hubs + checker + AGENTS.md under 32 KiB
 - [ ] 3/8 Hubs apply, search, data
 - [ ] 4/8 Hubs desktop, release, site, growth
 - [ ] 5/8 Fetchers Linear, Sentry, GitHub + pack builder
