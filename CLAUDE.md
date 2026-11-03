@@ -5,6 +5,7 @@ Short on purpose (27 Oct 2026 diet): detail is in `docs/rules/`; the incident an
 The full pre-diet text: `git show c7bed98:CLAUDE.md`.
 
 ## Start here
+0. The map (L0, 3 KB, loaded with this file): @docs/map/index.md. One line per area, then one hub page per area; go deeper only by its links. `node tools/context/check-map.mjs` keeps it honest.
 1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) once per session; for an automatic loop, the workflow's own header comment in `.github/workflows/`. The skill for your task, and the spec's `## Progress` checklist. No Notion page is read at start (skill **notion-map** for IDs).
 2. Code: `node desktop/scripts/codemap.mjs <words>` (every file → purpose), then open only that file. A new file starts with a one-line purpose comment (≥ 25 characters).
 3. Agent rules: [AGENTS.md](AGENTS.md) (git, worktrees, tiers, which test, red main, commits); humans: [CONTRIBUTING.md](CONTRIBUTING.md), [RELEASE.md](RELEASE.md).
