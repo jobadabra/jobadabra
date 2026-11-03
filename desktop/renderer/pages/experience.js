@@ -42,7 +42,8 @@ export function roleBlock(role) {
     list.append(item);
   }
   if (left.length) {
-    list.append(el('li', 'muted', `Not used: a tailored CV takes at most ${role.maxExtra || 6} extra details per job, so these ${left.length === 1 ? 'one is' : `${left.length} are`} left out:`));
+    const cap = role.maxExtra ? `at most ${role.maxExtra} extra details per job` : 'a limited number of extra details per job';   // the cap comes from lib/experience.js with the view; no second copy of the number here
+    list.append(el('li', 'muted', `Not used: a tailored CV takes ${cap}, so ${left.length === 1 ? 'this one is' : `these ${left.length} are`} left out:`));
     for (const bullet of left) { const item = el('li', 'muted', bullet.text.replace(/\*\*/g, '')); item.append(' ', pill(bullet.from, 'warn')); list.append(item); }
   }
   box.append(head, list);   // the "+N details" pill says where they come from (its title); each extra bullet names its version

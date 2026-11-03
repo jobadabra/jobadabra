@@ -162,6 +162,26 @@ export async function rematchStale(storage, {apiKey = '', client = null, onStep 
 }
 
 // ---------- what tailoring reads ----------
+/**
+ * One match's new details onto a role: each one not already there joins it (role.extra, role.extraFrom) until the role holds MAX_EXTRA_PER_ROLE; the rest go to `dropped` (when given),
+ * once per detail and role (`seen`: the same detail from two versions is one detail not used, the pill counts details, not versions).
+ */
+function offerBullets(role, texts, sourceName, where, dropped, seen) {
+  const have = new Set(role.bullets.map(b => b.toLowerCase()));
+  for (const text of texts) {
+    if (!text || have.has(text.toLowerCase())) continue;
+    have.add(text.toLowerCase());
+    if (role.extra.length < MAX_EXTRA_PER_ROLE) {
+      role.extra.push(role.bullets.length);
+      role.extraFrom[role.bullets.length] = sourceName;
+      role.bullets.push(text);
+      continue;
+    }
+    const once = `${where.mainJob}:${where.mainRole}:${text.toLowerCase()}`;
+    if (dropped && !seen.has(once)) { seen.add(once); dropped.push({...where, text, from: sourceName}); }
+  }
+}
+
 // The main CV with the extra sources' new bullets appended to the roles they match: role.extra = their indexes, role.extraFrom = where each came from.
 // Same jobs, titles, dates and places as the main CV, always. Sources matched against another main CV are left out until matched again.
 // `dropped`, when given, collects the details a role had no room for ({mainJob, mainRole, text, from}), so the window can say which were left out (issue #3057).
@@ -178,20 +198,7 @@ export function withExtras(storage, base, sources = list(storage), dropped = nul
       const from = flat[m.sourceRole], role = out.jobs[m.mainJob]?.roles[m.mainRole];
       if (!from || !role) continue;
       role.extra ||= []; role.extraFrom ||= {};
-      const have = new Set(role.bullets.map(b => b.toLowerCase()));
-      for (const i of m.newBullets) {
-        const text = from.bullets[i];
-        if (!text || have.has(text.toLowerCase())) continue;
-        have.add(text.toLowerCase());
-        if (role.extra.length >= MAX_EXTRA_PER_ROLE) {
-          const once = `${m.mainJob}:${m.mainRole}:${text.toLowerCase()}`;   // the same detail in two versions is one detail not used (the pill counts details, not versions)
-          if (dropped && !seenDropped.has(once)) { seenDropped.add(once); dropped.push({mainJob: m.mainJob, mainRole: m.mainRole, text, from: source.name}); }
-          continue;
-        }
-        role.extra.push(role.bullets.length);
-        role.extraFrom[role.bullets.length] = source.name;
-        role.bullets.push(text);
-      }
+      offerBullets(role, m.newBullets.map(i => from.bullets[i]), source.name, {mainJob: m.mainJob, mainRole: m.mainRole}, dropped, seenDropped);
     }
     for (const skill of String(source.cv.skills || '').split(',').map(s => s.trim()).filter(Boolean)) if (!known.has(skill.toLowerCase())) { known.add(skill.toLowerCase()); extraSkills.add(skill); }
   }

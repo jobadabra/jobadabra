@@ -65,3 +65,10 @@ test('the Work history row says "3 not used" and lists them, so nothing is dropp
   assert.match(text, /at most 6 extra details per job/);
   for (const dropped of NEW.slice(6)) assert.ok(text.includes(dropped), `lists "${dropped}"`);
 });
+
+test('one detail left out reads "this one is", and a row without the cap says no number', () => {
+  const one = roleBlock({company: 'Acme', title: 'SRE', bullets: [{text: 'Ran incidents.', from: 'Main CV'}], dropped: [{text: 'Mentored four engineers.', from: 'Data CV'}]}).textContent;
+  assert.match(one, /1 not used/);
+  assert.match(one, /so this one is left out/);
+  assert.doesNotMatch(one, /these 1|\b6\b/, 'no plural slip and no hard-coded cap');
+});
