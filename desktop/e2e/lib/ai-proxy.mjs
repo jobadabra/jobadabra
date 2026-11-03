@@ -83,6 +83,23 @@ async function serveFault(control, fault, ready, res, openai) {
   return true;
 }
 
+/**
+ * Answers one metered call through the relay (the owner's Codex plan, lib/broker-relay.mjs) and writes the response: the per-row cap of paid calls first, then the call, then its count (a yes as usage, a no as an error).
+ * Split out of startAiProxy's handler (3 Nov 2026) so its cognitive complexity stays under the clean-code limit.
+ */
+async function answerByRelay({relay, body, res, stats, maxCalls, kind, stored}) {
+  // Why (3 Nov 2026, replay-refill moved from its API key to the broker): the per-row cap of paid calls (maxCalls, lib/refill.mjs) held only on the API path below; a relay call counts against it too.
+  if (maxCalls && (stats.paid || 0) >= maxCalls) { res.writeHead(400, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'invalid_request_error', message: `proxy: the cap of ${maxCalls} paid calls is reached`}})); return; }
+  stats.paid = (stats.paid || 0) + 1;
+  let answered;
+  try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
+  catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
+  if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } }
+  else { try { countError(answered.status, answered.body.toString('utf8')); } catch (error) { console.error(`ai-proxy: could not count the broker's refusal (${answered.status}): ${error.message}`); } }   // Why (3 Nov 2026): a broker "no" is counted like an API refusal, the refill's out-of-credits check reads it (lib/refill.mjs); counting never breaks the call
+  if (answered.status === 200) keepCandidateBody(stored, answered.body);
+  res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
+}
+
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
@@ -133,15 +150,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       res.writeHead(503, {'content-type': 'application/json'});
       res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
     }
-    if (relay && metered.test(req.url)) {   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
-      stats.paid = (stats.paid || 0) + 1;
-      let answered;
-      try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
-      catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
-      if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } }
-      if (answered.status === 200) keepCandidateBody(stored, answered.body);
-      res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
-    }
+    if (relay && metered.test(req.url)) { await answerByRelay({relay, body, res, stats, maxCalls, kind, stored}); return; }   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
     if (kind === 'app-free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs): a miss past it is refused, never paid
       const cap = await capReached();
       if (cap.capped) { noteCapped(cap.neurons); res.writeHead(503, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons)}})); return; }

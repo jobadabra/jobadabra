@@ -1,4 +1,4 @@
-# Refill the replays' missing AI answers in CI, not on the Mac (owner, 15 Oct 2026: "Let's have a separate CI workflow only for that, with a separate Anthropic API Key").
+# Refill the replays' missing AI answers in CI, not on the Mac (owner, 15 Oct 2026: "Let's have a separate CI workflow only for that"; its own Anthropic API key until 3 Nov 2026, now the AI broker).
 # A PR that changes what the app asks the AI makes the site replays gate say "ask changed" / "out of date" for the pinned rows whose stored answers no longer match. This refills only those
 # asks, one pinned row per runner in parallel (fill-memo.mjs: the network record is replayed, no site visit, the fake applicant, the privacy tripwire on, old answers never changed),
 # publishes the refilled rows through the guard (records-publish.mjs, desktop/e2e/lib/record-guard.mjs: worse, garbled or pinned-breaking rows refused), then re-runs the PR's gate.
@@ -6,12 +6,12 @@
 # The text below on a push to main and on PRs is the history of the earlier design. Two ways in. (1) By hand with a PR number (workflow_dispatch, as before): that PR's pinned rows. (2) Was: AUTOMATICALLY on main (owner, 15 Oct 2026): a push to main that changes a ladder prompt fingerprint
 # (desktop/e2e/ladder-baseline.json, compared by refill-trigger.mjs with the file before the push; a score update alone does not count), OR a change to a file that builds the ask (the worker's instructions, fact rule, field list, CV facts; desktop/e2e/lib/prompt-sources.mjs; owner, 15 Oct 2026: #904 and #912 changed the ask and no refill ran), or a by-hand run with no PR number: EVERY recorded row, pinned or not.
 # NOT a pull_request trigger (owner rule, 13 Oct 2026: no workflow a PR starts can reach an AI key; desktop/e2e/test/pool/pool-ci-triggers.test.mjs): a push to main is merged code the owner reviewed.
-# Never a fork PR: the key is never given to it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
+# Never a fork PR: the broker is never asked for it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
 # On main the publish works in groups of 3 rows (records-publish.mjs refuses more at once), one runner per group, and a failed or cap-refused run tells the owner on Telegram (ci-alert.mjs).
-# Key: REPLAY_REFILL_ANTHROPIC_KEY, its own workspace and spend limit, NO fallback to ANTHROPIC_API_KEY or any other key: missing = the job says so and stops (lib/refill.mjs).
-# Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job log and on /admin/intelligence/ai-cost (job replay-refill).
+# No key (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker"): the fill step's asks go through the broker relay (lib/broker-relay.mjs) on this job's OIDC token (`id-token: write`), the Codex plan's scheduled lane (it stops at 70% of the Codex week, web #348); a broker "no" fails that row with "OUT OF BROKER ROOM" and the next run asks again.
+# Budget: the estimate is printed first (pick job), above max_asks (default 40) the run does not start, a row stops at 30 broker calls (lib/ai-proxy.mjs maxCalls); about 4 calls a row asked, so a run of 40 asks is at most ~40-160 broker calls, run by hand or from the daily replays. Each row's calls are in the job log; the dollar figures are the API-equivalent estimate, no longer money.
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
-# Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), AI_COST_PUBLISH_KEY.
+# Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), no AI_COST_PUBLISH_KEY (since 3 Nov 2026 nothing reports refill spend to /ai-cost and there is no monthly dollar cap).
 # Guard: tests/tooling/ci/test_refill_workflow.py, desktop/e2e/test/filling/refill.test.mjs. Never posts a Replay-accept line.
 name: CI · Replay refill
 run-name: ${{ inputs.pr != '' && format('Replay refill PR {0} @ {1}', inputs.pr, inputs.head) || 'Replay refill' }}   # the PR gate looks for this title before it starts another automatic refill for the same commit
@@ -29,7 +29,7 @@ on:
         type: choice
         options: [changed, all]
       auto:
-        description: 'Started by a PR gate itself (owner, 17 Oct 2026): only rows whose outcome fell, at most $0.50 a run and $5 a calendar month, Telegram when a cap stops it'
+        description: 'Started by a PR gate itself (owner, 17 Oct 2026): only rows whose outcome fell, an estimate of at most $0.50 a run, Telegram when a cap stops it (no monthly cap since 3 Nov 2026)'
         default: ''
       head:
         description: 'The PR commit the automatic run is for (its title; one automatic run per commit)'
@@ -141,15 +141,13 @@ jobs:
       count: ${{ steps.pick.outputs.count || steps.pickmain.outputs.count }}
       line: ${{ steps.pick.outputs.line || steps.pickmain.outputs.line }}
     steps:
-      - name: The key is set, and the PR is not from a fork
+      - name: The PR is not from a fork
         env:
           GH_TOKEN: ${{ github.token }}
-          REFILL_KEY: ${{ secrets.REPLAY_REFILL_ANTHROPIC_KEY }}
         run: |
-          if [ -z "$REFILL_KEY" ]; then echo "refill: no REPLAY_REFILL_ANTHROPIC_KEY secret: nothing was asked (this workflow never runs on another key)"; exit 1; fi
           if [ -n "$PR" ]; then
             cross="$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json isCrossRepository -q .isCrossRepository)"
-            if [ "$cross" != "false" ]; then echo "refill: PR $PR is from a fork or unknown: the key is never given to it"; exit 1; fi
+            if [ "$cross" != "false" ]; then echo "refill: PR $PR is from a fork or unknown: the broker is never asked for it"; exit 1; fi
           fi
       - uses: actions/checkout@v5   # the workflow's own ref (main): its tools, never the PR's code
       - uses: actions/setup-node@v5
@@ -164,7 +162,6 @@ jobs:
           ROWS: ${{ inputs.rows || 'changed' }}
           MAX_ASKS: ${{ inputs.max_asks || '40' }}
           AUTO: ${{ inputs.auto }}
-          COST_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: |
           head="$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json headRefName -q .headRefName)"
           run="$(gh run list -R "$GITHUB_REPOSITORY" -w site-replays-pr.yml -b "$head" -L 1 --json databaseId -q '.[0].databaseId // empty')"
@@ -172,16 +169,12 @@ jobs:
           if [ -n "$run" ]; then gh run download "$run" -R "$GITHUB_REPOSITORY" -p "replay-pr-$run-*" -D "$RUNNER_TEMP/shards" || true; fi
           find "$RUNNER_TEMP/shards" -path '*step4/*.json' -exec cp {} "$RUNNER_TEMP/step4/" \;
           all=""; [ "$ROWS" = all ] && all="--all"
-          [ "$AUTO" = true ] && all="--worse-only --max-usd 0.5"   # the automatic run: only rows a refill can turn green, $0.50 a run (the month's $5 is checked next)
+          [ "$AUTO" = true ] && all="--worse-only --max-usd 0.5"   # the automatic run: only rows a refill can turn green, an estimate of $0.50 a run (no monthly cap any more: broker calls are not dollars)
           cp replay-faithful.json "$RUNNER_TEMP/pins.json"   # main's pins, unless the PR's head has its own file (data only: the PR's code is not run here)
           if git fetch --quiet origin "refs/pull/$PR/head"; then git show FETCH_HEAD:desktop/e2e/replay-faithful.json > "$RUNNER_TEMP/pins-pr.json" 2>/dev/null && mv "$RUNNER_TEMP/pins-pr.json" "$RUNNER_TEMP/pins.json"; fi
           node refill-pick.mjs "$RUNNER_TEMP/pins.json" "$RUNNER_TEMP/step4" $all --max-asks "$MAX_ASKS" > "$RUNNER_TEMP/pick.json"
           { echo "### Replay refill: PR $PR"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; }
           [ -z "$(jq -r .refused "$RUNNER_TEMP/pick.json")" ] || { echo "::error::the estimate is above the cap: nothing was asked"; jq -r .refused "$RUNNER_TEMP/pick.json" > "$RUNNER_TEMP/auto-why.txt"; exit 1; }
-          if [ "$AUTO" = true ] && [ "$(jq '.rows | length' "$RUNNER_TEMP/pick.json")" != 0 ]; then   # the month's $5 (/admin/intelligence/ai-cost, job replay-refill), read here: the PR's job holds no key
-            if AI_COST_PUBLISH_KEY="$COST_KEY" node refill-auto.mjs cap "$(jq .usd "$RUNNER_TEMP/pick.json")" > "$RUNNER_TEMP/auto-why.txt"; then cat "$RUNNER_TEMP/auto-why.txt"
-            else cat "$RUNNER_TEMP/auto-why.txt"; echo "::error::the automatic refill is over its cap: nothing was asked"; exit 1; fi
-          fi
           echo "rows=$(jq -c .rows "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
           echo "groups=$(jq -c .groups "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
           echo "count=$(jq '.rows | length' "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
@@ -245,6 +238,13 @@ jobs:
     name: refill ${{ matrix.row }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    # Why (3 Nov 2026): the OIDC token the AI broker checks (desktop/e2e/lib/broker-client.mjs); the rest is what this job's steps already read (job permissions replace the workflow's).
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: read
+      checks: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 4   # one workflow never holds most of the 20 runners (owner, 15 Oct 2026)
@@ -252,7 +252,7 @@ jobs:
         row: ${{ fromJSON(needs.pick.outputs.rows) }}
     env:
       JOBADABRA_HEAVY: '0'
-      JP_REFILL_CI: '1'   # the fill replay may ask the API on CI (lib/ai/model-memo.js fillOn); the key itself is given to the one step below
+      JP_REFILL_CI: '1'   # the fill replay may ask the AI on CI (lib/ai/model-memo.js fillOn): through the broker relay, no key
     steps:
       - uses: actions/checkout@v5
         with:
@@ -313,8 +313,6 @@ jobs:
       - name: Fill this row's missing answers (the network record replayed, the API asked for the missed asks only)
         id: fill
         working-directory: desktop/e2e
-        env:
-          REPLAY_REFILL_ANTHROPIC_KEY: ${{ secrets.REPLAY_REFILL_ANTHROPIC_KEY }}   # no fallback: lib/refill.mjs keyRefusal
         run: node fill-memo.mjs "$GITHUB_WORKSPACE/records" "${{ matrix.row }}" --out "$RUNNER_TEMP/fill" 2>&1 | tee -a "$RUNNER_TEMP/fill.log"; exit "${PIPESTATUS[0]}"
       - name: Pack the refilled memo (encrypted with the public key; the page parts never sit in the clear)
         if: success()
@@ -329,7 +327,7 @@ jobs:
       - name: This row's line
         if: always()
         run: |
-          if grep -q "OUT OF CREDITS" "$RUNNER_TEMP/fill.log" 2>/dev/null; then echo "::error::refill: OUT OF CREDITS (the refill key's balance or workspace limit): add credit in the Anthropic console, then run it again"; fi
+          if grep -q "OUT OF BROKER ROOM" "$RUNNER_TEMP/fill.log" 2>/dev/null; then echo "::error::refill: OUT OF BROKER ROOM (the Codex budget or its reserve): run it again after the next reset"; fi
           { echo "#### ${{ matrix.row }}"; echo '```'; grep -E "^(fill-memo|replay-net: refill)" "$RUNNER_TEMP/fill.log" 2>/dev/null | cut -c1-300 || echo "no result"; echo '```'; }
 
   publish:
@@ -476,16 +474,13 @@ jobs:
           node desktop/e2e/refill-yellow.mjs "$RUNNER_TEMP/yellow-merged.json" "${lists[@]}" || true
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Spend (job log and /admin/intelligence/ai-cost)
+      - name: Broker calls (job log only)
         if: always() && steps.packs.outputs.packs != '0'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          AI_COST_JOB: replay-refill
+        # Why (3 Nov 2026): no longer reported to /admin/intelligence/ai-cost: its dollars were API list prices of calls the Codex plan pays for, which the page would read as Anthropic spend.
         run: |
           total="$(find "$RUNNER_TEMP/packs" -name meta.json -exec cat {} + | jq -s '{usd: (map(.usd) | add), calls: (map(.calls) | add)}')"
           echo "$total" > "$RUNNER_TEMP/refill-cost.json"
-          echo "**Refill spend: \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json") in $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") call(s)** (the pick job's log has the estimate)"
-          node desktop/e2e/ai-cost-report.mjs --job "$AI_COST_JOB" --file "$RUNNER_TEMP/refill-cost.json" || true
+          echo "**Refill: $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") broker call(s)** (API-list-price estimate \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json"), not money; the pick job's log has the ask estimate)"
       - name: Re-run the PR's site replays gate (the new bundle is read by its replay)
         if: inputs.pr != '' && needs.publish.result == 'success' && steps.packs.outputs.packs != '0'
         env:

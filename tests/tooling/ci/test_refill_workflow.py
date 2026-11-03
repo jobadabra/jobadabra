@@ -10,16 +10,15 @@ CODE = '\n'.join(line for line in TEXT.splitlines() if not line.lstrip().startsw
 
 
 class TheRefillWorkflow(unittest.TestCase):
-    def test_the_key_has_no_fallback_and_no_other_key_is_named(self):
-        self.assertNotRegex(CODE, r'ANTHROPIC_API_KEY|E2E_ANTHROPIC_KEY|LIVE_POOL_ANTHROPIC_KEY', 'no other Anthropic key in this workflow')
-        for use in re.findall(r'secrets\.REPLAY_REFILL_ANTHROPIC_KEY[^\n]*', CODE):
-            self.assertNotIn('||', use, 'no fallback after the refill key')
+    def test_no_anthropic_key_is_named_the_fill_asks_the_broker(self):
+        # Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker"): the refill's own key is gone.
+        self.assertNotRegex(CODE, r'(?i)ANTHROPIC|OPENAI_API_KEY', 'no AI key in this workflow')
+        refill = CODE.split('\n  refill:')[1].split('\n  publish:')[0]
+        self.assertIn('id-token: write', refill, 'the fill job carries the OIDC token the broker checks')
+        self.assertNotIn('id-token', CODE.split('\n  refill:')[0], 'only the fill job may ask the broker')
+        self.assertNotIn('id-token', CODE.split('\n  publish:')[1], 'only the fill job may ask the broker')
 
-    def test_a_missing_key_says_so_and_stops(self):
-        self.assertRegex(CODE, r'-z "\$REFILL_KEY".*\n?.*exit 1', 'the pick job stops without the secret')
-        self.assertIn('nothing was asked', CODE)
-
-    def test_a_fork_pr_never_gets_the_key(self):
+    def test_a_fork_pr_never_asks_the_broker(self):
         self.assertIn('isCrossRepository', CODE)
         pick = CODE.split('\n  pick:')[1].split('\n  bundles:')[0]   # the trigger job before it checks out main's own code only
         self.assertLess(pick.index('isCrossRepository'), pick.index('actions/checkout'), 'the fork check runs before any PR code is checked out')
@@ -52,9 +51,9 @@ class TheRefillWorkflow(unittest.TestCase):
         self.assertIn('--against', publish)
         self.assertIn("needs.pick.result == 'success'", publish, 'a skipped pick (no prompt change) publishes nothing')
 
-    def test_the_spend_is_reported_once_and_a_failed_or_capped_run_on_main_tells_the_owner(self):
+    def test_the_broker_calls_are_logged_once_and_a_failed_or_capped_run_on_main_tells_the_owner(self):
         finish = CODE.split('\n  finish:')[1].split('\n  notify:')[0]
-        self.assertIn('ai-cost-report.mjs', finish)
+        self.assertIn('broker call', finish)
         self.assertIn('site-replays-pr.yml', finish)
         self.assertIn("inputs.pr != ''", finish, 'the PR gate is re-run only for a PR run')
         notify = CODE.split('\n  notify:')[1]
@@ -63,12 +62,13 @@ class TheRefillWorkflow(unittest.TestCase):
         self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN', notify)
         self.assertRegex(notify, r"needs: \[trigger, pick, bundles, refill, publish, finish\]")
 
-    def test_the_key_is_given_to_one_step_only(self):
-        self.assertEqual(len(re.findall(r'secrets\.REPLAY_REFILL_ANTHROPIC_KEY', CODE)), 2, 'the presence check and the fill step, nothing else')
+    def test_a_broker_no_is_named_for_the_row(self):
+        self.assertIn('OUT OF BROKER ROOM', CODE, 'a refused row says the broker said no, not a missing credit')
 
     def test_the_cost_is_capped_estimated_and_reported(self):
-        for word in ('refill-pick.mjs', '--max-asks', 'ai-cost-report.mjs', 'replay-refill', 'estimate'):
+        for word in ('refill-pick.mjs', '--max-asks', 'replay-refill', 'estimate', 'broker call'):
             self.assertIn(word, TEXT)
+        self.assertNotIn('ai-cost-report.mjs', CODE, 'broker calls are not Anthropic dollars: /admin/intelligence/ai-cost must not read them as spend')
 
     def test_it_never_posts_a_replay_accept_and_lists_no_pull_request_paths(self):
         self.assertNotIn('Replay-accept:', CODE)

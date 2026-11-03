@@ -1,9 +1,10 @@
 // The rules of the CI refill (.github/workflows/replay-refill.yml; owner, 15 Oct 2026: "a separate CI workflow only for that, with a separate Anthropic API Key"): which pinned rows
-// to refill, what it may cost, which key it may use, and which PRs may start it. Pure parts; guard: e2e/test/refill.test.mjs. The key REPLAY_REFILL_ANTHROPIC_KEY has NO fallback
-// (no Tests key, no live-pool key): missing = the job says so and stops. Fake applicant only, a replay of the network record (no site visit), never Submit.
+// to refill, what it may cost, and which PRs may start it. Pure parts; guard: e2e/test/refill.test.mjs. Since 3 Nov 2026 (owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker") the asks go
+// through the AI broker relay (lib/broker-relay.mjs, the scheduled lane: it stops at 70% of the Codex week, web #348), no key at all; the dollar figures below are the API-equivalent estimate, no longer money. Fake applicant only, a replay of the network record (no site visit), never Submit.
+// Job: serve stored answers
 import {askChanged, keptOutcome, outdated} from '../replay-gate.mjs';
 
-export const SECRET = 'REPLAY_REFILL_ANTHROPIC_KEY';
+export const RELAY_KEY = 'codex-relay-local';   // the app's API engine wants a key string; the proxy answers through the AI broker and never sends it anywhere (Why, 3 Nov 2026, owner: "We should not use API Keys at all anymore")
 export const FLAG = 'JP_REFILL_CI';   // set by the workflow only: the fill replay may ask the API on CI (lib/ai/model-memo.js fillOn, lib/offline-app.mjs)
 export const MAX_ASKS = 40;           // a run refuses to start above this many asks (workflow input max_asks lowers or raises it by hand)
 export const PER_ASK_USD = 0.001;     // the estimate printed before it starts: the API's measured price (15 Oct 2026, the by-hand refill of PR 824: $0.0012 in 3 calls, $0.0016 in 4, ~$0.0004 a call) with a margin; the plan path's $0.06 was 100x too high
@@ -13,22 +14,16 @@ export const ASKS_PER_ROW_MAIN = 4;   // measured 15 Oct 2026: 2-5 answers fille
 export const ROW_MAX_CALLS = 30;     // one row's paid calls: the proxy refuses the next one (lib/ai-proxy.mjs maxCalls)
 export const refillCap = (env = process.env) => Number(env.REFILL_ROW_MAX_CALLS) || ROW_MAX_CALLS;             // a run stops asking above this (the org's prepaid credits are small; the key's workspace has its own monthly limit)
 
-// The key, or '' (never another key's value).
-export const refillKey = (env = process.env) => String(env[SECRET] || '');
-export const keyRefusal = (env = process.env) => (refillKey(env) ? '' : `refill: no ${SECRET} secret: nothing was asked (this workflow never runs on another key)`);
-
-// A PR from a fork never gets the key (isCrossRepository from `gh pr view --json isCrossRepository`; a missing answer counts as a fork).
-export const forkRefusal = pr => (pr && pr.isCrossRepository === false ? '' : `refill: PR ${pr?.number ?? '?'} is from a fork or unknown: the key is never given to it`);
+// A PR from a fork never asks the broker (isCrossRepository from `gh pr view --json isCrossRepository`; a missing answer counts as a fork).
+export const forkRefusal = pr => (pr && pr.isCrossRepository === false ? '' : `refill: PR ${pr?.number ?? '?'} is from a fork or unknown: the broker is never asked for it`);
 
 // A replay record the refill is for: the ask changed (page-side), or the prompt changed (instructions only): the gate's own two verdicts (replay-gate.mjs).
 export const needsRefill = (record, {worseOnly = false} = {}) => !!record && !record.deferred && (outdated(record.firstMiss) || askChanged(record)) && !(worseOnly && keptOutcome(record));
 
 // The automatic refill a PR starts itself (owner, 17 Oct 2026: "Auto-refill PRs under a cap"): only rows a refill could turn green (the outcome fell: keptOutcome is the gate's rule), $0.50 a run, $5 a calendar month.
-export const AUTO_RUN_USD = 0.5, AUTO_MONTH_USD = 5;
-// (this run's estimate, the month's refill spend so far) -> '' (go) or why it does not run.
-export const autoRefusal = (estimate, month, {runUsd = AUTO_RUN_USD, monthUsd = AUTO_MONTH_USD} = {}) => (!Number.isFinite(month) ? 'refill (auto): this month\'s refill spend could not be read: nothing was asked'
-  : estimate > runUsd ? `refill (auto): about $${estimate.toFixed(3)} is above the $${runUsd} a run`
-  : month + estimate > monthUsd ? `refill (auto): this month's refill spend $${month.toFixed(2)} + about $${estimate.toFixed(3)} would pass the $${monthUsd} a month` : '');
+// Why (3 Nov 2026, Gitar on #3111): no $5 a month cap any more. It read the month's refill dollars from /ai-cost, and broker calls are not dollars (nothing reports them there now), so it could never fire.
+// What limits an automatic run now: the estimate per run below, the pick's ask cap, 30 broker calls a row (lib/ai-proxy.mjs maxCalls) and the broker's own Codex week budget.
+export const AUTO_RUN_USD = 0.5;   // the estimate (asks x PER_ASK_USD) one automatic run may not pass
 // The run's title: one automatic refill per PR commit (the gate looks for it before it starts another).
 export const autoRunName = (pr, head) => `Replay refill PR ${pr} @ ${String(head).slice(0, 7)}`;
 
@@ -49,8 +44,8 @@ export const capRefusal = ({asks, usd}, {maxAsks = MAX_ASKS, maxUsd = MAX_USD} =
   : usd > maxUsd ? `refill: about $${usd.toFixed(3)} is above the $${maxUsd} cap` : '');
 
 // The API's answer for an empty balance or a spent limit (lib/ai-meter.mjs countError keys: "<status> <type>: <message>").
-export const outOfCredits = errors => Object.keys(errors || {}).some(key => /credit balance is too low|spend limit|usage limits/i.test(key));
-export const creditsLine = `refill: OUT OF CREDITS: the API refused the refill key's calls (the org's prepaid balance or the workspace's monthly limit); add credit in the Anthropic console, then run it again`;
+export const outOfCredits = errors => Object.keys(errors || {}).some(key => /credit balance is too low|spend limit|usage limits|ai-capped/i.test(key));
+export const creditsLine = `refill: OUT OF BROKER ROOM: the AI broker refused the refill's calls (the Codex budget or its reserve); run it again after the next reset`;
 
 // The workflow's group split: one row per runner.
 export const matrixOf = rows => rows.map(row => row.name);
