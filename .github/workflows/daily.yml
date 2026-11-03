@@ -20,7 +20,7 @@ on:
       mode:
         description: 'scheduled sends only when new jobs exist; run and today always send; apply marks a job applied; prepare drafts its application kit; insight sends an insight now; weekly sends the search analysis now; kits drafts kits for the top matches; interview analyses a transcript sent to the bot; add tracks an application made elsewhere'
         type: choice
-        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits]
+        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits, rescore]
         default: scheduled
       job:
         description: 'job code from /apply_<code> (apply and prepare modes), or a job URL (add mode)'

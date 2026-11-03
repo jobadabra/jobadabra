@@ -1246,6 +1246,10 @@
             {
               "name": "tailor",
               "color": "yellow"
+            },
+            {
+              "name": "rescore",
+              "color": "orange"
             }
           ]
         },
