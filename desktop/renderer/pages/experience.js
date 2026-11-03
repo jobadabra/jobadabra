@@ -159,7 +159,10 @@ export function addedBlock(items, remove) {
     name.append(' ', pill(KIND[item.kind] || 'Added', 'info'));
     words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
     const button = Object.assign(el('button', 'secondary item-action', 'Remove'), {type: 'button'});
-    button.addEventListener('click', () => { button.disabled = true; remove(item.id); });
+    button.addEventListener('click', () => {
+      if (!confirm(`Remove “${item.text}”? Tailored CVs stop using it. Your main CV is not changed.`)) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
+      button.disabled = true; remove(item.id);
+    });
     row.append(tile('user', 'signal'), words, button);
     list.append(row);
   }

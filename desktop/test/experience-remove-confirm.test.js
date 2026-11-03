@@ -47,3 +47,30 @@ test('"Yes" removes that version only', async () => {
   await tick();
   assert.deepEqual(removed, ['a']);
 });
+
+test('the tester\'s repeated press: after a removal the rows move up, and the next press asks about the version now in that place', async () => {
+  const after = {...view, sources: [view.sources[1]]};
+  globalThis.window.pilot.experienceRemove = async id => { removed.push(id); return {ok: true, ...after, changes: {}}; };
+  showExperience(view);
+  asked.length = 0; removed.length = 0; answer = true;
+  removeButtons()[0].click();
+  await tick();
+  assert.deepEqual(removed, ['a']);
+  removeButtons()[0].click();
+  await tick();
+  assert.match(asked.at(-1), /Cloud CV/, 'the second press names the version that moved into that place, and asks again');
+});
+
+test('"Added by you" Remove asks first too (the same one-press delete)', async () => {
+  const {addedBlock} = await import('../renderer/pages/experience.js');
+  const gone = [];
+  const [, list] = addedBlock([{id: 'k1', kind: 'skill', text: 'Kafka'}], id => gone.push(id));
+  const button = list.all().find(node => node.tagName === 'BUTTON');
+  answer = false; asked.length = 0;
+  button.click();
+  assert.deepEqual(gone, [], 'a "No" removes nothing');
+  assert.match(asked[0], /Kafka/);
+  answer = true;
+  button.click();
+  assert.deepEqual(gone, ['k1']);
+});
