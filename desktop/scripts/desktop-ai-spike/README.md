@@ -13,7 +13,7 @@
 4. In a new Claude chat type: `Use the ping tool from the Jobadabra spike.` Paste the result when the script asks.
 5. Send back `spike-result.txt` from your Desktop. Remove the helper: Claude → Settings → Extensions → Jobadabra spike → Uninstall.
 
-It does not sign in anywhere, does not change Claude's settings and leaves nothing in your user folder.
+It does not sign in anywhere, does not change Claude's settings, and removes only the files and folders it made itself. `spike-result.txt` says what, if anything, is really left in your user folder.
 
 ### What you should see (and what each answer decides)
 

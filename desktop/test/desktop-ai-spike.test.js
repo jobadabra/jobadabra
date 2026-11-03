@@ -14,7 +14,7 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'spike-test-'));
 test('the packed bundle holds the manifest and the server, and the manifest names the required MCPB fields', async () => {
   const file = await build(tmp());
   const zip = await JSZip.loadAsync(fs.readFileSync(file));
-  assert.deepEqual(Object.keys(zip.files).filter(name => !name.endsWith('/')).sort(), ['manifest.json', 'server/index.js']);
+  assert.deepEqual(Object.keys(zip.files).filter(name => !name.endsWith('/')).sort(), ['manifest.json', 'server/index.cjs']);
   const m = JSON.parse(await zip.file('manifest.json').async('string'));
   assert.deepEqual(m, manifest());
   for (const field of ['manifest_version', 'name', 'version', 'description', 'author', 'server']) assert.ok(m[field], field);
@@ -29,8 +29,8 @@ test('the server lists exactly the ping tool and answers a call without touching
   const dir = tmp();
   const zip = await JSZip.loadAsync(fs.readFileSync(file));
   fs.mkdirSync(path.join(dir, 'server'));
-  fs.writeFileSync(path.join(dir, 'server', 'index.js'), await zip.file('server/index.js').async('string'));
-  const child = spawn(process.execPath, [path.join(dir, 'server', 'index.js')], {env: {...process.env, SPIKE_SECRET_STORE: 'off'}});
+  fs.writeFileSync(path.join(dir, 'server', 'index.cjs'), await zip.file('server/index.cjs').async('string'));
+  const child = spawn(process.execPath, [path.join(dir, 'server', 'index.cjs')], {env: {...process.env, SPIKE_SECRET_STORE: 'off'}});
   const replies = [];
   let rest = '';
   child.stdout.on('data', chunk => { rest += chunk; let at; while ((at = rest.indexOf('\n')) >= 0) { replies.push(JSON.parse(rest.slice(0, at))); rest = rest.slice(at + 1); } });

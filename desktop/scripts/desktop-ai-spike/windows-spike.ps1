@@ -34,15 +34,15 @@ try {
 $mcpb = Join-Path $here 'jobadabra-spike.mcpb'
 if (-not (Test-Path $mcpb)) {
   Add-Type -AssemblyName System.IO.Compression.FileSystem
-  $stage = Join-Path $env:TEMP 'jobadabra-spike-stage'
-  Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+  $stage = Join-Path $env:TEMP ('jobadabra-spike-stage-' + [guid]::NewGuid().ToString('N'))   # a new folder only this run created, so the cleanup below can never touch anything else
   New-Item -ItemType Directory "$stage\server" | Out-Null
   Copy-Item (Join-Path $here 'manifest.json') $stage
-  Copy-Item (Join-Path $here 'server\index.js') "$stage\server"
+  Copy-Item (Join-Path $here 'server\index.cjs') "$stage\server"
   $zip = Join-Path $env:TEMP 'jobadabra-spike.zip'
   Remove-Item $zip -ErrorAction SilentlyContinue
   [IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
   Move-Item $zip $mcpb -Force
+  Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
   Say "Built $mcpb from the folder."
 }
 Say "Opening $mcpb with the default program..."
@@ -61,8 +61,11 @@ Say "Q3 asked before the tool ran: $q3"
 Say "Q4 ping result: $q4"
 
 # 4. Clean up what the helper may have left, and tell the person how to remove it.
-Remove-Item (Join-Path $env:USERPROFILE '.jobadabra-spike'), (Join-Path $env:USERPROFILE '.jobadabra-spike-write') -Recurse -Force -ErrorAction SilentlyContinue
-Say 'Left behind in your user folder: none (removed).'
+# The helper removes its own files; here only an EMPTY leftover folder of the helper is removed (never a folder with anything in it), then each path is checked and reported as it really is.
+$spikeFolders = @((Join-Path $env:USERPROFILE '.jobadabra-spike'), (Join-Path $env:USERPROFILE '.jobadabra-spike-write'))
+foreach ($f in $spikeFolders) { if ((Test-Path $f) -and -not (Get-ChildItem $f -Force -ErrorAction SilentlyContinue)) { Remove-Item $f -Force -ErrorAction SilentlyContinue } }
+$still = $spikeFolders | Where-Object { Test-Path $_ }
+Say "Left behind in your user folder: $(if ($still) { $still -join '; ' } else { 'none' })"
 $lines | Set-Content -Encoding UTF8 $out
 Write-Host ''
 Write-Host "Done. Please send $out back. To remove the helper: Claude > Settings > Extensions > Jobadabra spike > Uninstall."

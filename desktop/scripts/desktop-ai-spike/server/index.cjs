@@ -19,18 +19,19 @@ const ITEM = 'jobadabra.desktop-ai-spike';   // a throwaway Keychain item name; 
 // macOS: add, read back and delete a generic password with the system `security` tool (no native module).
 async function macStore(secret) {
   const steps = {};
-  steps.add = (await run('/usr/bin/security', ['add-generic-password', '-U', '-a', 'spike', '-s', ITEM, '-w', secret])).ok;
+  const added = await run('/usr/bin/security', ['add-generic-password', '-U', '-a', 'spike', '-s', ITEM, '-w', secret]);
+  steps.add = added.ok;
   const found = await run('/usr/bin/security', ['find-generic-password', '-a', 'spike', '-s', ITEM, '-w']);
   steps.readBack = found.ok && found.stdout === secret;
   const removed = await run('/usr/bin/security', ['delete-generic-password', '-a', 'spike', '-s', ITEM]);
   steps.delete = removed.ok;
-  return {store: 'macOS Keychain via /usr/bin/security', ok: steps.add && steps.readBack && steps.delete, steps, error: [found.error, removed.error].filter(Boolean).join(' | ')};
+  return {store: 'macOS Keychain via /usr/bin/security', ok: steps.add && steps.readBack && steps.delete, steps, error: [added.error, found.error, removed.error].filter(Boolean).join(' | ')};   // the add step's error first: a sandbox refusal is the cause, the rest follows from it
 }
 
 // Windows: protect the secret with DPAPI (current user) through PowerShell, keep the blob in a per-user folder, read it back, delete it.
 async function winStore(secret) {
   const folder = path.join(os.homedir(), '.jobadabra-spike'), file = path.join(folder, 'blob.txt');
-  const steps = {};
+  const steps = {}, existed = fs.existsSync(folder);   // Why (Gitar on the spike PR): only a folder this probe created is removed, and only its own file inside it
   fs.mkdirSync(folder, {recursive: true});
   const protect = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "[Console]::In.ReadToEnd() | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString"], secret);
   steps.protect = protect.ok && protect.stdout.length > 40;
@@ -39,7 +40,7 @@ async function winStore(secret) {
   const reveal = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "$s = [Console]::In.ReadToEnd().Trim() | ConvertTo-SecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"], blob);
   steps.readBack = reveal.ok && reveal.stdout === secret;
   steps.blobHidesSecret = !!blob && !blob.includes(secret);
-  try { fs.rmSync(folder, {recursive: true, force: true}); steps.delete = !fs.existsSync(folder); } catch { steps.delete = false; }
+  try { fs.rmSync(file, {force: true}); if (!existed) fs.rmdirSync(folder); steps.delete = !fs.existsSync(file); } catch { steps.delete = false; }
   return {store: 'Windows DPAPI via PowerShell', ok: steps.protect && steps.readBack && steps.blobHidesSecret && steps.delete, steps, error: [protect.error, reveal.error].filter(Boolean).join(' | ')};
 }
 
@@ -63,7 +64,8 @@ const loopback = () => new Promise(resolve => {
 async function ping() {
   const folder = path.join(os.homedir(), '.jobadabra-spike-write');
   let writable = false;
-  try { fs.mkdirSync(folder, {recursive: true}); fs.writeFileSync(path.join(folder, 'x'), '1'); writable = true; fs.rmSync(folder, {recursive: true, force: true}); } catch { /* reported as false */ }
+  const existed = fs.existsSync(folder);
+  try { fs.mkdirSync(folder, {recursive: true}); fs.writeFileSync(path.join(folder, 'x'), '1'); writable = true; fs.rmSync(path.join(folder, 'x'), {force: true}); if (!existed) fs.rmdirSync(folder); } catch { /* reported as false */ }
   return {
     at: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.version, execPath: path.basename(process.execPath),
     homeWritable: writable, secretStore: await secretStore(), loopback: await loopback(),

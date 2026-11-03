@@ -1,4 +1,4 @@
-// Builds the spike's jobadabra-spike.mcpb (a zip: manifest.json + server/index.js) with the same jszip the app already ships; usage: node build.mjs [--out <folder>].
+// Builds the spike's jobadabra-spike.mcpb (a zip: manifest.json + server/index.cjs) with the same jszip the app already ships; usage: node build.mjs [--out <folder>].
 // manifest.json follows the MCPB spec (github.com/modelcontextprotocol/mcpb MANIFEST.md): required fields, server.type node, a tools list, compatibility.platforms.
 // Why (3 Nov 2026): PR 1/6 of docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md measures the unknowns before the real bridge is built.
 import fs from 'node:fs';
@@ -17,7 +17,7 @@ export async function build(out = path.join(os.tmpdir(), 'jobadabra-spike')) {
   fs.mkdirSync(out, {recursive: true});
   const zip = new JSZip();
   zip.file('manifest.json', fs.readFileSync(path.join(here, 'manifest.json')));
-  zip.file('server/index.js', fs.readFileSync(path.join(here, 'server', 'index.js')));
+  zip.file('server/index.cjs', fs.readFileSync(path.join(here, 'server', 'index.cjs')));
   const file = path.join(out, 'jobadabra-spike.mcpb');
   fs.writeFileSync(file, await zip.generateAsync({type: 'nodebuffer', compression: 'DEFLATE'}));
   return file;
