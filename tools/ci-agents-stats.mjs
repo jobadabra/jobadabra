@@ -11,6 +11,7 @@ import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
 const WINDOW_DAYS = 30, RUNS_SHOWN = 8;
 const LETTER = {success: 'g', failure: 'r', timed_out: 'r', startup_failure: 'r', skipped: 's', cancelled: 'c'};
+/** The registry tools/ci-agents.json next to this file, parsed; throws when the file is missing or not JSON (a broken file must fail the run, not report nothing). */
 export const registry = () => JSON.parse(readFileSync(fileURLToPath(new URL('./ci-agents.json', import.meta.url)), 'utf8'));
 
 // The last runs (newest first) -> letters oldest first: g green, r red, s skipped, c cancelled, . running or unknown.
