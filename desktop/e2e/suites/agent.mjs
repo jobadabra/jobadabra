@@ -58,7 +58,7 @@ export async function run(ctx) {
     const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
     const started = Date.now();
-    session = await runSession({act: agentAct(page), ask: brokerAsk('small'), judgeAsk: brokerAsk('mid'), views: VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+    session = await runSession({act: agentAct(page), ask: brokerAsk('small'), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
       caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);

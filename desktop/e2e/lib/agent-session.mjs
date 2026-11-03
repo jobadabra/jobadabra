@@ -22,7 +22,7 @@ export function summarizeSession({session, persona, seed, goals, results = [], n
   });
   const ranked = rankNotes(notes, cap);
   const counts = Object.fromEntries(GOAL_VERDICTS.map(verdict => [verdict, rows.filter(row => row.verdict === verdict).length]));
-  return {session, persona, seed, goals: rows, counts, filed: ranked.filed, over: ranked.over, low: ranked.low, steps: rows.reduce((sum, row) => sum + row.steps, 0), cost: {calls: 0, tokensIn: 0, tokensOut: 0, ms: 0, ...cost}};
+  return {session, persona, seed, goals: rows, counts, filed: ranked.filed, over: ranked.over, low: ranked.low, held: ranked.held, steps: rows.reduce((sum, row) => sum + row.steps, 0), cost: {calls: 0, tokensIn: 0, tokensOut: 0, ms: 0, ...cost}};
 }
 
 /** The cost line of a session: calls, tokens and time, in the words the sessions page and the PR use. */
@@ -32,7 +32,7 @@ const ICON = {worked: '✅', doubts: '🤔', 'could-not-finish': '⛔', bug: '�
 /** The summary as markdown (the sessions page, the workflow's job summary): a verdict line first, a table of goals, then what was filed and what was held back. */
 export function summaryMarkdown(summary) {
   const { counts } = summary;
-  const head = `**${summary.persona}** (seed \`${summary.seed}\`): ${counts.worked} worked, ${counts.doubts} doubts, ${counts['could-not-finish']} could not finish, ${counts.bug} bug${counts.bug === 1 ? '' : 's'}. Filed ${summary.filed.length}${summary.over.length ? `, ${summary.over.length} over the cap` : ''}${summary.low.length ? `, ${summary.low.length} low (never filed)` : ''}. ${costLine(summary.cost)}.`;
+  const head = `**${summary.persona}** (seed \`${summary.seed}\`): ${counts.worked} worked, ${counts.doubts} doubts, ${counts['could-not-finish']} could not finish, ${counts.bug} bug${counts.bug === 1 ? '' : 's'}. Filed ${summary.filed.length}${summary.over.length ? `, ${summary.over.length} over the cap` : ''}${summary.low.length ? `, ${summary.low.length} low (never filed)` : ''}${summary.held.length ? `, ${summary.held.length} held (the second opinion was unavailable)` : ''}. ${costLine(summary.cost)}.`;
   const table = ['| # | Goal | Verdict | What it saw |', '|---|---|---|---|', ...summary.goals.map(goal => `| ${goal.n} | ${goal.label} | ${ICON[goal.verdict]} ${goal.verdict} | ${goal.summary.replace(/\|/g, '/')} |`)];
   return [head, '', ...table].join('\n');
 }
