@@ -80,7 +80,7 @@ A Keychain item's access list trusts the **code signature** of the app that made
 
 ## Tests (a fake keychain and a fake `safeStorage`, no real Keychain)
 
-`desktop/test/keychain-migration.test.js`: the fake `safeStorage` fixes its key at the first seal from `app.name`, like Electron; the fake `security` serves a map of items.
+`desktop/test/unit/main/keychain-migration.test.js`: the fake `safeStorage` fixes its key at the first seal from `app.name`, like Electron; the fake `security` serves a map of items.
 1. Known answer: a value sealed by OpenSSL (independent of our code) opens, and our sealing equals it.
 2. The owner's update: a store sealed by the old build (the old app name) with 3 tokens → the new start → every token reads back through the new item; the old Keychain item unchanged; `secrets.json` carries `__sealedBy`.
 3. Second start: no `security` call, no re-seal.
@@ -93,7 +93,7 @@ A Keychain item's access list trusts the **code signature** of the app that made
 - [x] Read the source for the macOS key derivation and the name (proof: docs/superpowers/specs/2026-11-03-keychain-jobadabra-design.md)
 - [x] Spec (proof: docs/superpowers/specs/2026-11-03-keychain-jobadabra-design.md)
 - [x] `desktop/lib/keychain-migration.js` + `app-identity.js` + `main.js` wiring (proof: desktop/lib/keychain-migration.js)
-- [x] Tests on a fake keychain (proof: desktop/test/keychain-migration.test.js)
+- [x] Tests on a fake keychain (proof: desktop/test/unit/main/keychain-migration.test.js)
 - [ ] Behaviour PR: fresh `/code-review`, Gitar approved, owner merges (proof: none: the PR)
 - [ ] The owner tries it on his Mac after the update: Keychain Access shows "Jobadabra Safe Storage", tokens work (proof: none: the owner's check; no session touches the real Keychain)
 - [ ] Later release: decide whether the old item is deleted (proof: none: a later decision)

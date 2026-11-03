@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {DATA_NAME, keepLegacyIdentity, LEGACY_NAME, userDataTime} from '../lib/app-identity.js';
-import {readSafeStorage} from '../lib/keychain.js';
-import {openV10, osKey, SEALED_BY, sealV10} from '../lib/keychain-migration.js';
-import {adoptBackupKeys, exported} from '../lib/reset.js';
-import {createStorage, safeStorageCrypto} from '../lib/storage.js';
+import {DATA_NAME, keepLegacyIdentity, LEGACY_NAME, userDataTime} from '../../../lib/app-identity.js';
+import {readSafeStorage} from '../../../lib/keychain.js';
+import {openV10, osKey, SEALED_BY, sealV10} from '../../../lib/keychain-migration.js';
+import {adoptBackupKeys, exported} from '../../../lib/reset.js';
+import {createStorage, safeStorageCrypto} from '../../../lib/storage.js';
 
 const OLD = `${LEGACY_NAME} Safe Storage`, NEW = `${DATA_NAME} Safe Storage`;
 const TOKENS = {NOTION_TOKEN: 'ntn_owner_token', ANTHROPIC_API_KEY: 'sk-ant-owner', EXTENSION_TOKEN: 'ext-123'};

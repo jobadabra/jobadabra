@@ -152,7 +152,7 @@ test('a move that fails keeps using the old folder and loses nothing', () => {
 });
 
 // Why (3 Nov 2026, owner: "It still points to Job PIlotto keychain/secrests... It shuold be Jobadabra."): this test asserted the opposite since 25 Oct 2026 (the Keychain item
-// keeps the old name for good). On macOS a real start now seals under "Jobadabra Safe Storage" and moves an older install (test/keychain-migration.test.js); a test or demo folder,
+// keeps the old name for good). On macOS a real start now seals under "Jobadabra Safe Storage" and moves an older install (test/unit/main/keychain-migration.test.js); a test or demo folder,
 // Windows (DPAPI, no named item) and Linux keep the earlier sequence.
 test('the data folder is Jobadabra; a test, Windows or Linux start still seals once under the old name, then the app shows Jobadabra', async () => {
   const appData = tmp();
