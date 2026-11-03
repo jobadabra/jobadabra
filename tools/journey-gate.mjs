@@ -14,7 +14,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export function touchedFlowFiles(changed, flowFiles) {
   const flows = new Set(flowFiles);
-  return changed.map(file => file.trim()).filter(file => flows.has(file) || /^desktop\/test\/(journeys|application-journey|journey-identity|extension-tab-identity)\.test\.js$/.test(file));
+  return changed.map(file => file.trim()).filter(file => flows.has(file) || /^desktop\/test\/(unit\/main\/(journeys|application-journey|journey-identity)|unit\/extension\/extension-tab-identity)\.test\.js$/.test(file));
 }
 
 // Layer 2 (recorded pages, e2e/recorded): the local push gate opens NO browser and takes NO heavy lock (owner, 11 Oct 2026: "CI heavy, local light"): CI replays all the cases after the push

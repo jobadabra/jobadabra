@@ -109,7 +109,7 @@ test('every entry point opens the right run in the right place', () => {
   assert.match(panel, /if \(open\) \{ mountInDrawer\(\); pinDefault\(\); \}/, 'the drawer picks once and keeps it');
   assert.match(tab, /'activity-open-runs'\)\.addEventListener\('click', event => \{ event\.preventDefault\(\); showRunsTab\(shared\.selectedRun\); \}\)/, 'Open in Runs keeps the run');
   assert.match(tab, /showRunsTab\(undefined, \{filter: \{status: 'queued'\}\}\)/, 'View queue → Runs filtered to queued');
-  assert.match(read('../../../lib/pipeline-queue.js'), /ticket: ticket\.id/, 'a run keeps the ticket it was queued with');
+  assert.match(read('../lib/pipeline-queue.js'), /ticket: ticket\.id/, 'a run keeps the ticket it was queued with');
 });
 
 test('a queued run: no empty log, a Cancel, and the row can be picked; the keyboard reaches queued rows too', () => {

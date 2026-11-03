@@ -34,7 +34,7 @@
    "why": "the existing brand guard: spells the old name and its KEPT list"
   },
   {
-   "path": "^desktop/test/(legacy-name-literals|app-menu)\\.test\\.js$",
+   "path": "^desktop/test/(guards/rules/legacy-name-literals|unit/main/app-menu)\\.test\\.js$",
    "why": "guards that assert the old name is absent or pinned"
   },
   {
@@ -265,14 +265,14 @@
   {
    "id": "keep-keychain-fallback",
    "match": "^job-pilotto$",
-   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/(unit/ai/test_secret_store|tooling/ci/test_keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
+   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(guards/safety/keychain|unit/main/credentials)\\.test\\.js|src/secret_store\\.py|tests/(unit/ai/test_secret_store|tooling/ci/test_keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
    "keep": "the read-old-name fallback of the Keychain, its tests and the one-time copy script",
    "expires": "2 stable releases after the release carrying the rename PR"
   },
   {
    "id": "keep-artifact-fallback",
    "match": "^job-pilotto-jobs-db$",
-   "paths": "^desktop/(lib/github|test/github-sync-database[^/]*)\\.js$",
+   "paths": "^desktop/(lib/github|test/unit/main/github-sync-database[^/]*)\\.js$",
    "keep": "the artifact name a repo's last pre-rename run uploaded: the app reads the new name, then this one",
    "expires": "2 stable releases after the release carrying the rename PR (JOB-200)"
   },
