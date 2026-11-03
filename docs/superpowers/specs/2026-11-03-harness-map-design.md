@@ -15,7 +15,7 @@ Session hm, 3 Nov 2026. Plan: `docs/superpowers/plans/2026-11-03-harness-map.md`
 |---|---|---|
 | `CLAUDE.md` (project) | 17.9 KB, loaded every session by Claude Code | Already a big always-on cost; L0 must be small |
 | `AGENTS.md` | **37.2 KB** | Codex reads at most `project_doc_max_bytes = 32768` (verified in codex-cli 0.166.0): the last ~5 KB are cut silently. Anything Codex must see goes in the first lines |
-| `docs/rules/*.md` | 11 files, 5.6 to 35.7 KB (`desktop-ui.md` 35.7 KB, `applying.md` 27 KB, `why.md` 35 KB) | An agent that opens one to find one rule pays 10k+ tokens |
+| `docs/rules/*.md` | 11 files, 1.5 to 35.7 KB (`desktop-ui.md` 35.7 KB, `applying.md` 27 KB, `why.md` 35 KB) | An agent that opens one to find one rule pays 10k+ tokens |
 | Specs | 69, 42 with an unticked Progress | Many are history; an agent cannot tell live from done without opening them |
 | Skills (repo) | 17 in `.claude/skills/` | Found by name only; no area grouping |
 | Owner memory (private, `~/.claude`) | ~360 files: 226 feedback, 107 project, 22 reference | Mostly process and owner quotes; the product lessons inside are invisible to a CI agent |
@@ -115,7 +115,7 @@ Total ≤ 80 KB (about 20k tokens). The hub itself is **not copied**: `INDEX.md`
 ## Staying current (who updates a hub, and how we know)
 - **Who:** the PR that changes an area's rule, key file or spec updates that hub in the same PR (a line in the PR template's checklist is not added; the check below makes the miss visible). The distilled lessons come from the session that learned them, as they do into skills.
 - **Check (one script, `tools/context/check-map.mjs`, run by one unit test in the existing suite, no new CI job):** every link in L0/L1 resolves; every `paths:` entry exists; L0 ≤ 3 KB, each hub ≤ 6 KB; every `ask:` source is known; the leak scan is clean.
-- **Staleness is a report, not a gate:** `check-map.mjs --stale` lists hubs whose `paths:` changed in more commits than the hub did since its `updated:` date. The coordinator reads it at each round-up. A gate for it is not built: no escape has been counted (CLAUDE.md "gate only if it pays"); revisit after the eval shows hubs misleading an agent.
+- **Staleness is a report, not a gate:** `check-map.mjs --stale` lists hubs whose `paths:` changed in more commits than the hub did since its `updated:` date. The coordinator reads it at each round-up. A gate for it is not built: no escape has been counted (`docs/rules/change-loop.md` "Gate only if it pays"); revisit after the eval shows hubs misleading an agent.
 - **Rot-proof by shape:** pointers and one-liners, facts via `ask:` lines, nothing copied.
 
 ## Where the owner's process knowledge goes
