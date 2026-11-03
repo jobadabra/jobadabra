@@ -31,7 +31,7 @@ The owner deletes the secrets afterwards by hand (never an agent), once each fam
 
 ## Progress
 
-- [ ] refill (#3111), the lab jobs (lab #75) merged; prompt cases and review-eval (#3103) already on main
+- [ ] refill (#3111) and the lab jobs (lab #75) in review; prompt cases and review-eval (#3103) already on main
 - [ ] 1/5 this spec
 - [ ] 2/5 workflows
 - [ ] 3/5 harness
