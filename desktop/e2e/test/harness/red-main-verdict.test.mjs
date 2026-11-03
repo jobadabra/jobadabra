@@ -36,7 +36,7 @@ test('(d) results that cannot be read stop it, and say why: no artifact, an unre
     [{suite: 'a', runId: '1', tables: []}, /a \(run 1\): its results could not be read \(no steps\.json/],
     [{suite: 'b', runId: '2', tables: [{name: 'e2e-view-b', table: null}]}, /e2e-view-b has no readable steps\.json/],
     [{suite: 'c', runId: '3', error: 'HTTP 502'}, /c \(run 3\): its results could not be read \(HTTP 502\)/],
-    [red('d', [{name: 'e2e-view-d', table: table(passed('only'))}]), /red, but no failed step is recorded/],
+    [red('d', [{name: 'e2e-view-d', table: table(passed('only'))}]), /red, but no failed step is recorded \(the suite did not run to a result: a setup step failed before it began/],
   ];
   for (const [found, why] of cases) {
     const verdict = judgeReds([found]);

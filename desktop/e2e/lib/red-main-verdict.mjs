@@ -21,7 +21,7 @@ export function judgeReds(found) {
     const broken = tables.filter(item => !Array.isArray(item.table?.results));
     if (broken.length) { reasons.push(`${where}: its results could not be read (${broken.map(item => item.name).join(', ')} has no readable steps.json)`); continue; }
     const failed = tables.flatMap(item => item.table.results.filter(result => result.status === 'failed'));
-    if (!failed.length) { reasons.push(`${where}: red, but no failed step is recorded (the suite broke outside its steps)`); continue; }
+    if (!failed.length) { reasons.push(`${where}: red, but no failed step is recorded (the suite did not run to a result: a setup step failed before it began, or it broke outside its steps; nothing is proven, so it stays unknown)`); continue; }
     for (const result of failed) {
       const name = `${suite} · ${result.name}`;
       if (result.safety) reasons.push(`${name}: a safety step failed`);

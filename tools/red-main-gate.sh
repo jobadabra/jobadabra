@@ -20,7 +20,7 @@ case "${1:-}" in
   *) echo "Unknown option: $1 (use --force \"<why>\" or --status). Nothing started." >&2; exit 2 ;;
 esac
 here="$(cd "$(dirname "$0")" && pwd)"
-poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}"
+poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}" rerun_max="${RED_MAIN_RERUN_S:-240}" rerun_waited=
 
 # The one judgement of red steps, for both branches below. $1: lines "<suite><TAB><run id>". Prints the verdict; exit 0 = the beta may go on, 1 = it stops (or the results cannot be read).
 judge_reds() {
@@ -80,7 +80,16 @@ url="https://github.com/${repo}/actions/runs/${id}"
 echo "Re-check: ${url}"
 while :; do
   st="$(gh api "repos/${repo}/actions/runs/${id}" --jq '"\(.status) \(.conclusion // "-")"' 2>/dev/null)"
-  case "$st" in completed\ *) break ;; esac
+  case "$st" in completed\ *)
+    # Why (3 Nov 2026, mac-07: run 41566839140, apply-2of3 died in actions/checkout before its suite began and was judged as a red suite): a job that did not run proves nothing.
+    # rerun-not-acquired.yml re-runs it seconds after the run ends, so attempt 1's failure is not the verdict while that re-run is coming: wait for the run to leave "completed" (bounded), then keep waiting as before.
+    if [ "${st#completed }" != success ] && [ -z "$rerun_waited" ] && RUN_ATTEMPT=1 python3 "$here/rerun_not_acquired.py" "$id" --would-rerun >/dev/null 2>&1; then
+      rerun_waited=1; echo "A job of the re-check did not run (its setup failed before the suite began): waiting for its one re-run..."
+      rerun_start=$(date +%s)
+      while [ "$(gh api "repos/${repo}/actions/runs/${id}" --jq '.status' 2>/dev/null)" = completed ] && [ $(( $(date +%s) - rerun_start )) -lt "$rerun_max" ]; do sleep "$poll"; done
+      continue
+    fi
+    break ;; esac
   if [ $(( $(date +%s) - start )) -ge "$wait_max" ]; then echo "The re-check is still running after $(( wait_max / 60 )) min: no beta. ${url}"; exit 1; fi
   sleep "$poll"
 done

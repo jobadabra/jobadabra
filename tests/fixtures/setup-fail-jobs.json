@@ -1,0 +1,482 @@
+{
+ "jobs": [
+  {
+   "id": 125690456242,
+   "name": "apply-2of3",
+   "conclusion": "failure",
+   "runner_name": "GitHub Actions 1000008341",
+   "steps": [
+    {
+     "number": 1,
+     "name": "Set up job",
+     "conclusion": "success"
+    },
+    {
+     "number": 2,
+     "name": "Run actions/checkout@v5",
+     "conclusion": "failure"
+    },
+    {
+     "number": 3,
+     "name": "Run actions/checkout@v5",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 4,
+     "name": "Count this job's gh calls (the ledger)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 5,
+     "name": "Run actions/setup-node@v5",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 6,
+     "name": "Run actions/setup-python@v6",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 7,
+     "name": "The Free AI relay from this workflow's own commit",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 8,
+     "name": "Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this r",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 9,
+     "name": "Record which commit this run tested (ui-findings.yml names it in every",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 10,
+     "name": "Install the app",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 11,
+     "name": "Install the tests",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 12,
+     "name": "Chromium for the suites that use a browser (the real extension, the ex",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 13,
+     "name": "Python packages the engine needs",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 14,
+     "name": "A virtual display and Electron's libraries (Linux only)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 15,
+     "name": "Write the mutant into the app (mutation test only)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 16,
+     "name": "Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 17,
+     "name": "The merged PR's own AI answers (after a merge)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 18,
+     "name": "The score-steadiness history of the night's live qualityai runs (lib/q",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 19,
+     "name": "The App token for the lock (a re-run attempt's workflow token cannot c",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 20,
+     "name": "Take the suite's lock (only a suite on the real Notion workspace; wait",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 21,
+     "name": "Run the apply-2of3 suite (the only try)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 22,
+     "name": "Outside-world health",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 23,
+     "name": "AI answer candidates written for review",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 24,
+     "name": "What the suite spent on Free AI (the relay's own meter)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 25,
+     "name": "Report what the suite paid for AI to /ai-cost (the app under test and ",
+     "conclusion": "success"
+    },
+    {
+     "number": 26,
+     "name": "Keep the AI answers for the next run",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 27,
+     "name": "Run actions/cache/save@v5",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 28,
+     "name": "Keep the score-steadiness history, red or green (the night's live qual",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 29,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "failure"
+    },
+    {
+     "number": 30,
+     "name": "Hand this PR's green AI answers to main's run after the merge (desktop",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 31,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "failure"
+    },
+    {
+     "number": 32,
+     "name": "The suite's part of the HTML report",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 33,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "failure"
+    },
+    {
+     "number": 34,
+     "name": "Steps and trace for /admin/e2e",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 35,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "failure"
+    },
+    {
+     "number": 36,
+     "name": "Which app lines the suite ran (the code \u2192 suite map)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 37,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "failure"
+    },
+    {
+     "number": 38,
+     "name": "Screenshots and timings",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 39,
+     "name": "The App token to give the lock back (the first one may have expired)",
+     "conclusion": "success"
+    },
+    {
+     "number": 40,
+     "name": "Give the suite's lock back",
+     "conclusion": "failure"
+    },
+    {
+     "number": 41,
+     "name": "This job's gh calls and the budget left (the ledger)",
+     "conclusion": "failure"
+    },
+    {
+     "number": 81,
+     "name": "Post The App token to give the lock back (the first one may have expir",
+     "conclusion": "success"
+    },
+    {
+     "number": 82,
+     "name": "Post Run actions/checkout@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 83,
+     "name": "Complete job",
+     "conclusion": "success"
+    }
+   ]
+  },
+  {
+   "id": 125690456257,
+   "name": "apply-3of3",
+   "conclusion": "success",
+   "runner_name": "GitHub Actions 1000008338",
+   "steps": [
+    {
+     "number": 1,
+     "name": "Set up job",
+     "conclusion": "success"
+    },
+    {
+     "number": 2,
+     "name": "Run actions/checkout@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 3,
+     "name": "Run actions/checkout@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 4,
+     "name": "Count this job's gh calls (the ledger)",
+     "conclusion": "success"
+    },
+    {
+     "number": 5,
+     "name": "Run actions/setup-node@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 6,
+     "name": "Run actions/setup-python@v6",
+     "conclusion": "success"
+    },
+    {
+     "number": 7,
+     "name": "The Free AI relay from this workflow's own commit",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 8,
+     "name": "Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this r",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 9,
+     "name": "Record which commit this run tested (ui-findings.yml names it in every",
+     "conclusion": "success"
+    },
+    {
+     "number": 10,
+     "name": "Install the app",
+     "conclusion": "success"
+    },
+    {
+     "number": 11,
+     "name": "Install the tests",
+     "conclusion": "success"
+    },
+    {
+     "number": 12,
+     "name": "Chromium for the suites that use a browser (the real extension, the ex",
+     "conclusion": "success"
+    },
+    {
+     "number": 13,
+     "name": "Python packages the engine needs",
+     "conclusion": "success"
+    },
+    {
+     "number": 14,
+     "name": "A virtual display and Electron's libraries (Linux only)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 15,
+     "name": "Write the mutant into the app (mutation test only)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 16,
+     "name": "Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)",
+     "conclusion": "success"
+    },
+    {
+     "number": 17,
+     "name": "The merged PR's own AI answers (after a merge)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 18,
+     "name": "The score-steadiness history of the night's live qualityai runs (lib/q",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 19,
+     "name": "The App token for the lock (a re-run attempt's workflow token cannot c",
+     "conclusion": "success"
+    },
+    {
+     "number": 20,
+     "name": "Take the suite's lock (only a suite on the real Notion workspace; wait",
+     "conclusion": "success"
+    },
+    {
+     "number": 21,
+     "name": "Run the apply-3of3 suite (the only try)",
+     "conclusion": "success"
+    },
+    {
+     "number": 22,
+     "name": "Outside-world health",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 23,
+     "name": "AI answer candidates written for review",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 24,
+     "name": "What the suite spent on Free AI (the relay's own meter)",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 25,
+     "name": "Report what the suite paid for AI to /ai-cost (the app under test and ",
+     "conclusion": "success"
+    },
+    {
+     "number": 26,
+     "name": "Keep the AI answers for the next run",
+     "conclusion": "success"
+    },
+    {
+     "number": 27,
+     "name": "Run actions/cache/save@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 28,
+     "name": "Keep the score-steadiness history, red or green (the night's live qual",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 29,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "success"
+    },
+    {
+     "number": 30,
+     "name": "Hand this PR's green AI answers to main's run after the merge (desktop",
+     "conclusion": "skipped"
+    },
+    {
+     "number": 31,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "success"
+    },
+    {
+     "number": 32,
+     "name": "The suite's part of the HTML report",
+     "conclusion": "success"
+    },
+    {
+     "number": 33,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "success"
+    },
+    {
+     "number": 34,
+     "name": "Steps and trace for /admin/e2e",
+     "conclusion": "success"
+    },
+    {
+     "number": 35,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "success"
+    },
+    {
+     "number": 36,
+     "name": "Which app lines the suite ran (the code \u2192 suite map)",
+     "conclusion": "success"
+    },
+    {
+     "number": 37,
+     "name": "Scan artifact contents for CI secrets",
+     "conclusion": "success"
+    },
+    {
+     "number": 38,
+     "name": "Screenshots and timings",
+     "conclusion": "success"
+    },
+    {
+     "number": 39,
+     "name": "The App token to give the lock back (the first one may have expired)",
+     "conclusion": "success"
+    },
+    {
+     "number": 40,
+     "name": "Give the suite's lock back",
+     "conclusion": "success"
+    },
+    {
+     "number": 41,
+     "name": "This job's gh calls and the budget left (the ledger)",
+     "conclusion": "success"
+    },
+    {
+     "number": 77,
+     "name": "Post The App token to give the lock back (the first one may have expir",
+     "conclusion": "success"
+    },
+    {
+     "number": 78,
+     "name": "Post The App token for the lock (a re-run attempt's workflow token can",
+     "conclusion": "success"
+    },
+    {
+     "number": 79,
+     "name": "Post Run actions/setup-python@v6",
+     "conclusion": "success"
+    },
+    {
+     "number": 80,
+     "name": "Post Run actions/setup-node@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 81,
+     "name": "Post Run actions/checkout@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 82,
+     "name": "Post Run actions/checkout@v5",
+     "conclusion": "success"
+    },
+    {
+     "number": 83,
+     "name": "Complete job",
+     "conclusion": "success"
+    }
+   ]
+  }
+ ],
+ "run": 41566839140,
+ "note": "apply-2of3: Run actions/checkout@v5 timed out after 5 minutes on a macOS runner (main 4c9233e, 3 Nov 2026); the second job is a green sibling of the same run"
+}
