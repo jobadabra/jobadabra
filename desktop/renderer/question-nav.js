@@ -10,7 +10,12 @@ const SEGMENTS_UP_TO = 30;   // past it each segment would be a few pixels wide:
 const SEARCH_FROM = 9;   // owner, 18 Oct 2026: "From 9 questions"
 
 // What a Your details item asks for (lib/details-review.js), over its answer box and as its state in the list.
-export const ASKS = {taught: 'Learned from a form', conflict: 'Pick the right one', which: 'Pick the right one', where: 'Pick its home', check: 'Pick the parts', open: 'Missing answer', unclear: 'Make it sure', contact: 'Needed by every form', cvcheck: 'Check it'};
+export const ASKS = {taught: 'Learned from a form', conflict: 'Pick the right one', which: 'Pick the right one', where: 'Pick its home', check: 'Pick the parts', open: 'Missing answer', unclear: 'Make it sure', contact: 'Asked by forms', cvcheck: 'Check it'};
+
+// A contact detail's words by the AI's rating of how many applications for this person's line of work ask it (lib/contact-review.js importance; below 2 is never asked).
+const FORMS_ASK = {3: 'Needed by every form', 2: 'Asked by many forms'};
+/** What a Your details item asks, in words: a contact detail by how many forms ask it, any other kind by ASKS; `other` when the kind is not in the list. */
+export const askWords = (details, other = '') => (details.kind === 'contact' ? FORMS_ASK[details.importance] || ASKS.contact : ASKS[details.kind] || other);
 
 // A question's kind (question-kind.js KINDS) → its tile's icon.
 const KIND_TILE = {text: 'file-text', long_text: 'file-text', single: 'sliders', multi: 'layers', yes_no: 'check-circle', date: 'calendar', amount: 'coins',
@@ -32,7 +37,7 @@ export function stateOf(q, {aside = false, drafted = false} = {}) {
   if (aside) return [q.dismissed ? 'Dismissed' : 'Set aside', 'neutral'];
   if (drafted) return ['Draft', 'neutral'];
   if (q.setup) return [q.priority, 'bad'];
-  if (q.details) return [ASKS[q.details.kind] || 'Missing answer', 'warn'];
+  if (q.details) return [askWords(q.details, 'Missing answer'), 'warn'];
   return q.proposal ? ['Suggested', 'info'] : ['Missing', 'warn'];
 }
 

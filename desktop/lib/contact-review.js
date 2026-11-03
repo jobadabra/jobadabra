@@ -9,14 +9,18 @@
 import * as contactDetails from './contact.js';
 import {written} from './queue-wording.js';
 import {BLOCKED, MUST} from '../renderer/question-filter.js';
+import {titlesOf} from './target-roles.js';
 
 const FLOOR = 4;   // with no AI at all: the first four empty fields of the schema's order (first name, last name, email, phone), never a rating of ours
 const NEVER = new Set(['full_name']);   // made from first + last name on Save
 const INSTRUCTIONS = `An applicant's contact details are missing the fields in <empty> (field: label). <lines> are the labels of what they already saved on their Profile and details.
 For each empty field write the short question to ask them (their language; <language> when given, else English), a hint of a few words, and importance: 3 = nearly every application form requires it,
-2 = many forms ask it, 1 = some forms ask it, 0 = not worth asking. held = true when a saved line already answers that field under another wording (a line "Mobile" answers phone).`;
+2 = many forms ask it, 1 = some forms ask it, 0 = not worth asking. held = true when a saved line already answers that field under another wording (a line "Mobile" answers phone).
+<roles> (when given) are the jobs this person applies for: rate importance for the application forms of THAT line of work. A link or profile that those forms rarely ask for (GitHub or a personal website for accounting, finance, legal, healthcare or sales roles, for example) is 0 or 1, never 3; the same link is 2 or 3 for software or design roles. Name, email, phone and place stay high for everyone.`;
 
 // The weight a queue row takes from an importance: 3 outranks every blocked fill, 2 ranks right after them, 1 below any asked fact.
+// Why (fx, 3 Nov 2026, Windows tester + review): a field only some forms ask (importance 1) is a suggestion, not a missing answer: it is not asked and not counted in the Missing badge (the tester's finance profile counted GitHub and a website).
+const MIN_ASKED = 2;
 export const weightOf = importance => (importance >= 3 ? MUST : importance === 2 ? BLOCKED - 500 : importance === 1 ? 1 : 0);
 
 // The empty contact fields, in the schema's order. -> [key]
@@ -26,16 +30,20 @@ export async function emptyKeys(storage, {fetcher} = {}) {
 }
 
 // The AI's list for this set of empty fields (kept), or null. have: labels of the lines already saved.
+/** The titles of the roles this person searches for (config/search.json, the Strategy page's list), at most 5, so the AI rates a field for their line of work. [] when none or unreadable. */
+export function rolesOf(storage) {
+  try { return titlesOf(JSON.parse(storage.readText('config/search.json') || '{}')).slice(0, 5); } catch { return []; }
+}
 const generated = (storage, keys, {client, have = [], language = ''} = {}) => written(storage, {cache: 'contactAsks', action: 'contact_asks', system: INSTRUCTIONS, tag: 'empty', client, rated: true,
-  sig: [...keys, '|', ...[...new Set(have.map(label => String(label).trim()).filter(Boolean))].sort()].join('~'),
+  sig: [...keys, '|', ...[...new Set(have.map(label => String(label).trim()).filter(Boolean))].sort(), '|', ...rolesOf(storage)].join('~'),   // a changed role list words and rates again
   fields: keys.map(key => ({key, label: contactDetails.LABELS[key]})),
-  extra: `\n<lines>\n${JSON.stringify(have).slice(0, 6000)}\n</lines>${language ? `\n<language>${language}</language>` : ''}`});
+  extra: `\n<lines>\n${JSON.stringify(have).slice(0, 6000)}\n</lines>${rolesOf(storage).length ? `\n<roles>${rolesOf(storage).join('; ')}</roles>` : ''}${language ? `\n<language>${language}</language>` : ''}`});
 
 // The questions to ask for the empty fields, from the AI once per set (kept), else the labels. except: fields asked elsewhere (a CV proposal). -> [{field, question, hint, importance}]
 export async function asks(storage, keys, {except = new Set(), ...options} = {}) {
   const list = await generated(storage, keys, options);
   if (!list?.length) return keys.filter(key => !except.has(key)).slice(0, FLOOR).map(key => ({field: key, question: contactDetails.LABELS[key], hint: '', importance: 3}));   // no AI: the first fields of the schema, by their label
-  return list.filter(each => !each.held && each.importance > 0 && !except.has(each.field));
+  return list.filter(each => !each.held && each.importance >= MIN_ASKED && !except.has(each.field));
 }
 
 // The same wording by field, for a contact value the CV proposes. -> Map field -> {question, hint}; a field the AI did not word is absent (asked by its label).

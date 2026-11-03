@@ -18,7 +18,7 @@ import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {$} from './core.js';
 import {fromDetailsLine} from '../answered-from-details.js';
 import {alsoKeys} from '../question-wordings.js';
-import {ASKS, questionNav, shortTitle, sourceOf} from '../question-nav.js';
+import {askWords, questionNav, shortTitle, sourceOf} from '../question-nav.js';
 import {plainError} from '../run-warnings.js';
 
 export {shortTitle};
@@ -91,14 +91,14 @@ function question(q) {
   const body = el('div', 'jd-body qr-body');
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
   const asked = el('p', 'muted small qr-asked', sourceOf(q));
-  if (mine) asked.append(' ', pill(mine.source, 'warn'));
+  if (mine) asked.append(' ', pill(askWords(mine, mine.source), 'warn'));
   if (state.aside) asked.append(' ', pill('Set aside', 'neutral'));
   body.append(asked, el('h3', 'qr-question', q.question));
   if (mine?.line) body.append(el('p', 'qr-line', mine.line));
   const suggested = Boolean(q.proposal);
   const box = el('div', `qr-answer ${suggested ? 'is-suggested' : 'is-missing'}`);
   const kind = el('p', 'qr-answer-kind');
-  kind.append(icon(suggested ? 'sparkle' : 'alert'), el('span', '', suggested ? 'Suggested from saved answer' : mine ? ASKS[mine.kind] || 'Missing answer' : 'Missing answer'));
+  kind.append(icon(suggested ? 'sparkle' : 'alert'), el('span', '', suggested ? 'Suggested from saved answer' : mine ? askWords(mine, 'Missing answer') : 'Missing answer'));
   box.append(kind);
   const label = el('label', 'qr-label', mine?.kind === 'which' || mine?.kind === 'where' ? 'Your pick' : 'Your answer');
   // Why (28 Oct 2026, owner: "a textarea… please describe… different scenarios… Be as specific as possible"): a learning's free-text answer holds its

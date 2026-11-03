@@ -32,7 +32,7 @@ export const PREFIX = 'details:';
 export const KINDS = ['which', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck', 'taught', 'conflict'];
 export const KEEP = 'Keep where it is';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
-const SOURCES = {taught: 'Learned from a form', conflict: 'Two answers', which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
+const SOURCES = {taught: 'Learned from a form', conflict: 'Two answers', which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Asked by forms', cvcheck: 'Read from your CV'};
 const PAGES = {profile: 'Profile', answers: 'What we learned'};   // the answers page's tab name since 28 Oct 2026 (owner)
 const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const same = text => plain(text).toLowerCase();
@@ -100,7 +100,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const proposedFrom = await cvQueue.items(storage, {fetcher, client, have, words, never: storage.settings().missingFacts?.never || []}).catch(() => []);   // what the CV states or implies, to check
   const cvFields = new Set(proposedFrom.map(each => parse(each.key).ref.contact).filter(Boolean));   // a field the CV proposes is asked there, once
   for (const each of await contactReview.asks(storage, emptyKeys, {client, have, except: cvFields}).catch(() => [])) {   // generated from what is missing, weighted by importance
-    out.push(item('contact', {field: each.field}, {question: each.question, format: contactReview.format, hint: each.hint, details: {where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], weight: contactReview.weightOf(each.importance)}}));
+    out.push(item('contact', {field: each.field}, {question: each.question, format: contactReview.format, hint: each.hint, details: {where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], weight: contactReview.weightOf(each.importance), importance: each.importance}}));
   }
   const conflicts = await openConflicts(storage, {fetcher}).catch(() => []);
   for (const conflict of conflicts) {
