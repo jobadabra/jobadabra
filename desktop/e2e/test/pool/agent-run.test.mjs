@@ -27,6 +27,7 @@ test('the agent adds one action and its fields to the explorer shape; without th
   assert.equal(parseAction(JSON.stringify({action: 'note'})).error, 'action must be one of click, type, press, go, report_bug, done');
   assert.equal(parseAction(JSON.stringify({action: 'note'}), ['note']).action, 'note');
   assert.match(AGENT_SYSTEM, /action note/);
+  assert.match(AGENT_SYSTEM, /action go opens any page of the app by its name/, 'a goal on another page is reached with go, not by hunting for a menu (first real session, 3 Nov 2026)');
 });
 
 test('a night: three goals, one with an argued note that the second opinion agrees with, filed with its steps and the cost line', async () => {

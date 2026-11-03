@@ -1,0 +1,151 @@
+name: CI · AI user agent
+
+# THE DAILY SESSION OF THE AI USER AGENT (owner, 3 Nov 2026: "a claude agent that literally tests my app by clicking around. And can interpret on the fly things"; "start it now, use the ai-broker").
+# The Worker starts it once a day (app-core/src/scheduler.js AGENT_SLOT, 04:40 UTC); a person can start it any time. One person-like session on the real app, through the AI broker (Codex, then Claude, then Free AI), sized from who answers
+# (desktop/e2e/agent-nightly.mjs): Codex out = half a session, a broker that refuses = no session and the reason in the summary. It files what it can argue is a bug (ui-findings.yml reads this run like an e2e run, detector "AI user agent"),
+# keeps its notes on the `agent-memory` branch, and writes the cost line in the job summary. It is a measurement: it gates nothing, and a pause is the repository variable AI_USER_AGENT = off.
+# Why (3 Nov 2026, AI user agents 7/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own.
+run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || 'AI user agent · by hand' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      scheduled:
+        description: 'Started by the Worker on time (the run is named so; the watchdog looks for it)'
+        type: boolean
+        default: false
+      seed:
+        description: 'The night seed (empty = today as a number): the same seed plans the same goals and person'
+        required: false
+
+permissions:
+  contents: write   # the agent-memory branch (the notes of the nights)
+  issues: read
+  actions: read
+  id-token: write   # GitHub's per-run token the AI broker checks (desktop/e2e/lib/broker-client.mjs)
+
+concurrency:
+  group: ai-user-agent
+  cancel-in-progress: false
+
+jobs:
+  session:
+    name: One session
+    if: vars.AI_USER_AGENT != 'off'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
+      E2E_STORE: sqlite
+      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/test_ci_free_ai.py)
+      CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
+      AI_USER_AGENT_MINUTES: ${{ vars.AI_USER_AGENT_MINUTES }}
+      AI_USER_AGENT_CALLS: ${{ vars.AI_USER_AGENT_CALLS }}
+      AI_USER_AGENT_STEPS: ${{ vars.AI_USER_AGENT_STEPS }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+        with:
+          fetch-depth: 300   # the commits since the last session (git log <last>..HEAD); a last session older than this shows the last 30
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+      - name: Install the app
+        timeout-minutes: 5
+        working-directory: desktop
+        run: npm ci
+      - name: Install the tests
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - name: Python packages the engine needs
+        timeout-minutes: 5
+        run: pip install --quiet -r requirements.txt
+      - name: A virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      # Why (26 Oct 2026, e2e.yml): the Free AI relay comes from this workflow's own commit; the checkout above is that commit, so the local action is used as it is here.
+      - name: Free AI relay (the app under test answers through it; CI's own Workers AI token)
+        timeout-minutes: 5
+        uses: ./.github/actions/free-ai-relay
+        with:
+          public-tree: .
+          cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: ${{ vars.OWNER_OF_WEB }}
+      - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        timeout-minutes: 5
+        run: |
+          mkdir -p "$E2E_ARTIFACTS"
+          printf '%s %s\n' "${{ github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
+      - name: Who answers, how big tonight's session is, what the agent remembers and what changed since
+        id: prepare
+        timeout-minutes: 10
+        working-directory: desktop/e2e
+        run: node agent-nightly.mjs prepare
+      - name: The AI user agent works its session
+        id: session
+        if: steps.prepare.outputs.skip != 'true'
+        timeout-minutes: 45   # the suite stops itself at its minute cap plus 5 (suites/agent.mjs); this only ends a hung runner
+        working-directory: desktop/e2e
+        env:
+          AGENT_SEED: ${{ inputs.seed }}
+          AGENT_MEMORY_DIR: ${{ steps.prepare.outputs.memory_dir }}
+          AGENT_CHANGED_LOG: ${{ steps.prepare.outputs.changed_log }}
+          E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
+          E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
+          E2E_AGENT_STEPS: ${{ steps.prepare.outputs.steps }}
+        run: xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs agent
+      - name: The summary of the night (cost, verdict per goal, or why there was none)
+        if: always()
+        timeout-minutes: 5
+        env:
+          SKIPPED: ${{ steps.prepare.outputs.skip }}
+          NOTE: ${{ steps.prepare.outputs.note }}
+        run: |
+          {
+            echo "### AI user agent · ${NOTE:-no note}"
+            if [ -f "$E2E_ARTIFACTS/agent-summary.md" ]; then cat "$E2E_ARTIFACTS/agent-summary.md"
+            elif [ "$SKIPPED" = true ]; then echo "No session was run."
+            else echo "The session left no summary: see the log of the step above."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      # Why (3 Nov 2026, code review): the scan comes first and fails closed, as in e2e.yml; the notes pushed to the public agent-memory branch and the uploaded artifact both come after it.
+      - name: Scan artifact contents for CI secrets
+        id: artifact_scan
+        if: always()
+        timeout-minutes: 5
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRET_NAMES: |
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            CI_CF_ANALYTICS_TOKEN
+            E2E_FREE_AI_KEY
+            FREE_AI_LOCAL_CF_ACCOUNT_ID
+            FREE_AI_LOCAL_CF_AI_TOKEN
+            GH_TOKEN
+          E2E_ARTIFACT_PATHS: e2e-artifacts/agent
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Keep the night's notes on the agent-memory branch
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success'
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: node agent-nightly.mjs publish
+      # The same artifact name pattern an e2e suite uses, so ui-findings.yml files this run's findings without a second reader.
+      - name: Screenshots, findings, summary and trace
+        if: always() && steps.artifact_scan.outcome == 'success' && hashFiles('e2e-artifacts/agent/**') != ''
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-artifacts-agent
+          path: e2e-artifacts/agent
+          if-no-files-found: ignore

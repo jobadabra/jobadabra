@@ -17,6 +17,9 @@ export const CRONS = ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'];
 // Why (31 Oct 2026, owner: "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)"; a8 with the coordinator):
 // they ride the ten-minute trigger, as the stats start does, because a 4th trigger for this Worker cannot be registered (the account's 5 are used; see CRONS above).
 export const NIGHT_SLOTS = ['21:00', '23:30', '01:30', '03:30', '05:30'];
+// The daily AI user agent session (ai-user-agents.yml), UTC HH:MM. Why (3 Nov 2026, AI user agents 7/12; owner: "start it now"): it rides the ten-minute trigger like the night passes (a 4th trigger cannot be registered),
+// at an hour no pass, stats start or beta uses (the passes are above; stats start at minute 40 of hours divisible by 3; 04:40 is none of them), so its AI calls never queue behind another night job's.
+export const AGENT_SLOT = '04:40';
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 /** The night pass due at this moment as "n/5", or '' when none. */
 export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
@@ -35,6 +38,7 @@ export function jobsFor(cron, now = new Date()) {
     if (now.getUTCMinutes() === 40 && now.getUTCHours() % 3 === 0) jobs.push({workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}});
     const pass = nightPassAt(now);
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
+    if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
     return jobs;
   }
   if (cron === '40 */3 * * *') return [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}];
@@ -48,7 +52,7 @@ export function jobsFor(cron, now = new Date()) {
 export const LEGACY_NAMES = {'site-replays.yml': 'replay-offline.yml'};
 const isNotFound = error => /\b404\b/.test(String(error?.message));
 
-export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)'};
+export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)'};
 
 // dispatch(env, inputs, workflow) starts a workflow on main (index.js); notify(text) tells the owner when it could not, on Telegram; report(text) on GitHub, in the
 // watchdog's issue (watchdog.js), where the owner looks. Neither can reach anyone when the token is the problem: the GitHub-side watchdog covers that.

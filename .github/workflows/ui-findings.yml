@@ -6,8 +6,8 @@ name: CI · UI findings
 # (ui-fix.yml does that, four times a day, for the most critical issue). A false positive is closed with the label `wontfix-auto`; a real one a person marks `confirmed`.
 on:
   workflow_run:
-    # a Windows run files its own issues, labelled platform:windows. The release run (desktop.yml, 7 Oct 2026) holds both gates: filed once per platform (the matrix below).
-    workflows: ['CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows', 'Release · Build, test, beta']
+    # The daily AI user agent session (ai-user-agents.yml, 3 Nov 2026) leaves its findings in the same artifact shape (e2e-artifacts-agent). a Windows run files its own issues, labelled platform:windows. The release run (desktop.yml, 7 Oct 2026) holds both gates: filed once per platform (the matrix below).
+    workflows: ['CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows', 'Release · Build, test, beta', 'CI · AI user agent']
     types: [completed]
   workflow_dispatch:
     inputs:
