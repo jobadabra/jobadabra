@@ -159,7 +159,7 @@ One shared words file for both AIs (like `desktop-ai-words.js`), shown in the Co
 
 - [x] Spec and sketch: owner's yes on the decisions (sketch published; questions asked) (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md @f1d22e86)
 - [x] Plan `docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md` (PR split, after the answers) (proof: docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md @f1d22e86)
-- [x] PR 1 · spike: `.mcpb` opens on Mac + Windows, tool-call prompt observed (no UI) (proof: desktop/scripts/desktop-ai-spike/build.mjs @4b7bdda7)
+- [x] PR 1 · spike, Mac part: Claude.app owns `.mcpb`, the bridge can use the Keychain and reach 127.0.0.1 (proof: desktop/scripts/desktop-ai-spike/build.mjs @4b7bdda7); still open: the install window, Claude's tool-call prompt and Windows (wait for a tester's PC)
 - [x] PR 2 · route + token + pairing + shared validation (`lib/desktop-ai-server.js`, `lib/desktop-ai-changes.js`) with the read tools (proof: desktop/lib/desktop-ai-server.js @4c6f6c05)
 - [x] PR 3 · write tools + Changes by Claude list + Undo (proof: desktop/lib/desktop-ai-writes.js @382c7252)
 - [x] PR 4 · Connect on the banner, Settings card, privacy note, ⌘K, instruction v2 (Claude) (proof: desktop/lib/desktop-ai-connect.js @75be2661)
