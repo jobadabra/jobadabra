@@ -3,12 +3,12 @@
 // Why (3 Nov 2026, AI user agents 8/12; spec "Proof"): the proof replays this week's four tester bugs on the commit before each fix. A plan names what a person does on the screen and never the defect, so the agent has to notice it;
 // the rule each bug broke is in docs/app-expectations (written from the fix PRs), so a run WITH the rule measures whether the agent applies it, and a run WITHOUT it (`withoutRules`) measures whether it finds the bug unprompted.
 
-/** Plan id -> the rule its bug broke and the goals (area = the knowledge file's area). The ids are the proof's four bugs: three from #3027 (the commit before it is b4d64112), one from #3026 (before it b6014b04). */
+/** Plan id -> the rule its bug broke, the data the app needs for it (`data`: `cv` = a CV shape of lib/agent-persona.mjs, `inbound` = how many mail-lead rows; lib/agent-seed.mjs) and the goals (area = the knowledge file's area). The ids are the proof's four bugs: three from #3027 (the commit before it is b4d64112), one from #3026 (before it b6014b04). */
 export const NAMED_PLANS = {
-  'learned-questions': {rule: 'profile-1', goals: [{group: 'Profile', label: 'Open What we learned and go through the questions it asks you, one by one'}]},
-  'saved-answers': {rule: 'profile-2', goals: [{group: 'Profile', label: 'Open What we learned and read the answers it shows as already saved'}]},
-  'languages': {rule: 'profile-3', goals: [{group: 'Profile', label: 'Read the languages line of your profile details'}]},
-  'inbound': {rule: 'jobs-3', goals: [{group: 'Jobs', label: 'Open the Inbound list and read each row, then find the same job in the Jobs list and compare them'}]},
+  'learned-questions': {rule: 'profile-1', data: {cv: 'headingLines'}, goals: [{group: 'Profile', label: 'Open What we learned and go through the questions it asks you, one by one'}]},
+  'saved-answers': {rule: 'profile-2', data: {cv: 'headingLines'}, goals: [{group: 'Profile', label: 'Open What we learned and read the answers it shows as already saved'}]},
+  'languages': {rule: 'profile-3', data: {cv: 'manyLanguages'}, goals: [{group: 'Profile', label: 'Open What we learned and answer the question it asks about the languages you speak'}]},
+  'inbound': {rule: 'jobs-3', data: {inbound: 3}, goals: [{group: 'Jobs', label: 'Open the Inbound list and read each row, then find the same job in the Jobs list and compare them'}]},
 };
 
 /** A named plan as the session's plan: `{seed, persona: {name}, goals: [{n, group, label, pair}], newShare, changedAreas}`. Throws on an unknown id and says which exist. */
