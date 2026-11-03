@@ -4,12 +4,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {consume, FILE} from '../../../lib/pending-license.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 function setup(key, {hasKey = false, valid = true} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-pending-'));
   if (key) fs.writeFileSync(path.join(dir, FILE), `${key}\n`);
   let settings = {}; const secrets = hasKey ? {ANTHROPIC_API_KEY: 'sk-ant-own'} : {};
-  const storage = {settings: () => settings, saveSettings: p => { settings = {...settings, ...p}; }, secret: n => secrets[n], setSecret: (n, v) => { secrets[n] = v; }};
+  const storage = {settings: () => settings, saveSettings: p => { settings = {...settings, ...p}; }, secret: n => secrets[n], setSecret: strictSetSecret((n, v) => { secrets[n] = v; })};
   const license = {set: k => { if (!valid) return {ok: false, error: 'bad key'}; settings = {...settings, license: {key: k}}; return {ok: true}; }};
   return {dir, storage, license, secrets, licenseState: () => ({licensed: valid})};
 }

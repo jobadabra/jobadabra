@@ -4,9 +4,10 @@ import {test} from 'node:test';
 import {TRIAL_KEY, ensureTrialKey} from '../../../lib/ai-free.js';
 import * as github from '../../../lib/github.js';
 import {SECRET_NAMES} from '../../../lib/storage.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.abcd', OWN = 'sk-ant-own', OLD = 'JP1.old.credit';
-const store = (settings, secrets) => ({settings: () => settings, saveSettings: () => {}, readText: () => '', secret: name => secrets[name] || '', setSecret(name, value) { if (!SECRET_NAMES.includes(name)) throw new Error(`Unknown secret ${name}`); secrets[name] = value; }});
+const store = (settings, secrets) => ({settings: () => settings, saveSettings: () => {}, readText: () => '', secret: name => secrets[name] || '', setSecret: strictSetSecret((name, value) => { secrets[name] = value; })});
 
 // Superseded 3 Nov 2026 (owner: no Free AI key on the user's GitHub): the old tests sent the Free AI key and address; test/guards/safety/no-free-key-on-github.test.js holds the new rules.
 test('a Free AI install sends the first-run day, but no AI key and no Free AI address', () => {

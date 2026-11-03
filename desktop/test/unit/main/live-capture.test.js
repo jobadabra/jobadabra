@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {captureAnswer, captureCall, noteAsk, scrub} from '../../../lib/live-capture.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jp-live-capture-'));
 const request = {url: 'https://jobs.example.ch/job/42?token=SECRET&utm=1', title: 'Seller (m/f) mail anna.muster@gmail.com', headings: ['Apply, call +41 79 123 45 67'],
@@ -89,7 +90,7 @@ test('the app\'s own env writes the answer call into ai-calls.json under the har
   const dir = tmp(), data = tmp(), before = process.env.LIVE_CAPTURE_DIR;
   process.env.LIVE_CAPTURE_DIR = dir;
   try {
-    const storage = {settings: () => ({}), secret: () => 't', setSecret: () => {}, path: (...p) => path.join(data, ...p), readText: () => ''};
+    const storage = {settings: () => ({}), secret: () => 't', setSecret: strictSetSecret(), path: (...p) => path.join(data, ...p), readText: () => ''};
     await server.localEnv(storage).onAnswerCall({url: 'https://forms.example.com/apply', fields: [{field: 'q1', label: 'Website', type: 'text', required: false}],
       answers: [{field: 'q1', value: 'https://example.com', category: 'contact', use: 'fill'}]});
     const calls = JSON.parse(fs.readFileSync(path.join(dir, 'ai-calls.json'), 'utf8'));

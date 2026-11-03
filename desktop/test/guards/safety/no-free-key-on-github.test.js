@@ -7,12 +7,12 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {REPO_KEY, TRIAL_KEY, ensureRepoKey} from '../../../lib/ai-free.js';
 import * as github from '../../../lib/github.js';
-import {SECRET_NAMES} from '../../../lib/storage.js';
 import {createStorage} from '../../../lib/storage.js';
 import {bindings} from '../../../lib/telegram-cloud.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.abcd', OWN = 'sk-ant-own', REPO = 'JPT1.0123456789abcdef0123456789abcdef.fedcba9876543210fedcba9876543210';
-const store = (settings, secrets) => ({settings: () => settings, saveSettings: patch => Object.assign(settings, patch), readText: () => '', secret: name => secrets[name] || '', setSecret(name, value) { if (!SECRET_NAMES.includes(name)) throw new Error(`Unknown secret ${name}`); secrets[name] = value; }});
+const store = (settings, secrets) => ({settings: () => settings, saveSettings: patch => Object.assign(settings, patch), readText: () => '', secret: name => secrets[name] || '', setSecret: strictSetSecret((name, value) => { secrets[name] = value; })});
 const everyValue = ({secrets, variables}) => [...Object.values(secrets), ...Object.values(variables)].map(String);
 
 test('a Free AI install sends no AI key, no Free AI address and no JPF1 anywhere; it asks GitHub to delete the copies', () => {

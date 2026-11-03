@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {TOP_UP, UPGRADE, redeemWords, topupWords} from '../../../renderer/plan-view.js';
 import {createPlan} from '../../../lib/plan.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-10-27T20:48:00.000Z');
@@ -28,7 +29,7 @@ test('a credit code says the euros it added; the same code twice adds nothing; a
   assert.equal(redeemWords({ok: true}), 'Pro is on. Thank you.');
   assert.equal(redeemWords({ok: false, error: 'pro_only'}), 'This code adds AI credit to Pro. Upgrade to Pro first.');
   const fetcher = async url => (String(url).endsWith('/install-token') ? Response.json({ok: true, token: 'tk'}) : Response.json({ok: true, credit: 10, plan: 'free', mode: 'promo'}));
-  assert.deepEqual(await createPlan({settings: () => ({}), saveSettings() {}, secret: () => '', setSecret() {}}, {fetcher}).redeem('TOPUP-FAKE'), {ok: true, credit: 10});
+  assert.deepEqual(await createPlan({settings: () => ({}), saveSettings() {}, secret: () => '', setSecret: strictSetSecret()}, {fetcher}).redeem('TOPUP-FAKE'), {ok: true, credit: 10});
 });
 
 test('every refusal for AI credit or a Free AI line opens the dialog: the pop-up path, the Find jobs card, a line found in the background', () => {

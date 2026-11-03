@@ -9,8 +9,9 @@ import {createAppAllowance} from '../../../lib/app-allowance.js';
 import {createPlan} from '../../../lib/plan.js';
 import {AnthropicApi} from '../../../lib/ai/anthropic-api.js';
 import {onRefused, setGate} from '../../../lib/ai/refusals.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
-const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
+const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret: strictSetSecret()}; };
 const DAY_LINE = {lane: 'free', capped: 'day', message: "You reached today's Free AI use.", resetsAt: new Date(Date.now() + 3600000).toISOString()};
 const site = answers => { const plan = {asked: 0, caps: async () => { plan.asked += 1; return answers.shift() ?? null; }}; return plan; };
 
