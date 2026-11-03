@@ -45,7 +45,7 @@ export function compute(input, reg = registry(), now = new Date()) {
   // The AI steps (owner, 3 Nov 2026: an AI section lists agents AND steps): name, engine and, for this repo's workflows, state and last runs; other repos' workflows have no runs here (the run token reads this repo only).
   const steps = reg.steps.map(row => {
     const flow = row.repo === 'jobadabra' ? input.workflows?.[row.file] : null;
-    return {name: row.name, file: row.file, repo: row.repo, engine: row.engine, ...(flow ? {state: stateOf(flow.state, flow.runs), runs: letters(flow.runs), lastRun: String(flow.runs[0]?.created_at || '').slice(0, 10)} : {})};
+    return {name: row.name, file: row.file, repo: row.repo, engine: row.engine, ...(row.product ? {product: true} : {}), ...(flow ? {state: stateOf(flow.state, flow.runs), runs: letters(flow.runs), lastRun: String(flow.runs[0]?.created_at || '').slice(0, 10)} : {})};
   });
   return {kind: 'agents', days: [{day: now.toISOString().slice(0, 10), agents, steps}]};
 }
