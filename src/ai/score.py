@@ -401,6 +401,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
     stop = threading.Event()  # the spend limit was hit: jobs still queued don't call the API
     from .. import time_budget as budget
     late = [0]   # not started: the search's time was up (src/time_budget.py); the next search scores them
+    calls = budget.Calls()   # what the calls that worked took, apart from the failed ones: the pace counts the first only
     said = {}    # requested model -> the model that answered it (cost.answered), for the summary line
 
     def batch(todo, used_model, keep=None):
@@ -415,7 +416,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
                 late[0] += 1
                 return None
             try:
-                return score_one(client, used_model, job, profile)
+                return calls.run(score_one, client, used_model, job, profile)
             except Exception as error:
                 if cost.limit_reached(error):
                     stop.set()
@@ -482,9 +483,9 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
         batch(jobs, model)
     if late[0]:
         print(budget.left_line('score', late[0]), flush=True)
-    budget.record('score', time.monotonic() - began, scored)
+    budget.record('score', time.monotonic() - began, scored, calls.lost)
     if stats is not None:
-        stats.update(pending=len(jobs), done=scored, failed=failures, late=late[0])
+        stats.update(pending=len(jobs), done=scored, failed=failures, late=late[0], lost=calls.lost)
     return (f'Scored {scored} of {len(jobs)} job(s) with {said.get(model, model)}{f" (first pass {said.get(first_pass, first_pass)})" if cascade else ""}; {failures} failed; tokens in '
             f"{usage_totals['input']} (+{usage_totals['cache_read']} cached), out {usage_totals['output']}")
 

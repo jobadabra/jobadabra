@@ -289,8 +289,10 @@ def run(db, model, max_jobs, client=None, workers=5, stats=None, only_ids=None):
     late = 0   # not started: the search's time was up (src/time_budget.py); the next search reads them
     taken, stopped = 0, False   # jobs handed to a batch so far; the API or the AI limit stopped the run
 
+    calls = budget.Calls()   # what the calls that worked took, apart from the failed ones: the pace counts the first only
+
     def one(job):
-        return None if budget.over('enrich', key=job.get('url') or job.get('title')) else extract(client, model, job)
+        return None if budget.over('enrich', key=job.get('url') or job.get('title')) else calls.run(extract, client, model, job)
 
     def read(jobs):
         """One batch, in parallel. True when the run must stop (the API is down, or the AI limit): the next run continues."""
@@ -337,8 +339,9 @@ def run(db, model, max_jobs, client=None, workers=5, stats=None, only_ids=None):
 
     while jobs:
         began, before = time.monotonic(), enriched
+        calls.worked = calls.failed = 0.0
         stopped = read(jobs)
-        budget.record('enrich', time.monotonic() - began, enriched - before)   # this computer's pace: the next batch is sized from it
+        budget.record('enrich', time.monotonic() - began, enriched - before, calls.lost)   # this computer's pace: the next batch is sized from it
         taken += len(jobs)
         if stopped or late:
             break
