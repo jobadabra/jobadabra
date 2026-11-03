@@ -6,7 +6,7 @@ after 5 minutes on a macOS runner; the gate read it as "red, but no failed step 
 started: its result counts, red or green), or did not run (no runner, or a step before the suite step failed: infra, re-run once). A job that did not run twice is
 said as "not run" and proves nothing, so a safety suite still blocks a beta, by its real name.
 A real red stays red: when any job that ran failed, nothing is re-run (the run is red anyway; the next beta tests the never-started suite).
-Called by .github/workflows/rerun-not-acquired.yml when a beta or e2e run ends. Tests: tests/test_rerun_not_acquired.py
+Called by .github/workflows/rerun-not-acquired.yml when a beta or e2e run ends. Tests: tests/tooling/release/test_rerun_not_acquired.py
 """
 import json
 import os
@@ -54,7 +54,7 @@ def gh_json(*args):
 
 
 def main(argv):
-    run_id, repo = argv[0], os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # sparse checkout of this one file: no src/repos.py; tests/test_repos_owner.py pins it
+    run_id, repo = argv[0], os.environ.get('GITHUB_REPOSITORY') or 'jobadabra/jobadabra'   # sparse checkout of this one file: no src/repos.py; tests/guards/rules/test_repos_owner.py pins it
     attempt = int(os.environ.get('RUN_ATTEMPT', '1'))
     ask = '--would-rerun' in argv   # tools/red-main-gate.sh asks, exit 0 = the workflow is about to re-run this run (it waits for that instead of judging attempt 1)
     if attempt > 1:

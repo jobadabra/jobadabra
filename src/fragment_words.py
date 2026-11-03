@@ -2,7 +2,7 @@
 
 Owner, 17 Oct 2026: "the person never sees a pattern" (Strategy showed "Tax", "SRE" with quotes and raw place patterns).
 \\bz[uü]rich\\b -> zürich, "zug" -> zug, st\\.? ?gallen -> st. gallen, a|b -> a / b. Display only: the patterns are kept as stored.
-Guarded by tests/test_fragment_words.py (the cases of desktop/test/fragment-words.test.js).
+Guarded by tests/unit/engine/test_fragment_words.py (the cases of desktop/test/fragment-words.test.js).
 """
 import re
 

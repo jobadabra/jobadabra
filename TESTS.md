@@ -22,7 +22,8 @@ Helpers and stand-ins (fakes, fixtures, cases) stay next to the tests that use t
 
 <details><summary>Moving in (3 Nov 2026)</summary>
 
-- The flat files still at the top of `tests/` and `desktop/test/` are moving into these folders in two PRs (Python, then desktop). Until then they are listed in `tests/guards/rules/test-folders-allowed.txt`, which only shrinks.
+- The Python tests moved on 3 Nov 2026 (test folders 2/3); the flat files still at the top of `desktop/test/` move in 3/3. Until then they are listed in `tests/guards/rules/test-folders-allowed.txt`, which only shrinks.
+- The suite's setup is two helpers, not tests: `tests/suite_ids.py` (fake Notion IDs) and `tests/suite_store_guard.py` (no store chosen between tests). Every folder's `__init__.py` loads them first, so `unittest discover`, `tools/py-shards.py` and one module alone all get them.
 - The runners already find tests in every folder above: `tools/affected-tests.py` (`python_tests`, `desktop_tests`) is the one list `tools/py-shards.py`, `tools/app-tests.py` and the PR picker read; `npm test` runs `test/*.test.js` and `test/{unit,guards,tooling}/**/*.test.js`.
 - The beta's app-only leg leaves out everything under `tooling/`.
 

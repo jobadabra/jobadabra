@@ -1,7 +1,7 @@
 """The desktop app's application status writes: set_status() through the store (src/stores: the job's Stage, any store), and
 delete_job() with the Notion pages first (it moves to the store with Job Matches).
 
-Guarded by tests/test_desktop.py and tests/test_import_url.py.
+Guarded by tests/unit/stores/test_desktop.py and tests/unit/stores/test_import_url.py.
 """
 from . import store
 from .desktop_jobs import stage_status

@@ -1,6 +1,6 @@
 """The central scout's feed slices: each run verifies the feeds not read for longest, and carries the others over from their last verified entry.
 Why: 22-23 Oct 2026, re-reading every known feed on every run took 12 to 39+ minutes; the job must end in 15-20 minutes (owner).
-Tests: tests/test_scout_carry.py."""
+Tests: tests/unit/engine/test_scout_carry.py."""
 
 import json
 import urllib.request

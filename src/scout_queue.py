@@ -3,7 +3,7 @@ batch tag: "AI idea", "Wikidata", "hiring-without-whiteboards") is ranked by its
 had a readable job feed, with a fair start for a source never checked ((found + 1) / (checked + 2)). A name the user or a Tier 1 seed put first
 (priority PINNED and up) stays first. A source with no feed after EXPIRE_AFTER checks stops waiting (status 'expired', never probed, never deleted).
 Owner, 18 Oct 2026: replaces the 100-name pause, which froze every new name for 12 days while 514 names of a list with no feed waited.
-Tests: tests/test_scout_queue.py.
+Tests: tests/unit/engine/test_scout_queue.py.
 """
 from collections import Counter
 

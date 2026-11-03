@@ -9,7 +9,7 @@ Every build is smoke-tested once, when it is built (`desktop.yml`: `mac-smoke.mj
 - One workflow, `fresh-install-smoke.yml` (replaces `mac-smoke.yml`, same Mac job, one `tag` input kept for by-hand runs), two jobs, **Mac** and **Windows**, both report only.
 - Which build: the newest **stable** release (`gh release view`, no tag: the one the Download link serves), or the `tag` input (empty = that). Mac: `Jobadabra-mac-arm64.zip` (installed) and `Jobadabra-mac-arm64.dmg` (the Mac Download link, checked to exist); Windows: `Jobadabra-windows-x64.exe`; a stable release without one of them is a red run (the user-facing link is broken).
 - What runs is what already exists: `mac-smoke.mjs` (signature, bundled Python, Keychain round trip, native terminal, the Jobs list opens) and `windows-smoke.mjs <exe> smoke smoke` (silent per-user install, bundled Python, Credential Manager round trip, the Jobs list opens). Nothing is rewritten.
-- Red = the job fails; the result line goes to the job log (no `$GITHUB_STEP_SUMMARY`, `tests/test_no_step_summaries.py`) and the screenshots are kept 14 days. Nothing blocks a merge or a beta (`tests/test_red_main.py`: ignored, report only).
+- Red = the job fails; the result line goes to the job log (no `$GITHUB_STEP_SUMMARY`, `tests/test_no_step_summaries.py`) and the screenshots are kept 14 days. Nothing blocks a merge or a beta (`tests/tooling/ci/test_red_main.py`: ignored, report only).
 - GitHub's cron is the start (`23 3 * * *`); the Worker timer replaces it when the bot Worker has moved to `jobadabra-web` (GitHub cron is unreliable, memory `feedback-github-cron-unreliable-use-worker`).
 
 - **Only releases built after the rename (owner, 2 Nov 2026: "We don't want to support JOB_PILOTTO_ anymore").** The check drives the installed app through `JOBADABRA_*` env names; a release from before #2926 reads only the old ones, so `tools/release-after-rename.sh` keeps the check to releases whose commit contains the rename. While the newest stable is older, the run ends green with a notice and resumes with the next stable (delete the script then).
@@ -28,7 +28,7 @@ Mounting the `.dmg` (only its existence is checked); the quarantine flag a brows
 ## Acceptance
 1. The workflow starts on its cron and by hand with an empty or explicit `tag`; the Mac and Windows jobs install the stable release's generic assets and print their result line.
 2. A run on a tag with no generic Mac or Windows asset is red with "No <asset> in <tag>", never green.
-3. `tests/test_workflow_runners.py` lets `fresh-install-smoke.yml` (not `mac-smoke.yml`) use macOS; `tests/test_red_main.py` classifies it as report only; nothing else reads the old file name.
+3. `tests/test_workflow_runners.py` lets `fresh-install-smoke.yml` (not `mac-smoke.yml`) use macOS; `tests/tooling/ci/test_red_main.py` classifies it as report only; nothing else reads the old file name.
 4. First by-hand run after the merge is green on both OSes (or names what it found).
 
 ## Progress

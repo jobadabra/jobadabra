@@ -1,4 +1,4 @@
-"""Shared fakes for the interview-insights tests (tests/test_interview_insights*.py): interview rows, review blocks, a Notion stand-in and a model client."""
+"""Shared fakes for the interview-insights tests (tests/unit/ai/test_interview_insights*.py): interview rows, review blocks, a Notion stand-in and a model client."""
 from datetime import date, datetime, timezone
 import json
 from pathlib import Path

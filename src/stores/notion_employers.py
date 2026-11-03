@@ -2,7 +2,7 @@
 
 Find employers (src/scout_notion.py) writes each checked employer here through `upsert`; the feed crawl reads the active ones
 with a feed through `list`. A column an older workspace lacks yet is dropped from that write, never the row (without_missing).
-Columns: config/notion_schema.json NOTION_EMPLOYERS_DB. Guarded by tests/test_store_notion.py (the store contract on the stand-in).
+Columns: config/notion_schema.json NOTION_EMPLOYERS_DB. Guarded by tests/unit/stores/test_store_notion.py (the store contract on the stand-in).
 """
 from . import base
 from .notion_columns import without_missing

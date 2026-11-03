@@ -1,7 +1,7 @@
 """What a job board declares itself when its search page gives nothing (script-only page): an RSS/Atom or JSON feed named by <link rel=alternate>,
 or the sitemap named in robots.txt leading to job pages that publish schema.org JobPosting data. Found by structure, never per site; the route
 that worked is kept per host in data/found_boards.json (found_boards.read) and tried first next time. A 401/403 or a bot check on any of
-these stops at once (Stop): the user's own visit (src/sources/visits_portals.py) stays the path. Tests: tests/test_board_routes.py."""
+these stops at once (Stop): the user's own visit (src/sources/visits_portals.py) stays the path. Tests: tests/unit/sources/test_board_routes.py."""
 import email.utils
 import html
 import json

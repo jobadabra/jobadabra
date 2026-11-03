@@ -1,5 +1,5 @@
 {
- "_comment": "What Find employers wrote to Employers & Sources before the store (src/scout_notion.py write_notion, 9 Oct 2026), per outcome: the properties of a new row and of an update. tests/test_scout_employers_store.py checks the store path sends the same.",
+ "_comment": "What Find employers wrote to Employers & Sources before the store (src/scout_notion.py write_notion, 9 Oct 2026), per outcome: the properties of a new row and of an update. tests/unit/stores/test_scout_employers_store.py checks the store path sends the same.",
  "cases": {
   "found": [
    {

@@ -8,7 +8,7 @@ The search runs on the user's own plan (Claude Code, Codex: the engine, or signe
 Anthropic API key (about $0.07 a search: up to 6 planned web searches, owner's yes 26 Oct 2026), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOBADABRA_DISABLE=web_search.
-Tests: tests/test_board_web.py, tests/test_board_web_thin.py, tests/test_web_first.py."""
+Tests: tests/unit/sources/test_board_web.py, tests/unit/sources/test_board_web_thin.py, tests/unit/ai/test_web_first.py."""
 import json
 import os
 import threading
@@ -182,7 +182,7 @@ def found_first(search_config, wait):
 def start(search_config, data, fetch=None, now=None):
     """The web search beside the board proposal and the reads: the one started with the run (early) for this search, else one started now,
     in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish().
-    None past the search's read cut: a new search is asked by the next one (tests/test_three_minutes.py)."""
+    None past the search's read cut: a new search is asked by the next one (tests/unit/sources/test_three_minutes.py)."""
     from ..ai import board_ideas
     from . import read_budget
     asked = board_ideas.asked_for(search_config)
@@ -232,7 +232,7 @@ def finish(started, proposed, timeout=None, data=None):
 def _keep_late(done, copy, data):
     """A web search that answered after the read cut: what it recorded on its own copy (when it searched, the boards it found) goes into
     the read's found_boards.json and the saved file, so the next search reads those boards and does not search again (owner, 26 Oct 2026:
-    "next one to continue/start properly without redoing the same job"). Tests: tests/test_three_minutes_resume.py."""
+    "next one to continue/start properly without redoing the same job"). Tests: tests/unit/ai/test_three_minutes_resume.py."""
     from ..ai import board_ideas
     if done.exception() is not None or copy is None:
         return
@@ -298,7 +298,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     run = _run(key)
     with _lock:
         again = run is not None and run in _searched
-    if again:   # the first-jobs search and the full read are one run: its thin tries are one per run (tests/test_board_web_thin.py)
+    if again:   # the first-jobs search and the full read are one run: its thin tries are one per run (tests/unit/sources/test_board_web_thin.py)
         print('Job boards: no web search: searched in this run', flush=True)
         return []
     kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)

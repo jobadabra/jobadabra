@@ -1,5 +1,5 @@
 """Constants of the Gmail check: model, state file, sender lists, kinds, stage ranks, the classifier's schema and prompt.
-Guarded by tests/test_mail_classify.py and tests/test_mail_shapes.py."""
+Guarded by tests/test_mail_classify.py and tests/unit/ai/test_mail_shapes.py."""
 import os
 
 from .. import tz

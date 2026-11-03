@@ -22,7 +22,7 @@ RETRY_SECONDS = 10
 
 def run(args):
     """`gh <args>`; tried once more after RETRY_SECONDS when GitHub answered 502/503/504. -> the CompletedProcess that decides.
-    subprocess.run is read at call time, so a test that patches it (tests/test_e2e_gate.py) reaches the call."""
+    subprocess.run is read at call time, so a test that patches it (tests/tooling/release/test_e2e_gate.py) reaches the call."""
     first = subprocess.run(['gh', *args], capture_output=True, text=True)
     said = first.stderr if isinstance(first.stderr, str) else ''
     if first.returncode == 0 or not GATEWAY.search(said):

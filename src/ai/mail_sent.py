@@ -1,5 +1,5 @@
 """Your own sent emails to a recruiter (Replied events) and the review of new rejections.
-Guarded by tests/test_mail_sent.py and tests/test_rejection.py."""
+Guarded by tests/test_mail_sent.py and tests/unit/stores/test_rejection.py."""
 from html import escape
 import re
 import sys

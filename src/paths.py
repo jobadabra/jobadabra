@@ -175,7 +175,7 @@ _JOBS_DB = JOBS_DB
 
 def jobs_db():
     """The job database as it is now: JOBS_DB when something set it (a test's patch), else DATA's, so a patched DATA moves it too
-    (26 Oct 2026: JOBS_DB is fixed at import and ~9 test files wrote data/jobs.sqlite into the checkout; tests/test_jobs_db_follows_data.py)."""
+    (26 Oct 2026: JOBS_DB is fixed at import and ~9 test files wrote data/jobs.sqlite into the checkout; tests/unit/ai/test_jobs_db_follows_data.py)."""
     return JOBS_DB if JOBS_DB != _JOBS_DB else DATA / 'jobs.sqlite'
 
 
@@ -367,7 +367,7 @@ def place_regex(fragments):
 
 def whole_word(fragment):
     """An entry stored with its quotes ("tax": the settings page's whole-word form) as the whole-word pattern it means (\\btax\\b); any other
-    fragment as it is. 17 Oct 2026: such entries were compiled with their quotes and never matched (tests/test_quoted_patterns.py)."""
+    fragment as it is. 17 Oct 2026: such entries were compiled with their quotes and never matched (tests/unit/notion/test_quoted_patterns.py)."""
     text = str(fragment)
     return rf'\b{text[1:-1]}\b' if len(text) > 2 and text.startswith('"') and text.endswith('"') else text
 

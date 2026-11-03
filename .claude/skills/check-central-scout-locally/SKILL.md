@@ -9,8 +9,8 @@ Why: 24 Oct 2026 the board pass was merged without its path ever running. The fi
 (the feed checks used all the time), and the first fix used a name before its import. A run is slow and costs AI; the same path runs in under a second with fakes.
 
 ## 1. Before shipping (seconds, $0)
-- `python3 -m unittest tests.test_scout_publish_path tests.test_scout_boards tests.test_scout_central_runs tests.test_scout_cells`
-- `tests/test_scout_publish_path.py` drives `scout.main --publish-index` with every network piece replaced (the checks, the board pass, the publish) and the job
+- `python3 -m unittest tests.unit.engine.test_scout_publish_path tests.unit.sources.test_scout_boards tests.tooling.ci.test_scout_central_runs tests.unit.ai.test_scout_cells`
+- `tests/unit/engine/test_scout_publish_path.py` drives `scout.main --publish-index` with every network piece replaced (the checks, the board pass, the publish) and the job
   "20 minutes in", so a slow run's deadlines are real. A new step in that branch gets a fake in `run_main` and an assertion in this test, not only its own unit test.
 - **Watch the new assertion fail on the old code** (revert the fix by hand, run, restore), as for any bug.
 - A real local run (`python3 -m src scout --batch 3 --publish-index` with temp `JOBADABRA_DATA_DIR` / `CONFIG_DIR` and a stub index URL) is NOT a smoke:

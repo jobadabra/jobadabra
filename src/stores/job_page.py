@@ -1,6 +1,6 @@
 """One job's drawer page in one store call (`python -m src.stores call job_page read`): its sections, events and interviews read together,
 in threads, with each GET (the page's block list above all) made once instead of once per call. Only for a single short run: nothing is kept
-after it. Guarded by tests/test_job_page_read.py."""
+after it. Guarded by tests/unit/stores/test_job_page_read.py."""
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager

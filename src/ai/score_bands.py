@@ -1,5 +1,5 @@
 """The scorer's bands: what an overall fit score means, the same for every candidate and model (part of src/ai/score.py SYSTEM).
-Moved out of score.py as a pure move (27 Oct 2026, the file was at 499 lines), then UNMET added. Guard: tests/test_score_bands.py."""
+Moved out of score.py as a pure move (27 Oct 2026, the file was at 499 lines), then UNMET added. Guard: tests/unit/ai/test_score_bands.py."""
 
 # Why (#2205, owner 27 Oct 2026: "Allow, capped at 20+20"): golden job 3005 (German C1 required, the profile has B1) scored 70, 45 and 35 on the same input:
 # the bands gave it no place. Measured on 20 scorings each: 51% -> 90% of pairs within 8; the gate checks its cap (truth.json maxScore).

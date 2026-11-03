@@ -41,7 +41,7 @@ LANGUAGES = ['English', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 
 _evidence = {'type': 'string', 'description': 'Short verbatim quote from the posting, or "" if none'}
 IT_FAMILIES = ('sre', 'platform', 'devops', 'cloud_infrastructure', 'software', 'data', 'security', 'support_it')   # the IT role families before the trades
 # Why (30 Oct 2026, a8, quality golden 3006): keep each IT family's work explicit, as for trades, so duties can select it;
-# PR #1992 found 5 plain SRE/platform jobs called 'engineering' with bare names. Guard: tests/test_role_kinds_split.py.
+# PR #1992 found 5 plain SRE/platform jobs called 'engineering' with bare names. Guard: tests/unit/ai/test_role_kinds_split.py.
 IT_WORK = {'sre': 'site reliability: keeping production services up, incidents, on-call, monitoring',
            'platform': 'internal platforms and developer infrastructure, e.g. Kubernetes and CI/CD for other teams',
            'devops': 'build, release and deployment automation, infrastructure as code',
@@ -177,7 +177,7 @@ def pending_jobs(db, limit):
 
 
 # The judged facts a reader needs (columns the app promises) that a posting usually gives: left empty, they are asked once more, alone, and the second
-# look decides (owner, 26 Oct 2026: "Ask again when empty"; Free AI left "5 years of sales experience" at seniority unknown). Guard: tests/test_enrich_ask_again.py.
+# look decides (owner, 26 Oct 2026: "Ask again when empty"; Free AI left "5 years of sales experience" at seniority unknown). Guard: tests/unit/ai/test_enrich_ask_again.py.
 ASK_AGAIN = {'seniority': lambda data: (data.get('seniority') or {}).get('value', 'unknown') == 'unknown',
              'work_mode': lambda data: (data.get('work_mode') or {}).get('value', 'unknown') == 'unknown',
              'technologies': lambda data: not data.get('technologies')}

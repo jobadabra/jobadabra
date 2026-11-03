@@ -6,7 +6,7 @@ and possible to decice on things"). The 11 'page-words' keyword answers (config/
 Each wording is asked once (decide.py: kept on this computer, then the meanings pack, then a batch of 50), so the code that reads links stays
 synchronous. Past the call cap or on a failure a wording is unknown (None) and its link is skipped this run, never a keyword's guess; with no AI
 at all (`ai_on()` false) the old words answer, as the offline floor. Structure that stays: same site or not, file endings, job-system
-addresses, an id at the end of a path, paging numbers. Tests: tests/test_page_words.py."""
+addresses, an id at the end of a path, paging numbers. Tests: tests/unit/ai/test_page_words.py."""
 import os
 import re
 from typing import NamedTuple
@@ -19,7 +19,7 @@ TITLE_ANSWERS = ('job_title', 'heading')
 ONLY = {'board_careers_link': 'weak', 'job_list': 'weak', 'not_a_list': 'not_jobs'}   # which Words field an old list stands for when a caller used it alone
 MAX_WORDINGS = 300   # distinct link wordings judged in one call site
 
-# Where every 'page-words' answer lives now; tests/test_page_words.py fails when an answer is missing here (a new one must be placed).
+# Where every 'page-words' answer lives now; tests/unit/ai/test_page_words.py fails when an answer is missing here (a new one must be placed).
 PLACED = {'careers_link': LINK, 'strong_jobs': LINK, 'job_path': LINK, 'not_jobs': LINK, 'job_host': LINK, 'board_careers_link': LINK,
           'job_list': LINK, 'not_a_list': LINK, 'job_title': TITLE, 'not_a_job': TITLE, 'no_jobs': 'page-reader'}
 

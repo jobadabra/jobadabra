@@ -1,6 +1,6 @@
 """Interview analysis, the job an interview belongs to, on the store: finding it (by id, by URL), adding a job an interview
 names that isn't tracked yet, and adding its 📈 event. Application records (src/stores/base.py), never Notion pages.
-Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_store.py.
+Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/test_interviews_store.py.
 
 Events go through src/stores/rules.add_event and an untracked job is added by src/ledger_store.add_application: the ledger's
 rules, on any store.

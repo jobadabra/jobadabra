@@ -11,6 +11,6 @@
 Each move ships while few other PRs are open (a move conflicts with any open PR editing the same tests).
 
 ## Progress
-- [ ] 1/3 map, runners, guard (proof: tests/guards/rules/test_test_folders.py)
-- [ ] 2/3 Python tests moved (proof: none: not written yet)
+- [x] 1/3 map, runners, guard (proof: tests/guards/rules/test_test_folders.py @fe19dbdf)
+- [x] 2/3 Python tests moved (proof: tests/guards/data/test_store_env.py)
 - [ ] 3/3 desktop tests moved (proof: none: not written yet)

@@ -16,7 +16,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: pr-check-scorecard-${{ github.run_id }}   # a run of its own (tests/test_workflow_contract.py)
+  group: pr-check-scorecard-${{ github.run_id }}   # a run of its own (tests/guards/rules/test_workflow_contract.py)
   cancel-in-progress: false
 
 jobs:

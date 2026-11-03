@@ -1,5 +1,5 @@
 """Jobs an email introduces: the application a confirmation names, an interview lead, a recruiter lead.
-Guarded by tests/test_mail_leads.py and tests/test_origin_column.py."""
+Guarded by tests/test_mail_leads.py and tests/unit/notion/test_origin_column.py."""
 from html import escape
 import re
 import sys

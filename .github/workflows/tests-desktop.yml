@@ -1,6 +1,6 @@
 name: CI · Tests · desktop
 # On a pull request, GitHub's `paths:` below decides whether it runs (owner, 14 Oct 2026: "drop your shared pick logic, rely fully on gh workflow paths"). Not a required
-# check: a workflow `paths:` skips never reports, and a required one would block the PR (tests/test_workflow_paths.py). On main, build.yml (CI · Tests) calls it on
+# check: a workflow `paths:` skips never reports, and a required one would block the PR (tests/tooling/ci/test_workflow_paths.py). On main, build.yml (CI · Tests) calls it on
 # every push: the backstop for a break from outside these paths.
 on:
   workflow_call:
@@ -17,7 +17,7 @@ on:
       - 'eslint.config.mjs'
       - 'tools/check.sh'
       - 'tools/check.py'
-      # Files outside desktop/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
+      # Files outside desktop/ that its tests read (tests/tooling/ci/test_workflow_paths.py fails when one is missing).
       - '.github/workflows/e2e.yml'
       - '.github/workflows/feedback-ai.yml'   # desktop/test/feedback-ai.test.js reads its jobs
       - '.github/workflows/harness.yml'

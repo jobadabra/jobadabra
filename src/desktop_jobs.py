@@ -1,6 +1,6 @@
 """The desktop app's job list and posting: stage_status, jobs(), posting(), store_posting() (a pure move out of desktop.py).
 
-Guarded by tests/test_desktop.py, tests/test_desktop_notion_list.py, tests/test_refresh_batch.py, tests/test_places_strict.py.
+Guarded by tests/unit/stores/test_desktop.py, tests/unit/notion/test_desktop_notion_list.py, tests/unit/ai/test_refresh_batch.py, tests/unit/sources/test_places_strict.py.
 """
 import sqlite3
 from datetime import datetime, timedelta, timezone

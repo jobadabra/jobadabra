@@ -1,5 +1,5 @@
 """Counts the steps this install skipped because the shared pool already had the answer (a place word placed by another install), kept in data/pool_served.json.
-Kept here as running totals and sent in the daily share (src/contribute.py `served`): the number the owner asked for ("steps skipped thanks to other installs"). Tests: tests/test_places.py (SharedPlaceTests)."""
+Kept here as running totals and sent in the daily share (src/contribute.py `served`): the number the owner asked for ("steps skipped thanks to other installs"). Tests: tests/unit/ai/test_places.py (SharedPlaceTests)."""
 import json
 import re
 import threading

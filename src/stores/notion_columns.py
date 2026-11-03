@@ -4,7 +4,7 @@ An older workspace (before the app's schema repair, or a GitHub run ahead of it)
 whole row for one unknown property. Two ways to keep the row: `KnownColumns` reads the database schema once and filters
 before the write; `without_missing` sends, and on "X is not a property that exists" drops X and sends again.
 Used by the notion store (notion.py, notion_cron_runs.py, notion_employers.py, notion_insights.py) and src/notion/cron_runs.py.
-Guarded by tests/test_notion_columns.py and the store contract tests.
+Guarded by tests/unit/stores/test_notion_columns.py and the store contract tests.
 """
 import re
 

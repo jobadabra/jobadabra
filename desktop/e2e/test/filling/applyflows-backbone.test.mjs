@@ -237,7 +237,7 @@ for (const family of ['claude', 'openai']) test(`${family}: unknown page fails a
 });
 
 test('both workflow attempts run applyflows with semantic backbone answers', () => {
-  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
+  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/tooling/ci/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
   assert.match(fs.readFileSync(new URL('../../suites/applyflows.mjs', import.meta.url), 'utf8'), /^export const aiAnswers = 'backbone';/m);
 });
 

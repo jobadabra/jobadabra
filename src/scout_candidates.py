@@ -1,6 +1,6 @@
 """Source scout, harvest: where candidate employers come from (seed lists, Hacker News "Who is hiring?", hiring-without-whiteboards,
 SwissDevJobs, jobs.ch employers seen, Wikidata) and `harvest`, which queues them in scout_candidates.
-Tests: tests/test_scout.py, tests/test_seeds_private.py, tests/test_scout_ideas.py, tests/test_scout_e2e.py.
+Tests: tests/unit/sources/test_scout.py, tests/guards/rules/test_seeds_private.py, tests/unit/ai/test_scout_ideas.py, tests/unit/sources/test_scout_e2e.py.
 """
 
 import json

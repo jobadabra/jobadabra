@@ -29,7 +29,7 @@ public, never the reverse").
   a committed snapshot so the pick is deterministic), the rest listed as "runs after merge".
 - `tools/pr-verdict.py`: AI credit, runner, install and picker failures are grey ("didn't run", reason), never red.
 - Suspension (spec state): read from the classifier's flips; a suspended suite runs but never blocks.
-- Tests: `desktop/e2e/test/pr-suites*.test.mjs`, `tests/test_pr_verdict*.py` (a credit failure is grey; a tolerant suite never picked; 7 reached → 5 picked).
+- Tests: `desktop/e2e/test/pr-suites*.test.mjs`, `tests/tooling/ci/test_pr_verdict*.py` (a credit failure is grey; a tolerant suite never picked; 7 reached → 5 picked).
 
 ### 3 · Expectation rule, plumbing brake, Gitar
 - **Outcome:** "make it green" can no longer loosen a backbone test or patch plumbing without a named reason.

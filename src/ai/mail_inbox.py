@@ -1,5 +1,5 @@
 """The Gmail pass: search, classify, and decide for each new email (record, ask, lead or skip).
-Guarded by tests/test_mail_run.py and tests/test_mail_shapes.py."""
+Guarded by tests/test_mail_run.py and tests/unit/ai/test_mail_shapes.py."""
 from html import escape
 import re
 import sys

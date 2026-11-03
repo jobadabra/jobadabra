@@ -42,7 +42,7 @@ def answered(model, usage):
 
 def combined(first, second):
     """Two calls for one item (an answer asked again) as one usage: tokens summed, and who answered and how it was paid kept (model, provider,
-    billing), so the run's cost and "Billed to" stay right. Guard: tests/test_enrich_ask_again.py."""
+    billing), so the run's cost and "Billed to" stay right. Guard: tests/unit/ai/test_enrich_ask_again.py."""
     from types import SimpleNamespace
     keep = {name: getattr(first, name) for name in ('model', 'provider', 'billing', 'server_tool_use') if getattr(first, name, None) is not None}
     numbers = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')

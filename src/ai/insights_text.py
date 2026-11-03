@@ -1,5 +1,5 @@
 """What the Insights messages say: the honesty rules shared by both prompts, the weekly report's schema and prompt, and the weekly Telegram text and Notion page body.
-Guarded by tests/test_insights.py."""
+Guarded by tests/unit/ai/test_insights.py."""
 from html import escape
 
 from .. import tgcard

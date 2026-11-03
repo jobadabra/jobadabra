@@ -1,5 +1,5 @@
 """📥 Log anything, part 5: the last message of a conversation as an event on the job, and the note an event carries.
-Re-exported by src/ai/inbox.py. Tests: tests/test_inbox.py, tests/test_inbox_gaps.py.
+Re-exported by src/ai/inbox.py. Tests: tests/unit/ai/test_inbox.py, tests/unit/ai/test_inbox_gaps.py.
 """
 import hashlib
 import re

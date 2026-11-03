@@ -270,8 +270,8 @@ export function readinessSummary(issues, {openBranches = [], now = Date.now(), c
 export function checkChange(files) {
   const bad = files.filter(file => !allowedPath(file));
   if (bad.length) return {ok: false, why: `edits outside the allowed folders: ${bad.join(', ')}`};
-  // A fix comes with a test of its own side: Python with a tests/test_*.py, the window or the app's logic with a desktop/test/*.test.js.
-  if (files.some(file => /^src\//.test(file)) && !files.some(file => /^tests\/test_/.test(file))) return {ok: false, why: 'an engine fix must come with a test in tests/'};
+  // A fix comes with a test of its own side: Python with a test under tests/ (top, unit/ or guards/), the window or the app's logic with a desktop/test/*.test.js.
+  if (files.some(file => /^src\//.test(file)) && !files.some(file => /^tests\/(?:(?:unit|guards)\/[^/]+\/)?test_/.test(file))) return {ok: false, why: 'an engine fix must come with a test in tests/'};
   if (files.some(file => /^desktop\/(renderer|lib)\//.test(file)) && !files.some(file => /^desktop\/test\//.test(file))) return {ok: false, why: 'a fix must come with a test'};
   if (!files.some(file => /^(desktop\/test|tests)\//.test(file))) return {ok: false, why: 'a fix must come with a test'};
   return {ok: true, why: ''};

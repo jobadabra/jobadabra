@@ -58,7 +58,7 @@ one owner (the coordinator's round-up) and never asks the PR's session for anyth
 ran out, a timeout, a wrong value): its single try is the verdict (owner, 31 Oct 2026: "Is this expected? Error but step passed green ?", "And why should we
 accept/allow that?", "Let's go and handle this"; a suite past its budget is our bug: red, confirmed through the coordinator); no second try, no flaky-proof pass, no `continue-on-error` on a suite step, no
 "Grey: the runner, not the app" annotation, no grey beta hold or rerun. Done by row 32.
-Guard: `tests/test_e2e_single_try.py` (no workflow retries a suite or lets its step fail quietly), `tests/test_no_suite_grey.py` (no workflow, tool or reader knows a grey suite verdict; the grey beta rerun is gone).
+Guard: `tests/tooling/ci/test_e2e_single_try.py` (no workflow retries a suite or lets its step fail quietly), `tests/tooling/ci/test_no_suite_grey.py` (no workflow, tool or reader knows a grey suite verdict; the grey beta rerun is gone).
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
@@ -87,7 +87,7 @@ worker on a loaded shared runner. A step reaches the backbone and stays there on
 - **Beta:** an AI suite is grey or green and never stops a beta; its rate against main's band is reported, and AI credit running out is one alert (owner,
   31 Oct 2026: "Any AI calls/suites should be green. They should not stop a beta", "Should be gray, or green", "the fact that AI credit finished should not
   stop a beta from being green. It should just raise an alert. And that's it"). This replaces "blocked when a tolerant AI rate is clearly below main's band"
-  (#2504) and the 28 Oct rule that a capped AI step fails a release gate. Guard: `tests/test_beta_rate_gate.py`.
+  (#2504) and the 28 Oct rule that a capped AI step fails a release gate. Guard: `tests/tooling/release/test_beta_rate_gate.py`.
 
 ## The rules
 **A · AI answers.** In the backbone every AI call (the app's and the judges') is answered from answers stored with the test, keyed by the question
@@ -101,13 +101,13 @@ Guard: `desktop/e2e/test/ai/stored-answer-suites-no-live-ai.test.mjs`, `desktop/
 **B · Clock.** Backbone steps wait on state (the row exists, the fill ended) with a cap of about 3× main's p95 that only catches hangs. No wall-clock limit is an
 assertion in the backbone. User promises (Find jobs ≤ 3 min, Focus ≤ 20 s) live in the `clock` lane: the median of main's nightly runs vs the promise.
 The same cap sits on every CI step around the suite run (scan, upload, report, lock, setup; 31 Oct 2026, a 17-min hung scan lost a job's logs): `timeout-minutes` of about 3× the step's p95, 5 min at least.
-Guard: `desktop/e2e/test/harness/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/test_e2e_step_timeouts.py`.
+Guard: `desktop/e2e/test/harness/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/tooling/ci/test_e2e_step_timeouts.py`.
 
 **C · Outside world.** Real Notion, the AI key's credit, real websites and runners are `outside`. The backbone stubs Notion; real Notion runs in one tolerant
 outside-world suite, nightly and before beta. The backbone has none of them (owner, 31 Oct 2026: "The backbone shouldn't have any external world, flaky related
 suites/tests"). A suite's lane has ONE source, `lanes.json`: the workflows read it through the plan (`matrix.tolerant`), never a second flag such as the
 `outside` cadence (31 Oct 2026: qualityai was tolerant in `lanes.json` but its job still failed, because desktop.yml read `matrix.outside`).
-Guard: `tests/test_workflow_outside.py`, `tests/test_pr_verdict_lanes.py`.
+Guard: `tests/tooling/ci/test_workflow_outside.py`, `tests/tooling/ci/test_pr_verdict_lanes.py`.
 
 **D · Where results are seen.**
 | Where | What |
@@ -118,7 +118,7 @@ Guard: `tests/test_workflow_outside.py`, `tests/test_pr_verdict_lanes.py`.
 | Weekly | Telegram + one GitHub issue, same numbers as the page, one decision for the owner if any |
 
 Grey suites are tracked: /admin/operations/e2e Grey section and the weekly (age, returns, 7 nights); the weekly asks keep/fix/retire past 14 days grey or 3 nights below band (owner, 30 Oct 2026).
-Guard: `tests/test_pr_verdict_lanes.py` (tolerant results never a check result); the Grey page and the weekly: none, they live in the private jobadabra-web repo.
+Guard: `tests/tooling/ci/test_pr_verdict_lanes.py` (tolerant results never a check result); the Grey page and the weekly: none, they live in the private jobadabra-web repo.
 
 **E · The expectation rule.** A PR that changes what a backbone or tolerant test expects (an expected value, a threshold, a tolerance, a wait), or skips, deletes or moves a
 backbone test to a tolerant lane, carries one of:
@@ -163,7 +163,7 @@ that one suite or step (the owner's memory is tight). A check earns its place on
 unit-test files, 2459 tests): the affected unit tests take 108 s here (`node --test` 88 s, stage and lint about 15 s, the Mac loaded) against 2.3 min for CI's
 `desktop (ubuntu)` job, so running them on a PR push saves about one CI round per red and costs 1–1.8 min on each of the day's 43 PRs. None of that day's 4 unit-test
 reds was a direct importer (3 named the changed file in their text, 1 scanned the tree). Not done: the owner's 12 Oct rule (PR suites on CI) stands.
-Guard: `tests/test_pre_push_check.py`.
+Guard: `tests/tooling/hooks/test_pre_push_check.py`.
 
 **I · One classifier, one scorecard.** The site's `admin/e2e-causes.js` (rules v3) is the only cause classifier; the weekly issue, Telegram and the page read
 its data. The scorecard per check: catches (red, then the fix changed product code), false reds (red on the backbone for any other cause), minutes. Gaps:
@@ -242,7 +242,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
 | 31 | The owner's 31 Oct rules, each with its guard: grey on time, AI never holds a beta, one AI suite, a default-deny backbone | 12 | `a8`: #2660, #2661, the one-AI-suite PR, this guards PR |
-| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
+| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `flaky.json` readers, burn-in/report-only retry skips), guard `tests/tooling/ci/test_e2e_single_try.py` | 13 | `fv`: this PR |
 | 33 | Flaky on the red: a step red on code unchanged since its last green is labelled flaky by the gate, the alert and the PR verdict, suspended with an owner issue, never blocks a beta; back after its fix passes main's next 3 runs | 14 | `a8`: 5/5 (this PR) |
 | 34 | Every backbone step stalls out on its own measured hang cap that fits its job's budget; the runner refuses a step without one (no 8-minute default) | 14 | `a8` (Codex): 2/5 |
 | 35 | A red job keeps its evidence: no half-written trace, the secret scan drops an unscannable file, never the whole upload | 14 | `a8` (Codex): 3/5 |

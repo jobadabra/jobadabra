@@ -4,7 +4,7 @@ What `Tracker.mark`, `revert_applying` and `revert_unsubmitted` (src/notion/clie
 a button's soft stage (Saved, Dismissed, Kit ready) never overwrites a real one; Applying goes back to Kit ready
 when a session ends unsent; a bare Applied the owner says was wrong goes back to Applying, while a stage the
 employer's side produced is never undone. Callers pass `stores` (src/stores open_stores()). Guarded by
-tests/test_store_rules.py on the memory store.
+tests/unit/stores/test_store_rules.py on the memory store.
 """
 import os
 

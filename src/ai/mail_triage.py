@@ -2,7 +2,7 @@
 "AI should interpret mails", after an English-only SUBJECT_WORDS search never fetched a German or Portuguese rejection from an unknown sender).
 The inbox is read by structure only: every new email outside Gmail's Promotions, Social and Forums tabs. A small model sees each email's
 sender, subject and Gmail's snippet (its first line or so), never the body, and answers yes or no; only a yes is read in full by the mail
-classifier (src/ai/mail.py). A no is remembered (the mail state's `seen`), so no email is judged twice. Tests: tests/test_mail_triage.py."""
+classifier (src/ai/mail.py). A no is remembered (the mail state's `seen`), so no email is judged twice. Tests: tests/unit/ai/test_mail_triage.py."""
 import json
 
 from . import cost, engine

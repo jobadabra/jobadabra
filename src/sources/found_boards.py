@@ -7,7 +7,7 @@ it) and looked at again after 30 days; one that gave no job in the user's places
 cache's source_yield table: src/sources/board_yield.py dead). The outcome of each read is kept in data/found_boards.json
 ('boards'), a cache. Wired as one aggregator, "Job boards found" (src/sources/aggregators.py). The boards that gave other installs like
 this one their jobs are read first, the top 2 in the first-jobs slice (src/first_jobs.py; their jobs are handed to the full read, not
-fetched twice: the full read reuses the slice's pages). Tests: tests/test_found_boards.py, tests/test_proven_boards.py."""
+fetched twice: the full read reuses the slice's pages). Tests: tests/unit/sources/test_found_boards.py, tests/unit/sources/test_proven_boards.py."""
 import sqlite3
 import threading
 import time
@@ -341,7 +341,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     19 Oct 2026: a second wave after the first made Finance's first-jobs step wait 35 s; 4 of music's first 6 boards refused). web: a full
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
     since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
-    Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/test_three_minutes.py)."""
+    Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/unit/sources/test_three_minutes.py)."""
     if read_budget.past_cut():
         time_budget.later('job boards', len(boards) if boards is not None else 1, 'boards' if boards is not None and len(boards) != 1 else 'board read')
         return []

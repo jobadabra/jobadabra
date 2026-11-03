@@ -4,7 +4,7 @@ from pinned commits, so a Swiss or English user gets exactly the answers they go
 table (db/migrations) and shipped with the app as the offline floor; the site's learned rows are added on top.
 
     python3 tools/meanings_seed.py          write config/meanings_seed.json and, when the seed changed, a new db/migrations/NNNN_meanings_seed.sql
-    python3 tools/meanings_seed.py --check  exit 1 when the files are not what the sources give (tests/test_meanings_pack.py)
+    python3 tools/meanings_seed.py --check  exit 1 when the files are not what the sources give (tests/unit/ai/test_meanings_pack.py)
 """
 import ast
 import json

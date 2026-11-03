@@ -2,7 +2,7 @@
 lists (spec docs/superpowers/specs/2026-10-18-search-learns-sources.md, PR 2). A board is dropped after 3 reads with none; untried boards are
 read up to 3 a run while fewer than 10 relevant jobs are found; the 'Searching job boards' step reads the found boards in any country.
 The count kept in found_boards.json is this read's only (it decides within the run); a board's history over runs is the source_yield table
-(src/source_yield.py, one copy): "dead" is read there (PR 6, 18 Oct 2026). Tests: tests/test_board_yield.py, tests/test_proven_boards.py."""
+(src/source_yield.py, one copy): "dead" is read there (PR 6, 18 Oct 2026). Tests: tests/unit/sources/test_board_yield.py, tests/unit/sources/test_proven_boards.py."""
 from datetime import date, datetime
 
 from .careers_parse import registrable

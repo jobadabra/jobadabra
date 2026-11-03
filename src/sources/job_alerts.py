@@ -119,7 +119,7 @@ def scan(db, google, client, now=None):
     now = now or datetime.now(timezone.utc)
     report = {'jobs': [], 'sources': []}
     from . import read_budget
-    if read_budget.past_cut():   # the run's read time is up: the unread emails stay unread for the next search (tests/test_three_minutes.py)
+    if read_budget.past_cut():   # the run's read time is up: the unread emails stay unread for the next search (tests/unit/sources/test_three_minutes.py)
         from .. import time_budget
         time_budget.later('job-alert emails', 1, 'check of your alert emails')
         return report

@@ -2,7 +2,7 @@
 
 The run identifies as the app's install (JOBADABRA_TRIAL_KEY = JPF1.<install>.<token>, set by the app as a repo secret) and sends how many applications it
 holds (Applied or later) and the app's first-run day (JOBADABRA_FIRST_RUN). Over the trial and not Pro, a run starts no new work (searches, scoring, kits);
-tracking (mail, status, apply marks) goes on. An unreachable site never pauses anything. Guarded by tests/test_trial.py.
+tracking (mail, status, apply marks) goes on. An unreachable site never pauses anything. Guarded by tests/unit/ai/test_trial.py.
 """
 import json
 import os

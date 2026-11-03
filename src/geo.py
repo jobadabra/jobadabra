@@ -3,7 +3,7 @@ jobs.ch for 355 s because the region's "Baden-Württemberg" matched the Swiss to
 (city/area/country/remote, ISO country code, lat/lon, radius); the code validates the answer, keeps it in data/geo.json and decides by country
 and haversine distance. Fixed words in, validated numbers out: a bad answer is dropped, never kept as sure. Only place strings are sent (no CV, no
 profile, no employer), so the cache holds no personal data and can be shared as product data later.
-Tests: tests/test_geo.py. Read by: src/ai/place_triage.py (fast path before asking the model where a job is).
+Tests: tests/unit/ai/test_geo.py. Read by: src/ai/place_triage.py (fast path before asking the model where a job is).
 """
 import json
 import math

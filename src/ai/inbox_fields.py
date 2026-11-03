@@ -1,5 +1,5 @@
 """📥 Log anything, part 4: the confirmation step's questions (fields: ok / check / ask), the agreement to talk, and what an
-unconfirmed log took on trust. Re-exported by src/ai/inbox.py. Tests: tests/test_inbox_confirm.py, tests/test_inbox.py.
+unconfirmed log took on trust. Re-exported by src/ai/inbox.py. Tests: tests/unit/ai/test_inbox_confirm.py, tests/unit/ai/test_inbox.py.
 """
 from ..notion import ledger
 from ..notion import origin as origin_rule

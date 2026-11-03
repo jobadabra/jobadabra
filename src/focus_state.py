@@ -4,7 +4,7 @@ review and prep state, today's applications, the questions asked, the skipped-de
 the funnel card. Pure functions of the store records passed in (applications, events, interviews: an event's and an
 interview's job is its app_id). src/focus.py re-exports every name here.
 
-Guarded by tests/test_focus.py, tests/test_follow_up.py and tests/test_focus_history.py.
+Guarded by tests/unit/notion/test_focus.py, tests/unit/ai/test_follow_up.py and tests/unit/stores/test_focus_history.py.
 """
 import re
 from datetime import date, datetime, timedelta, timezone

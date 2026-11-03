@@ -1,6 +1,6 @@
 """Reading a job list with "changed since?" (src/sources/feed_facts.py): the site's own tag (ETag, If-None-Match → 304) for a list read in one
 request, or the newest page and total of a paged list sorted newest first (first_page). Moved out of ats.py (500-line rule); ats.py re-exports
-every name and its _get asks conditional_state(). Tests: tests/test_feed_facts.py, tests/test_feed_facts_paged.py."""
+every name and its _get asks conditional_state(). Tests: tests/unit/sources/test_feed_facts.py, tests/unit/sources/test_feed_facts_paged.py."""
 import contextlib
 import hashlib
 import json

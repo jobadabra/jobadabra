@@ -1,7 +1,7 @@
 name: CI · Tests · desktop (Windows)
 # The desktop tests on Windows, where the app's platform branches really run (Credential Manager instead of the Keychain, python.exe, node-pty, Git Bash for Claude Code).
 # A pull request starts it only when it changes a file with such a branch, the installer or the shell scripts (owner, 15 Oct 2026: a flow PR started ~25 jobs and PRs waited for
-# runners; a change to extension/ or a worker file cannot break Windows). The list is data: tests/test_windows_paths.py fails when a desktop file that names win32,
+# runners; a change to extension/ or a worker file cannot break Windows). The list is data: tests/tooling/ci/test_windows_paths.py fails when a desktop file that names win32,
 # process.platform or an .exe is missing from it. Not a required check (a workflow `paths:` skips never reports). On main, build.yml (CI · Tests) calls it on every push.
 on:
   workflow_call:

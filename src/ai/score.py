@@ -262,7 +262,7 @@ HAS_BASIS = {
 }
 # The same basis in the scorer's own answer (SCHEMA 'basis'), for a job scored before its facts are read.
 BASIS = {'compensation': 'salary_stated', 'growth': 'level_stated'}
-ASK_AGAIN_MAX = 2   # asks for a part left empty although it has a basis (tests/test_score.py UnreadPartTest)
+ASK_AGAIN_MAX = 2   # asks for a part left empty although it has a basis (tests/unit/ai/test_score.py UnreadPartTest)
 
 
 def unread_parts(components, facts, basis=None):

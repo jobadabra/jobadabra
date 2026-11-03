@@ -4,7 +4,7 @@ the rules pick a board's category, salary-filter and salary-statistics links lik
 own page or a category page looks like a job to the title filter. Fixed answers through src/ai/decide.py, kept per address (asked once).
 A failed, busy or capped AI leaves a page unjudged: not kept this time, asked again next read. With no AI page reader (no AI at all, or
 switched off: careers.reader() is None) nothing is asked and the pages stand, as before (the offline floor). At most MAX_ASKS calls per run:
-decide's call cap is shared with title sorting and kinds of work, which a run cannot do without. Tests: tests/test_one_posting.py."""
+decide's call cap is shared with title sorting and kinds of work, which a run cannot do without. Tests: tests/unit/sources/test_one_posting.py."""
 
 TOPIC = 'one-posting'
 ANSWERS = ('one_posting', 'other')

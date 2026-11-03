@@ -10,5 +10,5 @@ Owner, 2 Nov 2026: "I don't think we should clear all the scoring instantly, but
 - Engine: `src/desktop_strategy.py` `mark_outdated` puts `stale` on each Jobs row (by URL: a store's rows carry no job id) and Strategy's own `outdated` summary on the payload; called from `src/desktop.py` `_jobs`. Nothing clears a score.
 - One state owner `desktop/renderer/pages/rescore-run.js` (the count and "a re-score runs"; `<body data-rescoring>`); one sentence `renderer/rescore-words.js` for Strategy's notice, Jobs' call and the Score-first dialog.
 - Jobs: the `#jobs-unscored` callout is the one call (`pages/jobs-score-call.js`), `#rescore-card` the re-score's own card, rows keep the old fit muted with "Old score"; `startSearch` is the one gate: a plain Find jobs press asks "Score first" (`pages/score-first.js`).
-- Tests: `tests/test_strategy_outdated.py`, `desktop/test/rescore-call.test.js`, `desktop/integration/store/stale-scores-stay.test.mjs` (real engine and store), `desktop/integration/app/screen-jobs-rescore.test.js` (the window).
+- Tests: `tests/unit/ai/test_strategy_outdated.py`, `desktop/test/rescore-call.test.js`, `desktop/integration/store/stale-scores-stay.test.mjs` (real engine and store), `desktop/integration/app/screen-jobs-rescore.test.js` (the window).
 

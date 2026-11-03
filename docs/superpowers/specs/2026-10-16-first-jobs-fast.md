@@ -44,7 +44,7 @@ Time = seconds from the engine's start to the first row in the store.
 ## Notion installs (cc's question on #999)
 The Jobs list on a Notion install is Notion's list **plus** the jobs only this Mac has (`desktop_jobs.jobs`, marked unsynced). So the first scored job is
 listed at once from local state, before any Job Matches write has landed; the sync after every one of the 3 first scores (`every=1`) only fills Notion. Guard:
-`tests/test_first_jobs_notion.py` (the Notion stand-in: before the first sync the job is listed unsynced, after it the same job comes from Notion). The sync runs
+`tests/unit/ai/test_first_jobs_notion.py` (the Notion stand-in: before the first sync the job is listed unsynced, after it the same job comes from Notion). The sync runs
 in the scoring loop after the save, so on real Notion (one row write, ~1-3 s) it delays the saves of scores 2 and 3, never the first. Later scores (4+) sync every 10
 as before; they are in the window's list from local state in the same way. Measured on the stand-in: see the PR.
 
@@ -90,7 +90,7 @@ every state; Recent activity row still written.
 ## Tests (first, watch them fail)
 - `desktop/test/app-scenarios.test.js`: wizard done → Find jobs → first job row in the store and in the list **before the batch ends** (fake engine that prints the
   slice lines, then waits).
-- tests/test_first_jobs.py: slice picks fast ATS + best places first; first save triggers a sync; same AI call count as without the flag; unscored listed in a first run.
+- tests/unit/sources/test_first_jobs.py: slice picks fast ATS + best places first; first save triggers a sync; same AI call count as without the flag; unscored listed in a first run.
 - A loop test over the action siblings (palette, Actions, onboarding, KIND names): no "Find new employers"/"Refresh jobs" label left.
 - e2e step that clicks "Refresh jobs" updated in the same commit (jobs, activity, employers, pool suites).
 

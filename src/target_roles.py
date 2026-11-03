@@ -5,7 +5,7 @@ Stored as search.target_roles = [{title, also: [regex fragments], fragment?}] in
 board search boxes), are derived from it: every title and its "also matches" variants are role keywords; the first SEARCHED titles are the searches.
 A settings file from before 21 Oct 2026 has the two lists and no target_roles: `view` reads it as the same list (exact text only), and `migrate`
 asks the AI once which short forms and spellings are the same job as a title, so "rn" becomes a variant of "registered nurse". Nothing is dropped.
-Guarded by tests/test_target_roles.py; the desktop's twin of derive/view is desktop/lib/target-roles.js (tests/fixtures/target_roles_cases.json).
+Guarded by tests/unit/engine/test_target_roles.py; the desktop's twin of derive/view is desktop/lib/target-roles.js (tests/fixtures/target_roles_cases.json).
 """
 import re
 

@@ -2,7 +2,7 @@
 
 The central scout counts each feed's job titles by kind and publishes the shares (the employer index's `kinds`); the jobs check then skips
 employers in the user's places that hire nothing of the user's kind (6 Oct 2026: a photographer's check read 190 employers in Geneva, nearly all
-software companies, and matched 0 of 18,641 postings). Fixed words only: the website keeps the same list (jobadabra-web shared/pool-labels.js KINDS); every copy here is checked by tests/test_role_kinds_split.py.
+software companies, and matched 0 of 18,641 postings). Fixed words only: the website keeps the same list (jobadabra-web shared/pool-labels.js KINDS); every copy here is checked by tests/unit/ai/test_role_kinds_split.py.
 """
 import re
 

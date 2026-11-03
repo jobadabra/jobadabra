@@ -12,7 +12,7 @@ A character that would start one of these is escaped with a backslash, so text r
 Rich text is cut into parts of at most 1900 characters (Notion allows 2000), 100 parts a block; a longer paragraph
 goes on in further blocks. Not kept: blank lines inside one paragraph (Markdown makes two paragraphs of them) and
 leading spaces on a paragraph's later lines. Other Notion blocks come back as their text.
-Guarded by tests/test_store_notion_blocks.py (round trips, and today's interview page blocks).
+Guarded by tests/unit/stores/test_store_notion_blocks.py (round trips, and today's interview page blocks).
 """
 import re
 

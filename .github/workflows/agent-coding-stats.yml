@@ -23,7 +23,7 @@ permissions:
   issues: read   # the bug issues people filed (tools/sdlc-stats.mjs)
 
 concurrency:
-  group: agent-coding-stats-${{ github.run_id }}   # a run of its own (tests/test_workflow_contract.py)
+  group: agent-coding-stats-${{ github.run_id }}   # a run of its own (tests/guards/rules/test_workflow_contract.py)
   cancel-in-progress: false
 
 jobs:

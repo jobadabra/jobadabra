@@ -1,4 +1,4 @@
-// The writing rules every prompt that writes prose for the person includes: the Worker's copy of src/ai/writing_rules.py (tests/test_writing_rules.py fails when they differ).
+// The writing rules every prompt that writes prose for the person includes: the Worker's copy of src/ai/writing_rules.py (tests/guards/rules/test_writing_rules.py fails when they differ).
 export const WRITING_RULES = `Writing rules (every text you write for the person):
 - Voice: where the person speaks (letter, answer, message) write as them, in the first person ("I"). Never their name in the third person, never a name as the opening words ("Alex Morgan, Senior SRE ..."). A note to the person speaks to them ("you") or stays neutral.
 - Only supported facts: every number, date, employer, tool, title and salary figure comes from the profile, the standard answers or the posting/data given. Mention salary only when asked, and only a figure that is given; never say a figure is above or below a range unless both numbers are given. When unsure, leave the claim out.

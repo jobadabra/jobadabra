@@ -1,6 +1,6 @@
 """The jobs check's helpers (src/daily.py runs them): find a job by code, the apply/prepare messages, the switches, the run's saved counts
 and Notion log, the starter feeds and the downloaded employer index. No command-line parsing and no mode of its own.
-Tests: tests/test_daily.py, tests/test_applications.py, tests/test_added.py, tests/test_cron_runs.py, tests/test_place_triage.py.
+Tests: tests/unit/engine/test_daily.py, tests/unit/stores/test_applications.py, tests/unit/stores/test_added.py, tests/unit/notion/test_cron_runs.py, tests/unit/ai/test_place_triage.py.
 """
 import json
 import os
@@ -162,7 +162,7 @@ ACTIONS = {'applied': 'Applied', 'saved': 'Saved', 'dismissed': 'Dismissed'}
 def apply_message(db, code, stores, action='applied'):
     """Record a Telegram button action for the job with this code in the active store; return the reply text. Every store: its
     stage rules and ledger (src/stores/rules.py, src/ledger_store.py); on Notion the same pages as before the store
-    (tests/test_daily_store_notion.py)."""
+    (tests/unit/notion/test_daily_store_notion.py)."""
     job = find_job(db, code) or tracked_job(code, stores)
     if not job:
         where = 'Notion' if stores.name == 'notion' else 'the app'

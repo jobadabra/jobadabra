@@ -1,7 +1,7 @@
 """The names a form fill's run is recorded with: its job board from the URL, its agent and its status.
 
 The run itself is written through the store (src/ai/apply_record.py: 🤖 Agent Runs in Notion, or this Mac's store);
-this file keeps only the shared names. Guarded by tests/test_apply_record.py.
+this file keeps only the shared names. Guarded by tests/unit/ai/test_apply_record.py.
 """
 from ..sources import ats
 

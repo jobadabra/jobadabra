@@ -1,7 +1,7 @@
 """📥 Log anything, part 3: what a log writes through the active store (src/stores): the job's logged entry (base.LOGGED) with
 its screenshots, a new application, the gaps a message fills, when the first contact happened. Re-exported by src/ai/inbox.py.
 On Notion every entry is the page's folded toggle as before (applications.append_entry); this Mac's stores keep a section.
-Tests: tests/test_inbox.py, tests/test_inbox_gaps.py, tests/test_origin_column.py, tests/test_inbox_store.py.
+Tests: tests/unit/ai/test_inbox.py, tests/unit/ai/test_inbox_gaps.py, tests/unit/notion/test_origin_column.py, tests/unit/ai/test_inbox_store.py.
 """
 import re
 import sys

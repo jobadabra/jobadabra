@@ -3,7 +3,7 @@
 The page keeps today's layout, so a Notion user sees no change: the 🔗 job line, the review (Markdown ↔ blocks through
 notion_blocks, put where the placeholder or the old review is) and the transcript in a "Transcript" toggle. A listing
 reads the rows only (no page bodies: one call per row); get() reads the page. Used by src/stores/notion.py.
-Guarded by tests/test_store_notion_interviews.py.
+Guarded by tests/unit/stores/test_store_notion_interviews.py.
 """
 import os
 

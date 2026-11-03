@@ -4,7 +4,7 @@ replays of one tape disagreed, 35 vs 39 places and 67 vs 522 missing web answers
 A loop with its own deadline (the scout's minutes) asks through until() the same way.
 Off unless JOBADABRA_SEARCH_TAPE is set; a live run never touches it. A decision the tape lacks (a changed search asks a new question) is
 computed from the clock, as in a live run. Each process that starts a budget is the run's next search (new_search), so one tape holds every press. Same-key decisions are matched by their order (over() only ever flips false to true, so threads
-asking at once still see the same number of false answers). Tests: tests/test_budget_tape.py, tests/test_scout_budget_tape.py."""
+asking at once still see the same number of false answers). Tests: tests/unit/engine/test_budget_tape.py, tests/unit/engine/test_scout_budget_tape.py."""
 import json
 import os
 import threading

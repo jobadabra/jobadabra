@@ -3,7 +3,7 @@
 Its columns beyond the title, date and category are the record's `fields` (EXTRAS); the body is the page's blocks,
 written from Markdown through notion_blocks (a listing reads the rows only, never the bodies: one call per row). A column
 an older workspace lacks yet is dropped from that write, never the row (without_missing, as the engine did). Used by
-src/stores/notion.py. Guarded by tests/test_store_notion_insights.py.
+src/stores/notion.py. Guarded by tests/unit/stores/test_store_notion_insights.py.
 """
 import os
 

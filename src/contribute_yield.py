@@ -1,7 +1,7 @@
 """What each employer feed gave this install, as the pool share sends it (src/contribute.py payload; spec
 docs/superpowers/specs/2026-10-18-search-learns-sources.md item B, owner 26 Oct 2026): jobs LOCATED in your places, those with a fit of 70+, and
 the seconds its read took. The site sums them per role kind × country into one ranking of every source (jobadabra-web api/source-ranking.js),
-served back in the employer index (src/source_rank.py). Counts only, nothing about the person. Tests: tests/test_source_rank.py."""
+served back in the employer index (src/source_rank.py). Counts only, nothing about the person. Tests: tests/unit/sources/test_source_rank.py."""
 
 
 def employer_counts(db):

@@ -11,7 +11,7 @@ source "$(dirname "$0")/gate-timing.sh" 2>/dev/null || { gate_timing_start() { :
 gate_timing_start
 workflows_lint() { SHELLCHECK_OPTS='--severity=warning' actionlint .github/workflows/*.yml; }
 # Every check from the commit subjects to the workflow lint runs, and each refusal is kept: one run tells them all, then blocks once (owner, 30 Oct 2026:
-# "ship always from the first try"; the verdict PR took 4 pushes, one refusal shown per push). Guard: tests/test_pre_push_pr.py.
+# "ship always from the first try"; the verdict PR took 4 pushes, one refusal shown per push). Guard: tests/tooling/hooks/test_pre_push_pr.py.
 blocks=()
 block() { blocks+=("$*"); }
 report_blocks() {
@@ -32,10 +32,10 @@ command="$(jq -r '.tool_input.command // ""' <<<"$input")"
 case "$command" in *PUSH_FULL=1*) PUSH_FULL_RUN=1 ;; esac   # a full run has no watchdog (tools/gate-watchdog.sh)
 # Why (1 Nov 2026, owner, test stages 3-5: "Drop all 4 from push"; narrowed after Gitar's review on #2765): the lane registry and renderer class tests are left to the PR's Fast checks (pr-gate, CI_GATES=1)
 # on the push that ship.sh makes (SHIP_PR=1) and only there. A direct push to main has no pr-gate, so it still runs them. Tests: tests-desktop.yml runs both on the PR too;
-# tests/test_pre_push_pr.py plays all three kinds of push.
+# tests/tooling/hooks/test_pre_push_pr.py plays all three kinds of push.
 ship_push=0; case "$command" in *SHIP_PR=1*) ship_push=1 ;; esac
 # An npm install through a node_modules that is a link into another checkout empties that shared folder for every worktree (28 Oct 2026): refused before npm runs
-# (tools/linked-modules-guard.py; the way out is `tools/worktree.sh own-modules <dir>`; tests/test_linked_modules_guard.py).
+# (tools/linked-modules-guard.py; the way out is `tools/worktree.sh own-modules <dir>`; tests/tooling/hooks/test_linked_modules_guard.py).
 case "$command" in *npm*)
   linked="$(python3 "$(dirname "$0")/linked-modules-guard.py" <<<"$input" 2>&1)" || { echo "$linked" >&2; exit 2; } ;;
 esac
@@ -104,12 +104,12 @@ esac
 # Every workflow starts on the files its tests read (18 Oct 2026: #1443 made a desktop test read src/notion/cron_report.py, its own PR touched only desktop/ so the
 # Python suite never started, and main went red). Pure and a couple of seconds, so it runs on every PR; `WORKFLOW_PATHS_OK=1 git push ...` skips it.
 # Why (prune audit 3/4, 1 Nov 2026, owner "First 3 rows"): this ONE step holds the whole workflow-paths family: the paths the tests read, the harness.yml reach and the per-workflow
-# `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: app-core/src/answer-declarations.js missing opened a PR red) now live in tests/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
+# `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: app-core/src/answer-declarations.js missing opened a PR red) now live in tests/tooling/ci/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
 case "$command" in *WORKFLOW_PATHS_OK=1*) ;; *)
-  if [ -f "$repo/tests/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
-    PATH_TESTS="tests.test_workflow_paths tests.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
+  if [ -f "$repo/tests/tooling/ci/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
+    PATH_TESTS="tests.tooling.ci.test_workflow_paths tests.tooling.ci.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
     # shellcheck disable=SC2086
-    paths_out="$(cd "$repo" && timed "workflow paths" python3 -m unittest $PATH_TESTS 2>&1)" || block "a workflow's paths: miss a file its tests read (tests/test_workflow_paths.py):
+    paths_out="$(cd "$repo" && timed "workflow paths" python3 -m unittest $PATH_TESTS 2>&1)" || block "a workflow's paths: miss a file its tests read (tests/tooling/ci/test_workflow_paths.py):
 $(echo "$paths_out" | tail -n 15)"
   fi ;;
 esac
@@ -152,7 +152,7 @@ if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git
 fi
 # JS cycles and measured browser/runtime boundaries ratchet against main (owner, 29 Oct 2026); old violations never block.
 # Why (1 Nov 2026, owner "Yes, delete Group 1", prune audit pa): 12,394 s of 145,185 s of gate time in 30 days for 6 stops in 1,403 runs; the ship push (SHIP_PR=1) leaves it to the PR's Fast checks
-# (CI_GATES=1 runs this script), like the lane registry; CI_GATES=1 and a direct push to main still run it. Guard: tests/test_pre_push_pr.py.
+# (CI_GATES=1 runs this script), like the lane registry; CI_GATES=1 and a direct push to main still run it. Guard: tests/tooling/hooks/test_pre_push_pr.py.
 if [ "$ship_push" = 0 ] && command -v python3 >/dev/null && [ -f "$repo/tools/arch-check.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   if architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)"; then
     [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
@@ -220,7 +220,7 @@ else
       desktop/*|extension/*) want_desktop=1 ;;
       requirements*|pyproject.toml) want_python=1; want_desktop=1; clean_install=--clean-install ;;
       src/*|tests/*) want_python=1; want_desktop=1 ;;
-      .github/*) want_workflows=1; want_python=1 ;;   # tests/test_desktop_workflow.py and others read the workflow files (10 Oct 2026: 02021ae went red on one)
+      .github/*) want_workflows=1; want_python=1 ;;   # tests/tooling/ci/test_desktop_workflow.py and others read the workflow files (10 Oct 2026: 02021ae went red on one)
       *) want_python=1; want_worker=1; want_desktop=1; want_workflows=1 ;;
     esac
   done <<<"$changed"
@@ -235,7 +235,7 @@ if [ "${JP_E2E_UNIT:-0}" = 1 ] && command -v node >/dev/null && [ -f "$repo/tool
 fi
 
 # Why (29 Oct 2026, owner, #2462): a worktree made without the installed folders (a bare git worktree add) ran this gate 437 s, failed in "desktop (clean checkout)" and showed no cause; refused in a second,
-# with the way out. Only a linked worktree whose main checkout HAS the folder (a plain repo or the main checkout itself is left to the suites). Guard: tests/test_pre_push_check.py.
+# with the way out. Only a linked worktree whose main checkout HAS the folder (a plain repo or the main checkout itself is left to the suites). Guard: tests/tooling/hooks/test_pre_push_check.py.
 common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"; main="$(dirname "${common:-$repo/.git}")"
 if [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$repo" && pwd -P)" ]; then
   missing=""
@@ -309,7 +309,7 @@ verify_area() {  # area [extra check.sh flags]
   local name="tree_$area"; local tree="${!name:-}"
   [ -n "$tree" ] || { echo "fatal: git could not make a clean checkout for $area"; return 1; }
   # Why (29 Oct 2026, fresh review of the link fix): the post-checkout hook has already linked the main checkout's folders (desktop, desktop/e2e, app-core) into this clean checkout; `ln -s` onto such a link would add a link INSIDE the shared folder.
-  # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/test_pre_push_check.py.
+  # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/tooling/hooks/test_pre_push_check.py.
   for dir in desktop desktop/e2e app-core; do
     [ -L "$tree/$dir/node_modules" ] && rm "$tree/$dir/node_modules"
     [ -e "$repo/$dir/node_modules" ] && ln -s "$repo/$dir/node_modules" "$tree/$dir/node_modules"

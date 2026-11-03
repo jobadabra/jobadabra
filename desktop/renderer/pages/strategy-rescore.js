@@ -3,7 +3,7 @@
 // rows of the Improve-your-search panel, older scores and other places, 17 Oct 2026). The engine counts each job once whatever its reasons, from the
 // SAVED settings (src/desktop_strategy.py outdated); Re-score starts only from its dialog's own button and queues each job once (rescore-outdated); the running state and the start are pages/rescore-run.js's, shared with Jobs.
 // Kept apart from Suggestions: a recommendation and an outdated score are different things. Guarded by test/strategy-rescore.test.js and
-// tests/test_strategy_outdated.py.
+// tests/unit/ai/test_strategy_outdated.py.
 import {el, tile} from '../components.js';
 import {wand} from '../magic.js';
 import {$, show} from './core.js';

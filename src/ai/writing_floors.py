@@ -1,5 +1,5 @@
 """Code floors under the written text (structure, not meaning): a job that rules the person out gets no letter, a letter carries no salary figure, and a sentence with a figure the profile, the answers and the posting never state is left out.
-Used by kit.draft; guarded by tests/test_writing_floors.py. Whether a text is good is the judge's call (tools/free-ai-writing-judge.mjs), never decided here."""
+Used by kit.draft; guarded by tests/unit/ai/test_writing_floors.py. Whether a text is good is the judge's call (tools/free-ai-writing-judge.mjs), never decided here."""
 import re
 
 FIGURE = re.compile(r'\d[\d.,\']*\s?(?:%|k\b|K\b|m\b|M\b)?')

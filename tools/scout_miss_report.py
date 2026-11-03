@@ -3,7 +3,7 @@
 classes, src/scout_candidates.INDUSTRIES) with the scout's page reader, rules only (no AI; the browser only with --render), and counts where each one stopped.
 $0, public pages only, the usual pace per site, a refusal is an answer and is not retried (owner, 20 Oct 2026, sketch decision 3).
   python3 tools/scout_miss_report.py --kind healthcare --country DE --sites 40 --out <folder>
-Writes <folder>/<kind>-<country>.json (one row per site: host, bucket, pages read) and prints the bucket counts. Tests: tests/test_scout_miss_report.py."""
+Writes <folder>/<kind>-<country>.json (one row per site: host, bucket, pages read) and prints the bucket counts. Tests: tests/tooling/ci/test_scout_miss_report.py."""
 import argparse
 import json
 import re

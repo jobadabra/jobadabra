@@ -1,7 +1,7 @@
 """Jobs a board's page ships as JSON state inside the page (a script tag of type application/json, or a `window.NAME = {...}` assignment),
 for pages whose cards are drawn by scripts. Found by the shape of the data, never by a site's name: a list of records that each carry a title,
 a link and at least two more fields (employer, place, date ...); a menu or a list of categories has too few fields to count. Plain data in,
-jobs out: no AI, no network (the page is already fetched). Tests: tests/test_board_state.py."""
+jobs out: no AI, no network (the page is already fetched). Tests: tests/unit/sources/test_board_state.py."""
 import json
 import re
 import urllib.parse

@@ -4,7 +4,7 @@ blocks (run_page), plus the blocks for what the run produced and its output log 
 run dict: no Notion calls, no process state. The run's lifecycle (begin / attach / log_run) stays in
 src/notion/cron_runs.py, which re-exports every name here.
 
-Guarded by tests/test_cron_runs.py and tests/test_ai_engine.py.
+Guarded by tests/unit/notion/test_cron_runs.py and tests/unit/ai/test_ai_engine.py.
 """
 import json
 import re

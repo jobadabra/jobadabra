@@ -1,5 +1,5 @@
 """A job board read after its scripts ran (headless browser), the last way of found_boards._another_way. Moved out of found_boards.py (500-line
-rule) as a pure move; found_boards re-exports it. Tests: tests/test_board_rendered.py, tests/test_board_render.py."""
+rule) as a pure move; found_boards re-exports it. Tests: tests/unit/sources/test_board_rendered.py, tests/unit/sources/test_board_render.py."""
 import urllib.parse
 
 from . import careers, read_budget

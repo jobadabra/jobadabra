@@ -2,7 +2,7 @@
 that country (owner, 21 Oct 2026: "Lab role families × cities, 6 searches per run"), taken from the Lab's own draws (tools/persona-search/draws.json),
 so there is no second list. A country with no city there is asked country-wide. Measured on the plan first: 20 such cells gave 33 employers, 12 with a
 readable job site, and 65 local job portals.
-Tests: tests/test_scout_hiring.py."""
+Tests: tests/unit/sources/test_scout_hiring.py."""
 import json
 from pathlib import Path
 

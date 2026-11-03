@@ -3,10 +3,10 @@
 next run"). The sites come best first (src/source_rank.py order, then the list's own order); a timed search starts no new site READ_SECONDS
 after its read began (or at the run's deadline, the earlier), always reading the first READ_FLOOR. The sites it did not reach are kept
 (data/employers_left.json) and read first, after the floor, next time, so the tail is reached over runs instead of never. No budget (a CLI
-or cloud run, a test without one): every site, as before. Used by src/sources/feed_scan.py. Tests: tests/test_read_budget.py.
+or cloud run, a test without one): every site, as before. Used by src/sources/feed_scan.py. Tests: tests/unit/sources/test_read_budget.py.
 Every read of the run ends at its cut, half the budget (owner, 26 Oct 2026: "A find jobs session should take at most 3min"): the titles, places
 and scores of what was read get the other half of the same deadline (src/time_budget.py); a read stage past the cut only queues (past_cut).
-Tests: tests/test_three_minutes.py, tests/test_read_cut.py."""
+Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py."""
 import json
 import time
 from concurrent.futures import TimeoutError as Late

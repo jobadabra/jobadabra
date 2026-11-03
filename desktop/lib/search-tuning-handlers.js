@@ -32,7 +32,7 @@ export function registerSearchTuningHandlers(ctx) {
   // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the words a
   // Not true set aside are read from the store by the engine (src/suggestions.py set_aside), never proposed again.
   ipcMain.handle('roleIdeas', async () => {
-    if (DEMO) {   // the ideas the demo Focus offers (tests/test_suggestions_search.py); a persona folder without them has none, not another person's
+    if (DEMO) {   // the ideas the demo Focus offers (tests/unit/ai/test_suggestions_search.py); a persona folder without them has none, not another person's
       let demo = {ideas: [], key: ''};
       try { demo = JSON.parse(fs.readFileSync(demoPath(here, 'role-ideas.json'), 'utf8')); } catch { /* no ideas for this persona */ }
       return {ok: true, key: demo.key, ideas: demo.ideas};

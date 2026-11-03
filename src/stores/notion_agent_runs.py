@@ -4,7 +4,7 @@
 Fill time, Waiting for you: formulas; Job stage: a rollup): they are read, and a write of them is left out. The
 transcript is the session's conversation (JSON, as the app keeps it on this Mac), on the page as the app's own
 "💬 Conversation" toggle (src/stores/notion_conversation.py, a port of desktop/lib/transcript.js). Guarded by
-tests/test_store_notion.py (the store contract on the Notion stand-in).
+tests/unit/stores/test_store_notion.py (the store contract on the Notion stand-in).
 """
 import json
 from datetime import datetime, timezone

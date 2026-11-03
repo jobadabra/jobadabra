@@ -4,7 +4,7 @@ Measured 26 Oct 2026 (690 draws on CI's quality fixtures, sketch "Free AI score 
 points on 17 of 23 asks, also at temperature 0 (Workers AI does not repeat itself); keeping the agreed score of two asks, 3 of 23.
 Only Free AI, only a job whose first score reaches RESCORE_MIN (the bar for showing), never a text that is not one job.
 Two scores within AGREE points keep their mean; further apart, a third ask decides and its middle answer is kept whole.
-Guard: tests/test_score_agree.py."""
+Guard: tests/unit/ai/test_score_agree.py."""
 from . import cost, providers, score_not_a_job
 
 AGREE = 8   # the quality suite's own stability bar (desktop/e2e/suites/quality.mjs)

@@ -66,7 +66,7 @@ Set `E2E_REQUIRE_SECRETS=1` (CI on this repo, release gates) and a skipped suite
 It costs about $0.3 a run, like the default (the SRE). It is how scoring is proven for a profession that is not IT.
 
 ## What a strategy returns, without the app
-`tests/test_matching_matrix.py` is the fast proof (seconds, no Notion, no AI): strategy inputs (Swiss cities, regions and region words, levels, remote, skipped titles, accents) against fixture postings, with the kept and dropped lists written out; a known gap (`Asia`) is an expected failure so it stays visible. The `strategy` suite proves the same words through the real app and the Notion page.
+`tests/unit/engine/test_matching_matrix.py` is the fast proof (seconds, no Notion, no AI): strategy inputs (Swiss cities, regions and region words, levels, remote, skipped titles, accents) against fixture postings, with the kept and dropped lists written out; a known gap (`Asia`) is an expected failure so it stays visible. The `strategy` suite proves the same words through the real app and the Notion page.
 
 ## Find new employers (an integration test since 1 Nov 2026)
 - The `employers` suite left e2e (owner, 1 Nov 2026: "None of these are critical user journeys"). Its statuses, rows, run counts, crawl list and second run are `desktop/integration/store/employers-integration.test.mjs` (both personas run there).

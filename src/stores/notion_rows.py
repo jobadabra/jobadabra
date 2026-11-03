@@ -2,7 +2,7 @@
 
 The notion adapter (src/stores/notion.py and the entity modules beside it) reads and writes every row through
 `to_record` / `to_properties`, so the column names live here once. Page bodies (Markdown ↔ blocks) are
-src/stores/notion_blocks.py. Guarded by tests/test_store_notion.py (the store contract against the Notion stand-in).
+src/stores/notion_blocks.py. Guarded by tests/unit/stores/test_store_notion.py (the store contract against the Notion stand-in).
 Column names and types: docs/notion-schema.md (config/notion_schema.json).
 """
 import json

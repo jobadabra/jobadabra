@@ -4,10 +4,10 @@ job: its home page is fetched (structure only: no address, or a home page that i
 and the AI says what the site is from its name, description and link texts, one fixed answer (src/ai/decide.py). Nothing is checked
 while the AI page reader is off (careers.READER None: tests, a user who keeps pages from the AI). found_boards.read reads a spare board in place of one
 that is not a board, hands 'one employer' to the scout with its website (board_employers.note_site) and skips them later
-(board_yield.pick). Tests: tests/test_board_check.py.
+(board_yield.pick). Tests: tests/unit/sources/test_board_check.py.
 field_kind: the same question for THIS search's field, asked before a board the web search found joins the list (owner's yes, 26 Oct 2026, discovery
 sketch "AI judges the page": a pilot search's web search returned a recruiter, a news site's search page and an empty board as trade boards).
-Tests: tests/test_board_judge.py."""
+Tests: tests/unit/sources/test_board_judge.py."""
 import re
 import socket
 import urllib.error
@@ -145,7 +145,7 @@ COUNTRY_INSTRUCTIONS = ("A job board's page and the country named first. Say whe
 def lists_country(board, fetch, country_name, ask=None):
     """'this country', 'several countries or remote' or 'another country' for the jobs this board's page lists; None when unknown (no page,
     no AI answer). The central scout counts a board's place-less jobs in a country only on 'this country' (src/scout_boards.py; owner,
-    26 Oct 2026, "AI names the board's country"). Tests: tests/test_board_country.py."""
+    26 Oct 2026, "AI names the board's country"). Tests: tests/unit/sources/test_board_country.py."""
     address = home(board) if '{' in board['search_url'] else board['search_url']
     try:
         page = str(fetch(address) or '')

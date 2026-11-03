@@ -1,7 +1,7 @@
 """What a page a refused-site read brought IS: the real page, a passive check that may clear by itself, a captcha, a login page or a refusal (owner, 20 Oct 2026).
 The AI judges it with a fixed answer (src/ai/decide.py, any language, no vendor list); the status and the address are floors that only AND with it;
 a short word list answers only when there is no AI at all (a busy or failed AI leaves the page unjudged: None). Used by the extension's real-tab step to know when to keep waiting
-(a passive check) and when to stop (a captcha: only the user solves it, never us). Guard: tests/test_refused_state.py."""
+(a passive check) and when to stop (a captcha: only the user solves it, never us). Guard: tests/unit/ai/test_refused_state.py."""
 import hashlib
 import re
 import urllib.parse

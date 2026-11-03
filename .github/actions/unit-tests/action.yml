@@ -27,7 +27,7 @@ runs:
         PY_JOBS: ${{ inputs.py-jobs }}   # Mac: the runner's cores / check slots gave 2 shards (the Python half took 5-6.5 min); the slow modules sleep and wait, so 6 overlap well (12 Oct 2026, as build.yml)
       run: |
         # Why (1 Nov 2026, owner's rule "tests never touch live accounts or paid APIs"; the Test matrix's job env holds E2E_ANTHROPIC_KEY, E2E_OPENAI_KEY, E2E_NOTION_TOKEN*, GH_TOKEN, CI_* …):
-        # a denylist, not `env -i` (desktop.yml never runs on a PR, so a Windows variable an allowlist forgot would only show up as a red beta). By prefix and by exact name; tests/test_unit_leg_env.py
+        # a denylist, not `env -i` (desktop.yml never runs on a PR, so a Windows variable an allowlist forgot would only show up as a red beta). By prefix and by exact name; tests/tooling/ci/test_unit_leg_env.py
         # derives every secret of the calling jobs from desktop.yml and asserts each is covered here. Build's own unit step never had these tokens, so the tests do not need them.
         for name in $(compgen -e); do
           case "$name" in

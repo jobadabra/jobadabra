@@ -1,4 +1,4 @@
-"""Waiting for a SQLite file another process holds, for the tracker store (sqlite.py connect); guarded by tests/test_store_sqlite.py."""
+"""Waiting for a SQLite file another process holds, for the tracker store (sqlite.py connect); guarded by tests/unit/stores/test_store_sqlite.py."""
 import sqlite3
 import time
 

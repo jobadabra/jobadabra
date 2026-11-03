@@ -2,7 +2,7 @@
 become candidates the scout probes first. The text, or one public address read once, goes to the same extraction call that reads company lists
 (src/ai/scout_ideas.py: fixed answer shape, names validated, page text untrusted); the probe then finds each one's job board as for any name.
 A personal or login page is never fetched by us: the user pastes its text. Started from the Employers page or ⌘K (desktop/lib/employers-handlers.js).
-Tests: tests/test_scout_paste.py.
+Tests: tests/unit/engine/test_scout_paste.py.
 """
 import re
 from datetime import date

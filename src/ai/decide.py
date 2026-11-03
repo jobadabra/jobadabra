@@ -10,7 +10,7 @@ limited AI returns the answers known so far ({} when none): the rest is unknown,
 careers links fell to keyword rules after Free AI's daily limit was spent). A spent limit stops all asking for the rest of the run, and the run
 says one plain line at its end (items_waiting).
 The text sent is untrusted page/email text, and the model is told so; nothing it writes is used except the chosen answer.
-Tests: tests/test_decide.py."""
+Tests: tests/unit/ai/test_decide.py."""
 import atexit
 import contextlib
 import json
@@ -30,7 +30,7 @@ MAX_TEXT = 600
 MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a bill
 # The central scout's: its answers (title kinds, places) serve every install, and 60 shared by both gave 9 of 2,517 employers their counts
 # (owner, 26 Oct 2026: "Higher cap + sample"). 600 gave 190 of 4,513 employers counts in a run for $0.205 (652 calls); the owner then chose
-# "2,000 calls" (~$0.65 a run while the counts fill, about 2 days; kept answers make later runs cheap). Tests: tests/test_kind_counts.py.
+# "2,000 calls" (~$0.65 a run while the counts fill, about 2 days; kept answers make later runs cheap). Tests: tests/unit/ai/test_kind_counts.py.
 CENTRAL_MAX_CALLS = 2000
 _calls = {'n': 0}
 _own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), or per own_allowance() scope, outside limit()
@@ -91,7 +91,7 @@ def failed(what, error, n=1):
 def own_allowance(name, n):
     """Every model call inside (without its own allowance=) counts against `name`'s n calls a run instead of the run's cap: a step that
     runs after the others spent the cap (the central scout's board pass: places, kinds of work, a board's country) still gets answers
-    (owner, 26 Oct 2026, "Own 15-call allowance", then the whole pass; tests/test_board_pass_allowance.py)."""
+    (owner, 26 Oct 2026, "Own 15-call allowance", then the whole pass; tests/unit/ai/test_board_pass_allowance.py)."""
     before = dict(SCOPE)
     SCOPE.update(name=name, n=n)
     try:
@@ -207,7 +207,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
     pack's patterns, which answer only when there is no AI at all (floor=False: the caller applies its own); past the cap or on a failure an
     item stays unknown, never a keyword's guess (26 Oct 2026: "office" read "First Officer" as finance_admin). ask=False: the cache and the pack
     only, no model call (a caller past its own cap, src/sources/one_posting.py). allowance=n: this topic's own n calls a run, outside limit()
-    (owner, 26 Oct 2026: the central scout's board check got none left after title sorting spent the 600; tests/test_scout_google_boards.py)."""
+    (owner, 26 Oct 2026: the central scout's board check got none left after title sorting spent the 600; tests/unit/ai/test_scout_google_boards.py)."""
     items = {str(key): str(text or '')[:MAX_TEXT] for key, text in (items or {}).items()}
     if not items:
         return {}

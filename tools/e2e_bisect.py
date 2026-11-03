@@ -11,7 +11,7 @@
                             first red commit's PR in a `red-main` issue ("Breaking PR: #n (branch `b`)") and on the PR itself. The session that
                             shipped branch b reads it at its next prompt (tools/pr-red-check.sh).
 Why: 25 Oct 2026, main went red at 21:47 on cardstates, interactions and settings; the Finder filed an issue and no session was woken.
-Tests: tests/test_e2e_bisect.py
+Tests: tests/tooling/ci/test_e2e_bisect.py
 Job: run the backbone
 """
 import json

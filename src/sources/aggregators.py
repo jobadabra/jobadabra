@@ -281,7 +281,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     db.execute(TABLE)
     from .. import time_budget
     from . import read_budget
-    late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/test_three_minutes.py)
+    late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/unit/sources/test_three_minutes.py)
     for name, read in (readers if readers is not None else sources()):
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)

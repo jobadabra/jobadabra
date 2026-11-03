@@ -4,7 +4,7 @@ docs/superpowers/specs/2026-10-18-search-learns-sources.md, PR 1).
 After each jobs check, per source: its open jobs, those in the user's places, how many were new this run, scored, and with a fit of 70 or more.
 Kept per run in the job cache (table source_yield), so a source can be kept, retried or dropped by what it gave (job boards, the employer queue,
 the widening step), and said in one line, "Where your jobs came from". A board's jobs are counted per board host (registrable domain), never
-as one "Job boards found"; an employer feed's under its company. Counts only, nothing about the person. Tests: tests/test_source_yield.py.
+as one "Job boards found"; an employer feed's under its company. Counts only, nothing about the person. Tests: tests/unit/sources/test_source_yield.py.
 """
 import json
 import threading

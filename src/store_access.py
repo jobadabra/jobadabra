@@ -1,6 +1,6 @@
 """The run's store, light to import (the desktop commands and the scheduled search both use it): the active store opened once,
 the Notion tracker only while that store is Notion, and the two reads every caller needs from it (application stages, the Profile).
-Guarded by tests/test_daily_store.py and tests/test_desktop_store.py.
+Guarded by tests/unit/sources/test_daily_store.py and tests/unit/stores/test_desktop_store.py.
 """
 from .paths import local_profile
 from .stores import open_stores

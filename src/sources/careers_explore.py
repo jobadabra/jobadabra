@@ -3,7 +3,7 @@ page offers (a job system, a SuccessFactors site, or jobs of its own).
 
 Split out of careers.py (pure move; careers.py re-exports it). careers.py imports and re-exports every name here and keeps
 `discover`, the module state (READER, CHOOSER, RENDER, REFUSALS) and the fetchers; names that tests patch on `careers`
-(careers_links, _asked, READER ...) are looked up on that module at call time. Guarded by tests/test_careers.py and test_discover.py.
+(careers_links, _asked, READER ...) are looked up on that module at call time. Guarded by tests/unit/sources/test_careers.py and test_discover.py.
 """
 import re
 import urllib.parse

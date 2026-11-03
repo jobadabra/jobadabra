@@ -62,7 +62,7 @@ test('the review names a search pattern by its words', () => {
     .map(strategy.wordsOf), ['photograph', 'vendeur', 'conseiller de vente', 'responsable de magasin', 'sales associate', 'zürich']);
 });
 
-// The JS twin of the fit score's heading filter (tests/test_profile_readers.py lists both): a Your details fact under an old "Links" heading is part of what
+// The JS twin of the fit score's heading filter (tests/unit/ai/test_profile_readers.py lists both): a Your details fact under an old "Links" heading is part of what
 // the fit score reads, so a rebuild that changes it says so; a contact line changes nothing (owner's Profile, 18 Oct 2026).
 test('a rebuild counts a Your details fact under "# Links" as a Profile change, a contact line not', async () => {
   const {rebuildGroups} = await import('../lib/strategy-rebuild.js');

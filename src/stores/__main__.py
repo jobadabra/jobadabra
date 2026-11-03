@@ -5,7 +5,7 @@ the one `open_stores()` picks from the environment (JOBADABRA_STORE). Only data 
 writing raw bytes are refused; `applications attach` takes a `path` instead (attach_file: a file inside the app's own folder). `applications files` reads a job's files as base64 ({name, content_type, size,
 data}); a file over FILE_CAP (or past TOTAL_CAP for the job) comes with data null and too_large true, so a screen can
 say it is there. Exit 2 on a refused or unknown call, 1 when the method raised (its error as {"error": ...}).
-Guarded by tests/test_store_cli.py.
+Guarded by tests/unit/stores/test_store_cli.py.
 """
 import base64
 import json

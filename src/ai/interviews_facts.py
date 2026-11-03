@@ -1,5 +1,5 @@
 """Interview analysis, the call's facts about the job (salary, contract, place…): read from the review, merged with what the
-job already says. Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_advance_facts.py.
+job already says. Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/test_interviews_advance_facts.py.
 """
 import re
 

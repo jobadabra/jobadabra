@@ -221,7 +221,7 @@ jobs:
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs), as e2e.yml
-      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
+      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/tooling/ci/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
@@ -242,7 +242,7 @@ jobs:
         with:
           ref: ${{ inputs.sha || github.sha }}   # the commit the Mac run tested
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
-      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/tooling/ci/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -264,7 +264,7 @@ jobs:
         with:
           python-version: '3.12'
       # The relay comes from this workflow's own commit: a bisect or a soak checks out an older commit above, which may have no relay (26 Oct 2026: every bisect
-      # failed with "Can't find 'action.yml'"). Guard: tests/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
+      # failed with "Can't find 'action.yml'"). Guard: tests/tooling/ci/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
       - name: The Free AI relay from this workflow's own commit
         timeout-minutes: 5
         uses: actions/checkout@v5

@@ -26,11 +26,11 @@
    "why": "rs: deleted from this repo (5c, 4c)"
   },
   {
-   "path": "^tests/test_release_file_names\\.py$",
+   "path": "^tests/tooling/release/test_release_file_names\\.py$",
    "why": "guards the release asset names; spells the old ones"
   },
   {
-   "path": "^tests/test_brand_wording\\.py$",
+   "path": "^tests/guards/rules/test_brand_wording\\.py$",
    "why": "the existing brand guard: spells the old name and its KEPT list"
   },
   {
@@ -58,7 +58,7 @@
   {
    "id": "keep-outdated-app-check",
    "match": "^JOB_PILOTTO_",
-   "paths": "^(src/paths\\.py|tests/test_follow_app\\.py)$",
+   "paths": "^(src/paths\\.py|tests/guards/data/test_follow_app\\.py)$",
    "keep": "the engine refuses a run from an app that still sends the old env names (src/paths.py refuse_outdated_app); it must spell them to detect them",
    "expires": "never"
   },
@@ -265,7 +265,7 @@
   {
    "id": "keep-keychain-fallback",
    "match": "^job-pilotto$",
-   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/test_(secret_store|keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
+   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/(unit/ai/test_secret_store|tooling/ci/test_keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
    "keep": "the read-old-name fallback of the Keychain, its tests and the one-time copy script",
    "expires": "2 stable releases after the release carrying the rename PR"
   },

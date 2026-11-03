@@ -2,7 +2,7 @@
 found nothing, and when it is forgotten.
 
 Split out of visits.py (pure move; visits.py re-exports it). The store stays in visits.py and is looked up there at call time.
-Guarded by tests/test_visits.py and test_visit_reader.py.
+Guarded by tests/unit/sources/test_visits.py and test_visit_reader.py.
 """
 import re
 
