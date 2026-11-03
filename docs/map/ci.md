@@ -33,7 +33,7 @@ updated: 2026-11-03
 ## Ask the sources
 ask: github actions runs workflow=pr-verdict status=failure
 ask: github prs state=open
-ask: github issues label=e2e state=open
+ask: github issues label=red-main state=open
 
 ## Lessons
 - Timers go in the Worker's scheduler (`app-core/src/scheduler.js`), not GitHub cron: scheduled GitHub runs came hours late or not at all.

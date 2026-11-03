@@ -31,7 +31,7 @@ updated: 2026-11-03
 
 ## Ask the sources
 ask: notion page id=<page id>
-ask: github issues label=data state=open
+ask: github issues label=bug state=open
 ask: sentry issues is:unresolved culprit=stores
 
 ## Lessons

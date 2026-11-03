@@ -33,7 +33,6 @@ updated: 2026-11-03
 ## Ask the sources
 ask: github runs workflow=scout status=failure
 ask: github runs workflow=search-personas days=7
-ask: cloudflare analytics worker=employer-index days=7
 
 ## Lessons
 - Before tuning a discovery prompt for a missed site, search the site's own name on the same engine: if even that fails, the gap is the engine's index and no prompt will fix it.

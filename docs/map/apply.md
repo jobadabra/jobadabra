@@ -32,9 +32,10 @@ updated: 2026-11-03
 - [What we learned about you](../superpowers/specs/2026-10-28-what-we-learned-design.md): facts versus learned answers, two drawers.
 
 ## Ask the sources
-ask: github issues label=form-filling state=open
+ask: github issues label=fill-failure state=open
 ask: sentry issues is:unresolved culprit=extension
-ask: posthog events event=apply_stopped days=7
+ask: posthog events event=apply_started days=7
+ask: posthog events event=applied days=7
 
 ## Lessons
 - The hands are rarely the problem: of the pool's leftovers, about 99% were answers, uploads, consent and policy; about 1% were clicking failures. Do not route filling through another browser tool; improve answers and uploads.
