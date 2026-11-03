@@ -1,4 +1,4 @@
-/* global document */
+/* global document, window */
 // The apply suite's triage-read step (spec 2026-10-30-apply-triage, PR C2a): the Jobs button reads a fixture job's form in the app's hidden browser, the chip shows the verdict, and the read never fills.
 // Why (30 Oct 2026, a8 on #2602): a behaviour change carries its e2e step in the same PR; the unit tests fake the browser, this one plays the owner's press end to end. The judge is the suite's stand-in (a model that reads the sketch).
 // Job: wait on state
@@ -40,17 +40,35 @@ function watchHiddenForm(profile, host) {
 /** The chip text of the Jobs row titled `title` (ac's chip selector, lib/apply-triage-steps.mjs), or ''. */
 const chipOfRow = (page, title) => page.evaluate(({text, selector}) => [...document.querySelectorAll(selector)].find(chip => chip.closest('.role')?.textContent.includes(text))?.textContent.trim() || '', {text: title, selector: CHIP_VALUE});
 
+/** The fixture job as the Jobs page holds it now: {stage: its stage in the page's list, chip: its row's chip}, '' for what is not there. */
+const rowOf = (page, {url, title}) => page.evaluate(({link, text, selector}) => ({
+  stage: (window.__jp?.shared?.allJobs || []).find(job => job.url === link)?.stage || '',
+  chip: [...document.querySelectorAll(selector)].find(chip => chip.closest('.role')?.textContent.includes(text))?.textContent.trim() || ''}), {link: url, text: title, selector: CHIP_VALUE});
+
+/**
+ * Waits until the Jobs page shows the store's fresh copy of the fixture job (Saved, its row drawn), then holds that nothing read it yet. `read` -> {stage, chip}.
+ * Why (3 Nov 2026, apply-1of3 red on main run 41558018005, green on the next run with the same step code): after a reload the page paints the last saved list
+ * first (renderer/pages/jobs.js), where this form's job is still Applied from the submit step; since #3026 an Applied row's chip says N/A, which "any chip" took.
+ * `wait`: as readState's.
+ */
+export async function chipBeforeRead(read, wait = {}) {
+  const row = await readState('the Jobs list never showed the fixture job as Saved', read, seen => seen.stage === 'Saved' && seen.chip !== '', wait);
+  if (row.chip !== 'Not checked') throw new Error(`the job already had a chip before any read: "${row.chip}"`);
+}
+
 /** Every chip text now on the Jobs list, for a failure message. */
 const allChips = page => page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
 
 /**
  * Wait until `accepts(read())` within the current step's deadline; a cap is only a hang failure, and the hang message names `why` and the last value read.
- * `wait`: pollUntil options over the step's own (a test's short cap).
+ * `wait`: pollUntil options over the step's own (a test's short cap). -> the accepted value.
  */
 export async function readState(why, read, accepts, wait = {}) {
   const result = await pollUntil(read, accepts, {capMs: stepTimeLeft(), what: why, ...wait});
-  // Why (Gitar on #2986): a read that never answered leaves the starting value '', which two checks accept; a hung read is a failure whatever its value.
-  if (result.hung || !accepts(result.value)) throw new Error(why);
+  // Why (Gitar on #2986; 3 Nov 2026, run 41558018005 said only "the job already had a chip"): a read that never answered leaves the starting value '', which two
+  // checks accept, so a hung read is a failure whatever its value; a failure names the last value it read, when one came.
+  if (result.hung || !accepts(result.value)) throw new Error(result.value === '' ? why : `${why}, last seen ${JSON.stringify(result.value)}`);
+  return result.value;
 }
 
 /**
@@ -83,8 +101,7 @@ export async function runReadSteps(ctx) {
         await stepWait('the app window showed its view after the reload', timeout => page.locator('.view:not([hidden])').waitFor({timeout}));
         await page.click('.nav[data-view="jobs"]');
         await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the default "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
-        await readState('the fixture job never appeared on the Jobs list', () => chipOfRow(page, form.title), chip => chip !== '');
-        if (await chipOfRow(page, form.title) !== 'Not checked') throw new Error('the job already had a chip before any read');
+        await chipBeforeRead(() => rowOf(page, form));
         const sessions = sessionsNow(ctx), posted = forms.posts.length;
         await page.click('#triage-open');
         await stepWait('the triage dialog opened', timeout => page.waitForSelector('#triage-dialog[open]', {timeout}));
