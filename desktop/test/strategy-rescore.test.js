@@ -48,6 +48,14 @@ test('the notice is drawn from the fresh read of the saved settings, never the s
   assert.match(read('renderer/pages/strategy-targets.js'), /drawOutdated\(data\.outdated, loadStrategy\);[^\n]*\n\s*if \(strategyState\.editing\)/);
 });
 
+test('only a read writes the shared count; the redraw on rescore-state reads it and never writes it back (Gitar, #3024: an old cached 12 overwrote Jobs\' 0)', () => {
+  const source = read('renderer/pages/strategy-rescore.js');
+  assert.match(source, /if \(fresh\) noteOutdated\(outdated\);/);
+  assert.equal((source.match(/noteOutdated\(/g) || []).length, 1, 'one write, from the read');
+  assert.match(source, /addEventListener\('rescore-state', \(\) => \{ if \(\$\('strategy-outdated'\) && shown\) drawOutdated\(null, reloadStrategy, \{fresh: false\}\); \}\)/);
+  assert.match(source, /shown = fresh \? outdated : knownOutdated\(\);/);
+});
+
 test('the suggestions count stays apart from outdated scores', () => {
   const suggestions = read('renderer/pages/strategy-suggestions.js');
   assert.doesNotMatch(suggestions, /outdated|previous_locations|lastStrategy\?\.previous/);
