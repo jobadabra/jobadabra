@@ -3,7 +3,7 @@
 // every `ask:` names a known source, nothing private or secret-shaped is in them (the repo is public), and AGENTS.md stays under Codex's 32 KiB cap.
 //   node tools/context/check-map.mjs            exit 1 with one line per problem
 //   node tools/context/check-map.mjs --stale    report only: hubs whose files moved on since the hub was last touched (the coordinator reads it at each round-up; never a gate)
-// Why (3 Nov 2026, owner): one unit test (desktop/test/guards/data/map-check.test.js) runs this; no CI job, no gate. Codex reads at most project_doc_max_bytes = 32768 of AGENTS.md (codex-cli 0.166.0): the tail was cut silently.
+// Why (3 Nov 2026, owner): one unit test (desktop/test/guards/rules/map-check.test.js) runs this; no CI job, no gate. Codex reads at most project_doc_max_bytes = 32768 of AGENTS.md (codex-cli 0.166.0): the tail was cut silently.
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
