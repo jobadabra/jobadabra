@@ -30,7 +30,7 @@ function cellRows(part, title, onChange) {
     cells.append(...row.cells.map((cell, index) => field(unset(cell) ? '' : cell, `${title} ${index + 1}`, '', onChange)));
     return cells;
   });
-  const read = () => rows.map((row, i) => row.querySelectorAll('input').map((input, index) => (input.value.trim() === '' && unset(part.rows[i].cells[index]) ? part.rows[i].cells[index] : input.value)));
+  const read = () => rows.map((row, i) => [...row.querySelectorAll('input')].map((input, index) => (input.value.trim() === '' && unset(part.rows[i].cells[index]) ? part.rows[i].cells[index] : input.value)));
   return {rows, read};
 }
 const notesOf = part => (part?.lines || []).filter(line => isNote(line.text)).map(line => el('p', 'muted small', shownText(line.text).replace(/^\(|\)$/g, '')));
@@ -104,7 +104,7 @@ export function linesEditor(key, title, part, {onChange}) {
   list.append(...cells.rows, ...(part?.lines.length ? part.lines.map(each => line(each.text)) : cells.rows.length ? [] : [line('')]));
   node.append(list, quiet('+ Add a line', 'link', () => list.append(line(''))));
   // A line whose words did not change keeps its own text (its bold, its list mark): only an edited line is rewritten.
-  const texts = () => list.querySelectorAll('input[data-part-line]').map((input, i) => {
+  const texts = () => [...list.querySelectorAll('input[data-part-line]')].map((input, i) => {
     const was = part?.lines[i]?.text;
     return was !== undefined && input.value.trim() === was.replace(/\*\*/g, '').trim() ? was : input.value;
   });

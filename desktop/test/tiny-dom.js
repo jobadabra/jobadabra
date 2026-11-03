@@ -1,6 +1,18 @@
 // A tiny DOM for render tests of renderer pages in Node (no browser): elements, text, attributes, classes, events and simple selectors
 // (tag, .class, #id, [attr], [attr="v"], tag.class, descendant with a space). Enough for pages/application-answers.js and pages/job-preferences.js;
 // install() sets document, window, Node and Option on globalThis.
+// A browser's NodeList: indexable, forEach and iteration only, no map/filter/find. install({realNodeLists: true}) makes querySelectorAll return one, so a
+// renderer that calls Array methods on it fails here as it does in Electron (Windows tester, 3 Nov 2026: `querySelectorAll(...).map is not a function`).
+let realNodeLists = false;
+class NodeList {
+  constructor(items) { items.forEach((node, i) => { this[i] = node; }); this.length = items.length; }
+  item(i) { return this[i] || null; }
+  forEach(fn, self) { for (let i = 0; i < this.length; i++) fn.call(self, this[i], i, this); }
+  * [Symbol.iterator]() { for (let i = 0; i < this.length; i++) yield this[i]; }
+  entries() { return [...this].entries(); }
+  keys() { return [...this].keys(); }
+  values() { return [...this]; }
+}
 class Element {
   constructor(tag) {
     this.tagName = String(tag).toUpperCase(); this.children = []; this.parentNode = null; this.listeners = {}; this.attributes = {};
@@ -57,13 +69,14 @@ class Element {
     const parts = selector.trim().split(/\s+/);
     let found = this.all().filter(node => node.matches(parts[parts.length - 1]));
     if (parts.length > 1) found = found.filter(node => { let up = node.parentNode; while (up && up !== this) { if (up.matches(parts[parts.length - 2])) return true; up = up.parentNode; } return false; });
-    return found;
+    return realNodeLists ? new NodeList(found) : found;
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
 }
 class Text { constructor(text) { this.text = text; } get textContent() { return this.text; } }
 
-export function install() {
+export function install({realNodeLists: strict = false} = {}) {
+  realNodeLists = strict;
   const body = new Element('body');
   globalThis.Node = Element;
   globalThis.Option = class extends Element { constructor(text = '', value = text) { super('option'); this.append(String(text)); this.value = String(value); } };
