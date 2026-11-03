@@ -91,7 +91,7 @@ function question(q) {
   const body = el('div', 'jd-body qr-body');
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
   const asked = el('p', 'muted small qr-asked', sourceOf(q));
-  if (mine) asked.append(' ', pill(askWords(mine, mine.source), 'warn'));
+  if (mine) asked.append(' ', pill(mine.kind === 'contact' ? askWords(mine) : mine.source, 'warn'));
   if (state.aside) asked.append(' ', pill('Set aside', 'neutral'));
   body.append(asked, el('h3', 'qr-question', q.question));
   if (mine?.line) body.append(el('p', 'qr-line', mine.line));
