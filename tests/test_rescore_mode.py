@@ -48,7 +48,7 @@ class RescoreModeTests(unittest.TestCase):
         self.db_path = self.root / 'jobs.sqlite'
         with store.connect(self.db_path) as db:
             store.import_watch_report(db, {'jobs': [job_row(n) for n in range(1, 5)]})
-            self.jobs = list(store.digest_jobs(db, only_new=False))
+            self.jobs = sorted(store.digest_jobs(db, only_new=False), key=lambda job: job['title'])   # the store's order is not promised: SRE 1-3 are the first three by title
             for job in self.jobs[:3]:   # jobs 1-3 are in the list with a score made from the first Profile; job 4 was found and never scored
                 score.save(db, job, 'm', fit(80), score.scoring_profile(PROFILE))
 

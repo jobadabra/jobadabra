@@ -91,7 +91,7 @@ class OldIdsTests(unittest.TestCase):
         self.db = store.connect(Path(tmp.name) / 'jobs.sqlite')
         self.addCleanup(self.db.close)
         store.import_watch_report(self.db, {'jobs': [job_row(n) for n in range(1, 5)]})
-        self.jobs = list(store.digest_jobs(self.db, only_new=False))
+        self.jobs = sorted(store.digest_jobs(self.db, only_new=False), key=lambda job: job['title'])   # the store's order is not promised: SRE 1-3 are the first three by title
         for job in self.jobs[:3]:
             score.save(self.db, job, 'm', fit(80), score.scoring_profile(PROFILE))
 
