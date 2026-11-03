@@ -26,6 +26,7 @@ import {byStore, storeName} from '../store-words.js';
 import {showCloud, showExtensionStatus, showGoogle, showSchedule, showTelegram} from './connections.js';
 import {$, message, osText, runWhen, show} from './core.js';
 import {showCvChanged} from './cv-change.js';
+import {onCvReplaced} from './cv-replace.js';
 import {openSetting, renderOverview} from './settings.js';
 import {goStep} from './wizard.js';
 import {showEngineSettings} from './ai-engine.js';
@@ -98,6 +99,7 @@ const checkOptions = () => ({cvName: shared.state?.settings?.cvName || '', when:
 export async function loadCvCheck() { showCvCheck(await window.pilot.cvCheckStatus().catch(() => null), checkOptions()); }
 let cvReadBlocked = false;
 let readCvPdf = () => {};   // set by initProfile (it needs the page's error words)   // out of AI credit: another read would fail the same way until credit is added
+onCvReplaced(() => loadCvSetting());   // a replaced or built CV: size, date, state and the CV check follow it at once (pages/cv-replace.js)
 export async function loadCvSetting() {
   await loadCvCheck();
   const status = await window.pilot.cvStatus();
