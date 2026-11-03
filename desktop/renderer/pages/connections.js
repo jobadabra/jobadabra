@@ -64,12 +64,13 @@ export function showScheduleState(next = shared.nextRuns || {}) {
 const REPO_DELAY = 1500;
 let repoTimer = null;
 let lastToast = null;
-function savedToast(title, body = '') {
+function savedToast(title, body = '', section = 'automation') {   // section: the tab the pop-up opens (Notifications saves too, owner 3 Nov 2026)
   lastToast?.remove();
-  const toast = lastToast = toastMessage(title, body, {view: 'settings', section: 'automation'}, 'good');
+  const toast = lastToast = toastMessage(title, body, {view: 'settings', section}, 'good');
   setTimeout(() => toast.remove(), 3000);
 }
-const saveState = text => { $('automation-state').textContent = text || 'Changes save automatically'; };
+// Both tabs that save at once (Automation, Notifications) show the line; updateRepo is shared, so the tab the person is on says "Updating…".
+const saveState = text => { for (const id of ['automation-state', 'notifications-state']) $(id).textContent = text || 'Changes save automatically'; };
 function updateRepo() {
   if (!shared.state.settings.cloud?.repo) return;
   clearTimeout(repoTimer);
