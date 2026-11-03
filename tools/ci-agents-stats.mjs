@@ -42,13 +42,18 @@ export function compute(input, reg = registry(), now = new Date()) {
     if (row.label) out.issues = issueCounts(input.issues?.[row.label], since);
     return out;
   });
-  return {kind: 'agents', days: [{day: now.toISOString().slice(0, 10), agents}]};
+  // The AI steps (owner, 3 Nov 2026: an AI section lists agents AND steps): name, engine and, for this repo's workflows, state and last runs; other repos' workflows have no runs here (the run token reads this repo only).
+  const steps = reg.steps.map(row => {
+    const flow = row.repo === 'jobadabra' ? input.workflows?.[row.file] : null;
+    return {name: row.name, file: row.file, repo: row.repo, engine: row.engine, ...(flow ? {state: stateOf(flow.state, flow.runs), runs: letters(flow.runs), lastRun: String(flow.runs[0]?.created_at || '').slice(0, 10)} : {})};
+  });
+  return {kind: 'agents', days: [{day: now.toISOString().slice(0, 10), agents, steps}]};
 }
 
 const gh = (...args) => JSON.parse(execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 << 20}) || 'null');
 function fetchInput(reg, repo = process.env.REPO || PUBLIC_REPO) {
   const input = {workflows: {}, prs: [], issues: {}};
-  for (const row of reg.agents.filter(item => item.repo === 'jobadabra')) {
+  for (const row of [...reg.agents, ...reg.steps].filter(item => item.repo === 'jobadabra')) {
     const base = `repos/${repo}/actions/workflows/${row.file}`;
     const state = gh('api', base, '--jq', '{state}').state, runs = gh('api', `${base}/runs?per_page=${RUNS_SHOWN}`, '--jq', '[.workflow_runs[] | {conclusion, status, created_at}]');
     input.workflows[row.file] = {state, runs};
