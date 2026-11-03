@@ -194,7 +194,10 @@ export async function verdictsForCauses(causes, {redSha, redRun, io, ...options}
     const redJobs = Object.fromEntries([...steps].map(([step, {jobs}]) => [step, [...jobs]]).filter(([, jobs]) => jobs.every(Boolean)));
     // Why (3 Nov 2026, a8): a gh call ended by the deadline in a later suite threw out of the whole read, so 3 of 3 --json reads of multi-suite reds printed nothing; the suite is said unknown with the error and the others keep their verdicts.
     const names = [...steps.keys()];
-    const read = await verdictsFor({suite, steps: names, redSha, redRun, io, redJobs, ...options}).catch(error => names.map(step => ({step, redSha, verdict: 'unknown', compared: 0, reason: `read failed: ${error.message}`})));
+    const read = await verdictsFor({suite, steps: names, redSha, redRun, io, redJobs, ...options}).catch(error => {
+      const cut = options.deadlineAt && Date.now() >= options.deadlineAt;   // the hang guard ended it: said as the guard, as verdictsFor does one level down
+      return names.map(step => ({step, redSha, verdict: 'unknown', compared: 0, reason: cut ? `read cut before ${suite} was read (${error.message})` : `read failed: ${error.message}`}));
+    });
     out.push(...read.map(item => ({suite, message: steps.get(item.step).message, ...item})));
   }
   return out;
