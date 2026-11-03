@@ -24,6 +24,8 @@ const fixtureFetcher = calls => async url => {
   return page ? json(page) : json({message: 'No data found for this memberId'}, 404);
 };
 
+const NOW = new Date('2026-11-03T09:00:00Z');   // pinned: a held key is valid one day from here, whatever the real date
+
 async function rig({main = null, fetcher = null, held = false} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'li-import-'));
   let settings = {};
@@ -34,11 +36,11 @@ async function rig({main = null, fetcher = null, held = false} = {}) {
     fs.writeFileSync(path.join(cvDir(storage), 'cv.json'), JSON.stringify(main));
   }
   const handlers = {}, sent = [], saved = [], calls = [], items = new Map(), contact = {first_name: 'Anna', location: 'Vienna'};
-  if (held) { items.set('jobadabra.linkedin.dma_token', TOKEN); settings = {linkedinImport: {connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString()}}; }
+  if (held) { items.set('jobadabra.linkedin.dma_token', TOKEN); settings = {linkedinImport: {connectedAt: NOW.toISOString(), expiresAt: new Date(NOW.getTime() + 86400000).toISOString()}}; }
   const keychain = {write: (s, v) => { items.set(s, v); return true; }, read: s => items.get(s) ?? null, remove: s => { items.delete(s); }};
-  registerLinkedinImportHandlers({DEMO: false, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, storage, deps: {keychain, fetcher: fetcher || fixtureFetcher(calls), sleep: async () => {}},
+  registerLinkedinImportHandlers({DEMO: false, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, storage, deps: {keychain, fetcher: fetcher || fixtureFetcher(calls), sleep: async () => {}, now: NOW},
     openExternal: url => { const state = new URL(url).searchParams.get('state'); calls.push('SIGN-IN'); setImmediate(() => handedOver('linkedin-import', new URLSearchParams({state, access_token: TOKEN, expires_in: '5184000'}))); },
-    notify: (channel, payload) => sent.push([channel, payload]), aiOf: () => ({apiKey: '', client}),
+    sendStep: (channel, payload) => sent.push([channel, payload]), aiOf: () => ({apiKey: '', client}),
     readContact: async () => ({...contact}), saveContact: async contact => { saved.push(contact); }});
   return {handlers, storage, sent, saved, items, calls, contact, cleanup: () => fs.rmSync(dir, {recursive: true, force: true})};
 }

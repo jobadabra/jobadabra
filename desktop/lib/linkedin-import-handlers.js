@@ -19,19 +19,19 @@ const DEMO_REVIEW = {positions: [{id: 'p:0:0', kind: 'position', label: 'Data An
     {id: 'd:location', kind: 'detail', field: 'location', current: 'Vienna', linkedin: 'Wien, Austria', chip: 'differs', ticked: false}], have: {skills: 12, languages: 1, education: 0}};
 
 /**
- * Register the window's channels. The defaults are the app's (shell, window, the chosen AI, Your details); a test passes its own openExternal, notify, aiOf, readContact, saveContact
+ * Register the window's channels. The defaults are the app's (shell, window, the chosen AI, Your details); a test passes its own openExternal, sendStep, aiOf, readContact, saveContact
  * and deps (keychain, fetcher, sleep).
  */
 export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, getWindow = () => null, deps = {},
   openExternal = url => shell.openExternal(url),
-  notify = (channel, payload) => { const win = getWindow(); if (win && !win.isDestroyed()) win.webContents.send(channel, payload); },
+  sendStep = (channel, payload) => { const win = getWindow(); if (win && !win.isDestroyed()) win.webContents.send(channel, payload); },
   aiOf = () => ({apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)}),
   readContact = () => contactDetails.read(storage), saveContact = contact => contactDetails.save(storage, contact)}) {
   let held = null;   // the review being ticked: {cv, match, review, mainless}; in memory only, cleared on apply or a new run
   let runNo = 0;     // Why (independent review, 3 Nov 2026): a run that was cancelled or replaced must not set `held` or answer for the newer one; every await re-checks its number
   const stale = mine => mine !== runNo;
   const knownSource = () => experience.list(storage).find(s => s.kind === 'linkedin') || null;
-  const say = (what, extra = {}) => notify('linkedinImportStep', {what, ...extra});
+  const say = (what, extra = {}) => sendStep('linkedinImportStep', {what, ...extra});
   const view = () => (DEMO ? {connected: false} : engine.state(storage, deps));
   ipcMain.handle('linkedinImportState', view);
 

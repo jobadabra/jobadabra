@@ -54,8 +54,8 @@ export function readToken(storage, deps = {}) { return state(storage, deps).conn
 function forget(storage, {keychain = realKeychain} = {}) { keychain.remove(SERVICE, {account: ACCOUNT}); storage.saveSettings({linkedinImport: null}); }
 
 /** Disconnect: delete the key here and ask LinkedIn (through the site, which holds the secret) to end it. -> {ok: true, revoked}; LinkedIn's answer never blocks the delete. */
-export async function disconnect(storage, {keychain = realKeychain, fetcher = globalThis.fetch, site = SITE} = {}) {
-  const token = readToken(storage, {keychain});
+export async function disconnect(storage, {keychain = realKeychain, fetcher = globalThis.fetch, site = SITE, now = new Date()} = {}) {
+  const token = readToken(storage, {keychain, now});
   forget(storage, {keychain});
   let revoked = false;
   if (token) {

@@ -128,15 +128,15 @@ test('the tables become a CV by structure: positions grouped by company, educati
 
 test('disconnect deletes the key first, asks the site to revoke it, and a failed revoke never keeps the key', async () => {
   const kc = keychain(), s = storage();
-  saveToken(s, {token: TOKEN, expiresIn: 5184000}, {keychain: kc, now: new Date()});
+  saveToken(s, {token: TOKEN, expiresIn: 5184000}, {keychain: kc, now: NOW});
   const calls = [];
-  const answer = await disconnect(s, {keychain: kc, site: 'https://site.test', fetcher: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); return json({ok: true}); }});
+  const answer = await disconnect(s, {keychain: kc, now: NOW, site: 'https://site.test', fetcher: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); return json({ok: true}); }});
   assert.deepEqual(answer, {ok: true, revoked: true});
   assert.deepEqual(calls, [{url: 'https://site.test/api/linkedin-import/revoke', body: {token: TOKEN}}]);
   assert.equal(kc.items.size, 0);
   assert.equal(s.settings().linkedinImport, null);
-  saveToken(s, {token: TOKEN}, {keychain: kc, now: new Date()});
-  assert.deepEqual(await disconnect(s, {keychain: kc, fetcher: async () => { throw new Error('offline'); }}), {ok: true, revoked: false});
+  saveToken(s, {token: TOKEN}, {keychain: kc, now: NOW});
+  assert.deepEqual(await disconnect(s, {keychain: kc, now: NOW, fetcher: async () => { throw new Error('offline'); }}), {ok: true, revoked: false});
   assert.equal(kc.items.size, 0, 'deleted even when LinkedIn could not be asked');
-  assert.deepEqual(await disconnect(s, {keychain: kc, fetcher: async () => { throw new Error('must not call'); }}), {ok: true, revoked: false}, 'nothing held: nothing sent');
+  assert.deepEqual(await disconnect(s, {keychain: kc, now: NOW, fetcher: async () => { throw new Error('must not call'); }}), {ok: true, revoked: false}, 'nothing held: nothing sent');
 });

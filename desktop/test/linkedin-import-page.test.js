@@ -22,7 +22,7 @@ test('every channel the page calls is in the preload and answered by the app', (
     assert.match(handlers, new RegExp(`ipcMain.handle\\('${name}'`), `${name} has a handler`);
   }
   assert.match(preload, /onLinkedinImportStep: callback => ipcRenderer\.on\('linkedinImportStep'/);
-  assert.match(handlers, /notify\('linkedinImportStep'/);
+  assert.match(handlers, /sendStep\('linkedinImportStep'/);
   assert.match(experienceHandlers, /registerLinkedinImportHandlers\(\{DEMO, ipcMain, shell, storage, getWindow\}\)/, 'the handlers are registered at startup');
 });
 

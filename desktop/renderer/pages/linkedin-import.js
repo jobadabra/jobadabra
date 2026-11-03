@@ -3,6 +3,7 @@
 // Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/linkedin-import-page.test.js.
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
+import {plainError} from '../run-warnings.js';
 import {$} from './core.js';
 
 const SECTIONS = [['positions', 'Positions'], ['education', 'Education'], ['skills', 'Skills'], ['languages', 'Languages'], ['details', 'Your details']];
@@ -144,7 +145,7 @@ async function apply(event) {
   const ids = [...bodyOf().querySelectorAll('input:checked')].map(box => box.dataset.id);
   event.target.disabled = true;
   const answer = await window.pilot.linkedinImportApply(ids).catch(error => ({ok: false, error: error.message}));
-  if (!answer.ok) { event.target.disabled = false; const note = bodyOf().querySelector('.message'); note.textContent = answer.error; note.className = 'message bad'; return; }
+  if (!answer.ok) { event.target.disabled = false; const note = bodyOf().querySelector('.message'); note.textContent = plainError(answer.error); note.className = 'message bad'; return; }
   setHead('Added from LinkedIn', answer.mainless ? 'Only Your details were added.' : `${plural(answer.added, 'row')} added. Your CV file is untouched.`);
   const parts = [answer.positions && !answer.mainless ? plural(answer.positions, 'position') : '', answer.details ? plural(answer.details, 'detail line') : ''].filter(Boolean);
   if (answer.mainless) { bodyOf().replaceChildren(el('p', '', `${answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : ''}Your positions, education, skills and languages are not saved yet: you have no CV, and the CV step builds it from LinkedIn.`)); setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); })); return; }
