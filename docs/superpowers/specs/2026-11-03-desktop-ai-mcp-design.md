@@ -137,14 +137,32 @@ One shared words file for both AIs (like `desktop-ai-words.js`), shown in the Co
 | Can the bridge use the OS secret store from inside Claude Desktop? | Confirms the preferred Keychain/DPAPI storage works before UI; the file fallback needs owner sign-off | Settled in rule 6: the bridge stores the token in the macOS Keychain item `jobadabra.desktop-ai-bridge` or a current-user DPAPI blob on Windows; the app keeps only its hash (`DESKTOP_AI_TOKEN_HASH`) in the app's own secret store (`secrets.json`, each value sealed with a key held in the macOS Keychain). **Measured in PR 1:** whether Claude Desktop lets the bridge run `/usr/bin/security` and PowerShell DPAPI on both systems, and whether the entry survives restart and update; use a user-only file only if blocked, with owner sign-off. |
 | Does an update of the app change the route? | Old bundle vs new app | Route is versioned (`/v1/`); the bundle shows "update the connection" when the app answers `426` |
 
+### Result of the ChatGPT spike (5/6, 3 Nov 2026, from OpenAI's documentation; nothing run hands-on)
+
+> **Verdict: no-go for a one-press Connect ChatGPT now (owner, 3 Nov 2026: "No-go now, park 6/6").** A normal ChatGPT user cannot finish it through the app alone. ChatGPT keeps today's copy-and-open press. 6/6 is parked as JOB-258 with its revisit trigger.
+
+| Question | Answer from the docs | Source |
+|---|---|---|
+| What does a person need? | An OpenAI **Platform organization** (a personal account uses its personal Platform organization), a runtime API key, a tunnel id, the Tunnels Read + Manage (create) and Read + Use (run) roles | Secure MCP Tunnel guide; tunnel-client README |
+| What runs on their computer? | `tunnel-client`, kept running (it long-polls OpenAI). macOS: Homebrew (`brew install openai/tools/tunnel-client`; release ZIPs are not notarized, Gatekeeper blocks them). Windows binaries exist, install steps not documented | tunnel-client README |
+| Can it reach our route? | Yes for HTTP (`--mcp-server-url`) or stdio (`--mcp-command`, runs our helper file). Sending our bearer token: **not documented** (the fallback is stdio) | Guide; README |
+| Which ChatGPT plans can add the connector? | **Not stated.** "Account and workspace policies apply to adding and using custom MCP servers"; workspace admins may restrict it | Connect-from-ChatGPT page |
+| Does the ChatGPT desktop app work? | **Not stated.** Only chatgpt.com is documented | Connect-from-ChatGPT page |
+| Steps for a person | About 8, including a terminal | counted from the above |
+| Cost, GA status | Not stated | Guide |
+
+**Why ChatGPT is harder than Claude Desktop:** Claude Desktop starts the connector itself, as a program on the person's own computer (our `.mcpb` helper), so no internet address or account is involved. ChatGPT calls connectors from OpenAI's servers, which cannot reach a server on the person's Mac; the Secure MCP Tunnel is the outbound link that fixes that, and OpenAI's Platform account system controls it. Screen control (taking screenshots and clicking another app) is a different mechanism and is not a better route for us: slower, layout-dependent, needs OS permission, and it would skip the limits our tools enforce (refusals, the write cap, Undo). Both apps offer screen control (checked 3 Nov 2026): ChatGPT's desktop app has Computer Use on macOS and Windows (with ChatGPT Work and Codex, supported regions, Screen Recording and Accessibility permissions; developers.openai.com/docs/computer-use), and Claude Desktop has computer use on macOS and Windows as a research preview for Pro and Max (code.claude.com/docs/en/computer-use). So ChatGPT can already help through the copy-and-open press by driving the window, with those limits; the no-go is only about the one-press tool connection.
+
+**Why no-go:** the steps break "every fix works for any user through the Desktop App", and what would make it viable (plan eligibility, desktop support, no Platform organization) is unknown or against us. **Revisit when:** OpenAI drops the Platform-organization step or documents desktop plus personal-plan support, or a measured share of installs use ChatGPT only (JOB-258). Not measured: the real step count and whether the token passes, because that needs a Platform organization on a throwaway account (not created).
+
 ## Progress
 
-- [ ] Spec and sketch: owner's yes on the decisions (sketch published; questions asked)
-- [ ] Plan `docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md` (PR split, after the answers)
-- [ ] PR 1 · spike: `.mcpb` opens on Mac + Windows, tool-call prompt observed (no UI)
-- [ ] PR 2 · route + token + pairing + shared validation (`lib/desktop-ai-server.js`, `lib/desktop-ai-changes.js`) with the read tools
-- [ ] PR 3 · write tools + Changes by Claude list + Undo
-- [ ] PR 4 · Connect on the banner, Settings card, privacy note, ⌘K, instruction v2 (Claude)
-- [ ] PR 5 · ChatGPT spike: tunnel-client + personal account + desktop app; stop and ask the owner if it needs a Platform organization
-- [ ] PR 6 · ChatGPT connect (only after PR 5 says a normal person can finish it)
+- [x] Spec and sketch: owner's yes on the decisions (sketch published; questions asked) (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md @f1d22e86)
+- [x] Plan `docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md` (PR split, after the answers) (proof: docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md @f1d22e86)
+- [x] PR 1 · spike, Mac part: Claude.app owns `.mcpb`, the bridge can use the Keychain and reach 127.0.0.1 (proof: desktop/scripts/desktop-ai-spike/build.mjs @4b7bdda7); still open: the install window, Claude's tool-call prompt and Windows (wait for a tester's PC)
+- [x] PR 2 · route + token + pairing + shared validation (`lib/desktop-ai-server.js`, `lib/desktop-ai-changes.js`) with the read tools (proof: desktop/lib/desktop-ai-server.js @4c6f6c05)
+- [x] PR 3 · write tools + Changes by Claude list + Undo (proof: desktop/lib/desktop-ai-writes.js @382c7252)
+- [x] PR 4 · Connect on the banner, Settings card, privacy note, ⌘K, instruction v2 (Claude) (proof: desktop/lib/desktop-ai-connect.js @75be2661)
+- [x] PR 5 · ChatGPT spike: from the docs, no-go (result above); a hands-on run needs a Platform organization, owner chose not to (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md)
+- [ ] PR 6 · ChatGPT connect: parked as JOB-258 (PR 5 says a normal person cannot finish it)
 - [ ] Parked in Linear: Codex config JOB-236, screenshot tool JOB-237, "Find jobs" tool JOB-238
