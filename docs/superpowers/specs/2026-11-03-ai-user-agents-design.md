@@ -266,6 +266,24 @@ Replay: for each tester bug, run the app at the **pre-fix commit** (table above)
 - A fifth control: a **planted** bug (a Save that stores the label) the agent must find, so recall is a number from run 1 (the same idea as `mutants.json`).
 - The result table (bug × runs found × method) goes into the PR body and this spec. If < 3 of 4, the spec says so and the persona data, not the prompt, is fixed first (the cause in 3 of the 4 is data, see "What exists").
 
+### Result of 8/12 (measured 3 Nov 2026): the target of 3 of 4 is not met; 2 of 4 were reachable
+
+> [!WARNING]
+> **Verdict: 🟡 the agent applies a rule it knows (bare labels 3/3, inbound 2/3) and does not find these bugs without it (0/3, 0/3, and 0 of 4 in two free sessions); the fixed-commit control is not clean.** Two of the four bugs could not be reached at all, so "≥ 3 of 4" cannot be tested in this harness. The numbers below are 17 sessions, 294 AI calls, 1.7 M tokens, about 80 minutes of session time, all on Claude (Codex was out of limit), run from branch `ag-user-agent-cvwait` (c4e3d0b, the CV-read wait of #3105).
+
+| Bug (tester) | Plan on commit | With the rule (found of 3) | Rule off (found of 3) | Fixed commit `df66db14`, rule on |
+|---|---|---|---|---|
+| Bare labels as questions in What we learned (#3027) | `learned-questions` on `b4d64112` | **3 of 3**: each cites `profile-1`, judge agrees (24, 14 and 7 calls) | **0 of 3**: all three filed a symptom of the same screen ("no questions appear after Expand all", "1 of 1 open, no question"); none says the questions are bare labels | ❌ **not clean**: 1 of 1 filed "bare label Work permit" (`profile-1`, judge agrees) |
+| Applied inbound job shown "Not checked" (#3026) | `inbound` on `b6014b04` | **2 of 3** filed it (judge **disagrees** on both); the third ran out its 10 minutes and filed nothing | **0 of 3**: filed other things (links not clickable, "0 total matches while three jobs are listed", an unnamed list problem) | ✅ no filing about it (first session ended after 1 step; the re-run filed "Inbound list not accessible", judge disagrees) |
+| A composite language line drawn as a level grid (#3027) | — | **not reachable** | — | — |
+| A CV heading saved as an answer (#3027) | — | **not reachable** | — | — |
+
+- **Free sessions** (2 diverse sessions on `b6014b04`, all four rules off, no plan): **0 of 4 found unprompted**. They filed 2 notes each (settings link not visible, "Expand all does not open What we learned", Work history counter), all with the judge disagreeing; they never opened the Inbound list with rows because no plan seeded them.
+- **Why two bugs are unreachable (cause in code):** the language grid and the CV heading appear for a language line or heading **in the Profile's own text**. `desktop/lib/details-review.js:96` builds `have` from every label in Your details and the Profile's lines, and `desktop/lib/cv-queue.js:44` `wantedFacts` drops any fact already held, so no CV read can ask it. Four tries (wrong screen, a CV seeded as a PDF, the CV read answered, the read waited for: it is kept after 49 s) did not reach it. The owner chose to run the table on the two reachable bugs and park the rest: parked as JOB-266.
+- **What the control says:** the agent's rule `profile-1` also fires on the fixed commit, for a confirmed answer headed by its field's own name ("Work permit"). Either #3027 left that card's title as it was and the rule is right, or the rule is wider than the bug; not decided here (it needs a read of #3027's `question-review.js` and a ruling on the rule), so it stays an open false-positive-or-bug question. The "0 filed on the fixed commit" target is **not met**.
+- **Not run:** the planted bug (a Save that stores the label) needs a build with the bug in it; there is no way yet to build one on a replay's commit.
+- **Reading it:** with the rule in its knowledge the agent finds what the rule describes; without it, it saw the same screen and named a symptom, not the cause. That is the honest size of "the agent finds bugs a person would find" at this stage: it needs the rule written from a first sighting, which is what the daily run's notes and the owner's confirmation feed. The nightly numbers (filed, confirmed, false positive per `agent-type`) are the measure that matters from here.
+
 ## Non-goals
 - No gate: not on a PR, not in the beta, not a `critical-journeys.json` step.
 - No Submit, no real site, no real account, no captcha, no login wall, no computer-use of the owner's screen.
@@ -302,8 +320,10 @@ Replay: for each tester bug, run the app at the **pre-fix commit** (table above)
 - [x] [ag] 5/12 findings core: detector `ai-user-agent`, notes with arguments, second opinion, 12-a-session cap, session summary and cost line (proof: desktop/e2e/lib/agent-notes.mjs @e0884e6)
 - [x] [ag] 6/12 the session runner: one goal-driven loop on the explorer, the `agent` suite, notes → second opinion → findings, summary and memory files (proof: desktop/e2e/lib/agent-run.mjs @6137c35)
 - [ ] [ag] 7/12 the daily workflow `ai-user-agents.yml`, the Worker slot, the memory push (merged as #3088 at f5099bb; unticked until a night worked end to end: the first one, 3 Nov, got no answer from the broker for 180 s while PR checks held its slots)
-- [ ] [ag] 8/12 part 1: the replay plumbing (`app_ref`, `plan`, `rules_off`, the four named plans), the second opinion on Claude alone, a held note when it is unavailable
-- [ ] [ag] 8/12 part 2: persona data where part 1 shows it missing, the 3-run table on `b4d64112` / `b6014b04` / `df66db14`, numbers into this spec
+- [x] [ag] 8/12 part 1: the replay plumbing (`app_ref`, `plan`, `rules_off`, the four named plans), the second opinion on Claude alone, a held note when it is unavailable (merged as #3094) (proof: .github/workflows/ai-user-agents.yml @57b2ff95)
+- [x] [ag] 8/12 part 2a and 2b: the agent reaches Profile; persona data seeded (CV as a PDF, inbound rows) and the app's CV read answered from the persona's CV (merged as #3097 and #3102) (proof: desktop/e2e/lib/agent-seed.mjs @1684eed)
+- [ ] [ag] 8/12 part 2c: the session waits for the app's CV read (#3105 open; measured 49 s; it does not make the language bug reachable, see "Result of 8/12")
+- [x] [ag] 8/12 part 3: the table on `b4d64112` / `b6014b04` / `df66db14` for the two reachable bugs, numbers into this spec; the target is not met and the spec says so; runs 41669131433 41669148675 41669166780 41670681855 41670699940 41670718389 41681777001 41681793353 41681812017 41683890765 41683907271 41683924129 41685864371 41685881279 41685897627 41687323389 41687340122 (proof: docs/superpowers/specs/2026-11-03-ai-user-agents-design.md)
 - [ ] [ag] 9/12 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
 - [ ] [ag] 10/12 aged states: the day-30 folder generator and the first deep-state sessions (phase 2; fresh random states first, the owner's answer)
 - [ ] [ag] 11/12 a living persona: snapshot saved and restored across nights, chapters, staggered personas, replay from a snapshot (phase 2)
