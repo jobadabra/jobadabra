@@ -5,12 +5,14 @@ import path from 'node:path';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {buildLogs, profileText, PROFILE_CHARS} from './feedback-bundle.js';
-import {LONG_LINE} from './desktop-ai-tools.js';
+import {LONG_LINE, TOOLS} from './desktop-ai-tools.js';
 import {supportState} from './feedback-handlers.js';
 import {aboutYou} from './about-you.js';
-import {logFile} from './log.js';
+import {log, logFile} from './log.js';
 import {setDesktopAiSources} from './desktop-ai-server.js';
 import * as changes from './desktop-ai-changes.js';
+import * as connection from './desktop-ai-connect.js';
+import {portFrom} from './server-listen.js';
 import * as writes from './desktop-ai-writes.js';
 import {jobsData} from '../renderer/feedback-data.js';
 
@@ -53,7 +55,25 @@ export function desktopAiSources({app, storage, getWindow, getPlan, profileOf = 
   };
 }
 
-/** Called once from the app's handler registration. Demo mode registers nothing: every tool then says it is not available. */
-export function registerDesktopAi({DEMO, ...deps}) {
+/**
+ * Called once from the app's handler registration. Demo mode registers no tools (every tool then says it is not available) and the Connect channels answer "off" / an empty list.
+ * `ipcMain` and `shell` give the window its Connect, Disconnect, state, change list and Undo (lib/desktop-ai-connect.js); a test, the demo and the smoke run never start the file.
+ */
+export function registerDesktopAi({DEMO, ipcMain, shell, ...deps}) {
   setDesktopAiSources(DEMO ? null : desktopAiSources(deps));
+  if (!ipcMain) return;
+  const {storage, app} = deps, quiet = DEMO || Boolean(process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE);
+  const tools = TOOLS.map(({name, description}) => ({name, description}));   // "See exactly what it can read" in the privacy note lists these, the same list the helper file's manifest has
+  ipcMain.handle('desktopAiState', () => ({...(DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)), tools}));
+  if (!quiet) { connection.sweepHelpers(); setTimeout(() => connection.sweepHelpers(), connection.KEEP_MS + 1000).unref(); }   // a quit or crash left a folder with a readable one-time code: gone at start-up, or once that code has expired
+  // Why (Gitar on #3090): each of these has a lasting effect (a file with a one-time code, a revoked token, a restored answer), so each leaves one line, also when it throws, with identities and outcomes only, never the code, the path or a question's words.
+  const logged = async (what, run, fields) => {
+    try { const done = await run(); log('desktop-ai', what, fields(done)); return done; } catch (error) { log('desktop-ai', what, {ok: false, error: error?.name || 'Error'}); throw error; }
+  };
+  ipcMain.handle('desktopAiConnect', () => logged('connect pressed', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), reveal: file => shell.showItemInFolder(file), quiet}),
+    done => ({ok: done.ok, opened: Boolean(done.opened), already: done.already || '', quiet})));
+  ipcMain.handle('desktopAiDisconnect', () => logged('disconnect pressed', () => (DEMO ? {ok: true} : connection.disconnect(storage)), done => ({ok: done.ok, demo: Boolean(DEMO)})));
+  ipcMain.handle('desktopAiChanges', () => (DEMO ? connection.demoChanges() : connection.changesOf(storage)));
+  ipcMain.handle('desktopAiUndo', (_, id) => logged('undo pressed', () => (DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : connection.undo(storage, id)),
+    done => ({id: String(id ?? ''), ok: done.ok, error: done.ok ? '' : String(done.error || '').slice(0, 80)})));
 }

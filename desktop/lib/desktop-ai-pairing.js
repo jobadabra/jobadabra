@@ -50,8 +50,11 @@ export function noteUse(storage, now = Date.now()) {
   storage.saveSettings({desktopAi: {...current, lastUsedAt: new Date(now).toISOString()}});
 }
 
-/** What Settings and the banner show: {connected, connectedAt, lastUsedAt}. */
-export function status(storage) {
+/** What Settings and the banner show: {connected, connectedAt, lastUsedAt, waiting}. waiting: Connect was pressed, the one-time code is still valid and the helper has not used it yet. */
+export function status(storage, now = Date.now()) {
   const current = storage.settings().desktopAi || {};
-  return {connected: !!storage.secret('DESKTOP_AI_TOKEN_HASH'), connectedAt: current.connectedAt || '', lastUsedAt: current.lastUsedAt || ''};
+  const connected = !!storage.secret('DESKTOP_AI_TOKEN_HASH');
+  let pair;
+  try { pair = JSON.parse(storage.secret('DESKTOP_AI_PAIR') || 'null'); } catch { pair = null; }
+  return {connected, connectedAt: current.connectedAt || '', lastUsedAt: current.lastUsedAt || '', waiting: !connected && Boolean(pair?.hash) && now <= pair.expires};
 }

@@ -46,9 +46,9 @@ export const runOpen = (command, args) => new Promise(resolve => execFile(comman
  * Copies the instruction and starts the app. `clipboard.writeText`, `openFile(file)` (Electron's shell.openPath: resolves to '' when it worked) and `run(cmd, args)` (the Mac's open) are injected.
  * -> {ok: true, opened}, {ok: false, reason: 'none'} (no app here) or {ok: false, reason: 'error'} (the copy failed: nothing is started); `opened` is true only when the start call said so.
  */
-export async function copyAndOpen({clipboard, openFile, run, found = findDesktopAi(), platform = process.platform}) {
+export async function copyAndOpen({clipboard, openFile, run, found = findDesktopAi(), platform = process.platform, connected = false}) {
   if (!found) return {ok: false, reason: 'none'};
-  try { clipboard.writeText(instruction()); } catch { return {ok: false, reason: 'error'}; }   // Why (Gitar on #3023): a clipboard that refuses is not "the app is gone"; nothing was copied, so nothing is started
+  try { clipboard.writeText(instruction(connected)); } catch { return {ok: false, reason: 'error'}; }   // Why (Gitar on #3023, 4/6 3 Nov 2026): a clipboard that refuses is not "the app is gone"; nothing was copied, so nothing is started; a connected app is given the short instruction
   let opened = false;
   try {
     if (!found.file) opened = false;

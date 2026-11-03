@@ -105,6 +105,7 @@ export async function undoChange(deps, id) {
   if (!entry) return {ok: false, error: 'That change is not in the list.'};
   if (entry.undoneAt) return {ok: false, error: 'That change was already undone.'};
   if (entry.undo) return {ok: false, error: entry.undo};
+  if (entry.tool === 'dismiss_question' && !dismissed.isDismissedAs(deps.storage, entry.target, entry.question)) return {ok: false, error: 'You changed this since, so nothing was undone.'};
   const done = entry.tool === 'dismiss_question' ? dismissed.bringBack(deps.storage, entry.target) : await questions.restore(deps.storage, entry.target, {was: entry.before, now: entry.after, question: entry.question});
   if (done.ok) changes.markUndone(deps.storage, id, new Date(deps.now?.() ?? Date.now()));
   return done;

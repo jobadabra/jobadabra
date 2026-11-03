@@ -4,7 +4,8 @@
 // This module imports no page (focus-suggestions.js hands in its three seams and the toast, as pages/notify-commands.js does), so the palette and the answers page add no import cycle (the arch gate counts them: #3011).
 import {el} from '../components.js';
 import {icon} from '../icons.js';
-import {KEY, words} from '../desktop-ai-words.js';
+import {KEY, connectWords, whenText, words} from '../desktop-ai-words.js';
+import {canConnect, pressConnect, pressDisconnect, refreshConnection, view} from './desktop-ai-connect.js';
 import {questionsNow} from './jobs-questions.js';
 
 let seams = {answerEntry: () => {}, answered: () => true, focusIsRead: () => false, toast: () => {}};
@@ -28,27 +29,50 @@ export function appendDesktopAiOffer(into) {
 /** Whether the offer shows now: the app is here, a learned question is open, Focus has been read, and it was not set aside (Not now). */
 export const offered = () => Boolean(questionsNow().desktopAi?.family) && questionsNow().learned.length > 0 && seams.focusIsRead() && !seams.answered(KEY);
 
-/** The banner node for What we learned's list, or null when nothing is offered. */
+const button = (label, id, tone, run) => Object.assign(el('button', `${tone} small-btn`, label), {type: 'button', id}, run ? {onclick: run} : {});
+
+/** The banner node for What we learned's list, or null when nothing is offered. Four looks: copy only (no Connect for this AI), Connect + copy, waiting for the AI's install window, connected. */
 export function desktopAiBanner() {
   if (!offered()) return null;
-  const family = questionsNow().desktopAi.family, say = words(family, window.pilot.platform);
-  const box = el('div', 'notice qa-banner qa-desktop-ai');
+  const family = questionsNow().desktopAi.family, say = words(family, window.pilot.platform), link = connectWords(family);
+  const state = canConnect(family) ? view.state : 'off', box = el('div', 'notice qa-banner qa-desktop-ai');
   box.dataset.family = family;
+  box.dataset.state = state;
   const text = el('div', 'qa-desktop-ai-text');
-  const lead = el('p', 'muted small', say.lead);
+  const lead = el('p', 'muted small', (canConnect(family) && view.note) || (state === 'connected' ? link.connectedLead : state === 'waiting' ? link.waiting : say.lead));
   lead.setAttribute('role', 'status');
-  text.append(el('b', '', say.title), lead);
-  const copy = Object.assign(el('button', 'primary small-btn', say.button), {type: 'button', id: 'desktop-ai-copy'});
-  const later = Object.assign(el('button', 'secondary small-btn', say.notNow), {type: 'button', id: 'desktop-ai-later'});
-  copy.addEventListener('click', async () => { copy.disabled = true; lead.textContent = (await copyDesktopAi(family)).text; copy.disabled = false; });
+  text.append(el('b', '', state === 'connected' ? link.connected(whenText(view.lastUsedAt)) : say.title), lead);
+  const press = async (run, from) => { from.disabled = true; const done = await run(); if (done.text) lead.textContent = done.text; from.disabled = false; };
+  const copy = button(say.button, 'desktop-ai-copy', canConnect(family) && state === 'off' ? 'secondary' : 'primary', null);
+  copy.addEventListener('click', () => press(() => copyDesktopAi(family), copy));
+  const later = button(say.notNow, 'desktop-ai-later', 'secondary', null);
   later.addEventListener('click', () => { box.remove(); seams.answerEntry({key: KEY, title: say.title}, 'Not now'); });
   const actions = el('div', 'qa-desktop-ai-actions');
-  actions.append(copy, later);
+  if (state === 'off' && canConnect(family)) {
+    const connect = button(link.connect, 'desktop-ai-connect', 'primary', null);
+    connect.addEventListener('click', () => press(() => pressConnect(family), connect));
+    actions.append(connect);
+  }
+  if (state !== 'waiting') actions.append(copy);
+  if (state !== 'off') {
+    const off = button(link.disconnect, 'desktop-ai-disconnect', 'secondary', null);
+    off.addEventListener('click', () => press(() => pressDisconnect(family), off));
+    actions.append(off);
+  }
+  actions.append(later);
   const words_ = el('span', 'qa-banner-words');
   words_.append(icon('sparkle'), text);
   box.append(words_, actions);
   return box;
 }
+
+// Why (3 Nov 2026, 4/6): a banner already on the page is redrawn when the connection changes (waiting -> connected), so the person sees it turn without reopening the page.
+window.addEventListener?.('desktop-ai-changed', () => {
+  for (const old of document.querySelectorAll?.('.qa-desktop-ai') || []) { const fresh = desktopAiBanner(); if (fresh) old.replaceWith(fresh); else old.remove(); }
+});
+
+/** Reads the connection once the answers page is drawn (the banner then shows the right look at its next draw). */
+export const readConnection = () => refreshConnection();
 
 /** The press with its toast, for the Focus and Jobs row and ⌘K: says what was copied and whether the app opened. */
 export async function pressDesktopAi() {
@@ -56,8 +80,15 @@ export async function pressDesktopAi() {
   seams.toast(done.ok ? 'Instruction copied ✓' : 'Nothing copied', done.text, done.ok ? 'good' : 'warn');
 }
 
-/** Adds the palette command while the offer is shown (`add` is the palette's: group, label, hint, keywords, run). */
+/**
+ * Adds the palette commands (`add` is the palette's: group, label, hint, keywords, run): Connect while the Claude app is here and not connected, Disconnect while a connection exists (always listed,
+ * so it can be undone from the keyboard), and the copy press while the offer is shown.
+ */
 export function addDesktopAiCommands(add) {
+  const family = questionsNow().desktopAi?.family, link = connectWords(family || 'claude');
+  const tell = (title, done) => { if (done.text) seams.toast(title, done.text, done.ok ? 'good' : 'warn'); };
+  if (family === 'claude' && view.state === 'off') add('Settings', link.connect, link.cardLine.off, 'claude connect desktop app tools mcp answer questions', async () => tell(link.connect, await pressConnect(family)));
+  if (view.state !== 'off') add('Settings', `${link.disconnect} ${link.name}`, link.cardLine[view.state], 'claude disconnect remove stop desktop app tools mcp', async () => tell(link.disconnect, await pressDisconnect('claude')));
   if (!offered()) return;
   const say = words(questionsNow().desktopAi.family);
   add('Profile', say.title, say.button, 'claude chatgpt desktop app answer questions instruction copy paste learned ai', () => pressDesktopAi());

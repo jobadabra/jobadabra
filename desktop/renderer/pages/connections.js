@@ -15,6 +15,7 @@ import {bindNotify} from './notify-settings.js';
 import {showClaudePrereqs} from './claude-prereqs.js';
 import {storeName} from '../store-words.js';
 import {bindExtension, paintExtensionCardFirst, showExtensionStatus} from './extension-setup.js';
+import {bindDesktopAiCard, showDesktopAiCard} from './desktop-ai-card.js';
 
 export {showExtensionStatus};
 
@@ -247,6 +248,7 @@ function alertLine(name, text) { const line = document.querySelector(`[data-secr
 export async function init() {
   initGmailOffer();   // the first Submit and a page asking for a mailed code open the Gmail dialog (lib/gmail-offer.js tells the window)
   paintExtensionCardFirst();   // the last known state at once; the live read below confirms or corrects it
+  showDesktopAiCard().catch(() => {});   // Claude desktop app card (4/6)
   // No "Check again": the checklist refreshes by itself when you come back to the window (e.g. after installing
   // Claude Code or the Chrome extension), while the Settings checklist is open.
   window.addEventListener('focus', () => { if (document.getElementById('claude-prereqs-settings')?.hidden === false) showClaudePrereqs(); });   // back from installing: checked again
@@ -419,6 +421,7 @@ export async function init() {
     });
   }
   bindExtension();
+  bindDesktopAiCard();
   $('open-data').addEventListener('click', () => window.pilot.showFolder('data'));
   $('rerun-wizard').addEventListener('click', () => { show($('app'), false); show($('wizard')); goStep('welcome'); });
   $('ov-review-setup').addEventListener('click', () => $('rerun-wizard').click());  // the same, from Settings → Overview
