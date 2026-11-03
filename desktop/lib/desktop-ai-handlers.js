@@ -8,7 +8,7 @@ import {buildLogs, profileText, PROFILE_CHARS} from './feedback-bundle.js';
 import {LONG_LINE, TOOLS} from './desktop-ai-tools.js';
 import {supportState} from './feedback-handlers.js';
 import {aboutYou} from './about-you.js';
-import {logFile} from './log.js';
+import {log, logFile} from './log.js';
 import {setDesktopAiSources} from './desktop-ai-server.js';
 import * as changes from './desktop-ai-changes.js';
 import * as connection from './desktop-ai-connect.js';
@@ -66,8 +66,21 @@ export function registerDesktopAi({DEMO, ipcMain, shell, ...deps}) {
   const tools = TOOLS.map(({name, description}) => ({name, description}));   // "See exactly what it can read" in the privacy note lists these, the same list the helper file's manifest has
   ipcMain.handle('desktopAiState', () => ({...(DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)), tools}));
   if (!quiet) { connection.sweepHelpers(); setTimeout(() => connection.sweepHelpers(), connection.KEEP_MS + 1000).unref(); }   // a quit or crash left a folder with a readable one-time code: gone at start-up, or once that code has expired
-  ipcMain.handle('desktopAiConnect', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), reveal: file => shell.showItemInFolder(file), quiet}));
-  ipcMain.handle('desktopAiDisconnect', () => (DEMO ? {ok: true} : connection.disconnect(storage)));
+  // Why (Gitar on #3090): each of these has a lasting effect (a file with a one-time code, a revoked token, a restored answer), so each leaves one line with identities and outcomes only, never the code, the path or a question's words.
+  ipcMain.handle('desktopAiConnect', async () => {
+    const done = await connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), reveal: file => shell.showItemInFolder(file), quiet});
+    log('desktop-ai', 'connect pressed', {ok: done.ok, opened: Boolean(done.opened), already: done.already || '', quiet});
+    return done;
+  });
+  ipcMain.handle('desktopAiDisconnect', () => {
+    const done = DEMO ? {ok: true} : connection.disconnect(storage);
+    log('desktop-ai', 'disconnect pressed', {ok: done.ok, demo: Boolean(DEMO)});
+    return done;
+  });
   ipcMain.handle('desktopAiChanges', () => (DEMO ? connection.demoChanges() : connection.changesOf(storage)));
-  ipcMain.handle('desktopAiUndo', (_, id) => (DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : connection.undo(storage, id)));
+  ipcMain.handle('desktopAiUndo', async (_, id) => {
+    const done = DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : await connection.undo(storage, id);
+    log('desktop-ai', 'undo pressed', {id: String(id ?? ''), ok: done.ok, error: done.ok ? '' : String(done.error || '').slice(0, 80)});
+    return done;
+  });
 }

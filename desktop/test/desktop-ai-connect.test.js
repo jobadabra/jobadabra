@@ -161,3 +161,24 @@ test('outside the demo the channels answer from the store, pass the id on, and a
   assert.deepEqual(await handlers.desktopAiUndo({}, gone.id), {ok: true}, 'the id arrives as the second argument');
   assert.deepEqual(handlers.desktopAiDisconnect(), {ok: true});
 });
+
+test('Connect, Disconnect and Undo each leave one log line with identities and outcomes, never the code, the path or the question', async () => {
+  const {registerDesktopAi} = await import('../lib/desktop-ai-handlers.js');
+  const {logTo} = await import('../lib/log.js');
+  const folder = fs.mkdtempSync(path.join(tmp, 'log-'));
+  logTo(folder);
+  const handlers = {}, storage = fakeStorage(), before = process.env.JOBADABRA_E2E;
+  process.env.JOBADABRA_E2E = '1';   // quiet: nothing is built or opened
+  try {
+    registerDesktopAi({DEMO: false, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, shell: {}, app: {getVersion: () => '1'}, storage, getWindow: () => null, getPlan: () => null});
+    dismissed.dismiss(storage, 'L7', 'A private question about visas');
+    const gone = changes.record(storage, {tool: 'dismiss_question', target: 'L7', question: 'A private question about visas', before: '', after: 'dismissed'});
+    await handlers.desktopAiConnect();
+    handlers.desktopAiDisconnect();
+    await handlers.desktopAiUndo({}, gone.id);
+  } finally { if (before === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = before; }
+  const lines = fs.readFileSync(path.join(folder, 'app.log'), 'utf8').split('\n').filter(line => line.includes('[desktop-ai]'));
+  assert.deepEqual(lines.map(line => /\] (\w+ \w+)/.exec(line)[1]), ['connect pressed', 'disconnect pressed', 'undo pressed']);
+  assert.match(lines[2], new RegExp(`"id":"${changes.list(storage)[0].id}","ok":true`));
+  assert.doesNotMatch(lines.join('\n'), /private question|\.mcpb|jobadabra-helper/);
+});
