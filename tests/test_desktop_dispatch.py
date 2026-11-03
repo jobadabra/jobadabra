@@ -375,6 +375,7 @@ import src.desktop
         ready = self.patch('src.ai.engine.ready', return_value=True)
         listed = self.patch('src.desktop.jobs', side_effect=lambda *a, **k: dict(VALUE))
         blank = self.patch('src.desktop._profile_blank', return_value=False)   # the Profile verdict Jobs carries (#2759); its own test is test_desktop.py
+        self.patch('src.desktop.mark_outdated', side_effect=lambda result, db: result)   # the old-score marks Jobs carries (JOB list payload); its own test is test_strategy_outdated.py
         JOBS_OUT = {**VALUE, 'profile_empty': False}
         self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=True)
