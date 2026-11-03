@@ -21,11 +21,9 @@ export const forkRefusal = pr => (pr && pr.isCrossRepository === false ? '' : `r
 export const needsRefill = (record, {worseOnly = false} = {}) => !!record && !record.deferred && (outdated(record.firstMiss) || askChanged(record)) && !(worseOnly && keptOutcome(record));
 
 // The automatic refill a PR starts itself (owner, 17 Oct 2026: "Auto-refill PRs under a cap"): only rows a refill could turn green (the outcome fell: keptOutcome is the gate's rule), $0.50 a run, $5 a calendar month.
-export const AUTO_RUN_USD = 0.5, AUTO_MONTH_USD = 5;
-// (this run's estimate, the month's refill spend so far) -> '' (go) or why it does not run.
-export const autoRefusal = (estimate, month, {runUsd = AUTO_RUN_USD, monthUsd = AUTO_MONTH_USD} = {}) => (!Number.isFinite(month) ? 'refill (auto): this month\'s refill spend could not be read: nothing was asked'
-  : estimate > runUsd ? `refill (auto): about $${estimate.toFixed(3)} is above the $${runUsd} a run`
-  : month + estimate > monthUsd ? `refill (auto): this month's refill spend $${month.toFixed(2)} + about $${estimate.toFixed(3)} would pass the $${monthUsd} a month` : '');
+// Why (3 Nov 2026, Gitar on #3111): no $5 a month cap any more. It read the month's refill dollars from /ai-cost, and broker calls are not dollars (nothing reports them there now), so it could never fire.
+// What limits an automatic run now: the estimate per run below, the pick's ask cap, 30 broker calls a row (lib/ai-proxy.mjs maxCalls) and the broker's own Codex week budget.
+export const AUTO_RUN_USD = 0.5;   // the estimate (asks x PER_ASK_USD) one automatic run may not pass
 // The run's title: one automatic refill per PR commit (the gate looks for it before it starts another).
 export const autoRunName = (pr, head) => `Replay refill PR ${pr} @ ${String(head).slice(0, 7)}`;
 
