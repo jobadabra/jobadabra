@@ -80,6 +80,84 @@ The journeys below stop being the unit of a run and become **named plans for the
 | J5 First run | wizard AI → CV → Strategy (and nothing else) | Setup wizard |
 | J6 Settings tour | find "where do I turn on notifications / change language" | Settings, ⌘K |
 
+## A person who lives for weeks, and deep states on day one (owner, 3 Nov 2026; phase 2)
+
+**Owner's words (relayed by mac-07, 3 Nov 2026):** "we should have goals. To try to use the app as a real human... that can do steps not in the order the app is expected.. OR can get into states, not common.... I'm not sure we should start fresh every time … a fresh state/profile … in the first day it just does wizard... second day it searches for jobs and does the profile filling. Third day it activates gmail.. Fourth day it activates always on... Basically that can get into more deep scenarios, which with a fresh/basic state it will not be possible. So that every day new jobs are being found. New scenarios." Asked to advise ("Not sure, you advise me"; "how we can find bugs that would matter for the users"), mac-07 recommended living personas plus aged states, the person's goal as the oracle, severity, real-use weighting and a replay proof.
+
+**Verdict:** a session no longer starts from a fresh install. A **persona lives across nights**: each night is one chapter of its life, its data folder is saved after the night and restored the next, and a **fake world moves** (new fictional jobs, new mail). Because a month takes a month, an **aged-state generator** builds a "day 30" folder so deep states run tonight. Every finding carries the snapshot and seed that reproduce it.
+
+**Checked against the code (origin/main, 3 Nov 2026):**
+| Need | What exists | What is new |
+|---|---|---|
+| Reuse a data folder | `launch({profile})` keeps the person's data across a relaunch (`lib/app.mjs:43`) | save it after a night, restore it the next (nothing does across runs yet) |
+| Fake Gmail / Notion / job feeds | `lib/google-fake.mjs` (3 invented mails), `lib/notion-fake.mjs`, `fixtures/feeds` + `lib/feeds.mjs` (varied by seed) | a day's mail (reply, rejection, interview invite) and a day's new jobs from a seeded generator |
+| Days passing on the app's clock | libfaketime on Linux, used by `tools/clock-moved.mjs` | a clock option on `launch()` |
+| Real accounts, real sites, job texts kept centrally | none, and none will be | rule stays: fictional data only (memory `project-no-job-texts-central`) |
+
+### Two lanes (owner, 3 Nov 2026: "could we simulate those states, by presetting a specific state? Or we should have both methods... 3 sessions that use the same profile/state for a week, let's say. And 3 sessions that start fresh every day with random profile every time, with random states...")
+| Lane | What a session starts from | Lives | Finds |
+|---|---|---|---|
+| **A · Living** | the same persona's saved folder, one chapter further each night | 7 nights, then retires and a new persona starts (staggered) | bugs that need history: a state the earlier nights left, consequences, restarts |
+| **B · Fresh random** | a **seeded random state built by the product's own writers**: a random person plus a random depth (0 to 500 jobs, n CV versions, a full or empty profile, connections on or off, Always on on or off) | one night | deep and odd states without waiting a month: pre-seeding and fresh-random in one mechanism |
+
+Both lanes use the same plan, moves, re-check and findings; they differ only in where the folder comes from. Lane B's generator **is** the aged-state generator below (the "day 30 folder" is one draw of its depth). Lane A needs the snapshot save/restore; lane B needs none. **Decided (owner, 3 Nov 2026, "1 living + 2 short fresh"):** each night **1 living persona (200 steps, one profile for 7 nights) + 2 fresh personas (60 steps each, a random person and a random pre-seeded state)**, about **4.5% of the Codex week a night, ~32% a week** (straight per-step estimate; the context-growth estimate below gives ~3.8%). It grows toward 3 + 3 only on measured real bugs per night.
+
+### Chapters of one life (lane A; a persona-day is one chapter)
+| Night | Chapter | Done when |
+|---|---|---|
+| 1 | Wizard: AI → CV → Strategy (and nothing else) | the app is set up; the CV's facts are in Your details, no heading saved as a fact |
+| 2 | First search, Jobs list, Profile filling, What we learned | jobs found and scored; the queue answered or dismissed; each saved value read back |
+| 3 | Connect Gmail (fake Google) | replies matched to jobs; the Inbound list reads like the Jobs list |
+| 4 | Always on | the setting is on, a night passes on the app's clock, the morning shows what ran |
+| 5 | Applying in Check mode (never Submit) | forms filled and checked; answers kept |
+| 6+ | Free days: new jobs arrive, replies and rejections arrive, strategy and CV change | a goal from the plan (3/7), in the state the earlier nights left |
+
+### Off-script on purpose
+Steps in the wrong order, back or quit in the middle of a step, restart the app, skip a step, change a setting mid-run, go offline, days passing on the app's clock. These are moves in the plan's pool (3/7), weighted up on chapters 2 to 6; the pool's pairs are the coverage unit, so a new order counts as new.
+
+### The world that moves (fictional only)
+- **Jobs:** a seeded generator writes the day's postings in the shape of `fixtures/feeds` (roles and places of the persona's strategy, plus some outside it); the stand-in feed serves them; no real site, nothing stored centrally.
+- **Mail:** `google-fake` receives the day's mails (a reply, a rejection, an interview invite, a forwarded lead) built from the same generator, tied to jobs the persona applied to.
+- **Notion:** `notion-fake` when the persona's store is Notion (a minority of personas).
+- **Clock:** a night's "days passing" is libfaketime on Linux (how `clock-moved` moves it).
+
+### Staggered personas
+A new persona starts when the oldest has finished chapter 5, so every life stage runs somewhere each night. With N persona-days per night the stages covered each night are: 1 → one stage; 2 → an early and a late one; 3 → early, middle and late.
+
+### Aged states: day 30 tonight
+A generator builds an aged folder through the product's own writers (engine commands, never hand-written rows): 300 jobs with a scoring backlog, several CV versions, a full profile with Education rows and more than six details, a Gmail history, Always on running. Why: this week's tester bugs all lived in such states: the 303-job scoring backlog, the CV-version limit, the 6-details cap, Edit on Education rows. A fresh install cannot reach them. Aged folders are a few fixed recipes plus the seed (not stored: rebuilt each night), so they cost no storage and replay exactly.
+
+### Every finding replays
+A finding carries `{persona, chapter, seed, snapshot id}`. The replay restores that snapshot, applies the seed and runs the recorded steps offline, without AI (like the explorer's `replay`). A long-lived state is what makes bugs unreproducible, so this is a requirement, not a nicety: **no finding is filed without a replay that reproduces it**, and the snapshot is attached to the issue's evidence branch (`agent-evidence`) so it outlives the artifact's retention.
+
+### Where saved days live
+A night's snapshot (data folder, seed, chapter, coverage) is a GitHub Actions artifact `agent-life-<persona>` (retention 30 days, the existing artifact secret scan runs on it, fictional data only); the next night downloads the last successful one. The folder's size is printed by the first run; if it is large, the data folder is trimmed to the store and settings (caches excluded).
+
+### Cost per night (estimate from the 2/7 measurement)
+A session of n steps costs about 4.5k·n + 26·n² tokens (the context grows ~50 tokens a step), and 1% of the Codex week is ~720k tokens (the 40-calls-per-1% rule): **200 steps ≈ 2M ≈ 2.8%, 100 steps ≈ 0.7M ≈ 1.0%, 60 steps ≈ 0.4M ≈ 0.5%.** A short session is much cheaper per step because the context stays small.
+| Sessions per night (living + fresh) | Steps each | Per night | Per week | Verdict |
+|---|---|---|---|---|
+| 1 + 0 | 200 | 2.8% | ~20% | the smallest start |
+| 1 + 1 | 200 | 5.6% | ~39% | both lanes, one each |
+| 1 + 1 | 100 | 2.0% | ~14% | both lanes, short |
+| 3 + 3 | 200 | 16.8% | **~118%** | **not possible**: more than the Codex week |
+| 3 + 3 | 100 | 6.0% | ~42% | possible |
+| 3 + 3 | 60 | 3.0% | ~21% | possible; sessions too short to finish a chapter |
+No brake stays (owner, 3 Nov 2026): a spent Codex week falls to Claude, then Free AI; the cost view shows the share per workflow. **Decided start: 1 living at 200 steps + 2 fresh at 60 steps** (2.8% + 2 × 0.5% = ~3.8% a night by this table's formula, ~4.5% by a straight per-step scale; ~27% to ~32% a week). Raise by measured yield (findings that hold up and replay, per session and per lane), toward 3 + 3.
+
+### What makes a finding matter (mac-07's recommendation, adopted)
+- **The oracle is the person's goal, not the screen.** After each action the agent re-opens the screen and checks the stored value: saved, right, and said so. 5 of the tester's 8 new items this week were silent failures. 3/7's re-check is the first piece.
+- **Severity:** **high** = loses data, a wrong result or a false status, or the person is stuck; **medium** = a task is slower or harder than it should be; **low** = looks wrong. Wording nitpicks are not filed.
+- **Weight journeys by real use:** where installs spend time and what feedback rows and Sentry say; every tester report becomes a scenario in the plan's pool.
+- **Proof:** 7/7 replays this week's tester bugs on the commits before their fixes and counts found vs missed; later, the escape rate (bugs users report that the agent missed).
+
+### Phase 2 PRs (after the core seven; ordered by the owner's answer)
+| PR | What | Proof |
+|---|---|---|
+| 8/10 | the aged-state generator and the first deep-state sessions | the generator builds the day-30 folder with the product's writers; a replay of the 303-job backlog bug on its pre-fix commit is found |
+| 9/10 | a living persona: save and restore the snapshot across nights, the chapters, staggered personas, replay from a snapshot | two nights in a row restore the same folder; a finding replays from its snapshot |
+| 10/10 | the moving world: daily jobs, daily mail, the clock option, the off-script moves | a night with a new reply and a day passing shows in the next morning's state |
+
 ## Where it runs
 
 | Question | Decision | Measured / why |
@@ -222,4 +300,7 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 - [ ] [ag] 5/7 findings: detector `ai-user-agent`, arguments, second opinion, 12-a-session cap, the daily workflow
 - [ ] [ag] 6/7 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
 - [ ] [ag] 7/7 replay proof on `b4d64112` / `b6014b04` / `df66db14`, numbers into this spec
+- [ ] [ag] 8/10 aged states: the day-30 folder generator and the first deep-state sessions (phase 2; order per the owner's answer)
+- [ ] [ag] 9/10 a living persona: snapshot saved and restored across nights, chapters, staggered personas, replay from a snapshot (phase 2)
+- [ ] [ag] 10/10 the moving world: daily jobs and mail, a clock option, the off-script moves (phase 2)
 - [ ] First daily session's findings on /admin/testing/self-healing
