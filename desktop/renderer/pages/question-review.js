@@ -68,6 +68,25 @@ function go(kind, index) {
   draw();
 }
 
+// Why (3 Nov 2026, owner: the line sat under every question, "Workload" included): the cases line is for a learning a form taught, whose answer has conditions,
+// not for a Your details fact or a Profile question.
+const casesLine = (written, mine) => (written && (!mine || mine.kind === 'taught')
+  ? [el('p', 'muted small qr-cases', 'Think about the different cases and what you would answer in each. Be as specific as you can.')] : []);
+
+// Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): ONE action, one wording, on every question that is not a pick between two copies. It only hides the
+// question (lib/question-dismissed.js: both drawers, their counts and Focus); nothing in the store changes, and a dismissed question has "Bring back". -> [button] or [].
+function dismissAction(q, mine) {
+  const make = (id, words, glyph, title, on) => {
+    const button = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', id, title});
+    button.append(icon(glyph), el('span', '', words));
+    button.addEventListener('click', () => dismiss(q, on));
+    return button;
+  };
+  if (q.dismissed) return [make('qr-bring-back', 'Bring this question back', 'undo', 'It will be asked again', false)];
+  const pick = mine && ['which', 'conflict', 'where'].includes(mine.kind);
+  return pick || state.aside ? [] : [make('qr-dismiss', 'Dismiss this question', 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
+}
+
 function question(q) {
   const body = el('div', 'jd-body qr-body');
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
@@ -95,7 +114,7 @@ function question(q) {
   // A value to make exact is ready only once its parts read (the same rule as the line's Check chip); an unclear answer once it changed ("Keep as is" keeps it).
   const ready = () => control.complete && !(mine?.kind === 'check' && needsCheck(q.format?.kind, control.value))
     && !(mine?.kind === 'unclear' && String(control.value).trim() === String(q.value ?? '').trim());
-  box.append(label, ...(written ? [el('p', 'muted small qr-cases', 'Think about the different cases and what you would answer in each. Be as specific as you can.')] : []), control);
+  box.append(label, ...casesLine(written, mine), control);
   body.append(box);
   if (mine?.kind === 'which') body.append(el('p', 'muted small', `${q.hint}. The other is set aside, never deleted: Undo in Your details.`));
   if (q.coveredBy) {
@@ -106,10 +125,7 @@ function question(q) {
     body.append(source);
   }
   if (q.hint && mine?.kind !== 'which') body.append(el('p', 'muted small', q.hint));
-  const drop = Object.assign(el('button', 'link small qr-drop', 'Don’t keep an answer for this'), {type: 'button', id: 'qr-drop',
-    title: q.hint !== undefined ? 'Forms leave this field empty (the line stays, answered "— (leave blank)")' : 'Not a question to keep an answer for'});
-  drop.addEventListener('click', () => answer(q, ''));
-  if (!mine || mine.kind === 'open') body.append(drop);   // a choice or an exact value always has an answer
+  body.append(...dismissAction(q, mine));
   if (mine?.kind === 'unclear') {   // the AI found it unclear; the person may know better: never asked again for this value
     const keepIt = Object.assign(el('button', 'link small qr-drop', 'Keep as is'), {type: 'button', id: 'qr-keep', title: 'It is right as it is: not asked again unless it changes'});
     keepIt.addEventListener('click', () => answer(q, KEEP_AS_IS));
@@ -152,7 +168,23 @@ function step(by) {
   draw();
 }
 
-// Confirm (or "Don't keep", value ''): the answer goes to its home (lib/answer-home.js); the question leaves the queue; the next one shows. Why (28 Oct 2026, owner:
+// Dismiss (on) or bring back (off) one question: the one state of lib/question-dismissed.js; the lists are read again, so the counts follow.
+async function dismiss(q, on) {
+  state.busy = true;
+  state.error = '';
+  draw();
+  const result = await window.pilot.dismissQuestion(q.key, q.question, on).catch(error => ({ok: false, error: error.message}));
+  state.busy = false;
+  if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
+  state.saved = on ? '✓ Dismissed: it will not be asked or counted. Bring it back from the list of questions.' : '✓ Brought back: it is asked again.';
+  if (on) { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
+  else { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
+  draw();
+  await loadQuestions({force: true});
+  if (state.open) syncQueue();
+}
+
+// Confirm: the answer goes to its home (lib/answer-home.js); the question leaves the queue; the next one shows. Why (28 Oct 2026, owner:
 // "I don't get the use of this checkbox… We learn general things about the user… conclusions that help on any job/form"): no "Reuse for matching
 // questions" switch; what reaches a drawer is reusable by the AI's verdict (lib/question-reuse.js), one job's questions never do.
 async function answer(q, value) {
@@ -164,7 +196,7 @@ async function answer(q, value) {
   if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
   drafts.delete(q.key);
   keepDrafts();
-  state.saved = value ? `✓ Saved to ${result.homeName || 'What we learned'}` : '✓ Not kept: forms will not ask you for it again';
+  state.saved = value ? `✓ Saved to ${result.homeName || 'What we learned'}` : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
   draw();
@@ -184,6 +216,13 @@ export function draw() {
   if (!q) {
     const done = stateCard({icon: 'check', tone: 'good', title: DRAWERS[state.kind].done, text: DRAWERS[state.kind].doneText});
     const body = el('div', 'jd-body qr-body', done);
+    // Why (3 Nov 2026, code review): with the last question dismissed there is no navigator, so its Dismissed group is listed here, each with Bring back.
+    for (const gone of state.setAside.filter(each => each.dismissed)) {
+      const back = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', title: 'It will be asked again'});
+      back.append(icon('undo'), el('span', '', 'Bring back'));
+      back.addEventListener('click', () => dismiss(gone, false));
+      body.append(el('p', 'muted small qr-dismissed-row', `Dismissed: ${shortTitle(gone.question, 80)}`), back);
+    }
     if (state.saved) body.append(el('p', 'muted small qr-saved', state.saved));
     const foot = el('footer', 'jd-foot qr-foot', button('Close', closeQuestionReview, 'secondary'));
     panel.replaceChildren(header(), body, foot);
@@ -194,7 +233,7 @@ export function draw() {
 }
 
 // The drawer's list and its set-aside ones (What we learned only); start: a key that names the drawer it is in.
-const listOf = (now, kind) => ({queue: [...(now[kind] || [])], setAside: kind === 'learned' ? [...now.hidden] : []});
+const listOf = (now, kind) => ({queue: [...(now[kind] || [])], setAside: [...new Map([...(kind === 'learned' ? now.hidden : []), ...(now.dismissed?.[kind] || [])].map(q => [q.key, q])).values()]});
 const drawerOf = (now, key, kind) => (key && (now.learned || []).some(q => q.key === key) ? 'learned' : key && (now.details || []).some(q => q.key === key) ? 'details' : kind);
 
 // Opens a drawer (queue: 'details' | 'learned') on its questions (read once if Jobs has not read them yet). start: a question's key to show first.

@@ -17,8 +17,12 @@ const HIDDEN = [{key: 'title', question: 'Title', company: 'Adnovum', format: {k
 const calls = [];
 const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'learned', 'learned-count', 'learned-review', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
+const gone = new Set(), dismissals = [];
 globalThis.window.pilot = new Proxy({
-  openQuestions: async () => ({details: [], learned: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2}),
+  // A dismissed question leaves the list and comes back from `dismissed`, as lib/question-lists.js openShown does.
+  openQuestions: async () => ({details: [], learned: LIST.filter(q => !gone.has(q.key)).map(q => ({...q})), hidden: HIDDEN, consent: 2,
+    dismissed: {details: [], learned: LIST.filter(q => gone.has(q.key)).map(q => ({...q, dismissed: true}))}}),
+  dismissQuestion: async (key, question, on) => { dismissals.push([key, on]); if (on) gone.add(key); else gone.delete(key); return {ok: true}; },
   answerQuestion: async (key, value) => { calls.push([key, value]); return {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions, questionsNow} = await import('../renderer/pages/jobs-questions.js');
@@ -59,7 +63,7 @@ test('the drawer: Question 1 of 3, a suggested answer told apart from a missing 
   assert.match(panel().textContent, /Question 1 of 3/);
 });
 
-test('a draft is kept when the drawer closes; Confirm & next saves, says where, and the queue shrinks; Don’t keep saves an empty answer', async () => {
+test('a draft is kept when the drawer closes; Confirm & next saves, says where, and the queue shrinks', async () => {
   calls.length = 0;
   await open();
   panel().querySelector('#qr-skip').click();   // the salary question
@@ -81,10 +85,62 @@ test('a draft is kept when the drawer closes; Confirm & next saves, says where, 
   await flush();
   assert.deepEqual(calls[1], ['start', '1 December 2026']);
   assert.match(panel().textContent, /Saved to Your details → 💶 Availability & compensation/);
-  panel().querySelector('#qr-drop').click();
+});
+
+// Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): one visible action with one wording; a dismissed question leaves the drawer and its count, is listed
+// under Dismissed, and is brought back from there.
+test('Dismiss this question: it leaves the queue and the count, is listed as Dismissed, and Bring back asks it again', async () => {
+  gone.clear();
+  dismissals.length = 0;
+  await loadQuestions({force: true});
+  await open();
+  const before = questionsNow().learned.length;
+  assert.match(panel().textContent, /Dismiss this question/, 'the action is visible by its own words');
+  assert.doesNotMatch(panel().textContent, /Don’t keep an answer for this/, 'the old wording is gone: one wording');
+  const key = panel().querySelector('#qr-dismiss') && questionsNow().learned[0].key;
+  panel().querySelector('#qr-dismiss').click();
   await flush();
-  assert.deepEqual(calls[2], ['permit', '']);
+  await flush();
+  assert.deepEqual(dismissals, [[key, true]]);
+  assert.equal(questionsNow().learned.length, before - 1, 'the count drops with it');
+  assert.ok(!questionsNow().learned.some(q => q.key === key), 'and it is not in the list');
+  assert.match(panel().textContent, /Dismissed: it will not be asked or counted/);
+  panel().querySelector('#qr-nav').click();
+  assert.match(menu().querySelector('.ui-menu-heading').textContent, /Dismissed or set aside/, 'it is listed in the navigator, apart');
+  assert.equal(rows().at(-1).querySelector('.ui-pill').textContent, 'Dismissed');
+  rows().at(-1).click();
+  assert.match(panel().textContent, /A dismissed question/);
+  const back = panel().querySelector('#qr-bring-back');
+  assert.ok(back, 'a dismissed question offers Bring back');
+  back.click();
+  await flush();
+  await flush();
+  assert.deepEqual(dismissals[1], [key, false]);
+  assert.equal(questionsNow().learned.length, before, 'back in the count');
+  gone.clear();
+  await loadQuestions({force: true});
+  review.closeQuestionReview();
+});
+
+// Why (3 Nov 2026, code review of the dismissal): with the last question dismissed the navigator is gone, so the empty state lists what was dismissed, each with Bring back.
+test('dismissing the last question still leaves a way to bring it back', async () => {
+  gone.clear();
+  dismissals.length = 0;
+  await loadQuestions({force: true});
+  await open();
+  const total = questionsNow().learned.length;
+  for (let n = 0; n < total; n++) { panel().querySelector('#qr-dismiss').click(); await flush(); await flush(); }
   assert.match(panel().textContent, /Nothing to check/);
+  const backs = [...panel().querySelectorAll('.qr-dismiss')].filter(node => /Bring back/.test(node.textContent));
+  assert.equal(backs.length, total, 'every dismissed question is listed with Bring back');
+  backs[0].click();
+  await flush();
+  await flush();
+  assert.equal(questionsNow().learned.length, 1, 'one is asked again');
+  assert.doesNotMatch(panel().textContent, /Nothing to check/);
+  gone.clear();
+  await loadQuestions({force: true});   // the later tests read the whole list again
+  review.closeQuestionReview();
 });
 
 test('it shares the job drawer\'s overlay slot: opening it closes a job or Recent activity, never stacks', async () => {
@@ -138,7 +194,7 @@ test('navigator: the button names the question; its list shows kind, source and 
   assert.deepEqual(rows().map(row => row.querySelector('.ui-pill').textContent), ['Suggested', 'Missing', 'Missing', 'Set aside']);
   assert.match(rows()[0].querySelector('.ui-menu-detail').textContent, /DeepJudge AG · Application form/);
   assert.ok(rows()[2].querySelector('.ui-menu-tile'), 'a kind tile');
-  assert.match(menu().querySelector('.ui-menu-heading').textContent, /Set aside · 1 · not counted/);
+  assert.match(menu().querySelector('.ui-menu-heading').textContent, /Dismissed or set aside · 1 · not counted/);
   assert.equal(menu().querySelector('.ui-menu-search'), null, '3 questions: no search');
   rows()[3].click();
   assert.match(panel().textContent, /A set-aside question/);

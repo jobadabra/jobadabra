@@ -69,7 +69,28 @@ export function canonical(kind, value) {
   return kind === 'link' && isLink(text) ? text : '';
 }
 // A typed line kept as written (its "Check" chip on Your details, an item of the review queue: lib/details-review.js): one rule for both.
-export const needsCheck = (kind, value) => COMPOSITE.includes(kind) && Boolean(String(value ?? '').trim()) && !canonical(kind, value);
+// Why (3 Nov 2026, owner): a language line with a part per language is exact when every part's level is one of LEVELS (the same rule as its per-part question).
+const readable = (kind, value) => (kind === 'language' && !canonical(kind, value) ? languageParts(value).every(part => part.level && partIsExact(part)) : Boolean(canonical(kind, value)));
+/** Whether a composite value (salary, duration, language…) is not yet in its kind's own wording: the line's "Check" chip and the review's "make it exact" item. A language line is exact when every part names a level. */
+export const needsCheck = (kind, value) => COMPOSITE.includes(kind) && Boolean(String(value ?? '').trim()) && !readable(kind, value);
+
+// A language line holds one part per language ("Romanian: Native; English: Fluent; French: B1", "Romanian (native), English"): each part is {name, level, raw}; a part
+// is exact when its level is one of LEVELS. The review asks one question per inexact part, naming its language (owner, 3 Nov 2026: "What language is this question
+// being asked for?"), and writes the picked level back into that part only.
+const PART_SPLIT = /\s*[;\n]\s*|,\s*(?![^()]*\))/;
+/** A language line -> its parts [{name, level, raw}], one per language; level is '' when the part names none. */
+export function languageParts(value) {
+  return String(value ?? '').split(PART_SPLIT).map(raw => raw.trim()).filter(Boolean).map(raw => {
+    const match = raw.match(/^(.+?)\s*:\s*(.+)$/) || raw.match(/^([^()]+?)\s*\((.+)\)$/);
+    return {name: (match ? match[1] : raw).trim(), level: match ? match[2].trim() : '', raw};
+  });
+}
+/** A language part is exact when its level is one of LEVELS (any case). */
+export const partIsExact = part => Boolean(canonical('language', part.level));
+/** The line with part `index` set to `level` (the other parts as written, joined by "; "). */
+export function withLevel(value, index, level) {
+  return languageParts(value).map((part, at) => (at === index ? `${part.name}: ${level}` : part.raw)).join('; ');
+}
 
 // An AI-written canonical text keeps the original's meaning: every number appears once, in the value or in the note (no more, no fewer), the note's pieces are
 // copied from the original word for word (pieces are joined with " · "), and a language level is one the original names.

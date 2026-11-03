@@ -15,6 +15,7 @@ import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
 
 import {fakeNotion} from './fake-notion.js';
+import {wordingReply} from './fake-wording.js';
 
 const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', 'Industries to prefer / avoid: ❓', 'Need visa sponsorship?: ❓', 'Notice period: 2 months', 'Role types: SRE; ❓ DevOps?',
   '## 💶 Availability & compensation', 'Target: 10k CHF or so [salary]', 'Earliest start: ❓', '## 🛂 Work eligibility', 'Work permit / visa: ❓ your citizenship and status', 'Authorised to work in Iasi, Romania?: ❓', 'Remote from your base for a foreign employer?: ❓',
@@ -33,7 +34,10 @@ const SETTINGS = {profileMovedAt: '2026-10-18T00:00:00.000Z', profileUnsureAt: '
 
 // The home picker's fixed answer, by what the line says (the real one reads meaning in any language).
 const ai = {client: {messages: {create: async request => {
-  const items = JSON.parse(request.messages[0].content);
+  const words = wordingReply(request);
+  if (words) return words;
+  let items;
+  try { items = JSON.parse(request.messages[0].content); } catch { return {content: [{type: 'text', text: '{}'}]}; }   // another caller's prompt: no answer
   return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => (/sponsorship/.test(line) ? {id, home: 'eligibility', topic: 'sponsorship'} : {id, home: 'stay', topic: 'other'}))})}]};
 }}}};
 
@@ -76,11 +80,11 @@ const FIXTURES = {
     assert.equal(line.value, '10000 CHF/month gross');
     assert.equal(line.kind, 'salary');
   }},
-  open: {match: /Industries to prefer/, answer: () => 'Fintech; no gambling', after: async env => {
+  open: {match: /industries to prefer/i, answer: () => 'Fintech; no gambling', after: async env => {
     assert.match(await profileText(env), /Industries to prefer \/ avoid: Fintech; no gambling/, 'a Profile fact is answered on its own line');
     assert.doesNotMatch(await profileText(env), /Industries to prefer \/ avoid: ❓/);
   }},
-  unclear: {match: /Years of experience with Kubernetes/, answer: () => '3 years', after: async env => {
+  unclear: {match: /years of experience with Kubernetes/i, answer: () => '3 years', after: async env => {
     const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
     assert.match(answers, /Years of experience with Kubernetes \| 3 years/, 'the new value replaces the guess on its own line');
     assert.doesNotMatch(answers, /maybe 3\?/);
@@ -92,12 +96,12 @@ const FIXTURES = {
     assert.ok((await sections.read(env.storage, env.fetcher)).languages.some(line => line.label === 'Languages' && /fluent/.test(line.value)), 'the confirmed fact goes to its section');
   }},
   // PR B2: a learning a form fill wrote is confirmed as it is, or picked from its two answers; either way it is written without its state.
-  taught: {match: /^Willing to travel/, answer: () => 'Yes, up to 20%', after: async env => {
+  taught: {match: /willing to travel/i, answer: () => 'Yes, up to 20%', after: async env => {
     const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
     assert.match(answers, /Willing to travel: Yes, up to 20%/);
     assert.doesNotMatch(answers, /\(new\)/, 'confirmed: no state left');
   }},
-  conflict: {match: /^Contract type/, answer: () => 'Freelance', after: async env => {
+  conflict: {match: /contract type/i, answer: () => 'Freelance', after: async env => {
     const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
     assert.match(answers, /Contract type: Freelance/);
     assert.doesNotMatch(answers, /two answers/, 'the one picked is kept, confirmed');
@@ -116,20 +120,20 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
     test(`${name} · ${kind}: in its drawer, counted by its Jobs card, the drawer and its Profile tab, answered into its home`, async () => {
       const env = await setup();
       const {storage, fetcher} = env;
-      const items = await review.pending(storage, {fetcher});
+      const items = await review.pending(storage, {fetcher, ai});
       const item = items.find(each => each.details.kind === kind && FIXTURES[kind].match.test(each.question));
       assert.ok(item, `a ${kind} item: ${JSON.stringify(items.map(each => [each.details.kind, each.question]))}`);
       assert.ok(item.key.startsWith(review.PREFIX));
       // Each drawer is one list its card, its tab and its header count (owner, 28 Oct 2026): a Your details item is in Fill your details; a saved answer of the
       // Profile or the answers page is in What we learned (lib/question-lists.js openShown).
-      const {details, learned} = await openShown(storage, {fetcher, ai: {}});
+      const {details, learned} = await openShown(storage, {fetcher, ai});
       const page = /"page":/.test(item.key);
       assert.ok((page ? learned : details).some(each => each.key === item.key), `the ${page ? 'What we learned' : 'Fill your details'} drawer walks it`);
       assert.ok(!(page ? details : learned).some(each => each.key === item.key), 'and only that drawer');
       const result = await review.answer(storage, item.key, FIXTURES[kind].answer(), {fetcher, ai});
       assert.equal(result.ok, true, result.error);
       await FIXTURES[kind].after(env);
-      assert.ok(!(await review.pending(storage, {fetcher})).some(each => each.key === item.key), 'answered: it leaves the queue');
+      assert.ok(!(await review.pending(storage, {fetcher, ai})).some(each => each.key === item.key), 'answered: it leaves the queue');
     });
   }
 }
@@ -137,7 +141,7 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
 for (const [name, setup] of Object.entries(ADAPTERS)) {
   test(`${name}: a ❓ inside a Your details section is answered on that section's line`, async () => {
     const env = await setup();
-    const item = (await review.pending(env.storage, {fetcher: env.fetcher})).find(each => /Earliest start/.test(each.question));
+    const item = (await review.pending(env.storage, {fetcher: env.fetcher, ai})).find(each => /Earliest start/i.test(each.question));
     assert.equal(item.details.kind, 'open');
     assert.equal((await review.answer(env.storage, item.key, 'In March', {fetcher: env.fetcher, ai})).ok, true);
     const lines = (await sections.read(env.storage, env.fetcher)).availability.filter(line => line.label === 'Earliest start');
@@ -148,13 +152,13 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
 // Nationality and the zones answer them. The owner's three, as fictional ❓ lines.
 test(`${name}: the 3 old eligibility lines are never asked`, async () => {
     const env = await setup();
-    const asked = (await review.pending(env.storage, {fetcher: env.fetcher})).map(each => each.question);
+    const asked = (await review.pending(env.storage, {fetcher: env.fetcher, ai})).map(each => each.question);
     for (const old of ['Work permit / visa', 'Authorised to work in Iasi, Romania?', 'Remote from your base for a foreign employer?']) assert.ok(!asked.includes(old), old);
   });
 
   test(`${name}: a ❓ on the Profile whose fact is Your details' goes to its section, and the ❓ line leaves the Profile`, async () => {
     const env = await setup();
-    const item = (await review.pending(env.storage, {fetcher: env.fetcher})).find(each => /visa sponsorship/.test(each.question));
+    const item = (await review.pending(env.storage, {fetcher: env.fetcher, ai})).find(each => /visa sponsorship/.test(each.question));
     const result = await review.answer(env.storage, item.key, 'No', {fetcher: env.fetcher, ai});
     assert.equal(result.ok, true, result.error);
     assert.match(result.homeName, /Work eligibility/);
@@ -174,7 +178,7 @@ test(`${name}: the 3 old eligibility lines are never asked`, async () => {
 test('a ❓ is asked only where it stands for the answer, and never in a part with its own screen (the owner\'s CV gaps, 18 Oct 2026)', async () => {
   for (const setup of Object.values(ADAPTERS)) {
     const env = await setup();
-    const asked = (await review.pending(env.storage, {fetcher: env.fetcher})).map(each => each.question);
+    const asked = (await review.pending(env.storage, {fetcher: env.fetcher, ai})).map(each => each.question);
     assert.ok(!asked.some(question => /Role types/.test(question)), 'a ❓ inside an answer is a note, not the question');
     assert.ok(!asked.some(question => /Prometheus/.test(question)), 'CV gaps are answered on their own screen (✓ / ✕)');
   }
@@ -182,7 +186,7 @@ test('a ❓ is asked only where it stands for the answer, and never in a part wi
 
 test('a value to make exact is not taken while it still needs a check', async () => {
   const env = await ADAPTERS.sqlite();
-  const item = (await review.pending(env.storage)).find(each => each.details.kind === 'check');
+  const item = (await review.pending(env.storage, {ai})).find(each => each.details.kind === 'check');
   assert.equal((await review.answer(env.storage, item.key, '10k CHF or so')).ok, false);
   assert.equal((await sections.read(env.storage)).availability.find(line => line.label === 'Target').value, '10k CHF or so');
 });
@@ -190,7 +194,7 @@ test('a value to make exact is not taken while it still needs a check', async ()
 test('a where item whose line is gone from its page drops out (nothing stale is asked)', async () => {
   const env = await ADAPTERS.sqlite();
   env.storage.saveSettings({profileUnsure: [{page: 'profile', label: 'Gone', value: 'not on the page'}]});
-  assert.ok(!(await review.pending(env.storage)).some(each => each.details.kind === 'where'));
+  assert.ok(!(await review.pending(env.storage, {ai})).some(each => each.details.kind === 'where'));
 });
 
 // Why (28 Oct 2026, owner, #2322 review: "ask as less as possible"): the template writes ❓ on every zone; a ❓ zone is no answer, so it waits for Nationality
@@ -200,7 +204,7 @@ test('the template\'s ❓ zones: none asked before Nationality; with Nationality
   const zones = ['EU / EEA + Switzerland', 'United Kingdom', 'United States'].map(zone => `${zone}: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]`);
   const page = nationality => markdown(['## 🛂 Work eligibility', `Nationality: ${nationality}`, ...zones]);
   await store.openStore(storage).page('profile').write(page('❓ your citizenships'));
-  const zonesAsked = async () => (await review.pending(storage)).map(each => each.question).filter(question => /EU \/ EEA|United Kingdom|United States/.test(question));
+  const zonesAsked = async () => (await review.pending(storage, {ai})).map(each => each.details.fact || each.question).filter(question => /EU \/ EEA|United Kingdom|United States/.test(question));
   assert.deepEqual(await zonesAsked(), []);
   await store.openStore(storage).page('profile').write(page('Romania'));
   assert.deepEqual((await zonesAsked()).sort(), ['United Kingdom', 'United States']);

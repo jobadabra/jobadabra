@@ -12,6 +12,7 @@ import * as store from '../lib/store/index.js';
 import {openShown} from '../lib/question-lists.js';
 import {factsOf} from '../lib/base-facts.js';
 import {hashOf} from '../lib/cv-check.js';
+import {wordingReply} from './fake-wording.js';
 import * as review from '../lib/details-review.js';
 import {BLOCKED, MUST, factScore, keyOf, ranked, visibleQuestions, weightOf} from '../renderer/question-filter.js';
 import {fakeNotion} from './fake-notion.js';
@@ -105,7 +106,7 @@ test('every kind of Your details item names its fact (the class: what the score 
   storage.saveSettings({profileUnsure: [{page: 'profile', label: 'Relocation', value: 'maybe'}], answerClarity: {'notice period\n2 months': 'guess'}});
   fs.writeFileSync(storage.path('cv.pdf'), 'fake cv');
   storage.writeText('cv/fact-proposals.json', JSON.stringify({cv: hashOf(storage), proposals: [{id: 'languages', value: 'English', how: 'stated', reason: 'A language line'}]}));
-  const items = await review.pending(storage);
+  const items = await review.pending(storage, {ai: {client: {messages: {create: async request => wordingReply(request) || {content: [{type: 'text', text: '{}'}]}}}}});   // a bare-label question is worded or not shown (lib/open-wording.js)
   assert.deepEqual([...new Set(items.map(item => item.details.kind))].sort(), [...review.KINDS].sort(), 'every kind is drawn here');
   for (const item of items) assert.ok(item.details.fact, `${item.details.kind} "${item.question}" names its fact`);
 });

@@ -17,6 +17,7 @@ import {factsOf} from './base-facts.js';
 import {client as engineClient} from './ai/index.js';
 import {splitMark} from '../renderer/question-kind.js';
 import {keyOf} from '../renderer/question-filter.js';
+import {labelAsValue} from '../renderer/question-sense.js';
 import {openStore} from './store/index.js';
 import * as notionGate from './notion-gate.js';
 import {log} from './log.js';
@@ -43,9 +44,11 @@ const known = (label, aliases = []) => (!asksQuestion(label) && KNOWN.test(label
  */
 export function plan(items, {contact = {}, answered = new Set(), aliases = []} = {}) {
   const details = {}, fresh = [], jobOnly = [];
+  const labels = (Array.isArray(items) ? items : []).map(item => clean(item?.label));
   for (const item of Array.isArray(items) ? items : []) {
     const label = clean(item?.label), value = clean(item?.value);
     if (label.length < 2 || !value || value.length > 300 || known(label, aliases)) continue;
+    if (labelAsValue(label, value, labels)) continue;   // Why (3 Nov 2026, owner): a field's own label (or another's) read as its answer ("Summary: Summary") is a heading, never learned
     if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026; Gitar on #2351): Remember off = this job only, a personal detail included
     const key = personalKey(label, aliases);
     if (key) { if (!contact[key]) details[key] = value; continue; }
