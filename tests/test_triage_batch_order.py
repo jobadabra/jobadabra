@@ -26,12 +26,16 @@ TITLES = {'A': ['Analyst 1', 'Analyst 2', 'Analyst 3'], 'B': ['Analyst 2', 'Anal
 class Tape:
     """Records each request once; on replay a request not recorded is a miss."""
     def __init__(self):
-        self.seen, self.mode, self.misses, self.calls, self.items = set(), 'record', [], 0, 0
+        self.seen, self.mode, self.misses, self.calls, self.items, self.heads = set(), 'record', [], 0, 0, []
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
         content = kwargs['messages'][0]['content']
         self.calls += 1
+        header, _, listed = content.partition(':\n')
+        system = kwargs.get('system') or ''
+        system = system if isinstance(system, str) else (system[0].get('text', '') if system else '')
+        self.heads.append((self.mode, system[:30], header[-40:], listed.replace('\n', ' | ')[:200], threading.current_thread().name))
         if self.mode == 'record':
             self.seen.add(content)
         elif content not in self.seen:
@@ -120,7 +124,11 @@ class BatchOrderTest(unittest.TestCase):
         self.tape.mode, self.tape.calls = 'replay', 0
         self.read('A')
         self.read('B')
-        self.assertEqual(self.tape.calls, 0, 'what the readers decided is shared once they end')
+        # Why (3 Nov 2026, a8): red on CI with 18 then 10 calls on a docs-only PR, never alone; the cause was not in the message. Print what was asked, by which
+        # thread, and what else is alive, so the next red names the leak.
+        seen = {'asked in replay': [h for h in self.tape.heads if h[0] == 'replay'], 'threads': [t.name for t in threading.enumerate()],
+                'frozen scope left open': batch_scope is not None and batch_scope._frozen is not None, 'search': repr(feeds._SEARCH)[:200]}
+        self.assertEqual(self.tape.calls, 0, f'what the readers decided is shared once they end; saw {seen}')
 
 if __name__ == '__main__':
     unittest.main()
