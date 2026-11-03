@@ -7,7 +7,7 @@
 // submitting or dismissing a review or posting a new comment (its verdict), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
 // them used up the repo's REST budget, and the runs that hit the limit left labels wrong in silence (#2516, 29 Oct 2026). Reads are one GraphQL call.
 // Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
-//   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
+//   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -51,7 +51,10 @@ export function wantedLabel(body, commentUpdatedAt, headCommittedAt) {
   return LABELS[kind].name;
 }
 
-const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8'});
+// Why (3 Nov 2026, owner chose "One retry on GitHub errors"): every gh call goes through tools/gh_retry.py, shared with the release checks: GitHub's own
+// 502/503/504 gets one more try after ~10 s; a second failure and any other error still throw, so a failure stays red (#2516).
+const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
+const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 'utf8'});
 const pages = path => JSON.parse(gh('api', path, '--paginate', '--slurp')).flat();
 
 /** When the head became the head: the later of its commit date and the first check suite created for it (a commit made at 10:00 and pushed at 11:00 counts as 11:00; Why (#2386, 28 Oct 2026): Gitar flagged commit date as push time). */

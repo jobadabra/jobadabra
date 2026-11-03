@@ -1,6 +1,6 @@
 # Puts an orange "Merge conflict" label on each open PR that GitHub says conflicts with its base, and takes it off once it merges cleanly (owner, 30 Oct 2026).
 # Runs on a push to main (any open PR may now conflict) and on a PR push (it may be fixed); checks out main's copy of the script and NEVER runs a PR's code;
-# its only writes are labels. Script and cases: tools/conflict-label.mjs, tests/test_conflict_label.py.
+# its only writes are labels. Script: tools/conflict-label.mjs; its gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
 name: CI · Conflict label
 
 on:
@@ -31,6 +31,7 @@ jobs:
           sparse-checkout: |
             tools/conflict-label.mjs
             tools/gitar-label.mjs
+            tools/gh_retry.py
       - name: Label the open PRs that conflict
         env:
           GH_TOKEN: ${{ github.token }}
