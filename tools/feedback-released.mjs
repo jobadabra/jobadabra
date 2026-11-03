@@ -16,7 +16,7 @@ const TAG = /^desktop-v(\d+(?:\.\d+)*)$/;
 /** The PR numbers in commit subjects: the "(#123)" a squash merge puts at the end of the first line. Sorted, no duplicates. */
 export const prNumbers = subjects => {
   const lines = subjects.map(line => String(line).split('\n')[0]), numbers = new Set(lines.map(line => Number(line.match(/\(#(\d+)\)\s*$/)?.[1])).filter(Number.isInteger));
-  // Why (6/7 code review, 3 Nov 2026): `Revert "[a] Fix (#12)" (#13)` in the same range cancels #12: its reporter is not told "fixed" for a fix that was taken out.
+  // Why (6/7 code review, 3 Nov 2026): a Revert subject in the same range cancels the PR it reverts, so that reporter is not told "fixed" for a fix that was taken out.
   for (const line of lines) if (/^Revert "/.test(line)) { const gone = Number(line.match(/\(#(\d+)\)"/)?.[1]); if (Number.isInteger(gone)) numbers.delete(gone); }
   return [...numbers].sort((a, b) => a - b);
 };
