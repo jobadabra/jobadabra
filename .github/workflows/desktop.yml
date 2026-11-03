@@ -618,10 +618,8 @@ jobs:
       # Why (#2651, owner): the generated relay key exists only when its producer runs.
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
-        E2E_ANTHROPIC_KEY
         ${{ matrix.offlineAi != true && matrix.suite != 'unit' && 'E2E_FREE_AI_KEY' || '' }}
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
@@ -642,7 +640,6 @@ jobs:
         E2E_NOTION_TOKEN_SETTINGS
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
-        E2E_OPENAI_KEY
         FREE_AI_LOCAL_CF_ACCOUNT_ID
         FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
@@ -650,8 +647,6 @@ jobs:
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       # Why (1 Nov 2026, PR 3/7, Gitar): a fork is read from the event payload, not from a repository variable that a transfer could leave stale or unset (the gate would turn off silently).
       E2E_REQUIRE_SECRETS: ${{ !github.event.repository.fork && '1' || '' }}
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
       E2E_NOTION_TOKEN_FAILURESNOTION: ${{ secrets.E2E_NOTION_TOKEN_FAILURESNOTION }}
       E2E_NOTION_TOKEN_FAILURESCHANNELS: ${{ secrets.E2E_NOTION_TOKEN_FAILURESCHANNELS }}
@@ -769,7 +764,7 @@ jobs:
         if: runner.os == 'Linux' && matrix.suite != 'unit'
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -834,24 +829,11 @@ jobs:
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
-      - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
-        timeout-minutes: 5
-        continue-on-error: true   # a report never decides a run
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            file="$E2E_ARTIFACTS/ai-usage-$kind.json"; [ -f "$file" ] || continue
-            tag=""; job="e2e-$kind"; provider=anthropic
-            if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
-            node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "${{ matrix.key }}$tag" --file "$file" --provider "$provider"
-          done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
+        if: always() && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -871,7 +853,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -897,7 +878,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -925,7 +905,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -983,10 +962,8 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
-        E2E_ANTHROPIC_KEY
         ${{ matrix.suite != 'unit' && 'E2E_FREE_AI_KEY' || '' }}
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
@@ -1005,12 +982,9 @@ jobs:
         E2E_NOTION_TOKEN_SETTINGS
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
-        E2E_OPENAI_KEY
         FREE_AI_LOCAL_CF_ACCOUNT_ID
         FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
       E2E_NOTION_TOKEN_JOBS: ${{ secrets.E2E_NOTION_TOKEN_JOBS }}
       E2E_NOTION_TOKEN_INTERVIEWS: ${{ secrets.E2E_NOTION_TOKEN_INTERVIEWS }}
@@ -1117,7 +1091,7 @@ jobs:
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -1179,27 +1153,11 @@ jobs:
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
-      - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
-        timeout-minutes: 5
-        continue-on-error: true   # a report never decides a run
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            for dir in "$E2E_ARTIFACTS" "${{ github.workspace }}/e2e-artifacts-windows/apply-edge"; do
-              file="$dir/ai-usage-$kind.json"; [ -f "$file" ] || continue
-              tag=""; case "$dir" in *apply-edge*) tag="-edge";; esac
-              job="e2e-$kind"; provider=anthropic
-              if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
-              node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "windows-${{ matrix.key }}$tag" --file "$file" --provider "$provider"
-            done
-          done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
+        if: always() && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -1212,7 +1170,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -1238,7 +1195,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -1266,7 +1222,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -1291,7 +1246,6 @@ jobs:
         if: always() && matrix.suite != 'unit'
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}

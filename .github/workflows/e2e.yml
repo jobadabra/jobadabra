@@ -12,7 +12,7 @@ name: CI · End-to-end on Mac + Linux
 #     walk a different path each time (`export const varies`, today `interactions`, `apply` and `wander`): the others would repeat themselves.
 #     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e here; after each merge main-steps.yml starts only the steps it touched ("E2E after merge", owner 26 Oct 2026); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
 # All of it is decided in desktop/e2e/plan-run.mjs (tested). The test key's AI credit is shared and small: see desktop/e2e/README.md.
-# Secrets (Settings → Secrets → Actions): E2E_ANTHROPIC_KEY, and one E2E_NOTION_TOKEN_<SUITE> per suite (a connection that sees only that suite's test page).
+# Secrets (Settings → Secrets → Actions): one E2E_NOTION_TOKEN_<SUITE> per suite (no AI key since 3 Nov 2026: the AI goes through the broker, docs/superpowers/specs/2026-11-03-ci-no-api-keys.md) (a connection that sees only that suite's test page).
 run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.night_pass && format('Night burn-in {0} · {1}', inputs.night_pass, github.ref_name) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.after_merge && format('E2E after merge · {0} · {1}', inputs.after_merge, inputs.pr_suites) || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
 
 on:
@@ -210,8 +210,6 @@ jobs:
         if: steps.list.outputs.ai_required == '1'
         timeout-minutes: 5
         env:
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
           CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
           CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
           CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
@@ -241,10 +239,8 @@ jobs:
       # Why (#2651, owner): the generated relay key exists only when its producer runs.
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
-        E2E_ANTHROPIC_KEY
         ${{ matrix.offlineAi != true && 'E2E_FREE_AI_KEY' || '' }}
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
@@ -265,7 +261,6 @@ jobs:
         E2E_NOTION_TOKEN_SETTINGS
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
-        E2E_OPENAI_KEY
         FREE_AI_LOCAL_CF_ACCOUNT_ID
         FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
@@ -273,8 +268,6 @@ jobs:
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       # Why (1 Nov 2026, PR 3/7, Gitar): a fork is read from the event payload, not from a repository variable that a transfer could leave stale or unset (the gate would turn off silently).
       E2E_REQUIRE_SECRETS: ${{ !github.event.repository.fork && '1' || '' }}
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
       # The store under test (lib/store.mjs pickStore): this Mac's store, fresh per run (owner, 3 Nov 2026: "Mac Store only"); a run by hand may pin the stand-in.
       E2E_STORE: ${{ matrix.store || inputs.store || 'sqlite' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs)
@@ -416,7 +409,6 @@ jobs:
           MUTANT: ${{ inputs.mutant }}
         run: node desktop/e2e/mutate.mjs "$MUTANT"
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != ''
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -426,7 +418,7 @@ jobs:
       # Main cannot read a PR's cache: after a merge, the merged PR's own green answers are laid over main's, so main asks what its PR asked and replays what the PR
       # was green on (27 Oct 2026: #2180 green on its PR with 0 misses; main restored an older cache, asked 8 questions live and went red). desktop/e2e/pr-answers.mjs.
       - name: The merged PR's own AI answers (after a merge)
-        if: inputs.after_merge != '' && env.E2E_ANTHROPIC_KEY != ''
+        if: inputs.after_merge != ''
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
@@ -504,24 +496,11 @@ jobs:
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
-      - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != ''
-        timeout-minutes: 5
-        continue-on-error: true   # a report never decides a run
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            file="$E2E_ARTIFACTS/ai-usage-$kind.json"; [ -f "$file" ] || continue
-            tag=""; job="e2e-$kind"; provider=anthropic
-            if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
-            node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "${{ matrix.key }}$tag" --file "$file" --provider "$provider"
-          done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: always() && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -541,7 +520,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -550,7 +528,7 @@ jobs:
             desktop/e2e/.ai-cache
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
-        if: (success() && steps.suite_run.outputs.tolerant_failed != '1' && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
+        if: (success() && steps.suite_run.outputs.tolerant_failed != '1' && inputs.pr_suites != '' && inputs.after_merge == '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -565,7 +543,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -590,7 +567,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -617,7 +593,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -641,7 +616,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -782,7 +756,6 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
         AI_COST_PUBLISH_KEY
-        E2E_ANTHROPIC_KEY
         GH_TOKEN
         GITHUB_TOKEN
     steps:
@@ -800,7 +773,6 @@ jobs:
         timeout-minutes: 18
         with:
           lane: mac
-          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
