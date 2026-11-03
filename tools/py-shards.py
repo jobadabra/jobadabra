@@ -1,7 +1,7 @@
 """Run the Python unit tests in parallel shards (one `unittest` process per shard); guarded by tests/test_py_shards.py.
 
 Same tests as `python -m unittest discover -s tests`, split by module so wall time drops from the sum to roughly the slowest shard.
-  python3 tools/py-shards.py [--jobs N] [--app-only] [module ...]   (no module = every tests/test_*.py)
+  python3 tools/py-shards.py [--jobs N] [--app-only] [module ...]   (no module = every test module: tests/test_*.py and tests/{unit,guards,tooling}/**/test_*.py)
 Modules are balanced by measured seconds (tools/py-shard-weights.json, modules over 1.5 s; the rest count 0.5 s), slowest first; a stale weight only costs speed, never coverage.
 Width: cores / push-check slots, +2 while free memory is over 3 GB (default_jobs; 6 here, 11 Oct 2026: 52 s -> 39 s; base 4: two push checks at once, each with the journey gate and the other suites beside it; 8 wide drove the load to 124-152, 11 Oct 2026). The slow modules (test_ship, test_heavy_lock, test_pre_push_check) are sleep- and git-bound, so they overlap well (11 Oct 2026: 4 shards ~84 s, the longest module 50 s).
 Exit 0 when every shard passed (exit 0 and unittest's own summary); otherwise 1 with each failing shard's output on stderr.
@@ -63,7 +63,11 @@ def changed_files():
 
 
 def all_modules():
-    return sorted(p.stem for p in TESTS.glob('test_*.py'))
+    """Every test module, by the name unittest imports with tests/ on the path: test_x at the top, unit.ai.test_x below (tools/affected-tests.py python_tests, the one map)."""
+    spec = importlib.util.spec_from_file_location('affected_tests', ROOT / 'tools/affected-tests.py')
+    layout = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(layout)
+    return sorted(layout.py_module_name(p) for p in layout.python_tests())
 
 
 WEIGHTS = ROOT / 'tools' / 'py-shard-weights.json'

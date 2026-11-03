@@ -96,7 +96,7 @@ jobs:
         timeout-minutes: 25
         run: |
           mkdir -p "$RUNNER_TEMP/v8/unit"
-          (cd desktop && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" xvfb-run -a --server-args='-screen 0 1440x900x24' env DESKTOP_RENDER_REQUIRED=1 node --import ./test/no-live-site.mjs --test test/*.test.js) || echo "some desktop unit tests were red"
+          (cd desktop && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" xvfb-run -a --server-args='-screen 0 1440x900x24' env DESKTOP_RENDER_REQUIRED=1 node --import ./test/no-live-site.mjs --test test/*.test.js 'test/{unit,guards,tooling}/**/*.test.js') || echo "some desktop unit tests were red"
           (cd app-core && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" node --test test/*.test.js) || echo "some worker tests were red"
       - name: Integration tests (store, extension, app)
         timeout-minutes: 25
