@@ -2,7 +2,7 @@
 // companies, fit and status but never a posting's text. Fake documents only; the pages themselves are registered in renderer/pages/feedback-screens.js.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registerScreenData, readScreenData, screenKey, jobsData, answersData, focusData, MAX_ROWS} from '../renderer/feedback-data.js';
+import {registerScreenData, readScreenData, screenKey, jobsData, answersData, questionsData, focusData, MAX_ROWS} from '../renderer/feedback-data.js';
 
 const doc = ({view = 'jobs', settings = '', tab = '', text = ''} = {}) => ({
   querySelector: selector => {
@@ -64,4 +64,16 @@ test('Focus sends each card as its short fields', () => {
   const data = focusData([{job: 'Designer', company: 'Acme', step: 'prepare', job_url: 'https://x.example/j/1', detail: 'y'.repeat(900), nested: {a: 1}}]);
   assert.deepEqual(Object.keys(data.cards[0]), ['job', 'company', 'step', 'job_url', 'detail']);
   assert.equal(data.cards[0].detail.length, 200);
+});
+
+test('The open questions send both lists with the drawer\'s own keys, the kind, the options and what is asked to check; never a hidden or dismissed one', () => {
+  const details = [{key: 'details:open:{"label":"Notice"}', question: 'Notice period', format: {kind: 'duration', options: []}, value: '', hint: 'how long', details: {kind: 'open'}},
+    {key: 'details:check:{"label":"Salary"}', question: 'Salary: make it exact', format: {kind: 'salary'}, value: '100k', details: {kind: 'check'}}];
+  const learned = [{id: 'row7', question: 'Do you need a visa?', format: {kind: 'single', options: ['Yes', 'No', ...Array.from({length: 40}, (_, i) => `x${i}`)]}, value: '', state: 'new'}];
+  const data = questionsData({details, learned, dismissed: {details: [{key: 'gone'}], learned: []}, hidden: [{key: 'secret'}]});
+  assert.deepEqual(data.questions.map(row => [row.list, row.key, row.review, row.kind, row.value]), [['details', 'details:open:{"label":"Notice"}', 'open', 'duration', ''], ['details', 'details:check:{"label":"Salary"}', 'check', 'salary', '100k'], ['learned', 'row7', '', 'single', '']]);
+  assert.equal(data.questions[2].options.length, 20, 'a long option list is cut');
+  assert.deepEqual(data.dismissed, 1);
+  assert.ok(!JSON.stringify(data).includes('secret'));
+  assert.deepEqual(questionsData({}), {questions: [], dismissed: 0});
 });

@@ -39,9 +39,9 @@ The person needs the Jobadabra app open: with the app closed the tools say "Open
 | `get_strategy` | read | The strategy as the Strategy page holds it | registry entry `strategy` |
 | `get_screen_data` | read | What the open screen holds (debugging) | `readScreenData` + `pageText` |
 | `get_support_report` | read | Support state, last 5 runs, last log lines, redacted | `buildLogs` + `redact` |
-| `answer_question` | write | Saves an answer to one queue item | the `answerQuestion` handler's function (lib/questions.js `answerAll`, lib/details-review.js `answer`) |
+| `answer_question` | write | Saves an answer to one open What we learned question (optional `home`: a Your details section the AI client chose, validated against `SECTIONS`, no credit spent) | `lib/question-answer.js` `answerKey`, the function the drawer's IPC calls |
 | `dismiss_question` | write | Hides a question ("not for me") | `hiddenQuestions` path |
-| `update_detail` | write | Fills a Your details item that is **empty or in "to check"** | `detailsReview.answer` |
+| `update_detail` | write | Fills a Your details item that is **empty or in "to check"** (**not in 3/6**: Undo must first be designed per review kind) | `detailsReview.answer` via `lib/question-answer.js` |
 | `list_my_changes` | read | The change list below, so the AI can report what it did | `desktop-ai-changes` |
 
 **Never**, by absence from the list and by a test that fails when a name outside the table appears:
