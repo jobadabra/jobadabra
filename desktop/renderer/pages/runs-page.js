@@ -3,7 +3,7 @@ import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {channelLine} from '../notify-words.js';
 import {shared} from './shared.js';
-import {COMMAND_KIND, KIND, TASK_BUTTONS, capital, clockTime, hhmm, kindOf, stepWords, openActivity, outcome} from './activity.js';
+import {COMMAND_KIND, KIND, TASK_BUTTONS, capital, clockTime, nextWords, kindOf, stepWords, openActivity, outcome} from './activity.js';
 import {$, runWhen, show} from './core.js';
 import {openView} from './nav.js';
 import {runPill, telegramHealth} from '../run-status.js';
@@ -18,13 +18,12 @@ export async function showStatusCard() {
   const data = await window.pilot.runs();
   const {running, runs, nextSearchAt, nextMailAt} = data;
   const lastSearch = runs.find(run => kindOf(run) === 'search'), lastMail = runs.find(run => kindOf(run) === 'mail');
-  const when = at => (at <= Date.now() ? 'due now' : `${new Date(at).toLocaleDateString([], {weekday: 'short'})} ${hhmm(at)}`);
   const rows = [
     running && ['▶️', 'Running now', `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
     ['🔎', 'Last refresh', lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : 'none yet'],
-    ['⏭', 'Next refresh', nextSearchAt ? when(nextSearchAt) : 'only when you ask'],
+    ['⏭', 'Next refresh', nextSearchAt ? nextWords(nextSearchAt) : 'only when you ask'],
     ['📧', 'Last Gmail check', lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : 'none yet'],
-    ['⏭', 'Next Gmail check', nextMailAt ? when(nextMailAt) : 'off'],
+    ['⏭', 'Next Gmail check', nextMailAt ? nextWords(nextMailAt) : 'off'],
   ].filter(Boolean);
   const card = $('status-card');
   card.replaceChildren(el('h2', '', '🩺 Status'), ...rows.map(([glyph, label, value]) => {

@@ -26,7 +26,7 @@ import {readableLog} from '../human-log.js';
 import {renderActionsPage} from './runs-page.js';
 import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
-import {clockTime, duration, PHASES, stepWords, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
+import {clockTime, duration, PHASES, stepWords, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, siteRow, phaseLabel, phaseIndex, hhmm, nextWords, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
 import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
 import {showJumpToLatest, showRunJob, linked, refreshActivity} from './activity-run-card.js';
 import {barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
@@ -110,7 +110,7 @@ export function renderActivity(fresh) {
   const liveLines = running ? shared.logLines : null;
   const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? 'not checked' : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
     : gmailConnected() === false ? 'Gmail not checked · not connected'   // #541: no "due now" for a check that cannot run
-    : nextMailAt ? `First Gmail check ${nextMailAt <= Date.now() ? 'due now' : hhmm(nextMailAt)}` : '';
+    : nextMailAt ? `First Gmail check ${nextWords(nextMailAt)}` : '';
   if (running) {
     const kind = KIND[kindOf(running)];
     const next = (data.queued || []).length;
@@ -125,7 +125,7 @@ export function renderActivity(fresh) {
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : ' · click to see why') : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
-    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh ${hhmm(nextSearchAt)}`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
   } else {
     $('activity-title').textContent = 'No search yet';
     $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';
@@ -197,13 +197,6 @@ export function renderActivity(fresh) {
   // How often: from Settings → How often (GitHub does it when Always on is on).
   const cloud = !!shared.state?.settings?.cloud?.repo;
   // A card per scheduled task: what, which day, and the time in large type (or why there's none).
-  // "Gmail check · Today 18:00": its icon, what, and when (Today / Tomorrow / the weekday).
-  const day = at => {
-    const date = new Date(at), today = new Date();
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    return date.toDateString() === today.toDateString() ? 'Today' : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow'
-      : date.toLocaleDateString([], {weekday: 'short'});
-  };
   const plan = {search: 4, mail: 3, scout: 'daily', ...(shared.state?.settings?.schedule || {})};
   // No time: "Off" only when Settings → Automation says so; else the app just doesn't know it yet (it was started
   // before an update: a restart fixes it), so it names where it runs.
@@ -214,7 +207,7 @@ export function renderActivity(fresh) {
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it
   $('activity-schedule').replaceChildren(...items.map(([name, kind, at, none]) => {
     const item = el('span', `ap-item${at && at === soonest ? ' is-next' : ''}${at ? '' : ' is-off'}`);
-    item.append(el('span', 'muted', name), ' ', el('b', '', at ? (at <= Date.now() ? 'Due now' : `${day(at)} ${hhmm(at)}`) : none));
+    item.append(el('span', 'muted', name), ' ', el('b', '', at ? capital(nextWords(at)) : none));
     // A pill after the time, not a "Next:" before the name: that read as "Next Jobs" from a distance.
     if (kind === 'mail' && gmailOff) item.append(' ', pill('Connection required', 'warn'));   // the time stays; it won't check until connected
     else if (at && at === soonest) item.append(' ', el('span', 'ap-next', 'Next'));

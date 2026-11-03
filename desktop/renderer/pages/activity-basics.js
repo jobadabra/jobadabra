@@ -179,6 +179,18 @@ export function phaseIndex(lines) {
   return index;
 }
 export const hhmm = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+/**
+ * When the next scheduled check is, in words, for any place that says it (the footer, Upcoming checks, Status): "due now" once the time has passed, else
+ * "Today 14:00", "Tomorrow 01:53" or "Wed 01:53". Why (fx, 3 Nov 2026, a Windows tester): the footer printed "Next refresh 01:53 AM" at 02:00 and read as a refresh that never ran;
+ * the app checks its schedule every 10 minutes, so a time up to ~10 minutes in the past is normal and must say so.
+ * @param {number} at ms of the next check. @param {number} [now] ms. @returns {string}
+ */
+export function nextWords(at, now = Date.now()) {
+  if (at <= now) return 'due now';
+  const date = new Date(at), today = new Date(now), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const day = date.toDateString() === today.toDateString() ? 'Today' : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : date.toLocaleDateString([], {weekday: 'short'});
+  return `${day} ${hhmm(at)}`;
+}
 export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export const capital = text => String(text || '').replace(/^./, c => c.toUpperCase());
 // One line on what a finished run did.
