@@ -71,6 +71,9 @@
     },
     "explore": {
       "aiMissesException": "The manual-only AI explorer deliberately spends model credit when explicitly requested; cadence manual excludes it from scheduled and release gates."
+    },
+    "agent": {
+      "aiMissesException": "The manual-only AI user agent deliberately spends model credit when explicitly requested (by hand or by its daily workflow); cadence manual excludes it from scheduled and release gates."
     }
   },
   "steps": {

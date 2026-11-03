@@ -100,7 +100,7 @@ test('a suite that may reach a model is a live measurement, never a gate', async
     live.push(suite.name);
     assert.ok(['manual', 'night-report'].includes(suite.cadence), `${file}: realAi = true only on a measurement suite (cadence manual or night-report), not ${suite.cadence}`);
   }
-  assert.deepEqual(live.sort(), ['explore', 'personas', 'qualityai']);
+  assert.deepEqual(live.sort(), ['agent', 'explore', 'personas', 'qualityai']);
 });
 
 // Gitar on #2976: the step name was never cleared, so an ask after a step (teardown, the next setup) named the step before it.

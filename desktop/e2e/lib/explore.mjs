@@ -14,11 +14,14 @@ export const ACTIONS = ['click', 'type', 'press', 'go', 'report_bug', 'done'];
 const KINDS = ['functionality', 'error-shown', 'text', 'layout', 'consistency', 'empty-state'];
 const SEVERITIES = ['high', 'medium', 'low'];
 
-/** The one answer shape of a turn: every field is required (a strict structured answer), the ones an action does not use are '' (control: -1). */
-export function actionSchema(views) {
+/**
+ * The one answer shape of a turn: every field is required (a strict structured answer), the ones an action does not use are '' (control: -1).
+ * `extend` ({actions, properties}) adds the actions and fields of a goal-driven session (lib/agent-run.mjs); without it the shape is the explorer's, unchanged.
+ */
+export function actionSchema(views, extend = null) {
   const text = {type: 'string'}, choice = values => ({type: 'string', enum: ['', ...values]});
-  const properties = {action: {type: 'string', enum: ACTIONS}, control: {type: 'integer'}, text, key: choice(KEYS), view: choice(views),
-    title: text, kind: choice(KINDS), severity: choice(SEVERITIES), what: text, check_type: choice(CHECKS), check_text: text, check_control: text, summary: text};
+  const properties = {action: {type: 'string', enum: [...ACTIONS, ...(extend?.actions || [])]}, control: {type: 'integer'}, text, key: choice(KEYS), view: choice(views),
+    title: text, kind: choice(KINDS), severity: choice(SEVERITIES), what: text, check_type: choice(CHECKS), check_text: text, check_control: text, summary: text, ...(extend?.properties || {})};
   return {type: 'object', additionalProperties: false, required: Object.keys(properties), properties};
 }
 
@@ -68,10 +71,10 @@ export function segmentFor(log, at) {
 export const stepWords = step => (step.tool === 'go' ? `Open ${step.view}` : step.tool === 'click' ? `Press "${step.label}"` : step.tool === 'type' ? `Type "${step.text}" into "${step.label}"` : `Press the ${step.key} key`);
 
 /** One turn's answer text -> the action, or {error} when it is not one JSON object with a known action. */
-export function parseAction(text) {
+export function parseAction(text, actions = ACTIONS) {
   let input;
   try { input = JSON.parse(String(text).trim().replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { return {error: 'your answer was not one JSON object'}; }
-  return input && ACTIONS.includes(input.action) ? input : {error: `action must be one of ${ACTIONS.join(', ')}`};
+  return input && actions.includes(input.action) ? input : {error: `action must be one of ${actions.join(', ')}`};
 }
 
 /** What one broker call used, added to the session's tally (per tier, so a small-vs-mid run compares). `answer`: {usage, ms, tier}. */
@@ -83,30 +86,33 @@ function spend(spent, answer) {
 
 // The loop. `act`: {observe(), click(i), type(i, text), press(key), go(view)}; `ask({system, messages, schema})` -> {text, usage, ms, tier, engine?} (the broker's answer; it throws when the broker refuses).
 // Stops on done, at its caps (steps, broker calls, minutes on the injected clock), or when the broker refuses (nothing is filed from a run that could not finish thinking).
-// Returns {steps, bugs, trace, spent, stopped}: `trace` has one row per turn (what it did and what that turn cost) for the session's step record.
-export async function explore({act, ask, views, caps = {}, now = Date.now, log = () => {}}) {
+// Returns {steps, bugs, trace, spent, stopped, final}: `trace` has one row per turn (what it did and what that turn cost) for the session's step record; `final` is the answer that ended the run (done), or null.
+// A goal-driven session passes `system` (its own instructions), `first` (the goal and what it knows, put before the first page view) and `extend` ({actions, properties, take(input, row) -> reply text}):
+// the extra actions never touch the page, they are answered by `take` (Why, 3 Nov 2026, AI user agents 6/12: one loop for the explorer and the agent, so a fix to the loop reaches both).
+export async function explore({act, ask, views, caps = {}, now = Date.now, log = () => {}, system = SYSTEM, first = '', extend = null}) {
   const {maxSteps = 40, maxCalls = 260, maxMinutes = 35} = caps;
   const started = now(), steps = [], bugs = [], trace = [], spent = {calls: 0, input: 0, output: 0, ms: 0, tiers: {}};
   let seen = await act.observe(), stopped = 'steps';
-  const messages = [{role: 'user', content: `Start. You have at most ${maxSteps} steps.\n\n${formatObservation(seen)}`}];
+  const messages = [{role: 'user', content: `${first ? `${first}\n\n` : ''}Start. You have at most ${maxSteps} steps.\n\n${formatObservation(seen)}`}];
+  let final = null;
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
     let answer;
-    try { answer = await ask({system: SYSTEM, messages, schema: actionSchema(views)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 160)}`; break; }
+    try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 160)}`; break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
-    const turned = await takeTurn({input, act, seen, steps, bugs, views, row});
+    const input = parseAction(answer.text, [...ACTIONS, ...(extend?.actions || [])]), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
+    const turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     // Older page views are dropped from the conversation: the latest one is what matters, and the prompt stays short.
     for (const message of messages) if (message.role === 'user' && message.content.length > 400 && message !== messages[0]) message.content = '(an earlier page view, omitted)';
     messages.push({role: 'user', content: turned.reply});
     trace.push(row);
     log(`  step ${turn + 1}: ${row.action} (${spent.calls} calls, ${spent.input + spent.output} tokens)`);
-    if (turned.finished) { stopped = 'done'; break; }
+    if (turned.finished) { stopped = 'done'; final = input; break; }
   }
-  return {steps, bugs, trace, spent, stopped};
+  return {steps, bugs, trace, spent, stopped, final};
 }
 
 /** Why an action is refused, or '' when it may run: the control must be in the latest view and allowed, a page and a key must come from their lists. */
@@ -137,9 +143,10 @@ function stepOf(input, control) {
 }
 
 /** One answered turn: refuses, records a report, stops, or performs the action and reads the page again. Returns {reply, seen, finished}; `row` gets what was done. */
-async function takeTurn({input, act, seen, steps, bugs, views, row}) {
+async function takeTurn({input, act, seen, steps, bugs, views, row, extend}) {
   if (input.error) return {reply: `Refused: ${input.error}.`, seen, finished: false};
   if (input.action === 'done') return {reply: 'Stopped.', seen, finished: true};
+  if (extend?.actions.includes(input.action)) return {reply: extend.take(input, row, {steps}), seen, finished: false};
   if (input.action === 'report_bug') return {reply: takeReport(input, steps, bugs, row), seen, finished: false};
   const refused = refusal(input, seen, views);
   if (refused) return {reply: refused, seen, finished: false};
