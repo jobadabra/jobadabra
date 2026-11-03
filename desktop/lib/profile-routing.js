@@ -43,7 +43,7 @@ async function route(storage, {fetcher, ai = {}, now = new Date(), copy = saveCo
   for (const line of candidates) {
     const said = judged.get(line.id), identity = sourceKey(line);
     if (!live.has(identity)) continue;
-    if (said?.home === 'stay' || line.home) { handled.add(identity); continue; }
+    if (said?.home === 'stay' || said?.clarity === 'prose' || line.home) { handled.add(identity); continue; }   // prose stays put and is never retried (3 Nov 2026)
     if (!byId.has(said?.home)) continue;
     if (chosen.has(identity) && chosen.get(identity).home !== said.home) incompatible.add(identity);
     chosen.set(identity, {line, home: said.home});
@@ -111,7 +111,7 @@ async function route(storage, {fetcher, ai = {}, now = new Date(), copy = saveCo
     return !matches.length || matches.some(line => !handled.has(sourceKey(line)));
   });
   storage.saveSettings({profileUnsure: remaining});
-  clarity.record(storage, candidates, judged, {now, present: linesOf(await read(opened))});
+  clarity.record(storage, candidates, judged, {now, present: linesOf(await read(opened)), rubric: true});
   retried.set(storage.dir, {stamp: digest(remaining), after: now.getTime() + DAY});
   log('profile', 'unplaced lines organized from validated AI destinations', {requestedBy: 'saved questions read', sources: candidates.length, moved, remaining: remaining.length, stale: candidates.filter(line => !live.has(sourceKey(line))).length});
   return {judged: candidates.length, moved, unclear: candidates.filter(line => clarity.UNCLEAR[judged.get(line.id)?.clarity]).length};

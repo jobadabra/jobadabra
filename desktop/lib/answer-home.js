@@ -13,8 +13,8 @@ export const HOME_NAMES = Object.fromEntries(Object.entries(sections.SECTIONS).m
 export async function homeOf(question, value, ai = {}) {
   if (!question || !value || !(ai.client || ai.apiKey)) return '';
   try {
-    const home = (await judge([{id: 'q', label: question, value}], ai)).get('q')?.home;
-    return sections.SECTIONS[home] ? home : '';
+    const said = (await judge([{id: 'q', label: question, value}], ai)).get('q');
+    return said?.clarity !== 'prose' && sections.SECTIONS[said?.home] ? said.home : '';   // prose never moves (3 Nov 2026)
   } catch { return ''; }
 }
 

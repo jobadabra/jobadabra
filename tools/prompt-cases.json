@@ -13,6 +13,12 @@
       "cases": ["desktop/test/details-review-sense.test.js", "desktop/test/question-sense.test.js"],
       "prompts": {"desktop/lib/open-wording.js": ["INSTRUCTIONS"]}
     },
+    "profile-lines": {
+      "live": false,
+      "about": "The judge of saved Profile lines (lib/profile-move.js): a letter's lines are prose, never unclear and never moved (a Windows tester, 3 Nov 2026: judged 82, unclear 81); offline schema and stub-client checks, both prompts",
+      "cases": ["desktop/test/details-review-letter.test.js"],
+      "prompts": {"desktop/lib/profile-move.js": ["INSTRUCTIONS", "ORGANIZE_INSTRUCTIONS"]}
+    },
     "consent-choice": {
       "live": false,
       "about": "Exact affirmative consent choices: offline schema and refusal guards, never a factual attestation",
