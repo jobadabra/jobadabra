@@ -8,9 +8,10 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from tools.rerun_not_acquired import decide  # noqa: E402
+from tools.rerun_not_acquired import decide, setup_failed  # noqa: E402
 
 BETA3 = json.loads((ROOT / 'tests' / 'fixtures' / 'beta3-jobs.json').read_text(encoding='utf-8'))
+SETUP = json.loads((ROOT / 'tests' / 'fixtures' / 'setup-fail-jobs.json').read_text(encoding='utf-8'))   # run 41566839140 (3 Nov 2026): apply-2of3 died in actions/checkout, apply-3of3 passed
 WORKFLOW = (ROOT / '.github' / 'workflows' / 'rerun-not-acquired.yml').read_text(encoding='utf-8')
 
 
@@ -43,6 +44,33 @@ class RerunNotAcquired(unittest.TestCase):
         job = next(j for j in data['jobs'] if j['name'] == 'E2E · Mac + Linux · interactions')
         job.update(steps=3, runner_name='GitHub Actions 1')
         self.assertEqual(decide(data['jobs'], data['annotations'])[0], 'keep')
+
+    def test_a_job_whose_checkout_failed_before_its_suite_began_is_re_run_not_called_red(self):
+        # Why (3 Nov 2026, mac-07): the real jobs of run 41566839140 (listed steps, a runner, "Run actions/checkout@v5" failed, "Run the apply-2of3 suite" skipped) were judged as a red suite.
+        self.assertEqual(decide(SETUP['jobs'], {}), ('rerun', ['apply-2of3'], []))
+
+    def test_a_suite_that_began_and_failed_is_a_real_red_even_when_a_setup_step_also_failed(self):
+        jobs = copy.deepcopy(SETUP['jobs'])
+        suite = next(s for s in jobs[0]['steps'] if s['name'].startswith('Run the apply-2of3 suite'))
+        suite['conclusion'] = 'failure'
+        self.assertFalse(setup_failed(jobs[0]))
+        self.assertEqual(decide(jobs, {})[0], 'keep')
+
+    def test_a_setup_failure_beside_a_real_red_changes_nothing_and_a_job_with_no_suite_step_is_never_setup(self):
+        jobs = copy.deepcopy(SETUP['jobs'])
+        jobs.append({'id': 7, 'name': 'apply-1of3', 'conclusion': 'failure', 'runner_name': 'r', 'steps': [
+            {'number': 1, 'name': 'Set up job', 'conclusion': 'success'}, {'number': 2, 'name': 'Run the apply-1of3 suite (the only try)', 'conclusion': 'failure'}]})
+        self.assertEqual(decide(jobs, {}), ('keep', ['apply-2of3'], ['apply-1of3']))
+        unit = {'id': 8, 'name': 'unit', 'conclusion': 'failure', 'runner_name': 'r', 'steps': [
+            {'number': 1, 'name': 'Set up job', 'conclusion': 'success'}, {'number': 2, 'name': 'Run the unit tests', 'conclusion': 'failure'}]}
+        self.assertFalse(setup_failed(unit))   # its failing step is the test run itself
+
+    def test_a_setup_step_stopped_by_a_person_is_not_a_failure(self):
+        jobs = copy.deepcopy(SETUP['jobs'])
+        for step in jobs[0]['steps']:
+            if step['conclusion'] == 'failure': step['conclusion'] = 'cancelled'
+        jobs[0]['conclusion'] = 'cancelled'
+        self.assertFalse(setup_failed(jobs[0]))
 
     def test_the_workflow_reruns_once_on_beta_and_e2e_runs(self):
         for name in ('Release · Build, test, beta', 'CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows'):

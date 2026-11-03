@@ -38,7 +38,9 @@ elif '/artifacts?per_page=100' in endpoint:
     print('\n'.join(data.get('artifacts', {}).get(rid, {})))
 elif endpoint.endswith('/jobs?per_page=100'):
     rid = endpoint.split('/runs/')[1].split('/')[0]
-    print(json.dumps(data['jobs'].get(rid, data['recheck_jobs'] if rid == '99' else [])))
+    jobs = data['jobs'].get(rid, data['recheck_jobs'] if rid == '99' else [])
+    if '--paginate' in args: print('\n'.join(json.dumps(job) for job in jobs))   # tools/rerun_not_acquired.py reads one job per line
+    else: print(json.dumps(jobs))
 elif '/check-runs/' in endpoint:
     jid = endpoint.split('/check-runs/')[1].split('/')[0]
     print(json.dumps([data.get('annotations', {}).get(jid, [])]))
@@ -50,7 +52,13 @@ elif endpoint.endswith('commits/main'):
 elif 'event=workflow_dispatch' in endpoint:
     if dispatched: print(99)
 elif endpoint.endswith('/actions/runs/99'):
-    print('completed ' + data['recheck'])
+    polls = os.path.join(state, 'rerun_polls')
+    if args[args.index('--jq') + 1] == '.status':   # the gate waiting for the workflow's one re-run: "completed" once, then the re-run is running
+        seen = int(open(polls).read()) if os.path.exists(polls) else 0
+        open(polls, 'w').write(str(seen + 1))
+        print('completed' if seen == 0 else 'in_progress')
+    elif data.get('after_rerun') and os.path.exists(polls): print('completed ' + data['after_rerun'])
+    else: print('completed ' + data['recheck'])
 else:
     sys.exit(2)
 '''
@@ -59,12 +67,12 @@ RED_RUN = {'id': 2, 'display_title': 'E2E check · on time (Worker cron)', 'conc
 RED_JOBS = {'2': [{'name': 'cardstates', 'conclusion': 'failure'}, {'name': 'settings', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'success'}]}
 
 
-def gate(data, *extra, lanes=None, verdict_tool=None, suites=None):
+def gate(data, *extra, lanes=None, verdict_tool=None, suites=None, rerun_s='0'):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
         (tmp / 'tools').mkdir()
-        for script in ('red-main-gate.sh', 'main_e2e_state.py', 'red-main-verdict.mjs'):
+        for script in ('red-main-gate.sh', 'main_e2e_state.py', 'red-main-verdict.mjs', 'rerun_not_acquired.py'):
             shutil.copyfile(ROOT / 'tools' / script, tmp / 'tools' / script)
         (tmp / 'desktop/e2e').mkdir(parents=True)
         (tmp / 'desktop/e2e/lib').symlink_to(ROOT / 'desktop/e2e/lib')   # the verdict tool's imports (suite-shards.mjs reads a chain of siblings)
@@ -81,7 +89,7 @@ def gate(data, *extra, lanes=None, verdict_tool=None, suites=None):
         if suites is not None:   # main's suite files on GitHub (desktop/e2e/suites?ref=main); unset = that read fails, which drops no red
             data = {**data, 'suites': [f'{suite}.mjs' for suite in suites]}
         (tmp / 'data.json').write_text(json.dumps({'recheck_jobs': [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'settings', 'conclusion': 'success'}], **data}))
-        env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'RED_MAIN_POLL': '0', 'RED_MAIN_FIND_S': '2', 'RED_MAIN_WAIT_S': '2'}
+        env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'RED_MAIN_POLL': '0', 'RED_MAIN_FIND_S': '2', 'RED_MAIN_WAIT_S': '2', 'RED_MAIN_RERUN_S': rerun_s}
         proc = subprocess.run(['bash', str(tmp / 'tools/red-main-gate.sh'), 'o/r', *extra], env=env, capture_output=True, text=True, timeout=120)
         dispatch = (tmp / 'dispatched').read_text() if (tmp / 'dispatched').exists() else ''
         return proc.returncode, proc.stdout + proc.stderr, dispatch
@@ -147,6 +155,22 @@ class RedMainGate(unittest.TestCase):
         code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': {'2': [{'name': 'cardstates', 'conclusion': 'failure'}]}, 'head': NEW_SHA}, suites=('settings',))
         self.assertEqual((code, dispatch), (0, ''), out)
         self.assertIn('no suite red', out)
+
+    def test_a_recheck_job_that_failed_in_setup_waits_for_its_one_rerun_and_judges_that(self):
+        # Why (3 Nov 2026, mac-07, run 41566839140): attempt 1 of the re-check had apply-2of3 die in actions/checkout; the gate judged that failure ("no failed step is recorded") and stopped the beta.
+        # rerun-not-acquired.yml re-runs the job seconds later: the gate waits for it (RED_MAIN_RERUN_S) and judges attempt 2, which is green.
+        setup = json.loads((ROOT / 'tests/fixtures/setup-fail-jobs.json').read_text(encoding='utf-8'))
+        data = {'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure', 'after_rerun': 'success', 'recheck_jobs': setup['jobs']}
+        code, out, _ = gate(data, rerun_s='20')
+        self.assertEqual(code, 0, out)
+        self.assertIn('did not run', out)
+        self.assertIn('Re-check green', out)
+
+    def test_a_recheck_that_failed_in_its_suite_is_not_waited_for(self):
+        data = {'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'}   # recheck_jobs default: both suites ran
+        code, out, _ = gate(data, rerun_s='20')
+        self.assertEqual(code, 1, out)
+        self.assertNotIn('did not run', out)
 
     def test_red_rerun_still_red_refuses(self):
         code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'})
