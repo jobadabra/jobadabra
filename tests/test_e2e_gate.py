@@ -92,6 +92,23 @@ class CiVerdictTests(unittest.TestCase):
         self.assertEqual(e2e_gate.ci_verdict([{'conclusion': 'cancelled'}]), 'superseded', 'a newer push to main cancelled it (15 Oct 2026)')
         self.assertEqual(e2e_gate.ci_verdict([{'conclusion': 'cancelled'}, {'conclusion': 'failure'}]), 'red')
 
+    def test_a_run_red_only_in_tooling_tests_is_green_but_any_app_job_red_is_red(self):
+        # Why (3 Nov 2026, owner: "Only app tests block"): the harness tests of main's build.yml no longer stop a beta; every other job, an unread job list and an empty one still do.
+        run = {'conclusion': 'failure', 'databaseId': 7}
+        names = {}
+        with patch.object(e2e_gate, 'failed_jobs', lambda repo, run_id: names.get(run_id)):
+            names[7] = ['harness / harness tests (2/3)']
+            self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'green')
+            names[7] = ['harness / harness tests (2/3)', 'Linux suites']
+            self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'red')
+            names[7] = ['integration / app (windows-latest)']
+            self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'red', 'integration tests run the app: they block')
+            names[7] = None
+            self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'red', 'a job list GitHub could not give is never a pass')
+            names[7] = []
+            self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'red', 'a red run with no failed job named is never a pass')
+            self.assertEqual(e2e_gate.ci_verdict([run]), 'red', 'with no repo to ask, a red run is red')
+
     def test_no_run_is_not_green(self):
         self.assertEqual(e2e_gate.ci_verdict([]), 'none')
 

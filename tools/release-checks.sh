@@ -37,7 +37,7 @@ if [ "$mode" != after-ci ]; then
       sleep "$poll"; waited=$((waited + poll))
     done
   else
-    verdict=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --status completed --json conclusion | python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" ci)
+    verdict=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --status completed --json conclusion,databaseId | python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" ci "$repo")
   fi
   # A push to main cancels the older commit's build.yml run (15 Oct 2026): the newest commit's run decides, so a cancelled run is green when a NEWER commit of main passed.
   # Why (28 Oct 2026, owner): a cancelled beta must wait for the newer main build that decides for it.
