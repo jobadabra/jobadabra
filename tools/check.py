@@ -59,7 +59,7 @@ def desktop_app_only(folder, node):
     app_tests = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app_tests)
     words = json.loads((folder / 'package.json').read_text())['scripts']['test'].split('&&')[-1].split()
-    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *[w for w in words[1:] if not w.strip("'").startswith('test/')], *app_tests.desktop_glob()])]
+    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *[w for w in words[1:] if not w.strip('\'"').startswith('test/')], *app_tests.desktop_glob()])]
 
 
 def commands(area, fast, node, npm, picked='all', app_only=False):
