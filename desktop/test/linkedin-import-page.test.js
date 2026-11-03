@@ -11,7 +11,7 @@ const preload = read('../preload.cjs'), handlers = read('../lib/linkedin-import-
 test('the Profile CV card has the button, the window starts the page and ⌘K opens the dialog', () => {
   assert.match(html, /id="cv-import-linkedin"[^>]*>[^]*Import from LinkedIn/);
   assert.match(app, /import \{init as linkedinImport\} from '\.\/pages\/linkedin-import\.js'/);
-  assert.match(app, /^linkedinImport\(\);/m);
+  assert.match(app, /^linkedinImport\(\{onCvBuilt: cvSaved\}\);/m);
   assert.match(nav, /add\('Profile', 'Import from LinkedIn'[^]*openImport\(\)/);
 });
 
@@ -59,11 +59,30 @@ test('the setup CV step has its LinkedIn button enabled and wired to the same di
 
 test('with no main CV the ticked rows are saved as the main CV by buildCvSave, then the same follow-up as the AI build runs once', () => {
   assert.match(page, /async function buildMainCv\(answer\)/);
-  assert.match(page, /window\.pilot\.buildCvSave\(answer\.cv\)/);
-  assert.match(page, /await cvSaved\(saved\.name\)/);
+    assert.match(page, /makeMainCv\(answer\.cv, \{save: cv => window\.pilot\.buildCvSave\(cv\), saved: name => afterCvBuilt\(name\)\}\)/);
+  assert.match(app, /linkedinImport\(\{onCvBuilt: cvSaved\}\)/, 'cv-build\'s follow-up is injected, never imported (a cycle through activity.js and nav.js)');
+  assert.doesNotMatch(page, /from '\.\/cv-build\.js'/);
   assert.match(page, /No position was ticked, so no CV was made/);
   const build = read('../renderer/pages/cv-build.js');
   assert.equal((build.match(/await cvSaved\(result\.name\)/g) || []).length, 1, 'the AI build ends through the same function');
   assert.equal((build.match(/cvReplaced\(/g) || []).length, 1, 'cvReplaced is called in cvSaved only');
 });
 
+
+// The outcomes of "no main CV" played with fakes (review of PR 3/3, 3 Nov 2026): the page only draws what makeMainCv decides.
+test('makeMainCv: no position makes no CV; a failed or throwing save never runs the follow-up; a throwing follow-up still says the CV is saved', async () => {
+  const {makeMainCv} = await import('../renderer/pages/linkedin-import-cv.js');
+  const cv = {name: 'Anna Rossi', jobs: [{company: 'Acme', roles: [{title: 'PM'}]}]};
+  const calls = [];
+  const fakes = (save, saved = async name => { calls.push(['saved', name]); }) => ({save: async given => { calls.push(['save', given.name]); return save(given); }, saved});
+  assert.deepEqual(await makeMainCv({jobs: []}, fakes(() => ({ok: true}))), {kind: 'none'});
+  assert.deepEqual(await makeMainCv(null, fakes(() => ({ok: true}))), {kind: 'none'});
+  assert.deepEqual(calls, [], 'nothing was saved for nothing');
+  assert.deepEqual(await makeMainCv(cv, fakes(() => ({ok: false, error: 'No printer'}))), {kind: 'failed', error: 'No printer'});
+  assert.deepEqual(await makeMainCv(cv, fakes(() => { throw new Error('boom'); })), {kind: 'failed', error: 'boom'});
+  assert.deepEqual(calls.filter(call => call[0] === 'saved'), [], 'the follow-up never ran after a failed save');
+  calls.length = 0;
+  assert.deepEqual(await makeMainCv(cv, fakes(() => ({ok: true, name: 'Anna_Rossi_CV.pdf'}))), {kind: 'ready', name: 'Anna_Rossi_CV.pdf'});
+  assert.deepEqual(calls, [['save', 'Anna Rossi'], ['saved', 'Anna_Rossi_CV.pdf']], 'saved once, after the save');
+  assert.deepEqual(await makeMainCv(cv, fakes(() => ({ok: true, name: 'X.pdf'}), async () => { throw new Error('redraw'); })), {kind: 'ready', name: 'X.pdf'}, 'the file exists: a failed redraw is not a failed CV');
+});

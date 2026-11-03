@@ -4,7 +4,7 @@
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {plainError} from '../run-warnings.js';
-import {cvSaved} from './cv-build.js';
+import {makeMainCv} from './linkedin-import-cv.js';
 import {$} from './core.js';
 
 const SECTIONS = [['positions', 'Positions'], ['education', 'Education'], ['skills', 'Skills'], ['languages', 'Languages'], ['details', 'Your details']];
@@ -15,6 +15,7 @@ const EU_NOTE = 'For LinkedIn members in the EU, EEA and Switzerland. Elsewhere,
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 let dialog = null, view = {connected: false}, review = null, onDone = () => {};
+let afterCvBuilt = async () => {};   // Why (3 Nov 2026, review): app.js passes cv-build's cvSaved in; importing it here closed a cycle through activity.js and nav.js (tools/arch-check.py)
 let runId = 0;   // Why (independent review, 3 Nov 2026): Escape or the backdrop closes the dialog without Cancel, and a late answer of that run must not draw into a newer dialog; a stale run is ignored
 
 const close = () => { window.pilot.linkedinImportCancel().catch(() => {}); dialog?.close(); };
@@ -156,19 +157,21 @@ async function apply(event) {
 
 /**
  * With no main CV the ticked rows become it (D3, owner 3 Nov 2026): the CV is drawn and saved as the main CV by the same IPC as "Build one with AI" (buildCvSave), then the setup's CV
- * step and the Profile card follow through cvSaved. Nothing ticked as a position means no CV is made (said, not guessed). A failure keeps nothing half-done: Update from LinkedIn asks again.
+ * step and the Profile card follow (afterCvBuilt = cv-build's cvSaved). Nothing ticked as a position means no CV is made (said, not guessed). The dialog may have been closed or reopened
+ * while the CV was drawn: the CV is saved either way, but nothing is drawn into a dialog that is not the one that asked.
  */
 async function buildMainCv(answer) {
   const details = answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : '';
   const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); })); };
-  if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Press Update from LinkedIn to choose again.');
+  if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Start the LinkedIn import again to choose positions.');
+  const mine = runId, shown = dialog;
   bodyOf().replaceChildren(el('p', 'muted', 'Making your CV…'));
   setFoot();
-  const saved = await window.pilot.buildCvSave(answer.cv).catch(error => ({ok: false, error: error.message}));
-  if (!saved.ok) return done(`Your CV could not be made: ${plainError(saved.error)} Nothing is lost: press Update from LinkedIn to try again.`, 'message bad');
-  await cvSaved(saved.name);
+  const made = await makeMainCv(answer.cv, {save: cv => window.pilot.buildCvSave(cv), saved: name => afterCvBuilt(name)});
+  if (!dialog || dialog !== shown || mine !== runId) return;
+  if (made.kind === 'failed') return done(`Your CV could not be made: ${plainError(made.error)} Nothing is lost: start the LinkedIn import again to try once more.`, 'message bad');
   setHead('Your CV is ready', 'Built from your LinkedIn profile.');
-  return done(`${saved.name} is now your CV. Check it under Profile → CV; the wording is yours to change.`);
+  return done(`${made.name} is now your CV. Its wording is yours to change in Settings → Profile → CV.`);
 }
 
 /** Open the dialog (from Profile or ⌘K). `done` runs after something was added or the connection changed, so the page redraws. */
@@ -181,8 +184,9 @@ export async function openImport(done = () => {}) {
   dialog.showModal();
 }
 
-/** Wires the Profile card's "Import from LinkedIn" button to the dialog; `onChange` runs after a save so the page redraws. Does nothing when the button is absent. */
-export function init({onChange = () => {}} = {}) {
+/** Wires the Profile card's "Import from LinkedIn" button to the dialog; `onChange` runs after a save so the page redraws; `onCvBuilt(name)` runs after the CV was built from LinkedIn. Does nothing when the button is absent. */
+export function init({onChange = () => {}, onCvBuilt = async () => {}} = {}) {
+  afterCvBuilt = onCvBuilt;
   for (const id of ['cv-import-linkedin', 'cv-linkedin']) $(id)?.addEventListener('click', () => openImport(onChange));   // Profile → Your CV, and the setup's CV step (the third way in)
   window.pilot.onLinkedinImportStep?.(onStep);
   refreshButton();

@@ -7,7 +7,7 @@ import {offerBrowser, showBrowserProgress} from './pages/browser-progress.js';  
 import {shared} from './pages/shared.js';
 import {sessionList} from './pages/sessions.js';
 import {init as wizard} from './pages/wizard.js';
-import {init as cvBuild} from './pages/cv-build.js';
+import {init as cvBuild, cvSaved} from './pages/cv-build.js';
 import {init as linkedinImport} from './pages/linkedin-import.js';
 import {init as demo} from './pages/demo.js';
 import {init as activity} from './pages/activity.js';
@@ -73,7 +73,7 @@ notifyMoment();
 saveProgress();   // Search settings saves say how far they are (save-progress.js)
 await wizard();
 cvBuild();   // Build a CV with the AI: its dialog and buttons (pages/cv-build.js)
-linkedinImport();   // Import from LinkedIn: Profile → CV button and dialog (pages/linkedin-import.js)
+linkedinImport({onCvBuilt: cvSaved});   // Import from LinkedIn: Profile → CV button, the setup's CV step and the dialog (pages/linkedin-import.js); cvSaved is what Build with AI ends with too
 await demo();
 await activity();
 await strategyReview();

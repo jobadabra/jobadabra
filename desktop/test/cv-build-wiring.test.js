@@ -29,7 +29,7 @@ test('each IPC is handled, preloaded and blocked in demo mode', () => {
   }
 });
 
-test('From LinkedIn is shown but disabled with a "Coming soon" tooltip until LinkedIn approves sign-in (owner, 26 Oct 2026)', () => {
+test('From LinkedIn on the CV step is live (it was "Coming soon" until the LinkedIn import shipped, owner 26 Oct and 3 Nov 2026)', () => {
   const tag = html.match(/<button[^>]*id="cv-linkedin"[^>]*>/)[0];
-  assert.match(tag, /\bdisabled\b/); assert.match(tag, /title="Coming soon"/); assert.doesNotMatch(tag, /\bhidden\b/);
+  assert.doesNotMatch(tag, /\bdisabled\b/); assert.doesNotMatch(tag, /Coming soon/); assert.doesNotMatch(tag, /\bhidden\b/);
 });
