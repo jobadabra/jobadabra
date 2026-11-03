@@ -24,15 +24,17 @@ export const PEOPLE = [
 const jobs = person => [`${person.role}, ${person.place} Services`, `Assistant ${person.role.toLowerCase()}, Northgate Group`];
 const dates = ['Mar 2021 - Present', 'Jun 2016 - Feb 2021'];
 const body = person => jobs(person).flatMap((job, i) => [job, dates[i], `- Handled daily work as ${person.role.toLowerCase()} for a team of ${4 + i * 3}`, '']);
+// Each shape returns its lines AND the heading lines it emits (a line that is only a section name): they are declared where the lines are written, so a new heading cannot be missed by the re-check.
+const shape = (lines, headings = []) => ({lines, headings});
 export const CV_SHAPES = {
-  headingLines: person => [person.name, 'Summary', `${person.role} with eight years of experience`, '', 'Experience', ...body(person), 'Education', 'Vocational diploma, 2014', '', 'Languages', ...person.languages],
-  table: person => [`| ${person.name} | ${person.place} |`, '|---|---|', ...jobs(person).map((job, i) => `| ${job} | ${dates[i]} |`), `| Languages | ${person.languages.join(', ')} |`],
-  noSummary: person => [person.name, ...body(person), 'Education', 'Vocational diploma, 2014'],
-  manyLanguages: person => [person.name, `Languages: ${[...person.languages, 'Dutch (A1)', 'Arabic (A1)'].join(', ')}`, ...body(person)],
-  gapYears: person => [person.name, `${person.role}, ${person.place} Services`, 'Mar 2021 - Present', '', 'Career break 2017 - 2020 (family care)', '', `Assistant ${person.role.toLowerCase()}, Northgate Group`, 'Jun 2013 - Dec 2016'],
-  foreignSalary: person => [person.name, ...body(person), `Expected salary: 41,000 ${person.currency === 'EUR' ? 'USD' : 'EUR'} a year; current salary 3,400 ${person.currency} a month`],
-  veryShort: person => [`${person.name}, ${person.role}`, person.place],
-  veryLong: person => [person.name, ...Array.from({length: 20}, (_, i) => body({...person, role: `${person.role} ${i + 1}`})).flat(), 'Education', 'Vocational diploma, 2014'],
+  headingLines: person => shape([person.name, 'Summary', `${person.role} with eight years of experience`, '', 'Experience', ...body(person), 'Education', 'Vocational diploma, 2014', '', 'Languages', ...person.languages], ['Summary', 'Experience', 'Education', 'Languages']),
+  table: person => shape([`| ${person.name} | ${person.place} |`, '|---|---|', ...jobs(person).map((job, i) => `| ${job} | ${dates[i]} |`), `| Languages | ${person.languages.join(', ')} |`]),
+  noSummary: person => shape([person.name, ...body(person), 'Education', 'Vocational diploma, 2014'], ['Education']),
+  manyLanguages: person => shape([person.name, `Languages: ${[...person.languages, 'Dutch (A1)', 'Arabic (A1)'].join(', ')}`, ...body(person)]),
+  gapYears: person => shape([person.name, `${person.role}, ${person.place} Services`, 'Mar 2021 - Present', '', 'Career break 2017 - 2020 (family care)', '', `Assistant ${person.role.toLowerCase()}, Northgate Group`, 'Jun 2013 - Dec 2016']),
+  foreignSalary: person => shape([person.name, ...body(person), `Expected salary: 41,000 ${person.currency === 'EUR' ? 'USD' : 'EUR'} a year; current salary 3,400 ${person.currency} a month`]),
+  veryShort: person => shape([`${person.name}, ${person.role}`, person.place]),
+  veryLong: person => shape([person.name, ...Array.from({length: 20}, (_, i) => body({...person, role: `${person.role} ${i + 1}`})).flat(), 'Education', 'Vocational diploma, 2014'], ['Education']),
 };
 /** File names that have broken an upload or a title: spaces, accents, a long name, no extension word, a trailing copy marker. */
 export const FILE_NAMES = ['CV final (2) FINAL.pdf', 'Curriculum_vitae_actualizado.pdf', 'cv.PDF', 'My résumé – 2026.pdf', 'resume.docx.pdf', `${'long-name-'.repeat(8)}cv.pdf`];
@@ -43,9 +45,9 @@ const STRATEGIES = ['one role in one city', 'one role anywhere in the country', 
  * One person for a seed: {seed, name, country, language, role, place, currency, languages, strategy, cv: {shape, fileName, lines, text, headingLines}}.
  * `shape` is picked unless `shape` is passed (a named plan fixes the shape that broke). `headingLines` are the CV lines that are only a section name ("Summary"): none of them may end up saved as an answer.
  */
-export function makePersona(seed, {shape} = {}) {
-  const next = sequence(seed), person = pick(PEOPLE, next), name = shape && CV_SHAPES[shape] ? shape : pick(Object.keys(CV_SHAPES), next);
-  const lines = CV_SHAPES[name](person), headings = ['Summary', 'Experience', 'Education', 'Languages'].filter(word => lines.includes(word));
+export function makePersona(seed, {shape: chosen} = {}) {
+  const next = sequence(seed), person = pick(PEOPLE, next), name = chosen && CV_SHAPES[chosen] ? chosen : pick(Object.keys(CV_SHAPES), next);
+  const {lines, headings} = CV_SHAPES[name](person);
   return {seed, ...person, strategy: pick(STRATEGIES, next), cv: {shape: name, fileName: pick(FILE_NAMES, next), lines, text: lines.join('\n'), headingLines: headings},
     email: `${person.name.toLowerCase().normalize('NFD').replace(/[^a-z ]/g, '').replace(/ +/g, '.')}@example.test`};
 }

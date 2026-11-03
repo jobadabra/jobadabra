@@ -19,7 +19,7 @@ test('a good queue has no finding, and an unanswered question is not one', () =>
   assert.deepEqual(labelAsValue(QUESTIONS), []);
 });
 
-test('a planted "Saved: Workload" (the value is its own question) is caught, and only that row', () => {
+test('a planted "Saved: Notice period" (the value is its own question) is caught, and only that row', () => {
   const found = labelAsValue(plantLabelAsValue(QUESTIONS, 0));
   assert.equal(found.length, 1);
   assert.equal(found[0].kind, 'value_equals_label');

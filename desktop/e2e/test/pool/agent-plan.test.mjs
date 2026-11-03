@@ -63,10 +63,13 @@ test('an area whose code changed always gets a goal', () => {
 });
 
 test('a small vocabulary still makes a plan, and reports the share honestly when half cannot be new', () => {
-  const few = MOVES.slice(0, 3), first = planSession({seed: 1, moves: few});
-  assert.equal(first.goals.length, 3);
-  const again = planSession({seed: 1, moves: few, coverage: recordSession([], first)});
-  assert.ok(again.newShare < MIN_NEW || again.newShare === 1, 'it says so instead of pretending');
+  const few = MOVES.slice(0, 3);
+  assert.equal(planSession({seed: 1, moves: few}).goals.length, 3);
+  // Two moves, every pair they can make already walked (both orders): MIN_NEW is unreachable, so the plan must say so with the real share.
+  const two = MOVES.slice(0, 2), seen = [{pairs: pairsOf(two)}, {pairs: pairsOf([...two].reverse())}];
+  const again = planSession({seed: 1, moves: two, coverage: seen});
+  assert.ok(again.newShare < MIN_NEW, `it says ${again.newShare}, not a share it did not reach`);
+  assert.equal(again.newShare, Number(newShare(pairsOf(again.goals), seen).toFixed(3)));
 });
 
 test('the coverage record keeps the last seven sessions, oldest dropped', () => {
@@ -99,6 +102,15 @@ test('the CV shapes that broke the app are in the data: heading lines, a table, 
   assert.match(lines('foreignSalary').text, /Expected salary: 41,000 (USD|EUR)/);
   assert.ok(lines('veryShort').lines.length <= 2);
   assert.ok(lines('veryLong').lines.length > 150);
+});
+
+test('every CV shape declares exactly the heading lines it emits (a section name alone on a line)', () => {
+  for (const name of Object.keys(CV_SHAPES)) {
+    const {lines, headingLines} = makePersona(4, {shape: name}).cv;
+    for (const heading of headingLines) assert.ok(lines.includes(heading), `${name}: declares "${heading}" but does not emit it`);
+    const bare = lines.filter(line => /^(Summary|Experience|Education|Languages|Skills|Profile)$/.test(line));
+    assert.deepEqual([...new Set(bare)].sort(), [...headingLines].sort(), `${name}: a heading line is emitted but not declared`);
+  }
 });
 
 test('the moves come from the app: a job entry folds into one, an unsafe or queue entry is dropped, a repeat is one', () => {
