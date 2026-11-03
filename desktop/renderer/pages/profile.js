@@ -129,8 +129,9 @@ export async function loadSettings() {
   showMode(shared.state.settings);
   document.querySelectorAll('[data-secret]').forEach(line => {
     const set = (shared.state.ownSecrets || shared.state.secrets)[line.dataset.secret];   // the person's own keys: Free AI's token in the same slot is not "Connected" (lib/secrets.js)
-    line.textContent = set ? '✓ Connected' : 'Not set';
-    line.classList.toggle('on', set);
+    const refused = set && line.dataset.secret === 'ANTHROPIC_API_KEY' && shared.state.settings.aiKeyBad;   // the provider refused it (lib/ai-key-health.js): never "Connected"
+    line.textContent = refused ? 'Key refused · paste a new one' : set ? '✓ Connected' : 'Not set';
+    line.classList.toggle('on', set && !refused);
   });
   showGoogle();
   showTelegram();

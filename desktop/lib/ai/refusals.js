@@ -17,3 +17,16 @@ export function heard(error, cap = null) {
   if (!cap && ![429, 503].includes(error?.status)) return;
   for (const listener of listeners) { try { listener({status: error?.status || 429, cap}); } catch { /* a listener never breaks the caller's error */ } }
 }
+
+// The user's OWN API key, as the provider answered it: a 401 means "this key does not work", a good answer means it does. One owner for that verdict
+// (lib/ai-key-health.js listens): every AI step goes through an adapter, so one rejected call tells Settings → Connections and the window, not each card.
+const verdicts = new Set();
+/** Listens for the user's own key verdicts: listener({engine, apiKey, ok}). Returns the stop function. */
+export const onKeyVerdict = listener => { verdicts.add(listener); return () => verdicts.delete(listener); };
+const tell = verdict => { for (const listener of verdicts) { try { listener(verdict); } catch { /* a listener never breaks the caller's error */ } } };
+/** An adapter's failed call: a 401 on a key means the provider refused it (other errors say nothing about the key). Never throws. */
+export function keyHeard(engine, apiKey, error) {
+  if (error?.status === 401 && apiKey) tell({engine, apiKey, ok: false});
+}
+/** An adapter's good answer with this key: the provider accepts it. Never throws. */
+export const keyWorked = (engine, apiKey) => { if (apiKey) tell({engine, apiKey, ok: true}); };

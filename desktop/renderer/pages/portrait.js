@@ -4,6 +4,7 @@
 import {el, pill, tag} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {$} from './core.js';
+import {shared} from './shared.js';
 import {PROFILE_TABS} from './profile-save-bar.js';
 import {plainError} from '../run-warnings.js';
 
@@ -78,7 +79,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const title = el('div', 'portrait-title');
   title.append(el('h2', '', 'Your portrait'), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
   line.append(title);
-  if (status.state === 'outdated') line.append(pill('Updating soon', 'info'));
+  if (status.state === 'outdated') line.append(note ? pill('Not updated', 'bad', {title: note}) : pill('Updating soon', 'info'));   // a note says why it is not (the AI key was refused)
   if (status.letter?.length) line.append(viewSwitch(showLetter ? 'letter' : 'structured', onView));
   box.append(line);
   if (showLetter) { box.append(letterSheet(status)); return box; }
@@ -93,6 +94,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   return box;
 }
 
+const KEY_REFUSED = 'Your AI key was refused, so the portrait cannot be written. Paste a working key in Settings → Connections → AI, then open this tab again.';
 const REASONS = {no_ai: 'Choose your AI in Settings → Connections → AI, then open this tab again.', failed: 'The writer could not run just now. Open this tab again to retry.'};
 let view = 'structured', last = null, loaded = false;
 try { view = localStorage.getItem('portraitView') === 'letter' ? 'letter' : 'structured'; } catch { /* storage blocked: the default view */ }
@@ -105,10 +107,15 @@ export async function loadPortrait() {
   if (!$('portrait-body')) return;
   const status = await window.pilot.portrait();
   if (status?.ok === false) return $('portrait-body').replaceChildren(el('p', 'muted', plainError(status.error)));
-  draw(status);
+  const refused = shared.state?.settings?.aiKeyBad;   // lib/ai-key-health.js: the provider answered 401 for the saved key
+  draw(status, refused && status.state !== 'current' ? KEY_REFUSED : '');
   if (loaded || status.state === 'current' || status.state === 'not_yet') return;
   loaded = true;
   const result = await window.pilot.portraitRefresh();
   if (result?.ran) draw(await window.pilot.portrait());
-  else if (REASONS[result?.reason]) { loaded = false; draw(status, status.sections.length ? '' : REASONS[result.reason]); }
+  else if (REASONS[result?.reason]) {
+    loaded = false;
+    shared.state = await window.pilot.state().catch(() => shared.state);   // the refused call may have just marked the key
+    draw(status, shared.state?.settings?.aiKeyBad ? KEY_REFUSED : status.sections.length ? '' : REASONS[result.reason]);
+  }
 }

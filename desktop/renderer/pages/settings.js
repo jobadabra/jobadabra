@@ -7,7 +7,7 @@ import {icon} from '../icons.js';
 import {betaText, testText, updateText} from '../update-text.js';
 import {shared} from './shared.js';
 import {$, aiReady, show} from './core.js';
-import {extensionFrom, justStarted} from '../service-status.js';
+import {aiService, extensionFrom, justStarted} from '../service-status.js';
 import {openView, remembered} from './nav.js';
 import {profileBar} from './profile-save-bar.js';
 import {detailsChanged} from './details-drafts.js';
@@ -79,13 +79,14 @@ async function openProfile() {
 const SERVICE_CACHE = 'serviceChecks';
 const lastChecks = () => { try { return JSON.parse(localStorage.getItem(SERVICE_CACHE) || 'null'); } catch { return null; } };
 function statusFrom({extension, google}) {
-  const on = {ai: aiReady(), notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
+  const ai = aiService(aiReady(), shared.state.settings.aiKeyBad);   // a key the provider refused (401, lib/ai-key-health.js) is never "Connected"
+  const on = {ai: ai.on, notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     aggregators: !!((shared.state.secrets.ADZUNA_APP_ID && shared.state.secrets.ADZUNA_APP_KEY) || shared.state.secrets.JOOBLE_API_KEY), cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
     telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on};
   const detail = {ai: aiReady() && ({cli: 'Claude Code · your plan', codex: 'Codex · your plan', openai: 'OpenAI API key'}[shared.state.settings.aiEngine] || 'Anthropic API key'), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
-  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': 'Off'};
+  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': 'Off', ai: ai.words};
   const checking = {google: !google, extension: extension.checking};
   return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }

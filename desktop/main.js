@@ -107,7 +107,7 @@ import {createAppUpdates} from './lib/app-updates.js'; import {createZoom} from 
 import {createMainWindow} from './lib/main-window.js';
 import {createAppReminders} from './lib/app-reminders.js';
 import {createCvWindows} from './lib/cv-windows.js';
-import {createAppAllowance} from './lib/app-allowance.js';
+import {createAppAllowance, keyHealth} from './lib/app-allowance.js';
 import {keepLegacyIdentity} from './lib/app-identity.js';
 import {registerTelemetryHandlers} from './lib/telemetry-handlers.js';
 
@@ -193,7 +193,7 @@ function handlers() {
   };
   ipcMain.handle('state', () => ({
     about,
-    settings: forWindow(storage.settings()),   // the window shows the effective choice, whatever was never saved
+    settings: {...forWindow(storage.settings()), aiKeyBad: keyHealth(storage).rejected},   // the window shows the effective choice, whatever was never saved; aiKeyBad: the saved AI key was refused (lib/ai-key-health.js)
     secrets: storage.secretsPresent(), ownSecrets: ownSecretsPresent(storage), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
     hasCv: fs.existsSync(storage.path('cv.pdf')), hasProfile: !!(storage.settings().setupDone && (storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID || storage.readText('profile.md'))),
     folder: storage.dir,

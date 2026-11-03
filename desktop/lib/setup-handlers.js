@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {cleanSecret} from './secrets.js';
 import {checkAnthropicKey} from './ai/anthropic-api.js';
+import {keyWorked} from './ai/refusals.js';
 import {registerPlanHandlers} from './plan-handlers.js';
 import {checkOpenAiKey} from './ai/openai-api.js';
 import {log as appLog} from './log.js';
@@ -95,6 +96,7 @@ export function registerSetupHandlers(ctx) {
       if (testKey === 'reject') throw Object.assign(new Error('Invalid test key'), {status: 401});
       if (testKey !== 'accept') {
         await checkAnthropicKey(key); // free call: is the key valid?
+        keyWorked('api', key);   // a key the provider just took is not "refused" any more (lib/ai-key-health.js)
       }
       return {ok: true};
     } catch (error) {

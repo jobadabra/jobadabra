@@ -28,3 +28,5 @@ export const justStarted = () => (globalThis.performance?.now?.() ?? Infinity) <
 // at the time it was taken (record.at): Connected six hours ago is still the last known state, the first paint shows it.
 export const extensionFrom = (record, {justStarted: started = false} = {}) => extensionState({known: !!record, installed: record?.installed || [],
   seen: record?.seen || null, browserRunning: record?.browserUp ?? null, now: record?.at ?? Date.now(), justStarted: started});
+// The AI card of Settings → Connections: on only while the key works. keyBad = the provider refused the saved key (state().settings.aiKeyBad, lib/ai-key-health.js).
+export const aiService = (ready, keyBad) => ({on: !!ready && !keyBad, words: ready && keyBad ? 'Key refused · paste a new one' : ''});
