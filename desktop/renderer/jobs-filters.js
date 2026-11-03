@@ -55,5 +55,11 @@ export const hasViewOption = ids => ids.some(id => id.startsWith('view:'));
 // Where "Find more jobs" belongs: the lists that hold job matches you have not decided on. Under Applied, Inbound, Saved, Dismissed or a stage,
 // a search would add rows to none of them. Why (2 Nov 2026, owner: a "Find more jobs" card over the Inbound list): one rule, read by pages/jobs-find.js.
 export const FINDS_MORE = new Set(['open', 'all', 'everything']);
-/** True when any ticked filter (ids from FILTER_OPTIONS) lists job matches a search can add to; an unknown id counts as no. Pure, never throws. */
-export const findsMore = ids => ids.some(id => FINDS_MORE.has(id));
+// The counters above the list whose lists a search adds to (Total matches, High fit); any other counter (Applied, Waiting, In process, Closed, Stuck) or a fixed
+// set of jobs lists applications. Why (#3026, Gitar): a counter sets the filters to "all", which alone would keep the card over the Applied list.
+const MATCH_COUNTERS = new Set(['total', 'high']);
+/**
+ * True when the list a search can add to is showing: no counter but a match counter is pressed, and a ticked filter (ids from FILTER_OPTIONS) lists job matches.
+ * `counter`: the pressed counter (jobsState.statFilter: an id, {urls}, or null). An unknown id counts as no. Pure, never throws.
+ */
+export const findsMore = (ids, counter = null) => (!counter || MATCH_COUNTERS.has(counter)) && ids.some(id => FINDS_MORE.has(id));

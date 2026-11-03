@@ -46,4 +46,7 @@ test('Find more jobs belongs to the lists of job matches only', () => {
   assert.deepEqual(finds, ['open', 'all', 'everything']);
   assert.equal(findsMore(['inbound']), false);
   assert.equal(findsMore(['inbound', 'open']), true, 'several ticked: any list that finds more');
+  // A counter sets the filters to "all" (jobs-view.js statClick): only Total matches and High fit are lists a search adds to (#3026, Gitar).
+  for (const counter of ['applied', 'waiting', 'interviews', 'closed', 'stuck', {urls: new Set()}]) assert.equal(findsMore(['all'], counter), false, JSON.stringify(counter));
+  for (const counter of ['total', 'high']) assert.equal(findsMore(['all'], counter), true, counter);
 });
