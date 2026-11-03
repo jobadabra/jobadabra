@@ -6,14 +6,20 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import test from 'node:test';
 import fs from 'node:fs';
-import {isAlive} from '../../lib/app-tree.mjs';
+import {isAlive, listProcesses} from '../../lib/app-tree.mjs';
 import {closeApp} from '../../lib/app.mjs';
 import {pollUntil} from '../../lib/wait-on-state.mjs';
 
-// Why (3 Nov 2026, #3035 CI run 41562002621, red on a file unchanged since 1 Nov): the assertion read isAlive once, right after closeApp, on a real OS process; the red said only "true !== false".
-// A state wait whose limit is a hang guard (a loaded runner never trips it), and a failure that names the process's own state (Linux /proc; '?' elsewhere).
+// Why (3 Nov 2026, #3035 CI run 41562002621, red on a file unchanged since 1 Nov; Gitar on #3039): closeApp promises the program is gone when it RETURNS (it waits for the tree itself), so the
+// assertion stays one read right after it; a wait here would let a closeApp that returns early go green. That red said only "true !== false": a failure now says the process's state
+// (Linux /proc; '?' elsewhere), what the process list says of its pid, and, by a short poll used only as evidence, whether and when it ended after the return.
 const stateOf = pid => { try { return fs.readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1]?.[0] ?? '?'; } catch { return '?'; } };
-const hasEnded = async pid => (await pollUntil(async () => !isAlive(pid), ended => ended, {capMs: 10000, tickMs: 20, log: () => {}, what: `the program ${pid} ended`})).value;
+async function assertGone(pid, what) {
+  if (!isAlive(pid)) return;
+  const state = stateOf(pid), row = listProcesses().find(each => each.pid === pid);
+  const later = await pollUntil(async () => !isAlive(pid), ended => ended, {capMs: 10000, tickMs: 20, log: () => {}, what: `the program ${pid} ended`});
+  assert.fail(`the program the launcher started was still running when closeApp returned after ${what} (state ${state}; process list: ${row ? `ppid ${row.ppid}, started ${row.started}` : 'not listed'}; ${later.value ? `it ended ${later.ms} ms later` : 'it never ended'}): it would hold the profile the next start uses`);
+}
 
 const START_THE_APP = "const {spawn} = require('node:child_process'); const app = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'}); console.log(app.pid); setInterval(() => {}, 1000);";
 const firstLine = async stream => { for await (const chunk of stream) return String(chunk).split('\n')[0]; return ''; };
@@ -27,7 +33,7 @@ test('closing the app ends the program the launcher started, when only the launc
   const exits = once(launcher, 'exit');
   const fake = {process: () => launcher, evaluate: async fn => { if (!/exit\(/.test(String(fn))) return ''; launcher.kill('SIGKILL'); await exits; }};   // other asks (the Windows key wait) are answered, only the exit ends the launcher
   await closeApp(fake, {graceMs: 300});
-  assert.equal(await hasEnded(app), true, `the program the launcher started is still running after the close (state ${stateOf(app)}): it would hold the profile the next start uses`);
+  await assertGone(app, 'the close');
 });
 
 test('a quit the app never answers ends the program the launcher started too, and still says it did not quit', async t => {
@@ -37,7 +43,7 @@ test('a quit the app never answers ends the program the launcher started too, an
   assert.ok(isAlive(app), 'positive control: the program is running before the quit');
   const hung = {process: () => launcher, evaluate: async () => {}};   // electron.quit() is asked and nothing happens
   await assert.rejects(closeApp(hung, {how: 'quit', exitCapMs: 300}), /did not quit by itself within 0\.3 s/);
-  assert.equal(await hasEnded(app), true, `the program the launcher started is still running after the late quit (state ${stateOf(app)}): it would hold the profile the next start uses`);
+  await assertGone(app, 'the late quit');
 });
 
 // Why (1 Nov 2026, #2755 Linux settings red): a reset or an import ends the app by itself, then ctx.relaunch closes it again. Playwright cannot say the process of an app that is gone
@@ -65,6 +71,6 @@ test('closing the app ends what the app started and leaves a live process whose 
   console.log = (...parts) => { said.push(parts.join(' ')); };
   try { await closeApp(fake, {graceMs: 300, list}); } finally { console.log = log; }
   assert.match(said.join('\n'), /closing the app \(pid \d+, 2 process\(es\) below it\)/, 'the tree is read from the list: the app and its second child, not the stale row');
-  assert.equal(await hasEnded(app), true, `the program the launcher started is still running after the close (state ${stateOf(app)})`);
+  await assertGone(app, 'the close');
   assert.equal(isAlive(bystander.pid), true, 'a process that is not the app\'s was ended by the close (a stale parent id took it into the tree)');
 });
