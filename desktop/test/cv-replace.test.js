@@ -17,7 +17,7 @@ globalThis.window.pilot = new Proxy({
   cvStatus: async () => ({base: true, custom: false, file: app.file}),
   cvCheckStatus: async () => app.check,
 }, {get: (all, key) => all[key] || (() => null)});
-const {replaceCv} = await import('../renderer/pages/cv-replace.js');
+const {replaceCv, cvReplaced, onCvReplaced} = await import('../renderer/pages/cv-replace.js');
 const {showCvCheck} = await import('../renderer/cv-check-view.js');
 const {documentFacts} = await import('../renderer/cv-check-model.js');
 const {shared} = await import('../renderer/pages/shared.js');
@@ -28,13 +28,14 @@ const loadCvSetting = async () => {   // what profile.js loadCvSetting does for 
   $('cv-facts').textContent = ['Current CV', documentFacts(status.file)].join(' · ');
 };
 
+onCvReplaced(async file => { $('contact-cv').textContent = file; await loadCvSetting(); });   // what pages/profile.js registers (it needs the whole page, so a test cannot import it)
+
 test('after Replace CV the card shows the new file\'s size and "Not checked yet", with no reload', async () => {
   await loadCvSetting();
   assert.match($('cv-facts').textContent, /328 KB/);
   assert.notEqual($('cvc-state').textContent, 'Not checked yet', 'the old file had a check');
   const said = [];
-  const name = await replaceCv({choose: () => globalThis.window.pilot.chooseCv(), readState: async () => { shared.state = await globalThis.window.pilot.state(); },
-    redraw: async file => { $('contact-cv').textContent = file; await loadCvSetting(); }, say: file => said.push(file)});
+  const name = await replaceCv({choose: () => globalThis.window.pilot.chooseCv(), readState: async () => { shared.state = await globalThis.window.pilot.state(); }, say: file => said.push(file)});
   assert.equal(name, 'New_CV.pdf');
   assert.equal($('contact-cv').textContent, 'New_CV.pdf');
   assert.match($('cv-facts').textContent, /91 KB/);
@@ -43,22 +44,27 @@ test('after Replace CV the card shows the new file\'s size and "Not checked yet"
   assert.deepEqual(said, ['New_CV.pdf']);
 });
 
-test('"CV replaced" is said even when the card fails to redraw', async () => {
-  const said = [];
-  await assert.rejects(replaceCv({choose: async () => 'X.pdf', readState: async () => {}, redraw: async () => { throw new Error('cvStatus failed'); }, say: file => said.push(file)}), /cvStatus failed/);
-  assert.deepEqual(said, ['X.pdf']);
+test('a cancelled picker redraws and says nothing', async () => {
+  let touched = 0;
+  const stop = onCvReplaced(async () => { touched++; });
+  assert.equal(await replaceCv({choose: async () => null, readState: async () => {}, say: () => { touched++; }}), null);
+  assert.equal(touched, 0);
+  stop();
 });
 
-test('a cancelled picker redraws nothing', async () => {
-  let drawn = 0;
-  assert.equal(await replaceCv({choose: async () => null, readState: async () => {}, redraw: async () => { drawn++; }, say: () => { drawn++; }}), null);
-  assert.equal(drawn, 0);
+test('"CV replaced" is said before the redraw, and a card that fails to redraw neither hides it nor stops the other cards', async () => {
+  const order = [];
+  const stopBad = onCvReplaced(async () => { order.push('bad'); throw new Error('cvStatus failed'); });
+  const stopGood = onCvReplaced(async () => { order.push('good'); });
+  await assert.rejects(replaceCv({choose: async () => 'X.pdf', readState: async () => {}, say: file => order.push(`say ${file}`)}), /cvStatus failed/);
+  assert.deepEqual(order.slice(0, 3), ['say X.pdf', 'bad', 'good']);
+  stopBad(); stopGood();
 });
 
-test('the Actions button goes through replaceCv and redraws the CV card (not only its name)', () => {
-  const source = fs.readFileSync(new URL('../renderer/pages/actions.js', import.meta.url), 'utf8');
-  assert.match(source, /replaceCv\(\{choose/);
-  assert.match(source, /redraw: async file => \{[^}\n]*await loadCvSetting\(\)/, 'the redraw argument is the CV card\'s own loader, not a comment or a separate call');
-  const build = fs.readFileSync(new URL('../renderer/pages/cv-build.js', import.meta.url), 'utf8');
-  assert.match(build, /\n\s+loadCvSetting\(\);/, 'Build with AI replaces the CV too: same redraw');
+test('the pages that replace a CV redraw through the hook, and the CV card registers its loader (no import of profile.js: no import cycle)', () => {
+  const read = file => fs.readFileSync(new URL(`../renderer/pages/${file}`, import.meta.url), 'utf8');
+  assert.match(read('profile.js'), /onCvReplaced\(\(\) => loadCvSetting\(\)\)/);
+  assert.match(read('actions.js'), /replaceCv\(\{choose/);
+  assert.match(read('cv-build.js'), /cvReplaced\(result\.name\)/);
+  assert.doesNotMatch(read('actions.js') + read('cv-build.js'), /from '\.\/profile\.js'/);
 });

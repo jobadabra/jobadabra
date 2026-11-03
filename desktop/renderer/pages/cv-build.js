@@ -4,7 +4,7 @@ import {shared} from './shared.js';
 import {$, message, show} from './core.js';
 import {refreshCv} from './activity.js';
 import {showCvChanged} from './cv-change.js';
-import {loadCvSetting} from './profile.js';
+import {cvReplaced} from './cv-replace.js';
 
 const FIELDS = ['company', 'title', 'from', 'to', 'place', 'did'];
 let draft = null;
@@ -74,7 +74,7 @@ export function init() {
         shared.state = await window.pilot.state();
         refreshCv();
         $('contact-cv').textContent = result.name;
-        loadCvSetting();   // the CV card's size, date and check follow the built file at once, as after Replace CV (pages/cv-replace.js)
+        cvReplaced(result.name);   // the CV card's size, date and check follow the built file at once, as after Replace CV (pages/cv-replace.js)
         if (shared.state.settings.setupDone) showCvChanged();
         showStep('saved');
       }
