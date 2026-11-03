@@ -23,7 +23,8 @@ test('the banner goes while a refresh runs or waits, through the same signal as 
   const runs = fs.readFileSync(new URL('../renderer/pages/runs-page.js', import.meta.url), 'utf8');
   assert.match(runs, /export function syncRunButtons\(busy, runningKind = null\) \{\n  refreshBusy\(busy\.includes\('search'\)\);/);
   const jobs = fs.readFileSync(new URL('../renderer/pages/jobs.js', import.meta.url), 'utf8');
-  assert.match(jobs, /export async function startSearch\(why = undefined\) \{\n  refreshBusy\(true\);/, 'a click hides it at once');
+  assert.match(jobs, /async function runSearch\(why\) \{\n  refreshBusy\(true\);/, 'the search hides it the moment it starts (a Cancel on Score first starts nothing, so the banner stays)');
+  assert.doesNotMatch(fs.readFileSync(new URL('../renderer/search-changed.js', import.meta.url), 'utf8'), /box\.hidden = true/, 'the button hides nothing itself: startSearch does, once it starts');
   const banner = fs.readFileSync(new URL('../renderer/search-changed.js', import.meta.url), 'utf8');
   assert.match(banner, /box\.hidden = refreshing \|\| !searchChanged\(settings\)/);
 });

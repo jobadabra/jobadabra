@@ -26,7 +26,6 @@ export function wireSearchChanged() {
   wired = true;
   for (const button of document.querySelectorAll('[data-refresh-jobs]')) {
     button.addEventListener('click', () => {
-      for (const box of document.querySelectorAll('.search-changed')) box.hidden = true;   // a refresh is on its way
       startSearch();
     });
   }

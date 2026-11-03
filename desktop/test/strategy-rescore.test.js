@@ -9,6 +9,7 @@ import {dialogLead, noticeTitle, reasonsText} from '../renderer/rescore-words.js
 
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const screen = read('renderer/pages/strategy-rescore.js');
+const run = read('renderer/pages/rescore-run.js');   // the running state and the one start, shared with Jobs (2 Nov 2026)
 
 test('the notice says how many jobs, once each, and why only when asked', () => {
   assert.equal(noticeTitle(1), '1 job was scored using previous search settings.');
@@ -25,14 +26,15 @@ test('the dialog gives no invented cost and says applications are left alone', (
   assert.match(dialogLead(61), /the rest in the next searches/);
 });
 
-test('the re-score starts only from the dialog, once at a time, until its search ends', () => {
-  assert.equal((screen.match(/window\.pilot\.rescoreOutdated\(\)/g) || []).length, 1);
-  assert.match(screen, /if \(dialog\.returnValue !== 'go' \|\| busy\) return;/);
+test('the re-score starts only from a dialog\'s own button, once at a time, until its search ends', () => {
+  assert.equal((run.match(/window\.pilot\.rescoreOutdated\(\)/g) || []).length, 1);
+  assert.match(run, /dialog\.onclose = \(\) => \{ if \(dialog\.returnValue === 'go'\) runRescore\(count, how\); \};/);
+  assert.match(run, /if \(running\) return;/);
   assert.match(screen, /go\.disabled = busy;/);
-  assert.match(screen, /const search = startSearch\(\{reason: 'rescore', count: result\.queued\}\);[^\n]*resolves when the search ends/);
-  assert.match(screen, /\n\s*await search;/, 'busy until its search ends');
-  assert.match(screen, /if \(refusal\(await Promise\.race\(\[search, /, '"Re-scoring now" only when the search was not refused (test/start-refusals.test.js)');
-  assert.match(screen, /finally \{\s*busy = false;/);
+  assert.match(run, /const searching = startSearch\(\{reason: 'rescore', count: result\.queued\}\);[^\n]*resolves when the search ends/);
+  assert.match(run, /\n\s*await searching;/, 'busy until its search ends');
+  assert.match(run, /if \(refusal\(await Promise\.race\(\[searching, /, '"Re-scoring now" only when the search was not refused (test/start-refusals.test.js)');
+  assert.match(run, /finally \{\s*running = null;/);
 });
 
 test('no other path re-scores: saving settings never starts one by itself', () => {
@@ -44,6 +46,14 @@ test('no other path re-scores: saving settings never starts one by itself', () =
 test('the notice is drawn from the fresh read of the saved settings, never the saved copy or the draft', () => {
   assert.match(read('renderer/pages/strategy.js'), /renderStrategy\(\{\.\.\.saved\.result, profile_empty: false, previous: 0, outdated: null\}\)/);
   assert.match(read('renderer/pages/strategy-targets.js'), /drawOutdated\(data\.outdated, loadStrategy\);[^\n]*\n\s*if \(strategyState\.editing\)/);
+});
+
+test('only a read writes the shared count; the redraw on rescore-state reads it and never writes it back (Gitar, #3024: an old cached 12 overwrote Jobs\' 0)', () => {
+  const source = read('renderer/pages/strategy-rescore.js');
+  assert.match(source, /if \(fresh\) noteOutdated\(outdated\);/);
+  assert.equal((source.match(/noteOutdated\(/g) || []).length, 1, 'one write, from the read');
+  assert.match(source, /addEventListener\('rescore-state', \(\) => \{ if \(\$\('strategy-outdated'\) && shown\) drawOutdated\(null, reloadStrategy, \{fresh: false\}\); \}\)/);
+  assert.match(source, /shown = fresh \? outdated : knownOutdated\(\);/);
 });
 
 test('the suggestions count stays apart from outdated scores', () => {

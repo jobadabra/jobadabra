@@ -26,7 +26,7 @@ from .paths import JOBS_DB
 from .desktop_jobs import (GONE, blank_profile, MIN_POSTING, NO_POSTING, NOT_ELIGIBLE, NOT_YET, _deleted_urls, _fit_detail, _kit, jobs, store_posting, posting,  # noqa: F401
                            stage_status)
 from .desktop_status import NOTION_STAGES, InProcess, _mark, _matches_rows, delete_job, set_status  # noqa: F401
-from .desktop_strategy import (COMPONENTS, GOAL_ROWS, _goals, _quietly, _readable, _section, _visits, calendar_jobs,  # noqa: F401
+from .desktop_strategy import (COMPONENTS, mark_outdated, GOAL_ROWS, _goals, _quietly, _readable, _section, _visits, calendar_jobs,  # noqa: F401
                                feeds_remote_wanted, strategy)
 
 from .desktop_tracker import (
@@ -275,6 +275,7 @@ def _jobs(db, args):
             pass
     from .ai import engine as ai_engine
     result = jobs(db, args.limit, notion_jobs=found, kit_inputs=current, hide_unscored=ai_engine.ready() and not args.first_run)
+    mark_outdated(result, db)   # the fits of the previous strategy stay, marked, with Strategy's own count (src/desktop_strategy.py)
     fresh = found is not None
     if notion and not fresh:
         result['stale'] = True

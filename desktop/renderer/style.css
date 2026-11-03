@@ -428,6 +428,15 @@ button.with-icon .icon { width: 15px; height: 15px; }
 /* Status is wide enough for its longest pill ("Confirmation received"), Actions for the main button (10em) + the menu.
    Fit is wide enough for the ring and, beside it, the caret that opens the score's breakdown. */
 /* Jobs while the app is older than its engine (pages/jobs-outdated.js): the Restart card replaces the list, whoever shows it and in whatever order. */
+/* A re-score runs (pages/rescore-run.js, <body data-rescoring>): its own card stands in for the Find jobs card; the old scores stay on the rows, muted (.is-stale). */
+#rescore-card { display: none; }
+body[data-rescoring] #rescore-card { display: block; }
+body[data-rescoring] #find-card { display: none; }
+.fit-cell.is-stale:is(.high, .mid, .low) { --tone: var(--line-strong); --track: var(--line); }   /* beats the band's colours, which come later in this file */
+.fit-cell.is-stale .fit-label { display: block; color: var(--muted); }   /* the short chip is shown in the comfortable list too, not only the compact one */
+#jobs-unscored[data-kind="stale"] { display: flex; align-items: center; gap: var(--sp-3); border-left: 4px solid var(--warn-bright); font-size: var(--fs-lg); }
+#jobs-unscored[data-kind="stale"][hidden] { display: none; }
+#jobs-unscored[data-kind="stale"] #jobs-unscored-text { flex: 1; min-width: 0; }
 body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, #jobs-unscored, #jobs-count, #jobs-more, #jobs-stuck, #jobs-filter) { display: none !important; }
 .job-list-head, .job-row { display: grid; grid-template-columns: 62px minmax(0, 2.2fr) minmax(0, 1.15fr) minmax(0, 1.25fr) 120px 208px; gap: 14px; align-items: start; }
 .job-list-head > span:last-child { text-align: end; }
