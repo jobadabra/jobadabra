@@ -24,7 +24,7 @@ on:
         options: ['off', record]
         default: 'off'
       ai_provider:
-        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        description: 'AI provider for the judges in this run only: codex or free (no claude: CI holds no AI key since 3 Nov 2026; lib/ai-provider.mjs rejects it in PR 3/5). Empty = the repo variable CI_AI_PROVIDER, else free'
         type: string
         default: ''
       suite:
