@@ -248,7 +248,7 @@ def main(argv=None):
     if by_module:
         print('py-shards: slowest modules: ' + ', '.join(f'{m} {s:.0f}s' for m, s in by_module[:8]))
         print('py-shards: slowest tests: ' + ', '.join(f'{t} {s:.0f}s' for t, s in by_test[:5]))
-    ran -= len(procs) - 1   # the bootstrap module's one test runs in every shard
+    # Why-changed (3 Nov 2026, Gitar on #3110): suite_ids holds no tests (its own are tests/guards/data/test_notion_ids.py), so every shard's count is its own.
     print(f'py-shards: {len(modules)} modules, {ran} tests, {len(procs)} shards, {"FAILED" if failed else "passed"} ({time.monotonic() - started:.1f}s)')
     return 1 if failed else 0
 
