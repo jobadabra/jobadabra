@@ -17,7 +17,7 @@ import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
 import {planSession, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, withoutRules} from '../lib/agent-plans.mjs';
 import {runSession} from '../lib/agent-run.mjs';
-import {seedPlanData} from '../lib/agent-seed.mjs';
+import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
 
 export const name = 'agent';
@@ -50,7 +50,7 @@ export async function run(ctx) {
   let session = null;
   await ctx.run(`the AI user agent works its goals (seed ${seed}, at most ${CAPS.maxMinutes} min, ${CAPS.maxCalls} broker calls, ${CAPS.maxSteps} steps)`, async () => {
     const seeded = await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed);
-    if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); }   // the app reads the CV and the rows again on a fresh load
+    if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '')} ms`); }   // the app reads the CV and the rows again on a fresh load
     const moves = movesFromPalette(await readPalette(page));
     const coverage = memoryDir && fs.existsSync(path.join(memoryDir, 'coverage.json')) ? JSON.parse(fs.readFileSync(path.join(memoryDir, 'coverage.json'), 'utf8')) : [];
     const changedLog = process.env.AGENT_CHANGED_LOG && fs.existsSync(process.env.AGENT_CHANGED_LOG) ? fs.readFileSync(process.env.AGENT_CHANGED_LOG, 'utf8') : '';

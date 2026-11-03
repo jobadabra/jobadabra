@@ -8,6 +8,7 @@ import {cvPdf} from './agent-cv-pdf.mjs';
 import {addApplication} from './focus-data.mjs';
 import {makePersona} from './agent-persona.mjs';
 import {NAMED_PLANS} from './agent-plans.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 /** The inbound rows of a persona: a recruiter lead waiting for an answer, an agency interview, and a lead whose application is already sent. Fictional employers on the e2e test host only. */
 export function inboundRows(person, today = new Date()) {
@@ -55,6 +56,22 @@ export function answerCvRead(proxy, person) {
     }
     return previous ? previous(body) : null;
   });
+}
+
+const CV_READ_FILE = ['cv', 'fact-proposals.json'];
+const keptRead = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return null; throw error; } };   // a file not there yet, or caught half-written, is "not kept yet", not a failure
+
+/**
+ * After a plan that seeded a CV and the window reloaded: wait until the app has kept the answer of its CV read (`cv/fact-proposals.json`), so What we learned shows it when the agent opens it. -> the ms waited, 0 for a plan with no CV.
+ * Why (3 Nov 2026, AI user agents 8/12, replay 41665993170): the app asks for that read about 40 s after a load, behind its other background reads, and the agent's one-minute session had already looked at What we learned before the answer was kept.
+ * No limit of its own (Rule B): it runs to the step's measured hang cap and, if that ends first, the red names the file it waited for and its last content, never "too slow".
+ */
+export async function waitCvRead(ctx, planId) {
+  if (!NAMED_PLANS[planId]?.data?.cv) return 0;
+  const file = path.join(ctx.profile, ...CV_READ_FILE);
+  const {ms, value} = await pollUntil(async () => keptRead(file), kept => Boolean(kept), {capMs: stepTimeLeft(), what: `the app keeping the answer of its CV read (${CV_READ_FILE.join('/')})`});
+  if (value?.error) console.log(`  the app kept its CV read with an error: ${value.error}`);
+  return ms;
 }
 
 /**
