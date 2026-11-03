@@ -3,7 +3,7 @@
 // permission only there, on a click); the app learns the answer when the extension posts the session (lib/linkedin-handlers.js), which this module watches for. The window never holds a cookie.
 // Invariants: one dialog at a time; the ask is counted when shown, "Not now" only from the ask; the words are renderer/linkedin-words.js. Guard: test/linkedin-consent.test.js.
 import {$} from './core.js';
-import {CONSENT, askOnPress} from '../linkedin-words.js';
+import {CONSENT, askOnPress, notOpened} from '../linkedin-words.js';
 import {NO_PLACE} from '../targets.js';
 
 export const view = {loaded: false, on: false, asked: 0, declined: 0, ask: false, hasSession: false};
@@ -40,8 +40,9 @@ async function turnOn() {
   if (opened?.opened) {
     toast('Finish in Chrome', 'A Jobadabra page opened in Chrome: press "Allow and turn on LinkedIn jobs" there. This window notices by itself.', NO_PLACE.itself, 'info');
     watchUntilOn();
-  } else toast('Chrome extension needed', 'LinkedIn jobs uses the Jobadabra Chrome extension. Connect it in Settings → Connections → Chrome extension, then try again.', NO_PLACE.itself, 'warn');
+  } else toast(...notOpened(opened));
 }
+
 async function turnOff() {
   await window.pilot.linkedinJobsOff();
   await refreshLinkedin();
