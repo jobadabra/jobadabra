@@ -9,6 +9,8 @@ import {addApplication} from './focus-data.mjs';
 import {makePersona} from './agent-persona.mjs';
 import {NAMED_PLANS} from './agent-plans.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {hashOf} from '../../lib/cv-check.js';
+import {FILE as CV_READ_FILE} from '../../lib/cv-queue.js';
 
 /** The inbound rows of a persona: a recruiter lead waiting for an answer, an agency interview, and a lead whose application is already sent. Fictional employers on the e2e test host only. */
 export function inboundRows(person, today = new Date()) {
@@ -58,7 +60,6 @@ export function answerCvRead(proxy, person) {
   });
 }
 
-const CV_READ_FILE = ['cv', 'fact-proposals.json'];
 const keptRead = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return null; throw error; } };   // a file not there yet, or caught half-written, is "not kept yet", not a failure
 
 /**
@@ -68,9 +69,10 @@ const keptRead = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')
  */
 export async function waitCvRead(ctx, planId) {
   if (!NAMED_PLANS[planId]?.data?.cv) return 0;
-  const file = path.join(ctx.profile, ...CV_READ_FILE);
-  const {ms, value} = await pollUntil(async () => keptRead(file), kept => Boolean(kept), {capMs: stepTimeLeft(), what: `the app keeping the answer of its CV read (${CV_READ_FILE.join('/')})`});
-  if (value?.error) console.log(`  the app kept its CV read with an error: ${value.error}`);
+  const file = path.join(ctx.profile, CV_READ_FILE), wanted = hashOf({path: name => path.join(ctx.profile, name)});   // the app keys its read by the hash of cv.pdf (desktop/lib/cv-queue.js), so a read of the old CV, finished after the seed, does not count
+  const {ms, value} = await pollUntil(async () => keptRead(file), kept => kept?.cv === wanted, {capMs: stepTimeLeft(), what: `the app keeping the answer of its CV read (${CV_READ_FILE} for the CV ${wanted})`});
+  if (value?.cv !== wanted) throw new Error(`the app never kept its CV read within the step's clock: ${CV_READ_FILE} ${value ? `holds the read of another CV (${value.cv}), not ${wanted}` : 'was not written'}`);
+  if (value.error) console.log(`  the app kept its CV read with an error: ${value.error}`);
   return ms;
 }
 
@@ -85,7 +87,7 @@ export async function seedPlanData(ctx, planId, seed) {
   const done = [];
   if (data.cv) {
     fs.writeFileSync(path.join(ctx.profile, 'cv.pdf'), cvPdf(person.cv.lines));
-    fs.rmSync(path.join(ctx.profile, 'cv', 'fact-proposals.json'), {force: true});   // the read of the old CV; the app also keys it by the CV's hash, so this only saves a stale file
+    fs.rmSync(path.join(ctx.profile, CV_READ_FILE), {force: true});   // the read of the old CV; the app also keys it by the CV's hash, so this only saves a stale file
     answerCvRead(ctx.proxy, person);
     done.push(`CV of ${person.name} (${person.cv.shape}, its read answered)`);
   }
