@@ -483,6 +483,20 @@
   {
    "path": "/api/triage",
    "kind": "owner"
+  },
+  {
+   "path": "/api/feedback/brief",
+   "methods": [
+    "GET"
+   ],
+   "kind": "ci"
+  },
+  {
+   "path": "/api/feedback/ai-status",
+   "methods": [
+    "POST"
+   ],
+   "kind": "ci"
   }
  ]
 }

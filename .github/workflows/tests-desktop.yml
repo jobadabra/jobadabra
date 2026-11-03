@@ -19,6 +19,7 @@ on:
       - 'tools/check.py'
       # Files outside desktop/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
       - '.github/workflows/e2e.yml'
+      - '.github/workflows/feedback-ai.yml'   # desktop/test/feedback-ai.test.js reads its jobs
       - '.github/workflows/harness.yml'
       - '.github/workflows/integration.yml'   # desktop/test/integration-workflow-paths.test.js reads its paths
       - '.gitignore'
@@ -81,6 +82,8 @@ on:
       - 'tools/pr-check-scorecard.mjs'
       - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
       - 'tools/feedback-released.mjs'   # desktop/test/feedback-released.test.js
+      - 'tools/feedback-ai.mjs'   # desktop/test/feedback-ai.test.js
+      - 'tools/feedback-ai-sandbox.sh'   # desktop/test/feedback-ai.test.js reads its flags
       - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
       - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
       - 'tools/gate-stats-upload.mjs'
