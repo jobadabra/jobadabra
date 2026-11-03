@@ -10,7 +10,7 @@ import * as server from './server.js';
 import path from 'node:path';
 import {reloadFormTab} from './form-tab.js';
 import {launchOnce} from './chrome-launch-once.js';
-import {extensionTarget, openExtensionPage, reasonedOpen} from './extension-target.js';
+import {extensionTarget, linkedinPageOpener, openExtensionPage} from './extension-target.js';
 import {registerLinkedinHandlers} from './linkedin-handlers.js';
 
 export function registerBrowserHandlers(ctx) {
@@ -101,7 +101,6 @@ export function registerBrowserHandlers(ctx) {
     return extensionTarget({seen: server.extensionSeen(), found}) ? await openPage('options.html') : await extensionInstall.openOptionsPage(copy?.folder || extensionFolder());
   }, () => server.extensionSeen()?.at || 0));
   // LinkedIn jobs (lib/linkedin-handlers.js): its consent page is the extension's own; no extension, no page ({opened: false}).
-  const openLinkedinPage = launchOnce(() => openPage('linkedin.html'), () => server.extensionSeen()?.at || 0);
-  // A press that opened nothing says why (lib/extension-target.js noPageReason): never "extension needed" while the extension has checked in.
-  registerLinkedinHandlers({DEMO, ipcMain, server, storage, openPage: reasonedOpen(openLinkedinPage, () => ({seen: server.extensionSeen(), found: extensionInstall.installed({folder: extensionFolder()}), latest: server.latestExtension()}))});
+  // A press that opened nothing says why (lib/extension-target.js): never "extension needed" while the extension has checked in.
+  registerLinkedinHandlers({DEMO, ipcMain, server, storage, openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
 }

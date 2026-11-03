@@ -1,5 +1,6 @@
 // LinkedIn jobs on every Find jobs (owner, 31 Oct 2026, spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the words of the one consent and the Suggestions entry, and
 // when the ask is due. Pure, so test/linkedin-consent.test.js checks them; pages/linkedin-consent.js draws the dialog, and the four doors (Settings, Find jobs ask, Suggestions, ⌘K) open it.
+import {NO_PLACE} from './targets.js';
 export const KEY = 'linkedin:jobs';
 // The owner's line (31 Oct 2026: "LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.").
 export const LINE = 'LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.';
@@ -21,3 +22,15 @@ export function linkedinEntries({view, hidden = new Set(), held = new Set()} = {
 
 /** The ask on Find jobs: only a real Find jobs press (a re-score or Find employers goes through the same call), and only while the app says it is due. */
 export const askOnPress = (view, why) => !!view?.ask && !(why && (why.reason || why.employers));
+
+// Why "Turn on LinkedIn" opened no page, from the app (lib/extension-target.js noPageReason): the extension is only blamed when the app has not heard from it.
+const NOT_OPENED = {
+  missing: ['Chrome extension needed', 'LinkedIn jobs uses the Jobadabra Chrome extension. Connect it in Settings → Connections → Chrome extension, then try again.'],
+  'unknown-copy': ['Jobadabra cannot open this extension copy', 'The extension is connected, but it is a copy Jobadabra does not recognise. Install it from Settings → Connections → Chrome extension, then try again.'],
+  chrome: ['Chrome did not open', 'The extension is connected, but Jobadabra could not open Chrome. Open Chrome and press Turn on LinkedIn again.'],
+};
+/** The toast's arguments for a press that opened no page: `answer` = {opened: false, reason, note} (no answer at all reads as "missing"); `note` says how to update an older copy. */
+export function notOpened(answer) {
+  const [title, body] = NOT_OPENED[answer?.reason] || NOT_OPENED.missing;
+  return [title, answer?.note ? `${body} ${answer.note}` : body, NO_PLACE.itself, 'warn'];
+}

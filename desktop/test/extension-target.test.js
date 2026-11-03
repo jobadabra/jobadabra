@@ -2,12 +2,11 @@
 // (lib/extension-target.js). Owner, 3 Nov 2026: Settings → Connections said "Connected · v0.9.755" and "Turn on LinkedIn" said "Chrome extension needed". Chrome kept the unpacked copy in
 // Preferences with no manifest and a path outside the app's own folder, so the scan found nothing while the check-in proved it was there.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import * as ext from '../lib/extension-install.js';
-import {launchOnce} from '../lib/chrome-launch-once.js';
-import {extensionTarget, noPageReason, olderThan, openExtensionPage, reasonedOpen} from '../lib/extension-target.js';
+import {notOpened} from '../renderer/linkedin-words.js';
+import {extensionTarget, linkedinPageOpener, noPageReason, olderThan, openExtensionPage} from '../lib/extension-target.js';
 
 const ID = 'gpffoneapcfceflfmfgedkcfbommgcfk';
 // The owner's Chrome, as read from his machine (mac-07, 3 Nov 2026): location 4 (unpacked), the repo's folder, NO manifest.
@@ -53,24 +52,30 @@ test('olderThan compares dotted numbers, not text', () => {
   assert.equal(olderThan('1.0', '0.9.755'), false);
 });
 
-// The whole press, as the handler composes it: the check-in, launchOnce and the reason, with a fake browser.
+// The whole press, as the handler wires it (linkedinPageOpener): the check-in, launchOnce, the scan and the reason, with a fake server and a fake browser.
 test('the press as the app wires it: connected opens the page; a browser that will not open says "chrome", never "needed"; no check-in and no scan says "needed"', async () => {
   const urls = [];
-  const press = (opens, context) => reasonedOpen(launchOnce(() => openExtensionPage('linkedin.html', {seen: context().seen, found: context().found, open: async url => { urls.push(url); return opens; }}), () => 0), context);
-  const connected = () => ({seen, found: [], latest: '0.9.755'});
-  assert.equal((await press(true, connected)()).opened, true);
-  assert.deepEqual(urls, [`chrome-extension://${ID}/linkedin.html`]);
-  const refused = await press(false, connected)();
+  const press = ({checkIn, scan = [], opens = true}) => linkedinPageOpener({server: {extensionSeen: () => checkIn, latestExtension: () => '0.9.755'}, installed: () => scan, open: async url => { urls.push(url); return opens; }});
+  assert.equal((await press({checkIn: seen})()).opened, true);
+  assert.deepEqual(urls, [`chrome-extension://${ID}/linkedin.html`], 'the owner\'s scenario: no scan entry, a check-in id');
+  const refused = await press({checkIn: seen, opens: false})();
   assert.deepEqual([refused.opened, refused.reason], [false, 'chrome']);
-  const never = await press(true, () => ({seen: null, found: [], latest: '0.9.755'}))();
+  const never = await press({checkIn: null})();
   assert.deepEqual([never.opened, never.reason], [false, 'missing'], 'nothing to open at all');
+  const scanOnly = await press({checkIn: null, scan: [{id: 'zzz', app: 'Google Chrome', current: true}]})();
+  assert.equal(scanOnly.opened, true, 'before its first check-in the scan still finds the app\'s own copy');
 });
 
-test('the app\'s page opener and the LinkedIn toast use it: no second finder, and every reason has its words', () => {
-  const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
-  const handlers = read('../lib/browser-handlers.js'), toast = read('../renderer/pages/linkedin-consent.js');
-  assert.match(handlers, /openExtensionPage\(page, \{seen: server\.extensionSeen\(\)/, 'openPage asks the check-in first');
-  assert.doesNotMatch(handlers, /copy\?\.id \? await extensionInstall\.openInChrome/, 'the scan-only opener is gone');
-  assert.match(handlers, /openPage: reasonedOpen\(openLinkedinPage, \(\) => \(\{seen: server\.extensionSeen\(\)/, 'a press that opened nothing carries its reason');
-  for (const reason of ['missing', 'unknown-copy', 'chrome']) assert.ok(new RegExp(`['"]?${reason}['"]?:|reason === '${reason}'`).test(toast), `the toast has words for "${reason}"`);
+test('the toast has words for every reason, names the extension as connected only when it is, and never blames it for a newer copy', () => {
+  const [title, body] = notOpened({opened: false, reason: 'missing', note: ''});
+  assert.match(title, /Chrome extension needed/);
+  assert.match(body, /Settings → Connections → Chrome extension/);
+  for (const reason of ['unknown-copy', 'chrome']) {
+    const [heading, text, place, tone] = notOpened({opened: false, reason, note: ''});
+    assert.doesNotMatch(heading, /needed/, `${reason}: not "needed"`);
+    assert.match(text, /connected/, `${reason}: says the extension is connected`);
+    assert.deepEqual([place === undefined, tone], [false, 'warn']);
+  }
+  assert.match(notOpened({reason: 'chrome', note: 'Chrome runs Jobadabra extension 0.9.700, older than this app\'s 0.9.755: reload it once.'})[1], /0\.9\.700/, 'an older copy\'s note is added');
+  assert.equal(notOpened(null)[0], 'Chrome extension needed', 'no answer at all reads as missing');
 });
