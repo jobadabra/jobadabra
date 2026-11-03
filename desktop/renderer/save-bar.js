@@ -111,8 +111,10 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
     if (ask && keys.length > 1 && !globalThis.confirm?.(`Discard your unsaved changes in ${scopeText(keys.map(key => tabs[key]))}?`)) return false;
     const failed = [];
     for (const source of open) {
-      try { source.discard(); } catch (error) { failed.push(`${where(source)}: ${error?.message || error}`); }
-      if (broken.has(source)) dropped.add(source);   // the person asked for it gone; a new edit of it (changed()) counts again
+      try {
+        source.discard();
+        if (broken.has(source)) dropped.add(source);   // the person asked for it gone and its discard ran; a new edit of it (changed()) counts again
+      } catch (error) { failed.push(`${where(source)}: ${error?.message || error}`); }   // a failed discard keeps the card counted, so the bar and this line stay visible
     }
     say(failed.length ? `Couldn't discard: ${failed.join(' · ')}` : '', failed.length ? 'error' : '');
     follow();

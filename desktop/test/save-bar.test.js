@@ -170,3 +170,12 @@ test('a card whose discard throws says so on the bar instead of swallowing it', 
   bar.discardAll({ask: false});
   assert.match(note(), /Couldn't discard: Experience · Education: boom/);
 });
+
+test('a card whose count() AND discard() throw keeps the bar up with the error (Gitar, #3031)', () => {
+  const {bar, note} = setup();
+  bar.register({id: 'x', tab: 'experience', label: 'Education', count: () => { throw new TypeError('count broke'); }, save: async () => ({ok: true}), discard: () => { throw new Error('discard broke'); }});
+  bar.discardAll({ask: false});
+  assert.equal(bar.count(), 1, 'still counted: nothing was discarded');
+  assert.equal(bar.node.hidden, false, 'the bar stays up');
+  assert.match(note(), /Couldn't discard: Experience · Education: discard broke/);
+});
