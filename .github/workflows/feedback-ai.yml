@@ -8,8 +8,8 @@ run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
 # THIS REPOSITORY IS PUBLIC: the branch, the pull request, the run log and the artifacts are public. tools/feedback-ai.mjs never prints the report, redacts it a second time before the AI reads it,
 # and refuses to push when the pull request text or the change holds an e-mail, a secret, a home-folder name or a passage copied from the report.
 # The AI's code and the tokens never meet (7/7 reviews, 3 Nov 2026; Gitar, mac-07). Trust by job: `guard` counts today's runs (read-only token); `fix` runs only OUR code (the AI's edits are applied as data by
-# edit-codex.mjs, scanned and written as a patch; our script runs from a copy made before the AI step, because desktop/lib is a folder the AI may edit); `prove` runs the AI's new test and the suites with NO token and
-# NO run token at all; `publish` (the only job that can push) starts from a fresh checkout, copies our script first, applies only the patch and calls the site without the write tokens in that call's environment;
+# edit-codex.mjs, scanned and written as a patch; our script runs from a copy made before the AI step, because desktop/lib is a folder the AI may edit); `prove` runs the AI's new test and the suites inside a container with no network
+# and no runner token (tools/feedback-ai-sandbox.sh), after installing the dependencies from main's files; `publish` (the only job that can push) starts from a fresh checkout, copies our script first, applies only the patch and calls the site without the write tokens in that call's environment;
 # `report-failure` tells the site when any job broke. The last job tells the site when such a pull request is merged or closed (pull_request_target, so it runs THIS file from main and never checks out the pull request's code).
 # Guard: desktop/test/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch or pull_request_target).
 on:
@@ -142,7 +142,8 @@ jobs:
             .fb/body.md
           retention-days: 3
 
-  # The only job that runs the AI's code (its new test, then the whole suites and the lint). It has NO token of any kind: no write permission, no secret, no run token (id-token is not granted).
+  # The only job that runs the AI's code (its new test, then the whole suites and the lint). It has no secret and no write permission (id-token is not granted), and the AI's code never runs on the runner itself:
+  # every command of it goes through tools/feedback-ai-sandbox.sh, a container with no network (so no cache service and no runner token), no capabilities and only the workspace to write.
   prove:
     needs: fix
     if: needs.fix.outputs.go == 'pr'
@@ -159,36 +160,45 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Keep a copy of our script that the patch cannot change (desktop/lib is a folder the AI may edit)
+      - name: Keep a copy of our scripts that the patch cannot change (desktop/lib is a folder the AI may edit)
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
+          echo "PYDEPS=$RUNNER_TEMP/pydeps" >> "$GITHUB_ENV"
+      # The dependencies are installed from main's own files BEFORE the patch is applied, so a patch cannot change what is installed or run an install script on the runner.
+      - name: Install the app's dependencies (for its tests)
+        working-directory: desktop
+        run: npm ci
+      # No `cache: pip` here (7/7 review): a cache is saved in the action's post step and a main-scoped job could restore it.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the engine's dependencies (for its tests)
+        run: pip install --quiet --target "$PYDEPS" -r requirements.txt
+      - name: Build the box the AI's code runs in
+        run: docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
       - uses: actions/download-artifact@v7
         with:
           name: fd-ai-patch
           path: .fb
       - name: Apply the patch
         run: git apply .fb/change.patch
-      - name: Install the app's dependencies (for its tests)
-        working-directory: desktop
-        run: npm ci
-      # No `cache: pip` here (7/7 review): a cache is saved in the action's post step, after the AI's code has run, and a main-scoped job could restore it.
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Install the engine's dependencies (for its tests)
-        run: pip install -r requirements.txt
+      # The box gets its OWN copy: the runner never reads or writes inside it (a symlink or a .git/config the AI plants in the real workspace would run on the runner: 7/7 Gitar review). Logs go to $RUNNER_TEMP.
+      - name: Copy the patched workspace for the box
+        run: |
+          cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"
+          echo "BOX=$RUNNER_TEMP/box" >> "$GITHUB_ENV"
       - name: The new test must fail on an assertion without the fix and pass with it
         id: proof
         run: |
           set -euo pipefail
-          if ! node "$FBT/tools/feedback-ai.mjs" proof; then echo "why=the new test does not fail on an assertion without the fix and pass with it" >> "$GITHUB_OUTPUT"; exit 1; fi
+          if ! bash "$FBT/tools/feedback-ai-sandbox.sh" node /fbt/tools/feedback-ai.mjs proof; then echo "why=the new test does not fail on an assertion without the fix and pass with it" >> "$GITHUB_OUTPUT"; exit 1; fi
       - name: The whole suites and the lint must pass with the fix
         run: |
           set -euo pipefail
-          (cd desktop && npm test && npm run lint) > .fb/suite.log 2>&1 || { echo "the whole desktop suite or the lint failed with the fix"; exit 1; }
-          python3 -m unittest discover -s tests >> .fb/suite.log 2>&1 || { echo "the whole Python suite failed with the fix"; exit 1; }
+          bash "$FBT/tools/feedback-ai-sandbox.sh" bash -c 'cd desktop && npm test && npm run lint' > "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole desktop suite or the lint failed with the fix"; exit 1; }
+          bash "$FBT/tools/feedback-ai-sandbox.sh" python3 -m unittest discover -s tests >> "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole Python suite failed with the fix"; exit 1; }
 
   # The only job that can push. A fresh checkout; it copies our script BEFORE applying the patch (the patch may change desktop/lib), applies the patch `fix` wrote, checks its paths again and opens a DRAFT pull request.
   # Never merges, never marks ready, never pushes anywhere but fd-ai/<ref>.

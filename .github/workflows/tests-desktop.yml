@@ -83,6 +83,7 @@ on:
       - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
       - 'tools/feedback-released.mjs'   # desktop/test/feedback-released.test.js
       - 'tools/feedback-ai.mjs'   # desktop/test/feedback-ai.test.js
+      - 'tools/feedback-ai-sandbox.sh'   # desktop/test/feedback-ai.test.js reads its flags
       - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
       - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
       - 'tools/gate-stats-upload.mjs'

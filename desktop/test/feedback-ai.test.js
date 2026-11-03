@@ -218,6 +218,28 @@ test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds n
   assert.doesNotMatch(prove, /id-token|contents: write|pull-requests: write|actions: write|secrets\.|github\.token|GH_TOKEN|PR_TOKEN|x-access-token|ACTIONS_ID_TOKEN|CI_APP/, 'nothing to steal where the AI\'s code runs');
   assert.match(prove, /npm test/);
   assert.match(prove, /persist-credentials: false/);
+  // The AI's code never runs on the runner (3 Nov 2026, Gitar: the runner's cache token is readable from process memory): every command that runs it goes through the sandbox script, and the installs happen before the patch.
+  const runLines = prove.split('\n').filter(line => /npm test|npm run lint|unittest|feedback-ai\.mjs proof|node --test/.test(line));
+  assert.ok(runLines.length >= 3, 'the proof, the desktop suite and the Python suite');
+  for (const line of runLines) assert.match(line, /feedback-ai-sandbox\.sh/, `runs in the box: ${line.trim()}`);
+  assert.ok(prove.indexOf('npm ci') < prove.indexOf('git apply .fb/change.patch') && prove.indexOf('pip install') < prove.indexOf('git apply .fb/change.patch'), 'dependencies are installed before the patch exists');
+  assert.ok(prove.indexOf('docker build') < prove.indexOf('git apply .fb/change.patch'), 'the box is built from main\'s Dockerfile, before the patch');
+  const sandbox = fs.readFileSync(path.resolve(import.meta.dirname, '../../tools/feedback-ai-sandbox.sh'), 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
+  // The runner never touches what the box can write (Gitar: a symlink in the shared workspace, or a .git/config the AI edits, would run on the runner): the box mounts its own copy, made after the patch, and logs go to $RUNNER_TEMP.
+  assert.match(sandbox, /-v "\$BOX":\/w/);
+  assert.doesNotMatch(sandbox, /\$PWD|\$GITHUB_WORKSPACE/, 'the real workspace is never mounted');
+  const copy = prove.indexOf('cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"');
+  assert.ok(copy > prove.indexOf('git apply .fb/change.patch') && copy < prove.indexOf('bash "$FBT/tools/feedback-ai-sandbox.sh"'), 'the copy is made after the patch and before the first run in the box');
+  for (const line of runLines) {
+    const targets = [...line.replace(/'[^']*'/g, '').replace(/2>&1/g, '').matchAll(/(?<!>)>{1,2} *(\S+)/g)].map(match => match[1]);
+    for (const target of targets) assert.match(target, /^"\$(RUNNER_TEMP\/|GITHUB_OUTPUT")/, `a log from the box goes to "$RUNNER_TEMP", never into the workspace: ${line.trim()}`);
+  }
+  assert.match(sandbox, /--network none/);
+  assert.match(sandbox, /--cap-drop ALL/);
+  assert.match(sandbox, /--security-opt no-new-privileges/);
+  assert.match(sandbox, /--user "\$\(id -u\):\$\(id -g\)"/, 'not root');
+  assert.match(sandbox, /-v "\$FBT":\/fbt:ro/, 'our script copy is read-only');
+  assert.doesNotMatch(sandbox, /--privileged|--network (host|bridge)|docker\.sock|--env-file|GITHUB_|ACTIONS_|RUNNER_|GH_TOKEN/, 'no host network, socket, runner or GitHub environment in the box');
   for (const [name, text] of [['fix', fix], ['guard', guard], ['report-failure', failed], ['closed', closed], ['publish', publish]]) assert.doesNotMatch(text, /npm test|npm ci|unittest|pip install|npm run lint|node --test/, `${name} never runs the AI's code`);
   // fix: no write token or secret; our script runs from a copy made before the AI step, and after the AI step only the copy (or desktop/e2e, which the AI may not edit) runs.
   assert.match(fix, /needs: guard/);

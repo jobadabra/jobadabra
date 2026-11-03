@@ -13,6 +13,8 @@ WORKFLOWS = '.github/workflows/'
 SERVER_FOLDERS = ('worker', 'workers', 'hosted', 'site', 'site-next', 'api', 'server', 'functions')
 # Workflows that deploy or run a server by name (the content check below catches a new deploy by itself).
 SERVER_WORKFLOWS = ('worker.yml', 'ready-fill-image.yml', 'central-scout.yml', 'product-brain.yml', 'ai-cost-billed.yml')
+# Why (3 Nov 2026, 7/7 Send to AI): this workflow builds a throwaway local image (the box the AI's code runs in, `docker build` without a push) and deploys nothing; the mark below would call it a server.
+NOT_A_SERVER = ('feedback-ai.yml',)
 DEPLOY_MARK = re.compile(r'wrangler|docker (build|buildx)|docker/build-push|CLOUDFLARE_API_TOKEN')
 
 # Left to move, with the PR that removes the entry (spec "Plan").
@@ -30,6 +32,8 @@ def server_workflows(files):
     for path in files:
         if path.startswith(WORKFLOWS) and path.endswith(('.yml', '.yaml')) and '/' not in path[len(WORKFLOWS):]:
             name = path[len(WORKFLOWS):]
+            if name in NOT_A_SERVER:
+                continue
             if name in SERVER_WORKFLOWS or DEPLOY_MARK.search((ROOT / path).read_text(errors='ignore')):
                 found.add(name)
     return found
