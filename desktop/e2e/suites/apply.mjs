@@ -12,6 +12,7 @@ import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
 import {FORMS, HOSTS, LATE, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN} from '../lib/forms.mjs';
 import {formTab, launchBrowser, readForm, readPanel, fillState, fillNote} from '../lib/extension.mjs';
+import {openPanel} from '../lib/panel-open.mjs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
@@ -176,10 +177,9 @@ export async function runApply(ctx, parts) {
       throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, Math.round(result.ms / 1000), {lost: lostTab()})}, read on ${result.url}, ${result.tabs} tab(s)${ctx.browser.trail ? `; ${ctx.browser.trail.describe(result.tab)}` : ''})`);   // the picked tab's last navigations and any navigation error (lib/tab-trail.mjs)
     } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
-  // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).
+  // The panel opens by itself while a fill runs; open it only while it is seen closed (a press on the pill toggles, so lib/panel-open.mjs judges each press by the next read).
   const panelOf = async tab => {
-    const closed = await tab.evaluate(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.card')?.hidden);
-    if (closed) await tab.locator('#jobadabra-review-host .pill').click({timeout: 15000});
+    await openPanel(tab);
     const result = await waitForFill({pickTab: () => ({tab, tabs: ctx.browser.context.pages().length}), readState: readPanel, accept: panel => !!panel?.progress});
     if (!result.ok) throw new Error(`the form panel did not become readable within ${Math.round(result.ms / 1000)} s (last read: ${JSON.stringify(result.state)})`);
     return result.state;
