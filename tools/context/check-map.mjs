@@ -13,7 +13,7 @@ import {leaks} from '../feedback-ai.mjs';
 export const L0_MAX = 3 * 1024;
 export const HUB_MAX = 6 * 1024;
 export const AGENTS_MAX = 32768;
-// TODO(AI): derive from tools/context/sources/*.mjs once the fetchers exist (hm 5/8, 3 Nov 2026); until then this is the list the spec names.
+// TODO(AI): derive from tools/context/sources/*.mjs once the fetchers exist (3 Nov 2026); until then this is the list the spec names.
 const NO_BRIEF = {text: "", files: {}}; // leaks() also looks for passages copied from a report; the map has none
 export const SOURCES = ['linear', 'sentry', 'github', 'git', 'posthog', 'cloudflare', 'notion'];
 

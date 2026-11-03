@@ -25,6 +25,10 @@ on:
       - '.gitignore'
       - 'tools/design-system/**'   # desktop/test/design-system-page.test.js builds the page with it
       - 'docs/rules/desktop-ui.md'
+      - 'docs/map/**'   # desktop/test/guards/rules/map-check.test.js checks the map's size, links and anchors
+      - 'tools/context/**'   # the map checker it runs
+      - 'AGENTS.md'   # the same test asserts it stays under Codex's 32 KiB cap
+      - 'docs/rules/agent-detail.md'   # map links point at its anchors
       - '.claude/skills/ui-look-and-feel/SKILL.md'
       - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
       - 'app-core/src/**'   # identity-rule.test.js, site-routes.test.js
