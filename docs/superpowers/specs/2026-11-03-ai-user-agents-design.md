@@ -130,7 +130,7 @@ A generator builds an aged folder through the product's own writers (engine comm
 ### Every finding replays
 A finding carries `{persona, chapter, seed, snapshot id}`. The replay restores that snapshot, applies the seed and runs the recorded steps offline, without AI (like the explorer's `replay`). A long-lived state is what makes bugs unreproducible, so this is a requirement, not a nicety: **no finding is filed without a replay that reproduces it**, and the snapshot is attached to the issue's evidence branch (`agent-evidence`) so it outlives the artifact's retention.
 
-### Where saved days live
+### Where saved days live (decided: owner, 3 Nov 2026, "GitHub Actions artifact")
 A night's snapshot (data folder, seed, chapter, coverage) is a GitHub Actions artifact `agent-life-<persona>` (retention 30 days, the existing artifact secret scan runs on it, fictional data only); the next night downloads the last successful one. The folder's size is printed by the first run; if it is large, the data folder is trimmed to the store and settings (caches excluded).
 
 ### Cost per night (estimate from the 2/7 measurement)
@@ -151,7 +151,7 @@ No brake stays (owner, 3 Nov 2026): a spent Codex week falls to Claude, then Fre
 - **Weight journeys by real use:** where installs spend time and what feedback rows and Sentry say; every tester report becomes a scenario in the plan's pool.
 - **Proof:** 7/7 replays this week's tester bugs on the commits before their fixes and counts found vs missed; later, the escape rate (bugs users report that the agent missed).
 
-### Phase 2 PRs (after the core seven; ordered by the owner's answer)
+### Phase 2 PRs (after the core seven; order decided by the owner, 3 Nov 2026: fresh random states first, the living persona after)
 | PR | What | Proof |
 |---|---|---|
 | 8/10 | the aged-state generator and the first deep-state sessions | the generator builds the day-30 folder with the product's writers; a replay of the 303-job backlog bug on its pre-fix commit is found |
@@ -295,7 +295,7 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 - [x] Plan `docs/superpowers/plans/2026-11-03-ai-user-agents.md` with the PR split (3 Nov 2026) (proof: docs/superpowers/plans/2026-11-03-ai-user-agents.md)
 - [x] [ag] 1/7 (jobadabra-web #340 merged 3 Nov 2026) the broker tallies calls and tokens per workflow from the verified claim; /admin/ai-cost shows each workflow's share (proof: none: the work is in jobadabra-web, merged as #340 8aadd09)
 - [x] [ag] 2/7 spike: observation (ariaSnapshot vs text), tokens and seconds per call, small vs mid; the explorer on the broker only; a 30-minute session skeleton with the step/minute/call caps (proof: desktop/e2e/lib/explore.mjs @2cc46fc6)
-- [ ] [ag] 3/7 diversity: persona + CV shape generator, move vocabulary from the ⌘K registry, seeded planner, coverage record; value re-check; planted bug
+- [x] [ag] 3/7 diversity: persona + CV shape generator, move vocabulary from the ⌘K registry, seeded planner, coverage record; value re-check; planted bug (proof: desktop/e2e/lib/agent-plan.mjs @8d76749)
 - [ ] [ag] 4/7 knowledge: `docs/app-expectations/` seed, `agent-memory` branch write-back, "changed since last session" from git + PR verdict lines
 - [ ] [ag] 5/7 findings: detector `ai-user-agent`, arguments, second opinion, 12-a-session cap, the daily workflow
 - [ ] [ag] 6/7 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
