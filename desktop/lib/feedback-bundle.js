@@ -22,7 +22,7 @@ const EMAIL = /[\w.+%-]+@[\w-]+(?:\.[\w-]+)+/g;
 
 /** Secrets, e-mail addresses, link queries and the person's folder name out of any text, line by line. A line is cut to LINE_CHARS (a long line is where a copied text would hide).
  *  Why not telemetry.scrub: it also turns every 8+ digit run into <number>, which would eat the timestamps a log is read by. -> text */
-export function redact(text, {home = os.homedir()} = {}) {
+export function redact(text, {home = os.homedir(), lineChars = LINE_CHARS} = {}) {
   let out = String(text ?? '');
   for (const form of new Set([home, home && home.replace(/\\/g, '\\\\'), home && home.replace(/\\/g, '/')])) if (form && form.length > 3) out = out.split(form).join('~');
   // A folder name may hold a space (C:\Users\Ana Fake\…): when a separator follows, everything up to it is the name; else the name ends at the first space.
@@ -33,7 +33,7 @@ export function redact(text, {home = os.homedir()} = {}) {
   for (const shape of SECRET_SHAPES) out = out.replace(shape, '<secret>');
   out = out.replace(PAIR, (_, name, value) => `${name}${/^["']/.test(value) ? `${value[0]}<secret>${value[0]}` : '<secret>'}`);
   out = out.replace(EMAIL, '<email>').replace(/(https?:\/\/[^\s?#"']+)[?#][^\s"']*/g, '$1').replace(OPAQUE, '<secret>');
-  return out.split('\n').map(line => (line.length > LINE_CHARS ? `${line.slice(0, LINE_CHARS)}… (+${line.length - LINE_CHARS} chars)` : line)).join('\n');
+  return out.split('\n').map(line => (line.length > lineChars ? `${line.slice(0, lineChars)}… (+${line.length - lineChars} chars)` : line)).join('\n');
 }
 
 // The last `count` lines of a file, oldest first ([] when it is missing or unreadable). Reads at most the last 512 KB.
@@ -137,9 +137,9 @@ export function pageText({screen = '', source = '', data = null} = {}, {runs = [
 
 /** The Profile snapshot as redacted JSON text: the parts aboutYou read (details, CV, what we learned, strategy, history, voice), what it lacked, nothing sensitive (aboutYou drops sensitive and
  *  conflicting answers). -> {text, bytes, parts: [names], cut}. */
-export function profileText(bundle, {home = os.homedir(), max = MAX_DATA_BYTES} = {}) {
+export function profileText(bundle, {home = os.homedir(), max = MAX_DATA_BYTES, lineChars} = {}) {
   const body = {note: 'Snapshot of the Profile the person chose to send; sensitive answers are left out.', parts: bundle?.parts || {}, lacked: bundle?.lacked || []};
-  let text = redact(JSON.stringify(body, null, 1), {home}), cut = false;
+  let text = redact(JSON.stringify(body, null, 1), {home, lineChars}), cut = false;
   if (bytesOf(text) > max) { text = `${text.slice(0, Math.max(0, max - 200))}\n… (cut: the cap is ${Math.round(max / 1024)} KB)`; cut = true; }
   return {text, bytes: bytesOf(text), parts: Object.keys(body.parts), cut};
 }

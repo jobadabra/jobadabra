@@ -76,7 +76,8 @@ export function registerSystemHandlers(ctx) {
     const picked = await dialog.showSaveDialog(getWindow(), {title: 'Export your Jobadabra data',
       defaultPath: path.join(app.getPath('documents'), reset.exportName({name, role})), filters: [{name: 'Jobadabra export', extensions: ['gz']}]});
     if (picked.canceled || !picked.filePath) return {ok: false};
-    const secrets = keys ? Object.fromEntries(SECRET_NAMES.map(name => [name, storage.secret(name)]).filter(([, value]) => value)) : null;
+    // Why (3 Nov 2026, desktop AI MCP spec): the desktop AI pairing is bound to this PC's Keychain/DPAPI bridge entry; a restored hash would show "connected" with no bridge.
+    const secrets = keys ? Object.fromEntries(SECRET_NAMES.filter(name => !name.startsWith('DESKTOP_AI_')).map(name => [name, storage.secret(name)]).filter(([, value]) => value)) : null;
     // This Mac's data only: Notion data stays in Notion, with Notion's own history, Duplicate, Export and Move (owner, 8 Oct 2026).
     try {
       const siteAccounts = accounts ? profileAccounts.exportable() : null;   // only this profile's, only when ticked
