@@ -1,12 +1,12 @@
 // tools/feedback-ai.mjs, the script of the "Send to AI" run (feedback-ai.yml): what it reads, what it redacts again, what may never be posted in public, the before/after proof and what it tells the site.
 // Nothing here calls the site, GitHub or the AI broker: fetchers are fakes and the broker's answers are not needed (edit-codex.mjs has its own test).
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {execFileSync, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {AUDIENCE, addedLines, changeText, closedReport, copied, fetchBrief, leaks, promptFor, proof, redactBrief, report, runTests, siteToken} from '../../tools/feedback-ai.mjs';
+import {AUDIENCE, addedLines, assertionFailed, changeText, closedReport, copied, fetchBrief, leaks, promptFor, proof, redactBrief, report, runTests, siteToken} from '../../tools/feedback-ai.mjs';
 
 const ENV = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://token.example/req?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'req-token', FEEDBACK_AI_URL: 'https://site.example'};
 const json = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
@@ -53,6 +53,9 @@ test('what may not be posted in public: an e-mail, a home folder, a token, a pas
   assert.ok(leaks('Authorization: Bearer abcdef0123456789abcdef', brief).some(reason => /redactor/.test(reason)));
   assert.deepEqual(leaks('The user says the salary field loses what I type after I switch to the Track page', brief), ['a passage copied from the report or its files']);
   assert.deepEqual(leaks('the salary draft was dropped because the store reset on navigation', brief), ['a passage copied from the report or its files'], 'a line of the logs');
+  assert.deepEqual(leaks('contact ana@exam\u200bple.com', brief), ['an e-mail address'], 'a zero-width character does not hide an address');
+  assert.deepEqual(leaks('contact ana [at] example [dot] com', brief), ['an e-mail address']);
+  assert.deepEqual(leaks('call +41 79 123 45 67 tomorrow', brief), ['a phone number']);
   assert.equal(copied('the salary field loses', brief).length, 0, 'under 8 words in common is not a copy');
 });
 
@@ -68,15 +71,18 @@ test('the diff scan sees only added lines, and new files whole', () => {
   assert.equal(addedLines('+++ b/a\n+one\n two\n-three\n+four'), 'one\nfour');
 });
 
-test('the proof: a new test must fail without the fix and pass with it; no test, a test that passes anyway, or one that still fails are refused', () => {
-  const calls = [], run = (answers) => (files, where) => { calls.push(where); return {ok: answers[where]}; };
+test('the proof: a new test must fail on an ASSERTION without the fix and pass with it; no test, one that passes anyway, one that only fails to load, or one that still fails are refused', () => {
+  const calls = [], assertion = 'not ok 1 - a\n  code: ERR_ASSERTION', load = 'Error [ERR_MODULE_NOT_FOUND]: Cannot find module', run = answers => (files, where) => { calls.push(where); return answers[where]; };
   assert.deepEqual(proof(['src/a.py'], run({})), {ok: false, why: 'no test file changed'});
-  assert.match(proof(['desktop/lib/a.js', 'desktop/test/a.test.js'], run({before: true, after: true})).why, /passes without the fix/);
-  assert.match(proof(['tests/test_a.py'], run({before: false, after: false})).why, /fails with the fix/);
+  assert.match(proof(['desktop/lib/a.js', 'desktop/test/a.test.js'], run({before: {ok: true}, after: {ok: true}})).why, /passes without the fix/);
+  assert.match(proof(['desktop/test/a.test.js'], run({before: {ok: false, output: load}, after: {ok: true}})).why, /not on an assertion/, 'a new function that does not exist yet fails to import: that proves nothing about the bug');
+  assert.match(proof(['tests/test_a.py'], run({before: {ok: false, output: assertion}, after: {ok: false}})).why, /fails with the fix/);
   calls.length = 0;
-  assert.deepEqual(proof(['src/a.py', 'tests/test_a.py'], run({before: false, after: true})), {ok: true, why: ''});
+  assert.deepEqual(proof(['src/a.py', 'tests/test_a.py'], run({before: {ok: false, output: 'FAIL: test_a (tests.test_a.T)\nAssertionError: 1 != 2'}, after: {ok: true}})), {ok: true, why: ''});
   assert.deepEqual(calls, ['before', 'after']);
-  assert.equal(proof(['desktop/e2e/x.test.mjs'], run({before: false, after: true})).ok, false, 'only the app and engine test folders count');
+  assert.equal(proof(['desktop/e2e/x.test.mjs'], run({before: {ok: false, output: assertion}, after: {ok: true}})).ok, false, 'only the app and engine test folders count');
+  assert.equal(assertionFailed('not ok\n code: ERR_ASSERTION\n SyntaxError: x'), false, 'a load error anywhere in the output wins');
+  assert.equal(assertionFailed(''), false);
 });
 
 test('runTests runs node and python test files in a folder by exit code alone', () => {
@@ -90,6 +96,8 @@ test('runTests runs node and python test files in a folder by exit code alone', 
   assert.equal(runTests(['desktop/test/ok.test.js', 'tests/test_ok.py'], dir).ok, true);
   assert.equal(runTests(['desktop/test/ok.test.js', 'desktop/test/bad.test.js'], dir).ok, false);
   assert.equal(runTests(['tests/test_bad.py'], dir).ok, false);
+  assert.equal(assertionFailed(runTests(['desktop/test/bad.test.js'], dir).output), true, 'the failing assertion is seen in the captured output, which is never printed');
+  assert.equal(assertionFailed(runTests(['tests/test_bad.py'], dir).output), true);
 });
 
 test('the site is told with the run token and the right body; a refusal makes the run go red with its reason', async () => {
@@ -101,12 +109,57 @@ test('the site is told with the run token and the right body; a refusal makes th
 });
 
 test('a closed pull request is reported only for a branch fd-ai/<ref> of this repository; merged only when GitHub says merged', () => {
-  const event = (extra = {}, head = {}) => ({pull_request: {html_url: 'https://github.com/o/r/pull/5', merged: true, head: {ref: 'fd-ai/00000000000000aa', repo: {full_name: 'o/r'}, ...head}, ...extra}});
+  const event = (extra = {}, head = {}) => ({pull_request: {html_url: 'https://github.com/o/r/pull/5', merged: true, user: {type: 'Bot'}, labels: [{name: 'fd-ai'}], head: {ref: 'fd-ai/00000000000000aa', repo: {full_name: 'o/r'}, ...head}, ...extra}});
   assert.deepEqual(closedReport(event(), 'o/r'), {ref: '00000000000000aa', status: 'merged', pr: 'https://github.com/o/r/pull/5'});
   assert.equal(closedReport(event({merged: false}), 'o/r').status, 'closed');
   assert.equal(closedReport(event({merged: 'true'}), 'o/r').status, 'closed', 'only a real true is a merge');
   assert.equal(closedReport(event({}, {repo: {full_name: 'fork/r'}}), 'o/r'), null, 'a fork\'s branch');
   assert.equal(closedReport(event({}, {ref: 'feature/x'}), 'o/r'), null);
   assert.equal(closedReport(event({}, {ref: 'fd-ai/not-a-ref'}), 'o/r'), null);
+  assert.equal(closedReport(event({user: {type: 'User'}}), 'o/r'), null, 'a person\'s branch with the right name is not the workflow\'s pull request');
+  assert.equal(closedReport(event({labels: []}), 'o/r'), null, 'no fd-ai label');
   assert.equal(closedReport({}, 'o/r'), null);
+});
+
+// The scenario of the workflow, on a throwaway repo: an AI edit sits in the working tree; `proof` and `leaks` run as the workflow runs them (real git worktree, real test runs).
+const TOOL = path.resolve(import.meta.dirname, '../../tools/feedback-ai.mjs');
+function repoWithBug() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fd-flow-')), git = (...args) => execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=a', ...args], {cwd: dir, stdio: 'pipe'});
+  fs.mkdirSync(path.join(dir, 'desktop/lib'), {recursive: true}); fs.mkdirSync(path.join(dir, 'desktop/test'));
+  fs.writeFileSync(path.join(dir, 'desktop/package.json'), '{"type":"module"}');
+  fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a - b;\n');
+  git('init', '-q'); git('add', '-A'); git('commit', '-qm', 'x');
+  return dir;
+}
+const cli = (dir, ...args) => { const done = spawnSync('node', [TOOL, ...args], {cwd: dir, encoding: 'utf8', env: {...process.env, NODE_TEST_CONTEXT: ''}}); return {status: done.status, out: done.stdout + done.stderr}; };
+
+test('scenario: a real fix with a test that fails on an assertion before it passes the proof; a test that passes anyway, or one that only fails to import, does not', () => {
+  const dir = repoWithBug();
+  fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a + b;\n');
+  fs.writeFileSync(path.join(dir, 'desktop/test/add.test.js'), "import test from 'node:test'; import assert from 'node:assert'; import {add} from '../lib/add.js'; test('adds', () => assert.equal(add(1, 2), 3));\n");
+  const good = cli(dir, 'proof');
+  assert.equal(good.status, 0, good.out);
+  assert.match(good.out, /fails \(on an assertion\) without the fix and passes with it/);
+  assert.equal(execFileSync('git', ['worktree', 'list'], {cwd: dir, encoding: 'utf8'}).trim().split('\n').length, 1, 'the clean checkout is removed afterwards');
+  fs.writeFileSync(path.join(dir, 'desktop/test/add.test.js'), "import test from 'node:test'; import assert from 'node:assert'; test('always', () => assert.equal(1, 1));\n");
+  assert.match(cli(dir, 'proof').out, /also passes without the fix/);
+  fs.writeFileSync(path.join(dir, 'desktop/test/add.test.js'), "import test from 'node:test'; import assert from 'node:assert'; import {multiply} from '../lib/add.js'; test('m', () => assert.equal(multiply(2, 3), 6));\n");
+  fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a + b;\nexport const multiply = (a, b) => a * b;\n');
+  const loadOnly = cli(dir, 'proof');
+  assert.equal(loadOnly.status, 1);
+  assert.match(loadOnly.out, /not on an assertion/);
+});
+
+test('scenario: the leak scan stops a pull request text or a new file that copies the report, and passes the AI\'s own words; it never prints what it found', () => {
+  const dir = repoWithBug(), out = path.join(dir, '.fb');
+  fs.mkdirSync(out); fs.writeFileSync(path.join(out, 'brief.json'), JSON.stringify(brief));
+  fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a + b;\n');
+  fs.writeFileSync(path.join(out, 'title.txt'), '[fd-ai] 00000000000000aa add sums\n'); fs.writeFileSync(path.join(out, 'body.md'), 'Root cause: add subtracted. Fix: add. Test: add(1, 2) is 3.\n');
+  const clean = cli(dir, 'leaks', '--out', out, '--title', path.join(out, 'title.txt'), '--body', path.join(out, 'body.md'));
+  assert.equal(clean.status, 0, clean.out);
+  fs.writeFileSync(path.join(dir, 'desktop/lib/new.js'), "// The salary field loses what I type after I switch to the Track page and back, every time\nexport const x = 1;\n");
+  const copiedFile = cli(dir, 'leaks', '--out', out, '--title', path.join(out, 'title.txt'), '--body', path.join(out, 'body.md'));
+  assert.equal(copiedFile.status, 1);
+  assert.match(copiedFile.out, /a passage copied from the report/);
+  assert.doesNotMatch(copiedFile.out, /salary field/, 'the refusal names the kind, never the text');
 });

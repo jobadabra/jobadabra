@@ -1,5 +1,5 @@
 // The two jobs that EDIT files (the UI fixer, ui-fix.yml; the Finder's weekly self-review, finder-review.yml) on the owner's Codex plan, in place of claude-code-action: two broker calls, no tools.
-//   node edit-codex.mjs --prompt <file> --roots a,b --allow '<regex>' --none-as verdict|summary --none-out <file> --body-out <file> [--image <png>] [--seed a,b] [--verdicts a,b]
+//   node edit-codex.mjs --prompt <file> --roots a,b --allow '<regex>' --none-as verdict|summary --none-out <file> --body-out <file> [--image <png>] [--seed a,b] [--verdicts a,b] [--quiet]
 // Call 1 picks at most 6 files to read from a listing of the allowed folders; call 2 gets those files and answers with edits (path, the exact old text, the new text) that this script validates and applies.
 // Why (31 Oct 2026, owner: CI AI on the Codex plan, never an API key): both jobs ran Claude Code with 50 tool turns (Read, Edit, run the tests). The broker answers one prompt, so the files are put in it and the edits
 // come back as data; the workflow's later steps already run the guard, the whole test suite and the lint on whatever changed, so a wrong edit never becomes a pull request. UI Fixer stays OFF (owner, 25 Oct 2026).
@@ -102,7 +102,8 @@ async function main() {
   } else {
     fs.mkdirSync(path.dirname(at('--none-out')), {recursive: true});
     fs.writeFileSync(at('--none-out'), noneText(as, result, applied.problems, words));
-    console.log(`edit (Codex): no change (${result.verdict}${applied.problems.length ? `; ${applied.problems.join('; ')}` : ''})`);
+    // Why (7/7 review, 3 Nov 2026): a problem line holds a path the AI chose; on a public run log that could carry a reporter's words or a `::error::` command, so --quiet prints the count only.
+    console.log(`edit (Codex): no change (${result.verdict}${applied.problems.length ? (args.includes('--quiet') ? `; ${applied.problems.length} problem(s)` : `; ${applied.problems.join('; ')}`) : ''})`);
   }
 }
 

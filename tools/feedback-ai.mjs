@@ -70,8 +70,10 @@ export function copied(text, brief, run = 8) {
 
 /** Why `text` may not be posted in public, as short reasons that never repeat the text ([] = clean): what the app's redactor would still change (e-mails, tokens, home folders, link queries), or a passage copied from the report. */
 export function leaks(text, brief) {
-  const reasons = [], body = String(text || '');
-  if (/[\w.+%-]+@[\w-]+(?:\.[\w-]+)+/.test(body)) reasons.push('an e-mail address');
+  // Zero-width characters are removed first: "ana@exam\u200bple.com" must read as the address it is (7/7 review).
+  const reasons = [], body = String(text || '').replace(/[\u200b-\u200f\u2060\ufeff]/g, '');
+  if (/[\w.+%-]+\s*(?:@|\[at\]|\(at\)|\{at\})\s*[\w-]+(?:\s*(?:\.|\[dot\]|\(dot\))\s*[\w-]+)+/i.test(body)) reasons.push('an e-mail address');
+  if (/\+\d[\d\s().-]{7,}\d/.test(body)) reasons.push('a phone number');
   if (/(?:\/(?:Users|home)\/|[A-Za-z]:\\Users\\)[^\s/\\"'<>|:]+/.test(body)) reasons.push('a home-folder name');
   if (copied(body, brief).length) reasons.push('a passage copied from the report or its files');
   // The redactor is the net under the specific checks: it speaks only when none of them did (an e-mail is also something it hides).
@@ -82,6 +84,10 @@ export function leaks(text, brief) {
 /** The lines a diff adds (what would be pushed), without the file headers. */
 export const addedLines = diff => String(diff || '').split('\n').filter(line => line.startsWith('+') && !line.startsWith('+++')).map(line => line.slice(1)).join('\n');
 
+const LOAD_ERROR = /ERR_MODULE_NOT_FOUND|ERR_PACKAGE_PATH_NOT_EXPORTED|SyntaxError|Cannot find module|does not provide an export named|ModuleNotFoundError|ImportError|IndentationError/;
+/** Did a test FAIL on an assertion (node: ERR_ASSERTION; unittest: a `FAIL:` block), and did nothing fail to load? `output` is read here and never printed (it may quote data). */
+export const assertionFailed = output => /ERR_ASSERTION|AssertionError|^FAIL: /m.test(String(output || '')) && !LOAD_ERROR.test(String(output || ''));
+
 /**
  * The proof the change is a real fix: the changed test files FAIL without the change and PASS with it. `run(files, where)` -> {ok}; `where` is 'before' (a clean checkout of HEAD with only the new tests copied in)
  * or 'after' (this tree). -> {ok, why}
@@ -89,27 +95,31 @@ export const addedLines = diff => String(diff || '').split('\n').filter(line => 
 export function proof(files, run) {
   const tests = files.filter(file => TESTS.test(file));
   if (!tests.length) return {ok: false, why: 'no test file changed'};
-  if (run(tests, 'before').ok) return {ok: false, why: 'the new test also passes without the fix, so it proves nothing'};
+  const before = run(tests, 'before');
+  if (before.ok) return {ok: false, why: 'the new test also passes without the fix, so it proves nothing'};
+  if (!assertionFailed(before.output)) return {ok: false, why: 'the new test fails without the fix, but not on an assertion (a missing import or a syntax error proves nothing about the bug)'};
   if (!run(tests, 'after').ok) return {ok: false, why: 'the test fails with the fix'};
   return {ok: true, why: ''};
 }
 
-/** Runs test files in `root` (the tree, or a clean checkout): node --test for desktop/test, unittest for tests/. Output is dropped (it may quote data); only the exit code counts. */
+/** Runs test files in `root` (the tree, or a clean checkout): node --test for desktop/test, unittest for tests/. -> {ok, output}; the output is never printed (it may quote data). */
 export function runTests(files, root) {
+  const out = [];
   const env = {...process.env}; delete env.NODE_TEST_CONTEXT;   // a run started from inside another `node --test` would otherwise report through that parent and exit 0 on a failure
   const node = files.filter(file => file.startsWith('desktop/')).map(file => file.slice('desktop/'.length)), py = files.filter(file => file.startsWith('tests/')).map(file => file.replace(/\.py$/, '').replace(/\//g, '.'));
-  const ok = [node.length && spawnSync('node', ['--test', ...node], {cwd: path.join(root, 'desktop'), stdio: 'ignore', env}), py.length && spawnSync('python3', ['-m', 'unittest', ...py], {cwd: root, stdio: 'ignore', env})].filter(Boolean).every(done => done.status === 0);
-  return {ok};
+  const done = [node.length && spawnSync('node', ['--test', ...node], {cwd: path.join(root, 'desktop'), encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env}), py.length && spawnSync('python3', ['-m', 'unittest', ...py], {cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env})].filter(Boolean);
+  for (const one of done) out.push(one.stdout, one.stderr);
+  return {ok: done.every(one => one.status === 0), output: out.join('\n')};   // the output stays in memory: assertionFailed reads it, nothing prints it
 }
 
 /** The files the AI changed or added (relative paths), outside the work folder `skip`. */
 export const changedFiles = (cwd = '.') => execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {cwd, encoding: 'utf8'}).split('\n').filter(Boolean).map(line => line.slice(3).trim()).filter(file => !/^(\.fb\/|e2e-artifacts\/)/.test(file));
 
-/** Everything the change would publish: the lines it adds to tracked files and the whole of every new file. */
+/** Everything the change would publish: the names of the files, the lines it adds to tracked files and the whole of every new file. */
 export function changeText(cwd = '.') {
   const git = (...args) => execFileSync('git', args, {cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024});
   const fresh = git('ls-files', '--others', '--exclude-standard').split('\n').filter(file => file && !/^(\.fb\/|e2e-artifacts\/)/.test(file));
-  return [addedLines(git('diff', 'HEAD')), ...fresh.map(file => fs.readFileSync(path.join(cwd, file), 'utf8'))].join('\n');
+  return [changedFiles(cwd).join('\n'), addedLines(git('diff', 'HEAD')), ...fresh.map(file => fs.readFileSync(path.join(cwd, file), 'utf8'))].join('\n');
 }
 
 /** The site's answer to a report: posts {ref, status, ...} with the run token; returns once told; throws with the reason when the site refuses (the run goes red). */
@@ -121,7 +131,8 @@ export async function report(body, env = process.env, fetcher = fetch) {
 /** What the pull_request_target job tells the site: only for a PR whose head is fd-ai/<ref> of THIS repository; `merged` only when GitHub says merged. -> {ref, status, pr} or null. */
 export function closedReport(event, repository) {
   const pr = event?.pull_request, head = pr?.head;
-  if (!pr || head?.repo?.full_name !== repository || !String(head?.ref || '').startsWith('fd-ai/')) return null;
+  // Why (7/7 review, 3 Nov 2026): any person with write access could push a branch named fd-ai/<ref>; only the pull request this workflow opened (a bot's, with its label) counts.
+  if (!pr || head?.repo?.full_name !== repository || !String(head?.ref || '').startsWith('fd-ai/') || pr.user?.type !== 'Bot' || !(pr.labels || []).some(label => label.name === 'fd-ai')) return null;
   const ref = head.ref.slice('fd-ai/'.length);
   return REF.test(ref) && /^https:\/\/github\.com\//.test(pr.html_url || '') ? {ref, status: pr.merged === true ? 'merged' : 'closed', pr: pr.html_url} : null;
 }
@@ -140,15 +151,16 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   } else if (command === 'proof') {
     const files = changedFiles(), before = fs.mkdtempSync(path.join(os.tmpdir(), 'fd-before-'));
     execFileSync('git', ['worktree', 'add', '-q', '--detach', before, 'HEAD']);
+    let result;
     try {
       if (fs.existsSync('desktop/node_modules')) fs.symlinkSync(path.resolve('desktop/node_modules'), path.join(before, 'desktop/node_modules'));
-      const result = proof(files, (tests, where) => {
+      result = proof(files, (tests, where) => {
         if (where === 'before') for (const file of tests) { fs.mkdirSync(path.dirname(path.join(before, file)), {recursive: true}); fs.copyFileSync(file, path.join(before, file)); }
         return runTests(tests, where === 'before' ? before : '.');
       });
-      console.log(result.ok ? 'proof: the new test fails without the fix and passes with it' : `proof: ${result.why}`);
-      process.exit(result.ok ? 0 : 1);
     } finally { execFileSync('git', ['worktree', 'remove', '--force', before]); }
+    console.log(result.ok ? 'proof: the new test fails (on an assertion) without the fix and passes with it' : `proof: ${result.why}`);
+    process.exit(result.ok ? 0 : 1);
   } else if (command === 'leaks') {
     const brief = JSON.parse(fs.readFileSync(path.join(out, 'brief.json'), 'utf8'));
     const text = [fs.readFileSync(flag(args, '--title'), 'utf8'), fs.readFileSync(flag(args, '--body'), 'utf8'), changeText()].join('\n');
