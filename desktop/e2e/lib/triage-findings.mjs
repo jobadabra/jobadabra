@@ -88,9 +88,10 @@ export function mergeConsoleErrors(findings) {
 export function normalize({ui = [], ai = [], suite = [], dropped = []}) {
   const fromUi = ui.filter(item => item && item.view && item.kind && item.detail).map(item => {
     const probed = item.source === 'interaction-probe';   // a control pressed by the interaction probe: the control is in the title
-    const explored = item.source === 'explorer';   // a bug the AI explorer met AND a script proved again without AI (lib/explore.mjs): its own title and severity
+    const agentNote = item.source === 'ai-user-agent';   // a note of the AI user agent with its argument (lib/agent-notes.mjs toFinding): filed like the explorer's, its argument and labels kept
+    const explored = item.source === 'explorer' || agentNote;   // a bug the AI explorer met AND a script proved again without AI (lib/explore.mjs): its own title and severity
     const finding = {view: item.view, severity: explored ? cappedSeverity(['high', 'medium', 'low'].includes(item.severity) ? item.severity : 'medium', item.kind) : probed ? probeSeverity(item) : layoutSeverity(item), kind: item.kind,
-      title: explored ? `${item.kind.replace(/-/g, ' ')} on ${item.view}: ${String(item.title || '').slice(0, 60)}` : `${item.kind.replace(/-/g, ' ')} on ${item.view}: ${probed ? `"${item.control}"` : String(item.detail).split(' ')[0]}`, detail: item.detail, suggestion: '', source: explored ? 'explorer' : probed ? 'interaction-probe' : 'layout-check', dir: item._dir, shot: item.shot};   // the element is in the title: two problems of one page are two issues
+      title: explored ? `${item.kind.replace(/-/g, ' ')} on ${item.view}: ${String(item.title || '').slice(0, 60)}` : `${item.kind.replace(/-/g, ' ')} on ${item.view}: ${probed ? `"${item.control}"` : String(item.detail).split(' ')[0]}`, detail: item.detail, suggestion: '', source: explored ? item.source : probed ? 'interaction-probe' : 'layout-check', dir: item._dir, shot: item.shot, ...(agentNote ? {impact: item.impact, expected: item.expected, agent: item.agent} : {})};   // the element is in the title: two problems of one page are two issues
     // `shown` is only the issue's title: a layout finding says what is on the page ("spill on settings-narrow: p#cv-message.message: "400 {"type":"error"…""), not just a selector. The fingerprint
     // keeps using `title`, so issues filed before this still match.
     const quoted = !probed && /:\s*"([\s\S]{3,})$/.exec(String(item.detail || ''))?.[1]?.replace(/"$/, '');

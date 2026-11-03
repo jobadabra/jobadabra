@@ -8,7 +8,7 @@ export const CATEGORIES = ['fixed', 'queued', 'falsePositive', 'duplicate', 'sta
 // The resolution label an issue was closed with (lib/resolution.mjs) is the loop's own word for why: it is read before any guess from the comments.
 const BY_RESOLUTION = {fixed: 'fixed', 'not-seen': 'unclear', 'fp:harness': 'harness', 'fp:detector': 'falsePositive', 'fp:probe-race': 'falsePositive', 'fp:unknown': 'falsePositive', 'by-design': 'falsePositive', 'stale-sighting': 'stale', duplicate: 'duplicate'};
 export const DETECTORS = {'ai-review': 'AI screenshot review', 'suite-failure': 'Failed test steps', 'interaction-probe': 'Interaction probe',
-  'layout-check': 'Layout and DOM checks', 'code-review': 'AI code review', explorer: 'AI explorer'};
+  'layout-check': 'Layout and DOM checks', 'code-review': 'AI code review', explorer: 'AI explorer', 'ai-user-agent': 'AI user agent'};
 
 const names = issue => (issue.labels || []).map(label => label.name || label);
 const said = issue => (issue.comments || []).map(comment => comment.body || '').join('\n');
