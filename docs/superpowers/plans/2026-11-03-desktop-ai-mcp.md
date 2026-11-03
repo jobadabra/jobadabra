@@ -4,13 +4,13 @@ Spec: [2026-11-03-desktop-ai-mcp-design.md](../specs/2026-11-03-desktop-ai-mcp-d
 Each PR is titled `[mc] n/6 <what it does for the user>` and carries the template's "Plan progress" block. Tier 2 (store writes, engine-facing): the fast loop locally, CI runs e2e.
 
 ## Progress
-- [ ] 0/6 Spec + plan (docs only, this PR)
-- [ ] 1/6 Spike: does a built `.mcpb` open Claude Desktop's install dialog on Mac and Windows; does Claude ask before a tool call (a tester's Windows PC; measured, written into the spec)
-- [ ] 2/6 Claude can read: local MCP route, token, pairing, read tools, redaction, the bridge `.mcpb`
-- [ ] 3/6 Claude can fill: write tools, Changes by Claude list with Undo, shared validation
-- [ ] 4/6 Connect Claude on the banner, Settings card, privacy note, ⌘K, shorter instruction
-- [ ] 5/6 Spike: ChatGPT through OpenAI's Secure MCP Tunnel with a personal account on the desktop app (measured; stop and ask the owner if it needs a Platform organization)
-- [ ] 6/6 Connect ChatGPT (only if 5/6 says a normal person can finish it)
+- [x] 0/6 Spec + plan (docs only, this PR)
+- [x] 1/6 Spike: does a built `.mcpb` open Claude Desktop's install dialog on Mac and Windows; does Claude ask before a tool call (a tester's Windows PC; measured, written into the spec)
+- [x] 2/6 Claude can read: local MCP route, token, pairing, read tools, redaction, the bridge `.mcpb`
+- [x] 3/6 Claude can fill: write tools, Changes by Claude list with Undo, shared validation
+- [x] 4/6 Connect Claude on the banner, Settings card, privacy note, ⌘K, shorter instruction
+- [x] 5/6 Spike: ChatGPT through OpenAI's Secure MCP Tunnel, from the docs: no-go (spec "Result of the ChatGPT spike"); the owner chose not to run it hands-on
+- [ ] 6/6 Connect ChatGPT: parked as JOB-258 (5/6 says a normal person cannot finish it)
 
 ## Order and dependencies
 
