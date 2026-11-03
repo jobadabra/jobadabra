@@ -258,7 +258,9 @@ Owner: "every time the agent starts, he already knows how the app should functio
 
 ## Proof it is better (acceptance, measured in 8/12)
 
-Replay: for each tester bug, check out the **pre-fix commit** (table above), run the matching **named plan** (a short, fixed plan, not a diverse session, so the four are comparable) with the persona whose data has the shape, 3 runs each; in addition, **2 free diverse sessions** on the same pre-fix commit, to measure whether the diverse long session finds them *unprompted* (the number that matters for the daily run) (broker AI is not deterministic), and run today's e2e + screenshot review on the same commit.
+**How a replay runs (8/12 part 1, 3 Nov 2026):** the agent did not exist at the pre-fix commits and #3027 does not revert cleanly on main, so `ai-user-agents.yml` takes `app_ref` (the app, `src/` and `desktop/` at the commit before the fix) and puts today's tests, agent, knowledge and tools back on top; `plan` names the plan, `rules_off` takes rules out of what the agent knows. A replay run files no issue and writes no memory (its artifact is `agent-replay-<run>`). The knowledge base's `profile-1..3` and `jobs-3` were written from these two fix PRs, so a run **with** the rule measures whether the agent applies it, and a run **without** it (`rules_off`) is the unprompted number.
+
+Replay: for each tester bug, run the app at the **pre-fix commit** (table above) with the matching **named plan** (a short, fixed plan, not a diverse session, so the four are comparable) with the persona whose data has the shape, 3 runs each; in addition, **2 free diverse sessions** on the same pre-fix commit, to measure whether the diverse long session finds them *unprompted* (the number that matters for the daily run) (broker AI is not deterministic), and run today's e2e + screenshot review on the same commit.
 - Baseline (already measured, above): existing methods **0 of 4**.
 - **Target: the agent finds ≥ 3 of 4 on ≥ 2 of 3 runs**, each as a *proved* finding or a *judged* note that matches the bug; and **0 filed findings about those four on the fixed commit `df66db14`** (the fixes hold; a filed issue there counts as a false positive). Free sessions are reported as "found n of 4 unprompted", with no target until measured.
 - A fifth control: a **planted** bug (a Save that stores the label) the agent must find, so recall is a number from run 1 (the same idea as `mutants.json`).
@@ -299,8 +301,9 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 - [x] [ag] 4/12 knowledge: `docs/app-expectations/` seed, `agent-memory` branch write-back, "changed since last session" from git + PR verdict lines (proof: desktop/e2e/lib/agent-knowledge.mjs @75edb22)
 - [x] [ag] 5/12 findings core: detector `ai-user-agent`, notes with arguments, second opinion, 12-a-session cap, session summary and cost line (proof: desktop/e2e/lib/agent-notes.mjs @e0884e6)
 - [x] [ag] 6/12 the session runner: one goal-driven loop on the explorer, the `agent` suite, notes → second opinion → findings, summary and memory files (proof: desktop/e2e/lib/agent-run.mjs @6137c35)
-- [ ] [ag] 7/12 the daily workflow `ai-user-agents.yml`, the Worker slot, the memory push (the first real nightly run; screenshots ride the Finder's `pr-assets`, so no separate evidence branch)
-- [ ] [ag] 8/12 replay proof on `b4d64112` / `b6014b04` / `df66db14`, numbers into this spec
+- [ ] [ag] 7/12 the daily workflow `ai-user-agents.yml`, the Worker slot, the memory push (merged as #3088 at f5099bb; unticked until a night worked end to end: the first one, 3 Nov, got no answer from the broker for 180 s while PR checks held its slots)
+- [ ] [ag] 8/12 part 1: the replay plumbing (`app_ref`, `plan`, `rules_off`, the four named plans), the second opinion on Claude alone, a held note when it is unavailable
+- [ ] [ag] 8/12 part 2: persona data where part 1 shows it missing, the 3-run table on `b4d64112` / `b6014b04` / `df66db14`, numbers into this spec
 - [ ] [ag] 9/12 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
 - [ ] [ag] 10/12 aged states: the day-30 folder generator and the first deep-state sessions (phase 2; fresh random states first, the owner's answer)
 - [ ] [ag] 11/12 a living persona: snapshot saved and restored across nights, chapters, staggered personas, replay from a snapshot (phase 2)

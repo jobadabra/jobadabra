@@ -5,7 +5,7 @@ name: CI · AI user agent
 # (desktop/e2e/agent-nightly.mjs): Codex out = half a session, a broker that refuses = no session and the reason in the summary. It files what it can argue is a bug (ui-findings.yml reads this run like an e2e run, detector "AI user agent"),
 # keeps its notes on the `agent-memory` branch, and writes the cost line in the job summary. It is a measurement: it gates nothing, and a pause is the repository variable AI_USER_AGENT = off.
 # Why (3 Nov 2026, AI user agents 7/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own.
-run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || 'AI user agent · by hand' }}
+run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || (inputs.plan != '' && format('AI user agent · replay {0}', inputs.plan) || 'AI user agent · by hand') }}
 
 on:
   workflow_dispatch:
@@ -16,6 +16,16 @@ on:
         default: false
       seed:
         description: 'The night seed (empty = today as a number): the same seed plans the same goals and person'
+        required: false
+      # The replay proof (spec "Proof", 8/12): a run with any of these three measures and files nothing (no issue, no memory); its artifact is named agent-replay-<run>.
+      app_ref:
+        description: 'Replay: the commit whose APP is tested (a 7-40 character SHA, e.g. the commit before a fix); the tests and the agent come from this workflow''s commit. Empty = this commit'
+        required: false
+      plan:
+        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound) instead of the seeded goals'
+        required: false
+      rules_off:
+        description: 'Replay: rule ids taken out of what the agent knows, comma separated (profile-1,jobs-3): the unprompted run'
         required: false
 
 permissions:
@@ -47,6 +57,22 @@ jobs:
         timeout-minutes: 5
         with:
           fetch-depth: 300   # the commits since the last session (git log <last>..HEAD); a last session older than this shows the last 30
+      # Why (3 Nov 2026, AI user agents 8/12): the agent did not exist at the commit before a tester bug's fix, and the second fix does not revert cleanly on main, so a replay runs the app of that commit under today's tests and agent:
+      # the whole tree at app_ref, then the harness, the knowledge, the tools and the local actions put back from this commit. The ref comes through the environment and must be a hex SHA.
+      - name: The app as it was, the tests and the agent as they are (replay only)
+        if: inputs.app_ref != ''
+        timeout-minutes: 5
+        env:
+          APP_REF: ${{ inputs.app_ref }}
+        run: |
+          set -euo pipefail
+          [[ "$APP_REF" =~ ^[0-9a-f]{7,40}$ ]] || { echo "app_ref must be a 7-40 character hex commit, got: $APP_REF"; exit 1; }
+          NOW="$(git rev-parse HEAD)"
+          git fetch --quiet --depth=1 origin "$APP_REF"
+          git checkout --quiet --detach FETCH_HEAD
+          rm -rf desktop/e2e docs/app-expectations tools .github/actions
+          git checkout "$NOW" -- desktop/e2e docs/app-expectations tools .github/actions
+          echo "The app is $(git rev-parse --short FETCH_HEAD); the tests, the agent, the knowledge and the tools are $(git rev-parse --short "$NOW")." | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -97,7 +123,9 @@ jobs:
         working-directory: desktop/e2e
         env:
           AGENT_SEED: ${{ inputs.seed }}
-          AGENT_MEMORY_DIR: ${{ steps.prepare.outputs.memory_dir }}
+          AGENT_PLAN: ${{ inputs.plan }}
+          AGENT_RULES_OFF: ${{ inputs.rules_off }}
+          AGENT_MEMORY_DIR: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
           AGENT_CHANGED_LOG: ${{ steps.prepare.outputs.changed_log }}
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
           E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
@@ -136,16 +164,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the night's notes on the agent-memory branch
-        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success'
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success' && inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == ''
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: node agent-nightly.mjs publish
-      # The same artifact name pattern an e2e suite uses, so ui-findings.yml files this run's findings without a second reader.
+      # The same artifact name pattern an e2e suite uses, so ui-findings.yml files this run's findings without a second reader; a replay run is named otherwise, so the Finder never files a bug that was fixed long ago.
       - name: Screenshots, findings, summary and trace
         if: always() && steps.artifact_scan.outcome == 'success' && hashFiles('e2e-artifacts/agent/**') != ''
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-artifacts-agent
+          name: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '') && format('agent-replay-{0}', github.run_id) || 'e2e-artifacts-agent' }}
           path: e2e-artifacts/agent
           if-no-files-found: ignore

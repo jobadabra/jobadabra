@@ -15,6 +15,7 @@ import {changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
 import {planSession, recordSession} from '../lib/agent-plan.mjs';
+import {namedPlan, rulesOff, withoutRules} from '../lib/agent-plans.mjs';
 import {runSession} from '../lib/agent-run.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
 import {VIEWS} from '../lib/uicheck.mjs';
@@ -51,9 +52,11 @@ export async function run(ctx) {
     const moves = movesFromPalette(await readPalette(page));
     const coverage = memoryDir && fs.existsSync(path.join(memoryDir, 'coverage.json')) ? JSON.parse(fs.readFileSync(path.join(memoryDir, 'coverage.json'), 'utf8')) : [];
     const changedLog = process.env.AGENT_CHANGED_LOG && fs.existsSync(process.env.AGENT_CHANGED_LOG) ? fs.readFileSync(process.env.AGENT_CHANGED_LOG, 'utf8') : '';
-    const changed = changedSince(changedLog);
-    const plan = planSession({seed, moves, coverage, changed: changed.areas});
-    const expectations = readExpectations(path.join(REPO, 'docs/app-expectations')), notes = memoryDir ? readNotes(memoryDir) : {};
+    // Why (3 Nov 2026, AI user agents 8/12): a replay run (AGENT_PLAN: one named plan of the proof, lib/agent-plans.mjs) is a measurement of one app state, so what changed since the last night does not steer it; AGENT_RULES_OFF takes rules out of what the agent knows (the unprompted run).
+    const planId = process.env.AGENT_PLAN || '';
+    const changed = changedSince(planId ? '' : changedLog);
+    const plan = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas});
+    const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
     const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
