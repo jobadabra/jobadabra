@@ -12,6 +12,7 @@ import {keyOf, ranked, visibleQuestions} from '../renderer/question-filter.js';
 import {formatFor, proposalIn} from '../renderer/question-kind.js';
 import {letterQuestion} from './letter-availability.js';
 import * as detailsReview from './details-review.js';
+import {split, wordsKeys} from './question-dismissed.js';
 
 const NOT_LEARNED = new Set(['details', 'one_job', 'consent']);   // lib/question-reuse.js verdicts that are never a learning
 const answeredNow = async (storage, groups, fetcher) => verdicts.answeredOf(storage, groups ?? await questions.standardAnswers(storage, fetcher));
@@ -63,16 +64,18 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   const verdictOf = row => known[keyOf(row.question)]?.reuse;
   const savedFacts = saved.filter(row => verdictOf(row) === 'details'), savedAside = saved.filter(row => NOT_LEARNED.has(verdictOf(row)) && verdictOf(row) !== 'details');
   const savedLearned = saved.filter(row => !NOT_LEARNED.has(verdictOf(row)));
-  return {details: ranked([...facts, ...savedFacts], known), learned: ranked([...formatted(learned), ...savedLearned], known), letter: letterQuestion(storage),
+  // Why (2 Nov 2026, owner): a dismissed question leaves both lists here, once, so their counts, Jobs' rows and Focus never show it (lib/question-dismissed.js).
+  const mine = split(storage, ranked([...facts, ...savedFacts], known)), reusable = split(storage, ranked([...formatted(learned), ...savedLearned], known));
+  return {details: mine.shown, learned: reusable.shown, dismissed: {details: mine.dismissed, learned: reusable.dismissed}, letter: letterQuestion(storage),
     hidden: [...formatted(hidden), ...savedAside],
     fromDetails: fromDetails.length, usage, consent: hidden.filter(row => known[keyOf(row.question)]?.reuse === 'consent').length, notLearned};
 }
 
 // "What Claude needs": the standard answers' groups with the open questions the filter hides left out (cached verdicts only, no AI call here).
 export function filterGroups(storage, groups) {
-  const known = verdicts.cached(storage);
+  const known = verdicts.cached(storage), dismissed = wordsKeys(storage);   // a dismissed question is not asked here either (2 Nov 2026, owner)
   return groups.map(group => {
-    const open = group.items.filter(item => item.open), {shown} = visibleQuestions(open, known);
+    const open = group.items.filter(item => item.open && !dismissed.has(keyOf(item.question))), {shown} = visibleQuestions(open, known);
     return {...group, items: group.items.filter(item => !item.open || shown.some(each => each.question === item.question))};
   }).filter(group => group.items.length);
 }

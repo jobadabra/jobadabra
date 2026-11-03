@@ -8,7 +8,7 @@ import {$, show} from './core.js';
 // The questions saved last time are used at once (cached on this computer), then the store's answer replaces them.
 const QUESTIONS_CACHE = 'questionsCache2';   // {details, learned, letter, notLearned}; the one-list cache of before 28 Oct 2026 is not read
 let questionsShown = '';
-const now = {details: [], learned: [], letter: null, hidden: [], consent: 0, fromDetails: 0, notLearned: [], error: '', read: false, desktopAi: null};
+const now = {details: [], learned: [], letter: null, hidden: [], dismissed: {details: [], learned: []}, consent: 0, fromDetails: 0, notLearned: [], error: '', read: false, desktopAi: null};
 // What the drawers walk through: Your details items (details), the reusable questions (learned), the cover-letter action (letter), the set-aside ones (hidden),
 // the consent count, the saved answers that are no learning (notLearned: Profile → What we learned leaves them out), the last error, and whether the store answered yet.
 export const questionsNow = () => now;
@@ -39,11 +39,11 @@ async function readQuestions({force}) {
   if (!Array.isArray(cached?.details) || !Array.isArray(cached?.learned)) cached = null;
   if (!questionsShown && cached) { renderQuestions(cached); document.dispatchEvent?.(new Event('questions-read')); }   // the rows draw from what was kept on this Mac, then from the store's answer
   if (!force && questionsReadAt && Date.now() - questionsReadAt < QUESTIONS_FRESH_MS && cached) return;   // fresh enough: what is shown stands
-  const {details = [], learned = [], letter = null, hidden = [], consent = 0, fromDetails = 0, notLearned = [], error} = await window.pilot.openQuestions();
+  const {details = [], learned = [], letter = null, hidden = [], dismissed = {}, consent = 0, fromDetails = 0, notLearned = [], error} = await window.pilot.openQuestions();
   if (!error) questionsReadAt = Date.now();
   if (error && cached) { Object.assign(now, {error, read: true}); return; }  // the store unreachable: keep the saved questions
   if (!error) try { localStorage.setItem(QUESTIONS_CACHE, JSON.stringify({details, learned, letter, notLearned})); } catch {}
-  renderQuestions({details, learned, letter, notLearned}, error, hidden, consent, fromDetails);
+  renderQuestions({details, learned, letter, notLearned}, error, hidden, consent, fromDetails, dismissed);
   now.read = true;
   document.dispatchEvent?.(new Event('questions-read'));   // the other counts of this queue (Profile banner, Your details' "To check") draw again
 }
@@ -55,8 +55,8 @@ function drawCount(id, n, text) {
   if ($(id)) show($(id), n > 0);   // a window without it (another page's test harness) is left alone
 }
 
-function renderQuestions({details = [], learned = [], letter = null, notLearned = []}, error = '', hidden = [], consent = 0, fromDetails = null) {
-  Object.assign(now, {details, learned, letter, hidden, consent, notLearned, error: error || '', ...(fromDetails === null ? {} : {fromDetails})});
+function renderQuestions({details = [], learned = [], letter = null, notLearned = []}, error = '', hidden = [], consent = 0, fromDetails = null, dismissed = null) {
+  Object.assign(now, {details, learned, letter, hidden, ...(dismissed ? {dismissed: {details: dismissed.details || [], learned: dismissed.learned || []}} : {}), consent, notLearned, error: error || '', ...(fromDetails === null ? {} : {fromDetails})});
   const shown = JSON.stringify([details.length, learned.length, letter?.setup?.state || '', error, now.fromDetails]);
   if (shown === questionsShown) return;
   questionsShown = shown;

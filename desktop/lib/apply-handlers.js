@@ -12,6 +12,7 @@ import * as pipeline from './pipeline.js';
 import {killTree} from './kill-tree.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
+import * as questionDismissed from './question-dismissed.js';
 import * as detailsReview from './details-review.js';
 import {claudeAi} from './question-ai.js';
 import * as review from './review.js';
@@ -289,7 +290,7 @@ export function registerApplyHandlers(ctx) {
   // answers that are no learning from demoNotLearned.
   ipcMain.handle('openQuestions', () => (DEMO ? Promise.resolve({details: storage.settings().demoDetailsReview || [], learned: storage.settings().openQuestions || [], letter: storage.settings().demoLetterSetup || null,
     hidden: storage.settings().hiddenQuestions || [], notLearned: storage.settings().demoNotLearned || []}) : questionLists.openShown(storage))
-    .then(({details, learned, letter = null, hidden, consent = 0, fromDetails = 0, notLearned = []}) => ({ok: true, details, learned, letter, hidden, consent, fromDetails, notLearned}),
+    .then(({details, learned, letter = null, hidden, dismissed = {}, consent = 0, fromDetails = 0, notLearned = []}) => ({ok: true, details, learned, letter, hidden, dismissed, consent, fromDetails, notLearned}),
       error => ({ok: false, error: error.message, details: [], learned: [], letter: null, hidden: [], notLearned: []})));
   // Why (PR B2b): each form label's learning (lib/learnings.js wrote it in the verdict cache), for What we learned's evidence chips (renderer/learning-evidence.js).
   ipcMain.handle('learnedLabels', () => Object.fromEntries(Object.entries(storage.settings().questionVerdicts || {}).filter(([, entry]) => entry?.learned).map(([key, entry]) => [key, entry.learned])));
@@ -302,6 +303,8 @@ export function registerApplyHandlers(ctx) {
     ? detailsReview.answer(storage, String(questionKey), String(answer ?? ''), {ai: claudeAi(storage)}) : questions.answerAll(storage, [questionKey, ...(Array.isArray(options?.also) ? options.also.map(String).slice(0, 20) : [])], answer, undefined, mark && typeof mark === 'object' ? mark : null,
     {ai: claudeAi(storage)}))
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));
+  // A drawer's "Dismiss this question" (on: true) and its "Bring back" (lib/question-dismissed.js): the one state the lists read.
+  ipcMain.handle('dismissQuestion', (_, questionKey, question, on) => (DEMO ? {ok: true} : on ? questionDismissed.dismiss(storage, String(questionKey || ''), question) : questionDismissed.bringBack(storage, String(questionKey || ''))));
   // A session's ❓ fact, answered with one tick on the session page: saved to its home (Your details or the standard answers page, lib/answer-home.js).
   ipcMain.handle('rememberAnswer', (_, question, answer) => (DEMO ? Promise.resolve({ok: true}) : needsNotion('profile') || questions.remember(storage, question, answer, undefined, {ai: claudeAi(storage)}))
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));

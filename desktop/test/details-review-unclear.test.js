@@ -11,6 +11,7 @@ import * as store from '../lib/store/index.js';
 import * as review from '../lib/details-review.js';
 import {BATCH, move} from '../lib/profile-move.js';
 import {fakeNotion} from './fake-notion.js';
+import {wordingReply} from './fake-wording.js';
 
 const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', 'Industries to prefer / avoid: ❓', 'Ideal team size: depends',
   '## 💶 Availability & compensation', 'Target: 10000 CHF/month gross [salary]', '## 🛂 Work eligibility', 'Work permit / visa: ❓ your citizenship and status',
@@ -51,7 +52,9 @@ const ADAPTERS = {
     return {storage, fetcher};
   },
 };
-const unclearOf = async env => (await review.pending(env.storage, {fetcher: env.fetcher})).filter(each => each.details.kind === 'unclear');
+// The questions are asked as the writer words them (lib/open-wording.js); these tests are about which lines are unclear, so each item is read by its field's label.
+const wordsOnly = {client: {messages: {create: async request => wordingReply(request) || {content: [{type: 'text', text: '{}'}]}}}};
+const unclearOf = async env => (await review.pending(env.storage, {fetcher: env.fetcher, ai: wordsOnly})).filter(each => each.details.kind === 'unclear').map(each => ({...each, question: each.details.fact}));
 
 for (const [name, setup] of Object.entries(ADAPTERS)) {
   test(`${name}: every answered line of the 3 pages is judged once; guess, vague and off-topic are queued with their reason`, async () => {

@@ -10,6 +10,7 @@ import {KEYS} from '../shared/alias-schema.js';
 import {FIELDS, readProfile} from '../renderer/preferences-model.js';
 import {changeFor, sections, withState} from '../renderer/answers-model.js';
 import {looksLikeFieldId} from '../renderer/question-filter.js';
+import {labelAsValue} from '../renderer/question-sense.js';
 import {applyEdits} from './text-outline-handlers.js';
 import {openStore} from './store/index.js';
 import {log} from './log.js';
@@ -148,8 +149,10 @@ export function plan(answers, learnings, verdicts, {after = null} = {}) {
  * learned (not judged = not read on a guess). -> {counts, evidence, judged (the labels the AI judged), usage} or null when nothing was asked.
  */
 export async function learn(storage, {answers, client, owned = [], job = {}, fetcher, propose = () => {}}) {
-  const wanted = [...new Map((answers || []).map(each => ({label: clean(each.label).replace(/[\s*:]+$/, ''), value: clean(each.value), state: each.state || ''}))
-    .filter(each => each.label.length > 1 && each.value && each.value.length <= MAX_ANSWER && !looksLikeFieldId(each.label)).map(each => [each.label, each])).values()].slice(0, MAX_ITEMS);
+  const given = (answers || []).map(each => ({label: clean(each.label).replace(/[\s*:]+$/, ''), value: clean(each.value), state: each.state || ''}));
+  // Why (3 Nov 2026, owner: "Saved: Summary"): a value that is its own label or another field's label is a heading, never an answer to learn.
+  const wanted = [...new Map(given.filter(each => each.label.length > 1 && each.value && each.value.length <= MAX_ANSWER && !looksLikeFieldId(each.label)
+    && !labelAsValue(each.label, each.value, given.map(other => other.label))).map(each => [each.label, each])).values()].slice(0, MAX_ITEMS);
   if (!client || !wanted.length) return null;
   const page = openStore(storage, {fetcher}).page('answers'), outline = await page.outline(), learnings = learningsOf(outline);
   const verdicts = await judge(client, {answers: wanted, learnings, owned: [...new Set([...owned, ...STRATEGY_OWNED])], job});

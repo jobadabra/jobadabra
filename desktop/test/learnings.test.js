@@ -2,6 +2,7 @@
 // should just confirm or extend that learning, or it's a completely new and separate topic"): one AI call per fill judges each answer against the kept
 // learnings; the code writes exactly what the verdict says and checks only the reply's shape and that a picked topic is on the list. The AI is a fake with a
 // fixed reply (no spend); the prompt's own cases are test/fixtures/learnings-cases.json, replayed on Haiku when the prompt changes.
+import {wordingReply} from './fake-wording.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -116,8 +117,10 @@ test('Submit\'s typed answers are judged like a fill\'s, confirmed, and the evid
 test('What we learned\'s drawer checks each learning a fill wrote; Confirm writes it without its state and keeps its kind', async () => {
   const s = fresh();
   await page(s).write('## Learned from forms\n- Willing to travel: Yes, up to 20% (new) [yes/no]\n- Contract type: Permanent (two answers: Freelance)\n- Notice period: 3 months\n');
-  const items = (await review.pending(s)).filter(each => ['taught', 'conflict'].includes(each.details.kind));
-  assert.deepEqual(items.map(each => [each.details.kind, each.question, each.value]), [['taught', 'Willing to travel', 'Yes, up to 20%'], ['conflict', 'Contract type', 'Permanent']]);
+  // A learning's title is asked in words (lib/open-wording.js), never as its bare label: these tests read each by its fact.
+  const items = (await review.pending(s, {ai: {client: {messages: {create: async request => wordingReply(request) || {content: [{type: 'text', text: '{}'}]}}}}})).filter(each => ['taught', 'conflict'].includes(each.details.kind));
+  assert.deepEqual(items.map(each => [each.details.kind, each.details.fact, each.value]), [['taught', 'Willing to travel', 'Yes, up to 20%'], ['conflict', 'Contract type', 'Permanent']]);
+  assert.ok(items.every(each => /\?$/.test(each.question)), 'asked as a question');
   assert.equal(items[0].proposal, 'Yes, up to 20%', 'unchanged it reads Confirm (pages/question-review.js saveWord)');
   assert.deepEqual(items[1].format.options, ['Permanent', 'Freelance']);
   assert.equal((await review.answer(s, items[0].key, 'Yes, up to 20%')).ok, true);

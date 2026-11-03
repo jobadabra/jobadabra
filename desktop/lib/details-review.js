@@ -12,7 +12,9 @@ import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
 import {formatFor, splitMark, withMark} from '../renderer/question-kind.js';
 import {valueOf as stateOf} from '../renderer/answers-model.js';
 import {KEEP_AS_IS, keyOf} from '../renderer/question-filter.js';
-import {needsCheck} from '../renderer/question-values.js';
+import {languageParts, needsCheck, partIsExact, withLevel} from '../renderer/question-values.js';
+import {hasLabel, labelAsValue, sameWords} from '../renderer/question-sense.js';
+import {worded} from './open-wording.js';
 import * as missingFacts from './missing-facts.js';
 import * as factAsks from './fact-asks.js';
 import {PARTS, splitNote} from '../renderer/experience-profile-model.js';
@@ -53,6 +55,16 @@ const answered = (outline, page, owned = new Set()) => itemsOf(outline, page).fi
 const isAsk = (label, text) => /^❓/.test(plain(text).slice(plain(label).length).replace(/^[\s|:—–-]+/, ''));
 const hintOf = text => plain(text).split('❓').slice(1).join(' ').replace(/^[\s|:—–-]+/, '').replace(/^(to confirm|optional)\b\s*[—:-]?\s*/i, '').trim();
 const choice = options => ({kind: 'single', list: '', options, constraints: false, control: 'single'});
+// A line to make exact. Its question always names what it asks about (owner, 3 Nov 2026: "What language is this question being asked for?"): a language line with a part
+// per language is asked one part at a time ("English: you wrote “Fluent”. Which level?"), the exact parts shown as done; other kinds are one value under their label.
+function checks(line, {home, format}) {
+  const base = {home, label: line.label, kind: format.kind}, where = HOME_NAMES[home];
+  const parts = format.kind === 'language' ? languageParts(line.value) : [];
+  if (parts.length < 2 && !parts.some(part => part.level)) return [item('check', base, {question: `${line.label}: make it exact`, format, value: line.value, details: {where, fact: line.label}})];
+  const done = parts.filter(partIsExact).map(part => part.raw).join(' · ');
+  return parts.flatMap((part, index) => (partIsExact(part) ? [] : [item('check', {...base, part: index, was: part.raw}, {question: part.level ? `${part.name}: you wrote “${part.level}”. Which level?` : `${part.name}: which level?`, format, value: part.level,
+    details: {where, fact: line.label, part: index, ...(done ? {line: `Already exact: ${done}`} : {})}})]));
+}
 const keyFor = (kind, ref) => `${PREFIX}${kind}:${JSON.stringify(ref)}`;
 export const isDetailsKey = key => String(key || '').startsWith(PREFIX);
 function parse(key) {
@@ -94,6 +106,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const taught = (line, formats) => {
     const said = stateOf(splitMark(line.value).text);
     if (said.state !== 'new' && said.state !== 'conflict') return false;   // a guess is shown in place, "Unconfirmed" (18 Oct 2026), not asked
+    if (!hasLabel(line.label) || labelAsValue(line.label, said.value)) return true;   // an older fill learned a heading as its own answer ("Summary: Summary"): never asked (3 Nov 2026, owner)
     const ref = {page: 'answers', label: line.label, value: line.value}, base = {question: line.label, value: said.value, details: {where: PAGES.answers, fact: line.label}};
     if (said.state === 'conflict') out.push(item('conflict', ref, {...base, format: choice([said.value, said.other]), details: {...base.details, line: `Two answers: ${said.value} · ${said.other}`}}));
     else out.push(item('taught', ref, {...base, proposal: said.value, format: formatFor({marked: splitMark(line.value).marked ? splitMark(line.value) : null, kept: formats[keyOf(line.label)]}),
@@ -102,22 +115,25 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   };
   const unclear = (line, ref, where, format) => {   // the AI's word on a saved answer (lib/answer-clarity.js): asked when it is not clear
     const said = clarity.UNCLEAR[clarity.verdictOf(storage, line)];
-    if (said) out.push(item('unclear', ref, {question: line.label || line.value, format, value: line.value, details: {where, source: said, fact: line.label || line.value, line: `Saved: ${line.value}`}}));
+    if (!hasLabel(line.label) || labelAsValue(line.label, line.value)) return;   // Why (3 Nov 2026, owner): a line that names nothing, or whose value is its own label ("Summary: Summary"), has no question to ask and is no answer to keep
+    if (said) out.push(item('unclear', ref, {question: line.label, format, value: line.value, details: {where, source: said, fact: line.label, line: `Saved: ${line.value}`}}));
   };
   for (const [home, lines] of Object.entries(found)) {
     for (const line of lines) {
       if (home === 'eligibility' && (folded(storage, line) || (asked(line.value) && (isOldLine(line) || zoneWaits(line))))) continue;   // an older eligibility line the zones answer: folded into them on Save, never asked (#2322)
       const format = formatFor({marked: line.kind ? {kind: line.kind} : null, kept: kept[keyOf(line.label)]});
       if (asked(line.value)) out.push(item('open', {home, label: line.label}, {question: line.label, format, hint: hintOf(line.value), details: {where: HOME_NAMES[home], fact: line.label}}));
-      else if (needsCheck(format.kind, line.value)) out.push(item('check', {home, label: line.label, kind: format.kind}, {question: `${line.label}: make it exact`, format, value: line.value, details: {where: HOME_NAMES[home], fact: line.label}}));
+      else if (needsCheck(format.kind, line.value)) out.push(...checks(line, {home, format}));
       else unclear(line, {home, label: line.label, value: line.value}, HOME_NAMES[home], format);
     }
   }
   const owned = ownedElsewhere(outlines.profile);
   const askedAlready = new Set([...conflicts.flatMap(each => each.choices), ...storage.settings().profileUnsure || []].map(clarity.sigOf));
   for (const page of ['profile', 'answers']) {
-    for (const line of answered(await outline(page), page, owned)) {
+    const lines = answered(await outline(page), page, owned), labels = lines.map(each => each.label);
+    for (const line of lines) {
       if (page === 'answers' && taught(line, kept)) continue;
+      if (labelAsValue('', line.value, labels.filter(each => !sameWords(each, line.label)))) continue;   // a value that is another saved line's label ("Education: Key Skills") is a heading too
       if (askedAlready.has(clarity.sigOf(line))) continue;   // already asked as Which is right? / Where does this go?
       unclear(line, {page, label: line.label, value: line.value}, PAGES[page], formatFor({kept: kept[keyOf(line.label)]}));
     }
@@ -134,7 +150,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage), words: words.facts}).filter(each => !proposed.has(each.id))) {
     out.push(item('missing', {id: fact.id}, {question: fact.question, format: fact.format, hint: fact.hint, details: {where: HOME_NAMES[fact.home], fact: fact.label}}));
   }
-  return out;
+  return worded(storage, out, {client});   // a question asked by its bare label is worded, or not shown (lib/open-wording.js)
 }
 
 // A Your details line's value replaced (its kind and note kept); '' removes it. -> {ok, homeName, error}.
@@ -194,6 +210,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
   }
   if (kind === 'unclear') return answerUnclear(storage, ref, text, {fetcher, save});
   if (kind === 'taught' || kind === 'conflict') return answerTaught(storage, ref, text, {fetcher});
+  if (kind === 'check' && ref.part !== undefined) return answerPart(storage, ref, text, {fetcher, save});
   if (kind === 'check') return text && !needsCheck(ref.kind || '', text) ? setLine(storage, ref.home, ref.label, text, {fetcher, save}) : {ok: false, error: 'Pick the parts first'};
   if (kind === 'open' && ref.home) return setLine(storage, ref.home, ref.label, text, {fetcher, save});
   if (kind === 'open') {
@@ -229,8 +246,18 @@ async function answerTaught(storage, ref, text, {fetcher}) {
   return {ok: true, homeName: `your ${PAGES[ref.page] || ref.page}`};
 }
 
+// One language's level written into its part of the line; the other parts stay as written. The line must still hold the part that was asked.
+async function answerPart(storage, ref, text, {fetcher, save}) {
+  if (!partIsExact({level: text})) return {ok: false, error: 'Pick the level first'};
+  const line = ((await sections.read(storage, fetcher))[ref.home] || []).find(each => same(each.label) === same(ref.label));
+  if (!line || languageParts(line.value)[ref.part]?.raw !== ref.was) return {ok: false, error: 'That line changed; nothing was saved'};
+  return setLine(storage, ref.home, ref.label, withLevel(line.value, ref.part, text), {fetcher, save});
+}
+
 async function answerUnclear(storage, ref, text, {fetcher, save}) {
   if (!text) return {ok: false, error: 'Type the answer, or keep it as is'};
+  // Why (3 Nov 2026, owner): a heading read as an answer ("Summary: Summary") is never kept as it is; a new value still replaces it.
+  if (text === KEEP_AS_IS && (!hasLabel(ref.label) || labelAsValue(ref.label, ref.value))) return {ok: false, error: 'That is a heading, not an answer: it is not kept'};
   if (text === KEEP_AS_IS) { clarity.keepAsIs(storage, ref); return {ok: true, homeName: ref.home ? HOME_NAMES[ref.home] : `your ${PAGES[ref.page] || ref.page}`}; }
   if (ref.home) return setLine(storage, ref.home, ref.label, text, {fetcher, save});
   const line = await lineOn(storage, ref.page, each => same(each.label) === same(ref.label) && same(each.value) === same(ref.value), {fetcher});

@@ -7,6 +7,12 @@
       "cases": ["tests/test_role_kinds_split.py"],
       "prompts": {"src/ai/enrich.py": ["ROLE_SYSTEM", "DUTIES_RULE", "SYSTEM"]}
     },
+    "question-words": {
+      "live": false,
+      "about": "The queue's question writer for bare field labels (lib/open-wording.js): 'Workload', 'Summary' and a CV heading never reach a drawer as their own label; offline schema, echo and unworded-label checks with a stub client",
+      "cases": ["desktop/test/details-review-sense.test.js", "desktop/test/question-sense.test.js"],
+      "prompts": {"desktop/lib/open-wording.js": ["INSTRUCTIONS"]}
+    },
     "consent-choice": {
       "live": false,
       "about": "Exact affirmative consent choices: offline schema and refusal guards, never a factual attestation",

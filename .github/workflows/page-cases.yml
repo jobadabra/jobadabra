@@ -96,6 +96,7 @@ on:
       - 'desktop/renderer/profile-model.js'
       - 'desktop/renderer/question-filter.js'
       - 'desktop/renderer/question-kind.js'
+      - 'desktop/renderer/question-sense.js'
       - 'desktop/renderer/question-values.js'
       - 'desktop/renderer/run-lines.js'
       - 'desktop/renderer/run-status.js'

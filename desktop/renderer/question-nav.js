@@ -29,7 +29,7 @@ export const sourceOf = q => (q.setup ? 'Application setup' : q.details ? q.deta
 
 // Its state in the list: [words, tone] for pill(). Answered questions leave the queue, so these are the ones still open.
 export function stateOf(q, {aside = false, drafted = false} = {}) {
-  if (aside) return ['Set aside', 'neutral'];
+  if (aside) return [q.dismissed ? 'Dismissed' : 'Set aside', 'neutral'];
   if (drafted) return ['Draft', 'neutral'];
   if (q.setup) return [q.priority, 'bad'];
   if (q.details) return [ASKS[q.details.kind] || 'Missing answer', 'warn'];
@@ -40,7 +40,7 @@ export function stateOf(q, {aside = false, drafted = false} = {}) {
 export function questionNav({queue, setAside, at, aside}, drafts, go) {
   const where = el('div', 'qr-where');
   const top = el('div', 'qr-where-top');
-  top.append(el('b', '', aside ? 'A set-aside question' : `Question ${at + 1} of ${queue.length}`), progress(queue, at, aside, drafts, go));
+  top.append(el('b', '', aside ? (aside.dismissed ? 'A dismissed question' : 'A set-aside question') : `Question ${at + 1} of ${queue.length}`), progress(queue, at, aside, drafts, go));
   const current = aside || queue[at];
   const nav = Object.assign(el('button', 'qr-nav'), {type: 'button', id: 'qr-nav', title: 'All questions'});
   nav.setAttribute('aria-haspopup', 'menu');
@@ -88,6 +88,6 @@ function listItems({queue, setAside, at, aside}, drafts, go) {
   const item = (q, kind, index) => ({label: shortTitle(q.question, 80), detail: sourceOf(q), tile: KIND_TILE[q.format?.kind] || 'help',
     badge: stateOf(q, {aside: kind === 's', drafted: drafts.has(q.key)}), current: kind === 's' ? aside === q : !aside && index === at, run: () => go(kind, index)});
   const items = queue.map((q, index) => item(q, 'q', index));
-  if (setAside.length) items.push({heading: `Set aside · ${setAside.length} · not counted`}, ...setAside.map((q, index) => item(q, 's', index)));
+  if (setAside.length) items.push({heading: `Dismissed or set aside · ${setAside.length} · not counted`}, ...setAside.map((q, index) => item(q, 's', index)));
   return items;
 }
