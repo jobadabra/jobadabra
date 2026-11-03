@@ -13,8 +13,8 @@ import {killTree} from './kill-tree.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
 import * as questionDismissed from './question-dismissed.js';
-import * as detailsReview from './details-review.js';
 import {claudeAi} from './question-ai.js';
+import {answerKey} from './question-answer.js';
 import * as review from './review.js';
 import {noteTabMiss} from './tab-expect.js';
 import * as server from './server.js';
@@ -299,9 +299,8 @@ export function registerApplyHandlers(ctx) {
   // mark: the kind the window drew it with ({kind, options, list}), written with the first answer of a question that had none (lib/questions.js answer).
   // options.also: the keys of the other wordings of the same question (one item in the queue, renderer/question-filter.js): they get the same answer.
   // A Your details item of the queue (lib/details-review.js) is answered into its section or Profile line.
-  ipcMain.handle('answerQuestion', (_, questionKey, answer, mark, options) => needsNotion('profile') || (detailsReview.isDetailsKey(questionKey)
-    ? detailsReview.answer(storage, String(questionKey), String(answer ?? ''), {ai: claudeAi(storage)}) : questions.answerAll(storage, [questionKey, ...(Array.isArray(options?.also) ? options.also.map(String).slice(0, 20) : [])], answer, undefined, mark && typeof mark === 'object' ? mark : null,
-    {ai: claudeAi(storage)}))
+  ipcMain.handle('answerQuestion', (_, questionKey, answer, mark, options) => needsNotion('profile') || answerKey(storage, questionKey, answer,
+    {mark: mark && typeof mark === 'object' ? mark : null, also: Array.isArray(options?.also) ? options.also.map(String).slice(0, 20) : [], ai: claudeAi(storage)})
     .catch(error => ({ok: false, error: `Notion: ${error.message}`})));
   // A drawer's "Dismiss this question" (on: true) and its "Bring back" (lib/question-dismissed.js): the one state the lists read.
   ipcMain.handle('dismissQuestion', (_, questionKey, question, on) => (DEMO ? {ok: true} : on ? questionDismissed.dismiss(storage, String(questionKey || ''), question) : questionDismissed.bringBack(storage, String(questionKey || ''))));

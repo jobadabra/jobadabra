@@ -57,5 +57,14 @@ export function answersData({sections = [], learned = [], view = '', query = '',
   };
 }
 
+const OPTIONS_SHOWN = 20;
+/** The open questions as the app has loaded them (renderer/pages/jobs-questions.js `now`): both drawers' items with the key the drawer answers by, what they ask, the field kind, its options, the saved value
+ *  and, for Your details, the review kind (open | contact | missing | check …). Hidden and dismissed questions are only counted. Why (3 Nov 2026, desktop AI MCP): the write tools validate against this same list. */
+export function questionsData({details = [], learned = [], dismissed = {}} = {}) {
+  const row = list => item => ({list, key: small(item.key ?? item.id), question: small(item.question), kind: small(item.format?.kind) || '', ...(item.format?.options?.length ? {options: item.format.options.slice(0, OPTIONS_SHOWN).map(small).filter(Boolean)} : {}),
+    value: small(item.value ?? item.answer) ?? '', hint: small(item.hint) || '', review: small(item.details?.kind) || '', state: small(item.state) || ''});
+  return {questions: [...details.map(row('details')), ...learned.map(row('learned'))].slice(0, MAX_ROWS), dismissed: [...(dismissed.details || []), ...(dismissed.learned || [])].length};
+}
+
 /** Focus: the cards in the order shown, each as its short fields (job, company, step …). */
 export const focusData = items => ({cards: (items || []).slice(0, MAX_ROWS).map(item => pick(item, Object.keys(item || {})))});

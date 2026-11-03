@@ -25,13 +25,13 @@ test('a closed window or a window that has not loaded says so instead of failing
   assert.match((await windowScreen(fakeWindow(null), 'jobs')).note, /still loading/);
 });
 
-test('open questions come from the What we learned registry entry; when the page has not loaded they say what to open', async () => {
+test('open questions come from the open questions registry entry; when the page has not loaded they say what to open', async () => {
   const seen = [];
-  const sources = desktopAiSources({app, storage: fakeStorage(), getWindow: () => fakeWindow({screen: 'profile:answers', source: 'registry', data: {questions: [{id: 'q1'}]}}, seen)});
+  const sources = desktopAiSources({app, storage: fakeStorage(), getWindow: () => fakeWindow({screen: 'questions', source: 'registry', data: {questions: [{id: 'q1'}]}}, seen)});
   assert.deepEqual((await sources.questions()).data.questions, [{id: 'q1'}]);
-  assert.match(seen[0], /"profile:answers"/);
-  const empty = desktopAiSources({app, storage: fakeStorage(), getWindow: () => fakeWindow({screen: 'profile:answers', source: 'none', data: null})});
-  assert.match((await empty.questions()).note, /Open Profile → What we learned/);
+  assert.match(seen[0], /"questions"/);
+  const empty = desktopAiSources({app, storage: fakeStorage(), getWindow: () => fakeWindow({screen: 'questions', source: 'none', data: null})});
+  assert.match((await empty.questions()).note, /Open the Profile once/);
 });
 
 test('jobs and strategy are the last saved reads with their age; nothing saved says what to open; no fresh read is made', async () => {

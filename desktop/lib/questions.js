@@ -35,7 +35,7 @@ export function parseLine(block) {
 const label = text => splitMark(text).text.replace(ASKED, '').split(/:\s| — /)[0].replace(/❓/g, '');
 // format: the field's {kind, options} (a text question carries no mark).
 export const questionLine = (question, company, format = null) => withMark(`${question}: ❓${company ? ` (asked by ${company})` : ''}`, format);
-export const answeredLine = (text, answer) => text.replace(MARK, answer);
+export const answeredLine = (text, answer) => text.replace(MARK, () => answer);   // a function: a string replacement reads "$&" and "$1" in the answer as patterns (3 Nov 2026, review of 3/6)
 
 // A line is a question only when ❓ stands where its answer goes ("Notice period: ❓", "Visa: ❓ (asked by Acme)");
 // a sentence that merely mentions ❓ ("Fields marked ❓ to confirm are guesses") is not.
@@ -156,13 +156,13 @@ export async function forget(storage, question, fetcher) {
 export const SKIPPED = '— (leave blank)';
 // mark: the kind the answer was given with ({kind, options, list}); a question with no mark yet keeps it, so every later screen draws the same control.
 // ai: the inbox (lib/answer-home.js): a fact of Your details goes to its section and the open question leaves this page once that line reads back.
-export async function answer(storage, questionKey, value, fetcher, mark = null, {ai = {}} = {}) {
+export async function answer(storage, questionKey, value, fetcher, mark = null, {ai = {}, home: chosen = ''} = {}) {
   const page = answersPage(storage, fetcher);
   const open = openRows(await page.outline()).find(({row}) => row.id === questionKey);
   const block = open ? null : (await page.blocks()).find(b => b.id === questionKey);
   if (!open && (!block || !block.text.includes('❓'))) return {ok: false, error: 'Already answered'};
   const question = open ? unmarked(splitMark(open.cells[0]).text.replace(/❓/g, '')) : parseLine(block).question;
-  const home = value ? await homeOf(question, value, ai) : '';
+  const home = value ? (chosen || await homeOf(question, value, ai)) : '';   // chosen: a place the caller decided (lib/question-answer.js), no AI call
   if (home && await writeHome(storage, home, question, value, fetcher)) {
     await page.remove(open ? {id: open.row.id, text: open.cells[0]} : block);
     return {ok: true, home, homeName: HOME_NAMES[home]};
@@ -175,6 +175,34 @@ export async function answer(storage, questionKey, value, fetcher, mark = null, 
   const answered = answeredLine(block.text, value);
   if (value) await page.setText(block, mark?.kind && !splitMark(answered).marked ? withMark(answered, mark) : answered);
   else await page.remove(block);
+  return {ok: true};
+}
+
+// The row or line with this key on the answers page, wherever it is (open or answered): {cell: its answer cell's text} for a table row, {line: its text} for a line, or null.
+async function rowOf(page, questionKey) {
+  const row = (await page.outline()).filter(block => block.type === 'table').flatMap(block => block.rows).find(each => each.id === questionKey);
+  if (row) return {row, cell: (row.cells[1] || '').trim()};
+  const block = (await page.blocks()).find(each => each.id === questionKey);
+  return block ? {block, line: block.text.trim()} : null;
+}
+
+/** The text a question's row (its answer cell) or line holds now, exactly as stored, or null when it is gone. Used to record what an AI client changed (lib/desktop-ai-writes.js). */
+export async function rawOf(storage, questionKey, fetcher) {
+  const found = await rowOf(answersPage(storage, fetcher), questionKey);
+  return found ? (found.cell ?? found.line) : null;
+}
+
+/**
+ * Puts a row or line back to `was`, but only while it still holds `now` (what an AI client wrote): a person's later edit is never overwritten (spec "Trust" 3).
+ * -> {ok: true} | {ok: false, error}.
+ */
+export async function restore(storage, questionKey, {was, now, question = ''}, fetcher) {
+  const page = answersPage(storage, fetcher), found = await rowOf(page, questionKey);
+  if (!found) return {ok: false, error: 'That question is gone from your answers; nothing was changed'};
+  if ((found.cell ?? found.line) !== String(now ?? '').trim()) return {ok: false, error: 'You changed this since; nothing was undone'};
+  const label = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();   // the question must still be the one the change was about: after a line shift another row can hold the same answer text
+  if (question && !label(found.row ? found.row.cells[0] : found.block.text).includes(label(question).slice(0, 80))) return {ok: false, error: 'That row is a different question now; nothing was undone'};
+  if (found.row) await page.setCell(found.row, 1, was); else await page.setText(found.block, was);
   return {ok: true};
 }
 

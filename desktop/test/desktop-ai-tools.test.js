@@ -39,12 +39,13 @@ test('every result is redacted: secrets, e-mails, link queries and the home fold
     contact: 'ana.fake@example.com', link: 'https://example.com/job/1?token=SECRETVALUE123456', where: '/Users/Ana Fake/Documents/cv.pdf',
     cookie: 'li_at=AQEDAR1234567890abcdef', opaque: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8',
   };
-  const sources = {questions: async () => dirty, jobs: async () => dirty, strategy: async () => dirty, screen: async () => dirty, profile: async () => JSON.stringify(dirty), support: async () => JSON.stringify(dirty)};
-  const tools = ['get_open_questions', 'get_jobs', 'get_strategy', 'get_screen_data', 'get_profile', 'get_support_report'];
+  const sources = {questions: async () => dirty, jobs: async () => dirty, strategy: async () => dirty, screen: async () => dirty, profile: async () => JSON.stringify(dirty), support: async () => JSON.stringify(dirty),
+    answerQuestion: async () => ({data: dirty}), dismissQuestion: async () => ({error: JSON.stringify(dirty)}), changes: async () => dirty};
+  const tools = ['get_open_questions', 'get_jobs', 'get_strategy', 'get_screen_data', 'get_profile', 'get_support_report', 'answer_question', 'dismiss_question', 'list_my_changes'];
   assert.deepEqual([...tools].sort(), [...TOOL_NAMES].sort(), 'this loop covers every tool: add the new one here');
   for (const name of tools) {
     const done = await callTool(name, {}, sources, {home: '/Users/Ana Fake'});
-    assert.equal(done.isError, false, name);
+    assert.equal(done.isError, name === 'dismiss_question', name);   // dismiss_question's source answers with a refusal here: still redacted
     for (const leak of ['sk-abcdef', 'abc.def.ghi', 'ntn_abcdefghijk', 'ana.fake@example.com', 'SECRETVALUE123456', 'Ana Fake', 'AQEDAR1234567890', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8']) {
       assert.ok(!done.text.includes(leak), `${name} leaked ${leak}`);
     }

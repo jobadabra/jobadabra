@@ -10,6 +10,8 @@ import {supportState} from './feedback-handlers.js';
 import {aboutYou} from './about-you.js';
 import {logFile} from './log.js';
 import {setDesktopAiSources} from './desktop-ai-server.js';
+import * as changes from './desktop-ai-changes.js';
+import * as writes from './desktop-ai-writes.js';
 import {jobsData} from '../renderer/feedback-data.js';
 
 /** Asks the window for a screen's data through the registry the feedback dialog uses (`window.jobadabraScreenData`, renderer/pages/feedback-screens.js). The key goes in as JSON, never as code. */
@@ -30,14 +32,19 @@ export function desktopAiSources({app, storage, getWindow, getPlan, profileOf = 
     const cached = readView(name);
     return cached?.result ? {savedAt: cached.at, ...build(cached.result)} : {note: `Nothing saved yet. Open ${name === 'jobs' ? 'Jobs' : 'Strategy'} in the app once, then ask again.`};
   };
+  // The questions the window has loaded (the drawer's own lists); null until it has read them. A write checks against these, so the AI can only touch what the person is shown. `calls` is the write cap's memory (lib/desktop-ai-changes.js).
+  const writeDeps = {storage, calls: [], queue: async () => { const read = await windowScreen(getWindow?.(), 'questions'); return read.source === 'registry' ? read.data : null; }};
   return {
     screen: key => windowScreen(getWindow?.(), key),
     questions: async () => {
-      const read = await windowScreen(getWindow?.(), 'profile:answers');
-      return read.source === 'registry' ? read : {...read, note: 'Open Profile → What we learned once so the app loads the questions, then ask again.'};
+      const read = await windowScreen(getWindow?.(), 'questions');
+      return read.source === 'registry' ? read : {...read, note: 'The app has not read the questions yet. Open the Profile once so it loads them, then ask again.'};
     },
     jobs: async () => saved('jobs', result => jobsData({rows: result.jobs || [], total: (result.jobs || []).length})),
     strategy: async () => saved('strategy', result => ({strategy: result})),
+    answerQuestion: args => writes.answerQuestion(writeDeps, args),
+    dismissQuestion: args => writes.dismissQuestion(writeDeps, args),
+    changes: async () => ({changes: changes.list(storage).map(each => ({id: each.id, at: each.at, tool: each.tool, question: each.question, before: each.before, after: each.after, undone: Boolean(each.undoneAt), canUndo: !each.undoneAt && !each.undo}))}),
     profile: async () => profileText(await profileOf(storage), {lineChars: LONG_LINE}).text,
     support: async () => {
       const folder = logFile() ? path.dirname(logFile()) : path.join(app.getPath('userData'), 'logs');
