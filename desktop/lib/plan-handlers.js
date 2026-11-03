@@ -12,6 +12,7 @@ import {verifyCodex} from './ai/codex-cli.js';
 import * as installer from './plan-install.js';
 import {FAMILY, GIT_PAGE} from '../renderer/ai-plan-guide.js';
 import {copyAndOpen, findDesktopAi, runOpen} from './desktop-ai.js';
+import {stateOf} from './desktop-ai-connect.js';
 
 const SETTINGS_KEY = {claude: 'claudeCode', openai: 'codex'};
 const FILE_NAME = {claude: /^claude(?:\.exe|\.cmd)?$/i, openai: /^codex(?:\.exe|\.cmd)?$/i};
@@ -112,7 +113,7 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
   ipcMain.handle('desktopAiApp', () => { const found = findDesktopAi({...pc, platform}); return found ? {family: found.family} : null; });
   ipcMain.handle('desktopAiHelp', async () => {
     const quiet = DEMO || process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE;
-    const result = await copyAndOpen({clipboard: clipboard || {writeText() {}}, platform, found: findDesktopAi({...pc, platform}),
+    const result = await copyAndOpen({clipboard: clipboard || {writeText() {}}, platform, found: findDesktopAi({...pc, platform}), connected: !DEMO && stateOf(storage).state === 'connected',
       openFile: quiet ? async () => 'test' : file => shell.openPath(file), run: quiet ? async () => false : openApp});
     log('plan', 'desktop AI help', {ok: result.ok, reason: result.reason || '', family: result.family || '', opened: !!result.opened});
     return result;

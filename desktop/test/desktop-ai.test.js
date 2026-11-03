@@ -100,8 +100,7 @@ test('⌘K lists it while it is offered, and its run presses the same button', a
   set({desktopAi: {family: 'claude'}, learned});
   const added = [];
   addDesktopAiCommands((...given) => added.push(given));
-  assert.equal(added.length, 1);
-  assert.equal(added[0][1], 'Let Claude answer your questions');
+  assert.deepEqual(added.map(each => each[1]), ['Connect Claude', 'Let Claude answer your questions'], '4/6: Connect Claude comes first while the Claude app is here and not connected');
   set({desktopAi: null, learned});
   const none = [];
   addDesktopAiCommands((...given) => none.push(given));

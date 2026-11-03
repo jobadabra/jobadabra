@@ -50,6 +50,7 @@ export function connectWords(family = 'claude') {
     failed: `Could not prepare the connection. Try again.`,
     connected: used => `${name} is connected · ${used ? `Last used ${used}` : 'Not used yet'}`,
     disconnect: 'Disconnect',
+    connectedLead: `Ask ${name} to answer your open questions. Its answers appear here marked New, and every change is listed under Changes by ${name}.`,
     disconnected: `${name} is disconnected. It can no longer read or change anything here.`,
     cardTitle: `${name} desktop app`,
     states: {off: 'Not connected', waiting: 'Waiting for install', connected: 'Connected'},
@@ -76,4 +77,12 @@ export function connectWords(family = 'claude') {
       undoFailed: 'Could not undo that.',
     },
   };
+}
+
+/** "14:02" for today, "2 Nov, 14:02" for another day, '' for nothing: the time of a use or a change. `locale` and `now` are injectable so the test does not depend on the machine. */
+export function whenText(iso, now = new Date(), locale = 'en-GB') {
+  const at = new Date(iso);
+  if (!iso || Number.isNaN(at.getTime())) return '';
+  const time = at.toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'});
+  return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString(locale, {day: 'numeric', month: 'short'})}, ${time}`;
 }

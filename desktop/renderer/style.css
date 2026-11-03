@@ -2649,4 +2649,9 @@ details.qa-section { margin-top: var(--sp-3); }
 .qa-desktop-ai .qa-banner-words > .icon { margin-top: 2px; }
 .qa-desktop-ai-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 .qa-desktop-ai-text p { margin: 0; }
+.qa-changes { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); }
+.qa-changes h3 { margin: 0 0 var(--sp-1); }
+.qa-change { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-1) var(--sp-4); align-items: center; padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.qa-change-what { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.qa-change-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); }
 .qa-desktop-ai-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }

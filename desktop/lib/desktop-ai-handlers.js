@@ -5,7 +5,7 @@ import path from 'node:path';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {buildLogs, profileText, PROFILE_CHARS} from './feedback-bundle.js';
-import {LONG_LINE} from './desktop-ai-tools.js';
+import {LONG_LINE, TOOLS} from './desktop-ai-tools.js';
 import {supportState} from './feedback-handlers.js';
 import {aboutYou} from './about-you.js';
 import {logFile} from './log.js';
@@ -63,9 +63,10 @@ export function registerDesktopAi({DEMO, ipcMain, shell, ...deps}) {
   setDesktopAiSources(DEMO ? null : desktopAiSources(deps));
   if (!ipcMain) return;
   const {storage, app} = deps, quiet = DEMO || Boolean(process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE);
-  ipcMain.handle('desktopAiState', () => (DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)));
+  const tools = TOOLS.map(({name, description}) => ({name, description}));   // "See exactly what it can read" in the privacy note lists these, the same list the helper file's manifest has
+  ipcMain.handle('desktopAiState', () => ({...(DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)), tools}));
   ipcMain.handle('desktopAiConnect', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), quiet}));
   ipcMain.handle('desktopAiDisconnect', () => (DEMO ? {ok: true} : connection.disconnect(storage)));
-  ipcMain.handle('desktopAiChanges', () => (DEMO ? [] : connection.changesOf(storage)));
+  ipcMain.handle('desktopAiChanges', () => (DEMO ? connection.demoChanges() : connection.changesOf(storage)));
   ipcMain.handle('desktopAiUndo', (_, id) => (DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : connection.undo(storage, id)));
 }

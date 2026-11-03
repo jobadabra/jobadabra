@@ -1417,6 +1417,20 @@
           </details>
         </div>
       </div>
+      <!-- Desktop AI app card (pages/desktop-ai-card.js): connect it to read and help answer the open questions; shown when the app is here or a connection exists; the words are drawn from renderer/desktop-ai-words.js -->
+      <div class="setting conn-panel conn-card" id="setting-desktop-ai" hidden>
+        <div class="conn-head">
+          <span class="ui-tile tone-info"><i data-icon="sparkle"></i></span>
+          <div class="conn-head-text"><h3 id="dai-title">Desktop AI app</h3>
+            <p class="muted" id="dai-line"></p></div>
+          <span class="service-state" id="dai-status"></span>
+        </div>
+        <p class="message" id="dai-message" role="status"></p>
+        <div class="inline">
+          <button class="primary" id="dai-connect">Connect</button>
+          <button class="secondary" id="dai-disconnect" hidden>Disconnect</button>
+        </div>
+      </div>
       <div class="setting conn-panel" id="setting-serpapi" data-parked="google_jobs" hidden>
         <div><h3>🔎 Google Jobs (SerpApi)</h3><p class="muted status-line" data-secret="SERPAPI_API_KEY"></p>
           <p class="muted small">Free plan at <a href="#" data-link="https://serpapi.com/users/sign_up">serpapi.com</a>: 250 searches a month.</p></div>
@@ -1829,6 +1843,22 @@
     <div class="dialog-foot">
       <button class="secondary" id="gmail-offer-no" value="cancel" formnovalidate></button>
       <button class="primary" id="gmail-offer-yes" value="default"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Connect the desktop AI (pages/desktop-ai-connect.js): what the AI app can read, shown once before the first Connect -->
+<dialog id="desktop-ai-privacy-dialog" class="save-dialog panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span><h2 id="desktop-ai-privacy-title"></h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="dialog-lead" id="desktop-ai-privacy-text"></p>
+    <details class="conn-setup plain"><summary id="desktop-ai-privacy-tools"></summary>
+      <ul class="muted small" id="desktop-ai-privacy-list"></ul>
+    </details>
+    <div class="dialog-foot">
+      <button class="secondary" id="desktop-ai-privacy-no" value="cancel" formnovalidate></button>
+      <button class="primary" id="desktop-ai-privacy-yes" value="default"></button>
     </div>
   </form>
 </dialog>

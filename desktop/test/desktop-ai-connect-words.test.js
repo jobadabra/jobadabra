@@ -2,7 +2,7 @@
 // posting texts, no submit, listed and undoable), and both AIs get the same checks.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {NAMES, connectWords, instruction} from '../renderer/desktop-ai-words.js';
+import {NAMES, connectWords, instruction, whenText} from '../renderer/desktop-ai-words.js';
 
 test('every AI gets the same words: no question mark, its own name and company in the privacy note', () => {
   for (const family of Object.keys(NAMES)) {
@@ -29,4 +29,12 @@ test('instruction v2 is the short one once connected and keeps the safety senten
   assert.match(instruction(true), /Never press Submit on any job\. Do not change Settings\./);
   assert.match(instruction(), /go to Profile → What we learned/);
   assert.match(instruction(), /Never press Submit on any job\. Do not change Settings\./);
+});
+
+test('the time of a use: today shows the clock, another day shows the date too, nothing shows nothing', () => {
+  const now = new Date(2026, 10, 3, 18, 0);
+  assert.equal(whenText(new Date(2026, 10, 3, 14, 2).toISOString(), now), '14:02');
+  assert.equal(whenText(new Date(2026, 10, 2, 9, 5).toISOString(), now), '2 Nov, 09:05');
+  assert.equal(whenText('', now), '');
+  assert.equal(whenText('not a date', now), '');
 });

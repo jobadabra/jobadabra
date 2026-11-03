@@ -40,3 +40,10 @@ export const changesOf = storage => changes.list(storage).map(entry => ({id: ent
 
 /** Undo one change by id (the strip's button). -> {ok: true} | {ok: false, error}. */
 export const undo = (storage, id) => undoChange({storage}, String(id ?? ''));
+
+/** Fictional rows for the demo (screenshots, the demo app): what the strip looks like once the AI changed something. Never real data. */
+export const demoChanges = () => [
+  {id: 'demo-1', at: '2026-11-03T09:41:00.000Z', tool: 'answer_question', question: 'Notice period', before: '', after: '3 months (new)', undone: false, canUndo: true, why: ''},
+  {id: 'demo-2', at: '2026-11-03T09:40:00.000Z', tool: 'answer_question', question: 'Are you authorised to work in Switzerland', before: '', after: 'Yes', undone: false, canUndo: false, why: 'It moved to Your details; change it there.'},
+  {id: 'demo-3', at: '2026-11-03T09:38:00.000Z', tool: 'dismiss_question', question: 'Favourite hobby', before: '', after: 'dismissed', undone: true, canUndo: false, why: ''},
+];

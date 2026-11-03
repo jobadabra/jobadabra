@@ -16,7 +16,8 @@ import {isStyle} from './letter-style.js';
 import {keyOf} from '../question-filter.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 import {fromDetailsLine} from '../answered-from-details.js';
-import {appendDesktopAiOffer} from './desktop-ai.js';
+import {appendDesktopAiOffer, readConnection} from './desktop-ai.js';
+import {mountDesktopAiChanges} from './desktop-ai-changes.js';
 import {askWords} from '../question-nav.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
@@ -195,6 +196,7 @@ function draw(view, into) {
     into.append(banner);
     appendDesktopAiOffer(into);   // the Claude or ChatGPT desktop app can answer them (pages/desktop-ai.js)
   }
+  mountDesktopAiChanges(into, filters.view === 'all', () => { tab?.load(); });   // the desktop AI's change list under the banner (pages/desktop-ai-changes.js)
 
   const box = el('section', 'answer-item qa-section qa-learned');
   if (filters.view !== 'confirmed') {
@@ -249,6 +251,7 @@ export async function loadApplicationAnswers() {
   const named = wanted;
   // Why (2026-10-27, owner; views All / New / Confirmed since 28 Oct 2026): refreshing data keeps the selected view; an explicit jump can change it.
   if (VIEWS.includes(named)) { filters.view = named; remembered('answersView', named); }
+  readConnection().catch(() => {});   // the banner and the Changes strip show the AI's state (pages/desktop-ai-connect.js)
   readEvidence().catch(() => {});   // the chips come when the fills are read (a Notion store takes a few seconds)
   await tab.load();
   if (named) { setTimeout(() => { if (wanted === named) wanted = null; }, 2000); node.querySelector('.segmented')?.scrollIntoView?.({block: 'nearest'}); }   // later loads of the same jump keep it

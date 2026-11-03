@@ -69,7 +69,7 @@ test('Undo through the main-process function restores a dismissed question and m
   assert.equal((await undo(storage, 'nope')).ok, false);
 });
 
-test('the window gets all five channels; the demo answers off and an empty list, and a quiet run never starts the file', async () => {
+test('the window gets all five channels; the demo answers off and fictional changes, and a quiet run never starts the file', async () => {
   const {registerDesktopAi} = await import('../lib/desktop-ai-handlers.js');
   const handlers = {};
   const ipcMain = {handle: (name, fn) => { handlers[name] = fn; }};
@@ -78,7 +78,7 @@ test('the window gets all five channels; the demo answers off and an empty list,
   registerDesktopAi({DEMO: true, ipcMain, shell, app: {getVersion: () => '1'}, storage, getWindow: () => null, getPlan: () => null});
   assert.deepEqual(Object.keys(handlers).sort(), ['desktopAiChanges', 'desktopAiConnect', 'desktopAiDisconnect', 'desktopAiState', 'desktopAiUndo']);
   assert.equal(handlers.desktopAiState().state, 'off');
-  assert.deepEqual(handlers.desktopAiChanges(), []);
+  assert.deepEqual(handlers.desktopAiChanges().map(each => each.id), ['demo-1', 'demo-2', 'demo-3'], 'fictional rows, so the demo shows the strip');
   assert.equal((await handlers.desktopAiConnect()).ok, true, 'quiet: nothing built, nothing opened');
   assert.equal((await handlers.desktopAiUndo({}, 'x')).ok, false);
 });
