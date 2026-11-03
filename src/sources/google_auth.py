@@ -1,7 +1,7 @@
 """The one-time Google browser sign-in (loopback redirect + PKCE): consent, token exchange, and the "connected" page the browser lands on.
 
 The token answer's `scope` says what the user really allowed (the consent screen has unticked boxes); `authorize` returns it with
-the refresh token so callers keep only what works and say what is missing (src/sources/google_scopes.py). Tests: tests/test_google_scopes.py."""
+the refresh token so callers keep only what works and say what is missing (src/sources/google_scopes.py). Tests: tests/unit/sources/test_google_scopes.py."""
 import base64
 import hashlib
 import http.server

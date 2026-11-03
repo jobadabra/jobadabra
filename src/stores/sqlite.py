@@ -4,7 +4,7 @@ One file, data/tracker.sqlite (the user's records; data/jobs.sqlite stays a rebu
 data/files/<app_id>/, texts as Markdown files (the desktop app's JOBADABRA_PROFILE_FILE / _ANSWERS_FILE /
 _KNOWLEDGE_FILE when set, else data/texts/<name>.md). Each table keeps the whole record as JSON in `data` (so an int
 stays an int and a list a list) plus the few columns it is looked up or ordered by. Spec: docs/superpowers/specs/2026-10-09-store-adapters.md.
-Guarded by tests/test_store_sqlite.py (the contract suite plus what is SQLite's own: reopening, the file layout).
+Guarded by tests/unit/stores/test_store_sqlite.py (the contract suite plus what is SQLite's own: reopening, the file layout).
 """
 import json
 import os

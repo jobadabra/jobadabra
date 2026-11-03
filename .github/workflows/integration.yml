@@ -3,8 +3,8 @@ name: CI · Integration tests
 # The integration layer as its own visible check (owner, 1 Nov 2026, exact option "Yes, own workflow, 3 jobs (Recommended)"): "extension", "app (ubuntu-24.04)", "app (windows-latest)" and "store",
 # so each check name says its layer. A pull request starts it by `paths:` below (each layer's reach: desktop/integration/<layer>/** and what its tests import; desktop/test/integration-workflow-paths.test.js
 # fails when a file a test imports is missing); on main build.yml calls it as a job of CI · Tests on every push (as it does harness.yml and smoke.yml, owner 1 Nov 2026: "Parallel jobs"),
-# so a red integration test stays that run's red (tests/test_red_main.py) and its result files are artifacts of that run. Not a required check: a workflow `paths:` skip never reports, and a required one would block the PR
-# (tests/test_workflow_paths.py); "All checks passed" counts its run (tools/pr-verdict.py).
+# so a red integration test stays that run's red (tests/tooling/ci/test_red_main.py) and its result files are artifacts of that run. Not a required check: a workflow `paths:` skip never reports, and a required one would block the PR
+# (tests/tooling/ci/test_workflow_paths.py); "All checks passed" counts its run (tools/pr-verdict.py).
 # Why (owner, 1 Nov 2026): the integration tests ran inside `npm test` of two other jobs (desktop's unit job, the harness job), so a red one read "desktop" or "harness tests" and nobody could say how
 # long or how steady the layer is. Each job writes a node:test JSON result (desktop/integration/results-reporter.mjs) and uploads it as the artifact integration-results-<layer>[-<os>];
 # jobs/integration-intel.mjs of the private site repo reads them hourly for https://www.jobadabra.top/admin/operations/integrations (green share, speed, flaky, the move).

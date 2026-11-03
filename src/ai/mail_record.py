@@ -1,5 +1,5 @@
 """Writing side of the Gmail check: the events index, the stage ladder (advance, forward only), an event's changes and record().
-Guarded by tests/test_mail_stages.py and tests/test_event_dedupe.py."""
+Guarded by tests/test_mail_stages.py and tests/unit/ai/test_event_dedupe.py."""
 from datetime import datetime, timezone
 import sys
 

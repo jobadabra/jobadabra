@@ -7,7 +7,7 @@ it (not proof the posting closed). Unchanged rows are not written. The scoring f
 languages, technologies, role family, salary, recruiter, scoring method, and the posting's workload, on-call, visa, remote scope,
 contract, deadline, posted date and what the role involves) are written as the Job Matches columns hold them, so a
 person on this Mac sees what a Notion user sees. Guarded by tests/store_contract.py (every store, Notion's through its own sync)
-and tests/test_match_facts.py (each fact equals the column src/notion/matches.py writes).
+and tests/unit/stores/test_match_facts.py (each fact equals the column src/notion/matches.py writes).
 """
 from datetime import datetime, timezone
 

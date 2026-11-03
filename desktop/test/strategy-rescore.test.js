@@ -1,7 +1,7 @@
 // Strategy's one "scored using previous search settings" notice (owner, 18 Oct 2026: "one consolidated notice", "count unique affected jobs",
 // "saving settings must not silently start a paid re-score", "while running, show progress and prevent duplicate starts", "show the cost only if
 // it's calculated", 17 Oct): the words, the one start (its dialog's own button, never twice), no other path that re-scores, and the IPC to the engine.
-// tests/test_strategy_outdated.py checks the engine counts each job once.
+// tests/unit/ai/test_strategy_outdated.py checks the engine counts each job once.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -64,7 +64,7 @@ test('the suggestions count stays apart from outdated scores', () => {
   assert.doesNotMatch(suggestions, /outdated|previous_locations|lastStrategy\?\.previous/);
 });
 
-test('the IPC reaches the engine command (tests/test_strategy_outdated.py checks the engine has it)', () => {
+test('the IPC reaches the engine command (tests/unit/ai/test_strategy_outdated.py checks the engine has it)', () => {
   assert.match(read('lib/job-actions-handlers.js'), /ipcMain\.handle\('rescoreOutdated'[\s\S]*?'src\.desktop', 'rescore-outdated'/);
   assert.match(read('preload.cjs'), /rescoreOutdated: call\('rescoreOutdated'\)/);
   assert.match(read('lib/demo.js'), /'rescoreOutdated'/, 'demo mode never re-scores');
@@ -78,7 +78,7 @@ test('Re-score is its own run, never a Find jobs search (owner, 3 Nov 2026: a jo
   const body = tasks.slice(tasks.indexOf('export function rescore('), tasks.indexOf('export function syncMatches'));
   assert.match(body, /const mode = 'rescore'/);
   assert.doesNotMatch(body, /searchOnce|searchSteps|saveSettings|lastSearchAt|discover|scout/, 'no job boards, no employer pages, no finder, and the last search time stays');
-  // the engine side: tests/test_rescore_mode.py (old scores replaced, a never-scored job left to Find jobs), tests/test_score_scope.py (the Find jobs queue)
+  // the engine side: tests/unit/ai/test_rescore_mode.py (old scores replaced, a never-scored job left to Find jobs), tests/unit/ai/test_score_scope.py (the Find jobs queue)
 });
 
 test('no screen still says a Profile change is re-scored by the next searches', () => {

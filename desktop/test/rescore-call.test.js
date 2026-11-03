@@ -2,7 +2,7 @@
 // Jobs' call to action for scores from the previous strategy, its own re-score card, the "Score first" gate and the muted old scores (owner, 2 Nov 2026:
 // "I don't think we should clear all the scoring instantly, but rather show a stale/warning message ... a very visible call to action ... on the jobs list ... to rescore
 // ... but still, there should be the old scored." / "Find jobs should be only for finding jobs. But pressing Find jobs should open a dialog saying: Score first").
-// One counter and one running state (renderer/pages/rescore-run.js), one sentence (renderer/rescore-words.js) for Strategy's notice and Jobs. tests/test_strategy_outdated.py
+// One counter and one running state (renderer/pages/rescore-run.js), one sentence (renderer/rescore-words.js) for Strategy's notice and Jobs. tests/unit/ai/test_strategy_outdated.py
 // checks the engine marks the rows and counts them like Strategy; desktop/integration/app/screen-jobs-rescore.test.js plays it in the window.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

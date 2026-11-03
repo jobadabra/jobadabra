@@ -1,6 +1,6 @@
 """Interview analysis, the Claude call: the model names, the facts a call can reveal, the review's schema and prompt,
 the candidate applications and the one structured call (with the fallback model). Re-exported by src/ai/interviews.py.
-Tests: tests/test_interviews_run.py.
+Tests: tests/unit/ai/test_interviews_run.py.
 """
 import json
 import os

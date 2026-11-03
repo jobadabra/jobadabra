@@ -21,7 +21,7 @@ const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win3
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(root, 'config', 'notion_schema.json'), 'utf8'));
 // Async, never spawnSync: the Notion stand-in answers from this same process, so a blocked event loop would time the engine out.
 const py = (args, env) => new Promise(resolve => execFile(python, args, {cwd: root, env, encoding: 'utf8', maxBuffer: 1 << 24}, (error, stdout, stderr) => resolve({code: error ? (error.code ?? 1) : 0, stdout, stderr})));
-const COMPUTED = new Set(['formula', 'rollup', 'last_edited_time', 'created_time', 'unique_id', 'people']);   // as tests/test_store_notion.py
+const COMPUTED = new Set(['formula', 'rollup', 'last_edited_time', 'created_time', 'unique_id', 'people']);   // as tests/unit/stores/test_store_notion.py
 const URL_ = 'https://job-boards.example.com/acme/jobs/4242';
 const JOB = {url: URL_, title: 'Platform Engineer', company: 'Acme Fictional', location: 'Basel'};
 const KIT = {answers: [{field: 'why', question: 'Why Acme?', answer: 'Because of the on-call culture.', needs_review: false, category: 'motivation'}],

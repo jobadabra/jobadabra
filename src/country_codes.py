@@ -1,6 +1,6 @@
 """ISO 3166-1 country codes and their English names (standard data, from ICU), so a job location that a page gives as only a code ("MD") reads
 as a place the search knows ("Moldova"). 24 Oct 2026: a Moldovan board's 40 IT jobs were located "MD" and every one failed the place check.
-Used by src/sources/careers_parse.py. Tests: tests/test_country_codes.py."""
+Used by src/sources/careers_parse.py. Tests: tests/unit/sources/test_country_codes.py."""
 NAMES = {
     "AC": "Ascension Island", "AD": "Andorra", "AE": "United Arab Emirates", "AF": "Afghanistan", "AG": "Antigua & Barbuda", "AI": "Anguilla",
     "AL": "Albania", "AM": "Armenia", "AN": "Curaçao", "AO": "Angola", "AQ": "Antarctica", "AR": "Argentina", "AS": "American Samoa",

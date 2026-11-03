@@ -18,7 +18,7 @@ Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64
 (`tools/release-file-names.sh make`; `check` fails the build when one is missing). The updater matches **GitHub asset names** (not a `latest.yml`).
 - **No `Job-Pilotto-*` copies since 0.8.60** (they were removed from it by hand). An app on 0.8.27 or older matches only `Job-Pilotto-*`, so it no longer finds updates: reinstall it from the website.
   The updater, the smoke workflows and `release-stable.sh` still read `Job-Pilotto-*` on a release made before 25 Oct 2026 (a rollback).
-- Guard: `tests/test_release_file_names.py` fails when a `Job-Pilotto-*` copy is made again, or the updater stops reading the old names on old releases.
+- Guard: `tests/tooling/release/test_release_file_names.py` fails when a `Job-Pilotto-*` copy is made again, or the updater stops reading the old names on old releases.
 - Site side (`jobadabra-web`): `/download/*` prefers `Jobadabra-*`, falls back to `Job-Pilotto-*`; `/install` tries the new zip, then the old alias.
 
 ### The nightly pipeline (`desktop.yml` → `e2e.yml`)
@@ -61,7 +61,7 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
    days. With none, it **starts one on the tag and waits for it** (about 15 minutes), then decides by its result; a red one stops the promotion. (A schedule
    runs it twice a day; a push runs only the suites whose files changed; see `desktop/e2e/README.md`.) `E2E_NO_START=1` (the daily canary auto-promote, which
    cannot start a run) never starts one and accepts the newest run on main instead. `SKIP_E2E=1 tools/release-stable.sh` overrides it for a hotfix while the
-   journey itself is broken: say why in the release notes. The decision itself is `tools/e2e_gate.py` (tested in `tests/test_e2e_gate.py`).
+   journey itself is broken: say why in the release notes. The decision itself is `tools/e2e_gate.py` (tested in `tests/tooling/release/test_e2e_gate.py`).
    It refuses a build whose Windows installer isn't there yet — but that guard is weaker than it looks, and the
    release it promotes is the one `/releases/latest` (what `desktop/lib/updater.js` reads) points at:
    - `desktop.yml`'s Mac-only fallback copies the **generic** `Jobadabra-windows-x64.exe` / `Job-Pilotto-windows-x64.exe` from the last good release

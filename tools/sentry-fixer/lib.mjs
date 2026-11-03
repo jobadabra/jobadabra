@@ -62,9 +62,12 @@ export function choose(candidates, prs = [], now = Date.now(), verdicts = []) {
 }
 
 // What a fix may touch: the app's code and the engine, and their tests. Never what reports, secrets, licences or the build itself.
-export const ALLOWED = [/^desktop\/lib\/[^/]+\.js$/, /^desktop\/main\.js$/, /^desktop\/renderer\/.+/, /^src\/.+\.py$/, /^desktop\/test\/[^/]+\.test\.js$/, /^tests\/[^/]+\.py$/];
+// Why-changed (3 Nov 2026, test folders 2/3, TESTS.md): a fix's test lives at the top or in a unit/guards scope folder; tooling/ tests stay out of a fix.
+const TEST_HOME = String.raw`(?:(?:unit|guards)\/[^/]+\/)?`;
+export const ALLOWED = [/^desktop\/lib\/[^/]+\.js$/, /^desktop\/main\.js$/, /^desktop\/renderer\/.+/, /^src\/.+\.py$/,
+  new RegExp(String.raw`^desktop\/test\/${TEST_HOME}[^/]+\.test\.js$`), new RegExp(String.raw`^tests\/${TEST_HOME}[^/]+\.py$`)];
 export const FORBIDDEN = /(secret|license|licence|crash_reporting|telemetry|sentry|analytics|keychain|\.\.)/i;
-export const TEST = /^(desktop\/test\/[^/]+\.test\.js|tests\/[^/]+\.py)$/;
+export const TEST = new RegExp(String.raw`^(desktop\/test\/${TEST_HOME}[^/]+\.test\.js|tests\/${TEST_HOME}[^/]+\.py)$`);
 export function checkChange(files) {
   const bad = files.filter(file => !ALLOWED.some(pattern => pattern.test(file)) || FORBIDDEN.test(file));
   if (bad.length) return {ok: false, why: `edits outside what a fix may touch: ${bad.join(', ')}`};

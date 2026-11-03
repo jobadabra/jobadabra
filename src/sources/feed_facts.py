@@ -7,7 +7,7 @@ its list (ETag) and a fingerprint of its job ids. No job titles, texts or links 
 - Older: the site is asked "changed since?" with its tag; a 304 means the same list, so nothing new to judge.
 - A title or place still waiting for the AI, another search, or new readers: read again.
 A skipped employer's open jobs stay seen (keep_seen), so the 7-day expiry never closes a job its site still lists.
-Used by src/sources/feed_scan.py. Tests: tests/test_feed_facts.py.
+Used by src/sources/feed_scan.py. Tests: tests/unit/sources/test_feed_facts.py.
 """
 import hashlib
 from datetime import datetime, timedelta, timezone

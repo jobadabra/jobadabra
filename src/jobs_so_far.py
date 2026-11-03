@@ -1,7 +1,7 @@
 """Jobs shown as each source is read (owner, 18 Oct 2026: "start displaying jobs to the user as quickly as possible"): a search imports
 each source's jobs the moment it has them and says "Jobs so far: N new from …", the line the Jobs list reads itself again on
 (desktop/renderer/pages/jobs.js LIST_CHANGED). The search's final import then keeps the early "new" status, so its counts and new-job
-lines are the same as when everything was imported at the end. Tests: tests/test_jobs_per_source.py.
+lines are the same as when everything was imported at the end. Tests: tests/unit/sources/test_jobs_per_source.py.
 The line is said at once for a search's first new jobs, then at most once every EVERY seconds with the sum since the last one (a search
 reads ~200 employer sites one by one: one line each flooded the activity log); statuses() says what is left.
 """

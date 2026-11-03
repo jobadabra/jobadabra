@@ -1,5 +1,5 @@
 """Interview analysis, what is written: the Interviews page (job line, review blocks, transcript), its row properties and
-the Telegram summary. Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_saved.py, tests/test_interviews_focus.py.
+the Telegram summary. Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/test_interviews_saved.py, tests/unit/ai/test_interviews_focus.py.
 """
 from html import escape
 

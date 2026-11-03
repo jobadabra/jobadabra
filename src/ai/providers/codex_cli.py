@@ -5,7 +5,7 @@ One call is one `codex exec --json --ephemeral` in the call's own temp folder, r
 name, from the features this Codex lists (`codex features list`, once per binary), the shell included. The system prompt becomes Codex's
 own instructions (model_instructions_file, a file in the call's folder); a schema goes in --output-schema in OpenAI's strict form; images go in -i. A PDF is refused (reads_pdf False): the live
 check of 9 Oct 2026 answered a CV question without opening the file, so a PDF reaches Codex only as page images + text. The model is the same tier in OpenAI's family (models.for_family). It drops the API keys the app gives Python,
-so Codex runs on the user's own sign-in; never signs in for them. Guarded by tests/test_ai_providers.py.
+so Codex runs on the user's own sign-in; never signs in for them. Guarded by tests/unit/ai/test_ai_providers.py.
 """
 import json
 import os

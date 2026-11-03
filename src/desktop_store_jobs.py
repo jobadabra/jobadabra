@@ -2,7 +2,7 @@
 stores.matches (what a search found and scored) and stores.applications (every job pursued), merged by url_key.
 
 The app's Jobs list, counters and board (desktop/renderer) read these keys; on Notion the list stays Tracker.notion_jobs()
-(src/desktop.py). Guarded by tests/test_desktop_store_jobs.py.
+(src/desktop.py). Guarded by tests/unit/stores/test_desktop_store_jobs.py.
 """
 from .notion import titles
 from .stores.base import url_key

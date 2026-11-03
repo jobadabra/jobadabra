@@ -14,7 +14,7 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   401/403/429 or a check is a no.
   **The opt-in LinkedIn exception** (owner, 31 Oct 2026: "Every Find jobs, if the user is logged in via Linkedin Jobs, should search and scrape jobs, using the user's login" … "but headlessly"; on how: "I'd like to avoid [a focused window]. Therefore, I'd go for option 2"; on consent: "Opt-in, warned once"): with the person's switch on, their own Find jobs press reads their LinkedIn searches headlessly with their copied session. A wall, a check or a 401/403/429 is still a no (no retry); no disguise, no solving, no typing. The owner's own signed-in try comes first and a checkpoint stops us. Spec `docs/superpowers/specs/2026-10-31-linkedin-headless-design.md`.
   **The sign-in window** (owner, 3 Nov 2026, after "Turn on LinkedIn doesn't work… I have the extension enabled": "Both: window first"): the session can also come from a Jobadabra window on LinkedIn's own sign-in page, so a Mac needs no extension (Windows has no credential store for the session yet: JOB-254, the window refuses before it opens there). The person types the password on LinkedIn's page; we only receive the two cookies LinkedIn sets, honest user agent, nothing injected, a check is theirs to finish or close. If LinkedIn blocks a real sign-in there: stop and report, no disguise.
-  **One 403 exception** (owner, 22 Oct 2026, #1694: "403 only, not 401"): our own fast burst can trigger a 403, so the engine asks that domain once more after a 1 s pause; a 401 is never retried and a second 403 is final (`src/sources/host_pace.py`, `tests/test_host_pace.py`).
+  **One 403 exception** (owner, 22 Oct 2026, #1694: "403 only, not 401"): our own fast burst can trigger a 403, so the engine asks that domain once more after a 1 s pause; a 401 is never retried and a second 403 is final (`src/sources/host_pace.py`, `tests/unit/sources/test_host_pace.py`).
   **The refused-sites exception** (owner, 19 Oct 2026, verbatim: "we don't want to crawl job boards, many requests a day, but rather employer sites, once. And that's it. And we want to give the UX to the user that everything is happening magically. He is not asked to intervene. We can state clearly in the app (have a settings), in the privacy... that we're doing this." / "So we don't want to do this against his will" / "but if he's accepting this. then let's do"). A coordinator advised against it (the read is routed through the user so the site cannot tell); he chose it knowingly,
   with job boards included, on the terms in CLAUDE.md: first opt-in, then ON by default on 20 Oct 2026 (owner: "this should be opt-out, meaning on by default"; the person can turn it off), no cookies, never the login-wall sites.
   **20 Oct 2026, "stop on any check" changed** (owner: "can we borrow the bot overpassing strategies? I want to get this feature. I want to change our strategy."; on the ladder sketch he chose "real tab" and "user solves captcha" and NOT faked fingerprints, solving services, proxies or a hidden browser posing as a person; "Everything should happen from within the app."): a passive check may clear by itself in a real tab of the user's Chrome (incognito, so no cookies); a captcha is solved by the user, never by us. Why incognito: a normal tab sends the user's cookies and logins, and stripping the Cookie header would stop a check from clearing. Numbers behind it (19 Oct 2026, six searches): about 5% of employer sites refuse the engine, 13 of 18 tested answered in a real Chrome.
@@ -159,12 +159,12 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - Rule: a by-hand beta with reds runs to the end; every red is read, named and fixed in one batch before the next beta; cancel only a hang or a failed build (CLAUDE.md working rules). Merges to main are not held (the owner did not choose that part).
 
 ## A suite's one try is the verdict (31 Oct 2026)
-An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick while its log said "Error: the suite's 11-minute budget ran out"; the red first try was retried and the retry's green passed the job. Owner: "Is this expected? Error but step passed green ?", then "And why should we accept/allow that?", then "Let's go and handle this". The old comment "A red first run is not the verdict (owner, 6 Oct 2026)" (8e9d263) quoted no owner words. No `continue-on-error` on a suite step, no second try, no flaky-proof pass (`tests/test_e2e_single_try.py`); a suite that goes red often is suspended with an owner (spec rule L), never retried.
+An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick while its log said "Error: the suite's 11-minute budget ran out"; the red first try was retried and the retry's green passed the job. Owner: "Is this expected? Error but step passed green ?", then "And why should we accept/allow that?", then "Let's go and handle this". The old comment "A red first run is not the verdict (owner, 6 Oct 2026)" (8e9d263) quoted no owner words. No `continue-on-error` on a suite step, no second try, no flaky-proof pass (`tests/tooling/ci/test_e2e_single_try.py`); a suite that goes red often is suspended with an owner (spec rule L), never retried.
 
 ## robots.txt is not consulted (6 + 26 Oct 2026)
 - 6 Oct (2f586ca): the owner dropped robots.txt checks ("if they block us, they block"). 18-24 Oct they came back in the board readers (84a97fe board_pages, 6d2bcb3 board_forms, 2d1bd00 board_sections), unnoticed: a regression of his decision.
 - 26 Oct: two pilot boards (career.aero, latestpilotjobs.com) were called unreadable because of robots.txt and terms. Owner: "let's ignore robots.txt, nobody cares about that, our users just want to search/find jobs".
-- Rule: no reader refuses a public job page for robots.txt or a site's terms (Sitemap: lines stay as discovery). `tests/test_robots_not_consulted.py` fails on a new `robotparser`/`can_fetch`. The Remotive exclusion (aggregators.py) is an API-terms choice, left as it is.
+- Rule: no reader refuses a public job page for robots.txt or a site's terms (Sitemap: lines stay as discovery). `tests/guards/safety/test_robots_not_consulted.py` fails on a new `robotparser`/`can_fetch`. The Remotive exclusion (aggregators.py) is an API-terms choice, left as it is.
 
 ## Sites read follow the current strategy (26 Oct 2026)
 - Owner: "the websites being read should be relevant and in sync with my current strategy and jobs search". After a first officer's "Find jobs",
@@ -172,23 +172,23 @@ An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick whi
   software search in Moldova had queued: 49 reads that night, 13 sites 4 times each, 0 matching jobs ("Totally irrelevant. This is a bug.").
   The refused-site queue never asked whether a site fits the search; the visit list beside it did (`visits.relevant`).
 - Hence: every list of sites a run reads or offers is judged by the AI for the CURRENT strategy, whichever search queued it; a site the person
-  opened a job on is read anyway; when the AI fails, the automatic reads take none. Guard: `tests/test_sources_follow_strategy.py` (one loop over
+  opened a job on is read anyway; when the AI fails, the automatic reads take none. Guard: `tests/unit/ai/test_sources_follow_strategy.py` (one loop over
   the lists; a new list joins it, a sibling in other work is named with its owner).
 - The same night, after that fix (owner: "it hangs. its stuck"): the judge kept "Airbase" (spend-management software, from a tech firms' list an
   earlier search picked) for the pilot search: it saw only a name that sounds like flying and was told "When unsure, keep it". And the pass sat on
   "0 of 1 · Airbase · Next" for 15 minutes: the extension read the site at once, but the pass's task waited behind Find jobs and missed the answer.
   Hence: the judge sees where a site was found, judges what an organisation does (never its name), and an automatic read leaves an unsure site
   out; a pass exists from the moment its sites are handed out and each site answers within 45 s or ends it with that reason.
-  Guards: `tests/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
+  Guards: `tests/unit/sources/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
 - Employers from the shared list (audit PR 4): the pilot search read 763 index employers, none known to hire pilots: 494 with no kind mix yet and
   269 with an old mix mostly "other" were kept on a guess, and a mix counted over all jobs worldwide spoke for one country. Owner: "Not read" for an
   employer not judged yet, old mixes the same; the countries of job places judged "using any user's machine/installation (being it Pro/Free AI/
   BYOK/subscription/API Key... whatever they use) but also using the central scout", never a one-off run on one machine.
   Hence: the scout counts each employer's jobs per country and kind (`kind_counts`, `src/scout_kind_counts.py`), places from every install's shared
   answers (`src/geo.py`, topic job-location-geo) and its own capped AI; an install judges an employer by its jobs in its countries
-  (`role_kinds.located`), and no mix means not read. Guard: `tests/test_kind_counts.py`.
+  (`role_kinds.located`), and no mix means not read. Guard: `tests/unit/ai/test_kind_counts.py`.
 - The scout keeps Claude (owner, 26 Oct 2026: "keep claude for the scout"): its answers decide which employers every install reads, a wrong one hides an
-  employer from every user of that kind; it costs ~$0.09 a run (~$11 a month). Guard: `tests/test_kind_counts.py` ScoutKeepsClaudeTest.
+  employer from every user of that kind; it costs ~$0.09 a run (~$11 a month). Guard: `tests/unit/ai/test_kind_counts.py` ScoutKeepsClaudeTest.
 
 ## Browser reads start only from the person's button (26 Oct 2026)
 - Since 20 Oct the extension read refused sites by itself: an hourly timer (3 minutes after Chrome started), every Check for new jobs and every job
@@ -212,7 +212,7 @@ An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick whi
   kinds and places in the central scout, and a count needed half of every title judged (thousands for a big employer). No log line said so.
 - Owner: "Higher cap + sample" (~$0.0008 a call, about $0.40 a run while the counts fill). Hence: the central scout's cap is `decide.CENTRAL_MAX_CALLS`
   (installs keep 60); an employer is judged on a fixed sample of 60 jobs, its counts scaled to all; the run log says "Kind counts by country on N of M feeds".
-  Guard: `tests/test_kind_counts.py` (CentralCapAndSampleTest). Lesson: after a run that publishes a new field, count how many entries carry it.
+  Guard: `tests/unit/ai/test_kind_counts.py` (CentralCapAndSampleTest). Lesson: after a run that publishes a new field, count how many entries carry it.
 - The first run at 600 calls: counts on 190 of 4,513 employers, $0.205 for 652 calls (the cap still bound). Owner: "2,000 calls" (~$0.65 a run while filling).
 
 ## CLAUDE.md diet (27 Oct 2026)

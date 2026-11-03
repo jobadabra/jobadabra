@@ -3,7 +3,7 @@
 Only these ids ever leave the machine; a search's own words never do. The site accepts the same lists (site/src/pool.js) and the central
 scout publishes a label only when enough installs share it (src/scout.py fits). Which label a place or role word gets is decided by AI in
 any language, from these fixed lists (src/ai/meanings.py labels; 8 Oct 2026: they were regexes in a few languages). No AI: no labels.
-Tests: tests/test_pool_tags.py."""
+Tests: tests/unit/ai/test_pool_tags.py."""
 from .ai import meanings
 
 COUNTRIES = {
@@ -14,7 +14,7 @@ COUNTRIES = {
     'il': 'Israel', 'br': 'Brazil', 'mx': 'Mexico', 'jp': 'Japan', 'bg': 'Bulgaria', 'hr': 'Croatia', 'ee': 'Estonia', 'hu': 'Hungary',
 }
 # The European ones: the columns of the central list's kind × country coverage (/admin/job-search/scouting). Every country the Lab's draws use
-# (tools/persona-search/draws.json) is here; tests/test_pool_tags.py checks it.
+# (tools/persona-search/draws.json) is here; tests/unit/ai/test_pool_tags.py checks it.
 EUROPE = ('ch', 'de', 'at', 'fr', 'it', 'gb', 'ie', 'nl', 'be', 'lu', 'es', 'pt', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro', 'md', 'gr', 'bg', 'hr', 'ee', 'hu')
 METROS = {
     'ch-geneva': 'Geneva', 'ch-lausanne': 'Lausanne and Vaud', 'ch-zurich': 'Zurich', 'ch-basel': 'Basel', 'ch-bern': 'Bern',

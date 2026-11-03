@@ -6,7 +6,7 @@ ours: only the user's own strategy (config/search.json, drafted from their CV) i
 - skills: how many of their stack words the title and the posting name (up to 4).
 time_budget.best_first sorts by place first, then by this: the AI fit score, the facts reader, the title sort and the first-jobs slice all
 start from the top. The score still decides what is shown; this only decides what is scored first when time is short.
-Tests: tests/test_job_rank.py."""
+Tests: tests/unit/sources/test_job_rank.py."""
 import re
 import unicodedata
 

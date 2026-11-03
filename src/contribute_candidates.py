@@ -1,6 +1,6 @@
 """Candidate postings the weekly discovery batch may record (owner, 17 Oct 2026): up to 40 public posting addresses from this install's own matches and started
 applications, shared with the pool like the other facts ("Help the pool grow", src/contribute.py). Only the address, its host and where it came from leave: never a title,
-company name, location, score, note or stage. A posting with a query or fragment is skipped (that is where a person's filters sit). Guard: tests/test_contribute_candidates.py."""
+company name, location, score, note or stage. A posting with a query or fragment is skipped (that is where a person's filters sit). Guard: tests/unit/engine/test_contribute_candidates.py."""
 import re
 from urllib.parse import urlsplit
 

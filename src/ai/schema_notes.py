@@ -4,7 +4,7 @@
 def text(schema):
     """Each described field as "name: description", nested ones as "parent.name", a repeated field (the same name and note) once (E2E quality on Free AI, 26 Oct 2026:
     SRE jobs read as engineering, empty Technologies, a null Growth on a senior role, while each rule sat only in the schema).
-    Guard: tests/test_facts_prompt_fields.py."""
+    Guard: tests/unit/ai/test_facts_prompt_fields.py."""
     lines, seen = [], set()
 
     def walk(properties, prefix):

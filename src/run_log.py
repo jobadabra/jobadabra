@@ -8,7 +8,7 @@ Running row nobody touched for 30 minutes as lost); log_run() completes it with 
 sections: src/notion/cron_report.run_page renders them), the message it sent and the last lines of its output, and its
 numbers (base.RUN_STATS, from run_page's own columns, so the numbers are the ones Notion showed). A stop (SIGTERM/SIGINT)
 or an early exit closes it as stopped or failed. The report's words stay in src/notion/cron_report.py.
-Guarded by tests/test_run_log.py (memory, sqlite and a Notion row as today's).
+Guarded by tests/unit/stores/test_run_log.py (memory, sqlite and a Notion row as today's).
 """
 import atexit
 import os

@@ -2,7 +2,7 @@
 page and paging session, with the count of jobs that fit the search.
 
 Split out of visits.py (pure move; visits.py re-exports it). The store (STORE, LOCK, _load, _save, _now) stays in visits.py
-and is looked up there at call time, so tests that patch `visits.STORE` / `visits._now` keep working. Guarded by tests/test_visits.py,
+and is looked up there at call time, so tests that patch `visits.STORE` / `visits._now` keep working. Guarded by tests/unit/sources/test_visits.py,
 test_visit_reader.py and test_visit_filters.py.
 """
 import hashlib

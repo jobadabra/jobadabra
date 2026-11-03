@@ -1,7 +1,7 @@
 """What content means, decided by AI in any language (CLAUDE.md "Meaning comes from AI, never from keyword lists"; the shared mechanism is
 src/ai/decide.py). One function per decision; the callers keep no words of their own. Without AI the answer is "don't know" (the safe
 default named in each function), never an English guess: a keyword rule is kept only where a wrong action would hurt (owner, 8 Oct 2026).
-Tests: tests/test_decide.py."""
+Tests: tests/unit/ai/test_decide.py."""
 import hashlib
 
 from . import decide, engine

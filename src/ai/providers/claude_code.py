@@ -1,7 +1,7 @@
 """The `cli` engine: the user's own signed-in Claude Code (`claude -p`), on their Claude plan. Shared CLI rules: cli_base.py.
 
 It drops the API key and the credit relay's address the app gives Python, so Claude Code can't bill them, and never signs in for the
-user: when it isn't signed in, the user is told to run `claude` and sign in themselves. Guarded by tests/test_ai_engine.py.
+user: when it isn't signed in, the user is told to run `claude` and sign in themselves. Guarded by tests/unit/ai/test_ai_engine.py.
 """
 import json
 import os

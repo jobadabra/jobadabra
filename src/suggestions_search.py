@@ -8,7 +8,7 @@ sketch W6JoQf5fCfop8oxKwnRzrK: "a button that only opens a screen is noise").
 Read from the last coverage check against today's settings (src/coverage.py: the summary every search saves) and the role ideas kept for
 this search (src/ai/role_ideas.py): no AI call and no wait. A Not now or Not true on a row is kept against its key (keys()): its top option,
 the one Focus offers; for role ideas, this search's role words (the AI's ideas change from day to day, the roles they are for do not).
-Guarded by tests/test_suggestions_search.py.
+Guarded by tests/unit/ai/test_suggestions_search.py.
 """
 import re
 import sys

@@ -1,6 +1,6 @@
 """Is this a well-formed feed slug for this job system? One answer per system, from each reader's own rule, for anything that takes a
 (system, slug) pair from outside the engine (a route another install shared, a link a user pasted) before it reaches a reader.
-Guarded by tests/test_ats_slugs.py, which loops over every feed type."""
+Guarded by tests/unit/sources/test_ats_slugs.py, which loops over every feed type."""
 import re
 
 HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')

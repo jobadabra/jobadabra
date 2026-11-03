@@ -2,7 +2,7 @@
 
 A centred card in the app's look (amber brand tokens from desktop/renderer/tokens.css), light or dark like the desktop app (`theme`
 is "light" or "dark" from the app; empty falls back to the browser's own setting), with what was allowed and what is missing.
-Tests: tests/test_google_page.py."""
+Tests: tests/unit/sources/test_google_page.py."""
 from html import escape
 
 from . import google_scopes as scopes

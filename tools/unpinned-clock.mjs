@@ -1,7 +1,7 @@
 // A ratchet against tests that read the real date (owner, 31 Oct 2026: "No test reads the real date/clock unpinned; add a guard for new ones"). It counts, per test file, the lines that read
 // "now" as a calendar value (`Date.now()`, `new Date()`, `datetime.now()`, `date.today()`, `time.time()`) when the file does not pin the clock. Durations (`Date.now() - started`, `while (now < end)`, a poll deadline) are not counted.
 // are durations and are not counted. The reads of today are the debt in tools/unpinned-clock-allowed.txt (one `<count><TAB><path>` line per file, so PRs that fix different files never conflict) and may only shrink:
-// a new read fails desktop/test/unpinned-clock.test.js and tests/test_unpinned_clock.py. Fix: pin the clock (`t.mock.timers.enable({apis: ['Date'], now})` in node, a fixed `now=` argument in python), or say `// clock: relative <why>` on the line (`# clock: relative <why>` in python).
+// a new read fails desktop/test/unpinned-clock.test.js and tests/guards/rules/test_unpinned_clock.py. Fix: pin the clock (`t.mock.timers.enable({apis: ['Date'], now})` in node, a fixed `now=` argument in python), or say `// clock: relative <why>` on the line (`# clock: relative <why>` in python).
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

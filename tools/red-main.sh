@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Is main red? One answer for the push hook, ship.sh and tools/revert-red.sh. Owner: ship-speed (11 Oct 2026). Guarded by tests/test_red_main.py.
+# Is main red? One answer for the push hook, ship.sh and tools/revert-red.sh. Owner: ship-speed (11 Oct 2026). Guarded by tests/tooling/ci/test_red_main.py.
 #   bash tools/red-main.sh        prints  green <sha>  |  red|<sha>|<workflow>|<run url>|<completed-at>|<run id>  |  unknown
 #                                 exit 1 only for red; no gh, no network or no origin/main is "unknown" (exit 0): a missing answer never blocks a push
 # Main's state is decided by the NEWEST commit of origin/main (last 20) that has a finished verdict: its `CI · Tests` run (one Linux job with a step per suite, page cases included, and the Windows job) completed with success = green; any completed
@@ -12,7 +12,7 @@
 #   red-main.sh claim <sha> --session <name>   "I am fixing it": logged, shown in every waiting ship.sh line, extends the 5 minute limit to 15 (once)
 #   red-main.sh claim-of <sha>         the session that claimed it, or nothing
 # RED_MAIN_REPO=<folder> reads another clone; RED_MAIN_RUNS=<n> how many runs to ask gh for (default 60).
-# The workflows whose result makes main red (names as in `name:` of .github/workflows/*.yml): the one place. Every other workflow is classified as ignored, with its reason, in tests/test_red_main.py:
+# The workflows whose result makes main red (names as in `name:` of .github/workflows/*.yml): the one place. Every other workflow is classified as ignored, with its reason, in tests/tooling/ci/test_red_main.py:
 # adding a workflow there is a conscious choice (that test fails for an unclassified one).
 RED_WORKFLOWS=("CI · Tests")   # one workflow since 15 Oct 2026: its one Linux job runs the page cases as a step (the old "CI · Page cases" push run is gone)
 names_json="$(printf '%s\n' "${RED_WORKFLOWS[@]}" | jq -R . | jq -sc .)"

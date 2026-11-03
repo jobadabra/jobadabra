@@ -1,5 +1,5 @@
 // Publishing the extension to the Chrome Web Store when a release turns stable (owner, 26 Oct 2026: "when we do the beta/stable release we should publish
-// the newest extension version in Chrome Web Store"; stable only). The decision is pure; the API calls run against a fake store. The release-pipeline side: tests/test_webstore_publish_pipeline.py.
+// the newest extension version in Chrome Web Store"; stable only). The decision is pure; the API calls run against a fake store. The release-pipeline side: tests/tooling/release/test_webstore_publish_pipeline.py.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import * as cws from '../../tools/webstore-publish.mjs';

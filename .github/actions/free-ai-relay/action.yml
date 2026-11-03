@@ -4,7 +4,7 @@
 # desktop/e2e/lib/engine.mjs then runs the app under test and the judges on it. No token (a fork): nothing starts and the job runs as before.
 # The relay runs inside the joined tree the site is built in (the public tree with the site's files laid over it, as its tools/overlay.sh does), built here with
 # git archive so it works on Linux, Mac and Windows runners. A job testing an older commit (a bisect) checks out its own commit beside it and passes
-# public-tree, so the relay (this file and the code it runs) is always the workflow's own version. Needs Node 22 set up first (node:sqlite). Guarded by tests/test_ci_free_ai.py.
+# public-tree, so the relay (this file and the code it runs) is always the workflow's own version. Needs Node 22 set up first (node:sqlite). Guarded by tests/tooling/ci/test_ci_free_ai.py.
 name: Free AI relay
 description: The site's Free AI handler on this runner, for the e2e suites
 inputs:

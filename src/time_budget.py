@@ -6,7 +6,7 @@ call past the deadline (a call already running finishes). No budget (a CLI run, 
 One deadline, wall clock (owner, 26 Oct 2026: "A find jobs session should take at most 3min"; runs with --budget 180 took 12-23 min): every
 stage in STAGES shares the run's DEADLINE, set once at start() and never moved; the reads stop at their cut (src/sources/read_budget.py),
 the AI steps at their reserve, every floor at the end; a stage past its time only queues its work and says so once (later).
-The seconds below are planned for the app's 180 s and scaled to the run's own budget (part). Tests: tests/test_three_minutes.py.
+The seconds below are planned for the app's 180 s and scaled to the run's own budget (part). Tests: tests/unit/sources/test_three_minutes.py.
 One Find jobs press runs several processes (the job boards' step, then the search, then the scout): each counts from the press (SEARCH_AT, set
 by the app, desktop/lib/search-steps.js), not from its own start, so they share one deadline; a step with a share of it ends at its stage
 (owner's 06:21 press, 26 Oct 2026: 269 s, the job boards' step 177 s of it with no clock before the search's own 3 minutes)."""
@@ -29,7 +29,7 @@ TAIL = 15    # no AI call starts this close to the end: one already running fini
 SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts no call: scoring keeps them (26 Oct 2026, a proof
 #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
 SCORE_FIRST = False
-# Every stage that reads or calls the AI after the budget starts (tests/test_three_minutes.py loops over them; a new one goes here and there).
+# Every stage that reads or calls the AI after the budget starts (tests/unit/sources/test_three_minutes.py loops over them; a new one goes here and there).
 STAGES = ('web search', 'job boards', 'employer sites', 'free job APIs', 'Google Jobs', 'job-alert emails', 'descriptions', 'places',
           'title sorting', 'scoring', 'job facts', 'kits', 'employer names')
 _said = set()   # the stages that said their time-up line in this search (later)

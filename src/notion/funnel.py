@@ -4,7 +4,7 @@ and which step to improve. No AI, so it costs nothing.
 
 Read from the active store (src/stores). With Notion, written to the "📈 Conversion" section of the 🎯 Pipeline page
 by the scheduled run (after the ledger sync); other stores have no such page (the app's Focus draws the funnel from
-the same numbers, src/focus_state.py). Passed to the daily insight as `funnel`. Guarded by tests/test_funnel.py.
+the same numbers, src/focus_state.py). Passed to the daily insight as `funnel`. Guarded by tests/unit/notion/test_funnel.py.
 
 Usage:
   python -m src.notion.funnel            # print the funnel

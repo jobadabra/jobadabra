@@ -2,7 +2,7 @@
 # The download file names of a release: Jobadabra-* only.
 #   tools/release-file-names.sh make  <mac|windows> <version> <dist folder>   copies the built Jobadabra-<version>-… files to every other name; prints the files to upload
 #   tools/release-file-names.sh check <mac|windows> <tag>                     fails when the release lacks one of its names (desktop.yml runs it after the upload)
-# Guarded by tests/test_release_file_names.py.
+# Guarded by tests/tooling/release/test_release_file_names.py.
 # Why (31 Oct 2026, owner: "We want only Jobadabra"): no Job-Pilotto-* copies any more; an app on 0.8.27 or older (reads only those) must be reinstalled.
 set -euo pipefail
 mode=${1:?make|check}; platform=${2:?mac|windows}; third=${3:?version or tag}

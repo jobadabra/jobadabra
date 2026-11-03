@@ -14,7 +14,7 @@ reports the answer (`answer`) when it fetches another way (the headless browser)
 - After SPEEDUP_AFTER answers in a row without a slow-down, the gap shrinks by SPEEDUP; under MIN_GAP it is dropped (back to no wait).
 - One pace per registrable domain (careers_parse.registrable): every employer on a shared job system shares it, since the limit is on our address.
 - What was learned (gap, calm-until) is kept in data/host_pace.json, only numbers per domain, so the next run starts at it.
-Tests: tests/test_host_pace.py (fake local server, every reader in the class).
+Tests: tests/unit/sources/test_host_pace.py (fake local server, every reader in the class).
 """
 import email.utils
 import ipaddress

@@ -1,5 +1,5 @@
 """The Calendar pass: events that belong to an application, interview reminders and the prep message.
-Guarded by tests/test_mail_calendar.py."""
+Guarded by tests/unit/ai/test_mail_calendar.py."""
 import sys
 from datetime import datetime, timedelta, timezone
 from html import escape

@@ -1,6 +1,6 @@
 # Runs the private lab repo's tests here (owner, 24 Oct 2026): the lab's own Actions never start (its account payments failed), this repo's minutes are free.
 # Reads the lab with the CI App (this exception to "public never reads private" is the central scout's), posts one `lab-ci` commit status on the lab PR.
-# This log is PUBLIC: only counts are printed (tools/lab_ci.py), no artifact, no step echoes. Guarded by tests/test_lab_ci.py.
+# This log is PUBLIC: only counts are printed (tools/lab_ci.py), no artifact, no step echoes. Guarded by tests/tooling/ci/test_lab_ci.py.
 name: Lab CI
 on:
   workflow_dispatch:   # tools/ship.sh dispatches it for a lab PR it opened or pushed

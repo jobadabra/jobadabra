@@ -4,7 +4,7 @@ its report (the run record's `details`, every store adapter). It is built from w
 seconds, boards, refused reads, employers checked), the crawl funnel (src/coverage.py), the run's counts and its AI stages. No source module
 calls into it; the run log tees every output line to line(). Never a job title, link, CV or typed word beyond the board and company names the
 run's own page shows.
-Tests: tests/test_run_details.py."""
+Tests: tests/unit/stores/test_run_details.py."""
 import re
 import time
 from collections import Counter

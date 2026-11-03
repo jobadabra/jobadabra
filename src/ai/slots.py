@@ -1,7 +1,7 @@
 """The AI command-line engines' slots (Claude Code, Codex: processes at once) served by priority, then by arrival: a first press's local boards
 (their reads, titles and proposal) FIRST, every other call NORMAL, the board web search LATER. A thread's level is set with priority(); a pool
 thread takes its caller's level only through carry(). Used by src/ai/providers/cli_base.py; set by src/first_jobs.py, src/sources/found_boards.py
-and src/sources/board_web.py. Tests: tests/test_ai_slots.py.
+and src/sources/board_web.py. Tests: tests/unit/ai/test_ai_slots.py.
 Why (#first-press-slots, owner, 27 Oct 2026: "Web search, combined with more AI slots, combined with local boards first"): on rerun 40450152414
 the board reads' calls waited 13-24 s each behind the web search's 25 s call, and the read cut (67 s) came first."""
 import contextlib

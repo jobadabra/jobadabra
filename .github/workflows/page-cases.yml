@@ -218,7 +218,7 @@ jobs:
   report:
     name: page cases to /admin/form-filling/lab
     needs: replay
-    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds REPLAYS_PUBLISH_KEY and runs the checked-out tree's script. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/test_workflow_ai_secret_jobs.py lists every such job).
+    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds REPLAYS_PUBLISH_KEY and runs the checked-out tree's script. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
     if: always() && needs.replay.result != 'cancelled' && !(startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -262,7 +262,7 @@ jobs:
         run: |
           # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in its runs;
           # page-cases.yml has had no push run since 15 Oct, so the old run lookup found nothing and this check only ever said "no main data". Found by artifact name,
-          # as build.yml's fill check finds its baseline (a workflow reading build.yml's runs by name is a release check: tests/test_release_checks.py).
+          # as build.yml's fill check finds its baseline (a workflow reading build.yml's runs by name is a release check: tests/tooling/release/test_release_checks.py).
           # Only a successful run (Gitar on #2825): the shards upload even when a run is red or cancelled, and partial results must not become the baseline. 100 per page: PR runs
           # upload the same artifact name and would crowd main's out of a short page.
           id=""

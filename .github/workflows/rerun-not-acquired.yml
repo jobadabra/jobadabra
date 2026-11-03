@@ -2,7 +2,7 @@
 # got no runner ("The job was not acquired by Runner of type hosted even after multiple attempts", 0 steps), or whose setup step (checkout, cache, install) failed before its
 # "Run the <suite> suite" step began (run 41566839140, 3 Nov 2026: actions/checkout timed out). A run with a real red is left as it is (tools/rerun_not_acquired.py).
 # Beta 3 (run 40341958250, 26 Oct 2026): interactions waited 29 min for a macOS runner and was cancelled; the Free plan runs 5 macOS jobs at once, a beta needs 7.
-# Tests: tests/test_rerun_not_acquired.py
+# Tests: tests/tooling/release/test_rerun_not_acquired.py
 name: CI · Re-run jobs that did not run
 
 on:

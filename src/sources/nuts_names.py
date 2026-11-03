@@ -1,6 +1,6 @@
 """The name of a NUTS area for its code (BG411 -> "Sofia (stolitsa)"), from Eurostat's official table: a public fact, fetched once, kept in
 data/nuts_names.json and checked before it is used (owner/6e, 27 Oct 2026: code fetches and validates; no AI names a code). Read by src/sources/eures.py,
-whose jobs carry only a NUTS code. Without the table, or for a code it lacks, the name is "" and the caller says the country only. Tests: tests/test_nuts_names.py."""
+whose jobs carry only a NUTS code. Without the table, or for a code it lacks, the name is "" and the caller says the country only. Tests: tests/unit/sources/test_nuts_names.py."""
 import csv
 import io
 import json

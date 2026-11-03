@@ -5,7 +5,7 @@ and the questions the app already asked. Rows are store records (src/stores/base
 an application's record carries 'link' (its page, when the store has one). No I/O. src/focus.py re-exports every
 name here.
 
-Guarded by tests/test_focus.py, tests/test_follow_up.py and tests/test_job_titles.py.
+Guarded by tests/unit/notion/test_focus.py, tests/unit/ai/test_follow_up.py and tests/unit/notion/test_job_titles.py.
 """
 import re
 from datetime import datetime, timezone

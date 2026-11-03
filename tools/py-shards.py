@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TESTS = ROOT / 'tests'
-BOOTSTRAP = 'test_0_notion_ids'
+BOOTSTRAP = 'suite_ids'
 # --app-only leaves out the tests of this repo's own tooling (owner, 10 Oct 2026: "unit tests only related to the desktop app"): the release pipeline's unit legs pass it,
 # CI · Tests still runs them on every push. Why (2 Nov 2026, a8): a hand list here (12 modules) had missed the 5 slowest of beta 0.9.1 (test_ship_pr 220 s …); the rule
 # is tools/app-tests.py's, which reads each module's imports.
@@ -115,11 +115,14 @@ def ended_badly(out, code):
 
 
 def slowest(outputs):
-    """From unittest --durations output: ([(module, seconds)], [(test, seconds)]), slowest first; a module is the test id's first test_* part."""
+    """From unittest --durations output: ([(module, seconds)], [(test, seconds)]), slowest first; a module is the test id up to its first test_* part
+    (unit.ai.test_x), the name tools/py-shard-weights.json keys on."""
     modules, tests = {}, []
     for out in outputs:
         for secs, test_id in re.findall(r'^\s*([\d.]+)s\s+\S+ \(([\w.]+)\)\s*$', out, re.M):
-            module = next((p for p in test_id.split('.') if p.startswith('test_')), test_id)
+            parts = test_id.split('.')
+            at = next((i for i, p in enumerate(parts) if p.startswith('test_')), None)
+            module = '.'.join(parts[:at + 1]) if at is not None else test_id
             modules[module] = modules.get(module, 0) + float(secs)
             tests.append((test_id.split('.', 1)[-1] if test_id.startswith(module) else test_id, float(secs)))
     return sorted(modules.items(), key=lambda kv: -kv[1]), sorted(tests, key=lambda kv: -kv[1])
@@ -200,10 +203,10 @@ def main(argv=None):
         return 2
     env = dict(os.environ)
     env['PYTHONPATH'] = os.pathsep.join([str(TESTS), env.get('PYTHONPATH', '')]).rstrip(os.pathsep)
-    env['JOBADABRA_AUDIT_CHECKOUT_DATA'] = '1'   # tests/test_0_notion_ids.py installs tests/checkout_data_audit.py in every shard
+    env['JOBADABRA_AUDIT_CHECKOUT_DATA'] = '1'   # tests/suite_ids.py installs tests/checkout_data_audit.py in every shard
     started = time.monotonic()
     before = checkout_state(ROOT)
-    # test_0_notion_ids sets the fake IDs the whole suite imports against; discovery loads it first, so every shard does too.
+    # suite_ids sets the fake IDs the whole suite imports against; every test folder's __init__.py loads it first, and each shard names it first too.
     # Each shard writes to a file, never a pipe: a process a test starts (Node does this) can leave a shared pipe non-blocking, and a print meeting a
     # full pipe then raises BlockingIOError and Python exits 120 with every test passed (#2136, 26 Oct 2026). Guard: tests/test_py_shards.py.
     shard_list = split(modules, args.jobs)
@@ -245,7 +248,7 @@ def main(argv=None):
     if by_module:
         print('py-shards: slowest modules: ' + ', '.join(f'{m} {s:.0f}s' for m, s in by_module[:8]))
         print('py-shards: slowest tests: ' + ', '.join(f'{t} {s:.0f}s' for t, s in by_test[:5]))
-    ran -= len(procs) - 1   # the bootstrap module's one test runs in every shard
+    # Why-changed (3 Nov 2026, Gitar on #3110): suite_ids holds no tests (its own are tests/guards/data/test_notion_ids.py), so every shard's count is its own.
     print(f'py-shards: {len(modules)} modules, {ran} tests, {len(procs)} shards, {"FAILED" if failed else "passed"} ({time.monotonic() - started:.1f}s)')
     return 1 if failed else 0
 

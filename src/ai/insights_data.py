@@ -1,7 +1,7 @@
 """The daily insight and weekly report, what they read: the owner's applications with their outcomes, the funnel, the
 interviews, the recent insights and the week's events, from the active store (src/stores: SQLite on this Mac, or
 Notion), never from Notion directly. Plain records in, plain numbers out; no AI.
-Used by src/ai/insights.py (and learning.py's evidence). Tests: tests/test_insights.py, tests/test_insights_store.py.
+Used by src/ai/insights.py (and learning.py's evidence). Tests: tests/unit/ai/test_insights.py, tests/unit/ai/test_insights_store.py.
 """
 from collections import Counter, defaultdict
 from datetime import date, timedelta

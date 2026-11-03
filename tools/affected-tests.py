@@ -1,4 +1,4 @@
-"""Which tests a change can break: the local push check runs only these. Guarded by tests/test_affected_tests.py. CI does not use it: GitHub's `paths:` decides there (tests/test_workflow_paths.py).
+"""Which tests a change can break: the local push check runs only these. Guarded by tests/test_affected_tests.py. CI does not use it: GitHub's `paths:` decides there (tests/tooling/ci/test_workflow_paths.py).
 
   python3 tools/affected-tests.py --base origin/main            (JSON on stdout: per area a list of test files, or "all")
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js
@@ -283,7 +283,7 @@ def select(changed, base_ref=None):
     if not relevant:
         return result
     scoped = [f for f in relevant if SCOPED_DEPS.match(f)]
-    everything = [f for f in relevant if (ALL_TRIGGERS.search(f) and f not in scoped) or f == 'tests/test_0_notion_ids.py']
+    everything = [f for f in relevant if (ALL_TRIGGERS.search(f) and f not in scoped) or f in ('tests/suite_ids.py', 'tests/suite_store_guard.py')]
     areas = {'python': (lambda f: f.startswith(('src/', 'tests/', 'tools/', 'config/', 'templates/', '.github/workflows/')) or f == '.gitattributes'),
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
              'worker': (lambda f: f.startswith(('app-core/', 'extension/'))),

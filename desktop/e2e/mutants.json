@@ -46,7 +46,7 @@
   },
   {
     "id": "scout-silent",
-    "test": "tests/test_scout_says_each_step.py",
+    "test": "tests/unit/engine/test_scout_says_each_step.py",
     "file": "src/scout_run.py",
     "find": "def read_lists(scout, db, seeds):",
     "replace": "print = lambda *args, **kwargs: None\n\ndef read_lists(scout, db, seeds):",

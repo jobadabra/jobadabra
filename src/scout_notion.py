@@ -1,7 +1,7 @@
 """Source scout, the employers registry: the active store's employers (🌍 Employers & Sources in Notion, the employers table on this
 Mac). Which feeds are active (`active_sources`, `own_feeds`), the local sources.json export, and writing each checked employer
 (`write_employer`, `sync_employers`) through stores.employers (src/stores/base.py Employers).
-Tests: tests/test_scout_notion_sync.py, tests/test_scout.py, tests/test_scout_employers_store.py (Notion users get today's pages).
+Tests: tests/unit/stores/test_scout_notion_sync.py, tests/unit/sources/test_scout.py, tests/unit/stores/test_scout_employers_store.py (Notion users get today's pages).
 """
 
 import json

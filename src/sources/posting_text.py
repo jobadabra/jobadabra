@@ -2,7 +2,7 @@
 "Responsibilities" with its bullets (renderer/job-drawer/tab-description.js). 10 Oct 2026: both fetchers squashed every posting into one
 line, and 138 of 139 saved descriptions were one block of text. Structure only (the HTML's own block tags), never a word list.
 Markers the readers share: "## Heading" on a line of its own, "- item" for a list item, a blank line between paragraphs.
-Guarded by tests/test_posting_text.py."""
+Guarded by tests/unit/sources/test_posting_text.py."""
 import html
 import re
 

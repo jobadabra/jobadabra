@@ -1,5 +1,5 @@
 """📥 Log anything, part 1: what Claude is told and how its reading is asked for (the kinds, the schema, the prompt,
-the list of jobs, the call to Claude). Imported and re-exported by src/ai/inbox.py. Tests: tests/test_inbox.py.
+the list of jobs, the call to Claude). Imported and re-exported by src/ai/inbox.py. Tests: tests/unit/ai/test_inbox.py.
 """
 import base64
 import json

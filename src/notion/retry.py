@@ -1,5 +1,5 @@
 """Which failed Notion requests may be sent again: one table, statuses × kinds of request (Tracker._request in src/notion/client.py;
-tests/test_notion_retry.py tests every cell).
+tests/unit/notion/test_notion_retry.py tests every cell).
 
 - 429 (busy): Notion did nothing, so every request is sent again after the wait.
 - 502/503/504 (briefly down): sent again as they always were (D7: Notion users see no change), except a new page with a Job URL, which is

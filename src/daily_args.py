@@ -1,5 +1,5 @@
 """The jobs check's command line: every option of `python -m src daily` (src/daily.py parses it and runs the mode).
-Tests: tests/test_mode_contract.py, tests/test_daily.py, tests/test_search_budget.py.
+Tests: tests/guards/rules/test_mode_contract.py, tests/unit/engine/test_daily.py, tests/unit/ai/test_search_budget.py.
 """
 import argparse
 from pathlib import Path

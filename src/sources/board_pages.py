@@ -4,7 +4,7 @@ numbered pages (careers_parse.page_links, the careers-page paging of 6 Oct 2026)
 relevant job (a title the search wants in a place it wants: board_yield.is_relevant), at most MAX_PAGES pages in all, only where the
 site's robots.txt is not consulted (owner, 6 + 26 Oct 2026), with a pause between pages; a refusal (401/403, a bot check), a site still asking us to slow down (host_pace) or a failed page ends the paging and
 keeps what was read. Called by found_boards.read_board for the full read only (the first-jobs slice stays at page 1).
-Tests: tests/test_board_pages.py."""
+Tests: tests/unit/sources/test_board_pages.py."""
 import html
 import re
 import time

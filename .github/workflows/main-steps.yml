@@ -15,7 +15,7 @@ on:
       - 'desktop/e2e/suites/**'
       - 'desktop/e2e/lib/**'
       - 'extension/**'
-      # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/test_workflow_paths.py)
+      # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/tooling/ci/test_workflow_paths.py)
       - 'src/ai/**'   # and what those import from their folder (lib/import-graph.mjs watchesWithImports: #2043's schema_notes.py, imported by score.py)
       - 'tools/mail_eval.py'
       - 'tests/fixtures/mail_eval.json'

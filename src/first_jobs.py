@@ -8,7 +8,7 @@ read at once and while the employer sites are (18 Oct 2026: Chisinau's first 2 b
 one that refuses automated reading replaced by the next proposed board (19 Oct 2026: 4 of music's first boards refused, XING was 7th).
 The search after it is unchanged; scored jobs are skipped by their hash, so the total AI calls are the same.
 The employer sites' jobs are imported and scored without waiting for the boards; a boards step still running joins when it finishes (#2913).
-Tests: tests/test_first_jobs.py, tests/test_first_jobs_slow_boards.py, tests/test_proven_boards.py."""
+Tests: tests/unit/sources/test_first_jobs.py, tests/unit/sources/test_first_jobs_slow_boards.py, tests/unit/sources/test_proven_boards.py."""
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor

@@ -1,19 +1,19 @@
 """The jobs check's search itself (modes scheduled, run, today, more): crawl the feeds, import, enrich, score, sync Job Matches and the
 ledger, build the digest, send it to Telegram, save and log the run. `search(args, stores)` returns the exit code. The data is the
 active store's (src/stores: open once, passed down), on every store; this Mac's store never gets a copy in Notion.
-Tests: tests/test_daily.py, tests/test_refresh_batch.py, tests/test_search_budget.py, tests/test_places_strict.py, tests/test_place_triage.py,
-tests/test_contribute.py, tests/test_watch.py, tests/test_score.py, tests/test_source_yield.py.
+Tests: tests/unit/engine/test_daily.py, tests/unit/ai/test_refresh_batch.py, tests/unit/ai/test_search_budget.py, tests/unit/sources/test_places_strict.py, tests/unit/ai/test_place_triage.py,
+tests/unit/sources/test_contribute.py, tests/unit/sources/test_watch.py, tests/unit/ai/test_score.py, tests/unit/sources/test_source_yield.py.
 """
 import json
 import random
 from collections import Counter
 from datetime import datetime, timezone
 from . import read_methods, contribute, coverage, digest, first_jobs, employer_index, jobs_so_far, run_counts, scout, source_yield, store
-from . import doctor, ledger_store, notify, telegram  # noqa: F401 -- patched by tests/test_daily_search_phases.py
+from . import doctor, ledger_store, notify, telegram  # noqa: F401 -- patched by tests/unit/ai/test_daily_search_phases.py
 from .ai import budget, kit
-from .ai import enrich, insights, interviews  # noqa: F401 -- patched by tests/test_daily_search_phases.py
+from .ai import enrich, insights, interviews  # noqa: F401 -- patched by tests/unit/ai/test_daily_search_phases.py
 from .notion import client as notion_client
-from .notion import funnel  # noqa: F401 -- patched by tests/test_daily_store.py
+from .notion import funnel  # noqa: F401 -- patched by tests/unit/sources/test_daily_store.py
 from .paths import DATA, REPORTS, load_search_config
 from .ai import engine as _engine
 from .store_access import open_run

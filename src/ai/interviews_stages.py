@@ -1,5 +1,5 @@
 """Interview analysis, the stages: which stages an interview moves forward, which it never touches, and the stage a held
-call leads to. Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_advance_facts.py, tests/test_interviews_focus.py.
+call leads to. Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/test_interviews_advance_facts.py, tests/unit/ai/test_interviews_focus.py.
 """
 from . import meanings
 

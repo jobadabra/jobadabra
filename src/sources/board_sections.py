@@ -2,7 +2,7 @@
 Moldovan board's home page was news, its IT section listed 100 jobs in the city; Moldova's search found 5 local jobs). The section is picked by the AI
 from the page's own links (meaning in any language and any kind of work, src/ai/decide.py), never a word list: each link is the 'best' field for this role, a 'near' one,
 a 'hub' (all jobs, all categories: one more hop) or 'other'. Sections are read like any listing page (JobPosting data, else the AI page reader, which
-leaves a recipe), at most MAX_SECTIONS per board, robots.txt is not consulted (owner, 26 Oct 2026). Tests: tests/test_board_sections.py."""
+leaves a recipe), at most MAX_SECTIONS per board, robots.txt is not consulted (owner, 26 Oct 2026). Tests: tests/unit/sources/test_board_sections.py."""
 import urllib.parse
 
 from . import board_pages, careers, careers_parse

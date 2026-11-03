@@ -1,8 +1,8 @@
 """The jobs check's single-purpose modes, one function each (src/daily.py main() picks one): import, apply, prepare, kits, add (a pasted
 message, or a job link), interview, insight/weekly. Each takes the parsed `args` and the run's store and returns the exit code; every
 step reads and writes through the store (a Notion store only when the engine can read it: store_access.notion_ready).
-Tests: tests/test_inbox.py, tests/test_inbox_confirm.py, tests/test_added.py, tests/test_interviews.py, tests/test_interview_insights.py,
-tests/test_follow_up.py, tests/test_insights.py, tests/test_daily.py.
+Tests: tests/unit/ai/test_inbox.py, tests/unit/ai/test_inbox_confirm.py, tests/unit/stores/test_added.py, tests/test_interviews.py, tests/unit/ai/test_interview_insights.py,
+tests/unit/ai/test_follow_up.py, tests/unit/ai/test_insights.py, tests/unit/engine/test_daily.py.
 """
 import json
 import os
@@ -212,7 +212,7 @@ def add_message_mode(args, stores=None):
     failed = reply.startswith('⚠️')  # nothing was logged: the run says so ("had problems", not "done")
     if found.get('row') and not reply.startswith(('⚠️', 'ℹ️')):  # a job created or updated: the run links to it
         # found['row'] is the job's record (src/ai/inbox.py): the run's "Job logged:" line names it as its page shows it ("Principal SRE ·
-        # via Huxley" for an Inbound row) and links it, on every store (tests/test_daily_store_notion.py JobLoggedOnNotionTests).
+        # via Huxley" for an Inbound row) and links it, on every store (tests/unit/notion/test_daily_store_notion.py JobLoggedOnNotionTests).
         log_store_job(stores, run, found['row'], found['created'])
     run['headline'] = log_text(reply).split('\n')[0][:300]  # the run's result line (⏱️ Search runs, Recent activity)
     # Turned away before any AI call (too short, no key): the dialog says why; that's no run, so no row.

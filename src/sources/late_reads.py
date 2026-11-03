@@ -2,7 +2,7 @@
 continue/start properly without redoing the same job"). A read still open at the cut is not waited for and not killed: when it ends, its
 answer goes to data/late_reads.json (an employer site's jobs, a job board's page result), and the next search takes it there instead of
 asking the site again. A board whose other ways were cut keeps its page result here too, so the next search goes up its ladder from it.
-An answer older than MAX_HOURS is dropped (the site may have changed). Tests: tests/test_three_minutes_resume.py."""
+An answer older than MAX_HOURS is dropped (the site may have changed). Tests: tests/unit/ai/test_three_minutes_resume.py."""
 import json
 import os
 import threading

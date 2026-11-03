@@ -6,7 +6,7 @@ It translates the contract's Request (written once, Anthropic-shaped, by every A
   the web search tool → {'type': 'web_search'}; a refusal → stop_reason 'refusal'; the output cap → 'max_tokens'.
 Prompt caching needs nothing (OpenAI caches long prompts itself; cache_control is Anthropic's). `store=False`: OpenAI keeps no copy.
 Its errors become the contract's (AiUnavailable, AiLimit, AiError). The model is the same tier in OpenAI's family (models.for_family).
-Guarded by tests/test_ai_providers.py (recorded responses, no network).
+Guarded by tests/unit/ai/test_ai_providers.py (recorded responses, no network).
 """
 import json
 import os

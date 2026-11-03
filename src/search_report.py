@@ -4,7 +4,7 @@ measured the way tools/persona-search/ttfr.py measures a persona: seconds from t
 places appeared, and until the 1st scored 70+. Fields: a role FAMILY (fixed list in src/role_kinds.py, 'other' when unknown), a country code and a
 city candidate (shown on the site only when 3+ installs share it), counts, seconds. Never a job, title, company, link, CV or typed word beyond
 that city candidate. Prints one JSON line: `python -m src search_report --since <ISO time of the run's start>`.
-Tests: tests/test_search_report.py."""
+Tests: tests/unit/engine/test_search_report.py."""
 import json
 import sqlite3
 import sys

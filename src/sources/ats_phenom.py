@@ -3,7 +3,7 @@
 Large retailers, logistics firms, insurers and pharma run their careers pages on it, always on the employer's own domain, so a site is found
 from its page (`phenom_site`) and not from a link. Slug: the site's host name. The page names its reference (`refNum`) and its language path
 (`/global/en`); the search is asked for the newest jobs, then for each of the user's own words (ats_sites.workday_terms), as Workday is.
-Guarded by tests/test_ats_phenom.py.
+Guarded by tests/unit/sources/test_ats_phenom.py.
 """
 import json
 import os

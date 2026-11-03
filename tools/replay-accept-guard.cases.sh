@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cases for replay-accept-guard.py: expect "block" or "pass" for a Bash command. Run: bash tools/replay-accept-guard.cases.sh (tests/test_replay_accept_guard.py runs it).
+# Cases for replay-accept-guard.py: expect "block" or "pass" for a Bash command. Run: bash tools/replay-accept-guard.cases.sh (tests/tooling/ci/test_replay_accept_guard.py runs it).
 H=$(dirname "$0")/replay-accept-guard.py; fail=0; T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 check() { # expect, command
   local got; python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","cwd":sys.argv[2],"tool_input":{"command":sys.argv[1]}}))' "$2" "$T" | python3 "$H" 2>/dev/null

@@ -14,7 +14,7 @@ imports urllib). Off by default: a normal run never loads it.
   (careers._public). Every failed web answer (HTTP error, refusal, timeout, no host) is kept and replayed as the same kind of failure.
 - The time budget: what src/time_budget.py decided at each point (over, batch, in_calls, may_score) is kept in budget.jsonl and read back in a
   replay, so the replay takes the recording's path on any machine and thread timing (src/budget_tape.py). A tape recorded before it falls back to the clock.
-Tests: tests/test_search_tape.py, tests/test_budget_tape.py."""
+Tests: tests/unit/sources/test_search_tape.py, tests/unit/engine/test_budget_tape.py."""
 import builtins
 import email.message
 import hashlib

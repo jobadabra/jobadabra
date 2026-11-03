@@ -1,5 +1,5 @@
 """📥 Log anything, part 2: dates as a chat writes them ("MONDAY 12:33 AM", "Sep 21") resolved against the day it is
-logged, never guessed. Pure; re-exported by src/ai/inbox.py. Tests: tests/test_inbox.py, tests/test_inbox_confirm.py.
+logged, never guessed. Pure; re-exported by src/ai/inbox.py. Tests: tests/unit/ai/test_inbox.py, tests/unit/ai/test_inbox_confirm.py.
 """
 import re
 from datetime import date, datetime, timedelta

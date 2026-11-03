@@ -55,9 +55,9 @@ Approval remains withheld while a blocking finding is unresolved; the approval s
 Owner, 31 Oct 2026: "Should be gray, or green"; "The backbone shouldn't have any external world, flaky related suites/tests"; "Any AI calls/suites should be green. They should not stop a beta"; "Why there were no guardrails to prevent this. Let's fix the workflow/guardrail".
 Source: the design's states table, the grey line and rules A-C. A PR that touches how a run ends (a workflow's verdict step, `lib/flaky-proof.mjs`, `tools/pr-verdict.py`, `desktop/e2e/ci-alert.mjs`,
 `tools/main_e2e_state.py`, `tools/beta_rate_gate.py`, `tools/backbone_red.py`, `lanes.json`, the plan's matrix) is read against these; raise a blocking finding when one breaks:
-- A suite's one try is red or green, never grey (owner, 31 Oct 2026: a suite past its budget is our bug). No workflow writes a "Grey" annotation for a suite, no reader reads one, no grey beta hold or rerun. Grey is only what the PR verdict reads from logs and marks (runner never acquired, install, AI credit). (mechanical: `tests/test_no_suite_grey.py`)
+- A suite's one try is red or green, never grey (owner, 31 Oct 2026: a suite past its budget is our bug). No workflow writes a "Grey" annotation for a suite, no reader reads one, no grey beta hold or rerun. Grey is only what the PR verdict reads from logs and marks (runner never acquired, install, AI credit). (mechanical: `tests/tooling/ci/test_no_suite_grey.py`)
 - One owner per state: a job's own conclusion is the verdict; a second copy of the rule (a title string, a regex, a list of causes) is a finding.
 - One source per fact: a suite's lane comes only from `lanes.json` through the plan (`matrix.tolerant`); a second flag deciding the same thing (`matrix.outside`) is a finding.
 - The backbone has no outside world: no live AI on any try (the retry answers from the same saved table), no wall-clock assertion, no real Notion or site.
 - AI never holds a beta: an AI suite is grey or green, its rate is reported, spent credit is one alert.
-Each rule of the design names its `Guard:` test (mechanical: `tests/test_e2e_design_guards.py`); a PR that adds a rule or changes one names or updates its guard.
+Each rule of the design names its `Guard:` test (mechanical: `tests/tooling/ci/test_e2e_design_guards.py`); a PR that adds a rule or changes one names or updates its guard.

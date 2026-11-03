@@ -1,0 +1,191 @@
+"""A PR is red only when a backbone check its diff reaches fails (owner, 28 Oct 2026, the e2e reliability design #2336, lanes table): a suite in the lane registry
+(desktop/e2e/lanes.json) as tolerant or suspended shows grey on a PR, named with its lane, never red. A suite not listed is backbone. Why a first cut with two
+suites: of the week's 21 e2e reds no gate caught (28 Oct 2026, tools/e2e_weekly.py --dry-run) about half depended on an AI answer, Notion or the clock; `quality`
+(golden postings, 4 of its 7 rows) and `notion-real` (real Notion) are the two plainly outside the backbone. Any read that fails keeps every red red."""
+import importlib.util
+import inspect
+import json
+import os
+import re
+import tempfile
+import unittest
+from unittest import mock
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+spec = importlib.util.spec_from_file_location('pr_verdict', ROOT / 'tools' / 'pr-verdict.py')
+pv = importlib.util.module_from_spec(spec); spec.loader.exec_module(pv)
+from tools import main_e2e_state  # noqa: E402
+from tools import pr_lanes
+
+REGISTRY = {'v': 1, 'suites': {'quality': {'lane': 'tolerant', 'input': 'ai', 'why': 'golden postings: the AI answers'},
+                               'stores': {'lane': 'suspended', 'why': 'flips red, then green on one commit'}}}
+
+
+def run(id, title='E2E for PR · quality,settings · a-branch'):
+    return {'databaseId': id, 'workflowName': 'CI · End-to-end on Mac + Linux', 'status': 'completed', 'conclusion': 'failure', 'event': 'workflow_dispatch',
+            'createdAt': '2026-10-28T11:00:00Z', 'updatedAt': '2026-10-28T11:20:00Z', 'displayTitle': title}
+
+
+def job(id, name, conclusion='success', status='completed'):
+    return {'id': id, 'name': name, 'status': status, 'conclusion': conclusion, 'steps': []}
+
+
+PR = {'databaseId': 1, 'workflowName': 'CI · Pull request', 'status': 'completed', 'conclusion': 'success', 'event': 'pull_request',
+      'createdAt': '2026-10-28T11:00:00Z', 'updatedAt': '2026-10-28T11:01:00Z', 'displayTitle': 'CI · Pull request'}
+
+
+class LaneGreys(unittest.TestCase):
+    def test_number_suite_outcomes_never_decide_or_hold_the_required_state(self):
+        for conclusion in ('success', 'failure', 'cancelled', 'timed_out', None):
+            with self.subTest(conclusion=conclusion):
+                measurement = job(71, 'qualityai', conclusion, 'in_progress' if conclusion is None else 'completed')
+                jobs = {7: [job(70, 'plan'), job(72, 'settings'), measurement]}
+                r = run(7)
+                r['status'] = 'in_progress' if conclusion is None else 'completed'
+                state, why, *_ = pv.verdict([PR, r], jobs=jobs, reports={'qualityai'})
+                self.assertEqual(state, 'success', why)
+                self.assertNotIn('qualityai', why)
+                jobs[7][1]['conclusion'] = 'failure'
+                self.assertEqual(pv.verdict([PR, r], jobs=jobs, reports={'qualityai'})[:2], ('failure', 'red: e2e settings'))
+
+    def test_a_number_job_writing_its_own_failure_does_not_turn_the_pr_red(self):
+        jobs = {7: [job(71, 'qualityai', None, 'in_progress'), job(72, 'settings')]}
+        self.assertEqual(pv.verdict([PR, run(7)], jobs=jobs, me=71, my_status='failure', reports={'qualityai'})[0], 'success')
+
+    def test_number_job_time_is_excluded_from_the_ci_budget(self):
+        from unittest import mock
+        jobs = [{'name': 'qualityai', 'started_at': '2026-10-28T11:00:00Z', 'completed_at': '2026-10-28T11:20:00Z'},
+                {'name': 'settings', 'started_at': '2026-10-28T11:00:00Z', 'completed_at': '2026-10-28T11:01:00Z'}]
+        with mock.patch.object(pv, 'gh', return_value=json.dumps(jobs)):
+            spans = pv.job_spans('o/r', [run(7)], reports={'qualityai'})
+        self.assertEqual(len(spans), 1)
+        listed = {7: [job(71, 'qualityai', 'failure'), job(72, 'settings')]}
+        self.assertEqual(pv.verdict([run(7)], files=['tools/pr-verdict.py'], jobs=listed, spans=spans, reports={'qualityai'})[0], 'success')
+
+    def test_a_red_tolerant_suite_is_grey_named_with_its_lane_and_never_red(self):
+        jobs = {7: [job(70, 'plan'), job(71, 'quality-1of2', 'failure'), job(72, 'quality-2of2'), job(73, 'HTML report')]}
+        greys = pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: REGISTRY)
+        self.assertEqual(greys, {71: 'tolerant'}, 'a slice of a sharded suite counts as its suite')
+        state, why, *_ = pv.verdict([PR, run(7)], jobs=jobs, greys=greys)
+        self.assertEqual(state, 'success', why)
+        self.assertTrue(why.startswith('tolerant: quality-1of2 ('), why)
+
+    def test_a_suspended_suite_never_blocks_either_and_says_so(self):
+        jobs = {7: [job(71, 'stores', 'failure')]}
+        greys = pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: REGISTRY)
+        self.assertEqual(greys, {71: 'suspended'})
+        self.assertTrue(pv.verdict([PR, run(7)], jobs=jobs, greys=greys)[1].startswith('suspended: stores ('))
+
+    def test_a_backbone_red_beside_a_tolerant_one_still_fails_the_pr_and_names_only_it(self):
+        jobs = {7: [job(71, 'quality', 'failure'), job(72, 'settings', 'failure')]}
+        greys = pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: REGISTRY)
+        self.assertEqual(greys, {71: 'tolerant'}, 'settings is not in the registry: backbone')
+        state, why, *_ = pv.verdict([PR, run(7)], jobs=jobs, greys=greys)
+        self.assertEqual((state, why), ('failure', 'red: e2e settings'))
+
+    def test_main_greys_and_lane_greys_read_together_and_a_plain_set_still_means_main(self):
+        jobs = {7: [job(71, 'quality', 'failure'), job(72, 'focus', 'failure')]}
+        state, why, *_ = pv.verdict([PR, run(7)], jobs=jobs, greys={71: 'tolerant', 72: 'main'})
+        self.assertEqual(state, 'success', why)
+        self.assertIn('tolerant: quality', why)
+        self.assertIn('grey: focus (red on main too, not this PR)', why)
+        only_focus = {7: [job(72, 'focus', 'failure')]}
+        self.assertTrue(pv.verdict([PR, run(7)], jobs=only_focus, greys={72})[1].startswith('grey: focus (red on main too'), 'a plain set of ids means main, as before')
+
+    def test_any_failed_read_keeps_every_red_red(self):
+        jobs = {7: [job(71, 'quality', 'failure')]}
+
+        def broken():
+            raise OSError('no registry at this ref')
+        self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=broken), {})
+        self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: {'v': 1}), {}, 'a registry with no suites greys nothing')
+        self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: ['not', 'a', 'registry']), {})
+        running = {7: [job(71, 'quality', '', 'in_progress')]}
+        self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], running, read_lanes=lambda: REGISTRY), {}, 'a job still running is not red')
+        self.assertEqual(pv.lane_greys('o/r', [PR, run(7, title='Bisect quality abc')], jobs, read_lanes=lambda: REGISTRY), {}, "only the PR's own e2e run")
+
+    def test_a_pr_cannot_grey_its_own_red_the_registry_is_read_from_the_base_branch(self):
+        # Gitar on #2376: read at the PR's own commit, a PR that breaks `settings` could list it as tolerant in the same diff and go green
+        asked = []
+        real_gh = pv.gh
+        pv.gh = lambda *args: asked.append(args) or json.dumps({'v': 1, 'suites': {}})
+        try:
+            jobs = {7: [job(71, 'settings', 'failure')]}
+            os.environ.pop('GITHUB_BASE_REF', None)
+            self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs), {})
+            os.environ['GITHUB_BASE_REF'] = 'release'
+            pv.lane_greys('o/r', [PR, run(7)], jobs)
+        finally:
+            pv.gh = real_gh
+            os.environ.pop('GITHUB_BASE_REF', None)
+        self.assertTrue(asked[0][-1].endswith('contents/desktop/e2e/lanes.json?ref=main'), 'no base given: main, the default branch')
+        self.assertTrue(asked[1][-1].endswith('lanes.json?ref=release'), "a pull_request run names its base in GITHUB_BASE_REF")
+        self.assertNotIn('ref', inspect.signature(pv.lane_greys).parameters, "the caller has no way to hand it the PR's own commit")
+
+    def test_a_standalone_ci_verdict_fetches_the_shared_reader_and_still_reads_base(self):
+        asked = []
+        def github(*args):
+            asked.append(args[-1])
+            if '/contents/tools/pr_verdict_greys.py?ref=' in args[-1]:
+                return (ROOT / 'tools/pr_verdict_greys.py').read_text()
+            if '/contents/tools/pr_lanes.py?ref=' in args[-1]:
+                return (ROOT / 'tools/pr_lanes.py').read_text()
+            if args[-1].endswith('/lanes.json?ref=release'):
+                return json.dumps(REGISTRY)
+            raise AssertionError(args)
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(pv, '__file__', str(Path(folder) / 'pr-verdict.py')), \
+                mock.patch.object(pv, 'gh', side_effect=github), \
+                mock.patch.dict(os.environ, {'GITHUB_BASE_REF': 'release', 'GITHUB_SHA': 'pr-head'}):
+            jobs = {7: [job(71, 'quality', 'failure'), job(72, 'settings', 'failure')]}
+            self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs), {71: 'tolerant'})
+        self.assertEqual(asked, ['repos/o/r/contents/tools/pr_verdict_greys.py?ref=pr-head',
+                                 'repos/o/r/contents/tools/pr_lanes.py?ref=pr-head',
+                                 'repos/o/r/contents/desktop/e2e/lanes.json?ref=release'])
+
+    def test_this_file_and_main_e2e_state_strip_every_real_job_shape_the_same_way(self):
+        for name in ('quality', 'quality-1of2', 'quality-standin', 'quality-sqlite', 'quality-1of2-standin',
+                     'quality-1of2-sqlite', 'quality · burn-in 2/5', 'quality-1of2-standin · burn-in 2/5',
+                     'E2E · Mac + Linux · quality-1of2-sqlite'):
+            with self.subTest(name=name):
+                self.assertEqual(pv.suite_of(name), 'quality')
+                self.assertEqual(pv.suite_of(name), main_e2e_state.suite_of(name))
+                checks = [{'name': name, 'bucket': 'fail'}]
+                self.assertEqual(pr_lanes.ship_checks(checks, REGISTRY['suites']), [{'name': name, 'bucket': 'skipping'}])
+
+
+class RegistryFile(unittest.TestCase):
+    registry = json.loads((ROOT / 'desktop' / 'e2e' / 'lanes.json').read_text(encoding='utf-8'))
+    suites = {p.stem for p in (ROOT / 'desktop' / 'e2e' / 'suites').glob('*.mjs')}
+
+    def test_every_listed_suite_exists_and_says_why_it_is_not_backbone(self):
+        self.assertEqual(self.registry['v'], 1)
+        for name, entry in self.registry['suites'].items():
+            self.assertIn(name, self.suites, f'{name}: no such suite in desktop/e2e/suites')
+            if 'lane' not in entry:   # Why (31 Oct 2026, owner): backbone defaults to zero; a temporary exception must name its reason.
+                self.assertIn(set(entry), ({'aiMissesMax'}, {'aiMissesException'}), f'{name}: backbone may pin zero or name an exception')
+                if 'aiMissesException' in entry:
+                    self.assertGreaterEqual(len(entry['aiMissesException'].split()), 8, name)
+                else:
+                    self.assertEqual(entry['aiMissesMax'], 0, name)
+                continue
+            self.assertIn(entry['lane'], ('tolerant', 'suspended', 'retired'), f'{name}: a suite not listed is backbone; listed it is one of the other three')
+            if entry['lane'] == 'tolerant':
+                self.assertIn(entry.get('input'), ('ai', 'clock', 'outside'), f'{name}: tolerance names the non-deterministic input (rule E)')
+            self.assertGreater(len(re.sub(r'\W', '', entry.get('why', ''))), 24, f'{name}: why it is not backbone, in words')
+            self.assertRegex(entry.get('since', ''), r'^2026-\d\d-\d\d$', f'{name}: the date it left the backbone')
+
+    def test_the_registry_keeps_the_first_cut_the_live_quality_journey_and_personas(self):
+        listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
+        self.assertEqual(listed, {
+            'qualityai': ('tolerant', 'Stays tolerant: it measures the live model, as a nightly report, not a gate.'),   # owner via a8, 1 Nov 2026: cadence night-report (lib/quality-journey.mjs PLANNER)
+            'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
+            'personas': ('tolerant', 'Stays tolerant: it reports a live model\'s answers on fictional personas; it returns to the backbone only if the owner asks for its asks to be stored.'),   # owner, 31 Oct 2026: report only, like qualityai
+            'wander': ('tolerant', 'Stays tolerant: it is a nightly report, not a gate.'),   # owner, 1 Nov 2026: cadence night-report (lib/plan.mjs)
+            'interactions': ('tolerant', 'Stays tolerant: it is a nightly report, not a gate.'),   # owner, 1 Nov 2026: cadence night-report
+            'quality': ('tolerant', 'Stays tolerant: it is a nightly report, not a gate.'),   # owner, 1 Nov 2026: cadence night-report
+        })
+
+
+if __name__ == '__main__':
+    unittest.main()

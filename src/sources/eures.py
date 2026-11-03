@@ -1,7 +1,7 @@
 """EURES, the EU's public job-vacancy portal (national employment services of 31 countries), for the user's own places: the one free source whose
 postings carry a regional code, so a job is kept only when its code lies in the user's place (owner, 27 Oct 2026: "right role in the wrong place";
 a blind round of 10 personas found 115 local matches here and 13 in ours). Public search API, no key and no login, read like the portal's own page
-does; each job's own EURES address goes with it. Read by: src/sources/aggregators.py (sources()). Tests: tests/test_eures.py.
+does; each job's own EURES address goes with it. Read by: src/sources/aggregators.py (sources()). Tests: tests/unit/sources/test_eures.py.
 
 The portal filters by country or NUTS-1 only and returns each job's NUTS-3 code, so the city's NUTS-2 region is asked once from the AI (a fixed
 shape the code validates against the map's country: a bad answer is dropped, the place is then not read) and a job counts when its code starts with it.
@@ -28,7 +28,7 @@ CUT = [False]   # the last read ended on its clock, not on its pages: src/source
 
 
 def stop_at(began):
-    """The monotonic time after which nothing more may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/test_three_minutes.py; 6e's
+    """The monotonic time after which nothing more may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/unit/sources/test_three_minutes.py; 6e's
     review): EURES runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail)."""
     from .. import time_budget
     stop = began + time_budget.part(SECONDS)

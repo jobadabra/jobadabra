@@ -2,7 +2,7 @@
 // test's environment (a wait that ran out, a dropped connection, an HTML error page). A wrong value that came right on the second try is INTERMITTENT: the
 // product or the test behaves differently between two runs of the same code (a race), a bug that shows sometimes. It keeps its rank, goes to the fixer, and only
 // a fix closes it. Triage labels a step that failed on a commit and passed on the same commit in a later run (a hand re-run); the CI job itself has one try, so it
-// never turns a red into a pass (31 Oct 2026, owner: "And why should we accept/allow that?"; tests/test_e2e_single_try.py).
+// never turns a red into a pass (31 Oct 2026, owner: "And why should we accept/allow that?"; tests/tooling/ci/test_e2e_single_try.py).
 // Why: #1897 (25 Oct): failuresnotion's "the list says Completed and the panel Completed with warnings" failed, passed on the rerun, was labelled flaky
 // ("the test is the problem"), ranked last, closed after two clean runs, and failed beta 2; it was a product bug (bd368f8 fixed it).
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.

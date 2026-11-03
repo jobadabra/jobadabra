@@ -3,7 +3,7 @@
 The title states a level in a few words ("Senior", "Staff", "Principal", "Lead", "Junior"), in several languages. The AI reads the whole posting and answers the
 seniority fact; this module only settles the cases a title decides by itself: an AI answer of "unknown" takes the title's level, and an explicit Staff/Principal/Lead
 word lifts a lower read (Free AI answered "unknown" or "senior" for "Principal ..." and "Lead ..." titles, 16 Oct 2026). It never lowers a level and never replaces
-a level the title does not state. Guard: tests/test_seniority.py (titles with the same word and a different meaning: "Staff Nurse", "Lead Generation").
+a level the title does not state. Guard: tests/unit/ai/test_seniority.py (titles with the same word and a different meaning: "Staff Nurse", "Lead Generation").
 """
 import re
 

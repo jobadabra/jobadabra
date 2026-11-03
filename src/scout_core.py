@@ -1,7 +1,7 @@
 """Shared base of the source scout (src/scout.py and its scout_*.py pieces): paths, tuning numbers, the candidate table's SQL,
 the search words, the small name helpers, and the two settings the pieces share as ONE binding: `CENTRAL` (set by `scout.main` for the central
 scout) and `EMPLOYERS_DB` (the Notion Employers & Sources database). Read them as `scout_core.CENTRAL` / `scout_core.EMPLOYERS_DB`.
-Tests: tests/test_scout.py, tests/test_scout_notion_sync.py, tests/test_seeds_private.py, tests/test_stop_means_stop.py.
+Tests: tests/unit/sources/test_scout.py, tests/unit/stores/test_scout_notion_sync.py, tests/guards/rules/test_seeds_private.py, tests/unit/notion/test_stop_means_stop.py.
 """
 
 import json

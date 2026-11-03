@@ -4,7 +4,7 @@ A port of desktop/lib/transcript.js (blocks, load) and of the desktop's markdown
 conversation written by the engine (a move to Notion, apply_run) and one written by the app are the same blocks. The
 conversation is [{kind: 'you'|'claude'|'steps', text | steps, at}]; read back, a message carries `time` (HH:MM) instead of
 `at`, and steps only their summary line (`steps`: [last], `count`), as the app's reader gives them. Both sides test
-tests/fixtures/stores/conversation*.json. Guarded by tests/test_store_conversation.py.
+tests/fixtures/stores/conversation*.json. Guarded by tests/unit/stores/test_store_conversation.py.
 """
 import re
 from datetime import datetime

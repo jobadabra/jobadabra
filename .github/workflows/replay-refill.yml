@@ -12,7 +12,7 @@
 # Budget: the estimate is printed first (pick job), above max_asks (default 40) the run does not start, a row stops at 30 broker calls (lib/ai-proxy.mjs maxCalls); about 4 calls a row asked, so a run of 40 asks is at most ~40-160 broker calls, run by hand or from the daily replays. Each row's calls are in the job log; the dollar figures are the API-equivalent estimate, no longer money.
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
 # Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), no AI_COST_PUBLISH_KEY (since 3 Nov 2026 nothing reports refill spend to /ai-cost and there is no monthly dollar cap).
-# Guard: tests/test_refill_workflow.py, desktop/e2e/test/filling/refill.test.mjs. Never posts a Replay-accept line.
+# Guard: tests/tooling/ci/test_refill_workflow.py, desktop/e2e/test/filling/refill.test.mjs. Never posts a Replay-accept line.
 name: CI · Replay refill
 run-name: ${{ inputs.pr != '' && format('Replay refill PR {0} @ {1}', inputs.pr, inputs.head) || 'Replay refill' }}   # the PR gate looks for this title before it starts another automatic refill for the same commit
 

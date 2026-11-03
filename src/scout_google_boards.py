@@ -6,7 +6,7 @@ only a 'field board' joins the pass (a site not judged waits for the next run, n
 Hard stops (SerpApi's free plan: 250 searches a month, shared with the owner's own key use): MONTH_CAP of ours a month, never when the account
 (free to ask) has RESERVE or fewer left, at most PER_RUN a run. Off without SCOUT_SERPAPI_KEY (GitHub secret CENTRAL_SCOUT_SERPAPI_KEY), said in the log. Never SERPAPI_API_KEY on the scout: that name turns on
 the role and hiring searches' SerpApi lane (src/sources/web_search.py provider), uncapped by these stops.
-Tests: tests/test_scout_google_boards.py."""
+Tests: tests/unit/ai/test_scout_google_boards.py."""
 import json
 import os
 import urllib.parse

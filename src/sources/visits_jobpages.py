@@ -2,7 +2,7 @@
 and the job page of a home page that is not one.
 
 Split out of visits.py (pure move; visits.py re-exports it). The store stays in visits.py and is looked up there at call time.
-Guarded by tests/test_visits.py and test_visit_unblock.py.
+Guarded by tests/unit/sources/test_visits.py and test_visit_unblock.py.
 """
 import json
 import re

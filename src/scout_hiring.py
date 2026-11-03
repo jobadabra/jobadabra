@@ -3,7 +3,7 @@ schools and builders enter the scout, not only the companies on startup job syst
 CLI (no charge per call); on the central scout aimed at the thinnest kind × European country (src/scout_cells.py), on its key.
 Pilot, 19 Oct 2026 (5 thin kinds × Munich, Warsaw, Lyon): 17 new employers with a readable job site from 15 of these searches, against 9 from
 30 job-system board searches (src/scout_role_search.py); owner: "Installs + central, 1/run". The probe checks every name as usual.
-Tests: tests/test_scout_hiring.py.
+Tests: tests/unit/sources/test_scout_hiring.py.
 """
 import json
 

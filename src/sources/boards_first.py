@@ -4,7 +4,7 @@ sites, or never). It reads the boards that gave this install jobs in this field 
 waits for the web search started with the run (src/sources/board_web.py early) up to WEB_WAIT seconds and reads what it found; each group's
 first pages are read in parallel and their jobs put on screen at once. When they give board_yield.ENOUGH jobs in your roles and places, the employer read
 keeps only its best sites (src/sources/read_budget.py short). The full board read reads their next pages later, from the pages fetched here. Without a web search in this
-run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Tests: tests/test_boards_first.py."""
+run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Tests: tests/unit/sources/test_boards_first.py."""
 WEB_WAIT = 45   # seconds the run waits for its web search before any employer site (the pilot search's answered at 37 s on the plan)
 
 

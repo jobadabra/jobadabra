@@ -2,7 +2,7 @@
 A job whose company is missing ("Unknown employer") or only the board's name ("via <board>") has its employer read from the job page's own
 JobPosting data (hiringOrganization), a few pages per run. Every real employer name seen is kept in data/board_employers.json and offered to
 the scout (scout_candidates.board_employer_candidates) with the origin "Board employer"; the scout's queue ranks it by yield, not this file.
-Never past a refusal: 401/403 or an unreadable page (a 429 waits: host_pace) leaves the job as it was. Tests: tests/test_board_employers.py."""
+Never past a refusal: 401/403 or an unreadable page (a 429 waits: host_pace) leaves the job as it was. Tests: tests/unit/sources/test_board_employers.py."""
 import json
 import urllib.error
 from datetime import datetime, timezone
@@ -73,7 +73,7 @@ def fill_missing(jobs, fetch=None):
     """Set the company of jobs that have none from their job page's hiringOrganization; at most MAX_LOOKUPS pages, refusals left alone."""
     fetch = fetch or globals()['fetch']
     from . import read_budget
-    if read_budget.past_cut():   # past the search's read cut no page is read: the next search names them (tests/test_three_minutes.py)
+    if read_budget.past_cut():   # past the search's read cut no page is read: the next search names them (tests/unit/sources/test_three_minutes.py)
         waiting = min(MAX_LOOKUPS, sum(1 for job in jobs if missing(job.get('company')) and job.get('url')))
         from .. import time_budget
         time_budget.later('employer names', waiting, 'job pages' if waiting != 1 else 'job page')

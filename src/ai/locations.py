@@ -1,7 +1,7 @@
 """The person's places as the fit score reads them (Locations, owner 17 Oct 2026): fixed sentences the engine writes from the search settings (the AI
 never writes a place), a fingerprint of their meaning, and the "based on previous preferences" bookkeeping. A change of places applies to FUTURE scores only:
 the places are not part of a score's input hash, each new score records the fingerprint it used, older ones are marked (previous), and only an explicit
-refresh queues the ACTIVE ones again (refresh). Guarded by tests/test_score_locations.py."""
+refresh queues the ACTIVE ones again (refresh). Guarded by tests/guards/data/test_score_locations.py."""
 import hashlib
 import json
 

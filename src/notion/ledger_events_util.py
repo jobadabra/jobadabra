@@ -2,7 +2,7 @@
 """Pure helpers for the ledger's event rows: event times as comparable datetimes, impossible interview times,
 same-occurrence window, the interview time and link ids an event carries. Re-exported by src/notion/ledger.py.
 
-Guarded by tests/test_ledger.py and tests/test_interviews.py."""
+Guarded by tests/unit/notion/test_ledger.py and tests/test_interviews.py."""
 import json
 import sys
 from datetime import datetime, timezone

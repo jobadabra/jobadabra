@@ -1,6 +1,6 @@
 """The in-memory store: the reference adapter (what the contract means, in the fewest lines) and a fake for tests.
 
-Nothing is kept after the process ends. Guarded by tests/test_store_memory.py (the contract suite).
+Nothing is kept after the process ends. Guarded by tests/unit/stores/test_store_memory.py (the contract suite).
 """
 import itertools
 from datetime import datetime, timezone

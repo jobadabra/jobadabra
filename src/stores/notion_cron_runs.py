@@ -4,7 +4,7 @@ A row's columns hold the run's state and numbers (base.RUN_STATS ↔ New jobs, S
 what the desktop app reads today (desktop/lib/store/notion-runs.js): the report as bullets, a "Result" heading with the
 message, and a "Technical log" toggle of code blocks. A row written before the stores has no Kind, Where, Progress or
 Finished: kind is then its Mode, where comes from its Run URL and Trigger. `list()` reads columns only (report, result
-and log come with `get()`). Guarded by tests/test_store_notion.py (the store contract on the Notion stand-in).
+and log come with `get()`). Guarded by tests/unit/stores/test_store_notion.py (the store contract on the Notion stand-in).
 """
 from datetime import datetime, timezone
 import json

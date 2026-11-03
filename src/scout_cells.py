@@ -1,7 +1,7 @@
 """Source scout, thin cells: the central list's employers per kind of role × European country (what /admin/job-search/scouting draws), kept after each
 publish, and the thin cell the central scout's AI ideas aim at next (owner, 19 Oct 2026: "Scout where the list is thin"; the ideas had been
 asked for the example search's data-analyst roles and answered "scale-ups and SaaS or fintech engineering hubs").
-Tests: tests/test_scout_cells.py.
+Tests: tests/unit/ai/test_scout_cells.py.
 """
 import json
 from collections import Counter

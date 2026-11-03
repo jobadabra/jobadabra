@@ -7,7 +7,7 @@ SDK's (`.content[0].text`, `.usage`, `.stop_reason`, `.model`): the ~30 AI modul
 
 Errors are the contract's too: `AiUnavailable` (transient: the provider is down or busy), `AiLimit` (`ai_limit`: a plan or spend
 limit, not signed in, not installed; every other call would fail the same way), `AiError` (anything else). The app mirrors
-this file in desktop/lib/ai/contract.js. Guarded by tests/test_ai_providers.py.
+this file in desktop/lib/ai/contract.js. Guarded by tests/unit/ai/test_ai_providers.py.
 """
 from dataclasses import dataclass, field
 import re
