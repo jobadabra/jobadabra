@@ -95,7 +95,10 @@ export function registerJobsHandlers(ctx) {
     const note = rescoring && count ? `Re-scoring ${count} older score${count === 1 ? '' : 's'}` : '';
     // Re-score is its own run (engine mode rescore), never a Find jobs search (owner, 3 Nov 2026: a job already in the list "should not be handled by find jobs at all").
     if (rescoring && !cloud()) return pipeline.rescore(storage, log, 'you', {note});
-    if (rescoring) return {ok: false, error: 'Re-score runs on this Mac.'};
+    if (rescoring) {   // Always on: the same run on GitHub (daily.yml: --mode rescore gets --score-max 60)
+      const started = await dispatchCloud('Re-score', {mode: 'rescore'});
+      return started.ok ? {ok: true, cloud: true} : {ok: false, error: started.error};
+    }
     if (!cloud()) return pipeline.refresh(storage, log, 'run', searchTrigger(storage.settings()), {note, employers: !!why?.employers});
     const started = await dispatchCloud('Run now (Refresh)', {mode: 'run'});
     return started.ok ? {ok: true, cloud: true} : {ok: false, error: started.error};

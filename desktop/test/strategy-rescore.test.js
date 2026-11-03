@@ -102,3 +102,9 @@ test('a Re-score the app quit in the middle of starts again as a Re-score, never
   const own = resume.indexOf("job.resume.mode === 'rescore') pipeline.rescore(");
   assert.ok(own > 0 && own < resume.indexOf("else if (job.kind === 'search') pipeline.refresh("), 'the rescore mode is answered before the search kind');
 });
+
+test('Always on: a Re-score is dispatched to GitHub as mode rescore, never refused (Gitar, #3089: cloud users could not replace old scores)', () => {
+  const handler = read('lib/jobs-handlers.js');
+  assert.match(handler, /dispatchCloud\('Re-score', \{mode: 'rescore'\}\)/);
+  assert.doesNotMatch(handler, /Re-score runs on this Mac/);
+});

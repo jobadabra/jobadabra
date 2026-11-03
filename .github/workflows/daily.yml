@@ -216,7 +216,7 @@ jobs:
           if [ -n "$JOBADABRA_ENRICH_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
             ai="$ai --enrich-max 100"
           fi
-          if [ -n "$JOBADABRA_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
+          if [ -n "$JOBADABRA_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ] || [ "$MODE" = rescore ]; }; then
             ai="$ai --score-max 60"
           fi
           if [ -n "$JOBADABRA_AUTO_KIT_MAX" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then

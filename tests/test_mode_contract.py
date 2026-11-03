@@ -35,6 +35,14 @@ class ModeContract(unittest.TestCase):
             if mode in cron_runs.LOGGED_MODES:
                 self.assertIn(f'"name": "{mode}"', text, f'Mode "{mode}" is not a select option of ⏱️ Search runs')
 
+    def test_the_workflow_gives_every_scoring_mode_its_score_limit(self):
+        """A mode that scores has no AI in the workflow without --score-max: Re-score on GitHub printed "Re-score needs an AI" (Gitar, #3089)."""
+        text = (REPO / '.github' / 'workflows' / 'daily.yml').read_text()
+        line = next(line for line in text.splitlines() if 'ai="$ai --score-max' in line or '--score-max 60' in line)
+        condition = text.splitlines()[text.splitlines().index(line) - 1]
+        for mode in ('scheduled', 'run', 'today', 'rescore'):
+            self.assertIn(f'[ "$MODE" = {mode} ]', condition)
+
 
 if __name__ == '__main__':
     unittest.main()
