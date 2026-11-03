@@ -11,7 +11,8 @@ import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as review from '../lib/details-review.js';
 import * as sections from '../lib/profile-sections.js';
-import {sigOf} from '../lib/answer-clarity.js';
+import {homeOf} from '../lib/answer-home.js';
+import {RUBRIC, record, sigOf, verdictOf} from '../lib/answer-clarity.js';
 import {wordingReply} from './fake-wording.js';
 
 const LETTER = ['Madame, Monsieur,', 'Dear Hiring Team at Zorblax GmbH: I am excited to apply for the Site Reliability role in Zurich.', 'Langues', 'Languages',
@@ -78,4 +79,32 @@ test('a real unclear answer beside the letter is still asked', async () => {
   await store.openStore(storage).page('profile').write(markdown(PROFILE.flatMap(line => (line === '## Experience' ? ['Ideal team size: depends', line] : [line]))));   // under Preferences, not under Experience (its own screen)
   await review.judgeNew(storage, {ai, copy});
   assert.ok((await review.pending(storage, {ai})).some(each => each.details.fact === 'Ideal team size'), 'the vague answer is asked');
+});
+
+test('a pass that did not re-judge the old unclear lines never stamps the rubric (Your details\' move records its own lines first)', async () => {
+  const storage = await env({answerClarity: {[sigOf({label: 'Ideal team size', value: 'depends'})]: 'vague'}});
+  record(storage, [{id: 'x', label: 'Relocation', value: 'open to moving within the EU'}], new Map([['x', {clarity: 'clear'}]]));
+  assert.notEqual(storage.settings().answerClarityRubric, RUBRIC, 'only the pass that judges every unclear line stamps');
+});
+
+test('a judge that answers nothing keeps the old unclear verdicts and asks again next time', async () => {
+  const stale = {[sigOf({label: 'Ideal team size', value: 'depends'})]: 'vague'};
+  const storage = await env({answerClarity: stale});
+  await store.openStore(storage).page('profile').write(markdown(PROFILE.flatMap(line => (line === '## Experience' ? ['Ideal team size: depends', line] : [line]))));
+  const silent = {client: {messages: {create: async () => ({content: [{type: 'text', text: '{"items":[]}'}]})}}};
+  await review.judgeNew(storage, {ai: silent, copy});
+  assert.equal(verdictOf(storage, {label: 'Ideal team size', value: 'depends'}), 'vague', 'the old verdict stays: the queue is not emptied by a failed call');
+  assert.notEqual(storage.settings().answerClarityRubric, RUBRIC, 'and the rubric is not stamped');
+  const {ai, calls} = fakeJudge({vague: /depends/});
+  await review.judgeNew(storage, {ai, copy});
+  assert.ok(calls.flat().some(line => /depends/.test(line)), 'the next pass asked again');
+  assert.equal(storage.settings().answerClarityRubric, RUBRIC);
+});
+
+test('an answer the judge calls prose is not moved into Your details, even with a home named', async () => {
+  const client = {messages: {create: async request => {
+    const parsed = JSON.parse(request.messages[0].content), items = Array.isArray(parsed) ? parsed : parsed.items;
+    return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id}) => ({id, home: 'languages', topic: 'a fact', clarity: 'prose'}))})}]};
+  }}};
+  assert.equal(await homeOf('Anything to add?', 'I speak English, French and German fluently.', {client}), '');
 });

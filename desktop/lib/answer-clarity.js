@@ -31,15 +31,20 @@ export function unjudged(storage, items, now = new Date()) {
 }
 
 // The judge's verdicts kept (judged: Map(id -> {clarity})); a "Keep as is" is never overwritten. Lines gone from the pages are forgotten (pass all of today's lines).
-export function record(storage, items, judged, {now = new Date(), present = null} = {}) {
+// A line the judge did not answer keeps an earlier unclear verdict (a failed call never empties the queue); `rubric: true` (the pass that judges every unclear line again,
+// lib/profile-routing.js) stamps settings.answerClarityRubric only when each of them got its new word, else the next pass asks again (3 Nov 2026).
+export function record(storage, items, judged, {now = new Date(), present = null, rubric = false} = {}) {
   const known = {...map(storage)};
+  let unanswered = 0;
   for (const item of items) {
     const sig = sigOf(item), clarity = judged.get(item.id)?.clarity;
     if (known[sig] === KEPT) continue;
-    known[sig] = CLARITY.includes(clarity) ? clarity : `?${now.toISOString()}`;
+    if (CLARITY.includes(clarity)) known[sig] = clarity;
+    else if (UNCLEAR[known[sig]]) unanswered++;
+    else known[sig] = `?${now.toISOString()}`;
   }
   if (present) { const live = new Set(present.map(sigOf)); for (const sig of Object.keys(known)) if (!live.has(sig)) delete known[sig]; }
-  storage.saveSettings({answerClarity: known, ...(items.length ? {answerClarityRubric: RUBRIC} : {})});
+  storage.saveSettings({answerClarity: known, ...(rubric && items.length && !unanswered ? {answerClarityRubric: RUBRIC} : {})});
 }
 
 export function keepAsIs(storage, item) {

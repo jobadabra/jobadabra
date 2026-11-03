@@ -111,7 +111,7 @@ async function route(storage, {fetcher, ai = {}, now = new Date(), copy = saveCo
     return !matches.length || matches.some(line => !handled.has(sourceKey(line)));
   });
   storage.saveSettings({profileUnsure: remaining});
-  clarity.record(storage, candidates, judged, {now, present: linesOf(await read(opened))});
+  clarity.record(storage, candidates, judged, {now, present: linesOf(await read(opened)), rubric: true});
   retried.set(storage.dir, {stamp: digest(remaining), after: now.getTime() + DAY});
   log('profile', 'unplaced lines organized from validated AI destinations', {requestedBy: 'saved questions read', sources: candidates.length, moved, remaining: remaining.length, stale: candidates.filter(line => !live.has(sourceKey(line))).length});
   return {judged: candidates.length, moved, unclear: candidates.filter(line => clarity.UNCLEAR[judged.get(line.id)?.clarity]).length};
