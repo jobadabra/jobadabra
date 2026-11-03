@@ -17,7 +17,7 @@ globalThis.window.pilot = new Proxy({
   cvStatus: async () => ({base: true, custom: false, file: app.file}),
   cvCheckStatus: async () => app.check,
 }, {get: (all, key) => all[key] || (() => null)});
-const {replaceCv, cvReplaced, onCvReplaced} = await import('../renderer/pages/cv-replace.js');
+const {replaceCv, onCvReplaced} = await import('../renderer/pages/cv-replace.js');
 const {showCvCheck} = await import('../renderer/cv-check-view.js');
 const {documentFacts} = await import('../renderer/cv-check-model.js');
 const {shared} = await import('../renderer/pages/shared.js');
