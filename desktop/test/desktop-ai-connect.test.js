@@ -9,6 +9,7 @@ import {redeem, startPairing} from '../lib/desktop-ai-pairing.js';
 import * as changes from '../lib/desktop-ai-changes.js';
 import * as dismissed from '../lib/question-dismissed.js';
 import {fakeStorage} from './desktop-ai-fake-storage.js';
+import {logText} from './log-text.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-connect-test-'));   // the helper folders of these tests live here, not in the real temp folder
 after(() => fs.rmSync(tmp, {recursive: true, force: true}));
@@ -177,7 +178,7 @@ test('Connect, Disconnect and Undo each leave one log line with identities and o
     handlers.desktopAiDisconnect();
     await handlers.desktopAiUndo({}, gone.id);
   } finally { if (before === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = before; }
-  const lines = fs.readFileSync(path.join(folder, 'app.log'), 'utf8').split('\n').filter(line => line.includes('[desktop-ai]'));
+  const lines = logText(path.join(folder, 'app.log')).split('\n').filter(line => line.includes('[desktop-ai]'));
   assert.deepEqual(lines.map(line => /\] (\w+ \w+)/.exec(line)[1]), ['connect pressed', 'disconnect pressed', 'undo pressed']);
   assert.match(lines[2], new RegExp(`"id":"${changes.list(storage)[0].id}","ok":true`));
   assert.doesNotMatch(lines.join('\n'), /private question|\.mcpb|jobadabra-helper/);
@@ -194,7 +195,7 @@ test('an Undo that throws (the store fails) still leaves its log line', async ()
   const gone = changes.record(storage, {tool: 'dismiss_question', target: 'L7', question: 'Visa needed?', before: '', after: 'dismissed'});
   storage.saveSettings = () => { throw new TypeError('store down'); };
   await assert.rejects(handlers.desktopAiUndo({}, gone.id), /store down/);
-  const lines = fs.readFileSync(path.join(folder, 'app.log'), 'utf8').split('\n').filter(line => line.includes('undo pressed'));
+  const lines = logText(path.join(folder, 'app.log')).split('\n').filter(line => line.includes('undo pressed'));
   assert.equal(lines.length, 1);
   assert.match(lines[0], /"ok":false,"error":"TypeError"/);
   assert.doesNotMatch(lines[0], /store down|Visa/, 'the error name only');

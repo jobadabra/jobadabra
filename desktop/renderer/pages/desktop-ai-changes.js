@@ -3,6 +3,7 @@
 // Invariants: the strip draws nothing while there is no change; it imports no page (the answers page hands in what to redraw after an Undo), so it adds no import cycle.
 import {el} from '../components.js';
 import {connectWords, whenText} from '../desktop-ai-words.js';
+import {plainError} from '../run-warnings.js';
 import {questionsNow} from './jobs-questions.js';
 
 /** One change row: the question, "before → after", the time and either the Undo button, "Undone", or the reason it cannot be undone. `onUndo(change, button, note)` runs the press. */
@@ -47,7 +48,7 @@ export async function appendDesktopAiChanges(into, {family = 'claude', onUndone 
     button.disabled = true;
     const done = await Promise.resolve().then(() => window.pilot.desktopAiUndo(change.id)).catch(() => null);
     if (done?.ok) { onUndone(); return; }
-    note.textContent = done?.error || link.changes.undoFailed;
+    note.textContent = done?.error ? plainError(done.error) : link.changes.undoFailed;
     button.disabled = false;
   });
   if (strip) into.append(strip);
