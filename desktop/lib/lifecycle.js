@@ -2,11 +2,17 @@
 import * as quitDialog from './quit-dialog.js';
 import {NO_PLACE} from '../renderer/targets.js';
 
-export function claimInstance({app, showDuplicate, getWindow, createWindow}) {
+/**
+ * One copy per data folder. The later copy quits at once (onDuplicate: it runs before start(), so its line cannot reach app.log);
+ * the first copy brings its window forward and logs it (onSecondCopy), so a vanished second launch leaves a trace in app.log.
+ * Windows foreground rights for window.focus() are unproven here (a taskbar flash is possible).
+ */
+export function claimInstance({app, onDuplicate, onSecondCopy = () => {}, getWindow, createWindow}) {
   const firstCopy = app.requestSingleInstanceLock();
-  if (!firstCopy) app.whenReady().then(() => { showDuplicate(); app.quit(); });
+  if (!firstCopy) app.whenReady().then(() => { onDuplicate(); app.quit(); });
   app.on('second-instance', () => {
     if (!app.isReady()) return;
+    onSecondCopy();
     if (!getWindow()) createWindow();
     const window = getWindow();
     if (window.isMinimized()) window.restore();
