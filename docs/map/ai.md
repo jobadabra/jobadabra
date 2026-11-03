@@ -30,7 +30,7 @@ updated: 2026-11-03
 ## Ask the sources
 ask: cloudflare analytics worker=ai-broker days=7
 ask: github issues label=ai-budget state=open
-ask: posthog events event=ai_limit days=7
+ask: posthog events event=ai_setup_state days=7
 
 ## Lessons
 - Count calls, not rows: `decide()` sends up to 50 items per call, so a `decisions` row is one judged item. Read cost per step before naming the biggest spender.
