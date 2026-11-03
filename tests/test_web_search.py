@@ -105,8 +105,10 @@ class AppRenderTests(unittest.TestCase):
             sent.append((request.full_url, request.get_header('X-jobadabra-render'), body['user_agent']))
             import io
             return mock.MagicMock(__enter__=lambda self: io.BytesIO(json.dumps(answers['no' if 'coop' in body['url'] else 'ok']).encode()), __exit__=lambda *a: None)
+        # Why (3 Nov 2026, run 41579424203): render() asks careers._public, which resolves the host with a real DNS lookup; on a slow runner it took 20 s and said "not a public web address",
+        # so this test passed or failed with the network. The address check is stubbed here (its own tests are in test_page_reader.py); nothing in this test touches the network.
         with mock.patch.dict(os.environ, {'JOBADABRA_RENDER_URL': 'http://127.0.0.1:47111/engine/render', 'JOBADABRA_RENDER_TOKEN': 'k'}), \
-                mock.patch.object(render.urllib.request, 'urlopen', urlopen):
+                mock.patch.object(render.urllib.request, 'urlopen', urlopen), mock.patch.object(render.careers, '_public', lambda host: True):
             self.assertTrue(render.available())
             self.assertIn('Vendeur', render.render('https://jobs.migros.ch/de'))
             with self.assertRaises(render.Refused):
