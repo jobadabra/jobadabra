@@ -7,6 +7,7 @@ import {notify, renderer, sessionReporter, openHandler, joinHandler, focusHandle
   aliasesHandler, controlsHandler, missesHandler, visitMore, visitFilters, visitHandler, sitePasswordHandler, reviewHandler,
   accountCodeHandler, stopAsked} from './server-hooks.js';
 import {handleOauthHandoff, isOauthHandoff} from './oauth-handoff-route.js';
+import {handleDesktopAi, isDesktopAiRoute} from './desktop-ai-server.js';
 import {POST_CORS, tokenRequest, jsonPayload, jsonHeaders, jsonBody} from './server-http.js';
 
 // Pair only a trusted extension Origin with this installation.
@@ -241,6 +242,7 @@ function isMe(url) { return url === '/extension/me' || url.startsWith('/extensio
 export function routeTable(tabs, event) {
   return [
     ['/extension/pair', handlePair],
+    [isDesktopAiRoute, handleDesktopAi],   // the Claude desktop app's helper: its own token, no Origin, Host 127.0.0.1 (lib/desktop-ai-server.js)
     [isOauthHandoff, handleOauthHandoff],   // the website hands a sign-in or connect result to the consenting person's own app (lib/oauth-handoff-route.js)
     ['/engine/render', handleRender],
     ['/claude/ticket', handleClaudeTicket],
