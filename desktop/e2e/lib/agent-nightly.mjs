@@ -7,6 +7,7 @@ import path from 'node:path';
 
 export const FULL = {minutes: 20, calls: 120, steps: 100};
 const HALF_FLOOR = {minutes: 5, calls: 30, steps: 30};
+const MAX_MINUTES = 35;   // Why (3 Nov 2026, Gitar on 7/12): the session step has timeout-minutes 45 and the suite stops itself at its minute cap plus 5, so a repository variable above 40 would let Actions kill a working night before it writes anything.
 const whole = value => (Number(value) > 0 ? Math.floor(Number(value)) : 0);
 
 /** Who answered the broker's ping: 'refused' (no answer), 'codex', 'codex-out' (another engine answered and Codex is named in fellBack) or 'other' (another engine, nothing said about Codex). */
@@ -21,7 +22,7 @@ export function engineState(answer) {
  * Codex out: half of each, never below the floor; a refusing broker: skip with the reason. The note is one line for the job summary.
  */
 export function capsFor(state, vars = {}, detail = '') {
-  const base = {minutes: whole(vars.minutes) || FULL.minutes, calls: whole(vars.calls) || FULL.calls, steps: whole(vars.steps) || FULL.steps};
+  const base = {minutes: Math.min(MAX_MINUTES, whole(vars.minutes) || FULL.minutes), calls: whole(vars.calls) || FULL.calls, steps: whole(vars.steps) || FULL.steps};
   if (state === 'refused') return {skip: true, reason: detail || 'the AI broker did not answer', ...base, note: `No session tonight: ${detail || 'the AI broker did not answer'}.`};
   if (state !== 'codex-out') return {skip: false, reason: '', ...base, note: state === 'codex' ? 'Codex answers: the full session.' : 'Another engine answers: the full session.'};
   const half = key => Math.max(HALF_FLOOR[key], Math.floor(base[key] / 2));

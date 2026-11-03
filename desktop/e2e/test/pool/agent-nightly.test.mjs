@@ -26,6 +26,12 @@ test('the repository variables set the full size; a half session never goes unde
   assert.deepEqual([tiny.minutes, tiny.calls, tiny.steps], [5, 30, 30]);
 });
 
+test('a repository variable above the step timeout is cut to 35 minutes, so the 45-minute step never kills a working night', () => {
+  assert.equal(capsFor('codex', {minutes: '90'}).minutes, 35);
+  assert.equal(capsFor('codex-out', {minutes: '90'}).minutes, 17);
+  assert.equal(capsFor('codex', {minutes: '35'}).minutes, 35);
+});
+
 test('the changed-since window starts at the last session\'s commit, or the last 30 commits on a first night or a damaged record', () => {
   assert.deepEqual(changedLogArgs('abc1234'), ['log', '--format=@@%H%x09%s', '--name-only', 'abc1234..HEAD']);
   assert.equal(changedLogArgs('').at(-1), '-30');
