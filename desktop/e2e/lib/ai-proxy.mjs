@@ -134,11 +134,14 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
     }
     if (relay && metered.test(req.url)) {   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
+      // Why (3 Nov 2026, replay-refill moved from its API key to the broker): the per-row cap of paid calls (maxCalls, lib/refill.mjs) held only on the API path below; a relay call counts against it too.
+      if (maxCalls && (stats.paid || 0) >= maxCalls) { res.writeHead(400, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'invalid_request_error', message: `proxy: the cap of ${maxCalls} paid calls is reached`}})); return; }
       stats.paid = (stats.paid || 0) + 1;
       let answered;
       try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
       catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
       if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } }
+      else { try { countError(answered.status, answered.body.toString('utf8')); } catch { /* counting never breaks the call */ } }   // a broker "no" is counted like an API refusal: the refill's out-of-credits check reads it (lib/refill.mjs)
       if (answered.status === 200) keepCandidateBody(stored, answered.body);
       res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }

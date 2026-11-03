@@ -68,7 +68,7 @@ with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md
 
 ## Refilling answers a prompt change made stale (15 Oct 2026)
 - A merge that changes what the app asks the AI turns pinned rows "ask changed" / "out of date" in the daily site replays. There is no refill after each merge: the daily run starts `CI · Replay refill` itself for just the rows it flags (`only`), or run it by hand (`gh workflow run replay-refill.yml -f only=<row names>`); never from a PR (no PR-started workflow may reach an AI key). A row whose re-record will not reproduce is dropped, not chased.
-- Its own key `REPLAY_REFILL_ANTHROPIC_KEY` (no fallback), a cap (40 asks, $3), the estimate first, the spend in the job log and on /admin/intelligence/ai-cost (`replay-refill`). Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
+- No API key (owner, 3 Nov 2026: "We should not use API Keys at all anymore"): its asks go through the AI broker relay on the fill job's OIDC token, a cap (40 asks, 30 broker calls a row), the estimate first, the calls in the job log. A broker "no" fails the row with "OUT OF BROKER ROOM"; run it again after the reset. Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
 
 <details><summary>Gaps being closed (14 Oct 2026) and where</summary>
 

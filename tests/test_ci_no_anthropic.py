@@ -27,8 +27,6 @@ E2E_LANE = {
     '.github/workflows/e2e-windows.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'anthropic-key', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
     '.github/workflows/e2e.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'anthropic-key', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
     '.github/workflows/record-sites.yml': {'E2E_ANTHROPIC_KEY', 'LIVE_POOL_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY', 'secrets.LIVE_POOL_ANTHROPIC_KEY'},
-    # The replay refill is the harness's proxy + fill-memo (lib/live-row.mjs, lib/refill.mjs): which model records the pool's stored answers is the e2e lane's decision, not a workflow edit.
-    '.github/workflows/replay-refill.yml': {'Anthropic', 'REPLAY_REFILL_ANTHROPIC_KEY', 'secrets.REPLAY_REFILL_ANTHROPIC_KEY'},
     '.github/workflows/watch-live.yml': {'E2E_ANTHROPIC_KEY', 'LIVE_POOL_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY', 'secrets.LIVE_POOL_ANTHROPIC_KEY'},
 }
 ALLOWED = {**USER_PIPELINES, **E2E_LANE}

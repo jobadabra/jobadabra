@@ -1,21 +1,19 @@
 // Fills the model answers a recording lacks (a fix changed what the app asks): replays the row's network record on this Mac with the plan's claude -p for the missed asks only
 // and merges the new answers into the record's model-memo.json (replay-net.mjs --fill-memo, lib/fill-memo.mjs); then replays it again WITHOUT asking to prove it is faithful.
 //   node fill-memo.mjs <records dir> "<row>" [--out <dir>]      (npm run fill-memo -- <records dir> "<row>"; publish after: node records-publish.mjs <records dir>)
-// Cost: the plan path, about $0.06 a row asked, once per changed ask; never an API key on a Mac. CI: only the refill workflow (.github/workflows/replay-refill.yml, JP_REFILL_CI=1, its own
-// REPLAY_REFILL_ANTHROPIC_KEY, lib/refill.mjs). Old answers are never changed: a lost or changed old key fails the row. Guard: e2e/test/fill-memo.test.mjs, refill.test.mjs.
+// Cost: the plan path, about $0.06 a row asked, once per changed ask; never an API key. CI: only the refill workflow (.github/workflows/replay-refill.yml, JP_REFILL_CI=1), whose asks go through the AI broker
+// (lib/broker-relay.mjs, no key; owner, 3 Nov 2026: "We should not use API Keys at all anymore"). Old answers are never changed: a lost or changed old key fails the row. Guard: e2e/test/fill-memo.test.mjs, refill.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {newestPerRow} from './replay-records.mjs';
-import {keyRefusal} from './lib/refill.mjs';
 import {oldKeysKept} from './lib/fill-memo.mjs';
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const [root, name] = process.argv.slice(2).filter(arg => !arg.startsWith('--')), at = process.argv.indexOf('--out');
 if (!root || !name) { console.error('usage: node fill-memo.mjs <records dir> "<row>" [--out <dir>]'); process.exit(2); }
 if (process.env.CI && process.env.JP_REFILL_CI !== '1') { console.error('fill-memo: the plan\'s claude -p, a Mac only; CI only through the refill workflow'); process.exit(2); }
-if (process.env.CI && keyRefusal()) { console.error(keyRefusal()); process.exit(2); }
 const row = newestPerRow(root).find(one => one.name === name);
 if (!row) { console.error(`fill-memo: no record of "${name}" in ${root}`); process.exit(2); }
 const out = at > 0 ? process.argv[at + 1] : fs.mkdtempSync(path.join(os.tmpdir(), 'jp-fill-memo-'));
