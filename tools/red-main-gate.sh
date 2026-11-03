@@ -83,7 +83,7 @@ while :; do
   case "$st" in completed\ *)
     # Why (3 Nov 2026, mac-07: run 41566839140, apply-2of3 died in actions/checkout before its suite began and was judged as a red suite): a job that did not run proves nothing.
     # rerun-not-acquired.yml re-runs it seconds after the run ends, so attempt 1's failure is not the verdict while that re-run is coming: wait for the run to leave "completed" (bounded), then keep waiting as before.
-    if [ "${st#completed }" != success ] && [ -z "$rerun_waited" ] && RUN_ATTEMPT=1 python3 "$here/rerun_not_acquired.py" "$id" --would-rerun >/dev/null 2>&1; then
+    if [ "${st#completed }" != success ] && [ -z "$rerun_waited" ] && GITHUB_REPOSITORY="$repo" RUN_ATTEMPT=1 python3 "$here/rerun_not_acquired.py" "$id" --would-rerun >/dev/null 2>&1; then
       rerun_waited=1; echo "A job of the re-check did not run (its setup failed before the suite began): waiting for its one re-run..."
       rerun_start=$(date +%s)
       while [ "$(gh api "repos/${repo}/actions/runs/${id}" --jq '.status' 2>/dev/null)" = completed ] && [ $(( $(date +%s) - rerun_start )) -lt "$rerun_max" ]; do sleep "$poll"; done

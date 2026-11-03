@@ -25,7 +25,7 @@ CLASSIFIED = {
     # Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"): the prompt-case replay is report only, called by night pass 1, never a push or PR check.
     'CI · Prompt cases (nightly, report only)': 'ignored: nightly replay of the live prompt-case set on the Codex plan; called by night pass 1, never counted for main',
     'CI · Tests': 'counted',
-    'CI · Re-run jobs GitHub never started': 'ignored: after a beta or e2e run ends; only re-runs jobs GitHub gave no runner, never tests a push to main',
+    'CI · Re-run jobs that did not run': 'ignored: after a beta or e2e run ends; only re-runs jobs that got no runner or failed in setup before their suite, never tests a push to main',
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',
     'Proof · LibreOffice add-on on Mac and Windows': 'ignored: pull requests that edit the add-on, and by hand; downloads LibreOffice for real on Mac and Windows runners, never on a push to main',
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',

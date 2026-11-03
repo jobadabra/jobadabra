@@ -1,8 +1,9 @@
-# A beta or e2e job that GitHub never started (no runner: "The job was not acquired by Runner of type hosted even after multiple attempts", 0 steps) is GitHub's
-# capacity, not a red suite: it is re-run once, with the Release jobs that waited on it. A run with a real red is left as it is (tools/rerun_not_acquired.py).
+# A beta or e2e job that did not run is GitHub's capacity or setup, not a red suite: it is re-run once, with the Release jobs that waited on it. "Did not run" is a job that
+# got no runner ("The job was not acquired by Runner of type hosted even after multiple attempts", 0 steps), or whose setup step (checkout, cache, install) failed before its
+# "Run the <suite> suite" step began (run 41566839140, 3 Nov 2026: actions/checkout timed out). A run with a real red is left as it is (tools/rerun_not_acquired.py).
 # Beta 3 (run 40341958250, 26 Oct 2026): interactions waited 29 min for a macOS runner and was cancelled; the Free plan runs 5 macOS jobs at once, a beta needs 7.
 # Tests: tests/test_rerun_not_acquired.py
-name: CI · Re-run jobs GitHub never started
+name: CI · Re-run jobs that did not run
 
 on:
   workflow_run:
@@ -11,7 +12,7 @@ on:
 
 permissions:
   actions: write   # gh run rerun
-  checks: read     # the never-started job's annotation
+  checks: read     # the never-started job's annotation (a no-runner job has no steps)
 
 concurrency:   # one group (tests/test_main_runs_finish.py); each run lasts seconds
   group: rerun-not-acquired
@@ -19,7 +20,7 @@ concurrency:   # one group (tests/test_main_runs_finish.py); each run lasts seco
 
 jobs:
   rerun:
-    name: Re-run never-started jobs
+    name: Re-run jobs that did not run
     # once per run: a re-run (attempt 2+) is never re-run again
     if: github.event.workflow_run.conclusion != 'success' && github.event.workflow_run.run_attempt == 1
     runs-on: ubuntu-24.04
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: tools/rerun_not_acquired.py
-      - name: Re-run the jobs that got no runner, once
+      - name: Re-run the jobs that did not run (no runner, or setup failed before the suite), once
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
