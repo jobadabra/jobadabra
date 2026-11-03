@@ -162,6 +162,15 @@ export async function rematchStale(storage, {apiKey = '', client = null, onStep 
 }
 
 // ---------- what tailoring reads ----------
+/** The skills of a source the main CV and earlier sources do not have yet: added to `known` and `found`. */
+function newSkills(skills, known, found) {
+  for (const skill of String(skills || '').split(',').map(s => s.trim()).filter(Boolean)) {
+    if (known.has(skill.toLowerCase())) continue;
+    known.add(skill.toLowerCase());
+    found.add(skill);
+  }
+}
+
 /**
  * One match's new details onto a role: each one not already there joins it (role.extra, role.extraFrom) until the role holds MAX_EXTRA_PER_ROLE; the rest go to `dropped` (when given),
  * once per detail and role (`seen`: the same detail from two versions is one detail not used, the pill counts details, not versions).
@@ -200,7 +209,7 @@ export function withExtras(storage, base, sources = list(storage), dropped = nul
       role.extra ||= []; role.extraFrom ||= {};
       offerBullets(role, m.newBullets.map(i => from.bullets[i]), source.name, {mainJob: m.mainJob, mainRole: m.mainRole}, dropped, seenDropped);
     }
-    for (const skill of String(source.cv.skills || '').split(',').map(s => s.trim()).filter(Boolean)) if (!known.has(skill.toLowerCase())) { known.add(skill.toLowerCase()); extraSkills.add(skill); }
+    newSkills(source.cv.skills, known, extraSkills);
   }
   for (const job of out.jobs) for (const role of job.roles) if (role.extra && !role.extra.length) { delete role.extra; delete role.extraFrom; }
   if (extraSkills.size) out.extraSkills = [...extraSkills].join(', ');
