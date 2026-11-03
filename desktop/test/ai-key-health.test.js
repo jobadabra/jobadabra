@@ -19,7 +19,7 @@ test('a 401 on the user\'s own Anthropic key marks it refused (once), a good ans
   const stop = watchKeyHealth(() => store, {onRejected: engine => told.push(engine), now: () => '2026-11-03T02:00:00.000Z'});
   assert.equal(keyHealth(store, 'api').rejected, false, 'nothing heard yet: not refused');
   await assert.rejects(ask(new AnthropicApi({apiKey: 'sk-ant-fake-one', sdk: refuse()})), /invalid x-api-key/);
-  assert.deepEqual(keyHealth(store, 'api'), {rejected: true, engine: 'api', at: '2026-11-03T02:00:00.000Z'});
+  assert.deepEqual(keyHealth(store, 'api'), {rejected: true, engine: 'api', secret: 'ANTHROPIC_API_KEY', at: '2026-11-03T02:00:00.000Z'});
   await assert.rejects(ask(new AnthropicApi({apiKey: 'sk-ant-fake-one', sdk: refuse()})));
   assert.deepEqual(told, ['api'], 'the window is told once, not on every failed step');
   assert.ok(!JSON.stringify(store.settings()).includes('fake-one'), 'the key itself is never stored in settings');

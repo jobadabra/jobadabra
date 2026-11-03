@@ -10,11 +10,11 @@ const SECRETS = {api: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY'};
 /** A short hash of an API key (12 hex): enough to tell "the same key" from "a new one", useless to get the key back. Takes any value, returns a string. */
 export const fingerprint = key => crypto.createHash('sha256').update(String(key)).digest('hex').slice(0, 12);
 
-/** {rejected, engine, at} for the engine the user chose now: true only while the saved key is the one that was refused. */
+/** {rejected, engine, secret (the key's name, e.g. ANTHROPIC_API_KEY), at} for the engine the user chose now: true only while the saved key is the one that was refused. */
 export function keyHealth(storage, engine) {
   const mark = storage.settings().aiKeyRejected, name = SECRETS[engine];
   const rejected = !!(mark && name && mark.engine === engine && storage.secret(name) && mark.fp === fingerprint(storage.secret(name)));
-  return {rejected, engine: rejected ? engine : '', at: rejected ? mark.at : ''};
+  return {rejected, engine: rejected ? engine : '', secret: rejected ? name : '', at: rejected ? mark.at : ''};
 }
 
 let stopLast = () => {};

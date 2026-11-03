@@ -30,3 +30,8 @@ export const extensionFrom = (record, {justStarted: started = false} = {}) => ex
   seen: record?.seen || null, browserRunning: record?.browserUp ?? null, now: record?.at ?? Date.now(), justStarted: started});
 // The AI card of Settings → Connections: on only while the key works. keyBad = the provider refused the saved key (state().settings.aiKeyBad, lib/ai-key-health.js).
 export const aiService = (ready, keyBad) => ({on: !!ready && !keyBad, words: ready && keyBad ? 'Key refused · paste a new one' : ''});
+// One key row of Connections → AI ([data-secret]): "✓ Connected", "Not set", or, for the one key the provider refused (aiKeyBad = that key's name), "Key refused".
+export const keyRow = (secret, isSet, keyBad) => {
+  const refused = !!isSet && !!keyBad && secret === keyBad;
+  return {text: refused ? 'Key refused · paste a new one' : isSet ? '✓ Connected' : 'Not set', on: !!isSet && !refused};
+};

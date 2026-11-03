@@ -6,7 +6,7 @@ import {install} from './tiny-dom.js';
 
 install();
 globalThis.window.pilot = new Proxy({state: async () => ({settings: {}, secrets: {}})}, {get: (all, key) => all[key] || (() => null)});
-const {aiService} = await import('../renderer/service-status.js');
+const {aiService, keyRow} = await import('../renderer/service-status.js');
 const {portraitView} = await import('../renderer/pages/portrait.js');
 const fs = await import('node:fs');
 
@@ -17,9 +17,8 @@ test('Connections: a saved key the provider refused is not "Connected"; it says 
   const page = fs.readFileSync(new URL('../renderer/pages/settings.js', import.meta.url), 'utf8');
   assert.match(page, /aiService\(aiReady\(\), shared\.state\.settings\.aiKeyBad\)/, 'the card reads the one flag');
   assert.match(page, /ai: ai\.words/);
-  const keyRow = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
-  assert.match(keyRow, /refused \? 'Key refused · paste a new one' : set \? '✓ Connected'/, 'the API key row in Connections → AI says it too');
-  assert.match(keyRow, /KEY_OF = \{api: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY'\}/, 'each engine marks its own key row, not the other\'s (Gitar, #3035)');
+  const keyRowSource = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
+  assert.match(keyRowSource, /keyRow\(line\.dataset\.secret, set, shared\.state\.settings\.aiKeyBad\)/, 'the key rows read the one flag');
 });
 
 test('Portrait: an outdated text with a note says it is not updated and why, instead of "Updating soon"', () => {
@@ -29,4 +28,11 @@ test('Portrait: an outdated text with a note says it is not updated and why, ins
   const refused = portraitView(status, {note: 'Your AI key was refused. Paste a working key in Settings → Connections → AI.'});
   assert.match(refused.textContent, /Not updated/);
   assert.doesNotMatch(refused.textContent, /Updating soon/);
+});
+
+test('Connections → AI key rows: only the refused key says "Key refused"; the other set key stays Connected (Gitar, #3035)', () => {
+  assert.deepEqual(keyRow('OPENAI_API_KEY', true, 'OPENAI_API_KEY'), {text: 'Key refused · paste a new one', on: false});
+  assert.deepEqual(keyRow('ANTHROPIC_API_KEY', true, 'OPENAI_API_KEY'), {text: '✓ Connected', on: true}, 'an OpenAI refusal leaves the Anthropic row alone');
+  assert.deepEqual(keyRow('ANTHROPIC_API_KEY', true, ''), {text: '✓ Connected', on: true});
+  assert.deepEqual(keyRow('OPENAI_API_KEY', false, 'OPENAI_API_KEY'), {text: 'Not set', on: false});
 });
