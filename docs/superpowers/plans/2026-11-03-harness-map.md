@@ -30,11 +30,11 @@ Session hm, 3 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-harness-map-des
 - Parked as Linear ideas: RAG index, framework extraction, hub-staleness gate.
 
 ## Progress
-- [ ] 1/8 Spec and plan
-- [ ] 2/8 L0 + pilot hubs + checker + AGENTS.md under 32 KiB
-- [ ] 3/8 Hubs apply, search, data
+- [x] 1/8 Spec and plan (proof: docs/superpowers/specs/2026-11-03-harness-map-design.md @7da77f21)
+- [x] 2/8 L0 + pilot hubs + checker + AGENTS.md under 32 KiB (proof: desktop/test/guards/rules/map-check.test.js @9495ae71)
+- [x] 3/8 Hubs apply, search, data (proof: docs/map/apply.md @8e640a35)
 - [ ] 4/8 Hubs desktop, release, site, growth
-- [ ] 5/8 Fetchers Linear, Sentry, GitHub + pack builder
+- [x] 5/8 Fetchers Linear, Sentry, GitHub + pack builder (proof: desktop/test/guards/rules/context-fetchers.test.js)
 - [ ] 6/8 Fetchers PostHog, Cloudflare
 - [ ] 7/8 Fetcher Notion
 - [ ] 8/8 Evaluation
