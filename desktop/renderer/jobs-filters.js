@@ -52,3 +52,7 @@ export const BOARD_FILTERS = new Set(['saved', 'applied', 'dismissed', ...VIEWS.
 export const boardIds = ids => ids.filter(id => BOARD_FILTERS.has(id));
 // A view option is a narrowing of your applications: the Talking section and the menu's own lists step aside for them.
 export const hasViewOption = ids => ids.some(id => id.startsWith('view:'));
+// Where "Find more jobs" belongs: the lists that hold job matches you have not decided on. Under Applied, Inbound, Saved, Dismissed or a stage,
+// a search would add rows to none of them. Why (2 Nov 2026, owner: a "Find more jobs" card over the Inbound list): one rule, read by pages/jobs-find.js.
+export const FINDS_MORE = new Set(['open', 'all', 'everything']);
+export const findsMore = ids => ids.some(id => FINDS_MORE.has(id));

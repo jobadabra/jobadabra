@@ -33,7 +33,7 @@ test('a job running anywhere shows its progress line; one "Running" for hours ne
   const lost = history.fromRow(row('r4', {started: '2026-09-28T02:00:00Z', mode: 'mail', status: 'Running', trigger: 'Schedule'}), NOW);
   assert.equal(lost.live, undefined);
   assert.equal(lost.ok, false);
-  assert.equal(lost.result, 'never finished (see the log)');
+  assert.equal(lost.result, 'stopped without finishing (see Details)');   // says what is known, never a cause, and never "the log" the person cannot open
 });
 
 test('merge: Notion is the history; this Mac\'s record of the same run keeps its full log; a job sent to GitHub waits for its row', () => {

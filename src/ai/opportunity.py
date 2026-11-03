@@ -112,11 +112,20 @@ def title(lead):
     return (lead.get('title') or 'Role').strip()[:200]
 
 
+def reply_title(sender_org='', sender_name=''):
+    """The title of a job an email introduced when the email names no role: who wrote, never the email's subject.
+    Why (2 Nov 2026, owner: a Windows tester's Jobs list showed "RE: Keeping in Touch – Finance Opportunities in Switzerland" as a job):
+    a subject is a sentence about the conversation, not a role; the person reads "Reply from Huxley" and adds the role when Focus asks."""
+    who = (sender_org or sender_name or '').strip()
+    return f'Reply from {who}'[:200] if who else 'Email reply'
+
+
 def label(lead):
     """"Senior DevOps Engineer — logistics software (client) via Example Talent"."""
     who = lead.get('company') or (f"{lead['client']} (client)" if lead.get('client') else '')
     via = lead.get('recruiter_company') if not lead.get('in_house') else ''
-    return ' — '.join(p for p in (title(lead), who) if p) + (f' via {via}' if via and via != who else '')
+    named = via and via != who and via.lower() not in title(lead).lower()   # "Reply from Huxley" already names it: no " via Huxley" after it
+    return ' — '.join(p for p in (title(lead), who) if p) + (f' via {via}' if named else '')
 
 
 def source_for(lead, source):

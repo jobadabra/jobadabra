@@ -218,7 +218,7 @@ class MailMatchTests(MailCase):
                                                               interview_at='2026-09-30T08:30:00+02:00')]])
         self.assertEqual(tracked[0]['recruiter_company'], 'Huxley')
         self.assertEqual(tracked[0]['company'], '')  # the agency is not the employer
-        self.assertEqual(tracked[0]['title'], 'Connect Igor / Jaya - SRE')
+        self.assertEqual(tracked[0]['title'], 'Reply from Huxley')   # who wrote, never the email's subject (owner, 2 Nov 2026: a subject listed as a job)
         kinds = [p['Kind']['select']['name'] for p in tracker.created if 'Kind' in p]
         self.assertIn('Interview scheduled', kinds)
         self.assertIn('Which job is this for?', sent[0])

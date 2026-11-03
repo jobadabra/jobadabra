@@ -4,6 +4,7 @@
 import {el, moreButton, pill} from '../components.js';
 import {boardColumns, dropFor, STAGES, takesDrop} from '../jobs-board-rules.js';
 import {matchLabel} from '../jobs-view.js';
+import {rowModel} from '../job-row-model.js';
 import {$} from './core.js';
 import {openJobPanel} from './job-panel.js';
 import {toastMessage} from './startup.js';
@@ -33,10 +34,10 @@ function card(job) {
   const item = Object.assign(el('li', 'focus-item board-card'), {tabIndex: 0, draggable: true, title: 'Drag to another stage, or click to open'});
   Object.assign(item.dataset, {code: job.code || '', url: job.url || ''});   // a pop-up's click finds it (pages/open-target.js focusJob)
   const body = el('div', 'focus-body');
-  body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', 'focus-meta muted small', job.company || ''));
+  body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', 'focus-meta muted small', rowModel(job).who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (job.next_step) body.append(el('div', 'muted small', `Next: ${job.next_step}`));
-  body.append(triageChip(job));   // Why (2026-10-30, owner: the apply triage chip): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
+  if (rowModel(job).triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== job.stage && takesDrop(stage))
     .map(stage => ({label: stage, run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: 'Move to', disabled: true}, ...moves], 'Move to another stage'));
