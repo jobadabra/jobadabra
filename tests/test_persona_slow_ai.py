@@ -50,6 +50,26 @@ class SlowAiIsNotAProductZero(unittest.TestCase):
             row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 3, right=2))
         self.assertNotIn('not_measured', row)
 
+    def test_a_slow_press_that_scored_jobs_and_found_none_right_stays_a_measured_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 12))   # reached scoring: a broken scorer must still show
+        self.assertNotIn('not_measured', row)
+
+    def test_a_press_that_wrote_no_numbers_keeps_its_error_and_its_red_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0)
+            (out / 'draw' / 'presses.jsonl').unlink()
+            row = gate.result(1, out)
+        self.assertNotIn('not_measured', row)
+        self.assertIn('error', row)
+
+    def test_the_bound_is_18_s(self):
+        for mean_ms, grey in ((17900, False), (18000, True)):
+            with tempfile.TemporaryDirectory() as tmp:
+                out = press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0)
+                (out / 'run.log').write_text(''.join(f'relay: small total {mean_ms} broker 4000 waited 100 in-flight 2 kind decide status 200\n' for _ in range(5)))
+                self.assertEqual('not_measured' in gate.result(1, out), grey, mean_ms)
+
     def test_a_slow_press_that_crashed_stays_red(self):
         with tempfile.TemporaryDirectory() as tmp:
             row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0, code=1))

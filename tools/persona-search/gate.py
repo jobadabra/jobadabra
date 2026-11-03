@@ -92,8 +92,10 @@ STARVED_WAIT_S = 45
 RELAY_TOTAL = re.compile(r'relay: .* total (\d+) ')
 # Why (3 Nov 2026, coordinator for the owner; main runs 41359673068 vs 41463124217 / 41582737531): the mean time of a relay call (its own plus the queue)
 # was 7-10 s in the last run that found jobs, 12-16 s in a middle one that still read, and 18.6-34 s in every run since the Codex plan ran out and the
-# broker fell back to Haiku: ~18 calls fit in 180 s instead of ~40, and no press reached the boards or scoring. 18 s sits in the gap between what
-# measured (<= 16) and what was starved (>= 18.6).
+# broker fell back to Haiku: ~18 calls fit in 180 s instead of ~40, and no press reached the boards or scoring. 18 s sits in a thin gap between what
+# measured (<= 16) and what was starved (>= 18.6; three runs, one regime). Only a press that scored NOTHING goes grey: one that scored jobs and found none right
+# stays a measured 0, so a broken scorer still shows. While the broker is on the fallback this greys every empty persona and `_total` (the pooled gate)
+# is None for a run with any grey row, so the pooled gate is off until the AI is fast again; that is the point (a 0 caused by speed must not set the baseline).
 SLOW_CALL_S = 18
 
 
@@ -214,8 +216,8 @@ def result(n, out):
     # (Gitar on #2955). A starved press is cut at the app's own stop, never past it.
     if starved_wait is not None and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT:
         row['not_measured'] = f'AI queue full (waited {starved_wait} s)'
-    elif not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT and row.get('local') == 0:
-        mean = mean_call_s(out / 'run.log')   # no right job and an AI this slow: what the press found says nothing about the code
+    elif not row.get('error') and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT and row.get('local') == 0 and read_of(row) == 0:
+        mean = mean_call_s(out / 'run.log')   # nothing scored, nothing right, and an AI this slow: what the press found says nothing about the code
         if mean is not None and mean >= SLOW_CALL_S:
             row['not_measured'] = f'AI slow (a call took {round(mean)} s on average)'
     (out / 'result.json').write_text(json.dumps(row, ensure_ascii=False), encoding='utf-8')
