@@ -141,7 +141,7 @@ export function pipelineEnv(storage, parent = process.env) {
     JOBADABRA_MAIN_MODEL: OVERRIDE, JOBADABRA_BIG_MODEL: OVERRIDE});
   Object.assign(env, poolShare.variables(storage) || {});  // "Help the pool grow": only when the user turned it on
   if (settings.telegramChatId) env.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
-  Object.assign(env, notifyEnv(storage));   // how the person wants to be told (Settings → Automation → Notifications): src/notify.py
+  Object.assign(env, notifyEnv(storage));   // how the person wants to be told (Settings → Notifications): src/notify.py
   for (const [key, value] of Object.entries(settings.notionIds || {})) if (value) env[key] = value;
   return env;
 }

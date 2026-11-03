@@ -77,13 +77,13 @@ test('the same path is one row', () => {
 
 test('a card\'s own words count as its name; a card named whole folds every part', () => {
   const list = [
-    {group: 'Settings', label: 'Notifications', alias: 'email telegram', keywords: 'settings automation', path: ['Settings', 'Automation', 'Notifications']},
+    {group: 'Settings', label: 'Notifications', alias: 'email telegram', keywords: 'settings notifications', path: ['Settings', 'Notifications']},
     {group: 'Settings', label: 'Always on: Save email', kind: 'part', parent: {label: 'Always on'}},
     {group: 'Settings', label: 'Notion', path: ['Settings', 'Connections', 'Notion']},
     {group: 'Notion', label: 'Notion: Job matches', kind: 'part'},
     {group: 'Settings', label: 'Your data: Open in Notion', kind: 'part', parent: {label: 'Your data'}},
   ];
-  assert.deepEqual(shown(list, 'email'), ['Settings → Automation → Notifications', 'Always on: Save email']);
+  assert.deepEqual(shown(list, 'email'), ['Settings → Notifications', 'Always on: Save email']);
   assert.deepEqual(shown(list, 'notion'), ['Settings → Connections → Notion']);
   assert.deepEqual(shown(list, 'notion job matches'), ['Notion: Job matches']);
 });

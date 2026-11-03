@@ -1,4 +1,4 @@
-// How the person wants to be told (Settings → Automation → Notifications, "Tell me by"): e-mail, app notifications, Telegram, any mix. Owns the choice (settings.notifyBy),
+// How the person wants to be told (Settings → Notifications, "Tell me by"): e-mail, app notifications, Telegram, any mix. Owns the choice (settings.notifyBy),
 // the address kept on our site (GET/PUT /api/account/email, site/src/account-email.js), the env the engine reads (JOBADABRA_NOTIFY, src/notify.py), and the one e-mail the app itself sends.
 // Guards: test/notify-channel.test.js, test/telegram-send.test.js.
 import {FREE_BASE, TRIAL_KEY} from './ai-free.js';

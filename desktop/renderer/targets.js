@@ -10,7 +10,7 @@
 // Every pop-up names its target, or one of NO_PLACE below (owner, 27 Oct 2026: "on clicking on any notification, it should forward/redirect us and
 // highlight a specific section/screen/card"). test/toast-targets.test.js fails on a call with neither.
 export const VIEWS = ['actions', 'calendar', 'focus', 'interviews', 'jobs', 'sessions', 'settings', 'strategy'];
-export const SECTIONS = ['overview', 'profile', 'connections', 'automation', 'data', 'license', 'advanced', 'appearance'];
+export const SECTIONS = ['overview', 'profile', 'connections', 'automation', 'notifications', 'data', 'license', 'advanced', 'appearance'];
 // Why a pop-up opens nothing: a string a click ignores (clean() keeps no string). Only these, so the reason is one of a few, said once.
 export const NO_PLACE = Object.freeze({
   outside: 'about Chrome, a saved file or another app: nothing in this window shows it',

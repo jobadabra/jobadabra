@@ -16,7 +16,7 @@ import {keyWorked} from './ai/refusals.js';
 import {registerPlanHandlers} from './plan-handlers.js';
 import {checkOpenAiKey} from './ai/openai-api.js';
 import {log as appLog} from './log.js';
-import {registerNotifyHandlers} from './notify-handlers.js';   // Settings → Automation → Notifications
+import {registerNotifyHandlers} from './notify-handlers.js';   // Settings → Notifications
 import {CV_FILES} from '../renderer/cv-files.js';
 import {officeAddon} from './office-addon.js';   // LibreOffice for a Word CV, downloaded on use
 import {registerOfficeHandlers} from './office-handlers.js';

@@ -1,5 +1,5 @@
-// Settings → Automation → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address, how often the digest comes and the product-news tick (pre-checked, unsubscribe in one click).
-// Saves at once like the rest of Automation. The choice and the address live in lib/notify-channel.js; the engine and the Always on repo follow it. The words (why a switch does nothing) are
+// Settings → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address, how often the digest comes and the product-news tick (pre-checked, unsubscribe in one click).
+// Its own Settings tab after Automation (owner, 3 Nov 2026: "Notifications should be a separate tab in Settings. Not inside Automations"); saves at once like Automation. The choice and the address live in lib/notify-channel.js; the engine and the Always on repo follow it. The words (why a switch does nothing) are
 // renderer/notify-words.js; guard test/notify-choice.test.js.
 import {$} from './core.js';
 import {shared} from './shared.js';
@@ -39,7 +39,7 @@ export function bindNotify({savedToast, updateRepo}) {
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
       window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
-      if (result.ok) { savedToast('Saved ✓', `Tell me by: ${by.join(', ') || 'nothing'}`); updateRepo(); }
+      if (result.ok) { savedToast('Saved ✓', `Tell me by: ${by.join(', ') || 'nothing'}`, 'notifications'); updateRepo(); }
     } finally { busy = false; }
     await showNotify(error);
   };
