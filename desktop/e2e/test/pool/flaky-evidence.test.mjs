@@ -88,6 +88,14 @@ test('verdictsForCauses groups by suite, drops the steps never run (the budget w
   assert.deepEqual(out.map(item => [item.suite, item.step, item.verdict]), [['apply', READ, 'flaky']]);
 });
 
+test('a suite whose read throws (its gh call ended by the deadline) is said unknown with the error; the verdicts of the suites read before it are kept (the empty --json of 3 Nov 2026)', async () => {
+  const causes = [{suite: 'apply', step: READ, message: 'boom', job: 'apply-1of3'}, {suite: 'wizard', step: 'AI asks have stored answers', message: 'no answer', job: 'wizard'}];
+  const say = [];
+  const out = await verdictsForCauses(causes, {redSha: RED, redRun: 9, io: io({runs: async () => { if (say.length) throw new Error('spawnSync gh ETIMEDOUT'); say.push('apply read'); return RUNS; }}), say: line => say.push(line)});
+  assert.deepEqual(out.map(item => [item.suite, item.verdict]), [['apply', 'flaky'], ['wizard', 'unknown']]);
+  assert.match(out[1].reason, /read failed: spawnSync gh ETIMEDOUT/);
+});
+
 // The real git reads, against a local "remote": a shallow checkout lacks a PR head that is no ancestor of main; the commit comes from a private bare repo, never into the checkout.
 
 test('ghIo compares and reads a commit its checkout lacks, and leaves the checkout unshallowed', async () => {
