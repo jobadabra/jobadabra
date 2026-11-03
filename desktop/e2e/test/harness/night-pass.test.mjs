@@ -54,11 +54,12 @@ test('qualityai, the live-model measurement, runs in night pass 1 only', () => {
   assert.ok(!nightSuites(ALL, {...CADENCE, qualityai: 'nightly'}, 1).includes('qualityai'), 'a live-model suite that is not night-report stays out of every pass');
 });
 
-test('the plan is the beta\'s layout: both stores for a suite that keeps data, no tag to approve, no AI review, the commit of pass 1', async () => {
+test('the plan is the beta\'s layout: one job per suite on this Mac\'s store, no tag to approve, no AI review, the commit of pass 1', async () => {
   const out = await plan('3/5', {runs: [pass1]});
   const legs = JSON.parse(out.matrix).include;
   assert.equal(out.suites, 'jobs,settings');
-  assert.deepEqual(legs.filter(leg => leg.suite === 'jobs').map(leg => leg.store).sort(), ['sqlite', 'standin']);
+  assert.deepEqual(legs.filter(leg => leg.suite === 'jobs').map(leg => leg.key), ['jobs'], 'no "-standin" twin: the Notion path has its own run (owner, 3 Nov 2026: "Mac Store only")');
+  assert.ok(legs.every(leg => !leg.store || leg.store === 'sqlite'), 'no leg asks for the stand-in: e2e.yml falls back to this Mac\'s store');
   assert.equal(out.tag, '', 'nothing to approve: a pass is not a release');
   assert.equal(out.review, '0');
   assert.equal(out.ref, FIRST);

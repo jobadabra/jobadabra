@@ -306,7 +306,6 @@ jobs:
           TARGET_REF: desktop-v${{ steps.version.outputs.version }}
           GATE_TAG: desktop-v${{ steps.version.outputs.version }}
           GATE_UNIT: '1'   # Why (1 Nov 2026, owner): the desktop unit tests are one more leg of each lane's Test matrix (lib/unit-leg.mjs), not a step of Build; e2e.yml never sets this
-          GATE_STORE_LEGS: one   # one Mac job per suite: this workflow's copy of the job does not pass the leg's store to the suite (desktop/e2e/plan-run.mjs says why)
           GATE_KIND: ${{ inputs.nightly && 'nightly' || 'beta' }}   # a beta by hand runs quality only when what it watches changed
           OVER: ${{ steps.spend.outputs.over }}
         run: |

@@ -13,7 +13,7 @@ DIFFERENT = {
     'mac': {
         'E2E_AI_ANSWERS': 'Only standalone first attempts can record or force burn-in; the common replay mode is checked separately below.',
         'E2E_AI_FAMILY': 'Only standalone manual dispatches pin a family; the gate uses engine.mjs run-number rotation.',
-        'E2E_STORE': 'plan-run.mjs documents GATE_STORE_LEGS=one: the gate keeps one alternating store until both stores run in one job.',
+        'E2E_STORE': 'The beta sets none and store.mjs gives this Mac\'s store (owner, 3 Nov 2026: "Mac Store only"); a standalone run may pin the stand-in by hand.',
         'E2E_STEP_NAMES': 'runner.mjs selects PR steps; the beta runs the whole suite.',
         'E2E_FALLBACK_SUITES': 'red-steps.mjs caps renamed PR picks; the beta has no picked steps to fall back from.',
         'E2E_FALLBACK_SUITE': 'red-steps.mjs identifies a reserved PR leg; the beta runs full suites.',
@@ -34,7 +34,7 @@ DIFFERENT = {
         'E2E_STEP_NAMES': 'runner.mjs selects standalone PR smoke steps; the beta runs the whole suite.',
         'E2E_FALLBACK_SUITES': 'red-steps.mjs reserves renamed PR picks; the beta has no picked steps.',
         'E2E_FALLBACK_SUITE': 'red-steps.mjs identifies a reserved PR leg; the beta runs full suites.',
-        'E2E_STORE': 'Standalone PR smoke uses fresh SQLite; the beta keeps the default store rotation (store.mjs).',
+        'E2E_STORE': 'Standalone PR smoke pins fresh SQLite; the beta sets none and store.mjs gives this Mac\'s store all the same.',
         'E2E_AI_REPLAY': 'desktop.yml keeps the qualityai-live expression on every replay line (tests/test_quality_replay_gate.py); qualityai is sameOnEveryOs, so the Windows value is 1 either way.',
     },
 }

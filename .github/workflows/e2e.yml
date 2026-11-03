@@ -47,7 +47,7 @@ on:
         type: boolean
         default: false
       night_pass:
-        description: 'Started by the Worker (app-core/src/scheduler.js NIGHT_SLOTS): pass n/5 of the night burn-in, e.g. 3/5. The beta''s own layout (every gate suite, both stores, Windows following) on the commit of pass 1, fixed path, no paid AI except pass 1''s one qualityai night-report run (desktop/e2e/lib/night-pass.mjs)'
+        description: 'Started by the Worker (app-core/src/scheduler.js NIGHT_SLOTS): pass n/5 of the night burn-in, e.g. 3/5. The beta''s own layout (every gate suite, this Mac''s store, Windows following) on the commit of pass 1, fixed path, no paid AI except pass 1''s one qualityai night-report run (desktop/e2e/lib/night-pass.mjs)'
         type: string
         default: ''
       scheduled:
@@ -78,10 +78,10 @@ on:
         options: [alternate, claude, openai]
         default: alternate
       store:
-        description: 'Where the app keeps its data (desktop/e2e/lib/store.mjs): alternate by run number (runs 0,1 sqlite, 2,3 the Notion stand-in), or pin one; a gate runs both. No suite uses a Notion token except notion-real'
+        description: "Where the app keeps its data (desktop/e2e/lib/store.mjs): this Mac's store, or standin for the Notion path by hand. No suite uses a Notion token except notion-real"
         type: choice
-        options: [alternate, sqlite, standin]
-        default: alternate
+        options: [sqlite, standin]
+        default: sqlite
       mutant:
         description: 'MUTATION TEST (mutation.yml): write this mutant of desktop/e2e/mutants.json into the app first, or "baseline". Fixed path, no AI review, nothing filed, no Windows run'
         required: false
@@ -276,9 +276,8 @@ jobs:
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
-      # The store under test (lib/store.mjs pickStore): the gate's two jobs per suite pin one store each (plan-run.mjs legs); any other run alternates on bit 1 of the
-      # run number (beside the AI family's bit 0), unless a run by hand pins one.
-      E2E_STORE: ${{ matrix.store || (inputs.pr_suites != '' && 'sqlite') || (inputs.store != 'alternate' && inputs.store) || 'alternate' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs), else SQLite; both are fresh per run
+      # The store under test (lib/store.mjs pickStore): this Mac's store, fresh per run (owner, 3 Nov 2026: "Mac Store only"); a run by hand may pin the stand-in.
+      E2E_STORE: ${{ matrix.store || inputs.store || 'sqlite' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
       E2E_NOTION_TOKEN_FAILURESNOTION: ${{ secrets.E2E_NOTION_TOKEN_FAILURESNOTION }}
       E2E_NOTION_TOKEN_FAILURESCHANNELS: ${{ secrets.E2E_NOTION_TOKEN_FAILURESCHANNELS }}
