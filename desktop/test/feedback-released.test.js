@@ -162,3 +162,10 @@ test('the lookups stop after their time budget, and the release still tells its 
   const found = await earlierFixes({tag: TAG, url: 'https://x/api/feedback/released', key: 'k', listed: [], env: ENV, fetcher: net.fetcher, now: () => clock});
   assert.deepEqual(found, [3031, 3032], 'the third lookup starts after 200 s of a 120 s budget and does not run');
 });
+
+test('one lookup that has started cannot run past the budget: it stops between compare pages and the card stays waiting', async () => {
+  let clock = 0, pages = 0;
+  const net = network({github: {waiting: json({ok: true, prs: [3031]}), contains: () => { pages++; clock += 70000; return json({status: 'ahead', total_commits: 300, commits: []}); }}});
+  const found = await earlierFixes({tag: TAG, url: 'https://x/api/feedback/released', key: 'k', listed: [], env: ENV, fetcher: net.fetcher, now: () => clock});
+  assert.deepEqual([found, pages], [[], 2], 'page 3 starts at 140 s of a 120 s budget and is not asked; the PR is not claimed on a half-read range');
+});

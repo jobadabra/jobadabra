@@ -56,11 +56,15 @@ const MAX_COMMITS = 3000;
  * the pages are counted from `total_commits`, and a range over MAX_COMMITS fails loudly (Why, 6/7 code review, 3 Nov 2026: 0.8.60...0.8.86 is 766 commits, a long hold is more than 500).
  */
 const subjectsBetween = async (prev, tag, env, fetcher) => (await rangeBetween(prev, tag, env, fetcher)).lines;
-/** -> {status, lines}: GitHub's compare status of base...tag ("ahead" = base is an ancestor of the tag) and the first line of every commit in it, oldest first. */
-async function rangeBetween(prev, tag, env, fetcher) {
+/**
+ * -> {status, lines}: GitHub's compare status of base...tag ("ahead" = base is an ancestor of the tag) and the first line of every commit in it, oldest first.
+ * `due` (ms clock reading, optional) is checked before every page: Why (3 Nov 2026, Gitar on #3104): a lookup started just under the budget could otherwise read up to 30 pages of 20 s each and overrun it.
+ */
+async function rangeBetween(prev, tag, env, fetcher, {due = Infinity, now = Date.now} = {}) {
   const lines = [];
   let pages = 1, status = '';
   for (let page = 1; page <= pages; page++) {
+    if (now() > due) throw new Error(`compare ${prev}...${tag}: out of time`);
     const answer = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/compare/${encodeURIComponent(prev)}...${encodeURIComponent(tag)}?per_page=100&page=${page}`, env, fetcher);
     if (!answer.ok) throw new Error(`compare ${prev}...${tag}: HTTP ${answer.status}`);
     const body = await answer.json();
@@ -92,7 +96,7 @@ export async function earlierFixes({tag, url, key, listed, env, fetcher, now = D
         const pull = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/pulls/${number}`, env, fetcher);
         const data = pull.ok ? await pull.json().catch(() => null) : null;
         if (!data?.merged_at || !data.merge_commit_sha) continue;   // not merged (an open PR can still carry a test-merge sha), or unreadable: still waiting
-        const {status, lines} = await rangeBetween(data.merge_commit_sha, tag, env, fetcher);
+        const {status, lines} = await rangeBetween(data.merge_commit_sha, tag, env, fetcher, {due: started + EARLIER_BUDGET_MS, now});
         // A revert anywhere between the merge and the tag takes the fix out (prNumbers reads them oldest first), exactly as it does inside a release's own range.
         if (['ahead', 'identical'].includes(status) && prNumbers([`merge (#${number})`, ...lines]).includes(number)) found.push(number);
       } catch { /* this PR stays waiting, the next release asks again */ }
