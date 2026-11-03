@@ -14,7 +14,7 @@ export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalT
     if (!/^[\w-][\w.-]*\/[\w-][\w.-]*$/.test(repo)) return unavailable('GITHUB_REPOSITORY must look like owner/name');
     const init = {method: 'GET', headers: {accept: 'application/vnd.github+json', ...(env.GITHUB_TOKEN ? {authorization: `Bearer ${env.GITHUB_TOKEN}`} : {})}};
     const issue = await json(fetchImpl, `https://api.github.com/repos/${repo}/issues/${number[1]}`, init, limits.timeoutMs);
-    // Why (3 Nov 2026, Gitar on #3119): the API lists comments oldest first; the newest are the relevant ones, so read a full page (100) and keep the last maxItems.
+    // Why (3 Nov 2026, Gitar on #3119): the API lists comments oldest first; the newest are the relevant ones, so read a full page (100) and keep the last maxItems. Limit: a thread over 100 comments shows its oldest 100 (parked as JOB-271).
     const comments = (await json(fetchImpl, `https://api.github.com/repos/${repo}/issues/${number[1]}/comments?per_page=100`, init, limits.timeoutMs).catch(() => [])).slice(-(limits.maxItems ?? LIMITS.maxItems));
     return finish(`# GitHub #${issue.number}: ${issue.title}`, [
       `State: ${issue.state} · ${issue.pull_request ? 'pull request' : 'issue'} · Labels: ${(issue.labels || []).map(l => l.name).join(', ') || '(none)'}`,
