@@ -275,7 +275,7 @@ test('our scripts that hold a token import nothing the AI may edit (src/, tests/
       seen.add(file);
       for (const match of fs.readFileSync(file, 'utf8').matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n;]*?\bfrom\s+['"](\.[^'"]+)['"]|(?:^|\n)\s*import\s+['"](\.[^'"]+)['"]/g)) {
         const target = path.resolve(path.dirname(file), match[1] || match[2]);
-        found.add(path.relative(root, target)); walk(target);
+        found.add(path.relative(root, target).split(path.sep).join('/')); walk(target);   // forward slashes: Windows returns backslashes
       }
     };
     walk(path.join(root, entry));
