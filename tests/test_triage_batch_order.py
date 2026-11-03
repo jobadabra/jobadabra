@@ -32,7 +32,10 @@ class Tape:
     def create(self, **kwargs):
         content = kwargs['messages'][0]['content']
         self.calls += 1
-        self.heads.append((self.mode, content[:60].replace('\n', ' '), threading.current_thread().name))
+        header, _, listed = content.partition(':\n')
+        system = kwargs.get('system') or ''
+        system = system if isinstance(system, str) else (system[0].get('text', '') if system else '')
+        self.heads.append((self.mode, system[:30], header[-40:], listed.replace('\n', ' | ')[:200], threading.current_thread().name))
         if self.mode == 'record':
             self.seen.add(content)
         elif content not in self.seen:
