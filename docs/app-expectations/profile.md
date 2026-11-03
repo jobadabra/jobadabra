@@ -1,0 +1,6 @@
+# Profile
+
+- [profile-1] A question is a sentence a person can answer, never a bare label such as "Workload" or "Summary". | source: PR #3027 | code: -
+- [profile-2] A saved answer is never its own question, its section name or a heading line of the CV ("Saved: Summary"). | source: PR #3027 | code: -
+- [profile-3] A language line names its languages with their levels, never a level grid that names no language. | source: PR #3027 | code: -
+- [profile-4] The place the data lives is called "your store" (this Mac or Notion), never "Notion" as the one database. | source: desktop/test/store-words.test.js | code: -
