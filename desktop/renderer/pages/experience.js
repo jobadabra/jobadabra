@@ -125,6 +125,8 @@ export function showExperience(view) {
     }
     const button = Object.assign(el('button', 'link item-action', 'Remove'), {type: 'button', title: 'Tailored CVs stop drawing on this version. Your main CV is not changed.'});
     button.addEventListener('click', async () => {
+      // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
+      if (!confirm(`Remove “${source.name}”? Tailored CVs stop drawing on this version. Your main CV is not changed.`)) return;
       button.disabled = true;
       const answer = await window.pilot.experienceRemove(source.id).catch(error => ({ok: false, error: error.message}));
       if (answer.ok) { showExperience(answer); showChanges(answer); } else message('exp-message', answer.error || 'Could not remove it.', 'error');
