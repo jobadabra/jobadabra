@@ -29,6 +29,8 @@ export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, sh
   ipcMain.handle('experienceAddCv', async () => {
     if (noAi()) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
     if (!experience.view(storage).main) return {ok: false, error: 'Read your main CV first (CV → Read my CV PDF): other versions are compared with it.'};
+    // Why (3 Nov 2026, #3055): at the limit the person is told before the file picker, not refused after choosing a PDF.
+    if (experience.list(storage).length >= experience.MAX_SOURCES) return withChanges(experience.view(storage), false, {error: `Up to ${experience.MAX_SOURCES} extra CV versions: remove one first.`});
     const picked = await dialog.showOpenDialog(getWindow(), {title: 'Choose other versions of your CV', filters: [{name: 'PDF', extensions: ['pdf']}], properties: ['openFile', 'multiSelections']});
     if (picked.canceled || !picked.filePaths.length) return {ok: false, cancelled: true};
     const before = experience.view(storage), results = [];
