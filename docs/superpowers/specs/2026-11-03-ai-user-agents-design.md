@@ -209,12 +209,12 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 9. `explore.mjs` has no API-key path left; `cadence: manual` is replaced by `night-report`; `lanes.json` states why it is not a beta step.
 
 ## Progress
-- [x] Read what exists: explorer, broker client, Finder sources, tester-bug PRs (this spec)
-- [x] Sketch; owner's answers on base (evolve), filing (anything with an argument), cadence (daily, ~30 min, diverse) (3 Nov 2026)
-- [x] Owner's yes on the knowledge design (3 layers); no week brake, a cost view and control instead (3 Nov 2026)
-- [x] Told a8 what is added to `desktop/e2e/`; a8's overlap: the Worker timer's daily slot in `app-core/src/scheduler.js` goes on its own lines (3 Nov 2026)
-- [x] Plan `docs/superpowers/plans/2026-11-03-ai-user-agents.md` with the PR split (3 Nov 2026)
-- [x] [ag] 1/7 (jobadabra-web, PR open 3 Nov 2026) the broker tallies calls and tokens per workflow from the verified claim; /admin/ai-cost shows each workflow's share
+- [x] Read what exists: explorer, broker client, Finder sources, tester-bug PRs (this spec) (proof: docs/superpowers/specs/2026-11-03-ai-user-agents-design.md)
+- [x] Sketch; owner's answers on base (evolve), filing (anything with an argument), cadence (daily, ~30 min, diverse) (3 Nov 2026) (proof: none: the sketch was a Claude Artifact and the answers came in the chat; they are quoted under "Owner's answers" in this spec)
+- [x] Owner's yes on the knowledge design (3 layers); no week brake, a cost view and control instead (3 Nov 2026) (proof: none: the answer came in the chat; it is quoted in "Seeing what it did" and "AI: the broker only" in this spec)
+- [x] Told a8 what is added to `desktop/e2e/`; a8's overlap: the Worker timer's daily slot in `app-core/src/scheduler.js` goes on its own lines (3 Nov 2026) (proof: none: a message to session jobadabra-63 and its reply, no file)
+- [x] Plan `docs/superpowers/plans/2026-11-03-ai-user-agents.md` with the PR split (3 Nov 2026) (proof: docs/superpowers/plans/2026-11-03-ai-user-agents.md)
+- [ ] [ag] 1/7 (jobadabra-web, PR open 3 Nov 2026) the broker tallies calls and tokens per workflow from the verified claim; /admin/ai-cost shows each workflow's share
 - [ ] [ag] 2/7 spike: observation (ariaSnapshot vs text), tokens and seconds per call, small vs mid; the explorer on the broker only; a 30-minute session skeleton with the step/minute/call caps
 - [ ] [ag] 3/7 diversity: persona + CV shape generator, move vocabulary from the ⌘K registry, seeded planner, coverage record; value re-check; planted bug
 - [ ] [ag] 4/7 knowledge: `docs/app-expectations/` seed, `agent-memory` branch write-back, "changed since last session" from git + PR verdict lines
