@@ -66,6 +66,7 @@ test('a second opinion that gets no answer holds the notes, asks once not once p
   assert.match(result.notes[1].judgeReason, /not asked: the second opinion could not answer: 503 broker: only-claude: ran-out/);
   assert.equal(result.findings.length, 0, 'no note is filed unjudged');
   assert.equal(result.summary.held.length, 2);
+  assert.equal(result.summary.cost.calls, 4, '3 acting turns + 1 second-opinion call; the note that was not asked costs nothing');
   const text = summaryMarkdown(result.summary);
   assert.match(text, /2 held \(the second opinion was unavailable\)/);
   assert.match(text, /\*\*Held, not filed \(the second opinion could not answer: 503 broker: only-claude: ran-out\):\*\*\n- Phone saved as its label \(profile\): The phone number now reads "Phone number"\.\n- Phone shown twice \(profile\)/);

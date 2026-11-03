@@ -130,7 +130,7 @@ jobs:
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
           AGENT_MEMORY_DIR: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
-          AGENT_CHANGED_LOG: ${{ steps.prepare.outputs.changed_log }}
+          AGENT_CHANGED_LOG: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.changed_log || '' }}   # same replay condition as the memory: no earlier night, no "changed since"
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
           E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
           E2E_AGENT_STEPS: ${{ steps.prepare.outputs.steps }}
