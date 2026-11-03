@@ -170,6 +170,11 @@
         "refuse": "invalid-key"
       }
     },
+    "question_words": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
     "covered_facts": {
       "answer": {
         "refuse": "invalid-key"
