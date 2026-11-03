@@ -48,11 +48,14 @@ export async function closeReply(storage, ref, {fetcher = globalThis.fetch, base
  *  a card the person closed is never drawn again here, and its post is retried at each ask until the website took it. Demo mode has none. */
 export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Date.now}) {
   let cards = [], asked = -Infinity, retryAt = 0;
-  const closed = new Map();   // ref -> true once the website took the close
+  const closed = new Map((storage.settings().feedbackRepliesClosed || []).map(ref => [ref, false]));   // ref -> true once the website took the close
+  // Why (Gitar on #3044): a close that could not be posted must survive a restart, or the card returns after "Got it". Only the refs not yet taken are kept.
+  const keep = () => storage.saveSettings({feedbackRepliesClosed: [...closed].filter(([, taken]) => !taken).map(([ref]) => ref).slice(-50)});
   ipcMain.handle('feedbackReplies', async () => {
     if (DEMO) return [];
     if (now() - asked >= EVERY && now() >= retryAt) {
       for (const [ref, posted] of closed) if (!posted) closed.set(ref, await closeReply(storage, ref, {fetcher}));
+      keep();
       const got = await fetchReplies(storage, {version: app.getVersion(), fetcher});
       if (got === null) retryAt = now() + RETRY; else { cards = got; asked = now(); }
     }
@@ -61,8 +64,10 @@ export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Dat
   ipcMain.handle('feedbackReplyClose', async (_, ref) => {
     closed.set(ref, false);   // closed for good on this screen; the post may fail and is retried
     if (DEMO) { closed.set(ref, true); return true; }
+    keep();   // written before the post: a quit during it still hides the card next time
     const taken = await closeReply(storage, ref, {fetcher});
     closed.set(ref, taken);
+    keep();
     return taken;
   });
 }

@@ -100,3 +100,20 @@ test('a card the person closed stays closed even when the post failed: it is not
   await handlers.feedbackReplies();
   assert.equal(posts, before, 'once the site took it the app stops posting');
 });
+
+test('a close that could not be posted survives an app restart: the card stays hidden and the post goes out at the first ask after it', async () => {
+  const st = store(), ipc = () => { const handlers = {}; return {handlers, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}}; }, app = {getVersion: () => '0.9.11'};
+  let online = false; const posted = [];
+  const fetcher = async (url, init) => {
+    if (init?.method === 'POST') { if (!online) throw new Error('offline'); posted.push(JSON.parse(init.body).ref); return new Response('{}'); }
+    return Response.json({ok: true, replies: [reply()]});
+  };
+  const first = ipc(); registerReplies({DEMO: false, app, ipcMain: first.ipcMain, storage: st, fetcher, now: () => 1_000});
+  await first.handlers.feedbackReplies();
+  assert.equal(await first.handlers.feedbackReplyClose({}, 'a1b2c3d4e5f60718'), false);
+  online = true;   // restart: a new handler set, the same settings file
+  const second = ipc(); registerReplies({DEMO: false, app, ipcMain: second.ipcMain, storage: st, fetcher, now: () => 5_000});
+  assert.deepEqual(await second.handlers.feedbackReplies(), [], 'the closed card is not drawn again after the restart');
+  assert.deepEqual(posted, ['a1b2c3d4e5f60718'], 'and the close is told to the website now');
+  assert.deepEqual(st.settings().feedbackRepliesClosed, [], 'once the website took it nothing is kept');
+});

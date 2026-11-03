@@ -31,3 +31,10 @@ test('the window holds the container and the bridge the page uses', () => {
   assert.match(read('renderer/app.js'), /await feedbackReply\(\)/);
   assert.match(read('preload.cjs'), /feedbackReplies: call\('feedbackReplies'\), feedbackReplyClose: call\('feedbackReplyClose'\)/);
 });
+
+test('the window asks the main process at least as often as the main process retries a failed ask (a 15-minute retry that is asked for hourly is an hour)', () => {
+  const minutes = (file, name) => { const [, a, b = 1] = read(file).match(new RegExp(`${name} = (\\d+) \\* 60(?: \\* (\\d+))? \\* 1000`)) || []; return Number(a) * Number(b); };
+  const poll = minutes('renderer/pages/feedback-reply.js', 'EVERY'), retry = minutes('lib/app-feedback-replies.js', 'RETRY');
+  assert.ok(poll > 0 && retry > 0, 'both intervals are found');
+  assert.ok(poll <= retry, `window polls every ${poll} min, retry is ${retry} min`);
+});
