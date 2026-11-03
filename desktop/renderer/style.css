@@ -94,7 +94,7 @@ textarea { font: var(--fs-md)/1.5 var(--font-sans); resize: vertical; }
 #li-dialog .li-body { display: grid; gap: var(--sp-3); }
 #li-dialog h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-md); }
 #li-dialog .li-list { margin: 0; padding-left: var(--sp-5); }
-#li-dialog .li-group { display: grid; border: 1px solid var(--line); border-radius: var(--radius-md, 10px); overflow: hidden; }
+#li-dialog .li-group { display: grid; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
 #li-dialog .li-group > h3 { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--bg-2, var(--line)); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
 #li-dialog .li-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-3); align-items: start; margin: 0; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); font-weight: 400; }
 #li-dialog .li-row-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }

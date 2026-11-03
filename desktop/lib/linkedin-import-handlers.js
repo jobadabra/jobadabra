@@ -35,6 +35,36 @@ export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, g
   const view = () => (DEMO ? {connected: false} : engine.state(storage, deps));
   ipcMain.handle('linkedinImportState', view);
 
+  // The consent step of a run -> {token} | {ok: false, error}; a run replaced meanwhile answers Cancelled and keeps nothing.
+  async function signIn(mine) {
+    say('waiting');
+    const consent = await engine.connect(openExternal);
+    if (stale(mine)) return {ok: false, error: 'Cancelled.'};
+    if (!consent.ok) return consent;
+    const kept = engine.saveToken(storage, consent, deps);
+    return kept.ok ? {token: consent.token} : kept;
+  }
+
+  // LinkedIn's roles against the main CV by the person's AI -> {match} | {ok: false, error}; no main CV means no comparison (everything is new).
+  async function matchRoles(main, cv) {
+    if (!main) return {match: []};
+    const ai = aiOf();
+    if (!ai.apiKey && !ai.client) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first: your LinkedIn roles are compared with your CV.'};
+    try { return {match: (await experience.matchAgainst(main, cv, ai.apiKey, ai.client)).match}; } catch (error) { return {ok: false, error: error.message}; }
+  }
+
+  // The reading step of a run -> {cv, all} | {ok: false, error, stopped?, status?}; a key LinkedIn refuses is deleted, never kept.
+  async function readProfile(token, mine) {
+    say('reading');
+    const all = await engine.fetchAll(token, {...deps, onProgress: (domain, status) => { if (!stale(mine)) say('domain', {domain, status}); }});
+    if (stale(mine)) return {ok: false, error: 'Cancelled.'};
+    if (all.stopped) {
+      if (all.stopped === 'unauthorized') await engine.disconnect(storage, deps);
+      return {ok: false, error: all.error, stopped: all.stopped};
+    }
+    try { return {cv: engine.toProfileCv(all.tables), all}; } catch (error) { return {ok: false, error: error.message, status: all.status}; }
+  }
+
   // Import (the person signs in on LinkedIn) or Update (a kept key, no sign-in) -> {ok, review, status} | {ok: false, error, stopped?}.
   ipcMain.handle('linkedinImportRun', async (_, {update = false} = {}) => {
     if (DEMO) { held = null; return {ok: true, review: DEMO_REVIEW, status: Object.fromEntries(engine.DOMAINS.map(d => [d, 'ok']))}; }
@@ -42,31 +72,18 @@ export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, g
     const mine = ++runNo;
     let token = update ? engine.readToken(storage, deps) : null;
     if (!token) {
-      say('waiting');
-      const consent = await engine.connect(openExternal);
-      if (stale(mine)) return {ok: false, error: 'Cancelled.'};
-      if (!consent.ok) return consent;
-      const kept = engine.saveToken(storage, consent, deps);
-      if (!kept.ok) return kept;
-      token = consent.token;
+      const signed = await signIn(mine);
+      if (!signed.token) return signed;
+      token = signed.token;
     }
-    say('reading');
-    const all = await engine.fetchAll(token, {...deps, onProgress: (domain, status) => { if (!stale(mine)) say('domain', {domain, status}); }});
-    if (stale(mine)) return {ok: false, error: 'Cancelled.'};
-    if (all.stopped) {
-      if (all.stopped === 'unauthorized') await engine.disconnect(storage, deps);   // a key LinkedIn refuses is deleted, never kept
-      return {ok: false, error: all.error, stopped: all.stopped};
-    }
-    let cv;
-    try { cv = engine.toProfileCv(all.tables); } catch (error) { return {ok: false, error: error.message, status: all.status}; }
+    const read = await readProfile(token, mine);
+    if (!read.cv) return read;
+    const {cv, all} = read;
     const main = baseCv(storage);
     say('comparing');
-    let match = [];
-    if (main) {
-      const ai = aiOf();
-      if (!ai.apiKey && !ai.client) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first: your LinkedIn roles are compared with your CV.'};
-      try { match = (await experience.matchAgainst(main, cv, ai.apiKey, ai.client)).match; } catch (error) { return {ok: false, error: error.message}; }
-    }
+    const compared = await matchRoles(main, cv);
+    if (!compared.match) return compared;
+    const {match} = compared;
     const contact = await readContact().catch(() => ({}));
     if (stale(mine)) return {ok: false, error: 'Cancelled.'};
     const rows = review.buildReview({main, cv, match, profileRow: all.tables['Profile.csv']?.[0] || null, contact, known: knownSource()?.cv || null});

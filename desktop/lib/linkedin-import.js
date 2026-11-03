@@ -66,6 +66,23 @@ export async function disconnect(storage, {keychain = realKeychain, fetcher = gl
 
 const messageOf = async response => { const text = await response.text().catch(() => ''); try { const body = JSON.parse(text); return String(body.message || body.error_description || body.error || ''); } catch { return text.slice(0, 200); } };
 
+// What LinkedIn's non-OK answer means -> the {ok: false, kind, error} fetchDomain returns (or the rows so far when "No data found" comes after a page). 401/403/429 are never retried by the caller.
+async function refusal(response, rows) {
+  const message = await messageOf(response);
+  if (/No data found/i.test(message)) return rows.length ? {ok: true, rows} : {ok: false, kind: 'pending', error: 'LinkedIn has not prepared this yet.'};
+  const known = {
+    401: ['unauthorized', 'LinkedIn no longer accepts the saved sign-in. Import again.'], 403: ['unauthorized', 'LinkedIn no longer accepts the saved sign-in. Import again.'],
+    429: ['rate', 'LinkedIn asked us to slow down. Try again later.'], 426: ['version', 'LinkedIn changed its API. Use your LinkedIn data file for now.'],
+  }[response.status];
+  return known ? {ok: false, kind: known[0], error: known[1]} : {ok: false, kind: 'error', error: `LinkedIn answered ${response.status}.`};
+}
+
+// Only LinkedIn's own next page of this endpoint, else '' (the read ends).
+const nextPath = body => {
+  const next = (body.paging?.links || []).find(link => link.rel === 'next')?.href;
+  return typeof next === 'string' && next.startsWith('/rest/memberSnapshotData?') ? next : '';
+};
+
 /**
  * One domain's rows, every page. -> {ok: true, rows} | {ok: false, kind, error}; kind: pending (LinkedIn has not processed it yet: "No data found for this memberId"),
  * unauthorized (401/403: the key is no good), rate (429), version (426), error. Invariant: 401/403/429 are never retried.
@@ -77,18 +94,10 @@ export async function fetchDomain(token, domain, {fetcher = globalThis.fetch} = 
     let response;
     try { response = await fetcher(API + path, {headers: {'Linkedin-Version': VERSION, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'}, signal: AbortSignal.timeout(30000)}); }
     catch { return {ok: false, kind: 'error', error: 'LinkedIn could not be reached.'}; }
-    if (!response.ok) {
-      const message = await messageOf(response);
-      if (/No data found/i.test(message)) return rows.length ? {ok: true, rows} : {ok: false, kind: 'pending', error: 'LinkedIn has not prepared this yet.'};
-      if (response.status === 401 || response.status === 403) return {ok: false, kind: 'unauthorized', error: 'LinkedIn no longer accepts the saved sign-in. Import again.'};
-      if (response.status === 429) return {ok: false, kind: 'rate', error: 'LinkedIn asked us to slow down. Try again later.'};
-      if (response.status === 426) return {ok: false, kind: 'version', error: 'LinkedIn changed its API. Use your LinkedIn data file for now.'};
-      return {ok: false, kind: 'error', error: `LinkedIn answered ${response.status}.`};
-    }
+    if (!response.ok) return refusal(response, rows);
     const body = await response.json().catch(() => ({}));
     for (const element of [].concat(body.elements || [])) if (element?.snapshotDomain === domain) rows.push(...(element.snapshotData || []));
-    const next = (body.paging?.links || []).find(link => link.rel === 'next')?.href;
-    path = typeof next === 'string' && next.startsWith('/rest/memberSnapshotData?') ? next : '';   // only LinkedIn's own next page of this endpoint
+    path = nextPath(body);
   }
   return {ok: true, rows};
 }

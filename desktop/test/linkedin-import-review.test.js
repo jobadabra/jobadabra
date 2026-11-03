@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {toCv} from '../lib/linkedin-export.js';
-import {applyPicks, buildReview, detailRows} from '../lib/linkedin-import-review.js';
+import {applyPicks, buildReview, detailRows, mergeSource} from '../lib/linkedin-import-review.js';
 
 const FIXTURE = JSON.parse(fs.readFileSync(new URL('./fixtures/linkedin-snapshot.json', import.meta.url), 'utf8'));
 const rowsOf = domain => FIXTURE[domain].flatMap(page => page.elements.flatMap(e => e.snapshotData));
@@ -57,4 +57,11 @@ test('ticking saves only what is ticked: nothing ticked saves nothing; a differi
   assert.deepEqual(some.details, {postal_code: '1010'}, 'the unticked differing last name is not in it');
   const replace = applyPicks({cv, match}, review, ['d:last_name']);
   assert.deepEqual(replace.details, {last_name: 'Rossi'}, 'only when the person ticked it');
+});
+
+// Gitar on #3046: the role number was taken inside find(), so from the second role on an Update lost its matches and could hand one role's new bullets to another.
+test('an Update keeps each earlier role with its own match (new bullets stay on the role they belong to)', () => {
+  const later = [{sourceRole: 0, mainJob: -1, mainRole: -1, newBullets: []}, {sourceRole: 1, mainJob: 0, mainRole: 0, newBullets: [2]}, {sourceRole: 2, mainJob: 0, mainRole: 0, newBullets: [0, 1]}];   // matches on the LATER roles
+  const merged = mergeSource({cv, match: later}, {cv: {jobs: [], education: [], skills: '', languages: ''}, match: []});
+  assert.deepEqual(merged.match, later, 'every role keeps its own mainJob, mainRole and newBullets');
 });

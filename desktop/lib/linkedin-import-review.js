@@ -91,13 +91,15 @@ export function applyPicks({cv, match = []}, review, ticked) {
 export function mergeSource(old, picked) {
   if (!old?.cv) return picked;
   let at = 0;
-  const jobs = old.cv.jobs.map(job => ({...job, roles: job.roles.map(role => ({role, m: (old.match || []).find(entry => entry.sourceRole === at++)}))}));
+  const jobs = old.cv.jobs.map(job => ({...job, roles: job.roles.map(role => { const i = at++; return {role, m: (old.match || []).find(entry => entry.sourceRole === i)}; })}));
+  // Why (3 Nov 2026, Gitar on #3046): the role number is taken once per role, never inside find(), whose predicate runs once per entry it checks.
   at = 0;
   for (const job of picked.cv.jobs) {
     let target = jobs.find(j => norm(j.company) === norm(job.company));
     if (!target) { target = {...job, roles: []}; jobs.push(target); }
     for (const role of job.roles) {
-      const m = picked.match.find(entry => entry.sourceRole === at++);
+      const i = at++;
+      const m = picked.match.find(entry => entry.sourceRole === i);
       if (!target.roles.some(x => roleKey(target, x.role) === roleKey(job, role))) target.roles.push({role, m});
     }
   }
