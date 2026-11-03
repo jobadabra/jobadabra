@@ -49,8 +49,8 @@ test('the finding carries the argument, the steps and who found it; the labels c
   const finding = toFinding({...ok(RAW).note, judge: 'disagrees', judgeReason: 'the label is a placeholder', proved: false}, {steps: ['opened Profile', 'read the answers'], session: {persona: 'ines-lisbon', seed: 42, snapshot: 'abc1234'}});
   assert.equal(finding.source, 'ai-user-agent');
   assert.match(finding.detail, /Steps before it:\n1\. opened Profile\n2\. read the answers/);
-  assert.deepEqual(agentLabels(finding.agent), ['agent-type:data', 'persona:ines-lisbon', 'seed:42', 'judge:disagrees', 'needs-human']);
-  assert.deepEqual(agentLabels({type: 'ui', judge: 'agrees', proved: true, seed: '', persona: ''}), ['agent-type:ui', 'judge:agrees', 'proved']);
+  assert.deepEqual(agentLabels(finding.agent), ['agent-type:data', 'persona:ines-lisbon', 'judge:disagrees', 'needs-human']);
+  assert.deepEqual(agentLabels({type: 'ui', judge: 'agrees', proved: true, seed: 7, persona: ''}), ['agent-type:ui', 'judge:agrees', 'proved']);   // a seed is never a label (it would grow the repo's label list every session)
 });
 
 test('the Finder accepts the source and keeps the argument; the issue says what it expected, why it matters and how to replay it; the detector has a name', () => {

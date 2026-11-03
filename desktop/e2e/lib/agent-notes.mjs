@@ -2,6 +2,8 @@
 // Job: report health
 // Why (3 Nov 2026, AI user agents 5/11; owner: "in the beginning I think it's fine to report anything what he thinks is a bug, but he should have an argument why he think it's a bug"): a note with no argument is not filed
 // (counted as dropped), a replayable-only filter would make the agent a black box, and a flood guard (12 a session, ranked) stands in for a filter until precision is known.
+import {NEEDS_HUMAN} from './triage-findings.mjs';
+
 export const TYPES = ['ui', 'ux', 'data', 'performance', 'error'];
 /** The Finder's existing kinds plus the two the agent adds (spec "Findings"). */
 export const KINDS = ['text', 'functionality', 'wrong-result', 'consistency', 'empty-state', 'unnamed-control', 'slow-no-feedback'];
@@ -61,8 +63,9 @@ export function toFinding(note, {steps = [], session = {}} = {}) {
     agent: {type: note.type, persona: session.persona || '', seed: session.seed ?? '', snapshot: session.snapshot || '', judge: note.judge || 'unknown', judgeReason: note.judgeReason || '', proved: !!note.proved, cites: note.cites || ''}};
 }
 
-/** The labels the Finder's list is filtered by: the agent type (precision per type), the persona and seed (replay), the second opinion, and `proved`. needs-human is added when the judge disagrees. */
+/** The labels the Finder's list is filtered by: the agent type (precision per type), the persona, the second opinion, and `proved`. needs-human is added when the judge disagrees.
+ * Why (3 Nov 2026, Gitar on #3073): the seed is NOT a label: triage creates every label in the repo, and a seed per session would grow the label list without end; it is in the issue body's "Who found it" line. */
 export function agentLabels(agent) {
-  return [`agent-type:${agent.type}`, ...(agent.persona ? [`persona:${agent.persona}`.slice(0, 50)] : []), ...(agent.seed !== '' ? [`seed:${agent.seed}`] : []), `judge:${agent.judge || 'unknown'}`,
-    ...(agent.proved ? ['proved'] : []), ...(agent.judge === 'disagrees' ? ['needs-human'] : [])];
+  return [`agent-type:${agent.type}`, ...(agent.persona ? [`persona:${agent.persona}`.slice(0, 50)] : []), `judge:${agent.judge || 'unknown'}`,
+    ...(agent.proved ? ['proved'] : []), ...(agent.judge === 'disagrees' ? [NEEDS_HUMAN] : [])];
 }
