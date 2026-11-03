@@ -88,7 +88,8 @@ def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, bat
             score_batches(args, db, run, hidden, profile, batch_started, to_notion, time_budget)
         run['warnings'] += left_out(run['score'], 'scored')   # this pass's own numbers: the jobs the waiting pass failed are in this pass's batch again
         if earlier:   # the card keeps the newest "Scored N of M" line: one count for the whole run, both passes summed (#3058, owner via coordinator)
-            add_stats(run['score'], earlier)
+            retried = earlier.get('failed') or 0   # the waiting pass's failed jobs are still unscored: this pass's batch has them again, counted there (Gitar, #3074)
+            add_stats(run['score'], {**earlier, 'pending': max(0, (earlier.get('pending') or 0) - retried), 'failed': 0})
             earlier = {}
             print(f"Scored {run['score'].get('done') or 0} of {run['score'].get('pending') or 0} job(s)", flush=True)
         for warning in none_scored(run.get('waiting'), run['score']):

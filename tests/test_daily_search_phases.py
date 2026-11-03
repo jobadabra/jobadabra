@@ -287,9 +287,11 @@ class SearchCharacterization(unittest.TestCase):
         self.fail_scores = True
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
-            self.run_search(limit=100)
+            out = self.run_search(limit=100)
         warned = [w for w in self.runs[0]['warnings'] if 'not scored' in w]
         self.assertEqual(warned, ['4 job(s) not scored: the AI call failed'], '3 waiting + 1 new, said once, the retried jobs not counted twice')
+        self.assertEqual((self.runs[0]['score']['pending'], self.runs[0]['score']['failed']), (4, 4), 'the 3 retried jobs are counted once, in the last pass')
+        self.assertEqual([l for l in out.splitlines() if l.startswith('Scored ')][-1], 'Scored 0 of 4 job(s)')
 
     def test_the_waiting_passes_numbers_survive_a_failing_search_pass(self):
         self.waiting_jobs(3)
