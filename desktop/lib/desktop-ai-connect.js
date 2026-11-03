@@ -3,13 +3,14 @@
 // "connected" only once the helper has redeemed its one-time code (a real call reached this app), until then it is "waiting"; Disconnect stops the token at once; the helper file is deleted once its code expired.
 // Why (3 Nov 2026, spec Transport and install): the file is not deleted right after it is opened, because Claude Desktop reads it when the person presses Install, which can be minutes later.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import {buildHelper} from './desktop-ai-mcpb.js';
+import {buildHelper, HELPER_PREFIX} from './desktop-ai-mcpb.js';
 import * as pairing from './desktop-ai-pairing.js';
 import * as changes from './desktop-ai-changes.js';
 import {undoChange} from './desktop-ai-writes.js';
 
-const KEEP_MS = pairing.PAIR_MS + 60 * 1000;   // the helper file lives as long as its code can be redeemed, plus a minute
+export const KEEP_MS = pairing.PAIR_MS + 60 * 1000;   // the helper file lives as long as its code can be redeemed, plus a minute
 
 /** The state for the banner and Settings: {state: 'off' | 'waiting' | 'connected', connectedAt, lastUsedAt}. */
 export function stateOf(storage, now = Date.now()) {
@@ -17,17 +18,42 @@ export function stateOf(storage, now = Date.now()) {
   return {state: found.connected ? 'connected' : found.waiting ? 'waiting' : 'off', connectedAt: found.connectedAt, lastUsedAt: found.lastUsedAt};
 }
 
+/** Removes a helper folder; never throws. -> whether it is gone. Why (code review 3 Nov 2026): on Windows a file Claude still holds open makes rmSync throw EBUSY, and a throw in the timer would end the app. */
+export function removeFolder(dir, rm = fs.rmSync) {
+  try { rm(dir, {recursive: true, force: true, maxRetries: 3, retryDelay: 200}); return true; } catch { return false; }
+}
+
+/** Removes helper folders older than `olderThanMs` from `dir`: what a quit or a crash left behind with a readable one-time code in it. Run at start-up and before each Connect. */
+export function sweepHelpers({dir = os.tmpdir(), now = Date.now(), olderThanMs = KEEP_MS} = {}) {
+  let names = [];
+  try { names = fs.readdirSync(dir).filter(name => name.startsWith(HELPER_PREFIX)); } catch { return; }
+  for (const name of names) {
+    const folder = path.join(dir, name);
+    try { if (fs.statSync(folder).mtimeMs < now - olderThanMs) removeFolder(folder); } catch { /* gone already */ }
+  }
+}
+
 /**
- * Builds the helper and opens it. `openFile(file)` is Electron's shell.openPath (resolves '' when it worked); `quiet` (a test, the demo, the smoke run) builds nothing and opens nothing.
- * -> {ok: true, opened, expires} | {ok: false, error}. The helper's folder is removed when its code has expired (timer) or by the next Connect.
+ * Builds the helper and opens it. `openFile(file)` is Electron's shell.openPath (resolves '' when it worked); when it does not, `reveal(file)` shows the file in its folder so the person can choose it.
+ * `quiet` (a test, the demo, the smoke run) builds nothing and opens nothing. -> {ok: true, opened, expires} | {ok: true, opened: false, already} | {ok: false, error}.
+ * Invariants: a second Connect while waiting or connected builds nothing (a new code would make the first file's code useless); a failed build leaves no pending code and no folder;
+ * the helper's folder is removed when its code has expired (timer), by the next start-up or Connect.
  */
-export async function connect(storage, {version, port, openFile, quiet = false, now = Date.now(), keepMs = KEEP_MS}) {
+export async function connect(storage, {version, port, openFile, reveal = () => {}, quiet = false, now = Date.now(), keepMs = KEEP_MS, build = buildHelper, tmp = os.tmpdir()}) {
   if (quiet) return {ok: true, opened: false, expires: now + pairing.PAIR_MS};
-  let built;
-  try { built = await buildHelper(storage, {version, port, now}); } catch { return {ok: false, error: 'Could not prepare the helper file. Try again.'}; }
+  const present = stateOf(storage, now).state;
+  if (present !== 'off') return {ok: true, opened: false, already: present};
+  sweepHelpers({dir: tmp, now, olderThanMs: keepMs});
+  let dir = '', built;
+  try { dir = fs.mkdtempSync(path.join(tmp, HELPER_PREFIX)); built = await build(storage, {version, port, now, dir}); } catch {
+    pairing.disconnect(storage);
+    if (dir) removeFolder(dir);
+    return {ok: false, error: 'Could not prepare the helper file. Try again.'};
+  }
   let opened = false;
   try { opened = !(await openFile(built.file)); } catch { opened = false; }
-  setTimeout(() => fs.rmSync(path.dirname(built.file), {recursive: true, force: true}), keepMs).unref();
+  if (!opened) { try { reveal(built.file); } catch { /* the words still say where to look */ } }
+  setTimeout(() => removeFolder(dir), keepMs).unref();
   return {ok: true, opened, expires: built.expires};
 }
 

@@ -39,7 +39,7 @@ export function desktopAiBanner() {
   box.dataset.family = family;
   box.dataset.state = state;
   const text = el('div', 'qa-desktop-ai-text');
-  const lead = el('p', 'muted small', state === 'connected' ? link.connectedLead : state === 'waiting' ? (view.note || link.waiting) : say.lead);
+  const lead = el('p', 'muted small', (canConnect(family) && view.note) || (state === 'connected' ? link.connectedLead : state === 'waiting' ? link.waiting : say.lead));
   lead.setAttribute('role', 'status');
   text.append(el('b', '', state === 'connected' ? link.connected(whenText(view.lastUsedAt)) : say.title), lead);
   const press = async (run, from) => { from.disabled = true; const done = await run(); if (done.text) lead.textContent = done.text; from.disabled = false; };

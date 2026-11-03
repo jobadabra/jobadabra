@@ -7,23 +7,27 @@ import {install} from './tiny-dom.js';
 install();
 const listeners = {};
 const calls = [];
+let serverState = 'off';   // what the app says the connection is
+let connectAnswer = {ok: true, opened: true};
 globalThis.localStorage = {getItem: () => '1', setItem() {}};   // the privacy note was seen
 Object.assign(globalThis.window, {
   addEventListener: (type, fn) => { (listeners[type] ||= []).push(fn); },
   dispatchEvent: event => { for (const fn of listeners[event.type] || []) fn(event); return true; },
-  pilot: new Proxy({platform: 'darwin', desktopAiConnect: async () => { calls.push('connect'); return {ok: true, opened: true}; }, desktopAiDisconnect: async () => { calls.push('disconnect'); return {ok: true}; },
-    desktopAiState: async () => ({state: 'off', lastUsedAt: '', tools: []}), desktopAiHelp: async () => ({ok: true, family: 'claude', opened: true}),
+  pilot: new Proxy({platform: 'darwin', desktopAiConnect: async () => { calls.push('connect'); return connectAnswer; }, desktopAiDisconnect: async () => { calls.push('disconnect'); serverState = 'off'; return {ok: true}; },
+    desktopAiState: async () => ({state: serverState, lastUsedAt: '', tools: []}), desktopAiHelp: async () => ({ok: true, family: 'claude', opened: true}),
     desktopAiUndo: async id => { calls.push(['undo', id]); return {ok: true}; }}, {get: (target, key) => target[key] ?? (async () => ({}))}),
 });
 globalThis.document.addEventListener ??= () => {};
 const {questionsNow} = await import('../renderer/pages/jobs-questions.js');
 const {desktopAiBanner, setDesktopAiSeams} = await import('../renderer/pages/desktop-ai.js');
-const {view} = await import('../renderer/pages/desktop-ai-connect.js');
+const {view, brief, pressConnect} = await import('../renderer/pages/desktop-ai-connect.js');
 const {changesStrip} = await import('../renderer/pages/desktop-ai-changes.js');
 
 const offer = state => {
   Object.assign(questionsNow(), {learned: [{question: 'Why', key: 'a'}], desktopAi: {family: 'claude'}});
   setDesktopAiSeams({focusIsRead: () => true, answered: () => false, answerEntry() {}, toast() {}});
+  serverState = state;
+  connectAnswer = {ok: true, opened: true};
   Object.assign(view, {loaded: true, state, lastUsedAt: '', note: ''});
 };
 const ids = banner => Array.from(banner.querySelectorAll('button'), button => button.id);
@@ -99,4 +103,46 @@ test('the Changes strip: nothing while there are no changes; a row says before t
   assert.equal(strip.querySelectorAll('button').length, 1, 'only the change Undo can restore has a button');
   strip.querySelector('button').click();
   assert.deepEqual(pressed, ['a1']);
+});
+
+test('the privacy note lists each tool by its first sentence, cut when long', () => {
+  assert.equal(brief('Saves an answer. It is saved as New for the person. More words follow.'), 'Saves an answer.');
+  assert.equal(brief('x'.repeat(300)).length, 108);
+  assert.equal(brief(''), '');
+});
+
+test('what Disconnect or a quiet Connect says stays on the banner that the redraw put in its place', async () => {
+  const box = globalThis.document.createElement('div');
+  globalThis.document.body.append(box);
+  offer('connected');
+  box.append(desktopAiBanner());
+  box.querySelector('#desktop-ai-disconnect').click();
+  await settle();
+  assert.equal(box.querySelector('.qa-desktop-ai').dataset.state, 'off');
+  assert.match(box.querySelector('[role="status"]').textContent, /is disconnected/, 'the confirmation is not wiped by the redraw');
+  box.querySelector('#desktop-ai-connect').click();
+  await settle();
+  assert.match(box.querySelector('[role="status"]').textContent, /Waiting for Claude/, 'a run that stays off (demo, smoke) still shows what the press did');
+  box.remove();
+});
+
+test('a failed Connect says so on the banner', async () => {
+  const box = globalThis.document.createElement('div');
+  globalThis.document.body.append(box);
+  offer('off');
+  connectAnswer = {ok: false};
+  box.append(desktopAiBanner());
+  box.querySelector('#desktop-ai-connect').click();
+  await settle();
+  assert.match(box.querySelector('[role="status"]').textContent, /Could not prepare the connection/);
+  box.remove();
+});
+
+test('Connect while already waiting or connected asks the app for nothing', async () => {
+  for (const state of ['waiting', 'connected']) {
+    offer(state);
+    calls.length = 0;
+    assert.deepEqual(await pressConnect('claude'), {ok: false, text: ''});
+    assert.deepEqual(calls, [], `${state}: no second file`);
+  }
 });

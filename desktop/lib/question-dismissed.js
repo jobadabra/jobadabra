@@ -11,6 +11,9 @@ const all = storage => storage.settings()[SETTING] || {};
 /** Whether this question key is dismissed (settings.dismissedQuestions, own keys only). */
 export const isDismissed = (storage, key) => Object.hasOwn(all(storage), key);
 
+/** Whether this key is dismissed AND still holds this question's words (keys are line numbers on this Mac, so a key can name another question after a line shift). */
+export const isDismissedAs = (storage, key, question) => isDismissed(storage, key) && all(storage)[key].question === String(question || '').slice(0, 200);
+
 /** Dismisses the question with this key (its words kept for the list). */
 export function dismiss(storage, key, question, now = new Date()) {
   if (!key) return {ok: false, error: 'That question is no longer open'};

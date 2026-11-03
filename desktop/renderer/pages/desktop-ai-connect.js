@@ -33,6 +33,9 @@ export async function refreshConnection() {
 /** Whether Connect is offered for this AI: only Claude until ChatGPT's tunnel (6/6) exists. */
 export const canConnect = family => family === 'claude';
 
+/** The first sentence of a tool's description, cut: the descriptions are written for the AI and run long; the person needs what the tool is for. */
+export const brief = text => { const first = String(text || '').split(/(?<=\.)\s/)[0]; return first.length > 110 ? `${first.slice(0, 107)}…` : first; };
+
 // The privacy note, once per AI, before its first Connect. Resolves true when Connect was pressed in it.
 function confirmPrivacy(family) {
   if (seen(family)) return Promise.resolve(true);
@@ -44,7 +47,7 @@ function confirmPrivacy(family) {
   $('desktop-ai-privacy-no').textContent = say.cancel;
   $('desktop-ai-privacy-tools').textContent = say.tools;
   const list = $('desktop-ai-privacy-list');
-  list.replaceChildren(...view.tools.map(tool => Object.assign(document.createElement('li'), {textContent: `${tool.name}: ${tool.description}`})));
+  list.replaceChildren(...view.tools.map(tool => Object.assign(document.createElement('li'), {textContent: `${tool.name}: ${brief(tool.description)}`})));
   dialog.returnValue = '';
   return new Promise(resolve => {
     dialog.addEventListener('close', () => { const yes = dialog.returnValue === 'default'; if (yes) remember(family); resolve(yes); }, {once: true});
@@ -52,19 +55,28 @@ function confirmPrivacy(family) {
   });
 }
 
-/** The Connect press: the note first (once), then the helper file opens in the AI's app. -> {ok, text}: what to tell the person ('' when they chose Not now). */
+/**
+ * The Connect press: the note first (once), then the helper file opens in the AI's app. -> {ok, text}: what to tell the person ('' when they chose Not now or it is already connecting).
+ * Why (code review 3 Nov 2026): a second Connect makes a new code and the first file's code stops working, so a press while waiting or connected does nothing.
+ */
 export async function pressConnect(family = 'claude') {
   const say = connectWords(family);
   if (!canConnect(family)) return {ok: false, text: ''};
   await refreshConnection();   // the note lists the tools the app reported
+  if (view.state !== 'off') return {ok: false, text: ''};
   if (!(await confirmPrivacy(family))) return {ok: false, text: ''};
   const done = await Promise.resolve().then(() => window.pilot.desktopAiConnect()).catch(() => null);
   if (!done?.ok) return {ok: false, text: say.failed};
-  const text = done.opened ? say.waiting : say.notOpened;
-  view.note = text;
+  const text = done.already ? '' : done.opened ? say.waiting : say.notOpened;
   await refreshConnection();
-  window.dispatchEvent?.(new Event('desktop-ai-changed'));   // the state may not have changed (a quiet run stays off), the words did
+  tell(text);
   return {ok: true, text};
+}
+
+// What the last press said, kept until the next refresh that finds the state not waiting; set after the refresh so the redraw it causes shows it (the state may not have changed: a quiet run stays off).
+function tell(text) {
+  view.note = text;
+  window.dispatchEvent?.(new Event('desktop-ai-changed'));
 }
 
 /** The Disconnect press: the token stops working at once. -> {ok, text}. */
@@ -72,5 +84,7 @@ export async function pressDisconnect(family = 'claude') {
   const say = connectWords(family);
   const done = await Promise.resolve().then(() => window.pilot.desktopAiDisconnect()).catch(() => null);
   await refreshConnection();
-  return done?.ok ? {ok: true, text: say.disconnected} : {ok: false, text: say.failed};
+  const text = done?.ok ? say.disconnected : say.failed;
+  tell(text);
+  return {ok: Boolean(done?.ok), text};
 }

@@ -11,6 +11,7 @@ import {startPairing} from './desktop-ai-pairing.js';
 import {BRIDGE_VERSION} from './desktop-ai-server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+export const HELPER_PREFIX = 'jobadabra-helper-';   // the temp folder's name start; lib/desktop-ai-connect.js sweeps leftovers by it
 
 /** The MCPB manifest (github.com/modelcontextprotocol/mcpb MANIFEST.md): required fields, node server, the tool names and descriptions Claude's install window lists. */
 export function manifestFor({version}) {
@@ -25,7 +26,7 @@ export function manifestFor({version}) {
 }
 
 /** Packs the helper for this app. `version` is the app's; `port` the port this app listens on. -> {file, code, expires} (the file in `dir`, the code is already registered with `storage`). */
-export async function buildHelper(storage, {version, port, dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-helper-')), now = Date.now()}) {
+export async function buildHelper(storage, {version, port, dir = fs.mkdtempSync(path.join(os.tmpdir(), HELPER_PREFIX)), now = Date.now()}) {
   const {code, expires} = startPairing(storage, now);
   const zip = new JSZip();
   zip.file('manifest.json', `${JSON.stringify(manifestFor({version}), null, 2)}\n`);

@@ -65,7 +65,8 @@ export function registerDesktopAi({DEMO, ipcMain, shell, ...deps}) {
   const {storage, app} = deps, quiet = DEMO || Boolean(process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE);
   const tools = TOOLS.map(({name, description}) => ({name, description}));   // "See exactly what it can read" in the privacy note lists these, the same list the helper file's manifest has
   ipcMain.handle('desktopAiState', () => ({...(DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)), tools}));
-  ipcMain.handle('desktopAiConnect', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), quiet}));
+  if (!quiet) { connection.sweepHelpers(); setTimeout(() => connection.sweepHelpers(), connection.KEEP_MS + 1000).unref(); }   // a quit or crash left a folder with a readable one-time code: gone at start-up, or once that code has expired
+  ipcMain.handle('desktopAiConnect', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), reveal: file => shell.showItemInFolder(file), quiet}));
   ipcMain.handle('desktopAiDisconnect', () => (DEMO ? {ok: true} : connection.disconnect(storage)));
   ipcMain.handle('desktopAiChanges', () => (DEMO ? connection.demoChanges() : connection.changesOf(storage)));
   ipcMain.handle('desktopAiUndo', (_, id) => (DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : connection.undo(storage, id)));

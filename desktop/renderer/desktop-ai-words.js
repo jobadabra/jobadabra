@@ -56,7 +56,7 @@ export function connectWords(family = 'claude') {
     states: {off: 'Not connected', waiting: 'Waiting for install', connected: 'Connected'},
     cardLine: {
       off: `Connect it so ${name} can read your open questions and help answer them. You stay in charge: every change is listed and can be undone.`,
-      waiting: `Waiting for ${name}: press Install in its window. The file is valid for 10 minutes.`,
+      waiting: `Connecting. Press Install in ${name}'s window. The file is valid for 10 minutes.`,
       connected: `${name} can read your questions, answers, CV details and job list, and answer open questions. It cannot submit anything.`,
     },
     privacy: {
@@ -65,7 +65,7 @@ export function connectWords(family = 'claude') {
         + `It never sees your passwords, keys or your LinkedIn session, never reads job posting texts, and never submits anything. Everything it changes is listed under Changes by ${name} and can be undone. Disconnect any time.`,
       connect: `Connect ${name}`,
       cancel: 'Not now',
-      tools: 'See exactly what it can read',
+      tools: 'See every tool it can use',
     },
     changes: {
       title: `Changes by ${name}`,

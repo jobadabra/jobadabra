@@ -1,18 +1,23 @@
 // The Connect press and the Settings card's main-process side (lib/desktop-ai-connect.js): off -> waiting -> connected -> off, the helper file opened and then removed, the change list and Undo.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {test} from 'node:test';
-import {connect, disconnect, stateOf, changesOf, undo} from '../lib/desktop-ai-connect.js';
-import {redeem} from '../lib/desktop-ai-pairing.js';
+import os from 'node:os';
+import path from 'node:path';
+import {after, test} from 'node:test';
+import {connect, disconnect, stateOf, changesOf, undo, removeFolder, sweepHelpers} from '../lib/desktop-ai-connect.js';
+import {redeem, startPairing} from '../lib/desktop-ai-pairing.js';
 import * as changes from '../lib/desktop-ai-changes.js';
 import * as dismissed from '../lib/question-dismissed.js';
 import {fakeStorage} from './desktop-ai-fake-storage.js';
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-connect-test-'));   // the helper folders of these tests live here, not in the real temp folder
+after(() => fs.rmSync(tmp, {recursive: true, force: true}));
 
 test('off until Connect, waiting while the code is valid, connected only once the helper redeemed it, off after Disconnect', async () => {
   const storage = fakeStorage(), now = Date.parse('2026-11-03T10:00:00Z');
   assert.equal(stateOf(storage, now).state, 'off');
   const opened = [];
-  const done = await connect(storage, {version: '9.9.9', port: 47111, openFile: async file => { opened.push(file); return ''; }, now, keepMs: 60_000});
+  const done = await connect(storage, {version: '9.9.9', port: 47111, openFile: async file => { opened.push(file); return ''; }, now, keepMs: 60_000, tmp});
   assert.deepEqual([done.ok, done.opened, opened.length], [true, true, 1]);
   assert.match(opened[0], /jobadabra\.mcpb$/);
   assert.equal(stateOf(storage, now + 1000).state, 'waiting', 'the file is open in Claude; nothing has reached this app yet');
@@ -25,12 +30,49 @@ test('off until Connect, waiting while the code is valid, connected only once th
   assert.equal(stateOf(storage, now + 4000).state, 'off');
 });
 
-test('a file the system would not open says opened: false, and a second Connect replaces the first code', async () => {
+test('a file the system would not open says opened: false and is shown in its folder', async () => {
+  const storage = fakeStorage(), shown = [];
+  const refused = await connect(storage, {version: '1', port: 1, openFile: async () => 'no application', reveal: file => shown.push(file), keepMs: 60_000, tmp});
+  assert.deepEqual([refused.ok, refused.opened, shown.length], [true, false, 1], 'the person is told to choose the file, so the app shows where it is');
+  const thrown = await connect(fakeStorage(), {version: '1', port: 1, openFile: async () => { throw new Error('boom'); }, reveal: file => shown.push(file), keepMs: 60_000, tmp});
+  assert.deepEqual([thrown.ok, thrown.opened, shown.length], [true, false, 2], 'a throwing opener is the same as a refused one');
+  const fine = await connect(fakeStorage(), {version: '1', port: 1, openFile: async () => '', reveal: file => shown.push(file), keepMs: 60_000, tmp});
+  assert.deepEqual([fine.opened, shown.length], [true, 2], 'an opened file is not revealed');
+});
+
+test('a second Connect while waiting or connected builds and opens nothing, so the first install keeps working', async () => {
+  const storage = fakeStorage(), now = Date.parse('2026-11-03T10:00:00Z'), opened = [];
+  const first = await connect(storage, {version: '1', port: 1, openFile: async file => { opened.push(file); return ''; }, now, keepMs: 60_000, tmp});
+  const zip = (await import('jszip')).default, code = async () => JSON.parse(await (await zip.loadAsync(fs.readFileSync(opened[0]))).file('config.json').async('string')).code;
+  const second = await connect(storage, {version: '1', port: 1, openFile: async file => { opened.push(file); return ''; }, now: now + 1000, keepMs: 60_000, tmp});
+  assert.deepEqual([first.ok, second.ok, second.opened, second.already, opened.length], [true, true, false, 'waiting', 1]);
+  assert.ok(redeem(storage, await code(), now + 2000), 'the first file\'s code still works');
+  const third = await connect(storage, {version: '1', port: 1, openFile: async () => { throw new Error('must not open'); }, now: now + 3000, keepMs: 60_000, tmp});
+  assert.equal(third.already, 'connected');
+});
+
+test('a build that fails leaves no waiting state and no folder', async () => {
   const storage = fakeStorage();
-  const first = await connect(storage, {version: '1', port: 1, openFile: async () => 'no application', keepMs: 60_000});
-  assert.deepEqual([first.ok, first.opened], [true, false]);
-  const second = await connect(storage, {version: '1', port: 1, openFile: async () => { throw new Error('boom'); }, keepMs: 60_000});
-  assert.deepEqual([second.ok, second.opened], [true, false], 'a throwing opener is the same as a refused one');
+  let made = '';
+  const done = await connect(storage, {version: '1', port: 1, openFile: async () => '', keepMs: 60_000, tmp, build: async (own, {dir}) => { made = dir; startPairing(own); throw new Error('disk full'); }});
+  assert.equal(done.ok, false);
+  assert.equal(stateOf(storage).state, 'off', 'the half-made code was dropped');
+  assert.ok(made && !fs.existsSync(made), 'the folder was removed');
+});
+
+test('removing the helper folder never throws (a file Claude still holds open on Windows)', () => {
+  assert.equal(removeFolder('x', () => { throw Object.assign(new Error('busy'), {code: 'EBUSY'}); }), false);
+  const dir = fs.mkdtempSync(path.join(tmp, 'jobadabra-helper-'));
+  assert.equal(removeFolder(dir), true);
+  assert.equal(fs.existsSync(dir), false);
+});
+
+test('a helper folder left by an earlier run is swept, a fresh one and other folders are not', () => {
+  const now = Date.parse('2026-11-03T10:00:00Z'), box = fs.mkdtempSync(path.join(tmp, 'sweep-'));
+  const make = (name, at) => { const dir = path.join(box, name); fs.mkdirSync(dir); fs.utimesSync(dir, at / 1000, at / 1000); return dir; };
+  const stale = make('jobadabra-helper-old', now - 30 * 60 * 1000), fresh = make('jobadabra-helper-new', now), other = make('something-else', now - 30 * 60 * 1000);
+  sweepHelpers({dir: box, now, olderThanMs: 11 * 60 * 1000});
+  assert.deepEqual([fs.existsSync(stale), fs.existsSync(fresh), fs.existsSync(other)], [false, true, true]);
 });
 
 test('quiet (a test, the demo, the smoke run) builds nothing and opens nothing', async () => {
@@ -43,7 +85,7 @@ test('quiet (a test, the demo, the smoke run) builds nothing and opens nothing',
 test('the helper file is removed once its code has expired', async () => {
   const storage = fakeStorage();
   let file = '';
-  await connect(storage, {version: '1', port: 1, openFile: async made => { file = made; return ''; }, keepMs: 5});
+  await connect(storage, {version: '1', port: 1, openFile: async made => { file = made; return ''; }, keepMs: 5, tmp});
   for (let i = 0; i < 400 && fs.existsSync(file); i++) await new Promise(resolve => setTimeout(resolve, 5));
   assert.equal(fs.existsSync(file), false);
 });
@@ -69,6 +111,18 @@ test('Undo through the main-process function restores a dismissed question and m
   assert.equal((await undo(storage, 'nope')).ok, false);
 });
 
+test('Undo of a dismissal never overrides what the person did since', async () => {
+  const storage = fakeStorage();
+  dismissed.dismiss(storage, 'L7', 'Visa needed?');
+  const gone = changes.record(storage, {tool: 'dismiss_question', target: 'L7', question: 'Visa needed?', before: '', after: 'dismissed'});
+  dismissed.bringBack(storage, 'L7');   // the person brought it back themselves
+  assert.equal((await undo(storage, gone.id)).ok, false, 'nothing to undo: it is not dismissed any more');
+  assert.equal(changesOf(storage)[0].undone, false, 'and the list does not claim it was undone');
+  dismissed.dismiss(storage, 'L7', 'A different question now on that line');   // keys are line numbers on this Mac
+  assert.equal((await undo(storage, gone.id)).ok, false, 'the key names another question now');
+  assert.equal(dismissed.isDismissed(storage, 'L7'), true);
+});
+
 test('the window gets all five channels; the demo answers off and fictional changes, and a quiet run never starts the file', async () => {
   const {registerDesktopAi} = await import('../lib/desktop-ai-handlers.js');
   const handlers = {};
@@ -81,4 +135,29 @@ test('the window gets all five channels; the demo answers off and fictional chan
   assert.deepEqual(handlers.desktopAiChanges().map(each => each.id), ['demo-1', 'demo-2', 'demo-3'], 'fictional rows, so the demo shows the strip');
   assert.equal((await handlers.desktopAiConnect()).ok, true, 'quiet: nothing built, nothing opened');
   assert.equal((await handlers.desktopAiUndo({}, 'x')).ok, false);
+});
+
+test('outside the demo the channels answer from the store, pass the id on, and a test or smoke run still never starts the file', async () => {
+  const {registerDesktopAi} = await import('../lib/desktop-ai-handlers.js');
+  const handlers = {}, storage = fakeStorage(), opened = [];
+  const shell = {openPath: async file => { opened.push(file); return ''; }, showItemInFolder() {}};
+  const before = {e2e: process.env.JOBADABRA_E2E, smoke: process.env.JOBADABRA_SMOKE};
+  try {
+    for (const variable of ['JOBADABRA_E2E', 'JOBADABRA_SMOKE']) {
+      delete process.env.JOBADABRA_E2E; delete process.env.JOBADABRA_SMOKE;
+      process.env[variable] = '1';
+      registerDesktopAi({DEMO: false, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, shell, app: {getVersion: () => '1'}, storage, getWindow: () => null, getPlan: () => null});
+      assert.equal((await handlers.desktopAiConnect()).ok, true);
+      assert.deepEqual(opened, [], `${variable}: nothing opened`);
+      assert.equal(handlers.desktopAiState().state, 'off', `${variable}: nothing registered`);
+    }
+  } finally {
+    for (const [name, value] of [['JOBADABRA_E2E', before.e2e], ['JOBADABRA_SMOKE', before.smoke]]) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+  }
+  assert.ok(handlers.desktopAiState().tools.length > 0, 'the tool list reaches the window');
+  dismissed.dismiss(storage, 'L7', 'Visa needed?');
+  const gone = changes.record(storage, {tool: 'dismiss_question', target: 'L7', question: 'Visa needed?', before: '', after: 'dismissed'});
+  assert.equal(handlers.desktopAiChanges().length, 1);
+  assert.deepEqual(await handlers.desktopAiUndo({}, gone.id), {ok: true}, 'the id arrives as the second argument');
+  assert.deepEqual(handlers.desktopAiDisconnect(), {ok: true});
 });
