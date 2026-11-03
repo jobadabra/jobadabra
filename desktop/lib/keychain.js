@@ -31,7 +31,7 @@ export function isolatedItems(env = process.env) {
 
 // 24 Oct 2026: a test wrote the owner's real Keychain (Python side, src/secret_store.py). Under `node --test` the genuine execFileSync never changes it: a test passes a spy.
 const refuseRealChange = (exec, env) => { if (exec === execFileSync && (env.NODE_TEST_CONTEXT || env.JOBADABRA_UNDER_TEST)) throw new Error('A test tried to change the real Keychain: pass a fake exec or run isolated'); };
-const real = (exec, args) => { try { return exec('security', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024}); } catch { return null; } };
+const real = (exec, args, timeout) => { try { return exec('security', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, ...(timeout ? {timeout} : {})}); } catch { return null; } };
 
 // Why (rename to Jobadabra, 1 Nov 2026, owner: "small fallbacks"): items an install made before the rename sit under job-pilotto.* with account job-pilotto. A read
 // that finds nothing under the new name asks for the old one; a delete takes both; a write only ever makes the new name. Removed 2 stable releases after the rename.
@@ -53,6 +53,17 @@ export function read(service, {account, env = process.env, exec = execFileSync, 
   }
   if (platform !== 'darwin') return null;
   return String(securityOrOlder(exec, 'find-generic-password', service, account, ['-w']) || '').trim() || null;
+}
+
+/**
+ * The password of an item Electron made for its safeStorage ("<app name> Safe Storage"), read once by lib/keychain-migration.js to move the saved tokens to the new item.
+ * A REAL item of the person's Keychain, so a test run or the twin never reads it (null), and a test never reaches the genuine `security` (refuseRealChange).
+ * @returns {string|null} null when denied, missing, timed out (`timeoutMs`: the macOS prompt waits for a person), isolated, or not macOS
+ */
+export function readSafeStorage(service, account, {env = process.env, exec = execFileSync, platform = process.platform, timeoutMs = 120000} = {}) {
+  if (isolated(env) || platform !== 'darwin') return null;
+  refuseRealChange(exec, env);
+  return String(real(exec, ['find-generic-password', '-w', '-s', service, '-a', account], timeoutMs) || '').replace(/\r?\n$/, '') || null;
 }
 
 // One item's comment ("email=… job=…"), never its secret; '' when there is none.

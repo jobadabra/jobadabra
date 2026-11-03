@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {DATA_NAME, keepLegacyIdentity, LEGACY_NAME, userDataTime} from '../lib/app-identity.js';
+import {readSafeStorage} from '../lib/keychain.js';
 import {openV10, osKey, SEALED_BY, sealV10} from '../lib/keychain-migration.js';
 import {adoptBackupKeys, exported} from '../lib/reset.js';
 import {createStorage, safeStorageCrypto} from '../lib/storage.js';
@@ -275,4 +276,13 @@ test('an export leaves the old-format backup out, and a backup holding only the 
   const adopted = adoptBackupKeys(run.storage);
   assert.match(adopted.from, /2026-11-01 10\.00\)$/, 'the newer record-only backup does not hide the older one with keys');
   assert.equal(run.storage.secret('NOTION_TOKEN'), TOKENS.NOTION_TOKEN);
+});
+
+// Guard: safety — the one read of a real Keychain item (the old Safe Storage password) must stay out of a test run and the twin (desktop/test/keychain.test.js: every call goes through lib/keychain.js).
+test('an isolated run or a test never reads the real item', () => {
+  const spy = () => { throw new Error('exec must not be reached'); };
+  assert.equal(readSafeStorage(OLD, LEGACY_NAME, {env: {JOBADABRA_E2E: '1'}, exec: spy, platform: 'darwin'}), null);
+  assert.equal(readSafeStorage(OLD, LEGACY_NAME, {env: {JOBADABRA_TWIN: '1'}, exec: spy, platform: 'darwin'}), null);
+  assert.equal(readSafeStorage(OLD, LEGACY_NAME, {env: {}, exec: spy, platform: 'win32'}), null);
+  assert.throws(() => readSafeStorage(OLD, LEGACY_NAME, {env: {NODE_TEST_CONTEXT: 'child'}, platform: 'darwin'}), /real Keychain/);
 });

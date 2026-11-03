@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import {readSafeStorage} from './keychain.js';
 import {writePrivate} from './private-file.js';
 
 /** The reserved entry of secrets.json that names the Keychain item which sealed the file's values. It is in the same file so values and record are one rename. */
@@ -37,11 +38,10 @@ export function openV10(sealed, key) {
   try { return decryptWith(raw.subarray(3), key); } catch { return decryptWith(raw.subarray(3), EMPTY_KEY); }
 }
 
-// The old item's password: the one prompt (macOS asks `security` for access). Never logged; only the key made from it is kept.
+// The old item's password: the one prompt (macOS asks `security` for access). Read through lib/keychain.js (the one place that isolates tests and the twin); never logged.
 function readOldKey(exec, oldItem, oldAccount) {
-  const out = exec('security', ['find-generic-password', '-w', '-s', oldItem, '-a', oldAccount], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000, maxBuffer: 1 << 20});
-  const password = String(out).replace(/\r?\n$/, '');
-  if (!password) throw new Error('the old Keychain item holds no password');
+  const password = readSafeStorage(oldItem, oldAccount, {exec});
+  if (!password) throw new Error('the old Keychain item could not be read (denied, missing or no answer)');
   return osKey(password);
 }
 
