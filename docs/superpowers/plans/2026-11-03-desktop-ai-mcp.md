@@ -4,12 +4,12 @@ Spec: [2026-11-03-desktop-ai-mcp-design.md](../specs/2026-11-03-desktop-ai-mcp-d
 Each PR is titled `[mc] n/6 <what it does for the user>` and carries the template's "Plan progress" block. Tier 2 (store writes, engine-facing): the fast loop locally, CI runs e2e.
 
 ## Progress
-- [x] 0/6 Spec + plan (docs only, this PR)
-- [x] 1/6 Spike: does a built `.mcpb` open Claude Desktop's install dialog on Mac and Windows; does Claude ask before a tool call (a tester's Windows PC; measured, written into the spec)
-- [x] 2/6 Claude can read: local MCP route, token, pairing, read tools, redaction, the bridge `.mcpb`
-- [x] 3/6 Claude can fill: write tools, Changes by Claude list with Undo, shared validation
-- [x] 4/6 Connect Claude on the banner, Settings card, privacy note, ⌘K, shorter instruction
-- [x] 5/6 Spike: ChatGPT through OpenAI's Secure MCP Tunnel, from the docs: no-go (spec "Result of the ChatGPT spike"); the owner chose not to run it hands-on
+- [x] 0/6 Spec + plan (docs only, this PR) (proof: docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md @f1d22e86)
+- [x] 1/6 Spike: does a built `.mcpb` open Claude Desktop's install dialog on Mac and Windows; does Claude ask before a tool call (a tester's Windows PC; measured, written into the spec) (proof: desktop/scripts/desktop-ai-spike/build.mjs @4b7bdda7)
+- [x] 2/6 Claude can read: local MCP route, token, pairing, read tools, redaction, the bridge `.mcpb` (proof: desktop/lib/desktop-ai-server.js @4c6f6c05)
+- [x] 3/6 Claude can fill: write tools, Changes by Claude list with Undo, shared validation (proof: desktop/lib/desktop-ai-writes.js @382c7252)
+- [x] 4/6 Connect Claude on the banner, Settings card, privacy note, ⌘K, shorter instruction (proof: desktop/lib/desktop-ai-connect.js @75be2661)
+- [x] 5/6 Spike: ChatGPT through OpenAI's Secure MCP Tunnel, from the docs: no-go (spec "Result of the ChatGPT spike"); the owner chose not to run it hands-on (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md)
 - [ ] 6/6 Connect ChatGPT: parked as JOB-258 (5/6 says a normal person cannot finish it)
 
 ## Order and dependencies

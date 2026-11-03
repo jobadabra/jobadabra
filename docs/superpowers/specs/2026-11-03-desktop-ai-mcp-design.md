@@ -157,12 +157,12 @@ One shared words file for both AIs (like `desktop-ai-words.js`), shown in the Co
 
 ## Progress
 
-- [x] Spec and sketch: owner's yes on the decisions (sketch published; questions asked)
-- [x] Plan `docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md` (PR split, after the answers)
-- [x] PR 1 · spike: `.mcpb` opens on Mac + Windows, tool-call prompt observed (no UI)
-- [x] PR 2 · route + token + pairing + shared validation (`lib/desktop-ai-server.js`, `lib/desktop-ai-changes.js`) with the read tools
-- [x] PR 3 · write tools + Changes by Claude list + Undo
-- [x] PR 4 · Connect on the banner, Settings card, privacy note, ⌘K, instruction v2 (Claude)
-- [x] PR 5 · ChatGPT spike: from the docs, no-go (result above); a hands-on run needs a Platform organization, owner chose not to
+- [x] Spec and sketch: owner's yes on the decisions (sketch published; questions asked) (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md @f1d22e86)
+- [x] Plan `docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md` (PR split, after the answers) (proof: docs/superpowers/plans/2026-11-03-desktop-ai-mcp.md @f1d22e86)
+- [x] PR 1 · spike: `.mcpb` opens on Mac + Windows, tool-call prompt observed (no UI) (proof: desktop/scripts/desktop-ai-spike/build.mjs @4b7bdda7)
+- [x] PR 2 · route + token + pairing + shared validation (`lib/desktop-ai-server.js`, `lib/desktop-ai-changes.js`) with the read tools (proof: desktop/lib/desktop-ai-server.js @4c6f6c05)
+- [x] PR 3 · write tools + Changes by Claude list + Undo (proof: desktop/lib/desktop-ai-writes.js @382c7252)
+- [x] PR 4 · Connect on the banner, Settings card, privacy note, ⌘K, instruction v2 (Claude) (proof: desktop/lib/desktop-ai-connect.js @75be2661)
+- [x] PR 5 · ChatGPT spike: from the docs, no-go (result above); a hands-on run needs a Platform organization, owner chose not to (proof: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md)
 - [ ] PR 6 · ChatGPT connect: parked as JOB-258 (PR 5 says a normal person cannot finish it)
 - [ ] Parked in Linear: Codex config JOB-236, screenshot tool JOB-237, "Find jobs" tool JOB-238
