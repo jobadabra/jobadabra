@@ -1,0 +1,32 @@
+{
+  "manifest_version": "0.2",
+  "name": "jobadabra-spike",
+  "display_name": "Jobadabra spike (safe to remove)",
+  "version": "0.0.1",
+  "description": "A test of how Claude Desktop installs a local helper. It has one tool, ping, that changes nothing and reads no Jobadabra data.",
+  "author": {
+    "name": "Jobadabra"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.cjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.cjs"
+      ]
+    }
+  },
+  "tools": [
+    {
+      "name": "ping",
+      "description": "Reports what this helper can do on this computer. Changes nothing."
+    }
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ]
+  }
+}

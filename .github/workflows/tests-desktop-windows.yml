@@ -75,6 +75,7 @@ on:
       - 'desktop/renderer/pages/office-progress.js'
       - 'desktop/renderer/pages/startup.js'
       - 'desktop/scripts/appx-manifest.mjs'
+      - 'desktop/scripts/desktop-ai-spike/server/index.cjs'
       - 'desktop/scripts/python.sh'
       - 'desktop/scripts/release-notes.sh'
       - 'desktop/scripts/side-by-side.mjs'

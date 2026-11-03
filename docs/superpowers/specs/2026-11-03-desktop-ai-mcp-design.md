@@ -128,6 +128,8 @@ One shared words file for both AIs (like `desktop-ai-words.js`), shown in the Co
 
 ## Risks and unknowns (measured in PR 1, a spike before any UI)
 
+> **Measured so far (PR 1/6, 3 Nov 2026; details and the Windows script in `desktop/scripts/desktop-ai-spike/README.md`).** Mac: Claude.app is the registered **Owner** of `.mcpb` (so opening the file goes to Claude); the bridge's code can use the Keychain (`security`) and reach 127.0.0.1 under plain Node. Not yet measured: the install window, Claude's tool-call prompt, and everything inside Claude's own sandbox; Windows (DPAPI, file type, install window) waits for one person with the Claude desktop app.
+
 | Unknown | Why it matters | How we find out |
 |---|---|---|
 | Does `shell.openPath` on a `.mcpb` start Claude Desktop's install dialog on Mac and Windows? | One-click Connect | Spike on a Windows VM and the Mac; fallback: show the file in its folder with "drag it into Claude" |
