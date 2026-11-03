@@ -25,7 +25,11 @@ def _ambiguous(apps, row, email):
 def _sender_org(sender):
     """"Huxley" from "Jaya <j.nejati@huxley.com>": the agency or company an email comes from."""
     domain = (re.search(r'@([\w.-]+)', sender or '') or [None, ''])[1].lower()
-    parts = [p for p in domain.split('.') if p not in ('mail', 'email', 'co', 'com', 'ch', 'de', 'io', 'uk', 'net', 'org')]
+    # The name is the label before the country or generic ending, by position (fincruit.lu, huxley.co.uk, mail.huxley.ch): a list of endings to strip
+    # missed every country not on it. Why (2 Nov 2026, ib review): with a reply titled by its sender, fincruit.lu read "Reply from Lu".
+    parts = domain.split('.')[:-1]
+    while len(parts) > 1 and parts[-1] in ('co', 'com', 'org', 'net', 'ac', 'gov'):
+        parts.pop()
     org = parts[-1] if parts else ''
     return '' if org in PLATFORMS else org.capitalize()
 

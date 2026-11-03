@@ -113,7 +113,7 @@ function draw(model) {
       button('Try again', () => start()));
   }
   card.removeAttribute('aria-busy');
-  show(card, true);
+  show(card, visible(model.state));
   document.body.dataset.findCard = model.state;
 }
 
@@ -142,6 +142,18 @@ export function renderFindCard(runsNow = lastRuns) {
   signature = key;
   draw(shown);
   if (!refused) keepBlock('find-card', keptFindCard(model));   // a refusal is this launch's news, never the next start's first paint
+}
+
+// "Find more jobs" belongs to the lists that hold job matches (jobs-filters.js findsMore): under Inbound or Applied a search would add rows to
+// none of them, so its idle cards step aside. A search in progress, a refusal or a failure stay: they are news about a press, wherever it was made.
+let listFinds = true;
+const visible = state => listFinds || !(state === 'none' || state === 'done');
+/** Called by every Jobs redraw with whether the ticked filters hold job matches; shows or hides the card already drawn. Takes a boolean; returns nothing. */
+export function followFilter(finds) {
+  if (finds === listFinds) return;
+  listFinds = finds;
+  const card = $('find-card'), state = document.body.dataset.findCard;
+  if (card && state) show(card, visible(state));
 }
 
 // The Find jobs card is showing its searching state: the rows without a score say Scoring… instead of Not scored.

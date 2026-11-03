@@ -24,8 +24,9 @@ def _new_job(stores, event, changes):
     parsed = re.match(r'\s*"?([^"<]*)"?\s*<([^>]+)>', sender)
     name, address = parsed.groups() if parsed else ('', sender)
     linkedin = 'linkedin.com' in sender.lower()
-    lead = {'title': subject[:120], 'company': '', 'recruiter_company': mail._sender_org(sender),
-            'recruiter_name': '' if linkedin else mail.person_name(name), 'recruiter_email': '' if linkedin else address.strip(),
+    org, person = mail._sender_org(sender), '' if linkedin else mail.person_name(name)
+    lead = {'title': opportunity.reply_title(org, person, 'LinkedIn' if linkedin else 'Email'), 'role_unknown': True, 'company': '', 'recruiter_company': org,
+            'recruiter_name': person, 'recruiter_email': '' if linkedin else address.strip(),
             'platform': 'LinkedIn' if linkedin else 'Email', 'in_house': False}
     url = opportunity.lead_url(lead, '', event['source_id'])
     record, _ = opportunity.track(stores, lead, f"Subject: {subject}\n\n{event['note']}", source='Gmail',

@@ -1,15 +1,15 @@
 // Jobs page, the list: renderJobs (rows, filters, row actions), the stuck banner, loading state, kit label. Guarded by: test/count-flash.test.js.
 import {ai} from '../ai-name.js';
-import {el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
+import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {triageChip} from './jobs-triage.js';
 import {columnOf} from '../jobs-board-rules.js';
 import {isInbound} from '../origin.js';
 import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
-import {searchingNow} from './jobs-find.js';
+import {followFilter, searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {ago, avatar, band, byStat, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
+import {band, byStat, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
 import {$, show} from './core.js';
@@ -30,8 +30,10 @@ import {openJobPanel, panelUrl} from './job-panel.js';
 import {jobsChanged, loadJobs, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
+import {NA, rowModel} from '../job-row-model.js';
+import {companyCell, metaCell, placeCell} from './jobs-row-cells.js';
 import {renderTalking} from './jobs-talking.js';
-import {boardIds, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
+import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {kitLabel} from './jobs-kit-label.js';
 import {paintScoreCall} from './jobs-score-call.js';
 import {staleLabel, staleTip} from '../rescore-words.js';
@@ -45,8 +47,6 @@ export function renderStuck() {
   $('jobs-stuck-text').textContent = `${count} job${count === 1 ? ' is' : 's are'} still marked Applying but ${count === 1 ? 'has' : 'have'} no open session. Did you submit ${count === 1 ? 'it' : 'them'}?`;
 }
 
-// Pill tones: where a job stands, and how it's worked.
-const MODE_TONE = {remote: 'good', hybrid: 'info'};
 // Work in progress on a job (redrafting its kit, tailoring its CV), shown on its row while the menu is closed.
 const busyNotes = new Map();
 const claudeStarted = new Set();
@@ -61,6 +61,7 @@ export function renderJobs() {
   const filter = soleFilter(filters);   // '' when several are ticked
   const now = Date.now();
   renderFilterMenu();
+  followFilter(findsMore(filters, jobsState.statFilter));   // the Find more jobs card follows the list (jobs-filters.js findsMore)
   const text = $('filter-text').value.trim();
   // A pasted link finds that job whatever its status; words filter within the chosen status.
   const anyStatus = looksLikeLink(text);
@@ -86,6 +87,7 @@ export function renderJobs() {
   body.replaceChildren();
   for (const job of rows) {
     const row = el('article', 'job-row');
+    const parts = rowModel(job);   // what this job's state and source draw (job-row-model.js)
     Object.assign(row.dataset, {code: job.code || '', url: job.url || ''});   // a notification's click scrolls to it (pages/open-target.js)
     // Fit: a ring filled to the score (the compact list adds "Strong match" under it). A row whose score has a
     // breakdown behind it says so with a caret, and the ring opens it.
@@ -98,7 +100,11 @@ export function renderJobs() {
     const scoring = job.fit == null && searchingNow() && !job.place_unclear;   // found by the search that is running: its score comes next
     const old = !!job.stale && job.fit != null;
     fit.append(ringRow, el('span', 'fit-label', scoring ? 'Scoring…' : old ? staleLabel : matchLabel(job.fit)));
-    fit.title = scoring ? 'Being scored now: the fit appears in a moment' : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? 'Click to see why' : '')}`;
+    if (!parts.fit) {   // an applied, rejected or inbound job with no score: the same ring, saying N/A, never "Not scored" (job-row-model.js)
+      ring.replaceChildren(el('span', '', NA));
+      fit.querySelector('.fit-label').textContent = '';
+    }
+    fit.title = !parts.fit ? 'No fit score: nothing to apply to here' : scoring ? 'Being scored now: the fit appears in a moment' : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? 'Click to see why' : '')}`;
     const live = sessionFor(job.url);
     const {label: statusLabel, tone: statusTone} = live && !live.endedAt ? SESSION_PILL[live.status] || statusPill(job) : statusPill(job);
 
@@ -109,18 +115,12 @@ export function renderJobs() {
     const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
     titleLine.append(link, Object.assign(pill(statusLabel, statusTone), {className: `ui-pill tone-${statusTone} status-inline`}));
-    role.append(titleLine, triageChip(job));   // Why (2026-10-30, owner: the apply triage chip on every row): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
-    // Compact list: company · place · mode · age on one line, in place of those columns.
-    const meta = el('div', 'meta');
-    const small = avatar(job.company);
-    const smallBadge = el('span', 'logo', small.initials);
-    smallBadge.style.setProperty('--hue', small.hue);
-    meta.append(smallBadge, el('b', '', job.company));
-    for (const part of [placeAndMode(job.location, job.work_mode), ago(job.first_seen_at)].filter(Boolean)) {
-      meta.append(el('span', 'sep', '·'), el('span', '', part));
-    }
-    role.append(meta);
-    role.append(Object.assign(el('div', 'reason', job.reason || ''), job.reason ? {title: job.reason} : {}));   // always: no reason keeps its line, so every row is the same height
+    role.append(titleLine);
+    // Why (2026-10-30, owner; 2 Nov 2026 N/A for a job with nothing to apply to, the slot stays so every row is built alike): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
+    role.append(parts.triage ? triageChip(job) : chip(NA, {tone: 'neutral', title: 'Nothing to apply to: you already applied, or it came to you'}));
+    role.append(metaCell(job, parts));   // compact list: company · place · mode · age (jobs-row-cells.js)
+    // Always: no reason keeps its line, so every row is the same height; Why (2 Nov 2026, owner: "for the content we're missing, we should add N/A"): an empty line read as a hole.
+    role.append(Object.assign(el('div', 'reason', job.reason || NA), job.reason ? {title: job.reason} : {className: 'reason is-na'}));
     const chips = el('div', 'tags');
     // Three skill tags, the rest behind "+N".
     const skills = tags(job, 8);
@@ -135,26 +135,12 @@ export function renderJobs() {
     }
     if (job.tailored && job.code) chips.append(tag('📄 Tailored CV', {title: 'Your CV tailored to this job, with the changes highlighted',
       onClick: () => window.pilot.openTailoredCv(job.code)}));
-    if (job.rejection) chips.append(tag(`🔎 ${job.rejection}`, {title: job.rejection_lesson || 'Why it was rejected',
+    if (parts.rejection) chips.append(tag(`🔎 ${parts.rejection}`, {title: job.rejection_lesson || 'Why it was rejected',
       onClick: event => openPage('review', event)}));
     if (busyNotes.has(job.url)) chips.append(tag(busyNotes.get(job.url), {busy: true}));
     role.append(chips);   // always: a row without chips keeps the chip line's height, so every row is the same
 
-    const company = el('div', 'company');
-    const logo = avatar(job.company);
-    const badge = el('span', 'logo', logo.initials);
-    badge.style.setProperty('--hue', logo.hue);
-    company.append(badge, el('span', 'name', job.company));
-
-    // One line, so every row is as tall as the next: "Moldova · Remote" (the mode's pill after the place; both cut with … and read in full on hover).
-    const place = el('div', 'place');
-    if (job.location || job.work_mode) {
-      const line = el('div', 'place-line');
-      line.append(icon(job.location ? 'pin' : 'globe'));
-      if (job.location) { const shown = shortPlace(job.location); line.append(Object.assign(el('span', '', shown.text), {title: shown.full || shown.text})); }
-      if (job.work_mode) { const mode = workMode(job.work_mode); line.append(pill(mode.label, MODE_TONE[mode.kind] || 'neutral', {title: job.work_mode})); }
-      place.append(line);
-    }
+    const company = companyCell(parts), place = placeCell(job);   // jobs-row-cells.js: N/A and a blank avatar where nothing is named
 
     const status = el('div', 'status-cell');
     status.append(pill(statusLabel, statusTone));

@@ -18,7 +18,8 @@ test('the row always draws its reason and chip lines, and its place is one line'
   const src = read('pages/jobs-render.js');
   assert.match(src, /role\.append\(Object\.assign\(el\('div', 'reason'/, 'the reason line is there even without a reason');
   assert.match(src, /\n\s*role\.append\(chips\);/, 'the chip line is there even without chips');
-  assert.equal((src.match(/el\('div', 'place-line'\)/g) || []).length, 1, 'place and mode share one line');
+  const cells = read('pages/jobs-row-cells.js');   // the row's company, place and meta cells (moved out of jobs-render.js, ib, 2 Nov 2026)
+  assert.equal((`${src}${cells}`.match(/el\('div', 'place-line'\)/g) || []).length, 1, 'place and mode share one line');
   assert.match(src, /tag\(skill, \{title: skill\}\)/, 'a chip cut with … says its full text on hover');
 });
 

@@ -185,6 +185,9 @@ class MailMatchTests(MailCase):
     def test_a_platform_is_never_the_agency(self):
         self.assertEqual(mail._sender_org('LinkedIn <inmail-hit-reply@linkedin.com>'), '')
         self.assertEqual(mail._sender_org('Jaya <j.nejati@huxley.com>'), 'Huxley')
+        # By position, any country (ib review, 2 Nov 2026: fincruit.lu read "Lu").
+        for sender in ('a@fincruit.lu', 'a@huxley.co.uk', 'a@mail.huxley.ch', 'a@huxley.test'):
+            self.assertIn(mail._sender_org(sender), ('Fincruit', 'Huxley'), sender)
         self.assertEqual(mail.person_name('Seosahai - Nejati, Jayantie'), 'Jayantie Nejati')
 
     def test_one_agency_two_of_your_roles_and_the_email_names_neither_is_asked(self):
@@ -218,7 +221,7 @@ class MailMatchTests(MailCase):
                                                               interview_at='2026-09-30T08:30:00+02:00')]])
         self.assertEqual(tracked[0]['recruiter_company'], 'Huxley')
         self.assertEqual(tracked[0]['company'], '')  # the agency is not the employer
-        self.assertEqual(tracked[0]['title'], 'Connect Igor / Jaya - SRE')
+        self.assertEqual(tracked[0]['title'], 'Reply from Huxley')   # who wrote, never the email's subject (owner, 2 Nov 2026: a subject listed as a job)
         kinds = [p['Kind']['select']['name'] for p in tracker.created if 'Kind' in p]
         self.assertIn('Interview scheduled', kinds)
         self.assertIn('Which job is this for?', sent[0])

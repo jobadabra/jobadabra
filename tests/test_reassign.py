@@ -86,7 +86,8 @@ class NewJobTests(unittest.TestCase):
         result = reassign.move(stores, question['id'], reassign.NEW, now=NOW)
         self.assertTrue(result['ok'], result)
         job = stores.applications.get('https://mail.google.com/mail/u/0/#all/h1')   # the email is its Job URL
-        self.assertEqual((job['title'], job['contact']), ('Connect Igor / Jaya - SRE', 'Jaya · jaya@huxley.test'))
+        # Never the email's subject as the job's title (2 Nov 2026, owner: "RE: Keeping in Touch – …" listed as a job): who wrote.
+        self.assertEqual((job['title'], job['contact']), ('Reply from Huxley', 'Jaya · jaya@huxley.test'))
         self.assertEqual(job['next_interview'], '2026-09-30T08:30:00+02:00')
         event = stores.events.get(question['id'])
         self.assertEqual((event['app_id'], bool(event['needs_you'])), (job['id'], False))
@@ -108,7 +109,7 @@ class NewJobTests(unittest.TestCase):
             self.assertEqual(stores.name, 'notion')
             job = self.check_new_job(stores)
         self.assertEqual(len(tracker.apps), 1)
-        self.assertIn('Connect Igor / Jaya - SRE', tracker.written_under(job['id']))   # the message section on the page
+        self.assertIn('Connect Igor / Jaya - SRE', tracker.written_under(job['id']))   # the message section on the page keeps the subject
 
 
 class FocusQuestionTests(unittest.TestCase):

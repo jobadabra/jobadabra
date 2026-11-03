@@ -80,12 +80,16 @@ def interview_lead(stores, client, model, email, apps, result, stats):
         print(f"Warning: interview email {email['id']} not read: {type(error).__name__}: {error}", file=sys.stderr)
         lead = {}
     linkedin = 'linkedin.com' in email['from'].lower()
-    lead = {**lead, 'title': lead.get('title') or result.get('role') or email['subject'][:120],
-            'company': lead.get('company') or '', 'platform': 'LinkedIn' if linkedin else 'Email'}
+    lead = {**lead, 'company': lead.get('company') or '', 'platform': 'LinkedIn' if linkedin else 'Email'}
     if (lead.get('recruiter_company') or '').lower() in PLATFORMS:
         lead['recruiter_company'] = ''
     if not lead.get('company') and not lead.get('recruiter_company'):
         lead['recruiter_company'] = _sender_org(email['from'])
+    # No role named: who wrote, never the email's subject (opportunity.reply_title).
+    if not (lead.get('title') or result.get('role')):
+        sender = '' if linkedin or '<' not in email['from'] else person_name(re.sub(r'\s*<.*', '', email['from']).strip('" '))
+        lead.update(title=opportunity.reply_title(lead.get('recruiter_company') or '', sender, lead['platform']), role_unknown=True)
+    lead['title'] = lead.get('title') or result.get('role')
     if not linkedin and not lead.get('recruiter_email'):  # the next email from this person finds this job
         parsed = re.match(r'\s*"?([^"<]*)"?\s*<([^>]+)>', email['from'])
         name, address = parsed.groups() if parsed else ('', email['from'])

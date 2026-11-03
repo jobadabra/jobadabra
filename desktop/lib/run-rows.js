@@ -69,7 +69,11 @@ export function fromRow(page, now = Date.now()) {
 
 // One line on what it did: the row's Summary without the cost, or the count of new jobs for a search.
 export function result(summary, status, fresh, mode) {
-  if (status === 'Running') return 'never finished (see the log)';
+  // Why (2 Nov 2026, owner: a Windows tester's footer read "Last refresh Mon 09:53 PM · never finished (see the log)"): a Running row nobody has touched for 30 minutes is a run that
+  // went quiet and was never closed (a closer exists for a watchdog stop, a quit with jobs queued and an orphaned engine, but not for a machine that slept or a process the OS ended);
+  // the cause is not in the row, so the line says what is known: it stopped without finishing, and the run in Recent activity has its last lines. It names no cause.
+  // TODO(AI): a closer for a run that went quiet (on the next start, close this Mac's Running rows silent for LOST_MS) (#3025)
+  if (status === 'Running') return 'stopped without finishing (see Recent activity)';
   const cost = String.raw`(?:AI cost \$[\d.]+(?: \+ Claude Code)?|Claude Code, your plan)`;
   const line = summary.replace(new RegExp(String.raw`\s*\(${cost}\)\.?$`), '').replace(new RegExp(String.raw`;?\s*${cost}\.?$`), '').trim();
   if (KIND[mode] === 'search' && fresh != null) return fresh ? `${fresh} new job${fresh === 1 ? '' : 's'}` : 'nothing new';
