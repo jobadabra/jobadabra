@@ -87,13 +87,13 @@ It costs about $0.3 a run, like the default (the SRE). It is how scoring is prov
 `E2E_CV=/path/to/cv.pdf node suite.mjs wizard` uses a real CV for a local run. It is only read from that path and sent to the test Anthropic key and the test Notion page; it is never copied into the repo (public). CI always uses `fixtures/cv.pdf`.
 
 ## Secrets
-- `E2E_ANTHROPIC_KEY`: a dedicated Anthropic key with a small monthly spend limit. **CI only**: a Mac never uses it.
-  What it pays is counted per suite (`lib/ai-meter.mjs`: the app under test through the AI proxy, the judges through `lib/model.mjs`) and reported to /ai-cost as
-  `e2e-app` and `e2e-judges`. Only scheduled runs ask the model live; every other CI run replays an answer it has seen (`E2E_AI_REPLAY=1`, cache `.ai-cache/`,
-  kept between runs by actions/cache) and pays only for new requests. CI judges run on Haiku (`E2E_JUDGE_MODEL`), the quality suite's too since 27 Oct 2026.
+- `E2E_ANTHROPIC_KEY`: **no longer passed to CI since 3 Nov 2026** (owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker"; docs/superpowers/specs/2026-11-03-ci-no-api-keys.md).
+  CI's AI goes through the broker (`CI_AI_PROVIDER=codex`); the harness code that still reads the key goes in PR 3/5 and the owner deletes the secret by hand. A Mac never used it.
+  What the suite's AI uses is still counted per suite (`lib/ai-meter.mjs`: the app under test through the AI proxy, the judges through `lib/model.mjs`), no longer reported to /ai-cost. Only scheduled runs ask the model live; every other CI run replays an answer it has seen (`E2E_AI_REPLAY=1`, cache `.ai-cache/`,
+  kept between runs by actions/cache). CI judges run on Haiku (`E2E_JUDGE_MODEL`), the quality suite's too since 27 Oct 2026.
 - `E2E_NOTION_TOKEN`: the test connection's token. Never use your own Notion.
-Both live in GitHub (Settings → Secrets → Actions) and, for local runs, in the macOS Keychain
-(`jobadabra.e2e.anthropic_key`, `jobadabra.e2e.notion_token`). Never in code.
+The Notion token lives in GitHub (Settings → Secrets → Actions) and, for local runs, in the macOS Keychain
+(`jobadabra.e2e.notion_token`). Never in code.
 
 ## Files
 `lib/app.mjs` launch, close, file picker · `fixtures/cv.pdf` a fictional CV (`make-cv.py` rewrites it)

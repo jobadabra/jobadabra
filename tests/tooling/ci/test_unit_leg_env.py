@@ -1,6 +1,6 @@
 """The unit leg of the Test matrix runs with none of the e2e jobs' live tokens (owner's rule: tests and automation never touch live accounts or paid APIs; 1 Nov 2026).
 
-desktop.yml's test-mac / test-windows jobs hold E2E_ANTHROPIC_KEY, E2E_OPENAI_KEY, E2E_NOTION_TOKEN*, GH_TOKEN, CI_* … in their job-level `env`, and the unit leg is one more leg of the same
+desktop.yml's test-mac / test-windows jobs hold E2E_NOTION_TOKEN*, GH_TOKEN, CI_* … in their job-level `env`, and the unit leg is one more leg of the same
 job, so it inherits them. The Build box's own unit step never had them. The composite action .github/actions/unit-tests unsets them before the tests run: a denylist (by prefix and by
 exact name), not `env -i`, because desktop.yml never runs on a PR and a Windows variable an allowlist forgot would only show up as a red beta. This test derives the secrets from the jobs,
 so a secret added to them later without being covered here fails on the PR that adds it.
@@ -48,7 +48,8 @@ class UnitLegEnv(unittest.TestCase):
     def test_the_positive_control_the_jobs_do_hold_secrets(self):
         for name in TEST_JOBS:
             found = self.secrets(name)
-            self.assertIn('E2E_ANTHROPIC_KEY', found, name)
+            values, _listed = job_env(name)
+            self.assertTrue(any(key.startswith('E2E_NOTION_TOKEN') and 'secrets.' in value for key, value in values.items()), name)   # Why (3 Nov 2026, Gitar on #3115): the AI key and /ai-cost publish secrets are gone from these jobs (docs/superpowers/specs/2026-11-03-ci-no-api-keys.md); a Notion token is a secret with a real job-level value, so this proves the parser finds one (a name only in E2E_ARTIFACT_SECRET_NAMES is not held)
             self.assertTrue(any(key.startswith('E2E_NOTION_TOKEN') for key in found), name)
             self.assertIn('GH_TOKEN', found, name)
 

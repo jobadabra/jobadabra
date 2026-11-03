@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       ai_provider:
-        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        description: 'AI provider for the judges in this run only: codex or free (no claude: CI holds no AI key since 3 Nov 2026; lib/ai-provider.mjs rejects it in PR 3/5). Empty = the repo variable CI_AI_PROVIDER, else free'
         type: string
         default: ''
       suites:
@@ -47,7 +47,7 @@ on:
   workflow_call:
     inputs:
       ai_provider:
-        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        description: 'AI provider for the judges in this run only: codex or free (no claude: CI holds no AI key since 3 Nov 2026; lib/ai-provider.mjs rejects it in PR 3/5). Empty = the repo variable CI_AI_PROVIDER, else free'
         type: string
         default: ''
       pr_steps:
@@ -125,8 +125,6 @@ jobs:
       - name: Is CI's AI ready? (one check before the suites)
         timeout-minutes: 5
         env:
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
           CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
           CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
           CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
@@ -167,10 +165,8 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
-        E2E_ANTHROPIC_KEY
         E2E_FREE_AI_KEY
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
@@ -189,12 +185,9 @@ jobs:
         E2E_NOTION_TOKEN_SETTINGS
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
-        E2E_OPENAI_KEY
         FREE_AI_LOCAL_CF_ACCOUNT_ID
         FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
       E2E_NOTION_TOKEN_JOBS: ${{ secrets.E2E_NOTION_TOKEN_JOBS }}
       E2E_NOTION_TOKEN_INTERVIEWS: ${{ secrets.E2E_NOTION_TOKEN_INTERVIEWS }}
@@ -306,7 +299,6 @@ jobs:
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != ''
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -359,27 +351,11 @@ jobs:
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
-      - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != ''
-        timeout-minutes: 5
-        continue-on-error: true   # a report never decides a run
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            for dir in "$E2E_ARTIFACTS" "${{ github.workspace }}/e2e-artifacts-windows/apply-edge"; do
-              file="$dir/ai-usage-$kind.json"; [ -f "$file" ] || continue
-              tag=""; case "$dir" in *rerun*) tag="-rerun";; *apply-edge*) tag="-edge";; esac
-              job="e2e-$kind"; provider=anthropic
-              if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
-              node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "windows-${{ matrix.key }}$tag" --file "$file" --provider "$provider"
-            done
-          done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: always() && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -392,7 +368,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -417,7 +392,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -444,7 +418,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -468,7 +441,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
           FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -526,7 +498,6 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
         AI_COST_PUBLISH_KEY
-        E2E_ANTHROPIC_KEY
         GH_TOKEN
         GITHUB_TOKEN
     steps:
@@ -544,7 +515,6 @@ jobs:
         timeout-minutes: 18
         with:
           lane: windows
-          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
