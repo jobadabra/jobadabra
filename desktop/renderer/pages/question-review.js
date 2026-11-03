@@ -68,6 +68,25 @@ function go(kind, index) {
   draw();
 }
 
+// Why (3 Nov 2026, owner: the line sat under every question, "Workload" included): the cases line is for a learning a form taught, whose answer has conditions,
+// not for a Your details fact or a Profile question.
+const casesLine = (written, mine) => (written && (!mine || mine.kind === 'taught')
+  ? [el('p', 'muted small qr-cases', 'Think about the different cases and what you would answer in each. Be as specific as you can.')] : []);
+
+// Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): ONE action, one wording, on every question that is not a pick between two copies. It only hides the
+// question (lib/question-dismissed.js: both drawers, their counts and Focus); nothing in the store changes, and a dismissed question has "Bring back". -> [button] or [].
+function dismissAction(q, mine) {
+  const make = (id, words, glyph, title, on) => {
+    const button = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', id, title});
+    button.append(icon(glyph), el('span', '', words));
+    button.addEventListener('click', () => dismiss(q, on));
+    return button;
+  };
+  if (q.dismissed) return [make('qr-bring-back', 'Bring this question back', 'undo', 'It will be asked again', false)];
+  const pick = mine && ['which', 'conflict', 'where'].includes(mine.kind);
+  return pick || state.aside ? [] : [make('qr-dismiss', 'Dismiss this question', 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
+}
+
 function question(q) {
   const body = el('div', 'jd-body qr-body');
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
@@ -95,8 +114,7 @@ function question(q) {
   // A value to make exact is ready only once its parts read (the same rule as the line's Check chip); an unclear answer once it changed ("Keep as is" keeps it).
   const ready = () => control.complete && !(mine?.kind === 'check' && needsCheck(q.format?.kind, control.value))
     && !(mine?.kind === 'unclear' && String(control.value).trim() === String(q.value ?? '').trim());
-  // Why (3 Nov 2026, owner: the line sat under every question, "Workload" included): the cases line is for a learning a form taught, whose answer has conditions, not for a Your details fact or a Profile question.
-  box.append(label, ...(written && (!mine || mine.kind === 'taught') ? [el('p', 'muted small qr-cases', 'Think about the different cases and what you would answer in each. Be as specific as you can.')] : []), control);
+  box.append(label, ...casesLine(written, mine), control);
   body.append(box);
   if (mine?.kind === 'which') body.append(el('p', 'muted small', `${q.hint}. The other is set aside, never deleted: Undo in Your details.`));
   if (q.coveredBy) {
@@ -107,21 +125,7 @@ function question(q) {
     body.append(source);
   }
   if (q.hint && mine?.kind !== 'which') body.append(el('p', 'muted small', q.hint));
-  // Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): ONE action, one wording, on every question that is not a pick between two copies. It only hides the
-  // question (lib/question-dismissed.js: both drawers, their counts and Focus); nothing in the store changes, and a dismissed question has "Bring back".
-  const dismissible = !(mine && ['which', 'conflict', 'where'].includes(mine.kind));
-  if (q.dismissed) {
-    const back = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', id: 'qr-bring-back', title: 'It will be asked again'});
-    back.append(icon('undo'), el('span', '', 'Bring this question back'));
-    back.addEventListener('click', () => dismiss(q, false));
-    body.append(back);
-  } else if (dismissible && !state.aside) {
-    const drop = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', id: 'qr-dismiss',
-      title: 'Never asked again, not counted. Bring it back from the list of questions.'});
-    drop.append(icon('close'), el('span', '', 'Dismiss this question'));
-    drop.addEventListener('click', () => dismiss(q, true));
-    body.append(drop);
-  }
+  body.append(...dismissAction(q, mine));
   if (mine?.kind === 'unclear') {   // the AI found it unclear; the person may know better: never asked again for this value
     const keepIt = Object.assign(el('button', 'link small qr-drop', 'Keep as is'), {type: 'button', id: 'qr-keep', title: 'It is right as it is: not asked again unless it changes'});
     keepIt.addEventListener('click', () => answer(q, KEEP_AS_IS));
