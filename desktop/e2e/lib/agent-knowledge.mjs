@@ -68,6 +68,7 @@ export function parseNotes(markdown) {
     return {text, seen: Number(/(\d+)/.exec(seen || '')?.[1] || 1), first: (first || '').replace('first ', ''), last: (last || '').replace('last ', ''), commit: (commit || '').replace('commit ', ''), session: (session || '').replace('session ', '')};
   });
 }
+/** The file text of one area's notes, the inverse of parseNotes (a note survives render then parse). Takes the area name and its notes; never fails, an empty list renders only the heading. */
 export const renderNotes = (area, notes) => `# Field notes: ${area}\n\n${notes.map(note => `- ${note.text} | seen ${note.seen}× | first ${note.first} | last ${note.last} | commit ${note.commit} | session ${note.session}`).join('\n')}\n`;
 
 /**
