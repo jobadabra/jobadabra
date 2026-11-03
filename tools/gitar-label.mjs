@@ -51,23 +51,10 @@ export function wantedLabel(body, commentUpdatedAt, headCommittedAt) {
   return LABELS[kind].name;
 }
 
-const GATEWAY = /(?:status code:|HTTP)\s*50[234]\b/;   // gh's words for GitHub's 502/503/504 ("non-200 OK status code: 504 Gateway Timeout")
-const RETRY_MS = Number(process.env.GITAR_LABEL_RETRY_MS || 10000);
-
-/** One gh call; a GitHub 502/503/504 gets one more try after ~10 s, any other error (and a second 5xx) throws.
- * Why (3 Nov 2026, owner chose "One retry on GitHub errors"): 5 of ~400 label runs since 31 Oct went red on GitHub's own 504/503 within 6 minutes
- * (#3086, #3088, #3089); a failure still stays red (#2516), a 401/403/429 is never retried (CLAUDE.md). */
-export function ghOnce(args, {run = execFileSync, wait = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)} = {}) {
-  try {
-    return run('gh', args, {encoding: 'utf8'});
-  } catch (error) {
-    if (!GATEWAY.test(`${error.stderr || ''} ${error.message || ''}`)) throw error;
-    wait(RETRY_MS);
-    return run('gh', args, {encoding: 'utf8'});
-  }
-}
-
-const gh = (...args) => ghOnce(args);
+// Why (3 Nov 2026, owner chose "One retry on GitHub errors"): every gh call goes through tools/gh_retry.py, shared with the release checks: GitHub's own
+// 502/503/504 gets one more try after ~10 s; a second failure and any other error still throw, so a failure stays red (#2516).
+const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
+const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 'utf8'});
 const pages = path => JSON.parse(gh('api', path, '--paginate', '--slurp')).flat();
 
 /** When the head became the head: the later of its commit date and the first check suite created for it (a commit made at 10:00 and pushed at 11:00 counts as 11:00; Why (#2386, 28 Oct 2026): Gitar flagged commit date as push time). */

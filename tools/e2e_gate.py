@@ -8,10 +8,17 @@
 `commit`: a human promotion needs a run of THIS build's commit. `latest`: the daily canary auto-promote cannot start a run, so the newest run stands in.
 A cancelled or skipped run says nothing about the product, so it is no verdict. A green run older than two days no longer vouches for anything.
 """
+import importlib.util
 import json
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+# Why (3 Nov 2026, owner: "Both (Recommended)"): every gh call of the release path goes through tools/gh_retry.py, one retry on GitHub's 502/503/504 only.
+_spec = importlib.util.spec_from_file_location('gh_retry', Path(__file__).resolve().parent / 'gh_retry.py')
+gh_retry = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(gh_retry)
 
 MAX_AGE = timedelta(days=2)
 # Jobs of main's build.yml that test our own tooling, not the app a user runs (the job name starts with the called workflow's key): a red one does not stop a beta.
@@ -52,7 +59,7 @@ def tooling_only_red(failed):
 def failed_jobs(repo, run_id):
     """The names of the jobs of a run that did not end well (failed, cancelled, timed out, never started), or None when GitHub cannot say.
     Why (Gitar on #3053): an app job that timed out is reported cancelled, and listing only "failure" let it hide behind a red harness job."""
-    out = subprocess.run(['gh', 'api', '--paginate', f'repos/{repo}/actions/runs/{run_id}/jobs?per_page=100', '--jq', '.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral") | .name'], capture_output=True, text=True)
+    out = gh_retry.run(['api', '--paginate', f'repos/{repo}/actions/runs/{run_id}/jobs?per_page=100', '--jq', '.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral") | .name'])
     return out.stdout.splitlines() if out.returncode == 0 else None
 
 
@@ -79,7 +86,7 @@ def run_verdict(repo, ids):
     Why (1 Nov 2026, a8; mac-07 on beta 9): a run the wait saw open has an id; its verdict comes from reading that run, never from a list that can lag behind it."""
     conclusions = []
     for run_id in ids:
-        out = subprocess.run(['gh', 'api', f'repos/{repo}/actions/runs/{run_id}', '--jq', '.status + " " + (.conclusion // "")'], capture_output=True, text=True)
+        out = gh_retry.run(['api', f'repos/{repo}/actions/runs/{run_id}', '--jq', '.status + " " + (.conclusion // "")'])
         status, _, conclusion = out.stdout.strip().partition(' ')
         if out.returncode != 0 or status != 'completed':
             return 'pending'
@@ -90,7 +97,7 @@ def run_verdict(repo, ids):
 def _newer_main_build(repo, sha, query, jq):
     """Return the first matching main build SHA ahead of sha, or '' when gh yields no match."""
     def gh(*args):
-        return subprocess.run(['gh', 'api', *args], capture_output=True, text=True).stdout.strip()
+        return gh_retry.run(['api', *args]).stdout.strip()
     for head in gh(f'repos/{repo}/actions/workflows/build.yml/runs?branch=main&{query}', '--jq', jq).split():
         if head != sha and gh(f'repos/{repo}/compare/{sha}...{head}', '--jq', '.status') == 'ahead':
             return head
@@ -114,7 +121,10 @@ def latest_beta(repo, gh=None):
     tools/release-stable.sh accepts; a newer build no platform approved is passed over, and the list stops at stable (nothing older is newer than it)."""
     if gh is None:
         def gh(*args):
-            return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
+            done = gh_retry.run(list(args))
+            if done.returncode:
+                raise subprocess.CalledProcessError(done.returncode, ['gh', *args], done.stdout, done.stderr)
+            return done.stdout
     releases = json.loads(gh('release', 'list', '-R', repo, '-L', '30', '--json', 'tagName,isPrerelease,isDraft') or '[]')
     for release in releases:
         if release.get('isDraft'):

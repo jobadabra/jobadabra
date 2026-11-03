@@ -3,7 +3,7 @@
 // list shows which PRs need main merged in (owner, 30 Oct 2026: "let's add a GH label when the PR has conflicts"; "an orange one … not this [yellow] color").
 // Design: one owner (this script), two states (conflict / clean), changed only by GitHub's `mergeable` verdict: CONFLICTING adds the label, MERGEABLE removes
 // it, UNKNOWN (still computing after main moved) leaves it. Runs on a push to main (any open PR may now conflict) and on a PR push (it may be fixed).
-// Usage (workflow .github/workflows/conflict-label.yml): node tools/conflict-label.mjs. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_conflict_label.py.
+// Usage (workflow .github/workflows/conflict-label.yml): node tools/conflict-label.mjs. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {addLabel} from './gitar-label.mjs';
@@ -34,7 +34,8 @@ export function settle(read, {tries = 6, pause = () => {}} = {}) {
   return prs;
 }
 
-const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8'});
+// Why (3 Nov 2026, owner chose "One retry on GitHub errors"): gh goes through tools/gh_retry.py like gitar-label.mjs: one retry on GitHub's 502/503/504 only.
+const gh = (...args) => execFileSync('python3', [fileURLToPath(new URL('./gh_retry.py', import.meta.url)), ...args], {encoding: 'utf8'});
 
 /** Applies one edit: an add goes through gitar-label's addLabel (the label is created only when gh says the repo lacks it); a removal never creates it. */
 export function apply(repo, edit, run = gh) {
