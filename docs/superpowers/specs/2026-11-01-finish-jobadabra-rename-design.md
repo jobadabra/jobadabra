@@ -15,7 +15,7 @@ The Jobadabra app users run today still reads four old internal names. The owner
 | Keychain items `job-pilotto.*` + account `job-pilotto` | renamed to `jobadabra.*`; **read new, then old**; write new | a user's Notion/Google/LinkedIn/site-password items stay found |
 | Updater asset names | **nothing to do**: releases have been `Jobadabra-*` since 31 Oct 2026 and `desktop/lib/updater.js` already reads `Job-Pilotto-*` for older releases (`tests/test_release_file_names.py` guards it); both stay untouched | an older install keeps finding its update |
 | `appId` `app.jobpilotto.desktop` and `productName` "Job Pilotto" in `desktop/package.json` | **stay**; renamed in a later release (parked in Linear) | the microphone permission is tied to the appId; installs already out there update in place |
-| "Job Pilotto Safe Storage" (Electron's Keychain item sealing all saved tokens) | **stays** (`app-identity.js` untouched) | renaming it logs everyone out of Notion and Google |
+| "Job Pilotto Safe Storage" (Electron's Keychain item sealing all saved tokens) | **moved to "Jobadabra Safe Storage" with a migration** (owner, 3 Nov 2026: "It shuold be Jobadabra"): [2026-11-03-keychain-jobadabra-design.md](2026-11-03-keychain-jobadabra-design.md) | a plain rename logs everyone out of Notion and Google; the migration re-seals every token first |
 
 ## Inventory (origin/main, 1 Nov 2026)
 

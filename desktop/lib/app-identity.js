@@ -1,11 +1,14 @@
 // The app is called Jobadabra. Its data folder is ~/Library/Application Support/Jobadabra (%APPDATA%\Jobadabra); installs made before the rename
-// have it under "Job Pilotto" and are moved at first start (migrateDataFolder). The Keychain item that seals the tokens keeps the old name
-// ("Job Pilotto Safe Storage"): renaming it would leave every saved token unreadable (owner, 25 Oct 2026). Guarded by test/app-identity.test.js.
+// have it under "Job Pilotto" and are moved at first start (migrateDataFolder). The Keychain item that seals the tokens is "Jobadabra Safe Storage" on macOS;
+// an install sealed under "Job Pilotto Safe Storage" is moved by lib/keychain-migration.js (Why (3 Nov 2026, owner): "It still points to Job PIlotto keychain/secrests...
+// It shuold be Jobadabra." — chosen: "Yes, with a migration"; it replaces the 25 Oct 2026 rule that kept the old name because a plain rename leaves every token unreadable).
+// Guarded by test/app-identity.test.js and test/keychain-migration.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {keychainSealing, lockName} from './keychain-migration.js';
 
-export const LEGACY_NAME = 'Job Pilotto';   // the data folder before the rename, and the Keychain item's name for good
+export const LEGACY_NAME = 'Job Pilotto';   // the data folder before the rename, and the old Keychain item's name (kept as a backup, never changed)
 export const DATA_NAME = 'Jobadabra';
 
 // Every folder that is "the app's real data", new name first. A guard that keeps tests, twins and captures off the real folder lists all of them;
@@ -28,7 +31,8 @@ export function userDataTime(dir) {
   const settings = readJson(path.join(dir, 'settings.json')), secrets = readJson(path.join(dir, 'secrets.json'));
   const files = DATA_FILES.map(rel => path.join(dir, rel)).filter(file => modified(file));
   if (settings.setupDone) files.push(path.join(dir, 'settings.json'));
-  if (Object.keys(secrets).some(name => name !== 'EXTENSION_TOKEN')) files.push(path.join(dir, 'secrets.json'));
+  // "__sealedBy" (lib/keychain-migration.js) is written at every start, so like EXTENSION_TOKEN it is not a person's data.
+  if (Object.keys(secrets).some(name => name !== 'EXTENSION_TOKEN' && !name.startsWith('__'))) files.push(path.join(dir, 'secrets.json'));
   return files.length ? Math.max(...files.map(modified)) : 0;   // 0: no data; else when it was last written
 }
 
@@ -69,13 +73,19 @@ export function migrateDataFolder(appData, {log = () => {}, store = false, now =
   }
 }
 
-// Call before anything reads userData. userDataOverride: a folder set by a test or demo (it wins, and the real folder is not touched at all).
-// Electron fixes the Keychain item's name ("<app name> Safe Storage") the first time safeStorage seals something, so seal once under the old name, then take the new one (menus, About).
-export function keepLegacyIdentity({app, safeStorage, displayName = 'Jobadabra', userDataOverride = '', log, store = !!process.windowsStore}) {
+// Call before anything reads userData. userDataOverride: a folder set by a test or demo (it wins, and the real folder is not touched at all, nor the new Keychain item).
+// Electron fixes the Keychain item's name ("<app name> Safe Storage") the first time safeStorage seals something. -> the object storage.js seals with (safeStorageCrypto(it)).
+//  - macOS, a real start: lib/keychain-migration.js picks "Jobadabra Safe Storage" and moves an install sealed under the old name (runs at ready, before the storage exists).
+//  - a test or demo folder, Windows (DPAPI: the key has no name) and Linux (not shipped): as before, seal once under the old name, then take the new one (menus, About).
+// TODO(AI): move Linux's libsecret item "Job Pilotto Safe Storage" the same way if Linux ever ships (3 Nov 2026).
+export function keepLegacyIdentity({app, safeStorage, displayName = 'Jobadabra', userDataOverride = '', log, store = !!process.windowsStore, platform = process.platform, exec, isFirstCopy = () => true}) {
   app.setName(LEGACY_NAME);
   if (!userDataOverride) app.setPath('userData', migrateDataFolder(app.getPath('appData'), {log, store}));
+  const keychain = platform === 'darwin' && !userDataOverride
+    ? keychainSealing({app, safeStorage, names: {legacy: LEGACY_NAME, current: DATA_NAME}, log, exec}) : null;
   app.whenReady().then(() => {
-    try { if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString('keychain-name'); } catch { /* no keychain here (CI): nothing to keep */ }
+    if (!keychain) lockName(safeStorage); else if (isFirstCopy()) keychain.atReady();   // a second copy quits at once: no prompt, no rewrite
     app.setName(displayName);
   });
+  return keychain ? keychain.sealer : safeStorage;
 }
