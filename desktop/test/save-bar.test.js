@@ -150,11 +150,23 @@ test('one card that cannot count its changes does not freeze the bar: it counts 
 });
 
 test('a card whose count() still throws after Discard all is dropped, not stuck on the bar', () => {
-  const {bar} = setup();
+  const {bar, note} = setup();
   let discarded = 0;
-  bar.register({id: 'x', tab: 'experience', label: 'Education', count: () => { throw new TypeError('x.map is not a function'); }, save: async () => ({ok: true}), discard: () => { discarded++; }});
+  const handle = bar.register({id: 'x', tab: 'experience', label: 'Education', count: () => { throw new TypeError('x.map is not a function'); }, save: async () => ({ok: true}), discard: () => { discarded++; }});
   assert.equal(bar.count(), 1);
   assert.equal(bar.discardAll({ask: false}), true);
   assert.equal(discarded, 1);
   assert.equal(bar.count(), 0, 'the person asked for it gone');
+  handle.changed();
+  assert.equal(bar.count(), 1, 'a new edit after the discard counts again (Gitar, #3031)');
+  assert.match(note(), /couldn't read its changes/);
+});
+
+test('a card whose discard throws says so on the bar instead of swallowing it', () => {
+  const {bar, card, note} = setup();
+  const one = card('x', 'experience', 'Education');
+  one.edit('Text', 'new');
+  one.source.discard = () => { throw new Error('boom'); };
+  bar.discardAll({ask: false});
+  assert.match(note(), /Couldn't discard: Experience · Education: boom/);
 });

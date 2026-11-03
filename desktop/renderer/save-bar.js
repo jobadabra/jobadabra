@@ -109,8 +109,12 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
     const open = pending(), keys = tabsWith(open);
     if (!open.length) return true;
     if (ask && keys.length > 1 && !globalThis.confirm?.(`Discard your unsaved changes in ${scopeText(keys.map(key => tabs[key]))}?`)) return false;
-    for (const source of open) { try { source.discard(); } catch { /* dropped below: the person asked for it gone */ } if (broken.has(source)) dropped.add(source); }
-    say('');
+    const failed = [];
+    for (const source of open) {
+      try { source.discard(); } catch (error) { failed.push(`${where(source)}: ${error?.message || error}`); }
+      if (broken.has(source)) dropped.add(source);   // the person asked for it gone; a new edit of it (changed()) counts again
+    }
+    say(failed.length ? `Couldn't discard: ${failed.join(' · ')}` : '', failed.length ? 'error' : '');
     follow();
     return true;
   }
@@ -151,7 +155,7 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
       for (const need of ['id', 'count', 'save', 'discard']) if (!source?.[need]) throw new Error(`save-bar source needs ${need}`);
       sources.push(source);
       follow();
-      return {changed: follow};
+      return {changed: () => { dropped.delete(source); follow(); }};
     },
     unsavedIn: () => tabsWith(pending()),
   };
