@@ -64,7 +64,7 @@
 .qr-label { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .qr-source > summary { font-size: var(--fs-sm); color: var(--muted); }
 .qr-drop { justify-self: start; color: var(--muted); }
-.qr-dismiss { justify-self: start; margin-top: var(--space-2, 8px); }   /* Why (2 Nov 2026, owner): a visible secondary button, not a small link: "we don't have an option to dismiss a question" */
+.qr-dismiss { justify-self: start; margin-top: var(--sp-2); }   /* Why (2 Nov 2026, owner): a visible secondary button, not a small link: "we don't have an option to dismiss a question" */
 .qr-foot { padding: var(--sp-3) var(--sp-4); align-items: center; }
 .qr-foot button { min-height: 36px; }
 .qr-foot .primary { display: inline-flex; align-items: center; gap: var(--sp-1); }
