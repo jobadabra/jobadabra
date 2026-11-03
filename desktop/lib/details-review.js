@@ -50,7 +50,11 @@ function ownedElsewhere(outline) {
   return ids;
 }
 // A page's answered lines outside Your details and outside the parts with their own screen: the lines the AI judges and an unclear one is asked from.
-const answered = (outline, page, owned = new Set()) => itemsOf(outline, page).filter(each => !each.home && !owned.has(each.id.slice(page.length + 1)));
+// Lines that are headings (isHeading, below) are no answers: left out here, so neither a learning nor an unclear answer is asked from them.
+const answered = (outline, page, owned = new Set()) => {
+  const lines = itemsOf(outline, page).filter(each => !each.home && !owned.has(each.id.slice(page.length + 1)));
+  return lines.filter(line => !isHeading(line.label, stateOf(splitMark(line.value).text).value, lines.map(each => each.label)));
+};
 // A ❓ that stands for the answer ("Industries: ❓ to confirm"), not one inside an answer ("SRE; ❓ DevOps?").
 const isAsk = (label, text) => /^❓/.test(plain(text).slice(plain(label).length).replace(/^[\s|:—–-]+/, ''));
 const hintOf = text => plain(text).split('❓').slice(1).join(' ').replace(/^[\s|:—–-]+/, '').replace(/^(to confirm|optional)\b\s*[—:-]?\s*/i, '').trim();
@@ -109,7 +113,6 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const taught = (line, formats) => {
     const said = stateOf(splitMark(line.value).text);
     if (said.state !== 'new' && said.state !== 'conflict') return false;   // a guess is shown in place, "Unconfirmed" (18 Oct 2026), not asked
-    if (isHeading(line.label, said.value)) return true;   // an older fill learned a heading as its own answer: never asked
     const ref = {page: 'answers', label: line.label, value: line.value}, base = {question: line.label, value: said.value, details: {where: PAGES.answers, fact: line.label}};
     if (said.state === 'conflict') out.push(item('conflict', ref, {...base, format: choice([said.value, said.other]), details: {...base.details, line: `Two answers: ${said.value} · ${said.other}`}}));
     else out.push(item('taught', ref, {...base, proposal: said.value, format: formatFor({marked: splitMark(line.value).marked ? splitMark(line.value) : null, kept: formats[keyOf(line.label)]}),
@@ -133,10 +136,8 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const owned = ownedElsewhere(outlines.profile);
   const askedAlready = new Set([...conflicts.flatMap(each => each.choices), ...storage.settings().profileUnsure || []].map(clarity.sigOf));
   for (const page of ['profile', 'answers']) {
-    const lines = answered(await outline(page), page, owned), labels = lines.map(each => each.label);
-    for (const line of lines) {
+    for (const line of answered(await outline(page), page, owned)) {
       if (page === 'answers' && taught(line, kept)) continue;
-      if (isHeading(line.label, line.value, labels)) continue;
       if (askedAlready.has(clarity.sigOf(line))) continue;   // already asked as Which is right? / Where does this go?
       unclear(line, {page, label: line.label, value: line.value}, PAGES[page], formatFor({kept: kept[keyOf(line.label)]}));
     }
