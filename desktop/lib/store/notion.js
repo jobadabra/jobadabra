@@ -1,6 +1,6 @@
 // The Notion store, desktop side: the user's text pages (Profile, standard answers, 🧠 Form knowledge) as pages of blocks, through
 // today's lib/notion-* calls unchanged. lib/store/index.js opens it; screens and modules never import it. Spec:
-// docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/store-contract.test.js (against test/fake-notion.js).
+// docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/unit/main/store-contract.test.js (against test/fake-notion.js).
 import * as notion from '../notion.js';
 import {CLOUD, FILES, LINKS} from './caps.js';
 import * as notionRuns from './notion-runs.js';

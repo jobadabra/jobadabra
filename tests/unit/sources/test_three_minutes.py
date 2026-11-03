@@ -230,7 +230,7 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
 class OnePressOneDeadline(Isolated):
     """A Find jobs press runs the job boards' step (src discover) before daily: one deadline from the press for both (owner's 06:21 press,
     26 Oct 2026: 269 s, discover 177 s of it with no clock, then daily's own 3 minutes). Each step counts from the press (the app's
-    JOBADABRA_SEARCH_AT), and discover ends at its share of it (desktop/test/search-steps.test.js gives every step the press)."""
+    JOBADABRA_SEARCH_AT), and discover ends at its share of it (desktop/test/unit/main/search-steps.test.js gives every step the press)."""
 
     def test_a_step_counts_from_the_press_not_from_its_own_start(self):
         with mock.patch.dict(os.environ, {time_budget.SEARCH_AT: str(time.time() - 1)}):

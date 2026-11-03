@@ -2,7 +2,7 @@
 // (owner, 17 Oct 2026: base facts are never asked again). The AI sees the labels only (lib/question-reuse.js); a fact with no value is not listed, so
 // a question about it is still asked. A Your details line still asked (a ❓) is listed with value '' (owner, 18 Oct 2026, "Ask once"): the AI maps a form
 // question to it, and the question is then asked once, as that Your details item, scored by it (renderer/question-filter.js). The AI sees labels only.
-// Guarded by test/question-base-facts.test.js and test/queue-score.test.js.
+// Guarded by test/unit/main/question-base-facts.test.js and test/unit/main/queue-score.test.js.
 import * as contact from './contact.js';
 import * as sections from './profile-sections.js';
 import * as missing from './missing-facts.js';

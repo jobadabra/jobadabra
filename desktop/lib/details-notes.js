@@ -2,7 +2,7 @@
 // line of ~800 characters, an Availability "Target… Treat as a target" line) gets its fact as the value and the rest as its note, once per install. The AI only
 // splits; the code checks the value and each note part are copied from the line and that every word of the line is kept, exactly once (faithfulSplit): else the
 // line keeps its words. Same safety as the kinds tidy (lib/details-kinds.js): copy and backup first, every line read back, else all go back, and the one Undo
-// restores the lines as they were. Guarded by test/details-note-fold.test.js.
+// restores the lines as they were. Guarded by test/unit/main/details-note-fold.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';

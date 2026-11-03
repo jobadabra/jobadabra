@@ -1,5 +1,5 @@
 // Jobs page, the filters in ONE multi-select: the old "Show" menu and the saved-view chips merged, each filter once, ticked together (a job
-// shows when ANY ticked filter holds it). No DOM here so the tests can check it. Guarded by: test/jobs-filters.test.js. Drawn by pages/jobs-filter-menu.js.
+// shows when ANY ticked filter holds it). No DOM here so the tests can check it. Guarded by: test/unit/renderer/jobs-filters.test.js. Drawn by pages/jobs-filter-menu.js.
 import {isInbound} from './origin.js';
 import {VIEWS} from './jobs-board-rules.js';
 import {openMatches} from './jobs-view.js';

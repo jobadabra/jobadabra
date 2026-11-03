@@ -1,7 +1,7 @@
 // The one gate before any fill starts (owner, 26 Oct 2026, hybrid fill step 2): until the person chose how Jobadabra applies (the first-Apply dialog or
 // Settings → Apply → Confirm; renderer/apply-settings-model.js applyChosen), every action in APPLY_ACTIONS answers CHOOSE_FIRST and opens nothing.
 // main.js wraps ipcMain.handle with guard() once, so every handler file is covered by name; preload.cjs holds the pressed call and runs it again after
-// the choice. Not gated: the extension's own Fill in Chrome (the person is already looking at the form). Guard: test/apply-choice-gate.test.js.
+// the choice. Not gated: the extension's own Fill in Chrome (the person is already looking at the form). Guard: test/guards/safety/apply-choice-gate.test.js.
 import {applyChosen} from '../renderer/apply-settings-model.js';
 
 export const APPLY_ACTIONS = Object.freeze(['apply', 'applyOne', 'applyWithClaude', 'sessionRestart', 'sessionReopen', 'sessionResume',

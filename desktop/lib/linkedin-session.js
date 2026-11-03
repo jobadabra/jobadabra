@@ -1,7 +1,7 @@
 // LinkedIn jobs on every Find jobs (owner, 31 Oct 2026: "Opt-in, warned once"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the switch, how often
 // the person was asked, and the LinkedIn session the extension copied from their Chrome. The session is a credential: the Keychain only (lib/keychain.js, so a test or
 // the twin writes its own file, never the owner's), never the settings file, a log, the store or an upload; it is deleted when the switch goes off.
-// Settings: settings.linkedinJobs = {on, asked, declined} (not settings.linkedin: that is the profile import's, lib/linkedin-oauth.js). Guard: test/linkedin-session.test.js.
+// Settings: settings.linkedinJobs = {on, asked, declined} (not settings.linkedin: that is the profile import's, lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 
 export const SERVICE = 'jobadabra.linkedin-jobs.session';

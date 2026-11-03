@@ -1,6 +1,6 @@
 name: CI · Coverage report (nightly, report only)
 # Job: report health
-# Line % per test layer (unit Python, unit JS, integration, e2e) and per folder, and which of the 38 GTM-board journeys have a test at which layer (tools/coverage-report.mjs, guard desktop/test/coverage-report.test.js).
+# Line % per test layer (unit Python, unit JS, integration, e2e) and per folder, and which of the 38 GTM-board journeys have a test at which layer (tools/coverage-report.mjs, guard desktop/test/tooling/ci/coverage-report.test.js).
 # Why (1 Nov 2026, owner via a8: "Yes, nightly report (Recommended)"): nobody could say how much code each layer runs. REPORT ONLY, allowed under the owner's freeze (no new guard, gate or check until 3 green nights):
 # no pull_request trigger, no required check, nothing `needs` it, every job continue-on-error, and a missing source is printed "not measured", never 0%. Started by e2e.yml's night pass 1 (`night_pass: 1/5`,
 # the Worker's slot: no new cron), or by hand: gh workflow run coverage-report.yml.

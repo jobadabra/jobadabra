@@ -1,7 +1,8 @@
 // The model client of the live ladder score: the APP's own Claude Code adapter (lib/ai/claude-code-cli.js), so the score asks the way the app asks: the model alias,
 // `--effort low`, the schema enforced natively with `--json-schema`, one repair on a mismatch. Before 11 Oct 2026 the score used its own CLI call (lib/model.mjs: the full
-// model id, no effort, the schema pasted into the system prompt) and one Datadog sketch answered differently there and in the app. Guard: test/ladder-score-path.test.js.
+// model id, no effort, the schema pasted into the system prompt) and one Datadog sketch answered differently there and in the app. Guard: test/unit/main/ladder-score-path.test.js.
 // Never a key: the engine check (assertNoApiSpend in lib/ladder-score.mjs) runs before this client is made, and the adapter's `claude -p` bills the plan.
+// Job: keep the scorecard
 import {cliClient} from '../../lib/ai/claude-code-cli.js';
 import {realClaude} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 

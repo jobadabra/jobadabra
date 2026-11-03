@@ -2,7 +2,7 @@
 // "Yes, write them too"): ONE AI call words a short question and a hint for each field it is given, kept in settings under the caller's key per signature, so a set is
 // worded once. Callers: lib/contact-review.js (the empty contact fields, also rated 0-3 and checked against the saved lines) and lib/missing-facts.js wording (the base
 // facts of lib/fact-catalog.js). The code only validates the shape; no AI or a failed call returns null and the caller asks by the field's own name. No typed question
-// text anywhere. Guarded by test/queue-wording.test.js (the class loop) and test/contact-review.test.js.
+// text anywhere. Guarded by test/unit/main/queue-wording.test.js (the class loop) and test/unit/main/contact-review.test.js.
 import {MODEL} from './question-reuse.js';
 
 const ITEM = {field: {type: 'string'}, question: {type: 'string'}, hint: {type: 'string'}};

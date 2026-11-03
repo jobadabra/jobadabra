@@ -1,7 +1,7 @@
 // Which upload slot of a form takes the applicant's CV as a document (owner via cc, 11 Oct 2026, Louis Vuitton jobs: the page's own "Import data from my CV" input took the file and
 // opened "your fields may be replaced, continue?" over the form). The page's structure finds the slots (extension/page/upload.js cvCandidates); Claude sees their titles and answers with
 // one of them, or none: never a feature that reads the CV to fill the form in, never a cover letter or another document. Kept per set of titles. No AI, or none: the operator
-// behaves as before. Titles only, never a value. Guarded by test/upload-pick.test.js.
+// behaves as before. Titles only, never a value. Guarded by test/unit/main/upload-pick.test.js.
 import {keep, keptValue, readKept} from './kept-decisions.js';
 export const MODEL = 'claude-haiku-5-5';
 export const FILE = 'upload-picks.json';

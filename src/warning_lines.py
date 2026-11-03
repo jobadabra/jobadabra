@@ -2,7 +2,7 @@
 
 A run that logs a warning-like line (Notion busy with 429, a step skipped or failed...) must also record it in run['warnings'], so the row's Status ("Warnings") and the panel
 (which reads the log) agree by construction (beta 2, 25 Oct 2026: the list said "Completed", the panel "Completed with warnings" for a logged Notion 429).
-Guarded by tests/unit/notion/test_warning_lines.py and desktop/test/warning-lines-parity.test.js, which read the same cases (tests/fixtures/warning_lines.json).
+Guarded by tests/unit/notion/test_warning_lines.py and desktop/test/unit/renderer/warning-lines-parity.test.js, which read the same cases (tests/fixtures/warning_lines.json).
 """
 import re
 

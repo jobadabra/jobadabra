@@ -1,5 +1,5 @@
 // Proactive, once (owner, 18 Oct 2026: "be proactive"): right after setup the review drawer opens on the first missing fact (lib/missing-facts.js), so a fresh
-// install is asked the most important one at once; the Jobs card keeps counting the rest. Nothing missing, or already offered: nothing opens. Guarded by test/missing-facts-open.test.js.
+// install is asked the most important one at once; the Jobs card keeps counting the rest. Nothing missing, or already offered: nothing opens. Guarded by test/unit/renderer/missing-facts-open.test.js.
 
 export const firstMissing = list => (list || []).find(each => each.details?.kind === 'missing');   // list: Fill your details' items (questionsNow().details)
 

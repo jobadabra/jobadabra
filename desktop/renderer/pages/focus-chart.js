@@ -1,5 +1,5 @@
 // Focus, Today's progress: applications per day over the last 14 days (moved from pages/focus.js, 26 Oct 2026). In the page's first paint as last
-// drawn (renderer/late-blocks.js). Guarded by: test/late-blocks.test.js.
+// drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js.
 import {el} from '../components.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';

@@ -1,6 +1,6 @@
 // "Import from LinkedIn" (Settings → Profile → CV, ⌘K, and the setup's CV step as its third way in): the dialog that says what is read, waits for the person's consent on LinkedIn's
 // own page, then shows "What came in" as rows to tick. Data and rules: lib/linkedin-import*.js (IPC linkedinImport*); spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md.
-// Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/linkedin-import-page.test.js.
+// Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/unit/renderer/linkedin-import-page.test.js.
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {plainError} from '../run-warnings.js';

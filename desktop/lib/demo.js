@@ -7,7 +7,7 @@ import path from 'node:path';
 import {DEFAULT_PORT} from './server-listen.js';
 
 // The folder the demo reads its fictional data from: the app's demo/, or JOBADABRA_DEMO_DIR (the product media,
-// recorded in the private site repo). Every demo read goes through demoPath (desktop/test/demo-dir.test.js).
+// recorded in the private site repo). Every demo read goes through demoPath (desktop/test/unit/main/demo-dir.test.js).
 export const folder = (here, env = process.env) => env.JOBADABRA_DEMO_DIR || path.join(here, 'demo');
 export const demoPath = (here, name) => path.join(folder(here), name);
 
@@ -73,7 +73,7 @@ export const cloudRuns = (settings, demo) => !demo && !!settings?.cloud?.repo;
 
 // Which demo sessions' forms count as open in Chrome (the formsOpen check): those with a form state in review.json. No extension reports in the demo, so
 // the Applying card said "Checking Chrome for this application…" and then "Chrome isn't reporting" on every demo screen (owner, 24 Oct 2026: "Let it
-// show a more real/relevant status as form opened"). Guard: desktop/test/demo-forms-open.test.js.
+// show a more real/relevant status as form opened"). Guard: desktop/test/unit/main/demo-forms-open.test.js.
 // settings.demoLinkOff: a shot of the "connection off" card (npm run shot --settings '{"demoLinkOff":true}').
 // settings.demoLinkSilent: the app's socket is open and Chrome reports nothing (Chrome closed, or its extension off): the "Chrome isn't reporting" card, once the window's clock is past WAIT_MS.
 // Why (1 Nov 2026, R3): the e2e step "a silent Chrome in Standard automation" moved to integration/app/screen-apply-silent.test.js, which needs this state without a real Chrome.

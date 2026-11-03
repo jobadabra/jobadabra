@@ -2,7 +2,7 @@
 // can read a prompt, so the adapter keeps one already-started process per kind of question (same args: model, system prompt, schema) and
 // hands the next such question to it (measured: 1.1-1.7 s instead of 2.6-3.3 s for a page-kind ask). ONE process per question: a spare
 // answers one prompt and exits, it never sees an earlier page (a long-lived process was rejected: the model would see earlier pages).
-// A spare not used within `idleMs` is killed; at most `max` wait at once; all are killed when the app exits. Guard: test/cli-spares.test.js.
+// A spare not used within `idleMs` is killed; at most `max` wait at once; all are killed when the app exits. Guard: test/unit/main/cli-spares.test.js.
 export function sparePool({max = 3, idleMs = 45000} = {}) {
   const waiting = new Map();   // key -> {child, timer}
   const drop = key => {

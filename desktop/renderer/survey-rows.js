@@ -1,7 +1,7 @@
 // The Profile's Voluntary surveys as one row per question with its fixed list and Decline (owner, 17 Oct 2026, decision B), the words besides the choice in a note under it
 // and instructions for the AI in "Notes for the AI"; a line that is none of these stays as written. Drawn in Settings → Profile → Your details (pages/experience-profile.js);
 // the lines are the model's (survey-model.js). Reads as label/value rows with the note muted under the value; edits as label | compact list | "+ note" (folded, open when
-// it has text), one "Notes for the AI" fold, other lines as wrapped boxes that never cut a saved value. Guarded by test/survey-rows.test.js and test/survey-design.test.js.
+// it has text), one "Notes for the AI" fold, other lines as wrapped boxes that never cut a saved value. Guarded by test/unit/renderer/survey-rows.test.js and test/unit/renderer/survey-design.test.js.
 import {el, pill} from './components.js';
 import {icon} from './icons.js';
 import {answerControl} from './question-control.js';

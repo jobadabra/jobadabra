@@ -1,6 +1,6 @@
 // Demo mode's Find jobs: the engine step of a search plays a short script of fictional log lines (about 25 s), so the Find jobs card, the task, the
 // log and the list all run for real on made-up work. Nothing is read and nothing leaves the Mac. The product media (hero video) records this.
-// Owns: the script, which engine steps it replaces, and the fresh demo's empty list. Guarded by: test/find-first-run.test.js.
+// Owns: the script, which engine steps it replaces, and the fresh demo's empty list. Guarded by: test/unit/renderer/find-first-run.test.js.
 
 // [wait before the line (ms), the engine's line]: first jobs, every employer, the job boards, more employers, in the engine's own words and counts.
 export const SCRIPT = [

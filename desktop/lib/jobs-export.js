@@ -1,6 +1,6 @@
 // Export job list (Pro): the jobs a person chose, as the columns they see (CSV or JSON) and the one gate. Pure: the handler reads the jobs through the
 // store and writes the file. A CSV cell that starts with = + - @ (or a tab/return) gets a leading quote so a spreadsheet never runs a job title as a formula.
-// No scoring words, no AI text: details live in Reports. Guard: test/jobs-export.test.js.
+// No scoring words, no AI text: details live in Reports. Guard: test/unit/main/jobs-export.test.js.
 import path from 'node:path';
 
 export const COLUMNS = [

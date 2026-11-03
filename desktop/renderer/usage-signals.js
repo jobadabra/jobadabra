@@ -1,4 +1,4 @@
-// Usage signals for the PostHog funnel: seconds spent on a screen (with input vs idle) and which named control was clicked, where. Numbers and fixed words only, never text. Guarded by test/usage-signals.test.js.
+// Usage signals for the PostHog funnel: seconds spent on a screen (with input vs idle) and which named control was clicked, where. Numbers and fixed words only, never text. Guarded by test/unit/renderer/usage-signals.test.js.
 export const IDLE_AFTER_S = 60;   // no input for this long: the screen is open but nobody is using it
 const CONTROL = /^[a-z][a-z0-9_-]{0,29}$/;
 const NAME_ATTRS = ['data-command', 'data-palette', 'data-view', 'data-settings-go'];

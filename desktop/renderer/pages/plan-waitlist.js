@@ -1,5 +1,5 @@
 // Settings → Plan, the Pro card while Pro is not open (owner, 17 Oct 2026): what Pro is, "Join the Pro waitlist" (a dialog asking only for an e-mail), then "You're on the waitlist (<email>)".
-// The address goes to the website's waitlist through the main process (lib/pro-waitlist.js). PRO_CHECKOUT (plan-line.js) will send the button to the payment instead. Guard: test/pro-waitlist.test.js.
+// The address goes to the website's waitlist through the main process (lib/pro-waitlist.js). PRO_CHECKOUT (plan-line.js) will send the button to the payment instead. Guard: test/unit/renderer/pro-waitlist.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {$, message, show} from './core.js';

@@ -6,7 +6,7 @@
 //   failed-no-form      the extension could not reach the form
 //   failed-account      it stopped at the sign-in or sign-up: a bot check, a code, something only you could give
 //   failed-abandoned    not submitted for any other reason (the tab closed, the session ended, you chose not to)
-// Cancelled or restarted sessions are not an application's end: no word. Guard: test/application-result.test.js.
+// Cancelled or restarted sessions are not an application's end: no word. Guard: test/unit/main/application-result.test.js.
 export const RESULT_STATES = ['submitted-clean', 'submitted-assisted', 'submitted-claude', 'failed-no-form', 'failed-account', 'failed-abandoned'];
 
 // session: the app's session record (kind, outcome, stuck); state: the form's last review state (its filled fields say who filled each).

@@ -1,7 +1,7 @@
 // Sets new wording on a paragraph's own lines, measured from the original: where an item sits (findItem), how it is set (measure: left
 // edges, leading, right edge, word gap, letter tightness, justified or ragged, each word's font and colour) and the new lines as glyph runs
 // (setWords + lineOps). Pure: reads what read.js returns, hands write.js plain line operations. Positions are points from the page's top left.
-// Guards: test/pdf-edit.test.js, test/cv-inplace.test.js.
+// Guards: test/unit/main/pdf-edit.test.js, test/unit/cv/cv-inplace.test.js.
 
 // Letters compared when finding an item: spaces, soft hyphens and hyphens skipped, quotes and dashes folded, **bold** marks ignored.
 const fold = ch => /[\s­\-‐-―−*]/.test(ch) ? '' : /[‘’‚′`]/.test(ch) ? "'" : /[“”„″]/.test(ch) ? '"' : ch;

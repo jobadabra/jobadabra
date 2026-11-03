@@ -2,7 +2,7 @@
 // into a test form; the tripwire only sees it after, and a site may keep a typed draft). One list (the tripwire's: Map value -> kind) and one matcher serve both: the tripwire
 // (desktop/e2e/lib/privacy-tripwire.mjs) reads what the page holds, answerForm (extension.js) withholds an answer that matches. TEST HARNESS ONLY: the list arrives from
 // the e2e harness through JOBADABRA_E2E_OWNER_VALUES, honoured with JOBADABRA_E2E (desktop/lib/server-env.js); no value, no code path. Only kinds and field ids leave here.
-// Guards: app-core/test/owner-guard.test.js, desktop/test/owner-guard-wiring.test.js.
+// Guards: app-core/test/owner-guard.test.js, desktop/test/guards/safety/owner-guard-wiring.test.js.
 
 export const plain = (text) => String(text || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const lastNine = (digits) => digits.slice(-9);

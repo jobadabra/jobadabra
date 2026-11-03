@@ -1,5 +1,5 @@
 // The words of "Let the Claude or ChatGPT desktop app answer your questions" (owner, 2 Nov 2026): the banner, the instruction that is copied, and what a press says afterwards. One file for every surface
-// (the What we learned drawer and page, the Focus and Jobs rows, ⌘K), free of the DOM so test/desktop-ai.test.js checks them. The detection and the launch are lib/desktop-ai.js.
+// (the What we learned drawer and page, the Focus and Jobs rows, ⌘K), free of the DOM so test/unit/renderer/desktop-ai.test.js checks them. The detection and the launch are lib/desktop-ai.js.
 // Why (2 Nov 2026, owner): a friend's Claude Desktop answered the questions queue on its own on a Windows PC; we offer it, with a copied instruction and a button, instead of leaving it to chance.
 export const KEY = 'desktop-ai:answer';   // the Suggestions answer key: Not now hides it 14 days like every other card (lib/suggestion-answers.js)
 export const NAMES = {claude: 'Claude', openai: 'ChatGPT'};

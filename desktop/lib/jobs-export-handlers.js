@@ -1,5 +1,5 @@
 // The "Export job list" IPC (Pro): checks the licence in the main process (the window's lock is only a hint), reads the jobs through the store (SQLite or Notion,
-// lib/pipeline-commands.js jobs), asks where to save and writes the file. Never touches anything but the file the person picked. Guard: test/jobs-export.test.js.
+// lib/pipeline-commands.js jobs), asks where to save and writes the file. Never touches anything but the file the person picked. Guard: test/unit/main/jobs-export.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import * as pipeline from './pipeline.js';

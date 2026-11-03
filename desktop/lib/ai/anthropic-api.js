@@ -1,5 +1,5 @@
 // The Anthropic API engine ('api'): the user's ANTHROPIC_API_KEY through the official SDK, the only `new Anthropic` in the app
-// (test/ai-contract.test.js fails on one elsewhere). Lossless: the caller's params go to the SDK as written (cache_control kept; only a schema's maxItems/minItems come out, forApi), and the
+// (test/unit/main/ai-contract.test.js fails on one elsewhere). Lossless: the caller's params go to the SDK as written (cache_control kept; only a schema's maxItems/minItems come out, forApi), and the
 // SDK's answer and errors come back as they are, with usage.billing 'api'. Free AI (lib/ai-free.js) still works: the SDK
 // follows ANTHROPIC_BASE_URL itself, so no baseURL is set here.
 import Anthropic from '@anthropic-ai/sdk';

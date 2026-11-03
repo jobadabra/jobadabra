@@ -1,7 +1,7 @@
 // A node:test reporter that prints one line per test FILE, OK or FAILED, and the full error of every failing test (owner, 10 Oct 2026: "100-1000 lines with OK/Failed
 // and the error if there is one": without a terminal node --test prints TAP, 6 lines a test, 10,000 lines for this suite). Used by `npm test` (package.json).
 // Live (owner, 1 Nov 2026: "I don't see any live logs/updates of what being run ... to be live and summarized"): a start line, a progress line about every 25 s of quiet or every 10% of the files,
-// and a failing test at once with its error; the end summary below is unchanged (errors first, one line per file, the total). Guarded by test/reporter-by-file.test.js.
+// and a failing test at once with its error; the end summary below is unchanged (errors first, one line per file, the total). Guarded by test/unit/main/reporter-by-file.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 

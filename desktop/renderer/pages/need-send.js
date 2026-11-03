@@ -1,6 +1,6 @@
 // How an answer leaves a "Needs your attention" row: through the extension into the form (sessionFillField, as "Use" does), else, with
 // Claude help on, in one batch message for Claude (the footer's "Send all N answers", hidden while the takeover is off: owner, 15 Oct 2026).
-// Moved out of session-needs.js on 27 Oct 2026 (pure move + sendAnswer). Guarded by test/resume-hidden.test.js, test/need-choice.test.js.
+// Moved out of session-needs.js on 27 Oct 2026 (pure move + sendAnswer). Guarded by test/guards/rules/resume-hidden.test.js, test/unit/renderer/need-choice.test.js.
 import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {say} from './session-log.js';

@@ -5,9 +5,9 @@
 //
 // Kept free of chrome.* so the decisions can be tested (like report-alarm.js): the callers pass URLs.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. A later page is a form, an account page, or neither; the same page ignores the fill mark and a trailing slash (desktop/test/extension-tab-pages.test.js).
-//  2. A fill may keep drawing while the form moves inside its own site, never onto another site (desktop/test/extension-tab-pages.test.js).
-//  3. pageRole is the structure rule: it answers only when no AI kind exists (desktop/test/page-kind.test.js).
+//  1. A later page is a form, an account page, or neither; the same page ignores the fill mark and a trailing slash (desktop/test/unit/extension/extension-tab-pages.test.js).
+//  2. A fill may keep drawing while the form moves inside its own site, never onto another site (desktop/test/unit/extension/extension-tab-pages.test.js).
+//  3. pageRole is the structure rule: it answers only when no AI kind exists (desktop/test/unit/main/page-kind.test.js).
 
 import {buttonPhrase} from './alias-schema.js';
 
@@ -56,7 +56,7 @@ export const neverForm = url => {
 // A page with no form but an "Apply" button (the posting first, the form behind it): which button to press, by rule, never by
 // guess. candidates: [{index, text, tag, area, visible, disabled, href, submits}] read in the page. The text must be an apply phrase
 // on its own (a button, not a sentence), and never sign-in, "Easy Apply", "Apply with LinkedIn", a mail link or Submit.
-// → the candidate, or null. Tested in desktop/test/extension-tab-pages.test.js.
+// → the candidate, or null. Tested in desktop/test/unit/extension/extension-tab-pages.test.js.
 const APPLY_PHRASE = /^(to apply|apply( now| here| online| today)?( for (this|the) (job|role|position|opening))?|apply to this (job|role|position)|i['\u2019]?m interested|start (your |the )?application|jetzt bewerben|online bewerben|bewerben|zur bewerbung|bewerbung starten|postuler( maintenant| en ligne)?|candidater|postuler [a\u00e0] (ce|cette) (poste|offre)|candidati( ora)?|invia candidatura|inscribirme|aplicar( ahora)?)[\s\p{P}\p{S}]*$/iu;   // any trailing marks: "Postuler »" (Coop, 8 Oct 2026), "Apply →", "Apply ❯"
 const NOT_APPLY = /sign.?in|log.?in|register|create (an )?account|submit|save|share|alert|easy apply|apply with |already applied|follow|subscribe/i;
 // The button the page-kind AI named: the same floor, except a board's own "Easy apply" (owner, 11 Oct 2026: the AI says whether it applies here or through another site's account;
@@ -80,12 +80,12 @@ export function pickApplyButton(candidates = [], phrases = []) {
 
 // What may be named: every control the page sketch lists (page-reads.js pageSketchOf reads the page with this same selector) and the named-button finder searches with it, so the AI is never
 // told about a control the finder cannot find (10 Oct 2026, Hornbach: "Jetzt bewerben (ohne Anmeldung)" is an <a> with no href and a script click handler; the finder listed only a[href]).
-// One string for both: desktop/test/named-controls.test.js. The phrase path (pickApplyButton, no AI answer) keeps its own narrower list (fill-flow.js PAGE_BUTTONS).
+// One string for both: desktop/test/unit/extension/named-controls.test.js. The phrase path (pickApplyButton, no AI answer) keeps its own narrower list (fill-flow.js PAGE_BUTTONS).
 export const NAMED_BUTTONS = 'button, input[type=submit], [role=button], a';
 // A button the page-kind AI NAMED (the start route's: Workday's "Apply Manually"): found by its own text, never ranked against the built-in apply words,
 // which would pick the posting's plain "Apply" behind the dialog (10 Oct 2026: 109 vs 103 on Richemont, Red Hat, Chanel). The AI decides which button;
 // structure only finds it (same words, case and spacing aside). Floors as above: never a Submit, a sign-in or "apply with…", a mail link, a hidden or disabled one.
-// → the candidate, or null (not on the page: nothing is pressed, never a guess). Tested in desktop/test/extension-tab-pages.test.js.
+// → the candidate, or null (not on the page: nothing is pressed, never a guess). Tested in desktop/test/unit/extension/extension-tab-pages.test.js.
 export function pickNamedButton(candidates = [], named = '') {
   const same = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const wanted = same(named);

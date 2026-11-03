@@ -5,7 +5,7 @@
 // A read that began before the latest write is never painted: it may hold the old stage (12 Oct 2026: a 30 s job-list read started before a
 // Cancel ended 8 s after it, and the cancelled job showed Applying again, its session gone: "still marked Applying but has no open session").
 // Writes close together share one read again (each read is a Python run; ~10 at once slowed every read to 60 s, 7 Oct 2026).
-// Guarded by: test/job-writes.test.js.
+// Guarded by: test/unit/renderer/job-writes.test.js.
 export function jobWrites({read, paint}) {
   let writes = 0, rereading = null;
   const reread = async () => {

@@ -1,7 +1,7 @@
 // The store on this Mac, desktop side: the user's texts are Markdown files in the app's folder (profile.md, answers.md, knowledge.md),
 // the same files the engine's sqlite adapter reads (lib/pipeline-env.js passes their paths). Tracked records (applications, runs…) live
 // in the engine's data/tracker.sqlite and are reached through engine commands, never opened here. Spec:
-// docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/store-contract.test.js.
+// docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/unit/main/store-contract.test.js.
 import * as engine from './engine.js';
 import * as md from './markdown-page.js';
 import {fromRecord} from '../run-rows.js';

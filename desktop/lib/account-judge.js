@@ -3,7 +3,7 @@
 //   ready   BEFORE the account button is pressed: is everything the page needs from this person given?  ready | needs_person (which control) | unsure; plus bot_check
 //   result  AFTER the press: what became of it?  created | needs_code | already_exists | refused (which control needs the person) | unsure
 // The model sees a sketch of the page (controls with their state but never their values, buttons and links, the page's short visible texts such as its error
-// messages, the host names of its frames) and may only name a control the sketch lists. Without AI nothing is pressed: the person finishes. Guard: test/account-judge.test.js.
+// messages, the host names of its frames) and may only name a control the sketch lists. Without AI nothing is pressed: the person finishes. Guard: test/unit/main/account-judge.test.js.
 import {MODEL} from './ladder/rung2-sketch.js';
 import {VALUE_CLASSES} from './ladder/value-class.js';
 

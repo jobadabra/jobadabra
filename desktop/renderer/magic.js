@@ -1,5 +1,5 @@
 // The shared magic effect: put data-magic on a card and it gets a wand glow under the cursor, a sparkle trail while the pointer moves
-// and a burst when pressed. Mouse and pen only, off with reduced motion. Look: magic.css. Guard: test/welcome-magic.test.js.
+// and a burst when pressed. Mouse and pen only, off with reduced motion. Look: magic.css. Guard: test/unit/renderer/welcome-magic.test.js.
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;   // read at each event, so a changed setting counts at once
 
 // Whether the effect runs for this pointer: never with reduced motion, never under a finger.

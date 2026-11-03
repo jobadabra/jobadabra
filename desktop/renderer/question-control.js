@@ -1,7 +1,7 @@
 // The one answer control for a question, drawn from its kind (renderer/question-kind.js formatFor): a text field, a paragraph box, Yes / No, the form's own
 // options (a segmented choice when they are few and short, else a menu), several picks, a date or an amount (renderer/question-control-values.js). Built from the shared parts (.segmented, a native select): no CSS
 // of its own. Used by Jobs → Answer once and Profile → Application answers; the value it gives is the meaning the fill maps to each form's own options.
-// Guarded by test/question-control.test.js.
+// Guarded by test/unit/renderer/question-control.test.js.
 import {el} from './components.js';
 import {COMPOSITE, KINDS, KIND_NAMES, joinPicks, picksOf} from './question-kind.js';
 import {isAsked} from './work-eligibility.js';

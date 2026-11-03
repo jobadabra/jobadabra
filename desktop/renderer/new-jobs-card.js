@@ -1,5 +1,5 @@
 // A finished search that found new jobs but sent no digest (they are not scored yet): its result card, built from the engine's "New job: <title> | <company> | <url>" log lines.
-// Guarded by desktop/test/new-jobs-card.test.js (the card exists for every such run; a digest, when there is one, wins).
+// Guarded by desktop/test/unit/renderer/new-jobs-card.test.js (the card exists for every such run; a digest, when there is one, wins).
 const NEW_JOB = /^New job: (.+?) \| ([^|]*?) \| (\S*)(?: \| (\d+))?$/;   // the fit after the address: only a run that already has the scores (Always on)
 
 export const newJobItems = lines => (lines || []).map(line => NEW_JOB.exec(String(line))).filter(Boolean)

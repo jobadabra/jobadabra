@@ -88,7 +88,7 @@ Reuse: `.run-card-title/-stats/-row`, `.callout`, empty-state, chips from compon
 every state; Recent activity row still written.
 
 ## Tests (first, watch them fail)
-- `desktop/test/app-scenarios.test.js`: wizard done → Find jobs → first job row in the store and in the list **before the batch ends** (fake engine that prints the
+- `desktop/test/unit/main/app-scenarios.test.js`: wizard done → Find jobs → first job row in the store and in the list **before the batch ends** (fake engine that prints the
   slice lines, then waits).
 - tests/unit/sources/test_first_jobs.py: slice picks fast ATS + best places first; first save triggers a sync; same AI call count as without the flag; unscored listed in a first run.
 - A loop test over the action siblings (palette, Actions, onboarding, KIND names): no "Find new employers"/"Refresh jobs" label left.

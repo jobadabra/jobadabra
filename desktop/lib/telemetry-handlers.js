@@ -23,7 +23,7 @@ import {causedByPlant} from './planted.js';
 
 // What a run that did not end with 0 reports as failed, or null for a run stopped from outside (no exit code, not the app's watchdog: the
 // person's Stop, quitting the app): 20 Oct 2026, such runs were reported as failed with their last ordinary line as the "error"
-// ("Enriched 100 of 100 job(s); 0 failed", "Shared 0 employer feeds…"). Guard: test/telemetry-run-end.test.js.
+// ("Enriched 100 of 100 job(s); 0 failed", "Shared 0 employer feeds…"). Guard: test/unit/main/telemetry-run-end.test.js.
 export function runFailure({code, timedOut, tail = [], errorKind = ''}) {
   if (code === null && !timedOut) return null;
   const error = timedOut ? `stopped by the app: ${timedOut}` : [...tail].reverse().find(line => /error|exception|traceback|failed|refused/i.test(line)) || tail.at(-1) || errorKind || `exit ${code}, no error line`;   // errorKind: a run whose output is private (a store call) has no tail (Sentry 2C)

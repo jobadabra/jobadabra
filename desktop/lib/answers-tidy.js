@@ -1,7 +1,7 @@
 // Removes the junk an older fill saved on the answers page, for every user, through the store interface (SQLite file or Notion page): an open
 // question whose "label" is a field id (looksLikeFieldId, by shape) and an open question the AI judged one-job once the job it came from is kept
 // with its verdict (settings.questionVerdicts, shown in that job's drawer). Reusable, covered and answered rows are never touched.
-// Owner, 17 Oct 2026: "Auto-drop field ids for all", "Also delete one-job questions". Guarded by test/answers-tidy.test.js.
+// Owner, 17 Oct 2026: "Auto-drop field ids for all", "Also delete one-job questions". Guarded by test/unit/main/answers-tidy.test.js.
 import {openStore} from './store/index.js';
 import {isQuestionLine, parseLine} from './questions.js';
 import {cached} from './question-verdicts.js';

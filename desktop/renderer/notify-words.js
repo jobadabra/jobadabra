@@ -1,5 +1,5 @@
 // What the window says about "Tell me by" (Settings → Notifications, the Actions header, Connections): why a switch does nothing (no address, no bot, our sender
-// switched off, the person unsubscribed), and whether Telegram is still required. Pure (no DOM), so test/notify-choice.test.js runs it in Node.
+// switched off, the person unsubscribed), and whether Telegram is still required. Pure (no DOM), so test/unit/renderer/notify-choice.test.js runs it in Node.
 
 const NAMES = {email: 'Email', telegram: 'Telegram'};
 
@@ -81,7 +81,7 @@ const WAYS = 'by e-mail or Telegram';
 /**
  * The pop-ups (lib/notify-moments.js moments, renderer/notify-detect.js claims) as words: {title, body, go, later, ask}. `ask` is the control: 'email' (a field for the address), 'resend' or 'notifications' (from
  * `state` = notifyState's answer). Spec docs/superpowers/specs/2026-11-02-notify-moments-design.md: every line is a delivery fact of today (matches: an e-mail per run or the Telegram digest; interview invites
- * at once, other Gmail results in the daily digest; a recruiter reminder on Telegram at once and by e-mail in the digest) and none says "reply" for Gmail (the check cannot tell). Guard: test/notify-moment-words.test.js.
+ * at once, other Gmail results in the daily digest; a recruiter reminder on Telegram at once and by e-mail in the digest) and none says "reply" for Gmail (the check cannot tell). Guard: test/unit/renderer/notify-moment-words.test.js.
  */
 export function momentWords(moment, state = null) {
   const ask = ASK[stateOf(state || {})];

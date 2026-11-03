@@ -1,6 +1,6 @@
 // The app the night's extension talks to (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): a small local server that answers like the Mac's, from the batch only. /extension/me and /extension/kit are keyed by the job's address (its form and the pages below it count as the job);
 // every other call answers {} (no AI judging, no Notion, no Keychain, no site password: phase 1 has no accounts). It keeps what the fill reported: the run record's counts and the page's role (an account or sign-in page is a wall).
-// It holds no secret and no network access beyond 127.0.0.1. Guard: desktop/test/ready-fill.test.js.
+// It holds no secret and no network access beyond 127.0.0.1. Guard: desktop/test/unit/ready-fill/ready-fill.test.js.
 import http from 'node:http';
 // The app's own rule for a job's form address (desktop/lib/form-address.js); in the image it sits at /desktop/lib, which this same path reaches from /night.
 import {isFormOf} from '../../desktop/lib/form-address.js';

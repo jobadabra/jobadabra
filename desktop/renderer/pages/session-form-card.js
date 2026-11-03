@@ -1,6 +1,6 @@
 // Session page, "Form completion" card and "Before you submit" box (knockout questions, which CV goes in).
-// Moved out of session-needs.js, which calls showFormCard from showFormState. Guarded by test/form-tab-closed.test.js
-// and test/need-proposal.test.js (npm test in desktop/).
+// Moved out of session-needs.js, which calls showFormCard from showFormState. Guarded by test/unit/main/form-tab-closed.test.js
+// and test/unit/renderer/need-proposal.test.js (npm test in desktop/).
 import {el, pill} from '../components.js';
 import {accountCardOf, isSubmitted} from '../session-state.js';
 import {KNOCKOUT} from '../knockout.js';

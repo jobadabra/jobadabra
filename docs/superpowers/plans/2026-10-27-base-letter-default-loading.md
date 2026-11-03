@@ -10,7 +10,7 @@ Canonical spec: [2026-10-27-cover-letter-priority.md](../specs/2026-10-27-cover-
 - `desktop/lib/letter-availability.js`: tailored-first availability and approved-base status copy.
 - `desktop/renderer/pages/letter-fallback.js`: remove obsolete setting behavior.
 - `desktop/renderer/pages/base-letter.js`, `desktop/renderer/index.html`, and `desktop/renderer/style.css`: remove checkbox markup and add card-level busy/status treatment.
-- `desktop/test/letter-fallback.test.js`, `desktop/test/cover-letter.test.js`, `desktop/test/job-letter.test.js`, `desktop/test/journeys-letter-fallback.test.js`, and `desktop/test/base-letter.test.js`: assert compatibility, delivery precedence, and explicit drafting state behavior.
+- `desktop/test/unit/renderer/letter-fallback.test.js`, `desktop/test/unit/main/cover-letter.test.js`, `desktop/test/unit/renderer/job-letter.test.js`, `desktop/test/unit/main/journeys-letter-fallback.test.js`, and `desktop/test/unit/renderer/base-letter.test.js`: assert compatibility, delivery precedence, and explicit drafting state behavior.
 - `desktop/docs/ui/` plus PR body assets: fictional visual evidence only.
 
 ## Bounded tasks

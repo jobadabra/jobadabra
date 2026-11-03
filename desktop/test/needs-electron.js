@@ -1,7 +1,7 @@
 // The one skip for a desktop test that renders the app in electron: it names a missing capability (no electron binary, no display), never "CI".
 // Why (31 Oct 2026, owner: "was this a flaky e2e? OR what's the root cause of this ? How did it endup in main ?"): `skip: process.env.CI` let palette-one-row-per-card
 // go red on main with no run ever executing it; CI now installs electron and runs these under xvfb (tests-desktop.yml), and
-// test/skips-name-a-capability.test.js fails when a skip says CI instead.
+// test/guards/rules/skips-name-a-capability.test.js fails when a skip says CI instead.
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 

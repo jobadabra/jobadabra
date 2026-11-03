@@ -1,7 +1,7 @@
 // What the AI concludes about Work eligibility is saved when Your details opens, never left as a draft (owner, 28 Oct 2026, "Save them automatically": leaving Profile
 // asked "Save your changes?" for lines the person never typed). Two conclusions, both written with a backup first and an Undo after (settings.eligibilityFold, shown with the
 // tidy's Undo): the older lines the AI read as eligibility fold into Nationality and the zones (#2322, lib/eligibility-older.js), and a saved Nationality opens its zones (#2346:
-// Europe and the US by the fixed table, any other country by the AI, lib/zone-suggest.js). Only the person's own edits are drafts. Guarded by test/details-eligibility-autosave.test.js.
+// Europe and the US by the fixed table, any other country by the AI, lib/zone-suggest.js). Only the person's own edits are drafts. Guarded by test/unit/main/details-eligibility-autosave.test.js.
 import {older, folded, foldRecord, lineKey, linesSig} from './eligibility-older.js';
 import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';

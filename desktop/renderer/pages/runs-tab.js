@@ -1,7 +1,7 @@
 // Actions → Runs (owner, 25 Oct 2026: "all the activity runs in-app, not in the drawer"; "I don't want us to keep 2 different views"): the Tasks | Runs
 // tabs, the one run list + run panel (.ap-grid) moved between the drawer and this tab (never copied: one design), the list's Task / Status / Date filters,
 // the narrow list → detail layout with "Back to runs", and the drawer's "N tasks queued · View queue →". Which run shows: renderer/run-pick.js.
-// Guarded by test/run-view.test.js.
+// Guarded by test/unit/renderer/run-view.test.js.
 import {openMenu} from '../components.js';
 import {DATES, STATUS, labelOf, listFilter} from '../run-filters.js';
 import {defaultRun, idOf} from '../run-pick.js';

@@ -32,7 +32,7 @@ So: reversing "Proven live" is the **last step** of a move that is mostly done. 
 | A fix is closed when the Fixed tab says "Proven live" | closed when it says "Confirmed offline" (8e) |
 | Re-run the row live after a fix | never: replay it (`npm run row`), the PR replay and the schedule |
 
-Skill name: verb + object + where. The old pool-running name no longer fits (it does not run a smoke); proposal **`record-applying-sites`**, old name to `RETIRED` in `desktop/test/skill-names.test.js`. Other skills that name it (`fix-recorded-sites`) updated in the same PR.
+Skill name: verb + object + where. The old pool-running name no longer fits (it does not run a smoke); proposal **`record-applying-sites`**, old name to `RETIRED` in `desktop/test/guards/rules/skill-names.test.js`. Other skills that name it (`fix-recorded-sites`) updated in the same PR.
 
 ### Signals for a re-recording (never a schedule)
 1. **Installs' outcomes.** Installs already report `flow_outcomes` (day, board, state, ai_family, n: `site/src/knowledge.js`, `formlearning.js`). A board whose reach drops against its own previous 14 days (e.g. filled share down by a stated amount, k ≥ 3 installs) raises "site may have changed" on `/admin/applying`; the coordinator re-records that board's pool rows (bounded: 3 live visits a host a day).

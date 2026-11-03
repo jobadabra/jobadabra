@@ -1,7 +1,7 @@
 // The shared card shell of Profile and Strategy cards (owner, 18 Oct 2026, UI redesign: "on the edit states of cards ... so nice, so clean"): a card reads
 // as a compact summary (label → value rows, chips), a quiet Edit sits at the right of its title line (components.js cardEdit), Edit opens the editor in
 // place (Edit hidden, the card kept open, drafts kept) with an aligned label column and full-width controls, and nothing is saved per card: the page's one
-// save bar saves (save-bar.js). The rules: docs/rules/desktop-ui.md "Cards: read → Edit → editor". Guarded by test/card-shell.test.js and test/card-system.test.js.
+// save bar saves (save-bar.js). The rules: docs/rules/desktop-ui.md "Cards: read → Edit → editor". Guarded by test/unit/renderer/card-shell.test.js and test/guards/rules/card-system.test.js.
 import {chip, el, pill, tile, unfold} from './components.js';
 import {icon as glyph} from './icons.js';
 

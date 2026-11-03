@@ -1,5 +1,5 @@
 // The words of Strategy's "scored using previous search settings" notice and its Re-score dialog, kept free of the DOM so the tests can check them
-// (pages/strategy-rescore.js draws them). Guarded by test/strategy-rescore.test.js.
+// (pages/strategy-rescore.js draws them). Guarded by test/unit/renderer/strategy-rescore.test.js.
 export const jobs = count => `${count} job${count === 1 ? '' : 's'}`;
 export const noticeTitle = count => `${jobs(count)} ${count === 1 ? 'was' : 'were'} scored using previous search settings.`;
 /** The notice's "why" line from the engine's counts ({method, places, changed}): "4 jobs: an older way of scoring · 9 jobs: other places..."; '' when all are 0. */

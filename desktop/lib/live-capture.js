@@ -2,7 +2,7 @@
 // load-time capture or a hand-written stub). Writes ONLY when the e2e harness sets LIVE_CAPTURE_DIR: with no variable there is no code path. Local only, no network.
 // What is kept: the page sketch the extension sent and the app's answer, scrubbed BEFORE writing (no query string, no email, no phone, no typed value, no secret key).
 // The file: <LIVE_CAPTURE_DIR>/ai-calls.json = [{route, at, request, answer}]; desktop/e2e/record-sites.mjs copies it into the replay candidate's folder.
-// Guard: desktop/test/live-capture.test.js (also: the shipped app source calls it in one place).
+// Guard: desktop/test/unit/main/live-capture.test.js (also: the shipped app source calls it in one place).
 import fs from 'node:fs';
 import path from 'node:path';
 import {everyRealDataFolder} from './app-identity.js';

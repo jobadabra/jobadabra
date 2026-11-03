@@ -1,6 +1,6 @@
 // One line of Your details' fact sections (owner, 17 Oct 2026: "Base facts fixed, AI the rest"): its label and the control of its kind (the mark on the line,
 // else the kind judged for the label on this Mac; renderer/question-control.js), and what the Save bar reads back. A kind the code can't read the line in keeps
-// the words as written with a "Check" chip: nothing is lost. Guarded by test/fact-line.test.js.
+// the words as written with a "Check" chip: nothing is lost. Guarded by test/unit/renderer/fact-line.test.js.
 import {chip, el, pill} from './components.js';
 import {answerControl} from './question-control.js';
 import {COMPOSITE, formatFor} from './question-kind.js';

@@ -1,4 +1,4 @@
-// Counts a window file's hard-coded "Notion" sentences (test/store-words.test.js). Sentences about Notion itself (connecting it,
+// Counts a window file's hard-coded "Notion" sentences (test/unit/renderer/store-words.test.js). Sentences about Notion itself (connecting it,
 // opening a Notion page, its benefits) don't count.
 import fs from 'node:fs';
 import path from 'node:path';

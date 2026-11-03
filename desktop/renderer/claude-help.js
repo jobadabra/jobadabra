@@ -2,7 +2,7 @@
 // it is slow, it confuses non-technical users"). Since 10 Oct 2026 (spec 2026-10-10-claude-finishes-stuck-pages.md, part 4) there is no "Show Claude help" switch: Claude is
 // offered only when it is READY: a Claude engine, Claude Code installed and signed in (and Git for Windows there), the twin of lib/claude-ready.js. A non-technical user has no
 // Claude Code, so never sees it. The consent is asked at the first press (settings.claudeConsent); "always let Claude finish" is settings.claudeAuto.
-// Every entry point asks this; test/claude-help.test.js fails when a new Claude button is added without it.
+// Every entry point asks this; test/guards/rules/claude-help.test.js fails when a new Claude button is added without it.
 // And only for the Claude family: with OpenAI or Codex chosen, every Claude entry point is hidden (owner, 9 Oct 2026; Codex cannot drive Chrome).
 import {claudeFeatures} from './ai-name.js';
 
@@ -10,7 +10,7 @@ let installed = false;   // Claude Code installed and signed in (and Git on Wind
 export const claudeHelp = () => installed && claudeFeatures();
 // Claude's takeover is off for now: "Resume Claude", the stuck-page offer (session card, extension panel), "always let Claude finish" and its 5 s countdown all follow this ONE flag (owner, 15 Oct 2026: it is rung 6, "we never want to get there when Claude takes over, it's already a poor experience; we should be the
 // interface between the user and Claude"). A stuck page offers "Report this form" instead. The code stays: true brings it all back (the app side asks it in lib/claude-ready.js takeoverOffered, the extension panel reads it from the app's reply).
-// test/resume-hidden.test.js fails when a Resume Claude entry is built without asking resumeOffered.
+// test/guards/rules/resume-hidden.test.js fails when a Resume Claude entry is built without asking resumeOffered.
 export const SHOW_RESUME_CLAUDE = false;
 export const resumeOffered = () => SHOW_RESUME_CLAUDE && claudeHelp();
 

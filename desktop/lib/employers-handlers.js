@@ -1,7 +1,7 @@
 // Employers & Sources (renderer/pages/employers.js): every employer and job board the person tracks, from the active store through the
 // engine (lib/store/engine.js: stores.employers, the fields in src/stores/base.py EMPLOYER_FIELDS), so it reads the same on every store.
 // Active on/off is the one write: employers.upsert({name, active}), the same call Find employers makes. Demo mode: demo/employers.json
-// (fictional). Guarded by test/employers-handlers.test.js.
+// (fictional). Guarded by test/unit/main/employers-handlers.test.js.
 import fs from 'node:fs';
 import * as engine from './store/engine.js';
 import {demoPath} from './demo.js';

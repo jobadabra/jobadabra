@@ -1,6 +1,6 @@
 // The extension's calls for reading refused sites in the person's browser (lib/refused-reads.js): what to read, a page it fetched, the pass ended; and the person's press of
 // "Find jobs using your browser" (refusedReadStart), the only thing that starts a pass (owner, 26 Oct 2026). main.js passes in the services they share.
-// Not a flow file: nothing here touches an application. Guard: test/refused-reads.test.js, test/refused-reads-button.test.js.
+// Not a flow file: nothing here touches an application. Guard: test/unit/main/refused-reads.test.js, test/guards/safety/refused-reads-button.test.js.
 import {ipcMain} from 'electron';
 import * as refused from './refused-reads.js';
 import * as server from './server.js';

@@ -1,7 +1,7 @@
 // The numbered digest's answer (rung 3 of the ladder, docs/flows/ladder.md): the page's candidates (extension/ladder/rung3-candidates.js: sentences, links, buttons, addresses, numbered, found by structure) go to the AI,
 // which answers an OUTCOME and one closed VERB, naming candidates BY NUMBER. It never writes text or an action; the code accepts a verb only when its numbers are the page's own candidates of the right kind
 // (so "it is on the page" is true by construction), else the verb is 'none' and the reason is `dropped`. press/open stay inside what the extension may already do (floors: never Submit, never a third-party sign-in).
-// The wiring (when it is asked, the card, the kept answer) belongs to the flow core; this file only asks and validates. Guard: desktop/test/digest.test.js.
+// The wiring (when it is asked, the card, the kept answer) belongs to the flow core; this file only asks and validates. Guard: desktop/test/unit/main/digest.test.js.
 import {model, priceOf} from '../ai/models.js';
 
 export const OUTCOMES = ['form', 'email', 'phone', 'link', 'login_wall', 'refused', 'expired', 'in_person', 'other'];

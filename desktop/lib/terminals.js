@@ -18,8 +18,8 @@
 // leaves a blank or garbled screen. A headless terminal (the mirror) follows each session at its real size, and
 // snapshot() serializes it: what a real terminal shows now. The saved record keeps that screen too.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. The journey fields (stuck, stage, accountState, accountStep, accountNeeds, accountHost) are written only through applyJourney -> lib/application-journey.js (desktop/test/application-journey.test.js, desktop/test/journeys.test.js).
-//  2. A session outlives the app: saved when it changes, restored at the next start (desktop/test/terminals.test.js).
+//  1. The journey fields (stuck, stage, accountState, accountStep, accountNeeds, accountHost) are written only through applyJourney -> lib/application-journey.js (desktop/test/unit/main/application-journey.test.js, desktop/test/unit/main/journeys.test.js).
+//  2. A session outlives the app: saved when it changes, restored at the next start (desktop/test/unit/main/terminals.test.js).
 import {journey} from './application-journey.js';
 import {assertSession} from './session-contracts.js';
 import fs from 'node:fs';
@@ -111,7 +111,7 @@ export async function available() {
 const isLive = s => !!s.term && !s.endedAt;
 // Claude's asks of a session that is not running (closed with the app, ended) are frozen: with the takeover off they must not reach any screen (owner, 15 Oct 2026, "I told you a million
 // times": "Click 'Please sign in'…" and "reply continue" rows, with Tell Claude buttons). So the question and its brief are dropped and the session reads as a form session the extension drives (status done: the card follows its live tab, owner 16 Oct 2026: not "The session ended"), at the ONE
-// place every screen, list, tray and notice reads sessions from. A form session never had a Claude ask. Guard: test/claude-asks-hidden.test.js.
+// place every screen, list, tray and notice reads sessions from. A form session never had a Claude ask. Guard: test/unit/main/claude-asks-hidden.test.js.
 let asksOff = false;   // set by main.js from the ONE flag of Claude's takeover (renderer/claude-help.js SHOW_RESUME_CLAUDE); false: as before (tests, the twin)
 export const hideAsks = on => { asksOff = !!on; };
 const asksHidden = s => asksOff && (s.kind || 'claude') !== 'form' && !isLive(s);

@@ -1,6 +1,6 @@
 /* Strategy → Your strategy (owner, 18 Oct 2026, UI redesign B, mockup 03): Main goals tiles, Locations beside Job preferences, Advanced search settings
    folded, the "Unsaved" pill of a card (pages/strategy-cards.js). Built on .card, .review-grid, card-shell.css and page-parts.css; only the
-   layouts they lack are here. Tokens only (test/design.test.js). */
+   layouts they lack are here. Tokens only (test/guards/rules/design.test.js). */
 .strategy-live { display: grid; gap: var(--sp-4); }
 .strategy-page .card-words { display: grid; gap: 2px; min-width: 0; }
 .strategy-page .card-words h3 { display: flex; align-items: center; gap: var(--sp-2); }

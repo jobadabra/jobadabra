@@ -1,4 +1,4 @@
-// How big the app is drawn: 80% on a laptop-size display, 100% on a larger one (owner, 17 Oct 2026), remembered across restarts, driven by ⌘- ⌘+ ⌘0 and by Settings → Appearance → Text size. Guarded by test/zoom.test.js.
+// How big the app is drawn: 80% on a laptop-size display, 100% on a larger one (owner, 17 Oct 2026), remembered across restarts, driven by ⌘- ⌘+ ⌘0 and by Settings → Appearance → Text size. Guarded by test/unit/renderer/zoom.test.js.
 export const LAPTOP_MAX_WIDTH = 1512;   // points: a 14" MacBook Pro is 1512 wide; anything up to it starts smaller
 export const LAPTOP_FACTOR = 0.8;
 export const STEPS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];

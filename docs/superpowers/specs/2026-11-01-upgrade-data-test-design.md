@@ -27,7 +27,7 @@ Per run the result is one row per `R`: `{from, to, ok, rows: {before, after}, lo
 
 | Scenario | Likelihood | Runs |
 |---|---|---|
-| The data folder moves, renames or picks between two folders (`migrateDataFolder`, installed twice) | Highest: edited often, real near-misses | On every PR, already: 9 tests in `desktop/test/app-identity.test.js` (rename, two folders, move once); no new test (PR 3/3 dropped) |
+| The data folder moves, renames or picks between two folders (`migrateDataFolder`, installed twice) | Highest: edited often, real near-misses | On every PR, already: 9 tests in `desktop/test/guards/data/app-identity.test.js` (rename, two folders, move once); no new test (PR 3/3 dropped) |
 | The newest stable release updated to main, packaged, Mac and Windows | Medium: only a schema or file-format change breaks it | Weekly |
 | The 3 newest releases | Low: an old format drifts slowly | Monthly (the 1st) |
 | The app's own auto-update swap | Low, and covered in part by the `updates` suite and `windows-smoke` | Parked (Linear) |
@@ -46,7 +46,7 @@ Per run the result is one row per `R`: `{from, to, ok, rows: {before, after}, lo
 The workflow's own last run is enough for "last run / cadence" (`upgrade-data.yml`, a `workflow:` card). The run also writes a summary the card can quote as "bugs caught": `{day, os, from, ok, lost, changed}`, published to the site like the other collectors (`/ops/data` kind) only if `to` wants more than the run's colour; asked, not assumed.
 
 ## Files
-`desktop/scripts/upgrade-data-proof.mjs` (the runner, Mac and Windows), `desktop/lib/data-fingerprint.js` (pure: fingerprint + compare, unit-tested), `desktop/scripts/upgrade-expected.json`, `.github/workflows/upgrade-data.yml` (weekly and monthly, GitHub's cron as the backup start), test `desktop/test/data-fingerprint.test.js`.
+`desktop/scripts/upgrade-data-proof.mjs` (the runner, Mac and Windows), `desktop/lib/data-fingerprint.js` (pure: fingerprint + compare, unit-tested), `desktop/scripts/upgrade-expected.json`, `.github/workflows/upgrade-data.yml` (weekly and monthly, GitHub's cron as the backup start), test `desktop/test/unit/main/data-fingerprint.test.js`.
 
 ## Non-goals
 Blocking anything; Linux; restoring the old app after the update; testing the Notion store (SQLite only, the default); comparing UI screenshots.

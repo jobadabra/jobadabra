@@ -1,6 +1,6 @@
 // The engine's fingerprint of today's places (src/ai/locations.py), for a job's drawer: a score that used other places says "older places". Asked of the
 // engine once, and again only when the search settings file changed (a stat, not a process per drawer). '' when it cannot be told: never "older".
-// Guarded by test/locations-drawer.test.js.
+// Guarded by test/unit/main/locations-drawer.test.js.
 import fs from 'node:fs';
 import * as pipeline from './pipeline.js';
 

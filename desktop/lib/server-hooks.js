@@ -1,6 +1,6 @@
 // The app's side of the extension server: what main.js plugs in (notifier, window signal, and one handler per extension message), kept as
 // live bindings so the routes in server.js and the helpers in server-env.js always call the current one. Setters keep their names (re-exported
-// by server.js). Guarded by desktop/test/local-server.test.js, extension-cors.test.js and targets.test.js.
+// by server.js). Guarded by desktop/test/unit/extension/local-server.test.js, extension-cors.test.js and targets.test.js.
 
 // Desktop notifications for what happens in Chrome (set by main.js): the fill starting and finishing,
 // and the application being marked Applied.

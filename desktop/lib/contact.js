@@ -59,7 +59,7 @@ export async function save(storage, contact, fetcher) {
 
 // Profiles written before 📇 kept these lines under "Contact" and "Links": once 📇 holds a line's value, that line goes (a move, never a copy; the owner's
 // Profile had Name, Email, Phone, LinkedIn and GitHub twice, 18 Oct 2026). A label with no field here (Medium, Stack Overflow) or another value stays; an
-// old heading left with nothing under it goes too, one with sections under it stays. Guarded by test/contact-old-copies.test.js.
+// old heading left with nothing under it goes too, one with sections under it stays. Guarded by test/unit/main/contact-old-copies.test.js.
 const OLD_HEADING = /^(📇\s*)?(contact|links)$/i;
 const keyOf = label => KEY_BY_LABEL[label] || (label === 'name' ? 'full_name' : null);
 const sameText = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();

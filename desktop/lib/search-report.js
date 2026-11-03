@@ -3,7 +3,7 @@
 // a technical report (kind "search", so the Technical reports switch decides and the last 20 stay visible in Settings). Never a job, title, company, link,
 // CV, name or typed word; the one place string is a city candidate the site shows only when 3+ installs share it.
 // Read counts: read_<method>_<measure>, five method names, never a host, URL or company.
-// Guarded by: test/search-report.test.js (the record has only listed fields: a new field fails it until it is listed here and on the privacy page).
+// Guarded by: test/unit/renderer/search-report.test.js (the record has only listed fields: a new field fails it until it is listed here and on the privacy page).
 import {engineOf} from './ai/names.js';
 import {run} from './pipeline-run.js';
 import {log as appLog} from './log.js';

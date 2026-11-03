@@ -2,7 +2,7 @@
 // A test run never opens, writes or registers anything there; each call is recorded instead (globalThis.__jpHost, and host.log in the run's spool when there is one).
 // Why (#2362 / 28 Oct 2026, owner): a local interactions run put ch.indeed.com in the owner's Chrome three times. The PATH stand-in for `open` (e2e/lib/extension.mjs)
 // covers only the `open` that lib/browser-launch.js runs; shell.openExternal and the rest reach the OS through LaunchServices and never read PATH.
-// Guard: test/e2e-host.test.js (the doors below, and every host call in the app is a door or on its reviewed list).
+// Guard: test/guards/safety/e2e-host.test.js (the doors below, and every host call in the app is a door or on its reviewed list).
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -50,7 +50,7 @@ export function standInHost(host, env = process.env) {
  * Only in a run that names its runner (`JOBADABRA_E2E_RUNNER_PID`, set by e2e/lib/app.mjs): an app a person runs has none and is never watched. Calls `exit` once the runner's process is gone,
  * and kills this process outright if it is still alive after a grace (an app that ignores being asked to quit).
  * Why (28 Oct 2026, owner: "what loads my computer", load 52): four test apps from runs that had died ran 5 to 7 hours at about 15% CPU each, parent launchd, and ignored SIGTERM.
- * Guard: test/e2e-runner-watch.test.js (kills a real runner, with a child that has no watch as the positive control).
+ * Guard: test/unit/main/e2e-runner-watch.test.js (kills a real runner, with a child that has no watch as the positive control).
  * @param {() => void} exit  @param {NodeJS.ProcessEnv} env  @returns {NodeJS.Timeout|null} the timer, or null when there is no runner to watch
  */
 export function watchRunner(exit, env = process.env) {

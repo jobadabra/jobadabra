@@ -1,6 +1,6 @@
 // The message to the person's e-mail and Telegram when an application waits for them (spec docs/superpowers/specs/2026-11-02-waiting-message-design.md): until now only the app's own
 // notification said it, and a person who is away heard nothing. One message an hour at most; a burst (the jobs an earlier run held, handed over at start) is one message; none
-// without a working channel. Never for a Claude session's own question (lib/app-reminders.js sessionNeedsYou: the 1 Oct 2026 noise reason). Guard: test/waiting-message.test.js.
+// without a working channel. Never for a Claude session's own question (lib/app-reminders.js sessionNeedsYou: the 1 Oct 2026 noise reason). Guard: test/unit/main/waiting-message.test.js.
 import * as notifyChannel from './notify-channel.js';
 import {log as appLog} from './log.js';
 

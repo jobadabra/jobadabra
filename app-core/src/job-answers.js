@@ -1,6 +1,6 @@
 // The answers the person gave for ONE job only (the review drawer's "Reuse for matching questions" off, owner 17 Oct 2026): a section of that job's
 // record, on every store (src/stores/base.py JOB_ANSWERS_SECTION), one "- question — answer" line each. No imports: the desktop app (lib/job-answers.js),
-// the extension's routes and the Worker read it the same way. Guarded by test/job-answers.test.js (the sample tests/fixtures/stores/job-answers.md).
+// the extension's routes and the Worker read it the same way. Guarded by test/unit/main/job-answers.test.js (the sample tests/fixtures/stores/job-answers.md).
 export const JOB_ANSWERS_SECTION = '💬 Answers for this job only';
 const SEP = ' — ';
 const same = (a, b) => String(a || '').replace(/\s+/g, ' ').trim().toLowerCase() === String(b || '').replace(/\s+/g, ' ').trim().toLowerCase();

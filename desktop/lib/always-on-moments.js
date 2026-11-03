@@ -1,5 +1,5 @@
 // The moments a dialog offers Always on (spec docs/superpowers/specs/2026-11-02-always-on-moments-design.md): today one, a scheduled check that did not run because this Mac was asleep or off.
-// The app notes it when it starts or wakes (before the catch-up search), the window asks next() and shows the dialog once. Guard: test/always-on-moments.test.js.
+// The app notes it when it starts or wakes (before the catch-up search), the window asks next() and shows the dialog once. Guard: test/unit/renderer/always-on-moments.test.js.
 // The state of "shown" lives in settings.hostedSearch.moments, next to `skipped` (one owner; lib/hosted-search.js keeps the rest of that object).
 import {nextAt} from './schedule.js';
 

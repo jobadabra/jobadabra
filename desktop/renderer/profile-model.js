@@ -3,7 +3,7 @@
 // "- Label: value" lines (the template, docs/notion-profile-template.md); the form edits those values. Everything else (any other heading,
 // notes, your own words) is kept as text: per section as "Notes", and for the rest of the page as one "rest" text. No code reads what a
 // value MEANS: values stay free text for the AI; the dropdown-like SUGGESTIONS below only fill the input, they never limit it.
-// No DOM here: guarded by test/profile-model.test.js.
+// No DOM here: guarded by test/unit/renderer/profile-model.test.js.
 
 // Sections the form knows, by the words their heading starts with (the headings of the template the app drafts the Profile from).
 export const KINDS = [['hard constraints', 'constraints'], ['compensation', 'pay'], ['preferences', 'preferences']];

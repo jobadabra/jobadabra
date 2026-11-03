@@ -1,7 +1,7 @@
 // Where the user's data lives, for what the desktop reads and writes itself (its text pages and run history). The only place that picks
 // an adapter: `openStore(storage)`. Everything else the app tracks is an engine command, which opens the same store from
 // JOBADABRA_STORE (lib/pipeline-env.js). Spec: docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by
-// desktop/test/store-contract.test.js.
+// desktop/test/unit/main/store-contract.test.js.
 //
 // A page (`store.page('profile' | 'answers' | 'knowledge')`): blocks(), outline(), text(), write(markdown), setText(block, text),
 // remove(block, {ifUnchanged}) → false when its full text/cells changed (Notion restores a raced archive), append(lines),

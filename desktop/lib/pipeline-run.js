@@ -1,6 +1,6 @@
 // Owns: run(), the one place a Python engine command is spawned: its output lines, the silence watchdog (LIMITS), the result file,
 // the run-end listeners (onRunEnd), and stopRunning() for quitting the app.
-// Guarded by: test/pipeline-run.test.js, test/run-stopped.test.js, test/stopped-head.test.js, test/stop-task.test.js, test/demo.test.js.
+// Guarded by: test/unit/main/pipeline-run.test.js, test/unit/main/run-stopped.test.js, test/unit/renderer/stopped-head.test.js, test/unit/main/stop-task.test.js, test/unit/main/demo.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import * as demo from './demo.js';
 import * as demoSearch from './demo-search.js';

@@ -1,7 +1,7 @@
 // A tailored CV made by editing the person's own PDF: each changed item of cv.json (summary, a role's bullets, its skills line) is found on
 // the page and re-set on its own lines, bullets re-stacked in their new order with their markers. An item that can't be found or no longer
 // fits keeps its original wording (a warning says so); nothing else on the page moves and the page count never changes. No drops: a bullet
-// the tailoring left out goes back after the others. Pure planning here; lib/pdf-edit/write.js writes the plan. Guards: test/cv-inplace.test.js.
+// the tailoring left out goes back after the others. Pure planning here; lib/pdf-edit/write.js writes the plan. Guards: test/unit/cv/cv-inplace.test.js.
 import {findItem, measure, setWords, resetItem} from './pdf-edit/layout.js';
 import {markersOf, restack} from './pdf-edit/stack.js';
 

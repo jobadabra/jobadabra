@@ -1,5 +1,5 @@
 // Strategy, saving and tuning: accepting a draft (Profile, answers, search settings), the ⚙️ Search settings page, the daily target, widening
-// (roles, places), loosening and Tune. Re-exported by strategy.js. Guarded by desktop/test/strategy-roles.test.js, strategy-targets.test.js,
+// (roles, places), loosening and Tune. Re-exported by strategy.js. Guarded by desktop/test/unit/main/strategy-roles.test.js, strategy-targets.test.js,
 // strategy-remote.test.js, notion-trying.test.js and tune.test.js.
 import fs from 'node:fs';
 import path from 'node:path';

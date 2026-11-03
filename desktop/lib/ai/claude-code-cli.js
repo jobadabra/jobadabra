@@ -2,7 +2,7 @@
 // which re-exports cliClient, runJson, problem, cleanEnv, alias, promptAndFiles and parseJson so callers are unchanged). Each call: a
 // fresh folder, only the Read tool and only inside it, the user's skills/slash commands/settings not loaded, the schema enforced by
 // `--json-schema` when this Claude Code offers it. A page ask (lane 'page') reads its prompt as one stream-json message on a process started
-// before it came (cli-spares.js). Billing 'subscription'. Guarded by test/claude-code.test.js, test/ai-contract.test.js and test/cli-spares.test.js.
+// before it came (cli-spares.js). Billing 'subscription'. Guarded by test/unit/main/claude-code.test.js, test/unit/main/ai-contract.test.js and test/unit/main/cli-spares.test.js.
 import {execFile, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

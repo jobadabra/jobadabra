@@ -3,7 +3,7 @@
 // json_schema (schema.js strict, the answer's nulls dropped back to the caller's shape); effort → reasoning.effort; max_tokens →
 // max_output_tokens; web search → {type: 'web_search'}. A Claude model id maps by tier (models.js). cache_control is dropped (OpenAI
 // caches by itself). Errors: a rejected key or no quota → AiLimit; rate limit, 5xx, connection → AiUnavailable. Billing 'api'.
-// The SDK is loaded only when this engine is used. Guarded by test/ai-contract.test.js (recorded answers, no network, no key).
+// The SDK is loaded only when this engine is used. Guarded by test/unit/main/ai-contract.test.js (recorded answers, no network, no key).
 import {API, Adapter, AiError, AiLimit, AiUnavailable, requestFrom, response, usage} from './contract.js';
 import {openaiModel} from './models.js';
 import {keyHeard, keyWorked} from './refusals.js';

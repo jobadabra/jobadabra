@@ -6,7 +6,7 @@
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
 //  1. Apply is pressed once per tab and page; only a reload or the person's "Apply on this page" clears that, never a press itself (dede94a, 6065c87; desktop/e2e/test/replay/real-extension.test.mjs).
 //  2. A popup is closed before the page is read, and a link that leaves the page is never pressed (fdd9638; app-core/test/visit-consent.test.js, app-core/test/popup-page.test.js).
-//  3. A fill that put nothing in climbs the closer-look ladder, then reports 'incomplete', kept until something is filled (c1a2fcc; desktop/test/session-flow.test.js).
+//  3. A fill that put nothing in climbs the closer-look ladder, then reports 'incomplete', kept until something is filled (c1a2fcc; desktop/test/unit/main/session-flow.test.js).
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (app-core/test/form-ready.test.js).
 import {preparePage, readPage, askPage, correctPage, describePage} from './fill-flow-read.js';
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';

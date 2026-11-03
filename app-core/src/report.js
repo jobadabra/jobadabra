@@ -5,7 +5,7 @@
 // waits for the owner. The Worker only starts the intake workflow on the public repo (existing GITHUB_TOKEN).
 import { snapshotFromReport } from './snapshot.js';
 
-const MECHANICAL = [   // the menu reasons: extension/menu-reason.js (desktop/test/menu-reason-copies.test.js keeps them equal)
+const MECHANICAL = [   // the menu reasons: extension/menu-reason.js (desktop/test/unit/main/menu-reason-copies.test.js keeps them equal)
   'dropdown not clicked', 'dropdown clicked, but its menu did not open', 'dropdown clicked, but no option matched',
   'dropdown option clicked, but not selected', 'dropdown selected, but the reader cannot see it', 'dropdown clicked, but it selected another choice', 'dropdown that opens only on a real click',
   'answer given, but the field did not take it',

@@ -1,5 +1,5 @@
 // Which run the one run panel shows (drawer and Actions → Runs; owner, 25 Oct 2026): the run picked stays picked while it goes queued → running → done,
-// and a generic "Details" opens the running task, else the next queued one, else the latest finished run. Pure; guarded by test/run-view.test.js.
+// and a generic "Details" opens the running task, else the next queued one, else the latest finished run. Pure; guarded by test/unit/renderer/run-view.test.js.
 export const idOf = run => (run?.id == null ? '' : String(run.id));
 
 // The run a generic "Details" opens (never a switch of a panel already open: the caller keeps its id).

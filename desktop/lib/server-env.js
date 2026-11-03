@@ -1,6 +1,6 @@
 // What the extension's requests are answered with: its token, the Applied-session bookkeeping, the Apply-with-Claude tickets, the version
 // check, and localEnv (the environment the shared worker code runs in) with the learning after a fill. Re-exported by server.js.
-// Guarded by desktop/test/local-server.test.js, automation.test.js, app.test.js and cover-letter.test.js.
+// Guarded by desktop/test/unit/extension/local-server.test.js, automation.test.js, app.test.js and cover-letter.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

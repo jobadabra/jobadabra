@@ -1,6 +1,6 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): how many jobs, how Jobadabra applies (Settings → Apply's own cards), "Apply to N jobs".
 // A card pick saves through Settings → Apply's writer; a mode not built yet is a disabled "Coming soon" card. Pure parts: renderer/apply-dialog-model.js.
-// Guard: test/apply-dialog-mode.test.js.
+// Guard: test/unit/renderer/apply-dialog-mode.test.js.
 import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
 import {applyOf} from '../apply-settings-model.js';

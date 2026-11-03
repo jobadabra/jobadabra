@@ -1,6 +1,6 @@
 // The busy state of an export, import or backup (Settings → Move your data): "Exporting… 42%" over the shared meter with Cancel, on every strip
 // marked data-progress="export|import|backup|clear"; the buttons that start one are disabled while any runs. Fed by main's 'dataProgress' event (lib/data-job.js).
-// Guard: desktop/test/data-progress.test.js.
+// Guard: desktop/test/unit/renderer/data-progress.test.js.
 const WORDS = {export: 'Exporting', import: 'Importing', backup: 'Backing up', clear: 'Clearing your job list'};
 const STARTERS = ['#export-data', '#import-data', '#backup-now', '#reset-export', '[data-import]', '#clear-jobs'];
 

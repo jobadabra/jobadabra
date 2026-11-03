@@ -1,6 +1,6 @@
 // The one "Claude ready" check (owner, 10 Oct 2026; spec docs/superpowers/specs/2026-10-10-claude-finishes-stuck-pages.md): Claude is offered only when the AI
 // engine is Claude, Claude Code is installed and signed in (and Git for Windows is there on Windows). `claudeAuto` ("always let Claude finish when I'm stuck",
-// Settings) only counts while that holds. The window's twin is renderer/claude-help.js. Guarded by test/claude-ready.test.js.
+// Settings) only counts while that holds. The window's twin is renderer/claude-help.js. Guarded by test/unit/main/claude-ready.test.js.
 import {claudeFamily} from './ai/names.js';
 import {automationOf} from './site-accounts.js';
 import {claudePrereqs} from './apply.js';

@@ -1,0 +1,249 @@
+// The review drawer (owner's mockup, 17 Oct 2026: "THIS IS TOO CROWDED/OVERWHELMING... Move the questionnaire out of the Jobs page"), here What we learned's
+// (owner, 28 Oct 2026: two drawers; test/question-drawers.test.js holds the two side by side): Jobs shows a compact card whose count is the drawer's (never the
+// set-aside ones), and the questions are answered one at a time in a drawer (pages/question-review.js) that shares the job drawer's overlay slot. Every way in
+// (Jobs' card, Profile → What we learned, ⌘K) opens it.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {test} from 'node:test';
+import {install} from '../../tiny-dom.js';
+
+const body = install();
+const LIST = [
+  {key: 'start', question: 'What is your earliest start date, and are there any constraints we should be aware of?', company: 'DeepJudge AG', proposal: '1 December 2026', coveredBy: 'Notice period / earliest start', format: {kind: 'text', control: 'text', options: []}},
+  {key: 'salary', question: 'What is your salary expectation? (In USD monthly)', company: 'Colonist', format: {kind: 'text', control: 'text', options: []}},
+  {key: 'permit', question: 'Do you have a valid permission to work in Switzerland?', company: 'DeepJudge AG', format: {kind: 'yes_no', control: 'yes_no', options: ['Yes', 'No']}},
+];
+const HIDDEN = [{key: 'title', question: 'Title', company: 'Adnovum', format: {kind: 'single', control: 'single', options: ['Mr', 'Ms']}}];
+const calls = [];
+const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'learned', 'learned-count', 'learned-review', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
+for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
+const gone = new Set(), dismissals = [];
+globalThis.window.pilot = new Proxy({
+  // A dismissed question leaves the list and comes back from `dismissed`, as lib/question-lists.js openShown does.
+  openQuestions: async () => ({details: [], learned: LIST.filter(q => !gone.has(q.key)).map(q => ({...q})), hidden: HIDDEN, consent: 2,
+    dismissed: {details: [], learned: LIST.filter(q => gone.has(q.key)).map(q => ({...q, dismissed: true}))}}),
+  dismissQuestion: async (key, question, on) => { dismissals.push([key, on]); if (on) gone.add(key); else gone.delete(key); return {ok: true}; },
+  answerQuestion: async (key, value) => { calls.push([key, value]); return {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
+}, {get: (all, key) => all[key] || (() => null)});
+const {loadQuestions, questionsNow} = await import('../../../renderer/pages/jobs-questions.js');
+const {questionEntries} = await import('../../../renderer/question-entries.js');
+const review = await import('../../../renderer/pages/question-review.js');
+const slot = await import('../../../renderer/overlay-slot.js');
+const $ = id => globalThis.document.getElementById(id);
+const panel = () => $('review-panel');
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const open = (options = {}) => review.openQuestionReview({queue: 'learned', ...options});
+
+test('Jobs: a row, its count is the drawer (3), not the drawer plus the set-aside one; no inputs, no Notion, no "every application"', async () => {
+  await loadQuestions({force: true});
+  const found = questionEntries(questionsNow());
+  assert.deepEqual(found.map(row => row.kind), ['learned'], 'Fill your details has nothing: no row at zero');
+  const [row] = found;
+  assert.equal(row.title, 'What we learned');
+  assert.match(row.detail, /^3 to check$/);
+  assert.deepEqual(row.actions.map(action => action.label), ['Check what we learned'], 'one action; Saved answers lives in the drawer header');
+  assert.doesNotMatch(JSON.stringify(row), /Manage saved answers|Notion|every application|Answer once/);
+});
+
+test('the drawer: Question 1 of 3, a suggested answer told apart from a missing one', async () => {
+  await open();
+  assert.equal($('review-drawer-layer').hidden, false);
+  assert.match(panel().textContent, /Question 1 of 3/);
+  assert.equal(panel().querySelector('#review-learned-tab')?.textContent, 'What we learned', 'the header opens the What we learned tab while a question is open too');
+  assert.ok(panel().querySelector('.qr-answer.is-suggested'), 'a proposal is a suggestion');
+  assert.match(panel().textContent, /Suggested from saved answer/);
+  assert.match(panel().querySelector('.qr-source').textContent, /Notice period \/ earliest start/);
+  assert.match(panel().textContent, /DeepJudge AG · Application form/);
+  for (const id of ['qr-back', 'qr-skip', 'qr-confirm']) assert.ok(panel().querySelector(`.qr-foot #${id}`), id);
+  panel().querySelector('#qr-skip').click();
+  assert.match(panel().textContent, /Question 2 of 3/);
+  assert.ok(panel().querySelector('.qr-answer.is-missing'), 'no answer yet: missing');
+  assert.equal(panel().querySelector('#qr-confirm').disabled, true, 'Confirm waits for an answer (UI loop #64)');
+  panel().querySelector('#qr-back').click();
+  assert.match(panel().textContent, /Question 1 of 3/);
+});
+
+test('a draft is kept when the drawer closes; Confirm & next saves, says where, and the queue shrinks', async () => {
+  calls.length = 0;
+  await open();
+  panel().querySelector('#qr-skip').click();   // the salary question
+  const field = panel().querySelector('#qr-control');
+  field.value = '9000';
+  field.dispatch('input');
+  assert.equal(panel().querySelector('#qr-confirm').disabled, false);
+  review.closeQuestionReview();
+  assert.equal($('review-drawer-layer').hidden, true);
+  await open({start: 'salary'});
+  assert.equal(panel().querySelector('#qr-control').value, '9000', 'the draft came back');
+  panel().querySelector('#qr-confirm').click();
+  await flush();
+  assert.deepEqual(calls, [['salary', '9000']]);
+  assert.match(panel().textContent, /Question 2 of 2/);
+  assert.match(panel().textContent, /✓ Saved to What we learned/);
+  panel().querySelector('#qr-back').click();
+  panel().querySelector('#qr-confirm').click();   // accept the suggested start date
+  await flush();
+  assert.deepEqual(calls[1], ['start', '1 December 2026']);
+  assert.match(panel().textContent, /Saved to Your details → 💶 Availability & compensation/);
+});
+
+// Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): one visible action with one wording; a dismissed question leaves the drawer and its count, is listed
+// under Dismissed, and is brought back from there.
+test('Dismiss this question: it leaves the queue and the count, is listed as Dismissed, and Bring back asks it again', async () => {
+  gone.clear();
+  dismissals.length = 0;
+  await loadQuestions({force: true});
+  await open();
+  const before = questionsNow().learned.length;
+  assert.match(panel().textContent, /Dismiss this question/, 'the action is visible by its own words');
+  assert.doesNotMatch(panel().textContent, /Don’t keep an answer for this/, 'the old wording is gone: one wording');
+  const key = panel().querySelector('#qr-dismiss') && questionsNow().learned[0].key;
+  panel().querySelector('#qr-dismiss').click();
+  await flush();
+  await flush();
+  assert.deepEqual(dismissals, [[key, true]]);
+  assert.equal(questionsNow().learned.length, before - 1, 'the count drops with it');
+  assert.ok(!questionsNow().learned.some(q => q.key === key), 'and it is not in the list');
+  assert.match(panel().textContent, /Dismissed: it will not be asked or counted/);
+  panel().querySelector('#qr-nav').click();
+  assert.match(menu().querySelector('.ui-menu-heading').textContent, /Dismissed or set aside/, 'it is listed in the navigator, apart');
+  assert.equal(rows().at(-1).querySelector('.ui-pill').textContent, 'Dismissed');
+  rows().at(-1).click();
+  assert.match(panel().textContent, /A dismissed question/);
+  const back = panel().querySelector('#qr-bring-back');
+  assert.ok(back, 'a dismissed question offers Bring back');
+  back.click();
+  await flush();
+  await flush();
+  assert.deepEqual(dismissals[1], [key, false]);
+  assert.equal(questionsNow().learned.length, before, 'back in the count');
+  gone.clear();
+  await loadQuestions({force: true});
+  review.closeQuestionReview();
+});
+
+// Why (3 Nov 2026, code review of the dismissal): with the last question dismissed the navigator is gone, so the empty state lists what was dismissed, each with Bring back.
+test('dismissing the last question still leaves a way to bring it back', async () => {
+  gone.clear();
+  dismissals.length = 0;
+  await loadQuestions({force: true});
+  await open();
+  const total = questionsNow().learned.length;
+  for (let n = 0; n < total; n++) { panel().querySelector('#qr-dismiss').click(); await flush(); await flush(); }
+  assert.match(panel().textContent, /Nothing to check/);
+  const backs = [...panel().querySelectorAll('.qr-dismiss')].filter(node => /Bring back/.test(node.textContent));
+  assert.equal(backs.length, total, 'every dismissed question is listed with Bring back');
+  backs[0].click();
+  await flush();
+  await flush();
+  assert.equal(questionsNow().learned.length, 1, 'one is asked again');
+  assert.doesNotMatch(panel().textContent, /Nothing to check/);
+  gone.clear();
+  await loadQuestions({force: true});   // the later tests read the whole list again
+  review.closeQuestionReview();
+});
+
+test('it shares the job drawer\'s overlay slot: opening it closes a job or Recent activity, never stacks', async () => {
+  let closed = 0;
+  slot.registerOverlay('job', {close: () => { closed++; }, open() {}});
+  slot.claimOverlay('job');
+  await open();
+  assert.equal(closed, 1);
+  review.closeQuestionReview();
+});
+
+test('every way in opens the same drawer: Jobs\' card, Profile → What we learned, ⌘K', () => {
+  const read = file => fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
+  assert.match(read('question-review.js'), /\$\('learned-review'\)\?\.addEventListener\('click', \(\) => openQuestionReview\(\{queue: 'learned'\}\)\)/);
+  assert.match(read('application-answers.js'), /const openDrawer = start => [^\n]*openQuestionReview\(\{queue: 'learned', start\}\)/);
+  assert.match(read('application-answers.js'), /answers-review-go[\s\S]{0,200}openDrawer\(\)/);
+  assert.match(read('nav.js'), /'Check what we learned'[\s\S]{0,300}openQuestionReview\(\{queue: 'learned'\}\)/);
+});
+
+// The navigator (owner, 18 Oct 2026: "I don't like this dropdown... make it nice. Modern." → option A of
+// https://claude.ai/artifact/7hsZipME4De62YarGwUTTP): one segment per question, a button naming the question that opens the queue list
+// (kind tile, where it comes from, its state, the set-aside ones apart), and previous / next arrows. No native select.
+const menu = () => globalThis.document.body.querySelector('.ui-menu');
+const rows = () => menu().querySelectorAll('.ui-menu-row');
+
+test('navigator: no native select; one segment per question, the current one marked; a segment jumps there', async () => {
+  await open();
+  assert.equal(panel().querySelector('.qr-head select'), null, 'no dropdown in the header');
+  const segs = panel().querySelectorAll('.qr-seg');
+  assert.equal(segs.length, 3);
+  assert.equal(segs[0].getAttribute('aria-current'), 'step');
+  assert.match(segs[1].title, /2 · What is your salary expectation/);
+  segs[2].click();
+  assert.match(panel().textContent, /Question 3 of 3/);
+  assert.equal(panel().querySelectorAll('.qr-seg')[2].getAttribute('aria-current'), 'step');
+  panel().querySelector('#qr-next').click();
+  assert.match(panel().textContent, /Question 1 of 3/, 'next wraps like Skip');
+  panel().querySelector('#qr-prev').click();
+  assert.match(panel().textContent, /Question 3 of 3/);
+});
+
+test('navigator: the button names the question; its list shows kind, source and state, the set-aside one apart, and jumps', async () => {
+  await open();
+  const nav = panel().querySelector('#qr-nav');
+  assert.match(nav.textContent, /What is your earliest start date/);
+  assert.match(nav.textContent, /1 \/ 3/);
+  nav.click();
+  assert.equal(menu().hidden, false);
+  assert.equal(rows().length, 4, '3 in the queue + 1 set aside');
+  assert.equal(rows()[0].getAttribute('aria-current'), 'true');
+  assert.deepEqual(rows().map(row => row.querySelector('.ui-pill').textContent), ['Suggested', 'Missing', 'Missing', 'Set aside']);
+  assert.match(rows()[0].querySelector('.ui-menu-detail').textContent, /DeepJudge AG · Application form/);
+  assert.ok(rows()[2].querySelector('.ui-menu-tile'), 'a kind tile');
+  assert.match(menu().querySelector('.ui-menu-heading').textContent, /Dismissed or set aside · 1 · not counted/);
+  assert.equal(menu().querySelector('.ui-menu-search'), null, '3 questions: no search');
+  rows()[3].click();
+  assert.match(panel().textContent, /A set-aside question/);
+  assert.match(panel().querySelector('#qr-nav').textContent, /Title/);
+  panel().querySelector('#qr-nav').click();
+  rows()[1].click();
+  assert.match(panel().textContent, /Question 2 of 3/);
+});
+
+test('navigator: a question you typed into and left shows as Draft, in the list and its segment', async () => {
+  await open();
+  panel().querySelector('#qr-skip').click();
+  const field = panel().querySelector('#qr-control');
+  field.value = '8000';
+  field.dispatch('input');
+  panel().querySelector('#qr-skip').click();
+  assert.ok(panel().querySelectorAll('.qr-seg')[1].classList.contains('is-draft'));
+  panel().querySelector('#qr-nav').click();
+  assert.equal(rows()[1].querySelector('.ui-pill').textContent, 'Draft');
+  menu().querySelector('button').click();
+});
+
+test('navigator: a Your details item says what it asks; from 9 questions the list has a search box; past 30 one bar, no segments', async () => {
+  const many = n => Array.from({length: n}, (_, i) => ({key: `q${i}`, question: `Question number ${i + 1}`, company: 'Acme', format: {kind: 'date', control: 'date', options: []},
+    ...(i === 0 ? {details: {kind: 'which', where: 'Your details → Work permit', source: 'Two copies disagree'}} : {})}));
+  for (const [n, search, segs] of [[9, true, 9], [31, true, 0]]) {
+    globalThis.window.pilot.openQuestions = async () => ({details: [], learned: many(n), hidden: [], consent: 0});
+    await open({force: true});
+    assert.equal(panel().querySelectorAll('.qr-seg').length, segs, `${n} questions`);
+    assert.equal(Boolean(panel().querySelector('.qr-bar')), segs === 0, `${n}: the plain bar only past 30`);
+    panel().querySelector('#qr-nav').click();
+    assert.equal(Boolean(menu().querySelector('.ui-menu-search')), search);
+    assert.equal(rows()[0].querySelector('.ui-pill').textContent, 'Pick the right one');
+    assert.match(rows()[0].querySelector('.ui-menu-detail').textContent, /Your details → Work permit/);
+    menu().querySelector('.ui-menu-row').click();
+  }
+  globalThis.window.pilot.openQuestions = async () => ({details: [], learned: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2});
+  review.closeQuestionReview();
+});
+
+// The class (owner's rule: a specific instruction is about its whole class): no renderer screen moves between items with a native <select>.
+// Filters (Show, Outcome, Day) and answer pickers stay selects; a select named "Jump to…" / "Go to…" is a navigator and fails here.
+test('no native select is used as a navigator anywhere in the renderer', () => {
+  const dir = new URL('../../../renderer/', import.meta.url);
+  const files = fs.readdirSync(dir, {recursive: true}).filter(name => /\.(js|html)$/.test(name));
+  for (const file of files) {
+    const text = fs.readFileSync(new URL(file, dir), 'utf8');
+    for (const [hit] of text.matchAll(/(?:el\('select'|createElement\('select'\)|<select)[^\n]{0,160}/g))
+      assert.doesNotMatch(hit, /jump|go to|navigate/i, `${file}: a select used to move between items; use the navigator (renderer/question-nav.js)`);
+  }
+});
+// The cover letter is its own Jobs card, never a drawer item (owner, 28 Oct 2026): test/question-drawers.test.js.

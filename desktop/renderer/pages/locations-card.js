@@ -1,5 +1,5 @@
 // Strategy → Locations card, the rows it owns besides the lists (owner, 17 Oct 2026): the relocation choice (Yes / No / Not specified) and the "Custom search
-// coverage active" line with Reset to preferences, shown even while Advanced is collapsed. Words and edits: renderer/locations-model.js. Guarded by test/locations-card.test.js.
+// coverage active" line with Reset to preferences, shown even while Advanced is collapsed. Words and edits: renderer/locations-model.js. Guarded by test/unit/renderer/locations-card.test.js.
 import {el} from '../components.js';
 import {RELOCATION, coverage, relocationNow, resetCoverage} from '../locations-model.js';
 import {strategyState} from './strategy-state.js';

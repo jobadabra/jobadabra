@@ -1,6 +1,6 @@
 // The CV check as Profile → CV shows it (owner review fix 8, mockup 08, 18 Oct 2026): one summary line, the fixes first (parser and content review in one
 // list, most important first), the passed checks, score parts and extracted text kept for the folds, and the cost line under each action. Pure (no DOM):
-// the data is lib/cv-check.js's saved result; guarded by test/cv-check-model.test.js.
+// the data is lib/cv-check.js's saved result; guarded by test/unit/renderer/cv-check-model.test.js.
 import {costText} from './ai-cost.js';
 export const RANK = {high: 0, medium: 1, low: 2};
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;

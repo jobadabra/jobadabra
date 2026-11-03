@@ -1,7 +1,7 @@
 // A short video of one page while it is filled (Ready to send's "Watch the fill", reused by the Form Lab): a CDP screencast of the page, encoded by Playwright's own ffmpeg
 // to a small .webm (VP8, or VP9 where only that is built in). The page stays open (Ready holds its tabs for the morning), so this is not Playwright's recordVideo, which writes only when a page closes.
 // Owner, 18 Oct 2026: a few minutes at most, a hard 3-minute stop, 10 fps; 720p (owner, same day: "Let's make it 720p"), the night browser's own 1280x720, so nothing is scaled. No network, no storage, no page content in a log.
-// Guard: desktop/test/fill-video.test.js.
+// Guard: desktop/test/unit/ready-fill/fill-video.test.js.
 import {spawn, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

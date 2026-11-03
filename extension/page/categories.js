@@ -2,7 +2,7 @@
 // used by the form filler before it fills anything (page/fill.js __jobadabraExtensionFill): a legal one (a consent, terms, a certification) is
 // never filled by us, whatever the English words of LEGAL say (8 Oct 2026: a Portuguese "Li e aceito a política de privacidade" was not
 // caught and would have been ticked); each kind is marked on its field, so the review panel (review.js) ranks knockouts first and marks
-// what to agree to yourself. Guarded by desktop/test/fill-categories.test.js.
+// what to agree to yourself. Guarded by desktop/test/unit/extension/fill-categories.test.js.
 (() => {
   // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   window.__jobadabraMarkCategories = (answers, rowOf) => {

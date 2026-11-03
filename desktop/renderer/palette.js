@@ -7,7 +7,7 @@ const words = text => String(text).toLowerCase().normalize('NFD').replace(/[̀-�
   .split(/[^a-z0-9]+/).filter(Boolean);
 
 /** The words that count as a command's LABEL when ranking: its label and its alias (a card's own words: "email" and "telegram" → Notifications). Why (31 Oct 2026, main red): the palette test's
- *  "hint-only row" check had its own copy that left the alias out, so it called the Notifications row weak for "telegram"; one definition, used by rank() and by test/palette-one-row-per-card.test.js. */
+ *  "hint-only row" check had its own copy that left the alias out, so it called the Notifications row weak for "telegram"; one definition, used by rank() and by test/unit/main/palette-one-row-per-card.test.js. */
 export const labelWords = command => words(`${command.label} ${command.alias || ''}`);
 
 // What a row shows: its path when it has one ("Settings → Connections → Chrome extension"), else its label.

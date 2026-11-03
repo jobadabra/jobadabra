@@ -238,7 +238,7 @@ label.radio input { width: auto; margin-top: 3px; }
 .schedule label small { display: block; font-weight: 400; color: var(--muted); }
 .schedule select { padding: 6px 8px; border-radius: var(--r-md); border: 1px solid var(--field-line); background: var(--field); font: inherit; font-weight: 400; }
 /* A message while the app waits on something (e.g. Notion sharing the workspace): spinner + calm colour. */
-/* Why (2026-10-29): --navy turns near-black in dark mode (it is a surface colour there), so text takes --ink, which flips with the theme (guard test/no-navy-text.test.js). */
+/* Why (2026-10-29): --navy turns near-black in dark mode (it is a surface colour there), so text takes --ink, which flips with the theme (guard test/guards/rules/no-navy-text.test.js). */
 .message.waiting { color: var(--ink); display: flex; gap: 8px; align-items: center; }
 .message.waiting::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid var(--line-strong); border-top-color: var(--signal-edge); animation: spin .8s linear infinite; }
@@ -1326,7 +1326,7 @@ main { min-width: 0; }
 .ss-check.is-problem .ss-check-line { color: var(--ink); }   /* the icon carries the warning, not the whole line */
 .ss-check.is-problem .ss-check-line .icon { color: var(--warn); }
 .ss-audit { border-top: 1px solid var(--line); padding-top: var(--sp-2); }
-/* Needs your attention: numbered plain rows, a thin amber edge, outlined buttons (owner, 27 Oct 2026: "too much yellow"; test/calm-session.test.js) */
+/* Needs your attention: numbered plain rows, a thin amber edge, outlined buttons (owner, 27 Oct 2026: "too much yellow"; test/guards/rules/calm-session.test.js) */
 .ss-needs { border-color: var(--line); }
 .ss-needs .ss-fact-head .icon { color: var(--warn); }
 .ss-needs-words { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -1687,7 +1687,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
   border-radius: var(--r-sm); padding: 2px var(--sp-2); color: var(--ink-2); }
 .mail-diff-move b { color: var(--muted); font-weight: 600; }
 .mail-confirm { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }   /* a tone edge, never a fill (owner, 27 Oct 2026; test/calm-session.test.js) */
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }   /* a tone edge, never a fill (owner, 27 Oct 2026; test/guards/rules/calm-session.test.js) */
 .mail-confirm h4 { margin: 0; font-size: var(--fs-md); }
 .mail-confirm .mail-sub { margin: 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .mail-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }

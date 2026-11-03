@@ -1,6 +1,6 @@
 // Owns: reading the engine's output lines and the task catalog: TASKS and taskName, isDataLine, isProgressStep, STATUS_LINE, keepRunLine,
 // leadStepOf, HEARTBEAT_MS, quietText, and what a finished log yields (appMessage, taskSummary, failedLine).
-// Guarded by: test/progress-step.test.js, test/data-lines.test.js, test/live-status-line.test.js, test/run-kinds.test.js, test/engine-message-contract.test.js, test/live-updates.test.js.
+// Guarded by: test/unit/main/progress-step.test.js, test/unit/main/data-lines.test.js, test/unit/renderer/live-status-line.test.js, test/unit/main/run-kinds.test.js, test/unit/renderer/engine-message-contract.test.js, test/unit/renderer/live-updates.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {readable} from './pipeline-env.js';
 import {CRASH_LINE} from './crash-line.js';

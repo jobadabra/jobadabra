@@ -2,7 +2,7 @@
 // late and pushed the job list down; "Let's have skeleton loading card or caching which would be instant, or both"). Each one keeps what it last
 // drew (this Mac's localStorage, small and free of job texts), the page's first paint draws that at once, a skeleton holds the place while nothing
 // is kept yet (a first start), and the real data then replaces it in place, so nothing below moves.
-// A new block shown late above drawn content joins LATE_BLOCKS. Guarded by test/late-blocks.test.js; the UI Finder's late-shift check
+// A new block shown late above drawn content joins LATE_BLOCKS. Guarded by test/unit/renderer/late-blocks.test.js; the UI Finder's late-shift check
 // (e2e/lib/shift.mjs) finds one that was missed. Application questions does the same with its own cache (pages/jobs-questions.js).
 export const LATE_BLOCKS = {
   'find-card': 'Jobs: the Find jobs card (pages/jobs-find.js)',

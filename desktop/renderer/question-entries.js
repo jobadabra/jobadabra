@@ -1,6 +1,6 @@
 // The Jobs drawers as rows of Focus → Suggestions and the Jobs bar: Cover letter, Fill your details and What we learned, from the count Jobs already reads
 // (pages/jobs-questions.js questionsNow), free of the DOM so the tests can check them. Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1c).
-// Guarded by test/question-entries.test.js.
+// Guarded by test/unit/renderer/question-entries.test.js.
 import {fromDetailsLine} from './answered-from-details.js';
 import {questionsProblem} from './questions-view.js';
 import {KEY as DESKTOP_AI_KEY, words as desktopAiWords} from './desktop-ai-words.js';

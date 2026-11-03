@@ -1,13 +1,13 @@
 // One run, compact (owner, 25 Oct 2026: "for all runs/tasks 2 versions: one compact which will show in app, and another one detailed which will show in
 // Actions → Runs, or in the Drawer"): what the Actions banner says about a queued or finished run, for every kind, as the running banner does. Pure: the
 // pill is run-status.js runPill, the one line is the Recent runs row's outcome, the next step a failure's own fix, else the kind's own (NEXT). The full report stays in
-// the run panel (pages/activity-render.js). Drawn by pages/run-banner.js. Guarded by test/run-compact.test.js.
+// the run panel (pages/activity-render.js). Drawn by pages/run-banner.js. Guarded by test/unit/renderer/run-compact.test.js.
 import {failureHead, runPill} from './run-status.js';
 export {unsavedRun} from './run-status.js';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 // Each kind's one next step after it worked (owner, 25 Oct 2026: "Add per-kind next steps"): the page where its result lives, or none when the run panel
-// (View details) is the place to read it. `when` keeps a step to the runs that have something to see. Every kind is listed: test/run-compact.test.js fails on a
+// (View details) is the place to read it. `when` keeps a step to the runs that have something to see. Every kind is listed: test/unit/renderer/run-compact.test.js fails on a
 // new kind until it is placed here or in NO_NEXT.
 export const NEXT = {
   search: {when: c => c.added > 0, label: c => `See the ${plural(c.added, 'new job')}`, view: 'jobs'},

@@ -1,7 +1,7 @@
 // Setup step 3's cards: the Strategy page's own live block (Main goals, Locations, Job preferences, Advanced search settings) moved into the wizard while the
 // draft is reviewed. It reads the AI's draft (renderer/draft-strategy.js) and every edit goes back into the draft through renderer/strategy-sink.js, so the
 // setup has no second renderer of any field (owner, 24 Oct 2026: "literally the same cards"). hideCards puts the block back on the Strategy page.
-// Guarded by test/setup-strategy.test.js.
+// Guarded by test/unit/renderer/setup-strategy.test.js.
 import {draftAsStrategy} from '../draft-strategy.js';
 import {applyGoal} from '../markdown-edit.js';
 import {useDraft, useSaved} from '../strategy-sink.js';

@@ -17,7 +17,7 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 ## Find, don't search
 - **Code map:** `node desktop/scripts/codemap.mjs <words>` (every file → its purpose, live), open the one file you need, read only the part you change.
 - A page's code: `desktop/renderer/pages/<page>.js`; its markup: `desktop/renderer/index.html` (grep the element id).
-- Main ↔ window: `preload.cjs` (window.pilot.*) ↔ handlers in `main.js` and session handlers in `lib/session-handlers.js`. `test/ipc.test.js` checks both halves.
+- Main ↔ window: `preload.cjs` (window.pilot.*) ↔ handlers in `main.js` and session handlers in `lib/session-handlers.js`. `test/guards/rules/ipc.test.js` checks both halves.
 
 ## The loop (small change: 5–10 minutes)
 1. `tools/worktree.sh <topic>` (a worktree from origin/main with node_modules linked; never `npm install` in it);
@@ -56,7 +56,7 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 | Demo data | Fictional only (`desktop/demo/`); add the case you need to render. |
 
 ## Session workflow scenarios
-For question, resume, cancel, review handoff, startup or quit changes: extend `desktop/test/app-scenarios.test.js`.
+For question, resume, cancel, review handoff, startup or quit changes: extend `desktop/test/unit/main/app-scenarios.test.js`.
 Run `npm run test:scenarios` in desktop (also included in `tools/check.sh --fast` and full CI). Use real handlers
 from `lib/session-handlers.js` and fictional external services; assert the window state and persistence after
 restart. Never use real AI, Notion or browser tabs. These offline integration tests do not replace rendering.

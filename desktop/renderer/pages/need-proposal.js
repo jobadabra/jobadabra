@@ -3,7 +3,7 @@
 // rows were bare). The answer comes from what the fill proposed for that field (extension/page/propose.js, reported with what is left),
 // else, for a contact detail you have not given, from your CV (lib/contact-from-cv.js). "Use" fills it in the form through the
 // extension and keeps it for future forms (a contact detail in Your details, any other answer in your Answers). Guarded by
-// test/need-proposal.test.js.
+// test/unit/renderer/need-proposal.test.js.
 import {el} from '../components.js';
 import {renderSessionPage} from './session-log.js';
 import {badge, reviewStates, showInForm, smallButton, submitOnEnter, titleLine} from './session-needs.js';

@@ -1,7 +1,7 @@
 // Jobs' scores-to-refresh surface (owner, 2 Nov 2026): the ONE callout (#jobs-unscored) says either "N scores are from your previous search settings" with a
 // Re-score button (data-kind="stale", very visible, above the list) or "N jobs are not scored yet" (as before); a re-score has its own card (#rescore-card, drawn
 // while <body data-rescoring> shows it). The count and the running state are pages/rescore-run.js's, the words rescore-words.js's: the same as Strategy's notice.
-// Guarded by test/rescore-call.test.js and desktop/integration/app/screen-jobs-rescore.test.js.
+// Guarded by test/unit/renderer/rescore-call.test.js and desktop/integration/app/screen-jobs-rescore.test.js.
 import {el} from '../components.js';
 import {$, show} from './core.js';
 import {callButton, callHint, noticeTitle, rescoringLead, rescoringTitle} from '../rescore-words.js';

@@ -1,5 +1,5 @@
 // What Settings → Your data says while the data moves to Notion and after (lib/store-move.js): pure, so its wording is tested
-// (test/store-move-text.test.js); renderer/pages/data.js shows it.
+// (test/unit/renderer/store-move-text.test.js); renderer/pages/data.js shows it.
 // What each part of the data is called while it moves, and the texts Notion may already have.
 export const MOVE_WORDS = {applications: 'applications', events: 'application history', matches: 'search results', interviews: 'interviews',
   insights: 'insights', employers: 'employers', agent_runs: 'form fills', cron_runs: 'run history', texts: 'your texts'};

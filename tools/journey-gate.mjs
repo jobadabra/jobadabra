@@ -3,7 +3,7 @@
 // runs the journey tests (JOURNEY_TESTS: the applying scenarios as event sequences, no browser, seconds) and is blocked when one fails. The area suites
 // run only the tests that import a changed file, so an extension-only change never reached them. An extension change also replays the recorded
 // pages (layer 2, e2e/recorded). Called by tools/pre-push-check.sh.
-// Usage: node tools/journey-gate.mjs [--base origin/main]. Exit 0: passed or nothing to check; 1: a journey test failed. Guard: desktop/test/journey-gate.test.js.
+// Usage: node tools/journey-gate.mjs [--base origin/main]. Exit 0: passed or nothing to check; 1: a journey test failed. Guard: desktop/test/tooling/ci/journey-gate.test.js.
 import {execFileSync, spawnSync} from 'node:child_process';
 import os from 'node:os';
 import fs from 'node:fs';

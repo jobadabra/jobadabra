@@ -1,7 +1,7 @@
 // Which button of a popup closes it without agreeing to anything (owner, 9 Oct 2026: "it should close/handle any popup, no matter what flow or scenario").
 // The page's structure finds the popup (extension/popup-page.js); Claude sees its text and its own buttons and answers with one of them, or none:
 // none for a popup that is part of the task (a form, a choice that must be made, a sign-in) or when no button just closes it. The answer is kept per
-// popup text and set of buttons. No AI, or none: nothing is pressed. Guarded by test/popup-pick.test.js.
+// popup text and set of buttons. No AI, or none: nothing is pressed. Guarded by test/unit/main/popup-pick.test.js.
 import {forget, keep, keptValue, readKept} from './kept-decisions.js';
 export const MODEL = 'claude-haiku-5-5';
 export const FILE = 'popup-picks.json';

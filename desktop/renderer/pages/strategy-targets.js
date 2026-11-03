@@ -1,6 +1,6 @@
 // Strategy page, the target cards: Locations and the Advanced ones (skills, exclusions, more search settings), their lists (chips,
 // the remote choice, the digest minimum) as read and in their editor, and renderStrategy. One card's editor at a time, drafts kept per card, one page bar
-// (strategy-cards.js); the Main goals card is main-goals.js. Guarded by: test/strategy-cards.test.js, save-progress, strategy-chips, locations-card tests.
+// (strategy-cards.js); the Main goals card is main-goals.js. Guarded by: test/unit/renderer/strategy-cards.test.js, save-progress, strategy-chips, locations-card tests.
 import {withSaveProgress} from '../save-progress.js';
 import {el, pill, tile} from '../components.js';
 import {readRows} from '../card-shell.js';

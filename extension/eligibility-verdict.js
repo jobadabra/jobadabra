@@ -1,6 +1,6 @@
 // The AI's own eligibility verdict on a fill, and why a "not eligible" did not stop it, for the fill's log line (background.js "filled the form"). Before
 // (11 Oct 2026) the line said only {ineligible:false}, the outcome after a kit had skipped the stop, and it was read as "the AI judged eligible".
-// Guard: desktop/test/eligibility-verdict.test.js.
+// Guard: desktop/test/unit/extension/eligibility-verdict.test.js.
 
 // ai: the fill's AI answer ({eligible}) or null; askedAnyway: the person pressed "Fill anyway"; kit: a drafted kit decided (kitStance: withKit or
 // skipEligibility); checkOff: Settings -> "Check eligibility before filling" is off.

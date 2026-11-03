@@ -4,7 +4,7 @@
 // "Add a preference". Each control writes back only its own cell or line of the Profile (renderer/preferences-model.js), on every store, through
 // pages/outline-tab.js, on Strategy's one save bar. Work mode, seniority and the minimum salary are Main goals' (above); permit, languages and the salary
 // expectation are Your details'. On Strategy (owner, 18 Oct 2026, mockup 03) the card reads as label/value rows per side with a quiet Edit; Edit opens the
-// controls and "Review your preferences" (strategy-cards.js: one editor at a time). Guarded by test/job-preferences.test.js and test/profile-tabs-render.test.js.
+// controls and "Review your preferences" (strategy-cards.js: one editor at a time). Guarded by test/unit/renderer/job-preferences.test.js and test/unit/renderer/profile-tabs-render.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {chipLine, readRows} from '../card-shell.js';

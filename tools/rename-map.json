@@ -14,7 +14,7 @@
    "why": "pins the old data folder and Safe Storage name"
   },
   {
-   "path": "^desktop/test/app-identity\\.test\\.js$",
+   "path": "^desktop/test/guards/data/app-identity\\.test\\.js$",
    "why": "guards app-identity.js"
   },
   {

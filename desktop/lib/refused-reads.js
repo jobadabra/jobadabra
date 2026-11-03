@@ -1,7 +1,7 @@
 // Refused sites read in the user's own Chrome (owner, 19 Oct 2026; src/sources/refused_reads.py is the engine side, extension/refused-read.js the browser side).
 // Only after the person pressed "Find jobs using your browser" (owner, 26 Oct 2026: no Settings switch, "I don't think we should have a switch at all"; lib/refused-now.js):
 // the extension asks for the sites that refused the engine, fetches each once without cookies, and sends the page; this file hands the engine's queue out, passes each page to the engine, and shows the pass as one Recent activity row
-// (kind 'visits', one site line per site, the same card as "Find jobs using your browser"). Guard: test/refused-reads.test.js, test/refused-reads-button.test.js.
+// (kind 'visits', one site line per site, the same card as "Find jobs using your browser"). Guard: test/unit/main/refused-reads.test.js, test/guards/safety/refused-reads-button.test.js.
 import * as pipeline from './pipeline.js';
 import {engineJson, siteLine, resultMessage} from './visits.js';
 import {log as appLog} from './log.js';

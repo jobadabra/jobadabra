@@ -88,7 +88,7 @@ export function openView(name, {fromHistory = false} = {}) {
   if (name === 'strategy') { loadStrategy(); showCvChanged(); }
   if (name === 'settings') {
     // Arriving from another page starts on Overview; a move within Settings (sidebar Profile while on Profile, ⌘K "Open Profile: …") never passes
-    // through it, or Profile's unsaved-changes question popped up on the way back to Profile itself (test/profile-page.test.js).
+    // through it, or Profile's unsaved-changes question popped up on the way back to Profile itself (test/unit/renderer/profile-page.test.js).
     if (leaving !== 'settings') settingsPage('overview');
     showServicesNow();
     loadSettings();

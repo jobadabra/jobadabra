@@ -3,7 +3,7 @@
 // (desktop/lib/ready-handoff.js). With one, the page's cookies are set, the tab loads the page the night ended on (keeping its fill mark, so it stays
 // the app's session), and when that page is loaded its storage is put back and the page marked as the night's; then the fill types the night's answers,
 // which the app serves for this page with its kind (desktop/lib/ready-handoff.js: no reading, no AI), and asks only what the night did not see. Never a
-// password (the server never takes one), never a file (the normal fill uploads them), never Submit. Guard: desktop/test/extension-ready-handoff.test.js.
+// password (the server never takes one), never a file (the normal fill uploads them), never Submit. Guard: desktop/test/unit/extension/extension-ready-handoff.test.js.
 
 export const handoffKey = tabId => `handoff:${tabId}`;
 const key = handoffKey;

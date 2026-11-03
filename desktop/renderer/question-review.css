@@ -1,6 +1,6 @@
 /* Application questions (owner's mockup, 17 Oct 2026): Jobs' compact card (pages/jobs-questions.js) and the review drawer (pages/question-review.js).
    The drawer is the job drawer's frame (job-drawer.css: .job-drawer-layer, .job-drawer, .jd-head, .jd-body, .jd-foot) at a review width;
-   16 px padding, 12 px gaps, 36 px controls (owner's spec). Guarded by test/question-review.test.js. */
+   16 px padding, 12 px gaps, 36 px controls (owner's spec). Guarded by test/unit/renderer/question-review.test.js. */
 
 /* Jobs: compact cards (Fill your details, What we learned, the cover letter), the attention edge of a card that waits for you. */
 .qr-card { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; border-left: 4px solid var(--signal-edge); }

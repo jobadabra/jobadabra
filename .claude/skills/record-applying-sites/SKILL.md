@@ -51,7 +51,7 @@ Whoever owns the pool and its run queue writes its own session name into `~/Libr
 - **/admin/form-filling/lab** (owner-only QA page, not `/admin/form-filling/real-users`, which is real users): tiles, fixed-site replays, "The pool" table (platform from the END host,
   flow words), the runs. Bearer = Keychain `jobadabra.site.api_key` (memory `reference-owner-pages-access`). Uploads carry hosts, site names and signatures only,
   never a posting address (`applying-report.mjs`; a test fails on a path, query or token); never uploaded from CI or control runs (`REAL_EXTENSION_DIR`).
-- **Other layers** it sits beside: journey scenarios (`desktop/test/journeys.test.js`), recorded pages (`desktop/e2e/recorded/`, `npm run recorded`), the fleet digest (`boards[].dropped`).
+- **Other layers** it sits beside: journey scenarios (`desktop/test/unit/main/journeys.test.js`), recorded pages (`desktop/e2e/recorded/`, `npm run recorded`), the fleet digest (`boards[].dropped`).
 
 ## Commands (all from `desktop/e2e`, in your own worktree: `tools/worktree.sh smoke-<topic>`)
 | What | Command |

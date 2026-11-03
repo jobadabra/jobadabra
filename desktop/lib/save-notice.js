@@ -1,5 +1,5 @@
 // Tells the person when a private file could not be saved yet (lib/private-file.js: Windows held it too long) and lets them Retry; at quit, a save still waiting is finished or reported.
-// Wording is the owner's states (28 Oct 2026): "waiting for the file" is quiet, "could not save" is a pop-up whose click is Retry (no button in a pop-up). Guard: test/save-notice.test.js.
+// Wording is the owner's states (28 Oct 2026): "waiting for the file" is quiet, "could not save" is a pop-up whose click is Retry (no button in a pop-up). Guard: test/unit/main/save-notice.test.js.
 import path from 'node:path';
 import {NO_PLACE} from '../renderer/targets.js';
 import {flushPending, onChange, retryPrivate} from './private-file.js';

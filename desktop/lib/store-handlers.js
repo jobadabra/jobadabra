@@ -1,12 +1,12 @@
 // Settings → Data & backup → "Your data": where the person's data lives (lib/store), choosing this Mac while trying, and
 // "Move my data to Notion" (spec P4, lib/store-move.js). The window reads capabilities and a label, never an
-// adapter's name. Guarded by test/store-handlers.test.js.
+// adapter's name. Guarded by test/unit/main/store-handlers.test.js.
 import * as notionGate from './notion-gate.js';
 import * as engine from './store/engine.js';
 import * as store from './store/index.js';
 import {moveToNotion} from './store-move.js';
 
-// Whether the data may live on this Mac. On since the engine's store callers are done (bridges 0, test/bridge-registry.test.js and
+// Whether the data may live on this Mac. On since the engine's store callers are done (bridges 0, test/guards/data/bridge-registry.test.js and
 // tests/unit/stores/test_store_readiness.py); JOBADABRA_STORE_CHOICE=0 turns it off (the old "Notion only" app, for a bisect).
 export const STORE_CHOICE = process.env.JOBADABRA_STORE_CHOICE !== '0';
 

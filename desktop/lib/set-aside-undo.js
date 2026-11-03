@@ -1,5 +1,5 @@
 // Undo for a value a pick set aside (lib/set-aside.js): a Profile fact is added back to its Your details section, a Locations list is written back to
-// the search settings. The entry leaves the list only once the restore is written. Guarded by test/set-aside.test.js.
+// the search settings. The entry leaves the list only once the restore is written. Guarded by test/unit/main/set-aside.test.js.
 import {find, drop} from './set-aside.js';
 import {restoreFact} from './profile-move.js';
 import {restoreLocation} from './locations-store.js';

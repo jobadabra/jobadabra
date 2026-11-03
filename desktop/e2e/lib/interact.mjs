@@ -2,6 +2,7 @@
 // The interaction probe: clicks the safe controls of the page that is showing and records what each click did (page change, calls the window made to the app, signs of work
 // while it ran, errors thrown). A control that did nothing, an expandable that did not expand, an action that ran long with no sign of work and a click that threw are findings.
 // Screenshots cannot show any of these; behaviour can.
+// Job: report health
 
 const SLOW_MS = 500;       // an app call at least this long should show it is working
 const MAX_CONTROLS = 40;
@@ -23,7 +24,7 @@ const UNSAFE_CLASS = /danger|destructive/i;
  * Takes what the page collector reads off the element (text, class, href, data-command, data-wand); never throws.
  */
 export function isSafe({text = '', cls = '', href = '', command = '', wand = false}) {
-  // data-wand: the app's own mark for a press that starts AI work (renderer/magic.js wand; test/wand-cursor.test.js lists them). Why (#2350, 28 Oct 2026): Focus's
+  // data-wand: the app's own mark for a press that starts AI work (renderer/magic.js wand; test/unit/renderer/wand-cursor.test.js lists them). Why (#2350, 28 Oct 2026): Focus's
   // one-press "Read Indeed" starts a site read in Chrome; pressed on Focus, Jobs and Strategy it waited 30 s each for an extension and ran the suite over budget.
   if (command || wand) return false;
   if (UNSAFE_TEXT.test(text) || UNSAFE_CLASS.test(cls)) return false;

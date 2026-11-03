@@ -1,7 +1,7 @@
 // Claude teaches the extension (owner, 10 Oct 2026; spec docs/superpowers/specs/2026-10-10-claude-finishes-stuck-pages.md part 5). When a takeover leaves the page filled further, the controls
 // it filled that the extension had left are reported, by structural fingerprint only, as outcomes where the extension failed (no recipe): counts, no label, no value. The site lists such
 // fingerprints (with their skeleton sample from lib/misses.js) as the proposer's targets, and a recipe that passes the canary lets the next install meeting that shape fill it alone.
-// Keyed by the application's session URL. Guarded by test/takeover-teach.test.js; the report path by test/recipes.test.js.
+// Keyed by the application's session URL. Guarded by test/unit/main/takeover-teach.test.js; the report path by test/unit/main/recipes.test.js.
 const runs = new Map();       // started takeovers: key -> {left: Set of normalized labels, host, taught: Set}
 const lastSeen = new Map();   // the latest report per key: {pending: labels the extension left, host}
 const norm = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();

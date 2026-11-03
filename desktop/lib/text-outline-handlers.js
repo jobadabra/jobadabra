@@ -2,7 +2,7 @@
 // every store: IPC textOutline(name) → {ok, items, store, link}, textEdit(name, changes) → the same, fresh. A change names the block it read
 // and the text it read there; it is applied only when a FRESH outline still has that block with that text (else nothing is lost: "changed
 // meanwhile, reload"). Never a whole-page write, so a Notion page's other blocks (📎 CV file, embeds) are never touched. Spec:
-// docs/superpowers/specs/2026-10-16-profile-tabs-mockups.md. Guarded by test/text-outline.test.js.
+// docs/superpowers/specs/2026-10-16-profile-tabs-mockups.md. Guarded by test/unit/main/text-outline.test.js.
 import * as store from './store/index.js';
 import * as sqliteStore from './store/sqlite.js';
 

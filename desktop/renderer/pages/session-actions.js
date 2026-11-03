@@ -1,5 +1,5 @@
 // Session actions: remove, close, cancel, skip, restart, resume and pause one application session.
-// Moved out of sessions.js (which re-exports them). Guarded by test/terminals.test.js and test/form-tab-closed.test.js.
+// Moved out of sessions.js (which re-exports them). Guarded by test/unit/main/terminals.test.js and test/unit/main/form-tab-closed.test.js.
 import {isLive} from '../session-state.js';
 import {shared} from './shared.js';
 import {jobsChanged, renderJobs, startedApplying} from './jobs.js';

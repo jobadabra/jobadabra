@@ -1,5 +1,5 @@
 // Actions → Runs' filters (owner, 25 Oct 2026: "visible task/status/date filters"): which runs the list keeps by task, status and date. Pure: the
-// window passes how a run's kind and status pill are told. Guarded by test/run-view.test.js.
+// window passes how a run's kind and status pill are told. Guarded by test/unit/renderer/run-view.test.js.
 export const STATUS = [['', 'Any status'], ['queued', 'Queued'], ['running', 'Running'], ['ok', 'Completed'], ['warn', 'With warnings'], ['failed', 'Failed']];
 export const DATES = [['', 'Any time'], ['today', 'Today'], ['7', 'Last 7 days'], ['30', 'Last 30 days']];
 

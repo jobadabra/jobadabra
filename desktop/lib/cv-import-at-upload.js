@@ -2,7 +2,7 @@
 // background, imports it into cv/cv.json (the facts the form AI, Tailor and the match read). The same file is never read twice
 // (cv/import.json holds the hash of the PDF cv.json came from); a failure is logged and toasted, never blocks the upload; Tailor
 // and the cover letter call ensure() too, so a missed import is retried there and two imports at once share one call (a CV set while one runs is read after it).
-// Guarded by test/cv-import-at-upload.test.js (it also fails when a new caller bypasses these functions).
+// Guarded by test/unit/cv/cv-import-at-upload.test.js (it also fails when a new caller bypasses these functions).
 import * as cvChange from './cv-change.js';
 import * as cvlib from './cv.js';
 import {writePrivate} from './private-file.js';

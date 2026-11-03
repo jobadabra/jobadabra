@@ -17,7 +17,7 @@
     "twin": "node scripts/stage.mjs && node e2e/twin.mjs",
     "twin:drive": "node e2e/twin-drive.mjs",
     "live": "cd e2e && E2E_HEADED=1 LIVE=1 node run-all.mjs --only applyflows",
-    "test:scenarios": "node scripts/stage.mjs && node --test test/app-scenarios.test.js",
+    "test:scenarios": "node scripts/stage.mjs && node --test test/unit/main/app-scenarios.test.js",
     "build": "node scripts/stage.mjs --app && electron-builder --mac --publish never -c.productName=Jobadabra",
     "screenshots": "node scripts/stage.mjs && node scripts/screenshots.mjs",
     "gallery": "JOBADABRA_DEMO=1 JOBADABRA_PAGE=gallery.html JOBADABRA_USER_DATA=${TMPDIR:-/tmp}/jobadabra-gallery electron .",

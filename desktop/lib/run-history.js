@@ -202,4 +202,4 @@ function noticeText(run) {
   }
   return {title: `${name} ${verdict}${where}`, body: String(run.result || run.summary || run.message || 'Done.').split('\n')[0].slice(0, 180) + look};
 }
-export {KIND as RUN_KINDS};   // every app task kind must be here, or its runs never get a Notion row (test/run-kinds.test.js)
+export {KIND as RUN_KINDS};   // every app task kind must be here, or its runs never get a Notion row (test/unit/main/run-kinds.test.js)

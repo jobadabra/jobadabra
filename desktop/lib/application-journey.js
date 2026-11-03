@@ -1,7 +1,7 @@
 // Where an application stands, owned in ONE place (spec: docs/superpowers/specs/2026-10-10-application-journey.md). A pure reducer: a session's
 // journey fields and one event in, the fields to change out. terminals.js applies the result (noteStuck, clearStuck, setStage, setAccount call it);
 // nothing else writes these fields. Screens read them (renderer/session-state.js) and `journeyStep` names the one step they add up to.
-// Guards: test/application-journey.test.js (each invariant), test/journeys.test.js (the scenarios of docs/flows/applying.md as event sequences).
+// Guards: test/unit/main/application-journey.test.js (each invariant), test/unit/main/journeys.test.js (the scenarios of docs/flows/applying.md as event sequences).
 //
 // Invariants (each has a test; change one only with the owner, and say so in the commit):
 //  1. A finished application (outcome set) never changes step.

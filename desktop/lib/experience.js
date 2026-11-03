@@ -4,7 +4,7 @@
 // the transcribed CV and one AI match against the main CV (which main role each role of the source describes, and which of its
 // bullets state something the main role doesn't). The match is a meaning, so AI decides it with fixed integers the code validates.
 // Tailoring reads the bank through withExtras (extra bullets appended to a matched role, flagged `extra`) and knownText (vocabulary).
-// A cache of files on this Mac, like cv.json: rebuildable from the PDFs, which the weekly backup keeps. Guarded by test/experience.test.js.
+// A cache of files on this Mac, like cv.json: rebuildable from the PDFs, which the weekly backup keeps. Guarded by test/unit/main/experience.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

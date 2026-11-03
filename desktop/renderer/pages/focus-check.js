@@ -1,6 +1,6 @@
 // The captcha line on Focus (owner, 21 Oct 2026: tabs stay hidden, "informed only when there is a captcha, then a button to deliberately focus the window"): while the extension holds a captcha in its
 // hidden incognito window, one line above Up next says which site and offers "Show the check"; only that press brings the window forward, and the page is read once it is solved.
-// A strip of its own (focus.js is near its size limit). The app keeps the list (lib/refused-reads.js refusedCheckWaiting). Guard: test/focus-check.test.js.
+// A strip of its own (focus.js is near its size limit). The app keeps the list (lib/refused-reads.js refusedCheckWaiting). Guard: test/unit/renderer/focus-check.test.js.
 import {el} from '../components.js';
 import {$} from './core.js';
 import {checksOf, checkLine} from './check-rows.js';

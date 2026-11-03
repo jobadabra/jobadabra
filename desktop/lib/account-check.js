@@ -1,6 +1,6 @@
 // The Gmail check for a site account that awaits its confirmation mail (owner, 10 Oct 2026: "after the signup it should automatically trigger the Gmail check").
 // Runs lib/account-confirm.js at most once at a time per site, once more whenever a pending account's sign-in page is met, and tells the session when only the person
-// can finish it (a code in the mail, or no mail), so the card says why the page sits untouched. Guard: test/account-check.test.js.
+// can finish it (a code in the mail, or no mail), so the card says why the page sits untouched. Guard: test/unit/main/account-check.test.js.
 import {log as appLog} from './log.js';
 
 const NEEDS = {code: 'Enter the code from your confirmation email', none: 'Confirm your email (no confirmation mail found yet)'};

@@ -1,6 +1,6 @@
 // Settings → Profile → Preferences over IPC: the AI's clean reading of the Preferences fields (lib/preferences-parse.js), asked once per text.
 // The window sends the fields' current text; nothing is written here (the window writes the accepted ones through the Profile's block edits).
-// Demo mode: a fictional reading, no AI. Guarded by test/preferences-parse.test.js.
+// Demo mode: a fictional reading, no AI. Guarded by test/unit/renderer/preferences-parse.test.js.
 import {aiClient} from './confirmation.js';
 import * as parseFields from './preferences-parse.js';
 

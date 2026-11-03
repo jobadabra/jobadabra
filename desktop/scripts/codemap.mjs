@@ -2,7 +2,7 @@
 // (11 Oct 2026: the committed CODEMAP.md went stale on every new file and conflicted on rebases), so it can never be out of date:
 //   node desktop/scripts/codemap.mjs <word> [<word>…]   files whose path or purpose has every word (case-insensitive)
 //   node desktop/scripts/codemap.mjs                    the whole map
-// test/codemap.test.js: every listed file has a header that says what it does.
+// test/unit/main/codemap.test.js: every listed file has a header that says what it does.
 import fs from 'node:fs';
 import path from 'node:path';
 

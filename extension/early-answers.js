@@ -2,7 +2,7 @@
 // the page-kind ask (fill-flow.js consider -> flow.js askEarly), so when the page is judged a form the answers are often there already instead of
 // asked after (the form page cost a page-kind ask THEN an answers ask, ~5 s + ~4.5 s). The fill takes the early answer only for the same tab, page and
 // exactly the same open questions, within FRESH_MS, once; otherwise it asks as before. An answer nobody takes is dropped (it writes nothing).
-// Guard: desktop/test/early-answers.test.js.
+// Guard: desktop/test/unit/extension/early-answers.test.js.
 const FRESH_MS = 60000;
 const pending = new Map();   // `${tabId} ${page}` -> {at, fields, answer: Promise}
 const keyOf = (tabId, url) => `${tabId} ${String(url || '').split('#')[0]}`;

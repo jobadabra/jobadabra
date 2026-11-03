@@ -114,7 +114,7 @@ class VerdictTest(unittest.TestCase):
     def test_it_agrees_with_the_window_on_the_shared_table_of_cases(self):
         import json
         table = json.loads((Path(__file__).resolve().parents[2] / 'fixtures' / 'audience_cases.json').read_text())['cases']
-        for case in table:   # desktop/renderer/audience.js is held to the same rows (desktop/test/audience.test.js)
+        for case in table:   # desktop/renderer/audience.js is held to the same rows (desktop/test/unit/renderer/audience.test.js)
             self.assertEqual(coverage.looks_technical(case['keywords']), case['technical'], case['keywords'])
 
     def test_a_search_with_no_technical_keyword_gets_no_engineering_suggestions(self):

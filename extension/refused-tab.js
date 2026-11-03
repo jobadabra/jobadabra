@@ -4,7 +4,7 @@
 // It waits up to WAIT_MS for a passive "checking your browser" page to clear BY ITSELF: no click, no typing, no solving, ever. The app's AI says what the page is now
 // (/extension/refused-judge: page | passive_check | captcha | login | refused); only `page` is read, a captcha is a stop for the app to offer to the person.
 // Runs only when Chrome lets the extension into incognito (Allow in Incognito, once) and the window REPORTS it is incognito; otherwise nothing is opened.
-// At most DAILY_TABS sites a day, never focused. Not a flow file: nothing here touches an application. Guard: desktop/test/extension-refused-tab.test.js.
+// At most DAILY_TABS sites a day, never focused. Not a flow file: nothing here touches an application. Guard: desktop/test/unit/extension/extension-refused-tab.test.js.
 import {moveTab} from './tabs.js';
 import {hold} from './refused-held.js';
 export const DAILY_TABS = 5;

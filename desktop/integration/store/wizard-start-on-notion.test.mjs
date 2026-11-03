@@ -2,7 +2,7 @@
 // built inside the test page and the strategy moves in" (1 Nov 2026, wizard 2/2). A new install keeps its data on this Mac; when Notion is connected while that store is still empty, the store
 // becomes Notion and the strategy written during setup moves into the Profile page. The window glue (the reload that makes the window know) stays covered by every e2e suite that builds its
 // workspace through the wizard's connect (lib/wizard.mjs connectNotion, on the Notion stand-in leg).
-// The connect is the main process's closure (main.js connectNotion), which needs Electron: this test makes the same calls in the same order (test/connect-notion-order.test.js pins that order in the source).
+// The connect is the main process's closure (main.js connectNotion), which needs Electron: this test makes the same calls in the same order (test/unit/main/connect-notion-order.test.js pins that order in the source).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

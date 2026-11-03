@@ -2,7 +2,7 @@
 // saves several cards in one press; on this Mac a line's id is its line number, so an earlier save of another card can move every line under it). Each
 // change's block is found again by its words: the same id when it still holds them (Notion's ids never move), else the block with those words nearest its
 // old place. A block not found keeps its old id, so the store's own `was` check refuses it ("Some lines changed meanwhile") instead of editing the wrong
-// line. No DOM: guarded by test/outline-rebase.test.js.
+// line. No DOM: guarded by test/unit/renderer/outline-rebase.test.js.
 
 // items → [{id, words, at}] for every block and every table row (a row's words are its cells).
 function blocksOf(items) {

@@ -1,7 +1,7 @@
 // The bottom of a run's one result card in its run panel: its kind's own view (the jobs a search added, a Gmail check's emails, an insight's finding,
 // the kits, the sites read, skeleton bars while its page is read, or the box of a run that saved nothing).
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
-// desktop/test/run-result-card.test.js and the e2e activity suites.
+// desktop/test/unit/renderer/run-result-card.test.js and the e2e activity suites.
 import {parseRunMessage} from '../run-cards.js';
 import {parseVisits} from '../visits-card.js';
 import {parseInsight} from '../insight-card.js';

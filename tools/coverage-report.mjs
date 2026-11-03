@@ -8,7 +8,7 @@
 // Why (1 Nov 2026, owner via a8: "Yes, nightly report (Recommended)"): nobody could say how much of the code a layer runs, or which of the board's journeys have a test. Report only,
 // allowed under the owner's freeze (no new guard, gate or check until 3 green nights): no PR trigger, nothing `needs` its job (.github/workflows/coverage-report.yml).
 // Counting: JS and e2e count non-blank lines (a line is covered when a character on it ran); Python counts coverage.py's statements. Files no test loaded count as 0 in a measured layer.
-// Tests: desktop/test/coverage-report.test.js
+// Tests: desktop/test/tooling/ci/coverage-report.test.js
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';

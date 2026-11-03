@@ -1,7 +1,7 @@
 // After the extension pressed a sign-up page's button (owner, 8 Oct 2026): find the confirmation mail the site sent to the address the account was made with
 // (Gmail, read-only; the AI picks the confirm link or code among the mail's own, in any language: src/sources/google.py verify), open its link in the extension's
 // Chrome (armed, so the flow goes on from the page it lands on) and mark the account confirmed. A code, not a link, is left to the person (shown in the session).
-// Never logs the address, the link or the code. Guard: test/account-confirm.test.js.
+// Never logs the address, the link or the code. Guard: test/unit/main/account-confirm.test.js.
 import {log as appLog} from './log.js';
 
 export function parseVerify(stdout) {

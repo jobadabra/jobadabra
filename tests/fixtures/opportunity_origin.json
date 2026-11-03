@@ -1,5 +1,5 @@
 {
-  "_comment": "One table for src/notion/origin.py and desktop/renderer/origin.js: both must give these answers; a row's origin is the Origin column (it wins when set) (tests/unit/notion/test_origin.py, desktop/test/origin.test.js).",
+  "_comment": "One table for src/notion/origin.py and desktop/renderer/origin.js: both must give these answers; a row's origin is the Origin column (it wins when set) (tests/unit/notion/test_origin.py, desktop/test/unit/renderer/origin.test.js).",
   "cases": [
     {"name": "empty row", "row": {}, "origin": "outbound"},
     {"name": "unknown source", "row": {"source": "Carrier pigeon", "stage": "Applied"}, "origin": "outbound"},

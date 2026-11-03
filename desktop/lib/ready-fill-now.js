@@ -1,5 +1,5 @@
 // Fill now's plan (owner, 18 Oct 2026: "make the Fill now work", one press sends and starts): from tonight's ready jobs, the jobs you opened but did not submit, and the forms
-// a send would replace, decide to send at once, ask first, or say there is nothing to fill. Pure: the handler (lib/ready-handlers.js) acts on it. Guard: test/ready-fill-now.test.js.
+// a send would replace, decide to send at once, ask first, or say there is nothing to fill. Pure: the handler (lib/ready-handlers.js) acts on it. Guard: test/unit/ready-fill/ready-fill-now.test.js.
 
 // tonight: the jobs pickToSend gives; opened: pickToRefill's (opened in your browser, not submitted); waiting: forms of this night still waiting for you;
 // again: the yes was to fill the opened jobs again; confirmed: the yes was given. -> {send: jobs} | {ask: {again, jobs, replaces}} | {nothing: true}

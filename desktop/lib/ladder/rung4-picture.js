@@ -2,7 +2,7 @@
 // The extension sends a SCREENSHOT of the visible page with typed values hidden, plus the text sketch (controls with their state and position, buttons, short texts, frame hosts). The
 // strongest model answers ONE action from a fixed list: click a control the page lists, wait, or ask the person. The control is checked against the sketch; floors the AI cannot lift: off
 // unless the assistant mode is "Do it for me" (accountAutomation full; its own switch until 10 Oct 2026), account pages only, 2 looks per page shape and 10 per day, never a stored picture. What worked
-// (the page changed after the click) is remembered per page shape, so the next visit is free. Guard: test/escalate.test.js.
+// (the page changed after the click) is remembered per page shape, so the next visit is free. Guard: test/unit/main/escalate.test.js.
 import fs from 'node:fs';
 import {accountSketch, listed} from '../account-judge.js';
 import {pageShape} from './rung1-kept.js';

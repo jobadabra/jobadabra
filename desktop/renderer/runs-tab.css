@@ -1,5 +1,5 @@
 /* One run view (owner, 25 Oct 2026): the drawer shows one run (no list), Actions → Runs shows the list and the same run panel (pages/runs-tab.js).
-   The list and panel styles are shared in style.css (":is(.activity-panel, .actions-runs)"); this file holds only what differs. Guard: test/run-view.test.js. */
+   The list and panel styles are shared in style.css (":is(.activity-panel, .actions-runs)"); this file holds only what differs. Guard: test/unit/renderer/run-view.test.js. */
 /* The drawer: the run alone, full width. */
 .activity-panel .ap-grid { grid-template-columns: minmax(0, 1fr); }
 .activity-panel .ap-list { display: none; }

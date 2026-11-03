@@ -1,7 +1,7 @@
 // The upload of "Report this form" (spec docs/superpowers/specs/2026-10-15-report-this-form.md §4, §6): the scrubbed record the person approved is packed (JSON, gzip), encrypted on this Mac with a
 // random AES key that is itself wrapped with the owner's public key (lib/report-key.pem, the same key as e2e/net-record.pub.pem; only the owner's Keychain key opens it), and sent to the site with
 // the install's own token for purpose "report". The site stores two opaque objects and cannot read them. Never sent when this run is not a real install (recipes.js siteOffForUser: tests, the twin, CI).
-// The ids of what was sent are kept (settings.reportsSent) so Settings can delete them. Guard: test/report-upload.test.js.
+// The ids of what was sent are kept (settings.reportsSent) so Settings can delete them. Guard: test/unit/main/report-upload.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import zlib from 'node:zlib';

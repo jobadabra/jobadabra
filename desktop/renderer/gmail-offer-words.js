@@ -1,5 +1,5 @@
 // Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the words of the two dialogs and the Suggestions card, free of the DOM so
-// test/gmail-offer.test.js can check them. pages/gmail-offer.js draws the dialog and runs the one connect flow; lib/gmail-offer.js decides WHEN the window is told.
+// test/unit/renderer/gmail-offer.test.js can check them. pages/gmail-offer.js draws the dialog and runs the one connect flow; lib/gmail-offer.js decides WHEN the window is told.
 export const KEY = 'gmail:connect';
 
 /** The dialog's words. `why`: 'applied' (the first Submit) or 'code' (a page asks for a code mailed to the person). */

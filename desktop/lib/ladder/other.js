@@ -1,6 +1,6 @@
 // The shapes whose ladder ended with no usable answer ("other"): a count per page shape (host + path template | build, as page-kind.js kindKey), nothing else. Fixed values and integers only:
 // no sentence, address, query or number of the page can be stored. The counts are what the pack reporter sends (lib/recipes.js, wired by the learning owner) so a recipe can be added as data.
-// The file (ladder-other.json) is a cache: deleting it only loses the counts. Guard: desktop/test/ladder-other.test.js.
+// The file (ladder-other.json) is a cache: deleting it only loses the counts. Guard: desktop/test/unit/main/ladder-other.test.js.
 import fs from 'node:fs';
 
 const SHAPE = /^[a-z0-9._-]{1,80}(\/[a-z0-9._*-]{0,60}){0,8}\|[a-z0-9+-]{1,12}$/;   // as learning.js SHAPE (the build may end in '8+'): no query, no space, no @, no sentence

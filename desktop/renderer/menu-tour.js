@@ -1,4 +1,4 @@
-// The first-launch menu tour: which stops, in which order, and whether it was seen. Never shown again once done or skipped. Guarded by test/menu-reveal.test.js.
+// The first-launch menu tour: which stops, in which order, and whether it was seen. Never shown again once done or skipped. Guarded by test/unit/renderer/menu-reveal.test.js.
 export const STOPS = [
   {id: 'focus', target: '.nav[data-view="focus"]', title: 'Focus', text: 'What needs you today, most important first.'},
   {id: 'jobs', target: '.nav[data-view="jobs"]', title: 'Jobs', text: 'Your matches. Find jobs starts here.'},

@@ -1,6 +1,7 @@
 // The pool run's replay candidates (~/Library/Application Support/Job Pilotto QA/replay-candidates/<day>/<shape>/{page.html,case.json}, written by the smoke run, read-only here) as ladder fixtures: a candidate whose run
 // did NOT reach the form becomes a fixture with expect `pending` (a person confirms what the page really is), source captured. Pure parts; the browser part is ladder-capture.mjs --from-candidates.
-// Guard: test/ladder-candidates.test.js.
+// Guard: test/unit/main/ladder-candidates.test.js.
+// Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -1,6 +1,6 @@
 // "Find jobs using your browser" offered on the card of a finished Find jobs run (owner, 26 Oct 2026: "It should be suggested to the user as an action button";
 // "there should be a button on the card where the "find jobs" finished"). The sites that refused the engine are read in the person's browser only after this
-// press (lib/refused-now.js); how many is settings.refusedOffer, kept when the run ended (lib/refused-offer.js). The words and when: browser-offer-rows.js; ⌘K: nav.js. Guard: test/refused-reads-button.test.js.
+// press (lib/refused-now.js); how many is settings.refusedOffer, kept when the run ended (lib/refused-offer.js). The words and when: browser-offer-rows.js; ⌘K: nav.js. Guard: test/guards/safety/refused-reads-button.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {ALLOW, LABEL, browserOffer} from './browser-offer-rows.js';

@@ -2,7 +2,7 @@
 // facts, in 3 sections"), each line as it is on the Profile page (label, then its value to edit), "Add a line", and "To check": one line counting the
 // unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the Fill your details drawer (owner,
 // 28 Oct 2026, superseding 18 Oct "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
-// test/details-facts.test.js and test/details-review.test.js.
+// test/unit/main/details-facts.test.js and test/unit/main/details-review.test.js.
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {$} from './core.js';
@@ -130,7 +130,7 @@ function drawWhich(aside = [], tidied = null) {
 
 // Reads and draws the sections: the saved lines at once (lib/details-facts-handlers.js 'detailsFactsNow'), then the one-time moves settle in the background (the first time the app
 // moves the facts in: copy and backup first, lib/profile-move.js) and the screen draws again with what they did. 'details-sorting' tells the cards (the Voluntary surveys card
-// shows "Sorting your answers…", then reads its lines again); the first paint never waits on an AI call. Guarded by test/details-facts.test.js.
+// shows "Sorting your answers…", then reads its lines again); the first paint never waits on an AI call. Guarded by test/unit/main/details-facts.test.js.
 let settledFor = 0, redrawing = false;
 const paintFacts = result => {
   skeletons(false);

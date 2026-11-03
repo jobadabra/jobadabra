@@ -1,4 +1,4 @@
-// Shared Always on e-mail field for the Focus offer; Settings uses its Notifications address. Guard: test/suggestions.test.js.
+// Shared Always on e-mail field for the Focus offer; Settings uses its Notifications address. Guard: test/unit/renderer/suggestions.test.js.
 import {el} from './components.js';
 import {HELPER} from './hosted-words.js';
 

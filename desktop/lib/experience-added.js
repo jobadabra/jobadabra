@@ -1,7 +1,7 @@
 // "Added by you" in the experience bank (Insights PR 2, spec docs/superpowers/specs/2026-10-28-insights-with-actions-design.md): what the person added themselves
 // after an insight: a skill, a bullet attached to a main-CV role, or a correction such as "Python: 3 years". Kept in cv/added.json beside the sources.
 // The main CV file is never changed (owner, 28 Oct 2026): withExtras (experience.js) applies these to the copy tailoring reads, and About you's `cv` part carries them.
-// Guarded by test/experience-added.test.js.
+// Guarded by test/unit/main/experience-added.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

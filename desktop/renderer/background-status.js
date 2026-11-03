@@ -1,4 +1,4 @@
-// A hidden-browser session's status words (sessions list, dock, nav badge, and the card's pill) from its own background state, not from a Chrome tab it never had. Guard: test/background-status.test.js.
+// A hidden-browser session's status words (sessions list, dock, nav badge, and the card's pill) from its own background state, not from a Chrome tab it never had. Guard: test/unit/renderer/background-status.test.js.
 
 const WORDS = {
   queued: ['Queued', 'neutral'], preflight: ['Filling', 'info'], filling: ['Filling', 'info'], ready_for_review: ['Ready for review', 'warn'],

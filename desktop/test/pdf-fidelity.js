@@ -1,5 +1,5 @@
 // Test helper: how faithful an edited CV PDF is to its original, from what lib/pdf-edit/read.js sees in both (no rendering, so it runs on
-// every CI platform). Used by test/cv-inplace.test.js and test/pdf-edit.test.js.
+// every CI platform). Used by test/unit/cv/cv-inplace.test.js and test/unit/main/pdf-edit.test.js.
 import fs from 'node:fs';
 import {readPdf} from '../lib/pdf-edit/read.js';
 import {docText} from '../lib/pdf-edit/layout.js';

@@ -63,7 +63,7 @@ Electron lifecycle callbacks are in `desktop/lib/lifecycle.js` with injected ser
 
 <a id="offline-scenarios"></a>
 ## Offline app scenario tests
-`tools/check.sh --fast` and the full desktop suite run `desktop/test/app-scenarios.test.js`.
+`tools/check.sh --fast` and the full desktop suite run `desktop/test/unit/main/app-scenarios.test.js`.
 Use `cd desktop && npm run test:scenarios` to reproduce just these journeys (stages shared files first).
 When changing startup/reconciliation, session questions, resume, cancel, review handoff or quit, extend a
 journey with the user's actions and observable consequences, including after restart and on service failure.

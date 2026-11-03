@@ -1,6 +1,6 @@
 // Owns: where the engine lives (REPO, python()), the model names (MODELS), the first-run config copy, and the environment a pipeline
 // process gets (pipelineEnv, a whitelist), plus readable() (Telegram HTML -> text) and the demo-mode switch.
-// Guarded by: test/pipeline-run.test.js, test/model-override.test.js, test/e2e-isolation.test.js, test/demo.test.js, test/pool-share.test.js.
+// Guarded by: test/unit/main/pipeline-run.test.js, test/unit/cv/model-override.test.js, test/unit/main/e2e-isolation.test.js, test/unit/main/demo.test.js, test/unit/main/pool-share.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import * as claudeCode from './claude-code.js';
 import * as poolShare from './pool-share.js';
@@ -65,7 +65,7 @@ const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'L
 // unhandled errors to it (src/crash_reporting.py). The install id and version ride along as tags.
 let crashReports = null;
 export const setCrashReports = value => { crashReports = value; };
-/** The env protocol number the app sends; src/paths.py ENV_VERSION is the engine's minimum. Bump both together (test/env-version.test.js). */
+/** The env protocol number the app sends; src/paths.py ENV_VERSION is the engine's minimum. Bump both together (test/unit/main/env-version.test.js). */
 export const ENV_VERSION = 1;
 export function pipelineEnv(storage, parent = process.env) {
   const settings = storage.settings();

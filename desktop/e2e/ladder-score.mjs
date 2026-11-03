@@ -4,11 +4,12 @@
 //   (no flag)   the real model on the plan path (Claude Code; ANTHROPIC_API_KEY must be unset: no API spend), one call per fixture
 //   --record    live, and write the model's answers into the fixtures as their stored answer (what --offline and the push gate replay)
 //   --missing   (with --record) only the fixtures that have no stored answer yet, so a new fixture does not re-record the others
-//   --offline   replay the stored answers through the real pageKind, no model: deterministic, seconds (the gate: test/ladder-ratchet.test.js)
+//   --offline   replay the stored answers through the real pageKind, no model: deterministic, seconds (the gate: test/unit/main/ladder-ratchet.test.js)
 //   --update-baseline "<why>"   (with --offline) rewrite e2e/ladder-baseline.json from this score and add the dated reason: the ratchet's only way to accept a change
 //   --moves     the next move, both ways, on the fixtures with a confirmed expected move (e2e/ladder-moves-score.mjs; --offline: today only)
 //   --spread    3 live draws per fixture (plan path), kept in e2e/ladder-spread.json with the prompt fingerprint: which fixtures flip between draws (--only <id> re-measures one); the score then labels them "noisy (k/3)"
 //   --only <id> | --source <recorded|captured|reconstructed|invented> | --question <page_kind|fill_verify|fill_repair|…> | --json
+// Job: keep the scorecard
 import fs from 'node:fs';
 import path from 'node:path';
 import {pickEngine} from './lib/engine.mjs';

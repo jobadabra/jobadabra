@@ -41,7 +41,7 @@
   const typedHere = new Map();
   // Does the box still hold what we typed? Only letters and digits count, so a mask or a reformat (spaces, dashes, a date's separators, a national form of a
   // phone number) is the same value; a box the page reset to something else ("+972" for "+41 79 555 01 23") is not. One rule with the panel (extension/review.js,
-  // its own copy; desktop/test/typed-match.test.js keeps them equal).
+  // its own copy; desktop/test/unit/extension/typed-match.test.js keeps them equal).
   const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
   const typedSame = (typed, now) => {
     const a = alnum(typed), b = alnum(now);
@@ -49,7 +49,7 @@
     if (a.length >= 8 && b.length >= 8 && /^\d+$/.test(a) && /^\d+$/.test(b) && a.slice(-8) === b.slice(-8)) return true;   // the same number with or without its country code or trunk 0
     return [...a].sort().join('') === [...b].sort().join('');
   };
-  window.__jobadabraTypedSame = typedSame;   // for desktop/test/typed-match.test.js
+  window.__jobadabraTypedSame = typedSame;   // for desktop/test/unit/extension/typed-match.test.js
   window.__jobadabraLeaveAlone = element => { const record = typedHere.get(element); if (record) record.edited = true; };   // a box the fill decided on (a suggestion chosen, or left empty on purpose) is never typed again as plain text by the retype watch (page/fill-menus.js suggestPick)
   window.__jobadabraTypedHere = element => typedHere.has(element);   // the fill typed this box on this page before (the person's later edits included): its text is not the page's own guess (page/fill-read.js pageGuess)
   window.__jobadabraNoteTyped = (element, value) => noteTyped(element, value);   // a box the fill picked a suggestion in now holds that choice, not the text first typed: retired as what we typed (page/fill-menus.js suggestPick)
@@ -203,7 +203,7 @@
     const spaced = groups[0] === code ? groups.slice(1).join(' ') : national;
     return {e164: `+${code}${national}`, e164_digits: `${code}${national}`, international_00: `00${code}${national}`, national: `0${spaced}`, national_plain: `0${national}`}[format] || '';
   };
-  window.__jobadabraWriteAs = writeAs;   // for desktop/test/typed-match.test.js
+  window.__jobadabraWriteAs = writeAs;   // for desktop/test/unit/extension/typed-match.test.js
   window.__jobadabraRetypeAs = (field, format) => {
     const entry = [...typedHere].find(([element, record]) => !record.edited && element.isConnected && record.field === field);
     if (!entry) return false;

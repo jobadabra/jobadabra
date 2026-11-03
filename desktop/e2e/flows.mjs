@@ -21,33 +21,33 @@ export const FLOW_CORE = ['extension/fill-tab-inputs.js', 'extension/fill-tab-fi
   'desktop/lib/session-flow.js', 'desktop/lib/ladder/rung1-kept.js', 'desktop/lib/ladder/rung2-sketch.js', 'desktop/lib/review.js', 'desktop/lib/application-journey.js', 'desktop/lib/terminals.js', 'desktop/lib/journey-identity.js', 'extension/tab-identity.js'];
 
 // The journey tests: the applying scenarios as event sequences (no browser, seconds). tools/journey-gate.mjs runs them on every push that touches a flow file.
-export const JOURNEY_TESTS = ['test/journeys.test.js', 'test/application-journey.test.js', 'test/journey-identity.test.js', 'test/extension-tab-identity.test.js',
-  'test/session-flow.test.js', 'test/account-check.test.js', 'test/flow-invariants.test.js'];
+export const JOURNEY_TESTS = ['test/unit/main/journeys.test.js', 'test/unit/main/application-journey.test.js', 'test/unit/main/journey-identity.test.js', 'test/unit/extension/extension-tab-identity.test.js',
+  'test/unit/main/session-flow.test.js', 'test/unit/main/account-check.test.js', 'test/unit/main/flow-invariants.test.js'];
 
 // One row per scenario. `e2e`: words of its step in desktop/e2e/suites/apply.mjs or lib/apply-*.mjs (E2E_STEPS); `unit`: desktop/test files.
 export const MATRIX = [
-  {scenario: 'What kind of page: the AI decides once per site and page shape, the structure rule only without AI', e2e: [], unit: ['test/page-kind.test.js', 'test/extension-tab-pages.test.js', 'e2e/recorded/posting-kind-contradicted-by-form-fields-1/case.json', 'e2e/recorded/account-and-application-one-page-1/case.json']},
-  {scenario: 'Direct application form (Greenhouse, Workday, Lever, multi-step)', e2e: ['Greenhouse-like form', 'Workday-shaped form', 'multi-step form'], unit: ['test/extension-tab-pages.test.js', 'e2e/recorded/lever-late-field-open-question-1/case.json', 'integration/extension/extension-form-shapes.test.mjs']},
+  {scenario: 'What kind of page: the AI decides once per site and page shape, the structure rule only without AI', e2e: [], unit: ['test/unit/main/page-kind.test.js', 'test/unit/extension/extension-tab-pages.test.js', 'e2e/recorded/posting-kind-contradicted-by-form-fields-1/case.json', 'e2e/recorded/account-and-application-one-page-1/case.json']},
+  {scenario: 'Direct application form (Greenhouse, Workday, Lever, multi-step)', e2e: ['Greenhouse-like form', 'Workday-shaped form', 'multi-step form'], unit: ['test/unit/extension/extension-tab-pages.test.js', 'e2e/recorded/lever-late-field-open-question-1/case.json', 'integration/extension/extension-form-shapes.test.mjs']},
   {scenario: 'Upload slots of any shape (input, hidden input, drop zone, + that creates the input): CV and cover letter by meaning, a miss reported by fingerprint', e2e: [], unit: ['integration/extension/upload-slot.test.mjs', 'e2e/recorded/plus-button-upload-slot-1/case.json']},
-  {scenario: 'Posting → Apply link or form into a new tab → same tab, posted data kept', e2e: [], unit: ['test/extension-same-tab.test.js', 'e2e/recorded/apply-opens-new-tab-then-to-apply-step-1/case.json']},
-  {scenario: 'Apply opens its form from the page\'s script (`window.open`): opened in the same tab', e2e: [], unit: ['test/extension-same-tab.test.js', 'e2e/recorded/apply-opens-form-from-script-1/case.json']},
-  {scenario: 'A tab the person opens is the person\'s: it joins an application only through the extension\'s own press on its opener', e2e: [], unit: ['test/extension-tab-adoption.test.js']},
-  {scenario: 'A page the AI judged \'other\' is never turned into the form by its fields', e2e: [], unit: ['test/page-kind-final.test.js']},
-  {scenario: 'The person presses Stop (sessions page, ⌘K, the extension\'s popup or page button, Chrome\'s Cancel): nothing runs until they start it again', e2e: [], unit: ['test/extension-stop.test.js', 'test/stop-request.test.js', 'test/stop-everywhere.test.js']},
-  {scenario: 'Two applications side by side: one tab and its own kit each', e2e: [], unit: ['test/review.test.js', 'integration/app/session-tabs.test.js']},
-  {scenario: 'Sign-up page before the form: account step kept apart', e2e: [], unit: ['test/extension-tab-pages.test.js', 'test/review.test.js', 'test/session-flow.test.js', 'integration/extension/extension-form-shapes.test.mjs']},
+  {scenario: 'Posting → Apply link or form into a new tab → same tab, posted data kept', e2e: [], unit: ['test/unit/extension/extension-same-tab.test.js', 'e2e/recorded/apply-opens-new-tab-then-to-apply-step-1/case.json']},
+  {scenario: 'Apply opens its form from the page\'s script (`window.open`): opened in the same tab', e2e: [], unit: ['test/unit/extension/extension-same-tab.test.js', 'e2e/recorded/apply-opens-form-from-script-1/case.json']},
+  {scenario: 'A tab the person opens is the person\'s: it joins an application only through the extension\'s own press on its opener', e2e: [], unit: ['test/unit/extension/extension-tab-adoption.test.js']},
+  {scenario: 'A page the AI judged \'other\' is never turned into the form by its fields', e2e: [], unit: ['test/unit/extension/page-kind-final.test.js']},
+  {scenario: 'The person presses Stop (sessions page, ⌘K, the extension\'s popup or page button, Chrome\'s Cancel): nothing runs until they start it again', e2e: [], unit: ['test/guards/safety/extension-stop.test.js', 'test/unit/extension/stop-request.test.js', 'test/unit/renderer/stop-everywhere.test.js']},
+  {scenario: 'Two applications side by side: one tab and its own kit each', e2e: [], unit: ['test/unit/main/review.test.js', 'integration/app/session-tabs.test.js']},
+  {scenario: 'Sign-up page before the form: account step kept apart', e2e: [], unit: ['test/unit/extension/extension-tab-pages.test.js', 'test/unit/main/review.test.js', 'test/unit/main/session-flow.test.js', 'integration/extension/extension-form-shapes.test.mjs']},
   {scenario: 'Sign-in page before the form with a saved password: filled, pressed once, the form behind it filled; a refused sign-in never retried', e2e: ['sign-in page'], unit: []},
-  {scenario: 'A menu whose choices are not the answer\'s words: the choice that means the same, then remembered per site', e2e: [], unit: ['test/option-pick.test.js', 'test/menu-choices.test.js', 'integration/store/menu-choice.test.mjs', 'integration/extension/extension-form-shapes.test.mjs']},
-  {scenario: '"Needs your attention" from the extension\'s fill: a left field with its proposal and the form\'s choices; Use fills it', e2e: [], unit: ['test/need-proposal.test.js', 'integration/app/session-fill.test.js', 'integration/app/screen-apply-needs.test.js', 'e2e/recorded/notice-period-proposed-not-typed-1/case.json', 'e2e/recorded/notice-period-set-by-app-command-1/case.json']},
-  {scenario: 'Account and application on one page: it is the form', e2e: [], unit: ['test/extension-tab-pages.test.js', 'e2e/recorded/account-and-application-one-page-1/case.json']},
-  {scenario: 'Form tab closed → the app sees it → Reopen fills it again', e2e: [], unit: ['test/form-tab-closed.test.js', 'test/session-state.test.js', 'integration/app/session-tabs.test.js']},
-  {scenario: 'A second browser with the extension (another profile, a test Chrome): each browser\'s tabs kept apart, its report never closes another\'s form', e2e: [], unit: ['test/tab-identity.test.js', 'integration/app/session-tabs.test.js']},
-  {scenario: 'Open in Chrome: the session\'s own tab by its id; two sessions on one form address never take each other\'s tab', e2e: [], unit: ['test/form-tab.test.js']},
-  {scenario: 'Multi-step application: the next step is pressed, never a control that submits', e2e: [], unit: ['test/form-judge.test.js']},
+  {scenario: 'A menu whose choices are not the answer\'s words: the choice that means the same, then remembered per site', e2e: [], unit: ['test/unit/main/option-pick.test.js', 'test/unit/main/menu-choices.test.js', 'integration/store/menu-choice.test.mjs', 'integration/extension/extension-form-shapes.test.mjs']},
+  {scenario: '"Needs your attention" from the extension\'s fill: a left field with its proposal and the form\'s choices; Use fills it', e2e: [], unit: ['test/unit/renderer/need-proposal.test.js', 'integration/app/session-fill.test.js', 'integration/app/screen-apply-needs.test.js', 'e2e/recorded/notice-period-proposed-not-typed-1/case.json', 'e2e/recorded/notice-period-set-by-app-command-1/case.json']},
+  {scenario: 'Account and application on one page: it is the form', e2e: [], unit: ['test/unit/extension/extension-tab-pages.test.js', 'e2e/recorded/account-and-application-one-page-1/case.json']},
+  {scenario: 'Form tab closed → the app sees it → Reopen fills it again', e2e: [], unit: ['test/unit/main/form-tab-closed.test.js', 'test/unit/renderer/session-state.test.js', 'integration/app/session-tabs.test.js']},
+  {scenario: 'A second browser with the extension (another profile, a test Chrome): each browser\'s tabs kept apart, its report never closes another\'s form', e2e: [], unit: ['test/unit/extension/tab-identity.test.js', 'integration/app/session-tabs.test.js']},
+  {scenario: 'Open in Chrome: the session\'s own tab by its id; two sessions on one form address never take each other\'s tab', e2e: [], unit: ['test/unit/main/form-tab.test.js']},
+  {scenario: 'Multi-step application: the next step is pressed, never a control that submits', e2e: [], unit: ['test/unit/main/form-judge.test.js']},
   {scenario: 'The person submits → Applied, session leaves the list', e2e: ['person submits a form'], unit: []},
-  {scenario: 'Claude takes over an account page; the unfilled tab closes', e2e: [], unit: ['test/apply-form-session.test.js', 'test/session-flow.test.js']},
-  {scenario: 'Start-up "Checking…", then "Chrome isn\'t reporting"', e2e: [], unit: ['test/session-state.test.js', 'integration/app/screen-apply-silent.test.js']},
-  {scenario: 'A control the fill could not settle opens a control-level door record; the row\'s page ending never reads it', e2e: [], unit: ['test/journeys.test.js']},
+  {scenario: 'Claude takes over an account page; the unfilled tab closes', e2e: [], unit: ['test/unit/main/apply-form-session.test.js', 'test/unit/main/session-flow.test.js']},
+  {scenario: 'Start-up "Checking…", then "Chrome isn\'t reporting"', e2e: [], unit: ['test/unit/renderer/session-state.test.js', 'integration/app/screen-apply-silent.test.js']},
+  {scenario: 'A control the fill could not settle opens a control-level door record; the row\'s page ending never reads it', e2e: [], unit: ['test/unit/main/journeys.test.js']},
   {scenario: 'Never submits, never contacts another host', e2e: ['through all of it'], unit: []},
 ];
 

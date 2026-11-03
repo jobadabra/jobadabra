@@ -1,7 +1,7 @@
 // Which open questions are worth showing, ONE rule for every list of them (owner, 17 Oct 2026: Jobs → Answer once held the same junk as Profile → Needs review):
 // a question shows only when it has a readable label, the AI judged it reusable across jobs (lib/question-verdicts.js keeps that verdict per question), and the
 // standard answers do not already cover it (then it shows with the proposed answer to accept). Nothing is deleted: the rest is "hidden" behind a link.
-// Pure (no DOM, no AI); guarded by test/question-filter.test.js.
+// Pure (no DOM, no AI); guarded by test/unit/renderer/question-filter.test.js.
 export const keyOf = question => String(question || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 // The answer "Keep as is" on an answer the AI found unclear (lib/details-review.js): never asked again for that value.
@@ -15,7 +15,7 @@ export const looksLikeFieldId = text => {
 
 // One score, used inside each drawer (owner, 18 Oct 2026: "sorted by the most important/urgent. Basically scored"; two drawers since 28 Oct 2026, lib/question-lists.js). A form question: a fill it blocked first, then
 // how many forms asked. A Your details item ("From its form questions"): the sum of the form questions the AI mapped to its fact; one no form asked yet ranks
-// right after the blocked questions. Guarded by test/queue-score.test.js.
+// right after the blocked questions. Guarded by test/unit/main/queue-score.test.js.
 export const BLOCKED = 1e6;
 export const MUST = 1e12;   // a detail the AI rates as needed by nearly every form (lib/contact-review.js): above any fill it blocked
 export const weightOf = verdict => (verdict?.blocked ? BLOCKED : 0) + (verdict?.asked || 0);

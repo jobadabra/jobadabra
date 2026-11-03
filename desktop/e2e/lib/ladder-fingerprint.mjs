@@ -1,5 +1,6 @@
 // The prompt fingerprint of the ladder: one hash per model-facing prompt and schema (rung 2, rung 3, the account judge, the form judge, rung 4). The push gate replays STORED answers, so without this it would never
-// see a changed prompt or schema; a hash that differs from e2e/ladder-baseline.json (promptFingerprint) fails the ratchet and says what to re-run. Guard: test/ladder-fingerprint.test.js.
+// see a changed prompt or schema; a hash that differs from e2e/ladder-baseline.json (promptFingerprint) fails the ratchet and says what to re-run. Guard: test/tooling/ci/ladder-fingerprint.test.js.
+// Job: keep the scorecard
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';

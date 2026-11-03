@@ -1,5 +1,5 @@
 // Back and forward through the screens you opened (⌘← / ⌘→, ⌘[ / ⌘], the mouse's side buttons; Alt+← / Alt+→ on
-// Windows). Pure state, no window needed (test/view-history.test.js); pages/nav.js records each screen and moves.
+// Windows). Pure state, no window needed (test/unit/renderer/view-history.test.js); pages/nav.js records each screen and moves.
 const MAX = 50;
 
 export const start = name => ({list: name ? [name] : [], at: name ? 0 : -1});

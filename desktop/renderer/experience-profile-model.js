@@ -3,7 +3,7 @@
 // with Edit"): Experience = summary, strengths, education and any section the app does not know (under its own title); Your details = the voluntary
 // survey answers. The role history stays on the page (prompts read it) but is drawn by the job cards, "What tailoring can draw on" (owner, 17 Oct
 // 2026: "this is redundant. Just duplicating data"). A heading's "(…)" is its note; a deeper heading belongs to the section above it. Lines Strategy's Job preferences or Your details already edit are left out (one editor per value). Read from the
-// page's outline on any store and written back block by block (lib/text-outline-handlers.js). No DOM: guarded by test/experience-profile.test.js.
+// page's outline on any store and written back block by block (lib/text-outline-handlers.js). No DOM: guarded by test/unit/renderer/experience-profile.test.js.
 
 import {readProfile} from './preferences-model.js';
 import {isDetailsHeading} from './details-headings.js';

@@ -2,7 +2,7 @@
 // priority chip and their fix behind "View details", then three folds (passed checks, score breakdown with what works and the missing terms, extracted
 // text), then the two actions with their cost line. The header says when and on which CV the result was made (a result belongs to one PDF: lib/cv-check.js
 // drops it when the PDF changes). A folded card says "Mostly readable · 3 issues · 2 content suggestions". Moved here from pages/profile.js;
-// model: cv-check-model.js. Guarded by test/cv-check-model.test.js and test/cv-check-view.test.js.
+// model: cv-check-model.js. Guarded by test/unit/renderer/cv-check-model.test.js and test/unit/renderer/cv-check-view.test.js.
 import {el, pill} from './components.js';
 import {costText} from './ai-cost.js';
 import {icon} from './icons.js';

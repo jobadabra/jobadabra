@@ -1,7 +1,7 @@
 // Answer once is an inbox (owner, 17 Oct 2026): each answer goes to its one home. A fact of Your details (right to work, notice, the salary you
 // state, a language) becomes a line of that section (lib/profile-sections.js); anything else stays a standard answer (lib/questions.js). The AI
 // picks only the home (lib/profile-move.js judge, the move's own words), never the value; no AI or a failed call: it stays a standard answer.
-// A line already there with the same label is replaced (the newer answer wins: you just typed it). Guarded by test/answer-home.test.js.
+// A line already there with the same label is replaced (the newer answer wins: you just typed it). Guarded by test/unit/main/answer-home.test.js.
 import * as sections from './profile-sections.js';
 import {judge} from './profile-move.js';
 import {COMPOSITE} from '../renderer/question-kind.js';

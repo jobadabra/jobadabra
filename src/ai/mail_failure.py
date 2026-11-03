@@ -3,7 +3,7 @@ Guarded by tests/test_mail_run.py."""
 from . import cost
 
 
-# Why a check read nothing, in the app's words (desktop/lib/run-result.js MAIL_SKIPPED, held equal by desktop/test/engine-message-contract.test.js).
+# Why a check read nothing, in the app's words (desktop/lib/run-result.js MAIL_SKIPPED, held equal by desktop/test/unit/renderer/engine-message-contract.test.js).
 NOT_CHECKED = {
     'spend': 'not checked: the Anthropic API spend limit was reached',
     'plan': 'not checked: your Claude usage window is exhausted; it runs again later',

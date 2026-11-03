@@ -1,7 +1,7 @@
 // JSON schemas across AI engines: a small validator, a forgiving JSON reader, and each provider's accepted form of one schema.
 // The app mirror of src/ai/providers/schema.py. Callers write one schema per AI step; `strict` is what OpenAI's strict structured
 // output accepts (every property required, optional ones nullable, no extra keys), `dropNulls` turns its answer back into the
-// original's shape, `problems` checks an answer (the CLI engines repair once on a mismatch). Guarded by test/ai-contract.test.js.
+// original's shape, `problems` checks an answer (the CLI engines repair once on a mismatch). Guarded by test/unit/main/ai-contract.test.js.
 
 const LIMITS = ['maxItems', 'minItems'];
 // Keywords OpenAI's strict mode refuses.

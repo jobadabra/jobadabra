@@ -1,5 +1,5 @@
 // What one Jobs row (the list and the Board card) draws for a job: the parts that fit the job's state and where it came from. Pure, no DOM.
-// Guarded by: test/job-row-model.test.js (every filter's rows) and integration/app/screen-jobs-inbound.test.js (the tester's screen).
+// Guarded by: test/unit/renderer/job-row-model.test.js (every filter's rows) and integration/app/screen-jobs-inbound.test.js (the tester's screen).
 // Why (2 Nov 2026, owner: "why the jobs list are showing in such a broken state?", a Windows tester's Inbound list): a job you applied to, a
 // rejection and a recruiter's reply all said "Not checked" and "Not scored" (words about a job still waiting for your decision), a rejection
 // said a bare "Unclear", and a reply with no employer drew a red "!" logo. One place decides what a row draws; the renderers only draw it.

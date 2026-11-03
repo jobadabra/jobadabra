@@ -11,7 +11,7 @@ run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
 # edit-codex.mjs, scanned and written as a patch; our script runs from a copy made before the AI step, because desktop/lib is a folder the AI may edit); `prove` runs the AI's new test and the suites inside a container with no network
 # and no runner token (tools/feedback-ai-sandbox.sh), after installing the dependencies from main's files; `publish` (the only job that can push) starts from a fresh checkout, copies our script first, applies only the patch and calls the site without the write tokens in that call's environment;
 # `report-failure` tells the site when any job broke. The last job tells the site when such a pull request is merged or closed (pull_request_target, so it runs THIS file from main and never checks out the pull request's code).
-# Guard: desktop/test/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch or pull_request_target).
+# Guard: desktop/test/tooling/ci/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch or pull_request_target).
 on:
   workflow_dispatch:
     inputs:
@@ -85,7 +85,7 @@ jobs:
         # --data: the report goes to the AI as fenced DATA in the user message, never in the system prompt (.fb/prompt.md holds the instructions only).
         run: >-
           node desktop/e2e/edit-codex.mjs --prompt .fb/prompt.md --data .fb/report.md --roots desktop/renderer,desktop/lib,desktop/test,src,tests
-          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/[A-Za-z0-9._-]+\.test\.js$|tests/test_[A-Za-z0-9_]+\.py$)'
+          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/((unit|guards)/[A-Za-z0-9_-]+/)?[A-Za-z0-9._-]+\.test\.js$|tests/((unit|guards)/[A-Za-z0-9_]+/)?test_[A-Za-z0-9_]+\.py$)'
           --verdicts fixed-already,not-reproducible,needs-human,false-positive --none-as verdict --none-out .fb/verdict.md --body-out .fb/pr-body.md --quiet
       - uses: actions/upload-artifact@v6
         if: always()

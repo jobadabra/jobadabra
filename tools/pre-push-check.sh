@@ -139,8 +139,8 @@ if command -v node >/dev/null && [ -f "$repo/tools/e2e-reliability-check.mjs" ] 
   reliability="$(cd "$repo" && timed "e2e reliability" node tools/e2e-reliability-check.mjs --base origin/main 2>&1)" || block "$reliability"
 fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
-# Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
-class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
+# Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/tooling/ci/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
+class_tests="test/guards/rules/card-system.test.js test/guards/rules/no-question-mark.test.js test/guards/rules/text-fields.test.js test/guards/rules/solid-buttons.test.js test/unit/renderer/roomy-cards.test.js test/guards/rules/mac-words.test.js test/guards/rules/design.test.js"
 if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || block "a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)"

@@ -78,7 +78,7 @@ OUTDATED_APP = 'Jobadabra was updated while it was open. Restart it to finish th
 
 
 # The env protocol between the app and the engine: the app sends it as JOBADABRA_ENV_VERSION (desktop/lib/pipeline-env.js ENV_VERSION, the same number: guard
-# desktop/test/env-version.test.js). Bump BOTH when the app's env changes in a way an older app's runs cannot work with (a variable renamed or required).
+# desktop/test/unit/main/env-version.test.js). Bump BOTH when the app's env changes in a way an older app's runs cannot work with (a variable renamed or required).
 ENV_VERSION = 1
 
 

@@ -1,6 +1,6 @@
 // The desktop AI's whole tool list (read tools in this file's first version; write tools join in PR 3/6): a fixed list in code, in the helper's manifest and in the spec's table.
 // Invariants: a tool only READS through an injected source; it never touches a secret, Settings, a posting's text or the Submit path; every result leaves redacted and capped (present()).
-// Spec: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md ("The tools"). Guard: test/desktop-ai-tools.test.js fails on any name outside the spec's table.
+// Spec: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md ("The tools"). Guard: test/unit/main/desktop-ai-tools.test.js fails on any name outside the spec's table.
 import {pageText, redact} from './feedback-bundle.js';
 
 /** The screens `get_screen_data` may read: exactly the registry keys of renderer/pages/feedback-screens.js, or the one the person has open now. */

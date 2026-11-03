@@ -1,7 +1,7 @@
 // A redirect that dropped the posting address's query string is undone once: the same page is opened again with the posting's own query (owner, 27 Oct 2026: the fair round's
 // gap to Browser Use; form 264402, an employer page embedding a job board: http -> https lost "?gh_jid=<job>", the embed showed the whole list instead of the job, and the flow read
 // the list's search boxes). Structure only: addresses compared, never a page word or a site name. Only the first look in a tab may restore it; later confirmation or list pages are never reopened.
-// Guard: desktop/test/restore-query.test.js.
+// Guard: desktop/test/unit/extension/restore-query.test.js.
 import {moveTab} from './tabs.js';
 import {requestedOf} from './requested-url.js';
 

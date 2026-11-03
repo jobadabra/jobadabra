@@ -2,7 +2,7 @@
 // "Reading this page" through the sign-in page, which has no panel to report). The AI's kind decides in fill-flow.js and account-step.js; this only says it, in real time:
 // 'reading' (being read) → 'posting' ("Apply button detected. Redirecting…") → 'opening' (Apply pressed) → 'account' / 'sign-up' (a sign-in or sign-up form) → 'signing-in' /
 // 'signing-up' (its button pressed) → 'form' (the application form: the panel counts). The panel counts and says Ready only on 'form' or an account page (review.js).
-// Guards: desktop/test/extension-panel-notes.test.js, desktop/test/page-steps.test.js.
+// Guards: desktop/test/unit/extension/extension-panel-notes.test.js, desktop/test/unit/extension/page-steps.test.js.
 import {apiFor, settings} from './flow.js';
 import {sessionOf} from './tab-identity.js';
 import {markOf} from './tab-pages.js';

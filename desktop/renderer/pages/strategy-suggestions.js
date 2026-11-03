@@ -1,5 +1,5 @@
 // Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm, and Tune my strategy's row from Focus's pool
-// (pages/focus-suggestions.js). Guarded by: test/advice-events.test.js, test/coverage-card.test.js, test/filters-card.test.js, test/suggestions.test.js.
+// (pages/focus-suggestions.js). Guarded by: test/unit/renderer/advice-events.test.js, test/unit/renderer/coverage-card.test.js, test/unit/renderer/filters-card.test.js, test/unit/renderer/suggestions.test.js.
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -310,7 +310,7 @@ const paintCoverage = verdict => {
         const link = el('button', 'link', hostOf(page.url) || page.url);
         Object.assign(link, {type: 'button', title: page.title});
         link.addEventListener('click', openPage(page));
-        return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/wand-cursor.test.js)
+        return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/unit/renderer/wand-cursor.test.js)
       }));
       words.append(name, links);
       const open = el('button', 'secondary with-icon', 'Open');

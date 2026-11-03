@@ -1,7 +1,7 @@
 // A menu's answer in another wording, remembered as the menu's own choice per site, field and answer ("+41" on Coop's "Indicatif de pays" ->
 // "Suisse"), so the next fill tries the right choice first: no wrong attempt, no AI call, no re-arm (owner, 8 Oct 2026: "why does it first try
 // +41?"). Written by lib/menu-rearm.js when Claude finds the choice; served with the details (lib/server-contact.js me) to extension/flow.js.
-// A cache on this Mac like the menu picks of lib/option-pick.js. Guarded by test/menu-choices.test.js.
+// A cache on this Mac like the menu picks of lib/option-pick.js. Guarded by test/unit/main/menu-choices.test.js.
 const FILE = 'menu-choices.json', KEEP = 300;
 const norm = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}+]+/gu, ' ').trim();
 const hostOf = url => { try { return new URL(String(url)).hostname.replace(/^www\./, ''); } catch { return ''; } };

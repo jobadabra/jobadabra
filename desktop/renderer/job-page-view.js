@@ -1,6 +1,6 @@
 // A job's page in the app (Jobs → a row → the right-side drawer): what the job's Notion page shows, read from the store, so it shows for
 // every store (the data on this Mac too). Pure: the drawer's nine tabs, and each tab's parts as text (never HTML). Drawn by
-// pages/job-panel.js and job-drawer/; guarded by test/job-page-view.test.js. The sections are the engine's own headings (src/ai/kit.py KIT_HEADING,
+// pages/job-panel.js and job-drawer/; guarded by test/unit/renderer/job-page-view.test.js. The sections are the engine's own headings (src/ai/kit.py KIT_HEADING,
 // prep.py HEADING, rejection.py HEADING, notion/ledger_record.py RECORD_HEADING, inbox_notion.py DESCRIPTION_HEADING, opportunity.py HEADING).
 import {shortDay} from './date.js';
 export const SECTIONS = {

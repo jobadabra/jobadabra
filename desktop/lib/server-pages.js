@@ -1,5 +1,5 @@
 // Which page the extension is on: the open session of a job, the confirmation-page check that marks an application Applied, and the AI's
-// "what kind of page is this". Re-exported by server.js. Guarded by desktop/test/confirmation.test.js, page-kind.test.js and targets.test.js.
+// "what kind of page is this". Re-exported by server.js. Guarded by desktop/test/unit/main/confirmation.test.js, page-kind.test.js and targets.test.js.
 import * as terminals from './terminals.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
 import * as contactDetails from './contact.js';

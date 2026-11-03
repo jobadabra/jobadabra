@@ -1,5 +1,5 @@
 // The one Chrome switch line on Focus (owner, 21 Oct 2026: make the real-tab step run for users): when sites that refused Jobadabra wait for "Allow in Incognito", one line above Up next
-// says how many and opens the extension's Chrome page. A strip of its own (focus.js is near its size limit); the app sets refusedIncognitoWaiting (lib/refused-reads.js). Guard: test/focus-incognito.test.js.
+// says how many and opens the extension's Chrome page. A strip of its own (focus.js is near its size limit); the app sets refusedIncognitoWaiting (lib/refused-reads.js). Guard: test/unit/renderer/focus-incognito.test.js.
 import {el} from '../components.js';
 import {$} from './core.js';
 import {waitingOf, lineOf} from './incognito-rows.js';

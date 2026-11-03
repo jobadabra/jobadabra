@@ -33,4 +33,4 @@ behaves differently; a page with an address but no way into a form says where to
 Nothing new is stored beyond the application's state (`stuck` + the need on the session). The AI answer is cached per page shape like the other kinds, except an email answer (it names one posting's address). The address lives on the posting page, not in our data.
 
 ## Tests
-`desktop/test/page-kind.test.js` (answer, floor, caps), `desktop/test/journeys.test.js` (scenario), a recorded page under `desktop/e2e/recorded/`, `npm run real-extension`.
+`desktop/test/unit/main/page-kind.test.js` (answer, floor, caps), `desktop/test/unit/main/journeys.test.js` (scenario), a recorded page under `desktop/e2e/recorded/`, `npm run real-extension`.

@@ -1,6 +1,6 @@
 // Reports (pages/reports.js), pure: the weekly reports in full, the insight history with its feedback, and the funnel's table, from the
 // store's 💡 Insights records and Focus's funnel. The bodies are the engine's Markdown (src/ai/insights_text.weekly_blocks,
-// src/ai/learning.publish), read as groups by job-page-view.js groupsOf (one reader). Guarded by test/reports-view.test.js.
+// src/ai/learning.publish), read as groups by job-page-view.js groupsOf (one reader). Guarded by test/unit/renderer/reports-view.test.js.
 import {shortDay} from './date.js';
 import {groupsOf, plain} from './job-page-view.js';
 

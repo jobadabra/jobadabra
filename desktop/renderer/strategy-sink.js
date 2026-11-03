@@ -1,6 +1,6 @@
 // Where the Strategy cards read and write: the saved strategy (window.pilot, the Strategy page) or, while setup step 3 draws the same cards, the AI's
 // draft (pages/setup-strategy.js useDraft): the same edit code runs on the draft in memory (lib/draft-edit-handlers.js) and nothing is saved until
-// "Replace my strategy". Every card writes through this, never window.pilot directly. Guarded by test/strategy-sink.test.js.
+// "Replace my strategy". Every card writes through this, never window.pilot directly. Guarded by test/unit/renderer/strategy-sink.test.js.
 import {searchLevel} from './goal-kinds.js';
 
 let draft = null;   // {get() → the draft, set(fields), setGoal(key, text), reload()} while the setup shows the cards

@@ -1,7 +1,7 @@
 // What a Start button says while another task runs (owner, 25 Oct 2026: "when I apply to Find jobs it doesn't do anything (because there is another task in the process)";
 // "We should handle this properly"). One rule for every button that starts a run: its task waiting behind another turns the button into
 // "Queued · starts after <task>" (the short form on small buttons), and the press answers with a toast. Pure functions; pages/runs-page.js applies them.
-// Guarded by: test/start-busy.test.js.
+// Guarded by: test/unit/renderer/start-busy.test.js.
 export const queuedText = (afterName, small = false) => (small ? `Queued · after ${afterName}` : `Queued · starts after ${afterName}`);
 export const queuedToast = (kindName, afterName) => ({title: `${kindName} is queued`, body: `It starts when ${afterName} ends.`});
 

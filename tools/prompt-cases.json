@@ -10,25 +10,25 @@
     "question-words": {
       "live": false,
       "about": "The queue's question writer for bare field labels (lib/open-wording.js): 'Workload', 'Summary' and a CV heading never reach a drawer as their own label; offline schema, echo and unworded-label checks with a stub client",
-      "cases": ["desktop/test/details-review-sense.test.js", "desktop/test/question-sense.test.js"],
+      "cases": ["desktop/test/unit/main/details-review-sense.test.js", "desktop/test/unit/renderer/question-sense.test.js"],
       "prompts": {"desktop/lib/open-wording.js": ["INSTRUCTIONS"]}
     },
     "contact-asks": {
       "live": false,
       "about": "The queue's contact-detail question writer (lib/contact-review.js): rates how many applications for THIS person's roles ask each empty field; offline checks with a stub client that the request carries the roles and the rating drives the label and the missing count (a Windows tester, 3 Nov 2026: a finance profile's GitHub and Website were 'needed by every form')",
-      "cases": ["desktop/test/contact-review.test.js"],
+      "cases": ["desktop/test/unit/main/contact-review.test.js"],
       "prompts": {"desktop/lib/contact-review.js": ["INSTRUCTIONS"]}
     },
     "profile-lines": {
       "live": false,
       "about": "The judge of saved Profile lines (lib/profile-move.js): a letter's lines are prose, never unclear and never moved (a Windows tester, 3 Nov 2026: judged 82, unclear 81); offline schema and stub-client checks, both prompts",
-      "cases": ["desktop/test/details-review-letter.test.js"],
+      "cases": ["desktop/test/unit/main/details-review-letter.test.js"],
       "prompts": {"desktop/lib/profile-move.js": ["INSTRUCTIONS", "ORGANIZE_INSTRUCTIONS"]}
     },
     "consent-choice": {
       "live": false,
       "about": "Exact affirmative consent choices: offline schema and refusal guards, never a factual attestation",
-      "cases": ["desktop/test/option-pick.test.js"],
+      "cases": ["desktop/test/unit/main/option-pick.test.js"],
       "prompts": {"desktop/lib/option-pick.js": ["CONSENT_INSTRUCTIONS"]}
     },
     "form": {
@@ -106,7 +106,7 @@
     "portrait": {
       "live": false,
       "about": "Your portrait (desktop/lib/portrait.js): second person, every statement cited, soft skills as observed behaviour never a type label, no demographic or protected facts, contradictions stated as neither (owner, 28 Oct 2026). Offline: fake-client cases check what is sent and what is kept",
-      "cases": ["desktop/test/portrait.test.js"],
+      "cases": ["desktop/test/unit/renderer/portrait.test.js"],
       "prompts": {"desktop/lib/portrait.js": ["INSTRUCTIONS"]}
     }
   }

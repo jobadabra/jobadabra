@@ -1,7 +1,7 @@
 // A tab's identity: which application it is (spec: docs/superpowers/specs/2026-10-10-application-journey.md, step 2). Every report to the app carries it,
 // the app resolves the session one way (desktop/lib/journey-identity.js) and answers the id it used, which bindSession keeps on the tab.
 // The keys `session:<tab>` (the application), `job:<tab>` / `from:<tab>` (the posting the tab was opened for) are named only here (KEY); every other file
-// uses KEY or the helpers below. Guard: desktop/test/extension-tab-identity.test.js (it fails when another file builds one of these names).
+// uses KEY or the helpers below. Guard: desktop/test/unit/extension/extension-tab-identity.test.js (it fails when another file builds one of these names).
 // Invariant: the job of a tab is its posting, never the page it is on now (a sign-in page carries the posting that led to it).
 import {sessionGet} from './tab-memory.js';
 import {pageKey, parseMark} from './tab-pages.js';

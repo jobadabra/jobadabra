@@ -1,5 +1,5 @@
 // Interviews → Insights → "Start practice session": rehearse the "Practice next" steps out loud, one at a time, with a
-// countdown for each. Pure state (test/practice-session.test.js); pages/interviews.js draws it. No AI, nothing recorded.
+// countdown for each. Pure state (test/unit/renderer/practice-session.test.js); pages/interviews.js draws it. No AI, nothing recorded.
 export const STEP_SECONDS = 300;
 
 // "About 15 minutes": five per step, never under five.

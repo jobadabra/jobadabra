@@ -3,7 +3,7 @@
 // the main figures as summary tiles, then widget cards: the steps as bars sized by time, jobs from postings down to your list, employers, job boards,
 // AI, problems, scoring and the technical log (folded). Built from page-parts summaryTiles, components (tile, pill, chip, numberStrip, liveDot) and the
 // insight card; only the layout of the report's card grid and its bars is new (reports-searches.css). Logic: renderer/searches-view.js.
-// Guarded by test/searches-view.test.js.
+// Guarded by test/unit/renderer/searches-view.test.js.
 import {plainError} from '../run-warnings.js';
 import {pairRows} from '../card-grid.js';
 import {chip, el, liveDot, numberStrip, pill, tile} from '../components.js';

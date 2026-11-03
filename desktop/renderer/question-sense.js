@@ -3,7 +3,7 @@
 //   - a value that is its own field's label, or another field's label, is a heading read as an answer, never an answer (labelAsValue);
 //   - a line with no label has no question to answer (hasLabel);
 //   - a question that only repeats its field's label is not a question (isBareLabel).
-// Guarded by test/question-sense.test.js and test/details-review-sense.test.js.
+// Guarded by test/unit/renderer/question-sense.test.js and test/unit/main/details-review-sense.test.js.
 const words = text => String(text ?? '').replace(/\*\*/g, '').replace(/[\s*:?？¿]+$/u, '').replace(/^[\s*¿]+/u, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** The same words, ignoring case, a trailing colon / star / question mark and spacing. '' never equals anything. */

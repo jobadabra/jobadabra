@@ -1,5 +1,5 @@
 // The Profile page's ⋯ menu (owner, 18 Oct 2026, UI redesign fix 10): the quiet home of "Fill empty details from my CV" and the page's one "View source in
-// Notion", instead of orange links on the Contact card. The same two actions are in ⌘K (pages/nav.js). Guarded by test/profile-page.test.js.
+// Notion", instead of orange links on the Contact card. The same two actions are in ⌘K (pages/nav.js). Guarded by test/unit/renderer/profile-page.test.js.
 import {moreButton} from '../components.js';
 import {shared} from './shared.js';
 import {openInNotion} from './notion-connect.js';

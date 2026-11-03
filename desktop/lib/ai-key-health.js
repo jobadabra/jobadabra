@@ -2,7 +2,7 @@
 // while every AI step failed with 401 "invalid x-api-key", and nothing in the window said so). Adapters report what the provider answered (lib/ai/refusals.js keyHeard /
 // keyWorked); this file keeps it in settings.aiKeyRejected = {engine, fp, at} where fp is a short hash of THAT key, so pasting a new key (or choosing another engine) ends the
 // verdict with no clearing step, and a good answer from the same key clears it. The window reads keyHealth() in state(); the first rejection also tells the window once.
-// Never stores or logs the key itself. Guarded by test/ai-key-health.test.js.
+// Never stores or logs the key itself. Guarded by test/unit/main/ai-key-health.test.js.
 import crypto from 'node:crypto';
 import {onKeyVerdict} from './ai/refusals.js';
 

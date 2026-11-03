@@ -1,7 +1,7 @@
 // A PDF as page pictures + its text, for an AI engine that cannot read a PDF file itself (Codex: a live check on 9 Oct 2026 showed it
 // answered about a CV without opening the file). Rendered with the pdf.js the app already ships, in a hidden window (cv/pdf-probe.html,
 // lib/cv-look.js probeWindow): main.js sets the reader at start-up (codex-cli.js setPdfReader). Nothing leaves this computer here.
-// `pageText` is pure and tested in test/ai-contract.test.js.
+// `pageText` is pure and tested in test/unit/main/ai-contract.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

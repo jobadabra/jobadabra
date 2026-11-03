@@ -1,6 +1,6 @@
 // Owns: the tracked tasks the Mac starts: refresh (Find jobs), rescore (Re-score), syncMatches, checkMail, scout, work, task, scoreVisits, mailResult.
 // Each runs its engine commands through run() and is queued, shown and recorded by tracked() (pipeline-queue.js).
-// Guarded by: test/mail-report.test.js, test/run-join.test.js, test/run-note.test.js, test/run-cards.test.js, test/run-kinds.test.js, test/stop-task.test.js.
+// Guarded by: test/unit/renderer/mail-report.test.js, test/unit/main/run-join.test.js, test/unit/main/run-note.test.js, test/unit/renderer/run-cards.test.js, test/unit/main/run-kinds.test.js, test/unit/main/stop-task.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {engineOf, familyOfEngine} from './ai/names.js';
 import {deliveryProblem, mailProblem as mailProblemFrom} from './run-result.js';

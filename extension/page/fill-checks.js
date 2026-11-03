@@ -1,6 +1,6 @@
 // The form filler's checkboxes (split from page/fill.js, 9 Oct 2026): one box set to yes/no, the option of a checkbox group that is one
 // question, and the consents ticked only when you allowed it (never otherwise: the LEGAL floor). Needs page/fill-labels.js first.
-// Guarded by desktop/test/fill-categories.test.js.
+// Guarded by desktop/test/unit/extension/fill-categories.test.js.
 (() => {
   if (window.__jobadabraFillChecksLoaded) return;
   window.__jobadabraFillChecksLoaded = true;

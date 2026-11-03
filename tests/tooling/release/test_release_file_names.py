@@ -75,7 +75,7 @@ class FileNamesTests(unittest.TestCase):
         updater = (ROOT / 'desktop/lib/updater.js').read_text()
         for pattern in ('Job-Pilotto-[\\d.]+', 'Job-Pilotto-mac-arm64', 'Job-Pilotto-windows-x64', 'Jobadabra-[\\d.]+', 'Jobadabra-mac-arm64', 'Jobadabra-windows-x64'):
             self.assertIn(pattern, updater, 'the updater matches both names')
-        self.assertIn('Job-Pilotto-0.8.27', (ROOT / 'desktop/test/updater.test.js').read_text())
+        self.assertIn('Job-Pilotto-0.8.27', (ROOT / 'desktop/test/unit/main/updater.test.js').read_text())
 
 
 if __name__ == '__main__':

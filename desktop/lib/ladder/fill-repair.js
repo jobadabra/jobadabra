@@ -5,7 +5,7 @@
 // the layer on top). REPAIR CHANGES HOW A VALUE GOES IN, NEVER WHAT: no verb carries text, and the option choose_option goes to is checked on the person's computer against the fill's own
 // answer (the dial-code table, the answer's own words: the executor, PR C2); option 0 asks the computer to find it, since the model never sees the answer. The code keeps only controls that need repair, and the floors (AND, never moved): a legal
 // question or a password is never repaired (ask_person), an option number must be one the control or the layer lists. At most CAP controls per page. Executed by the extension over its
-// existing primitives (PR C2); until then asked and scored offline only (fr-* ladder fixtures). Guard: test/fill-repair.test.js.
+// existing primitives (PR C2); until then asked and scored offline only (fr-* ladder fixtures). Guard: test/unit/main/fill-repair.test.js.
 import {MODEL} from './rung2-sketch.js';
 import {accountSketch} from '../account-judge.js';
 

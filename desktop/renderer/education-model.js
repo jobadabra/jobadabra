@@ -1,7 +1,7 @@
 // Profile → Experience's Education as entries (owner, 18 Oct 2026, decision 3): Degree / qualification · School · Years, with Add education and Remove
 // entry. Only a line in the app's own shape ("Degree · School" or "Degree · School · Years") is read as fields; any other line is kept as written (an
 // unstructured entry the person may organize into fields), never guessed apart and never put whole into Degree. A line in brackets is a note, kept as is.
-// An entry left as it was keeps its line's own text, so opening and saving changes nothing. No DOM: guarded by test/education-model.test.js.
+// An entry left as it was keeps its line's own text, so opening and saving changes nothing. No DOM: guarded by test/unit/renderer/education-model.test.js.
 import {isNote, shownText} from './experience-profile-model.js';
 
 export const FIELDS = ['degree', 'school', 'years'];

@@ -3,7 +3,7 @@ import {where} from './store-name.js';
 // Log job activity, step 2 (the confirmation): nothing reaches Notion until you've confirmed what Claude couldn't
 // see. Each field from the engine (src/ai/inbox.py fields()) is "ok" (shown in the message: pre-filled), "check"
 // (inferred: pre-filled, marked, needs a confirm) or "ask" (not shown: empty, with a question). No window needed
-// (test/lead-confirm.test.js); pages/jobs.js draws it.
+// (test/unit/main/lead-confirm.test.js); pages/jobs.js draws it.
 export const CHANNELS = ['LinkedIn', 'Email', 'Phone', 'Other'];
 export const CHANNEL_LABEL = {LinkedIn: 'LinkedIn', Email: 'Email', Phone: 'Phone / call', Other: 'Other'};
 // "Update on this job" (src/ai/inbox.py UPDATE): the default for a job already tracked when the message has nothing of

@@ -1,6 +1,6 @@
 // Settings → Connections → Chrome extension: is it installed (the browser says so at once),
 // is it awake (its report), and the buttons that install and connect it. Moved from connections.js (26 Oct 2026, a pure move).
-// Guards: test/extension-store-setup.test.js, test/palette-every-action.test.js, test/extension-card-first-paint.test.js.
+// Guards: test/unit/main/extension-store-setup.test.js, test/unit/renderer/palette-every-action.test.js, test/unit/renderer/extension-card-first-paint.test.js.
 // The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
 // for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
 import {$, message, osPick, osText, show} from './core.js';

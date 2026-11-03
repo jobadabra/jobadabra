@@ -1,4 +1,4 @@
-// The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/apply-dialog-mode.test.js.
+// The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/unit/renderer/apply-dialog-mode.test.js.
 import {modeBuilt} from './apply-settings-model.js';
 
 /** The count as a whole number of jobs from 1 to 10, or null for anything else (empty, 0, 11, 1.5). */

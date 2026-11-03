@@ -1,5 +1,5 @@
 // Profile tabs show what was read last time at once and read again behind it (owner, 17 Oct 2026: "big lag of loading, 5s+"); a skeleton card shows only while nothing is kept.
-// Guarded by test/profile-swr.test.js.
+// Guarded by test/unit/renderer/profile-swr.test.js.
 const kept = new Map();   // key → the last good answer of that read, for this window's life
 export const keptValue = key => kept.get(key);
 export const keep = (key, value) => { if (value) kept.set(key, value); };

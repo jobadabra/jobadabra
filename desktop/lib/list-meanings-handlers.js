@@ -1,6 +1,6 @@
 // Strategy's chip lists over IPC (owner, 17 Oct 2026: "One chip per meaning", "Did you mean…"): listMeanings reads the lists once with the AI
 // (lib/list-meanings.js, cached by their contents); keepTypo remembers an entry the person kept as written, so it is not flagged again.
-// Registered by lib/search-tuning-handlers.js. Guarded by test/list-meanings.test.js.
+// Registered by lib/search-tuning-handlers.js. Guarded by test/unit/main/list-meanings.test.js.
 import {meaningsFor} from './list-meanings.js';
 import {claudeAi} from './question-ai.js';
 

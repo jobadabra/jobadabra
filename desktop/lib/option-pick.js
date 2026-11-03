@@ -1,7 +1,7 @@
 // The form's own choice for an answer ("Monsieur" in a Madam/Sir menu → "Sir"), for a session page row whose field is a menu. The same
 // text (any case) is taken at once; otherwise Claude picks the choice that means the same, from the choices only, or none, and the
 // answer is kept per answer and set of choices (option-picks.json). Owner, 8 Oct 2026: a CV's French salutation was typed into an
-// English menu. Claude sees the field's label, the answer and the choices. Guarded by test/option-pick.test.js.
+// English menu. Claude sees the field's label, the answer and the choices. Guarded by test/unit/main/option-pick.test.js.
 export const MODEL = 'claude-haiku-5-5';
 import {forget, keep, keptValue, readKept} from './kept-decisions.js';
 export const FILE = 'option-picks.json';

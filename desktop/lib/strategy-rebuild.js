@@ -1,5 +1,5 @@
 // Strategy, rebuild from the CV: what a new draft changes, grouped by what each change triggers (and its cost). Re-exported by strategy.js.
-// Guarded by desktop/test/strategy-rebuild.test.js.
+// Guarded by desktop/test/unit/main/strategy-rebuild.test.js.
 // ---------- Rebuild from CV: what a new draft changes, grouped by what each change triggers ----------
 // Search criteria and filters change what the crawl keeps and hides; the Profile's scoring part changes every fit
 // score (the scored jobs become old scores; Re-score updates them, AI cost); standard answers only change future kits and forms. Locations

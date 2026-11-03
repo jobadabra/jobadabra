@@ -1,6 +1,6 @@
 // Focus's Suggestions, the Jobs bar and a home's rows: which entries each place shows and the words around them, free of the DOM so the tests
 // can check them. Entries come from the engine's pool (src/suggestions.py); pages/focus-suggestions.js draws them and runs their buttons.
-// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/suggestions.test.js.
+// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 
 export const SHOWN = 3;                              // Focus shows the 3 first, then "Show all N" (spec)
 export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "only the search- and applying-related ones")

@@ -1,7 +1,7 @@
 // Jobadabra's browser for Background automation (spec 2026-10-27-background-apply-execution, step B): offered on every spot marked
 // data-browser-progress="offer" (the Applying page while the saved mode needs it, the Apply dialog after "Download Jobadabra's browser first"),
 // downloaded only on the person's press, its progress with Cancel. Drawn with the LibreOffice download's block (office-progress.js drawProgress);
-// fed by main's 'backgroundBrowserProgress' event (lib/background-browser-download.js). Guard: test/browser-progress.test.js.
+// fed by main's 'backgroundBrowserProgress' event (lib/background-browser-download.js). Guard: test/unit/renderer/browser-progress.test.js.
 import {Eta} from '../eta.js';
 import {computerOf, drawProgress} from './office-progress.js';
 

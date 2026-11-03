@@ -36,9 +36,9 @@ and becomes the build PR (owner, 28 Oct 2026: "open individual PRs with their sp
 
 | Task | Files | Test (written first) |
 |---|---|---|
-| Interface: parts, readers table, exclusions, budget priority (details > learned > cv > strategy > history) | new `desktop/lib/about-you.js` (or the engine twin per step 1) | new `desktop/test/about-you.test.js`: one unique fact per part; each reader gets exactly its parts; salary/sensitive exclusions; conflicts left out |
+| Interface: parts, readers table, exclusions, budget priority (details > learned > cv > strategy > history) | new `desktop/lib/about-you.js` (or the engine twin per step 1) | new `desktop/test/unit/main/about-you.test.js`: one unique fact per part; each reader gets exactly its parts; salary/sensitive exclusions; conflicts left out |
 | Form filling | none (option A: reads the pages, CV + bank since 16 Oct) | — |
-| Kit answers | `src/ai/kit.py`, `lib/pipeline-run.js` (per-run bundle file) | `tests/unit/ai/test_kit_about_you.py`, `test/kit-bundle-run.test.js`; set `kit` (`tools/kit-cases.py`) |
+| Kit answers | `src/ai/kit.py`, `lib/pipeline-run.js` (per-run bundle file) | `tests/unit/ai/test_kit_about_you.py`, `test/unit/main/kit-bundle-run.test.js`; set `kit` (`tools/kit-cases.py`) |
 | CV tailoring | `desktop/lib/kit-handlers.js:65-75`, `desktop/lib/cv.js` | the summary may use a learning; roles never take one; salary absent |
 | Letters | `desktop/lib/job-letter.js`, `desktop/lib/cover-letter.js` | base letter + Writing preferences as voice; no salary |
 | Class test | one loop over every reader through a recording fake AI client | fails when any reader reads knowledge outside the interface |

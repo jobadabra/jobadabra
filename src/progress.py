@@ -34,7 +34,7 @@ class Eta:
     The pace is smoothed over recent items (not the whole run), and a number never goes up: it is the smaller of the new estimate and the last
     one shown minus the time passed, so rounding cannot flip it either. When the run is slower than that countdown (or nothing finished for
     a long while) it says SLOW instead of a bigger number. The same rule, in the same words, is desktop/renderer/eta.js (the LibreOffice
-    download); tests/fixtures/eta-sequence.json is run by both (tests/unit/engine/test_progress.py, desktop/test/eta.test.js)."""
+    download); tests/fixtures/eta-sequence.json is run by both (tests/unit/engine/test_progress.py, desktop/test/unit/renderer/eta.test.js)."""
     SMOOTH, STALL_MIN, STALL_PACES = 0.3, 60, 5
 
     def __init__(self, started):

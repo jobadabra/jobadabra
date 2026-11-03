@@ -1,6 +1,6 @@
 // The review of an in-place tailored CV: the real tailored pages (pictures drawn at tailoring time) with each changed line boxed in the
 // colour of its change (reworded, moved up); hovering a box shows the wording before. lib/cv.js reviewPage adds the same panel as for the template CV (Final CV, changes and why,
-// warnings, Hide highlights). Guards: test/cv-inplace-run.test.js.
+// warnings, Hide highlights). Guards: test/unit/cv/cv-inplace-run.test.js.
 const KIND = {reworded: 'k-rew', moved: 'k-mov', added: 'k-ins'};
 
 // record.inPlace: {pages: [{width, height}], boxes: [{p, x, y, w, h, mark}]}; images: a file URL per page. -> an HTML document

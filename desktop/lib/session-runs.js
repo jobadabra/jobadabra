@@ -3,7 +3,7 @@
 // the app creates it when you decide (submitted or not), so every session leaves a row to learn from.
 // Written a few seconds after each change (not on every byte), in the background; a store error never stops a session.
 // With the data on this Mac (lib/store) the same numbers go to the engine's agent_runs record (its `fields`), the conversation to its
-// `transcript`: optionsFor() picks the store, so main.js never asks which. Guarded by test/session-stats.test.js, store-session-runs.test.js.
+// `transcript`: optionsFor() picks the store, so main.js never asks which. Guarded by test/unit/main/session-stats.test.js, store-session-runs.test.js.
 import * as notion from './notion.js';   // Notion-only: a session's Agent Runs row when Notion is the store (optionsFor); this Mac's goes to the engine
 import * as notionGate from './notion-gate.js';
 import * as stats from './session-stats.js';

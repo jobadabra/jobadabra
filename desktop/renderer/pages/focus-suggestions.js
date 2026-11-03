@@ -1,7 +1,7 @@
 // Focus → Suggestions and the Jobs bar: the calls to action that can wait, drawn as Up next's rows. The engine's entries (src/suggestions.py:
 // today's insight, a rejection lesson, Your week, Analyze now, Tune) come first, then the Focus items that moved here, with their own buttons.
 // Each entry's buttons run in one press (RUN); ⋯ holds Not now (14 days) and Not true, kept in the active store (lib/suggestion-answers.js).
-// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/suggestions.test.js.
+// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, barView, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
@@ -106,7 +106,7 @@ export async function answerEntry(entry, state) {
   loadFocus();
 }
 
-const AI = new Set(['analyze', 'find_jobs', 'tailor', 'prep', 'read_site']);   // buttons that start AI work carry the wand (test/wand-cursor.test.js)
+const AI = new Set(['analyze', 'find_jobs', 'tailor', 'prep', 'read_site']);   // buttons that start AI work carry the wand (test/unit/renderer/wand-cursor.test.js)
 const button = (label, className, run) => {
   const node = el('button', className, label);
   node.type = 'button';

@@ -1,6 +1,6 @@
 /* Chips: a value from a list (design system, docs/rules/desktop-ui.md "Chips vs pills vs tags"). One component, components.js chip(): .chip-tag
    (read), .chip-tag.removable (edit, × drops it, input.add adds one), and the pressed filter .chip-button (Jobs → saved views). The older classes
-   below (.chips, .chip.removable) are moved here as they were; new screens use chip(). Guarded by test/chip.test.js (no new chip class). */
+   below (.chips, .chip.removable) are moved here as they were; new screens use chip(). Guarded by test/guards/rules/chip.test.js (no new chip class). */
 .chips { display: flex; gap: var(--sp-2); margin: var(--sp-1) 0; }
 .chip-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .chip-tag { background: var(--surface-2); border-radius: var(--r-pill); padding: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); max-width: 100%; min-width: 0; overflow-wrap: anywhere; }

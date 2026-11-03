@@ -1,7 +1,7 @@
 // The PATH Windows has stored for this user and machine (the registry), not the one this app was started with.
 // An app keeps the PATH it was launched with: a program installed after that (winget, npm with its own prefix, nvm)
 // is on the registry's PATH at once but not on process.env.PATH until the app restarts, so "I installed it, it is not found".
-// Guarded by test/win-path.test.js. Windows only: elsewhere it returns [] without running anything.
+// Guarded by test/unit/main/win-path.test.js. Windows only: elsewhere it returns [] without running anything.
 import {execFileSync} from 'node:child_process';
 
 const KEYS = ['HKCU\\Environment', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'];

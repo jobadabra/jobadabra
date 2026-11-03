@@ -7,7 +7,7 @@ supersedes §1 of `2026-10-03-notion-later.md` (the "connect Notion to track" ga
 > - ✅ The scheduled search, the desktop's engine commands and the button modes run on any store: one `open_stores()`,
 >   the Notion tracker only while the store is Notion (no second copy in Notion beside SQLite).
 > - ✅ Job Matches, ledger, interview sweep, run history (`src/run_log.py`) and import/add-a-link go through the store.
-> - ⏳ **11 bridges** left (`desktop/test/bridge-registry.test.js` lists them): 9 wait on mail/inbox/opportunity/reassign
+> - ⏳ **11 bridges** left (`desktop/test/guards/data/bridge-registry.test.js` lists them): 9 wait on mail/inbox/opportunity/reassign
 >   and the added hook (mac-20), 1 goes with mac-4a's rejection change (queued), 1 is lane G's `stores_of` (mac-e3 removes
 >   it once lane H and mac-4a's apply_batch land: then no caller passes a tracker).
 > - ⏳ **56 direct Notion calls** outside `src/notion`, `src/stores` still to move (audit, lane H: 64, then import_url,
@@ -43,7 +43,7 @@ supersedes §1 of `2026-10-03-notion-later.md` (the "connect Notion to track" ga
    progress events, then settings.store = to.  The source is archived, not deleted.
 ```
 
-- **Contract suite:** one test suite parameterised by adapter (Python: `tests/store_contract.py`; JS: `desktop/test/store-contract.test.js`).
+- **Contract suite:** one test suite parameterised by adapter (Python: `tests/store_contract.py`; JS: `desktop/test/unit/main/store-contract.test.js`).
   An adapter is done when it passes it. Notion runs it against the HTTP fake already used by the Notion tests.
 - **Capabilities, not `if notion`:** an adapter declares what it can do (`store.caps.openUrl`, `caps.cloud`). The UI asks
   the capability ("Open in Notion" shows only when `caps.openUrl`), never the adapter's name.

@@ -4,7 +4,7 @@
 // The store held two opportunities the Gmail check recorded (a recruiter's reply, titled by who wrote; a rejection) and one new match. Under Inbound each row must be built
 // exactly like the match's row (the same parts in the same order, the same height, the buttons in the same place), a part with nothing to say says N/A, and nothing says
 // "Not checked" or "Not scored" about a job that is not waiting for you; no "Find more jobs" card over a list a search cannot add to; the rejection says what it is about.
-// Wide (1280) and narrow (780, the stacked card). The pure half (every filter x every kind of row): test/job-row-model.test.js. The app's window on fictional rows, no Notion, no AI.
+// Wide (1280) and narrow (780, the stacked card). The pure half (every filter x every kind of row): test/unit/renderer/job-row-model.test.js. The app's window on fictional rows, no Notion, no AI.
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
 import {needsElectron} from '../../test/needs-electron.js';

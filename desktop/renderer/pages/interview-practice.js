@@ -1,6 +1,6 @@
 // Interviews page, small parts: the supporting-moments dialog, the practice session, the loading skeleton rows and
 // the "3 min ago" text. Moved out of interviews.js, which passes in the insight view and the row opener.
-// Guarded by test/interview-insight.test.js, test/interview-library.test.js and test/review-again.test.js.
+// Guarded by test/unit/renderer/interview-insight.test.js, test/unit/renderer/interview-library.test.js and test/unit/renderer/review-again.test.js.
 import * as practice from '../practice-session.js';
 import {el} from '../components.js';
 import {$, show} from './core.js';

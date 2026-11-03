@@ -1,7 +1,7 @@
 // The top of a run's one result card in its run panel: how it ended (a failure, a stop, warnings, or a clean end for the kinds in run-result-card.js CLEAN_TOP),
 // the one number, why, and its fix or next step.
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
-// desktop/test/run-status.test.js and the e2e activity suites.
+// desktop/test/unit/renderer/run-status.test.js and the e2e activity suites.
 import {groupWarnings, limitedJobs, newDetails} from '../run-warnings.js';
 import {aiLimitHead, failureHead, stoppedHead, deliveryHead, notConnectedHead, waitedHead} from '../run-status.js';
 import {el} from '../components.js';

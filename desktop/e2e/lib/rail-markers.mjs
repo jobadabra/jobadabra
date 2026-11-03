@@ -1,5 +1,5 @@
 /* global document, requestAnimationFrame */
-// The icon rail's badges and dots (owner, 17 Oct 2026): each sits inside its 48px button and clear of the icon. Runs in the e2e interactions suite (CI, real window) and test/rail-badges.test.js.
+// The icon rail's badges and dots (owner, 17 Oct 2026): each sits inside its 48px button and clear of the icon. Runs in the e2e interactions suite (CI, real window) and test/unit/renderer/rail-badges.test.js.
 // Job: wait on state
 
 /** Prepare the probe's rail mode (also at laptop zoom), then wait for that state and two frames before measuring. */

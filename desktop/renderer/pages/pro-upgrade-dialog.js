@@ -1,5 +1,5 @@
 // "Upgrade to Pro" dialog (owner, 25 Oct 2026) for a Pro feature pressed by a free person while paying is off: what Pro gives, "Join the Pro waitlist" and "Have a promo code?"; no price, no buy
-// button. With paying on, openProGate sends the person to Settings → Plan instead. Rule: renderer/pro-gate.js. Guard: test/pro-gate.test.js.
+// button. With paying on, openProGate sends the person to Settings → Plan instead. Rule: renderer/pro-gate.js. Guard: test/guards/money/pro-gate.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {shared} from './shared.js';

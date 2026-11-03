@@ -17,11 +17,11 @@ app call (`window.pilot.*`) for 0.5 s or more and shows nothing meanwhile: set a
 `expand-broken`: `aria-expanded`/`<details>` is not toggled by the click. Test the wiring with a source-level check of the page file.
 
 Rules (a script checks them afterwards and refuses the change if you break one):
-1. Read CLAUDE.md, then .claude/skills/ui-look-and-feel/SKILL.md. Use only var(--…) tokens and the shared components; desktop/test/design.test.js fails on raw colours, sizes or fonts.
+1. Read CLAUDE.md, then .claude/skills/ui-look-and-feel/SKILL.md. Use only var(--…) tokens and the shared components; desktop/test/guards/rules/design.test.js fails on raw colours, sizes or fonts.
 2. Find the ROOT CAUSE in the code that renders the problem; do not paper over it. Name it (file:line) in the pull request text.
-3. Write a test FIRST that fails because of the problem: for the window or desktop/lib, a desktop/test/*.test.js run with `node --test desktop/test/<file>`; for the engine, a
-   tests/test_*.py run with `python3 -m unittest tests.test_<name>` from the repository root. See it fail, then make the smallest fix and see it pass.
-4. You may edit ONLY: desktop/renderer/, desktop/lib/, src/ (Python), and their tests (desktop/test/*.test.js, tests/test_*.py). Never main.js, workflows, tools, the extension,
+3. Write a test FIRST that fails because of the problem: for the window or desktop/lib, a desktop/test/unit/<scope>/*.test.js (scopes in TESTS.md) run with `node --test desktop/test/unit/<scope>/<file>`; for the engine, a
+   tests/unit/<scope>/test_*.py run with `python3 -m unittest tests.unit.<scope>.test_<name>` from the repository root. See it fail, then make the smallest fix and see it pass.
+4. You may edit ONLY: desktop/renderer/, desktop/lib/, src/ (Python), and their tests (desktop/test/{unit,guards}/<scope>/*.test.js, tests/{unit,guards}/<scope>/test_*.py). Never main.js, workflows, tools, the extension,
    the e2e harness, packaging, or anything about secrets, licences, sign-in or tokens. If the real cause is elsewhere, or the finding is not a real problem, make NO edits and
    say so in .heal/verdict.md (first line `false-positive`, `harness` (the test was wrong, not the product) or `needs-human`, then one sentence why). The workflow runs every suite and the lint before anything is proposed.
    A finding from the AI code review gives the file, the line and a scenario: reproduce the scenario in the test, then fix it.

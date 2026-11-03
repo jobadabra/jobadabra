@@ -1,7 +1,7 @@
 // The invented forms of the Free AI form-answer eval, with what a right answer is for the demo applicant (desktop/demo/profile.md, answers.md). Data only, no worker import,
 // so the desktop tests read it without the worker's packages (#2207: the desktop CI job has no @anthropic-ai/sdk). Built into requests by tools/free-ai-form-cases.mjs.
 export const field = (id, label, type, options, required = true) => ({field: id, label, type, required, ...(options ? {options} : {})});
-// rests: the demo lines (desktop/demo/profile.md, answers.md) an expected answer rests on; desktop/test/free-ai-eval.test.js fails when the demo stops saying one
+// rests: the demo lines (desktop/demo/profile.md, answers.md) an expected answer rests on; desktop/test/tooling/ci/free-ai-eval.test.js fails when the demo stops saying one
 // (16 -> 17 Oct 2026: the demo gained a saved gender and a second notice period, and two cases kept expecting the old answers).
 export const FORMS = [
   {id: 'permit', fields: [field('sponsor', 'Will you now or in the future require sponsorship to work in Switzerland?', 'radio', ['Yes', 'No'])],

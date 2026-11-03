@@ -1,6 +1,6 @@
 // The control repairs' counts since the last successful send to the site (spec docs/superpowers/specs/2026-10-12-fill-ladder.md, PR D2): repair-kept.js counts() are running totals per control
 // fingerprint, the baseline of what the site already has is a file beside it (data/repairs-sent.json), so only changes are sent. Fixed values and integers only ({fp, verb, ok, failed}); at most 40
-// rows per batch. recipes.js adds the rows to its batch as `repairs` and writes the totals once the site took them. Guard: test/repair-feed.test.js.
+// rows per batch. recipes.js adds the rows to its batch as `repairs` and writes the totals once the site took them. Guard: test/unit/main/repair-feed.test.js.
 import {counts, repairStore} from './repair-kept.js';
 
 export const REPAIRS_SENT = 'data/repairs-sent.json';

@@ -2,7 +2,7 @@
 // The website keeps the answer (GET /api/feedback/replies, jobadabra-web api/feedback-replies.js). The app proves itself with the key it already holds, JPF1.<install>.<token> (the trial count's proof):
 // the install id alone is not a credential. No key (demo, a site switched off for this user): no card.
 // Asked at start and every few hours, like the trial count (lib/trial-server.js). Offline or refused: no card, nothing throws. Closing a card tells the website, which stops sending it.
-// Guarded by test/app-feedback-replies.test.js.
+// Guarded by test/unit/main/app-feedback-replies.test.js.
 import {newer} from './updater.js';
 import {ENDPOINT} from './app-feedback.js';
 import {TRIAL_KEY} from './ai-free.js';

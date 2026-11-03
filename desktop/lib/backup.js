@@ -1,7 +1,7 @@
 // Automatic backup of what lives on this Mac (call recordings, tailored CVs, the CV, settings, job cache, and with the SQLite store
 // the user's whole record: data/tracker.sqlite and profile.md/answers.md/knowledge.md, their only copy): once a week an export
 // (lib/reset.js, never the keys) goes to iCloud Drive (Mac) or OneDrive's Documents (Windows) when it's set up, else Documents. The last KEEP backups are kept.
-// Guards: test/files.test.js, e2e/suites/backup.mjs (Mac, Linux and Windows).
+// Guards: test/guards/data/files.test.js, e2e/suites/backup.mjs (Mac, Linux and Windows).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

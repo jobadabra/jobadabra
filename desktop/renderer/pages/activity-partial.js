@@ -1,5 +1,5 @@
 // A run that finished with a result and only a few sources failing: the failure is one small line under the result card, never a box that replaces it.
-// Guarded by desktop/test/activity-partial.test.js (every producer's state: result + failed sources keeps its card; a real failure keeps its box).
+// Guarded by desktop/test/unit/renderer/activity-partial.test.js (every producer's state: result + failed sources keeps its card; a real failure keeps its box).
 // The engine's own line for crawled feeds that did not answer (src/notion/cron_report.py): "1 feed(s) failed: Oxylabs, Acme."
 const SOURCES_FAILED = /^(\d+) (?:feed|source)\(s\) failed(?::\s*(.*?))?\.?$/i;
 const MORE = /\s+and \d+ more$/i;   // the engine names at most 6 and says how many more

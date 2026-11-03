@@ -1,7 +1,7 @@
 // "Import from LinkedIn" over IPC (spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md): the window asks to import or update, is told each step, gets the
 // "What came in" rows, and sends back which ones are ticked. The consent, the key and the reads are lib/linkedin-import.js; the rows lib/linkedin-import-review.js; the AI match
 // and the one LinkedIn source lib/experience.js. In demo mode no Keychain, browser or LinkedIn is touched. The key is never in an answer or a log line (counts only). Guard:
-// test/linkedin-import-handlers.test.js.
+// test/unit/main/linkedin-import-handlers.test.js.
 import * as engine from './linkedin-import.js';
 import * as review from './linkedin-import-review.js';
 import * as experience from './experience.js';

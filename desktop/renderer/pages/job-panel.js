@@ -3,8 +3,8 @@
 // Interviews, Review, Messages, Timeline) and the tab's content scrolling on its own. The page is read from the store (IPC jobPage,
 // lib/job-page-handlers.js), so it is the same on every store. It shares one overlay slot with Recent activity (renderer/overlay-slot.js):
 // opening one closes the other, and a job opened from a run says "Back to Recent activity". Opening it never resizes the list.
-// Parts: job-drawer/ (header, tabs, parts, one file per tab). Pure words: renderer/job-page-view.js. Guards: test/job-drawer.test.js,
-// test/job-panel.test.js, test/job-page-view.test.js.
+// Parts: job-drawer/ (header, tabs, parts, one file per tab). Pure words: renderer/job-page-view.js. Guards: test/unit/renderer/job-drawer.test.js,
+// test/unit/renderer/job-panel.test.js, test/unit/renderer/job-page-view.test.js.
 import {el} from '../components.js';
 import {pageParts, tabKey, TABS} from '../job-page-view.js';
 import {claimOverlay, registerOverlay, releaseOverlay, reopenOverlay} from '../overlay-slot.js';

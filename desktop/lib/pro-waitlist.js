@@ -1,5 +1,5 @@
 // "Join the Pro waitlist" (Settings → Plan): sends the address to the website's one waitlist (POST /api/waitlist, source "app") and remembers on this install that it joined.
-// No payment and no marketing mail here; the owner e-mails once when Pro opens. Guard: test/pro-waitlist.test.js (a fake fetch, never the live site).
+// No payment and no marketing mail here; the owner e-mails once when Pro opens. Guard: test/unit/renderer/pro-waitlist.test.js (a fake fetch, never the live site).
 import {FREE_BASE} from './ai-free.js';
 import {siteOffForUser} from './recipes.js';
 

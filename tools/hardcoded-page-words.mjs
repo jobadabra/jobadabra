@@ -1,6 +1,6 @@
 // A ratchet against hard-coded page knowledge (owner, 8 Oct 2026: "universal: any website, any form, any language; AI decides, not regex or lists"). It counts, per file in
 // extension/ and desktop/lib/ (every folder below them), the lines that carry (1) a captcha/bot-check vendor name or (2) a regex whose alternatives are three or more plain words (a word list in
-// disguise). The counts of today are recorded in tools/hardcoded-page-words-allowed.json as debt and may only shrink: a new such line fails desktop/test/hardcoded-page-words.test.js.
+// disguise). The counts of today are recorded in tools/hardcoded-page-words-allowed.json as debt and may only shrink: a new such line fails desktop/test/tooling/ci/hardcoded-page-words.test.js.
 // A line that is deliberately not page knowledge (a protocol word, our own message type) says `// words-ok: <why>` and is not counted. Fix instead: add a field to the AI's answer.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

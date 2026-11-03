@@ -1,7 +1,7 @@
 // The answer controls of the base-fact kinds that hold more than one part (owner, 17 Oct 2026: "Base facts fixed, AI the rest"): a salary (amount, currency,
 // period, net or gross), a notice period, work status per country, a language level, a percentage range and a link. Each is a composite (a div whose .value
 // is the saved text, renderer/question-values.js) built from native inputs and the shared .segmented; text the kind cannot read stays visible as it was
-// written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/question-kinds-composite.test.js.
+// written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/unit/renderer/question-kinds-composite.test.js.
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
 import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';

@@ -1,6 +1,6 @@
-// The steps of a session in plain words ("What happened", pages/session-steps.js draws them). No imports and no window: test/session-steps.test.js feeds it sessions and
+// The steps of a session in plain words ("What happened", pages/session-steps.js draws them). No imports and no window: test/unit/renderer/session-steps.test.js feeds it sessions and
 // form reports. `submitted` and `time` come from the page (session-state.js isSubmitted, activity.js clockTime).
-// The reasons where the page says what to do, or the site is broken: nothing for Claude to finish (desktop/lib/application-journey.js INFORM; test/session-steps.test.js keeps them equal).
+// The reasons where the page says what to do, or the site is broken: nothing for Claude to finish (desktop/lib/application-journey.js INFORM; test/unit/renderer/session-steps.test.js keeps them equal).
 export const INFORM_STUCK = ['email', 'told', 'other', 'site_broken'];
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 

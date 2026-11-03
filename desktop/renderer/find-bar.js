@@ -1,6 +1,6 @@
 // ⌘F, find in the page (pages/find.js draws the bar and highlights the matches with the CSS Highlight API): the matching,
 // stepping and the count. Done in the page, not with Electron's findInPage, which also matched the find box's own text.
-// No window needed (test/find-bar.test.js).
+// No window needed (test/unit/renderer/find-bar.test.js).
 
 // Where `query` starts in `text`, ignoring case; matches never overlap.
 export function offsets(text, query) {

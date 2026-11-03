@@ -150,7 +150,7 @@ test('Apply on this page refills a tab the app opened, a reload refills, any oth
 // 10 Oct 2026, "Claude finishes a stuck page" (extension/panel-claude.js): on a stuck page the panel offers three choices; the first press asks the consent line once; "always" shows a
 // 5 s countdown with Cancel. A LOCAL fixture at the real host's address; the stand-in app answers the panel's report as the real app does for a stuck session (lib/ext-server-handlers.js).
 // WHAT THIS PROVES: the real panel script is injected, draws each view from the app's facts, and what leaves the extension (a take-over event with the consent, the claude-auto box).
-// WHAT IT DOES NOT: that the app then starts Claude (desktop/test/take-over-open.test.js, the app's journey step).
+// WHAT IT DOES NOT: that the app then starts Claude (desktop/test/unit/renderer/take-over-open.test.js, the app's journey step).
 const STUCK_PAGE = '<body><h1>Create your account</h1><form><label>Name <input id="n" required></label><label>Email <input id="e" type="email" required></label><label>Country <input id="c" required></label><label>City <input id="t" required></label></form></body>';
 const takeOvers = run => run.requests.filter(request => request.route === '/extension/event' && request.body.includes('"take-over"')).map(request => JSON.parse(request.body));
 const offerOf = run => run.page.evaluate(() => {

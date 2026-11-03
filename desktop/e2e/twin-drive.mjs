@@ -3,7 +3,7 @@
 // npm run twin:drive -- <command> (in desktop/): drive and read a running live-test twin (e2e/twin.mjs) the way the owner would, visibly:
 // every click and keystroke is outlined in orange with a "Claude: …" caption first, so the owner watching the twin sees what is pressed and why.
 // Reads never return a password field's value; clicks refuse a control that looks like a form's Submit (except inside our own panel).
-// Only the twin's own ports (twin.json) are reached: never the owner's app or Chrome. Docs: docs/live-test.md. Guarded by test/twin-drive.test.js.
+// Only the twin's own ports (twin.json) are reached: never the owner's app or Chrome. Docs: docs/live-test.md. Guarded by test/unit/main/twin-drive.test.js.
 //   inspect <session>              the app's view (left, pending, proposals) + the page's own state for each pending field
 //   reopen <session>               the card's "Open in Chrome" path: the tab, else the form reopened with the fill mark
 //   click <tab> <selector> [why]   a real click in the twin's browser (tab: part of its address)
@@ -163,7 +163,7 @@ const commands = {
     const twinHome = path.join(os.homedir(), 'Library/Application Support/Job Pilotto (live test)/home');
     const html = scrub(raw, personalValues(appProfileTexts([...realDataFolders(), twinHome])));
     const {dir, file} = writeCapture({out: path.resolve(out), caseName, pageName, url, html});
-    return `captured ${file} (${html.length} chars) into ${dir}: write its shape, ai answers and expect in case.json, then: cd desktop && node --test test/recorded-privacy.test.js`;
+    return `captured ${file} (${html.length} chars) into ${dir}: write its shape, ai answers and expect in case.json, then: cd desktop && node --test test/guards/privacy/recorded-privacy.test.js`;
   },
   async shot(which, file) {
     const conn = await connect(which === 'app' ? 'cdp' : 'browser');

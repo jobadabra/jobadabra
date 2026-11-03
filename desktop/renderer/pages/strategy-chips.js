@@ -1,7 +1,7 @@
 // Strategy's chips as read (not editing), owner's decisions of 17 Oct 2026: one chip per meaning ("United States · USA, US", the other spellings
 // kept inside it and still searched), a typo flagged as "Did you mean …? Fix · Keep" (never fixed silently), whole-word entries as their own group
 // and a Google Jobs place read as a place (renderer/match-groups.js, from the design system's PR B). The meanings come from lib/list-meanings.js (AI, cached by the lists).
-// chipsOf / folded moved here from strategy-targets.js (a pure move). Pure rules in ../chip-meanings.js. Guarded by test/strategy-chips.test.js.
+// chipsOf / folded moved here from strategy-targets.js (a pure move). Pure rules in ../chip-meanings.js. Guarded by test/unit/renderer/strategy-chips.test.js.
 import {chip as valueChip, el} from '../components.js';
 import {titleCase} from '../fragment-words.js';
 import {strategyState} from './strategy-state.js';

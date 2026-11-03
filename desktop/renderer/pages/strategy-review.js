@@ -1,5 +1,5 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
-// owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/setup-strategy.test.js.
+// owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/unit/renderer/setup-strategy.test.js.
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';

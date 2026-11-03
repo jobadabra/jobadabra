@@ -1,5 +1,5 @@
 /* The shared magic effect for a card (data-magic, magic.js): a soft light and a lit edge under the cursor, a sparkle trail and burst, slow idle twinkles.
-   Whole card is one button: .magic-go's ::after covers it. Everything stops with reduced motion. Guard: test/welcome-magic.test.js. */
+   Whole card is one button: .magic-go's ::after covers it. Everything stops with reduced motion. Guard: test/unit/renderer/welcome-magic.test.js. */
 .magic { position: relative; isolation: isolate; overflow: hidden; display: grid; justify-items: center; gap: var(--sp-3); text-align: center;
   width: 100%; max-width: 56rem; margin: 0 auto; padding: calc(var(--sp-6) * 2) var(--sp-6); border: 1px solid var(--signal-line); border-radius: var(--r-lg);
   background: linear-gradient(160deg, color-mix(in srgb, var(--signal) 9%, var(--surface)), var(--surface) 60%);
@@ -50,7 +50,7 @@
   .magic:hover .ui-tile { transform: rotate(-6deg); }
 }
 /* The wand cursor, only where the AI does the work (owner, 25 Oct 2026: not app-wide): the cards above, and any button or menu row with data-wand
-   (index.html, magic.js wand()). The tip of the wand is the hotspot; a plain pointer is the fallback. Guard: test/wand-cursor.test.js. */
+   (index.html, magic.js wand()). The tip of the wand is the hotspot; a plain pointer is the fallback. Guard: test/unit/renderer/wand-cursor.test.js. */
 .magic-go:not(:disabled), [data-wand]:not(:disabled) { cursor: url(assets/wand.svg) 7 7, pointer; }
 /* The cursor's light over a card (magic.js initGlow, GLOW there lists the same cards): the .magic glow and lit edge, no lift, no sparkles.
    The Find jobs card's first-run state is already a .magic card, so it is left out here. */

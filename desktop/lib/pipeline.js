@@ -7,7 +7,7 @@
 //   pipeline-args.js      the engine's command lines (dailyArgs, mailArgs, ...)
 //   pipeline-tasks.js     tracked tasks (refresh, checkMail, scout, ...)
 //   pipeline-commands.js  one-shot commands (jobs, addLead, focus, setStatus, ...)
-// Guarded by: test/pipeline-run.test.js and the queue/stop/run-* tests named in each piece.
+// Guarded by: test/unit/main/pipeline-run.test.js and the queue/stop/run-* tests named in each piece.
 export {REPO, MODELS, python, ensureConfig, setCrashReports, pipelineEnv, readable, setDemo} from './pipeline-env.js';
 export {stopRunning, hasChildren, isWatched, onRunEnd, LIMITS, stoppedReason, run} from './pipeline-run.js';
 export {quietText, isDataLine, TASKS, taskName, failedLine, appMessage, taskSummary, isProgressStep, STATUS_LINE, leadStepOf, HEARTBEAT_MS} from './pipeline-lines.js';

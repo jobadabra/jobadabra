@@ -5,7 +5,7 @@
 // (owner, 17 Oct 2026: "The instruction-like prose goes into a note under the control, not into the value"). A rewrite that differs is refused and the line keeps its
 // words with the kind's mark. A Languages line that lists several languages becomes one row per language with its level.
 // Before any line changes both pages are copied and the backup runs (lib/profile-move.js saveCopy); after, every line is read back, else all go back; Undo
-// restores the lines as they were. Works on every store (lib/store). Guarded by test/details-kinds.test.js.
+// restores the lines as they were. Works on every store (lib/store). Guarded by test/unit/main/details-kinds.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import * as formats from './question-formats.js';
 import * as sections from './profile-sections.js';

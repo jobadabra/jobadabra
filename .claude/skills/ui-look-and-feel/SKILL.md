@@ -74,7 +74,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
   `npm run ui-shots` (all, 4 at a time, ~15 s) or `npm run ui-shots -- session jobs` (only those). Commit only the
   images of screens that changed.
 - Tokens and components: `desktop/renderer/tokens.css`, `components.js`/`components.css` (`chip()` for values, `pill()` for status, `tag()` for labels; chip styles in `chips.css`), `npm run gallery`.
-  Only `var(--…)` values: `desktop/test/design.test.js` fails on a raw colour, radius, font size or font family.
+  Only `var(--…)` values: `desktop/test/guards/rules/design.test.js` fails on a raw colour, radius, font size or font family.
 
 | Screen | File | Shows |
 |---|---|---|
@@ -100,7 +100,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
 ## 3. Cards and rows
 
 - **A run result shows one number: the jobs added to the list** (owner, 24 Oct 2026); no other count, no Details, never scoring words or the scoring queue (docs/rules/desktop-ui.md).
-- **Buttons are solid** (owner, 27 Oct 2026): `primary`, `secondary` or `danger-outline`, never a text-only `ghost`/`link` button; a card's buttons share one row. Guard: `desktop/test/solid-buttons.test.js` (docs/rules/desktop-ui.md "Buttons are solid").
+- **Buttons are solid** (owner, 27 Oct 2026): `primary`, `secondary` or `danger-outline`, never a text-only `ghost`/`link` button; a card's buttons share one row. Guard: `desktop/test/guards/rules/solid-buttons.test.js` (docs/rules/desktop-ui.md "Buttons are solid").
 - **White card** (`.card`): `--surface`, 1 px `--line` border, `--r-md` radius, soft shadow at most. Cards sit on
   the grey page background with `--sp-4` gaps.
 - **Action/item row** (Focus Up next, dock, task cards): round or rounded-square **icon tile** on the left (tinted
@@ -109,7 +109,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
   **one primary button** on the right, a secondary (Done, Review) if needed, and **⋯** (`moreButton`) for the rest.
 - **Tone = meaning**, the same everywhere: `bad` (red) needs you now / failed, `warn` (amber) soon / waiting for
   you, `info` (blue) next step / running, `good` (green) done / completed, `neutral` later / ended. Rows needing
-  attention get a 4 px left border in that tone, never a tinted fill of the whole row or card (owner, 27 Oct 2026: "too much yellow"; `test/calm-session.test.js`). A to-do row: the answer in words, same-size buttons, Review in form last, agree in one click, no Remember tick; its main button solid amber like primary, never green (`test/need-choice.test.js`).
+  attention get a 4 px left border in that tone, never a tinted fill of the whole row or card (owner, 27 Oct 2026: "too much yellow"; `test/guards/rules/calm-session.test.js`). A to-do row: the answer in words, same-size buttons, Review in form last, agree in one click, no Remember tick; its main button solid amber like primary, never green (`test/unit/renderer/need-choice.test.js`).
 - **Category label** above a card title when cards are grouped: small caps, muted, letter-spaced (DISCOVERY,
   COMMUNICATION, INSIGHTS).
 - **Compact by default**: rows ~56–64 px high, padding `--sp-2 --sp-3`, gaps `--sp-2`. The owner asked for
@@ -131,7 +131,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
   its row. Instant look-ups answer on the page. Nothing is shown *behind* an open panel.
 
 ## 5. Words
-- **Result panels stay basic; details live only in Reports** (owner, 24 Oct 2026: "is all of these information necessary to be displayed? Does he care?"): no API-key setup rows (Adzuna/Jooble, Brave, SerpApi are hidden behind `KEY_SOURCES_OFFERED`, `src/coverage.py` + `desktop/renderer/key-sources.js`), no internal counts (employers checked, ideas left, schedules, who started it, which machine), no scoring words; one number, one message, one action. "Browse sites manually" lists only sites the automatic read stopped at (`visits.left_to_hand`). Guard: `desktop/test/result-panels-basic.test.js`, `tests/unit/sources/test_visits.py`.
+- **Result panels stay basic; details live only in Reports** (owner, 24 Oct 2026: "is all of these information necessary to be displayed? Does he care?"): no API-key setup rows (Adzuna/Jooble, Brave, SerpApi are hidden behind `KEY_SOURCES_OFFERED`, `src/coverage.py` + `desktop/renderer/key-sources.js`), no internal counts (employers checked, ideas left, schedules, who started it, which machine), no scoring words; one number, one message, one action. "Browse sites manually" lists only sites the automatic read stopped at (`visits.left_to_hand`). Guard: `desktop/test/unit/renderer/result-panels-basic.test.js`, `tests/unit/sources/test_visits.py`.
 - Short and concrete: "Reply to AG Talent recruiter", "Apply to your next role", "Needs your input".
 - Buttons are verbs: Run, Respond, Review, Open email, Browse jobs, Done.
 - Times: "Today 19:10", "Mon 19:10", "Updated just now"; money "€70k–90k".

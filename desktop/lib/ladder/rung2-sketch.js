@@ -8,7 +8,7 @@
 //   posting       a job posting or a step that leads on to the application (press its Apply)
 //   other         none of these (an error, a list of jobs, a cookie wall)
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. The kind is one of the fixed kinds, decided by the AI; the structure rule answers only without AI (desktop/test/page-kind.test.js).
+//  1. The kind is one of the fixed kinds, decided by the AI; the structure rule answers only without AI (desktop/test/unit/main/page-kind.test.js).
 import {model, priceOf} from '../ai/models.js';
 import {validateAlias} from '../../shared/alias-schema.js';
 import {kindKey} from './rung1-kept.js';

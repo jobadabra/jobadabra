@@ -1,6 +1,6 @@
 // Tailor CV's in-place path, between the app and lib/cv-inplace.js: is the person's own PDF editable (cv.json made from this very PDF, its
 // items found on the pages), what room each text has for the tailoring prompt, and the edited PDF with what the review needs. When the file
-// can't be edited the caller prints today's template instead (no second AI call). Guards: test/cv-inplace-run.test.js.
+// can't be edited the caller prints today's template instead (no second AI call). Guards: test/unit/cv/cv-inplace-run.test.js.
 import fs from 'node:fs';
 import * as cvlib from './cv.js';
 import {itemsOf, roomOf, tailorInPlace} from './cv-inplace.js';

@@ -142,7 +142,7 @@ Nothing else is written locally in Trying. If you need another local file, the f
   after the `if (DEMO)` lines).
 - `lib/questions.js` currently throws "Connect Notion first" (tested in `desktop/test/app.test.js:332-333`). Leave the
   throw: it's a library contract. Only the IPC layer converts it.
-- Tests: `desktop/test/notion-gate.test.js`: `connected` for the 4 combinations of token and profile id; `needs` shape
+- Tests: `desktop/test/guards/data/notion-gate.test.js`: `connected` for the 4 combinations of token and profile id; `needs` shape
   and text for every key (every key in `REASONS` has a sentence).
 - Log (AGENTS.md logging rule): when a guard returns `needs`, `appLog('notion', 'gate', {reason})`. Area `notion`.
 
@@ -233,7 +233,7 @@ return true;
 - Telemetry: one `setup` report `{step: 'notion_connected', from, minutes}` (minutes since first start, like
   `setupFunnel.track`). The website ignores unknown steps today (`site/src/telemetry.js`), so check that and add
   `notion_connected` there as a counted event, not a funnel column.
-- Tests (`desktop/test/migrate.test.js`, fake fetcher like the existing tests):
+- Tests (`desktop/test/unit/main/migrate.test.js`, fake fetcher like the existing tests):
   1. fresh: both pages written with the files' text, Search settings published, local files gone, flag cleared;
   2. existing: nothing written to Notion, backup folder holds both files, local files gone, flag cleared;
   3. fresh, the answers write fails: profile written, **both** local files still there, flag still set; the next

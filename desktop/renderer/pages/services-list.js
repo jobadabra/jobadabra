@@ -1,5 +1,5 @@
 // The services Settings lists (Overview's "Your setup", Connections, the alert and the dot): each one's name, icon, words and whether it is required.
-// Moved out of pages/settings.js (26 Oct 2026, pure move, the file was past 450 lines). Guards: test/notify-choice.test.js (Telegram's required rule), the settings tests.
+// Moved out of pages/settings.js (26 Oct 2026, pure move, the file was past 450 lines). Guards: test/unit/renderer/notify-choice.test.js (Telegram's required rule), the settings tests.
 import {shared} from './shared.js';
 import {offered} from '../key-sources.js';
 import {telegramRequired} from '../notify-words.js';

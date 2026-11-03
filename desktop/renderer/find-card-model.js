@@ -1,5 +1,5 @@
 // The "Find jobs" card on top of Jobs, as data (pure): which of its five states shows (empty first run, searching, done, failed, none), the step chips
-// with the one that is running, the last lines in words, and the one number (jobs added). Drawn by pages/jobs-find.js. Guarded by: test/find-card.test.js.
+// with the one that is running, the last lines in words, and the one number (jobs added). Drawn by pages/jobs-find.js. Guarded by: test/unit/renderer/find-card.test.js.
 // Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md
 import {readableLog} from './human-log.js';
 import {hasFullReport} from './searches-view.js';
@@ -39,7 +39,7 @@ export function stepChips(log = []) {
 
 // The web search's own chip (owner, 26 Oct 2026: "why I don't see here a chip with Web Search?"), its state in words from the engine's lines
 // (src/sources/board_web.py): searching, the boards it found, rested until its next date (when it last searched in the note), off (why in the
-// note) or no answer. Guarded by: test/live-updates.test.js.
+// note) or no answer. Guarded by: test/unit/renderer/live-updates.test.js.
 const day = iso => new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
 const clock = iso => new Date(iso).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 const boardCount = names => names.replace(/\([^)]*\)/g, '').split(',').filter(name => name.trim()).length;   // "A (x, y), B" is 2 boards
@@ -67,7 +67,7 @@ export function webSearchChip(log = []) {
 // engine starts with a step's name (and the scoring, added and digest lines); per-item lines (one employer, one job, one AI answer) are the
 // technical log's, in Recent activity. Why (#live-updates-3-lines, owner 27 Oct 2026: "why we're showing so many lines of the log updates"): one board's
 // "Job boards found: <board> N jobs, M relevant" is a per-item line like an employer's, so it is not in RESULT; the step's one summary line
-// ("Job boards: done, N jobs for your search") stays. Guarded by: test/live-updates.test.js.
+// ("Job boards: done, N jobs for your search") stays. Guarded by: test/unit/renderer/live-updates.test.js.
 const RESULT = /^((First jobs|Job boards|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready|⏱ Time is up \()/;
 export function liveLines(log = []) {
   const results = [], tick = [];

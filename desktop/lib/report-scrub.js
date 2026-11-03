@@ -1,7 +1,7 @@
 // The scrub of a "Report this form" record (spec docs/superpowers/specs/2026-10-15-report-this-form.md §2): the record keeps its shape (hosts, paths, timings, statuses) and loses
 // whatever could be the person's: URL query values, typed-value attributes and text, the person's own values (lib/owner-values.js), any e-mail or phone. Then lastGate() scans the
 // result again with the same values: one hit and nothing is sent. Kinds and counts only ever leave here, never a value. Pure: no files, no network.
-// Guard: test/report-scrub.test.js.
+// Guard: test/unit/main/report-scrub.test.js.
 import {EMAIL, EXAMPLE, FAKE_EMAIL, PHONE, fakeContacts, sameLengthFake} from './live-capture.js';
 import {KEEP_HEADER, keepRecord, sha} from './net-keep.js';
 

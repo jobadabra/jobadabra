@@ -1,7 +1,7 @@
 // Which extension copy the app opens its pages in, and why it could not. ONE owner of "the extension is here": the extension's own check-in (it names its id: server.extensionSeen()),
 // with the browser-profile scan (lib/extension-install.js installed()) only as the fallback before its first check-in.
 // Why (3 Nov 2026, owner: "Turn on LinkedIn doesn't work… I have the extension enabled"): Settings → Connections said Connected (the check-in) while the page opener, which used only the scan,
-// found nothing: newer Chrome keeps an unpacked copy in Preferences with no manifest and a path outside the app's own folder, which the scan cannot match. Guard: test/extension-target.test.js.
+// found nothing: newer Chrome keeps an unpacked copy in Preferences with no manifest and a path outside the app's own folder, which the scan cannot match. Guard: test/unit/main/extension-target.test.js.
 import {launchOnce} from './chrome-launch-once.js';
 import {staleExtension} from './server-env.js';
 import {newer} from './updater.js';

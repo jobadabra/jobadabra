@@ -31,7 +31,7 @@ export function settingsPage(name) {
   if (name === 'logs') setTimeout(() => openLogs().catch(error => console.error('Settings · logs:', error)), 0);  // after the page is shown
   document.querySelectorAll('[data-settings-page]').forEach(page => show(page, page.dataset.settingsPage === name));
   // Profile is its own page (owner, 18 Oct 2026, UI redesign fix 9): its heading and 5 tabs, without "Settings", its list of sections or a second heading.
-  // Every way in (the sidebar's Profile, Settings → Profile, Overview's Edit profile, ⌘K) passes here. Guarded by test/profile-page.test.js.
+  // Every way in (the sidebar's Profile, Settings → Profile, Overview's Edit profile, ⌘K) passes here. Guarded by test/unit/renderer/profile-page.test.js.
   document.querySelector('.view[data-view="settings"]')?.classList.toggle('is-profile', name === 'profile');
   // The menu: Profile is a Settings page of its own there.
   document.querySelectorAll('.nav[data-view="settings"]').forEach(nav => nav.classList.toggle('active', (nav.dataset.settings === 'profile') === (name === 'profile')));

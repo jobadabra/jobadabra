@@ -1,7 +1,7 @@
 /* global document, window, KeyboardEvent, Event */
 // Settings, layer 2: the AI engine panel with each engine chosen, and the ⌘K palette (every page listed, every Settings section and Export/Import reachable, a typed command opens its
 // page, Esc closes). Moved from the e2e `settings` suite (1 Nov 2026) to the app's demo window. What STAYS in e2e: every section renders (the smoke journey), Back up now, a due
-// backup, and the two export/import round trips (data). The crowding of ⌘K rows per card is test/palette-one-row-per-card.test.js.
+// backup, and the two export/import round trips (data). The crowding of ⌘K rows per card is test/unit/main/palette-one-row-per-card.test.js.
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
 import {needsElectron} from '../../test/needs-electron.js';

@@ -1,7 +1,7 @@
 // Settings → Profile → Cover letter → Base letter (owner's mockup 07, 18 Oct 2026; moved from pages/profile.js): a neutral "Not created" with Draft with AI
 // and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date and Open PDF).
 // Approved usable base letters automatically fill the gap when a job has no usable tailored letter. Who pays is said before and after a draft.
-// A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/base-letter.test.js and test/contact-reading.test.js.
+// A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/unit/renderer/base-letter.test.js and test/unit/renderer/contact-reading.test.js.
 import {pill} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {profileBar} from './profile-save-bar.js';

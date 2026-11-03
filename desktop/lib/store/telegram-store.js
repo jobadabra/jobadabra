@@ -1,6 +1,6 @@
 // The Telegram bot's lists and buttons with the data on this Mac (app-core/src/index.js env.store): /saved, /applied, /status and an
 // outcome tap, from the engine's store (lib/store/engine.js) as the plain items the bot's formatters read (app-core/src/format.js appItem,
-// runItem), so a message reads the same as with Notion. Guarded by test/telegram-store.test.js.
+// runItem), so a message reads the same as with Notion. Guarded by test/unit/main/telegram-store.test.js.
 import * as engine from './engine.js';
 
 const NOT_APPLIED = ['Saved', 'Kit ready', 'Dismissed', 'Closed'];   // /applied: real applications only (as the Notion query)

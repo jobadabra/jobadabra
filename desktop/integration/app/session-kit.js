@@ -15,7 +15,7 @@ import {registerHooks} from 'node:module';
 import {freePort} from '../../e2e/lib/own-port.mjs';
 // Why (1 Nov 2026, R3): own-port.mjs, not engine-kit's freePort: engine-kit imports e2e/lib modules that need playwright-core, which the CI `app` job does not install; own-port.mjs needs only node:net.
 
-// Why (1 Nov 2026, R3): the same stub the unit test desktop/test/forms-open-liveness.test.js uses; the real lib/form-tab.js runs `osascript` against the person's Chrome on a Mac.
+// Why (1 Nov 2026, R3): the same stub the unit test desktop/test/unit/main/forms-open-liveness.test.js uses; the real lib/form-tab.js runs `osascript` against the person's Chrome on a Mac.
 registerHooks({load(url, context, next) {
   if (url === new URL('../../lib/form-tab.js', import.meta.url).href) return {format: 'module', shortCircuit: true, source: `
     export const ATS = /jobs\\.test/;

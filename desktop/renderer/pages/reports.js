@@ -3,7 +3,7 @@
 // Insights: the history with its feedback (Useful / Not useful / Acting on it). Funnel: the Pipeline table and "Where to improve".
 // Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
-// Pure parts: renderer/reports-view.js. Guards: test/reports-view.test.js, test/reports-handlers.test.js.
+// Pure parts: renderer/reports-view.js. Guards: test/unit/renderer/reports-view.test.js, test/unit/main/reports-handlers.test.js.
 import {plainError} from '../run-warnings.js';
 import {el, pill} from '../components.js';
 import {dayLabel, funnelRows, improveLines, insightItems, weeklyCardOf, weeklyReports} from '../reports-view.js';

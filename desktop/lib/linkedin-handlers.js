@@ -1,5 +1,5 @@
 // LinkedIn jobs on every Find jobs, PR 1/3 (spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the IPC the window uses for the switch and the
-// routes the extension calls (the copied session, and "is the switch still on?"). The session is a credential: nothing here logs it or sends it back. Guard: test/linkedin-handlers.test.js.
+// routes the extension calls (the copied session, and "is the switch still on?"). The session is a credential: nothing here logs it or sends it back. Guard: test/unit/extension/linkedin-handlers.test.js.
 import * as session from './linkedin-session.js';
 import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as realKeychain from './keychain.js';

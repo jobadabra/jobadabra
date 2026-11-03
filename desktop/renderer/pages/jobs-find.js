@@ -1,8 +1,8 @@
 // Jobs page, the "Find jobs" card on top (owner, 16 Oct 2026; centered magic card + moving searching card 24 Oct 2026): a big card on an empty first run, then the live progress of the search (steps, last
 // lines, counts) with the list growing below it, then a one-line result; a failure says what to do. Built from the shared header, number strip, pills and
-// rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/find-card.test.js.
+// rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/unit/renderer/find-card.test.js.
 // It is in the page's first paint (owner, 26 Oct 2026: it came 2-3 s late and pushed the list down): as last drawn (renderer/late-blocks.js), else
-// index.html's skeleton in its place; activity.js draws the real state with its first runs answer, not 2 s later. Guarded by: test/late-blocks.test.js.
+// index.html's skeleton in its place; activity.js draws the real state with its first runs answer, not 2 s later. Guarded by: test/unit/renderer/late-blocks.test.js.
 import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wand, wire} from '../magic.js';

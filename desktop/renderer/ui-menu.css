@@ -1,4 +1,4 @@
-/* The ⋯ button and its one floating menu (components.js openMenu), moved out of components.css on 18 Oct 2026. Guarded by test/ui-menu-rows.test.js. */
+/* The ⋯ button and its one floating menu (components.js openMenu), moved out of components.css on 18 Oct 2026. Guarded by test/unit/renderer/ui-menu-rows.test.js. */
 /* ⋯ button and its menu */
 .ui-more { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; color: var(--ink); border-radius: var(--r-sm); flex: none; }
 .ui-more[aria-expanded="true"], .ui-more:hover { background: var(--bg); }

@@ -76,7 +76,7 @@ export function jobKey(url) {
 
 // The desktop app with the data on its Mac (desktop/lib/server-env.js) hands a store instead of Notion: env.store {findJob(url) -> job
 // summary with its id, kit(id) -> kit JSON, logRun(run) -> {ok}}. The Cloudflare worker is Notion only (Always on needs Notion, spec D5).
-// One answer per route either way: test/extension-store.test.js feeds each route from both.
+// One answer per route either way: test/unit/extension/extension-store.test.js feeds each route from both.
 async function findRow(env, url) {
   if (!env.NOTION_TOKEN || !env.NOTION_APPLICATIONS_DB) return null; // desktop app without Notion
   const query = (filter) => notion(env, `databases/${env.NOTION_APPLICATIONS_DB}/query`, 'POST', { filter, page_size: 5 });

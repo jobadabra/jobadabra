@@ -34,7 +34,7 @@
 /* A short window in the icon rail (under 880 css px tall: below it the full list no longer fits: a small window at a large text size, or the site hero's phone take at 528 px) left the page list
    117 px between the brand and the bottom buttons: two pages, the third sliced (owner, 25 Oct 2026: "the sidebar menu collapsed is broken"). The list
    gets the room: feedback (in ⌘K) and the theme switch (Settings → Appearance) and the plan bar step aside, the rows and the brand tighten. Collapse stays
-   in a wide window: it is the way back from a collapsed menu. Guard: desktop/test/rail-short-window.test.js. */
+   in a wide window: it is the way back from a collapsed menu. Guard: desktop/test/unit/renderer/rail-short-window.test.js. */
 @media (max-height: 880px) {
   .app.rail #nav-feedback, .app.rail #theme-toggle, .app.rail .allowance-chip { display: none; }
   .app.rail .sidebar .nav { padding: 15px 2px 0 0; }   /* the top 15px stay: they keep the icon clear of the badge/dot row (style.css), so only the bottom gives */

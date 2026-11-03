@@ -1,7 +1,7 @@
 // Free AI's lines for this install (owner, 26 Oct 2026: "show this popup whenever, on every action that requires AI and their cap is reached ... before they reached
 // 60 days or 20 applications"): the last answer of GET /api/ai/caps (lib/plan.js caps), asked before each AI start (at most once a minute), after every run, and when
 // our AI refused a call (lib/ai/refusals.js). A cap in force refuses new AI starts (lib/app-allowance.js) and, found in the background, opens the top-up dialog
-// (renderer/pages/topup-dialog.js). Only while Free AI is the engine: an own key or a CLI has no cap here. Guard: test/ai-caps.test.js.
+// (renderer/pages/topup-dialog.js). Only while Free AI is the engine: an own key or a CLI has no cap here. Guard: test/guards/money/ai-caps.test.js.
 import * as aiFree from './ai-free.js';
 
 export const FRESH_MS = 60_000, REFUSED_MS = 15_000;

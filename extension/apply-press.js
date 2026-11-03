@@ -2,8 +2,8 @@
 // learned phrases, or the one the page-kind AI named) and press it in this same tab. Part of the flow core with fill-flow.js (its invariant 1:
 // Apply is pressed once per tab and page, kept there by triedApply). Guards: extension-tab-pages.test.js, named-controls.test.js, the e2e rows (npm run flows).
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit):
-//  1. A control the AI named is pressed by its own text or not at all: never another route found by a phrase while the named one is visible but refused (desktop/test/named-controls.test.js).
-//  2. Never a Submit by another name: a control that submits a form with fields to fill, or that its own code names submit/save, is no candidate (desktop/test/extension-tab-pages.test.js).
+//  1. A control the AI named is pressed by its own text or not at all: never another route found by a phrase while the named one is visible but refused (desktop/test/unit/extension/named-controls.test.js).
+//  2. Never a Submit by another name: a control that submits a form with fields to fill, or that its own code names submit/save, is no candidate (desktop/test/unit/extension/extension-tab-pages.test.js).
 //  3. The press stays in this tab: a link, form or script window aimed elsewhere is pointed here; a sized pop-up (features given) is left to the page.
 import {api, settings} from './flow.js';
 import {decide} from './log.js';

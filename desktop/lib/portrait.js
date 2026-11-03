@@ -1,7 +1,7 @@
 // Your portrait (spec docs/superpowers/specs/2026-10-28-your-portrait-design.md, owner 28 Oct 2026): a read-only text the app writes about the person from
 // everything it knows. The writer is the one owner of its state (not_yet | current | outdated); it READS the "about you" interface (reader 'portrait') and nothing
 // reads it back. Stored as a text page behind the store interface: "Updated:", "Evidence:" (a hash of what was read), sections of "- statement [evidence ids]",
-// then "## Evidence" listing each id as "id | label | tab". Guarded by test/portrait.test.js.
+// then "## Evidence" listing each id as "id | label | tab". Guarded by test/unit/renderer/portrait.test.js.
 import crypto from 'node:crypto';
 import {aboutYou} from './about-you.js';
 import {openStore} from './store/index.js';

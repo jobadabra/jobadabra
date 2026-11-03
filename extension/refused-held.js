@@ -1,7 +1,7 @@
 // A captcha met in the refused-site real tab stays in its hidden incognito window instead of being thrown away (owner, 21 Oct 2026: "can't they stay hidden, and to be informed only
 // when there is a captcha? Only then with a button, deliberately to focus the window"). The window is never focused by us: only the person's press of "Show the check" in the app brings it
 // forward. Nothing here clicks, types or solves; once the person solved it and the AI says the page is now `page`, the page is read like any other. At most one is held, for HOLD_MS.
-// Kept in chrome.storage.local so a restarted service worker still knows it. Guard: desktop/test/extension-refused-held.test.js.
+// Kept in chrome.storage.local so a restarted service worker still knows it. Guard: desktop/test/unit/extension/extension-refused-held.test.js.
 export const HOLD_MS = 10 * 60 * 1000;
 const KEY = 'refusedHeld';
 

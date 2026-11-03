@@ -1,5 +1,5 @@
 // Jobadabra's browser: Chrome for Testing (full Chromium; the headless shell cannot load the extension), downloaded into the app folder on first use
-// with progress and Cancel, never bundled or system-wide. Guard: test/background-browser-download.test.js.
+// with progress and Cancel, never bundled or system-wide. Guard: test/unit/main/background-browser-download.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

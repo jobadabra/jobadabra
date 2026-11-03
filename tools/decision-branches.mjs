@@ -4,7 +4,7 @@
 // only go down. A new condition is data (a ladder fixture + prompt example, or a learned move), or the owner's OK said in the baseline's reason:
 //   node tools/decision-branches.mjs                      the counts now, against the baseline
 //   node tools/decision-branches.mjs --update "<why>"     rewrite the baseline with a dated reason; a RAISE needs "Decision-branch: <why> (owner's OK)"
-// Guard: desktop/test/decision-branches.test.js.
+// Guard: desktop/test/tooling/ci/decision-branches.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

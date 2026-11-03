@@ -3,7 +3,7 @@
 // as one row per "Label:" with its values as tags; a heading's "(…)" note and lines in brackets shown small. The role history is drawn by the job
 // cards, never here. Your details: the voluntary survey answers. Read from the Profile's outline and saved block by block on every store (IPC
 // textOutline / textEdit); the model is renderer/experience-profile-model.js. Cards are the Application answers' folds (.answer-item.qa-fold).
-// Guarded by test/experience-profile.test.js and test/experience-cards.test.js.
+// Guarded by test/unit/renderer/experience-profile.test.js and test/unit/renderer/experience-cards.test.js.
 import {cardEdit, el, loadingCard, pill} from '../components.js';
 import {chipLine, doneButton, setEditing} from '../card-shell.js';
 import {keep, swr} from '../swr.js';

@@ -1,6 +1,6 @@
 // Owns: the one-shot engine commands the app awaits for an answer: job list, calendar, import/add/lead, posting, Focus, interview prep,
 // reassign, feedback, unapply/not-submitted, outcomes, delete, set status. None is queued; each is a run() plus parsing the last line.
-// Guarded by: test/lead-confirm.test.js, test/app.test.js, test/app-scenarios.test.js, test/notion-trying.test.js.
+// Guarded by: test/unit/main/lead-confirm.test.js, test/app.test.js, test/unit/main/app-scenarios.test.js, test/unit/main/notion-trying.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {markFinished} from './job-flags.js';
 import {jobFrom, jobFromResult} from './job-line.js';
@@ -164,7 +164,7 @@ export async function focusReminder(storage, send = false) {
 }
 
 // The stage writes below are afterWrite: a job-list read asked after one must not join a read that began before it (shared-read.js), whoever
-// asked (a session's Cancel, a row's menu, the extension's submit report). test/job-writes.test.js finds every one by its engine command.
+// asked (a session's Cancel, a row's menu, the extension's submit report). test/unit/renderer/job-writes.test.js finds every one by its engine command.
 // A session ended without a submission: the job goes back from Applying to Kit ready (in Notion first).
 // Why (#2758, 1 Nov 2026): a write whose new stage the engine's own answer states is held in the Jobs reads (view-cache.js withHeldWrites), as setStatus's is; Notion lists a write late.
 export const unapply = afterWrite(async (storage, url) => {

@@ -1,7 +1,7 @@
 // Job-site accounts belong to one profile (owner, 16 Oct 2026): the profile's id, moving an old-name account to it, and what export, import and reset do with them.
 // Items: jobadabra.profile-<id>.<host>.password (comment "email=… job=…"); test accounts (jobadabra.test-account.*) are outside profiles, never moved, exported or reset.
 // Secrets are read and written only through lib/keychain.js (a test run or the twin never reaches the real Keychain); nothing here logs a value.
-// Guards: desktop/test/profile-accounts.test.js.
+// Guards: desktop/test/unit/main/profile-accounts.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

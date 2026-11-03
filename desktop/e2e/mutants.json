@@ -1,7 +1,7 @@
 [
   {
     "id": "calendar-day-dropped",
-    "test": "desktop/test/calendar.test.js",
+    "test": "desktop/test/unit/renderer/calendar.test.js",
     "file": "desktop/renderer/calendar.js",
     "find": "inMonth: date.getUTCMonth() === month,",
     "replace": "inMonth: date.getUTCMonth() === month && date.getUTCDate() !== 4,",
@@ -10,7 +10,7 @@
   },
   {
     "id": "failed-run-ticked",
-    "test": "desktop/test/run-status.test.js",
+    "test": "desktop/test/unit/renderer/run-status.test.js",
     "file": "desktop/renderer/run-status.js",
     "find": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'fail';",
     "replace": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'done';",
@@ -19,7 +19,7 @@
   },
   {
     "id": "raw-api-error",
-    "test": "desktop/test/raw-error-in-lines.test.js",
+    "test": "desktop/test/guards/rules/raw-error-in-lines.test.js",
     "file": "desktop/renderer/run-warnings.js",
     "find": "  if (!PROVIDER.test(raw)) return raw.replace(",
     "replace": "  if (raw) return raw;\n  if (!PROVIDER.test(raw)) return raw.replace(",
@@ -91,7 +91,7 @@
   },
   {
     "id": "weekly-plain-layout-unread",
-    "test": "desktop/test/engine-message-contract.test.js",
+    "test": "desktop/test/unit/renderer/engine-message-contract.test.js",
     "file": "desktop/renderer/weekly-card.js",
     "find": "const FINDING = /^(?:💡\\s*|Finding:\\s*)(.+)$/;",
     "replace": "const FINDING = /^💡\\s*(.+)$/;",
@@ -100,7 +100,7 @@
   },
   {
     "id": "raw-http-error",
-    "test": "desktop/test/message-plain-error.test.js",
+    "test": "desktop/test/guards/money/message-plain-error.test.js",
     "file": "desktop/renderer/run-warnings.js",
     "find": "  if (!PROVIDER.test(raw) && (HTTP.test(raw) || HTML.test(raw))) {",
     "replace": "  if (false) {",

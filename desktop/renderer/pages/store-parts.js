@@ -1,5 +1,5 @@
 // Settings: every control that opens the store's own page (Notion) shown only on that store ([data-notion-only]), and every "Saved in …" said
-// from where the data is ([data-store-saved], store-words.js). Guarded by test/profile-tabs.test.js.
+// from where the data is ([data-store-saved], store-words.js). Guarded by test/unit/renderer/profile-tabs.test.js.
 import {show} from './core.js';
 import {inNotion, storeName, syncStoreName} from '../store-words.js';
 

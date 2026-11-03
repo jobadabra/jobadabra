@@ -2,12 +2,12 @@
 // The extension sends its tab's identity with every report: {session, job, url} (extension/tab-identity.js). The session it carries wins while it is a live
 // form session; else the form session whose posting is the tab's job (the posting the tab was opened for), else the page's own address; else none.
 // The handler answers the id it used, and the extension binds it to the tab, so the next report carries it (10 Oct 2026: a sign-in tab carried no id,
-// and the Gmail check's "enter the code" never reached the card). Guards: test/journey-identity.test.js, test/journeys.test.js.
+// and the Gmail check's "enter the code" never reached the card). Guards: test/unit/main/journey-identity.test.js, test/unit/main/journeys.test.js.
 //
 // Invariants: 1. a carried id of a live form session is never overridden by a job match (two applications on one board stay apart);
 //             2. a finished session (outcome set) is never matched; 3. no id, no job, no address: '' (never a guess);
 //             4. a job or address match never takes a session whose tab is in another browser run that still reports (`boot`: the run the report comes from; a hidden-browser
-//                read of the same job carries a read id that is no session: #43, #2747, #2753). Guard: test/tab-match-class.test.js.
+//                read of the same job carries a read id that is no session: #43, #2747, #2753). Guard: test/guards/rules/tab-match-class.test.js.
 
 /** The services every handler hands resolveSession, built in ONE place so none can forget the browser-run check. */
 export function identityServices({terminals, review, isFormOf}) {

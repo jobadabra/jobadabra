@@ -1,7 +1,7 @@
 // Reports → Searches, the logic without a window (owner, 25 Oct 2026: "all the numbers in the world, how the search was performed"): a list
 // row per search run and the sections of one run's full report, from a store run record (src/stores CRON_RUN_FIELDS) and its `details`
 // (src/run_details.py: steps, jobs, employers, boards, AI, scoring, problems). Every part is optional: a run from before the details were
-// kept shows its totals and says so. Drawn by pages/reports-searches.js. Guarded by test/searches-view.test.js.
+// kept shows its totals and says so. Drawn by pages/reports-searches.js. Guarded by test/unit/renderer/searches-view.test.js.
 import {costText} from './ai-cost.js';
 export const SEARCH_MODES = ['scheduled', 'run', 'first', 'visits', 'scout'];   // the runs that search: Find jobs (any trigger), in the browser, more employers
 export const KEPT = 50;                                                          // runs listed (owner, 25 Oct 2026)
@@ -91,7 +91,7 @@ export function report(row) {
   const log = String(row.log || '').split('\n').filter(Boolean);
   if (log.length) cards.push({id: 'log', kind: 'fold', category: 'RAW', title: 'Technical log', lines: log, mono: true, wide: true});
   // Two small cards per row (the shared .card-grid, card-grid.js), a wide one (the Technical log) last on its own row (owner, 25 Oct 2026: "Technical log should
-  // be last, full-row. The others, which have fixed height, and not too much content, they can 2 columns per row"). Guard: test/searches-view.test.js.
+  // be last, full-row. The others, which have fixed height, and not too much content, they can 2 columns per row"). Guard: test/unit/renderer/searches-view.test.js.
   return {tiles, cards: [...cards.filter(card => !card.wide), ...cards.filter(card => card.wide)]};
 }
 

@@ -1,7 +1,7 @@
 // The multi-value control: a button that opens a checkbox list, several values ticked together, each with its count and a Clear at the foot.
 // Use it where a value is "any of these" (the Jobs filters, pages/jobs-filter-menu.js); one value from a list is a <select> or a menu (components.js).
 // Keyboard: ↑ ↓ Home End move, Space / Enter tick, Esc closes and gives the button back its focus; roles menuitemcheckbox + aria-checked.
-// Styles: ui-menu.css (.ui-multi). Guarded by test/multi-select.test.js.
+// Styles: ui-menu.css (.ui-multi). Guarded by test/unit/renderer/multi-select.test.js.
 import {el, menuStep} from './components.js';
 import {icon} from './icons.js';
 import {multiRows} from './multi-rows.js';

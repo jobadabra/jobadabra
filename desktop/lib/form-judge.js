@@ -2,7 +2,7 @@
 // the form needs from this person given? ready | needs_person (and which control) | blocked (something covers or replaces the form) | unsure. The panel counted HTML-required boxes, so a consent that is a link, a custom picklist or a
 // widget gave a false "Ready to submit" (or a false "left"); the AI reads the page's own state in any language. The sketch and its fixed answers are the account judge's
 // (lib/account-judge.js): never a typed value, a control only if the page lists it. The AI may only VETO a "ready" claim here: the extension never accepts a consent on an application and never
-// presses Submit; on a ready final step the AI names the page's own sending button, which only the person's press in the app's live view uses. Without AI nothing changes (the panel keeps its own count). Guard: test/form-judge.test.js.
+// presses Submit; on a ready final step the AI names the page's own sending button, which only the person's press in the app's live view uses. Without AI nothing changes (the panel keeps its own count). Guard: test/unit/main/form-judge.test.js.
 import {MODEL} from './page-kind.js';
 import {accountSketch, listed} from './account-judge.js';
 

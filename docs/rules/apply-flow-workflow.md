@@ -48,7 +48,7 @@
 
 ## App bugs (not form bugs)
 The Desktop App's own screens (session cards, review panel, tabs) are not in the replay. A bug you see yourself → skill `desktop-change`
-with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md) reproduces it on demand; it is never a loop.
+with a test in `desktop/test/unit/main/app-scenarios.test.js`. The twin (docs/live-test.md) reproduces it on demand; it is never a loop.
 
 ## A bug the owner saw is proven on his own page (owner, 16 Oct 2026)
 - Why: #941 (SAP select) was proven on a fixture written from vendor code and failed live; #972 passed unit tests and did nothing in the browser.

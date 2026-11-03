@@ -1,4 +1,4 @@
-// Builds the Chrome Web Store package of the extension: a copy of extension/ without the manifest's "key" (the store refuses it and signs with its own), stamped with the build version, zipped. Usage: node tools/store-zip.mjs <out.zip>. Guard: desktop/test/store-zip.test.js.
+// Builds the Chrome Web Store package of the extension: a copy of extension/ without the manifest's "key" (the store refuses it and signs with its own), stamped with the build version, zipped. Usage: node tools/store-zip.mjs <out.zip>. Guard: desktop/test/tooling/release/store-zip.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

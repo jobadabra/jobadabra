@@ -1,7 +1,7 @@
 // The LibreOffice add-on inside the app: one download at a time into <data folder>/office, started when a Word CV is chosen, its steps sent
 // to the window ('officeProgress' {step, share, bytes, total, started, error}) for the bar on Profile → CV (renderer/pages/office-progress.js),
 // and Cancel. A LibreOffice already on the computer counts as ready. Download, checksum and unpacking: lib/office.js; the shared add-on: lib/optional-addon.js.
-// Guard: test/office-addon.test.js.
+// Guard: test/unit/main/office-addon.test.js.
 import {findOffice, installOffice} from './office.js';
 import {optionalAddon} from './optional-addon.js';
 

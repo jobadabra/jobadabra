@@ -1,5 +1,5 @@
 // Jobs page, In conversation (moved from pages/jobs-render.js, 26 Oct 2026): the opportunities that found you and are still open, above the
-// search box. In the page's first paint as last drawn (renderer/late-blocks.js). Guarded by: test/late-blocks.test.js, test/notion-parity.test.js.
+// search box. In the page's first paint as last drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js, test/unit/renderer/notion-parity.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {isInbound} from '../origin.js';

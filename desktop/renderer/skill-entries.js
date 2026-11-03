@@ -1,6 +1,6 @@
 // Insight #6 of Profile → CV (spec docs/superpowers/specs/2026-10-28-insights-with-actions-design.md, PR 2): skills your target jobs ask for that only the Experience
 // bank has. Counts, no AI call: the skills the AI already read from each posting (job.skills) against the bank's extra skills (experienceGet `extraSkills`).
-// Free of the DOM so the tests can check it. Guarded by test/skill-entries.test.js.
+// Free of the DOM so the tests can check it. Guarded by test/unit/renderer/skill-entries.test.js.
 import {matchesOnly} from './jobs-view.js';
 
 export const SKILL_DOES = ['use_bank_skills'];

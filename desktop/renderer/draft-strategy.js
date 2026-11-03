@@ -1,6 +1,6 @@
 // The setup's drafted strategy as the Strategy page's cards read it (the shape of src/desktop_strategy.py strategy(): lists as {fragment, label}, texts,
 // goals, relocation, remote_jobs, level, digest_min_score), so step 3 draws the same cards from the draft instead of the saved settings. Pure; guarded by
-// test/draft-strategy.test.js.
+// test/unit/renderer/draft-strategy.test.js.
 import {fragmentWords} from './fragment-words.js';
 import {searchLevel} from './goal-kinds.js';
 

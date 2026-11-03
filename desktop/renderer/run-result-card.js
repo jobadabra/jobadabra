@@ -1,13 +1,13 @@
 // The top of a run's one result card in its run panel (owner, 25 Oct 2026: "Instead of having 3 cards representing the status/result, there should be one
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
-// Guarded by test/run-result-card.test.js.
+// Guarded by test/unit/renderer/run-result-card.test.js.
 import {addedWords} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
 import {runPill, stepCount} from './run-status.js';
 
 // Every kind's run has this top once it ended (owner, 25 Oct 2026: "Every action run result, should have its status in a consistent way").
-// Kept as the list of kinds the top was built for: test/run-result-card.test.js fails on a new kind until it is drawn and checked.
+// Kept as the list of kinds the top was built for: test/unit/renderer/run-result-card.test.js fails on a new kind until it is drawn and checked.
 export const CLEAN_TOP = new Set(['search', 'visits', 'mail', 'scout', 'today', 'insight', 'weekly', 'interview', 'interviewInsight', 'kits', 'tailor', 'prepare',
   'add', 'import', 'action', 'rejection', 'prep']);
 const plural = (n, word) => `${n.toLocaleString('en-US')} ${word}${n === 1 ? '' : 's'}`;

@@ -1,6 +1,6 @@
 // Click-to-sort headers for a library table (Employers; any .lib-table can use it): the sort order of rows, the next state on a header click
 // (first click on a text column A→Z, on a number or date column biggest first, again to reverse), and the header buttons with an arrow.
-// The choice is remembered per table in localStorage. Guarded by test/table-sort.test.js.
+// The choice is remembered per table in localStorage. Guarded by test/unit/renderer/table-sort.test.js.
 
 // columns: [{key, label, tip?, type: 'words' | 'number' | 'date' | 'flag', value(row)}]. A blank value always sorts last, in either direction.
 export function sortRows(rows, {key, dir}, columns) {

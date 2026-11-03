@@ -198,7 +198,7 @@ test('a refused sign-in family, a smoke run and a throwing installer never leave
   assert.equal((await handlers.get('planInstall')(null, 'claude')).reason, 'test');
 });
 
-test('the real-runner job stages the shared app code before it imports the app\'s modules (the window\'s buttons are played in test/ai-engine-run.test.js)', () => {
+test('the real-runner job stages the shared app code before it imports the app\'s modules (the window\'s buttons are played in test/unit/renderer/ai-engine-run.test.js)', () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/fresh-install-smoke.yml', import.meta.url), 'utf8');
   const job = workflow.slice(workflow.indexOf('  ai-setup:'));
   assert.ok(job.indexOf('scripts/stage.mjs --files-only') > 0 && job.indexOf('scripts/stage.mjs --files-only') < job.indexOf('scripts/plan-machine.mjs'), 'desktop/shared is git-ignored: stage it first');

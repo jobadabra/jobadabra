@@ -1,7 +1,7 @@
 // Your details read first (owner's review, 18 Oct 2026, item 5: "a readable profile, not an expanded questionnaire"; UI redesign A): Contact, Professional links,
 // Work eligibility, Availability & compensation and Languages each show a compact summary drawn from their editor's own boxes (so drafts, CV proposals and
 // saving stay exactly as they were), a quiet Edit opens the editor in place, and Done leaves an editor with no change; with changes the Profile page's one
-// bar decides, and Save all / Discard all close the editors. Contact and Links read as columns (mockup 05: icon · small grey label · value); the fact cards as a calm two-column summary (renderer/fact-summary.js). Guarded by test/details-read.test.js.
+// bar decides, and Save all / Discard all close the editors. Contact and Links read as columns (mockup 05: icon · small grey label · value); the fact cards as a calm two-column summary (renderer/fact-summary.js). Guarded by test/unit/renderer/details-read.test.js.
 import {CARD_EDIT, el} from '../components.js';
 import {chipLine, doneButton, factColumns, isEditing, setEditing} from '../card-shell.js';
 import {checkBadge, checkCount, eligibilityView, languagesView, summaryView} from '../fact-summary.js';

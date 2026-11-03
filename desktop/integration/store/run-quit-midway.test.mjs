@@ -4,7 +4,7 @@
 // Interrupted, and the app's resumeQueue (lib/app-reminders.js, answered "Start again" as the journey answers it: askResume with JOBADABRA_E2E) closes the killed run's row and starts the
 // search again. The quit's "process is gone" is played by ending the search's steps (stopTask) as well as its engine child. What it proves: the lost run is listed once as Interrupted with what it said, the search you had started is picked up again and ends ok, nothing is shown Running for
 // ever and no row of the store says Running. What it does not prove: the process kill itself (a real app is killed, here the engine child is stopped and the app's module state stays in
-// this process), and the native question (askResume answers by itself under JOBADABRA_E2E, test/resume-ask.test.js). Both stayed true of the e2e step on a Mac.
+// this process), and the native question (askResume answers by itself under JOBADABRA_E2E, test/unit/main/resume-ask.test.js). Both stayed true of the e2e step on a Mac.
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';
 import {createAppReminders} from '../../lib/app-reminders.js';

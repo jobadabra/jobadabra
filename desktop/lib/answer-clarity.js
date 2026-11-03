@@ -1,7 +1,7 @@
 // The AI's word on each saved answer (owner, 18 Oct 2026: "an automatic/intelligent way to put them on the queue"): clear, guess, vague or off_topic, a fixed
 // answer of the move's judge call (lib/profile-move.js judge). Kept per line in settings.answerClarity as {[label\nvalue]: verdict}, so a line is judged once
 // and judged again only when its value changes; "kept" = the person said "Keep as is" (never asked again for that value). A line with no verdict (the AI
-// skipped it) is retried after a day. lib/details-review.js turns guess / vague / off_topic into queue items. Guarded by test/details-review-unclear.test.js.
+// skipped it) is retried after a day. lib/details-review.js turns guess / vague / off_topic into queue items. Guarded by test/unit/main/details-review-unclear.test.js.
 import {parseLine} from './profile-sections.js';
 
 export const CLARITY = ['clear', 'guess', 'vague', 'off_topic', 'prose'];   // prose: running text (a letter's line), no answer to ask, no fact to move (3 Nov 2026)

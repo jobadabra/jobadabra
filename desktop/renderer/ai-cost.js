@@ -1,6 +1,6 @@
 // The one rule for showing an AI cost. Off for everyone (owner, 25 Oct 2026: "I don't foresee much users using the API Key"; the figure is only tokens × our price table, never a bill).
 // If it ever comes back, it is for the user's own API key only, never Free AI or a plan: flip SHOWN here and COSTS_SHOWN in lib/ai/names.js.
-// Every dollar amount the window draws goes through costText/costVisible; test/ai-cost.test.js fails on a file that draws one without importing this.
+// Every dollar amount the window draws goes through costText/costVisible; test/guards/money/ai-cost.test.js fails on a file that draws one without importing this.
 // The engine is injected (pages/shared.js, like ai-name.js), so pure view modules and their tests need no window.
 let engineOf = () => null;
 export const setCostEngine = fn => { engineOf = fn; };

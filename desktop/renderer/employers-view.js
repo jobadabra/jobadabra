@@ -1,5 +1,5 @@
 // Employers & Sources, without a window (pages/employers.js draws it): the filter, a feed status's tone, the stats line, an employer's
-// research links and detail lines. Field names: src/stores/base.py EMPLOYER_FIELDS. Guarded by test/employers-view.test.js.
+// research links and detail lines. Field names: src/stores/base.py EMPLOYER_FIELDS. Guarded by test/unit/renderer/employers-view.test.js.
 import {shortDay} from './date.js';
 
 // Feed status (the 🏢 Employers & Sources select) → tone: found good, nothing open info, weak warn, watched by hand bad, no feed neutral.

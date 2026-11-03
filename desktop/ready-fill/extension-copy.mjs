@@ -1,5 +1,5 @@
 // The night's copy of extension/ for Ready to send (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md, floors): its app address is the stand-in's port, any site is allowed (a fresh Chromium has not pressed Allow),
-// and the account form's button is never pressed (phase 1 makes no account on the server). extension/ itself is never edited. Guard: desktop/test/ready-fill.test.js (fails when a patched line moved).
+// and the account form's button is never pressed (phase 1 makes no account on the server). extension/ itself is never edited. Guard: desktop/test/unit/ready-fill/ready-fill.test.js (fails when a patched line moved).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -1,7 +1,7 @@
 name: CI · Prompt cases (nightly, report only)
 # Job: report health
 # Last night's per-case right/wrong of the live "form" prompt-case set against tonight's main, asked on the owner's Codex plan through the broker (tools/prompt-cases-night.mjs,
-# tools/prompt-cases-codex.mjs; guard desktop/test/prompt-cases-night.test.js). No live prompt, case file or asker changed since the baseline's commit = nothing is asked, the baseline is carried ($0).
+# tools/prompt-cases-codex.mjs; guard desktop/test/tooling/ci/prompt-cases-night.test.js). No live prompt, case file or asker changed since the baseline's commit = nothing is asked, the baseline is carried ($0).
 # Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"; "It should be part of the measurements / Quality AI"; a8 agreed the design the same day): REPORT ONLY, riding night
 # pass 1 beside clock-moved and coverage-report: started by e2e.yml (`night_pass: 1/5`), never by a PR, a beta gate or a by-hand run; nothing `needs` it, the job is continue-on-error, it holds no suite lock.
 # Scheduled AI runs on the Codex plan, never a paid API (owner, 28 Oct 2026): the broker puts this run in its `scheduled` lane (jobadabra-web workers/codex-broker lib/lanes.mjs), no daily call cap.

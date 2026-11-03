@@ -29,7 +29,7 @@ The owner (28 Oct 2026) on the first version: you could pick and save Background
 - An older save of an unbuilt mode reads as Standard automation in the cards and the runner alike.
 - Start sends the validated count; invalid counts and Close start nothing; a second press or a count edit while starting cannot start a second batch.
 - Not chosen yet: Start opens the first-Apply dialog, then main runs the mode chosen there.
-- Guard: `desktop/test/apply-dialog-mode.test.js`, `desktop/test/apply-settings.test.js`.
+- Guard: `desktop/test/unit/renderer/apply-dialog-mode.test.js`, `desktop/test/unit/renderer/apply-settings.test.js`.
 
 ## Progress
 - [x] First version: Jobs reuses Settings → Apply's cards and writer; main resolves the mode after the gate. (proof: desktop/lib/apply-handlers.js)

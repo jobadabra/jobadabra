@@ -1,6 +1,6 @@
 // A job's files (screenshots of messages, a tailored CV) from the active store through the engine (`applications files`,
 // src/stores/__main__.py: base64 with a size cap), as data: URLs a screen can show in an <img> or offer to save. A file over the
-// cap comes with url null and tooLarge true, so the screen can still list it. Guarded by test/store-files.test.js.
+// cap comes with url null and tooLarge true, so the screen can still list it. Guarded by test/unit/main/store-files.test.js.
 import * as engine from './engine.js';
 
 export async function jobFiles(storage, appId, {call = engine.call} = {}) {

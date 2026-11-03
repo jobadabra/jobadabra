@@ -1,5 +1,5 @@
 // Fill now's yes (owner, 18 Oct 2026: filling again a job you opened "should be possible, but with a confirmation popup"): the app's dialog parts (the head, icon and close of the
-// Watch the fill popup) with what would be filled and what it replaces; the answer is the promise's. Escape or × is a no. Guard: test/ready-card.test.js.
+// Watch the fill popup) with what would be filled and what it replaces; the answer is the promise's. Escape or × is a no. Guard: test/unit/renderer/ready-card.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 

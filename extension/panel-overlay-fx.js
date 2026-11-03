@@ -1,6 +1,6 @@
 // The "magic" behind the panel (owner, 19 Oct 2026: all three, more intense): on the dimmed page, an aurora (three colour clouds drifting), sparkles (stars twinkling in turn) and a shimmer (a light band sweeping).
 // Drawn INSIDE the overlay layer (so the layer's removal, Stop, the backstop and the AI's picture rule all take it away with the dim), with the Web Animations API on transform and opacity only:
-// no style element a page CSP could refuse, no timers, no layout or repaint of the page. Under prefers-reduced-motion nothing is added. Used by panel-overlay.js. Guard: desktop/test/fill-overlay.test.js.
+// no style element a page CSP could refuse, no timers, no layout or repaint of the page. Under prefers-reduced-motion nothing is added. Used by panel-overlay.js. Guard: desktop/test/unit/extension/fill-overlay.test.js.
 (() => {
   const CLOUDS = [   // colour, size (% of the layer), start spot, drift (% of the cloud), seconds
     ['255,138,61', 80, -20, -25, 38, 26, 11], ['111,134,255', 85, 45, 40, -42, -30, 14], ['190,110,255', 60, 20, 35, 30, -38, 17],

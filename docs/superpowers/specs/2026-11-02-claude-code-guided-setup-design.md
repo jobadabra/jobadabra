@@ -38,7 +38,7 @@ This screen had 5 fixes in 30 days (ab13bccb, c52d1c10, 46f072cf and the two tes
 **Install lines (official, shown as steps; 2/2 runs them):** Claude Code — Mac `curl -fsSL https://claude.ai/install.sh | bash`, Windows `irm https://claude.ai/install.ps1 | iex`. Codex — Mac `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, Windows `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`. Per user, no administrator. Never bundled in our installer; Jobadabra never types or stores a password.
 
 ## The API key card ("✓ Connected" nobody set)
-Root cause (hypothesis until the tester's `aiFree` line is seen): Free AI keeps its token `JPF1.<install>.<token>` in the same slot as the person's Anthropic key (`lib/ai-free.js:31,37`), and Settings drew "✓ Connected" and `••••CwAA · saved` from the slot being non-empty. Fix: the window state carries `ownSecrets` (a Free token is not their key) and the hint skips it (`lib/secrets.js`, `test/own-secrets.test.js`). A key the person types is checked by `checkAnthropic` before it is saved, so "Connected" on a typed key already follows a real check. Parked as JOB-225: the old GitHub "Always on" checklist (`pages/connections.js:130-150`) still says GitHub needs an API key.
+Root cause (hypothesis until the tester's `aiFree` line is seen): Free AI keeps its token `JPF1.<install>.<token>` in the same slot as the person's Anthropic key (`lib/ai-free.js:31,37`), and Settings drew "✓ Connected" and `••••CwAA · saved` from the slot being non-empty. Fix: the window state carries `ownSecrets` (a Free token is not their key) and the hint skips it (`lib/secrets.js`, `test/unit/main/own-secrets.test.js`). A key the person types is checked by `checkAnthropic` before it is saved, so "Connected" on a typed key already follows a real check. Parked as JOB-225: the old GitHub "Always on" checklist (`pages/connections.js:130-150`) still says GitHub needs an API key.
 
 ## Words that were outdated
 "Scheduled runs in your GitHub repository (Always on) still use your API key" → "Always on (on our servers) uses Jobadabra's own AI, not your plan" in `claude-code.js`, `ai-engine-view.js` (note, notice, Codex twins) and the two Settings lines in `index.html`; a test scans for the old sentences.
@@ -46,17 +46,17 @@ Root cause (hypothesis until the tester's `aiFree` line is seen): Free AI keeps 
 ## How we catch this class
 | Catch | Where | Catches |
 |---|---|---|
-| Per-state tests on fake computers | `test/plan-readiness.test.js` | every state from files alone, Windows + Mac, Claude + Codex; the chat app's own claude.exe; the CLI's sign-in answer beats a missing `.claude.json` |
-| Words | `test/ai-plan-guide.test.js` | every state × family × system × button mode has one next step and no path, exit code, folder list or winget; the official lines; the outdated Always on sentence |
+| Per-state tests on fake computers | `test/unit/main/plan-readiness.test.js` | every state from files alone, Windows + Mac, Claude + Codex; the chat app's own claude.exe; the CLI's sign-in answer beats a missing `.claude.json` |
+| Words | `test/unit/renderer/ai-plan-guide.test.js` | every state × family × system × button mode has one next step and no path, exit code, folder list or winget; the official lines; the outdated Always on sentence |
 | Handlers on fake computers | `integration/app/ai-plan-states.test.js` | 20 scenarios through the real IPC; every failure kind a check can return maps to a named state; no raw text in the status; one counted event per state; the picker refuses the chat app's file |
-| The CLI's answer | `test/plan-login.test.js`, `test/claude-code.test.js` | signed out makes no AI call; the contradiction is `check-failed`; the e-mail the CLI prints is never kept |
-| API key card | `test/own-secrets.test.js` | a Free token is not "Connected" |
+| The CLI's answer | `test/unit/main/plan-login.test.js`, `test/unit/main/claude-code.test.js` | signed out makes no AI call; the contradiction is `check-failed`; the e-mail the CLI prints is never kept |
+| API key card | `test/unit/main/own-secrets.test.js` | a Free token is not "Connected" |
 | In the field | PostHog `ai_setup_state` {family, state, os}, once per state per start, through `lib/analytics.js` (consent: the existing "Technical reports" switch, on by default, Settings → Advanced; no path, no name) | how many people sit at `app-only` before a tester tells us |
 | Real machines (2/2) | machine-setup rows in `.github/workflows/fresh-install-smoke.yml` (owner, 2 Nov 2026: "yes. Let's do"; a8 owns the file and plans the rows with this session): a Windows and a macOS runner with the chat app only / nothing / the official installer run (no sign-in) for Claude Code and Codex; the installed app must show `app-only` / `nothing` / found. No new pipeline | the installers moving their folder under us; the app's states on a real machine |
 | Old settings (a8) | an `upgrade-data.yml` case: a JPF1 token in the API key slot; the API key card must not say Connected | the 2 Nov "Connected" bug on an upgraded install |
 
 **Gate math ("Gate only if it pays"):** this screen escaped on Windows 5 times since 9 Oct (ab13bccb registry PATH; c52d1c10 "Mac" words on a PC; 46f072cf installed while running; the 2 Nov tester with only the Claude app; the 2 Nov tester with a found-but-"not signed in" CLI) ≥ 2, so the real-machine job pays.
-**Existing tests that asserted the opposite:** `test/claude-code.test.js` (the old "not installed" text and "signed out" via the AI call's words), `test/fresh-path.test.js` (the handlers lived in `setup-handlers.js`). Changed with the behaviour.
+**Existing tests that asserted the opposite:** `test/unit/main/claude-code.test.js` (the old "not installed" text and "signed out" via the AI call's words), `test/unit/main/fresh-path.test.js` (the handlers lived in `setup-handlers.js`). Changed with the behaviour.
 
 ## Safety (unchanged, restated)
 Anthropic's and OpenAI's official installers only. The CLI's sign-in is their page in the person's browser. The CLI's printed e-mail, plan and ids are never read or kept. Tests never use a real login, `~/.claude.json` or `~/.codex`.

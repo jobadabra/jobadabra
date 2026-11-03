@@ -1,6 +1,6 @@
 // Notion, reading pages: the kept page trees (re-read only when Notion says the page changed), text blocks and readable text, edits to one
 // block or table cell, and the copy of the current strategy kept before a new one replaces it. Re-exported by notion.js.
-// Guarded by desktop/test/notion-cache.test.js, notion.test.js and notion-fresh.test.js.
+// Guarded by desktop/test/unit/main/notion-cache.test.js, notion.test.js and notion-fresh.test.js.
 // ---------- text blocks of a page (the standard answers' ❓ lines, the 🧠 Form knowledge bullets) ----------
 import {call, listChildren, trees, reading, writes, CHECKED_MS, SETTLE_MS, MAX_AGE_MS} from './notion-core.js';
 const plainOf = block => (block[block.type]?.rich_text || []).map(t => t.plain_text).join('');

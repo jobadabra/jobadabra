@@ -1,6 +1,6 @@
 // Editor controls the Profile cards share (design system, docs/rules/desktop-ui.md: the value's kind picks its control): a box that grows for long
 // text, and chips with × plus "Add, then Enter" for several values from a list. They hold their own value and call onChange(value) on every edit;
-// the card reads value() back. Used by renderer/survey-rows.js and renderer/experience-editors.js. Guarded by test/experience-editors.test.js.
+// the card reads value() back. Used by renderer/survey-rows.js and renderer/experience-editors.js. Guarded by test/unit/renderer/experience-editors.test.js.
 import {chip, el} from './components.js';
 import {answerControl} from './question-control.js';
 

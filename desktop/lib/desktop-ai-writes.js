@@ -18,7 +18,7 @@ const OPEN_REVIEW = 'The app has not read the questions yet. Open the Profile on
 const refuse = error => ({error});
 const same = text => String(text ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 const STALE = 'That question changed since the app listed it. Read the open questions again.';
-// Why (3 Nov 2026): a refusal the AI cannot act on makes it retry; these are the forms renderer/question-values.js canonical() reads (guarded by test/desktop-ai-writes.test.js).
+// Why (3 Nov 2026): a refusal the AI cannot act on makes it retry; these are the forms renderer/question-values.js canonical() reads (guarded by test/unit/main/desktop-ai-writes.test.js).
 const EXAMPLES = {salary: '120000 CHF/year gross', duration: '3 months', range: '40–60 %', language: 'B2', link: 'https://example.com/me'};
 
 /** Why `value` may not be the answer to `item` (a registry `questions` row), or '' when it may. Pure; the same rules the drawer shows the person. */

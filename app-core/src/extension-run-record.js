@@ -1,6 +1,6 @@
 // What a form fill's run record is made of (moved out of extension.js, 11 Oct 2026, a pure move): who paid for the answer (billedTo), the lessons from a fill's field log,
 // the run's Notion page body (runBlocks) and the store-neutral run record and its data (runRecord, runData). No Notion calls and no AI: logRun in extension.js writes them.
-// Guarded by app-core/test/extension.test.js and desktop/test/local-server.test.js.
+// Guarded by app-core/test/extension.test.js and desktop/test/unit/extension/local-server.test.js.
 
 // "Billed to" in 🎏 Agent Runs, from the answer's own usage (the desktop app's client may be any engine; the Worker's own is Anthropic's).
 export const BILLED = ['Anthropic API credits', 'OpenAI API credits', 'Claude subscription', 'ChatGPT plan'];

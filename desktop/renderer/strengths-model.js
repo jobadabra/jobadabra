@@ -1,7 +1,7 @@
 // Profile → Experience's Strengths in the editor (owner, 18 Oct 2026, mockup 09): a group per "Label: a, b, c" line, its values as chips with × and
 // "Add, then Enter"; a line with no label stays one plain line. A group left as it was keeps its line's own text (bold, list mark, separators), so
 // opening and saving changes nothing; an edited one is written "**Label:** a, b, c" (plain "Label:" when its line had no bold). No DOM: guarded by
-// test/strengths-model.test.js; the groups are experience-profile-model.js groupsOf().
+// test/unit/renderer/strengths-model.test.js; the groups are experience-profile-model.js groupsOf().
 import {groupsOf, shownText, splitItems} from './experience-profile-model.js';
 
 // part → drafts [{index, label, items, plain}] (plain: a line with no label, edited as its words).

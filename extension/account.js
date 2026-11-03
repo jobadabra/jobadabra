@@ -3,7 +3,7 @@
 // Scenarios owned: "Sign-up page before the form", "Account and application on one page". Guards: extension-tab-pages.test.js,
 // the e2e rows "sign-up page" and "one page" (npm run flows).
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. An account page's fields never count as the application form's progress (desktop/test/extension-tab-pages.test.js, desktop/test/journeys.test.js).
+//  1. An account page's fields never count as the application form's progress (desktop/test/unit/extension/extension-tab-pages.test.js, desktop/test/unit/main/journeys.test.js).
 import {isAccountPage, pageKey} from './tab-pages.js';
 import {decide} from './log.js';
 import {sessionGet} from './tab-memory.js';

@@ -2,7 +2,7 @@
 // of manifest.json's hiring systems). A tab opened to read (visit.js) waited for it since 7 Oct 2026; a tab opened to APPLY only got
 // a '?' badge and returned, so nothing happened, nothing was logged and the popup still said "the panel fills the form" (9 Oct 2026,
 // a friend's Windows Chrome on jobs.ch). Now both open allow.html beside the site once, badge the tab "waiting for you", tell the app's
-// log, and start when Allow is pressed. Guard: desktop/test/extension-site-allow.test.js.
+// log, and start when Allow is pressed. Guard: desktop/test/unit/extension/extension-site-allow.test.js.
 export const ALL_SITES = {origins: ['https://*/*']};   // as declared in manifest.json (optional_host_permissions)
 const WAIT = 'fillwait:';
 

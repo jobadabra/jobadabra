@@ -1,5 +1,5 @@
 // The amber box a run that did not end well is drawn in on the Actions result card: the same parts as Recent activity's box (#activity-warnings), from the same run-status words.
-// Guarded by desktop/test/no-result-card.test.js.
+// Guarded by desktop/test/unit/renderer/no-result-card.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {rerunSites} from '../visits-card.js';

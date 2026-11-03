@@ -1,6 +1,6 @@
 // The night's AI answers (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md; owner, 17 Oct 2026: "Yes, add AI in phase 1"): the stand-in's /extension/answer runs the same engine as the normal Apply (app-core/src/extension.js answerForm:
 // same prompt, same floors) on the owner's facts from the batch. The container holds no key: each model call goes to the site (/api/ready/ai) with the night token, which counts its cost toward the $1 cap. A written answer stays a draft,
-// as in the app. Any failure answers nothing (the questions stay open for the morning); it never stops the fill. Guard: desktop/test/ready-fill.test.js.
+// as in the app. Any failure answers nothing (the questions stay open for the morning); it never stops the fill. Guard: desktop/test/unit/ready-fill/ready-fill.test.js.
 const key = address => String(address || '').split('#')[0];
 
 // The model client answerForm expects ({messages: {create}}): a call goes through the site. A capped night throws the contract's AiLimit.

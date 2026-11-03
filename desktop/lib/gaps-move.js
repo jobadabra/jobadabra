@@ -1,6 +1,6 @@
 // The Profile's "Possible CV gaps" paragraph becomes one line per gap, on first open, with Undo (owner, 17 Oct 2026, review M7). The AI splits each paragraph into its gaps and the words
 // besides them (a note to the person); the code checks every gap and note piece stands in the paragraph word for word and no digit is lost, else the paragraph stays as written. The pages are
-// copied and backed up first, every new line is read back, else the paragraph is put back; Undo does the same. Works on every store (lib/store). Guarded by test/gaps-move.test.js.
+// copied and backed up first, every new line is read back, else the paragraph is put back; Undo does the same. Works on every store (lib/store). Guarded by test/unit/main/gaps-move.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {saveCopy} from './profile-move.js';
 import {applyEdits} from './text-outline-handlers.js';

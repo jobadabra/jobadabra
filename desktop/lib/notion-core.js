@@ -1,6 +1,6 @@
 // Notion, the shared core: the paced, retrying call(), the page-tree cache state, title helpers, the discovery search and listChildren.
 // The other notion-*.js files and notion.js build on it; notion.js re-exports the public names. Pace and clock stay ONE binding here
-// (useSleep / useClock set it). Guarded by desktop/test/notion-retry.test.js, notion-cache.test.js and notion.test.js.
+// (useSleep / useClock set it). Guarded by desktop/test/unit/main/notion-retry.test.js, notion-cache.test.js and notion.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {log} from './log.js';

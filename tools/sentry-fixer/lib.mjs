@@ -1,4 +1,4 @@
-// The Sentry fixer's decisions, as pure functions (tested in desktop/test/sentry-fixer.test.js): which Sentry issues are worth a fix, which one is first, which files a fix may touch.
+// The Sentry fixer's decisions, as pure functions (tested in desktop/test/tooling/ci/sentry-fixer.test.js): which Sentry issues are worth a fix, which one is first, which files a fix may touch.
 // Care taken against stale or false work: end-to-end runs report to Sentry too (environment `e2e`) and never count; a warning is the app telling the user something (a spend limit), not a bug;
 // an issue not seen for a week is stale; one that already has a pull request (open, or closed/merged in the last 14 days) is left alone, and so is one Claude already judged
 // needs no change (not-a-bug, needs-human) in the last 14 days: without that the fixer picked the same issue every day (4-9 Oct 2026: a planted test error, six days running).

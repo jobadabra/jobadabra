@@ -1,5 +1,5 @@
 """Outbound or inbound: the Python rule gives the answers of the shared table (the desktop app's rule is checked
-against the same table in desktop/test/origin.test.js)."""
+against the same table in desktop/test/unit/renderer/origin.test.js)."""
 import json
 import unittest
 from pathlib import Path

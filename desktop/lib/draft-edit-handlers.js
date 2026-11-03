@@ -1,6 +1,6 @@
 // The setup's drafted strategy edited through the Strategy page's own cards: the same list edits (lib/strategy-edit.js) and the same Profile block
 // edits (lib/text-outline-handlers.js) the saved strategy gets, applied to the draft in memory and handed back. Nothing is written to the store, Notion
-// or disk here; the window keeps the draft (cacheDraftEdits). Guarded by test/draft-edit.test.js.
+// or disk here; the window keeps the draft (cacheDraftEdits). Guarded by test/unit/main/draft-edit.test.js.
 import {applyEdits as applyBlocks, MAX_CHANGES} from './text-outline-handlers.js';
 import * as md from './store/markdown-page.js';
 import {applyEdits, cleanEdits} from './strategy-edit.js';

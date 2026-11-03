@@ -19,7 +19,7 @@ on:
       - 'tools/check.py'
       # Files outside desktop/ that its tests read (tests/tooling/ci/test_workflow_paths.py fails when one is missing).
       - '.github/workflows/e2e.yml'
-      - '.github/workflows/feedback-ai.yml'   # desktop/test/feedback-ai.test.js reads its jobs
+      - '.github/workflows/feedback-ai.yml'   # desktop/test/tooling/ci/feedback-ai.test.js reads its jobs
       - '.github/workflows/harness.yml'
       - '.github/workflows/integration.yml'   # desktop/test/integration-workflow-paths.test.js reads its paths
       - '.gitignore'
@@ -43,13 +43,13 @@ on:
       - 'config/notion_template.json'
       - 'docs/notion-profile-template.md'
       - 'docs/site-routes.json'
-      - 'tools/about-you-readers.mjs'   # desktop/test/about-you-readers.test.js
+      - 'tools/about-you-readers.mjs'   # desktop/test/guards/rules/about-you-readers.test.js
       - 'docs/about-you-readers.json'   # the same test checks the file is not stale
-      - 'tools/rename-inventory.mjs'   # desktop/test/rename-guard.test.js runs it with --check
+      - 'tools/rename-inventory.mjs'   # desktop/test/unit/main/rename-guard.test.js runs it with --check
       - 'tools/rename-map.json'   # the map it reads
       - 'tools/lib/rename-scan.mjs'   # the scanner it imports
-      - 'tools/store-zip.mjs'   # desktop/test/store-zip.test.js builds the Web Store package with it
-      - 'tools/webstore-publish.mjs'   # desktop/test/webstore-publish.test.js
+      - 'tools/store-zip.mjs'   # desktop/test/tooling/release/store-zip.test.js builds the Web Store package with it
+      - 'tools/webstore-publish.mjs'   # desktop/test/tooling/release/webstore-publish.test.js
       - 'tools/pr-assets.mjs'   # desktop/test/pr-assets-args.test.js
       - 'tools/pr-body-template.md'   # the same test reads the template
       - 'docs/superpowers/specs/2026-10-10-ai-ladder.md'
@@ -64,7 +64,7 @@ on:
       - 'web/public/privacy.html'
       - 'src/ai/inbox_fields.py'
       - 'src/ai/score.py'
-      - 'src/notion/cron_report.py'   # desktop/test/automation.test.js reads CRAWL_MODES from it
+      - 'src/notion/cron_report.py'   # desktop/test/unit/main/automation.test.js reads CRAWL_MODES from it
       - 'src/notion/ledger.py'
       - 'src/stores/notion_texts.py'
       - 'tests/fixtures/eta-sequence.json'
@@ -77,7 +77,7 @@ on:
       - 'tools/claim-shape.mjs'
       - 'tools/clock-moved.mjs'   # desktop/test/clock-moved.test.js
       - 'tools/ci-intel/**'   # desktop/test/ci-intel-*.test.js: the CI collectors' modules and jobs (moved here from jobadabra-web, 2 Nov 2026)
-      - 'tools/coverage-report.mjs'   # desktop/test/coverage-report.test.js
+      - 'tools/coverage-report.mjs'   # desktop/test/tooling/ci/coverage-report.test.js
       - 'docs/gtm-journeys.json'   # the same test checks the journey list
       - 'tools/commit-trailers.mjs'
       - 'tools/decision-branches.mjs'
@@ -86,9 +86,9 @@ on:
       - 'tools/flow-fresh.mjs'
       - 'tools/pr-check-scorecard.mjs'
       - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
-      - 'tools/feedback-released.mjs'   # desktop/test/feedback-released.test.js
-      - 'tools/feedback-ai.mjs'   # desktop/test/feedback-ai.test.js
-      - 'tools/feedback-ai-sandbox.sh'   # desktop/test/feedback-ai.test.js reads its flags
+      - 'tools/feedback-released.mjs'   # desktop/test/tooling/release/feedback-released.test.js
+      - 'tools/feedback-ai.mjs'   # desktop/test/tooling/ci/feedback-ai.test.js
+      - 'tools/feedback-ai-sandbox.sh'   # desktop/test/tooling/ci/feedback-ai.test.js reads its flags
       - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
       - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
       - 'tools/gate-stats-upload.mjs'

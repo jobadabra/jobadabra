@@ -1,6 +1,6 @@
 // Strategy → "Which locations are right?" over IPC (owner, 17 Oct 2026): the first read moves the Profile's places in once (lib/locations-store.js: copy and
 // backup first), then the screen lists each conflict and the person's pick is written and read back. A pick changes the search, so it says
-// "Your search changed". Registered by lib/search-tuning-handlers.js. Guarded by test/locations-handlers.test.js and test/ipc.test.js.
+// "Your search changed". Registered by lib/search-tuning-handlers.js. Guarded by test/unit/main/locations-handlers.test.js and test/guards/rules/ipc.test.js.
 import {moveLocations, recheckQueue, resolveLocation} from './locations-store.js';
 import {CHOICES, readSide} from './locations-move.js';
 import {claudeAi} from './question-ai.js';

@@ -1,6 +1,6 @@
 // A pop-up's kind, shown by its colour and icon (owner, 27 Oct 2026: "warning=yellow, success=green, error=red, info=light blue"; the coloured background).
 // Pure: main (lib/app-notify.js) and the window both read it. The colours are the shared .tone-* classes (components.css); the look: style.css .toast.tone-*.
-// Guard: test/toast-targets.test.js (every pop-up call names one of these).
+// Guard: test/unit/renderer/toast-targets.test.js (every pop-up call names one of these).
 import {runStatus, runWarned} from './run-status.js';
 
 // tone -> its icon (renderer/icons.js)

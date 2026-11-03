@@ -1,4 +1,4 @@
-// Whether the extension may reload itself (extension/tab-report.js): for a newer version the app reports, or the panel's Reload. Guard: desktop/test/extension-self-reload.test.js.
+// Whether the extension may reload itself (extension/tab-report.js): for a newer version the app reports, or the panel's Reload. Guard: desktop/test/unit/extension/extension-self-reload.test.js.
 
 /**
  * latest/running: the version the app reports and the one this copy runs; reloadedFor: the version it last reloaded for; busy: a fill or a site read is under way;

@@ -1,7 +1,7 @@
 // The model-call cache of the e2e harness (spec: speed-5x landing 1, owner 11 Oct 2026): a live pool run keeps each answer the model gave, keyed by a hash of the
 // request with its volatile parts normalised, so an offline replay of that run gets the same answers at once and asks the model only for what really changed.
 // It exists only under the e2e env (JOBADABRA_E2E and JOBADABRA_MODEL_MEMO=<file>): the person's app never memoizes, and never into the app's own folder.
-// The file holds the hash and the answer, never the request text. Wired in one place: lib/ai/index.js client(). Guard: desktop/test/model-memo.test.js.
+// The file holds the hash and the answer, never the request text. Wired in one place: lib/ai/index.js client(). Guard: desktop/test/unit/main/model-memo.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

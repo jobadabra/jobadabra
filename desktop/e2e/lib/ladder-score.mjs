@@ -1,5 +1,5 @@
 // Scores page-kind decisions against the ladder fixtures: each fixture's sketch goes through the REAL pageKind (desktop/lib/page-kind.js, the endpoint's sketchBody), with either the stored answer
-// (offline: no model, what the push gate runs) or the real model on the plan path (live). Rates are per source, never one blended number. Used by: ladder-score.mjs, test/ladder-ratchet.test.js. Guard: test/ladder-score.test.js.
+// (offline: no model, what the push gate runs) or the real model on the plan path (live). Rates are per source, never one blended number. Used by: ladder-score.mjs, test/unit/main/ladder-ratchet.test.js. Guard: test/unit/main/ladder-score.test.js.
 // Job: keep the scorecard
 import {judgeAccount} from '../../lib/account-judge.js';
 import {judgeForm} from '../../lib/form-judge.js';

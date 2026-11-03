@@ -2,7 +2,7 @@
 // A classic panel script, injected before review.js (which stays frozen at its size: it only hands this file the panel's root and each render's facts through
 // window.__jobadabraClaude). Owns: the three choices ("Let Claude finish this page" / "I'll do it myself" / "Always let Claude finish when I'm stuck"), the consent line on
 // the first press, the visible 5 s countdown with Cancel for "always", and "Tell me what's needed" when Claude is not ready. It never clicks or types in the page: a press
-// asks the app (panelTakeOver), which starts Claude's session; Claude never presses Submit. Guards: desktop/test/panel-claude.test.js (the choices as a pure function),
+// asks the app (panelTakeOver), which starts Claude's session; Claude never presses Submit. Guards: desktop/test/unit/extension/panel-claude.test.js (the choices as a pure function),
 // the real-extension check (desktop/e2e/test/real-extension.test.mjs).
 (() => {
   if (window.__jobadabraClaude) return;
@@ -10,7 +10,7 @@
 
   // The view for the facts (info: on = Claude ready, stuck, auto = countdown allowed [always + "Do it for me"], consent) and what the person pressed.
   // mem is what was decided on this page: {phase: null | 'consent' | 'countdown' | 'sent', dismissed}. Pure: the tests drive it.
-  const INFORM = ['email', 'told', 'other', 'site_broken'];   // the page says what to do, or the site is broken: no Claude offer (desktop/lib/application-journey.js INFORM; desktop/test/stuck-reasons.test.js)
+  const INFORM = ['email', 'told', 'other', 'site_broken'];   // the page says what to do, or the site is broken: no Claude offer (desktop/lib/application-journey.js INFORM; desktop/test/unit/extension/stuck-reasons.test.js)
   function next(info, mem, action = null) {
     if (!info.stuck || INFORM.includes(info.stuck)) return {view: 'hidden', mem: {phase: null, dismissed: false}};
     // Claude's takeover is off (the app's flag, sent with each report): where Claude was offered, a visible "Report this form" button (owner, 15 Oct 2026).

@@ -1,7 +1,7 @@
 // The LibreOffice download, shown while it runs (owner, 24 Oct 2026: "show a progress bar to the user, let him understand what happens under
 // the hood"): a head with the share and MB, the bar, then each step ticking off, on every spot marked data-office-progress (Profile → CV).
 // Reuses the onboarding "Reading your CV" block (.progress, .progress-head, .bar, .draft-feed). Fed by main's 'officeProgress' event
-// (lib/office-addon.js). Guard: desktop/test/office-progress.test.js.
+// (lib/office-addon.js). Guard: desktop/test/unit/renderer/office-progress.test.js.
 import {Eta} from '../eta.js';
 const MB = bytes => Math.round(bytes / 1048576);
 // One estimate per download (its start time), so the time left only ever goes down (eta.js).

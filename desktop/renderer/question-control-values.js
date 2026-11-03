@@ -1,7 +1,7 @@
 // The answer controls of a question that is a value, not a choice, and the segmented choice they share with question-control.js: a date (a calendar input,
 // saved in the person's words, "1 December 2026"; a date question that also asks about constraints is complete only with "No constraints" or the
 // constraints) and an amount (a number and a currency, saved "95000 CHF"). An answer saved as free text stays visible as it was written until the person
-// picks a value: nothing is lost. Built from the shared parts (.segmented, native inputs); layout in question-review.css (.qa-values). Guarded by test/question-control.test.js.
+// picks a value: nothing is lost. Built from the shared parts (.segmented, native inputs); layout in question-review.css (.qa-values). Guarded by test/unit/renderer/question-control.test.js.
 import {el} from './components.js';
 import {dateIso, dateWords, joinConstraints, splitAmount, splitConstraints} from './question-kind.js';
 

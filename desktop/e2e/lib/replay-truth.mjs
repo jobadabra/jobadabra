@@ -16,7 +16,7 @@ import {FALSE_READINGS} from './recorded-false-readings.mjs';
 const OPTION_GROUPS = fs.readFileSync(new URL('../../../extension/page/option-groups.js', import.meta.url), 'utf8');
 
 // The file the stand-in app gives as the CV (real-extension.mjs pdf('cv.pdf')), named here, not imported: that file loads playwright, and lib/record-sites.mjs (desktop's unit
-// tests import it) reaches this file through lib/live-readings.mjs (test/unit-tests-no-playwright.test.js).
+// tests import it) reaches this file through lib/live-readings.mjs (test/guards/rules/unit-tests-no-playwright.test.js).
 const CV_NAME = 'cv.pdf';
 
 // The false readings already found, per case (lib/recorded-false-readings.mjs): each is a bug to fix, never a loosened assert. A listed one is said as KNOWN BUG and does not fail;

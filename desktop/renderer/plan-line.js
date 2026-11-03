@@ -1,6 +1,6 @@
 // The one honest line about Pro on the free-allowance screen (Settings → Plan), while Pro is off (owner, 16 Oct 2026): what the free trial is and what comes after,
 // no button, no banner, no pop-up. The ONE place that decides it: when the Pro plan is on (state.proMode 'test' or 'live', set by the plan reader of the Pro build),
-// the line goes and the real plan block takes its place. A key holder (founder, friend, from before the keys were retired) is never told about a price. Guard: test/plan-line.test.js.
+// the line goes and the real plan block takes its place. A key holder (founder, friend, from before the keys were retired) is never told about a price. Guard: test/unit/renderer/plan-line.test.js.
 import {promise} from './pro-promise.js';
 export const PRO_PRICE = '€9';   // the lowest Pro price (Pro €9, Pro + AI €19); the real figures come from the site when Pro is on
 

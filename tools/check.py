@@ -82,7 +82,7 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
     if fast and area == 'desktop':
         return [(folder, [node, 'scripts/stage.mjs']),
                 (folder, [npm, 'run', 'lint']),
-                (folder, [node, '--test', 'test/lifecycle.test.js', 'test/app-scenarios.test.js', 'test/session-contracts.test.js', 'test/ipc.test.js', 'test/codemap.test.js'])]
+                (folder, [node, '--test', 'test/unit/main/lifecycle.test.js', 'test/unit/main/app-scenarios.test.js', 'test/unit/main/session-contracts.test.js', 'test/guards/rules/ipc.test.js', 'test/unit/main/codemap.test.js'])]
     return [(folder, [npm, 'test'])]
 
 

@@ -1,5 +1,5 @@
 /* Profile → Experience: the CV gaps review list (renderer/gaps-rows.js) and the Work history rows (pages/experience.js), mockups 06 + 09, 18 Oct 2026.
-   Tokens only (test/design.test.js). */
+   Tokens only (test/guards/rules/design.test.js). */
 .exp-add-row { gap: var(--sp-2); margin-bottom: var(--sp-3); flex-wrap: wrap; }
 
 .gap-list { display: grid; border: 1px solid var(--line); border-radius: var(--r-md); }

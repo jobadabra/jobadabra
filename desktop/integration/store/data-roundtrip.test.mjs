@@ -123,7 +123,7 @@ test('Automatic backup: a due backup runs once at start and once on the weekly t
   const lines = [];
   const appLog = (...args) => lines.push(JSON.parse(JSON.stringify(args)));
   const {backupNow} = createDataJob({toWindow() {}, backupWith: options => backup.run(storage, {target, version: 'test', ...options}), appLog});
-  // The app's own decision (lib/background-handlers.js): taken from its source, the way test/files.test.js does, so a change there changes this test.
+  // The app's own decision (lib/background-handlers.js): taken from its source, the way test/guards/data/files.test.js does, so a change there changes this test.
   const source = fs.readFileSync(new URL('../../lib/background-handlers.js', import.meta.url), 'utf8');
   const block = source.slice(source.indexOf('const backupIfDue ='), source.indexOf("backupIfDue('due at start');"));
   const decide = vm.runInNewContext(`${block} backupIfDue`, {storage, backup, backupNow, appLog});

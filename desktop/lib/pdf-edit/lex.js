@@ -1,5 +1,5 @@
 // A PDF content stream read as operators: each with its operands and its byte range (first operand to end of operator), so lib/pdf-edit/write.js
-// can replace exactly the operators it edits and leave every other byte alone. Strings come back as bytes. Guards: test/pdf-edit.test.js.
+// can replace exactly the operators it edits and leave every other byte alone. Strings come back as bytes. Guards: test/unit/main/pdf-edit.test.js.
 const WS = new Set([0, 9, 10, 12, 13, 32]);
 const DELIM = new Set([40, 41, 60, 62, 91, 93, 123, 125, 47, 37]);
 export function lex(bytes) {

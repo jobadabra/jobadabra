@@ -9,7 +9,7 @@ export const ORIGINS = ['captured', 'hand-cut'];
 export const originOf = item => (ORIGINS.includes(item?.origin) ? item.origin : null);
 
 // A case's origin read from its case.json (the replays' report job attaches it to each row: the replay itself never reads a label key, so a label edit
-// cannot change a verdict: tools/recorded-cases.mjs LABEL_KEYS, desktop/test/recorded-cases.test.js). '' when the file or the word is missing.
+// cannot change a verdict: tools/recorded-cases.mjs LABEL_KEYS, desktop/test/tooling/ci/recorded-cases.test.js). '' when the file or the word is missing.
 export function originOfCase(dir, name) {
   try { return originOf(JSON.parse(fs.readFileSync(path.join(dir, String(name).replace(/[^\w.-]/g, ''), 'case.json'), 'utf8'))) || ''; } catch { return ''; }
 }

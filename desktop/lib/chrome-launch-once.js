@@ -1,5 +1,5 @@
 // One Chrome launch at a time: after the app opens Chrome for the extension, further presses wait until the extension reports or START_MS pass.
-// Guarded by test/app-scenarios.test.js (5 presses = 1 launch).
+// Guarded by test/unit/main/app-scenarios.test.js (5 presses = 1 launch).
 export const START_MS = 30 * 1000;
 export function launchOnce(launch, extensionSeenAt, now = Date.now) {
   let startedAt = 0;
