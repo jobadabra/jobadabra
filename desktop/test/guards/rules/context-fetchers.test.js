@@ -18,7 +18,7 @@ const env = {LINEAR_READ_KEY: 'k-linear', SENTRY_READ_TOKEN: 'k-sentry', GITHUB_
 const ok = body => ({ok: true, status: 200, json: async () => body});
 
 // One fake web: every call is recorded, the answer depends on the host.
-function web(extra = {}) {
+function web(extra = {}, thread = null) {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
     calls.push({url: String(url), method: init.method || 'GET', body: init.body, headers: init.headers || {}});
@@ -27,7 +27,7 @@ function web(extra = {}) {
     if (String(url).includes('sentry.io')) return String(url).includes('/events/latest/')
       ? ok({tags: [{key: 'release', value: '0.9.2'}, {key: 'user', value: 'ana.fake@example.com'}], entries: [{type: 'exception', data: {values: [{type: 'TypeError', value: DIRTY, stacktrace: {frames: [{inApp: true, filename: '/Users/anafake/a.js', lineNo: 3, function: 'f'}]}}]}}]})
       : ok({title: 'TypeError', culprit: 'a.js', level: 'error', status: 'unresolved', count: '5', firstSeen: '2026-11-01', lastSeen: '2026-11-02'});
-    if (String(url).includes('/comments')) return ok([{body: DIRTY, created_at: '2026-11-01'}]);
+    if (String(url).includes('/comments')) return ok(thread || [{body: DIRTY, created_at: '2026-11-01'}]);
     return ok({number: 7, title: 'Bug', state: 'open', labels: [], body: DIRTY, ...extra});
   };
   return {calls, fetchImpl};
@@ -122,4 +122,14 @@ test('a github "paths" ref reads the file history from git, and refuses an optio
   const out = await github.fetch('paths tools/context/lib.mjs', {env, cwd: path.resolve(import.meta.dirname, '..', '..', '..', '..')});
   assert.ok(out.markdown.startsWith(BANNER), out.notes);
   assert.match(out.markdown, /git log -15 of tools\/context\/lib\.mjs/);
+});
+
+test('a long thread keeps its newest comments, not its oldest (GitHub lists oldest first)', async () => {
+  const thread = Array.from({length: 30}, (_, i) => ({body: `comment number ${i}`, created_at: '2026-11-01'}));
+  const out = await github.fetch('#7', {env, limits: {maxBytes: 24576, maxItems: 5, timeoutMs: 1000}, fetchImpl: web({}, thread).fetchImpl});
+  assert.ok(out.markdown.includes('comment number 29') && out.markdown.includes('comment number 25'));
+  assert.ok(!out.markdown.includes('comment number 24') && !out.markdown.includes('comment number 0'));
+  const {calls, fetchImpl} = web();
+  await linear.fetch('JOB-1', {env, fetchImpl});
+  assert.match(JSON.parse(calls[0].body).query, /comments\(last: \$comments\)/, 'Linear must ask for the LAST comments');
 });

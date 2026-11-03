@@ -2,7 +2,7 @@
 import {LIMITS, finish, guarded, json, token, unavailable} from '../lib.mjs';
 
 export const name = 'linear';
-const QUERY = `query Issue($id: String!, $comments: Int!) { issue(id: $id) { identifier title description priority state { name } labels { nodes { name } } comments(first: $comments) { nodes { body createdAt } } } }`;
+const QUERY = `query Issue($id: String!, $comments: Int!) { issue(id: $id) { identifier title description priority state { name } labels { nodes { name } } comments(last: $comments) { nodes { body createdAt } } } }`;
 
 /** Why (3 Nov 2026, harness map spec): a query only, never a mutation; the key is a Linear read-only personal key from env LINEAR_READ_KEY (Authorization carries the key itself, no "Bearer"). */
 export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalThis.fetch} = {}) {
