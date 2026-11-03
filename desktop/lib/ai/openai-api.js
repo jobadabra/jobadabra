@@ -6,6 +6,7 @@
 // The SDK is loaded only when this engine is used. Guarded by test/ai-contract.test.js (recorded answers, no network, no key).
 import {API, Adapter, AiError, AiLimit, AiUnavailable, requestFrom, response, usage} from './contract.js';
 import {openaiModel} from './models.js';
+import {keyHeard, keyWorked} from './refusals.js';
 import {dropNulls, strict} from './schema.js';
 
 const dataUrl = part => `data:${part.mediaType};base64,${part.data}`;
@@ -103,7 +104,8 @@ export class OpenAiApi extends Adapter {
           } else if (['response.completed', 'response.incomplete', 'response.failed'].includes(event.type)) final = event.response;
           else if (event.type === 'error') throw Object.assign(new Error(event.message || 'stream error'), {status: 500});
         }
-      } catch (error) { throw contractError(error); }
+      } catch (error) { keyHeard(OpenAiApi.engine, this.apiKey, error); throw contractError(error); }
+      keyWorked(OpenAiApi.engine, this.apiKey);
       if (!final) throw new AiUnavailable('OpenAI: the answer stream ended without a response');
       if (final.status === 'failed') throw new AiError(`OpenAI: ${final.error?.message || 'the answer failed'}`);
       return fromResponse(final, request);
@@ -127,7 +129,8 @@ export class OpenAiApi extends Adapter {
     const sdk = await this.client();
     let answer;
     try { answer = await sdk.responses.create(body(request, {env: this.env, action: this.action})); }
-    catch (error) { throw contractError(error); }
+    catch (error) { keyHeard(OpenAiApi.engine, this.apiKey, error); throw contractError(error); }
+    keyWorked(OpenAiApi.engine, this.apiKey);
     return fromResponse(answer, request);
   }
 }

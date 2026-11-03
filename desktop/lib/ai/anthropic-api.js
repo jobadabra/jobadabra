@@ -5,7 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import {API, Adapter, AiLimit, requestFrom} from './contract.js';
 import {withoutLimits} from './schema.js';
-import {capNow, heard} from './refusals.js';
+import {capNow, heard, keyHeard, keyWorked} from './refusals.js';
 import {isFreeKey} from '../ai-free.js';
 
 // The one place every ask to the API passes through (create and stream): the schema without maxItems/minItems, which the API refuses in structured
@@ -24,8 +24,16 @@ export class AnthropicApi extends Adapter {
   constructor({apiKey, sdk = null, fetch = undefined, ...options} = {}) {
     super(options);
     this.sdk = sdk || new Anthropic({apiKey, ...(fetch ? {fetch} : {})});
+    this.key = apiKey || this.sdk?.apiKey || '';   // the user's own key, only to tell lib/ai-key-health.js whether the provider took it (never logged)
     // Streaming stays the SDK's own (the strategy draft's progress bar); only this engine offers it, callers check for it.
-    this.messages.stream = (params, options) => { requestFrom(params); return this.sdk.messages.stream(forApi(params), options); };
+    this.messages.stream = (params, options) => {
+      requestFrom(params);
+      const stream = this.sdk.messages.stream(forApi(params), options);
+      if (isFreeKey(this.key) || typeof stream?.finalMessage !== 'function') return stream;
+      const final = stream.finalMessage.bind(stream);   // the draft's end tells lib/ai-key-health.js what the provider answered, as complete() does
+      stream.finalMessage = () => final().then(answer => { keyWorked(AnthropicApi.engine, this.key); return answer; }, error => { keyHeard(AnthropicApi.engine, this.key, error); throw error; });
+      return stream;
+    };
   }
 
   async complete(request) {
@@ -34,7 +42,8 @@ export class AnthropicApi extends Adapter {
     if (cap) { heard(null, cap); throw new AiLimit(cap.message || 'Free AI is not available right now.', {final: true}); }
     let answer;
     try { answer = await this.sdk.messages.create(forApi(request.params), request.action ? {headers: {'x-jp-action': request.action}} : undefined); }
-    catch (error) { heard(error); throw error; }   // a refusal is heard (refusals.js: a Free AI line reached opens the top-up dialog); the error goes on as it was
+    catch (error) { heard(error); if (!isFreeKey(this.key)) keyHeard(AnthropicApi.engine, this.key, error); throw error; }   // a refusal is heard (refusals.js: a Free AI line reached opens the top-up dialog; a 401 on the user's own key marks it rejected); the error goes on as it was
+    if (!isFreeKey(this.key)) keyWorked(AnthropicApi.engine, this.key);
     if (answer?.usage) Object.assign(answer.usage, {billing: API, provider: 'anthropic'});
     return answer;
   }

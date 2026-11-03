@@ -21,6 +21,7 @@ import {documentFacts} from '../cv-check-model.js';
 import {icon} from '../icons.js';
 import {costText, dollars} from '../ai-cost.js';
 import {shared} from './shared.js';
+import {keyRow} from '../service-status.js';
 import {byStore, storeName} from '../store-words.js';
 import {showCloud, showExtensionStatus, showGoogle, showSchedule, showTelegram} from './connections.js';
 import {$, message, osText, runWhen, show} from './core.js';
@@ -129,8 +130,9 @@ export async function loadSettings() {
   showMode(shared.state.settings);
   document.querySelectorAll('[data-secret]').forEach(line => {
     const set = (shared.state.ownSecrets || shared.state.secrets)[line.dataset.secret];   // the person's own keys: Free AI's token in the same slot is not "Connected" (lib/secrets.js)
-    line.textContent = set ? '✓ Connected' : 'Not set';
-    line.classList.toggle('on', set);
+    const row = keyRow(line.dataset.secret, set, shared.state.aiKeyBad);   // only the refused key's own row says so (lib/ai-key-health.js)
+    line.textContent = row.text;
+    line.classList.toggle('on', row.on);
   });
   showGoogle();
   showTelegram();

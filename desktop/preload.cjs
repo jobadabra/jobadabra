@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('pilot', {
   dismissReason: call('dismissReason'), intelSnapshot: call('intelSnapshot'), benchmarkLines: call('benchmarkLines'),
   license: call('license'), licenseSet: call('licenseSet'), licenseRemove: call('licenseRemove'), planState: call('planState'), planCheckout: call('planCheckout'), planSignin: call('planSignin'), planRedeem: call('planRedeem'), proWaitlistJoin: call('proWaitlistJoin'),
   onAllowance: callback => ipcRenderer.on('allowance', (_, state) => callback(state)),
+  onAiKeyRejected: callback => ipcRenderer.on('aiKeyRejected', (_, info) => callback(info)),   // the provider refused the saved AI key (lib/ai-key-health.js): one pop-up that opens Connections → AI
   onAiCap: callback => ipcRenderer.on('aiCap', (_, cap) => callback(cap)),   // a Free AI line reached (lib/ai-caps.js): the top-up dialog
   onFewJobs: callback => ipcRenderer.on('few-jobs', (_, info) => callback(info)),
   onVisitRead: callback => ipcRenderer.on('visit-read', (_, answer) => callback(answer)),

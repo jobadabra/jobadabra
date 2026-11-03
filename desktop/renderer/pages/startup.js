@@ -9,7 +9,7 @@ import {loadJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {restoreView} from '../view-memory.js';
 import {PANEL_KEY, openActivity} from './activity.js';
-import {settingsPage} from './settings.js';
+import {refreshServices, settingsPage} from './settings.js';
 import {refusal, refusalAction} from '../refusal.js';
 import {openTopupDialog} from './topup-dialog.js';
 import {toDraft} from './strategy-review.js';
@@ -69,6 +69,12 @@ export async function init() {
   applyAiNames();   // the static texts name the AI the user chose (renderer/ai-name.js)
   // A Free AI line found after a run or a refused AI step (lib/ai-caps.js): the top-up dialog, at most once per half hour for steps nobody pressed.
   window.pilot.onAiCap?.(cap => openTopupDialog({cap: cap.capped, resetsAt: cap.resetsAt, text: plainError(cap.message)}));
+  // The provider refused the saved AI key: every AI step fails the same way, so one pop-up says why and opens the card that fixes it (lib/ai-key-health.js).
+  window.pilot.onAiKeyRejected?.(async () => {
+    shared.state = await window.pilot.state();
+    refreshServices();   // an open Connections page stops saying "Connected" at once
+    toastMessage('Your AI key was refused', 'AI steps cannot run until you paste a working key (Settings → Connections → AI).', {card: 'ai'}, 'bad');
+  });
   // ---------- start ----------
   // Set up: the app. Without Notion (Notion later) it is only trying, so it opens on Jobs; the pages that need Notion show a gate.
   if (shared.state.settings.setupDone) {

@@ -10,6 +10,11 @@ import {createAiCaps} from './ai-caps.js';
 import {onRefused, setGate} from './ai/refusals.js';
 import {log as appLog} from './log.js';
 import {reportedEngine} from './ai/names.js';
+import {keyHealth as keyHealthOf, watchKeyHealth} from './ai-key-health.js';
+import * as claudeCode from './claude-code.js';
+
+/** Did the provider refuse the AI key saved for the engine the person chose? {rejected, engine, at} (lib/ai-key-health.js). */
+export const keyHealth = storage => keyHealthOf(storage, claudeCode.engine(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY')));
 
 export function createAppAllowance(ctx) {
   const {DEMO, getLicense, log, getStorage, getTelemetry, toWindow} = ctx;
@@ -33,6 +38,7 @@ export function createAppAllowance(ctx) {
     pipeline.onRunEnd(() => { aiCaps.check({force: true}).catch(() => {}); });
     setGate(() => aiCaps.known());
     onRefused(({cap}) => (cap ? toWindow('aiCap', cap) : aiCaps.heard()));
+    watchKeyHealth(getStorage, {onRejected: engine => { appLog('ai', `the ${engine} key was refused (401)`); toWindow('aiKeyRejected', {engine}); }});   // one rejected call tells Connections and the window
   };
   // Guard for what starts NEW work (Prepare kit, Fill in Chrome / Apply with Claude, manual searches): once the free allowance
   // is over and there is no key, the window says so and the action answers with why. Never used for what is already under way.
