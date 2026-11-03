@@ -17,7 +17,7 @@ import {keyOf} from '../question-filter.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 import {fromDetailsLine} from '../answered-from-details.js';
 import {appendDesktopAiOffer} from './desktop-ai.js';
-import {ASKS} from '../question-nav.js';
+import {askWords} from '../question-nav.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
 import {input, labelled, select} from './form-controls.js';
@@ -111,7 +111,7 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
 
 // Why a drawer row is there (mockup 04, from what the row already holds): an answer to accept, a saved answer to check, or none yet.
 const statusOf = row => (row.proposal ? {label: 'Suggested answer', tone: 'signal', action: 'Review', glyph: 'sparkle'}
-  : row.details ? {label: ASKS[row.details.kind] || 'Review saved answer', tone: 'info', action: 'Review', glyph: 'info'} : {label: 'Missing answer', tone: 'warn', action: 'Add answer', glyph: 'bang-circle'});
+  : row.details ? {label: askWords(row.details, 'Review saved answer'), tone: 'info', action: 'Review', glyph: 'info'} : {label: 'Missing answer', tone: 'warn', action: 'Add answer', glyph: 'bang-circle'});
 // A status pill leads with its icon (mockup 04), so the kind reads before the words.
 const statusPill = (label, tone, glyph) => { const node = pill(label, tone); node.prepend(icon(glyph)); return node; };
 // A question saved by a build before 17 Oct 2026 was cut at 120 characters (#1281): said under it, never guessed back.
