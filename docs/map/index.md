@@ -10,12 +10,10 @@ Read this first, then ONE area hub; go deeper only through its links. A file for
 | Apply and forms | [apply](apply.md) | extension, fill ladder, recorded pool |
 | Search and scoring | [search](search.md) | scout, feeds, scoring, digest |
 | Data and stores | [data](data.md) | stores, Notion, profile, answers |
-| Desktop app UI | [desktop UI rules](../rules/desktop-ui.md) | renderer, design system, ⌘K |
-| Releases | [release guide](../../RELEASE.md) | beta, stable, installers |
-| Site and admin | [private site](../rules/private-site.md) | lives in the private jobadabra-web |
-| Growth | [analytics](../analytics.md) | analytics, GTM journeys |
-
-Rows without a hub yet link to their main page; their hubs are coming.
+| Desktop app UI | [desktop](desktop.md) | renderer, design system, ⌘K |
+| Releases | [release](release.md) | beta, stable, installers |
+| Site and admin | [site](site.md) | lives in the private jobadabra-web |
+| Growth | [growth](growth.md) | analytics, GTM journeys |
 
 ## Rules that moved out of AGENTS.md (every agent follows them when the trigger holds)
 - Before any push touching JS → [JS lint checks](../rules/agent-detail.md#js-lint)
