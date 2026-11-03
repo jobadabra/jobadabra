@@ -101,7 +101,7 @@ env:
 jobs:
   persona:
     name: Persona ${{ matrix.persona }}
-    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds the broker's OIDC token. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (desktop/test/feedback-ai.test.js lists every such job).
+    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds the broker's OIDC token. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/test_workflow_ai_secret_jobs.py lists every such job).
     if: ${{ !(startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
