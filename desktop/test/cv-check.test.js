@@ -115,20 +115,38 @@ test('dates read in the CV\'s own language, month names from the system (8 Oct 2
 
 // Windows tester on 0.9.2, 3 Nov 2026 (issue #3061): a PDF with ligatures got readability 100/100 while the AI review said words were split ("fi nancial"), and
 // the same one-column PDF was flagged "5 lines side by side". A ligature glyph (fi, fl, ffi) arrives as its own text item between two long ones.
-const ligatureLine = (y, before, ligature, after) => [word(before, 20, y, 200), word(ligature, 220, y, 8), word(after, 228, y, 260)];
-const withLigatures = () => {
+// Each line is [text before, ligature, text after, gap before the ligature, gap after it]: pdf.js places the glyph's own item between two runs; the gaps are what its widths leave (0, a hair over, or a hair of overlap).
+const ligatureLine = (y, [before, ligature, after, gapIn = 0, gapOut = 0]) => [word(before, 20, y, 200), word(ligature, 220 + gapIn, y, 8), word(after, 228 + gapIn + gapOut, y, 260)];
+const withLigatures = (code = false) => {
   const pages = good();
-  const lines = [['Reduced the cost of the group', 'fi', 'nancial reporting cycle by a third each quarter'], ['Cut the time to produce a monthly', 'fi', 'gure pack from nine days to three'],
-    ['Owned and ran the whole annual o', 'ffi', 'ce move for a hundred people, on budget'], ['Introduced a retirement-plan', 'fl', 'ow review across the whole company'], ['Led a well-trained support team of the', 'fi', 'rst twelve engineers hired in the group']];
-  pages[0].text.push(...lines.flatMap(([a, b, c], i) => ligatureLine(190 + i * 12, a, b, c)));
+  const lines = [['Reduced the cost of the group ', 'fi', 'nancial reporting cycle by a third each quarter'], ['Cut the time to produce a monthly ', 'fi', 'gure pack from nine days to three', 0.3, 0.3],
+    ['Owned and ran the whole annual o', 'ffi', 'ce move for a hundred people, on budget', -0.5, -0.5], ['Introduced a retirement-plan ', 'fl', 'ow review across the whole company', 0.2, 0],
+    ['Led a well-trained support team of the ', 'fi', 'rst twelve engineers hired in the group', 0, 0.4]];
+  pages[0].text.push(...lines.flatMap((line, i) => ligatureLine(190 + i * 12, code ? [line[0], line[1] === 'fi' ? '\uFB01' : line[1], ...line.slice(2)] : line)));
   return pages;
 };
 
-test('a word split at a ligature is one word in the text a parser and the AI read', () => {
+test('a word split at a ligature is one word in the text a parser and the AI read, and the spaces around it stay', () => {
   const text = linesOf(withLigatures()).join('\n');
-  assert.match(text, /financial reporting/);
-  assert.match(text, /figure pack/);
+  assert.match(text, /the group financial reporting/);
+  assert.match(text, /a monthly figure pack/);
+  assert.match(text, /whole annual office move/);
+  assert.match(text, /retirement-plan flow review/);
+  assert.match(text, /of the first twelve engineers/);
   assert.doesNotMatch(text, /\b(?:fi|fl|ffi) [a-z]/, 'no space inside a word');
+});
+
+test('a ligature saved as one code point (U+FB01) reads as its letters', () => {
+  const text = linesOf(withLigatures(true)).join('\n');
+  assert.match(text, /the group financial reporting/);
+  assert.doesNotMatch(text, /\uFB01/);
+});
+
+test('a ligature in a slightly different row is still part of its line (the columns check groups rows like the text)', () => {
+  const pages = withLigatures();
+  pages[0].text = pages[0].text.map(item => (/^f[il]$|^ffi$/.test(item.str) ? {...item, y: item.y + 2.9} : item));   // the glyph's own font sits lower
+  assert.equal(analyse(pages).checks.find(c => c.id === 'columns').status, 'pass');
+  assert.match(linesOf(pages).join('\n'), /the group financial reporting/);
 });
 
 test('a ligature gap is not a second column', () => {

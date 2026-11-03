@@ -22,6 +22,7 @@ const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage
  * item with no gap before it; joined with a space it read "fi nancial" and, between two long items, looked like a second column (Windows tester, 3 Nov 2026, issue #3061).
  * A gap over a quarter of the left item's average character width is a real space and stays one.
  */
+const LATIN_LIGATURES = /[\uFB00-\uFB06]/g;   // ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ as their letters: some PDFs map the glyph to one of these code points, which a parser and the AI read as another character
 export function runsOf(row) {
   const runs = [];
   for (const item of [...row].sort((a, b) => a.x - b.x)) {
@@ -30,19 +31,23 @@ export function runsOf(row) {
     const touching = last && gap <= 0.25 * (last.w / Math.max(1, last.str.length));
     if (touching) { last.str += item.str; last.w = item.x + item.w - last.x; } else runs.push({...item});
   }
-  return runs.map(run => ({...run, str: run.str.replace(/\s+/g, ' ').trim()}));
+  return runs.map(run => ({...run, str: run.str.replace(LATIN_LIGATURES, ligature => ligature.normalize('NFKC')).replace(/\s+/g, ' ').trim()}));
+}
+
+/** The text items of a page as visual rows (top to bottom): an item joins the row of the first item within 3 units of it. Shared by the text and the columns check, so they never disagree on what one line is. */
+export function rowsOf(items) {
+  const rows = [];
+  let row = [], at = null;
+  for (const item of [...items].sort((a, b) => a.y - b.y || a.x - b.x)) {
+    if (at === null || Math.abs(item.y - at) > 3) { if (row.length) rows.push(row); row = []; at = item.y; }
+    row.push(item);
+  }
+  if (row.length) rows.push(row);
+  return rows;
 }
 
 export function linesOf(pages) {
-  const lines = [];
-  for (const page of pages) {
-    const items = [...page.text].sort((a, b) => a.y - b.y || a.x - b.x);
-    let row = [], at = null;
-    const flush = () => { if (row.length) lines.push(runsOf(row).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim()); row = []; };
-    for (const item of items) { if (at === null || Math.abs(item.y - at) > 3) { flush(); at = item.y; } row.push(item); }
-    flush();
-  }
-  return lines.filter(Boolean);
+  return pages.flatMap(page => rowsOf(page.text).map(row => runsOf(row).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim())).filter(Boolean);
 }
 
 const HEADINGS = {
@@ -117,9 +122,7 @@ export function analyse(pages) {
   // 2. Columns: parsers read a line left to right across the page, so two columns of sentences get mixed.
   let side = 0;
   for (const page of pages) {
-    const rows = new Map();
-    for (const item of page.text) { const key = Math.round(item.y / 3); rows.set(key, [...(rows.get(key) || []), item]); }
-    for (const items of rows.values()) { const row = runsOf(items).filter(item => item.str.length >= 25); if (row.some((a, i) => row.slice(i + 1).some(b => b.x > a.x + a.w + 5 && a.w > page.width * 0.2 && b.w > page.width * 0.2))) side++; }
+    for (const items of rowsOf(page.text)) { const row = runsOf(items).filter(item => item.str.length >= 25); if (row.some((a, i) => row.slice(i + 1).some(b => b.x > a.x + a.w + 5 && a.w > page.width * 0.2 && b.w > page.width * 0.2))) side++; }
   }
   checks.push(side < 4 ? check('columns', 'One column of text', 'pass', 'Sentences run down one column, in reading order.')
     : check('columns', 'One column of text', 'warn', `${side} lines have text side by side: some parsers read straight across and mix the two (reported by a scanner developer, not confirmed by recruiters).`,
