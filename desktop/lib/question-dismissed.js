@@ -32,5 +32,5 @@ export function split(storage, items) {
   return {shown: items.filter(item => !gone(item)), dismissed: items.filter(gone).map(item => ({...item, dismissed: true}))};
 }
 
-/** The dismissed questions' words as lib key forms, for a list that has no item keys (a session's "what Claude needs"). */
+/** The dismissed questions' words as lib key forms, for a list that has no item keys (a session's "what it needs" list). */
 export const wordsKeys = storage => new Set(Object.values(all(storage)).map(entry => keyOf(entry.question)));
