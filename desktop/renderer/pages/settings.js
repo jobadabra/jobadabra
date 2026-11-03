@@ -79,7 +79,7 @@ async function openProfile() {
 const SERVICE_CACHE = 'serviceChecks';
 const lastChecks = () => { try { return JSON.parse(localStorage.getItem(SERVICE_CACHE) || 'null'); } catch { return null; } };
 function statusFrom({extension, google}) {
-  const ai = aiService(aiReady(), shared.state.settings.aiKeyBad);   // a key the provider refused (401, lib/ai-key-health.js) is never "Connected"
+  const ai = aiService(aiReady(), shared.state.aiKeyBad);   // a key the provider refused (401, lib/ai-key-health.js) is never "Connected"
   const on = {ai: ai.on, notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     aggregators: !!((shared.state.secrets.ADZUNA_APP_ID && shared.state.secrets.ADZUNA_APP_KEY) || shared.state.secrets.JOOBLE_API_KEY), cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
     telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on};

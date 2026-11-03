@@ -193,8 +193,8 @@ function handlers() {
   };
   ipcMain.handle('state', () => ({
     about,
-    settings: {...forWindow(storage.settings()), aiKeyBad: keyHealth(storage).secret},   // the window shows the effective choice, whatever was never saved; aiKeyBad: the name of the saved key the provider refused (e.g. ANTHROPIC_API_KEY), else '' (lib/ai-key-health.js)
-    secrets: storage.secretsPresent(), ownSecrets: ownSecretsPresent(storage), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
+    settings: forWindow(storage.settings()),   // the window shows the effective choice, whatever was never saved
+    secrets: storage.secretsPresent(), aiKeyBad: keyHealth(storage).secret, ownSecrets: ownSecretsPresent(storage), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
     hasCv: fs.existsSync(storage.path('cv.pdf')), hasProfile: !!(storage.settings().setupDone && (storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID || storage.readText('profile.md'))),
     folder: storage.dir,
     store: storeState(storage),   // where the data lives (lib/store): {label, caps, trying}

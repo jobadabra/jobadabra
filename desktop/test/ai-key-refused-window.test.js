@@ -1,5 +1,5 @@
 // What the window says when the provider refused the saved AI key (Windows tester on 0.9.2, 3 Nov 2026: Connections said "Connected · Anthropic API key" while every AI step
-// failed with 401, and the portrait sat on "Updating soon"). state().settings.aiKeyBad comes from lib/ai-key-health.js; Connections and the portrait read the same flag.
+// failed with 401, and the portrait sat on "Updating soon"). state().aiKeyBad comes from lib/ai-key-health.js; Connections and the portrait read the same flag.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
@@ -15,10 +15,10 @@ test('Connections: a saved key the provider refused is not "Connected"; it says 
   assert.deepEqual(aiService(true, true), {on: false, words: 'Key refused · paste a new one'});
   assert.deepEqual(aiService(false, true), {on: false, words: ''}, 'no key at all stays "Not connected"');
   const page = fs.readFileSync(new URL('../renderer/pages/settings.js', import.meta.url), 'utf8');
-  assert.match(page, /aiService\(aiReady\(\), shared\.state\.settings\.aiKeyBad\)/, 'the card reads the one flag');
+  assert.match(page, /aiService\(aiReady\(\), shared\.state\.aiKeyBad\)/, 'the card reads the one flag');
   assert.match(page, /ai: ai\.words/);
   const keyRowSource = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
-  assert.match(keyRowSource, /keyRow\(line\.dataset\.secret, set, shared\.state\.settings\.aiKeyBad\)/, 'the key rows read the one flag');
+  assert.match(keyRowSource, /keyRow\(line\.dataset\.secret, set, shared\.state\.aiKeyBad\)/, 'the key rows read the one flag');
 });
 
 test('Portrait: an outdated text with a note says it is not updated and why, instead of "Updating soon"', () => {

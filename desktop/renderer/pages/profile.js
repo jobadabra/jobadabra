@@ -130,7 +130,7 @@ export async function loadSettings() {
   showMode(shared.state.settings);
   document.querySelectorAll('[data-secret]').forEach(line => {
     const set = (shared.state.ownSecrets || shared.state.secrets)[line.dataset.secret];   // the person's own keys: Free AI's token in the same slot is not "Connected" (lib/secrets.js)
-    const row = keyRow(line.dataset.secret, set, shared.state.settings.aiKeyBad);   // only the refused key's own row says so (lib/ai-key-health.js)
+    const row = keyRow(line.dataset.secret, set, shared.state.aiKeyBad);   // only the refused key's own row says so (lib/ai-key-health.js)
     line.textContent = row.text;
     line.classList.toggle('on', row.on);
   });

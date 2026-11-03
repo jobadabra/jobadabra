@@ -107,7 +107,7 @@ export async function loadPortrait() {
   if (!$('portrait-body')) return;
   const status = await window.pilot.portrait();
   if (status?.ok === false) return $('portrait-body').replaceChildren(el('p', 'muted', plainError(status.error)));
-  const refused = shared.state?.settings?.aiKeyBad;   // lib/ai-key-health.js: the provider answered 401 for the saved key
+  const refused = shared.state?.aiKeyBad;   // lib/ai-key-health.js: the provider answered 401 for the saved key
   draw(status, refused && status.state !== 'current' ? KEY_REFUSED : '');
   if (loaded || status.state === 'current' || status.state === 'not_yet') return;
   loaded = true;
@@ -116,6 +116,6 @@ export async function loadPortrait() {
   else if (REASONS[result?.reason]) {
     loaded = false;
     shared.state = await window.pilot.state().catch(() => shared.state);   // the refused call may have just marked the key
-    draw(status, shared.state?.settings?.aiKeyBad ? KEY_REFUSED : status.sections.length ? '' : REASONS[result.reason]);
+    draw(status, shared.state?.aiKeyBad ? KEY_REFUSED : status.sections.length ? '' : REASONS[result.reason]);
   }
 }
