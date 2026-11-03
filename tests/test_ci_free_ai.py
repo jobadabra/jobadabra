@@ -21,7 +21,6 @@ RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-rela
 NO_RELAY = {
     ('e2e.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
     ('e2e-windows.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
-    ('review-eval.yml', 'eval'): 'scores a review model on the judged issues, by hand; asks the model itself, runs no app',
     ('key-org-proof.yml', 'proof'): 'proves which organization each key belongs to; runs no suite',
     ('record-sites.yml', 'smoke'): 'the live pool on real sites: its own key and recordings; moves in its own PR',
     ('watch-live.yml', 'smoke'): 'the live pool\'s daily watch: moves with record-sites',

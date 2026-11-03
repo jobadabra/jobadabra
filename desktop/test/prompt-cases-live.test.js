@@ -1,11 +1,10 @@
-// The live re-ask of a prompt's case set (tools/prompt-cases-live.mjs, .github/workflows/prompt-cases.yml): main's prompts vs the PR's on the same cases, on Haiku 5.5
-// through Claude Code on PR_PROOF_ANTHROPIC_KEY. The verdict logic and the workflow's wiring, with no AI call.
+// The live re-ask of a prompt's case set (tools/prompt-cases-live.mjs, .github/workflows/prompt-cases.yml): main's prompts vs the PR's on the same cases, on the owner's
+// Codex plan through the AI broker (no API key, owner 3 Nov 2026). The verdict logic and the workflow's wiring, with no AI call.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {claudeRun} from '../../tools/free-ai-eval-claude.mjs';
-import {caseArgs, compare, MAX_USD, MODEL, pool, toRetry} from '../../tools/prompt-cases-live.mjs';
+import {caseArgs, compare, pool, toRetry} from '../../tools/prompt-cases-live.mjs';
 
 const root = new URL('../../', import.meta.url);
 const rows = map => Object.entries(map).map(([id, right]) => ({id, right}));
@@ -47,35 +46,23 @@ test('the pool runs every item, at most `jobs` at once, in order', async () => {
   assert.deepEqual(out, [2, 4, 6, 8, 10]); assert.equal(most, 2);
 });
 
-test('it asks Haiku 5.5 through Claude Code on PR_PROOF_ANTHROPIC_KEY (owner, 27 Oct 2026), never the subscription token or the production Workers AI token', () => {
-  assert.equal(MODEL, 'claude:claude-haiku-5-5');
+test('it asks through the AI broker on the run\'s OIDC token, never an API key, the subscription token or the production Workers AI token (owner, 3 Nov 2026)', () => {
   const flow = fs.readFileSync(new URL('.github/workflows/prompt-cases.yml', root), 'utf8');
-  assert.match(flow, /PR_PROOF_ANTHROPIC_KEY: \$\{\{ secrets\.PR_PROOF_ANTHROPIC_KEY \}\}/);
-  assert.doesNotMatch(flow, /CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY|workers_ai|CF_API_TOKEN/i);
-  assert.ok(MAX_USD > 0 && MAX_USD <= 0.5, 'a per-run cost cap exists');
+  const code = flow.split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
+  assert.match(code, /id-token: write/);
+  assert.doesNotMatch(code, /ANTHROPIC|CLAUDE_CODE_OAUTH_TOKEN|claude-code|workers_ai|CF_API_TOKEN/i);
+  const runner = fs.readFileSync(new URL('tools/prompt-cases-live.mjs', root), 'utf8').split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
+  assert.match(runner, /codexRun/);
+  assert.doesNotMatch(runner, /ANTHROPIC|claudeRun|apiKey/);
 });
 
-test('without the key a manual run records "prompt cases NOT run", never a silent green', () => {
-  const flow = fs.readFileSync(new URL('.github/workflows/prompt-cases.yml', root), 'utf8');
-  assert.match(flow, /Prompt cases NOT run: no API key \(PR_PROOF_ANTHROPIC_KEY\)/);
-  assert.match(flow, /state=error/);
+test('a refused broker call stops the run with the reason, never a silent pass', () => {
+  const runner = fs.readFileSync(new URL('tools/prompt-cases-live.mjs', root), 'utf8');
+  assert.match(runner, /the broker did not answer/);
+  assert.match(runner, /over the cap of/);
 });
 
-test('the key is the only credential Claude Code gets, its cost is reported, and a run past the cap stops asking', async () => {
-  const seen = [], costs = [];
-  const exec = async (file, args, options) => { seen.push(options.env); return JSON.stringify({result: 'ok', total_cost_usd: 0.004, usage: {}}); };
-  const run = claudeRun({exec, apiKey: 'k-test', onCost: usd => costs.push(usd), env: {PATH: '/bin', ANTHROPIC_API_KEY: 'other', CLAUDE_CODE_OAUTH_TOKEN: 't', PR_PROOF_ANTHROPIC_KEY: 'k-test'}, cwd: '/e'});
-  await run('claude:claude-haiku-5-5', {messages: [{role: 'system', content: 's'}, {role: 'user', content: 'u'}]});
-  assert.deepEqual(costs, [0.004]);
-  assert.equal(seen[0].ANTHROPIC_API_KEY, 'k-test');
-  assert.equal(seen[0].CLAUDE_CODE_OAUTH_TOKEN, undefined, 'the plan sign-in is removed');
-  assert.equal(seen[0].PR_PROOF_ANTHROPIC_KEY, undefined);
-  const flow = fs.readFileSync(new URL('tools/prompt-cases-live.mjs', root), 'utf8');
-  assert.match(flow, /cost cap reached/);
-  assert.match(flow, /PR_PROOF_ANTHROPIC_KEY is not set/);
-});
-
-test('the paid Haiku workflow is manually dispatchable and never runs automatically on pull requests', () => {
+test('the by-hand workflow is manually dispatchable and never runs automatically on pull requests', () => {
   const flow = fs.readFileSync(new URL('.github/workflows/prompt-cases.yml', root), 'utf8');
   const triggers = flow.split('\njobs:')[0];
   assert.match(triggers, /^  workflow_dispatch:/m);

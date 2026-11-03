@@ -47,7 +47,7 @@ CLASSIFIED = {
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     # Why (3 Nov 2026, AI user agents 7/12): the daily AI user agent is started by the Worker timer at 04:40 UTC or by hand, spends AI credit through the broker and files its own issues; never a push or PR check.
     'CI · AI user agent': 'ignored: the Worker timer once a night and by hand only; a session of the AI user agent files issues through the Finder, never runs on a push to main',
-    'CI · Prompt cases (Haiku re-ask)':'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',
+    'CI · Prompt cases (by-hand re-ask)':'ignored: by hand only (broker calls); compares the selected ref with main, never a push check',
     'CI · Integration · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
     'CI · Pull request': 'ignored: runs on pull requests only, never on main; its checks gate the merge',
     'CI · PR verdict': 'ignored: writes a pull request\'s "All checks passed" status when its workflows end; it runs on main\'s copy but judges PR commits only',

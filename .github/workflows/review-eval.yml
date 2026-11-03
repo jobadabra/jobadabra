@@ -1,13 +1,14 @@
 name: Proof · Screenshot review scored on the judged issues
 # Scores a screenshot reviewer (desktop/e2e/review-eval.mjs) on every AI-review issue people closed as resolution:fixed (a real bug: seen again?) or
 # resolution:by-design (a false alarm: raised again?). Owner, 26 Oct 2026: CI's review runs on Claude Haiku 5.5 (~$1 a month); this checks how much of
-# what Sonnet found it still sees. By hand only, never on a PR or a push: a Claude model costs about $0.001 a screenshot (Haiku 5.5), the judge a few
-# Workers AI neurons. Needs E2E_ANTHROPIC_KEY with credit and CI's own Workers AI token (never production's).
+# what Sonnet found it still sees. By hand only, never on a PR or a push: one broker call a screenshot (the owner's Codex plan, small tier), the judge a few
+# Workers AI neurons. Needs CI's own Workers AI token (never production's).
+# Why-changed (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): the Claude model was asked on the API key E2E_ANTHROPIC_KEY.
 on:
   workflow_dispatch:
     inputs:
       models:
-        description: 'Models to score, comma-separated (claude-* on the Anthropic key, @cf/* or free-ai:* on Workers AI)'
+        description: 'Models to score, comma-separated (claude-* through the AI broker, @cf/* or free-ai:* on Workers AI)'
         default: 'claude-haiku-5-5'
       lessons:
         description: 'With the by-design lessons: on, off or both'
@@ -16,6 +17,7 @@ on:
 permissions:
   contents: read
   issues: read   # the judged issues and their screenshots
+  id-token: write   # GitHub's per-run OIDC token proves the run to the AI broker; no API key
 
 concurrency:
   group: review-eval-${{ github.run_id }}
@@ -37,7 +39,6 @@ jobs:
       - name: Score the models
         working-directory: desktop/e2e
         env:
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
           CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
           CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # the judge's $1/day neuron cap reads it; missing = every judge call capped (lib/ai-cap.mjs, fail closed; runs 41328602438, 41328800166)
