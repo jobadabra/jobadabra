@@ -3,11 +3,11 @@
 > **Verdict:** macOS asks for "Job Pilotto Safe Storage" because `app-identity.js` pinned the old name so saved tokens stayed readable (25 Oct 2026). One start after the update reads every saved token with the old key, locks it again under **"Jobadabra Safe Storage"**, checks them all, and only then records the move. The old item is **kept untouched** as a backup. Any failure keeps the old name and the old values and tries again next start; a token is never lost.
 
 **Owner's words (3 Nov 2026):** "It still points to Job PIlotto keychain/secrests... It shuold be Jobadabra." Choice: "Yes, with a migration (Recommended)": one run reads every saved token with the old key, locks it again under the new item, checks them all, then stops using the old item (kept as a backup for one release); a short spec and a test on a fake keychain; one last prompt for the old item during the move is acceptable.
-**Who gets what:** every Mac user sees "Jobadabra Safe Storage" (not "Job Pilotto") in Keychain Access and in the macOS prompt, and keeps every token (Notion, AI keys, Telegram, extension token). No visible screen changes.
+**Who gets what:** every Mac user sees "Jobadabra Safe Storage" (not the old app name) in Keychain Access and in the macOS prompt, and keeps every token (Notion, AI keys, Telegram, extension token). No visible screen changes.
 
 ## Problem
 
-Electron seals `secrets.json` with `safeStorage`; on macOS that is Chromium's OSCrypt over one Keychain item. Its name is `<app name> Safe Storage` (account `<app name>`), fixed the first time the process seals. `desktop/lib/app-identity.js` `keepLegacyIdentity` names the app "Job Pilotto" for that first seal and "Jobadabra" afterwards. Renaming the item the plain way (`app.setName('Jobadabra')`) makes a **new, empty key**: every sealed value in `secrets.json` becomes unreadable (the app treats it as missing and asks again). One process cannot use two items (the name is fixed at the first seal), so the old key cannot be reached through `safeStorage` after the rename.
+Electron seals `secrets.json` with `safeStorage`; on macOS that is Chromium's OSCrypt over one Keychain item. Its name is `<app name> Safe Storage` (account `<app name>`), fixed the first time the process seals. `desktop/lib/app-identity.js` `keepLegacyIdentity` names the app "Job Pilotto Safe Storage"'s app name (the old one) for that first seal and "Jobadabra" afterwards. Renaming the item the plain way (`app.setName('Jobadabra')`) makes a **new, empty key**: every sealed value in `secrets.json` becomes unreadable (the app treats it as missing and asks again). One process cannot use two items (the name is fixed at the first seal), so the old key cannot be reached through `safeStorage` after the rename.
 
 ## How the key is made (read from the source, Electron v44.4.5 / Chromium main, 3 Nov 2026)
 
@@ -25,7 +25,7 @@ Windows (DPAPI) and Linux (libsecret/kwallet): on **Windows** the key is wrapped
 
 ## Observable behaviour
 
-- A fresh Mac install starts on "Jobadabra Safe Storage"; no "Job Pilotto" item is read or made.
+- A fresh Mac install starts on "Jobadabra Safe Storage"; the old item is neither read nor made.
 - An existing install, first start after the update: macOS shows **one** prompt from `security` ("wants to use your confidential information stored in 'Job Pilotto Safe Storage'"); after it, every token still works; the macOS prompt that names "Job Pilotto Safe Storage" never appears again.
 - Second start: no prompt for the old item, nothing re-sealed.
 - If the person presses Deny: the app starts as today (old name, all tokens work) and asks again next start.
@@ -37,7 +37,7 @@ The state lives **in `secrets.json` itself** as the reserved entry `"__sealedBy"
 
 | State | How it is recognised | Process name at first seal | Verdict that leaves it |
 |---|---|---|---|
-| **not migrated** | `secrets.json` has sealed values and no `__sealedBy` | "Job Pilotto" (as today) | the move runs at app ready (below) |
+| **not migrated** | `secrets.json` has sealed values and no `__sealedBy` | the old app name (as today) | the move runs at app ready (below) |
 | **migrating** | inside one synchronous call at ready, before the storage exists | "Jobadabra" once the old values are read | all values re-sealed **and** read back equal → write file (temp + fsync + rename) → **migrated**; anything else → **failed-keep-old** |
 | **migrated** | `__sealedBy` = "Jobadabra Safe Storage" | "Jobadabra" | none (final) |
 | **failed-keep-old** | the move threw or a check failed; `secrets.json` untouched | see failure rules | next start is **not migrated** again |
@@ -69,7 +69,7 @@ A Keychain item's access list trusts the **code signature** of the app that made
 - **The in-app Notion window is signed out once.** Chromium encrypts that window's cookies (`persist:notion`) with the same Keychain key; after the move they cannot be opened, so the person signs in to Notion again in that window. The Notion *token* (API) is moved and unaffected. Every other window is in-memory (`linkedin-signin`, `jobadabra-render`). Not migrated (Chromium's cookie database is not ours to rewrite).
 - **The prompt blocks the start.** The old item is read with `execFileSync` (120 s limit) before the window opens, once per install (and again after a Deny). An async read would need `start()` to wait; not worth it for a one-time prompt.
 - **A downgrade after the move** (an older build) keeps the `__sealedBy` record, seals new values under the old item, and a later update then reads them as unreadable. Downgrades are not supported.
-- **Evidence that the name can be changed after load (the one thing no test can prove):** the installed 0.9.6 bundle's `CFBundleName` is "Jobadabra" (`plutil -p`), yet the owner's prompt names "Job Pilotto Safe Storage": so today's `app.setName("Job Pilotto")` *does* decide the item after load, and `app.setName("Jobadabra")` decides it the same way. If it ever did not, the move detects it (the re-sealed bytes equal the old ones), keeps the old values and retries next start. The owner's check after the update is the proof on a real Keychain.
+- **Evidence that the name can be changed after load (the one thing no test can prove):** the installed 0.9.6 bundle's `CFBundleName` is "Jobadabra" (`plutil -p`), yet the owner's prompt names "Job Pilotto Safe Storage": so today's the old `app.setName` *does* decide the item after load, and `app.setName("Jobadabra")` decides it the same way. If it ever did not, the move detects it (the re-sealed bytes equal the old ones), keeps the old values and retries next start. The owner's check after the update is the proof on a real Keychain.
 
 ## Non-goals
 
@@ -82,7 +82,7 @@ A Keychain item's access list trusts the **code signature** of the app that made
 
 `desktop/test/keychain-migration.test.js`: the fake `safeStorage` fixes its key at the first seal from `app.name`, like Electron; the fake `security` serves a map of items.
 1. Known answer: a value sealed by OpenSSL (independent of our code) opens, and our sealing equals it.
-2. The owner's update: a store sealed by the old build (name "Job Pilotto") with 3 tokens → the new start → every token reads back through the new item; "Job Pilotto" item unchanged; `secrets.json` carries `__sealedBy`.
+2. The owner's update: a store sealed by the old build (the old app name) with 3 tokens → the new start → every token reads back through the new item; the old Keychain item unchanged; `secrets.json` carries `__sealedBy`.
 3. Second start: no `security` call, no re-seal.
 4. Deny / error at step 1: nothing written, tokens readable under the old name, retried next start.
 5. A failure after the name changed (second seal throws; the rename fails; the name does not take): tokens readable, file byte-identical, a later start moves them.

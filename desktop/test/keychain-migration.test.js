@@ -55,7 +55,7 @@ async function start(appData, keychain, options = {}) {
   return {...electron, storage, messages, dir: electron.app.getPath('userData')};
 }
 
-// What the build before this change did: name "Job Pilotto" at the first seal, tokens saved under it.
+// What the build before this change did: the old app name at the first seal, tokens saved under it.
 async function seedOldBuild(appData, keychain, tokens = TOKENS) {
   const dir = path.join(appData, DATA_NAME);
   const electron = fakeElectron(keychain);
@@ -189,7 +189,7 @@ test('Windows and Linux have no named item to move: no read, no record, the earl
     const sealer = keepLegacyIdentity({app: electron.app, safeStorage: electron.safeStorage, platform, exec: electron.exec});
     assert.equal(sealer, electron.safeStorage);
     await electron.ready();
-    assert.deepEqual(electron.log, ['name:Job Pilotto', 'name:Jobadabra']);
+    assert.deepEqual(electron.log, [`name:${LEGACY_NAME}`, `name:${DATA_NAME}`]);
     assert.deepEqual(keychain.securityCalls, []);
     assert.equal(fs.existsSync(path.join(appData, DATA_NAME, 'secrets.json')), false);
   }
