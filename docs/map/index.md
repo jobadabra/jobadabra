@@ -7,9 +7,9 @@ Read this first, then ONE area hub; go deeper only through its links. A file for
 | Feedback and fixers | [feedback](feedback.md) | user feedback, Sentry, UI findings, the AI fixer |
 | AI broker and prompts | [ai](ai.md) | engines, Free AI, caps, prompts, the CI broker |
 | CI, e2e and shipping | [ci](ci.md) | workflows, test layers, ship.sh, PR checks |
-| Apply and forms | [applying rules](../rules/applying.md) | extension, fill ladder, recorded pool |
-| Search and scoring | [architecture](../ARCHITECTURE.md) | scout, feeds, scoring, digest |
-| Data and stores | [data ownership](../rules/data-ownership.md) | stores, Notion, profile, answers |
+| Apply and forms | [apply](apply.md) | extension, fill ladder, recorded pool |
+| Search and scoring | [search](search.md) | scout, feeds, scoring, digest |
+| Data and stores | [data](data.md) | stores, Notion, profile, answers |
 | Desktop app UI | [desktop UI rules](../rules/desktop-ui.md) | renderer, design system, ⌘K |
 | Releases | [release guide](../../RELEASE.md) | beta, stable, installers |
 | Site and admin | [private site](../rules/private-site.md) | lives in the private jobadabra-web |
