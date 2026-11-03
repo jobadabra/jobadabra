@@ -11,13 +11,14 @@ import {facts, readiness, supportDetails} from './plan-readiness.js';
 import {verifyCodex} from './ai/codex-cli.js';
 import * as installer from './plan-install.js';
 import {FAMILY, GIT_PAGE} from '../renderer/ai-plan-guide.js';
+import {copyAndOpen, findDesktopAi, runOpen} from './desktop-ai.js';
 
 const SETTINGS_KEY = {claude: 'claudeCode', openai: 'codex'};
 const FILE_NAME = {claude: /^claude(?:\.exe|\.cmd)?$/i, openai: /^codex(?:\.exe|\.cmd)?$/i};
 const CHAT_APP = /[\\/](?:AnthropicClaude|WindowsApps)[\\/]|\.app[\\/]/i;
 
 /** Test seams: pc {env, home, exists, list, read, registry} is a fake computer; runVersion(file) -> '1.2.3' | null; platform; verifyFns {claude, openai}; startFn: lib/plan-install.js `start` (a test gives a fake, never the real installers). */
-export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, track = () => {}, DEMO = false, pc = {}, runVersion = claudeCode.version, appVersion = '', platform = process.platform, verifyFns = {}, startFn = installer.start}) {
+export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, clipboard = null, openApp = runOpen, track = () => {}, DEMO = false, pc = {}, runVersion = claudeCode.version, appVersion = '', platform = process.platform, verifyFns = {}, startFn = installer.start}) {
   const reached = new Set();
   for (const [family, file] of Object.entries(SETTING)) { setChosenFile(family, storage.settings()[file]); rememberLogin(family, storage.settings()[SETTINGS_KEY[family]]); }
 
@@ -105,6 +106,16 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
     if (!FAMILY[family]) return '';
     const settings = storage.settings(), found = facts(family, {...pc, platform, settings});
     return supportDetails(family, found, {env: pc.env, settings, version: appVersion, state: readiness(found)});
+  });
+  // "Let the Claude or ChatGPT desktop app answer your questions" (lib/desktop-ai.js): which app this computer has, and the one press that copies the instruction and starts the app.
+  // The window never gets the app's file. A test, the demo and the smoke run copy to the stand-in clipboard at most and never start an app.
+  ipcMain.handle('desktopAiApp', () => { const found = findDesktopAi({...pc, platform}); return found ? {family: found.family} : null; });
+  ipcMain.handle('desktopAiHelp', async () => {
+    const quiet = DEMO || process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE;
+    const result = await copyAndOpen({clipboard: clipboard || {writeText() {}}, platform, found: findDesktopAi({...pc, platform}),
+      openFile: quiet ? async () => 'test' : file => shell.openPath(file), run: quiet ? async () => false : openApp});
+    log('plan', 'desktop AI help', {ok: result.ok, reason: result.reason || '', family: result.family || '', opened: !!result.opened});
+    return result;
   });
   return {status};
 }

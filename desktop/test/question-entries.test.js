@@ -31,10 +31,10 @@ test('every state of today\'s cards stays: hidden at zero, answered-from-details
 
 test('the rows answer Not now only, and every do they write has a handler and a look', () => {
   for (const row of questionEntries(asked)) assert.deepEqual(row.answers, ['Not now'], `${row.kind}: counts, not guesses`);
-  for (const kind of ['letter', 'details', 'learned', 'questions-error']) assert.ok(LOOK[kind], `${kind} has a look`);
+  for (const kind of ['letter', 'details', 'learned', 'questions-error', 'desktop-ai']) assert.ok(LOOK[kind], `${kind} has a look`);
   const page = fs.readFileSync(new URL('../renderer/pages/focus-suggestions.js', import.meta.url), 'utf8');
   const run = page.slice(page.indexOf('export const RUN = {'), page.indexOf('\n};', page.indexOf('export const RUN = {')));
-  const written = new Set(questionEntries(asked).concat(questionEntries({error: 'x'})).flatMap(row => row.actions.map(action => action.do)));
+  const written = new Set(questionEntries(asked).concat(questionEntries({error: 'x'}), questionEntries({...asked, desktopAi: {family: 'claude'}})).flatMap(row => row.actions.map(action => action.do)));
   assert.deepEqual([...written].sort(), QUESTION_DOES.slice().sort(), 'QUESTION_DOES lists what the rows write');
   for (const name of QUESTION_DOES) assert.match(run, new RegExp(`\\n  ${name}: `), `${name} has a handler in RUN`);
 });

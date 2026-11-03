@@ -8,7 +8,7 @@ import {$, show} from './core.js';
 // The questions saved last time are used at once (cached on this computer), then the store's answer replaces them.
 const QUESTIONS_CACHE = 'questionsCache2';   // {details, learned, letter, notLearned}; the one-list cache of before 28 Oct 2026 is not read
 let questionsShown = '';
-const now = {details: [], learned: [], letter: null, hidden: [], consent: 0, fromDetails: 0, notLearned: [], error: '', read: false};
+const now = {details: [], learned: [], letter: null, hidden: [], consent: 0, fromDetails: 0, notLearned: [], error: '', read: false, desktopAi: null};
 // What the drawers walk through: Your details items (details), the reusable questions (learned), the cover-letter action (letter), the set-aside ones (hidden),
 // the consent count, the saved answers that are no learning (notLearned: Profile → What we learned leaves them out), the last error, and whether the store answered yet.
 export const questionsNow = () => now;
@@ -25,7 +25,15 @@ export function loadQuestions({force = false} = {}) {
   reading = job;
   return job;
 }
+// Which desktop AI app (Claude, ChatGPT) this computer has, asked once: it is a folder look, and it only changes when the person installs one (the banner appears at the next start).
+let desktopAiAsked = false;
+function askDesktopAi() {
+  if (desktopAiAsked) return;
+  desktopAiAsked = true;
+  Promise.resolve().then(() => window.pilot.desktopAiApp?.()).then(found => { now.desktopAi = found?.family ? found : null; if (now.desktopAi) document.dispatchEvent?.(new Event('questions-read')); }).catch(() => {});   // never throws into the questions read
+}
 async function readQuestions({force}) {
+  askDesktopAi();
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(QUESTIONS_CACHE) || 'null'); } catch {}
   if (!Array.isArray(cached?.details) || !Array.isArray(cached?.learned)) cached = null;

@@ -83,5 +83,7 @@ if (!flag('no-picture')) {
   if (!fs.existsSync(out)) { console.error(`no picture (the steps failed?)\n${(run.stderr || '').split('\n').filter(line => /error/i.test(line)).slice(0, 5).join('\n')}`); process.exit(1); }
   console.log(`${out} (${seconds} s)`);
 }
-if (option('eval')) console.log(fs.existsSync(`${out}.json`) ? fs.readFileSync(`${out}.json`, 'utf8') : 'no --eval result');
+// Why (2 Nov 2026): "no --eval result" went red on CI three times with no cause shown; say how the app itself ended (its exit status, signal, seconds, the last stderr lines).
+const noResult = () => `no --eval result: the app ended with status ${run.status}, signal ${run.signal}, error ${run.error?.code || 'none'} after ${seconds} s; stderr tail: ${(run.stderr || '').trim().split('\n').slice(-6).join(' | ')}`;
+if (option('eval')) console.log(fs.existsSync(`${out}.json`) ? fs.readFileSync(`${out}.json`, 'utf8') : noResult());
 else if (fs.existsSync(`${out}.json`)) for (const line of cutReport(JSON.parse(fs.readFileSync(`${out}.json`, 'utf8')))) console.log(line);

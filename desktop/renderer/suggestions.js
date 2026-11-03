@@ -18,7 +18,7 @@ export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, re
   filters: {icon: 'sliders', tone: 'info', badge: 'Filters'}, visits: {icon: 'external', tone: 'warn', badge: 'Sites'},
   pay: {icon: 'coins', tone: 'info', badge: 'Pay'},   // Insights PR 3 (#15): matches held under High fit by their pay
   // The Jobs drawers' rows (PR 1c): the colours of the cards they replace (cover letter and Fill your details amber, What we learned blue)
-  letter: {icon: 'file', tone: 'bad', badge: 'High priority'}, details: {icon: 'user', tone: 'warn', badge: 'Details'}, learned: {icon: 'bulb', tone: 'info', badge: 'Learned'},
+  letter: {icon: 'file', tone: 'bad', badge: 'High priority'}, details: {icon: 'user', tone: 'warn', badge: 'Details'}, learned: {icon: 'bulb', tone: 'info', badge: 'Learned'}, 'desktop-ai': {icon: 'sparkle', tone: 'info', badge: 'Your AI app'},
   'questions-error': {icon: 'alert', tone: 'bad', badge: 'Not loaded'},
   skills: {icon: 'file', tone: 'info', badge: 'Your CV'}};   // Insights PR 2 (#6): skills only the Experience bank has
 

@@ -18,7 +18,7 @@ const SETTINGS_KEY = {claude: 'claudeCode', openai: 'codex'};
 
 // The chat app of each family, where it lives. A Store package ("Claude_*") counts; the folders are the per-user (Squirrel) and all-users installs; on the Mac an .app in /Applications or ~/Applications.
 const w = path.win32.join;
-const APPS = {
+export const APPS = {
   claude: {win: env => [env.LOCALAPPDATA && w(env.LOCALAPPDATA, 'AnthropicClaude'), env.LOCALAPPDATA && w(env.LOCALAPPDATA, 'Programs', 'Claude'), env.ProgramFiles && w(env.ProgramFiles, 'Claude')],
     mac: ['Claude.app'], store: /^(?:Claude_|AnthropicPBC\.Claude)/i},
   openai: {win: env => [env.LOCALAPPDATA && w(env.LOCALAPPDATA, 'Programs', 'ChatGPT'), env.ProgramFiles && w(env.ProgramFiles, 'ChatGPT')],

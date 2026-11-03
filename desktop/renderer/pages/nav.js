@@ -2,6 +2,7 @@
 import {linkedinCommand} from './linkedin-consent.js';
 import {addGmailCommand} from './gmail-offer.js';
 import {addNotifyCommands} from './notify-commands.js';
+import {addDesktopAiCommands} from './desktop-ai.js';
 import {openPalette} from '../palette.js';
 import {openBuild} from './cv-build.js';
 import {PROMISE} from '../pro-promise.js';
@@ -257,6 +258,7 @@ export function paletteCommands() {
   add('Settings', linkedin.label, linkedin.hint, linkedin.keywords, linkedin.run);
   addGmailCommand(add);   // only while Gmail is not connected (owner, 2 Nov 2026)
   addNotifyCommands(add);   // only while no e-mail or Telegram works (owner, 2 Nov 2026)
+  addDesktopAiCommands(add);   // only while the Claude or ChatGPT desktop app is here and What we learned has open questions (owner, 2 Nov 2026)
   const hiddenAt = node => node.closest('[hidden]:not(.view):not([data-settings-page])');
   const shown = node => !hiddenAt(node);
   // A Profile section is hidden only because its tab is closed: still listed, and its entry opens that tab first (17 Oct 2026: CV and Your details split).

@@ -35,7 +35,7 @@ test('every button, card and section heading has a ⌘K entry; a running search 
   const run = spawnSync('node', ['scripts/shot.mjs', 'settings', '--no-picture', '--eval', `JSON.stringify((${probe})())`], {cwd: desktop, encoding: 'utf8', timeout: 90000});
   // Why (2 Nov 2026): "no --eval result" went red twice (#3014, #3018) on CI with the code unchanged since a green run; the child app printed nothing and the parse error said so only. Say how the child ended (killed by the 90 s limit, exit code, last stderr) so the next red names its cause.
   const last = run.stdout.trim().split('\n').pop();
-  if (!last.startsWith('"')) assert.fail(`shot.mjs gave no --eval result: status ${run.status}, signal ${run.signal}, error ${run.error?.code || 'none'}, stderr tail: ${String(run.stderr).trim().split('\n').slice(-8).join(' | ')}`);
+  if (!last.startsWith('"')) assert.fail(`shot.mjs gave no --eval result: it ended with status ${run.status}, signal ${run.signal}, error ${run.error?.code || 'none'}; its last line: ${last}; its stderr tail: ${String(run.stderr).trim().split('\n').slice(-6).join(' | ')}`);
   const result = JSON.parse(JSON.parse(last));
   assert.deepEqual(result.unlisted.filter(id => !LEFT_OUT.has(id)), [], 'these buttons are not in ⌘K: the sweeps in pages/nav.js missed them');
   assert.deepEqual(result.headings, [], 'these card and section headings are not in ⌘K');

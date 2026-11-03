@@ -79,6 +79,7 @@ const ALLOWED = {
   'renderer/pages/session-needs.js': 2, 'renderer/ai-engine-view.js': 2, 'lib/terminals.js': 2, 'lib/session-flow.js': 2,
   'renderer/pages/session-actions.js': 1, 'renderer/pages/claude-prereqs.js': 1, 'lib/transcript.js': 1, 'lib/session-stats.js': 1, 'lib/run-result.js': 1,
   'lib/claude-session.js': 1, 'lib/plan-readiness.js': 3,   // file and folder names of the Claude Desktop app (Claude.app, Programs\\Claude), not words
+  'renderer/desktop-ai-words.js': 1,   // Why (#3023): the product name of the Claude desktop app the banner offers to open (beside ChatGPT), not the generic AI name
    'lib/apply-handlers.js': 1, 'lib/ladder/rung5-takeover.js': 2, 'lib/ladder/rung5-takeover-teach.js': 1, 'renderer/claude-offer.js': 6, 'lib/app-reminders.js': 1, 'lib/ai/claude-code-cli.js': 1,
 };
 const SPECIFIC = /Claude Code|Claude in Chrome|with Claude|claude\.ai|Claude\.ai|Claude (?:subscription|plan|account|Desktop|session)|(?:Resume|Pause|Stop|Tell|Send (?:it |all \S+ )?to|Starting|Use) Claude|Claude'?s? (?:full )?report|\{AI/;
