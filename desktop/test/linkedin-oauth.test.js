@@ -1,32 +1,36 @@
-// Connect with LinkedIn, app side (lib/linkedin-oauth.js, lib/experience-handlers.js, renderer/pages/experience.js): the session id travels to the
-// site and back, the profile is collected once, a token is never kept, and the window offers connect, "use my name and email" and disconnect.
+// Connect with LinkedIn, app side (lib/linkedin-oauth.js, lib/experience-handlers.js, renderer/pages/experience.js): the state travels to the
+// site, the profile comes back to this app's own socket once, a token is never kept, and the window offers connect, "use my name and email" and disconnect.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {cancel, connect, kept} from '../lib/linkedin-oauth.js';
+import {receive} from '../lib/oauth-handoff.js';
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
 const PROFILE = {ok: true, sub: 's1', name: 'Ada Example', given_name: 'Ada', family_name: 'Example', email: 'ada@example.test', locale: 'en'};
 
-test('connect opens the start page with a session, waits, and returns the profile the site kept', async () => {
-  let opened = '', polls = 0;
-  const fetcher = async (url, init) => {
-    polls++;
-    assert.match(url, /\/api\/linkedin\/token$/);
-    assert.equal(JSON.parse(init.body).session, new URL(opened).searchParams.get('session'));
-    return new Response(JSON.stringify(polls < 3 ? {ok: false, pending: true} : PROFILE), {status: 200});
-  };
-  const answer = await connect(url => { opened = url; }, {fetcher, sleep: async () => {}, site: 'https://site.test'});
-  assert.match(opened, /^https:\/\/site\.test\/api\/linkedin\/start\?session=[A-Za-z0-9_-]{43}$/);
-  assert.equal(answer.ok, true);
-  assert.equal(polls, 3);
+test('connect opens the start page with a state, waits for the site to hand the profile to this app, and returns it', async () => {
+  let opened = '';
+  const waiting = connect(url => { opened = url; }, {site: 'https://site.test'});
+  await new Promise(r => setImmediate(r));
+  assert.match(opened, /^https:\/\/site\.test\/api\/linkedin\/start\?state=[A-Za-z0-9_-]{43}$/);
+  const state = new URL(opened).searchParams.get('state');
+  assert.equal(receive('linkedin-signin', new URLSearchParams({state, sub: 's1', name: 'Ada Example', given_name: 'Ada', family_name: 'Example', email: 'ada@example.test', locale: 'en'})), true);
+  assert.deepEqual(await waiting, {ok: true, sub: 's1', name: 'Ada Example', given_name: 'Ada', family_name: 'Example', email: 'ada@example.test', locale: 'en'});
 });
 
-test('not set up on the server, cancelled, or no answer: a clear error, no profile', async () => {
-  assert.match((await connect(() => {}, {fetcher: async () => new Response('{}', {status: 503}), sleep: async () => {}, site: 'https://x'})).error, /isn't available yet/);
-  assert.match((await connect(() => {}, {fetcher: async () => new Response('{"ok":false,"pending":true}'), sleep: async () => {}, every: 1000, timeout: 3000, site: 'https://x'})).error, /5 minutes/);
-  const waiting = connect(() => {}, {fetcher: async () => new Response('{"ok":false,"pending":true}'), sleep: async () => { cancel(); }, site: 'https://x'});
+test('no answer, cancelled, a browser that will not open, or a hand-off without a profile: a clear error', async () => {
+  assert.match((await connect(() => {}, {timeout: 5, site: 'https://x'})).error, /5 minutes/);
+  const waiting = connect(() => {}, {site: 'https://x'});
+  await new Promise(r => setImmediate(r));
+  cancel();
   assert.equal((await waiting).error, 'Cancelled.');
+  assert.match((await connect(() => { throw new Error('no browser'); }, {site: 'https://x'})).error, /could not be opened/);
+  let opened = '';
+  const empty = connect(url => { opened = url; }, {site: 'https://x'});
+  await new Promise(r => setImmediate(r));
+  receive('linkedin-signin', new URLSearchParams({state: new URL(opened).searchParams.get('state'), name: 'No Sub'}));
+  assert.match((await empty).error, /did not send your profile/);
 });
 
 test('the app keeps who it is, never a token or a picture', () => {

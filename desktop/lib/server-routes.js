@@ -6,6 +6,7 @@ import {judgeConfirmation, decidePageKind, decideAccountJudge, decideEscalation,
 import {notify, renderer, sessionReporter, openHandler, joinHandler, focusHandler, learnedHandler, recipesHandler, rememberHandler,
   aliasesHandler, controlsHandler, missesHandler, visitMore, visitFilters, visitHandler, sitePasswordHandler, reviewHandler,
   accountCodeHandler, stopAsked} from './server-hooks.js';
+import {handleOauthHandoff, isOauthHandoff} from './oauth-handoff-route.js';
 import {POST_CORS, tokenRequest, jsonPayload, jsonHeaders, jsonBody} from './server-http.js';
 
 // Pair only a trusted extension Origin with this installation.
@@ -240,6 +241,7 @@ function isMe(url) { return url === '/extension/me' || url.startsWith('/extensio
 export function routeTable(tabs, event) {
   return [
     ['/extension/pair', handlePair],
+    [isOauthHandoff, handleOauthHandoff],   // the website hands a sign-in or connect result to the consenting person's own app (lib/oauth-handoff-route.js)
     ['/engine/render', handleRender],
     ['/claude/ticket', handleClaudeTicket],
     [isClaudeSession, handleClaudeSession],
