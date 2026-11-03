@@ -87,7 +87,7 @@ class NewJobTests(unittest.TestCase):
         self.assertTrue(result['ok'], result)
         job = stores.applications.get('https://mail.google.com/mail/u/0/#all/h1')   # the email is its Job URL
         # Never the email's subject as the job's title (2 Nov 2026, owner: "RE: Keeping in Touch – …" listed as a job): who wrote.
-        self.assertEqual((job['title'], job['contact']), ('Reply from Test', 'Jaya · jaya@huxley.test'))
+        self.assertEqual((job['title'], job['contact']), ('Reply from Huxley', 'Jaya · jaya@huxley.test'))
         self.assertEqual(job['next_interview'], '2026-09-30T08:30:00+02:00')
         event = stores.events.get(question['id'])
         self.assertEqual((event['app_id'], bool(event['needs_you'])), (job['id'], False))

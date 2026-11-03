@@ -86,8 +86,10 @@ def interview_lead(stores, client, model, email, apps, result, stats):
     if not lead.get('company') and not lead.get('recruiter_company'):
         lead['recruiter_company'] = _sender_org(email['from'])
     # No role named: who wrote, never the email's subject (opportunity.reply_title).
-    lead['title'] = lead.get('title') or result.get('role') or opportunity.reply_title(
-        lead.get('recruiter_company') or '', person_name(re.sub(r'\s*<.*', '', email['from']).strip('" ')))
+    if not (lead.get('title') or result.get('role')):
+        sender = '' if linkedin or '<' not in email['from'] else person_name(re.sub(r'\s*<.*', '', email['from']).strip('" '))
+        lead.update(title=opportunity.reply_title(lead.get('recruiter_company') or '', sender, lead['platform']), role_unknown=True)
+    lead['title'] = lead.get('title') or result.get('role')
     if not linkedin and not lead.get('recruiter_email'):  # the next email from this person finds this job
         parsed = re.match(r'\s*"?([^"<]*)"?\s*<([^>]+)>', email['from'])
         name, address = parsed.groups() if parsed else ('', email['from'])

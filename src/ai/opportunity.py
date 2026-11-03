@@ -112,19 +112,19 @@ def title(lead):
     return (lead.get('title') or 'Role').strip()[:200]
 
 
-def reply_title(sender_org='', sender_name=''):
+def reply_title(sender_org='', sender_name='', platform='Email'):
     """The title of a job an email introduced when the email names no role: who wrote, never the email's subject.
     Why (2 Nov 2026, owner: a Windows tester's Jobs list showed "RE: Keeping in Touch – Finance Opportunities in Switzerland" as a job):
     a subject is a sentence about the conversation, not a role; the person reads "Reply from Huxley" and adds the role when Focus asks."""
     who = (sender_org or sender_name or '').strip()
-    return f'Reply from {who}'[:200] if who else 'Email reply'
+    return f'Reply from {who}'[:200] if who else f'{platform} reply'
 
 
 def label(lead):
     """"Senior DevOps Engineer — logistics software (client) via Example Talent"."""
     who = lead.get('company') or (f"{lead['client']} (client)" if lead.get('client') else '')
     via = lead.get('recruiter_company') if not lead.get('in_house') else ''
-    named = via and via != who and via.lower() not in title(lead).lower()   # "Reply from Huxley" already names it: no " via Huxley" after it
+    named = via and via != who and not titles._mentions(title(lead), via)   # "Reply from Huxley" already names it: no " via Huxley" after it
     return ' — '.join(p for p in (title(lead), who) if p) + (f' via {via}' if named else '')
 
 
@@ -178,6 +178,8 @@ def same_pitch(stores, lead):
     """An open lead for the same role from the same recruiter (email) or agency: the pitch pasted after the Gmail check
     found it, or the other way round. None when there's none (or it can't be checked). Every job is read and the stages
     filtered here: Notion refuses a filter on a Stage choice the workspace lacks."""
+    if lead.get('role_unknown'):   # "Reply from Huxley" is no role: two such emails from one agency are two jobs until a role is known (ib review, 2 Nov 2026)
+        return None
     words = lambda value: ' '.join(re.findall(r'[a-z0-9]+', (value or '').lower()))
     role, email, agency = words(title(lead)), (lead.get('recruiter_email') or '').lower(), words(lead.get('recruiter_company'))
     try:

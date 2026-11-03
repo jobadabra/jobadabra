@@ -88,7 +88,7 @@ test('Inbound: what a job has nothing to say about says N/A, never "Not checked"
 test('Inbound: a reply with no employer names the sender\'s company, no "!" logo and no subject for a title', live, () => {
   const reply = screens[1280].result.inbound.rows.find(item => item.title.startsWith('Reply from'));
   assert.equal(reply.title, 'Reply from Fincruit');
-  assert.ok(!reply.logos.includes('!'), `logos: ${reply.logos}`);
+  assert.ok(!reply.logos.some(text => text === '!' || text === '?'), `logos: ${reply.logos}`);   // the old empty-company badge drew "?" (or "!" on Windows)
 });
 
 test('Inbound: "Unclear" says what it is about', live, () => {

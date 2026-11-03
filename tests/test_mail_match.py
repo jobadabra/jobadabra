@@ -185,6 +185,9 @@ class MailMatchTests(MailCase):
     def test_a_platform_is_never_the_agency(self):
         self.assertEqual(mail._sender_org('LinkedIn <inmail-hit-reply@linkedin.com>'), '')
         self.assertEqual(mail._sender_org('Jaya <j.nejati@huxley.com>'), 'Huxley')
+        # By position, any country (ib review, 2 Nov 2026: fincruit.lu read "Lu").
+        for sender in ('a@fincruit.lu', 'a@huxley.co.uk', 'a@mail.huxley.ch', 'a@huxley.test'):
+            self.assertIn(mail._sender_org(sender), ('Fincruit', 'Huxley'), sender)
         self.assertEqual(mail.person_name('Seosahai - Nejati, Jayantie'), 'Jayantie Nejati')
 
     def test_one_agency_two_of_your_roles_and_the_email_names_neither_is_asked(self):

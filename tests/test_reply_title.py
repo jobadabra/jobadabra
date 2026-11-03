@@ -32,6 +32,22 @@ class ReplyTitleTests(unittest.TestCase):
             notes = [e['note'] for e in stores.events.list(app_id=job['id'])]
             self.assertTrue(any(SUBJECT in note for note in notes), notes)   # the subject stays where it belongs: the event's note
 
+    def test_two_replies_with_no_role_from_one_agency_are_two_jobs_and_a_country_domain_names_the_agency(self):
+        # The ib review (2 Nov 2026): "Reply from …" is no role, so the same-pitch check must not merge them; fincruit.lu once read "Lu".
+        with tempfile.TemporaryDirectory() as folder:
+            stores = sqlite.open_store({'JOBADABRA_DATA_DIR': folder})
+            second = {**EMAIL, 'id': 'h10', 'from': 'Marta Keller <marta@fincruit.lu>', 'subject': 'Next steps'}
+            with mock.patch.object(opportunity, 'extract', return_value={}):
+                one = mail_leads.interview_lead(stores, None, 'm', {**EMAIL, 'from': 'Marta Keller <marta@fincruit.lu>'}, [], {'role': ''}, {})
+                two = mail_leads.interview_lead(stores, None, 'm', second, [], {'role': ''}, {})
+            self.assertIsNotNone(one)
+            self.assertIsNotNone(two)
+            self.assertNotEqual(one['id'], two['id'])
+            self.assertEqual(stores.applications.get(one['url'])['title'], 'Reply from Fincruit')
+
+    def test_a_linkedin_message_with_no_role_says_where_it_came_from(self):
+        self.assertEqual(opportunity.reply_title('', '', 'LinkedIn'), 'LinkedIn reply')
+
     def test_a_role_the_ai_read_still_wins(self):
         with tempfile.TemporaryDirectory() as folder:
             stores = sqlite.open_store({'JOBADABRA_DATA_DIR': folder})
