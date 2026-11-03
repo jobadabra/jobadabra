@@ -341,7 +341,6 @@ app.on('will-quit', () => appLog('window', 'quitting'));
 process.on('exit', code => appLog('window', `process exit ${code}`));
 // One copy per data folder: lifecycle callbacks are tested without launching Electron.
 const firstCopy = claimInstance({app, getWindow: () => window, createWindow,   // Why (3 Nov 2026, #3060, Windows tester): a second copy quits at once; the first brings its window forward (lifecycle.js). It used to stop on a blocking box first.
-  onDuplicate: () => {},   // the quitting copy has no log yet (logTo runs in start()); the first copy logs the launch below
   onSecondCopy: () => appLog('window', 'a second copy was started: it quits, this window is brought forward'),
 });
 

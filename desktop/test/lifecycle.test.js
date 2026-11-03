@@ -1,6 +1,5 @@
 // Exercise the actual lifecycle callbacks with fake Electron and pipeline services.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {claimInstance, startWhenReady, installQuitHandling} from '../lib/lifecycle.js';
 
@@ -139,10 +138,11 @@ test('any quit with a data job and an engine child stops the job, then the child
 });
 
 // Windows tester on 0.9.2, 3 Nov 2026 (issue #3060): starting the app while it runs showed a "Jobadabra is already running" dialog instead of bringing the open window forward.
-test('a second copy quits without a dialog: the first copy brings its window forward', async () => {
-  const main = fs.readFileSync(new URL('../main.js', import.meta.url), 'utf8');
-  const claim = main.match(/claimInstance\(\{[\s\S]*?\n\n/)[0];   // up to the next blank line, so an added inline arrow cannot end the slice early
-  assert.doesNotMatch(claim, /showMessageBox|dialog\./, 'the duplicate path opens no dialog');
-  assert.match(claim, /onDuplicate/);
-  assert.match(claim, /onSecondCopy: \(\) => appLog\(/, 'the first copy writes the launch to app.log (the quitting copy has no log yet)');
+test('a second copy quits on its own, with no callback needed and no other app call', async () => {
+  const calls = [];
+  const app = new Proxy({requestSingleInstanceLock: () => false, whenReady: () => Promise.resolve(), on: () => {}, quit: () => calls.push('quit')},
+    {get: (target, name) => { if (!(name in target)) throw new Error(`a second copy used app.${String(name)}`); return target[name]; }});
+  assert.equal(claimInstance({app, getWindow: () => null, createWindow: () => calls.push('create')}), false);
+  await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(calls, ['quit'], 'it quits at once and creates no window');
 });

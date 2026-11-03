@@ -7,7 +7,7 @@ import {NO_PLACE} from '../renderer/targets.js';
  * the first copy brings its window forward and logs it (onSecondCopy), so a vanished second launch leaves a trace in app.log.
  * Windows foreground rights for window.focus() are unproven here (a taskbar flash is possible).
  */
-export function claimInstance({app, onDuplicate, onSecondCopy = () => {}, getWindow, createWindow}) {
+export function claimInstance({app, onDuplicate = () => {}, onSecondCopy = () => {}, getWindow, createWindow}) {
   const firstCopy = app.requestSingleInstanceLock();
   if (!firstCopy) app.whenReady().then(() => { onDuplicate(); app.quit(); });
   app.on('second-instance', () => {
