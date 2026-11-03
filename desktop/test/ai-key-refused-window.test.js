@@ -19,6 +19,7 @@ test('Connections: a saved key the provider refused is not "Connected"; it says 
   assert.match(page, /ai: ai\.words/);
   const keyRow = fs.readFileSync(new URL('../renderer/pages/profile.js', import.meta.url), 'utf8');
   assert.match(keyRow, /refused \? 'Key refused · paste a new one' : set \? '✓ Connected'/, 'the API key row in Connections → AI says it too');
+  assert.match(keyRow, /KEY_OF = \{api: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY'\}/, 'each engine marks its own key row, not the other\'s (Gitar, #3035)');
 });
 
 test('Portrait: an outdated text with a note says it is not updated and why, instead of "Updating soon"', () => {
