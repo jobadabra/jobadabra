@@ -8,7 +8,7 @@
 # NOT a pull_request trigger (owner rule, 13 Oct 2026: no workflow a PR starts can reach an AI key; desktop/e2e/test/pool/pool-ci-triggers.test.mjs): a push to main is merged code the owner reviewed.
 # Never a fork PR: the broker is never asked for it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
 # On main the publish works in groups of 3 rows (records-publish.mjs refuses more at once), one runner per group, and a failed or cap-refused run tells the owner on Telegram (ci-alert.mjs).
-# No key (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker"): the fill step's asks go through the broker relay (lib/broker-relay.mjs) on this job's OIDC token (`id-token: write`), the Codex plan's scheduled lane behind the 70% reserve; a broker "no" fails that row with "OUT OF BROKER ROOM" and the next run asks again.
+# No key (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker"): the fill step's asks go through the broker relay (lib/broker-relay.mjs) on this job's OIDC token (`id-token: write`), the Codex plan's scheduled lane (up to 100% of the Codex week since 31 Oct 2026); a broker "no" fails that row with "OUT OF BROKER ROOM" and the next run asks again.
 # Budget: the estimate is printed first (pick job), above max_asks (default 40) the run does not start, a row stops at 30 broker calls (lib/ai-proxy.mjs maxCalls); about 4 calls a row asked, so a run of 40 asks is at most ~40-160 broker calls, run by hand or from the daily replays. Each row's calls are in the job log; the dollar figures are the API-equivalent estimate, no longer money.
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
 # Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), AI_COST_PUBLISH_KEY (the cost report and the automatic cap read it).
@@ -479,16 +479,13 @@ jobs:
           node desktop/e2e/refill-yellow.mjs "$RUNNER_TEMP/yellow-merged.json" "${lists[@]}" || true
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Spend (job log and /admin/intelligence/ai-cost)
+      - name: Broker calls (job log only)
         if: always() && steps.packs.outputs.packs != '0'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          AI_COST_JOB: replay-refill
+        # Why (3 Nov 2026): no longer reported to /admin/intelligence/ai-cost: its dollars were API list prices of calls the Codex plan pays for, which the page would read as Anthropic spend.
         run: |
           total="$(find "$RUNNER_TEMP/packs" -name meta.json -exec cat {} + | jq -s '{usd: (map(.usd) | add), calls: (map(.calls) | add)}')"
           echo "$total" > "$RUNNER_TEMP/refill-cost.json"
-          echo "**Refill spend: \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json") in $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") call(s)** (the pick job's log has the estimate)"
-          node desktop/e2e/ai-cost-report.mjs --job "$AI_COST_JOB" --file "$RUNNER_TEMP/refill-cost.json" || true
+          echo "**Refill: $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") broker call(s)** (API-list-price estimate \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json"), not money; the pick job's log has the ask estimate)"
       - name: Re-run the PR's site replays gate (the new bundle is read by its replay)
         if: inputs.pr != '' && needs.publish.result == 'success' && steps.packs.outputs.packs != '0'
         env:

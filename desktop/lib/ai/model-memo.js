@@ -146,7 +146,7 @@ export const memoOnly = (env = process.env) => !!env.JOBADABRA_E2E && env.JOBADA
 // Fill (an ask the recording lacks, spec record-once "An ask the recording does not have"): a memo-only replay on the MAC that asks the model for the asks the memo lacks
 // (a fix changed what the app asks) and keeps each answer in the memo, so the next replay hits it; a kept ask is still served as before, never asked again.
 // e2e env + memo-only + JOBADABRA_MODEL_MEMO_FILL=1, never on CI (no claude -p there). The plan path carries the owner's identity: the caller's tripwire and the fake applicant stay on.
-// CI only through the refill workflow's own flag (JP_REFILL_CI, e2e/lib/refill.mjs: its own API key, replay-refill.yml): the asks then go to the API, not the plan.
+// CI only through the refill workflow's own flag (JP_REFILL_CI, e2e/lib/refill.mjs, replay-refill.yml): the asks then go to the AI broker through the harness relay (no API key), not the plan's claude -p.
 export const fillOn = (env = process.env) => memoOnly(env) && env.JOBADABRA_MODEL_MEMO_FILL === '1' && ((!env.CI && !env.GITHUB_ACTIONS) || env.JP_REFILL_CI === '1');
 
 // Loose lookup (owner, 12 Oct 2026): the CI replay of a row case (e2e/lib/row-case-run.mjs) and `npm run row --loose` serve a kept answer whose USER-message parts and output schema match although the system side

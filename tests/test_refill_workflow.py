@@ -51,9 +51,9 @@ class TheRefillWorkflow(unittest.TestCase):
         self.assertIn('--against', publish)
         self.assertIn("needs.pick.result == 'success'", publish, 'a skipped pick (no prompt change) publishes nothing')
 
-    def test_the_spend_is_reported_once_and_a_failed_or_capped_run_on_main_tells_the_owner(self):
+    def test_the_broker_calls_are_logged_once_and_a_failed_or_capped_run_on_main_tells_the_owner(self):
         finish = CODE.split('\n  finish:')[1].split('\n  notify:')[0]
-        self.assertIn('ai-cost-report.mjs', finish)
+        self.assertIn('broker call', finish)
         self.assertIn('site-replays-pr.yml', finish)
         self.assertIn("inputs.pr != ''", finish, 'the PR gate is re-run only for a PR run')
         notify = CODE.split('\n  notify:')[1]
@@ -66,8 +66,9 @@ class TheRefillWorkflow(unittest.TestCase):
         self.assertIn('OUT OF BROKER ROOM', CODE, 'a refused row says the broker said no, not a missing credit')
 
     def test_the_cost_is_capped_estimated_and_reported(self):
-        for word in ('refill-pick.mjs', '--max-asks', 'ai-cost-report.mjs', 'replay-refill', 'estimate'):
+        for word in ('refill-pick.mjs', '--max-asks', 'replay-refill', 'estimate', 'broker call'):
             self.assertIn(word, TEXT)
+        self.assertNotIn('ai-cost-report.mjs', CODE, 'broker calls are not Anthropic dollars: /admin/intelligence/ai-cost must not read them as spend')
 
     def test_it_never_posts_a_replay_accept_and_lists_no_pull_request_paths(self):
         self.assertNotIn('Replay-accept:', CODE)

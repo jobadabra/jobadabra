@@ -1,6 +1,6 @@
 // The rules of the CI refill (.github/workflows/replay-refill.yml; owner, 15 Oct 2026: "a separate CI workflow only for that, with a separate Anthropic API Key"): which pinned rows
 // to refill, what it may cost, and which PRs may start it. Pure parts; guard: e2e/test/refill.test.mjs. Since 3 Nov 2026 (owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker") the asks go
-// through the AI broker relay (lib/broker-relay.mjs, the scheduled lane behind the 70% reserve), no key at all; the dollar figures below are the API-equivalent estimate, no longer money. Fake applicant only, a replay of the network record (no site visit), never Submit.
+// through the AI broker relay (lib/broker-relay.mjs, the scheduled lane, up to 100% of the Codex week since 31 Oct 2026), no key at all; the dollar figures below are the API-equivalent estimate, no longer money. Fake applicant only, a replay of the network record (no site visit), never Submit.
 // Job: serve stored answers
 import {askChanged, keptOutcome, outdated} from '../replay-gate.mjs';
 
@@ -14,8 +14,8 @@ export const ASKS_PER_ROW_MAIN = 4;   // measured 15 Oct 2026: 2-5 answers fille
 export const ROW_MAX_CALLS = 30;     // one row's paid calls: the proxy refuses the next one (lib/ai-proxy.mjs maxCalls)
 export const refillCap = (env = process.env) => Number(env.REFILL_ROW_MAX_CALLS) || ROW_MAX_CALLS;             // a run stops asking above this (the org's prepaid credits are small; the key's workspace has its own monthly limit)
 
-// A PR from a fork never gets the key (isCrossRepository from `gh pr view --json isCrossRepository`; a missing answer counts as a fork).
-export const forkRefusal = pr => (pr && pr.isCrossRepository === false ? '' : `refill: PR ${pr?.number ?? '?'} is from a fork or unknown: the key is never given to it`);
+// A PR from a fork never asks the broker (isCrossRepository from `gh pr view --json isCrossRepository`; a missing answer counts as a fork).
+export const forkRefusal = pr => (pr && pr.isCrossRepository === false ? '' : `refill: PR ${pr?.number ?? '?'} is from a fork or unknown: the broker is never asked for it`);
 
 // A replay record the refill is for: the ask changed (page-side), or the prompt changed (instructions only): the gate's own two verdicts (replay-gate.mjs).
 export const needsRefill = (record, {worseOnly = false} = {}) => !!record && !record.deferred && (outdated(record.firstMiss) || askChanged(record)) && !(worseOnly && keptOutcome(record));
