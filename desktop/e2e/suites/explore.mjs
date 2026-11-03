@@ -1,16 +1,19 @@
 /* global document */
-// The AI explorer (lib/explore.mjs): Claude uses the app on a path no suite scripted, and reports what looks wrong with a CHECK a script can verify. Every report is then REPLAYED
-// without AI from a fresh page; only a bug whose check holds again becomes a finding (source explorer). BY HAND ONLY: it spends the owner's AI credit (a budget of about $0.50 a run),
-// so it never runs on a schedule or a push:   gh workflow run e2e.yml -f suite=explore     or     node suite.mjs explore   (a Mac needs Claude Code and E2E_NOTION_TOKEN_EXPLORE; CI also E2E_ANTHROPIC_KEY).
-import {modelFetch} from '../lib/model.mjs';
+// Job: report health
+// The AI explorer (lib/explore.mjs): an AI uses the app on a path no suite scripted, and reports what looks wrong with a CHECK a script can verify. Every report is then REPLAYED
+// without AI from a fresh page; only a bug whose check holds again becomes a finding (source explorer). BY HAND ONLY (a measurement, never a gate): it asks the AI broker
+// (Codex, then Claude, then Free AI; lib/broker-client.mjs), so it needs a CI job with an id-token and never runs on a schedule or a push:   gh workflow run e2e.yml -f suite=explore
+// Why (3 Nov 2026, AI user agents 2/7): the API-key path is gone; the run ends at its caps (E2E_AGENT_MINUTES, E2E_AGENT_CALLS, E2E_AGENT_TIER) and prints its tokens, seconds per call and per tier.
+import {askBroker} from '../lib/broker-client.mjs';
+import {noteBrokerCapped} from '../lib/ai-cap.mjs';
+import {compareViews, formatComparison, formatTierProbe, sessionLine} from '../lib/agent-observe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {finish} from '../lib/layout.mjs';
 import {settle} from '../lib/app.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {VIEWS} from '../lib/uicheck.mjs';
-import {PRICES, usageCost} from '../lib/vision.mjs';
-import {SYSTEM, explore, observePage, replay, stepWords, tools} from '../lib/explore.mjs';
+import {SYSTEM, actionSchema, explore, formatObservation, observePage, parseAction, replay, stepWords} from '../lib/explore.mjs';
 import {goView} from '../lib/go-view.mjs';
 
 export const name = 'explore';
@@ -18,13 +21,16 @@ export const keepGoing = true;
 export const cadence = 'manual';   // never chosen by a schedule or a push (lib/plan.mjs); a person names it
 // Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): a live measurement, never a gate; its unanswered asks go on to the model (every other suite's are refused, test/ai/one-answer-rule.test.mjs).
 export const realAi = true;
-export const minutes = 20;
+export const minutes = 50;   // Why (3 Nov 2026, AI user agents 2/7): room for a full 35-minute session (the daily workflow's cap), plus the comparison, the tier probe and the replays
 export const watches = ['desktop/e2e/lib/explore.mjs'];
 
-const MODEL = process.env.E2E_EXPLORER_MODEL || 'claude-haiku-5-5';
-const MAX_USD = Number(process.env.E2E_EXPLORER_USD) || 0.5;
-const MAX_STEPS = Number(process.env.E2E_EXPLORER_STEPS) || 40;
-const PRICED = PRICES[MODEL] ? MODEL : 'claude-haiku-5-5';   // Haiku: cheap; its thinking blocks go back unchanged (lib/explore.mjs appends each reply whole)
+// The acting tier: small by default (spec: picking the next control from a named list is easy); mid for the small-vs-mid comparison run. A Claude id is what the broker's tierOf maps.
+const TIER = process.env.E2E_AGENT_TIER === 'mid' ? 'mid' : 'small';
+const MODEL = TIER === 'mid' ? 'claude-sonnet-5-5' : 'claude-haiku-5-5';
+// Why (3 Nov 2026, AI user agents 2/7): the by-hand spike defaults to 10 minutes and 60 broker calls (about 1.5% of the Codex week at the old ceiling): it measures tokens and seconds per call, not a whole session.
+// The spec's 35 minutes and 260 calls are what the daily workflow (5/7) passes in E2E_AGENT_MINUTES and E2E_AGENT_CALLS from repository variables.
+const CAPS = {maxMinutes: Number(process.env.E2E_AGENT_MINUTES) || 10, maxCalls: Number(process.env.E2E_AGENT_CALLS) || 60};
+CAPS.maxSteps = Number(process.env.E2E_AGENT_STEPS) || CAPS.maxCalls;   // a step is one call
 
 export async function run(ctx) {
   ctx.findings = [];
@@ -43,7 +49,7 @@ export async function run(ctx) {
     click: async i => { await tagged(i).scrollIntoViewIfNeeded({timeout: 2000}).catch(() => {}); await tagged(i).click({timeout: 3000, noWaitAfter: true}); await page.waitForTimeout(700); },
     type: async (i, text) => { await tagged(i).fill(String(text || '').slice(0, 200), {timeout: 3000}); await page.waitForTimeout(300); },
     press: async key => { await page.keyboard.press(key); await page.waitForTimeout(400); },
-    go: async view => { await goView(page, view, {timeout: 4000}); await settle(page); },
+    go: async view => { await goView(page, view); await settle(page); },
     readText: () => page.evaluate(() => (document.querySelector('.view:not([hidden])')?.innerText || document.body.innerText || '')),
     errorMark: () => errors.length,
     errorsSince: mark => errors.slice(mark),
@@ -59,26 +65,55 @@ export async function run(ctx) {
       return {changed: (await snapshot()) !== before, calls: (await ipc.since(mark)).length};
     },
   };
-  const usage = {calls: 0, usd: 0, input: 0, output: 0};
-  const ask = async messages => {
-    const answer = await modelFetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': ctx.judgeKey, 'anthropic-version': '2023-06-01'},
-      body: JSON.stringify({model: MODEL, max_tokens: 1024, system: SYSTEM, tools: tools(VIEWS), messages})});
-    const body = await answer.json();
-    if (!answer.ok) throw new Error(`${answer.status} ${body?.error?.message || ''}`);
-    usage.calls++; usage.input += body.usage?.input_tokens || 0; usage.output += body.usage?.output_tokens || 0;
-    return body;
+  // One broker call per turn: the Messages-shaped request is the broker's `toBrokerCall` input; the answer's text is the action JSON.
+  const ask = async ({system, messages, schema}, model = MODEL) => {
+    const answer = await askBroker({model, max_tokens: 1024, system, messages, output_config: {format: {type: 'json_schema', schema}}});
+    // Why (3 Nov 2026, Gitar on #3048; owner 31 Oct 2026): a broker that says no (budget, login) greys the step with an alert, never fails it; the runner reads this note (lib/ai-cap.mjs takeCapped), as for broker-relay and model.
+    if (!answer.ok) { if (answer.status === 'capped') noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
+    return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine};
   };
-  const cost = used => usageCost(PRICED, used) ?? 0;
+
+  // The spike's first measurement (AI user agents 2/7: "tree or text"): what each view looks like to the agent as the explorer's text and as Playwright's accessibility snapshot.
+  await ctx.run('the observation comparison: explorer text vs accessibility snapshot, per view', async () => {
+    const rows = [];
+    for (const view of VIEWS) {
+      await goView(page, view);
+      await settle(page);
+      const t0 = Date.now(), text = formatObservation(await page.evaluate(observePage)), t1 = Date.now();
+      const tree = await page.locator('.view:not([hidden])').first().ariaSnapshot(), t2 = Date.now();
+      rows.push({view, text, tree, textMs: t1 - t0, treeMs: t2 - t1});
+    }
+    const comparison = compareViews(rows);
+    console.log(formatComparison(comparison));
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-observation.json'), JSON.stringify(comparison, null, 2));
+  }, {needs: ctx.needs});
+
+  // The tier probe: the same screen asked three times on each tier, so tokens and seconds per call are measured without two 35-minute sessions (which tier acts is chosen in 3/7, from named plans).
+  await ctx.run('the tier probe: one screen asked on the small and the mid tier', async () => {
+    await goView(page, 'jobs');
+    await settle(page);
+    const messages = [{role: 'user', content: `Start. You have at most 10 steps.\n\n${formatObservation(await page.evaluate(observePage))}`}];
+    const rows = [];
+    for (const [tier, model] of [['small', 'claude-haiku-5-5'], ['mid', 'claude-sonnet-5-5']]) {
+      for (let n = 0; n < 3; n++) {
+        const answer = await ask({system: SYSTEM, messages, schema: actionSchema(VIEWS)}, model);
+        rows.push({tier: answer.tier || tier, engine: answer.engine || '', ms: answer.ms, input: answer.usage.input_tokens, output: answer.usage.output_tokens, action: parseAction(answer.text).action || 'invalid'});
+      }
+    }
+    console.log(formatTierProbe(rows));
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-tiers.json'), JSON.stringify(rows, null, 2));
+  }, {needs: ctx.needs});
 
   let result = null;
-  await ctx.run(`the AI explores the app (${MODEL}, at most ${MAX_STEPS} steps or $${MAX_USD})`, async () => {
-    result = await explore({act, ask, cost, views: VIEWS, maxSteps: MAX_STEPS, maxUsd: MAX_USD, log: line => console.log(line)});
-    usage.usd = Number(result.usd.toFixed(4));
-    console.log(`  explorer stopped: ${result.stopped}; ${result.steps.length} step(s), ${result.bugs.length} report(s), $${usage.usd}`);
+  const started = Date.now();
+  await ctx.run(`the AI explores the app (${TIER} tier, at most ${CAPS.maxMinutes} min or ${CAPS.maxCalls} broker calls)`, async () => {
+    result = await explore({act, ask, views: VIEWS, caps: CAPS, log: line => console.log(line)});
+    console.log(`  explorer stopped: ${result.stopped}; ${result.steps.length} step(s), ${result.bugs.length} report(s); ${sessionLine(result, Date.now() - started)}`);
     if (result.stopped.startsWith('api:')) throw new Error(`the explorer could not finish thinking (${result.stopped}): nothing is filed from this run`);
-  }, {needs: ctx.needs});
-  fs.writeFileSync(path.join(ctx.ARTIFACTS, 'ai-explorer-usage.json'), JSON.stringify({...usage, model: MODEL, stopped: result?.stopped || 'failed'}, null, 2));
+  }, {needs: ctx.needs, limitMs: (CAPS.maxMinutes + 5) * 60000});   // Why (3 Nov 2026): the runner's default step limit is 8 minutes; a session runs up to its own minute cap
+  fs.writeFileSync(path.join(ctx.ARTIFACTS, 'ai-explorer-usage.json'), JSON.stringify({tier: TIER, model: MODEL, caps: CAPS, ms: Date.now() - started, spent: result?.spent, stopped: result?.stopped || 'failed'}, null, 2));
   if (!result) return;
+  fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), result.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
 
   // Each report is proved again without AI, from a fresh page. Only what holds again is a finding.
   const proved = [];
