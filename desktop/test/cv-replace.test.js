@@ -8,6 +8,10 @@ import {test} from 'node:test';
 import {install} from './tiny-dom.js';
 
 install();
+// Why (fx, 3 Nov 2026): the pages start timers at import (renderer/usage-signals.js:43 every 1 s, pages/interviews.js:228, focus-check.js:21); a test process that imports them never exits
+// (the first version of this test hung the CI job for 15 minutes). The timers still run for the test's length but no longer hold the process open.
+const realInterval = globalThis.setInterval;
+globalThis.setInterval = (...args) => realInterval(...args).unref();
 const doc = globalThis.document, found = doc.getElementById.bind(doc);
 doc.getElementById = id => {
   let node = found(id);
@@ -21,6 +25,7 @@ globalThis.window.pilot = new Proxy({
   state: async () => ({settings: {cvName: app.name}, secrets: {}}),
   cvStatus: async () => ({base: true, custom: false, file: app.file}),
   cvCheckStatus: async () => app.check,
+  cvChange: async () => ({}),
 }, {get: (all, key) => all[key] || (async () => null)});
 const {loadCvSetting} = await import('../renderer/pages/profile.js');
 const {init} = await import('../renderer/pages/actions.js');
