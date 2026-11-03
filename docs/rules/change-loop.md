@@ -19,6 +19,13 @@ Why each rule exists: [why.md](why.md#change-loop).
    debugging or adding: `cd desktop/e2e && E2E_STEPS=... node run-all.mjs --only <suite>`; `E2E_AI_FAMILY=openai` runs the OpenAI side on Codex.
    `run-all.mjs` refuses a whole suite on the Mac (`lib/local-run.mjs`; the owner's full run by choice: `JP_E2E_FULL=1`; `npm run live` passes).
 
+## Tests of our own tooling (owner, 3 Nov 2026)
+Why: by 3 Nov 2026, 718 test files (64,788 lines, a third of all test files) tested our own CI and PR scripts, hooks, the lock, dashboards and harness helpers. Only 97 guarded something a user or the release depends on. The 12 busiest non-guard files were edited 12–36 times in 14 days, every time a CI PR changed a script. The owner (3 Nov 2026): "What's the worse can happen if tooling/harness is not tested? … There will be no impact for the users, it will be easy to fix/ack", then cut 539 files and asked for this rule.
+- **Ask before writing one:** if this tool breaks, what is lost? A user's data, a Submit pressed, a secret leaked, money spent, a bad build shipped as stable: write the test, and put `Guard: <safety|data|money|privacy|release> — <what breaks>` in its first lines. A red PR, a wrong label, an ugly message, a slow job, a stale dashboard: no test; run the tool once on the real input and say what you saw.
+- **Rule ratchets stay** (file-size, unpinned-clock, the Why gate, the lane registry, the push hook): they hold the owner's rules, not a script's behaviour. A new ratchet needs the "Gate only if it pays" count (≥2 real escapes in 30 days, or a safety step).
+- **A fix to a tool needs no new test file for the tool.** If the fix touches a guard's behaviour, change that guard's test; otherwise the fix is verified by running the tool.
+- **Not done yet (3 Nov 2026):** a ratchet that fails a new tooling test file lacking a `Guard:` line. A text match cannot tell them apart (it flagged 600 app tests and missed 112 tooling ones); it needs `tools/app-tests.py`'s import-graph classifier, which takes minutes.
+
 ## A big change: slices, a safety net first, ONE full run at landing (owner, 10 Oct 2026)
 1. **Size it first** (Tier 0/1/2). Above Tier 1: a spec with a checklist (`docs/superpowers/specs/`, a `## Progress` section; skill
    `report-progress`), and say what stays unverified. A box a PR ticks names its proof: `(proof: <path>)` the PR changes, `(proof: <path> @<sha>)`
