@@ -33,7 +33,7 @@ export function drawDesktopAiCard() {
   $('dai-connect').textContent = say.connect;
   show($('dai-disconnect'), view.state !== 'off');
   $('dai-disconnect').textContent = say.disconnect;
-  $('dai-message').textContent = view.note;
+  $('dai-message').textContent = view.note || (view.state === 'waiting' ? connectWords(name).waiting : '');   // the Install step is always said once, also after a reload when no press was made
 }
 
 /** Reads the app (is the Claude app here, what is the connection) and draws; also on every change of the shared view. */

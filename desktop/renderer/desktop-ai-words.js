@@ -56,7 +56,7 @@ export function connectWords(family = 'claude') {
     states: {off: 'Not connected', waiting: 'Waiting for install', connected: 'Connected'},
     cardLine: {
       off: `Connect it so ${name} can read your open questions and help answer them. You stay in charge: every change is listed and can be undone.`,
-      waiting: `Connecting. Press Install in ${name}'s window. The file is valid for 10 minutes.`,
+      waiting: `Connecting. The file is valid for 10 minutes.`,
       connected: `${name} can read your questions, answers, CV details and job list, and answer open questions. It cannot submit anything.`,
     },
     privacy: {
