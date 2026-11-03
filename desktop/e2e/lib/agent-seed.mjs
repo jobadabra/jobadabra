@@ -48,7 +48,11 @@ export function answerCvRead(proxy, person) {
   let other = 0;
   proxy.setCanned(async body => {
     if (isCvRead(body)) { console.log('  AI stand-in: the app asked for the CV read; answered from the persona\'s CV'); return answer; }
-    if (other++ < 5) console.log(`  AI stand-in: another call (${other}), left to the suite's answer; it opens with "${String(JSON.stringify(body?.messages?.[0]?.content ?? body?.system ?? '')).slice(0, 80)}"`);   // so a run says whether the read was asked at all (replay 41664479049 could not tell)
+    if (other++ < 5) {   // so a run says which calls reached the stand-in and whether the read was among them (replay 41664479049 could not tell); a document call's first block is only the PDF, so it is named by its system prompt and its last text
+      const blocks = body?.messages?.[0]?.content, lastText = Array.isArray(blocks) ? blocks.filter(block => typeof block?.text === 'string').pop()?.text : blocks;
+      const said = value => (typeof value === 'string' ? value : JSON.stringify(value ?? '')).replace(/\s+/g, ' ').slice(0, 80);
+      console.log(`  AI stand-in: another call (${other}), left to the suite's answer; system "${said(body?.system)}", text "${said(lastText)}"`);
+    }
     return previous ? previous(body) : null;
   });
 }
