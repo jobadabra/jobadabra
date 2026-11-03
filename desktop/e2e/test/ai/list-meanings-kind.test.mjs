@@ -26,7 +26,7 @@ test('its stored answer reads as "no groups, no typos", so Strategy shows the ch
   assert.deepEqual(JSON.parse(reply.content[0].text), {lists: []});
 });
 
-// Why (30 Oct 2026, bb 3/9, interactions red run 41091251455): the Profile's preferences read and Locations move sent no x-jp-action either; the manifest holds each real request, one loop keys them all.
+// Why (30 Oct 2026, bb 3/9, interactions red run 41091251455): the Profile's preferences read and Locations move sent no x-jp-action either; the manifest holds each real request, one loop keys them all (3 Nov 2026, wq: question_words joined it, it sent its action but the table did not declare the kind).
 for (const [kind, system] of [['preferences_parse', /^You read the job-search preferences/], ['locations_move', /^You read the "where to work" rows/], ['question_words', /^Each line of <fields> is "id: label"/]]) {
   test(`the real ${kind} request names its step and is keyed as the ${kind} kind in backbone mode only`, () => {
     const found = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(each => each.kind === kind);
