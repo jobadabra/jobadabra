@@ -33,8 +33,8 @@ Session hm, 3 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-harness-map-des
 - [x] 1/8 Spec and plan (proof: docs/superpowers/specs/2026-11-03-harness-map-design.md @7da77f21)
 - [x] 2/8 L0 + pilot hubs + checker + AGENTS.md under 32 KiB (proof: desktop/test/guards/rules/map-check.test.js @9495ae71)
 - [x] 3/8 Hubs apply, search, data (proof: docs/map/apply.md @8e640a35)
-- [ ] 4/8 Hubs desktop, release, site, growth
+- [x] 4/8 Hubs desktop, release, site, growth (proof: docs/map/desktop.md @9aafa529)
 - [x] 5/8 Fetchers Linear, Sentry, GitHub + pack builder (proof: desktop/test/guards/rules/context-fetchers.test.js)
-- [ ] 6/8 Fetchers PostHog, Cloudflare
+- [x] 6/8 Fetchers PostHog, Cloudflare (proof: desktop/test/guards/rules/context-fetchers.test.js)
 - [ ] 7/8 Fetcher Notion
 - [ ] 8/8 Evaluation
