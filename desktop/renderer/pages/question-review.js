@@ -91,16 +91,16 @@ function question(q) {
   const body = el('div', 'jd-body qr-body');
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
   const asked = el('p', 'muted small qr-asked', sourceOf(q));
-  if (mine) asked.append(' ', pill(mine.kind === 'contact' ? askWords(mine) : mine.source, 'warn'));
+  if (mine) asked.append(' ', pill(sourceWords(mine), 'warn'));
   if (state.aside) asked.append(' ', pill('Set aside', 'neutral'));
   body.append(asked, el('h3', 'qr-question', q.question));
   if (mine?.line) body.append(el('p', 'qr-line', mine.line));
   const suggested = Boolean(q.proposal);
   const box = el('div', `qr-answer ${suggested ? 'is-suggested' : 'is-missing'}`);
   const kind = el('p', 'qr-answer-kind');
-  kind.append(icon(suggested ? 'sparkle' : 'alert'), el('span', '', suggested ? 'Suggested from saved answer' : mine ? askWords(mine, 'Missing answer') : 'Missing answer'));
+  kind.append(icon(suggested ? 'sparkle' : 'alert'), el('span', '', kindWords(suggested, mine)));
   box.append(kind);
-  const label = el('label', 'qr-label', mine?.kind === 'which' || mine?.kind === 'where' ? 'Your pick' : 'Your answer');
+  const label = el('label', 'qr-label', answerLabel(mine));
   // Why (28 Oct 2026, owner: "a textarea… please describe… different scenarios… Be as specific as possible"): a learning's free-text answer holds its
   // conditions ("Contract only if remote"), so What we learned writes it in a few lines with the cases asked for; choices keep their pickers.
   const written = state.kind === 'learned' && (q.format?.control || 'text') === 'text';
@@ -306,3 +306,10 @@ $('learned-review')?.addEventListener('click', () => openQuestionReview({queue: 
 $('letter-setup-go')?.addEventListener('click', () => import('./settings.js').then(({openSetting}) => openSetting('letter')));   // the cover letter is a setting, not a question
 $('questions-manage')?.addEventListener('click', event => { event.preventDefault(); manageAnswers(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.open && !event.defaultPrevented) closeQuestionReview(); });
+
+/** The source pill of a Your details item: a contact detail says how many forms ask it, any other kind why it is in the queue. */
+const sourceWords = mine => (mine.kind === 'contact' ? askWords(mine) : mine.source);
+/** The line over the answer box: a suggested answer, or what the item asks (a contact detail by its rating, see question-nav.js askWords). */
+const kindWords = (suggested, mine) => (suggested ? 'Suggested from saved answer' : askWords(mine || {}, 'Missing answer'));
+/** The label over the answer control: a pick between existing values, or a written answer. */
+const answerLabel = mine => (['which', 'where'].includes(mine?.kind) ? 'Your pick' : 'Your answer');
