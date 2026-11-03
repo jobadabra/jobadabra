@@ -1,0 +1,169 @@
+name: CI · Feedback to AI
+run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
+
+# "Send to AI" on a feedback card of the site (owner, 3 Nov 2026: "send it to a claude session (on the CI using the ai-broker), that the outcome should be a PR with the fix"). ONE run per click of the owner's;
+# the site starts it (workflow_dispatch, input `ref` only, with the timers' token), at most 3 a day and 1 at a time. The run reads that one report from the site with GitHub's own run token (audience
+# jobadabra-feedback; no secret), lets the Codex plan propose a fix (desktop/e2e/edit-codex.mjs, two broker calls, no tools), checks it and opens a DRAFT pull request for the owner. It never merges and never
+# pushes to main. The UI Fixer (ui-fix.yml, scheduled, many findings) stays OFF (owner, 25 Oct 2026); this runs only on a click.
+# THIS REPOSITORY IS PUBLIC: the branch, the pull request, the run log and the artifacts are public. tools/feedback-ai.mjs never prints the report, redacts it a second time before the AI reads it,
+# and refuses to push when the pull request text or the change holds an e-mail, a secret, a home-folder name or a passage copied from the report.
+# The second job tells the site when such a pull request is merged or closed (pull_request_target, so it runs THIS file from main and never checks out the pull request's code).
+# Guard: desktop/test/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch or pull_request_target).
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The feedback's 16-character handle (the site sends it)"
+        required: true
+  pull_request_target:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  fix:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write   # the branch fd-ai/<ref>
+      pull-requests: write   # the draft pull request and its label
+      id-token: write   # the site and the Codex broker know a run by its OIDC token
+    concurrency:
+      group: feedback-ai   # one at a time (the site enforces it too); a second start waits instead of racing for the same checks
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      REF: ${{ inputs.ref }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Read the report (never printed)
+        run: node tools/feedback-ai.mjs brief --ref "$REF" --out .fb
+      - name: Install the app's dependencies (for its tests)
+        working-directory: desktop
+        run: npm ci
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install the engine's dependencies (for its tests)
+        run: pip install -r requirements.txt
+      - name: Codex proposes the fix (files only; two broker calls)
+        id: fixer
+        # The folders a fix may touch are the UI fixer's (check-change.mjs checks them again below); no .github/, tools/ or package files.
+        run: >-
+          node desktop/e2e/edit-codex.mjs --prompt .fb/prompt.md --roots desktop/renderer,desktop/lib,desktop/test,src,tests
+          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/[A-Za-z0-9._-]+\.test\.js$|tests/test_[A-Za-z0-9_]+\.py$)'
+          --verdicts fixed-already,not-reproducible,needs-human,false-positive --none-as verdict --none-out .fb/verdict.md --body-out .fb/pr-body.md
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ai-capped-feedback   # present only when the broker refused (its file holds no report text)
+          path: ${{ runner.temp }}/ai-capped/ai-capped.json
+          if-no-files-found: ignore
+      # GitHub starts no workflow for a push or PR made with GITHUB_TOKEN, so the PR would sit without checks: push and open it with the CI GitHub App's token (else the workflow token, and no checks).
+      - name: The App token, so the PR's checks start
+        id: pr_app
+        continue-on-error: true   # a failed mint falls back to the workflow token, never a red job
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Check the change, open the draft pull request, tell the site
+        id: pr
+        env:
+          PR_TOKEN: ${{ steps.pr_app.outputs.token }}
+          FIXER_OUTCOME: ${{ steps.fixer.outcome }}
+          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused (budget, login, down)
+        run: |
+          set -euo pipefail
+          tell() { node tools/feedback-ai.mjs report --ref "$REF" "$@"; }
+          # Every refusal below tells the site WHY in words of our own (never the report's), so the card shows it; a run that stops here is red.
+          stop() { tell --status failed --why "$1" || true; echo "::error::$1"; exit 1; }
+          if [ "$AI_SKIPPED" = true ]; then stop "the AI broker refused the call (limit, login or down): see the run's warning"; fi
+          if [ "$FIXER_OUTCOME" != success ]; then stop "the AI step did not run ($FIXER_OUTCOME)"; fi
+          changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^(\.fb/|e2e-artifacts/)' || true)
+          if [ -z "$changed" ]; then
+            verdict=$(head -1 .fb/verdict.md | tr -d '[:space:]')
+            reason=$(sed -n '2,$p' .fb/verdict.md | sed 's/^Why: *//' | head -3 | tr '\n' ' ')
+            tell --status none --verdict "$verdict" --why "$reason"
+            echo "The AI proposed no change ($verdict); the card shows its reason."
+            exit 0
+          fi
+          echo "$changed" | node desktop/e2e/check-change.mjs || stop "the proposed change touched files a fix may not touch, or had no test"
+          # At most 72 BYTES in all (the title is the commit subject): the prefix is 25, so the AI's part is cut to 44 at a word.
+          summary=$(node -e 'const t=((require("fs").readFileSync(".fb/pr-body.md","utf8").split("\n")[0])||"").trim(); const b=x=>Buffer.byteLength(x); if(b(t)<=44){console.log(t)}else{let c=[...t]; while(b(c.join(""))>43)c.pop(); console.log(c.join("").replace(/\s+\S*$/,"")+"…")}')
+          [ -n "$summary" ] || summary="fix from a report"
+          title="[fd-ai] $REF $summary"
+          printf '%s\n' "$title" > .fb/title.txt
+          sed '1,2d' .fb/pr-body.md > .fb/body.md
+          node tools/feedback-ai.mjs leaks --out .fb --title .fb/title.txt --body .fb/body.md || stop "the change or its text held something that may not be public (an e-mail, a secret, a home folder, or a passage copied from the report): nothing was pushed"
+          node tools/feedback-ai.mjs proof || stop "the new test does not fail without the fix and pass with it"
+          if ! (cd desktop && npm test && npm run lint) > .fb/suite.log 2>&1 || ! python3 -m unittest discover -s tests >> .fb/suite.log 2>&1; then stop "the whole test suite or the lint failed with the fix"; fi
+          changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^(\.fb/|e2e-artifacts/)' || true)
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch="fd-ai/$REF"
+          git checkout -b "$branch"
+          echo "$changed" | xargs git add --
+          tools/bot-commit.sh "$title" "the fix is proven by its own unit test (fails before, passes after) and the suites, not by a page"
+          git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
+          tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $summary" --why="a person reported it in the app and the owner sent it to the AI" \
+            --unblocks="that report, once the owner reviews and merges" --label="Report $REF" --before='the bug is open' --after='fixed by this change' \
+            --rate='Real users=🟡 Medium|a reported bug fixed' --rate='Tests & harness=🟡 Medium|a test with the fix' --detail=.fb/body.md > .fb/laid-out.md
+          gh label create fd-ai --repo "$REPO" --force --color 5319E7 --description 'A draft fix from the site: Send to AI on a feedback'
+          url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --draft --title "$title" --body-file .fb/laid-out.md --label fd-ai)
+          echo "Draft pull request opened: $url"
+          tell --status pr --pr "$url"
+
+  # One alert when the broker refused the run (owner, 31 Oct 2026: one alert per run); the note it reads holds the cause, never any report text.
+  ai-skipped:
+    needs: fix
+    if: always() && !cancelled() && needs.fix.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            .github/actions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/ai-skipped-alert
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          github-token: ${{ github.token }}
+
+  # The site learns that the pull request of a card was merged or closed; it moves the card to Fixed (waiting for the release) or back to new. Runs only for a branch fd-ai/<ref> of THIS repository;
+  # `merged` only when GitHub says so (tools/feedback-ai.mjs closedReport). Nothing from the pull request is read except its number, branch name and merged flag.
+  closed:
+    if: github.event_name == 'pull_request_target' && startsWith(github.event.pull_request.head.ref, 'fd-ai/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5   # pull_request_target checks out the BASE branch: the pull request's own code never runs here
+        with:
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Tell the site
+        run: node tools/feedback-ai.mjs closed
