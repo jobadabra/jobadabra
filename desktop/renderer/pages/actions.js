@@ -6,6 +6,8 @@ import {COMMAND_KIND, openActivity, refreshActivity} from './activity.js';
 import {$, message, show} from './core.js';
 import {el} from '../components.js';
 import {openCvChange, showCvChanged} from './cv-change.js';
+import {replaceCv} from './cv-replace.js';
+import {loadCvSetting} from './profile.js';
 import {openView} from './nav.js';
 import {showStatusCard} from './runs-page.js';
 import {initBoard} from './actions-board.js';
@@ -211,12 +213,10 @@ export async function init() {
   // Replace CV: the new file is used for uploads at once; the review of what it changes in the Profile (and so in
   // the fit scores) is offered, never applied by itself.
   $('replace-cv').addEventListener('click', async () => {
-    const name = await window.pilot.chooseCv();
-    if (!name) return;
-    shared.state = await window.pilot.state();
-    $('contact-cv').textContent = name;
-    message('strategy-message', `CV replaced: ${name}. New applications use it now. Review what it changes in your strategy when you're ready.`, 'ok');
-    showCvChanged();
+    const name = await replaceCv({choose: () => window.pilot.chooseCv(), readState: async () => { shared.state = await window.pilot.state(); },
+      redraw: async file => { $('contact-cv').textContent = file; await loadCvSetting(); },   // size, date, state and the CV check follow the new file at once
+      say: file => message('strategy-message', `CV replaced: ${file}. New applications use it now. Review what it changes in your strategy when you're ready.`, 'ok')});
+    if (name) showCvChanged();
   });
   $('strategy-cv-review').addEventListener('click', openCvChange);
 }
