@@ -46,7 +46,12 @@ def python_tooling_tests():
     """Test module names under tests/ whose imports never reach the engine; an unreadable module is kept (when in doubt, run it)."""
     edges = graphs.py_graph()
     out = []
-    for test in sorted((ROOT / 'tests').glob('test_*.py')):
+    for test in graphs.python_tests():
+        if test.is_relative_to(ROOT / 'tests/tooling'):   # Why (3 Nov 2026, owner: test folders by type/intent/scope): the folder says it; the import rule below is for the files not moved yet
+            out.append(graphs.py_module_name(test))
+            continue
+        if test.parent != ROOT / 'tests':
+            continue
         reach = graphs.closure(test, edges)
         if reach is not None and not any(graphs.rel(f).startswith(ENGINE) for f in reach):
             out.append(test.stem)
@@ -74,7 +79,12 @@ def desktop_tooling_tests():
     """desktop/test files (relative to desktop/) whose imports reach the repo's tooling and nothing that ships."""
     edges = graphs.js_graph()
     out = []
-    for test in sorted((ROOT / 'desktop/test').glob('*.test.js')):
+    for test in graphs.desktop_tests():
+        if test.is_relative_to(ROOT / 'desktop/test/tooling'):   # the folder says it (see python_tooling_tests)
+            out.append(test.relative_to(ROOT / 'desktop').as_posix())
+            continue
+        if test.parent != ROOT / 'desktop/test':
+            continue
         marks = [_touches(f) for f in graphs.closure(test.resolve(), edges)]
         if any(tooling for _, tooling in marks) and not any(ships for ships, _ in marks):
             out.append(f'test/{test.name}')
@@ -82,10 +92,11 @@ def desktop_tooling_tests():
 
 
 def desktop_glob():
-    """The `node --test` pattern of every desktop/test file but the tooling ones. Node expands it (extglob), so the command stays short: the ~900 kept paths
-    would come close to Windows' 32 KB command line."""
-    left = [Path(t).name.removesuffix('.test.js') for t in desktop_tooling_tests()]
-    return f"test/!({'|'.join(left)}).test.js" if left else 'test/*.test.js'
+    """The `node --test` patterns of every desktop/test file but the tooling ones: the flat files not moved yet (one extglob) and every kind folder but tooling/.
+    Node expands them, so the command stays short: the ~900 kept paths would come close to Windows' 32 KB command line."""
+    left = [Path(t).name.removesuffix('.test.js') for t in desktop_tooling_tests() if t.count('/') == 1]
+    kinds = ','.join(k for k in graphs.TEST_KINDS if k != 'tooling')
+    return [f"test/!({'|'.join(left)}).test.js" if left else 'test/*.test.js', f'test/{{{kinds}}}/**/*.test.js']
 
 
 def main(argv):

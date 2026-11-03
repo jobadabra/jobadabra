@@ -60,6 +60,7 @@ The full pre-diet text: `git show c7bed98:CLAUDE.md`.
 | Screens, tokens, ⌘K | [desktop-ui.md](docs/rules/desktop-ui.md) |
 | Files, comments | [files.md](docs/rules/files.md) |
 | Habits, big changes, e2e | [change-loop.md](docs/rules/change-loop.md) |
+| Where each kind of test lives (type / intent / scope) | [TESTS.md](TESTS.md) |
 | Facts easy to get wrong | [facts-and-layout.md](docs/rules/facts-and-layout.md) |
 | Knowledge, rounds, private site | [knowledge.md](docs/rules/knowledge.md), [rounds.md](docs/rules/rounds.md), [private-site.md](docs/rules/private-site.md) |
 | Why each rule exists | [why.md](docs/rules/why.md) |

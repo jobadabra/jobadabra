@@ -59,6 +59,29 @@ def rel(p):
     return p.relative_to(ROOT).as_posix()
 
 
+# --- Where tests live (TESTS.md is the same map for people) ---------------------------------------------------------------------------
+# Why (3 Nov 2026, owner chose "B: same names per home": "a clear folder structure with: unit tests, integrations tests, e2e tests... guards", "properly structured by
+# type/intent/scope"): tests/ and desktop/test/ each hold unit/, guards/ and tooling/, split by scope below; the flat files left at the top move there in their own PRs.
+TEST_KINDS = ('unit', 'guards', 'tooling')
+
+
+def python_tests():
+    """Every Python test file: tests/test_*.py (until moved) and tests/<kind>/**/test_*.py."""
+    found = list((ROOT / 'tests').glob('test_*.py'))
+    for kind in TEST_KINDS:
+        found += (ROOT / 'tests' / kind).rglob('test_*.py')
+    return sorted(found)
+
+
+def desktop_tests():
+    """Every desktop unit-suite file: desktop/test/*.test.js (until moved) and desktop/test/<kind>/**/*.test.js."""
+    base = ROOT / 'desktop/test'
+    found = list(base.glob('*.test.js'))
+    for kind in TEST_KINDS:
+        found += (base / kind).rglob('*.test.js')
+    return sorted(found)
+
+
 # --- Python import graph -------------------------------------------------------------------------------------------------------------
 def py_module_name(p):
     r = p.relative_to(ROOT)
@@ -198,7 +221,7 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
     # Why (R2, 1 Nov 2026, owner: "whatever e2e suite we'd feel to run on a PR, we should run the integrations counterpart"): the integration layer is the PR-time counterpart of the e2e journeys, in three
     # sub-folders (app, extension, store); it is picked by the same reach, mention and scanner rules as the unit tests, not by a second picker.
     pattern = '**/*.test.*' if area == 'integration' else '*.test.*'
-    tests = sorted((ROOT / folder).glob(pattern)) if (ROOT / folder).is_dir() else []
+    tests = desktop_tests() if area == 'desktop' else sorted((ROOT / folder).glob(pattern)) if (ROOT / folder).is_dir() else []
     if area == 'e2e':   # Why (c27, 1 Nov 2026, area folders): the harness tests sit one folder down (test/<area>/x.test.mjs); test/fixtures holds stand-ins, never tests
         tests += sorted(t for t in (ROOT / folder).glob('*/*.test.*') if t.parent.name != 'fixtures')
     reached = e2e_reach() if area == 'e2e' else {}
@@ -231,13 +254,13 @@ def pick_python(py_changed, result, why):
         return
     names = {f: py_module_name(ROOT / f) for f in py_changed if f.endswith('.py')}
     picked = []
-    for t in sorted((ROOT / 'tests').glob('test_*.py')):
+    for t in python_tests():
         reach = closure(t, edges)
         if reach is None or reach & changed_paths or mentions(read(t), py_changed, names):
-            picked.append(t.stem)
+            picked.append(py_module_name(t))
     result['python'] = picked
     orphans = [f for f in names if f.startswith('src/') and not any(
-        (ROOT / f) in (closure(t, edges) or {ROOT / f}) for t in (ROOT / 'tests').glob('test_*.py'))]
+        (ROOT / f) in (closure(t, edges) or {ROOT / f}) for t in python_tests())]
     if orphans and not picked:   # an engine file no test reaches: nothing could fail, so run the lot rather than nothing
         result['python'] = 'all'; why['python'] = f'no test reaches {orphans[0]}'
 
@@ -279,7 +302,7 @@ def select(changed, base_ref=None):
     # Node areas
     graph = None
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).
-    engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/test_[^/]+\.py', f)) for f in relevant)
+    engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/(?:[^/]+/)*test_[^/]+\.py', f)) for f in relevant)
     for area, folder in NODE_AREAS.items():
         if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed):
             continue
