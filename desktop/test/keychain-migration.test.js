@@ -286,3 +286,19 @@ test('an isolated run or a test never reads the real item', () => {
   assert.equal(readSafeStorage(OLD, LEGACY_NAME, {env: {}, exec: spy, platform: 'win32'}), null);
   assert.throws(() => readSafeStorage(OLD, LEGACY_NAME, {env: {NODE_TEST_CONTEXT: 'child'}, platform: 'darwin'}), /real Keychain/);
 });
+
+// Gitar on #3096: the live-test twin runs on a CLONE of the real folder (JOBADABRA_USER_DATA); a clone of a moved folder opens with the item that sealed it.
+test('a test or twin folder cloned from a moved install opens with the new item; a fresh one keeps the old name', async () => {
+  const appData = tmp(), keychain = fakeKeychain();
+  const real = await seedOldBuild(appData, keychain);
+  await start(appData, keychain);   // the real install moves
+  for (const [folderOf, item] of [[() => { const clone = tmp(); fs.copyFileSync(path.join(real, 'secrets.json'), path.join(clone, 'secrets.json')); return clone; }, NEW], [tmp, OLD]]) {
+    const dir = folderOf(), electron = fakeElectron(keychain);
+    electron.app.paths.userData = dir;
+    keepLegacyIdentity({app: electron.app, safeStorage: electron.safeStorage, userDataOverride: dir, platform: 'darwin', exec: electron.exec});
+    await electron.ready();
+    assert.equal(electron.usedItem(), item);
+    if (item === NEW) assert.deepEqual(readAll(createStorage(dir, safeStorageCrypto(electron.safeStorage))), TOKENS);
+  }
+  assert.deepEqual(keychain.securityCalls, [OLD], 'only the real install\'s move read the old item');
+});

@@ -40,7 +40,7 @@ export function openV10(sealed, key) {
 
 // The old item's password: the one prompt (macOS asks `security` for access). Read through lib/keychain.js (the one place that isolates tests and the twin); never logged.
 function readOldKey(exec, oldItem, oldAccount) {
-  const password = readSafeStorage(oldItem, oldAccount, {exec});
+  const password = readSafeStorage(oldItem, oldAccount, {exec, platform: 'darwin'});   // keychainSealing is only ever built on macOS (app-identity.js); a test on Linux CI must not skip the read
   if (!password) throw new Error('the old Keychain item could not be read (denied, missing or no answer)');
   return osKey(password);
 }

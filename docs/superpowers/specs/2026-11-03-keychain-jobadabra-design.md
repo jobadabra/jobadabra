@@ -76,7 +76,7 @@ A Keychain item's access list trusts the **code signature** of the app that made
 - The data folder does not move (`~/Library/Application Support/Jobadabra` rule stays as is: rebrand step 2's other half); `userData` is set exactly as before.
 - `appId`, `productName` and the Windows/Linux paths are untouched.
 - `adoptBackupKeys` (a backup folder of the same Profile lends keys to an import of an export made before 8 Oct 2026) copies values sealed with the old key; they read as unreadable and the app asks again. Rare, nothing lost (the old item is kept): parked in Linear.
-- Tests and demo runs (`JOBADABRA_USER_DATA`, demo folder) keep the old path, so a test never creates a Keychain item in the owner's login keychain.
+- Tests and demo runs (`JOBADABRA_USER_DATA`, demo folder) keep the old path, so a test never creates a Keychain item in the owner's login keychain. One exception (Gitar on #3096): a live-test twin's folder is a *clone* of the real one; if its `secrets.json` says it was sealed by the new item it is opened with that item (read-only, no move).
 
 ## Tests (a fake keychain and a fake `safeStorage`, no real Keychain)
 

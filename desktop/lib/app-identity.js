@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {keychainSealing, lockName} from './keychain-migration.js';
+import {itemOf, keychainSealing, lockName, readPlan} from './keychain-migration.js';
 
 export const LEGACY_NAME = 'Job Pilotto';   // the data folder before the rename, and the old Keychain item's name (kept as a backup, never changed)
 export const DATA_NAME = 'Jobadabra';
@@ -84,7 +84,13 @@ export function keepLegacyIdentity({app, safeStorage, displayName = 'Jobadabra',
   const keychain = platform === 'darwin' && !userDataOverride
     ? keychainSealing({app, safeStorage, names: {legacy: LEGACY_NAME, current: DATA_NAME}, log, exec}) : null;
   app.whenReady().then(() => {
-    if (!keychain) lockName(safeStorage); else if (isFirstCopy()) keychain.atReady();   // a second copy quits at once: no prompt, no rewrite
+    if (keychain) { if (isFirstCopy()) keychain.atReady(); }   // a second copy quits at once: no prompt, no rewrite
+    else {
+      // Why (Gitar on #3096, 3 Nov 2026): the live-test twin starts with a test folder that is a CLONE of the real one; once the real install is moved, the clone's secrets.json
+      // says it was sealed under the new item, so open it with that item (the same rule as e2e/lib/real-notion-token-main.mjs). A fresh test folder keeps the old name.
+      if (platform === 'darwin' && userDataOverride && readPlan(path.join(userDataOverride, 'secrets.json'), itemOf(DATA_NAME)).state === 'migrated') app.setName(DATA_NAME);
+      lockName(safeStorage);
+    }
     app.setName(displayName);
   });
   return keychain ? keychain.sealer : safeStorage;
