@@ -15,7 +15,7 @@ function network({site = [json({ok: true, told: 2, waiting: 1, matched: [], fail
     if (url.includes('api.telegram.org')) return json({ok: true});
     if (url.includes('/commits/')) return github.commit ?? json({sha: 'abc1234def5678', commit: {message: 'Release x (#3060)', committer: {date: '2026-11-04T08:00:00Z'}}});
     if (url.includes('/releases?')) return github.releases ?? json([{tag_name: TAG, prerelease: false}, {tag_name: 'desktop-v0.9.14-beta', prerelease: true}, {tag_name: 'desktop-v0.9.12', prerelease: false}, {tag_name: 'desktop-v0.9.2', prerelease: false}]);
-    if (url.includes('/compare/')) return github.compare ?? json({commits: [{commit: {message: '[a] Fix one (#3012)\n\nbody (#1)'}}, {commit: {message: 'Merge branch main'}}, {commit: {message: '[b] Fix two (#3020)'}}]});
+    if (url.includes('/compare/')) return github.compare ? github.compare(url) : json({total_commits: 3, commits: [{commit: {message: '[a] Fix one (#3012)\n\nbody (#1)'}}, {commit: {message: 'Merge branch main'}}, {commit: {message: '[b] Fix two (#3020)'}}]});
     const next = answers.length > 1 ? answers.shift() : answers[0];
     if (next instanceof Error) throw next;
     return typeof next === 'function' ? next() : next;
@@ -25,6 +25,7 @@ function network({site = [json({ok: true, told: 2, waiting: 1, matched: [], fail
 
 test('pull request numbers are the "(#n)" ending a commit subject; the version order is numeric, not alphabetical', () => {
   assert.deepEqual(prNumbers(['[02] [fd] x (#345)', 'Merge branch', '[a] y (#12)\nbody (#99)', 'see (#7) here', '(#12)']), [12, 345]);
+  assert.deepEqual(prNumbers(['[a] Fix (#12)', '[b] Other (#14)', 'Revert "[a] Fix (#12)" (#13)']), [13, 14], 'a fix and its revert in one range: the fix is not announced');
   assert.equal(previousStable(['desktop-v0.9.2', 'desktop-v0.9.12', TAG, 'desktop-v0.10.0'], TAG), 'desktop-v0.9.12', '0.9.12 is older than 0.9.13 and 0.10.0 is newer');
   assert.equal(previousStable(['desktop-v0.9.12'], 'latest'), '');
   assert.equal(previousStable([], TAG), '');
@@ -74,7 +75,7 @@ test('no publish key, a GitHub that fails and a tag that is not a desktop tag ne
   assert.deepEqual([done.ok, net.site().length, net.telegram().length], [false, 0, 1]);
   net = network({github: {commit: json({}, 404)}}); done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
   assert.deepEqual([done.ok, net.site().length, net.telegram().length], [false, 0, 1]);
-  net = network({github: {compare: json({}, 500)}}); done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
+  net = network({github: {compare: () => json({}, 500)}}); done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
   assert.deepEqual([done.ok, net.site().length, net.telegram().length], [false, 0, 1]);
   net = network(); done = await tellSite({tag: 'main', env: ENV, fetcher: net.fetcher, wait: 0});
   assert.deepEqual([done.ok, net.calls.length], [false, 0]);
@@ -93,4 +94,24 @@ test('post() stops at a 4xx and gives the last answer after the last try', async
   let n = 0;
   const answer = await post('https://x/y', 'k', {}, {fetcher: async () => json({}, ++n < 5 ? 500 : 200), tries: 2, wait: 0});
   assert.deepEqual([answer.ok, answer.status, answer.tries, n], [false, 500, 2, 2]);
+});
+
+test('a range of more than 500 commits is read to its end: the newest pull requests (the ones this release is about) are in the list', async () => {
+  const commits = page => Array.from({length: page === 7 ? 50 : 100}, (_, i) => ({commit: {message: `[x] change ${page}-${i} (#${page * 1000 + i})`}}));
+  const net = network({github: {compare: url => json({total_commits: 650, commits: commits(Number(new URL(url).searchParams.get('page')))})}});
+  const done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0}), body = JSON.parse(net.site()[0].init.body);
+  assert.equal(done.ok, true, done.line);
+  assert.equal(body.prs.length, 650, 'every commit of the range');
+  assert.ok(body.prs.includes(7049) && body.prs.includes(1000), 'the newest (page 7) and the oldest (page 1)');
+});
+
+test('a range too long to read is a loud failure, never a silently cut list', async () => {
+  const net = network({github: {compare: () => json({total_commits: 3500, commits: []})}}), done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
+  assert.deepEqual([done.ok, net.site().length, net.telegram().length], [false, 0, 1]);
+  assert.match(done.line, /3500 commits/);
+});
+
+test('an odd "failed" from the site is not a failure of ours', async () => {
+  const net = network({site: json({ok: true, told: 1, waiting: 0, failed: null})}), done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
+  assert.deepEqual([done.ok, net.telegram().length], [true, 0]);
 });

@@ -15,7 +15,7 @@ permissions:
   contents: read   # the releases and the commits between two of them (GitHub API, read only)
 
 concurrency:
-  group: feedback-released   # one call at a time; a second waits (the site tells each reporter once either way)
+  group: feedback-released   # one call at a time (the site tells each reporter once either way); GitHub keeps one waiting run, a third start replaces it: start the missed tag by hand
   cancel-in-progress: false
 
 jobs:

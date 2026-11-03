@@ -14,7 +14,12 @@ const URL_DEFAULT = 'https://www.jobadabra.top/api/feedback/released';
 const TAG = /^desktop-v(\d+(?:\.\d+)*)$/;
 
 /** The PR numbers in commit subjects: the "(#123)" a squash merge puts at the end of the first line. Sorted, no duplicates. */
-export const prNumbers = subjects => [...new Set(subjects.map(line => Number(String(line).split('\n')[0].match(/\(#(\d+)\)\s*$/)?.[1])).filter(Number.isInteger))].sort((a, b) => a - b);
+export const prNumbers = subjects => {
+  const lines = subjects.map(line => String(line).split('\n')[0]), numbers = new Set(lines.map(line => Number(line.match(/\(#(\d+)\)\s*$/)?.[1])).filter(Number.isInteger));
+  // Why (6/7 code review, 3 Nov 2026): `Revert "[a] Fix (#12)" (#13)` in the same range cancels #12: its reporter is not told "fixed" for a fix that was taken out.
+  for (const line of lines) if (/^Revert "/.test(line)) { const gone = Number(line.match(/\(#(\d+)\)"/)?.[1]); if (Number.isInteger(gone)) numbers.delete(gone); }
+  return [...numbers].sort((a, b) => a - b);
+};
 
 const parts = tag => TAG.exec(tag)?.[1].split('.').map(Number) || null;
 const order = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0); return 0; };
@@ -27,10 +32,10 @@ export const previousStable = (tags, tag) => {
 const api = env => env.GITHUB_API_URL || 'https://api.github.com';
 const github = (url, env, fetcher) => fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(20000)});
 
-/** Every stable (not pre-release, not draft) release tag, newest first, up to 300. */
+/** Every stable (not pre-release, not draft) release tag, newest first, up to 1000. */
 async function stableTags(env, fetcher) {
   const tags = [];
-  for (let page = 1; page <= 3; page++) {
+  for (let page = 1; page <= 10; page++) {
     const answer = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/releases?per_page=100&page=${page}`, env, fetcher);
     if (!answer.ok) throw new Error(`releases list: HTTP ${answer.status}`);
     const list = await answer.json();
@@ -40,15 +45,24 @@ async function stableTags(env, fetcher) {
   return tags;
 }
 
-/** The first lines of the commits in prev...tag (up to 500). */
+const MAX_COMMITS = 3000;
+/**
+ * The first lines of ALL commits in prev...tag. GitHub lists them oldest first, 100 a page, so a range that is not read to its end would lose the newest PRs, the ones this release is about:
+ * the pages are counted from `total_commits`, and a range over MAX_COMMITS fails loudly (Why, 6/7 code review, 3 Nov 2026: 0.8.60...0.8.86 is 766 commits, a long hold is more than 500).
+ */
 async function subjectsBetween(prev, tag, env, fetcher) {
   const lines = [];
-  for (let page = 1; page <= 5; page++) {
+  let pages = 1;
+  for (let page = 1; page <= pages; page++) {
     const answer = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/compare/${encodeURIComponent(prev)}...${encodeURIComponent(tag)}?per_page=100&page=${page}`, env, fetcher);
     if (!answer.ok) throw new Error(`compare ${prev}...${tag}: HTTP ${answer.status}`);
-    const body = await answer.json(), commits = body.commits || [];
-    lines.push(...commits.map(commit => String(commit.commit?.message || '').split('\n')[0]));
-    if (commits.length < 100) break;
+    const body = await answer.json();
+    if (page === 1) {
+      const total = Number(body.total_commits) || (body.commits || []).length;
+      if (total > MAX_COMMITS) throw new Error(`${prev}...${tag} is ${total} commits: more than ${MAX_COMMITS}, the list of pull requests would be cut`);
+      pages = Math.ceil(total / 100);
+    }
+    lines.push(...(body.commits || []).map(commit => String(commit.commit?.message || '').split('\n')[0]));
   }
   return lines;
 }
@@ -86,7 +100,7 @@ export async function tellSite({tag, env = process.env, fetcher = fetch, wait = 
     const prs = prev ? prNumbers(await subjectsBetween(prev, tag, env, fetcher)) : [];
     const answer = await post(env.FEEDBACK_RELEASED_URL || URL_DEFAULT, key, {version: tag.replace(/^desktop-v/, ''), channel: 'stable', prs, cutAt: new Date(commit.date).toISOString()}, {fetcher, wait});
     if (!answer.ok) return fail(`the site answered ${answer.status || 'nothing'} after ${answer.tries} ${answer.tries === 1 ? 'try' : 'tries'}`, answer.body?.error ? ` (${String(answer.body.error).slice(0, 120)})` : '');
-    const {told = 0, waiting = 0, failed = []} = answer.body || {};
+    const {told = 0, waiting = 0} = answer.body || {}, failed = Array.isArray(answer.body?.failed) ? answer.body.failed : [];   // Why (6/7 review): a null or odd `failed` is no failure of ours
     const line = `feedback-released: ${tag} (stable, ${prs.length} PRs since ${prev || 'no earlier stable'}): told ${told}, still waiting ${waiting}${failed.length ? `, NOT confirmed ${failed.length}` : ''}`;
     if (failed.length) await send(note('Some reporters were not confirmed', `${failed.length} could not be confirmed (their cards say so on /admin/feedback/inbox)`, tag, env), env, fetcher).catch(() => {});
     return {ok: true, line};

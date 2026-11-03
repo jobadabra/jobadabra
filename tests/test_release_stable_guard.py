@@ -318,10 +318,10 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.feedback.count(f'workflow run feedback-released.yml -R jobadabra/jobadabra --ref main -f tag={TAG}'), 1, self.feedback)
 
-    def test_the_feedback_reporters_run_is_not_waited_for(self):
+    def test_the_feedback_reporters_run_is_started_and_never_watched(self):
         done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertNotIn('watched', self.feedback + self.calls + self.store, 'started, never watched: a slow call cannot delay the release')
+        self.assertNotIn('watched', self.feedback + self.calls + self.store, 'started, never watched with gh run watch (a guard for a later edit)')
 
     def test_a_tag_that_is_already_stable_or_a_dry_run_starts_no_feedback_run(self):
         for extra in ({'E2E_ALREADY_GREEN': '1', 'FAKE_PRERELEASE': 'false'}, {'E2E_ALREADY_GREEN': '1', 'DRY_RUN': '1'}):
