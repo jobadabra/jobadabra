@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The numbers behind the admin tab "CI Agents" (owner, 3 Nov 2026): for each agent of tools/ci-agents.json its last runs, whether it is on, and what it opened in 30 days (PRs by branch prefix, issues by label).
+// The numbers behind the admin section AI, pages Agents and AI steps (owner, 3 Nov 2026): for each agent and AI step of tools/ci-agents.json its last runs, whether it is on, and what it opened in 30 days (PRs by branch prefix, issues by label).
 // Counts and short fixed labels only: no PR title, issue text, branch name or log leaves GitHub. Report only: it never blocks anything. No AI, $0.
 //   node tools/ci-agents-stats.mjs [--out agents.json] [--input input.json --now 2026-11-03T12:00:00Z]
 // Needs gh with GH_TOKEN unless --input. --out writes the body agent-coding-stats.yml PUTs to /agent-coding/data (kind "agents"; the site keeps one row per day).
