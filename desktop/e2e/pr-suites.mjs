@@ -130,7 +130,7 @@ try {
     for (const suite of Object.keys(steps)) {
       if (!map.suites?.[suite]?.stores) continue;
       const chosen = storeFor(map.suites[suite], steps[suite]);
-      if (!chosen.steps.length) { delete steps[suite]; continue; }   // every picked step is the Notion path's (stand-in only): the suite runs whole on this Mac's store
+      if (!chosen.steps.length) { dropped[suite] = chosen.dropped; delete steps[suite]; continue; }   // every picked step is the Notion path's (stand-in only): named, and the suite runs whole on this Mac's store
       stores[suite] = chosen.store; steps[suite] = chosen.steps;
       if (chosen.dropped.length) dropped[suite] = chosen.dropped;
     }

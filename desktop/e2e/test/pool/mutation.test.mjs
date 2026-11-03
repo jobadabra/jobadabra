@@ -137,6 +137,13 @@ test('each test runs the way CI runs it, from its own folder', () => {
   for (const mutant of mutants.filter(isTestMutant)) assert.doesNotThrow(() => testCommand(mutant.test), mutant.id);
 });
 
+// Gitar on #3029: the store default's swap glued "-f mutant" to the store ("store=sqlite-f mutant=…"), so the issue's replay line could not run as written.
+test('a missed suite mutant\'s issue gives a replay line that runs as written: its suite, its store (this Mac\'s by default) and the mutant', () => {
+  const runOn = store => issueBody(score([{id: 'x-not-held', suite: 'apply', what: 'the hold is cut short', ...(store ? {store} : {})}], {[`baseline:apply${store ? `:${store}` : ''}`]: 'success', 'x-not-held': 'success'}).rows[0], 'https://run');
+  assert.match(runOn(''), /`gh workflow run e2e\.yml -f suite=apply -f store=sqlite -f mutant=x-not-held`/);
+  assert.match(runOn('standin'), /`gh workflow run e2e\.yml -f suite=apply -f store=standin -f mutant=x-not-held`/);
+});
+
 test('a missed test mutant\'s issue names its test and how to replay it on this Mac', () => {
   const [row] = score([{id: 'day', test: 'desktop/test/calendar.test.js', file: 'desktop/renderer/calendar.js', what: 'a day is lost'}], {[testBaselineKey('desktop/test/calendar.test.js')]: 'success', day: 'success'}).rows;
   const body = issueBody(row, 'https://run');

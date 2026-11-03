@@ -39,7 +39,7 @@ function aiPlanOutputs(suites, offlineAi, review) {
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 // clean-code-ok: Why (29 Oct 2026, st): old function; this change adds one option to its signature (offlineAi) and its score falls (63 to 62)
-export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [], now = Date.now()}) {
+export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], shards = {}, offlineAi = [], backbone = [], now = Date.now()}) {
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
@@ -166,9 +166,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
 export async function suiteFacts() {
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // suites/apply.mjs imports app code that needs desktop/shared/, which CI never staged (a crash hidden by the workflow's pipe)
   const {SUITES} = await import('./lib/context.mjs');
-  const cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [];
-  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.aiAnswers === 'backbone') backbone.push(suite); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; parts[suite] = module.parts; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); if (module.notion === false || module.light || module.store) storeless.push(suite); }   // storeless: no store to vary (no Notion part, a model-only eval, or a store of its own)
-  return {all: SUITES, cadence, watches, parts: Object.fromEntries(Object.entries(parts).filter(([, value]) => value)), judges, varies, sameOnEveryOs, storeless, shards, offlineAi, backbone, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
+  const cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], shards = {}, offlineAi = [], backbone = [];
+  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.aiAnswers === 'backbone') backbone.push(suite); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; parts[suite] = module.parts; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); }
+  return {all: SUITES, cadence, watches, parts: Object.fromEntries(Object.entries(parts).filter(([, value]) => value)), judges, varies, sameOnEveryOs, shards, offlineAi, backbone, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
     os: async (suite, options) => runnerOf(await import(`./suites/${suite}.mjs`), options)};
 }
 
