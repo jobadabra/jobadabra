@@ -136,11 +136,11 @@ Stays in `~/.claude` (memory, `rules-why.md`, quotes). **Distil** product lesson
 - A hub-staleness gate (see above).
 
 ## Progress
-- [ ] 1/8 This spec and plan, sketch to the owner
-- [ ] 2/8 L0 + hubs `feedback`, `ai`, `ci` + `check-map.mjs` and its one unit test + the two import/link lines in `CLAUDE.md`/`AGENTS.md` + `AGENTS.md` under 32 KiB by a pure move of area detail into the hubs
-- [ ] 3/8 Hubs `apply`, `search`, `data` with distilled lessons
+- [x] 1/8 This spec and plan, sketch to the owner (proof: docs/superpowers/specs/2026-11-03-harness-map-design.md @7da77f21)
+- [x] 2/8 L0 + hubs `feedback`, `ai`, `ci` + `check-map.mjs` and its one unit test + the two import/link lines in `CLAUDE.md`/`AGENTS.md` + `AGENTS.md` under 32 KiB by a pure move of area detail into the hubs (proof: desktop/test/guards/rules/map-check.test.js @9495ae71)
+- [x] 3/8 Hubs `apply`, `search`, `data` with distilled lessons (proof: docs/map/apply.md @8e640a35)
 - [ ] 4/8 Hubs `desktop`, `release`, `site`, `growth` with distilled lessons
-- [ ] 5/8 `tools/context/` fetchers Linear, Sentry, GitHub + `pack.mjs` + the read-only/scrub tests
+- [x] 5/8 `tools/context/` fetchers Linear, Sentry, GitHub + `pack.mjs` + the read-only/scrub tests (proof: desktop/test/guards/rules/context-fetchers.test.js)
 - [ ] 6/8 Fetchers PostHog, Cloudflare
 - [ ] 7/8 Fetcher Notion
 - [ ] 8/8 Evaluation with ca's 10-task measurement
