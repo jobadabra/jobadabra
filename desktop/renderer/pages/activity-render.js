@@ -125,7 +125,7 @@ export function renderActivity(fresh) {
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : ' · click to see why') : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
-    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
   } else {
     $('activity-title').textContent = 'No search yet';
     $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';

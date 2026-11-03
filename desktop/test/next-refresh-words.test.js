@@ -40,6 +40,6 @@ test('the footer after a run that stopped, with the next refresh already past: "
   warnIcon.className = 'ap-warn-icon';
   $('activity-warnings').append(warnIcon);
   renderActivity({running: null, runs: [stopped], queued: [], nextSearchAt: past, nextMailAt: null, nextScoutAt: null, historyLoaded: true});
-  assert.match($('activity-meta').textContent, /Next refresh due now/);
-  assert.doesNotMatch($('activity-meta').textContent, /Next refresh \d/);
+  assert.match($('activity-meta').textContent, /Next refresh: due now/);
+  assert.doesNotMatch($('activity-meta').textContent, /Next refresh: \d/);
 });
