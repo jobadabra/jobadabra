@@ -14,6 +14,7 @@
 - Signed-in proof (31 Oct): "My own try, local main". Build behind the off-by-default switch, then the owner turns it on once in their own app; a checkpoint stops us (disguise stays the owner's decision). No test touches their session.
 - Web Store (31 Oct): "Accept, fallback desktop-only". If review rejects the cookie read, the path moves to the desktop-bundled extension build.
 - Where the person finds the switch (owner, 31 Oct): "When the user presses Find jobs for the first, or for the second time, we should popup and ask about this." / "And/or it should be in the Suggestions card" / "Somewhere to easily found by the user".
+- Sign-in without the extension (owner, 3 Nov 2026, after "Turn on LinkedIn for jobs search doesn't work"): "a headless chromium with the playwirght might be enough (as long as we can copy/get the user's linkedin session)"; his choice: **"Both: window first (Recommended)"**. See "Sign-in window" below: the window is the first way; the extension copy stays as a shortcut.
 - This relaxes, on purpose: CLAUDE.md Safety ("go past a login wall (LinkedIn …): only through the user's own visit"), `docs/rules/why.md:13`, `docs/rules/applying.md:53` (26 Oct: "shouldn't start automatically in the background").
 
 ## Behaviour
@@ -37,10 +38,10 @@ All three open **one consent** (the dialog); On requests the two optional permis
 | State | When | Card says |
 |---|---|---|
 | `off` | switch off (default) | nothing; no cookie access, no browser |
-| `no-session` | on, no LinkedIn cookies found in Chrome | "LinkedIn: sign in to LinkedIn in Chrome, then press Find jobs" |
+| `no-session` | on, no LinkedIn cookies found in Chrome | "LinkedIn: sign in to LinkedIn (Settings → Connections → LinkedIn), then press Find jobs" |
 | `reading` | on, step running | "LinkedIn: reading search 2 of 3" |
 | `done` | step finished | "LinkedIn: N jobs read" (or "none new") |
-| `signed-out` | owned browser lands on a login page | "LinkedIn: sign in again in Chrome" (no retry this run) |
+| `signed-out` | owned browser lands on a login page | "LinkedIn: sign in again (Settings → Connections → LinkedIn)" (no retry this run) |
 | `check` | checkpoint / verification / bot-check page | "LinkedIn asked for a check" (no retry, not solved) |
 | `limited` | 401/403/429 | "LinkedIn asked us to slow down"; 429 = skip for a day, others for this run |
 | `no-browser` | background browser not downloaded | "Download Jobadabra's browser (one time)" with progress and Cancel (existing add-on) |
@@ -48,6 +49,16 @@ All three open **one consent** (the dialog); On requests the two optional permis
 | `stopped` | Stop was pressed | "LinkedIn: stopped" |
 
 Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTTP status, Stop, deadline. Nothing else.
+
+## Sign-in window (owner, 3 Nov 2026: "Both: window first")
+**Verdict:** "Sign in to LinkedIn" opens a Jobadabra window on LinkedIn's own sign-in page. The person signs in once (their password, their checks and codes, typed by them on LinkedIn's page); the app then copies the two sign-in cookies into the Keychain exactly as the extension copy does today, clears the window's storage and closes it. Everything after (the hidden read, Stop, the Keychain rules) is unchanged. No extension, no Chrome. Mac first: Windows has no credential store for the session yet (parked as JOB-254), so there the window refuses before it opens (`no-keychain`).
+- **Window:** an Electron window with its own storage partition (`linkedin-signin`, not the app's), no preload, no node, sandboxed, honest user agent (Electron's own default, which names Electron). Links to other hosts open in the default browser; the window never leaves linkedin.com. Closing it = cancel (nothing saved, storage cleared); 10 minutes without a sign-in ends it the same way.
+- **One verdict for "signed in":** a `li_at` cookie is set in the partition AND the page left LinkedIn's sign-in and checkpoint paths (`/login`, `/uas`, `/checkpoint`, `/authwall`, `/signup`, `/add-phone`). Then: `cleanCookies` (the same allow-list: li_at, JSESSIONID) → `saveSession` (Keychain) → switch on → storage cleared → window closed → "LinkedIn jobs is on". The window's check pages (code by SMS or e-mail, captcha) are the person's to answer in their own window; the app never reads, fills or clicks anything in it.
+- **The extension copy stays as a shortcut** ("Use my Chrome sign-in", shown only while the extension is connected): the dialog and the refresh at each Find jobs are as before. `signed-out` and `no-session` now point to Settings → Connections → LinkedIn, whose button opens the window.
+- **Measured (3 Nov 2026, standalone probe, no sign-in):** LinkedIn's own `/login` page renders in an Electron window with the honest default user agent (`… Chrome/152 Electron/44.4.5 Safari/537.36`): email and password fields, Google and Apple options, no "unsupported browser" wall. A real sign-in through it is unproven until the owner's own try; if LinkedIn blocks it in this window, **stop: a new owner decision** (no disguise).
+- **Every press is logged** (owner's ask via mac-07, 3 Nov 2026): `linkedin-jobs: press {path: window|extension, outcome (window) | opened, starting, reason, browser, idSource (extension)}` in app.log; never a cookie value, a URL with a query or a page's text. Why: tonight's cause was unprovable from the owner's machine because the log never recorded the press.
+- **Relaxed on purpose (on top of the 31 Oct list):** "never types a password" stays true for us (the person types it, on LinkedIn's page, in our window; nothing is injected or read); what changes is that the app now **hosts** LinkedIn's sign-in page. Checks and codes there are the person's to solve ("a captcha is the user's to solve", refused-sites rule), never ours.
+- **Not changed:** the session is a credential (Keychain only, never logged), the read pace, the 3×3 cap, Stop, `no-browser` (the hidden reader's one-time download), tests never touch the owner's session (a fake partition and a fake LinkedIn page).
 
 ## Safety (all of CLAUDE.md Safety still holds)
 - Never solves a captcha or check, never uses an SMS code, never types a password; a login page or checkpoint ends LinkedIn for the run.
@@ -98,3 +109,5 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 - [x] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, proven on stand-ins (reader #2699; the e2e suite of PR 2b became integration tests when J4 went to tier 2, 2 Nov 2026) (proof: desktop/integration/app/linkedin-read.test.js)
 - [x] PR 3/3 Rules and docs: CLAUDE.md, why.md, applying.md, Decision Log row (#2709; Notion row 40a62be8-fd86-815f-b622-ccdcee530c3c) (proof: docs/rules/why.md @33fc161)
 - [ ] Owner's signed-in try on local main
+- [x] Sign-in window: "Sign in to LinkedIn" opens a Jobadabra window on LinkedIn's own page, cookies → Keychain, extension copy kept as a shortcut, every press logged (owner's yes 3 Nov 2026) (proof: desktop/lib/linkedin-signin-window.js, desktop/test/linkedin-signin-window.test.js)
+- [ ] Owner's real sign-in through the window (unproven until then; if LinkedIn blocks it: stop, no disguise)

@@ -13,7 +13,7 @@ test('the Suggestions entry: one row while off, with the one-click action and No
   assert.equal(rest.length, 0);
   assert.equal(entry.kind, 'linkedin');
   assert.equal(entry.key, KEY);
-  assert.deepEqual(entry.actions, [{label: 'Turn on LinkedIn', do: 'turn_on_linkedin'}]);
+  assert.deepEqual(entry.actions, [{label: 'Sign in to LinkedIn', do: 'turn_on_linkedin'}]);
   assert.deepEqual(entry.answers, ['Not now']);
   assert.equal(entry.home, 'focus');
   assert.deepEqual(linkedinEntries({view: {...off, on: true}}), [], 'on: no entry');
@@ -39,10 +39,12 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
     const words = CONSENT[mode];
     assert.equal(words.line, LINE);
     assert.match(words.lead, /background/);
-    assert.match(words.lead, /sign-in from Chrome/);
-    assert.match(words.lead, /on this Mac/);
+    assert.match(words.lead, /in a Jobadabra window, on LinkedIn's own page/, 'the sign-in window (owner, 3 Nov 2026), not Chrome');
+    assert.match(words.lead, /you type your password there and Jobadabra never sees it/);
+    assert.match(words.lead, /stays on this Mac/);
     assert.match(words.lead, /Settings → Connections → LinkedIn/);
-    assert.equal(words.yes, 'Turn on LinkedIn');
+    assert.equal(words.yes, 'Sign in to LinkedIn');
+    assert.equal(words.chrome, 'Use my Chrome sign-in', 'the shortcut, shown only while the extension is connected');
     assert.equal(words.no, 'Not now');
   }
   assert.equal(CONSENT.manage.yes, 'Turn off');
@@ -62,4 +64,8 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
   assert.equal(html.match(/id="linkedin-dialog"/g)?.length, 1);
   assert.match(html, /<dialog id="linkedin-dialog" class="save-dialog panel-dialog">/);
+  assert.match(html, /<button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden><\/button>/, 'the Chrome shortcut button is hidden until the page shows it');
+  const page = fs.readFileSync(new URL('../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
+  assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
 });

@@ -79,3 +79,19 @@ test('the toast has words for every reason, names the extension as connected onl
   assert.match(notOpened({reason: 'chrome', note: 'Chrome runs Jobadabra extension 0.9.700, older than this app\'s 0.9.755: reload it once.'})[1], /0\.9\.700/, 'an older copy\'s note is added');
   assert.equal(notOpened(null)[0], 'Chrome extension needed', 'no answer at all reads as missing');
 });
+
+// Owner, 3 Nov 2026: "log every Turn on LinkedIn press and its outcome": one line per press, the way it was opened (check-in or scan), the browser and the reason; never a cookie.
+test('every extension press leaves one app.log line: how the page was found, the browser, the outcome', async () => {
+  const lines = [];
+  const press = ({checkIn, scan = [], opens = true}) => linkedinPageOpener({server: {extensionSeen: () => checkIn, latestExtension: () => '0.9.755'}, installed: () => scan, open: async () => opens, log: (...line) => lines.push(line)});
+  await press({checkIn: seen})();
+  await press({checkIn: seen, opens: false})();
+  await press({checkIn: null})();
+  await press({checkIn: null, scan: [{id: 'zzz', app: 'Google Chrome', current: true}]})();
+  assert.deepEqual(lines.map(([area, what, fields]) => [area, what, fields.path, fields.opened, fields.reason, fields.idSource, fields.browser]), [
+    ['linkedin-jobs', 'press', 'extension', true, '', 'check-in', ''],
+    ['linkedin-jobs', 'press', 'extension', false, 'chrome', 'check-in', ''],
+    ['linkedin-jobs', 'press', 'extension', false, 'missing', 'none', ''],
+    ['linkedin-jobs', 'press', 'extension', true, '', 'scan', 'Google Chrome'],
+  ]);
+});

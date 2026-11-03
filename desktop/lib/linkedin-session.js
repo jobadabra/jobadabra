@@ -34,7 +34,7 @@ export function cleanCookies(list) {
 /** Store the copied session in the Keychain and turn the switch on. -> {ok: true} | {ok: false, error}; the value is never in the answer. */
 export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
   const clean = cleanCookies(cookies);
-  if (!clean) return {ok: false, error: 'No LinkedIn sign-in found in Chrome. Sign in to LinkedIn there, then try again.'};
+  if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
   save(storage, {on: true});
   return {ok: true};

@@ -45,6 +45,7 @@ on:
       - 'desktop/lib/google-keys.js'
       - 'desktop/lib/install-source.js'
       - 'desktop/lib/keychain.js'
+      - 'desktop/lib/linkedin-handlers.js'
       - 'desktop/lib/kill-tree.js'
       - 'desktop/lib/main-window.js'
       - 'desktop/lib/office.js'

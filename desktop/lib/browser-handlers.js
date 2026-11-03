@@ -12,9 +12,10 @@ import {reloadFormTab} from './form-tab.js';
 import {launchOnce} from './chrome-launch-once.js';
 import {extensionTarget, linkedinPageOpener, openExtensionPage} from './extension-target.js';
 import {registerLinkedinHandlers} from './linkedin-handlers.js';
+import {createSignIn} from './linkedin-signin-window.js';
 
 export function registerBrowserHandlers(ctx) {
-  const {app, clipboard, DEMO, ipcMain, openNotion, shell, showForm, storage} = ctx;
+  const {app, BrowserWindow, clipboard, DEMO, HIDDEN, ipcMain, openNotion, shell, showForm, storage} = ctx;
   // "Open filled form": Chrome, switched to the form's tab (lib/form-tab.js).
   // "Open filled form": the session's form tab through the extension (an empty label: bring it forward, no scroll).
   // `taken` says whether the page's panel answered — the one thing the window needs to know whether the "Reload the
@@ -100,7 +101,7 @@ export function registerBrowserHandlers(ctx) {
     const copy = found.find(entry => entry.current) || found[0] || null;
     return extensionTarget({seen: server.extensionSeen(), found}) ? await openPage('options.html') : await extensionInstall.openOptionsPage(copy?.folder || extensionFolder());
   }, () => server.extensionSeen()?.at || 0));
-  // LinkedIn jobs (lib/linkedin-handlers.js): its consent page is the extension's own; no extension, no page ({opened: false}).
+  // LinkedIn jobs (lib/linkedin-handlers.js): the person signs in in a Jobadabra window (lib/linkedin-signin-window.js); the extension's own consent page is the shortcut when it is connected.
   // A press that opened nothing says why (lib/extension-target.js): never "extension needed" while the extension has checked in.
-  registerLinkedinHandlers({DEMO, ipcMain, server, storage, openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
+  registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn: createSignIn({BrowserWindow, shell, hidden: HIDDEN}), openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
 }
