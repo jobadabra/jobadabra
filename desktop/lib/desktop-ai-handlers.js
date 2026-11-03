@@ -11,6 +11,8 @@ import {aboutYou} from './about-you.js';
 import {logFile} from './log.js';
 import {setDesktopAiSources} from './desktop-ai-server.js';
 import * as changes from './desktop-ai-changes.js';
+import * as connection from './desktop-ai-connect.js';
+import {portFrom} from './server-listen.js';
 import * as writes from './desktop-ai-writes.js';
 import {jobsData} from '../renderer/feedback-data.js';
 
@@ -53,7 +55,17 @@ export function desktopAiSources({app, storage, getWindow, getPlan, profileOf = 
   };
 }
 
-/** Called once from the app's handler registration. Demo mode registers nothing: every tool then says it is not available. */
-export function registerDesktopAi({DEMO, ...deps}) {
+/**
+ * Called once from the app's handler registration. Demo mode registers no tools (every tool then says it is not available) and the Connect channels answer "off" / an empty list.
+ * `ipcMain` and `shell` give the window its Connect, Disconnect, state, change list and Undo (lib/desktop-ai-connect.js); a test, the demo and the smoke run never start the file.
+ */
+export function registerDesktopAi({DEMO, ipcMain, shell, ...deps}) {
   setDesktopAiSources(DEMO ? null : desktopAiSources(deps));
+  if (!ipcMain) return;
+  const {storage, app} = deps, quiet = DEMO || Boolean(process.env.JOBADABRA_E2E || process.env.JOBADABRA_SMOKE);
+  ipcMain.handle('desktopAiState', () => (DEMO ? {state: 'off', connectedAt: '', lastUsedAt: ''} : connection.stateOf(storage)));
+  ipcMain.handle('desktopAiConnect', () => connection.connect(storage, {version: app.getVersion(), port: portFrom(), openFile: file => shell.openPath(file), quiet}));
+  ipcMain.handle('desktopAiDisconnect', () => (DEMO ? {ok: true} : connection.disconnect(storage)));
+  ipcMain.handle('desktopAiChanges', () => (DEMO ? [] : connection.changesOf(storage)));
+  ipcMain.handle('desktopAiUndo', (_, id) => (DEMO ? {ok: false, error: 'Demo mode: nothing to undo.'} : connection.undo(storage, id)));
 }
