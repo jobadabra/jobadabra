@@ -1,6 +1,7 @@
 // The numbers of the self-healing loop, for the owner's page /self-heal (site/src/selfheal.js): every issue the loop filed, by the detector that found it and
 // how it ended (real and fixed, real and queued, false positive, duplicate, test or harness, unclear), the fixer's pull requests, the verdict pass, what the
 // AI cost, the recall of the planted bugs, and the real bugs worth knowing. Pure: the CLI (selfheal-stats.mjs) fetches, this computes. 4 Oct 2026.
+// Job: report health
 import {afterEpoch, STATS_SINCE} from './stats-epoch.mjs';
 import {resolutionCounts, resolutionOf} from './resolution.mjs';
 export const SCHEMA = 1;
