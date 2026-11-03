@@ -11,6 +11,8 @@ import {isSafe} from './interact.mjs';
 export const CHECKS = ['text_visible', 'text_missing', 'console_error', 'dead_control'];
 export const KEYS = ['Escape', 'Tab', 'Shift+Tab', 'ArrowDown', 'ArrowUp'];
 export const ACTIONS = ['click', 'type', 'press', 'go', 'report_bug', 'done'];
+/** The actions a run may answer with: the explorer's, minus `extend.without` (an agent notes bugs with `note`, so report_bug is not offered), plus `extend.actions`. */
+export const actionsOf = extend => [...ACTIONS.filter(action => !extend?.without?.includes(action)), ...(extend?.actions || [])];
 const KINDS = ['functionality', 'error-shown', 'text', 'layout', 'consistency', 'empty-state'];
 const SEVERITIES = ['high', 'medium', 'low'];
 
@@ -20,7 +22,7 @@ const SEVERITIES = ['high', 'medium', 'low'];
  */
 export function actionSchema(views, extend = null) {
   const text = {type: 'string'}, choice = values => ({type: 'string', enum: ['', ...values]});
-  const properties = {action: {type: 'string', enum: [...ACTIONS, ...(extend?.actions || [])]}, control: {type: 'integer'}, text, key: choice(KEYS), view: choice(views),
+  const properties = {action: {type: 'string', enum: actionsOf(extend)}, control: {type: 'integer'}, text, key: choice(KEYS), view: choice(views),
     title: text, kind: choice(KINDS), severity: choice(SEVERITIES), what: text, check_type: choice(CHECKS), check_text: text, check_control: text, summary: text, ...(extend?.properties || {})};
   return {type: 'object', additionalProperties: false, required: Object.keys(properties), properties};
 }
@@ -102,7 +104,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 160)}`; break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, [...ACTIONS, ...(extend?.actions || [])]), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
+    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
     const turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     // Older page views are dropped from the conversation: the latest one is what matters, and the prompt stays short.
@@ -146,7 +148,7 @@ function stepOf(input, control) {
 async function takeTurn({input, act, seen, steps, bugs, views, row, extend}) {
   if (input.error) return {reply: `Refused: ${input.error}.`, seen, finished: false};
   if (input.action === 'done') return {reply: 'Stopped.', seen, finished: true};
-  if (extend?.actions.includes(input.action)) return {reply: extend.take(input, row, {steps}), seen, finished: false};
+  if (extend?.actions.includes(input.action)) return {reply: await extend.take(input, row, {steps}), seen, finished: false};
   if (input.action === 'report_bug') return {reply: takeReport(input, steps, bugs, row), seen, finished: false};
   const refused = refusal(input, seen, views);
   if (refused) return {reply: refused, seen, finished: false};

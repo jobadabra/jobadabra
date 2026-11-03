@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../../lib/agent-run.mjs';
-import {actionSchema, explore, parseAction} from '../../lib/explore.mjs';
+import {actionSchema, actionsOf, explore, parseAction} from '../../lib/explore.mjs';
 import {planSession} from '../../lib/agent-plan.mjs';
 
 const seen = {view: 'profile', text: 'Profile\nPhone: Phone number', overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false, cls: '', href: '', type: ''}]};
@@ -70,4 +70,24 @@ test('the session shares its steps between the goals and starts each with the go
   assert.equal(prompts[0], `${goalIntro(plan.goals[0], '- jobs-1 a rule')}\n\nStart. You have at most 10 steps.\n\n${(await import('../../lib/explore.mjs')).formatObservation(seen)}`);
   const lonely = await explore({act: fakeAct(), ask: async () => done('worked'), views: [], caps: {maxSteps: 2}});
   assert.equal(lonely.final.action, 'done');
+});
+
+test('an agent is not offered report_bug (its bugs would be lost): the answer shape has note instead, and a report_bug answer is refused', async () => {
+  const extend = agentExtend({knowledgeIds: [], views: [], goal: {n: 1}, sink: []});
+  assert.deepEqual(actionsOf(extend), ['click', 'type', 'press', 'go', 'done', 'note']);
+  assert.ok(!actionSchema(['jobs'], extend).properties.action.enum.includes('report_bug'));
+  const result = await explore({act: fakeAct(), ask: script([turn('report_bug', {title: 'x'}), done('worked')]), views: [], caps: {maxSteps: 3}, extend});
+  assert.equal(result.bugs.length, 0);
+  assert.equal(result.trace[0].action, 'invalid');
+});
+
+test('the second opinion sees the screen as it was when the note was made, not where the session ended', async () => {
+  let shots = 0;
+  const shoot = async () => `shot-${++shots}`;
+  const judged = [];
+  const judgeAsk = async ({messages}) => { judged.push(messages[0].content[0].source.data); return {text: JSON.stringify({verdict: 'agrees', reason: 'ok'}), usage: {}, tier: 'mid', engine: 'codex'}; };
+  const ask = script([turn('note', NOTE), done('bug'), turn('go', {view: 'jobs'}), done('worked'), done('worked')]);
+  await runSession({act: fakeAct(), ask, judgeAsk, views: ['profile', 'jobs'], plan, knowledgeIds: ['profile-4'], shoot});
+  assert.deepEqual(judged, ['shot-1']);
+  assert.equal(shots, 1);
 });
