@@ -187,7 +187,7 @@ export async function init() {
 }
 
 
-export {clockTime, showSearchStatus, stepWords, liveCount, searchPhase, KIND, kindOf, hhmm, capital, outcome, refreshGmailConnection, COMMAND_KIND, TASK_BUTTONS, mailReportOf, cardFor} from './activity-basics.js';
+export {clockTime, showSearchStatus, stepWords, liveCount, searchPhase, KIND, kindOf, hhmm, nextWords, capital, outcome, refreshGmailConnection, COMMAND_KIND, TASK_BUTTONS, mailReportOf, cardFor} from './activity-basics.js';
 export {renderVisitsCard} from './activity-visits.js';
 export {lastActivity, prepareActions, unqueue, renderActivity} from './activity-render.js';
 export {showJob, refreshActivity} from './activity-run-card.js';
