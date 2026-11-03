@@ -84,11 +84,15 @@ const write = (storage, source) => {
   writePrivate(jsonOf(storage, source.id), JSON.stringify(source, null, 2) + '\n');
 };
 
+/** True when the person already has the most extra CV versions; the one place the limit is decided (the handler asks it before the file picker). */
+export const atLimit = storage => list(storage).length >= MAX_SOURCES;
+export const LIMIT_ERROR = `Up to ${MAX_SOURCES} extra CV versions: remove one first.`;
+
 // Add another CV version: kept as a file, read, compared with the main CV. Needs the main CV (cv/cv.json) to compare with.
 export async function addCv(storage, file, name, {apiKey = '', client = null, now = new Date(), onStep = () => {}} = {}) {
   const main = baseCv(storage);
   if (!main) throw new Error('Read your main CV first: the other versions are compared with it.');
-  if (list(storage).length >= MAX_SOURCES) throw new Error(`Up to ${MAX_SOURCES} extra CV versions: remove one first.`);
+  if (atLimit(storage)) throw new Error(LIMIT_ERROR);
   const pdf = fs.readFileSync(file);
   const digest = crypto.createHash('sha256').update(pdf).digest('hex');
   const same = list(storage).find(s => s.digest === digest);
