@@ -17,12 +17,12 @@ const PRICE = {input: 2, output: 10};  // USD per million tokens
 const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
 
 // ---------- the text, in the order a parser reads it ----------
+const LATIN_LIGATURES = /[\uFB00-\uFB06]/g;   // ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ as their letters: some PDFs map the glyph to one of these code points, which a parser and the AI read as another character
 /**
  * The text items of one visual line, left to right, with items that touch joined into one run. A ligature glyph (fi, fl, ffi) or a font change inside a word arrives as its own
  * item with no gap before it; joined with a space it read "fi nancial" and, between two long items, looked like a second column (Windows tester, 3 Nov 2026, issue #3061).
  * A gap over a quarter of the left item's average character width is a real space and stays one.
  */
-const LATIN_LIGATURES = /[\uFB00-\uFB06]/g;   // ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ as their letters: some PDFs map the glyph to one of these code points, which a parser and the AI read as another character
 export function runsOf(row) {
   const runs = [];
   for (const item of [...row].sort((a, b) => a.x - b.x)) {
