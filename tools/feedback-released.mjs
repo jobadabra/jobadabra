@@ -11,7 +11,7 @@ import {send} from '../desktop/e2e/ci-alert.mjs';
 import {commitOf} from '../desktop/e2e/release-alert.mjs';
 
 const URL_DEFAULT = 'https://www.jobadabra.top/api/feedback/released';
-const MAX_EARLIER = 50;   // lookups per release: two GitHub calls each, only for cards still waiting
+const MAX_EARLIER = 50, EARLIER_BUDGET_MS = 120000;   // lookups per release (a few GitHub calls each, only for cards still waiting) and the time they may take together
 const TAG = /^desktop-v(\d+(?:\.\d+)*)$/;
 
 /** The PR numbers in commit subjects: the "(#123)" a squash merge puts at the end of the first line. Sorted, no duplicates. */
@@ -55,21 +55,24 @@ const MAX_COMMITS = 3000;
  * The first lines of ALL commits in prev...tag. GitHub lists them oldest first, 100 a page, so a range that is not read to its end would lose the newest PRs, the ones this release is about:
  * the pages are counted from `total_commits`, and a range over MAX_COMMITS fails loudly (Why, 6/7 code review, 3 Nov 2026: 0.8.60...0.8.86 is 766 commits, a long hold is more than 500).
  */
-async function subjectsBetween(prev, tag, env, fetcher) {
+const subjectsBetween = async (prev, tag, env, fetcher) => (await rangeBetween(prev, tag, env, fetcher)).lines;
+/** -> {status, lines}: GitHub's compare status of base...tag ("ahead" = base is an ancestor of the tag) and the first line of every commit in it, oldest first. */
+async function rangeBetween(prev, tag, env, fetcher) {
   const lines = [];
-  let pages = 1;
+  let pages = 1, status = '';
   for (let page = 1; page <= pages; page++) {
     const answer = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/compare/${encodeURIComponent(prev)}...${encodeURIComponent(tag)}?per_page=100&page=${page}`, env, fetcher);
     if (!answer.ok) throw new Error(`compare ${prev}...${tag}: HTTP ${answer.status}`);
     const body = await answer.json();
     if (page === 1) {
+      status = String(body.status || '');
       const total = Number(body.total_commits) || (body.commits || []).length;
       if (total > MAX_COMMITS) throw new Error(`${prev}...${tag} is ${total} commits: more than ${MAX_COMMITS}, the list of pull requests would be cut`);
       pages = Math.ceil(total / 100);
     }
     lines.push(...(body.commits || []).map(commit => String(commit.commit?.message || '').split('\n')[0]));
   }
-  return lines;
+  return {status, lines};
 }
 
 /**
@@ -78,20 +81,24 @@ async function subjectsBetween(prev, tag, env, fetcher) {
  * commit is an ancestor of the tag (GitHub compare <merge commit>...<tag> says ahead or identical) is inside this release. Never throws and never blocks: a PR that cannot be read stays waiting, the next release asks again.
  * -> [PR numbers] sorted, not already in `listed`, at most MAX_EARLIER lookups.
  */
-export async function earlierFixes({tag, url, key, listed, env, fetcher}) {
+export async function earlierFixes({tag, url, key, listed, env, fetcher, now = Date.now}) {
+  const found = [], started = now();
   try {
     const answer = await fetcher(url, {method: 'GET', headers: {Authorization: `Bearer ${key}`}, signal: AbortSignal.timeout(20000)});
     const waiting = answer.ok ? (await answer.json().catch(() => null))?.prs : null;
-    const found = [];
     for (const number of (Array.isArray(waiting) ? waiting : []).filter(n => Number.isInteger(n) && n > 0 && !listed.includes(n)).slice(0, MAX_EARLIER)) {
-      const pull = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/pulls/${number}`, env, fetcher);
-      const sha = pull.ok ? (await pull.json().catch(() => null))?.merge_commit_sha : null;
-      if (!sha) continue;   // not merged, or unreadable: still waiting
-      const inside = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/compare/${sha}...${encodeURIComponent(tag)}`, env, fetcher);
-      if (inside.ok && ['ahead', 'identical'].includes((await inside.json().catch(() => null))?.status)) found.push(number);
+      if (now() - started > EARLIER_BUDGET_MS) break;   // the own-PR POST must still fit the workflow's 10 minutes
+      try {
+        const pull = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/pulls/${number}`, env, fetcher);
+        const data = pull.ok ? await pull.json().catch(() => null) : null;
+        if (!data?.merged_at || !data.merge_commit_sha) continue;   // not merged (an open PR can still carry a test-merge sha), or unreadable: still waiting
+        const {status, lines} = await rangeBetween(data.merge_commit_sha, tag, env, fetcher);
+        // A revert anywhere between the merge and the tag takes the fix out (prNumbers reads them oldest first), exactly as it does inside a release's own range.
+        if (['ahead', 'identical'].includes(status) && prNumbers([`merge (#${number})`, ...lines]).includes(number)) found.push(number);
+      } catch { /* this PR stays waiting, the next release asks again */ }
     }
-    return found.sort((a, b) => a - b);
-  } catch { return []; }
+  } catch { /* the site could not list its waiting cards: nothing earlier this time */ }
+  return found.sort((a, b) => a - b);
 }
 
 /** One POST to the site, bounded: 20 s each, up to `tries` on a network error or a 5xx (`wait` ms between); a 4xx is final. -> {ok, status, body, tries} (status 0 = no answer). */

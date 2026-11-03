@@ -2,7 +2,7 @@
 // Owner, 3 Nov 2026: reporters hear "fixed" when the build is stable; mac-07: a slow or failing call never fails, delays or blocks a release. The GitHub API, the site and Telegram are all recorded fakes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {post, prNumbers, previousStable, tellSite} from '../../tools/feedback-released.mjs';
+import {earlierFixes, post, prNumbers, previousStable, tellSite} from '../../tools/feedback-released.mjs';
 
 const TAG = 'desktop-v0.9.13', ENV = {GITHUB_REPOSITORY: 'jobadabra/jobadabra', GH_TOKEN: 'gh', SELFHEAL_PUBLISH_KEY: 'publish-key', CI_ALERTS_TELEGRAM_BOT_TOKEN: 'bot', CI_ALERTS_TELEGRAM_CHAT_ID: '1', GITHUB_RUN_ID: '77'};
 const json = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
@@ -123,7 +123,7 @@ test('an odd "failed" from the site is not a failure of ours', async () => {
 // Why (owner, 3 Nov 2026; card c1ea31a0): #3031 shipped in 0.9.4, its card was marked fixed after that release was told, and every later release's list is "since the previous stable", so it stayed
 // waiting through 0.9.6. The site names the PRs its waiting cards hold; the tag says which of them it contains (the merge commit is an ancestor), and those go in `prs` too.
 test('a waiting card whose PR shipped in an EARLIER release is sent with this release when the tag contains its merge commit', async () => {
-  const contains = url => json({status: url.includes('mergemerge3031') || url.includes('merge3031...') ? 'ahead' : 'diverged'});
+  const contains = url => json({status: url.includes('merge3031...') ? 'ahead' : 'diverged', total_commits: 0, commits: []});
   const net = network({github: {waiting: json({ok: true, prs: [3031, 3500, 3012]}), contains}});
   const done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0});
   assert.equal(done.ok, true, done.line);
@@ -133,10 +133,32 @@ test('a waiting card whose PR shipped in an EARLIER release is sent with this re
 
 test('an unmerged PR, a lookup that fails or a site that cannot list its waiting cards never stop the release from telling its own PRs', async () => {
   const sent = async github => { const net = network({github}), done = await tellSite({tag: TAG, env: ENV, fetcher: net.fetcher, wait: 0}); return {done, prs: JSON.parse(net.site()[0].init.body).prs}; };
-  const unmerged = await sent({waiting: json({ok: true, prs: [3031]}), pull: () => json({merged_at: null, merge_commit_sha: null})});
+  const unmerged = await sent({waiting: json({ok: true, prs: [3031]}), pull: () => json({merged_at: null, merge_commit_sha: 'testmerge'})});   // GitHub gives an open PR a test-merge sha
   assert.deepEqual(unmerged.prs, [3012, 3020]);
   const broken = await sent({waiting: json({ok: true, prs: [3031]}), pull: () => json({}, 500)});
   assert.equal(broken.done.ok, true, broken.done.line); assert.deepEqual(broken.prs, [3012, 3020]);
   const down = await sent({waiting: json({}, 503)});
   assert.equal(down.done.ok, true, down.done.line); assert.deepEqual(down.prs, [3012, 3020]);
+});
+
+// Review of this change (3 Nov 2026): a fix that was REVERTED must not be told as fixed, though its merge commit is still inside the tag; a revert anywhere between the merge and the tag takes it out.
+test('a waiting PR whose revert is in the tag is not sent; one lookup failing keeps the finds made before it', async () => {
+  const revert = {status: 'ahead', total_commits: 2, commits: [{commit: {message: 'Other (#3099)'}}, {commit: {message: 'Revert "Fix (#3031)" (#3040)'}}]};
+  const reverted = network({github: {waiting: json({ok: true, prs: [3031]}), contains: () => json(revert)}});
+  await tellSite({tag: TAG, env: ENV, fetcher: reverted.fetcher, wait: 0});
+  assert.deepEqual(JSON.parse(reverted.site()[0].init.body).prs, [3012, 3020], 'the revert cancels 3031');
+  const back = network({github: {waiting: json({ok: true, prs: [3031]}), contains: () => json({...revert, commits: [...revert.commits, {commit: {message: 'Revert "Revert "Fix (#3031)" (#3040)" (#3050)'}}]})}});
+  await tellSite({tag: TAG, env: ENV, fetcher: back.fetcher, wait: 0});
+  assert.deepEqual(JSON.parse(back.site()[0].init.body).prs, [3012, 3020, 3031], 'a revert of the revert puts it back');
+  const flaky = network({github: {waiting: json({ok: true, prs: [3031, 3032]}), contains: url => { if (url.includes('merge3032')) throw new Error('timeout'); return json({status: 'ahead', total_commits: 0, commits: []}); }}});
+  const done = await tellSite({tag: TAG, env: ENV, fetcher: flaky.fetcher, wait: 0});
+  assert.equal(done.ok, true, done.line);
+  assert.deepEqual(JSON.parse(flaky.site()[0].init.body).prs, [3012, 3020, 3031], '3031 was found before 3032 failed');
+});
+
+test('the lookups stop after their time budget, and the release still tells its own PRs', async () => {
+  let clock = 0;
+  const net = network({github: {waiting: json({ok: true, prs: [3031, 3032, 3033]}), contains: () => { clock += 100000; return json({status: 'ahead', total_commits: 0, commits: []}); }}});
+  const found = await earlierFixes({tag: TAG, url: 'https://x/api/feedback/released', key: 'k', listed: [], env: ENV, fetcher: net.fetcher, now: () => clock});
+  assert.deepEqual(found, [3031, 3032], 'the third lookup starts after 200 s of a 120 s budget and does not run');
 });
