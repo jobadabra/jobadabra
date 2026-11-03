@@ -5,7 +5,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 
-const renderer = fileURLToPath(new URL('../../../renderer/', import.meta.url));   // never `.pathname`: it is `/D:/a/…` on Windows (test/windows-paths.test.js)
+const renderer = fileURLToPath(new URL('../../../renderer/', import.meta.url));   // never `.pathname`: it is `/D:/a/…` on Windows (test/guards/rules/windows-paths.test.js)
 const css = fs.readdirSync(renderer).filter(name => name.endsWith('.css') && name !== 'tokens.css');
 
 test('no rule colours text with --navy', () => {

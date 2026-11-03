@@ -136,7 +136,7 @@ for (const [title, e2e, standin, base, expected] of [
     requested.push(url);
     return {ok: true, status: 200, json: async () => ({ok: true})};
   });
-  const client = await import(`../lib/notion-core.js?pace-control=${encodeURIComponent(title)}`);
+  const client = await import(`../../../lib/notion-core.js?pace-control=${encodeURIComponent(title)}`);
   const token = `standin-control-${process.pid}-${title}`, waits = [];
   let now = 1_000_000;
   client.useClock(() => now);

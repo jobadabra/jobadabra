@@ -7,7 +7,7 @@ import {test} from 'node:test';
 const read = file => fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
 
 test('Interviews find their job by the store\'s id too', () => {
-  // The matching itself is pure and tested on a SQLite-shaped list: test/jobs-view-interview.test.js.
+  // The matching itself is pure and tested on a SQLite-shaped list: test/unit/renderer/jobs-view-interview.test.js.
   assert.match(read('interview-lists.js'), /jobForPage = pageId => jobOfApplication\(jobList\(\), pageId\)/);
 });
 

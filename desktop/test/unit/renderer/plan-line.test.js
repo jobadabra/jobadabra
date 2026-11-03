@@ -38,7 +38,7 @@ test('the switch is one place: Pro on (test or live) or a key holder shows no li
   for (const state of [{}, {proMode: 'off'}, {proMode: undefined, ended: true}]) assert.ok(planLine(state), JSON.stringify(state));
 });
 
-// 17 Oct 2026 (owner): the quiet line became the Pro card with a waitlist button (test/pro-waitlist.test.js); the card is gated by the same rule, and nothing else shows the price.
+// 17 Oct 2026 (owner): the quiet line became the Pro card with a waitlist button (test/unit/renderer/pro-waitlist.test.js); the card is gated by the same rule, and nothing else shows the price.
 test('the Pro card replaces the quiet line: gated by planLine, no price in the sidebar counter or the setup wizard', () => {
   const html = read('../../../renderer/index.html');
   assert.doesNotMatch(html, /id="license-plan"/);

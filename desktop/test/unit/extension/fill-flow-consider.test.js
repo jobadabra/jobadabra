@@ -82,7 +82,7 @@ async function rig(t, options = {}) {
     tabs: {get: async (...args) => { calls.push(['tab', ...args]); return options.moved ? {...tab, url: 'https://jobs.example.test/next'} : tabReads.length > 1 ? tabReads.shift() : tabReads[0]; }},
     scripting: {executeScript: async spec => { calls.push(['script', spec.args || null]); if (options.endWriteRejected && spec.args?.[2] !== 'running') throw new Error('frame gone'); return [{result: true}]; }},
   };
-  const flow = await import(`../../extension/fill-flow.js?${key}`);
+  const flow = await import(`../../../../extension/fill-flow.js?${key}`);
   flow.initFillFlow({started, fillOpenedTab: asyncRecord('fill', result), reportFlow: asyncRecord('report'), progress: asyncRecord('say')});
   calls.length = 0;
   return {calls, started, run: () => flow.consider(tab, job)};

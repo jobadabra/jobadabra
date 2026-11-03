@@ -1,4 +1,4 @@
-// Driving Chrome for a session's tab (lib/form-tab.js). Which tab is the session's is lib/session-tab.js (test/session-tab.test.js); here: what happens around it.
+// Driving Chrome for a session's tab (lib/form-tab.js). Which tab is the session's is lib/session-tab.js (test/unit/main/session-tab.test.js); here: what happens around it.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {closeFormTab, listTabs, openFormTab, reloadFormTab} from '../../../lib/form-tab.js';

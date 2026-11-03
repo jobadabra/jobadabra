@@ -1,4 +1,4 @@
-// Jobadabra installed twice on Windows (Microsoft Store package + the downloaded .exe): detection only (the note's tests are test/two-installs-notice.test.js). The layout is the one measured on a Windows runner (msix-spike.yml, two-installs).
+// Jobadabra installed twice on Windows (Microsoft Store package + the downloaded .exe): detection only (the note's tests are test/unit/main/two-installs-notice.test.js). The layout is the one measured on a Windows runner (msix-spike.yml, two-installs).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

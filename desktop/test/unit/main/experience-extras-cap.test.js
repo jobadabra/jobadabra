@@ -12,7 +12,7 @@ import {createStorage} from '../../../lib/storage.js';
 import {install} from '../../tiny-dom.js';
 
 install();
-// Why (fx, 3 Nov 2026): importing a renderer page can start timers; unref-ed so the test process exits (see test/cv-replace.test.js).
+// Why (fx, 3 Nov 2026): importing a renderer page can start timers; unref-ed so the test process exits (see test/unit/renderer/cv-replace.test.js).
 const realInterval = globalThis.setInterval;
 globalThis.setInterval = (...args) => realInterval(...args).unref();
 const doc = globalThis.document, found = doc.getElementById.bind(doc);

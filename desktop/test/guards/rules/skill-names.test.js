@@ -22,7 +22,7 @@ test('every skill folder holds a SKILL.md whose name: is the folder', () => {
 test('no tracked file still uses a retired skill name', () => {
   const left = [];
   for (const file of tracked()) {
-    if (file === 'desktop/test/skill-names.test.js' || /\.(png|jpe?g|gif|ico|zip|woff2?)$/i.test(file)) continue;
+    if (file === 'desktop/test/guards/rules/skill-names.test.js' || /\.(png|jpe?g|gif|ico|zip|woff2?)$/i.test(file)) continue;
     let text = '';
     try { text = fs.readFileSync(path.join(root, file), 'utf8'); } catch { continue; }
     for (const {old, now} of RETIRED) if (old.test(text)) left.push(`${file}: ${old.source} (now ${now})`);

@@ -1,4 +1,4 @@
-// The crash rule is wired at start: the app's start-up jobs sweep presses the last run's quit cut off, after the data moves settle (the sweep itself: test/background-apply-controller.test.js).
+// The crash rule is wired at start: the app's start-up jobs sweep presses the last run's quit cut off, after the data moves settle (the sweep itself: test/unit/main/background-apply-controller.test.js).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

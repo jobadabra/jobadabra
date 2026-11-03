@@ -278,7 +278,7 @@ test('an export leaves the old-format backup out, and a backup holding only the 
   assert.equal(run.storage.secret('NOTION_TOKEN'), TOKENS.NOTION_TOKEN);
 });
 
-// Guard: safety — the one read of a real Keychain item (the old Safe Storage password) must stay out of a test run and the twin (desktop/test/keychain.test.js: every call goes through lib/keychain.js).
+// Guard: safety — the one read of a real Keychain item (the old Safe Storage password) must stay out of a test run and the twin (desktop/test/guards/safety/keychain.test.js: every call goes through lib/keychain.js).
 test('an isolated run or a test never reads the real item', () => {
   const spy = () => { throw new Error('exec must not be reached'); };
   assert.equal(readSafeStorage(OLD, LEGACY_NAME, {env: {JOBADABRA_E2E: '1'}, exec: spy, platform: 'darwin'}), null);

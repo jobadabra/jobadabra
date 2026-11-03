@@ -1,5 +1,5 @@
 // Find jobs using your browser waiting on the person (7 Oct 2026): the app's banner turns the task's waiting step into a "Go to Chrome and allow" button.
-// (That the extension asks only for declared origins: test/extension-permissions.test.js.)
+// (That the extension asks only for declared origins: test/guards/rules/extension-permissions.test.js.)
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';

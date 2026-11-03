@@ -1,4 +1,4 @@
-// The "installed twice" note is wired at start: main.js hands the dialog, shell and window list to the start-up jobs, which ask once outside demo mode (the note itself: test/two-installs-notice.test.js).
+// The "installed twice" note is wired at start: main.js hands the dialog, shell and window list to the start-up jobs, which ask once outside demo mode (the note itself: test/unit/main/two-installs-notice.test.js).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

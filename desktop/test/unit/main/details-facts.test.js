@@ -153,7 +153,7 @@ test('the screen paints the quick read first, waits for the settled one after it
 // Why (28 Oct 2026, owner, #2322: "we can deduce any of them, once we know the answer for the 3 above"; never delete a saved value silently): the owner's
 // path through the handlers. Opening reads the older lines once, backs up, folds and saves them (owner, 28 Oct 2026, below); Undo puts them back. Fictional values.
 // Owner, 28 Oct 2026 ("Save them automatically", reversing #2322's draft): the older eligibility lines the AI read are folded and saved on open, a backup first, Undo after
-// (the full state is in test/details-eligibility-autosave.test.js).
+// (the full state is in test/unit/main/details-eligibility-autosave.test.js).
 test('handlers: older eligibility lines are concluded and saved on open, backed up first, and Undo restores them', async () => {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
   storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z'});

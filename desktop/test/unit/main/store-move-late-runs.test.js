@@ -18,7 +18,7 @@ const storageOn = settings => {
   storage.setSecret('NOTION_TOKEN', 'ntn_test');
   return storage;
 };
-// Isolated like test/store-call-private.test.js: no .env, never the Desktop App's folder; the store is the one under test.
+// Isolated like test/unit/main/store-call-private.test.js: no .env, never the Desktop App's folder; the store is the one under test.
 const engineOn = store => (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine,
   {...extra, JOBADABRA_STORE: store, JOBADABRA_FOLLOW_APP: '0', JOBADABRA_NO_DOTENV: '1', NOTION_TOKEN: ''}, options);
 const ready = async () => { await new Promise(setImmediate); };   // one turn of the event loop: whatever is already runnable has run

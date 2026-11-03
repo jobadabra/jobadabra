@@ -21,7 +21,7 @@ test('a running search shows its steps, last lines in words and the counts; the 
 });
 
 // The job boards are read beside the others since 19 Oct 2026 (src/sources/boards_ahead.py): their line starts their chip and moves no other one;
-// their own ✓ is tested in test/live-updates.test.js.
+// their own ✓ is tested in test/unit/renderer/live-updates.test.js.
 test('the steps move on: first jobs, then every employer, the job boards beside them, then more employers', () => {
   const at = line => stepChips(['Finding your first jobs…', line]).map(c => c.state).join(',');
   assert.equal(at('Job boards: searching the web for trade and local boards (your plan)'), 'active,active,pending,active,pending', 'the web search and the boards start');

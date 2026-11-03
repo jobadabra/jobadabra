@@ -6,7 +6,7 @@ import {install} from '../../tiny-dom.js';
 import {setCostEngine, setCostsShown} from '../../../renderer/ai-cost.js';
 
 setCostsShown(true);
-setCostEngine(() => 'api');   // these cases are the API-key user's; test/ai-cost.test.js covers every other engine
+setCostEngine(() => 'api');   // these cases are the API-key user's; test/guards/money/ai-cost.test.js covers every other engine
 
 install();
 const ids = ['setting-cvcheck', 'cvc-state', 'cvc-scores', 'cvc-fixes', 'cvc-folds', 'cvc-run', 'cvc-ai-run', 'cvc-run-cost', 'cvc-ai-cost', 'cvc-message'];

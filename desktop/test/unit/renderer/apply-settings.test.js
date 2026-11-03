@@ -1,5 +1,5 @@
 // Settings → Apply (owner, 26 Oct 2026, hybrid fill step 2): the model (modes, answers, Full automation checks with defaults), the tab's markup with every
-// applying setting in one place, and its ⌘K entries. The gate and the first-Apply dialog's wiring: test/apply-choice-gate.test.js.
+// applying setting in one place, and its ⌘K entries. The gate and the first-Apply dialog's wiring: test/guards/safety/apply-choice-gate.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

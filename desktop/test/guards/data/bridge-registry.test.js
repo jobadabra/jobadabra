@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 
 const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 const SKIP_DIRS = new Set(['node_modules', 'shared', 'dist', 'out', '.git', '__pycache__']);
-const SELF = path.join(REPO, 'desktop/test/bridge-registry.test.js');
+const SELF = path.join(REPO, 'desktop/test/guards/data/bridge-registry.test.js');
 
 function walk(dir) {
   return fs.readdirSync(dir, {withFileTypes: true}).flatMap(entry => {

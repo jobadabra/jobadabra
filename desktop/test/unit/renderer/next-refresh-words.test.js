@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
-// Why (fx, 3 Nov 2026): the pages start timers at import; they must not hold the test process open (see test/cv-replace.test.js).
+// Why (fx, 3 Nov 2026): the pages start timers at import; they must not hold the test process open (see test/unit/renderer/cv-replace.test.js).
 const realInterval = globalThis.setInterval;
 globalThis.setInterval = (...args) => realInterval(...args).unref();
 install();

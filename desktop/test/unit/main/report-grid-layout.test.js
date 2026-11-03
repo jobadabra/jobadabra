@@ -1,7 +1,7 @@
 /* global document */
 // A search's full report (Reports → Searches) measured in the demo app: widgets sharing a row are the same height, none leaves a half row empty, and the
 // Technical log is last at full width (owner, 25 Oct 2026: "it's very important to not have weird empty spaces. But rather have same height for all the columns").
-// Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js), like test/palette-every-action.test.js. The model's rule: test/searches-view.test.js.
+// Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js), like test/unit/renderer/palette-every-action.test.js. The model's rule: test/unit/renderer/searches-view.test.js.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {needsElectron} from '../../needs-electron.js';

@@ -76,7 +76,7 @@ test('a slow await logs paired measured spans, including rejection, without wait
     },
   });
   t.after(() => hooks.deregister());
-  const {span, pushDecisions: push, crashCopyWritten} = await import(`../../extension/log.js?fresh=${++fresh}`);
+  const {span, pushDecisions: push, crashCopyWritten} = await import(`../../../../extension/log.js?fresh=${++fresh}`);
   const pushDecisions = async () => { await push(); await crashCopyWritten(); };
   assert.equal(typeof span, 'function', 'the production span helper must exist');
   let release;
@@ -132,7 +132,7 @@ async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
     },
   });
   t.after(() => hooks.deregister());
-  const log = await import(`../../extension/log.js?fresh=${++fresh}`);
+  const log = await import(`../../../../extension/log.js?fresh=${++fresh}`);
   // Why (beta 41215677698, 31 Oct 2026): a test ends only once its own log has stopped sending (joining the drain sends what is left to THIS test's stub), so no
   // batch of an ended test reaches the next test's fetch stub; a drain that outlives 2 s fails its own test instead of leaking. Test: "never posts into the next".
   t.after(() => Promise.race([log.pushDecisions(), new Promise((_, reject) => setTimeout(() => reject(new Error('this test\'s log was still sending 2 s after it ended')), 2000).unref())]));

@@ -1,4 +1,4 @@
-// Refused sites read in the person's browser (owner, 19 Oct 2026; only after the press since 26 Oct 2026, test/refused-reads-button.test.js): the engine's queue goes to the extension, each page it
+// Refused sites read in the person's browser (owner, 19 Oct 2026; only after the press since 26 Oct 2026, test/guards/safety/refused-reads-button.test.js): the engine's queue goes to the extension, each page it
 // fetched goes to the engine, and the pass is one Recent activity task with a line per site. A bot check or refusal in Chrome is a stop line, never "done".
 import assert from 'node:assert/strict';
 import {beforeEach, test} from 'node:test';
@@ -6,7 +6,7 @@ import {siteTest} from '../../site-private.js';
 import {queue, outcome, done, passRunning, takeOpenSwitch, takeShowCheck} from '../../../lib/refused-reads.js';
 import * as now from '../../../lib/refused-now.js';
 
-beforeEach(() => now.press());   // every pass here follows the person's press (test/refused-reads-button.test.js covers without one)
+beforeEach(() => now.press());   // every pass here follows the person's press (test/guards/safety/refused-reads-button.test.js covers without one)
 
 const storageWith = settings => { const kept = {...settings}; return {settings: () => kept, saveSettings: patch => Object.assign(kept, patch), kept}; };
 const SITES = [{url: 'https://jobs.coop.ch', name: 'Coop', kind: 'employer'}, {url: 'https://www.monsterboard.nl/v?q=a', name: 'Monsterboard', kind: 'board'}];

@@ -1,7 +1,7 @@
 /* global document */
 // The one card grid (components.css .card-grid, renderer/card-grid.js pairRows; owner, 25 Oct 2026: "The others, which have fixed height, and not too much
 // content, they can 2 columns per row"; "it's very important to not have weird empty spaces. But rather have same height for all the columns"): small cards
-// pair up, an unpaired one takes its row, a wide one (.is-wide) breaks the pairs. Every page's card grid uses this one mechanism. Measured: test/report-grid-layout.test.js.
+// pair up, an unpaired one takes its row, a wide one (.is-wide) breaks the pairs. Every page's card grid uses this one mechanism. Measured: test/unit/main/report-grid-layout.test.js.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';

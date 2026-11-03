@@ -1,6 +1,6 @@
 // A question always names what it asks about, and a heading is never an answer (owner, 2-3 Nov 2026, a Windows tester's screens: "Workload" as a question; "Summary" with
 // "Saved: Summary"; a French CV's headings kept with "Keep as is"; "Languages: make it exact" with one level grid and no language). Each test plays one of those screens
-// through lib/details-review.js pending() and answer(), on the real store (SQLite). The AI is a fake (no spend). Guarded together with test/question-sense.test.js.
+// through lib/details-review.js pending() and answer(), on the real store (SQLite). The AI is a fake (no spend). Guarded together with test/unit/renderer/question-sense.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

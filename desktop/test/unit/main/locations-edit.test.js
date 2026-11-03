@@ -1,5 +1,5 @@
 // Strategy → Locations edits (owner, 17 Oct 2026): relocation Yes/No/Not specified is a value, the search-only list can be set and reset, and the
-// one list a card edits is the one the crawl and the scores read. Guarded here, with test/locations-card.test.js for the screen.
+// one list a card edits is the one the crawl and the scores read. Guarded here, with test/unit/renderer/locations-card.test.js for the screen.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {applyEdits, cleanEdits, edited} from '../../../lib/strategy-edit.js';

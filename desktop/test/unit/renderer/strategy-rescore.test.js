@@ -36,7 +36,7 @@ test('the re-score starts only from a dialog\'s own button, once at a time, unti
   assert.match(screen, /go\.disabled = busy;/);
   assert.match(run, /const searching = startSearch\(\{reason: 'rescore', count: result\.queued\}\);[^\n]*resolves when the search ends/);
   assert.match(run, /\n\s*await searching;/, 'busy until its search ends');
-  assert.match(run, /if \(refusal\(await Promise\.race\(\[searching, /, '"Re-scoring now" only when the search was not refused (test/start-refusals.test.js)');
+  assert.match(run, /if \(refusal\(await Promise\.race\(\[searching, /, '"Re-scoring now" only when the search was not refused (test/guards/rules/start-refusals.test.js)');
   assert.match(run, /finally \{\s*running = null;/);
 });
 

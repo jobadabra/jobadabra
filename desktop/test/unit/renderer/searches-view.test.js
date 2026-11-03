@@ -10,7 +10,7 @@ import {search, searches} from '../../../lib/searches-handlers.js';
 import {setCostEngine, setCostsShown} from '../../../renderer/ai-cost.js';
 
 setCostsShown(true);
-setCostEngine(() => 'api');   // these cases are the API-key user's; test/ai-cost.test.js covers every other engine
+setCostEngine(() => 'api');   // these cases are the API-key user's; test/guards/money/ai-cost.test.js covers every other engine
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const demo = JSON.parse(fs.readFileSync(path.join(here, '../../../demo/searches.json'), 'utf8'));
@@ -97,7 +97,7 @@ test('the link is on the Jobs find card and the run panel header (the Actions ba
 });
 
 // Owner, 25 Oct 2026: "Technical log should be last, full-row. The others… 2 columns per row"; "it's very important to not have weird empty spaces. But rather have
-// same height for all the columns". Every run's report, of every kind: the log last and wide, no half row left empty. The heights: test/report-grid-layout.test.js.
+// same height for all the columns". Every run's report, of every kind: the log last and wide, no half row left empty. The heights: test/unit/main/report-grid-layout.test.js.
 test('every report puts its Technical log last, as a wide widget on its own row; the small ones come first, to pair up', () => {
   for (const row of demo.concat([{id: 'bare', mode: 'local', started_at: '2026-10-25', details: {}, log: 'a\nb'}])) {
     const {cards} = report(row), small = cards.filter(card => !card.wide);
@@ -105,5 +105,5 @@ test('every report puts its Technical log last, as a wide widget on its own row;
     if (log) assert.ok(log.wide && cards.at(-1) === log, `${row.id}: the log is last, on its own row`);
     assert.deepEqual(cards.slice(small.length).every(card => card.wide), true, `${row.id}: the wide widgets come after the paired ones`);
   }
-  // The pairing and the heights are the shared grid's: test/card-grid.test.js, measured in test/report-grid-layout.test.js.
+  // The pairing and the heights are the shared grid's: test/unit/renderer/card-grid.test.js, measured in test/unit/main/report-grid-layout.test.js.
 });

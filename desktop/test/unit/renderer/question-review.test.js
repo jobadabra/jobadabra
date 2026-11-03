@@ -1,5 +1,5 @@
 // The review drawer (owner's mockup, 17 Oct 2026: "THIS IS TOO CROWDED/OVERWHELMING... Move the questionnaire out of the Jobs page"), here What we learned's
-// (owner, 28 Oct 2026: two drawers; test/question-drawers.test.js holds the two side by side): Jobs shows a compact card whose count is the drawer's (never the
+// (owner, 28 Oct 2026: two drawers; test/unit/renderer/question-drawers.test.js holds the two side by side): Jobs shows a compact card whose count is the drawer's (never the
 // set-aside ones), and the questions are answered one at a time in a drawer (pages/question-review.js) that shares the job drawer's overlay slot. Every way in
 // (Jobs' card, Profile → What we learned, ⌘K) opens it.
 import assert from 'node:assert/strict';
@@ -246,4 +246,4 @@ test('no native select is used as a navigator anywhere in the renderer', () => {
       assert.doesNotMatch(hit, /jump|go to|navigate/i, `${file}: a select used to move between items; use the navigator (renderer/question-nav.js)`);
   }
 });
-// The cover letter is its own Jobs card, never a drawer item (owner, 28 Oct 2026): test/question-drawers.test.js.
+// The cover letter is its own Jobs card, never a drawer item (owner, 28 Oct 2026): test/unit/renderer/question-drawers.test.js.

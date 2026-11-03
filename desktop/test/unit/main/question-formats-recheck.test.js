@@ -1,5 +1,5 @@
 // A kept AI judgment made before the current kinds existed (the salary question sorted "text" before "amount" existed, owner 17 Oct 2026) is asked again:
-// once, lazily (only the labels a screen is about to show), at most 10 per call, never a form's own field type. Guarded here; the base is test/question-formats.test.js.
+// once, lazily (only the labels a screen is about to show), at most 10 per call, never a form's own field type. Guarded here; the base is test/unit/main/question-formats.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

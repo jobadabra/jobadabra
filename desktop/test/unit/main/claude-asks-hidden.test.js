@@ -1,6 +1,6 @@
 // While Claude's takeover is off, the frozen asks of a session that is not running reach no screen (owner, 15 Oct 2026, "I told you a million times": the Adnovum card kept
 // "Click 'Please sign in'…", "reply continue" and Tell Claude buttons, #950 gated only the buttons). Every screen, the list row, the log header, the tray and the notices read the
-// session list, so the class is tested at that one place: no field of any session view carries the ask, from each producer. The renderer's own Claude entries: test/resume-hidden.test.js.
+// session list, so the class is tested at that one place: no field of any session view carries the ask, from each producer. The renderer's own Claude entries: test/guards/rules/resume-hidden.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

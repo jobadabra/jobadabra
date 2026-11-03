@@ -1,5 +1,5 @@
 // Strategy → Locations card, its words and edits as a pure model (owner, 17 Oct 2026): relocation is Yes / No / Not specified, remote work says what it means
-// in plain words, an active search-only list is shown with a reset, and the reset is one edit that empties it. Screen wiring: test/locations-card.test.js.
+// in plain words, an active search-only list is shown with a reset, and the reset is one edit that empties it. Screen wiring: test/unit/renderer/locations-card.test.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {RELOCATION, coverage, relocationNow, relocationWords, remoteWords, resetCoverage} from '../../../renderer/locations-model.js';

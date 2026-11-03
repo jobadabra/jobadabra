@@ -2,7 +2,7 @@
 // Every card grid on every page, measured in the demo app (owner, 25 Oct 2026: "2 columns with very different heights, let's better have 1 column, and
 // full rows cards"; "same height for all the columns, if we have multiple columns per row"): a grid is one column, or its cards in a row are one height.
 // Cards that grow with the user's data (Advanced search settings, Locations, Job preferences, the Profile's background) must be one column.
-// Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js), like test/report-grid-layout.test.js. The shared grid: components.css .card-grid.
+// Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js), like test/unit/main/report-grid-layout.test.js. The shared grid: components.css .card-grid.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {needsElectron} from '../../needs-electron.js';

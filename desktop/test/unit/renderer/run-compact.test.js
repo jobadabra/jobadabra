@@ -1,6 +1,6 @@
 // The compact run on Actions (owner, 25 Oct 2026: "the compact version should be always something like this" — the running banner; "in Actions, we shouldn't
 // show such a detailed card report"): every kind, queued or finished, is the same one-line banner (renderer/run-compact.js, pages/run-banner.js), and the
-// Actions page never draws a run's detailed card. The detailed version is the run panel (test/run-view.test.js).
+// Actions page never draws a run's detailed card. The detailed version is the run panel (test/unit/renderer/run-view.test.js).
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';

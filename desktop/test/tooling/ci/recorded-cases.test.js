@@ -17,7 +17,7 @@ test('a fill or flow change without a case is stopped; a case, a scenario or a s
   assert.match(missingCase([commit(['extension/page/controls.js'], 'Fix a menu')], covered), /recorded page/);
   assert.match(missingCase([commit(['extension/fill-flow.js'])], covered), /fill-flow\.js/);
   assert.equal(missingCase([commit(['extension/page/controls.js', 'desktop/e2e/recorded/menu-1/case.json'])], covered), '');
-  assert.equal(missingCase([commit(['extension/fill-flow.js', 'desktop/test/journeys.test.js'])], covered), '');
+  assert.equal(missingCase([commit(['extension/fill-flow.js', 'desktop/test/unit/main/journeys.test.js'])], covered), '');
   // A field replay alone is not proof (10 Oct 2026: an Ashby fix passed with one and never reached the Fixed-site replays list); with a recorded page it is fine.
   assert.match(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html'], 'Fix a group')], covered), /does not count/);
   assert.equal(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html', 'desktop/e2e/recorded/acme-1/case.json'])], covered), '');
@@ -79,7 +79,7 @@ test('hole 1: every extension file a replay loads is covered, found by structure
   const unloaded = FLOW_FILES.filter(file => !loaded.has(file)).sort();
   assert.ok(unloaded.includes('desktop/lib/session-flow.js') && unloaded.length < 15, `flow files outside the replay: ${unloaded.join(', ')}`);
   assert.match(missingCase([commit(['desktop/lib/session-flow.js'], 'Fix a tab')], covered), /recorded page/);
-  assert.equal(missingCase([commit(['desktop/lib/session-flow.js', 'desktop/test/journeys.test.js'], 'Fix a tab')], covered), '');
+  assert.equal(missingCase([commit(['desktop/lib/session-flow.js', 'desktop/test/unit/main/journeys.test.js'], 'Fix a tab')], covered), '');
   // The harness, tools and tests are not covered: they may say Recorded-unneeded (or nothing).
   for (const file of ['desktop/e2e/lib/live-row.mjs', 'tools/ship.sh', 'desktop/test/x.test.js', 'docs/x.md', 'extension/manifest.json']) assert.ok(!covered.has(file), file);
 });
@@ -102,7 +102,7 @@ test('hole 2: "Recorded-unneeded" cannot excuse a fix to a seen failure', () => 
 });
 
 test('the push\'s own recorded cases are named, for the fails-on-old replay', () => {
-  assert.deepEqual(casesOf(['desktop/e2e/recorded/a-1/case.json', 'desktop/e2e/recorded/a-1/pages/1.html', 'desktop/e2e/recorded/b-1/case.json', 'extension/log.js', 'desktop/test/journeys.test.js']), ['a-1', 'b-1']);
+  assert.deepEqual(casesOf(['desktop/e2e/recorded/a-1/case.json', 'desktop/e2e/recorded/a-1/pages/1.html', 'desktop/e2e/recorded/b-1/case.json', 'extension/log.js', 'desktop/test/unit/main/journeys.test.js']), ['a-1', 'b-1']);
 });
 
 test('report is a label of the case, not part of the replay; the hook wiring is tested in commit-checks.test.js', () => {

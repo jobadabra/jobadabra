@@ -305,7 +305,7 @@ test('scenario: a weak page-kind answer on an account page is asked again on the
 
 // 12 Oct 2026, the owner's app.log: a job-list read started 14:56:15, the session's Cancel wrote Kit ready at 14:56:37, the read ended 14:56:45 with
 // the old stage, and the cancelled job showed "still marked Applying but has no open session". A read asked after any engine stage write starts
-// its own (lib/pipeline-commands.js afterWrite); the window never paints the older one (renderer/job-writes.js, test/job-writes.test.js).
+// its own (lib/pipeline-commands.js afterWrite); the window never paints the older one (renderer/job-writes.js, test/unit/renderer/job-writes.test.js).
 test('scenario: a session is cancelled while the job list is being read: a read asked after it starts its own, for every engine stage write', async () => {
   const jobs = sharedRead('jobs', () => new Promise(() => {}));   // a read that is still running
   const url = 'https://jobs.example.test/sre';
@@ -374,7 +374,7 @@ test('scenario: the person presses Stop mid-application (an account page, a fill
 
 // #2812 (1 Nov 2026, a8's yes): an armed tab left on a page Chrome guards (chrome://, the web store, an error page) refused the Stop's page mark on every press, so the panel
 // said "Stop did not finish (Cannot access a chrome:// URL). Press Stop again." for ever. The person's press, through the panel's own channel (stop-messages.js): the Stop holds where no
-// script of ours answers, fails where one does, and the panel is never given Chrome's words. The step-level cases are desktop/test/extension-stop.test.js; a fake chrome lives only here.
+// script of ours answers, fails where one does, and the panel is never given Chrome's words. The step-level cases are desktop/test/guards/safety/extension-stop.test.js; a fake chrome lives only here.
 test('scenario: the person presses Stop in the panel while another armed tab sits on a page Chrome guards: the Stop holds, and the panel never gets Chrome\'s words (#2812)', async () => {
   const saved = {chrome: globalThis.chrome, fetch: globalThis.fetch}, store = {}, reached = [], answers = new Set();   // answers: tabs where a script of ours replies to 'stopped'
   globalThis.fetch = async url => { reached.push(String(url)); throw new Error('no network in a scenario'); };

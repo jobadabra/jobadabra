@@ -6,7 +6,7 @@ import {cvCheck} from '../../../lib/demo.js';
 import {setCostEngine, setCostsShown} from '../../../renderer/ai-cost.js';
 
 setCostsShown(true);
-setCostEngine(() => 'api');   // these cases are the API-key user's; test/ai-cost.test.js covers every other engine
+setCostEngine(() => 'api');   // these cases are the API-key user's; test/guards/money/ai-cost.test.js covers every other engine
 
 test('fixes: parser and content review in one list, high first, ties in their order', () => {
   const fixes = fixesOf({ats: {checks: [{label: 'Length', status: 'warn', detail: '3 pages', fix: 'Trim'}, {label: 'Text', status: 'fail', detail: 'No text', fix: 'Export'},

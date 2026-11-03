@@ -1,4 +1,4 @@
-// The journey reducer's invariants (lib/application-journey.js header), one test each; the scenarios are in test/journeys.test.js.
+// The journey reducer's invariants (lib/application-journey.js header), one test each; the scenarios are in test/unit/main/journeys.test.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {STUCK, journey, journeyStep} from '../../../lib/application-journey.js';

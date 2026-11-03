@@ -1,4 +1,4 @@
-// The stalled-press sweep runs on the app's own timer, started with the other background handlers (the sweep itself: test/background-apply-controller.test.js).
+// The stalled-press sweep runs on the app's own timer, started with the other background handlers (the sweep itself: test/unit/main/background-apply-controller.test.js).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
