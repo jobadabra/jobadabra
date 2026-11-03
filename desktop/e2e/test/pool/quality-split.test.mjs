@@ -46,7 +46,6 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.ok(facts.all.includes(suite.name));
     assert.equal(facts.cadence[suite.name], 'night-report');
     assert.ok(facts.sameOnEveryOs.includes(suite.name));
-    assert.ok(facts.storeless.includes(suite.name));
     assert.deepEqual(facts.judges[suite.name], quality.judges);
     assert.equal(await facts.minutes(suite.name), suite.name === 'qualityai' ? 24 : 3);
     assert.deepEqual(facts.watches[suite.name], suite.watches);

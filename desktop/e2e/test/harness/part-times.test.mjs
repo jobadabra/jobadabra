@@ -31,6 +31,6 @@ test('the slowest seconds are kept per store leg and overall', () => {
   assert.deepEqual(table['Windows · apply-3of3'], {runs: 1, max: 360, standin: 360});
 });
 
-test('alternate gives sqlite to run numbers 0 and 1 and the Notion stand-in to 2 and 3 (lib/store.mjs bit 1)', () => {
+test('an old run\'s alternate gave sqlite to run numbers 0 and 1 and the Notion stand-in to 2 and 3 (bit 1, until 3 Nov 2026)', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7].map(storeOfRunNumber), ['sqlite', 'sqlite', 'standin', 'standin', 'sqlite', 'sqlite', 'standin', 'standin']);
 });

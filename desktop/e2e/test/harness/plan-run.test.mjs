@@ -181,7 +181,7 @@ test('a manual run with target_ref tests that release\'s commit, not main\'s', a
 test('a manual gate for a tag runs the nightly gate\'s suites on that tag\'s commit and names the tag to approve', async () => {
   const stub = args => (args[0] === 'api' && /commits\/desktop-v1\.5$/.test(args[1]) ? 'cafe'.repeat(10) + '\n' : '[]');
   const out = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'mainsha', TARGET_REF: 'desktop-v1.5', GATE_TAG: 'desktop-v1.5'}, gh: stub, all: ALL, minutes: () => 15});
-  assert.deepEqual([out.tag, out.ref, out.count], ['desktop-v1.5', 'cafe'.repeat(10), '8']);
+  assert.deepEqual([out.tag, out.ref, out.count], ['desktop-v1.5', 'cafe'.repeat(10), '4']);
   const plain = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'mainsha'}, gh: stub, all: ALL, minutes: () => 15});
   assert.equal(plain.tag, '', 'a plain manual run promotes nothing');
 });
@@ -197,7 +197,7 @@ test('the interactions suite has the time it needs: a job limit under what it ta
 test('the gate called from the release run tests the release\'s commit whatever the event, and says its suites for the Windows gate', async () => {
   for (const EVENT of ['schedule', 'workflow_dispatch']) {
     const out = await plan({EVENT, SHA: OLD, TARGET_REF: 'desktop-v1.2', GATE_TAG: 'desktop-v1.2'}, {releases: [['desktop-v1.2', HEAD]], runs: [{event: 'schedule', headSha: HEAD, conclusion: 'success'}]});
-    assert.deepEqual([out.count, out.ref, out.tag], ['8', HEAD, 'desktop-v1.2'], EVENT);
+    assert.deepEqual([out.count, out.ref, out.tag], ['4', HEAD, 'desktop-v1.2'], EVENT);
     assert.equal(out.suites, ALL.join(','), 'the same list goes to e2e-windows.yml');
   }
   assert.equal((await plan({EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'jobs,settings'}, {})).suites, 'jobs,settings');
@@ -212,7 +212,7 @@ test('a scheduled run skips while a release run is testing; a build only does no
   assert.match(held.why, /release run is testing/);
   assert.notEqual((await plan({EVENT: 'schedule', SHA: HEAD}, {...stub, releasing: [{status: 'in_progress', displayTitle: 'Build only (by hand, not tested)'}]})).count, '0');
   const gate = await plan({EVENT: 'schedule', SHA: OLD, TARGET_REF: 'desktop-v1.2', GATE_TAG: 'desktop-v1.2'}, {releases: [['desktop-v1.2', HEAD]], releasing: [{status: 'in_progress', displayTitle: 'Nightly beta'}]});
-  assert.equal(gate.count, '8', 'the gate itself, called from that release run, runs (4 suites, each on both stores)');
+  assert.equal(gate.count, '4', 'the gate itself, called from that release run, runs (4 suites, one job each on this Mac\'s store)');
 });
 
 // 7 Oct 2026 (owner: "$30 a week"): quality (Sonnet) ran in every beta by hand and on Windows too. Now: the Mac lane only, and in a beta by hand only when
@@ -247,18 +247,10 @@ test('both quality journeys: the nightly runs it; a beta by hand only after a ch
   assert.ok(!nightly.windows_suites.split(',').includes('jobs'), 'Windows runs apply and the settings smoke only (the e2e audit)');
 });
 
-test('GATE_STORE_LEGS=one: the release run gets ONE Mac job per suite (its job copy never passes the leg\'s store, so a second leg was a duplicate)', async () => {
-  const stub = () => '[]';
-  const gate = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2', GATE_STORE_LEGS: 'one'}, gh: stub,
-    all: ['jobs', 'updates'], storeless: ['updates'], minutes: () => 15});
-  assert.deepEqual(JSON.parse(gate.matrix).include.map(({suite, key}) => `${suite}:${key}`), ['jobs:jobs', 'updates:updates']);
-  assert.equal(gate.count, '2');
-});
-
 // Beta 41078746088: the release run's own list ran applyflows, jobs, interviews and failuresnotion live. The mode now rides on the matrix both workflows read.
 test('the release run and every other run give a backbone suite its stored answers through the matrix, and no other suite', async () => {
   const stub = () => '[]';
-  const env = {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2', GATE_STORE_LEGS: 'one'};
+  const env = {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2'};
   for (const run of [env, {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'jobs,updates'}]) {
     const out = await planRun({env: run, gh: run.GATE_TAG ? stub : gh(), all: ['jobs', 'updates'], minutes: () => 15, backbone: ['jobs']});
     assert.deepEqual(JSON.parse(out.matrix).include.map(({suite, aiAnswers}) => `${suite}:${aiAnswers || 'off'}`), ['jobs:backbone', 'updates:off']);
@@ -268,21 +260,21 @@ test('the release run and every other run give a backbone suite its stored answe
   assert.ok(!backbone.includes('qualityai') && !backbone.includes('apply'), 'a live or off-mode suite never gets stored answers by accident');
 });
 
-test('the gate runs each suite that keeps data on both stores, one job each; other runs one job, the store left to the run number', async () => {
+// Why (3 Nov 2026, owner: "Mac Store only"): the gate and the nights ran a "-standin" twin of every suite that keeps data; the Notion path now has its own run.
+test('the gate, a night pass and every other run give each suite one job, on this Mac\'s store (no stand-in twin)', async () => {
   const stub = args => (args[0] === 'run' && args[1] === 'list' ? '[]' : '[]');
-  const gate = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2'}, gh: stub,
-    all: ['jobs', 'updates'], storeless: ['updates'], minutes: () => 15});
-  assert.deepEqual(JSON.parse(gate.matrix).include.map(({suite, key, store}) => ({suite, key, store})),
-    [{suite: 'jobs', key: 'jobs', store: 'sqlite'}, {suite: 'jobs', key: 'jobs-standin', store: 'standin'}, {suite: 'updates', key: 'updates', store: ''}]);
-  const manual = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), ONLY: 'jobs'}, gh: stub, all: ['jobs', 'updates'], minutes: () => 15});
-  assert.deepEqual(JSON.parse(manual.matrix).include.map(({key, store}) => ({key, store})), [{key: 'jobs', store: ''}]);
+  const base = {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10)};
+  for (const env of [{...base, TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2'}, {...base, NIGHT_PASS: '2/5'}, {...base, ONLY: 'jobs,updates'}]) {
+    const out = await planRun({env, gh: stub, all: ['jobs', 'updates'], minutes: () => 15});
+    assert.deepEqual(JSON.parse(out.matrix).include.map(({key, store}) => ({key, store})), [{key: 'jobs', store: ''}, {key: 'updates', store: ''}], JSON.stringify(env));
+  }
 });
 
 test('an exhausted schedule stays "Nothing tested" and needs no AI', async () => {
   // Why (1 Nov 2026, c27 6/6a): the daily outside run and the 'outside' cadence are gone (real Notion is a night-report suite, test/harness/suite-cadence.test.mjs); this keeps the schedule's exhaustion case.
   const all = ['settings', 'notion-real'], cadence = {'notion-real': 'night-report'};
   const plan = (env, runs = []) => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD, ...env}, gh: gh({runs}), all, cadence,
-    offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});
+    offlineAi: all, minutes: () => 15, os: () => 'ubuntu-24.04'});
   const exhausted = await plan({}, [sched(1), sched(2), sched(3)]);
   assert.deepEqual(suitesOf(exhausted), [], 'an exhausted schedule stays Nothing tested');
   assert.equal(exhausted.ai_required, '0');
@@ -338,7 +330,7 @@ test('a PR that adds a backbone step plans that suite once, one leg per shard, n
 // shows its result and never holds anything. `night-report` is the one cadence for it (interactions, wander; quality, qualityai and notion-real may follow).
 test('cadence night-report: once a night, in no gate, schedule, push or PR, and never holds a run', async () => {
   const ALL3 = ['jobs', 'settings', 'wander'], cadence = {wander: 'night-report'};
-  const run = (env, stub = {}) => planRun({env: {REPO: 'o/r', SHA: HEAD, ...env}, gh: gh(stub), all: ALL3, cadence, minutes: () => 15, storeless: ['wander']});
+  const run = (env, stub = {}) => planRun({env: {REPO: 'o/r', SHA: HEAD, ...env}, gh: gh(stub), all: ALL3, cadence, minutes: () => 15});
   for (const kind of ['nightly', 'beta']) {
     const gate = await run({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v1', GATE_TAG: 'desktop-v1', GATE_KIND: kind}, {releases: [['desktop-v1', HEAD]]});
     assert.deepEqual(suitesOf(gate), ['jobs', 'settings'], `the ${kind} release gate must not run it`);
@@ -358,7 +350,7 @@ test('cadence night-report: once a night, in no gate, schedule, push or PR, and 
 // Why (1 Nov 2026, owner via a8: "Also add integration shots", "restores a detector, report only"): the shots of the night-report suites are taken only in night pass 1, so pass 1 (and only it)
 // asks the AI to review them, in one batch, whatever changed since the last run. The findings are never filed: ui-findings.yml skips "Night burn-in" runs (asserted below).
 test('night pass 1 reviews the screenshots once; passes 2 to 5, a skipped pass and a pass with nothing to test do not', async () => {
-  const run = (pass, stub = {}) => planRun({env: {EVENT: 'workflow_dispatch', REPO: 'o/r', SHA: HEAD, NIGHT_PASS: pass}, gh: gh(stub), all: ['jobs', 'settings', 'wander'], cadence: {wander: 'night-report'}, minutes: () => 15, storeless: ['wander']});
+  const run = (pass, stub = {}) => planRun({env: {EVENT: 'workflow_dispatch', REPO: 'o/r', SHA: HEAD, NIGHT_PASS: pass}, gh: gh(stub), all: ['jobs', 'settings', 'wander'], cadence: {wander: 'night-report'}, minutes: () => 15});
   const unchanged = {runs: [{event: 'schedule', headSha: HEAD, conclusion: 'success', displayTitle: 'E2E check'}]};   // main's last tested commit is this one: a day run would find nothing UI-related to review
   assert.equal((await run('1/5', unchanged)).review, '1', 'pass 1 reviews even when the UI did not change since the last run: its suites are the ones nobody else shoots');
   for (const pass of ['2/5', '3/5', '4/5', '5/5']) assert.equal((await run(pass, unchanged)).review, '0', `pass ${pass} repeats the gate suites the day runs review`);

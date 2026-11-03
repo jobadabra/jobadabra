@@ -90,7 +90,7 @@ const oldTitle = id => `[mutation] ${id} survived: no suite caught it`;   // iss
 // The new issue's body: what was planted, where, and how to replay it.
 export const issueBody = (row, run) => {
   const replay = row.test ? `\`node desktop/e2e/mutate.mjs ${row.id}\`, then \`(cd ${testCommand(row.suite).cwd} && ${testCommand(row.suite).argv.join(' ')})\`, then \`git checkout -- ${row.file || '<the planted file>'}\``
-    : `\`gh workflow run e2e.yml -f suite=${row.suite} -f store=${row.store || 'alternate'} -f mutant=${row.id}\``;
+    : `\`gh workflow run e2e.yml -f suite=${row.suite} -f store=${row.store || 'sqlite'} -f mutant=${row.id}\``;
   return [`> [!WARNING]`, `> A serious bug was written into the app on purpose and ${row.test ? `its test \`${row.suite}\`` : `the \`${row.suite}\` suite`} stayed green.`, '',
     `**The bug:** ${row.what}`, `**Planted bug:** \`${row.id}\` in \`desktop/e2e/mutants.json\``, `**Run:** ${run}`, '',
     `**Next:** add the check that would have caught it (${row.test ? `a test in \`${row.suite}\` that fails while the bug is planted` : `a truth check, a step in \`${row.suite}\``}), then the next planted-bug run catches it. Replay: ${replay}.`].join('\n');

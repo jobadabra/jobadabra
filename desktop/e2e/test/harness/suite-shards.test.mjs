@@ -37,7 +37,7 @@ test('every slice of a sharded suite fits its budget on Windows (the slower lane
 
 test('a sharded suite becomes one job per slice on both lanes; the others stay one job each', async () => {
   const gh = args => (args[0] === 'run' || args[0] === 'issue' ? '[]' : args.join(' ').includes('commits/') ? 'a'.repeat(40) : '');
-  const out = await planRun({env: {REPO: 'o/r', EVENT: 'gate', GATE_TAG: 'desktop-v1.0.0', TARGET_REF: 'desktop-v1.0.0', GATE_STORE_LEGS: 'one'}, gh, all: ['apply', 'jobs', 'recorded'],
+  const out = await planRun({env: {REPO: 'o/r', EVENT: 'gate', GATE_TAG: 'desktop-v1.0.0', TARGET_REF: 'desktop-v1.0.0'}, gh, all: ['apply', 'jobs', 'recorded'],
     minutes: () => 15, shards: {apply: 2, recorded: 3}});
   const include = JSON.parse(out.matrix).include;
   assert.deepEqual(include.map(item => [item.suite, item.key, item.shard]), [['apply', 'apply-1of2', '1/2'], ['apply', 'apply-2of2', '2/2'], ['jobs', 'jobs', ''],
@@ -47,11 +47,11 @@ test('a sharded suite becomes one job per slice on both lanes; the others stay o
   assert.equal(out.suites, 'apply,jobs,recorded');   // the suites are still named once (the summary, the Windows gate's input)
 });
 
-test('a gate with both store legs keeps them apart from the slices', async () => {
+test('a gate runs one job per slice, on this Mac\'s store, each leading back to its suite', async () => {
   const gh = args => (args[0] === 'run' || args[0] === 'issue' ? '[]' : args.join(' ').includes('commits/') ? 'a'.repeat(40) : '');
   const out = await planRun({env: {REPO: 'o/r', EVENT: 'gate', GATE_TAG: 'desktop-v1.0.0', TARGET_REF: 'desktop-v1.0.0'}, gh, all: ['jobs'], minutes: () => 15, shards: {jobs: 2}});
   const keys = JSON.parse(out.matrix).include.map(item => item.key);
-  assert.deepEqual(keys, ['jobs-1of2', 'jobs-1of2-standin', 'jobs-2of2', 'jobs-2of2-standin']);
+  assert.deepEqual(keys, ['jobs-1of2', 'jobs-2of2']);
   for (const key of keys) assert.equal(suiteOfKey(key), 'jobs');
 });
 

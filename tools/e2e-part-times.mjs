@@ -17,7 +17,7 @@ export function storeOf(artifactNames) {
   return found.size === 1 ? [...found][0] : null;
 }
 
-/** The store CI's `alternate` gives a run: bit 1 of its run number (desktop/e2e/lib/store.mjs). Only right for a run that did not pin a store. */
+/** The store CI's `alternate` gave a run: bit 1 of its run number. Only right for a run before 3 Nov 2026 that did not pin a store; since then every such run is on sqlite (desktop/e2e/lib/store.mjs). */
 export const storeOfRunNumber = number => ((Number(number) >> 1) & 1 ? 'standin' : 'sqlite');
 
 /** Jobs of one run -> [{lane, part, seconds}]: the suite step's own seconds of each `E2E · <lane> · <part>` job that ran it to an end (a step cut by the budget counts: it ran its whole budget). */

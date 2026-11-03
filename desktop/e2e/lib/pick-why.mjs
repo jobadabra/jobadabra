@@ -1,9 +1,12 @@
+// Job: pick the suites
 // Why a PR's e2e run runs each step or whole suite: one log line each, with the changed file that reached it (owner on #2156, 27 Oct 2026: "This PR is running
 // that many/less e2e suites. Is that correct?"; the e2e run showed 14 suite jobs and no reason, while the picker had chosen 39 steps). pr-suites.mjs prints the
 // lines and passes them in pr_steps["(why)"]; plan-run.mjs prints them again in the e2e run's plan job. Tests: test/pick-why.test.mjs
 export const WHY = '(why)', STORES = '(stores)';
 const MAX_LINES = 150, MAX_LINE = 220;   // a dispatch's inputs are capped (65,535 characters in all): the reasons never crowd out the steps
 const cut = text => (text.length > MAX_LINE ? `${text.slice(0, MAX_LINE - 1)}…` : text);
+/** One "not run" line per picked step that exists on no store of the run (dropped: [{step, stores}]); after says what became of it. */
+const notRun = (head, after, dropped = []) => dropped.map(({step, stores: on}) => `${head} · not run: "${step}" (recorded only on ${on.join(', ')}: ${after})`);
 
 // suites: the plan's suites; steps: {suite: [names]} (a suite not in it runs whole); stores: {suite: store}; dropped: {suite: [{step, stores}]};
 // picked: stepsCovering's {suite: {reach, reason, whole, setup}}; pointedBy: {suite: file} (stillWholeBy); hits: {suite: Set of removed strings};
@@ -20,7 +23,7 @@ export function whyLines({suites = [], steps = {}, stores = {}, dropped = {}, pi
               : picked[suite]?.reason || 'picked';
         lines.push(`${suite}${where} · "${name}" ← ${from}`);
       }
-      for (const {step, stores: on} of dropped[suite] || []) lines.push(`${suite}${where} · not run: "${step}" (recorded only on ${on.join(', ')}: no such step on ${stores[suite]})`);
+      lines.push(...notRun(`${suite}${where}`, `no such step on ${stores[suite]}`, dropped[suite]));
       continue;
     }
     const why = pointedBy[suite] ? `${pointedBy[suite]} (the suite watches or imports it, and its recorded run never loaded it)`
@@ -29,6 +32,7 @@ export function whyLines({suites = [], steps = {}, stores = {}, dropped = {}, pi
         : quoting[suite]?.steps?.length ? `quotes text this PR removes (${[...(hits[suite] || [])].map(text => `"${text}"`).join(', ')})`
           : picked[suite]?.reason || (own[suite]?.length ? 'its own steps changed in this PR' : 'a file of the suite or its harness changed');
     lines.push(`${suite} · whole suite ← ${why}`);
+    lines.push(...notRun(suite, 'the Notion path\'s run plays it', dropped[suite]));
   }
   return (lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `… ${lines.length - MAX_LINES} more in the PR's "E2E suites for a PR" log`] : lines).map(cut);
 }

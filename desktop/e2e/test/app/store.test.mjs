@@ -1,5 +1,5 @@
-// Which store the app under test keeps its data in (lib/store.mjs, spec 2026-10-09-store-adapters.md P7): no token by default, CI alternating on a bit
-// the AI family does not use, and only a suite that pins it on the real workspace.
+// Which store the app under test keeps its data in (lib/store.mjs, spec 2026-10-09-store-adapters.md P7): no token by default, this Mac's store on CI
+// too (the stand-in only when pinned), and only a suite that pins it on the real workspace.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,14 +25,17 @@ test('the real workspace is never picked from the environment, only by a suite',
   assert.throws(() => pickStore({suiteStore: 'cloud'}), /not "cloud"/);
 });
 
-test('CI alternates the store on bit 1, so all four family x store pairs come round in four runs', () => {
-  const pairs = new Set();
-  for (const run of [0, 1, 2, 3]) {
+// Why (3 Nov 2026, owner: "Mac Store only"): CI alternated runs 0,1 sqlite and 2,3 stand-in, so half of main's and the beta's runs went through the Notion path.
+test('CI runs on this Mac\'s store whatever the run number or AI family; only a pin runs the stand-in; "alternate" is gone', () => {
+  const families = new Set();
+  for (const run of [0, 1, 2, 3, 6, 985, 987]) {
     const env = {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_OPENAI_KEY: 'k'};
-    pairs.add(`${pickFamily(env)}/${pickStore({env})}`);
+    families.add(pickFamily(env));
+    assert.equal(pickStore({env}), 'sqlite', `run ${run}`);
   }
-  assert.deepEqual([...pairs].sort(), ['claude/sqlite', 'claude/standin', 'openai/sqlite', 'openai/standin']);
-  assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: '6', E2E_STORE: 'sqlite'}}), 'sqlite');   // a pinned gate leg
+  assert.deepEqual([...families].sort(), ['claude', 'openai'], 'positive control: the AI family still alternates over the same runs');
+  assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: '2', E2E_STORE: 'standin'}}), 'standin', 'the Notion path by hand');
+  assert.throws(() => pickStore({env: {CI: 'true', E2E_STORE: 'alternate'}}), /sqlite or standin/);
 });
 
 test('quality pins SQLite for every CI store alternation so recorded answers use one path', () => {
@@ -46,7 +49,7 @@ for (const [name, suite] of [['wander', wander]]) {
   test(`${name} keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins`, () => {
     assert.equal(suite.store, 'standin');
     for (const run of [0, 1, 2, 3]) {
-      for (const E2E_STORE of ['', 'sqlite', 'standin', 'alternate']) {
+      for (const E2E_STORE of ['', 'sqlite', 'standin']) {
         assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE}, suiteStore: suite.store}), 'standin');
       }
     }

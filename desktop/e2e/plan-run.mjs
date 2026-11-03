@@ -39,7 +39,7 @@ function aiPlanOutputs(suites, offlineAi, review) {
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 // clean-code-ok: Why (29 Oct 2026, st): old function; this change adds one option to its signature (offlineAi) and its score falls (63 to 62)
-export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [], now = Date.now()}) {
+export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], shards = {}, offlineAi = [], backbone = [], now = Date.now()}) {
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
@@ -78,7 +78,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     pushReach = changedFiles.filter(file => suitesFor([file], all, pointing).includes('qualityai'));
   }
   else if (env.PROMOTE_TAG) suites = [];   // a manual dry run of the promotion step: no suites
-  // A night pass: the beta's own layout (the gate's suites, both stores), without the release steps and without a paid model (except pass 1's one qualityai night-report run, lib/night-pass.mjs). A release run that is testing owns the per-suite groups, so the pass
+  // A night pass: the beta's own layout (the gate's suites, this Mac's store), without the release steps and without a paid model (except pass 1's one qualityai night-report run, lib/night-pass.mjs). A release run that is testing owns the per-suite groups, so the pass
   // skips itself rather than cancel a gate job waiting there (the same rule as a scheduled run's, below).
   else if (night) {
     const releasing = json(['run', 'list', '-R', repo, '--workflow', 'desktop.yml', '-L', '5', '--json', 'status,displayTitle']).filter(run => run.status !== 'completed' && !/^Build only/.test(run.displayTitle || ''));
@@ -134,17 +134,15 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
       else if (noise.tripped) { review = false; why = `${why ? `${why} · ` : ''}AI review paused: ${noise.noise} of the last ${noise.judged} judged review issues were noise (the noise breaker, lib/plan.mjs)`; }
     } catch { /* cannot tell: the review runs */ }
   }
-  // The store (lib/store.mjs, P7): the gate runs every suite that keeps data on BOTH stores of the same build (owner, 9 Oct 2026), as two jobs: `key` names
-  // each one's job, artifacts, caches and group (the stand-in's ends in -standin: triage.mjs suiteOf drops it). Any other run: one job, the store alternating by run number.
-  // GATE_STORE_LEGS=one (the release run, desktop.yml): ONE job per suite. Its copy of the Mac job never passed `E2E_STORE` from the leg, so both legs ran the SAME store (the one the
-  // run number picks): a duplicate that waited on its twin in the suite's group, and a third contender for GitHub's single waiting slot there when the Windows job of the suite
-  // arrived (15 of 41 Mac jobs cancelled, 10 Oct 2026). Both stores in one job is the next step; until then one leg loses nothing the duplicate covered.
-  // A PR's run: each suite on the store its picked steps were recorded on (pr-suites.mjs "(stores)"; e2e.yml falls back to SQLite).
+  // The store (lib/store.mjs, P7): one job per suite, on this Mac's store (e2e.yml falls back to it; a suite that pins its own store keeps it).
+  // Why (3 Nov 2026, owner: "Mac Store only"): the gate and the night burn-in ran a second "-standin" job per suite on the Notion stand-in (owner, 9 Oct 2026); the Notion
+  // path now has its own run that never blocks a beta. Old runs' "-standin" artifacts still read back to their suite (triage.mjs suiteOf).
+  // A PR's run: each suite on the store its picked steps were recorded on (pr-suites.mjs "(stores)", lib/coverage-pick.mjs PR_STORES).
   const picks = prSteps(env);
   const prStores = String(env.PR_SUITES || '').trim() ? picks[STORES] || {} : {};
   // Only suites handed step names can need a renamed-pick fallback; each leg carries the same roster for both attempts.
   const fallbackSuites = suites.filter(suite => Array.isArray(picks[suite]) && picks[suite].length > 0).join(',');
-  const legs = key => ((env.GATE_TAG || night) && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
+  const legs = key => [{store: prStores[suiteOfKey(key)] || '', key}];
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const qualityParts = env.PR_SUITES ? picks['(parts)']?.qualityai || ['journey']
     : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}), pushReach)
@@ -168,9 +166,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
 export async function suiteFacts() {
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // suites/apply.mjs imports app code that needs desktop/shared/, which CI never staged (a crash hidden by the workflow's pipe)
   const {SUITES} = await import('./lib/context.mjs');
-  const cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [];
-  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.aiAnswers === 'backbone') backbone.push(suite); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; parts[suite] = module.parts; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); if (module.notion === false || module.light || module.store) storeless.push(suite); }   // storeless: no store to vary (no Notion part, a model-only eval, or a store of its own)
-  return {all: SUITES, cadence, watches, parts: Object.fromEntries(Object.entries(parts).filter(([, value]) => value)), judges, varies, sameOnEveryOs, storeless, shards, offlineAi, backbone, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
+  const cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], shards = {}, offlineAi = [], backbone = [];
+  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.aiAnswers === 'backbone') backbone.push(suite); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; parts[suite] = module.parts; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); }
+  return {all: SUITES, cadence, watches, parts: Object.fromEntries(Object.entries(parts).filter(([, value]) => value)), judges, varies, sameOnEveryOs, shards, offlineAi, backbone, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
     os: async (suite, options) => runnerOf(await import(`./suites/${suite}.mjs`), options)};
 }
 

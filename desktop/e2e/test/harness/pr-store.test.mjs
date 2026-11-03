@@ -31,7 +31,7 @@ test('a coverage file names the store under test', async () => {
   assert.match(fs.readFileSync(new URL('../../lib/context.mjs', import.meta.url), 'utf8'), /process\.env\.E2E_STORE_UNDER_TEST = store/, 'the context sets it for the coverage file');
 });
 
-test('#2156: settings stays on SQLite without the stand-in-only setup step; strategy runs on the stand-in, where its picked steps are', () => {
+test('#2156: settings stays on SQLite without the stand-in-only setup step; strategy\'s stand-in-only steps are the Notion path\'s, never a PR\'s', () => {
   const settings = {stores: {'every Settings section renders': ['sqlite', 'standin'], 'Automatic backup: Back up now': ['sqlite', 'standin'],
     'the app is set up on this Mac\'s store': ['sqlite'], 'the app is seeded as a set-up install from the existing workspace': ['standin']}};
   const picked = ['every Settings section renders', 'Automatic backup: Back up now', 'the app is set up on this Mac\'s store', 'the app is seeded as a set-up install from the existing workspace'];
@@ -40,22 +40,24 @@ test('#2156: settings stays on SQLite without the stand-in-only setup step; stra
   assert.deepEqual(one.steps, picked.slice(0, 3));
   assert.deepEqual(one.dropped, [{step: picked[3], stores: ['standin']}]);
   const strategy = {stores: {'before any change': ['standin'], 'the next check keeps': ['standin'], 'an edit made directly on the Notion page': ['standin'], 'a region word written on the Notion page': ['standin']}};
+  // Why (3 Nov 2026, owner: "Mac Store only"): e2e runs on this Mac's store alone; the Notion path (these steps) has its own run.
   const two = storeFor(strategy, Object.keys(strategy.stores));
-  assert.equal(two.store, 'standin');
-  assert.deepEqual(two.dropped, []);
+  assert.equal(two.store, 'sqlite');
+  assert.deepEqual(two.steps, []);
+  assert.deepEqual(two.dropped.map(({step}) => step), Object.keys(strategy.stores));
   assert.equal(storeFor({}, ['x', SETUP]).store, 'sqlite', 'no stores recorded: SQLite, as before');
   assert.deepEqual(storeFor({stores: {x: ['notion']}}, ['x']).steps, ['x'], 'the real workspace pins its own store: never a reason to drop');
 });
 
 test('a PR run puts the picked store in the matrix; without one the job falls back to SQLite', async () => {
   const SHA = 'a'.repeat(40), gh = args => (args[0] === 'api' && /commits\//.test(args.join(' ')) ? SHA : '[]');
-  const steps = JSON.stringify({strategy: ['before any change'], settings: ['x'], [STORES]: {strategy: 'standin'}, [WHY]: ['strategy [standin] · "before any change" ← runs a.js:1']});
+  const steps = JSON.stringify({strategy: ['before any change'], settings: ['x'], [STORES]: {strategy: 'sqlite'}, [WHY]: ['strategy [sqlite] · "before any change" ← runs a.js:1']});
   const out = await planRun({env: {REPO: 'o/r', SHA, EVENT: 'workflow_dispatch', ONLY: 'strategy,settings', PR_SUITES: 'strategy,settings', PR_STEPS: steps}, gh, ...(await suiteFacts())});
   const store = Object.fromEntries(JSON.parse(out.matrix).include.map(item => [item.suite, item.store]));
-  assert.deepEqual(store, {settings: '', strategy: 'standin'});
+  assert.deepEqual(store, {settings: '', strategy: 'sqlite'});
   assert.deepEqual(prSteps({PR_STEPS: 'not json'}), {});
   const workflow = fs.readFileSync(new URL('../../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /E2E_STORE: \$\{\{ matrix\.store \|\| \(inputs\.pr_suites != '' && 'sqlite'\)/, 'the matrix store wins; a PR without one runs SQLite');
+  assert.match(workflow, /E2E_STORE: \$\{\{ matrix\.store \|\| inputs\.store \|\| 'sqlite' \}\}/, 'the matrix store wins; a run without one runs SQLite');
   assert.match(workflow, /PR_STEPS: \$\{\{ inputs\.pr_steps \}\}/, 'the plan job reads the stores and the reasons');
 });
 
@@ -72,6 +74,19 @@ test('the reasons: one line per picked step with the changed line that reached i
     'settings [sqlite] · not run: "seeded" (recorded only on standin: no such step on sqlite)',
     'jobs · "own" ← its own step changed in this PR']);
   assert.equal(whyLines({suites: Array.from({length: 200}, (_, i) => `s${i}`)}).length, 151, 'capped, so the dispatch input keeps room for the steps');
+});
+
+// Gitar on #3029: with this Mac's store only, a suite whose picked steps all exist only on the stand-in runs whole, and the steps it leaves are still named.
+test('a suite whose picked steps are all the Notion path\'s runs whole and names each one it leaves', () => {
+  const strategy = {stores: {'an edit made directly on the Notion page': ['standin'], 'a region word written on the Notion page': ['standin']}};
+  const chosen = storeFor(strategy, Object.keys(strategy.stores));
+  assert.deepEqual(chosen.steps, []);
+  assert.deepEqual(whyLines({suites: ['strategy'], dropped: {strategy: chosen.dropped}, picked: {strategy: {reason: 'runs src/notion/search_settings.py:120'}}}), [
+    'strategy · whole suite ← runs src/notion/search_settings.py:120',
+    'strategy · not run: "an edit made directly on the Notion page" (recorded only on standin: the Notion path\'s run plays it)',
+    'strategy · not run: "a region word written on the Notion page" (recorded only on standin: the Notion path\'s run plays it)']);
+  const source = fs.readFileSync(new URL('../../pr-suites.mjs', import.meta.url), 'utf8');
+  assert.match(source, /if \(!chosen\.steps\.length\) \{ dropped\[suite\] = chosen\.dropped; delete steps\[suite\]/, 'pr-suites keeps the dropped steps for the reasons before it runs the suite whole');
 });
 
 test('#2137: a quoted step another suite runs is picked in that suite, not in the file\'s own suite', async () => {

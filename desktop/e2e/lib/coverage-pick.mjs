@@ -252,11 +252,12 @@ export function stepNamesFor(picked) {
 }
 
 // The store a PR runs a suite's picked steps on (e2e.yml E2E_STORE through plan-run.mjs): the one most of them were recorded on, SQLite on a tie. A step with no
-// recorded store counts for both. Steps never seen on the chosen store are dropped and named (they do not exist there: the runner would fail them as "not found"
+// recorded store counts for every one. Steps never seen on the chosen store are dropped and named (they do not exist there: the runner would fail them as "not found"
 // and run the whole suite again). entry: the suite's map entry. -> {store, steps, dropped: [{step, stores}]}
-export const PR_STORES = ['sqlite', 'standin'];
+// Why (3 Nov 2026, owner: "Mac Store only"): e2e runs on this Mac's store alone; a step recorded only on the Notion stand-in is the Notion path's, which has its own run.
+export const PR_STORES = ['sqlite'];
 export function storeFor(entry, names) {
-  const known = Object.fromEntries(Object.entries(entry?.stores || {}).map(([step, stores]) => [step, stores.filter(store => PR_STORES.includes(store))]));   // the real workspace (notion-real): its own pin
+  const known = Object.fromEntries(Object.entries(entry?.stores || {}).map(([step, stores]) => [step, stores.filter(store => store !== 'notion')]));   // the real workspace (notion-real): its own pin
   const on = (step, store) => !known[step]?.length || known[step].includes(store);
   const score = store => names.filter(step => on(step, store)).length;
   const store = PR_STORES.reduce((best, next) => (score(next) > score(best) ? next : best));
