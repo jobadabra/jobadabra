@@ -18,9 +18,9 @@ For each empty field write the short question to ask them (their language; <lang
 2 = many forms ask it, 1 = some forms ask it, 0 = not worth asking. held = true when a saved line already answers that field under another wording (a line "Mobile" answers phone).
 <roles> (when given) are the jobs this person applies for: rate importance for the application forms of THAT line of work. A link or profile that those forms rarely ask for (GitHub or a personal website for accounting, finance, legal, healthcare or sales roles, for example) is 0 or 1, never 3; the same link is 2 or 3 for software or design roles. Name, email, phone and place stay high for everyone.`;
 
-// The weight a queue row takes from an importance: 3 outranks every blocked fill, 2 ranks right after them (asks() drops anything below MIN_ASKED).
 // Why (fx, 3 Nov 2026, Windows tester + review): a field only some forms ask (importance 1) is a suggestion, not a missing answer: it is not asked and not counted in the Missing badge (the tester's finance profile counted GitHub and a website).
 const MIN_ASKED = 2;
+/** The queue weight of an asked contact detail from its importance (asks() keeps only MIN_ASKED and up): 3 outranks every blocked fill (MUST), 2 ranks right after them. -> number */
 export const weightOf = importance => (importance >= 3 ? MUST : BLOCKED - 500);
 
 // The empty contact fields, in the schema's order. -> [key]
