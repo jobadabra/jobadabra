@@ -24,6 +24,8 @@ export const keepGoing = true;
 export const cadence = 'manual';   // never chosen by a schedule or a push (lib/plan.mjs); a person or the daily workflow names it
 export const realAi = true;   // a live measurement, never a gate (see suites/explore.mjs)
 export const minutes = 50;
+// Why (3 Nov 2026, AI user agents 7/12, code review): the default suite budget is 7 minutes and cuts a running step at its end, which would end a 20-minute session at about 6 minutes with nothing written; a session runs to its own minute cap (E2E_AGENT_MINUTES) like the other manual suites.
+export const aggregateBudget = false;
 export const watches = ['desktop/e2e/lib/agent-run.mjs', 'desktop/e2e/lib/explore.mjs'];
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');

@@ -298,8 +298,8 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 - [x] [ag] 3/12 diversity: persona + CV shape generator, move vocabulary from the ⌘K registry, seeded planner, coverage record; value re-check; planted bug (proof: desktop/e2e/lib/agent-plan.mjs @8d76749)
 - [x] [ag] 4/12 knowledge: `docs/app-expectations/` seed, `agent-memory` branch write-back, "changed since last session" from git + PR verdict lines (proof: desktop/e2e/lib/agent-knowledge.mjs @75edb22)
 - [x] [ag] 5/12 findings core: detector `ai-user-agent`, notes with arguments, second opinion, 12-a-session cap, session summary and cost line (proof: desktop/e2e/lib/agent-notes.mjs @e0884e6)
-- [ ] [ag] 6/12 the session runner: one goal-driven loop on the explorer, the `agent` suite, notes → second opinion → findings, summary and memory files
-- [ ] [ag] 7/12 the daily workflow `ai-user-agents.yml`, the Worker slot, the memory and evidence pushes (the first real nightly run)
+- [x] [ag] 6/12 the session runner: one goal-driven loop on the explorer, the `agent` suite, notes → second opinion → findings, summary and memory files (proof: desktop/e2e/lib/agent-run.mjs @6137c35)
+- [ ] [ag] 7/12 the daily workflow `ai-user-agents.yml`, the Worker slot, the memory push (the first real nightly run; screenshots ride the Finder's `pr-assets`, so no separate evidence branch)
 - [ ] [ag] 8/12 replay proof on `b4d64112` / `b6014b04` / `df66db14`, numbers into this spec
 - [ ] [ag] 9/12 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
 - [ ] [ag] 10/12 aged states: the day-30 folder generator and the first deep-state sessions (phase 2; fresh random states first, the owner's answer)

@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CRONS, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
+import {AGENT_SLOT, CRONS, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -50,6 +50,17 @@ test('the night burn-in starts five full e2e passes at five different UTC times,
   assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-10-31T21:00:00Z')), [{workflow: 'pr-verdict.yml'}, {workflow: 'e2e.yml', inputs: {night_pass: '1/5'}}], 'the verdict sweep keeps its tick');
   assert.equal(nightPassAt(new Date('2026-10-31T21:10:00Z')), '', 'a tick next to a slot is not a pass');
   assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'], 'no 4th trigger');
+});
+
+test('the AI user agent starts once a day at 04:40 UTC, alone on its tick, on the ten-minute trigger', () => {
+  const day = new Date(Date.UTC(2026, 10, 3)), started = [];
+  for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
+    const now = new Date(day.getTime() + minutes * 60000), jobs = jobsFor('*/10 * * * *', now).filter(job => job.workflow === 'ai-user-agents.yml');
+    if (jobs.length) started.push([now.toISOString().slice(11, 16), jobs]);
+  }
+  assert.deepEqual(started, [[AGENT_SLOT, [{workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}}]]]);
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-03T04:40:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'ai-user-agents.yml'], 'no stats start, no night pass shares its tick');
+  assert.ok(!NIGHT_SLOTS.includes(AGENT_SLOT));
 });
 
 test('sharing the ten-minute cron preserves exactly eight stats starts per UTC day', () => {
