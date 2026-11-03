@@ -5,6 +5,7 @@
 import {launchOnce} from './chrome-launch-once.js';
 import {staleExtension} from './server-env.js';
 import {newer} from './updater.js';
+import {log as appLog} from './log.js';
 
 /**
  * The copy to open a page of. `seen` = the person's check-in {id, version, at} or null; `found` = installed() entries.
@@ -53,7 +54,14 @@ export function reasonedOpen(open, context) {
  * The LinkedIn consent page opener the window's "Turn on LinkedIn" calls: one launch at a time (launchOnce), the check-in's id first, the profile scan as the fallback, a reason when nothing opened.
  * `server` = {extensionSeen(), latestExtension()}; `installed()` = the scan's copies; `open` = extension-install.js openInChrome. -> async () => {opened, starting?, reason?, note?}
  */
-export function linkedinPageOpener({server, installed, open}) {
+export function linkedinPageOpener({server, installed, open, log = appLog}) {
   const launch = launchOnce(() => openExtensionPage('linkedin.html', {seen: server.extensionSeen(), found: installed(), open}), () => server.extensionSeen()?.at || 0);
-  return reasonedOpen(launch, () => ({seen: server.extensionSeen(), found: installed(), latest: server.latestExtension()}));
+  const press = reasonedOpen(launch, () => ({seen: server.extensionSeen(), found: installed(), latest: server.latestExtension()}));
+  // Why (3 Nov 2026, owner: "log every Turn on LinkedIn press and its outcome"): the app log had no line for this press, so a failed press left nothing to read. Ids and names only, never a cookie.
+  return async () => {
+    const seen = server.extensionSeen(), found = installed(), target = extensionTarget({seen, found});
+    const result = await press();
+    log('linkedin-jobs', 'press', {path: 'extension', opened: !!result.opened, starting: !!result.starting, reason: result.reason || '', browser: target?.browser || '', idSource: seen?.id ? 'check-in' : target ? 'scan' : 'none'});
+    return result;
+  };
 }

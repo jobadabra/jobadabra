@@ -45,6 +45,7 @@ const WINDOWS = {
   'lib/cv-windows.js': {count: 3, why: 'two hidden print windows; the review window\'s page is written by lib/cv.js reviewPage through osText (test/cv.test.js)'},
   'lib/cv-look.js': {count: 1, why: 'hidden: measures the CV, shows nothing'},
   'lib/page-render.js': {count: 1, why: 'hidden: renders an employer page for the engine'},
+  'lib/linkedin-signin-window.js': {count: 1, why: 'LinkedIn\'s own sign-in page, in LinkedIn\'s words; our only text is the title "Sign in to LinkedIn · Jobadabra", with no Mac key or menu word'},
 };
 
 test('every window the main process opens is accounted for on Windows', () => {
