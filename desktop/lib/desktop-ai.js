@@ -48,7 +48,7 @@ export const runOpen = (command, args) => new Promise(resolve => execFile(comman
  */
 export async function copyAndOpen({clipboard, openFile, run, found = findDesktopAi(), platform = process.platform, connected = false}) {
   if (!found) return {ok: false, reason: 'none'};
-  try { clipboard.writeText(instruction(connected)); } catch { return {ok: false, reason: 'error'}; }   // Why (Gitar on #3023): a clipboard that refuses is not "the app is gone"; nothing was copied, so nothing is started
+  try { clipboard.writeText(instruction(connected)); } catch { return {ok: false, reason: 'error'}; }   // Why (Gitar on #3023, 4/6 3 Nov 2026): a clipboard that refuses is not "the app is gone"; nothing was copied, so nothing is started; a connected app is given the short instruction
   let opened = false;
   try {
     if (!found.file) opened = false;
