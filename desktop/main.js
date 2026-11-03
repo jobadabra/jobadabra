@@ -313,7 +313,7 @@ function handlers() {
 for (const stream of [process.stdout, process.stderr]) stream?.on?.('error', () => {});
 
 // A separate data folder for tests and demos (JOBADABRA_USER_DATA), so they never touch the real one (nor move it: lib/app-identity.js moves a pre-rename folder).
-keepLegacyIdentity({app, safeStorage, userDataOverride: DEMO_FOLDER || process.env.JOBADABRA_USER_DATA || '', log: text => console.log(`[data folder] ${text}`)});   // the Keychain item keeps the old name
+const sealer = keepLegacyIdentity({app, safeStorage, isFirstCopy: () => firstCopy, userDataOverride: DEMO_FOLDER || process.env.JOBADABRA_USER_DATA || '', log: text => console.log(`[data folder] ${text}`)});   // macOS: the Keychain item is "Jobadabra Safe Storage", an older one is moved (lib/keychain-migration.js)
 if (DEMO_FOLDER) app.setPath('userData', DEMO_FOLDER);
 else if (process.env.JOBADABRA_USER_DATA) app.setPath('userData', process.env.JOBADABRA_USER_DATA);
 // A live-test twin (lib/twin.js) on the real folder, or without the mirror's Notion token, stops here, before anything opens it.
@@ -399,7 +399,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   engineLog.setFile(path.join(app.getPath('userData'), 'logs', 'engine.log'));  // everything a run printed, in full
   // E2E on a Linux CI runner only (no keyring there): Electron's safeStorage refuses the basic store unless told to. A user's app never takes this path.
   if (process.platform === 'linux' && process.env.JOBADABRA_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
-  storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(safeStorage));
+  storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(sealer));
   buildMenu();   // again, now the saved update channel can be read (Update Channel's radio)
   // An import on the Mac that made it: its sealed keys open here; an older export without them takes them from the same Profile's backup (lib/reset.js adoptBackupKeys).
   if (resetDone?.imported) {

@@ -151,15 +151,27 @@ test('a move that fails keeps using the old folder and loses nothing', () => {
   assert.equal(migrateDataFolder(appData), path.join(appData, DATA_NAME), 'tried again at the next start');
 });
 
-test('the data folder is Jobadabra; the Keychain item is sealed under the old name, then the app shows Jobadabra', async () => {
+// Why (3 Nov 2026, owner: "It still points to Job PIlotto keychain/secrests... It shuold be Jobadabra."): this test asserted the opposite since 25 Oct 2026 (the Keychain item
+// keeps the old name for good). On macOS a real start now seals under "Jobadabra Safe Storage" and moves an older install (test/keychain-migration.test.js); a test or demo folder,
+// Windows (DPAPI, no named item) and Linux keep the earlier sequence.
+test('the data folder is Jobadabra; a test, Windows or Linux start still seals once under the old name, then the app shows Jobadabra', async () => {
   const appData = tmp();
   const {app, log, ready} = fakeApp(appData);
   const safeStorage = {isEncryptionAvailable: () => true, encryptString: () => { log.push(`seal under:${app.name}`); return Buffer.from('x'); }};
-  keepLegacyIdentity({app, safeStorage});
+  keepLegacyIdentity({app, safeStorage, platform: 'linux'});
   assert.equal(app.paths.userData, path.join(appData, DATA_NAME));
   assert.equal(app.name, LEGACY_NAME);
   ready(); await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(log, ['name:Job Pilotto', 'seal under:Job Pilotto', 'name:Jobadabra']);
+});
+
+test('on macOS a fresh start is named Jobadabra before the first seal, so the Keychain item is "Jobadabra Safe Storage"', async () => {
+  const {app, log, ready} = fakeApp(tmp());
+  const safeStorage = {isEncryptionAvailable: () => true, encryptString: () => { log.push(`seal under:${app.name}`); return Buffer.from('x'); }};
+  keepLegacyIdentity({app, safeStorage, platform: 'darwin'});
+  ready(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(log.some(line => line.includes('Job Pilotto') && line.startsWith('seal')), false);
+  assert.equal(app.name, DATA_NAME);
 });
 
 // "Tests and automation never touch the owner's live app": a test or demo folder must stop the move.
@@ -174,7 +186,7 @@ test('with a test or demo folder the real data folder is not moved', () => {
 
 test('a machine without a keychain still ends up named Jobadabra', async () => {
   const {app, ready} = fakeApp(tmp());
-  keepLegacyIdentity({app, safeStorage: {isEncryptionAvailable: () => { throw new Error('no keyring'); }}});
+  keepLegacyIdentity({app, safeStorage: {isEncryptionAvailable: () => { throw new Error('no keyring'); }}, platform: 'linux'});
   ready(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(app.name, 'Jobadabra');
 });
