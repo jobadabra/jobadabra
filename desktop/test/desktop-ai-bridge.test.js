@@ -68,6 +68,53 @@ test('a 401 (Disconnect) clears the stored token and says to press Connect again
   assert.equal((await deadCode(callMessage)).result.content[0].text, GONE);
 });
 
+test('Disconnect then Connect again: a stale stored token is dropped and the same ask pairs with the new file\'s code and answers', async () => {
+  const store = memoryStore('stale-token');
+  const sent = [];
+  const send = async (port, route, payload, token) => {
+    sent.push(`${route.split('/').pop()}:${token || '-'}`);
+    if (route.endsWith('/pair')) return {status: 200, body: {token: 'fresh'}};
+    return token === 'fresh' ? {status: 200, body: {jsonrpc: '2.0', id: payload.id, result: {content: [{type: 'text', text: 'ok'}], isError: false}}} : {status: 401, body: {error: 'disconnected'}};
+  };
+  const answer = (await createBridge({config: {port: 1, code: 'new-code'}, tools, send, store})(callMessage)).result;
+  assert.equal(answer.content[0].text, 'ok', 'no "press Connect again" right after pressing Connect');
+  assert.deepEqual(sent, ['mcp:stale-token', 'pair:-', 'mcp:fresh']);
+  assert.equal(store.state.kept, 'fresh');
+});
+
+test('parallel first calls share one pairing: the code works once, so none of them may report a removed connection', async () => {
+  const store = memoryStore();
+  let pairs = 0;
+  const send = async (port, route, payload, token) => {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    if (route.endsWith('/pair')) return ++pairs === 1 ? {status: 200, body: {token: 'tok'}} : {status: 401, body: {}};
+    return token === 'tok' ? {status: 200, body: {jsonrpc: '2.0', id: payload.id, result: {content: [{type: 'text', text: 'ok'}], isError: false}}} : {status: 401, body: {}};
+  };
+  const handle = createBridge({config: {port: 1, code: 'c'}, tools, send, store});
+  const answers = await Promise.all([1, 2, 3].map(id => handle({...callMessage, id})));
+  assert.deepEqual(answers.map(each => each.result.content[0].text), ['ok', 'ok', 'ok']);
+  assert.equal(pairs, 1);
+});
+
+test('a request with an id is always answered: a store that throws or a send that throws gives a plain sentence, never silence', async () => {
+  const broken = {get: async () => { throw new Error('boom'); }, set: async () => true, clear: async () => {}};
+  assert.match((await createBridge({config: {port: 1, code: 'c'}, tools, send: async () => ({closed: true}), store: broken})(callMessage)).result.content[0].text, /did not answer/);
+  const input = new PassThrough(), output = new PassThrough();
+  serve(async () => { throw new Error('boom'); }, input, output);
+  const lines = [];
+  output.on('data', chunk => lines.push(...chunk.toString().trim().split('\n')));
+  input.write(`${JSON.stringify(callMessage)}\n`);
+  for (let i = 0; i < 100 && !lines.length; i++) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.match(JSON.parse(lines[0]).result.content[0].text, /did not answer/);
+});
+
+test('Windows store: a folder that cannot be written is "no safe place" (false), not a crash', async () => {
+  const blocker = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-win-')), 'file');
+  fs.writeFileSync(blocker, 'x');
+  const win = secretStore({platform: 'win32', dir: path.join(blocker, 'inside'), exec: async () => ({ok: true, out: 'x'.repeat(60)})});
+  assert.equal(await win.set('t'), false);
+});
+
 test('when the OS cannot keep the token, the helper keeps it nowhere else and says so', async () => {
   const noStore = {get: async () => '', set: async () => false, clear: async () => {}};
   const handle = createBridge({config: {port: 1, code: 'c'}, tools, send: async () => ({status: 200, body: {token: 'tok'}}), store: noStore});

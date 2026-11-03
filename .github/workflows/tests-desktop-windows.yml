@@ -34,6 +34,7 @@ on:
       - 'desktop/lib/credentials.js'
       - 'desktop/lib/cv.js'
       - 'desktop/lib/desktop-ai-bridge/index.cjs'   # the helper Claude Desktop starts: DPAPI branch on Windows
+      - 'desktop/lib/desktop-ai-mcpb.js'   # builds the helper's manifest for darwin and win32
       - 'desktop/lib/desktop-ai.js'
       - 'desktop/lib/e2e-hidden.js'
       - 'desktop/lib/extension-install.js'

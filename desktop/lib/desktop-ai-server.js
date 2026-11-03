@@ -6,8 +6,10 @@ import {redeem, verifyToken, noteUse} from './desktop-ai-pairing.js';
 import {log as appLog} from './log.js';
 
 export const BRIDGE_VERSION = '1';   // the helper file's protocol; an older helper against a newer app gets 426 and says "press Connect again"
+/** Whether a request path belongs to this handler (the /desktop-ai/v1/ family). Takes the raw url, returns a boolean; anything else is false. */
 export const isDesktopAiRoute = url => String(url || '').startsWith('/desktop-ai/v1/');
 let sources = null;   // set by lib/desktop-ai-handlers.js once the app is up; null in demo mode (every tool then says it is not available)
+/** Gives the handler the read sources (lib/desktop-ai-handlers.js builds them from the running app); null in demo mode, then every tool says it is not available. */
 export const setDesktopAiSources = value => { sources = value; };
 
 const send = (res, status, value) => { res.writeHead(status, {'Content-Type': 'application/json'}); res.end(value === undefined ? '' : JSON.stringify(value)); };
@@ -50,7 +52,7 @@ export async function handleDesktopAi(req, res, body, {storage, PORT}) {
   if (!verifyToken(storage, bearer)) return send(res, 401, {error: 'disconnected', message: 'Disconnected. Press Connect in Jobadabra again.'});
   if (req.headers['x-desktop-ai-bridge'] !== BRIDGE_VERSION) return send(res, 426, {error: 'outdated', message: 'This connection is out of date. Press Connect in Jobadabra again.'});
   const message = parse(body);
-  noteUse(storage);
+  if (message) noteUse(storage);   // a garbage body is not a use
   const reply = await handleRpc(message, {home: undefined});
   return reply ? send(res, 200, reply) : send(res, 202);
 }

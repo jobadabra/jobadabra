@@ -34,7 +34,7 @@ The person needs the Jobadabra app open: with the app closed the tools say "Open
 | Tool | Kind | Returns / does | Built from (one mechanism) |
 |---|---|---|---|
 | `get_open_questions` | read | The queue: id, wording, field kind, saved value, verdict | `answersData` (renderer/feedback-data.js) via `openQuestions` |
-| `get_profile` | read | Profile parts (details, CV, what we learned, strategy, voice); sensitive answers left out | `aboutYou` bundle + `profileText` (lib/feedback-bundle.js) |
+| `get_profile` | read | The CV and Experience bank (the Profile parts that are files on this Mac). Details, answers and strategy come through `get_screen_data`, `get_open_questions` and `get_strategy`: reading them from `aboutYou` would call the store (live Notion calls), and a tool never does (code review of 2/6, 3 Nov 2026) | `aboutYou` with `skip` for the store parts + `profileText` (lib/feedback-bundle.js) |
 | `get_jobs` | read | Jobs list: ids, title, company, source, fit, status | `jobsData` |
 | `get_strategy` | read | The strategy as the Strategy page holds it | registry entry `strategy` |
 | `get_screen_data` | read | What the open screen holds (debugging) | `readScreenData` + `pageText` |

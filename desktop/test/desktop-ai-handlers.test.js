@@ -1,7 +1,10 @@
 // What the desktop AI's read tools read from the running app (lib/desktop-ai-handlers.js): the window's registry, the saved Jobs and Strategy, the Profile and the support report. Never a fresh AI or Notion read.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {desktopAiSources, windowScreen, registerDesktopAi} from '../lib/desktop-ai-handlers.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {desktopAiSources, windowScreen, registerDesktopAi, localProfile} from '../lib/desktop-ai-handlers.js';
 import {setDesktopAiSources} from '../lib/desktop-ai-server.js';
 import {callTool} from '../lib/desktop-ai-tools.js';
 import {fakeStorage} from './desktop-ai-fake-storage.js';
@@ -50,6 +53,26 @@ test('the Profile is the feedback snapshot text, and the whole chain through the
   assert.equal(done.isError, false);
   assert.ok(done.text.includes('Snapshot of the Profile'));
   assert.ok(!done.text.includes('ana.fake@example.com') && !done.text.includes('sk-abcdef'));
+});
+
+test('the real Profile read makes no store or network call and gives the whole CV (a 3 000-character summary is not cut at 500)', async () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-profile-'));
+  fs.mkdirSync(path.join(folder, 'cv'));
+  const summary = 'Led a team of nurses on ward 4. '.repeat(94);
+  fs.writeFileSync(path.join(folder, 'cv', 'cv.json'), JSON.stringify({name: 'Ana Fake', summary, jobs: []}));
+  const calls = [];
+  const storage = {...fakeStorage(), path: name => path.join(folder, name)};
+  const bundle = await localProfile(storage, {fetcher: async (...args) => { calls.push(args); throw new Error('a tool must not read the store'); }});
+  assert.deepEqual(calls, [], 'no Notion or network read');
+  assert.deepEqual(Object.keys(bundle.parts), ['cv'], 'only the files on this Mac: details, answers, strategy and voice read the store');
+  const done = await callTool('get_profile', {}, desktopAiSources({app, storage, getWindow: () => null, profileOf: localProfile}));
+  assert.ok(done.text.includes(summary.trim()), 'the CV text arrives whole');
+  assert.ok(done.text.startsWith('Values below'), 'and is marked as data');
+});
+
+test('every tool that returns text carries the data-not-instructions notice', async () => {
+  const sources = desktopAiSources({app, storage: fakeStorage(), getWindow: () => null, profileOf: async () => ({parts: {cv: {name: 'A'}}, lacked: []}), readView: () => null});
+  for (const name of ['get_profile', 'get_support_report']) assert.ok((await callTool(name, {}, sources)).text.startsWith('Values below'), name);
 });
 
 test('demo mode registers no sources, so every tool is "not available"; a normal app registers them', async () => {
