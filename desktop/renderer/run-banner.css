@@ -10,3 +10,4 @@
 .run-banner.tone-warn { background: var(--warn-soft); border-color: var(--warn-line); }
 .run-banner.tone-bad { background: var(--bad-soft); border-color: var(--bad-line); }
 .run-banner.tone-neutral { background: var(--surface); border-color: var(--line); }
+.feedback-reply .run-banner-words { overflow-wrap: anywhere; }   /* the owner's line may hold a long link: it wraps inside the card */

@@ -79,7 +79,7 @@ contextBridge.exposeInMainWorld('pilot', {
   buildState: call('buildState'), restartApp: call('restartApp'),
   onUpdate: callback => ipcRenderer.on('update', (_, offer) => callback(offer)),
   onUpdateChannel: callback => ipcRenderer.on('updateChannel', (_, channel) => callback(channel)),   // the menu's Update Channel changed it
-  sendFeedback: call('sendFeedback'), feedbackPrepare: call('feedbackPrepare'),
+  sendFeedback: call('sendFeedback'), feedbackPrepare: call('feedbackPrepare'), feedbackReplies: call('feedbackReplies'), feedbackReplyClose: call('feedbackReplyClose'),
   feedbackProfile: call('feedbackProfile'), leaveReason: call('leaveReason'),
   onAskWhyLeaving: callback => ipcRenderer.on('askWhyLeaving', () => callback()),
   startFreeAi: call('startFreeAi'),

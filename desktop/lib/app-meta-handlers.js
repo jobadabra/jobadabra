@@ -11,6 +11,7 @@ import * as sharedLog from './shared-log.js';
 import * as updater from './updater.js';
 import {registerBuildHandlers} from './build-handlers.js';
 import {registerFeedbackHandlers} from './feedback-handlers.js';
+import {registerReplies} from './app-feedback-replies.js';
 import {log as appLog} from './log.js';
 import {joinProWaitlist} from './pro-waitlist.js';
 
@@ -94,4 +95,5 @@ export function registerAppMetaHandlers(ctx) {
   });
   // Send feedback… (lib/feedback-handlers.js → lib/app-feedback.js): to the owner, through the website, with the window's screenshot and the redacted logs when the person keeps them on. Demo mode sends nothing.
   registerFeedbackHandlers({DEMO, app, ipcMain, storage, track, getWindow: ctx.getWindow, getPlan});
+  registerReplies({DEMO, app, ipcMain, storage});   // the owner's answer to a feedback this install sent, shown as a card (lib/app-feedback-replies.js)
 }
