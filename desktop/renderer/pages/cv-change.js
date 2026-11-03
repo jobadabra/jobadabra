@@ -33,13 +33,12 @@ export async function showCvChanged() {
 }
 export async function openCvChange() {
   const change = await window.pilot.cvChange();
-  // What applying Profile edits costs: every scored job is re-scored over the next searches.
+  // What applying Profile edits does: every scored job is marked Old score until the person re-scores it (Find jobs never re-scores a listed job).
   $('cv-impact').textContent = '';
   show($('cv-impact'), false);
   window.pilot.strategyData().then(data => {
     if (!data?.ok || !data.scored) return;
-    const searches = Math.max(1, Math.ceil(data.scored / 60));
-    $('cv-impact').textContent = `Applying Profile edits re-scores ${data.scored} jobs over the next ${searches} search${searches === 1 ? '' : 'es'} ` +
+    $('cv-impact').textContent = `Applying Profile edits marks ${data.scored} scored jobs as old scores; Re-score updates them, up to 60 at a time ` +
       `${data.counts?.kits ? `; ${data.counts.kits} unsent kits were drafted with the old Profile` : ''}.`;
   }).catch(() => {});
   $('cv-dialog-name').textContent = change.name || 'your CV';

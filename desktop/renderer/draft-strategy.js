@@ -32,6 +32,6 @@ export function draftAsStrategy(draft = {}) {
     remote_jobs: ![search.remote_jobs].flat().some(value => NO.has(String(value ?? '').trim().toLowerCase())),
     relocation: first(places.relocation) || 'unspecified',
     goals, details: {}, level: level || (goals.seniority ? searchLevel(goals.seniority) : ''), compensation: goals.minimum_salary || '',
-    avoid: [], components: [], scored: 0, stale: 0, previous: 0, counts: {matches: 0, kits: 0, sent: 0}, insight: null, profile_empty: false,
+    avoid: [], components: [], scored: 0, previous: 0, counts: {matches: 0, kits: 0, sent: 0}, insight: null, profile_empty: false,
   };
 }

@@ -153,7 +153,7 @@ export function registerSearchTuningHandlers(ctx) {
     appLog('run', result.ok ? 'removed from the queue by you' : 'unqueue refused', {kind: result.kind || '', id: String(id || ''), error: result.error || ''});
     return result;
   });
-  // Strategy → Your goals: one goal corrected in the Profile (lib/goals.js). The fit scores follow it over the next searches.
+  // Strategy → Your goals: one goal corrected in the Profile (lib/goals.js). The fit scores become old scores; Re-score updates them.
   ipcMain.handle('editGoal', async (_, key, value) => {
     if (DEMO) return {ok: true, where: 'demo'};
     try {

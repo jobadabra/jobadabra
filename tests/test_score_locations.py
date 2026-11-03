@@ -63,7 +63,7 @@ class FutureOnlyTests(unittest.TestCase):
         self.save(db, search(['zurich']))
         later = search(['berlin'])
         with mock.patch.object(locations, 'current', return_value=later):
-            self.assertEqual(score.stale_count(db, [JOB], self.PROFILE), 0)   # nothing waits for an AI call
+            self.assertEqual(len(score.queue(db, [JOB], self.PROFILE)), 0)   # nothing waits for an AI call
             self.assertEqual(locations.previous(score.load(db), later), [1])   # but it is marked
         with mock.patch.object(locations, 'current', return_value=search(['zurich'])):
             self.assertEqual(locations.previous(score.load(db), search(['zurich'])), [])
@@ -82,7 +82,7 @@ class FutureOnlyTests(unittest.TestCase):
         now = search(['berlin'])
         with mock.patch.object(locations, 'current', return_value=now):
             self.assertEqual(locations.refresh(db, now, active_ids={1}), 1)   # job 2 is not active: never touched
-            self.assertEqual(score.stale_count(db, [JOB, other], self.PROFILE), 1)
+            self.assertEqual(len(score.queue(db, [JOB, other], self.PROFILE)), 1)
 
 
 class ActiveJobsTests(unittest.TestCase):

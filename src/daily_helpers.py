@@ -98,7 +98,7 @@ def top_new(report, scored, limit=3):
 
 KITS_DEFAULT = 3  # Prepare top matches: kits per run unless --auto-kit-max says otherwise
 STALE_DAYS = 7  # A job not seen by a full crawl for this long is closed (reopened if seen again).
-MODES = ('scheduled', 'run', 'today', 'apply', 'more', 'prepare', 'insight', 'weekly', 'interview', 'add', 'import', 'kits')
+MODES = ('scheduled', 'run', 'today', 'apply', 'more', 'prepare', 'insight', 'weekly', 'interview', 'add', 'import', 'kits', 'rescore')
 
 
 def find_job(db, code):

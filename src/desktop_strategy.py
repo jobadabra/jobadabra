@@ -7,7 +7,7 @@ import re
 import sys
 
 from . import digest, levels, target_roles
-from .ai import locations, score
+from .ai import locations, score, score_old
 from .ai.insights_data import is_finding
 from .desktop_jobs import blank_profile, stage_status
 
@@ -28,40 +28,63 @@ def _previous_locations(db, stage_map):
     return len(_previous_locations_ids(db, stage_map))
 
 
-def _outdated_ids(db, stage_map):
-    return set(score.previous_method(db)), _previous_locations_ids(db, stage_map)
+def profile_for_scores(tracker=None, stores=None):
+    """The Profile text scores are checked against, the same on every screen: this Mac's file, else Notion's page, else the Mac store's text;
+    None when it cannot be read (then no job counts as changed)."""
+    from .paths import local_profile
+    try:
+        return local_profile() or (tracker.page_text() if tracker else (stores.texts.get('profile') if stores and stores.name != 'notion' else None)) or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
-def outdated(db, stage_map):
+def _changed_ids(db, profile, stage_map):
+    """Scored jobs whose posting text or Profile changed since their score (src/ai/score_old.py): Find jobs never re-scores them, Re-score does.
+    Only the ACTIVE ones, like the places count: Re-score skips a job with an application or a dismissal, so counting it would never reach 0."""
+    if not profile:
+        return set()
+    try:
+        candidates, _ = digest.eligible_jobs(db)
+        return score_old.old_ids(db, candidates, profile) & locations.active_ids(db, stage_map)
+    except Exception:  # noqa: BLE001 — the notice then counts the other reasons
+        return set()
+
+
+def _outdated_ids(db, stage_map, profile=None):
+    return set(score.previous_method(db)), _previous_locations_ids(db, stage_map), _changed_ids(db, profile, stage_map)
+
+
+def outdated(db, stage_map, profile=None):
     """Strategy's one "scored using previous search settings" notice (owner, 18 Oct 2026): each job once, whatever its reasons (an older scoring
-    method, other places), read from the SAVED settings. Reading it queues nothing."""
-    method, places = _outdated_ids(db, stage_map)
-    return {'count': len(method | places), 'method': len(method), 'places': len(places)}
+    method, other places, a changed posting or Profile since the score), read from the SAVED settings. Reading it queues nothing."""
+    method, places, changed = _outdated_ids(db, stage_map, profile)
+    return {'count': len(method | places | changed), 'method': len(method), 'places': len(places), 'changed': len(changed)}
 
 
-def mark_outdated(result, db):
+def mark_outdated(result, db, profile=None):
     """The Jobs read says which fits are from the previous strategy (owner, 2 Nov 2026: "there should be the old scored"): every row of
     `result['jobs']` keeps its fit and gets `stale` (True: re-scoring would replace it), and `result['outdated']` is Strategy's own summary, from
     the same ids (`_outdated_ids`), so the Jobs call to action and Strategy's notice count the same jobs. Applications (rows with a stage)
     are the stage map of THIS read's rows; Strategy reads the whole store, so an application beyond the listed rows can differ by one (parked as JOB-230). Reading queues nothing."""
     rows = result.get('jobs') or []
     stage_map = {(row.get('url') or '').strip(): row.get('stage') or None for row in rows if row.get('url')}
-    method, places = _outdated_ids(db, stage_map)
-    ids = method | places
+    method, places, changed = _outdated_ids(db, stage_map, profile)
+    ids = method | places | changed
     # By URL, never the row's `id`: a row listed from a store (Notion or this Mac's) is built from the store's item, which has no job id (desktop_jobs.py: rows carry id None there).
     stale_urls = {(url or '').strip() for job_id, url in db.execute('SELECT id, url FROM jobs') if job_id in ids}
     for row in rows:
         row['stale'] = (row.get('url') or '').strip() in stale_urls
-    result['outdated'] = {'count': len(ids), 'method': len(method), 'places': len(places)}
+    result['outdated'] = {'count': len(ids), 'method': len(method), 'places': len(places), 'changed': len(changed)}
     return result
 
 
-def rescore_outdated(db, stage_map):
-    """The notice's Re-score: queue every outdated job once for a new score (the next searches do it, 60 per search). -> how many."""
-    ids = set().union(*_outdated_ids(db, stage_map))
-    db.executemany("UPDATE scores SET input_hash='' WHERE job_id=?", [(job_id,) for job_id in sorted(ids)])
+def rescore_outdated(db, stage_map, profile=None):
+    """The notice's Re-score: ask for a new score of every outdated job once (input_hash ''), so the run scores each one: a changed Profile would
+    otherwise let pending_jobs skip a low score without AI and leave the count unchanged. The re-score run (mode rescore) scores 60 per run. -> how many."""
+    method, places, changed = _outdated_ids(db, stage_map, profile)
+    db.executemany("UPDATE scores SET input_hash='' WHERE job_id=?", [(job_id,) for job_id in sorted(method | places | changed)])
     db.commit()
-    return len(ids)
+    return len(method | places | changed)
 
 
 def _readable(fragment):
@@ -201,13 +224,8 @@ def strategy(db, tracker=None, stores=None):
         own_text = local_profile() or ('' if tracker else profile or '')
         goals, details = _goals(own_text), _details(own_text)
         compensation = goals.get('minimum_salary') or _section(own_text, 'compensation')
-    stale = 0
-    if tracker or profile:  # jobs whose fit score waits for the new Profile ("Scores updating"), re-scored over the next searches
-        try:
-            from .paths import local_profile
-            stale = score.stale_count(db, candidates, local_profile() or (tracker.page_text() if tracker else profile))
-        except Exception:  # noqa: BLE001
-            pass
+    from .paths import local_profile
+    scoring_text = local_profile() or profile   # the Profile the scores are checked against: the notice counts the jobs whose score is old for it
     # The Profile still the empty template (an import or a new workspace): fit scores are paused (score.unfilled); the page says so.
     from .paths import local_profile
     own = local_profile()
@@ -246,7 +264,7 @@ def strategy(db, tracker=None, stores=None):
                  + [f'Company: {name}' for name in prefs.get('excluded_companies') or []]
                  + [f'Title: {word}' for word in unique(search.get('title_exclude_keywords'))[:6]]
                  + [f'Remote only from {region}' for region in unique(search.get('remote_excluded_regions'))[:3]],
-        'components': components, 'scored': len(scored), 'stale': stale, 'previous': len(score.previous_method(db)), 'previous_locations': _previous_locations(db, stage_map), 'outdated': outdated(db, stage_map), 'profile_empty': profile_empty,
+        'components': components, 'scored': len(scored), 'previous': len(score.previous_method(db)), 'previous_locations': _previous_locations(db, stage_map), 'outdated': outdated(db, stage_map, scoring_text), 'profile_empty': profile_empty,
         'counts': {'matches': len(scored), 'kits': stages.get('Kit ready', 0), 'sent': sent},
         'insight': insight,
     }

@@ -1,11 +1,11 @@
-// Owns: the tracked tasks the Mac starts: refresh (Find jobs), syncMatches, checkMail, scout, work, task, scoreVisits, mailResult.
+// Owns: the tracked tasks the Mac starts: refresh (Find jobs), rescore (Re-score), syncMatches, checkMail, scout, work, task, scoreVisits, mailResult.
 // Each runs its engine commands through run() and is queued, shown and recorded by tracked() (pipeline-queue.js).
 // Guarded by: test/mail-report.test.js, test/run-join.test.js, test/run-note.test.js, test/run-cards.test.js, test/run-kinds.test.js, test/stop-task.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {engineOf, familyOfEngine} from './ai/names.js';
 import {deliveryProblem, mailProblem as mailProblemFrom} from './run-result.js';
 
-import {mailArgs, SCOUT_BUDGET_S, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
+import {dailyArgs, mailArgs, SCOUT_BUDGET_S, SEARCH_BUDGET_S, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
 import {appMessage, failedLine, taskSummary} from './pipeline-lines.js';
 import {tracked} from './pipeline-queue.js';
 import {run} from './pipeline-run.js';
@@ -14,16 +14,30 @@ import {searchDone} from './search-report.js';
 import {offer as offerBrowserReads} from './refused-offer.js';
 import {besideSteps} from './search-beside.js';
 
-// note: what this search is for beyond a refresh ("Re-scoring 75 older scores"), shown on its row from queued to finished.
+// What a search-kind row says when it ends: the digest problem, and the counts of the run's own summary (data/reports/last-run.json) when it is this run's.
+const searchSummary = storage => (record, log) => {
+  const problem = deliveryProblem(log);   // the digest the bot could not deliver: said on the run, not only as "Failed"
+  let summary = {};
+  try { summary = JSON.parse(storage.readText('data/reports/last-run.json')); } catch {}
+  const fresh = summary.started_at && Date.parse(summary.started_at) >= record.id - 60000;
+  return {...(problem ? {problem} : {}), ...(fresh ? {found: summary.jobs ?? null, feeds: summary.feeds ?? null, new: summary.new ?? 0, changed: summary.changed ?? 0,
+    scored: summary.score?.done ?? summary.score?.scored ?? null, usd: summary.usd ?? 0, warnings: summary.warnings || []} : {})};
+};
+// note: what this search is for beyond a refresh ("Find more employers"), shown on its row from queued to finished.
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
-  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, {employers, signal, note}), {mode}, (record, log) => {
-    const problem = deliveryProblem(log);   // the digest the bot could not deliver: said on the run, not only as "Failed"
-    let summary = {};
-    try { summary = JSON.parse(storage.readText('data/reports/last-run.json')); } catch {}
-    const fresh = summary.started_at && Date.parse(summary.started_at) >= record.id - 60000;
-    return {...(problem ? {problem} : {}), ...(fresh ? {found: summary.jobs ?? null, feeds: summary.feeds ?? null, new: summary.new ?? 0, changed: summary.changed ?? 0,
-      scored: summary.score?.done ?? summary.score?.scored ?? null, usd: summary.usd ?? 0, warnings: summary.warnings || []} : {})};
-  }, {note});
+  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, {employers, signal, note}), {mode}, searchSummary(storage), {note});
+}
+/**
+ * The Re-score run (Jobs call to action, Strategy's notice): new scores for the jobs that already have an old one, and nothing else: no job boards, no
+ * employer pages, no new jobs, and not a "search" (lastSearchAt stays). Design (3 Nov 2026, owner): a job already in the list is never re-scored by Find jobs.
+ * note: "Re-scoring 75 older scores", shown on its row from queued to finished.
+ */
+export function rescore(storage, onLine, trigger = 'you', {note = ''} = {}) {
+  const mode = 'rescore';
+  return tracked(storage, 'search', trigger, onLine, async tee => {
+    const {code, result} = await run(storage, dailyArgs(storage, {mode, budget: SEARCH_BUDGET_S}), tee, triggerEnv(trigger));
+    return {ok: code === 0, result};
+  }, {mode}, (record, log) => ({...searchSummary(storage)(record, log), rescore: true}), {note});   // rescore: its notice is Re-score's, not "Find jobs done, no jobs added"
 }
 export function syncMatches(storage, onLine, trigger = 'you') {
   return tracked(storage, 'search', trigger, onLine, tee => run(storage, syncMatchesArgs(), tee, triggerEnv(trigger))

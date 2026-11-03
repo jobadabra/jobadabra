@@ -27,7 +27,7 @@ class SearchCharacterization(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        self.calls, self.runs, self.score_calls, self.fail_scores = [], [], [], False
+        self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores = [], [], [], [], False
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
         self.failed = self.expire = self.late_jobs = False
         self.stores = memory.open_store()
@@ -135,9 +135,10 @@ class SearchCharacterization(unittest.TestCase):
         stats.update(done=0, pending=0)
         return 'Enriched'
 
-    def score(self, db, candidates, profile, model, maximum, stats, on_scored, only_ids):
+    def score(self, db, candidates, profile, model, maximum, stats, on_scored, only_ids, scope='all'):
         self.event('score')
         self.score_calls.append(only_ids)
+        self.score_scopes.append(scope)
         if self.score_error:
             raise self.score_error
         picked = [j for j in candidates if only_ids is None or j['id'] in only_ids]
@@ -270,16 +271,26 @@ class SearchCharacterization(unittest.TestCase):
         early = {j['title'] for j in store.digest_jobs(self.db, only_new=False) if j['id'] in self.score_calls[0]}
         self.assertEqual(early, {'Old SRE 4', 'Old SRE 5'})
 
-    def test_the_waiting_pass_takes_half_of_scorings_time_and_the_search_keeps_the_rest(self):
-        # Code review of #3058: 47+ waiting jobs took the whole share at the 3 s pace and the reads started past their cut.
+    def test_the_waiting_pass_takes_all_of_scorings_time(self):
+        # Owner, 3 Nov 2026: "If the jobs in the backlog means jobs that are not currently displayed in the jobs list, then all of it first". 8 wait,
+        # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 go first (the half share of #3074 took 6), the search's pass takes what is left.
         self.waiting_jobs(8)
         time_budget.start(180, now=time_budget.time.monotonic() - 100)
-        time_budget.score_first()   # 40 s of scoring time: 13 jobs at 3 s; its half is 6
+        time_budget.score_first()
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
-        self.assertEqual(len(self.score_calls[0]), 6)
+        self.assertEqual(len(self.score_calls[0]), 8)
         self.assertLess(self.calls.index('score'), self.calls.index('gather'))
-        self.assertEqual(self.calls.count('score'), 2, 'the search\'s own pass scores the rest')
+
+    def test_find_jobs_only_ever_asks_for_the_jobs_that_were_never_scored(self):
+        # Owner, 3 Nov 2026: "if those jobs are already in the jobs list ... that should not be handled by find jobs at all": every scoring call a
+        # refresh makes (the waiting pass, the search's pass, the top-up batches) is in the 'new' scope; the Re-score run is mode rescore.
+        self.waiting_jobs(5)
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            self.run_search(limit=100)
+        self.assertGreaterEqual(len(self.score_scopes), 2)
+        self.assertEqual(set(self.score_scopes), {'new'})
 
     def test_a_refusing_ai_is_warned_once_for_the_whole_run(self):
         # Code review of #3058: both passes said "N job(s) not scored" and the second counted the first's failures twice.
@@ -297,11 +308,11 @@ class SearchCharacterization(unittest.TestCase):
         self.waiting_jobs(3)
         time_budget.start(180)
         real = self.score
-        def fail_second(db, candidates, profile, model, maximum, stats, on_scored, only_ids):
+        def fail_second(db, candidates, profile, model, maximum, stats, on_scored, only_ids, scope='all'):
             if self.calls.count('score') >= 1:
                 self.event('score')
                 raise RuntimeError('boom')
-            return real(db, candidates, profile, model, maximum, stats, on_scored, only_ids)
+            return real(db, candidates, profile, model, maximum, stats, on_scored, only_ids, scope)
         with mock.patch.object(time_budget, 'record'), mock.patch.object(score, 'run', side_effect=fail_second):
             self.run_search(limit=100)
         self.assertEqual(self.runs[0]['score']['done'], 3)

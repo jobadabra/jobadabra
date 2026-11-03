@@ -29,9 +29,6 @@ TAIL = 15    # no AI call starts this close to the end: one already running fini
 SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts no call: scoring keeps them (26 Oct 2026, a proof
 #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
 SCORE_FIRST = False
-WAITING_SHARE = 0.5   # of scoring's time: the pass that scores the jobs already waiting (src/daily_search_scoring.py score_waiting_first) leaves the
-#                       rest to the search. Why (#3058 code review, 3 Nov 2026): a backlog of 47+ jobs took scoring's whole share at the 3 s pace, the
-#                       reads started past their cut and the stale-job expiry ran after a starved crawl
 # Every stage that reads or calls the AI after the budget starts (tests/test_three_minutes.py loops over them; a new one goes here and there).
 STAGES = ('web search', 'job boards', 'employer sites', 'free job APIs', 'Google Jobs', 'job-alert emails', 'descriptions', 'places',
           'title sorting', 'scoring', 'job facts', 'kits', 'employer names')
@@ -196,25 +193,23 @@ def _paces():
         return dict(PACE)
 
 
-def batch(step, wanted, now=None, say=True, share=None):
-    """How many of `wanted` items `step` takes in this refresh (see _batch); on a search tape the recorded answer. `share`: a fraction of the step's
-    own share (WAITING_SHARE). Returns an int, `wanted` without a budget; no data of its own beyond the clock and this computer's pace file."""
+def batch(step, wanted, now=None, say=True):
+    """How many of `wanted` items `step` takes in this refresh (see _batch); on a search tape the recorded answer. Returns an int, `wanted` without a budget; no data of its own beyond the clock and this computer's pace file."""
     if now is None:
-        return budget_tape.decide('batch', [step, wanted] + ([share] if share else []), lambda: _batch(step, wanted, None, say, share))
-    return _batch(step, wanted, now, say, share)
+        return budget_tape.decide('batch', [step, wanted], lambda: _batch(step, wanted, None, say))
+    return _batch(step, wanted, now, say)
 
 
-def _batch(step, wanted, now, say, share=None):
+def _batch(step, wanted, now, say):
     """How many of `wanted` items this step takes so the refresh ends on time: its share of the time left, at its measured pace. Says the
-    plan in the log when it takes fewer (say=False: a step that tops up with further batches says what is left once, at its end). Without a budget: all of them.
-    share: a fraction of the step's own share (the waiting jobs' pass takes WAITING_SHARE of it, so the search keeps the rest)."""
+    plan in the log when it takes fewer (say=False: a step that tops up with further batches says what is left once, at its end). Without a budget: all of them."""
     if DEADLINE is None or wanted <= 0:
         return wanted
     floor = min(wanted, floor_left()) if step == 'score' and not ended(now) else 0   # never fewer than the search's first scores (may_score)
     stop = min(DEADLINE - part(FACTS if SCORE_FIRST and step in ('score', 'job') else 0), end())   # a stage's own end comes first
     left = stop - (now if now is not None else time.monotonic()) - part(TAIL)
     pace = max(0.5, _paces().get(step, PACE[step]))
-    n = max(floor, min(wanted, int(left * SHARE[step] * (share or 1) / pace)))
+    n = max(floor, min(wanted, int(left * SHARE[step] / pace)))
     if not say:
         return n
     if not n:

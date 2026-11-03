@@ -131,7 +131,7 @@ async function openRebuildReview() {
     const picked = result.groups.filter(group => boxes[group.id].checked);
     $('replace-go').disabled = !picked.length;
     const uses = picked.some(group => group.cost === 'Uses AI');
-    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'AI re-scores the jobs over the next searches' : 'no AI re-scoring'}.` : 'Nothing selected.';
+    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'your scored jobs are marked as old scores until you re-score them' : 'no AI re-scoring'}.` : 'Nothing selected.';
   };
   $('rebuild-groups').replaceChildren(...result.groups.map(group => {
     const box = el('label', 'review-group inline-label');

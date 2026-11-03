@@ -305,10 +305,6 @@ export function renderStrategy(data) {
   // Averages of what the matches scored, not the weights of the score (owner, 7 Oct 2026: "How matches are scored" read as weights).
   $('strategy-score-note').textContent = !data.scored ? 'No scored matches yet: run a search with your AI key.'
     : `Across your ${data.scored} scored match${data.scored === 1 ? '' : 'es'} · Averages, not scoring weights.`;
-  // Two different groups: "stale" jobs are queued and get a new score over the next searches; "previous" ones are kept and never queued
-  // unless you ask (src/ai/score.py).
-  show($('strategy-stale'), !!data.stale);
-  $('strategy-stale-text').textContent = data.stale ? `${data.stale} job${data.stale === 1 ? '' : 's'} queued for a new score after your Profile change · up to 60 per search` : '';
   drawImprove();
   $('strategy-scores').replaceChildren(...data.components.map(part => {
     const line = el('div', 'score-bar');

@@ -344,11 +344,12 @@ import src.desktop
     def test_rescore_refresh_and_tune(self):
         stages = self.patch('src.store_access.url_stages', return_value={'url': 'Applied'})
         rescore = self.patch('src.desktop_strategy.rescore_outdated', return_value=2)
+        self.patch('src.desktop_strategy.profile_for_scores', return_value='A Profile')   # the text the scores are checked against (changed postings and Profile edits count)
         self.call('rescore-outdated', {'queued': 2}, ascii=True)
-        rescore.assert_called_once_with(self.db, stages.return_value)
+        rescore.assert_called_once_with(self.db, stages.return_value, 'A Profile')
         stages.side_effect = OSError()
         self.call('rescore-outdated', {'queued': 2}, ascii=True)
-        rescore.assert_called_with(self.db, {})
+        rescore.assert_called_with(self.db, {}, 'A Profile')
         active = self.patch('src.ai.locations.active_ids', side_effect=lambda *a: {1, 2})
         ids = self.patch('src.ai.locations.id_for_url', return_value={2, 3})
         current = self.patch('src.ai.locations.current', return_value=self.search)
@@ -375,7 +376,7 @@ import src.desktop
         ready = self.patch('src.ai.engine.ready', return_value=True)
         listed = self.patch('src.desktop.jobs', side_effect=lambda *a, **k: dict(VALUE))
         blank = self.patch('src.desktop._profile_blank', return_value=False)   # the Profile verdict Jobs carries (#2759); its own test is test_desktop.py
-        self.patch('src.desktop.mark_outdated', side_effect=lambda result, db: result)   # the old-score marks Jobs carries (JOB list payload); its own test is test_strategy_outdated.py
+        self.patch('src.desktop.mark_outdated', side_effect=lambda result, db, profile=None: result)   # the old-score marks Jobs carries (JOB list payload); its own test is test_strategy_outdated.py
         JOBS_OUT = {**VALUE, 'profile_empty': False}
         self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=True)

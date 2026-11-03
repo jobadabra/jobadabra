@@ -199,20 +199,25 @@ def unfilled(profile):
 PAUSED = 'Fit scores paused: your Profile is still empty (the Notion template). Fill it in, or Strategy → Rebuild from CV'
 
 
-def pending_jobs(db, candidates, profile, limit, full_profile=None):
+def pending_jobs(db, candidates, profile, limit, full_profile=None, scope='all'):
     """Candidates whose score is missing or out of date (job, facts or the scoring part of the profile changed), most worth scoring first:
     new jobs, then changed jobs, then jobs whose only reason is a Profile edit, best previous score first. A job whose previous score is
     under RESCORE_MIN and whose only reason is a Profile edit is not scored: it keeps its score, marked as the previous method (the
     user can re-score those on request). full_profile: the whole Profile text, for scores made before scoring_profile existed: if one
-    matches it, the score is still current (only form sections were in it) and its hash is updated instead of scoring again."""
+    matches it, the score is still current (only form sections were in it) and its hash is updated instead of scoring again.
+    scope: 'new' = only jobs with no score yet (what Find jobs scores), 'old' = only jobs that have a score and need a new one (what Re-score does),
+    'all' = both. Why (3 Nov 2026, owner): a job already in the list is never re-scored by Find jobs, so 'new' leaves every scored row untouched."""
     db.executescript(SCORES_TABLE)
     done = {row['job_id']: row for row in db.execute('SELECT job_id, scorer_version, input_hash, data_json FROM scores')}
-    score_search.recheck_lifts(db, [job for job in candidates if job.get('description')], done)   # a title-only lift falls on the role check's no, scored now or not
-    pending, again = [], score_search.again_ids([job for job in candidates if job.get('description')], done, RESCORE_MIN)
+    scored = [job for job in candidates if job.get('description') and scope != 'new']   # 'new' touches no scored row: no lift check, no title sort (an AI call)
+    score_search.recheck_lifts(db, scored, done)   # a title-only lift falls on the role check's no, scored now or not
+    pending, again = [], score_search.again_ids(scored, done, RESCORE_MIN)
     for job in candidates:
         if not job.get('description'):
             continue
         row = done.get(job['id'])
+        if (scope == 'new' and row) or (scope == 'old' and not row):
+            continue
         current = input_hash(job, job.get('ai'), profile)
         if job['id'] in again:   # scored before the search part, low, a title the search wants now
             pending.append(((1, 0), job))
@@ -351,29 +356,24 @@ def previous_method(db):
 
 
 def rescore_previous(db):
-    """Queue the previous-method scores for a new score (the next searches re-score them, 60 per search)."""
+    """Queue the previous-method scores for a new score (the Re-score run scores them, 60 per run; Find jobs never does)."""
     ids = previous_method(db)
     db.executemany("UPDATE scores SET input_hash='' WHERE job_id=?", [(job_id,) for job_id in ids])
     db.commit()
     return len(ids)
 
 
-def queue(db, candidates, profile):
-    """The jobs waiting for a (re-)score with this profile (the whole Profile text), checked the way run() checks them: against the
+def queue(db, candidates, profile, scope='all'):
+    """The jobs waiting for a (re-)score with this profile (the whole Profile text; scope as pending_jobs), checked the way run() checks them: against the
     scoring part of the Profile (7 Oct 2026: a refresh asked with the whole text, so every job it had just scored looked out of date,
     its next batch held only those, run() found "0 job(s) to score" and the refresh stopped after one batch)."""
-    return pending_jobs(db, candidates, scoring_profile(profile), 10**9, full_profile=profile)
+    return pending_jobs(db, candidates, scoring_profile(profile), 10**9, full_profile=profile, scope=scope)
 
 
-def stale_count(db, candidates, profile):
-    """How many scored-or-scorable jobs still wait for a (re-)score with this profile ("Scores updating")."""
-    return len(queue(db, candidates, profile))
-
-
-def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=None, first_pass=None, escalate_min=None, on_scored=None, every=10, only_ids=None):
+def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=None, first_pass=None, escalate_min=None, on_scored=None, every=10, only_ids=None, scope='all'):  # noqa: C901 (Why (3 Nov 2026): over the limit before this change; scope only passes through to pending_jobs, no new branch; splitting run is its own change)
     """Score up to max_jobs pending candidates; returns a one-line summary. profile: the whole Profile text (the
     scoring part is taken here). With a first_pass model (default: JOBADABRA_SCORE_FIRST_PASS_MODEL) every job gets the
-    cheap model first and only those scoring at least escalate_min are scored again by `model`; the rest keep the quick score."""
+    cheap model first and only those scoring at least escalate_min are scored again by `model`; the rest keep the quick score. scope: as pending_jobs."""
     first_pass = FIRST_PASS_MODEL if first_pass is None else first_pass
     escalate_min = ESCALATE_MIN if escalate_min is None else escalate_min
     cascade = bool(first_pass) and first_pass != model
@@ -384,9 +384,9 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
     full, profile = profile, scoring_profile(profile)
     from .. import time_budget as planner
     if only_ids is not None:   # the refresh's batch: the jobs it found and read, scored end to end (src/daily.py)
-        jobs = [job for job in pending_jobs(db, candidates, profile, 10_000, full_profile=full) if job['id'] in only_ids]
+        jobs = [job for job in pending_jobs(db, candidates, profile, 10_000, full_profile=full, scope=scope) if job['id'] in only_ids]
     else:
-        jobs = pending_jobs(db, candidates, profile, max_jobs, full_profile=full)
+        jobs = pending_jobs(db, candidates, profile, max_jobs, full_profile=full, scope=scope)
         jobs = jobs[:planner.batch('score', len(jobs))]   # a batch this refresh can finish (src/time_budget.py), best places first
     if not jobs:
         return f'0 job(s) to score with {model}'

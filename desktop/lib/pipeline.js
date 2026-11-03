@@ -13,6 +13,6 @@ export {stopRunning, hasChildren, isWatched, onRunEnd, LIMITS, stoppedReason, ru
 export {quietText, isDataLine, TASKS, taskName, failedLine, appMessage, taskSummary, isProgressStep, STATUS_LINE, leadStepOf, HEARTBEAT_MS} from './pipeline-lines.js';
 export {stopTask, serial, RUN_HISTORY, saveRuns, runs, running, keep, queued, INTERRUPTED, freezeQueue, unqueue, takeQueue, whenIdle} from './pipeline-queue.js';
 export {dailyArgs, SEARCH_BUDGET_S, SCOUT_BUDGET_S, syncMatchesArgs, mailArgs, triggerEnv, visitsArgs} from './pipeline-args.js';
-export {refresh, syncMatches, mailProblem, checkMail, mailResult, scout, work, task, scoreVisits} from './pipeline-tasks.js';
+export {refresh, rescore, syncMatches, mailProblem, checkMail, mailResult, scout, work, task, scoreVisits} from './pipeline-tasks.js';
 export {jobs, calendarJobs, importJob, addApplied, confirmedArgs, proposeLead, addLead, posting, reviewRejection, focus, focusDone, focusHistory,
   interviewPrep, describeJob, reassignEmail, interviewHappened, feedbackAction, focusReminder, unapply, notSubmitted, markOutcome, deleteJob, clearJobs, setStatus} from './pipeline-commands.js';

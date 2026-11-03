@@ -198,7 +198,7 @@ def _board_jobs(reading, feed_db, say):
 def _score_first(db, hidden, profile, scorer, model, first, fits, sync, limit):
     """Score the best-ranked jobs `first` at a time, a sync after each, until one fits FIT+ or `limit` are scored -> (how many were scored, whether one fits, how many were queued)."""
     from . import time_budget
-    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile))][:limit]
+    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile, scope='new'))][:limit]
     if not order:
         return 0, False, 0
     done, tried, strong = 0, 0, False

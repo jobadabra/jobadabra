@@ -5,11 +5,11 @@ from .daily_helpers import for_job_matches, left_out, no_profile, none_scored, t
 
 # Score the jobs that already wait for a score before this refresh searches for new ones.
 def score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget):
-    """Design (3 Nov 2026, owner, #3058: "This refresh scores 3 of 303 jobs... 300 wait for the next refresh"): Find jobs has one goal, to grow
-    the person's scored list. A job found and not yet scored is the cheapest growth (one score, no search), so a pressed or scheduled refresh
-    scores the waiting ones first, best places and closest jobs first, and searches for new jobs with the time left (score_jobs scores those
-    after). With nothing waiting it does nothing and the order is today's. One deadline for both: the run's 3 minutes (time_budget); the pass is
-    one batch of WAITING_SHARE of scoring's time, so the search keeps the rest (score_jobs then scores what is still waiting with the time left).
+    """Design (3 Nov 2026, owner, #3058, quoted in full in the PR): Find jobs grows the person's list of scored jobs. A job found and never scored is
+    the cheapest growth (one score, no search), so a pressed or scheduled refresh scores ALL of those it has time for, best places and closest jobs
+    first, and searches for new jobs with the time left (score_jobs scores those after). With nothing waiting it does nothing and the order is today's.
+    Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score action's
+    (daily_modes.rescore_mode), not Find jobs' (scope='new'). One deadline for both: the run's 3 minutes (time_budget).
     Not on a first press (its slice scores the first jobs with the floor), and not the jobs the cleanup after the crawl closes as outside your
     places (feeds.keep_open, a cache read): after a change of places most of the waiting jobs would be those."""
     if args.mode not in ('scheduled', 'run') or args.first_jobs or not (time_budget_on() and args.score_max and read_profile):
@@ -17,10 +17,10 @@ def score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, 
     try:
         from .sources import feeds
         stay = [job for job in to_score(db, hidden) if feeds.keep_open({**job, 'remote': 'remote' in (job.get('work_mode') or '').lower()})]
-        waiting = score.queue(db, stay, read_profile())
+        waiting = score.queue(db, stay, read_profile(), scope='new')
         if not waiting:
             return
-        taken = time_budget.batch('score', len(waiting), share=time_budget.WAITING_SHARE)
+        taken = time_budget.batch('score', len(waiting))
     except Exception as error:  # noqa: BLE001 — the search goes on and scores them after it, as before
         print(f'Warning: waiting jobs not scored first ({type(error).__name__}): they are scored after the search')
         return
@@ -37,7 +37,7 @@ def score_jobs(args, stores, db, run, read_profile, hidden, dismissed, time_budg
     batch, batch_started = None, None
     if time_budget_on() and args.score_max and read_profile:
         try:
-            waiting = score.queue(db, to_score(db, hidden), read_profile())
+            waiting = score.queue(db, to_score(db, hidden), read_profile(), scope='new')
             taken = time_budget.batch('score', len(waiting))
             batch, batch_started = {job['id'] for job in waiting[:taken]}, __import__('time').monotonic()
             run['waiting'] = len(waiting) - taken
@@ -81,7 +81,7 @@ def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, bat
         # Write scored matches now, keeping the same callback and exception boundary.
         def to_notion():
             sync_partial(args, stores, db, hidden, dismissed)
-        print(score.run(db, candidates, profile, score.DEFAULT_MODEL, args.score_max, stats=run['score'], on_scored=to_notion, only_ids=batch))
+        print(score.run(db, candidates, profile, score.DEFAULT_MODEL, args.score_max, stats=run['score'], on_scored=to_notion, only_ids=batch, scope='new'))
         if not final:   # the waiting jobs' pass: one batch, its numbers kept for the search's last pass, which says the warnings once from both
             return
         if batch is not None:
@@ -107,7 +107,7 @@ def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, bat
 def sync_partial(args, stores, db, hidden, dismissed):
     # Owner, 7 Oct 2026: Job Matches was written only after the whole search, so a stopped one left nothing there. The scores
     # so far are written now and then; the end of the search still writes the rest and marks what is gone or applied.
-    if args.mode not in ('scheduled', 'run', 'today'):
+    if args.mode not in ('scheduled', 'run', 'today', 'rescore'):
         return
     try:
         print(stores.matches.sync(db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True) + ' (so far)', flush=True)
@@ -121,14 +121,14 @@ def score_batches(args, db, run, hidden, profile, batch_started, to_notion, time
     time_budget.record('job', now() - batch_started, run['score'].get('done') or 0, run['score'].get('lost') or 0)
     # Done with time left: the next batch, sized from the pace just measured, read and scored the same way (the first is a guess).
     while run.get('waiting') and not time_budget.over('score'):
-        queue = score.queue(db, to_score(db, hidden), profile)
+        queue = score.queue(db, to_score(db, hidden), profile, scope='new')
         taken = time_budget.batch('score', len(queue), say=False)
         if not taken:
             break
         batch, batch_started, run['waiting'] = {job['id'] for job in queue[:taken]}, now(), len(queue) - taken
         more = {}
         print(score.run(db, to_score(db, hidden), profile, score.DEFAULT_MODEL, args.score_max, stats=more,
-                        on_scored=to_notion, only_ids=batch))
+                        on_scored=to_notion, only_ids=batch, scope='new'))
         time_budget.record('job', now() - batch_started, more.get('done') or 0, more.get('lost') or 0)
         if not more.get('done'):
             break
