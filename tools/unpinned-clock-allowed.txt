@@ -1,11 +1,5 @@
-1	desktop/e2e/test/ai/ai-meter.test.mjs
 2	desktop/e2e/test/harness/timing-ratchet.test.mjs
-9	desktop/e2e/test/pool/triage-cli.test.mjs
-2	desktop/e2e/test/pool/triage-evidence.test.mjs
-1	desktop/e2e/test/record/evidence-clean.test.mjs
 1	desktop/e2e/test/record/recorded-pages.test.mjs
-1	desktop/e2e/test/replay/journey-check.test.mjs
-5	desktop/e2e/test/replay/replay-date.test.mjs
 5	desktop/integration/extension/net-record-lost-body.test.mjs
 6	desktop/integration/extension/replay-watch-window.test.mjs
 2	desktop/test/ai-caps.test.js
@@ -61,10 +55,8 @@
 4	tests/test_notion_pace.py
 1	tests/test_places_strict.py
 1	tests/test_pr_ai_number.py
-1	tests/test_pr_verdict_qualityai.py
 5	tests/test_read_routes.py
 1	tests/test_scout_publish_path.py
-1	tests/test_ship_red.py
 1	tests/test_store.py
 2	tests/test_three_minutes.py
 1	tests/test_three_minutes_resume.py
