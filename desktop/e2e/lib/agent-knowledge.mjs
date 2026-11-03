@@ -3,6 +3,7 @@
 // Why (3 Nov 2026, AI user agents 4/7; owner: "every time the agent starts, he already knows how the app should function … each time he can improve his knowledge … he also must be up-to-date with our changes"):
 // three layers with one writer each, so memory cannot drift and cannot fill the prompt: expectations (people, markdown in the repo), field notes (the agent, a data branch), what changed (computed from git + PR verdict lines).
 // A file maps to an area by its path (AREAS); a file no area claims is reported as unmapped, never dropped, so the table cannot silently miss a new folder.
+import {approxTokens as tokens} from './agent-observe.mjs';
 
 /** Area -> the ⌘K group the planner uses, and the path patterns of the code that area owns. Order matters: the first match wins. */
 export const AREAS = [
@@ -11,7 +12,8 @@ export const AREAS = [
   {area: 'Profile', paths: [/profile/, /about-you/, /\bcv\b/, /learned/, /portrait/, /answers/]},
   {area: 'Strategy', paths: [/strategy/, /tune/, /scout/, /sources/]},
   {area: 'Settings', paths: [/settings/, /connections?/, /license|plan-|pro-gate/, /keychain/, /credit/]},
-  {area: 'Actions', paths: [/actions?[-_/.]/, /runs?[-_.]/, /activity/, /queue/, /palette/, /nav\.js/]},
+  {area: 'App', paths: [/nav\.js/, /main-window/, /shell/, /sidebar/]},   // the window around every screen; before Actions so nav.js reaches app-1 (Gitar, PR 3066)
+  {area: 'Actions', paths: [/actions?[-_/.]/, /runs?[-_.]/, /activity/, /queue/, /palette/]},
 ];
 /** The area a changed file belongs to, or null (the caller reports it as unmapped). Tests and docs are not code the agent re-tests. */
 export function areaOf(file) {
@@ -60,6 +62,8 @@ export function changedSince(log, verdicts = {}) {
 /** The "changed since your last session" lines for the prompt: newest first, one line each, at most `max`. */
 export const changedLines = (changed, max = 40) => changed.changes.slice(0, max).map(change => `- ${change.sha.slice(0, 8)} ${change.verdict}${change.areas.length ? ` [${change.areas.join(', ')}]` : ''}`);
 
+/** A note is one line of the notes file: whitespace collapsed and the field separator replaced, so render then parse gives the same note back (Gitar, PR 3066). */
+const oneLine = text => String(text).replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
 const normalise = text => String(text).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 /** The field-notes file of one area: `- text | seen N× | first YYYY-MM-DD | last YYYY-MM-DD | commit abc1234 | session <id>`. */
 export function parseNotes(markdown) {
@@ -82,14 +86,12 @@ export function mergeNotes(existing, observed, {today, commit = '', session = ''
     if (!key) continue;
     const note = byKey.get(key);
     if (note) Object.assign(note, {seen: note.seen + 1, last: today, commit, session});
-    else byKey.set(key, {text: text.trim(), seen: 1, first: today, last: today, commit, session});
+    else byKey.set(key, {text: oneLine(text), seen: 1, first: today, last: today, commit, session});
   }
   const age = note => (Date.parse(today) - Date.parse(note.last)) / 86400000;
   return [...byKey.values()].filter(note => !(age(note) > keepDays));
 }
 
-/** About 4 characters a token, the harness's own estimate (lib/agent-observe.mjs approxTokens). */
-const tokens = text => Math.ceil(text.length / 4);
 /**
  * The knowledge text for a session's areas: each area's rules first (a stale one says why), then its notes, capped at `maxTokens` (the oldest notes go first, rules never).
  * `expectations`: {area: [entry]}, `notes`: {area: [note]}.

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {areaOf, changedLines, changedSince, knowledgeFor, markStale, mergeNotes, parseExpectations, parseNotes, renderNotes, verdictLine} from '../../lib/agent-knowledge.mjs';
+import {AREAS, areaOf, changedLines, changedSince, knowledgeFor, markStale, mergeNotes, parseExpectations, parseNotes, renderNotes, verdictLine} from '../../lib/agent-knowledge.mjs';
 import {memoryFiles, pushMemory, readExpectations, readNotes} from '../../lib/agent-memory.mjs';
 import {planSession} from '../../lib/agent-plan.mjs';
 
@@ -116,4 +116,18 @@ test('the notes branch: created on the first night, extended on the second, noth
   assert.deepEqual(parseNotes(run(['show', 'agent-memory:notes/jobs.md'], remote)).map(note => [note.text, note.seen]), [['Board hides the Show menu', 2], ['Sort resets', 1]]);
   assert.deepEqual(pushMemory({dir: second, files: memoryFiles({Jobs: merged}), git: git2, message: 'night 3, same'}), {pushed: false});
   assert.equal(run(['show', 'main:README.md'], remote), 'main\n');
+});
+
+test('every ⌘K group has an area, so a changed file of the shell reaches the App rules (nav.js -> App)', () => {
+  assert.equal(areaOf('desktop/renderer/pages/nav.js'), 'App');
+  assert.equal(areaOf('desktop/renderer/pages/palette.js'), 'Actions');
+  for (const group of ['Focus', 'Jobs', 'Profile', 'Strategy', 'Settings', 'Actions', 'App']) assert.ok(AREAS.some(entry => entry.area === group), `no area for ${group}`);
+});
+
+test('a note with a pipe or a newline survives render then parse as one note', () => {
+  const merged = mergeNotes([], ['Sort | filter\nresets on reload'], {today: '2026-11-03', commit: 'abc1234', session: 's1'});
+  assert.equal(merged[0].text, 'Sort / filter resets on reload');
+  const back = parseNotes(renderNotes('Jobs', merged));
+  assert.equal(back.length, 1);
+  assert.deepEqual(back[0], merged[0]);
 });
