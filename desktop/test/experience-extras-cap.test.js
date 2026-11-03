@@ -43,10 +43,18 @@ test('the view says which details a job had no room for, and what the cap is', (
   assert.ok(role.dropped.every(d => d.from === 'Data CV'), 'each names its version');
 });
 
-test('what tailoring reads is unchanged: the same six, nothing extra on the role', () => {
-  const merged = experience.withExtras(storage, experience.view(storage) && cv.baseCv(storage));
-  assert.equal(merged.jobs[0].roles[0].extra.length, experience.MAX_EXTRA_PER_ROLE);
-  assert.equal(merged.jobs[0].roles[0].dropped, undefined, 'no new field leaks into the CV the tailor reads');
+test('what tailoring reads is unchanged: the first six in order, and no new field on the role', () => {
+  const role = experience.withExtras(storage, cv.baseCv(storage)).jobs[0].roles[0];
+  assert.deepEqual(role.bullets.slice(1), NEW.slice(0, experience.MAX_EXTRA_PER_ROLE), 'the main CV bullet, then the first six extras');
+  assert.equal(role.extra.length, experience.MAX_EXTRA_PER_ROLE);
+  assert.equal(role.dropped, undefined, 'no new field leaks into the CV the tailor reads');
+});
+
+test('the same detail in two versions is one detail not used, not two', async () => {
+  await experience.addCv(storage, pdf(), 'Cloud CV', {client});   // a second version carrying the same nine details
+  const view = experience.view(storage);
+  assert.equal(view.roles[0].dropped.length, 3, 'still three distinct details left out');
+  assert.equal(view.roles[0].bullets.filter(b => b.from !== 'Main CV').length, experience.MAX_EXTRA_PER_ROLE);
 });
 
 test('the Work history row says "3 not used" and lists them, so nothing is dropped silently', () => {

@@ -169,6 +169,7 @@ export function withExtras(storage, base, sources = list(storage), dropped = nul
   if (!base) return base;
   const out = structuredClone(base), key = mainKey(base);
   const extraSkills = new Set();
+  const seenDropped = new Set();
   const known = new Set(String(base.skills || '').split(',').map(s => s.trim().toLowerCase()));
   for (const source of sources) {
     if (source.mainKey !== key) continue;
@@ -182,7 +183,11 @@ export function withExtras(storage, base, sources = list(storage), dropped = nul
         const text = from.bullets[i];
         if (!text || have.has(text.toLowerCase())) continue;
         have.add(text.toLowerCase());
-        if (role.extra.length >= MAX_EXTRA_PER_ROLE) { dropped?.push({mainJob: m.mainJob, mainRole: m.mainRole, text, from: source.name}); continue; }
+        if (role.extra.length >= MAX_EXTRA_PER_ROLE) {
+          const once = `${m.mainJob}:${m.mainRole}:${text.toLowerCase()}`;   // the same detail in two versions is one detail not used (the pill counts details, not versions)
+          if (dropped && !seenDropped.has(once)) { seenDropped.add(once); dropped.push({mainJob: m.mainJob, mainRole: m.mainRole, text, from: source.name}); }
+          continue;
+        }
         role.extra.push(role.bullets.length);
         role.extraFrom[role.bullets.length] = source.name;
         role.bullets.push(text);
