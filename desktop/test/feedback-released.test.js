@@ -26,6 +26,7 @@ function network({site = [json({ok: true, told: 2, waiting: 1, matched: [], fail
 test('pull request numbers are the "(#n)" ending a commit subject; the version order is numeric, not alphabetical', () => {
   assert.deepEqual(prNumbers(['[02] [fd] x (#345)', 'Merge branch', '[a] y (#12)\nbody (#99)', 'see (#7) here', '(#12)']), [12, 345]);
   assert.deepEqual(prNumbers(['[a] Fix (#12)', '[b] Other (#14)', 'Revert "[a] Fix (#12)" (#13)']), [13, 14], 'a fix and its revert in one range: the fix is not announced');
+  assert.deepEqual(prNumbers(['[a] Fix (#12)', 'Revert "[a] Fix (#12)" (#13)', 'Revert "Revert "[a] Fix (#12)" (#13)" (#14)']), [12, 13, 14], 'a revert of the revert puts the fix back: its reporters are told');
   assert.equal(previousStable(['desktop-v0.9.2', 'desktop-v0.9.12', TAG, 'desktop-v0.10.0'], TAG), 'desktop-v0.9.12', '0.9.12 is older than 0.9.13 and 0.10.0 is newer');
   assert.equal(previousStable(['desktop-v0.9.12'], 'latest'), '');
   assert.equal(previousStable([], TAG), '');

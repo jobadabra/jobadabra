@@ -17,7 +17,11 @@ const TAG = /^desktop-v(\d+(?:\.\d+)*)$/;
 export const prNumbers = subjects => {
   const lines = subjects.map(line => String(line).split('\n')[0]), numbers = new Set(lines.map(line => Number(line.match(/\(#(\d+)\)\s*$/)?.[1])).filter(Number.isInteger));
   // Why (6/7 code review, 3 Nov 2026): a Revert subject in the same range cancels the PR it reverts, so that reporter is not told "fixed" for a fix that was taken out.
-  for (const line of lines) if (/^Revert "/.test(line)) { const gone = Number(line.match(/\(#(\d+)\)"/)?.[1]); if (Number.isInteger(gone)) numbers.delete(gone); }
+  // In order, oldest first: a revert takes its PR out, a revert of that revert puts it back (the nesting depth of the Revert prefixes says which; 6/7 review, Gitar).
+  for (const line of lines) {
+    const depth = (line.match(/^(?:Revert ")+/)?.[0].length || 0) / 'Revert "'.length, inner = Number(line.match(/\(#(\d+)\)"/)?.[1]);
+    if (depth && Number.isInteger(inner)) { if (depth % 2) numbers.delete(inner); else numbers.add(inner); }
+  }
   return [...numbers].sort((a, b) => a - b);
 };
 
