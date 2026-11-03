@@ -162,12 +162,43 @@ export async function rematchStale(storage, {apiKey = '', client = null, onStep 
 }
 
 // ---------- what tailoring reads ----------
+/** The skills of a source the main CV and earlier sources do not have yet: added to `known` and `found`. */
+function newSkills(skills, known, found) {
+  for (const skill of String(skills || '').split(',').map(s => s.trim()).filter(Boolean)) {
+    if (known.has(skill.toLowerCase())) continue;
+    known.add(skill.toLowerCase());
+    found.add(skill);
+  }
+}
+
+/**
+ * One match's new details onto a role: each one not already there joins it (role.extra, role.extraFrom) until the role holds MAX_EXTRA_PER_ROLE; the rest go to `dropped` (when given),
+ * once per detail and role (`seen`: the same detail from two versions is one detail not used, the pill counts details, not versions).
+ */
+function offerBullets(role, texts, sourceName, where, dropped, seen) {
+  const have = new Set(role.bullets.map(b => b.toLowerCase()));
+  for (const text of texts) {
+    if (!text || have.has(text.toLowerCase())) continue;
+    have.add(text.toLowerCase());
+    if (role.extra.length < MAX_EXTRA_PER_ROLE) {
+      role.extra.push(role.bullets.length);
+      role.extraFrom[role.bullets.length] = sourceName;
+      role.bullets.push(text);
+      continue;
+    }
+    const once = `${where.mainJob}:${where.mainRole}:${text.toLowerCase()}`;
+    if (dropped && !seen.has(once)) { seen.add(once); dropped.push({...where, text, from: sourceName}); }
+  }
+}
+
 // The main CV with the extra sources' new bullets appended to the roles they match: role.extra = their indexes, role.extraFrom = where each came from.
 // Same jobs, titles, dates and places as the main CV, always. Sources matched against another main CV are left out until matched again.
-export function withExtras(storage, base, sources = list(storage)) {
+// `dropped`, when given, collects the details a role had no room for ({mainJob, mainRole, text, from}), so the window can say which were left out (issue #3057).
+export function withExtras(storage, base, sources = list(storage), dropped = null) {
   if (!base) return base;
   const out = structuredClone(base), key = mainKey(base);
   const extraSkills = new Set();
+  const seenDropped = new Set();
   const known = new Set(String(base.skills || '').split(',').map(s => s.trim().toLowerCase()));
   for (const source of sources) {
     if (source.mainKey !== key) continue;
@@ -176,17 +207,9 @@ export function withExtras(storage, base, sources = list(storage)) {
       const from = flat[m.sourceRole], role = out.jobs[m.mainJob]?.roles[m.mainRole];
       if (!from || !role) continue;
       role.extra ||= []; role.extraFrom ||= {};
-      const have = new Set(role.bullets.map(b => b.toLowerCase()));
-      for (const i of m.newBullets) {
-        const text = from.bullets[i];
-        if (!text || have.has(text.toLowerCase()) || role.extra.length >= MAX_EXTRA_PER_ROLE) continue;
-        have.add(text.toLowerCase());
-        role.extra.push(role.bullets.length);
-        role.extraFrom[role.bullets.length] = source.name;
-        role.bullets.push(text);
-      }
+      offerBullets(role, m.newBullets.map(i => from.bullets[i]), source.name, {mainJob: m.mainJob, mainRole: m.mainRole}, dropped, seenDropped);
     }
-    for (const skill of String(source.cv.skills || '').split(',').map(s => s.trim()).filter(Boolean)) if (!known.has(skill.toLowerCase())) { known.add(skill.toLowerCase()); extraSkills.add(skill); }
+    newSkills(source.cv.skills, known, extraSkills);
   }
   for (const job of out.jobs) for (const role of job.roles) if (role.extra && !role.extra.length) { delete role.extra; delete role.extraFrom; }
   if (extraSkills.size) out.extraSkills = [...extraSkills].join(', ');
@@ -201,9 +224,10 @@ export function view(storage) {
   const main = baseCv(storage);
   const key = main ? mainKey(main) : '';
   const sources = list(storage);
-  const merged = withExtras(storage, main, sources);
-  const roles = (merged?.jobs || []).flatMap(job => job.roles.map(role => ({company: job.company, title: role.title, period: role.period, place: role.place || '',
-    bullets: role.bullets.map((text, i) => ({text, from: role.extraFrom?.[i] || 'Main CV'}))})));
+  const dropped = [], merged = withExtras(storage, main, sources, dropped);
+  const roles = (merged?.jobs || []).flatMap((job, ji) => job.roles.map((role, ri) => ({company: job.company, title: role.title, period: role.period, place: role.place || '',
+    bullets: role.bullets.map((text, i) => ({text, from: role.extraFrom?.[i] || 'Main CV'})),
+    dropped: dropped.filter(d => d.mainJob === ji && d.mainRole === ri).map(({text, from}) => ({text, from}))})));
   return {
     main: main ? {name: main.name || '', roles: main.jobs.reduce((n, j) => n + j.roles.length, 0), skills: main.skills || ''} : null,
     sources: sources.map(s => {
@@ -212,7 +236,7 @@ export function view(storage) {
         added: s.match.reduce((n, m) => n + m.newBullets.length, 0),
         onlyHere: s.match.filter(m => m.mainJob < 0).map(m => ({company: flat[m.sourceRole]?.company, title: flat[m.sourceRole]?.title, period: flat[m.sourceRole]?.period}))};
     }),
-    roles, extraSkills: merged?.extraSkills || '', added: readAdded(storage).map(({id, kind, text, mainJob, mainRole}) => ({id, kind, text, ...(kind === 'bullet' ? {mainJob, mainRole} : {})})),
+    roles, maxExtra: MAX_EXTRA_PER_ROLE, extraSkills: merged?.extraSkills || '', added: readAdded(storage).map(({id, kind, text, mainJob, mainRole}) => ({id, kind, text, ...(kind === 'bullet' ? {mainJob, mainRole} : {})})),
   };
 }
 

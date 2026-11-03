@@ -32,12 +32,19 @@ export function roleBlock(role) {
   who.append(el('b', '', role.company || role.title), el('span', 'small', role.company ? role.title : ''));
   head.append(el('span', 'job-initial', String(role.company || role.title || '?').trim().charAt(0).toUpperCase()), who, when);
   if (extras) head.append(pill(`+${plural(extras, 'detail')}`, 'good', {title: `${plural(extras, 'detail')} from other CV versions: tailoring may use them for this job`}));
+  const left = role.dropped || [];   // Why (3 Nov 2026, #3057, Windows tester): a job takes at most `maxExtra` extra details and the rest were dropped without a word
+  if (left.length) head.append(pill(`${left.length} not used`, 'warn', {title: 'This job has more details in your other CV versions than a tailored CV can hold'}));
   head.append(icon('chevron', 'icon job-chevron'));
   const list = el('ul');
   for (const bullet of role.bullets) {
     const item = el('li', '', bullet.text.replace(/\*\*/g, ''));
     if (bullet.from !== 'Main CV') item.append(' ', pill(bullet.from, 'good'));
     list.append(item);
+  }
+  if (left.length) {
+    const cap = role.maxExtra ? `at most ${role.maxExtra} extra details per job` : 'a limited number of extra details per job';   // the cap comes from lib/experience.js with the view; no second copy of the number here
+    list.append(el('li', 'muted', `Not used: a tailored CV takes ${cap}, so ${left.length === 1 ? 'this one is' : `these ${left.length} are`} left out:`));
+    for (const bullet of left) { const item = el('li', 'muted', bullet.text.replace(/\*\*/g, '')); item.append(' ', pill(bullet.from, 'warn')); list.append(item); }
   }
   box.append(head, list);   // the "+N details" pill says where they come from (its title); each extra bullet names its version
   return box;
@@ -143,7 +150,7 @@ export function showExperience(view) {
   $('exp-count').textContent = view.roles.length ? `${plural(view.roles.length, 'role')}${extras ? ` · ${plural(extras, 'detail')} from other versions` : ''}` : '';
   $('setting-experience-sources').dataset.summary = sourcesSummary(view);   // the folded card's one line (profile-fold.js)
   const notInMain = onlyHereBlock(view.sources);
-  $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(roleBlock) : [el('p', 'muted', 'Nothing yet: your main CV is read the first time you tailor one, or on the CV tab.')]), ...(notInMain ? [notInMain] : []));
+  $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(role => roleBlock({...role, maxExtra: view.maxExtra})) : [el('p', 'muted', 'Nothing yet: your main CV is read the first time you tailor one, or on the CV tab.')]), ...(notInMain ? [notInMain] : []));
   $('exp-add').disabled = $('exp-add-linkedin').disabled = !view.main;
 }
 
