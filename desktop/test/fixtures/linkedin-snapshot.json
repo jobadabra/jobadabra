@@ -1,0 +1,14 @@
+{
+  "_about": "Fake LinkedIn Member Snapshot API pages, hand-built from the docs' sample (learn.microsoft.com/en-us/linkedin/dma/member-data-portability/shared/member-snapshot-api): same envelope, the columns of LinkedIn's own data export. Replace with a scrubbed recording of a real response after the owner's own try (never real data).",
+  "PROFILE": [{"paging": {"start": 0, "count": 10, "links": [], "total": 1}, "elements": [{"snapshotDomain": "PROFILE", "snapshotData": [{"First Name": "Anna", "Last Name": "Rossi", "Headline": "Product Manager", "Summary": "Product manager with eight years in B2B software.", "Geo Location": "Wien, Austria", "Zip Code": "1010", "Address": "Graben 1", "Websites": "[PERSONAL:https://anna.example]", "Birth Date": "Mar 4", "Maiden Name": "", "Twitter Handles": "", "Instant Messengers": "", "Industry": "Software"}]}]}],
+  "POSITIONS": [
+    {"paging": {"start": 0, "count": 2, "links": [{"type": "application/json", "rel": "next", "href": "/rest/memberSnapshotData?count=2&domain=POSITIONS&q=criteria&start=1"}], "total": 3}, "elements": [{"snapshotDomain": "POSITIONS", "snapshotData": [
+      {"Company Name": "Acme", "Title": "Product Manager", "Description": "• Led the pricing relaunch\n• Grew activation by 18%", "Location": "Wien, Austria", "Started On": "Jan 2021", "Finished On": ""},
+      {"Company Name": "Acme", "Title": "Associate Product Manager", "Description": "Shipped the onboarding checklist.", "Location": "Wien, Austria", "Started On": "Jun 2018", "Finished On": "Dec 2020"}]}]},
+    {"paging": {"start": 1, "count": 2, "links": [{"type": "application/json", "rel": "prev", "href": "/rest/memberSnapshotData?count=2&domain=POSITIONS&q=criteria&start=0"}], "total": 3}, "elements": [{"snapshotDomain": "POSITIONS", "snapshotData": [
+      {"Company Name": "Northwind", "Title": "Data Analyst", "Description": "Built the weekly KPI dashboard in Looker.", "Location": "Graz, Austria", "Started On": "Sep 2015", "Finished On": "May 2018"}]}]}
+  ],
+  "EDUCATION": [{"paging": {"start": 0, "count": 10, "links": [], "total": 1}, "elements": [{"snapshotDomain": "EDUCATION", "snapshotData": [{"School Name": "Universität Wien", "Degree Name": "MSc Economics", "Start Date": "2013", "End Date": "2015", "Notes": "", "Activities": ""}]}]}],
+  "SKILLS": [{"paging": {"start": 0, "count": 10, "links": [], "total": 1}, "elements": [{"snapshotDomain": "SKILLS", "snapshotData": [{"Name": "SQL"}, {"Name": "Looker"}, {"Name": "Stakeholder management"}]}]}],
+  "LANGUAGES": [{"paging": {"start": 0, "count": 10, "links": [], "total": 1}, "elements": [{"snapshotDomain": "LANGUAGES", "snapshotData": [{"Name": "German", "Proficiency": "Native or bilingual"}, {"Name": "English", "Proficiency": "Full professional"}]}]}]
+}

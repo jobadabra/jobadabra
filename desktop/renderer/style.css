@@ -90,6 +90,15 @@ textarea { font: var(--fs-md)/1.5 var(--font-sans); resize: vertical; }
 .cv-pick { display: flex; align-items: center; gap: var(--sp-3); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }
 .cv-pick:last-child { padding-bottom: 0; border-bottom: 0; }
 .cv-pick b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Import from LinkedIn (pages/linkedin-import.js): the dialog's lists and the rows to tick. */
+#li-dialog .li-body { display: grid; gap: var(--sp-3); }
+#li-dialog h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-md); }
+#li-dialog .li-list { margin: 0; padding-left: var(--sp-5); }
+#li-dialog .li-group { display: grid; border: 1px solid var(--line); border-radius: var(--radius-md, 10px); overflow: hidden; }
+#li-dialog .li-group > h3 { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--bg-2, var(--line)); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+#li-dialog .li-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-3); align-items: start; margin: 0; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); font-weight: 400; }
+#li-dialog .li-row-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+#li-dialog .li-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); font-size: var(--fs-sm); }
 /* A step's actions: Back on the left, the rest on the right, under a rule. */
 .step > .actions { border-top: 1px solid var(--line); padding-top: var(--sp-4); margin-top: var(--sp-4); }
 .actions > [data-back]:first-child { margin-right: auto; }

@@ -8,6 +8,7 @@ import {shared} from './pages/shared.js';
 import {sessionList} from './pages/sessions.js';
 import {init as wizard} from './pages/wizard.js';
 import {init as cvBuild} from './pages/cv-build.js';
+import {init as linkedinImport} from './pages/linkedin-import.js';
 import {init as demo} from './pages/demo.js';
 import {init as activity} from './pages/activity.js';
 import {init as strategyReview} from './pages/strategy-review.js';
@@ -72,6 +73,7 @@ notifyMoment();
 saveProgress();   // Search settings saves say how far they are (save-progress.js)
 await wizard();
 cvBuild();   // Build a CV with the AI: its dialog and buttons (pages/cv-build.js)
+linkedinImport();   // Import from LinkedIn: Profile → CV button and dialog (pages/linkedin-import.js)
 await demo();
 await activity();
 await strategyReview();
