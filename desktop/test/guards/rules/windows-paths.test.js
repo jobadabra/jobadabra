@@ -5,9 +5,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {TEST_DIR, testFiles} from '../../test-files.js';
 
 const desktop = fileURLToPath(new URL('../../..', import.meta.url));
-const dirs = ['test'].map(dir => path.join(desktop, dir));   // what the Windows runner runs; desktop/e2e/test runs on Linux and the Mac only
 
 export function filePathnames(source) {
   const fileUrls = [...source.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*new URL\([^;]*import\.meta\.url\)/g)].map(match => match[1]);
@@ -23,7 +23,9 @@ test('the check finds a file URL used as a path, and leaves fileURLToPath alone'
 });
 
 test('no desktop test turns a file URL into a path with .pathname', () => {
-  const found = dirs.flatMap(dir => fs.readdirSync(dir).filter(name => /\.(m?js)$/.test(name)).map(name => path.join(dir, name)))
+  // What the Windows runner runs: desktop/test's helpers and every test in its folders (desktop/e2e/test runs on Linux and the Mac only).
+  const helpers = fs.readdirSync(TEST_DIR).filter(name => /\.(m?js)$/.test(name) && !/\.test\.m?js$/.test(name)).map(name => path.join(TEST_DIR, name));
+  const found = [...helpers, ...testFiles()]
     .filter(file => file !== fileURLToPath(import.meta.url))
     .flatMap(file => filePathnames(fs.readFileSync(file, 'utf8')).map(name => `${path.relative(desktop, file)}: ${name}.pathname`));
   assert.deepEqual(found, []);
