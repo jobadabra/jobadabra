@@ -42,13 +42,14 @@ const SEVERITY_RANK = {high: 0, medium: 1, low: 2};
 const JUDGE_RANK = {agrees: 0, unknown: 1, disagrees: 2};
 /**
  * Which notes are filed. Low severity is never filed (the Finder's rule, owner 4 Oct 2026: "if we assess it as low, let's not open it"; the agent's nitpicks of wording are low). The rest are ranked
- * proved first, then judge agrees, then severity, then the order the agent noted them, and cut at `cap`. A note whose second opinion was unavailable (no answer at all) is held, not filed: it stays in the report and the artifact.
+ * proved first, then judge agrees, then severity, then the order the agent noted them, and cut at `cap`. A note whose second opinion was unavailable (no answer at all) is held, not filed, unless a script already proved it (its own evidence): it stays in the report and the artifact.
  * -> {filed, over, low, held}: `over`, `low` and `held` are listed in the report, never silently lost.
  */
 export function rankNotes(notes, cap = MAX_FILED) {
   const low = notes.filter(note => note.severity === 'low');
-  const held = notes.filter(note => note.severity !== 'low' && note.judge === 'unavailable');
-  const ranked = notes.filter(note => note.severity !== 'low' && note.judge !== 'unavailable').map((note, index) => ({note, index}))
+  const isHeld = note => note.judge === 'unavailable' && !note.proved;
+  const held = notes.filter(note => note.severity !== 'low' && isHeld(note));
+  const ranked = notes.filter(note => note.severity !== 'low' && !isHeld(note)).map((note, index) => ({note, index}))
     .sort((a, b) => (Number(!!b.note.proved) - Number(!!a.note.proved)) || ((JUDGE_RANK[a.note.judge] ?? 1) - (JUDGE_RANK[b.note.judge] ?? 1)) || (SEVERITY_RANK[a.note.severity] - SEVERITY_RANK[b.note.severity]) || (a.index - b.index))
     .map(each => each.note);
   return {filed: ranked.slice(0, cap), over: ranked.slice(cap), low, held};

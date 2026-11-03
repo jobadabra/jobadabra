@@ -4,7 +4,7 @@ name: CI · AI user agent
 # The Worker starts it once a day (app-core/src/scheduler.js AGENT_SLOT, 04:40 UTC); a person can start it any time. One person-like session on the real app, through the AI broker (Codex, then Claude, then Free AI), sized from who answers
 # (desktop/e2e/agent-nightly.mjs): Codex out = half a session, a broker that refuses = no session and the reason in the summary. It files what it can argue is a bug (ui-findings.yml reads this run like an e2e run, detector "AI user agent"),
 # keeps its notes on the `agent-memory` branch, and writes the cost line in the job summary. It is a measurement: it gates nothing, and a pause is the repository variable AI_USER_AGENT = off.
-# Why (3 Nov 2026, AI user agents 7/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own.
+# Why (3 Nov 2026, AI user agents 7/12, 8/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own; the run-name tells a nightly, a replay and a hand run apart.
 run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || (inputs.plan != '' && format('AI user agent · replay {0}', inputs.plan) || 'AI user agent · by hand') }}
 
 on:
@@ -34,8 +34,9 @@ permissions:
   actions: read
   id-token: write   # GitHub's per-run token the AI broker checks (desktop/e2e/lib/broker-client.mjs)
 
+# Why (3 Nov 2026, code review on 8/12): a group keeps one running and one pending run and cancels an older pending one, so replays dispatched one after another would cancel each other and a replay could cancel the pending nightly (the watchdog would then report a missing start); a replay has its own group per run.
 concurrency:
-  group: ai-user-agent
+  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '') && format('-replay-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -64,11 +65,14 @@ jobs:
         timeout-minutes: 5
         env:
           APP_REF: ${{ inputs.app_ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           [[ "$APP_REF" =~ ^[0-9a-f]{7,40}$ ]] || { echo "app_ref must be a 7-40 character hex commit, got: $APP_REF"; exit 1; }
+          # git fetch takes only a full SHA by name; GitHub's API resolves a short one.
+          FULL="$(gh api "repos/$GITHUB_REPOSITORY/commits/$APP_REF" --jq .sha)"
           NOW="$(git rev-parse HEAD)"
-          git fetch --quiet --depth=1 origin "$APP_REF"
+          git fetch --quiet --depth=1 origin "$FULL"
           git checkout --quiet --detach FETCH_HEAD
           rm -rf desktop/e2e docs/app-expectations tools .github/actions
           git checkout "$NOW" -- desktop/e2e docs/app-expectations tools .github/actions

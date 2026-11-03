@@ -70,8 +70,11 @@ export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stoppedByBroker = result.stopped; break; }
   }
+  // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
+  let judgeDown = '';
   for (const note of notes) {
-    const opinion = await judgeNote({ask: judgeAsk, note, image: note.image || ''});
+    const opinion = judgeDown ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
+    if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
     Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason});
     spent.calls++; spent.input += opinion.usage?.input_tokens || 0; spent.output += opinion.usage?.output_tokens || 0; spent.ms += opinion.ms || 0;
   }

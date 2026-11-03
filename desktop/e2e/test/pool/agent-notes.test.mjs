@@ -89,15 +89,15 @@ test('the second opinion reads only the argument; a judge that gets no answer is
 });
 
 test('a note whose second opinion was unavailable is held, not filed, and the report says so; a wrong-shape answer ("unknown") is still filed', () => {
-  const notes = [note({title: 'agreed', judge: 'agrees'}), note({title: 'no judge', judge: 'unavailable'}), note({title: 'odd judge', judge: 'unknown'}), note({title: 'low and no judge', severity: 'low', judge: 'unavailable'})];
+  const notes = [note({title: 'agreed', judge: 'agrees'}), note({title: 'no judge', judge: 'unavailable'}), note({title: 'odd judge', judge: 'unknown'}), note({title: 'low and no judge', severity: 'low', judge: 'unavailable'}), note({title: 'proved, no judge', judge: 'unavailable', proved: true})];
   const {filed, over, low, held} = rankNotes(notes);
-  assert.deepEqual(filed.map(each => each.title), ['agreed', 'odd judge']);
+  assert.deepEqual(filed.map(each => each.title), ['proved, no judge', 'agreed', 'odd judge'], 'a script-proved note has its own evidence and is filed without the opinion');
   assert.deepEqual(held.map(each => each.title), ['no judge']);
   assert.deepEqual(low.map(each => each.title), ['low and no judge']);
   assert.equal(filed.length + over.length + low.length + held.length, notes.length, 'nothing is lost from the report');
   const summary = summarizeSession({session: 'n', persona: 'p', seed: 1, goals: [{n: 1, group: 'Jobs', label: 'Open a job'}], results: [{n: 1, verdict: 'worked', summary: 'ok', steps: 2}], notes});
   assert.equal(summary.held.length, 1);
-  assert.match(summaryMarkdown(summary), /Filed 2, 1 low \(never filed\), 1 held \(the second opinion was unavailable\)\./);
+  assert.match(summaryMarkdown(summary), /Filed 3, 1 low \(never filed\), 1 held \(the second opinion was unavailable\)\./);
 });
 
 test('a session always accounts for every goal: a missing result is "could not finish", an unknown verdict is "doubts", and a quiet night reads as a result', () => {

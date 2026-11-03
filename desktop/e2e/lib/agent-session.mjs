@@ -34,5 +34,7 @@ export function summaryMarkdown(summary) {
   const { counts } = summary;
   const head = `**${summary.persona}** (seed \`${summary.seed}\`): ${counts.worked} worked, ${counts.doubts} doubts, ${counts['could-not-finish']} could not finish, ${counts.bug} bug${counts.bug === 1 ? '' : 's'}. Filed ${summary.filed.length}${summary.over.length ? `, ${summary.over.length} over the cap` : ''}${summary.low.length ? `, ${summary.low.length} low (never filed)` : ''}${summary.held.length ? `, ${summary.held.length} held (the second opinion was unavailable)` : ''}. ${costLine(summary.cost)}.`;
   const table = ['| # | Goal | Verdict | What it saw |', '|---|---|---|---|', ...summary.goals.map(goal => `| ${goal.n} | ${goal.label} | ${ICON[goal.verdict]} ${goal.verdict} | ${goal.summary.replace(/\|/g, '/')} |`)];
-  return [head, '', ...table].join('\n');
+  // Why (3 Nov 2026, code review on 8/12): a night where Claude is down files nothing and looks green, so the held notes are named here (title, screen, what was seen) with the reason the judge gave.
+  const held = summary.held.length ? ['', `**Held, not filed (${summary.held[0].judgeReason || 'the second opinion was unavailable'}):**`, ...summary.held.map(note => `- ${note.title} (${note.view}): ${String(note.observed).replace(/\s+/g, ' ').slice(0, 160)}`)] : [];
+  return [head, '', ...table, ...held].join('\n');
 }

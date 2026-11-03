@@ -55,6 +55,22 @@ test('a note with no argument is sent back to the agent and never reaches the fi
   assert.equal(result.findings[0].agent.judge, 'disagrees');
 });
 
+test('a second opinion that gets no answer holds the notes, asks once not once per note, and the summary names what was held', async () => {
+  const ask = script([turn('note', NOTE), turn('note', {...NOTE, title: 'Phone shown twice', observed: 'The phone number is listed twice.'}), done('bug', 'Two problems.')]);
+  let asked = 0;
+  const judgeDown = async () => { asked++; throw new Error('503 broker: only-claude: ran-out'); };
+  const {summaryMarkdown} = await import('../../lib/agent-session.mjs');
+  const result = await runSession({act: fakeAct(), ask, judgeAsk: judgeDown, views: ['profile'], plan: {...plan, goals: [plan.goals[0]]}, knowledgeIds: ['profile-4']});
+  assert.equal(asked, 1, 'after the first call with no answer the other notes are not asked (each would wait up to 180 s)');
+  assert.deepEqual(result.notes.map(note => note.judge), ['unavailable', 'unavailable']);
+  assert.match(result.notes[1].judgeReason, /not asked: the second opinion could not answer: 503 broker: only-claude: ran-out/);
+  assert.equal(result.findings.length, 0, 'no note is filed unjudged');
+  assert.equal(result.summary.held.length, 2);
+  const text = summaryMarkdown(result.summary);
+  assert.match(text, /2 held \(the second opinion was unavailable\)/);
+  assert.match(text, /\*\*Held, not filed \(the second opinion could not answer: 503 broker: only-claude: ran-out\):\*\*\n- Phone saved as its label \(profile\): The phone number now reads "Phone number"\.\n- Phone shown twice \(profile\)/);
+});
+
 test('when the broker refuses mid-night the goals not reached are "could not finish" and what was found is kept', async () => {
   const ask = script([turn('note', NOTE), done('bug', 'saved as label'), new Error('AI limit reached')]);
   const result = await runSession({act: fakeAct(), ask, judgeAsk: judge('unknown'), views: ['profile'], plan, knowledgeIds: ['profile-4']});
