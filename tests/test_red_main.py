@@ -17,6 +17,8 @@ CLASSIFIED = {
     # Why (30 Oct 2026, owner, JOB-45): nightly model drift is its own warning/rate check, never a PR or beta gate.
     'CI · Stored AI answer drift': 'ignored: nightly drift rates, warm-up warnings and a deduplicated lasting-red issue; never required',
     'Extension · Chrome Web Store publish': 'ignored: started by tools/release-stable.sh on a stable release, a PR editing it, or by hand; never runs on a push to main',
+    # Why (3 Nov 2026, owner: stable only): tells the feedback reporters; started by tools/release-stable.sh after a promotion, never a push or PR check.
+    'Release · Tell the feedback reporters': 'ignored: started by tools/release-stable.sh once a build is stable, or by hand; never runs on a push to main',
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     # Why (1 Nov 2026, owner via a8: "Nightly report"): the clock-moved time-bomb report is report only, called by night pass 1, never a push or PR check.
     'CI · Clock moved (nightly, report only)': 'ignored: nightly report of tests that fail with the clock moved; called by night pass 1, never counted for main',

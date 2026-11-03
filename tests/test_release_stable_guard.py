@@ -106,7 +106,9 @@ class PromoteGuardTests(unittest.TestCase):
             # The store publish it starts once the release is stable (tests/test_webstore_publish_pipeline.py) is kept apart: calls = the end-to-end runs only.
             stores = ('extension-store-publish.yml', 'msix-store.yml')
             self.store = ''.join(line for line in lines if any(name in line for name in stores))
-            self.calls = ''.join(line for line in lines if not any(name in line for name in stores))
+            # The run that tells the feedback reporters (feedback-released.yml) is kept apart too: it is not an end-to-end run and not a store.
+            self.feedback = ''.join(line for line in lines if 'feedback-released.yml' in line)
+            self.calls = ''.join(line for line in lines if not any(name in line for name in (*stores, 'feedback-released.yml')))
             alert = Path(folder) / 'alert.txt'
             self.alert = alert.read_text() if alert.exists() else ''
             released = Path(folder) / 'release-alert.txt'
@@ -308,6 +310,37 @@ class PromoteGuardTests(unittest.TestCase):
         done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'FAKE_NODE_FAILS': '1'})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('Stable:', done.stdout)
+
+    # 3 Nov 2026, owner: "when we release a new beta/stable version which includes a feedback fix, we should automatically inform all the reporters" (stable only, his answer); mac-07: it must
+    # never fail, delay or block a release.
+    def test_a_promotion_starts_the_feedback_reporters_run_once_with_the_tag(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.feedback.count(f'workflow run feedback-released.yml -R jobadabra/jobadabra --ref main -f tag={TAG}'), 1, self.feedback)
+
+    def test_the_feedback_reporters_run_is_started_and_never_watched(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn('watched', self.feedback + self.calls + self.store, 'started, never watched with gh run watch (a guard for a later edit)')
+
+    def test_a_tag_that_is_already_stable_or_a_dry_run_starts_no_feedback_run(self):
+        for extra in ({'E2E_ALREADY_GREEN': '1', 'FAKE_PRERELEASE': 'false'}, {'E2E_ALREADY_GREEN': '1', 'DRY_RUN': '1'}):
+            with self.subTest(extra=extra):
+                done = self.promote([(OWN, 1), (GENERIC, 1)], extra=extra)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertEqual(self.feedback, '')
+
+    def test_a_feedback_run_that_does_not_start_never_fails_the_promotion(self):
+        for extra in ({'FAKE_FAIL': 'feedback-released.yml'}, {'FAKE_FAIL': 'feedback-released.yml', 'FAKE_NODE_FAILS': '1'}):
+            with self.subTest(extra=extra):
+                done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', **extra})
+                self.assertEqual(done.returncode, 0, 'the release is stable and the run stays green: ' + done.stderr)
+                self.assertIn('Stable:', done.stdout)
+                self.assertIn('feedback reporters not told', done.stderr, 'one log line')
+                self.assertIn(f'gh workflow run feedback-released.yml -R jobadabra/jobadabra --ref main -f tag={TAG}', done.stderr, 'with the command to start it by hand')
+                self.assertEqual(self.store.count('workflow run'), 2, 'the store publishes still start')
+                if 'FAKE_NODE_FAILS' not in extra:
+                    self.assertIn(f'{TAG} is stable, but the run that tells the feedback reporters did not start', self.alert, 'one Telegram note')
 
     def test_a_refused_promotion_and_a_dry_run_announce_nothing(self):
         self.promote([(DMG, 1), (GENERIC, 2)], extra={'E2E_ALREADY_GREEN': '1'})

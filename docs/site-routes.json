@@ -458,6 +458,13 @@
    "kind": "ci"
   },
   {
+   "path": "/api/feedback/released",
+   "methods": [
+    "POST"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/api/guard",
    "kind": "owner"
   },

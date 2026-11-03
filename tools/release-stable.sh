@@ -93,6 +93,15 @@ echo "Stable: $tag (friends' apps offer it within 10 minutes, or at their next s
 # Why (1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released"): one Telegram alert on EVERY way a release becomes stable (all of them end here),
 # only when this run made it stable: a re-run on a tag that already is stable says nothing. A failed alert never hides or undoes the promotion.
 if [ "$was_beta" = true ]; then GITHUB_REPOSITORY="$repo" node "$here/../desktop/e2e/release-alert.mjs" stable "$tag" || echo "(release alert not sent)" >&2; fi
+# Why (3 Nov 2026, owner: "when we release a new beta/stable version which includes a feedback fix, we should automatically inform all the reporters"; stable only, his answer the same day):
+# the reporters whose fix is in this release hear it from their own run (feedback-released.yml), started here and never waited for: a start that fails is one log line and one Telegram note, never
+# a red promotion (mac-07: it must not fail, delay or block a release). Only when this run made it stable, like the alert above.
+if [ "$was_beta" = true ]; then
+  if ! out=$(gh workflow run feedback-released.yml -R "$repo" --ref main -f tag="$tag" 2>&1); then
+    echo "(feedback reporters not told: ${out}. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag)" >&2
+    MESSAGE="⚠️ $tag is stable, but the run that tells the feedback reporters did not start. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))" || echo "(alert not sent)" >&2
+  fi
+fi
 # Both store publishes start on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
 # (SKIP_E2E, E2E_NO_START, ...) only skip the end-to-end gate, and only DRY_RUN stops before this point. A start that fails never undoes the promotion, but it is no longer one echoed line
 # in a green run. Why (31 Oct 2026, owner: "We should have this always, even if we go on the hot path"): the job ends red (exit 4 below), with an annotation and one Telegram alert.
