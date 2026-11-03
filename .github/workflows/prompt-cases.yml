@@ -1,11 +1,11 @@
-name: CI · Prompt cases (Haiku re-ask)
-# A manually dispatched run compares the selected ref with main on the live prompt case sets, using Haiku 5.5 through Claude Code
-# on the API key PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit), and fails when a case got worse, the case it adds is wrong, or the run passes its $ cap
-# (tools/prompt-cases-live.mjs). The run's measured cost is in its log and in the "Prompt cases" status line.
+name: CI · Prompt cases (by-hand re-ask)
+# A manually dispatched run compares the selected ref with main on the live prompt case sets, asked on the owner's Codex plan through the AI broker (small tier, tools/prompt-cases-live.mjs, the same asker
+# as the nightly replay), and fails when a case got worse, the case it adds is wrong, or the broker did not answer. The run's call count is in its log and in the "Prompt cases" status line.
 # Why (owner, 27 Oct 2026): a session reworded a prompt to pass one benchmark case; "another session can come tomorrow and redo that prompt for a different use-case
-# and basically introducing a regression". AI in PR checks: "Haiku" … "To be very cheap … that's very important".
-# Why-changed (owner, 27 Oct 2026): asked "Use Haiku instead" instead of setting the subscription token, he chose "Haiku on an API key (Recommended)" over "let them use my claude subscription".
-# Never the production Workers AI token or another key. Free AI runs qwen, not Haiku: this catches prompt regressions, not model ones.
+# and basically introducing a regression". AI in PR checks: "To be very cheap … that's very important".
+# Why-changed (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): it asked Haiku 5.5 through Claude Code on the API key PR_PROOF_ANTHROPIC_KEY
+# (owner, 27 Oct 2026, "Haiku on an API key"); no key, no `claude` install now: GitHub's per-run OIDC token proves the run to the broker. By hand only, so no calls a day on its own (up to 140 per run).
+# Never the production Workers AI token or another key. Free AI runs qwen: this catches prompt regressions, not model ones.
 on:
   # Why (owner, 27 Oct 2026): remove paid Haiku calls from automatic pull-request checks; keep them available by explicit dispatch.
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   statuses: write       # the selected ref's "Prompt cases" status when the run could not ask
+  id-token: write       # GitHub's per-run OIDC token proves the run to the AI broker; no API key
 
 concurrency:
   group: prompt-cases-${{ github.head_ref || github.sha }}
@@ -35,27 +36,12 @@ jobs:
           sets=$(node tools/prompt-cases.mjs --live --base origin/main | tr '\n' ' ')
           echo "sets=$sets" >> "$GITHUB_OUTPUT"
           if [ -z "$sets" ]; then echo "No prompt of a live case set changed: nothing to ask."; else echo "Live case sets this ref reaches: $sets"; fi
-      - name: Say plainly when the API key is missing
+      - name: Install the worker's packages
         if: steps.sets.outputs.sets != ''
-        id: token
+        run: npm ci --prefix worker
+      - name: Ask the cases with main's prompts and with this ref's (the AI broker)
+        if: steps.sets.outputs.sets != ''
         env:
-          HAS_TOKEN: ${{ secrets.PR_PROOF_ANTHROPIC_KEY != '' }}
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          if [ "$HAS_TOKEN" = "true" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          msg="Prompt cases NOT run: no API key (PR_PROOF_ANTHROPIC_KEY)"
-          echo "::warning::$msg. Add the repository secret to enable manually dispatched Haiku checks."
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=error -f context="Prompt cases" -f description="$msg" >/dev/null
-      - name: Install the worker and Claude Code
-        if: steps.token.outputs.ok == '1'
-        run: |
-          npm ci --prefix worker
-          npm install -g @anthropic-ai/claude-code@2.1.296
-      - name: Ask the cases with main's prompts and with this ref's (Haiku 5.5, PR_PROOF_ANTHROPIC_KEY)
-        if: steps.token.outputs.ok == '1'
-        env:
-          PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -65,8 +51,8 @@ jobs:
           code=${PIPESTATUS[0]}
           set -e
           line=$(grep -E '^Right on main' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-90)
-          cost=$(grep -E '^Cost:' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-40)
-          [ -n "$line" ] || line=$(grep -E 'cost cap|not set' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-100)
+          calls=$(grep -E '^Calls:' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-40)
+          [ -n "$line" ] || line=$(grep -E 'did not answer|over the cap' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-100)
           state=success; [ "$code" = 0 ] || state=failure
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=$state -f context="Prompt cases" -f description="${line:-the run ended before asking} ${cost}" >/dev/null || true
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=$state -f context="Prompt cases" -f description="${line:-the run ended before asking} ${calls}" >/dev/null || true
           exit "$code"

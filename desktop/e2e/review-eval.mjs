@@ -2,18 +2,19 @@
 // judge shows): every AI-review issue closed as resolution:fixed (a real bug: did the reviewer see it again?) or resolution:by-design or fp:detector (a false alarm: did it
 // raise it again?), on the issue's own screenshot. "The same problem" is judged by a small Workers AI text model, never by word matching.
 //   CI_FREE_AI_CF_TOKEN=… CI_FREE_AI_CF_ACCOUNT_ID=… GITHUB_TOKEN=… node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]
-// A claude-* model is asked on E2E_ANTHROPIC_KEY (CI only: .github/workflows/review-eval.yml, by hand); the judge stays a small Workers AI text model.
+// A claude-* model is asked through the AI broker (CI only: .github/workflows/review-eval.yml, by hand); the judge stays a small Workers AI text model.
 // Each by-design issue is scored with the lessons of the OTHER issues only (lib/review-lessons.mjs, exclude), so a lesson never grades itself.
 // Writes <dir>/review-eval.json and prints one table. Costs about $0.002 a screenshot per model on CI's Workers AI token (measured, Oct 2026).
 // Job: keep the scorecard
 import fs from 'node:fs';
 import path from 'node:path';
 import {DESKTOP} from './lib/app.mjs';
-import {buildRequest, parseFindings, usageCost} from './lib/vision.mjs';
+import {buildRequest, parseFindings} from './lib/vision.mjs';
 import {FREE_MODEL, askFree, judgeVerdict, judgedRow} from './lib/review-free.mjs';
 import {checklistRequest, checksToFindings} from './lib/review-checklist.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 import {PUBLIC_REPO} from './lib/repos.mjs';
+import {askBroker} from './lib/broker-client.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
@@ -22,14 +23,12 @@ const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may c
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
 const REPO = process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
-// A Claude model answers in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}.
+// A claude-* model is asked through the AI broker (the model id picks its tier: haiku = small), in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}. usd is 0: the Codex plan, no per-call money.
+// Why (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this was the Anthropic API on E2E_ANTHROPIC_KEY; the table's model name is the tier asked, the broker says which engine answered.
 async function askClaude(request, {model}) {
-  const response = await fetch(`${process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com'}/v1/messages`, {method: 'POST', signal: AbortSignal.timeout(120000),
-    headers: {'x-api-key': process.env.E2E_ANTHROPIC_KEY || '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify({...request, model})}).catch(error => error);
-  if (response instanceof Error) return {ok: false, status: 0, detail: response.message};
-  if (!response.ok) return {ok: false, status: response.status, detail: (await response.text().catch(() => '')).slice(0, 300)};
-  const message = await response.json();
-  return {ok: true, message: {...message, content: (message.content || []).filter(block => block.type === 'text')}, usd: usageCost(model, message.usage || {}) || 0};
+  const answer = await askBroker({...request, model});
+  if (!answer.ok) return {ok: false, status: answer.status, detail: answer.detail};
+  return {ok: true, message: {...answer.message, content: (answer.message.content || []).filter(block => block.type === 'text')}, usd: 0, engine: answer.engine || ''};
 }
 const ask = (request, {model}) => (model.startsWith('claude-') ? askClaude(request, {model}) : askFree(request, {model}));
 const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;

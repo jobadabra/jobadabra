@@ -1,20 +1,16 @@
-#!/usr/bin/env node
-// Re-asks the "form" case set (tools/prompt-cases.json) with main's prompts and with the PR's, on Haiku 5.5 through Claude Code (`claude -p`) on the API key
-// PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit). Why-changed (owner, 27 Oct 2026): asked "Use Haiku instead" he chose "Haiku on an API key (Recommended)" over
-// the subscription token (earlier: "let them use my claude subscription" … "Haiku" … "very cheap"). Same cases on both sides: the PR's case list, so the case a PR adds is asked of main's prompt too.
-// Cost: every call's total_cost_usd is added up and printed; past --max-usd it stops asking and fails ("cost cap"), never a silent pass.
-// Fails when a case right on main is wrong on the PR twice (one re-ask: Haiku answers vary), or a case the PR adds is wrong on the PR's prompt.
-// It catches prompt regressions, not model ones: Free AI users get qwen on Workers AI, not Haiku.
-// Usage (prompt-cases.yml): node tools/prompt-cases-live.mjs --base-tree <a checkout of the merge base> [--jobs 6] [--max-calls 140] [--max-usd 0.10]   (needs PR_PROOF_ANTHROPIC_KEY)
-// Writes nothing but stdout; exit 1 with the cases that broke. Guard: desktop/test/prompt-cases-live.test.js.
+// Re-asks the "form" case set (tools/prompt-cases.json) with main's prompts and with the PR's, on the owner's Codex plan through the AI broker (small tier, tools/prompt-cases-codex.mjs; no API key).
+// Why-changed (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this was Haiku 5.5 through `claude -p` on the API key PR_PROOF_ANTHROPIC_KEY
+// (owner, 27 Oct 2026, "Haiku on an API key"); the nightly replay (prompt-cases-night.mjs) already asks the same cases on the broker, so this by-hand check uses the same asker.
+// Same cases on both sides: the PR's case list, so the case a PR adds is asked of main's prompts too (a case main did not have is "new", not a regression). A case wrong on the PR that main got right
+// is asked once more (model noise); wrong twice = a regression. It catches prompt regressions, not model ones: Free AI users get qwen on Workers AI, not the broker's model.
+// Calls: at most --max-calls (default 140; the 60-case set asked on both sides is 120), counted, never a dollar cap: a refused call (budget used up, login lost, broker down) stops the run and fails it, never a silent pass.
+// Usage (prompt-cases.yml, by hand): node tools/prompt-cases-live.mjs --base-tree <a checkout of the merge base> [--jobs 6] [--max-calls 140]   (needs `id-token: write`)
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const MODEL = 'claude:claude-haiku-5-5';
-export const MAX_USD = 0.10;   // Why (owner, 27 Oct 2026, "per-run $ cap"): measured on #2259: $0.044 for the 60-case set asked on both sides (120 calls), so the cap is ~2x
 const CASE_FILES = ['tools/free-ai-form-asks.mjs', 'tools/free-ai-form-list.mjs'];
 
 // [{id, right}] of main and of the PR, the case ids main's own list had, and the re-ask of the PR's misses -> {regressions, newWrong, counts}.
@@ -64,9 +60,7 @@ async function main(argv) {
   const option = (name, fallback) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : fallback; };
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), baseTree = option('base-tree');
   if (!baseTree) throw new Error('--base-tree <a checkout of the merge base> is required');
-  const jobs = Number(option('jobs', 6)), maxCalls = Number(option('max-calls', 140)), maxUsd = Number(option('max-usd', MAX_USD));
-  const apiKey = process.env.PR_PROOF_ANTHROPIC_KEY;
-  if (!apiKey) throw new Error('PR_PROOF_ANTHROPIC_KEY is not set: the prompt cases are not asked');
+  const jobs = Number(option('jobs', 6)), maxCalls = Number(option('max-calls', 140));
   const modules = path.join(baseTree, 'app-core/node_modules');   // the worker's packages (its ai.js imports the SDK): the PR checkout's, linked
   if (!fs.existsSync(modules) && fs.existsSync(path.join(root, 'app-core/node_modules'))) fs.symlinkSync(path.join(root, 'app-core/node_modules'), modules, 'dir');
   const baseIds = buildCases(baseTree).map(item => item.id);
@@ -74,18 +68,19 @@ async function main(argv) {
   const baseCases = buildCases(baseTree), headCases = buildCases(root);
   if (baseCases.length + headCases.length > maxCalls) throw new Error(`${baseCases.length + headCases.length} calls is over the cap of ${maxCalls}`);
   const {evaluate} = await import('./free-ai-eval.mjs');
-  const {claudeRun} = await import('./free-ai-eval-claude.mjs');
-  let spent = 0;
-  const run = claudeRun({apiKey, onCost: usd => { spent += usd; }});
+  const {codexRun, MODEL} = await import('./prompt-cases-codex.mjs');
+  let calls = 0;
+  const run = codexRun({onCall: () => { calls++; }});
   const ask = async item => {
-    if (spent > maxUsd) throw new Error(`cost cap reached: $${spent.toFixed(3)} spent, cap $${maxUsd}; the prompt cases are not fully asked`);
-    return (await evaluate([item], MODEL, run))[0];
+    const [row] = await evaluate([item], MODEL, run);
+    if (row.error && /^(capped|no-token|unreachable|\d+):/.test(row.error)) throw new Error(`the broker did not answer (${row.error}); the prompt cases are not fully asked`);   // a refusal is no verdict
+    return row;
   };
-  console.log(`Asking ${headCases.length} form cases of main's prompts and of this PR's on Haiku 5.5 (PR_PROOF_ANTHROPIC_KEY, cap $${maxUsd}), ${jobs} at a time.`);
+  console.log(`Asking ${headCases.length} form cases of main's prompts and of this PR's on the Codex plan through the AI broker (small tier, cap ${maxCalls} calls), ${jobs} at a time.`);
   const [base, head] = [await pool(baseCases, jobs, ask), await pool(headCases, jobs, ask)];
   const retry = toRetry(base, head, baseIds).slice(0, Math.max(0, maxCalls - base.length - head.length));
   const again = await pool(headCases.filter(item => retry.includes(item.id)), jobs, ask);
-  console.log(`Cost: $${spent.toFixed(3)} of the $${maxUsd} cap.`);
+  console.log(`Calls: ${calls} of the ${maxCalls} cap.`);
   const {regressions, newWrong, counts} = compare(base, head, baseIds, again);
   const why = id => (head.find(row => row.id === id)?.problems || [head.find(row => row.id === id)?.error || '']).join('; ').slice(0, 160);
   console.log(`Right on main's prompts: ${counts.base} of ${counts.cases}. On this PR's: ${counts.head} of ${counts.cases}.`);
