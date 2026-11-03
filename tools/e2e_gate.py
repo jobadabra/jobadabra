@@ -50,8 +50,9 @@ def tooling_only_red(failed):
 
 
 def failed_jobs(repo, run_id):
-    """The names of the failed jobs of a run, or None when GitHub cannot say."""
-    out = subprocess.run(['gh', 'api', '--paginate', f'repos/{repo}/actions/runs/{run_id}/jobs?per_page=100', '--jq', '.jobs[] | select(.conclusion == "failure") | .name'], capture_output=True, text=True)
+    """The names of the jobs of a run that did not end well (failed, cancelled, timed out, never started), or None when GitHub cannot say.
+    Why (Gitar on #3053): an app job that timed out is reported cancelled, and listing only "failure" let it hide behind a red harness job."""
+    out = subprocess.run(['gh', 'api', '--paginate', f'repos/{repo}/actions/runs/{run_id}/jobs?per_page=100', '--jq', '.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral") | .name'], capture_output=True, text=True)
     return out.stdout.splitlines() if out.returncode == 0 else None
 
 

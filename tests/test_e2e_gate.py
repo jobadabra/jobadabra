@@ -4,6 +4,8 @@ A human promotion needs a green, fresh run of THIS build's commit; the daily can
 A cancelled or skipped run says nothing about the product, so it never counts as red (2 Oct 2026: cancelling a superseded run would have blocked a release).
 """
 import json
+import shutil
+import subprocess
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -108,6 +110,19 @@ class CiVerdictTests(unittest.TestCase):
             names[7] = []
             self.assertEqual(e2e_gate.ci_verdict([run], 'o/r'), 'red', 'a red run with no failed job named is never a pass')
             self.assertEqual(e2e_gate.ci_verdict([run]), 'red', 'with no repo to ask, a red run is red')
+
+    @unittest.skipUnless(shutil.which('jq'), 'jq runs the same filter gh --jq does')
+    def test_an_app_job_that_was_cancelled_or_timed_out_beside_a_red_harness_job_still_blocks(self):
+        # Why (Gitar on #3053): failed_jobs listed only "failure"; a job past timeout-minutes is "cancelled", so the list held only the harness job and the beta went on.
+        jobs = {'jobs': [{'name': 'harness / harness tests (2/3)', 'conclusion': 'failure'}, {'name': 'integration / extension', 'conclusion': 'cancelled'},
+                         {'name': 'smoke / Smoke', 'conclusion': 'success'}, {'name': 'pages / page cases 1', 'conclusion': 'skipped'}]}
+        real_run = subprocess.run
+        def fake_gh(args, **kwargs):
+            filtered = real_run(['jq', '-r', args[args.index('--jq') + 1]], input=json.dumps(jobs), capture_output=True, text=True)
+            return subprocess.CompletedProcess(args, 0, stdout=filtered.stdout, stderr='')
+        with patch.object(e2e_gate.subprocess, 'run', fake_gh):
+            self.assertEqual(e2e_gate.failed_jobs('o/r', 7), ['harness / harness tests (2/3)', 'integration / extension'])
+            self.assertEqual(e2e_gate.ci_verdict([{'conclusion': 'failure', 'databaseId': 7}], 'o/r'), 'red')
 
     def test_no_run_is_not_green(self):
         self.assertEqual(e2e_gate.ci_verdict([]), 'none')
