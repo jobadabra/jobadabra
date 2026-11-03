@@ -215,8 +215,8 @@ Replay: for each tester bug, check out the **pre-fix commit** (table above), run
 - [x] Owner's yes on the knowledge design (3 layers); no week brake, a cost view and control instead (3 Nov 2026) (proof: none: the answer came in the chat; it is quoted in "Seeing what it did" and "AI: the broker only" in this spec)
 - [x] Told a8 what is added to `desktop/e2e/`; a8's overlap: the Worker timer's daily slot in `app-core/src/scheduler.js` goes on its own lines (3 Nov 2026) (proof: none: a message to session jobadabra-63 and its reply, no file)
 - [x] Plan `docs/superpowers/plans/2026-11-03-ai-user-agents.md` with the PR split (3 Nov 2026) (proof: docs/superpowers/plans/2026-11-03-ai-user-agents.md)
-- [x] [ag] 1/7 (jobadabra-web #340 merged 3 Nov 2026) the broker tallies calls and tokens per workflow from the verified claim; /admin/ai-cost shows each workflow's share
-- [x] [ag] 2/7 spike: observation (ariaSnapshot vs text), tokens and seconds per call, small vs mid; the explorer on the broker only; a 30-minute session skeleton with the step/minute/call caps (proof: #3048 merged, by-hand run 41572083373 green, numbers in "Measured" above)
+- [x] [ag] 1/7 (jobadabra-web #340 merged 3 Nov 2026) the broker tallies calls and tokens per workflow from the verified claim; /admin/ai-cost shows each workflow's share (proof: none: the work is in jobadabra-web, merged as #340 8aadd09)
+- [x] [ag] 2/7 spike: observation (ariaSnapshot vs text), tokens and seconds per call, small vs mid; the explorer on the broker only; a 30-minute session skeleton with the step/minute/call caps (proof: desktop/e2e/lib/explore.mjs @2cc46fc6)
 - [ ] [ag] 3/7 diversity: persona + CV shape generator, move vocabulary from the ⌘K registry, seeded planner, coverage record; value re-check; planted bug
 - [ ] [ag] 4/7 knowledge: `docs/app-expectations/` seed, `agent-memory` branch write-back, "changed since last session" from git + PR verdict lines
 - [ ] [ag] 5/7 findings: detector `ai-user-agent`, arguments, second opinion, 12-a-session cap, the daily workflow
