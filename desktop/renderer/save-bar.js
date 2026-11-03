@@ -26,7 +26,7 @@ function hookUnload() {   // the window's close or reload: held while a bar has 
 // the tab's button (gets .has-drafts); openTab(key): shows a tab (a failed field's tab opens). words: the muted line ("The extension uses them from the next form").
 export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = () => {}, words = '', savedWords = 'Saved ✓', area = 'this page', saveLabel = 'Save all changes'}) {
   const sources = [];
-  let busy = false, holding = null;
+  let busy = false, holding = null, brokenShown = false;
   const node = el('div', 'save-bar page-save-bar');
   node.setAttribute('role', 'region');
   node.setAttribute('aria-label', 'Unsaved changes');
@@ -43,17 +43,32 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   node.append(lead, actions);
   host?.append(node);
 
-  const pending = () => sources.filter(source => source.count() > 0);
-  const count = () => sources.reduce((sum, source) => sum + source.count(), 0);
+  // Why (fx, 3 Nov 2026, Windows tester): one card's count() threw (a NodeList has no .map) and every bar action threw with it, so Save all
+  // and Discard all went dead and only a reload (drafts lost) recovered. A card that cannot count counts as ONE unsaved change, the bar says so, and its Save still
+  // runs through the failure path below (named, kept) while its Discard drops it.
+  const broken = new Map(), dropped = new Set();   // dropped: a broken card the person discarded; it counts 0 until its count() works again
+  const held = source => {
+    try { broken.delete(source); const n = source.count(); dropped.delete(source); return n; } catch (error) {
+      if (dropped.has(source)) return 0;
+      broken.set(source, error); return 1;
+    }
+  };
+  const pending = () => sources.filter(source => held(source) > 0);
+  const count = () => sources.reduce((sum, source) => sum + held(source), 0);
   const tabsWith = list => [...new Set(list.map(source => source.tab).filter(key => key && key in tabs))];
   const where = (source, field = '') => [tabs[source.tab], source.label, field].filter(Boolean).join(' · ');
-  const say = (text, tone = '') => { note.textContent = text; note.className = `message${tone ? ` ${tone}` : ''}`; };
+  const say = (text, tone = '') => { brokenShown = false; note.textContent = text; note.className = `message${tone ? ` ${tone}` : ''}`; };
   function follow() {
     const open = pending(), n = count(), keys = tabsWith(open);
     for (const key of Object.keys(tabs)) tabButton(key)?.classList.toggle('has-drafts', keys.includes(key));
     if (n) title.textContent = `${countText(n)}${keys.length ? ` in ${scopeText(keys.map(key => tabs[key]))}` : ''}`;
     node.hidden = !n && !holding;
     save.disabled = discard.disabled = busy || !n;
+    if (!broken.size) { if (brokenShown) say(''); return; }
+    if (note.textContent && !brokenShown) return;   // a save's own failure line stays; this one only fills a free note
+    const [source, error] = [...broken][0];
+    say(`${where(source)}: couldn't read its changes (${error?.message || error}). Discard all drops them; the other cards are unaffected.`, 'error');
+    brokenShown = true;
   }
 
   // Check every draft first: one bad field saves nothing (all drafts stay) and its tab opens on it.
@@ -94,7 +109,7 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
     const open = pending(), keys = tabsWith(open);
     if (!open.length) return true;
     if (ask && keys.length > 1 && !globalThis.confirm?.(`Discard your unsaved changes in ${scopeText(keys.map(key => tabs[key]))}?`)) return false;
-    for (const source of open) source.discard();
+    for (const source of open) { try { source.discard(); } catch { /* dropped below: the person asked for it gone */ } if (broken.has(source)) dropped.add(source); }
     say('');
     follow();
     return true;
