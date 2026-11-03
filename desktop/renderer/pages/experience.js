@@ -125,6 +125,8 @@ export function showExperience(view) {
     }
     const button = Object.assign(el('button', 'link item-action', 'Remove'), {type: 'button', title: 'Tailored CVs stop drawing on this version. Your main CV is not changed.'});
     button.addEventListener('click', async () => {
+      // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
+      if (!confirm(`Remove “${source.name}”? Tailored CVs stop drawing on this version. Your main CV is not changed.`)) return;
       button.disabled = true;
       const answer = await window.pilot.experienceRemove(source.id).catch(error => ({ok: false, error: error.message}));
       if (answer.ok) { showExperience(answer); showChanges(answer); } else message('exp-message', answer.error || 'Could not remove it.', 'error');
@@ -157,7 +159,10 @@ export function addedBlock(items, remove) {
     name.append(' ', pill(KIND[item.kind] || 'Added', 'info'));
     words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
     const button = Object.assign(el('button', 'secondary item-action', 'Remove'), {type: 'button'});
-    button.addEventListener('click', () => { button.disabled = true; remove(item.id); });
+    button.addEventListener('click', () => {
+      if (!confirm(`Remove “${item.text}”? Tailored CVs stop using it. Your main CV is not changed.`)) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
+      button.disabled = true; remove(item.id);
+    });
     row.append(tile('user', 'signal'), words, button);
     list.append(row);
   }
