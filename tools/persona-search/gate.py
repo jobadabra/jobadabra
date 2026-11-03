@@ -216,7 +216,8 @@ def result(n, out):
     # (Gitar on #2955). A starved press is cut at the app's own stop, never past it.
     if starved_wait is not None and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT:
         row['not_measured'] = f'AI queue full (waited {starved_wait} s)'
-    elif not row.get('error') and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT and row.get('local') == 0 and read_of(row) == 0:
+    elif not row.get('error') and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT and row.get('local') == 0 and read_of(row) == 0 \
+            and (not row.get('cost_unmeasured') or row.get('cut')) and (row.get('usd') or 0) <= PERSONA_CAP_USD:   # judge_one's cost reds stay (Gitar on #3082)
         mean = mean_call_s(out / 'run.log')   # nothing scored, nothing right, and an AI this slow: what the press found says nothing about the code
         if mean is not None and mean >= SLOW_CALL_S:
             row['not_measured'] = f'AI slow (a call took {round(mean)} s on average)'

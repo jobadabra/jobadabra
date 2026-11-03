@@ -70,6 +70,20 @@ class SlowAiIsNotAProductZero(unittest.TestCase):
                 (out / 'run.log').write_text(''.join(f'relay: small total {mean_ms} broker 4000 waited 100 in-flight 2 kind decide status 200\n' for _ in range(5)))
                 self.assertEqual('not_measured' in gate.result(1, out), grey, mean_ms)
 
+    def test_a_slow_press_whose_cost_was_not_measured_or_is_over_the_cap_keeps_its_cost_red(self):
+        # Gitar on #3082: the grey skips judge_one's reds, so it must not take a cost fault with it
+        with tempfile.TemporaryDirectory() as tmp:
+            out = press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0)
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 153, 'scored_in_places': 0, 'funnel': {}}) + '\n')
+            unmeasured = gate.result(1, out)
+        self.assertNotIn('not_measured', unmeasured)
+        self.assertTrue(gate.judge_one(unmeasured, [])[0], 'the cost red is still said')
+        with tempfile.TemporaryDirectory() as tmp:
+            out = press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0)
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 153, 'scored_in_places': 0, 'funnel': {'ai_usd': 0.5}}) + '\n')
+            over = gate.result(1, out)
+        self.assertNotIn('not_measured', over)
+
     def test_a_slow_press_that_crashed_stays_red(self):
         with tempfile.TemporaryDirectory() as tmp:
             row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0, code=1))
