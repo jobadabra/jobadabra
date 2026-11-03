@@ -4,7 +4,7 @@
 // from the public starter template, installs the app on it, and approves a sign-in code; the app then
 // commits the schedule and search settings, and stores their keys as encrypted repository secrets. Each run executes the public
 // engine (jobadabra/jobadabra) with those secrets, so logs and data stay in the user's private repo.
-import {FREE_BASE, TRIAL_KEY, isFreeKey} from './ai-free.js';
+import {REPO_KEY, ensureRepoKey, isFreeKey} from './ai-free.js';
 import * as ai from './ai/index.js';
 import * as poolShare from './pool-share.js';
 import fs from 'node:fs';
@@ -209,18 +209,18 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   const settings = storage.settings();
   const secrets = Object.fromEntries(SECRET_NAMES.map(name => [name, storage.secret(name)]).filter(([, value]) => value));
   for (const [name, value] of Object.entries(extraSecrets() || {})) if (value) secrets[name] = value;
-  // Free AI (JPF1.<install>.<token>) goes to the repo too, so Always on scores and drafts on the SAME install lane as the app: its day, month and $2 trial budgets
-  // are shared (16 Oct 2026: before, a Free AI user's runs had no AI at all). The older credit key (JP1.…) never goes.
-  const free = /^JPF1\./.test(secrets.ANTHROPIC_API_KEY || '');
-  if (isFreeKey(secrets.ANTHROPIC_API_KEY) && !free) delete secrets.ANTHROPIC_API_KEY;
-  // The free trial (src/trial.py): the install's key tells the website who asks; a license key lifts the wall as in the app.
-  const trialKey = free ? secrets.ANTHROPIC_API_KEY : storage.secret(TRIAL_KEY);
-  if (trialKey) secrets.JOBADABRA_TRIAL_KEY = trialKey;
+  // Why (3 Nov 2026, owner: "Free AI key, I think it's a security and cost risk to let it be copied and mass distribute outside the Jobadabra app"): no key of ours (Free AI's JPF1.…, the older credit's JP1.…) goes to GitHub,
+  // and one already there is deleted. Always on on GitHub runs on the person's own key; without one it has no AI (the card's checklist asks for it). 16 Oct 2026: it used to send Free AI's key and address.
+  const removedSecrets = [];
+  if (isFreeKey(secrets.ANTHROPIC_API_KEY)) { delete secrets.ANTHROPIC_API_KEY; removedSecrets.push('ANTHROPIC_API_KEY'); }
+  // The free trial (src/trial.py) asks the website with the repo key (ai-free.js ensureRepoKey), never the app's own AI key; a license key lifts the wall as in the app.
+  const repoKey = storage.secret(REPO_KEY);
+  if (/^JPT1\./.test(repoKey)) secrets.JOBADABRA_TRIAL_KEY = repoKey; else removedSecrets.push('JOBADABRA_TRIAL_KEY');   // not minted yet (offline): the copy already there goes too, the next sync sends the new one
   if (settings.license?.key) secrets.JOBADABRA_LICENSE_KEY = settings.license.key;
   if (settings.telegramChatId) secrets.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
   const variables = Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, value]) => value));
   const removed = [];
-  if (free) variables.JOBADABRA_AI_BASE_URL = FREE_BASE; else removed.push('JOBADABRA_AI_BASE_URL');
+  removed.push('JOBADABRA_AI_BASE_URL');   // a Free AI address a repo kept from before the 3 Nov 2026 change goes
   // How the person wants to be told: the workflows' --send and src/notify.py follow it. Unset = Telegram only, so it is set for e-mail AND for Telegram turned off (26 Oct 2026: GitHub kept messaging the bot).
   const notify = channelsOf(storage), telegramOff = Array.isArray(storage.settings().notifyBy) && !notify.includes('telegram');
   if (notify.includes('email') || telegramOff) variables.JOBADABRA_NOTIFY = notify.join(','); else removed.push('JOBADABRA_NOTIFY');
@@ -239,7 +239,8 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   // Why (2 Nov 2026, owner: no old-name support anywhere): the repo's variables carry the engine's own JOBADABRA_* names, the same the workflows read as vars.*; the old names a repo made before keeps are left unread (owner chose "leave them").
   const share = poolShare.variables(storage);
   if (share) Object.assign(variables, share); else removed.push(...poolShare.NAMES);
-  return {files, secrets, variables, removed};
+  for (const [name, value] of Object.entries(secrets)) if (/^JPF1\./.test(value)) { delete secrets[name]; removedSecrets.push(name); }   // the class: whatever slot it came from
+  return {files, secrets, variables, removed, removedSecrets};
 }
 
 
@@ -247,24 +248,26 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
 const REUSED_AFTER = 30 * 60 * 1000;
 
 // Everything in one go; safe to run again (after a key or setting changes).
-export async function connect(storage, token, {fetcher, onStep = () => {}, repo: chosen = ''} = {}) {
+export async function connect(storage, token, {fetcher, siteFetcher, onStep = () => {}, repo: chosen = ''} = {}) {
   const api = client(token, fetcher);
+  await ensureRepoKey(storage, siteFetcher);   // the trial status key for the repo, before it is built (ai-free.js)
   onStep('Finding your private repository…');
   const {login, repo, created, createdAt} = await findRepo(api, chosen);
   // A repository from an earlier setup (not the one just made, not the one already in use): say it's being reused.
   const existing = storage.settings().cloud?.repo !== repo && createdAt && Date.now() - Date.parse(createdAt) > REUSED_AFTER
     ? {createdAt} : null;
   if (existing) onStep(`Found your repository ${repo} (created ${new Date(createdAt).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'})}): using it…`);
-  const {files, secrets, variables, removed} = payload(storage);
+  const {files, secrets, variables, removed, removedSecrets} = payload(storage);
   onStep('Adding the schedules and your search settings…');
   for (const [file, content] of Object.entries(files)) await putFile(api, repo, file, content, `Jobadabra: ${file}`);
   onStep('Storing your keys as encrypted secrets…');
   await setSecrets(api, repo, secrets);
+  await removeSecrets(api, repo, removedSecrets);
   await setVariables(api, repo, variables);
   await removeVariables(api, repo, removed);
   await setWorkflows(api, repo, true);  // turned off earlier: GitHub kept the files but stopped their schedules
   storage.saveSettings({cloud: {repo, login, since: storage.settings().cloud?.since || new Date().toISOString(), updatedAt: new Date().toISOString(),
-    synced: fingerprint({secrets, variables, removed})}});
+    synced: fingerprint({secrets, variables, removed, removedSecrets})}});
   return {repo, created, existing, secrets: Object.keys(secrets), variables: Object.keys(variables)};
 }
 
@@ -346,9 +349,9 @@ export function runLink(run, jobs = []) {
 
 // A fingerprint of what the repo should hold besides its files (secrets, variables, variables to remove): GitHub never shows
 // a secret back, so this tells "already sent" from "changed since". A SHA-256 of high-entropy keys, kept on this Mac only.
-export function fingerprint({secrets, variables, removed}) {
+export function fingerprint({secrets, variables, removed, removedSecrets = []}) {
   const sorted = object => Object.fromEntries(Object.entries(object).sort(([a], [b]) => a.localeCompare(b)));
-  return createHash('sha256').update(JSON.stringify([sorted(secrets), sorted(variables), [...removed].sort()])).digest('hex');
+  return createHash('sha256').update(JSON.stringify([sorted(secrets), sorted(variables), [...removed].sort(), [...removedSecrets].sort()])).digest('hex');
 }
 
 // Our workflow files that this app no longer ships (a template removed or renamed): their first line is ours, and the user's own
@@ -370,12 +373,13 @@ export async function retiredWorkflows(api, repo, files) {
 // app's release), retired ones deleted, and the secrets and variables (models included) sent again whenever they changed.
 // Before 8 Oct 2026 secrets and variables were sent only when Always on was turned on, so a new default model never reached a repo.
 // -> what changed, by name only (never a value).
-export async function updateRepo(storage, {fetcher} = {}) {
+export async function updateRepo(storage, {fetcher, siteFetcher} = {}) {
   const cloud = storage.settings().cloud || {};
   if (!cloud.repo || !storage.secret('GITHUB_TOKEN')) return [];
+  await ensureRepoKey(storage, siteFetcher);   // a repo made before 3 Nov 2026 holds the app's AI key as its trial key: this is what replaces it
   const api = client(storage.secret('GITHUB_TOKEN'), fetcher);
   await resolveEngineRepo(fetcher);   // the workflow files name the engine as GitHub names it now
-  const {files, secrets, variables, removed} = payload(storage);
+  const {files, secrets, variables, removed, removedSecrets} = payload(storage);
   const changed = [];
   for (const [file, content] of Object.entries(files)) {
     if (await putFile(api, cloud.repo, file, content, `Jobadabra: ${file}`)) changed.push(file);
@@ -384,13 +388,14 @@ export async function updateRepo(storage, {fetcher} = {}) {
     await api('DELETE', `/repos/${cloud.repo}/contents/${file}`, {message: `Jobadabra: ${file} is no longer used`, sha});
     changed.push(`removed ${file}`);
   }
-  const digest = fingerprint({secrets, variables, removed});
+  const digest = fingerprint({secrets, variables, removed, removedSecrets});
   if (digest !== cloud.synced) {
     await setSecrets(api, cloud.repo, secrets);
+    await removeSecrets(api, cloud.repo, removedSecrets);
     await setVariables(api, cloud.repo, variables);
     await removeVariables(api, cloud.repo, removed);
     storage.saveSettings({cloud: {...storage.settings().cloud, synced: digest, updatedAt: new Date().toISOString()}});
-    changed.push(...Object.keys(secrets).map(name => `secret ${name}`), ...Object.keys(variables).map(name => `variable ${name}`));
+    changed.push(...removedSecrets.map(name => `removed secret ${name}`), ...Object.keys(secrets).map(name => `secret ${name}`), ...Object.keys(variables).map(name => `variable ${name}`));
   }
   return changed;
 }

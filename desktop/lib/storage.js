@@ -8,7 +8,7 @@ import path from 'node:path';
 import {twinSecret} from './twin.js';
 import {writePrivate} from './private-file.js';
 
-export const SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'BRAVE_SEARCH_API_KEY', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY', 'EXTENSION_TOKEN', 'GITHUB_TOKEN', 'REPORT_TOKEN', 'CLOUDFLARE_API_TOKEN',
+export const SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'BRAVE_SEARCH_API_KEY', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY', 'EXTENSION_TOKEN', 'GITHUB_TOKEN', 'REPORT_TOKEN', 'CLOUDFLARE_API_TOKEN', 'JOBADABRA_TRIAL_KEY', 'JOBADABRA_REPO_TRIAL_KEY',
   'DESKTOP_AI_TOKEN_HASH', 'DESKTOP_AI_PAIR'];   // the last two: lib/desktop-ai-pairing.js (the hash of the paired token and of a one-time code; never a token)
 
 export function createStorage(dir, crypto) {

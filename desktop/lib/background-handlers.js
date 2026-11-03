@@ -3,6 +3,7 @@
 // Guards: the update, queue and focus-reminder tests in desktop/test.
 import * as backup from './backup.js';
 import * as critical from './critical.js';
+import * as aiFree from './ai-free.js';
 import * as github from './github.js';
 import * as migrate from './migrate.js';
 import * as notionGate from './notion-gate.js';
@@ -140,7 +141,7 @@ export function registerBackgroundHandlers(ctx) {
         error => appLog('cloud', 'repo not updated', {error: error.message}));
     }, 6 * 3600 * 1000);
     // The user's side kept in step with this app (lib/github.js updateRepo, lib/telegram-cloud.js refresh): names only, never a value.
-    if (cloud()) github.updateRepo(storage).then(changed => {
+    if (cloud()) aiFree.ensureTrialKey(storage).then(() => github.updateRepo(storage)).then(changed => {   // the install's key first: it is the proof the repo key is minted on (lib/ai-free.js)
       if (changed.length) { log(`Updated in your GitHub repo: ${changed.join(', ')}`); appLog('cloud', 'repo brought in step with this app', {changed: changed.length, what: changed.join(', '), decidedBy: 'app start'}); }
     }, error => { log(`GitHub repo not updated: ${error.message}`); appLog('cloud', 'repo not updated', {error: error.message}); })
       .then(() => telegramCloud.refresh(storage))
