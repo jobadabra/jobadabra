@@ -112,3 +112,25 @@ test('dates read in the CV\'s own language, month names from the system (8 Oct 2
     assert.equal(dates.status, 'pass', `${range}: ${dates.detail}`);
   }
 });
+
+// Windows tester on 0.9.2, 3 Nov 2026 (issue #3061): a PDF with ligatures got readability 100/100 while the AI review said words were split ("fi nancial"), and
+// the same one-column PDF was flagged "5 lines side by side". A ligature glyph (fi, fl, ffi) arrives as its own text item between two long ones.
+const ligatureLine = (y, before, ligature, after) => [word(before, 20, y, 200), word(ligature, 220, y, 8), word(after, 228, y, 260)];
+const withLigatures = () => {
+  const pages = good();
+  const lines = [['Reduced the cost of the group', 'fi', 'nancial reporting cycle by a third each quarter'], ['Cut the time to produce a monthly', 'fi', 'gure pack from nine days to three'],
+    ['Owned and ran the whole annual o', 'ffi', 'ce move for a hundred people, on budget'], ['Introduced a retirement-plan', 'fl', 'ow review across the whole company'], ['Led a well-trained support team of the', 'fi', 'rst twelve engineers hired in the group']];
+  pages[0].text.push(...lines.flatMap(([a, b, c], i) => ligatureLine(190 + i * 12, a, b, c)));
+  return pages;
+};
+
+test('a word split at a ligature is one word in the text a parser and the AI read', () => {
+  const text = linesOf(withLigatures()).join('\n');
+  assert.match(text, /financial reporting/);
+  assert.match(text, /figure pack/);
+  assert.doesNotMatch(text, /\b(?:fi|fl|ffi) [a-z]/, 'no space inside a word');
+});
+
+test('a ligature gap is not a second column', () => {
+  assert.equal(analyse(withLigatures()).checks.find(c => c.id === 'columns').status, 'pass');
+});

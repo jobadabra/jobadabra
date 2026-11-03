@@ -17,12 +17,28 @@ const PRICE = {input: 2, output: 10};  // USD per million tokens
 const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
 
 // ---------- the text, in the order a parser reads it ----------
+/**
+ * The text items of one visual line, left to right, with items that touch joined into one run. A ligature glyph (fi, fl, ffi) or a font change inside a word arrives as its own
+ * item with no gap before it; joined with a space it read "fi nancial" and, between two long items, looked like a second column (Windows tester, 3 Nov 2026, issue #3061).
+ * A gap over a quarter of the left item's average character width is a real space and stays one.
+ */
+export function runsOf(row) {
+  const runs = [];
+  for (const item of [...row].sort((a, b) => a.x - b.x)) {
+    const last = runs.at(-1);
+    const gap = last ? item.x - (last.x + last.w) : Infinity;
+    const touching = last && gap <= 0.25 * (last.w / Math.max(1, last.str.length));
+    if (touching) { last.str += item.str; last.w = item.x + item.w - last.x; } else runs.push({...item});
+  }
+  return runs.map(run => ({...run, str: run.str.replace(/\s+/g, ' ').trim()}));
+}
+
 export function linesOf(pages) {
   const lines = [];
   for (const page of pages) {
     const items = [...page.text].sort((a, b) => a.y - b.y || a.x - b.x);
     let row = [], at = null;
-    const flush = () => { if (row.length) lines.push(row.sort((a, b) => a.x - b.x).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim()); row = []; };
+    const flush = () => { if (row.length) lines.push(runsOf(row).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim()); row = []; };
     for (const item of items) { if (at === null || Math.abs(item.y - at) > 3) { flush(); at = item.y; } row.push(item); }
     flush();
   }
@@ -102,8 +118,8 @@ export function analyse(pages) {
   let side = 0;
   for (const page of pages) {
     const rows = new Map();
-    for (const item of page.text) if (item.str.length >= 25) { const key = Math.round(item.y / 3); rows.set(key, [...(rows.get(key) || []), item]); }
-    for (const row of rows.values()) { row.sort((a, b) => a.x - b.x); if (row.some((a, i) => row.slice(i + 1).some(b => b.x > a.x + a.w + 5 && a.w > page.width * 0.2 && b.w > page.width * 0.2))) side++; }
+    for (const item of page.text) { const key = Math.round(item.y / 3); rows.set(key, [...(rows.get(key) || []), item]); }
+    for (const items of rows.values()) { const row = runsOf(items).filter(item => item.str.length >= 25); if (row.some((a, i) => row.slice(i + 1).some(b => b.x > a.x + a.w + 5 && a.w > page.width * 0.2 && b.w > page.width * 0.2))) side++; }
   }
   checks.push(side < 4 ? check('columns', 'One column of text', 'pass', 'Sentences run down one column, in reading order.')
     : check('columns', 'One column of text', 'warn', `${side} lines have text side by side: some parsers read straight across and mix the two (reported by a scanner developer, not confirmed by recruiters).`,
