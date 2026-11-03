@@ -34,7 +34,7 @@ test('a time that has passed says "due now"; later today, tomorrow and another d
 });
 
 test('the footer after a run that stopped, with the next refresh already past: "Next refresh due now", not a bare past time', () => {
-  const past = Date.now() - 7 * 60000;
+  const past = Date.now() - 7 * 60000;   // clock: relative the page words the schedule against the real clock; 7 minutes past is "due now" whenever this runs
   const stopped = {id: 1, kind: 'search', ok: false, startedAt: new Date(past - 4 * 3600000).toISOString(), endedAt: new Date(past - 4 * 3600000).toISOString(), result: 'stopped without finishing (see Recent activity)', trigger: 'schedule', where: 'mac'};
   const warnIcon = doc.createElement('span');   // the warnings box draws its icon into this child
   warnIcon.className = 'ap-warn-icon';
