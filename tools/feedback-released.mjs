@@ -11,6 +11,7 @@ import {send} from '../desktop/e2e/ci-alert.mjs';
 import {commitOf} from '../desktop/e2e/release-alert.mjs';
 
 const URL_DEFAULT = 'https://www.jobadabra.top/api/feedback/released';
+const MAX_EARLIER = 50, EARLIER_BUDGET_MS = 120000;   // lookups per release (a few GitHub calls each, only for cards still waiting) and the time they may take together
 const TAG = /^desktop-v(\d+(?:\.\d+)*)$/;
 
 /** The PR numbers in commit subjects: the "(#123)" a squash merge puts at the end of the first line. Sorted, no duplicates. */
@@ -54,21 +55,54 @@ const MAX_COMMITS = 3000;
  * The first lines of ALL commits in prev...tag. GitHub lists them oldest first, 100 a page, so a range that is not read to its end would lose the newest PRs, the ones this release is about:
  * the pages are counted from `total_commits`, and a range over MAX_COMMITS fails loudly (Why, 6/7 code review, 3 Nov 2026: 0.8.60...0.8.86 is 766 commits, a long hold is more than 500).
  */
-async function subjectsBetween(prev, tag, env, fetcher) {
+const subjectsBetween = async (prev, tag, env, fetcher) => (await rangeBetween(prev, tag, env, fetcher)).lines;
+/**
+ * -> {status, lines}: GitHub's compare status of base...tag ("ahead" = base is an ancestor of the tag) and the first line of every commit in it, oldest first.
+ * `due` (ms clock reading, optional) is checked before every page: Why (3 Nov 2026, Gitar on #3104): a lookup started just under the budget could otherwise read up to 30 pages of 20 s each and overrun it.
+ */
+async function rangeBetween(prev, tag, env, fetcher, {due = Infinity, now = Date.now} = {}) {
   const lines = [];
-  let pages = 1;
+  let pages = 1, status = '';
   for (let page = 1; page <= pages; page++) {
+    if (now() > due) throw new Error(`compare ${prev}...${tag}: out of time`);
     const answer = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/compare/${encodeURIComponent(prev)}...${encodeURIComponent(tag)}?per_page=100&page=${page}`, env, fetcher);
     if (!answer.ok) throw new Error(`compare ${prev}...${tag}: HTTP ${answer.status}`);
     const body = await answer.json();
     if (page === 1) {
+      status = String(body.status || '');
       const total = Number(body.total_commits) || (body.commits || []).length;
       if (total > MAX_COMMITS) throw new Error(`${prev}...${tag} is ${total} commits: more than ${MAX_COMMITS}, the list of pull requests would be cut`);
       pages = Math.ceil(total / 100);
     }
     lines.push(...(body.commits || []).map(commit => String(commit.commit?.message || '').split('\n')[0]));
   }
-  return lines;
+  return {status, lines};
+}
+
+/**
+ * The PRs of the site's waiting cards that this tag CONTAINS although they are not in its own commit list. Why (3 Nov 2026, owner; card c1ea31a0): a fix that shipped in 0.9.4 got its card marked
+ * "fixed" after 0.9.4 was told, and every later release's list is "since the previous stable", so it waited through 0.9.6. The site (GET) names the PRs its waiting cards hold; a merged PR whose merge
+ * commit is an ancestor of the tag (GitHub compare <merge commit>...<tag> says ahead or identical) is inside this release. Never throws and never blocks: a PR that cannot be read stays waiting, the next release asks again.
+ * -> [PR numbers] sorted, not already in `listed`, at most MAX_EARLIER lookups.
+ */
+export async function earlierFixes({tag, url, key, listed, env, fetcher, now = Date.now}) {
+  const found = [], started = now();
+  try {
+    const answer = await fetcher(url, {method: 'GET', headers: {Authorization: `Bearer ${key}`}, signal: AbortSignal.timeout(20000)});
+    const waiting = answer.ok ? (await answer.json().catch(() => null))?.prs : null;
+    for (const number of (Array.isArray(waiting) ? waiting : []).filter(n => Number.isInteger(n) && n > 0 && !listed.includes(n)).slice(0, MAX_EARLIER)) {
+      if (now() - started > EARLIER_BUDGET_MS) break;   // the own-PR POST must still fit the workflow's 10 minutes
+      try {
+        const pull = await github(`${api(env)}/repos/${env.GITHUB_REPOSITORY}/pulls/${number}`, env, fetcher);
+        const data = pull.ok ? await pull.json().catch(() => null) : null;
+        if (!data?.merged_at || !data.merge_commit_sha) continue;   // not merged (an open PR can still carry a test-merge sha), or unreadable: still waiting
+        const {status, lines} = await rangeBetween(data.merge_commit_sha, tag, env, fetcher, {due: started + EARLIER_BUDGET_MS, now});
+        // A revert anywhere between the merge and the tag takes the fix out (prNumbers reads them oldest first), exactly as it does inside a release's own range.
+        if (['ahead', 'identical'].includes(status) && prNumbers([`merge (#${number})`, ...lines]).includes(number)) found.push(number);
+      } catch { /* this PR stays waiting, the next release asks again */ }
+    }
+  } catch { /* the site could not list its waiting cards: nothing earlier this time */ }
+  return found.sort((a, b) => a - b);
 }
 
 /** One POST to the site, bounded: 20 s each, up to `tries` on a network error or a 5xx (`wait` ms between); a 4xx is final. -> {ok, status, body, tries} (status 0 = no answer). */
@@ -101,11 +135,12 @@ export async function tellSite({tag, env = process.env, fetcher = fetch, wait = 
     const commit = await commitOf(tag, env, fetcher);
     if (!commit?.date) return fail(`the commit of ${tag} could not be read`);
     const prev = previousStable(await stableTags(env, fetcher), tag);
-    const prs = prev ? prNumbers(await subjectsBetween(prev, tag, env, fetcher)) : [];
-    const answer = await post(env.FEEDBACK_RELEASED_URL || URL_DEFAULT, key, {version: tag.replace(/^desktop-v/, ''), channel: 'stable', prs, cutAt: new Date(commit.date).toISOString()}, {fetcher, wait});
+    const own = prev ? prNumbers(await subjectsBetween(prev, tag, env, fetcher)) : [], siteUrl = env.FEEDBACK_RELEASED_URL || URL_DEFAULT;
+    const earlier = await earlierFixes({tag, url: siteUrl, key, listed: own, env, fetcher}), prs = [...own, ...earlier].sort((a, b) => a - b);
+    const answer = await post(siteUrl, key, {version: tag.replace(/^desktop-v/, ''), channel: 'stable', prs, cutAt: new Date(commit.date).toISOString()}, {fetcher, wait});
     if (!answer.ok) return fail(`the site answered ${answer.status || 'nothing'} after ${answer.tries} ${answer.tries === 1 ? 'try' : 'tries'}`, answer.body?.error ? ` (${String(answer.body.error).slice(0, 120)})` : '');
     const {told = 0, waiting = 0} = answer.body || {}, failed = Array.isArray(answer.body?.failed) ? answer.body.failed : [];   // Why (6/7 review): a null or odd `failed` is no failure of ours
-    const line = `feedback-released: ${tag} (stable, ${prs.length} PRs since ${prev || 'no earlier stable'}): told ${told}, still waiting ${waiting}${failed.length ? `, NOT confirmed ${failed.length}` : ''}`;
+    const line = `feedback-released: ${tag} (stable, ${own.length} PRs since ${prev || 'no earlier stable'}${earlier.length ? `, ${earlier.length} earlier fix${earlier.length === 1 ? '' : 'es'} the tag contains` : ''}): told ${told}, still waiting ${waiting}${failed.length ? `, NOT confirmed ${failed.length}` : ''}`;
     if (failed.length) await send(note('Some reporters were not confirmed', `${failed.length} could not be confirmed (their cards say so on /admin/feedback/inbox)`, tag, env), env, fetcher).catch(() => {});
     return {ok: true, line};
   } catch (error) { return fail(`could not prepare the call: ${String(error.message || error).slice(0, 160)}`); }
