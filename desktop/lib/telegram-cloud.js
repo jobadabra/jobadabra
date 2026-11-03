@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+import {isFreeKey} from './ai-free.js';
 import {MODELS} from './pipeline.js';
 import {api as telegramApi} from './telegram.js';
 
@@ -45,7 +46,7 @@ export function bindings(storage, webhookSecret) {
     JOBADABRA_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
   const secret = {TELEGRAM_BOT_TOKEN: storage.secret('TELEGRAM_BOT_TOKEN'), WEBHOOK_SECRET: webhookSecret,
     GITHUB_TOKEN: storage.secret('GITHUB_TOKEN'), NOTION_TOKEN: storage.secret('NOTION_TOKEN'),
-    ANTHROPIC_API_KEY: storage.secret('ANTHROPIC_API_KEY')};
+    ANTHROPIC_API_KEY: isFreeKey(storage.secret('ANTHROPIC_API_KEY')) ? '' : storage.secret('ANTHROPIC_API_KEY')};   // Why (3 Nov 2026, owner: no Free AI key outside the app): the user's own Cloudflare Worker never holds our key (it could not use it there anyway)
   return [
     ...Object.entries(plain).map(([name, text]) => ({type: 'plain_text', name, text})),
     ...Object.entries(secret).filter(([, text]) => text).map(([name, text]) => ({type: 'secret_text', name, text})),

@@ -4,6 +4,7 @@
 import {installId} from './pool-share.js';
 import {siteOffForUser} from './recipes.js';
 import {installToken} from './install-token.js';
+import {log as appLog} from './log.js';
 
 export const FREE_BASE = 'https://www.jobadabra.top/api/ai';
 
@@ -65,8 +66,8 @@ export function leave(storage, env = process.env) {
   return true;
 }
 
-// The install's token for the free trial's status (GET /api/trial/status, site/src/trial.js), for an install whose Free AI is not on (it has its own key): Always on
-// sends it as a repo secret, so its runs stop new work at the trial's end like the app. Kept under this name; never throws.
+// The install's own AI token (JPF1.…) for an install whose Free AI is not on (it has its own key): kept on this Mac only, as the app's proof of the install to the website
+// (the trial status, the notify e-mail, ensureRepoKey below). Never sent to GitHub (3 Nov 2026). Kept under this name; never throws.
 export const TRIAL_KEY = 'JOBADABRA_TRIAL_KEY';
 export async function ensureTrialKey(storage, fetcher = globalThis.fetch) {
   if (storage.secret(TRIAL_KEY) || /^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') || siteOffForUser()) return;
@@ -74,5 +75,23 @@ export async function ensureTrialKey(storage, fetcher = globalThis.fetch) {
   try {
     const token = await installToken(storage, install, 'ai', {base: FREE_BASE.replace(/\/api\/ai$/, ''), fetcher});
     if (token) storage.setSecret(TRIAL_KEY, `JPF1.${install}.${token}`);
-  } catch { /* offline: the next sync tries again */ }
+  } catch (error) { appLog('cloud', 'repo key not kept', {error: error.message, decidedBy: 'ensureRepoKey'}); }   // offline: the next sync tries again
+}
+
+// The key an Always-on repo on GitHub holds in place of the AI key (owner, 3 Nov 2026: "Free AI key, I think it's a security and cost risk to let it be copied and mass distribute outside the Jobadabra app").
+// JPT1.<handle>.<mac> from the website: an opaque handle mapped to this install, good for the trial status and the notify e-mail and for nothing that spends AI. The website mints it only
+// for a caller that shows the install's own AI key, so the proof is the key already on this Mac (a Free AI one, or the one ensureTrialKey keeps for an own-key install). Kept under this name.
+export const REPO_KEY = 'JOBADABRA_REPO_TRIAL_KEY';
+/** Gets this install's repo key from the website once and keeps it (storage secret REPO_KEY), for payload() in lib/github.js to send in place of the AI key.
+ *  Takes the storage and a fetcher (tests); needs the install's own JPF1 key as proof (TRIAL_KEY or the Anthropic slot), else asks nothing. Returns nothing and never throws: a refusal or an
+ *  answer that is not a JPT1 key keeps nothing; a failure (offline, or a store that refuses the secret) is written to the app log, never swallowed (3 Nov 2026: an unknown secret name hid here). */
+export async function ensureRepoKey(storage, fetcher = globalThis.fetch) {
+  if (/^JPT1\./.test(storage.secret(REPO_KEY) || '') || siteOffForUser()) return;
+  const proof = [storage.secret(TRIAL_KEY), storage.secret('ANTHROPIC_API_KEY')].find(key => /^JPF1\./.test(key || '')) || '';
+  const install = proof.split('.')[1];
+  if (!install) return;
+  try {
+    const key = await installToken(storage, install, 'trial', {base: FREE_BASE.replace(/\/api\/ai$/, ''), fetcher, proof});   // the one way to ask the site for a token (install-token.js)
+    if (/^JPT1\./.test(key)) storage.setSecret(REPO_KEY, key);
+  } catch (error) { appLog('cloud', 'repo key not kept', {error: error.message, decidedBy: 'ensureRepoKey'}); }   // offline: the next sync tries again
 }

@@ -1,5 +1,6 @@
 // Settings → connections: Apply with Claude, how often, Always on (the extension's card: extension-setup.js).
 import {aiFamily} from '../ai-name.js';
+import {alwaysOnNeeds} from '../always-on-needs.js';
 import {notionConnected, openNotionConnect} from './notion-connect.js';
 import {signInWait} from '../sign-in-wait.js';
 import {shared} from './shared.js';
@@ -130,15 +131,7 @@ export function showCloud() {
 let cloudNeedsShown = false;
 // The API key Always on needs for the chosen family.
 const aiKey = () => (aiFamily() === 'openai' ? {name: 'OPENAI_API_KEY', provider: 'OpenAI', cli: 'Codex'} : {name: 'ANTHROPIC_API_KEY', provider: 'Anthropic', cli: 'Claude Code'});
-function cloudMissing() {
-  const secrets = shared.state.secrets;
-  return [
-    !secrets.NOTION_TOKEN && {id: 'notion', title: 'Connect Notion', why: 'Your jobs are saved there.', button: 'Connect Notion →'},
-    // Always on runs the chosen family's API engine (lib/ai/index.js alwaysOnEngine): Anthropic's key for Claude, OpenAI's for OpenAI.
-    !secrets[aiKey().name] && {id: 'ai', title: `Add an ${aiKey().provider} API key`,
-      why: `GitHub runs in the cloud, so it cannot use ${aiKey().cli} on this Mac. Paste a key; it is stored as an encrypted GitHub secret.`, button: 'Add API key →'},
-  ].filter(Boolean);
-}
+const cloudMissing = () => alwaysOnNeeds(shared.state, aiKey());   // renderer/always-on-needs.js
 function showCloudNeeds() {
   const box = $('cloud-needs'), missing = cloudMissing();
   const done = !missing.length;
@@ -168,6 +161,13 @@ function showCloudNeeds() {
       go.textContent = need.button;
       go.addEventListener('click', () => { cloudNeedsShown = true; openSetting(id === 'ai' ? 'ai' : 'notion'); });
       row.append(go);
+      if (need.alt) {
+        const other = document.createElement('button');
+        other.className = 'secondary';
+        other.textContent = need.alt.button;
+        other.addEventListener('click', () => openSetting(need.alt.setting));
+        row.append(other);
+      }
     }
     return row;
   });
