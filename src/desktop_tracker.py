@@ -62,14 +62,14 @@ def _clear_jobs(db, args):
 # Strategy's one Re-score: every outdated job once (src/desktop_strategy.py outdated)
 def _rescore_outdated(db, args):
     tracker = _tracker()
-    from .desktop_strategy import rescore_outdated
+    from .desktop_strategy import profile_for_scores, rescore_outdated
     from .store_access import run_stores, url_stages
     stores, _ = run_stores(tracker)
     try:
         stages = url_stages(stores)
     except Exception:  # noqa: BLE001 (stages that cannot be read: every shown job counts as active)
         stages = {}
-    return {'queued': rescore_outdated(db, stages)}, True
+    return {'queued': rescore_outdated(db, stages, profile_for_scores(tracker, stores))}, True
 
 
 # -> the number of active jobs queued for a places refresh.

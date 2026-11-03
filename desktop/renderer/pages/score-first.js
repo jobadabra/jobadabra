@@ -1,16 +1,16 @@
 // "Score first": every Find jobs press while scores are from the previous strategy (owner, 2 Nov 2026: "Find jobs should be only for finding jobs. But pressing
-// Find jobs should open a dialog saying: Score first"). Two ways on: Re-score N jobs (the re-score's own card runs), or Find jobs without re-scoring. Cancel starts nothing.
+// Find jobs should open a dialog saying: Score first"). Two ways on: Re-score N (or "Re-score 60 now" past 60) (the re-score's own card runs), or Find jobs without re-scoring. Cancel starts nothing.
 // The words are rescore-words.js's (the Strategy notice's, the same sentence); the count is rescore-run.js's. Guarded by test/rescore-call.test.js.
 import {$} from './core.js';
 import {knownOutdated, rescoring, runRescore} from './rescore-run.js';
-import {jobs, scoreFirstLead, scoreFirstSkip, scoreFirstTitle} from '../rescore-words.js';
+import {pressLabel, scoreFirstLead, scoreFirstSkip, scoreFirstTitle} from '../rescore-words.js';
 
 /** -> 'rescore' | 'find' | 'cancel' once the person chose. */
 export function askScoreFirst(count) {
   const dialog = $('score-first-dialog');
   $('score-first-title').textContent = scoreFirstTitle;
   $('score-first-lead').textContent = scoreFirstLead(count);
-  $('score-first-go').textContent = `Re-score ${jobs(count)}`;
+  $('score-first-go').textContent = pressLabel(count);
   $('score-first-find').textContent = scoreFirstSkip;
   dialog.returnValue = '';
   return new Promise(resolve => {

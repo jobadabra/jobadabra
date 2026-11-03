@@ -11,6 +11,9 @@ export {deliveryReady, telegramReady};
 // The same command .github/workflows/daily.yml runs for these inputs (mode, job, action, page, seed,
 // file, note), so Telegram buttons and commands work the same from the app as from the cloud.
 // A run is asked to send (--send) only when the person has a channel besides the app: Telegram set up, or e-mail chosen (lib/notify-channel.js). Without one the app shows the message itself. Guard: test/telegram-send.test.js.
+// The inputs passed to the engine as they are, in this order (the cloud workflow runs the same flags).
+const PASSED_INPUTS = [['target', '--target'], ['jobTitle', '--job-title'], ['jobCompany', '--job-company'], ['jobText', '--job-text'], ['page', '--page'], ['seed', '--seed'],
+  ['file', '--file'], ['note', '--note'], ['origin', '--origin'], ['interview', '--interview']];
 export function dailyArgs(storage, inputs = {}) {
   const mode = inputs.mode || 'scheduled';
   const ai = claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
@@ -19,24 +22,16 @@ export function dailyArgs(storage, inputs = {}) {
   const args = ['src', 'daily', '--mode', mode, ...(telegram ? ['--send'] : []), '--log-run'];
   if (inputs.job) args.push('--job', String(inputs.job), '--action', String(inputs.action || 'applied'));
   if (inputs.talking) args.push('--action', 'talking');
-  if (inputs.target) args.push('--target', String(inputs.target));
-  if (inputs.jobTitle) args.push('--job-title', String(inputs.jobTitle));
-  if (inputs.jobCompany) args.push('--job-company', String(inputs.jobCompany));
-  if (inputs.jobText) args.push('--job-text', String(inputs.jobText));
-  if (inputs.page) args.push('--page', String(inputs.page));
-  if (inputs.seed) args.push('--seed', String(inputs.seed));
-  if (inputs.file) args.push('--file', String(inputs.file));
-  if (inputs.note) args.push('--note', String(inputs.note));
-  if (inputs.origin) args.push('--origin', String(inputs.origin));
-  if (inputs.interview) args.push('--interview', String(inputs.interview));
+  for (const [name, flag] of PASSED_INPUTS) if (inputs[name]) args.push(flag, String(inputs[name]));
   if (inputs.firstJobs) args.push('--first-jobs');   // a small slice of fast feeds is read and 3 jobs scored first (src/first_jobs.py)
   if (ai && AI_MODES.includes(mode)) args.push('--enrich-max', '100', '--score-max', '60');
+  if (ai && mode === 'rescore') args.push('--score-max', '60');   // Re-score: new scores for the jobs that have an old one, nothing else (src/daily_modes.py rescore_mode)
   // A search's AI steps stop at 3 minutes (owner, 7 Oct 2026: "never more than 2-3 minutes"); what is left waits for the next search (src/budget.py).
   // Every mode that runs AI steps has it: the first run's follow-up (mode today) had none from 16 Oct, so on a big market it sorted 600 titles and
   // placed 277 places for 15 minutes before the first jobs were scored (Cluj, 18 Oct 2026: first 70+ match after 23 minutes).
   // budget: the seconds a Find jobs press gives this run (lib/search-steps.js: one deadline for the press), with or without AI.
   if (inputs.budget) args.push('--budget', String(inputs.budget));
-  else if (ai && AI_MODES.includes(mode)) args.push('--budget', String(SEARCH_BUDGET_S));
+  else if (ai && (AI_MODES.includes(mode) || mode === 'rescore')) args.push('--budget', String(SEARCH_BUDGET_S));
   const {insights, kits} = cadence(storage.settings());
   if (ai && mode === 'scheduled' && insights !== 'off') args.push('--insight');
   if (ai && kits > 0 && AI_MODES.includes(mode)) args.push('--auto-kit-max', String(kits));

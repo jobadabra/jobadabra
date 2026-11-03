@@ -83,6 +83,15 @@ test('every mode that runs AI steps has the 3-minute budget (the first run follo
   }
 });
 
+test('the Re-score run scores up to 60 within 3 minutes and reads, enriches and drafts nothing (its own engine mode, not a Find jobs search)', () => {
+  const storage = tempStorage();
+  storage.setSecret('ANTHROPIC_API_KEY', 'sk-ant-x');
+  const args = pipeline.dailyArgs(storage, {mode: 'rescore', budget: 180});
+  assert.deepEqual(args, ['src', 'daily', '--mode', 'rescore', '--log-run', '--score-max', '60', '--budget', '180']);
+  const modes = fs.readFileSync(new URL('../../src/daily_helpers.py', import.meta.url), 'utf8').match(/MODES = \(([^)]*)\)/)[1];
+  assert.match(modes, /'rescore'/, 'the engine accepts the mode');
+});
+
 test('Telegram actions run the same pipeline command as the GitHub workflow', () => {
   const storage = tempStorage();
   assert.deepEqual(pipeline.dailyArgs(storage, {mode: 'today'}), ['src', 'daily', '--mode', 'today', '--log-run']);

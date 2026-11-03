@@ -36,10 +36,10 @@ class OutdatedTests(unittest.TestCase):
 
     def test_each_job_counts_once_whatever_its_reasons(self):
         summary = desktop_strategy.outdated(db_with(SCORES), {})
-        self.assertEqual(summary, {'count': 3, 'method': 2, 'places': 2})
+        self.assertEqual(summary, {'count': 3, 'method': 2, 'places': 2, 'changed': 0})
 
     def test_nothing_outdated_says_zero(self):
-        self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {}), {'count': 0, 'method': 0, 'places': 0})
+        self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {}), {'count': 0, 'method': 0, 'places': 0, 'changed': 0})
 
     def test_reading_the_count_queues_nothing(self):
         db = db_with(SCORES)
@@ -53,6 +53,34 @@ class OutdatedTests(unittest.TestCase):
         self.assertEqual(queued, {1, 2, 3})
 
 
+class ChangedSinceTheScoreTests(unittest.TestCase):
+    """3 Nov 2026 (owner, via the coordinator): a job already in the list is re-scored only by Re-score, never by Find jobs, so a posting or Profile that
+    changed since its score is an old score too: counted once with the other reasons, by the same function on Jobs and on Strategy."""
+    PROFILE = '# Goals\n- SRE in Zurich\n# Skills\n- Kubernetes, Terraform, Python, incident response, observability\n'
+
+    def setUp(self):
+        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(locations, 'active_ids', return_value={1, 2, 3, 5}),
+                      mock.patch.object(desktop_strategy.digest, 'eligible_jobs', return_value=([{'id': 5, 'title': 'SRE', 'description': 'Kubernetes.'}], []))):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_a_scored_job_that_differs_from_its_score_counts_as_changed(self):
+        self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {}, self.PROFILE), {'count': 1, 'method': 0, 'places': 0, 'changed': 1})
+
+    def test_without_a_profile_nothing_is_changed(self):
+        self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {}, None)['changed'], 0)
+
+    def test_re_score_asks_again_for_every_old_job_the_changed_ones_too(self):
+        db = db_with({**SCORES})
+        self.assertEqual(desktop_strategy.rescore_outdated(db, {}, self.PROFILE), 4, 'jobs 1, 2, 3 and the changed 5')
+        self.assertEqual({row['job_id'] for row in db.execute("SELECT job_id FROM scores WHERE input_hash=''")}, {1, 2, 3, 5},
+                         'a changed low score is asked again too: no profile-only shortcut leaves the count where it was')
+
+    def test_a_changed_job_with_an_application_is_not_counted(self):
+        with mock.patch.object(locations, 'active_ids', return_value={1, 2, 3}):   # job 5 has an application: Re-score skips it, so it is no old score
+            self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {'https://x/5': 'Applied'}, self.PROFILE)['changed'], 0)
+
+
 class CommandTests(unittest.TestCase):
     def test_the_window_s_re_score_reaches_this_command(self):
         from pathlib import Path
@@ -60,7 +88,7 @@ class CommandTests(unittest.TestCase):
         self.assertIn("sub.add_parser('rescore-outdated')", source)
         self.assertIn("'rescore-outdated': _rescore_outdated", source)
         handlers = (Path(__file__).resolve().parents[1] / 'src' / 'desktop_tracker.py').read_text()
-        self.assertIn("rescore_outdated(db, stages)", handlers)
+        self.assertIn("rescore_outdated(db, stages, profile_for_scores(tracker, stores))", handlers)
 
 
 class JobsListKeepsTheOldFitsTests(unittest.TestCase):

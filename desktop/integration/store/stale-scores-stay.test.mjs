@@ -59,11 +59,24 @@ test('(a)(b) a places change keeps every fit on the Jobs list, marks the old one
   assert.ok(after_.outdated.count >= marked.length);
 });
 
+test('(c) a Find jobs press does not re-score the listed jobs: their old scores stay marked until Re-score (owner, 3 Nov 2026)', async () => {
+  const marked = (await readJobs()).outdated.count;
+  assert.ok(marked > 0, 'the places change left old scores to protect');
+  const byUrl = list => Object.fromEntries(scored(list).map(job => [job.url, job.fit]));   // a store row has no job id (src/desktop_jobs.py): the url is its key
+  await engine('rescore-outdated');   // the person asked for new scores (input_hash ''): before this change the next Find jobs scored them; now only the Re-score run does
+  const fitsBefore = byUrl(await readJobs());
+  const done = await kit.runTask('refresh', 'run', 'you');
+  assert.ok(done.ok !== false, `the search did not end: ${JSON.stringify(done).slice(0, 300)}`);
+  const now = await readJobs();
+  for (const [url, fit] of Object.entries(byUrl(now))) if (url in fitsBefore) assert.equal(fit, fitsBefore[url], `${url} was re-scored by Find jobs`);
+  assert.equal(now.outdated.count, marked, 'Find jobs replaced an old score (the count fell) or made new ones');
+});
+
 test('(d) Re-score replaces the old fits and the marks go', async () => {
   const outdated = (await readJobs()).outdated.count;
   const queued = (await engine('rescore-outdated')).queued;
   assert.equal(queued, outdated, 'Re-score queues exactly what the call counted');
-  const done = await kit.runTask('refresh', 'run', 'you', {note: `Re-scoring ${queued} older scores`});
+  const done = await kit.runTask('rescore', 'you', {note: `Re-scoring ${queued} older scores`});   // its own run, not a search
   assert.ok(done.ok !== false, `the re-scoring search did not end: ${JSON.stringify(done).slice(0, 300)}`);
   const after_ = await readJobs();
   assert.deepEqual(after_.jobs.filter(job => job.stale), [], 'a mark is left after the new scores arrived');

@@ -2,7 +2,7 @@
 // Guarded by desktop/test/strategy-rebuild.test.js.
 // ---------- Rebuild from CV: what a new draft changes, grouped by what each change triggers ----------
 // Search criteria and filters change what the crawl keeps and hides; the Profile's scoring part changes every fit
-// score (re-scored over the next searches, AI cost); standard answers only change future kits and forms. Locations
+// score (the scored jobs become old scores; Re-score updates them, AI cost); standard answers only change future kits and forms. Locations
 // and remote rules live in both the search settings (crawl) and the Profile (score): a change to them links the two
 // groups, so they're applied together and can't disagree.
 export const SCORE_USD = 0.015;       // one Sonnet 5 fit score, measured on the owner's runs (about 1.2 to 1.8 cents)
@@ -50,14 +50,13 @@ export function rebuildGroups({search = {}, preferences = {}, profile = '', answ
     ...listChanges('Work without a visa in', preferences.work_rights, prefs.work_rights)];
   const profileChanges = sectionChanges(profile, draft.profile_markdown, true);
   const answerChanges = sectionChanges(answers, draft.answers_markdown, false);
-  const searches = Math.max(1, Math.ceil(scored / SCORES_PER_SEARCH));
   const linked = where.length > 0 && profileChanges.length > 0;
   return [
     {id: 'search', title: 'Search criteria', changes: searchChanges, linked: linked ? 'profile' : null,
       impact: 'The next search crawls and ranks with them. Jobs found before stay until they are unseen for 7 days.', cost: 'No AI cost'},
     {id: 'filters', title: 'Filters', changes: filterChanges, impact: 'Matching jobs are hidden at once.', cost: 'No AI cost'},
     {id: 'profile', title: 'Profile (what the fit score reads)', changes: profileChanges, linked: linked ? 'search' : null,
-      impact: `Re-scores ${scored} job${scored === 1 ? '' : 's'} over the next ${searches} search${searches === 1 ? '' : 'es'}` +
+      impact: `Marks ${scored} scored job${scored === 1 ? '' : 's'} as old scores; Re-score updates them, up to 60 at a time` +
         (kits ? `; ${kits} unsent kit${kits === 1 ? '' : 's'} were drafted with the old Profile (redraft the ones you still want)` : '') + '.',
       cost: scored ? 'Uses AI' : 'No AI cost'},
     {id: 'answers', title: 'Standard answers', changes: answerChanges, impact: 'Used by the next kits and form fills. Nothing is re-scored.', cost: 'No AI cost'},

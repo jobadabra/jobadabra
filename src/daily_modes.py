@@ -130,6 +130,42 @@ def kits_mode(args, stores=None):
     return 0
 
 
+def rescore_mode(args, stores=None):
+    """The Re-score action (Jobs call to action, Strategy's notice): a new score for the jobs that already have an old one, and nothing else: no
+    crawl, no reading, no new job (owner, 3 Nov 2026: "if those jobs are already in the jobs list that the users sees, and we just need to rescore,
+    then that should not be handled by find jobs at all"). The jobs without a score are Find jobs'. On the run's 3 minutes, 60 at most; the rest stay marked."""
+    _gate(stores, '--mode rescore requires NOTION_TOKEN', on_store=True)
+    from .ai import score
+    from .daily_helpers import to_score, save_run
+    from .daily_search import application_stages
+    from .daily_search_scoring import sync_partial
+    run = new_cron_run('rescore')
+    run['score'] = {}
+    read_profile = profile_source(stores) if args.score_max else None   # no facts are read after it: scoring keeps the whole run (not scoring_plan's FACTS)
+    hidden, _, dismissed, _ = application_stages(stores, run)
+    if read_profile:
+        from . import time_budget
+        from .ai import score_old
+        with store.connect(args.db) as db:
+            to_app = lambda: sync_partial(args, stores, db, hidden, dismissed)
+            profile, candidates = read_profile(), to_score(db, hidden)
+            old = score_old.old_ids(db, candidates, profile)   # the same jobs the Jobs list marks "Old score" (newly read facts alone do not)
+            queue = [job for job in score.queue(db, candidates, profile, scope='old') if job['id'] in old]   # best places first
+            taken = min(args.score_max, time_budget.batch('score', len(queue)))
+            print(score.run(db, candidates, profile, score.DEFAULT_MODEL, args.score_max, stats=run['score'], on_scored=to_app, scope='old',
+                            only_ids={job['id'] for job in queue[:taken]}))
+            to_app()
+        done = run['score'].get('done') or 0
+        run['headline'] = f"Re-scored {done} job{'' if done == 1 else 's'}"
+        print(f"Scored {done} of {run['score'].get('pending') or 0} job(s)", flush=True)
+    else:
+        run['headline'] = 'Re-score needs an AI'
+        print(run['headline'])
+    save_run(run)
+    log_ai_run(stores, run, args)
+    return 0
+
+
 def add_message_mode(args, stores=None):
     # A pasted message or screenshot (/add <message>, a forward or photo sent to the bot, the app's Log box):
     # the job it's about is updated, or created (src/ai/inbox.py).

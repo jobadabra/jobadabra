@@ -169,8 +169,15 @@ const NAMES = {search: 'Find jobs', mail: 'Gmail check', insight: 'Insight', int
   scout: 'More employers', prepare: 'Application kit', interview: 'Interview review', add: 'Logged activity', rejection: 'Rejection review',
   prep: 'Interview prep kit', import: 'Add a job', tailor: 'Tailor CV + cover letter'};
 // A notification is the news of one run, so a click opens that run's result (Recent activity, the run selected); renderer/targets.js says how.
+// A Re-score's own news (it is a search-kind row, but not a Find jobs press: no "no jobs added"): how many scores it updated.
+function rescoreNotice(run) {
+  const where = run.where === 'github' ? ' (on GitHub)' : '';
+  if (run.ok === false || run.off) return {title: `Re-score had problems${where}`, body: 'Open Jobadabra and click the activity bar to see what happened.'};
+  const warned = runWarned(run);
+  return {title: `Re-score ${warned ? 'finished with warnings' : 'done'}${where}`, body: `${run.scored ?? 0} score${run.scored === 1 ? '' : 's'} updated.${warned ? ' Open Jobadabra to see what it said.' : ''}`};
+}
 export function notice(run) {
-  const said = noticeText(run);
+  const said = run.rescore ? rescoreNotice(run) : noticeText(run);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }
 function noticeText(run) {

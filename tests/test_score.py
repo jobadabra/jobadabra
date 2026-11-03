@@ -11,6 +11,11 @@ from src import store as job_store
 from src.ai import score
 
 
+def waiting_count(db, jobs, profile):
+    """How many of `jobs` wait for a (re-)score with this profile: the queue Find jobs and Re-score read (score.queue, both scopes)."""
+    return len(score.queue(db, jobs, profile))
+
+
 def fit(value, reason='Kubernetes + Datadog match; salary not stated'):
     return {'score': value, 'tier': 'A' if value >= 75 else 'B', 'reason': reason,
             'components': {'role_fit': value, 'location': 80, 'compensation': 50, 'growth': 70, 'risk': 20},
@@ -357,9 +362,9 @@ class ScoringProfileTests(unittest.TestCase):
         job = {'id': 1, 'title': 'SRE', 'description': 'Run Kubernetes', 'ai': {}, 'first_seen_at': '2026-09-28'}
         score.save(db, job, 'm', {'score': 80}, score.scoring_profile(self.PROFILE))
         phone = self.PROFILE.replace('+00 000', '+11 111')
-        self.assertEqual(score.stale_count(db, [job], phone), 0)
+        self.assertEqual(waiting_count(db, [job], phone), 0)
         skill = self.PROFILE.replace('- Kubernetes', '- Kubernetes, Terraform')
-        self.assertEqual(score.stale_count(db, [job], skill), 1)
+        self.assertEqual(waiting_count(db, [job], skill), 1)
 
     def test_scores_made_from_the_whole_profile_stay_current_without_a_new_ai_call(self):
         import sqlite3
@@ -367,8 +372,8 @@ class ScoringProfileTests(unittest.TestCase):
         db.row_factory = sqlite3.Row
         job = {'id': 1, 'title': 'SRE', 'description': 'Run Kubernetes', 'ai': {}, 'first_seen_at': '2026-09-28'}
         score.save(db, job, 'm', {'score': 80}, self.PROFILE)  # scored before scoring_profile existed
-        self.assertEqual(score.stale_count(db, [job], self.PROFILE), 0)  # adopted: its hash is updated, no re-score
-        self.assertEqual(score.stale_count(db, [job], self.PROFILE.replace('+00 000', '+2')), 0)
+        self.assertEqual(waiting_count(db, [job], self.PROFILE), 0)  # adopted: its hash is updated, no re-score
+        self.assertEqual(waiting_count(db, [job], self.PROFILE.replace('+00 000', '+2')), 0)
 
 
 class ProvenanceTests(unittest.TestCase):
@@ -379,11 +384,11 @@ class ProvenanceTests(unittest.TestCase):
         profile = '# Goals\n- SRE\n# Contact\n- Phone: 1'
         job = {'id': 1, 'title': 'SRE', 'description': 'Run Kubernetes', 'ai': {}, 'first_seen_at': '2026-09-28'}
         score.save(db, job, 'm', {'score': 80}, profile)  # the whole Profile: the previous method
-        score.stale_count(db, [job], profile)  # kept without an AI call...
+        waiting_count(db, [job], profile)  # kept without an AI call...
         self.assertEqual(score.load(db)[1]['method'], 'Previous')  # ...but labelled as such
         self.assertEqual(score.previous_method(db), [1])
         self.assertEqual(score.rescore_previous(db), 1)
-        self.assertEqual(score.stale_count(db, [job], profile), 1)  # queued: the next search re-scores it
+        self.assertEqual(waiting_count(db, [job], profile), 1)  # queued: the next search re-scores it
         score.save(db, job, 'm', {'score': 82}, score.scoring_profile(profile))
         self.assertEqual((score.load(db)[1]['method'], score.load(db)[1]['scorer_version']), ('Current', score.SCORER_VERSION))
 

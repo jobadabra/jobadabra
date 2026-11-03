@@ -17,13 +17,6 @@ class ScoringKeepsItsPartTest(unittest.TestCase):
         self.assertEqual(stop, 95)
         self.assertGreaterEqual(time_budget.batch('score', 1000, now=stop, say=False), 20, 'scoring still has ~70 s at the titles\' stop')
 
-    def test_the_waiting_jobs_pass_takes_half_of_scorings_share(self):
-        # #3058 code review: 303 waiting jobs at the 3 s pace took 46 of scoring's 140 s whole, and the search kept nothing
-        time_budget.start(180, now=0)
-        time_budget.score_first()
-        self.assertEqual(time_budget.batch('score', 303, now=0, say=False), 46)
-        self.assertEqual(time_budget.batch('score', 303, now=0, say=False, share=time_budget.WAITING_SHARE), 23)
-
     def test_no_budget_stays_no_budget(self):
         time_budget.start(0)
         self.assertIsNone(time_budget.DEADLINE)

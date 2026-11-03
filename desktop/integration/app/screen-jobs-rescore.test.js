@@ -75,13 +75,13 @@ test('Jobs carries one very visible call: the Strategy notice\'s sentence, the s
   assert.equal(stale.call.shown, true);
   assert.equal(stale.call.kind, 'stale');
   assert.match(stale.call.text, /^2 jobs were scored using previous search settings\./);
-  assert.equal(stale.call.button, 'Re-score 2 jobs');
+  assert.equal(stale.call.button, 'Re-score 2');
 });
 
 test('Find jobs with scores from the previous strategy asks "Score first" and starts nothing; Cancel starts nothing; "without re-scoring" finds', live, () => {
   assert.equal(stale.dialog.title, 'Score first');
   assert.match(stale.dialog.lead, /2 jobs were scored using previous search settings/);
-  assert.deepEqual(stale.dialog.buttons, ['Cancel', 'Find jobs without re-scoring', 'Re-score 2 jobs']);
+  assert.deepEqual(stale.dialog.buttons, ['Cancel', 'Find jobs without re-scoring', 'Re-score 2']);
   assert.equal(stale.startedWithDialogOpen, false, 'the search started before the person chose');
   assert.equal(stale.afterCancel, true, 'Cancel started a search');
   assert.ok(['searching', 'done'].includes(stale.afterSkip));

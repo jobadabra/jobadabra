@@ -84,7 +84,7 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
             finally:
                 release.set()   # the employer batch is over (nothing to score): the boards end now
         with mock.patch.object(first_jobs, '_score_first', side_effect=score_then_release), \
-                mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a: [{'id': i} for i in queue]), \
+                mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [{'id': i} for i in queue]), \
                 mock.patch.object(first_jobs, 'to_score', return_value=[]), \
                 mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found: list(found)):
             first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),

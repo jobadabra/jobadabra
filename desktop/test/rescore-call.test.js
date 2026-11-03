@@ -34,7 +34,7 @@ test('the call says the Strategy notice\'s sentence with the same count, and off
   assert.equal(call.hidden, false);
   assert.equal(call.dataset.kind, 'stale');
   assert.ok(text.textContent.startsWith(words.noticeTitle(12)), 'the same function as Strategy\'s notice');
-  assert.equal(go.textContent, 'Re-score 12 jobs');
+  assert.equal(go.textContent, 'Re-score 12');
   assert.equal(go.className, 'primary', 'a solid button, the one primary');
 });
 
@@ -119,7 +119,7 @@ test('Score first: "Re-score N jobs" runs the re-score (queue, then the search s
   queued = 4; searches.length = 0;
   const asked = gate.scoreFirst(undefined, how);
   assert.equal(first.opens > 0, true, 'a plain press with old scores opens the dialog');
-  assert.equal(globalThis.document.getElementById('score-first-go').textContent, 'Re-score 4 jobs');
+  assert.equal(globalThis.document.getElementById('score-first-go').textContent, 'Re-score 4');
   closeWith('go');
   assert.deepEqual(await asked, {ok: true, rescored: true});
   assert.deepEqual(searches, [{reason: 'rescore', count: 4}], 'the one search is the re-score\'s own');

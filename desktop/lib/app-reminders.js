@@ -48,7 +48,8 @@ export function createAppReminders(ctx) {
     if (!start) return;
     for (const job of jobs) {
       const failed = error => log(`${pipeline.taskName(job.kind)} failed: ${error.message}`);
-      if (job.kind === 'search') pipeline.refresh(getStorage(), log, job.resume.mode || 'run', 'you').catch(failed);
+      if (job.kind === 'search' && job.resume.mode === 'rescore') pipeline.rescore(getStorage(), log, 'you').catch(failed);   // a Re-score resumes as a Re-score, never a Find jobs search (owner, 3 Nov 2026)
+      else if (job.kind === 'search') pipeline.refresh(getStorage(), log, job.resume.mode || 'run', 'you').catch(failed);
       else if (job.kind === 'mail') pipeline.checkMail(getStorage(), log, 'you').catch(failed);
       else if (pipeline.TASKS[job.kind] && Array.isArray(job.resume.args)) pipeline.task(getStorage(), job.kind, job.resume.args, log, 'you').catch(failed);
     }
