@@ -1,0 +1,41 @@
+{
+  "_why": "Why (3 Nov 2026, owner: 'a new tab to be CI Agents ... where we list all the agents on the CI', then 'a separate top level: AI tab'; fixers become proper agents, 3 Nov 2026: 'Proper agents'): one row per AI-using workflow. kind agent = acts by itself (code, a PR, issues, clicks in the app); kind step = the AI answers and the code decides. The admin section AI (owner, 3 Nov 2026: a top-level AI section) lists the agents on its Agents page and the steps on its AI steps page, both from this file. One entry per line. A workflow that mentions an AI engine and has no row fails tests/guards/rules/test_ci_agents_registry.py. today: loop = the AI picks every next step; one-shot = one broker call or two, the code checks. product: true = the user's own job-search pipeline, called from the private repo, not CI work. Texts use only letters, digits, spaces and ().,/+:_- (the site clamps them).",
+  "agents": [
+    {"id": "ai-user-agents", "repo": "jobadabra", "file": "ai-user-agents.yml", "name": "AI user agent", "starts": "Nightly 04:40 UTC (Worker) or by hand", "acts": "The real app: clicks like a person, files issues", "engine": "broker", "today": "loop"},
+    {"id": "sentry-fix", "repo": "jobadabra", "file": "sentry-fix.yml", "name": "Sentry fixer", "starts": "Daily 06:30 UTC", "acts": "Opens one PR (app code and a test)", "engine": "broker", "today": "one-shot", "branches": ["sentry-fix/"]},
+    {"id": "feedback-ai", "repo": "jobadabra", "file": "feedback-ai.yml", "name": "Feedback fixer", "starts": "Send to AI button on /admin/feedback, 3 a day", "acts": "Opens a draft PR", "engine": "broker", "today": "one-shot", "branches": ["fd-ai/"]},
+    {"id": "ui-fix", "repo": "jobadabra", "file": "ui-fix.yml", "name": "UI fixer", "starts": "Four a day (disabled, owner 25 Oct 2026)", "acts": "Opens a PR in desktop/renderer", "engine": "broker", "today": "one-shot", "branches": ["auto-fix/"]},
+    {"id": "finder-review", "repo": "jobadabra", "file": "finder-review.yml", "name": "Finder self-review", "starts": "Saturday 17:00 UTC", "acts": "Opens one PR with up to 3 rule changes", "engine": "broker", "today": "one-shot", "branches": ["finder-review/"]},
+    {"id": "code-review", "repo": "jobadabra", "file": "code-review.yml", "name": "AI code review", "issuesOnly": true, "starts": "Every 8 h", "acts": "Files issues for bugs in new commits", "engine": "broker", "today": "one-shot", "label": "source:code-review"},
+    {"id": "ui-verdict", "repo": "jobadabra", "file": "ui-verdict.yml", "name": "UI verdicts", "issuesOnly": true, "starts": "After each UI findings run", "acts": "Labels or closes up to 5 issues", "engine": "broker", "today": "one-shot"}
+  ],
+  "steps": [
+    {"repo": "jobadabra", "file": "ui-findings.yml", "name": "UI findings", "engine": "broker"},
+    {"repo": "jobadabra", "file": "e2e.yml", "name": "E2E judges and screenshot review", "engine": "broker"},
+    {"repo": "jobadabra", "file": "e2e-windows.yml", "name": "E2E judges on Windows", "engine": "broker"},
+    {"repo": "jobadabra", "file": "desktop.yml", "name": "Beta gate judges", "engine": "broker"},
+    {"repo": "jobadabra", "file": "ai-answer-drift.yml", "name": "Stored AI answer drift", "engine": "broker"},
+    {"repo": "jobadabra", "file": "judge-exam.yml", "name": "Judge exam", "engine": "broker"},
+    {"repo": "jobadabra", "file": "prompt-cases-night.yml", "name": "Prompt cases nightly", "engine": "broker"},
+    {"repo": "jobadabra", "file": "prompt-cases.yml", "name": "Prompt cases Haiku re-ask", "engine": "api-key"},
+    {"repo": "jobadabra", "file": "search-personas.yml", "name": "Search check, 6 personas", "engine": "broker"},
+    {"repo": "jobadabra", "file": "replay-refill.yml", "name": "Replay refill", "engine": "api-key"},
+    {"repo": "jobadabra", "file": "record-sites.yml", "name": "Record sites daily batch", "engine": "broker"},
+    {"repo": "jobadabra", "file": "watch-live.yml", "name": "Daily watch list", "engine": "broker"},
+    {"repo": "jobadabra", "file": "review-eval.yml", "name": "Screenshot review eval", "engine": "api-key"},
+    {"repo": "jobadabra", "file": "e2e-intel.yml", "name": "E2E intelligence", "engine": "workers-ai"},
+    {"repo": "jobadabra", "file": "daily.yml", "product": true, "name": "Pipeline: find new jobs", "engine": "api-key"},
+    {"repo": "jobadabra", "file": "scout.yml", "product": true, "name": "Pipeline: find new employers", "engine": "api-key"},
+    {"repo": "jobadabra", "file": "mail.yml", "product": true, "name": "Pipeline: Gmail and Calendar", "engine": "api-key"},
+    {"repo": "jobadabra-web", "file": "random-draw.yml", "name": "Random draw", "engine": "free"},
+    {"repo": "jobadabra-web", "file": "daily-digest.yml", "name": "Daily build digest", "engine": "broker"},
+    {"repo": "jobadabra-lab", "file": "proposer.yml", "name": "Recipe proposer", "engine": "api-key"},
+    {"repo": "jobadabra-lab", "file": "aliases.yml", "name": "Alias proposer", "engine": "api-key"},
+    {"repo": "jobadabra-lab", "file": "form-learning.yml", "name": "Form learning", "engine": "api-key"},
+    {"repo": "jobadabra-lab", "file": "product-brain.yml", "name": "Product brain", "engine": "broker"}
+  ],
+  "notAi": [
+    "gitar-label.yml", "key-org-proof.yml", "harness.yml", "pr-verdict.yml", "smoke.yml", "fresh-install-smoke.yml",
+    "page-cases.yml", "tests-desktop.yml", "tests-desktop-windows.yml", "tests-python.yml", "tests-worker.yml"
+  ]
+}
