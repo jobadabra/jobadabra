@@ -109,6 +109,8 @@ contextBridge.exposeInMainWorld('pilot', {
     remindGet: call('ivRemindGet'), remindSet: call('ivRemindSet'), recordings: call('ivRecordings'), access: call('mediaAccess'), tapAvailable: call('ivTapAvailable'), tapStart: call('ivTapStart'), openPrivacy: call('openPrivacy'), relaunch: call('relaunch')},
   onInterviewProgress: callback => ipcRenderer.on('ivProgress', (_, step) => callback(step)),
   onCallLevel: callback => ipcRenderer.on('ivLevel', (_, level) => callback(level)),
+  linkedinImportState: call('linkedinImportState'), linkedinImportRun: call('linkedinImportRun'), linkedinImportApply: call('linkedinImportApply'), linkedinImportCancel: call('linkedinImportCancel'), linkedinImportDisconnect: call('linkedinImportDisconnect'),
+  onLinkedinImportStep: callback => ipcRenderer.on('linkedinImportStep', (_, step) => callback(step)),
   linkedinJobsState: call('linkedinJobsState'), linkedinJobsAsked: call('linkedinJobsAsked'), linkedinJobsAnswer: call('linkedinJobsAnswer'), linkedinJobsConnect: call('linkedinJobsConnect'), linkedinJobsOff: call('linkedinJobsOff'),
   hostedState: call('hostedState'), hostedMoment: call('hostedMoment'), hostedMomentShown: call('hostedMomentShown'), hostedOn: call('hostedOn'), hostedOff: call('hostedOff'), hostedDelete: call('hostedDelete'), hostedPush: call('hostedPush'), hostedExport: call('hostedExport'),
   onHostedArrived: callback => ipcRenderer.on('hostedArrived', (_, arrived) => callback(arrived)),

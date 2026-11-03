@@ -5,6 +5,7 @@ import {addNotifyCommands} from './notify-commands.js';
 import {addDesktopAiCommands} from './desktop-ai.js';
 import {openPalette} from '../palette.js';
 import {openBuild} from './cv-build.js';
+import {openImport} from './linkedin-import.js';
 import {PROMISE} from '../pro-promise.js';
 import {SHOW_I_HAVE_PRO, creditWords} from '../plan-view.js';
 import {openQuestionReview} from './question-review.js';
@@ -148,6 +149,7 @@ export function paletteCommands() {
   // An action card with its own handler (not a Telegram command): "Tailor CVs" costs minutes of AI, so its entry only brings you to the card.
   document.querySelectorAll('.action[data-palette]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
     labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions'), {kind: 'place'}));
+  add('Profile', 'Import from LinkedIn', 'Fill your Experience and Your details from your own LinkedIn profile: you sign in on LinkedIn and tick what comes in', 'linkedin import profile experience education skills languages update connect', () => openImport());
   add('Profile', 'Build a CV with the AI', 'Answer a few questions and the AI writes your CV: edit it, then it becomes your CV', 'cv resume build create write new no cv from scratch', () => openBuild());
   // Tune and Analyze left the Actions page (owner, 28 Oct 2026: shown in Focus or Jobs only when they make sense); ⌘K is their one manual door (spec PR 1a).
   add('Strategy', 'Tune my strategy', 'Changes your own results support, for you to accept', PALETTE_KEYWORDS.tune, () => openTune());

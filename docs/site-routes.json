@@ -82,6 +82,21 @@
    "kind": "app"
   },
   {
+   "path": "/api/linkedin-import/callback",
+   "kind": "page"
+  },
+  {
+   "path": "/api/linkedin-import/revoke",
+   "kind": "app",
+   "methods": [
+    "POST"
+   ]
+  },
+  {
+   "path": "/api/linkedin-import/start",
+   "kind": "app"
+  },
+  {
    "path": "/api/linkedin/start",
    "kind": "app"
   },

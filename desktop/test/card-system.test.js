@@ -19,6 +19,7 @@ const NOT_A_CARD = {
   'claude-offer.js': 'Cancel a pending Claude offer, a row of the session page',
   'pages/actions-board.js': 'Cancel a queued task on the Actions board',
   'pages/ready-confirm.js': 'the Fill now confirm dialog',
+  'pages/linkedin-import.js': 'the Import from LinkedIn dialog: Cancel ends the sign-in wait, Add is its own step (nothing is saved before it)',
   'pages/ready-pick.js': 'the Fill now count dialog',
   'pages/employers-paste.js': 'the Add employers dialog',
   'pages/plan-waitlist.js': 'the Pro waitlist dialog',

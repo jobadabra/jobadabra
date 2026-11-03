@@ -4,6 +4,7 @@ import * as claudeCode from './claude-code.js';
 import * as added from './experience-added.js';
 import * as experience from './experience.js';
 import * as linkedinOAuth from './linkedin-oauth.js';
+import {registerLinkedinImportHandlers} from './linkedin-import-handlers.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {log as appLog} from './log.js';
@@ -18,6 +19,7 @@ const DEMO_VIEW = {main: {name: 'Ada Example', roles: 2, skills: 'AWS, Terraform
   extraSkills: 'CI/CD, Spark', added: [{id: 'demo1', kind: 'skill', text: 'Kafka'}, {id: 'demo2', kind: 'correction', text: 'Python: 3 years'}]};
 
 export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, shell, storage}) {
+  registerLinkedinImportHandlers({DEMO, ipcMain, shell, storage, getWindow});   // Import from LinkedIn (Profile → Experience's sibling): lib/linkedin-import-handlers.js
   const ai = () => ({apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)});
   const noAi = () => { const {apiKey, client} = ai(); return !apiKey && !client; };
   ipcMain.handle('experienceGet', () => (DEMO ? DEMO_VIEW : experience.view(storage)));

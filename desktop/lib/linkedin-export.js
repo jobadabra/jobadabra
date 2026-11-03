@@ -25,6 +25,8 @@ export function parseCsv(text) {
 
 // Records by header name. LinkedIn sometimes puts notes above the header row: the header is the first row that has all the wanted columns.
 export function records(text, wanted) {
+  // Why (3 Nov 2026, LinkedIn profile import): the Data Portability API returns the same tables as rows already keyed by header; those skip the CSV text.
+  if (Array.isArray(text)) return text.length && wanted.every(name => name in text[0]) ? text.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value ?? '').trim()]))) : null;
   const rows = parseCsv(text);
   const at = rows.findIndex(r => wanted.every(name => r.map(c => c.trim()).includes(name)));
   if (at < 0) return null;
@@ -49,7 +51,7 @@ function table(files, name, wanted, anywhere = true) {
   return null;
 }
 
-// {Positions.csv, Education.csv, …} text by file name -> a CV, or an error naming what is missing and what the export did hold.
+// {Positions.csv, Education.csv, …} CSV text (or rows keyed by header, from the Data Portability API) by file name -> a CV, or an error naming what is missing and what the export did hold.
 export function toCv(files) {
   const positions = table(files, 'Positions.csv', ['Company Name', 'Title']);
   if (!positions) {

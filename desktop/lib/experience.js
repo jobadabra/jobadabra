@@ -120,9 +120,15 @@ export async function addLinkedin(storage, file, {apiKey = '', client = null, no
   onStep('comparing');
   const compared = await matchAgainst(main, cv, apiKey, client);
   compared.usd += fromPdf ? fromPdf.usd : 0;
+  return saveLinkedin(storage, cv, compared.match, {main, usd: compared.usd, now});
+}
+
+// The one LinkedIn source (kind 'linkedin'): saved after it was read and matched, then the older one is removed. The file export and the profile import (lib/linkedin-import-handlers.js,
+// which saves only the rows the person ticked) both end here.
+export function saveLinkedin(storage, cv, match, {main = baseCv(storage), usd = 0, now = new Date()} = {}) {
   const old = list(storage).filter(s => s.kind === 'linkedin');
   const source = {id: crypto.randomBytes(5).toString('hex'), kind: 'linkedin', name: 'LinkedIn', addedAt: now.toISOString(),
-    digest: crypto.createHash('sha256').update(JSON.stringify(cv)).digest('hex'), cv, match: compared.match, mainKey: mainKey(main), usd: Math.round(compared.usd * 100) / 100};
+    digest: crypto.createHash('sha256').update(JSON.stringify(cv)).digest('hex'), cv, match, mainKey: mainKey(main), usd: Math.round(usd * 100) / 100};
   write(storage, source);
   for (const s of old) remove(storage, s.id);
   return source;
