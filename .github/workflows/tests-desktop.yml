@@ -33,6 +33,7 @@ on:
       - 'tools/ship.sh'   # merge-baseline.test.js
       - 'tools/clean-code-js.mjs'   # desktop/test/clean-code-js.test.js, and `npm run lint` runs it on the lines a PR adds
       - 'docs/flows/ladder.md'   # ladder-architecture.test.js checks the rung map against the code
+      - 'docs/desktop-ai-mcp.md'   # desktop-ai-docs.test.js checks every tool is named in it
       - 'config/notion_schema.json'
       - 'config/notion_template.json'
       - 'docs/notion-profile-template.md'
