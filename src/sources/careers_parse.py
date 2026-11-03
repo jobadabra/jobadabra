@@ -2,7 +2,7 @@
 (schema.org JobPosting data), plus the numbered pages of a job list.
 
 Split out of careers.py (pure move; import it through careers, never first). No network and no module state here: careers.py imports
-and re-exports every name. Guarded by tests/test_careers.py and test_careers_paging.py.
+and re-exports every name. Guarded by tests/unit/sources/test_careers.py and test_careers_paging.py.
 """
 import html
 import json

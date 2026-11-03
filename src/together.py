@@ -1,6 +1,6 @@
 """Independent AI lookups run side by side, in the caller's order of results (#2913, 2 Nov 2026): the pool labels the employer pick waits for were
 about 7 calls one after another (role kind, pool role, region, country, two metros, family; 4-30 s each on the Codex relay), so a Find jobs
-named its employers after 45-150 s. Each call keeps its own cache, topic and answer; only the waiting overlaps. Tests: tests/test_together.py."""
+named its employers after 45-150 s. Each call keeps its own cache, topic and answer; only the waiting overlaps. Tests: tests/unit/ai/test_together.py."""
 from concurrent.futures import ThreadPoolExecutor
 
 

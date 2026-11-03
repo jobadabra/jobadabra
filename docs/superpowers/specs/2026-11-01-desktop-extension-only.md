@@ -4,7 +4,7 @@
 > deploy shells and server-only workflows leave. 6 PRs, session **rs**. The Worker switches to `jobadabra-web` by day only, with a8's yes.
 
 Owner, 1 Nov 2026: "jobadabra should have no web, no worker" · "it should be strictly desktop and extension". Rule in `CLAUDE.md`, guard
-`tests/test_desktop_extension_only.py` (allowlist that only shrinks).
+`tests/guards/rules/test_desktop_extension_only.py` (allowlist that only shrinks).
 
 ## What the import graph showed (origin/main ab4a7a5)
 The first plan moved three folders whole. Each one is also code the shipped app or extension runs:

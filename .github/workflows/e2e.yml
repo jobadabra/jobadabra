@@ -205,7 +205,7 @@ jobs:
         run: node plan-run.mjs | { if [ "$OVER" = true ] || [ -n "$PR_SUITES" ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"   # a pull request: no AI screenshot review
       # Why (29 Oct 2026, owner): only selected AI suites need preflight; offline settings must run with missing or revoked AI secrets.
       # Why (owner, 27 Oct 2026: "let's close the gaps", part 4): one look at CI's AI before the matrix, as desktop.yml's ai-ready; a refused Free AI token is one red line here,
-      # not a red suite each (each suite's relay starts without checking it). Guard: tests/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
+      # not a red suite each (each suite's relay starts without checking it). Guard: tests/tooling/ci/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
       - name: Is CI's AI ready? (one check before the suites)
         if: steps.list.outputs.ai_required == '1'
         timeout-minutes: 5
@@ -315,7 +315,7 @@ jobs:
       E2E_QUALITY_JUDGE_HISTORY: ${{ inputs.pr_suites && inputs.after_merge == '' && '0' || '1' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
-      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
+      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/tooling/ci/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
@@ -339,7 +339,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}   # a push or a schedule: that commit; the run after a build: the build's own commit
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
-      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"); the canary of 26 Oct died the same way on tools/apt-install.sh (29 Linux jobs, exit 127; 1 Nov 2026). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"); the canary of 26 Oct died the same way on tools/apt-install.sh (29 Linux jobs, exit 127; 1 Nov 2026). Guard: tests/tooling/ci/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -362,7 +362,7 @@ jobs:
         with:
           python-version: '3.12'
       # The relay comes from this workflow's own commit: a bisect or a soak checks out an older commit above, which may have no relay (26 Oct 2026: every bisect
-      # failed with "Can't find 'action.yml'"). Guard: tests/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
+      # failed with "Can't find 'action.yml'"). Guard: tests/tooling/ci/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
       # Why (29 Oct 2026, owner): offline suites need neither the relay checkout nor its GitHub App and Cloudflare credentials.
       - name: The Free AI relay from this workflow's own commit
         if: matrix.offlineAi != true
@@ -465,7 +465,7 @@ jobs:
           # Why (30 Oct 2026, ap; owner-approved rule A; 1 Nov 2026: the PR burn-in legs are gone): manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers without live AI.
           E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
         # Why (31 Oct 2026, owner: "Is this expected? Error but step passed green ?", "And why should we accept/allow that?", "Let's go and handle this"): this step's own exit code is the verdict.
-        # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682). The old "a red first run is not the verdict (owner, 6 Oct 2026)" quoted no owner words.
+        # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/tooling/ci/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682). The old "a red first run is not the verdict (owner, 6 Oct 2026)" quoted no owner words.
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |

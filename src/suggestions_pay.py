@@ -3,7 +3,7 @@
 Your minimum salary is a line of your Profile that the scorer compares a posting's stated pay with (src/ai/score.py): no number is filtered
 by it. When jobs that match your role and place (80+) score under the app's High fit (70) and their Compensation part is the lowest of their
 parts, the pay is what pulls them down: the row names them, opens them in Jobs, and opens the minimum for you to review. It says only what the scores show: the scorer compares pay with your minimum and your target, and this code does not. Counts of saved
-scores only: no AI call. Guarded by tests/test_suggestions_pay.py.
+scores only: no AI call. Guarded by tests/unit/engine/test_suggestions_pay.py.
 """
 import os
 import sys

@@ -5,7 +5,7 @@ Shape (docs/superpowers/specs/2026-10-09-store-adapters.md §4 "Agent run shapes
 required, source, outcome, confidence, reason}], left_for_you, attachments, steps: [{step, ms}]}, labels only, never the
 person's answers; learnings is the record's own field. On this Mac's store the app already records an Apply with Claude
 session (desktop/lib/session-runs.js, ats 'Claude'): the engine updates that record instead of adding a second one.
-Guarded by tests/test_apply_record.py.
+Guarded by tests/unit/ai/test_apply_record.py.
 """
 from datetime import datetime, timedelta
 

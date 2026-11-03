@@ -1,5 +1,5 @@
 """Interview analysis, the input: a Telegram file, a subtitle file stripped of its timing, a recording transcribed on the
-machine. Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_run.py.
+machine. Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/test_interviews_run.py.
 """
 import json
 from pathlib import Path

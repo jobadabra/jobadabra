@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: ops-overview-${{ github.sha }}   # the sha keeps a run per commit of main apart (tests/test_workflow_contract.py); a repeat is harmless: a PR is stored once
+  group: ops-overview-${{ github.sha }}   # the sha keeps a run per commit of main apart (tests/guards/rules/test_workflow_contract.py); a repeat is harmless: a PR is stored once
   cancel-in-progress: false
 
 jobs:

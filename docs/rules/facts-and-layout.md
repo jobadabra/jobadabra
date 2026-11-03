@@ -43,4 +43,4 @@ Reference, read when the task touches these areas. Linked from CLAUDE.md. For an
 - **The terminal follows the Desktop App only on request** (`src/paths.py` `follow_app`; owner, 18 Oct 2026): with the app set up and no `JOBADABRA_DATA_DIR` +
   `JOBADABRA_CONFIG_DIR`, any engine start that is not the app (terminal, test, agent) is REFUSED at import, before a file is opened. The owner's own run sets
   `JOBADABRA_FOLLOW_APP=1` (the app's Notion IDs and `data/` + `config/`); tests and agents set their own temp folders, or `=0` for the repo's example data.
-  `.env` NOTION_* of another workspace switch it off. App and terminal take turns (`run_lock`). Guard: `tests/test_data_dir_guard.py` (loops over every entry point).
+  `.env` NOTION_* of another workspace switch it off. App and terminal take turns (`run_lock`). Guard: `tests/guards/data/test_data_dir_guard.py` (loops over every entry point).

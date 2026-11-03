@@ -8,7 +8,7 @@ write {title, lower case: kind} to --out. The scout loads it into its decisions 
 Runs only on the Claude Code engine (refuses an API key path), in its own --work folder (never the app's data): its decisions there make a
 second run continue where the first stopped. Public feeds only, no login, at most --threads at once.
     python tools/recount_title_kinds.py --index <employer_index.json> --work <dir> --out <title_kinds.json.gz> [--threads 4] [--max-calls 2000]
-Tests: tests/test_recount_title_kinds.py."""
+Tests: tests/tooling/ci/test_recount_title_kinds.py."""
 import argparse
 import gzip
 import json

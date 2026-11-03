@@ -1,7 +1,7 @@
 """A scored text that is not one job (a list of jobs, a job category, search results, a company page) never ranks as a match: the scorer's own
 fixed answer basis.one_job (SCHEMA in src/ai/score.py) is False, so its score drops to 0 and its tier to C, with the reason said (owner, 18 Oct 2026:
 "Finance vacatures", a recruiter's category page, sat in a finance candidate's top 10). An answer without the field (scored before it) is one job.
-Tests: tests/test_score_not_a_job.py."""
+Tests: tests/unit/ai/test_score_not_a_job.py."""
 
 REASON = 'Not scored as a match: this text is not one job you can apply to'   # the row's line in place of the model's own, which praised a fit the score no longer has
 RECHECK = ("\n\nYour last answer said this text is not one job. Check it again: one posting for one role is one job, even when it starts with a company or client background "

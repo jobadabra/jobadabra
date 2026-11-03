@@ -46,7 +46,7 @@
 - **The `JOB_PILOTTO` → `jobadabra` code rename (queued, not started)** touches the same lines in three places: `desktop/lib/github.js:27-31` (`REPO_NAMES` has `job-pilotto-private`, `STARTER` is `job-pilotto-starter`), `engine-repo.js:30` (the regexes accept `job-pilotto|jobadabra`), and the env/variable names `JOB_PILOTTO_*` in the always-on repo's variables. This work keeps those lines as they are except the owner part, so the later rename is a name swap inside `repos.js`.
 
 ## Guard (PR 6/7)
-`tests/test_repos_owner.py`: no tracked file names the personal owner (`GarryOne`) as a repo owner, except the allowlist: dated specs (history), `desktop/lib/repos.js` (the old name, kept for the redirect check), the `engine-repo` test, and this spec. A new hard-coded owner in a workflow or tool fails the test, the same shape as `tests/test_engine_repo_name.py`. Value: it protects a name change that would otherwise break POSTs silently; the 91 code, workflow and tool lines above are the literals it keeps out.
+`tests/guards/rules/test_repos_owner.py`: no tracked file names the personal owner (`GarryOne`) as a repo owner, except the allowlist: dated specs (history), `desktop/lib/repos.js` (the old name, kept for the redirect check), the `engine-repo` test, and this spec. A new hard-coded owner in a workflow or tool fails the test, the same shape as `tests/test_engine_repo_name.py`. Value: it protects a name change that would otherwise break POSTs silently; the 91 code, workflow and tool lines above are the literals it keeps out.
 
 ## Plan (n/N, one PR each, no stacking)
 | PR | Repo | What | Needs |

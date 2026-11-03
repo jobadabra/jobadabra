@@ -1,5 +1,5 @@
 """Interview insights' constants and its one AI call's words: limits, categories, the pattern kinds, DATA_VERSION, the output schema and the system prompt.
-Guarded by tests/test_interview_insights.py (and its siblings)."""
+Guarded by tests/unit/ai/test_interview_insights.py (and its siblings)."""
 
 
 

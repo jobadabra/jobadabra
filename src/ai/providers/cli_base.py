@@ -5,7 +5,7 @@ usage limits, not API credits. It never reads, copies, stores, logs or forwards 
 (each subclass drops the API keys the app gives Python), and never signs in for the user. Each call gets a fresh temp folder (its working
 directory and the only place the CLI may read: attached images/PDFs are written there), a hard timeout, a cap on processes at once, and
 one repair when a structured answer does not match its schema. Subclasses say how to call their binary (`command`, `parse`, `answer`,
-`usage`, `env`). Guarded by tests/test_ai_engine.py (Claude Code) and tests/test_ai_providers.py (both).
+`usage`, `env`). Guarded by tests/unit/ai/test_ai_engine.py (Claude Code) and tests/unit/ai/test_ai_providers.py (both).
 """
 import base64
 import json

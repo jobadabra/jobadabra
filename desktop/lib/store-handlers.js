@@ -7,7 +7,7 @@ import * as store from './store/index.js';
 import {moveToNotion} from './store-move.js';
 
 // Whether the data may live on this Mac. On since the engine's store callers are done (bridges 0, test/bridge-registry.test.js and
-// tests/test_store_readiness.py); JOBADABRA_STORE_CHOICE=0 turns it off (the old "Notion only" app, for a bisect).
+// tests/unit/stores/test_store_readiness.py); JOBADABRA_STORE_CHOICE=0 turns it off (the old "Notion only" app, for a bisect).
 export const STORE_CHOICE = process.env.JOBADABRA_STORE_CHOICE !== '0';
 
 // At start, an install with no store yet gets its home once (spec D2, D7): a connected Notion stays Notion, with no change for the

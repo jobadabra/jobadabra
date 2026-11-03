@@ -1,6 +1,6 @@
 """Starts the in-memory Notion stand-in (desktop/e2e/lib/notion-fake.mjs) for a Python test class: one place, so every class
 uses it the same way. The stand-in has its own Notion-shaped token per run and answers any other token with Notion's 401
-(9ab5620), so the tests take the token it prints. Used by tests/test_store_notion.py, test_kit_store.py, test_prep_store.py
+(9ab5620), so the tests take the token it prints. Used by tests/unit/stores/test_store_notion.py, test_kit_store.py, test_prep_store.py
 (test_ledger_store.py and test_matches_store.py borrow test_store_notion's setUpClass)."""
 import json
 import os

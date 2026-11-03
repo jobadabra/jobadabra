@@ -3,7 +3,7 @@
 (401/403, a bot check) are fetched ONCE by the extension from the user's Chrome, without cookies or logins, at most every READ_DAYS, one at a time, and the page it brings
 is read like a page the person opened (visits_read.read). A bot check, a refusal or a login page in the browser means stop and record: never retried, never solved. A 429 ("slow down") is kept
 as 'waiting' for WAIT_DAYS and widens the site's pace (host_pace), never a refusal.
-Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit or any login wall. Guarded by tests/test_refused_reads.py and desktop/test/refused-reads.test.js."""
+Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit or any login wall. Guarded by tests/unit/sources/test_refused_reads.py and desktop/test/refused-reads.test.js."""
 import re
 import urllib.parse
 from datetime import datetime, timedelta, timezone

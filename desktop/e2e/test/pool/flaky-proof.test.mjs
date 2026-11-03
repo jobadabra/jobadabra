@@ -1,4 +1,4 @@
-// "Flaky" needs proof (gate G5): lib/flaky-proof.mjs and triage's closing rule. The CI job has one try (tests/test_e2e_single_try.py).
+// "Flaky" needs proof (gate G5): lib/flaky-proof.mjs and triage's closing rule. The CI job has one try (tests/tooling/ci/test_e2e_single_try.py).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {INTERMITTENT, flakyProof, intermittentComment, labelRerun} from '../../lib/flaky-proof.mjs';

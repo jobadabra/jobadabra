@@ -1,5 +1,5 @@
 """Matching an email or calendar event to a tracked application: company, agency, contact names, ambiguity.
-Guarded by tests/test_mail_match.py."""
+Guarded by tests/unit/ai/test_mail_match.py."""
 import re
 
 from .mail_read import _field, _role

@@ -4,7 +4,7 @@ docs/superpowers/specs/2026-10-18-search-learns-sources.md item B). Owner, 26 Oc
 worked for every user): proven sources first, best by jobs located in your places per minute (fit 70+ breaks a tie); a source proven dead for
 your kind and countries is skipped; 1 read slot in 5 of every run goes to a source nobody measured yet, so new ones are found. Read at second 0:
 no AI call, no network (the index is already downloaded). The kind is a fixed-list value, never a branch here. Run order: jobadabra-33's lane
-calls ranked_sources / order. Tests: tests/test_source_rank.py."""
+calls ranked_sources / order. Tests: tests/unit/sources/test_source_rank.py."""
 import json
 
 EXPLORE_EVERY = 5   # owner, 26 Oct 2026: 1 slot in 5, in every run (not 1 whole run in 5)

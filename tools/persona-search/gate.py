@@ -15,7 +15,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
-PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/test_three_minutes.py)
+PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
 # Why (owner, 27 Oct 2026, "Time only, until 10 runs"): #2289 changed no search code and went red at 10 right jobs in total against main's 13 (main's own two
 # measured runs: 13 and 16), each persona's lowest of 3 being 0-1 jobs. Until main has QUALITY_MIN_RUNS measured runs, quality is shown and never red; from then

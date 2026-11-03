@@ -2,7 +2,7 @@
 Usage: python3 tools/persona-search/publish-session-check.py <out dir> <case> --session <name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick
            --build <sha> [--local-jobs N] [--broke "..."] [--conclusion "..."] [--prs "#1825 #1835"] [--dry]
 <out dir>/<case>/presses.jsonl and run-1.log are run.mjs's output. The key is the Keychain item jobadabra.site.session_checks_key (its own key, never the CI one); never print it.
-Counts, seconds, board names with listed/relevant counts and two short sentences go up: no job titles, companies or CV text (the site cuts anything else). Guard: tests/test_publish_session_check.py."""
+Counts, seconds, board names with listed/relevant counts and two short sentences go up: no job titles, companies or CV text (the site cuts anything else). Guard: tests/tooling/ci/test_publish_session_check.py."""
 import argparse
 import datetime
 import json

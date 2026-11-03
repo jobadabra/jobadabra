@@ -1,7 +1,7 @@
 """Employer feedback loop. The store holds the status, verbatim feedback and timeline (events); no AI or email sending.
 
 act / save_received work on the active store (the app's buttons, `python -m src.feedback <id> <action>`, the Gmail check).
-No Notion here: the Notion ledger reads a row's history itself (src/notion/ledger.py). Guarded by tests/test_feedback.py.
+No Notion here: the Notion ledger reads a row's history itself (src/notion/ledger.py). Guarded by tests/unit/stores/test_feedback.py.
 """
 import argparse
 from datetime import datetime, timezone

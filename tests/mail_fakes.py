@@ -1,4 +1,4 @@
-"""Shared fakes for the Gmail-check tests (tests/test_mail*.py): tracker, Google, model client and the row/email builders.
+"""Shared fakes for the Gmail-check tests (tests/unit/ai/test_mail*.py): tracker, Google, model client and the row/email builders.
 Imported by test_mail*.py and by test_feedback, test_follow_up, test_inbox, test_opportunity, test_rejection."""
 import json
 import os

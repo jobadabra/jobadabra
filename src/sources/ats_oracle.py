@@ -3,7 +3,7 @@
 Hotels, hospitals, retailers and banks run their careers pages on it (a site lives at <tenant>.fa.<region>.oraclecloud.com, often behind the
 employer's own domain). Slug: `tenant.region.SITE` (e.g. `efet.us2.CX_1`), the three parts of the site's address. Like Workday it lists thousands
 of jobs, so the newest are read with no word, then each of the user's own search words (ats_sites.workday_terms).
-Guarded by tests/test_ats_oracle.py.
+Guarded by tests/unit/sources/test_ats_oracle.py.
 """
 import re
 import urllib.parse

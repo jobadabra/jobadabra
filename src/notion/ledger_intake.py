@@ -2,7 +2,7 @@
 """Adding an application by hand: reading "applied on or before 23 Sep" and reading a job page's metadata
 (title, company, description). `add_application` itself stays in src/notion/ledger.py. Re-exported there.
 
-Guarded by tests/test_ledger.py, tests/test_import_url.py and tests/test_added.py."""
+Guarded by tests/unit/notion/test_ledger.py, tests/unit/stores/test_import_url.py and tests/unit/stores/test_added.py."""
 import html
 import json as _json
 import re

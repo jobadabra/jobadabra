@@ -2,7 +2,7 @@
 
 A page's other blocks (its child pages such as ⚙️ Search settings, the 📎 CV file, a linked database) are not text:
 reading leaves them out and writing keeps them. Markdown ↔ blocks: src/stores/notion_blocks.py (tables included,
-for a Profile's experience table). Guarded by tests/test_store_notion.py (the store contract on the Notion stand-in).
+for a Profile's experience table). Guarded by tests/unit/stores/test_store_notion.py (the store contract on the Notion stand-in).
 """
 from . import base
 from .notion_blocks import to_blocks, to_markdown

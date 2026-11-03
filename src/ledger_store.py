@@ -5,7 +5,7 @@ The rules are shared, not copied: when an event repeats one already there (src/s
 record holds (build_fields) and its section's text (record_markdown) come from src/notion/ledger_events_util.py and
 ledger_record.py, which the Notion path asks too. On Notion the section is today's "🗂 Application record" toggle
 (the store's block codec). Callers that still hold a tracker keep src/notion/ledger.py until their lane moves.
-Guarded by tests/test_ledger_store.py (memory store; Notion parity on the stand-in).
+Guarded by tests/unit/notion/test_ledger_store.py (memory store; Notion parity on the stand-in).
 """
 import json
 import re

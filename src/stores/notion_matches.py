@@ -2,7 +2,7 @@
 
 The record holds what the app shows (fit, reason, why: strengths, gaps and the score's parts); sync() is the search's own sync
 (src/notion/matches.py), which also writes the scoring columns it alone knows (tier, confidence, languages...).
-Guarded by tests/test_store_notion.py (the store contract on the Notion stand-in).
+Guarded by tests/unit/stores/test_store_notion.py (the store contract on the Notion stand-in).
 """
 from datetime import datetime, timezone
 

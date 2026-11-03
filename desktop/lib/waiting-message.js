@@ -57,7 +57,7 @@ export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, m
 }
 
 // The person's own bot, as app-notify's few-new-jobs line sends it. -> true when Telegram took it.
-// Why (2 Nov 2026): telegram.js is not imported here (not even lazily): the analysis behind tests/test_workflow_paths.py follows it into app-core/src and would widen page-cases' paths, and the apply
+// Why (2 Nov 2026): telegram.js is not imported here (not even lazily): the analysis behind tests/tooling/ci/test_workflow_paths.py follows it into app-core/src and would widen page-cases' paths, and the apply
 // controller imports this file. The app registers the sender once (lib/app-notify.js createAppNotify); until then Telegram is not available here and the message goes by e-mail only.
 let botApi = null;
 /** Registers the Telegram sender (`telegram.api`: token, method, body -> a promise); null clears it. Takes effect at the next send; without one a send to Telegram is skipped, never thrown. */

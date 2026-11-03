@@ -92,7 +92,7 @@ BY_NAME = {f.name: f for f in FEATURES}
 # adzuna, jooble, google_jobs, brave_search (owner, 26 Oct 2026, the Adzuna and Jooble card): "let's hide/disable this functionality for noow. Is to
 # hadr to use for my users." Each asks the user to register for an API key; a key already saved stays in the Keychain, unused. Web search itself is
 # not parked: without a key it runs on the user's own plan (src/sources/web_search.py provider); only its Brave and SerpApi key paths are.
-# Guard: tests/test_parked_features.py (off, and no visible entry in the app, for every name here).
+# Guard: tests/guards/rules/test_parked_features.py (off, and no visible entry in the app, for every name here).
 PARKED = frozenset({'job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'})
 
 

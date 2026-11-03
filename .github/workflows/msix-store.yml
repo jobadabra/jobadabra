@@ -148,7 +148,7 @@ jobs:
 
   # Why (2 Nov 2026, owner: "I didn't get a telegram notification about that failure" … "so it was silent to me"): run 41463002482 (0.8.86) failed after it started, and only a
   # refused start alerted (tools/release-stable.sh). A publish that fails now sends one message with its run and the command that runs it again (desktop/e2e/ci-alert.mjs).
-  # Guard: tests/test_webstore_publish_pipeline.py
+  # Guard: tests/tooling/release/test_webstore_publish_pipeline.py
   alert:
     name: Tell the owner the Microsoft Store publish failed
     needs: [msix, submit]

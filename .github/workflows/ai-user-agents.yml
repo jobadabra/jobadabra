@@ -48,7 +48,7 @@ jobs:
     env:
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
-      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/test_ci_free_ai.py)
+      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       AI_USER_AGENT_MINUTES: ${{ vars.AI_USER_AGENT_MINUTES }}
       AI_USER_AGENT_CALLS: ${{ vars.AI_USER_AGENT_CALLS }}

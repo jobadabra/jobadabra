@@ -5,7 +5,7 @@
 #                          GATE_DEFERRED; a step that is not deferrable (lint, the affected unit tests) is always waited out
 #   gate_was_deferred PID  is that step one the watchdog stopped?
 # A deferred step is never a failure and never silent: the hook says "DEFERRED TO CI" with its name, and CI runs it (build.yml, page-cases.yml).
-# Guarded by tests/test_pre_push_check.py. Uses $SECONDS: the budget counts from the start of the hook.
+# Guarded by tests/tooling/hooks/test_pre_push_check.py. Uses $SECONDS: the budget counts from the start of the hook.
 GATE_DEFERRABLE=""; GATE_DEFERRED=""
 
 gate_budget() {

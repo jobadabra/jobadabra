@@ -1,6 +1,6 @@
 /* global document */
 // Jobs, layer 2: setup ends on Jobs, so Jobs says when the Profile is still the blank template (fit scores are paused), with Rebuild from CV (#2759).
-// The verdict rides on the jobs read (`profile_empty`, src/desktop.py _profile_blank: tests/test_desktop.py); the demo's jobs.json carries it here. The app's window on it, no Notion, no AI.
+// The verdict rides on the jobs read (`profile_empty`, src/desktop.py _profile_blank: tests/unit/stores/test_desktop.py); the demo's jobs.json carries it here. The app's window on it, no Notion, no AI.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {before, test} from 'node:test';

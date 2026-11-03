@@ -8,7 +8,7 @@ for red only: their red names that commit; their green covers a few steps, never
 Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later on the same reds and nobody was told.
 
   tools/main_e2e_state.py [--repo o/r] [--json]     prints the red suites (one line each), or JSON; exit 0 either way
-Tests: tests/test_main_e2e_state.py
+Tests: tests/tooling/ci/test_main_e2e_state.py
 """
 import json
 import re
@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = 'jobadabra/jobadabra'   # a standalone copy (pr-verdict fetches it alone) cannot import src/repos.py; tests/test_repos_owner.py pins this to it
+REPO = 'jobadabra/jobadabra'   # a standalone copy (pr-verdict fetches it alone) cannot import src/repos.py; tests/guards/rules/test_repos_owner.py pins this to it
 LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
 SUITES = 'desktop/e2e/suites'   # the suites main can run: the folder the plan lists (desktop/e2e/lib/context.mjs SUITES), read on main
 # Runs that do not check main's own code as it is.

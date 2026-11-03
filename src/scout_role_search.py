@@ -2,7 +2,7 @@
 companies have an open post for one of the user's roles on a job system's public board (Ashby, Greenhouse, Lever...); each result address names a
 board, so the candidate arrives with its system and slug and goes straight through the usual probe and quality score. Only addresses are used, never
 the result text. This is how young startups, which no list names yet, enter the scout (18 Oct 2026: Zauber and Wynd Labs were on Ashby, not on any list).
-Tests: tests/test_scout_role_search.py.
+Tests: tests/unit/engine/test_scout_role_search.py.
 """
 import json
 import re

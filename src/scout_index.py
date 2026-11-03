@@ -1,6 +1,6 @@
 """Source scout, central index: the lists the central scout publishes to every install (feeds, boards, health, market coverage, unread
 sites, dead ends) built from the installs' contributions, and `publish_index`.
-Tests: tests/test_scout_stats.py, tests/test_employer_index.py, tests/test_contribute.py, tests/test_scout.py.
+Tests: tests/unit/sources/test_scout_stats.py, tests/unit/sources/test_employer_index.py, tests/unit/sources/test_contribute.py, tests/unit/sources/test_scout.py.
 """
 
 import json

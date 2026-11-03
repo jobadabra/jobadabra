@@ -3,7 +3,7 @@ employers for every kind of work across Europe every 6 hours; an install adds na
 Covered = the downloaded employer list (src/employer_index.py) has at least scout_cells.FLOOR employers that mostly hire for one of the
 search's kinds of work (role_kinds.of_search) with a job in the search's places. Then the install checks only the names the person added.
 A long list is not enough (26 Oct 2026: 1,000+ office employers filed under a pilot's kind, 0 hits, no new names found): the
-search's own last measured run (src/source_yield.py) must also have given MIN_HITS jobs in its places. Tests: tests/test_scout_when_thin.py."""
+search's own last measured run (src/source_yield.py) must also have given MIN_HITS jobs in its places. Tests: tests/unit/engine/test_scout_when_thin.py."""
 from . import employer_index, role_kinds, scout_cells, source_yield
 from .paths import load_search_config
 

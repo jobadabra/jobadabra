@@ -4,7 +4,7 @@
 // Spec: docs/superpowers/specs/2026-11-01-github-org-move-design.md. Guarded by desktop/test/repos.test.js.
 
 // The owner of the engine, the website and the lab: the organization since the transfer (2 Nov 2026). tools/*.mjs and desktop/e2e/*.mjs import these names too,
-// src/repos.py and tools/repos.sh mirror OWNER (tests/test_repos_owner.py keeps the three equal and the old owner out of everything else).
+// src/repos.py and tools/repos.sh mirror OWNER (tests/guards/rules/test_repos_owner.py keeps the three equal and the old owner out of everything else).
 export const OWNER = 'jobadabra';
 // Owners this project had before: a workflow file an older app wrote names one of them, and engine-repo.js rewrites it to the current name.
 export const PREVIOUS_OWNERS = ['GarryOne'];
@@ -14,7 +14,7 @@ export const ENGINE_NAME = 'jobadabra';
 // (github.js resolveStarter), newest name first, so it works before and after the rename; the old name is dropped from here once the move is done.
 export const STARTER_ORG = 'jobadabra';
 export const STARTER_NAME = 'jobadabra-user-template';
-// The starter has not moved yet: it is still under the personal account (it goes with its transfer; entry in tests/test_repos_owner.py).
+// The starter has not moved yet: it is still under the personal account (it goes with its transfer; entry in tests/guards/rules/test_repos_owner.py).
 export const OLD_STARTER = 'GarryOne/job-pilotto-starter';
 
 export const ENGINE = `${OWNER}/${ENGINE_NAME}`;

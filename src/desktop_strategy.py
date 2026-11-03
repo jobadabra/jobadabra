@@ -1,6 +1,6 @@
 """The Strategy page's data (strategy()), the Calendar's jobs and the sites-to-visit list (a pure move out of desktop.py).
 
-Guarded by tests/test_strategy_goals.py, tests/test_desktop_notion_list.py, tests/test_visit_ats_feed.py, tests/test_opportunity.py.
+Guarded by tests/unit/engine/test_strategy_goals.py, tests/unit/notion/test_desktop_notion_list.py, tests/unit/sources/test_visit_ats_feed.py, tests/unit/ai/test_opportunity.py.
 """
 import json
 import re

@@ -6,7 +6,7 @@
 
 Why (17 Oct 2026): a PR-screenshot release was created as a normal release, GitHub made it Latest, and for ~1h20m the website's Download link and the
 updater's releases/latest pointed at screenshots. The pick of "stable" is now always among desktop-v* tags (`is_desktop`), never isLatest alone.
-Run hourly by release-guard.yml. Guarded by tests/test_release_guard.py.
+Run hourly by release-guard.yml. Guarded by tests/tooling/release/test_release_guard.py.
 """
 import json
 import os

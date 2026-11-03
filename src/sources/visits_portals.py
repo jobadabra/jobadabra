@@ -2,7 +2,7 @@
 word and place, and the scout's employers with no job list we can read.
 
 Split out of visits.py (pure move; import it through visits, never first). No stored state here: visits.py imports and re-exports every
-name. Guarded by tests/test_visits.py and test_visit_filters.py.
+name. Guarded by tests/unit/sources/test_visits.py and test_visit_filters.py.
 """
 import re
 import urllib.parse

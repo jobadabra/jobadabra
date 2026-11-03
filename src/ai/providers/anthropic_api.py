@@ -1,7 +1,7 @@
 """The `api` engine: the Anthropic SDK with the user's ANTHROPIC_API_KEY (or Free AI's address). Billed per token.
 
 The caller's params go to the SDK as written (only a schema's maxItems/minItems come out, for_api; prompt caching's cache_control, effort, the web search tool) and its response comes back as
-it is: the Anthropic path is the contract's reference shape, so nothing is translated. Guarded by tests/test_ai_providers.py.
+it is: the Anthropic path is the contract's reference shape, so nothing is translated. Guarded by tests/unit/ai/test_ai_providers.py.
 """
 import os
 
@@ -9,7 +9,7 @@ from .contract import Adapter
 from .schema import without_limits
 
 ACTIONS = ('enrich', 'score', 'kit', 'prep', 'insight', 'mail', 'inbox', 'review', 'interview', 'interview_patterns', 'opportunity', 'added', 'import', 'scout', 'decide', 'tailor', 'cover_letter', 'answer', 'answer_review', 'web_search',
-           # The engine's other steps (26 Oct 2026: sent with no name, Free AI logged 517 of their calls as one "other" row). Guard: tests/test_engine_action.py.
+           # The engine's other steps (26 Oct 2026: sent with no name, Free AI logged 517 of their calls as one "other" row). Guard: tests/guards/money/test_engine_action.py.
            'title_triage', 'place_triage', 'place_vague', 'place_reading', 'visit_reader', 'visit_reader_second', 'visit_relevant', 'visit_filters', 'visit_unblock',
            'visit_unblock_second', 'role_ideas', 'role_counts', 'job_page_pick', 'field_redraft', 'few_jobs', 'board_queries', 'places')
 

@@ -3,7 +3,7 @@ pilot, and the board-discovery words (software, developer…), the Google Jobs q
 DERIVED lists every such list in config/search.json; one stamp (data/field_stamp.json) remembers which roles they were drafted for. When the
 roles now move to another field (their kinds of work differ, or a kind we cannot place has no role word left in common), Claude redrafts
 each from the new roles and the profile, in a fixed answer the code validates; words of the old field never survive. What Claude sees: the
-roles, the places' names and the Profile text; never jobs. Tests: tests/test_field_redraft.py. CLI: `python -m src.field_redraft apply`."""
+roles, the places' names and the Profile text; never jobs. Tests: tests/unit/engine/test_field_redraft.py. CLI: `python -m src.field_redraft apply`."""
 import json
 import re
 import sys

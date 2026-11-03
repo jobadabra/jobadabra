@@ -4,7 +4,7 @@ A job's kind is the AI's answer for its title (src/role_kinds.py, job-title-kind
 machine's cache, then what 3+ installs' own AIs shared through the meanings pack, then the scout's AI within src/ai/decide.py's per-run cap; owner:
 "using any user's machine/installation ... but also using the central scout"). A job not judged on both is left out, never guessed; remote and
 unknown places count nowhere (local jobs only). A big employer is judged on a sample of SAMPLE jobs and its counts scaled to all of them
-(owner, 26 Oct 2026: "Higher cap + sample"; judging half of thousands of titles left 2,508 of 2,517 employers uncounted). Tests: tests/test_kind_counts.py."""
+(owner, 26 Oct 2026: "Higher cap + sample"; judging half of thousands of titles left 2,508 of 2,517 employers uncounted). Tests: tests/unit/ai/test_kind_counts.py."""
 import random
 import threading
 

@@ -24,7 +24,7 @@ Spec: [2026-10-31-linkedin-headless-design.md](../specs/2026-10-31-linkedin-head
 - States from the spec table, one writer (the step's result); login/checkpoint/401/403/429 end it, no retry, 429 skip a day. Page-kind judgments stay AI calls (`src/ai/decide.py`).
 - Guard test: `browserArguments` has no user-agent override or stealth flag.
 - E2E on fixtures: `linkedin.com` host-mapped to a local server (guest list, login page, checkpoint, 429), fake cookie `FAKE-LI-AT`; Find jobs with the switch off makes no request; Stop closes the tab and clears cookies; value scan of logs.
-- Time: the step is not an engine stage (`tests/test_three_minutes.py` counts those): `lib/search-beside.js` ends it at 170 s of the press's 180 (test/search-beside.test.js).
+- Time: the step is not an engine stage (`tests/unit/sources/test_three_minutes.py` counts those): `lib/search-beside.js` ends it at 170 s of the press's 180 (test/search-beside.test.js).
 
 ### Design (PR 2/3, 31 Oct 2026, read from the code that exists)
 - **Reused as is:** the owned browser's extension worker imports the same `background.js` and its manifest gets `https://*/*` (`hosted/ready-fill/extension-copy.mjs`), so a tab marked `#jp-read-<ticket>` is read by `extension/visit.js`, which posts `/extension/visit-done` with `blocked: 'login'|'check'` (the page kind it already judged). `visits.runAll` takes `openTab`, `signal`, `tee`, `siteMs`.

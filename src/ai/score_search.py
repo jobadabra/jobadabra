@@ -7,12 +7,12 @@ and shown by its fit to the search (apply: the ring, the digest and the Jobs lis
 A score made before this part existed, under the digest's bar, for a title the current search wants, is scored again once (again_ids).
 On a career change, a title the AI's title check says is a role of the search is shown at SEARCH_ROLE_FIT at least (owner's pick, 26 Oct
 2026: "Use the title check"): Free AI's open model rated his 13 First Officer jobs 0-30 for his pilot search while Claude rated them 55-95;
-the title check is one yes/no question open models answer well (src/sources/feeds.py judged_title; tests/test_score_title_floor.py).
+the title check is one yes/no question open models answer well (src/sources/feeds.py judged_title; tests/unit/ai/test_score_title_floor.py).
 That check reads the title alone and keeps what could fit, so it lifted "Spécialiste Support Pilotage et Comptabilité" (accounting) and a
 flight-controls engineer into his digest (04:21 run, 26 Oct 2026; owner: "Yes, fix both"): a lift also needs the AI's yes to one fixed
 question on the title and the posting's first lines (_role_check), and jobs tied at a score rank by the AI's own fit (own_fit;
-tests/test_score_role_check.py).
-The AI judges all of it; no word lists. Tests: tests/test_score_career_change.py."""
+tests/unit/ai/test_score_role_check.py).
+The AI judges all of it; no word lists. Tests: tests/unit/ai/test_score_career_change.py."""
 
 SEARCH_ROLE_FIT = 70   # the title check's yes on a career change: the searched role, with the CV's gap (tier B: shown, under a strong A)
 
@@ -158,7 +158,7 @@ def recheck_lifts(db, jobs, rows):
     """Every title-only lift gets the role check now, in one batch, before any scoring: a no puts the job back at its CV fit at once. Its
     full re-score (again_ids) still comes once, when the run's time allows (his 05:00 run, 26 Oct 2026: the cut scored 21 of 27 lifts and
     the accounting and flight-controls jobs stayed 4th and 7th at 70). rows: {job id: its scores row}, updated in place. A failed or busy
-    AI changes nothing. Tests: tests/test_score_role_check.py."""
+    AI changes nothing. Tests: tests/unit/ai/test_score_role_check.py."""
     import json
     from . import decide
     lifted = {}

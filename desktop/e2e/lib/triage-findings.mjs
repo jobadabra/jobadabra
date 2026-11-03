@@ -17,7 +17,8 @@ export const FIX_KINDS = ['a11y', 'layout', 'text', 'empty-state', 'consistency'
 // Allowed edits of an automatic fix: the window's pages, styles and their tests. Nothing that touches data, Notion, secrets, the engine, the site or workflows.
 // Since 4 Oct 2026 also the engine (src/*.py) and the app's own logic (desktop/lib/*.js), with their tests: confirmed logic bugs from the AI code review (#109, #110)
 // had to be fixed by hand. Never: workflows, tools, the extension, packaging, the e2e harness, main.js, or anything about secrets, licences, sign-in or tokens.
-export const ALLOWED = [/^desktop\/renderer\/[^\n]+$/, /^desktop\/test\/[^\n]+\.test\.js$/, /^src\/[^\n]+\.py$/, /^tests\/test_[^\n/]+\.py$/, /^desktop\/lib\/[^\n]+\.js$/];
+// Why-changed (3 Nov 2026, test folders 2/3, TESTS.md): a Python test sits at the top of tests/ or in a unit/guards scope folder; tooling/ stays out of a fix.
+export const ALLOWED = [/^desktop\/renderer\/[^\n]+$/, /^desktop\/test\/[^\n]+\.test\.js$/, /^src\/[^\n]+\.py$/, /^tests\/(?:(?:unit|guards)\/[^\n/]+\/)?test_[^\n/]+\.py$/, /^desktop\/lib\/[^\n]+\.js$/];
 const SENSITIVE = /secret|keychain|licen[cs]e|oauth|token|credential|crash_reporting/i;
 export const allowedPath = file => ALLOWED.some(pattern => pattern.test(file)) && !file.includes('..') && !SENSITIVE.test(file);
 

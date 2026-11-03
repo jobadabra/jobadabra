@@ -37,7 +37,7 @@ test('a pull request keeps its issue out for 14 days after it is merged or close
 
 test('a fix may touch code and tests, never reporting, secrets, workflows or config; it needs a test', () => {
   assert.equal(checkChange(['desktop/lib/pipeline.js', 'desktop/test/pipeline.test.js']).ok, true);
-  assert.equal(checkChange(['src/daily.py', 'tests/test_daily.py']).ok, true);
+  assert.equal(checkChange(['src/daily.py', 'tests/unit/engine/test_daily.py']).ok, true);
   assert.match(checkChange(['desktop/lib/pipeline.js']).why, /test/);
   for (const file of ['.github/workflows/e2e.yml', 'desktop/lib/sentry.js', 'src/crash_reporting.py', 'src/secret_store.py', 'config/analytics.json', 'tools/release-stable.sh', 'desktop/lib/../../x.js'])
     assert.equal(checkChange([file, 'desktop/test/a.test.js']).ok, false, file);

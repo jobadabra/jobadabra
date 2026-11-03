@@ -27,7 +27,7 @@ Read before adding any stored field, file, setting or table. Linked from CLAUDE.
   old one as it is (`connectWorkspace(..., {fresh})`; guard `desktop/test/notion-fresh.test.js`).
 - A new database, column or page is added to Notion *and* to `config/notion_schema.json` (`tools/notion_schema.py snapshot`, or edit it), so every
   workspace can be rebuilt and repaired (`desktop/lib/schema.js`, at connect and start-up). Existing rows get the value backfilled.
-  `tests/test_notion_schema_coverage.py` fails when the code uses a column the schema lacks, `tests/test_notion_docs_coverage.py` when a schema
+  `tests/guards/data/test_notion_schema_coverage.py` fails when the code uses a column the schema lacks, `tests/guards/data/test_notion_docs_coverage.py` when a schema
   column isn't in `docs/notion-schema.md`: after adding one, run `python3 tools/notion_schema.py docs` and write its Notes.
   (`config/notion_template.json` lists only the columns checked at connect; don't add optional ones there.)
 - Files: the CV (every version, Profile → "📎 CV") and tailored CVs (Applications → "Tailored CV") are uploaded too (`desktop/lib/files.js`,

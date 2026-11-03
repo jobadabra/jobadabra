@@ -4,7 +4,7 @@ Cleared: Job Matches rows and the local job cache (jobs, scores, enrichments, sh
 row and no status of the person's. Kept: applied, saved, in-process and closed jobs (their sections, kits, events), imported jobs and,
 by default, the jobs the person dismissed or deleted themselves (`keep_dismissed`; otherwise those come back as new on the next search).
 Settings, profile, CVs, places, sources and employers are never touched. A search finds a cleared job again as new: its cache row is gone.
-Guarded by tests/test_clear_jobs.py.
+Guarded by tests/unit/stores/test_clear_jobs.py.
 """
 from . import store
 from .stores import base

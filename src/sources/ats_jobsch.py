@@ -1,7 +1,7 @@
 """jobs.ch feed: one employer's postings read from the board's public search (schema.org data and the page's own app data).
 
 Split out of ats.py (pure move; ats.py re-exports it). ats.py imports and re-exports every name here; `_get` is looked up on the `ats` module at call time
-so tests that patch `ats._get` keep working. Guarded by tests/test_places_strict.py and test_visits.py.
+so tests that patch `ats._get` keep working. Guarded by tests/unit/sources/test_places_strict.py and test_visits.py.
 """
 import json
 import re

@@ -1,7 +1,7 @@
 """Source scout, probing: which candidates are due (`next_batch`), whether a feed belongs to the company (`belongs_to`, `job_hosts`),
 finding its feed (`find_feed`), and judging it (`quality`, `relevant_roles`, `job_places`). The judges are fingerprinted into READERS
 (src/sources/readers.py): a change to them wakes the employers judged by older readers.
-Tests: tests/test_scout.py, tests/test_careers.py, tests/test_unread_systems.py, tests/test_jobsch_employer.py.
+Tests: tests/unit/sources/test_scout.py, tests/unit/sources/test_careers.py, tests/unit/sources/test_unread_systems.py, tests/unit/sources/test_jobsch_employer.py.
 """
 
 import re

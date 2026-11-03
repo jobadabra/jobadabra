@@ -3,7 +3,7 @@ owner, 8 Oct 2026: "We should be able to discover new job boards"). A board is d
 {role} (and {place} when the board takes one). One call per set of countries, roles and kinds, kept in data/found_boards.json ('ideas');
 Claude sees the countries, place words and role words only, never the CV. Every answer is checked here before anything reads it: an https
 address on the board's own host, the {role} placeholder, not a portal the visit list already offers (LinkedIn, Indeed, Glassdoor,
-levels.fyi) and not one of the boards with their own reader (jobs.ch, SwissDevJobs, TechTree). Tests: tests/test_board_ideas.py."""
+levels.fyi) and not one of the boards with their own reader (jobs.ch, SwissDevJobs, TechTree). Tests: tests/unit/ai/test_board_ideas.py."""
 import hashlib
 import json
 import re
@@ -42,7 +42,7 @@ and news sites (a board for nurses, for truck drivers, for stage technicians, fo
 job), not one employer's own career site, not LinkedIn, Indeed, Glassdoor or levels.fyi. For each: its search page as a template (https, \
 {role} where the keywords go, {place} where the place goes, no {place} when it has none); a board with no search page: its page that lists \
 this field's jobs, else its home page. source_kind: sector. kinds: from the given ones. Only boards you are confident exist; fewer is better \
-than a guess."""   # one call per search, besides the per-country slices (owner's yes, 26 Oct 2026: "Field first"; tests/test_field_boards.py)
+than a guess."""   # one call per search, besides the per-country slices (owner's yes, 26 Oct 2026: "Field first"; tests/unit/ai/test_field_boards.py)
 KINDS = (*ROLE_KINDS, 'any')   # src/role_kinds.py KINDS, plus a board for every kind
 
 
@@ -58,7 +58,7 @@ def valid(board, listing=False):
     pool serves may be a page that lists the jobs (a section of the board, measured by the scout), so {role} is not required. A board the AI
     marked as one of the field's own (source_kind 'sector') may come as its category page or its home page, with no {role}: some field boards
     list their jobs only by category, and the read finds the field's section from the home page (src/sources/board_sections.py; owner's yes,
-    26 Oct 2026; tests/test_board_category_pages.py). A general board's page without {role} is every job, not the field's: still dropped."""
+    26 Oct 2026; tests/unit/sources/test_board_category_pages.py). A general board's page without {role} is every job, not the field's: still dropped."""
     if not isinstance(board, dict):
         return None
     url, name = str(board.get('search_url') or '').strip(), re.sub(r'\s+', ' ', str(board.get('name') or '')).strip()[:60]

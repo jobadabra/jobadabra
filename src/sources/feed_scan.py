@@ -1,6 +1,6 @@
 """Reading every employer feed of a search (feeds.scan): download in parallel, place and sort the titles with AI once, keep the jobs of your
 roles and places, record their seen history. Moved out of feeds.py (500-line rule); every name it uses is read from feeds at call time, so
-tests patch feeds.* as before. A timed search reads best first and stops at its time (src/sources/read_budget.py). Tests: tests/test_read_budget.py, tests/test_feed_scan_parallel.py, tests/test_coverage.py, tests/test_non_it_crawl.py."""
+tests patch feeds.* as before. A timed search reads best first and stops at its time (src/sources/read_budget.py). Tests: tests/unit/sources/test_read_budget.py, tests/unit/sources/test_feed_scan_parallel.py, tests/unit/sources/test_coverage.py, tests/unit/sources/test_non_it_crawl.py."""
 import os
 import threading
 import time

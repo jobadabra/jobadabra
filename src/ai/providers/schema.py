@@ -2,7 +2,7 @@
 
 Callers write one schema per AI step. `without_limits` is what the Anthropic API accepts (no maxItems/minItems), `strict` is what
 OpenAI's strict structured output accepts (every property required, optional ones nullable, no extra keys). `problems` checks an
-answer against the original schema (CLI engines repair once on a mismatch). Guarded by tests/test_ai_providers.py.
+answer against the original schema (CLI engines repair once on a mismatch). Guarded by tests/unit/ai/test_ai_providers.py.
 """
 import json
 import re

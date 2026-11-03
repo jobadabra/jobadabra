@@ -3,7 +3,7 @@
 Telecoms, banks and manufacturers run their careers pages on it, usually on the employer's own domain, so a site is found from its page
 (`eightfold_site`), not from a link. Slug: the site's host name. The page names the employer's Eightfold domain; the search is asked for the
 newest jobs, then for each of the user's own words (ats_sites.workday_terms), as Workday is. The list gives no job text, only title, place,
-date and work mode. Guarded by tests/test_ats_eightfold.py.
+date and work mode. Guarded by tests/unit/sources/test_ats_eightfold.py.
 """
 import html
 import re

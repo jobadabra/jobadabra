@@ -6,7 +6,7 @@ Two layers, both checked against config/meanings_schema.json (a topic and an ans
 - the site's rows (data/meanings.json, written by the app from GET /api/packs/aliases, desktop/lib/aliases.js): learned wordings added,
   and seed rows the site switched off ('off') left out.
 Lookup order in src/ai/decide.py: this computer's own decisions -> this pack -> AI -> "don't know"; an 'ai_first' topic's patterns answer
-only when there is no AI at all. Tests: tests/test_meanings_pack.py."""
+only when there is no AI at all. Tests: tests/unit/ai/test_meanings_pack.py."""
 import json
 import re
 from functools import lru_cache

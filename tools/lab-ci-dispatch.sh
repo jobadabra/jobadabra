@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # After ship.sh opens or pushes a lab PR, asks the public repo to run the lab's tests on it (a lab PR cannot start a public workflow); never fails a ship.
-# Usage: tools/lab-ci-dispatch.sh <lab PR number>   Guarded by tests/test_lab_ci.py.
+# Usage: tools/lab-ci-dispatch.sh <lab PR number>   Guarded by tests/tooling/ci/test_lab_ci.py.
 n="${1:-}"; [ -n "$n" ] || exit 0
 repo="$(. "$(dirname "$0")/pr-rest-lib.sh" && pr_repo .)"   # from git, no GitHub call (try 3 on "GraphQL runs out", 27 Oct 2026)
 case "$repo" in */jobadabra-lab) ;; *) exit 0 ;; esac

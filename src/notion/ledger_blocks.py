@@ -2,7 +2,7 @@
 """Notion property and block helpers of the application ledger: reading a property as a plain value, rich text,
 markdown to Notion blocks, answer-key normalising, day parsing. Owned by src/notion/ledger.py (re-exported there).
 
-Guarded by tests/test_ledger.py."""
+Guarded by tests/unit/notion/test_ledger.py."""
 import re
 from datetime import date
 

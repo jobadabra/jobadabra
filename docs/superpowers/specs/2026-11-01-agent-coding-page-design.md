@@ -65,7 +65,7 @@ Owner: "look on the entire harness/workflow of our development ... agents writin
 - `jobadabra-web/test/admin/agent-coding.test.js`: ingest key/shape/clamp/replace, weeks from Monday, page empty state and rendered cards, every push check listed, circle flagged at 3, escaping, menu entry, headline.
 - `jobadabra/desktop/test/gate-stats.test.js`: form/real/other classes from a fixture log, labels only (no branch text), the stamp once a day, a refusal/dead network/no key leaves no stamp, `GATE_STATS_UPLOAD=0`, and the shape of the `ship.sh` tail.
 - `jobadabra/desktop/test/agent-coding-stats.test.js`: merged PRs and CI share, fix PR areas and the 3-in-a-day sum, red to first later green commit, no fix seen / not counted, fix-commit classes, minutes per push, merges read from git; all from recorded input (`--input`), no network.
-- `jobadabra/tests/test_red_main.py`: the new workflow is classified ("ignored: report"). No workflow-contract entry was needed.
+- `jobadabra/tests/tooling/ci/test_red_main.py`: the new workflow is classified ("ignored: report"). No workflow-contract entry was needed.
 
 ## Progress
 - [x] Owner decision and exceptions recorded (above) (proof: docs/superpowers/specs/2026-11-01-agent-coding-page-design.md)

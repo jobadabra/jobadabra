@@ -1,7 +1,7 @@
 // Which failed steps get one more try: the environment's failures in every run (as since #266), and in a beta also any other step except safety and data steps.
 // Why (1 Nov 2026, owner, "Auto-retry in betas only"): "In a beta (nightly or by hand), a non-safety, non-data step that fails gets one automatic retry. If it passes, the beta releases
 // and the notes list it. PR, main and night runs keep one try, so flakes are still counted and fixed. Safety and data steps get no retry." Only desktop.yml's beta e2e jobs set
-// E2E_BETA_RETRY (nightly and beta by hand; never e2e.yml, never a scheduled check): tests/test_e2e_single_try.py. The job itself still has one try; the retry is the runner's, in the step.
+// E2E_BETA_RETRY (nightly and beta by hand; never e2e.yml, never a scheduled check): tests/tooling/ci/test_e2e_single_try.py. The job itself still has one try; the retry is the runner's, in the step.
 // Invariants: a step cut off by its hang cap or run with fault injection is never retried (its state cannot be trusted); a safety or data step is judged on its first try.
 // Tests: test/runner-beta-retry.test.mjs
 // Job: report health

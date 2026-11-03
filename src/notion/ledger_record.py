@@ -3,7 +3,7 @@
 the channel, building the record and its Notion blocks. `record()` itself (which reads the form snapshot and run files)
 stays in src/notion/ledger.py. Re-exported there.
 
-Guarded by tests/test_ledger.py."""
+Guarded by tests/unit/notion/test_ledger.py."""
 import hashlib
 import json
 import re

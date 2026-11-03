@@ -1,5 +1,5 @@
 """Interview analysis, a review on a Notion Interviews page: the blocks an earlier review wrote (found by its headings) and the
-placeholder; src/stores/notion_interviews.py swaps them. Re-exported by src/ai/interviews.py. Tests: tests/test_interviews_again.py.
+placeholder; src/stores/notion_interviews.py swaps them. Re-exported by src/ai/interviews.py. Tests: tests/unit/stores/test_interviews_again.py.
 """
 from ..notion.ledger import plain
 

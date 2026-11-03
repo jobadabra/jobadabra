@@ -4,7 +4,7 @@ Rows ↔ records through src/stores/notion_rows.py (column names), page bodies t
 (Markdown ↔ blocks). Interviews, insights and employers are their own modules (notion_interviews.py, notion_insights.py,
 notion_employers.py).
 Every request goes through one `Tracker` (src/notion/client.py: retries, pacing, the request log).
-Guarded by tests/test_store_notion.py: the store contract against the Notion stand-in (desktop/e2e/lib/notion-fake.mjs).
+Guarded by tests/unit/stores/test_store_notion.py: the store contract against the Notion stand-in (desktop/e2e/lib/notion-fake.mjs).
 """
 import os
 import sys

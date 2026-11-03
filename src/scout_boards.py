@@ -4,7 +4,7 @@ which boards the AI happened to name, because the shared-board facts need instal
 (board_ideas), the engine reads each by rules only (no AI page reader: the owner chose "rules only" on 24 Oct 2026), the jobs whose place is in that country
 are counted, and a board with MIN_LOCAL of them is kept as a fact. The index publish sends the facts (site: api/employers.js board_facts), where they are
 served as the same board fact installs share. Never worldwide remote: only a job whose place names the country counts.
-Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/test_scout_boards.py."""
+Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/unit/sources/test_scout_boards.py."""
 import time
 from datetime import datetime, timedelta, timezone
 

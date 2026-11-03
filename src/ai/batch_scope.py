@@ -3,7 +3,7 @@ plus its own answers, never what another reader decided meanwhile (18 Oct 2026, 
 the boards at once; whichever finished first left the other a shorter batch, so a replay in the other order asked batches the tape never held and
 missed ~30 requests). Outside a scope nothing changes: every call sees the store as it is. Cost: a new place or title that two side-by-side
 readers share is asked by both, once, in that scope; afterwards it is stored. Used by place_triage, title_triage, geo and feeds (what they `watch`),
-opened by src/first_jobs.py. Tests: tests/test_triage_batch_order.py."""
+opened by src/first_jobs.py. Tests: tests/unit/ai/test_triage_batch_order.py."""
 import contextlib
 import copy
 import threading

@@ -5,7 +5,7 @@ feed read over plain HTTP), ai_board (a board the AI proposed, read by its searc
 method in METHODS wins). Per method: sources, jobs (in the user's places, or all jobs listed when the scout counts), seconds, AI cost in cents
 (API-billed calls only: Claude Code on a plan is $0, src/ai/cost.py). Never a host, URL or company: only the five names leave the machine.
 A search saves its tally to data/read_methods.json (src/search_report.py reads it for the technical report); the central scout puts it in its run
-record (src/scout_index.py run_record). Tests: tests/test_read_methods.py."""
+record (src/scout_index.py run_record). Tests: tests/unit/engine/test_read_methods.py."""
 import contextlib
 import contextvars
 import json

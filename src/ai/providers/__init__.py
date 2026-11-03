@@ -3,7 +3,7 @@
 JOBADABRA_AI_ENGINE names the engine, as the user chose it in the app (Settings → Connections → AI). Nothing is chosen for the user and nothing switches
 by itself: an engine's `fallback` (another engine of the SAME family, billed) is used only on the user's own tick (`fallback_env`).
 A new provider is one adapter file plus one `Engine` row here; engine.py and every AI module stay as they are. Guarded by
-tests/test_ai_providers.py (every engine meets the contract) and tests/test_ai_engine.py.
+tests/unit/ai/test_ai_providers.py (every engine meets the contract) and tests/unit/ai/test_ai_engine.py.
 """
 from dataclasses import dataclass
 import os
@@ -60,7 +60,7 @@ def spec(env=None):
 
 def who(env=None):
     """Who answers, in words the user reads: 'Claude' (Anthropic key or Claude Code), 'OpenAI' or 'Codex'. Every engine-written line that names
-    the AI says this word (tests/test_engine_words.py), never a hard-coded "Claude"; Claude-only features (Apply with Claude) keep theirs."""
+    the AI says this word (tests/guards/rules/test_engine_words.py), never a hard-coded "Claude"; Claude-only features (Apply with Claude) keep theirs."""
     env = os.environ if env is None else env
     chosen = spec(env)
     # Free AI is the API engine on the app's install key (JPF1.…, our relay): named "Free AI", as the app does (desktop/renderer/ai-name.js);

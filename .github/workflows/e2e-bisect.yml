@@ -24,7 +24,7 @@ permissions:
   issues: write         # the red-main issue
   pull-requests: write  # tell the breaking PR
 
-concurrency:   # ONE bisect at a time for all suites: one runs, the newest waits (26 Oct 2026: a group per suite ran 10 at once and filled the job queue; tests/test_e2e_bisect.py)
+concurrency:   # ONE bisect at a time for all suites: one runs, the newest waits (26 Oct 2026: a group per suite ran 10 at once and filled the job queue; tests/tooling/ci/test_e2e_bisect.py)
   group: e2e-bisect
   cancel-in-progress: false
 

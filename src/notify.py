@@ -5,7 +5,7 @@ Every message src/telegram.py sends goes through here too, so each Telegram mess
 Cadence (owner, 17 Oct 2026): new matches (kind 'matches') go as ONE e-mail per run, sent when the process ends or at flush(); an urgent message (an interview) goes at once, alone;
 everything else (kind 'activity': mail-check results, insights, finished jobs) is handed to the site as ONE message per run, which holds it for the person's daily or weekly digest (site/src/mail-held.js).
 The run The run identifies as the install (JOBADABRA_TRIAL_KEY,
-or the Free AI key JPF1.<install>.<token>), never an SMTP secret. Guarded by tests/test_notify.py.
+or the Free AI key JPF1.<install>.<token>), never an SMTP secret. Guarded by tests/unit/engine/test_notify.py.
 """
 import atexit
 import json

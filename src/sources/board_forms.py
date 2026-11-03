@@ -2,7 +2,7 @@
 board's own site, no password box), for a board whose proposed link gave no relevant job (owner, 18 Oct 2026: 14 of 32 boards proposed
 for six candidates gave nothing or ignored the search words, e.g. warehouse jobs for "financial analyst" in Amsterdam). The first text
 box takes the role, a second the place; hidden fields keep their values. found_boards.read tries it once per proposed link and keeps it
-when it brings relevant jobs; with none, the job list the board declares itself (found_boards._another_way). Tests: tests/test_board_forms.py."""
+when it brings relevant jobs; with none, the job list the board declares itself (found_boards._another_way). Tests: tests/unit/ai/test_board_forms.py."""
 import urllib.parse
 from html.parser import HTMLParser
 
