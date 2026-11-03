@@ -76,16 +76,28 @@ test('a note the Finder grades low is dropped and listed, never filed', () => {
 });
 
 const ask = text => async () => ({text, usage: {}, tier: 'mid', engine: 'codex'});
-test('the second opinion reads only the argument, and a judge that cannot answer is "unknown", never a guess', async () => {
+test('the second opinion reads only the argument; a judge that gets no answer is "unavailable" (its note is held), one that answers in the wrong shape is "unknown", never a guess', async () => {
   const clean = ok(RAW).note;
   assert.doesNotMatch(judgePrompt({...clean, steps: ['secret step']}), /secret step/);
   assert.equal((await judgeNote({ask: ask('{"verdict":"agrees","reason":"The label is shown as the value."}'), note: clean})).verdict, 'agrees');
   assert.equal((await judgeNote({ask: ask('{"verdict":"disagrees","reason":"Fine as is."}'), note: clean})).verdict, 'disagrees');
   const refused = await judgeNote({ask: async () => { throw new Error('AI limit reached'); }, note: clean});
-  assert.equal(refused.verdict, 'unknown');
+  assert.equal(refused.verdict, 'unavailable');
   assert.match(refused.reason, /AI limit reached/);
   assert.match((await judgeNote({ask: ask('sorry, I cannot'), note: clean})).reason, /did not answer in the asked shape/);
   assert.equal((await judgeNote({ask: ask('{"verdict":"maybe","reason":"x"}'), note: clean})).verdict, 'unknown');
+});
+
+test('a note whose second opinion was unavailable is held, not filed, and the report says so; a wrong-shape answer ("unknown") is still filed', () => {
+  const notes = [note({title: 'agreed', judge: 'agrees'}), note({title: 'no judge', judge: 'unavailable'}), note({title: 'odd judge', judge: 'unknown'}), note({title: 'low and no judge', severity: 'low', judge: 'unavailable'}), note({title: 'proved, no judge', judge: 'unavailable', proved: true})];
+  const {filed, over, low, held} = rankNotes(notes);
+  assert.deepEqual(filed.map(each => each.title), ['proved, no judge', 'agreed', 'odd judge'], 'a script-proved note has its own evidence and is filed without the opinion');
+  assert.deepEqual(held.map(each => each.title), ['no judge']);
+  assert.deepEqual(low.map(each => each.title), ['low and no judge']);
+  assert.equal(filed.length + over.length + low.length + held.length, notes.length, 'nothing is lost from the report');
+  const summary = summarizeSession({session: 'n', persona: 'p', seed: 1, goals: [{n: 1, group: 'Jobs', label: 'Open a job'}], results: [{n: 1, verdict: 'worked', summary: 'ok', steps: 2}], notes});
+  assert.equal(summary.held.length, 1);
+  assert.match(summaryMarkdown(summary), /Filed 3, 1 low \(never filed\), 1 held \(the second opinion was unavailable\)\./);
 });
 
 test('a session always accounts for every goal: a missing result is "could not finish", an unknown verdict is "doubts", and a quiet night reads as a result', () => {
