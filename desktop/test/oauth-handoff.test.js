@@ -47,7 +47,7 @@ for (const flow of FLOWS) {
     assert.equal((await send(server, flow, {}, {method: 'GET', query: `?state=${state}&access_token=${SECRET}`})).status, 400, 'a GET with the result in the address is never taken');
     const ok = await send(server, flow, {state, access_token: SECRET, workspace_name: 'Space'});
     assert.equal(ok.status, 200);
-    assert.match(ok.body, /Connected to/);
+    assert.match(ok.body, /Connected ✓/);
     assert.ok(!ok.body.includes(SECRET), 'the secret is not echoed');
     assert.equal(ok.headers['cache-control'], 'no-store');
     assert.equal(ok.headers['referrer-policy'], 'no-referrer');

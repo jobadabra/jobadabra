@@ -4,7 +4,6 @@
 // Guard: test/oauth-handoff.test.js (real requests to a real local server, every flow).
 import {FLOWS, receive} from './oauth-handoff.js';
 
-const WORDS = {'notion-connect': 'Notion', 'linkedin-signin': 'LinkedIn', 'linkedin-import': 'LinkedIn'};
 const flowOf = url => /^\/([a-z-]+)\/callback(?:\?|$)/.exec(String(url))?.[1] || '';
 
 /** -> whether the url is a hand-off callback of one of the flows. */
@@ -20,6 +19,6 @@ export async function handleOauthHandoff(req, res, body) {
   const flow = flowOf(req.url);
   const taken = req.method === 'POST' && receive(flow, new URLSearchParams(body?.toString() || ''));
   res.writeHead(taken ? 200 : 400, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'});
-  res.end(taken ? card(`Connected to ${WORDS[flow]} ✓`, 'Go back to Jobadabra: it takes it from here. You can close this tab.', true)
+  res.end(taken ? card('Connected ✓', 'Go back to Jobadabra: it takes it from here. You can close this tab.', true)
     : card('Not connected', 'Jobadabra was not waiting for this. Start again from the Jobadabra app.', false));
 }
