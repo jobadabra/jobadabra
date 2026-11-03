@@ -51,6 +51,18 @@ export function openBuild() {
   $('cvb-dialog').showModal();
 }
 
+/**
+ * What follows a CV that was built and saved as the main CV (by "Build one with AI" or by the LinkedIn import with no CV): the app state is read again, the CV card and the setup's CV step
+ * show the new file at once, as after Replace CV (pages/cv-replace.js), and the "CV changed" prompt shows once setup is done. One owner, so both producers end the same way.
+ */
+export async function cvSaved(name) {
+  shared.state = await window.pilot.state();
+  refreshCv();
+  $('contact-cv').textContent = name;
+  cvReplaced(name);
+  if (shared.state.settings.setupDone) showCvChanged();
+}
+
 export function init() {
   for (const id of ['cv-build', 'cv-build-profile']) $(id).addEventListener('click', openBuild);
   const close = () => $('cvb-dialog').close();
@@ -71,11 +83,7 @@ export function init() {
         message('cvb-message', 'Saving your CV…', 'waiting');
         const result = await window.pilot.buildCvSave(edited());
         if (!result.ok) return message('cvb-message', result.error, 'error');
-        shared.state = await window.pilot.state();
-        refreshCv();
-        $('contact-cv').textContent = result.name;
-        cvReplaced(result.name);   // the CV card's size, date and check follow the built file at once, as after Replace CV (pages/cv-replace.js)
-        if (shared.state.settings.setupDone) showCvChanged();
+        await cvSaved(result.name);
         showStep('saved');
       }
     } finally { button.disabled = false; }

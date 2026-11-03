@@ -49,3 +49,21 @@ test('a stale run never draws into a newer dialog, and after a 429 or a changed 
   assert.match(page, /addEventListener\('close', \(\) => \{ runId\+\+; window\.pilot\.linkedinImportCancel\(\)/, 'Escape and the backdrop cancel the wait too');
   assert.match(page, /\['rate', 'version'\]\.includes\(stopped\)/, 'no Try again after rate or version');
 });
+
+// PR 3/3 (owner D3, 3 Nov 2026): the setup's CV step is the third way in; with no CV the ticked rows become the main CV through the same save as "Build one with AI".
+test('the setup CV step has its LinkedIn button enabled and wired to the same dialog; the wizard gains no step', () => {
+  assert.match(html, /<button class="secondary cv-way" id="cv-linkedin" type="button" title="[^"]+">/, 'enabled: no disabled attribute, no "Coming soon"');
+  assert.doesNotMatch(html, /id="cv-linkedin"[^>]*disabled/);
+  assert.match(page, /for \(const id of \['cv-import-linkedin', 'cv-linkedin'\]\)/);
+});
+
+test('with no main CV the ticked rows are saved as the main CV by buildCvSave, then the same follow-up as the AI build runs once', () => {
+  assert.match(page, /async function buildMainCv\(answer\)/);
+  assert.match(page, /window\.pilot\.buildCvSave\(answer\.cv\)/);
+  assert.match(page, /await cvSaved\(saved\.name\)/);
+  assert.match(page, /No position was ticked, so no CV was made/);
+  const build = read('../renderer/pages/cv-build.js');
+  assert.equal((build.match(/await cvSaved\(result\.name\)/g) || []).length, 1, 'the AI build ends through the same function');
+  assert.equal((build.match(/cvReplaced\(/g) || []).length, 1, 'cvReplaced is called in cvSaved only');
+});
+
