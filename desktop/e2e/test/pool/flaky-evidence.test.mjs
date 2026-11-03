@@ -94,7 +94,7 @@ test('a suite whose read throws (its gh call ended by the deadline) is said unkn
   const out = await verdictsForCauses(causes, {redSha: RED, redRun: 9, io: io({runs: async () => { if (say.length) throw new Error('spawnSync gh ETIMEDOUT'); say.push('apply read'); return RUNS; }}), say: line => say.push(line)});
   assert.deepEqual(out.map(item => [item.suite, item.verdict]), [['apply', 'flaky'], ['wizard', 'unknown']]);
   assert.match(out[1].reason, /read failed: spawnSync gh ETIMEDOUT/);
-  const cut = await verdictsForCauses(causes.slice(1), {redSha: RED, redRun: 9, deadlineAt: Date.now() - 1, io: io({runs: async () => { throw new Error('spawnSync gh ETIMEDOUT'); }})});
+  const cut = await verdictsForCauses(causes.slice(1), {redSha: RED, redRun: 9, deadlineAt: 1, io: io({runs: async () => { throw new Error('spawnSync gh ETIMEDOUT'); }})});
   assert.match(cut[0].reason, /^read cut before wizard was read/, 'the deadline is named as the guard, not as a broken gh');
 });
 
