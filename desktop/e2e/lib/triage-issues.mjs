@@ -48,9 +48,8 @@ export function issueBody(finding, runUrl, evidence = {}) {
   if (evidence.build) out.push(`> 🏷️ Build tested: ${evidence.build}`);
   for (const line of [evidence.context, evidence.stepAge]) if (line) out.push(`> ${line}`);
   out.push(`> 🔗 First seen: ${runUrl}`, '', '### What was found', formatDetail(finding));
-  if (finding.expected) out.push('', '### What it expected', finding.expected);   // the AI user agent's note: the knowledge entry or UX principle its argument rests on (lib/agent-notes.mjs)
+  out.push(...agentSections(finding));
   if (finding.impact) out.push('', '### Why it matters', finding.impact);
-  if (finding.agent) out.push('', '### Who found it', agentBlock(finding.agent));
   if (finding.workaround) out.push('', '### What the person has to do to get past it', finding.workaround);
   if (finding.suggestion) out.push('', '### Suggested', finding.suggestion);
   if (picture || rows.length || logs.length) out.push('', '### Evidence');
@@ -80,6 +79,9 @@ export function issueBody(finding, runUrl, evidence = {}) {
 // Labels so the issue list can be filtered by severity, kind, view, suite and where the finding came from.
 export const labelsFor = (finding, suite = '') => [`severity:${finding.severity}`, `kind:${finding.kind}`, `view:${finding.view}`.slice(0, 50), ...(suite ? [`suite:${suite}`.slice(0, 50)] : []),
   `source:${finding.source}`, ...(finding.agent ? agentLabels(finding.agent) : [])];
+
+/** The sections only an AI user agent's issue has: what it expected (the knowledge entry or UX principle its argument rests on, lib/agent-notes.mjs) and who found it. Empty for every other detector. */
+export const agentSections = finding => [...(finding.expected ? ['', '### What it expected', finding.expected] : []), ...(finding.agent ? ['', '### Who found it', agentBlock(finding.agent)] : [])];
 
 /** The "Who found it" paragraph of an AI user agent issue: the persona and seed to replay it, the second opinion with its reason, and whether a replay without AI held. */
 export function agentBlock(agent) {
