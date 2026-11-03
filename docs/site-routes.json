@@ -87,7 +87,7 @@
   },
   {
    "path": "/api/linkedin/token",
-   "kind": "app"
+   "kind": "page"
   },
   {
    "path": "/api/notify/email",
@@ -99,7 +99,7 @@
   },
   {
    "path": "/api/notion/token",
-   "kind": "app"
+   "kind": "page"
   },
   {
    "path": "/api/packs/aliases",
