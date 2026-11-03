@@ -45,7 +45,12 @@ export function cvReadAnswer(person) {
 export function answerCvRead(proxy, person) {
   const previous = proxy.canned();
   const answer = cvReadAnswer(person);
-  proxy.setCanned(async body => (isCvRead(body) ? answer : previous ? previous(body) : null));
+  let other = 0;
+  proxy.setCanned(async body => {
+    if (isCvRead(body)) { console.log('  AI stand-in: the app asked for the CV read; answered from the persona\'s CV'); return answer; }
+    if (other++ < 5) console.log(`  AI stand-in: another call (${other}), left to the suite's answer; it opens with "${String(JSON.stringify(body?.messages?.[0]?.content ?? body?.system ?? '')).slice(0, 80)}"`);   // so a run says whether the read was asked at all (replay 41664479049 could not tell)
+    return previous ? previous(body) : null;
+  });
 }
 
 /**
