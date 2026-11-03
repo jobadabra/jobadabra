@@ -1,9 +1,10 @@
-// "Import from LinkedIn" (Settings → Profile → CV, ⌘K; the CV step's third way in follows in PR 3/3): the dialog that says what is read, waits for the person's consent on LinkedIn's
+// "Import from LinkedIn" (Settings → Profile → CV, ⌘K, and the setup's CV step as its third way in): the dialog that says what is read, waits for the person's consent on LinkedIn's
 // own page, then shows "What came in" as rows to tick. Data and rules: lib/linkedin-import*.js (IPC linkedinImport*); spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md.
 // Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/linkedin-import-page.test.js.
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {plainError} from '../run-warnings.js';
+import {makeMainCv} from './linkedin-import-cv.js';
 import {$} from './core.js';
 
 const SECTIONS = [['positions', 'Positions'], ['education', 'Education'], ['skills', 'Skills'], ['languages', 'Languages'], ['details', 'Your details']];
@@ -14,6 +15,7 @@ const EU_NOTE = 'For LinkedIn members in the EU, EEA and Switzerland. Elsewhere,
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 let dialog = null, view = {connected: false}, review = null, onDone = () => {};
+let afterCvBuilt = async () => {};   // Why (3 Nov 2026, review): app.js passes cv-build's cvSaved in; importing it here closed a cycle through activity.js and nav.js (tools/arch-check.py)
 let runId = 0;   // Why (independent review, 3 Nov 2026): Escape or the backdrop closes the dialog without Cancel, and a late answer of that run must not draw into a newer dialog; a stale run is ignored
 
 const close = () => { window.pilot.linkedinImportCancel().catch(() => {}); dialog?.close(); };
@@ -146,11 +148,30 @@ async function apply(event) {
   event.target.disabled = true;
   const answer = await window.pilot.linkedinImportApply(ids).catch(error => ({ok: false, error: error.message}));
   if (!answer.ok) { event.target.disabled = false; const note = bodyOf().querySelector('.message'); note.textContent = plainError(answer.error); note.className = 'message bad'; return; }
-  setHead('Added from LinkedIn', answer.mainless ? 'Only Your details were added.' : `${plural(answer.added, 'row')} added. Your CV file is untouched.`);
-  const parts = [answer.positions && !answer.mainless ? plural(answer.positions, 'position') : '', answer.details ? plural(answer.details, 'detail line') : ''].filter(Boolean);
-  if (answer.mainless) { bodyOf().replaceChildren(el('p', '', `${answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : ''}Your positions, education, skills and languages are not saved yet: you have no CV, and the CV step builds it from LinkedIn.`)); setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); })); return; }
+  setHead('Added from LinkedIn', answer.mainless ? 'Making your CV from LinkedIn.' : `${plural(answer.added, 'row')} added. Your CV file is untouched.`);
+  const parts = [answer.positions ? plural(answer.positions, 'position') : '', answer.details ? plural(answer.details, 'detail line') : ''].filter(Boolean);
+  if (answer.mainless) return buildMainCv(answer);
   bodyOf().replaceChildren(el('p', '', parts.length ? `Added to your Experience${answer.details ? ' and Your details' : ''}: ${parts.join(', ')}. Tailoring and form filling use it from now on.` : 'Added to your Experience. Tailoring and form filling use it from now on.'));
   setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); }));
+}
+
+/**
+ * With no main CV the ticked rows become it (D3, owner 3 Nov 2026): the CV is drawn and saved as the main CV by the same IPC as "Build one with AI" (buildCvSave), then the setup's CV
+ * step and the Profile card follow (afterCvBuilt = cv-build's cvSaved). Nothing ticked as a position means no CV is made (said, not guessed). The dialog may have been closed or reopened
+ * while the CV was drawn: the CV is saved either way, but nothing is drawn into a dialog that is not the one that asked.
+ */
+async function buildMainCv(answer) {
+  const details = answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : '';
+  const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); })); };
+  if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Start the LinkedIn import again to choose positions.');
+  const mine = runId, shown = dialog;
+  bodyOf().replaceChildren(el('p', 'muted', 'Making your CV…'));
+  setFoot();
+  const made = await makeMainCv(answer.cv, {save: cv => window.pilot.buildCvSave(cv), saved: name => afterCvBuilt(name)});
+  if (!dialog || dialog !== shown || mine !== runId) return;
+  if (made.kind === 'failed') return done(`Your CV could not be made: ${plainError(made.error)} Nothing is lost: start the LinkedIn import again to try once more.`, 'message bad');
+  setHead('Your CV is ready', 'Built from your LinkedIn profile.');
+  return done(`${made.name} is now your CV. Its wording is yours to change in Settings → Profile → CV.`);
 }
 
 /** Open the dialog (from Profile or ⌘K). `done` runs after something was added or the connection changed, so the page redraws. */
@@ -163,9 +184,10 @@ export async function openImport(done = () => {}) {
   dialog.showModal();
 }
 
-/** Wires the Profile card's "Import from LinkedIn" button to the dialog; `onChange` runs after a save so the page redraws. Does nothing when the button is absent. */
-export function init({onChange = () => {}} = {}) {
-  $('cv-import-linkedin')?.addEventListener('click', () => openImport(onChange));
+/** Wires the Profile card's "Import from LinkedIn" button to the dialog; `onChange` runs after a save so the page redraws; `onCvBuilt(name)` runs after the CV was built from LinkedIn. Does nothing when the button is absent. */
+export function init({onChange = () => {}, onCvBuilt = async () => {}} = {}) {
+  afterCvBuilt = onCvBuilt;
+  for (const id of ['cv-import-linkedin', 'cv-linkedin']) $(id)?.addEventListener('click', () => openImport(onChange));   // Profile → Your CV, and the setup's CV step (the third way in)
   window.pilot.onLinkedinImportStep?.(onStep);
   refreshButton();
 }
@@ -176,4 +198,6 @@ export async function refreshButton() {
   const state = await window.pilot.linkedinImportState().catch(() => ({connected: false}));
   button.querySelector('span').textContent = state.connected ? 'Update from LinkedIn' : 'Import from LinkedIn';
   button.title = EU_NOTE;
+  const way = $('cv-linkedin');   // the setup's CV step keeps its own short label
+  if (way) way.title = EU_NOTE;
 }

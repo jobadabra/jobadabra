@@ -74,6 +74,7 @@ test('Update uses the kept key with no sign-in; with no main CV the CV step buil
   assert.equal(applied.mainless, true);
   assert.deepEqual(experience.list(r.storage), [], 'no main CV: nothing goes to the bank (PR 3/3 builds the CV from `cv`)');
   assert.ok(applied.cv.jobs.length === 1 && applied.cv.skills);
+  assert.equal(applied.cv.name, 'Anna Rossi', 'the CV carries the person\'s name: buildCvSave names the file from it');
 });
 
 test('a key LinkedIn refuses is deleted and the press ends with the reason; a 429 stops and is not retried', async t => {

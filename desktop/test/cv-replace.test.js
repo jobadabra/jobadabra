@@ -64,6 +64,8 @@ test('"CV replaced" is said before the redraw, and a card that fails to redraw n
 
 test('Build with AI redraws through the same hook, and no page imports profile.js (no import cycle)', () => {
   const read = file => fs.readFileSync(new URL(`../renderer/pages/${file}`, import.meta.url), 'utf8');
-  assert.match(read('cv-build.js'), /cvReplaced\(result\.name\)/);
+  // Why (3 Nov 2026, PR 3/3): the redraw moved into cvSaved so Build with AI and the LinkedIn import end the same way; the AI build still reaches it, through that one function.
+  assert.match(read('cv-build.js'), /export async function cvSaved\(name\)[^]*?cvReplaced\(name\)/);
+  assert.match(read('cv-build.js'), /await cvSaved\(result\.name\)/);
   assert.doesNotMatch(read('actions.js') + read('cv-build.js'), /from '\.\/profile\.js'/);
 });
