@@ -1,11 +1,11 @@
 # One AI fixer core with an agent loop (design)
 
-Session ca, 3 Nov 2026. Plan: `docs/superpowers/plans/2026-11-03-ci-agents.md` (PR 4/6 of 6).
+Session ca, 3 Nov 2026. Plan: `docs/superpowers/plans/2026-11-03-ci-agents.md` (PR 4/6 of 6). The plan and the registry `tools/ci-agents.json` arrive with PR 1/6 (#3098); this spec is meant to merge after it.
 
 > **Verdict:** one core takes any item (a Sentry issue, a UI finding, a feedback report, a Linear task), lets ONE agent loop read, search, edit and run named tests in the sandbox box, and opens a DRAFT PR. Sentry and Feedback move onto it with no change in behaviour first; the loop is measured on about 10 `ai-ready` Linear tasks against today's quick edit before any source switches to it.
 
 ## Decided (owner, 3 Nov 2026)
-- "I agree/aprove." One AI Fixer: sources read their item and report back; one core: brief → AI edit → path walls → sandboxed tests → draft PR → Telegram line. Triggers: a schedule, `/resolve JOB-123` in Telegram (`api/brain.js`), the /admin button. One at a time, a daily cap, draft PRs only, the owner merges, UI fixer stays OFF.
+- "I agree/aprove." One AI Fixer: sources read their item and report back; one core: brief → AI edit → path walls → sandboxed tests → draft PR → Telegram line. Triggers: a schedule, `/resolve JOB-123` in Telegram (`api/brain.js` in the web repo `jobadabra-web`, not here), the /admin button. One at a time, a daily cap, draft PRs only, the owner merges, UI fixer stays OFF.
 - Linear: only tasks labelled `ai-ready`, one a night at about 05:00 UTC plus `/resolve JOB-n`.
 - "I think we should turn "Fixers" into proper agents. Or call them differently." → "Proper agents (Recommended)": ONE agent loop in the core (read, search, edit, run named tests, inside the sandbox box, a step cap of about 30), reusing the AI user agent's loop pattern, used by every source; measured on about 10 `ai-ready` Linear tasks against today's quick edit (`edit-codex.mjs`) as the baseline. About 20 to 50 broker calls per fix, one at a time, scheduled lane (behind the broker's 70% reserve). This replaces "quick edit first".
 
@@ -57,4 +57,4 @@ A UI-finding source while the UI fixer is OFF; a second concurrent run; auto-mer
 ## Progress
 - [ ] 4/6 This spec
 - [ ] 5/6 `tools/fixer/` core, Sentry and Feedback onto it with the quick edit, then the loop beside it
-- [ ] 6/6 Linear source, `/resolve JOB-n` in `api/brain.js`, the nightly schedule, the 10-task measurement
+- [ ] 6/6 Linear source, the nightly schedule, the 10-task measurement here; `/resolve JOB-n` is a second PR in `jobadabra-web` (`api/brain.js`, owner's chat only) that starts this repo's `ai-fixer.yml` by `workflow_dispatch` with the timers' token, as the site's Send to AI button already starts `feedback-ai.yml`
