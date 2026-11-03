@@ -5,6 +5,11 @@
 import {settle} from './app.mjs';
 import {goView} from './go-view.mjs';
 import {observePage} from './explore.mjs';
+import {VIEWS} from './uicheck.mjs';
+
+/** The pages `go` may open: the Finder's views plus Profile, which the menu draws as a button of the settings view (`data-settings="profile"`), so no view name of the Finder's list reaches it. */
+export const AGENT_VIEWS = [...VIEWS, 'profile'];
+const PROFILE_NAV = '.nav[data-settings="profile"]';
 
 /**
  * The `act` object of explore(): observe, click, type, press, go. `page` is the app window. Only what a session needs: the replay without AI (8/12) adds its text and console helpers when it uses them.
@@ -17,7 +22,7 @@ export function agentAct(page) {
     click: async i => { await tagged(i).scrollIntoViewIfNeeded(); await tagged(i).click({noWaitAfter: true}); await settle(page); },
     type: async (i, text) => { await tagged(i).fill(String(text || '').slice(0, 200)); await settle(page); },
     press: async key => { await page.keyboard.press(key); await settle(page); },
-    go: async view => { await goView(page, view); await settle(page); },
+    go: async view => { if (view === 'profile') await page.click(PROFILE_NAV); else await goView(page, view); await settle(page); },
   };
 }
 
