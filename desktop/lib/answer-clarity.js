@@ -4,10 +4,13 @@
 // skipped it) is retried after a day. lib/details-review.js turns guess / vague / off_topic into queue items. Guarded by test/details-review-unclear.test.js.
 import {parseLine} from './profile-sections.js';
 
-export const CLARITY = ['clear', 'guess', 'vague', 'off_topic'];
+export const CLARITY = ['clear', 'guess', 'vague', 'off_topic', 'prose'];   // prose: running text (a letter's line), no answer to ask, no fact to move (3 Nov 2026)
 export const UNCLEAR = {guess: 'Looks like a guess', vague: 'Too vague to use', off_topic: 'Does not answer the question'};
 export const KEPT = 'kept';
 const RETRY_MS = 24 * 3600 * 1000;
+// Why (3 Nov 2026, a Windows tester: a pasted letter judged 82 lines, 81 unclear): the judge's rubric gained "prose". An install whose verdicts were written under an older rubric
+// asks again, once, for the lines it called unclear (a clear line stays clear); settings.answerClarityRubric says which rubric wrote them. Raise it when the judge's words change.
+export const RUBRIC = 2;
 const same = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 // A line's identity: its label and value without the kind mark and note (the same on the Profile, the answers page and in a section after a move).
@@ -20,10 +23,10 @@ export const verdictOf = (storage, item) => map(storage)[sigOf(item)] || '';
 
 // The lines with no verdict yet (or a skipped one a day old).
 export function unjudged(storage, items, now = new Date()) {
-  const known = map(storage);
+  const known = map(storage), older = storage.settings().answerClarityRubric !== RUBRIC;
   return items.filter(item => {
     const verdict = known[sigOf(item)];
-    return !verdict || (verdict.startsWith('?') && now - new Date(verdict.slice(1)) > RETRY_MS);
+    return !verdict || (verdict.startsWith('?') && now - new Date(verdict.slice(1)) > RETRY_MS) || (older && Boolean(UNCLEAR[verdict]));
   });
 }
 
@@ -36,7 +39,7 @@ export function record(storage, items, judged, {now = new Date(), present = null
     known[sig] = CLARITY.includes(clarity) ? clarity : `?${now.toISOString()}`;
   }
   if (present) { const live = new Set(present.map(sigOf)); for (const sig of Object.keys(known)) if (!live.has(sig)) delete known[sig]; }
-  storage.saveSettings({answerClarity: known});
+  storage.saveSettings({answerClarity: known, ...(items.length ? {answerClarityRubric: RUBRIC} : {})});
 }
 
 export function keepAsIs(storage, item) {

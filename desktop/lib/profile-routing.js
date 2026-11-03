@@ -43,7 +43,7 @@ async function route(storage, {fetcher, ai = {}, now = new Date(), copy = saveCo
   for (const line of candidates) {
     const said = judged.get(line.id), identity = sourceKey(line);
     if (!live.has(identity)) continue;
-    if (said?.home === 'stay' || line.home) { handled.add(identity); continue; }
+    if (said?.home === 'stay' || said?.clarity === 'prose' || line.home) { handled.add(identity); continue; }   // prose stays put and is never retried (3 Nov 2026)
     if (!byId.has(said?.home)) continue;
     if (chosen.has(identity) && chosen.get(identity).home !== said.home) incompatible.add(identity);
     chosen.set(identity, {line, home: said.home});
