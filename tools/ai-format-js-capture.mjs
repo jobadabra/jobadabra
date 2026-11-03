@@ -11,7 +11,7 @@ const ALLOWED = new Set([
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
   'desktop/lib/question-formats.js', 'desktop/lib/contact-from-cv.js', 'desktop/lib/cv-queue.js',
   'desktop/lib/cv-check.js', 'desktop/lib/list-meanings.js', 'desktop/lib/preferences-parse.js', 'desktop/lib/locations-move.js', 'desktop/renderer/fragment-words.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
-  'desktop/lib/learnings.js', 'extension/alias-schema.js', 'desktop/renderer/preferences-model.js',
+  'desktop/lib/learnings.js', 'desktop/lib/open-wording.js', 'desktop/renderer/question-sense.js', 'extension/alias-schema.js', 'desktop/renderer/preferences-model.js',
   'desktop/renderer/profile-model.js', 'desktop/renderer/answers-model.js',
   'desktop/renderer/question-kind.js', 'desktop/renderer/question-filter.js',
   'desktop/renderer/question-values.js', 'desktop/renderer/work-eligibility.js', 'desktop/renderer/countries.js',
@@ -110,6 +110,9 @@ export async function captureDesktop(root) {
   const missing = load('desktop/lib/missing-facts.js'), catalog = missing.CATALOG;
   await capture('missing_facts_wording', {fields: catalog, keys: catalog.map(fact => fact.id), rated: false, language: ''}, 'desktop/lib/queue-wording.js', 'const response = await client.messages.create',
     'desktop/lib/queue-wording.js', 'const clean =', client => missing.wording(storage(), {client}));
+  const worded = load('desktop/lib/open-wording.js'), bare = [{question: 'Workload', hint: '', details: {kind: 'open', fact: 'Workload'}}];
+  await capture('question_words', {fields: [{key: 'f1', label: 'Workload'}], keys: ['f1'], rated: false}, 'desktop/lib/queue-wording.js', 'const response = await client.messages.create',
+    'desktop/lib/queue-wording.js', 'const clean =', client => worded.worded(storage(), bare, {client}));
   await capture('covered_facts', {labels: ['Citizenship'], open: catalog}, 'desktop/lib/missing-facts.js', 'const response = await client.messages.create',
     'desktop/lib/missing-facts.js', 'const ids = (JSON.parse', client => missing.covered(storage(), ['Citizenship'], {ai: {client}}));
   const labels = ['Notice period', 'Why Colonist?', 'Earliest start?'], answered = [{question: 'Notice period / earliest start', answer: '3 months'}];

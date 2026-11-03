@@ -26,8 +26,8 @@ test('its stored answer reads as "no groups, no typos", so Strategy shows the ch
   assert.deepEqual(JSON.parse(reply.content[0].text), {lists: []});
 });
 
-// Why (30 Oct 2026, bb 3/9, interactions red run 41091251455): the Profile's preferences read and Locations move sent no x-jp-action either; the manifest holds each real request, one loop keys them all.
-for (const [kind, system] of [['preferences_parse', /^You read the job-search preferences/], ['locations_move', /^You read the "where to work" rows/]]) {
+// Why (30 Oct 2026, bb 3/9, interactions red run 41091251455): the Profile's preferences read and Locations move sent no x-jp-action either; the manifest holds each real request, one loop keys them all (3 Nov 2026, wq: question_words joined it, it sent its action but the table did not declare the kind).
+for (const [kind, system] of [['preferences_parse', /^You read the job-search preferences/], ['locations_move', /^You read the "where to work" rows/], ['question_words', /^Each line of <fields> is "id: label"/]]) {
   test(`the real ${kind} request names its step and is keyed as the ${kind} kind in backbone mode only`, () => {
     const found = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(each => each.kind === kind);
     assert.ok(found, `positive control: the manifest holds the captured ${kind} request`);
@@ -39,3 +39,12 @@ for (const [kind, system] of [['preferences_parse', /^You read the job-search pr
     assert.ok(Object.hasOwn(loadTable().kinds, kind));
   });
 }
+
+// Why (3 Nov 2026, wq, wizard red on main run on df66db1): #3027's question writer asked "question_words" with no stored answer, so the wizard's "every backbone AI question had a stored answer" failed;
+// its stored answer is a controlled refusal (the writer then leaves the question unworded and tries again), like missing_facts_wording.
+test('the question writer\'s stored answer is a controlled refusal, so the wizard\'s backbone has an answer for it', () => {
+  const found = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(each => each.kind === 'question_words');
+  const asked = {url: '/v1/messages', headers: {'content-type': 'application/json', 'x-jp-action': found?.action}, body: JSON.stringify(found?.request)};
+  assert.equal(loadTable().kinds.question_words.answer.refuse, 'invalid-key');
+  assert.deepEqual(questionOf(asked, {...backbone, E2E_SUITE: 'wizard'}), {operation: 'app.kind', id: 'question_words'});
+});

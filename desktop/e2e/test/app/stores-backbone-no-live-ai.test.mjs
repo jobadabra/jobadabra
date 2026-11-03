@@ -6,7 +6,7 @@ import {FAILURES} from '../../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../../lib/backbone-harness.mjs';
 import {modelFetch} from '../../lib/model.mjs';
 
-const kinds = ['contact_asks', 'missing_facts_wording', 'covered_facts', 'reuse_verdict', 'question_formats', 'cv_queue',
+const kinds = ['contact_asks', 'missing_facts_wording', 'question_words', 'covered_facts', 'reuse_verdict', 'question_formats', 'cv_queue',
   'places', 'field_redraft', 'role_ideas'];
 const empty = {organize_lines: {items: []}, answer_home: {items: []}, contact_from_cv: {proposals: []}};
 
