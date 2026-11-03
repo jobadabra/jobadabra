@@ -1,0 +1,37 @@
+name: Release · Tell the feedback reporters
+run-name: Tell the reporters whose fix is in ${{ inputs.tag }}
+# When a build becomes stable, the people who sent a feedback the owner marked "Fixed, tell at the next release" hear "fixed in <version>" (owner, 3 Nov 2026: "when we release a new beta/stable
+# version which includes a feedback fix, we should automatically inform all the reporters"; stable only, his answer the same day). tools/release-stable.sh starts this run after the promotion
+# (the same way it starts the store publishes) and never waits for it: a slow or failing call cannot fail, delay or block a release. A failure is one Telegram note and a red run HERE; start it
+# again by hand with the same tag (the site tells each reporter once). The call: tools/feedback-released.mjs -> jobadabra-web POST /api/feedback/released with the publish key (SELFHEAL_PUBLISH_KEY).
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The stable release tag, e.g. desktop-v0.9.13'
+        required: true
+
+permissions:
+  contents: read   # the releases and the commits between two of them (GitHub API, read only)
+
+concurrency:
+  group: feedback-released   # one call at a time; a second waits (the site tells each reporter once either way)
+  cancel-in-progress: false
+
+jobs:
+  tell:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the key the other CI uploads to the site use (self-heal-stats.yml); no new secret
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Tell the site which pull requests this release carries
+        run: node tools/feedback-released.mjs "$TAG"
