@@ -16,6 +16,7 @@ import {pathToFileURL} from 'node:url';
 import {redact} from '../desktop/lib/feedback-bundle.js';
 
 export const AUDIENCE = 'jobadabra-feedback';
+/** The site's address: `env.FEEDBACK_AI_URL` (a test site) or the production site. Takes env; returns a URL without a trailing path. Never fails. */
 export const SITE = env => env.FEEDBACK_AI_URL || 'https://www.jobadabra.top';
 export const REF = /^[0-9a-f]{16}$/;
 export const VERDICTS = ['fixed-already', 'not-reproducible', 'needs-human', 'false-positive'];

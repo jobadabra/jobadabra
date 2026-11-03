@@ -125,7 +125,9 @@ jobs:
           if ! (cd desktop && clean npm test && clean npm run lint) > .fb/suite.log 2>&1 || ! clean python3 -m unittest discover -s tests >> .fb/suite.log 2>&1; then stop "the whole test suite or the lint failed with the fix"; fi
       - name: Tell the site if the run broke before it finished
         if: failure()
-        run: node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "the run broke before it finished: see the run" || true   # a step above may have told it already: the site then refuses this one, harmlessly
+        # A step above may have told the site already: it then refuses this one, harmlessly.
+        run: |
+          node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "the run broke before it finished, see the run" || true
 
   # The only job that can push. A fresh checkout; it applies the patch `fix` wrote before any AI code ran, checks its paths again, and opens a DRAFT pull request. Never merges.
   publish:
@@ -192,7 +194,8 @@ jobs:
           tell --status pr --pr "$url"
       - name: Tell the site if the run broke before it finished
         if: failure()
-        run: node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "the run broke before it opened the pull request: see the run" || true
+        run: |
+          node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "the run broke before it opened the pull request, see the run" || true
 
   # One alert when the broker refused the run (owner, 31 Oct 2026: one alert per run); the note it reads holds the cause, never any report text.
   ai-skipped:
