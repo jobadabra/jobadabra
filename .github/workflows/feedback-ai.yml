@@ -62,6 +62,7 @@ jobs:
       cancel-in-progress: false
     outputs:
       go: ${{ steps.check.outputs.go }}
+      sha: ${{ steps.check.outputs.sha }}   # of the four files below; publish compares it, so an artifact swapped after the scan is refused (a job's outputs cannot be written by a later job)
     env:
       REF: ${{ inputs.ref }}
     steps:
@@ -128,6 +129,7 @@ jobs:
           git diff --no-renames --binary -- $roots > .fb/change.patch
           # The second wall (check-change.mjs is the first): no workflow, tool, hook, agent-instruction, package, secret or config file, at most 8 files and 60 KB.
           echo "$changed" | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < .fb/change.patch)" || stop "the change touches files a fix may never touch, or is too big (8 files, 60 KB)"
+          echo "sha=$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "go=pr" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
         if: steps.check.outputs.go == 'pr'
@@ -171,10 +173,10 @@ jobs:
       - name: Install the app's dependencies (for its tests)
         working-directory: desktop
         run: npm ci
+      # No `cache: pip` here (7/7 review): a cache is saved in the action's post step, after the AI's code has run, and a main-scoped job could restore it.
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          cache: pip
       - name: Install the engine's dependencies (for its tests)
         run: pip install -r requirements.txt
       - name: The new test must fail on an assertion without the fix and pass with it
@@ -202,6 +204,7 @@ jobs:
     env:
       REPO: ${{ github.repository }}
       REF: ${{ inputs.ref }}
+      PATCH_SHA: ${{ needs.fix.outputs.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -238,6 +241,8 @@ jobs:
           tell() { env -u GH_TOKEN -u PR_TOKEN node "$FBT/tools/feedback-ai.mjs" report --ref "$REF" "$@"; }
           stop() { tell --status failed --why "$1" || true; echo "::error::$1"; exit 1; }
           [[ "$REF" =~ ^[0-9a-f]{16}$ ]] || stop "not a feedback handle"
+          # The files are the ones `fix` scanned (its output, which no later job can write), not a swapped artifact.
+          [ "$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" = "$PATCH_SHA" ] || stop "the patch is not the one that was scanned"
           # The patch again, as if it were a stranger's: only the allowed folders, no link, no mode change, no rename (check-change.mjs is the same rule the fix job used).
           if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | grep -q -v ' 100644$'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
           git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"
@@ -255,6 +260,9 @@ jobs:
           tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $summary" --why="a person reported it in the app and the owner sent it to the AI" \
             --unblocks="that report, once the owner reviews and merges" --label="Report $REF" --before='the bug is open' --after='fixed by this change' \
             --rate='Real users=🟡 Medium|a reported bug fixed' --rate='Tests & harness=🟡 Medium|a test with the fix' --detail=.fb/body.md > .fb/laid-out.md
+          # The checks that hold secrets (smoke, search personas, page cases) skip a bot's fd-ai/ branch: AI-written code must not meet a secret before a person has read it.
+          # shellcheck disable=SC2016
+          printf '\n> ⏸ **Some checks wait for you.** Read the diff first; then push any commit to this branch (`git commit --allow-empty -m "start checks"`) to start the checks that hold secrets.\n' >> .fb/laid-out.md
           gh label create fd-ai --repo "$REPO" --force --color 5319E7 --description 'A draft fix from the site: Send to AI on a feedback'
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --draft --title "$title" --body-file .fb/laid-out.md --label fd-ai)
           echo "Draft pull request opened: $url"
@@ -285,7 +293,12 @@ jobs:
       # A job that already told the site (a refusal with its reason) makes the site refuse this one, harmlessly.
       - name: Tell the site
         run: |
-          node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "${WHY:-the run broke before it finished, see the run}" || true
+          # `why` comes from the job that ran the AI's code, which can write any output: only the one sentence our own step writes is passed on (7/7 review).
+          case "$WHY" in
+            "the new test does not fail on an assertion without the fix and pass with it") reason="$WHY" ;;
+            *) reason="the run broke before it finished, see the run" ;;
+          esac
+          node tools/feedback-ai.mjs report --ref "$REF" --status failed --why "$reason" || true
 
   # One alert when the broker refused the run (owner, 31 Oct 2026: one alert per run); the note it reads holds the cause, never any report text.
   ai-skipped:
@@ -300,6 +313,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           sparse-checkout: |
             desktop/e2e
             .github/actions

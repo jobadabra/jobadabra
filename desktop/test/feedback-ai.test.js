@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {AUDIENCE, MAX_FILES, MAX_PATCH_BYTES, addedLines, assertionFailed, capVerdict, changeText, closedReport, copied, fetchBrief, gateChange, leaks, newFence, promptFor, proof, redactBrief, report, reportBlock, runTests, siteToken} from '../../tools/feedback-ai.mjs';
+import {AUDIENCE, MAX_FILES, MAX_PATCH_BYTES, addedLines, assertionFailed, capVerdict, changeText, closedReport, copied, fetchBrief, gateChange, leaks, newFence, prText, promptFor, proof, redactBrief, report, reportBlock, runTests, siteToken} from '../../tools/feedback-ai.mjs';
+import {applyEdits} from '../e2e/edit-codex.mjs';
 
 const ENV = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://token.example/req?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'req-token', FEEDBACK_AI_URL: 'https://site.example'};
 const json = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
@@ -256,6 +257,12 @@ test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds n
   assert.doesNotMatch(failed, /contents: write|pull-requests: write|secrets\.|github\.token/);
   assert.match(failed, /WHY: \$\{\{ needs\.prove\.outputs\.why \}\}/);
   assert.doesNotMatch(failed.slice(failed.indexOf('steps:')), /\$\{\{ needs/);
+  // The patch artifact is the one `fix` scanned (its hash is a job output no later job can write); prove saves no cache after the AI's code ran; the failure reason is from a fixed list.
+  assert.match(fix, /sha: \$\{\{ steps\.check\.outputs\.sha \}\}/);
+  assert.match(publish, /PATCH_SHA: \$\{\{ needs\.fix\.outputs\.sha \}\}/);
+  assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the hash is checked before the patch is applied');
+  assert.doesNotMatch(prove, /cache:/);
+  assert.match(failed, /case "\$WHY" in/);
   // closed (pull_request_target): never checks out the pull request's code.
   assert.doesNotMatch(closed, /ref: \$\{\{|head\.sha|secrets\./);
 });
@@ -280,4 +287,35 @@ test('our scripts that hold a token import nothing the AI may edit (src/, tests/
   // check-change.mjs and edit-codex.mjs run from the checkout (desktop/e2e is not editable by the AI) and must not load an editable folder either.
   const editable = /^(?:src|tests|desktop\/(?:renderer|lib|test))\//;
   for (const entry of ['desktop/e2e/check-change.mjs', 'desktop/e2e/edit-codex.mjs']) assert.deepEqual(imports(entry).filter(file => editable.test(file)), [], entry);
+});
+
+test('scenario: a hostile report steers the AI to widen the paths it edits (workflows, tools, a path with "..", a test in a sub-folder): the workflow\'s own --allow rule refuses every one, writes nothing, and still lets the real fix through', () => {
+  const allow = new RegExp(/--allow '([^']+)'/.exec(job('fix'))[1]), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-allow-'));
+  fs.mkdirSync(path.join(dir, 'desktop/lib'), {recursive: true}); fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a - b;\n');
+  const hostile = ['.github/workflows/tests.yml', 'tools/ship.sh', 'CLAUDE.md', 'desktop/package.json', 'desktop/lib/../../tools/x.js', 'desktop/test/sub/x.test.js', 'desktop/e2e/lib/x.mjs', 'tests/conftest.py', 'src/../.github/x.yml', '/etc/cron.d/x'];
+  for (const file of hostile) {
+    const result = applyEdits({edits: [{path: 'desktop/lib/add.js', find: 'a - b', replace: 'a + b'}, {path: file, find: '', replace: 'x\n'}], allow, cwd: dir});
+    assert.equal(result.ok, false, file);
+    assert.match(result.problems.join(), /outside the folders/, file);
+    assert.match(fs.readFileSync(path.join(dir, 'desktop/lib/add.js'), 'utf8'), /a - b/, `all or none: nothing was written (${file})`);
+    assert.equal(fs.existsSync(path.join(dir, file)), false, file);
+  }
+  const good = applyEdits({edits: [{path: 'desktop/lib/add.js', find: 'a - b', replace: 'a + b'}, {path: 'desktop/test/add.test.js', find: '', replace: 'x\n'}, {path: 'tests/test_add.py', find: '', replace: 'x\n'}], allow, cwd: dir});
+  assert.equal(good.ok, true);
+  assert.match(fs.readFileSync(path.join(dir, 'desktop/lib/add.js'), 'utf8'), /a \+ b/);
+});
+
+test('the pull request text may not carry what GitHub acts on (an @mention, an issue number, a link); phone numbers with separators and Windows home folders in any case are leaks too', () => {
+  assert.deepEqual(prText('Root cause: the draft lived in component state. Fix: keep it in the store. Test: type 1200, switch pages.'), []);
+  assert.deepEqual(prText('Uses `@types/node` and src/a@b.js, `@scope/pkg`'), [], 'code spans and paths are not mentions');
+  assert.deepEqual(prText('thanks @someone'), ['an @mention']);
+  assert.deepEqual(prText('Fixes #123'), ['an issue or pull request number']);
+  assert.deepEqual(prText('see https://example.com/page'), ['a link']);
+  assert.deepEqual(prText('see //evil.example.org/x'), ['a link']);
+  assert.deepEqual(prText('a@\u200bb'), [], '"a@b" is no mention');
+  assert.match(leaks('call 415-555-0134 later', brief).join(), /phone/);
+  assert.match(leaks('call (415) 555 0134', brief).join(), /phone/);
+  assert.deepEqual(leaks('the size is 1024 by 768 and the id 20261103', brief), []);
+  assert.match(leaks('path c:/users/ana/jobs', brief).join(), /home-folder/);
+  assert.match(leaks('path C:\\USERS\\ana\\jobs', brief).join(), /home-folder/);
 });

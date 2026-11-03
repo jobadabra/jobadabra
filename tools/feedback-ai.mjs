@@ -89,12 +89,25 @@ export function leaks(text, brief) {
   // Zero-width characters are removed first: "ana@exam\u200bple.com" must read as the address it is (7/7 review).
   const reasons = [], body = String(text || '').replace(/[\u200b-\u200f\u2060\ufeff]/g, '');
   if (/[\w.+%-]+\s*(?:@|\[at\]|\(at\)|\{at\})\s*[\w-]+(?:\s*(?:\.|\[dot\]|\(dot\))\s*[\w-]+)+/i.test(body)) reasons.push('an e-mail address');
-  if (/\+\d[\d\s().-]{7,}\d/.test(body)) reasons.push('a phone number');
-  if (/(?:\/(?:Users|home)\/|[A-Za-z]:\\Users\\)[^\s/\\"'<>|:]+/.test(body)) reasons.push('a home-folder name');
+  // Why (7/7 review, 3 Nov 2026): a phone number is also 3-3-4 digits with separators, and a Windows home folder is any case and either slash.
+  if (/\+\d[\d\s().-]{7,}\d/.test(body) || /(?<!\d)\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)/.test(body)) reasons.push('a phone number');
+  if (/(?:\/(?:Users|home)\/|[A-Za-z]:[\\/]Users[\\/])[^\s/\\"'<>|:]+/i.test(body)) reasons.push('a home-folder name');
   if (copied(body, brief).length) reasons.push('a passage copied from the report or its files');
   // The redactor is the net under the specific checks: it speaks only when none of them did (an e-mail is also something it hides).
   if (!reasons.length && redact(body, {home: '', lineChars: 1e9}).replace(/…/g, '') !== body.replace(/…/g, '')) reasons.push('something the redactor would hide (a token, a secret, a link query)');
   return [...new Set(reasons)];
+}
+
+/**
+ * What the pull request's TEXT (title and body, not the diff) may not carry because GitHub acts on it: an @mention (notifies a person), `#123` or `fixes #n` (links or closes an issue), a link.
+ * -> short reasons, [] = clean. Why (7/7 review, 3 Nov 2026): the text is the AI's, steered by a stranger's report, and the repository is public.
+ */
+export function prText(text) {
+  const body = String(text || '').replace(/[​-‏⁠﻿]/g, ''), reasons = [];
+  if (/(?:^|[^\w`/.@-])@[A-Za-z][\w-]*/.test(body)) reasons.push('an @mention');
+  if (/(?:^|[^\w&])#\d+\b/.test(body)) reasons.push('an issue or pull request number');
+  if (/(?:https?:)?\/\/[^\s/]+\.[a-z]{2,}/i.test(body)) reasons.push('a link');
+  return reasons;
 }
 
 /** The lines a diff adds (what would be pushed), without the file headers. */
@@ -214,8 +227,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     process.exit(result.ok ? 0 : 1);
   } else if (command === 'leaks') {
     const brief = JSON.parse(fs.readFileSync(path.join(out, 'brief.json'), 'utf8'));
-    const text = [fs.readFileSync(flag(args, '--title'), 'utf8'), fs.readFileSync(flag(args, '--body'), 'utf8'), changeText()].join('\n');
-    const reasons = leaks(text, brief);
+    const prWords = [fs.readFileSync(flag(args, '--title'), 'utf8'), fs.readFileSync(flag(args, '--body'), 'utf8')].join('\n');
+    const reasons = [...new Set([...leaks([prWords, changeText()].join('\n'), brief), ...prText(prWords)])];
     console.log(reasons.length ? `leak scan: refused, the pull request text or the change holds ${reasons.join('; ')} (nothing was pushed)` : 'leak scan: clean');
     process.exit(reasons.length ? 1 : 0);
   } else if (command === 'report') {
