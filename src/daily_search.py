@@ -22,7 +22,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
-from .daily_search_scoring import score_jobs
+from .daily_search_scoring import score_jobs, score_waiting_first
 from .daily_search_reporting import finish_search, scheduled_updates
 
 
@@ -49,6 +49,7 @@ def search(args, stores=None):
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
         if args.mode != 'more':
+            score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget)   # the jobs found earlier first, then the search (#3058)
             feed_list = plan_sources(args, stores, db, sources, run)
             start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
             report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)

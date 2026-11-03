@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import tempfile
@@ -26,7 +27,7 @@ class SearchCharacterization(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        self.calls, self.runs = [], []
+        self.calls, self.runs, self.score_calls, self.fail_scores = [], [], [], False
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
         self.failed = self.expire = self.late_jobs = False
         self.stores = memory.open_store()
@@ -136,13 +137,17 @@ class SearchCharacterization(unittest.TestCase):
 
     def score(self, db, candidates, profile, model, maximum, stats, on_scored, only_ids):
         self.event('score')
+        self.score_calls.append(only_ids)
         if self.score_error:
             raise self.score_error
         picked = [j for j in candidates if only_ids is None or j['id'] in only_ids]
+        if self.fail_scores:   # the AI refuses every call (a key answering 401)
+            stats.update(done=0, pending=len(picked), failed=len(picked))
+            return f'Scored 0 of {len(picked)}'
         for job in picked:
             score.save(db, job, model, {'score': 81, 'reason': 'Fixture fit'}, profile)
             on_scored()
-        stats.update(done=len(picked), pending=len(candidates))
+        stats.update(done=len(picked), pending=len(picked))   # as score.run: the batch it took
         return f'Scored {len(picked)}'
 
     def sync(self, *a, **k):
@@ -203,6 +208,104 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual(self.calls.count('score'), 2)
         self.assertEqual(out.count('Scored 1'), 2)
         self.assert_order('descriptions', 'score', 'partial', 'enrich', 'matches', 'digest')
+
+    def waiting_jobs(self, n):
+        """n jobs found by earlier searches and not scored yet (#3058: a tester's refresh scored 3 of 303)."""
+        store.import_watch_report(self.db, {'jobs': [{'company': 'Old', 'id': f'old{i}', 'title': f'Old SRE {i}', 'location': 'Zurich',
+                                                      'url': f'https://example.test/old/{i}', 'description': 'A fictional job.'} for i in range(n)]})
+
+    def test_a_refresh_scores_the_jobs_waiting_before_it_searches_for_new_ones(self):
+        # Design (3 Nov 2026, owner): Find jobs grows the scored list; a waiting job is the cheapest growth (one score, no search), so it goes first.
+        self.waiting_jobs(5)
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            out = self.run_search(limit=100)
+        self.assertEqual(self.calls.count('score'), 2, 'the waiting jobs, then the new job found with the time left')
+        self.assertLess(self.calls.index('score'), self.calls.index('sources'), 'the first score starts before any source is planned or read')
+        self.assertLess(self.calls.index('score'), self.calls.index('gather'))
+        self.assertEqual(len(self.stores.matches.list()), 6, '5 waiting + 1 new, all scored')
+        self.assertNotIn('job(s) waiting, none scored', out)
+
+    def test_a_refresh_with_nothing_waiting_keeps_its_order(self):
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            self.run_search()
+        self.assertEqual(self.calls.count('score'), 1)
+        self.assertLess(self.calls.index('gather'), self.calls.index('score'))
+
+    def test_the_card_gets_one_scored_count_for_the_whole_run(self):
+        # Waiting-first plus the search's own pass: the newest "Scored N of M" line (what the card shows, desktop/renderer/human-log.js) is the sum.
+        self.waiting_jobs(4)
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            out = self.run_search(limit=100)
+        lines = [line for line in out.splitlines() if re.fullmatch(r'Scored \d+ of \d+ job\(s\)', line)]
+        self.assertEqual(lines[-1], 'Scored 5 of 5 job(s)', '4 waiting + 1 new, not the last pass alone (1 of 1)')
+        self.assertEqual(self.runs[0]['score']['done'], 5)
+
+    def test_the_waiting_pass_counts_in_the_runs_scored_total(self):
+        self.waiting_jobs(4)
+        self.jobs = []   # nothing new: the second pass has no job, the run still scored 4
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            self.run_search(limit=100)
+        self.assertEqual(self.runs[0]['score']['done'], 4)
+
+    def test_a_search_that_uses_the_whole_clock_still_leaves_the_waiting_jobs_scored(self):
+        # #3058: 303 waited, the refresh spent its 3 minutes searching and scored the floor of 3 (here 8 wait). gather() here uses up the clock.
+        self.waiting_jobs(8)
+        self.expire = True
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            self.run_search(limit=100)
+        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'every waiting job scored, not the floor of 3')
+
+    def test_after_a_change_of_places_the_waiting_pass_skips_the_jobs_the_cleanup_will_close(self):
+        # Code review of #3058: the cleanup after the crawl closes jobs outside your places; scoring them first spent the clock on them.
+        self.waiting_jobs(6)
+        time_budget.start(180)
+        outside = lambda job: not job['title'].endswith(('0', '1', '2', '3'))   # Old SRE 0..3 are no longer in the places
+        with mock.patch.object(time_budget, 'record'), mock.patch.object(feeds, 'keep_open', side_effect=outside):
+            self.run_search(limit=100)
+        early = {j['title'] for j in store.digest_jobs(self.db, only_new=False) if j['id'] in self.score_calls[0]}
+        self.assertEqual(early, {'Old SRE 4', 'Old SRE 5'})
+
+    def test_the_waiting_pass_takes_half_of_scorings_time_and_the_search_keeps_the_rest(self):
+        # Code review of #3058: 47+ waiting jobs took the whole share at the 3 s pace and the reads started past their cut.
+        self.waiting_jobs(8)
+        time_budget.start(180, now=time_budget.time.monotonic() - 100)
+        time_budget.score_first()   # 40 s of scoring time: 13 jobs at 3 s; its half is 6
+        with mock.patch.object(time_budget, 'record'):
+            self.run_search(limit=100)
+        self.assertEqual(len(self.score_calls[0]), 6)
+        self.assertLess(self.calls.index('score'), self.calls.index('gather'))
+        self.assertEqual(self.calls.count('score'), 2, 'the search\'s own pass scores the rest')
+
+    def test_a_refusing_ai_is_warned_once_for_the_whole_run(self):
+        # Code review of #3058: both passes said "N job(s) not scored" and the second counted the first's failures twice.
+        self.waiting_jobs(3)
+        self.fail_scores = True
+        time_budget.start(180)
+        with mock.patch.object(time_budget, 'record'):
+            out = self.run_search(limit=100)
+        warned = [w for w in self.runs[0]['warnings'] if 'not scored' in w]
+        self.assertEqual(warned, ['4 job(s) not scored: the AI call failed'], '3 waiting + 1 new, said once, the retried jobs not counted twice')
+        self.assertEqual((self.runs[0]['score']['pending'], self.runs[0]['score']['failed']), (4, 4), 'the 3 retried jobs are counted once, in the last pass')
+        self.assertEqual([l for l in out.splitlines() if l.startswith('Scored ')][-1], 'Scored 0 of 4 job(s)')
+
+    def test_the_waiting_passes_numbers_survive_a_failing_search_pass(self):
+        self.waiting_jobs(3)
+        time_budget.start(180)
+        real = self.score
+        def fail_second(db, candidates, profile, model, maximum, stats, on_scored, only_ids):
+            if self.calls.count('score') >= 1:
+                self.event('score')
+                raise RuntimeError('boom')
+            return real(db, candidates, profile, model, maximum, stats, on_scored, only_ids)
+        with mock.patch.object(time_budget, 'record'), mock.patch.object(score, 'run', side_effect=fail_second):
+            self.run_search(limit=100)
+        self.assertEqual(self.runs[0]['score']['done'], 3)
+        self.assertIn('scoring skipped: RuntimeError', self.runs[0]['warnings'])
 
     def test_no_sources_still_reports_and_saves_empty_search(self):
         self.sources = []
