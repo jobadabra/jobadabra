@@ -19,6 +19,44 @@ export function inboundRows(person, today = new Date()) {
   ];
 }
 
+// The app's CV read (desktop/lib/cv-queue.js factProposals) is the one call whose first text block opens with the fact list.
+const isCvRead = body => { const blocks = body?.messages?.[0]?.content; const last = Array.isArray(blocks) ? blocks[blocks.length - 1] : null; return typeof last?.text === 'string' && last.text.startsWith('<facts>'); };
+
+/** The language line a CV states: "Languages: a, b" on one line, or the lines under a "Languages" heading up to the next blank line. -> '' when it has none. */
+export function languageLine(lines) {
+  const inline = lines.find(line => /^Languages:\s*\S/.test(line));
+  if (inline) return inline.replace(/^Languages:\s*/, '').trim();
+  const at = lines.indexOf('Languages');
+  if (at < 0) return '';
+  const under = [];
+  for (const line of lines.slice(at + 1)) { if (!line.trim()) break; under.push(line.trim()); }
+  return under.join(', ');
+}
+
+/** What a model that read this persona's CV would answer to the app's CV read, in the fixed answer shape: its language line, as the CV states it. */
+export function cvReadAnswer(person) {
+  const value = languageLine(person.cv.lines);
+  return JSON.stringify({facts: value ? [{id: 'languages', value, how: 'stated', reason: 'The CV lists them under its language line.'}] : []});
+}
+
+// Why (3 Nov 2026, AI user agents 8/12, owner: "Answer the CV read in the agent suite"): the agent suite's app AI refuses every call (lib/context.mjs, offline AI), so What we learned never held a fact from the CV and two of the four tester bugs
+// (a composite language line, a CV heading saved as an answer) could not appear. This answers only the CV read, from the persona's own CV; every other call keeps the suite's answer. Agent suite only, never the e2e answers table.
+/** Install the CV-read answer on the suite's AI stand-in, in front of the answer it already has. */
+export function answerCvRead(proxy, person) {
+  const previous = proxy.canned();
+  const answer = cvReadAnswer(person);
+  let other = 0;
+  proxy.setCanned(async body => {
+    if (isCvRead(body)) { console.log('  AI stand-in: the app asked for the CV read; answered from the persona\'s CV'); return answer; }
+    if (other++ < 5) {   // so a run says which calls reached the stand-in and whether the read was among them (replay 41664479049 could not tell); a document call's first block is only the PDF, so it is named by its system prompt and its last text
+      const blocks = body?.messages?.[0]?.content, lastText = Array.isArray(blocks) ? blocks.filter(block => typeof block?.text === 'string').pop()?.text : blocks;
+      const said = value => (typeof value === 'string' ? value : JSON.stringify(value ?? '')).replace(/\s+/g, ' ').slice(0, 80);
+      console.log(`  AI stand-in: another call (${other}), left to the suite's answer; system "${said(body?.system)}", text "${said(lastText)}"`);
+    }
+    return previous ? previous(body) : null;
+  });
+}
+
 /**
  * Put the plan's data in the app that `ensureSetUp` built. A plan with no `data` changes nothing. -> a line for the log, or '' when nothing was seeded.
  * `ctx.profile` is the app's data folder, `ctx.data(store, command, args)` the store the app uses. The CV answers are read by the app on the next open of Profile, so the caller reloads the window after.
@@ -31,7 +69,8 @@ export async function seedPlanData(ctx, planId, seed) {
   if (data.cv) {
     fs.writeFileSync(path.join(ctx.profile, 'cv.pdf'), cvPdf(person.cv.lines));
     fs.rmSync(path.join(ctx.profile, 'cv', 'fact-proposals.json'), {force: true});   // the read of the old CV; the app also keys it by the CV's hash, so this only saves a stale file
-    done.push(`CV of ${person.name} (${person.cv.shape})`);
+    answerCvRead(ctx.proxy, person);
+    done.push(`CV of ${person.name} (${person.cv.shape}, its read answered)`);
   }
   if (data.inbound) {
     for (const row of inboundRows(person).slice(0, data.inbound)) await addApplication(ctx, row);
