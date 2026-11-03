@@ -1,16 +1,17 @@
 // What the desktop AI changed in this app: the one writer of `settings.desktopAiChanges` (a list the person reads and undoes from, 4/6) and the write-rate cap.
 // Spec: docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md ("Trust" 2, 3 and 5). Invariants: every accepted write is recorded here before its tool answers; an entry never holds a secret (values are
-// cut and the caller passes answers only); the list is capped; an entry is never removed, only marked undone, so the person can see what happened.
+// cut and the caller passes answers only); the list is capped (the oldest of 200 leave); an entry is otherwise never removed, only marked undone, so the person can see what happened.
 import crypto from 'node:crypto';
 
 const SETTING = 'desktopAiChanges';
 export const MAX_ENTRIES = 200, VALUE_CHARS = 500, WRITES = 60, WINDOW_MS = 10 * 60 * 1000;
 const all = storage => (Array.isArray(storage.settings()[SETTING]) ? storage.settings()[SETTING] : []);
+const tooLong = value => String(value ?? '').length > VALUE_CHARS;   // Undo compares the whole text, which a cut copy cannot do
 const cut = value => String(value ?? '').slice(0, VALUE_CHARS);
 
 /** Records an accepted change. entry: {tool, target (the queue key), question, before, after, undo ('' = Undo can restore it, else the plain reason it cannot)}. -> the stored entry {id, at, client, …}. */
 export function record(storage, entry, now = new Date()) {
-  const stored = {id: crypto.randomBytes(6).toString('hex'), at: now.toISOString(), client: 'Claude Desktop', tool: entry.tool, target: String(entry.target || ''), question: cut(entry.question), before: cut(entry.before), after: cut(entry.after), undo: entry.undo || ''};
+  const stored = {id: crypto.randomBytes(6).toString('hex'), at: now.toISOString(), client: 'Claude Desktop', tool: entry.tool, target: String(entry.target || ''), question: cut(entry.question), before: cut(entry.before), after: cut(entry.after), undo: entry.undo || (tooLong(entry.before) || tooLong(entry.after) ? 'This answer is too long to undo here; change it in Jobadabra.' : '')};
   storage.saveSettings({[SETTING]: [stored, ...all(storage)].slice(0, MAX_ENTRIES)});
   return stored;
 }

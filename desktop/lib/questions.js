@@ -35,7 +35,7 @@ export function parseLine(block) {
 const label = text => splitMark(text).text.replace(ASKED, '').split(/:\s| — /)[0].replace(/❓/g, '');
 // format: the field's {kind, options} (a text question carries no mark).
 export const questionLine = (question, company, format = null) => withMark(`${question}: ❓${company ? ` (asked by ${company})` : ''}`, format);
-export const answeredLine = (text, answer) => text.replace(MARK, answer);
+export const answeredLine = (text, answer) => text.replace(MARK, () => answer);   // a function: a string replacement reads "$&" and "$1" in the answer as patterns (3 Nov 2026, review of 3/6)
 
 // A line is a question only when ❓ stands where its answer goes ("Notice period: ❓", "Visa: ❓ (asked by Acme)");
 // a sentence that merely mentions ❓ ("Fields marked ❓ to confirm are guesses") is not.
@@ -196,10 +196,12 @@ export async function rawOf(storage, questionKey, fetcher) {
  * Puts a row or line back to `was`, but only while it still holds `now` (what an AI client wrote): a person's later edit is never overwritten (spec "Trust" 3).
  * -> {ok: true} | {ok: false, error}.
  */
-export async function restore(storage, questionKey, {was, now}, fetcher) {
+export async function restore(storage, questionKey, {was, now, question = ''}, fetcher) {
   const page = answersPage(storage, fetcher), found = await rowOf(page, questionKey);
   if (!found) return {ok: false, error: 'That question is gone from your answers; nothing was changed'};
   if ((found.cell ?? found.line) !== String(now ?? '').trim()) return {ok: false, error: 'You changed this since; nothing was undone'};
+  const label = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();   // the question must still be the one the change was about: after a line shift another row can hold the same answer text
+  if (question && !label(found.row ? found.row.cells[0] : found.block.text).includes(label(question).slice(0, 80))) return {ok: false, error: 'That row is a different question now; nothing was undone'};
   if (found.row) await page.setCell(found.row, 1, was); else await page.setText(found.block, was);
   return {ok: true};
 }

@@ -47,7 +47,7 @@ export const TOOL_NAMES = TOOLS.map(tool => tool.name);
 
 /** A tool's result as MCP content text: JSON data goes through the one feedback redactor and cap (pageText), text is redacted again (cheap, and a source must not be trusted to have done it). */
 export function present(name, result, {home} = {}) {
-  if (result.error) return {text: redact(String(result.error), {home}), isError: true};   // a refusal can quote a question's options or the store's words: redacted like any result
+  if (result.error) return {text: `${UNTRUSTED}\n${redact(String(result.error), {home})}`, isError: true};   // a refusal can quote a question's options or the store's words: redacted like any result
   if (result.text !== undefined) return {text: `${UNTRUSTED}\n${redact(String(result.text), {home, lineChars: result.lineChars})}`, isError: false};
   const {text} = pageText({screen: name, source: 'desktop-ai', data: {notice: UNTRUSTED, result: result.data}}, {runs: [], home});
   return {text, isError: false};
