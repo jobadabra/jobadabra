@@ -61,17 +61,44 @@ export function workingChannel(state) {
  */
 export function offerCard(state) {
   if (!state?.reached || workingChannel(state)) return null;   // `reached`: the website answered; offline we know nothing about the confirmation and draw nothing on a guess
-  if (!state.email) return {state: 'none', title: 'Get a message when something needs you', detail: 'An application that waits for you, a good match, a reply: by e-mail or Telegram.', resend: false};
-  if (state.serviceOff) return {state: 'unsubscribed', title: 'Your e-mails are stopped', detail: `You stopped them with the link in one of our e-mails. Turn them on again with "Email settings" at the bottom of any of them.`, resend: false};
-  if (state.unconfirmedStopped) return {state: 'stopped', title: 'Mail stopped: confirm your e-mail', detail: `The address ${state.email} was not confirmed in 14 days. Press the link in the e-mail we send now to start it again.`, resend: true};
-  return {state: 'pending', title: 'Check your inbox', detail: `Press the link in our e-mail to ${state.email}. Nothing is sent until you press it.`, resend: true};
+  const lost = state.automation ? ' Full automation keeps running, but nothing can tell you when an application needs you.' : '';   // 2/2: the card says it too (owner, 2 Nov 2026: stays on and says so)
+  if (!state.email) return {state: 'none', title: 'Get a message when something needs you', detail: `An application that waits for you, a good match, a reply: by e-mail or Telegram.${lost}`, resend: false};
+  if (state.serviceOff) return {state: 'unsubscribed', title: 'Your e-mails are stopped', detail: `You stopped them with the link in one of our e-mails. Turn them on again with "Email settings" at the bottom of any of them.${lost}`, resend: false};
+  if (state.unconfirmedStopped) return {state: 'stopped', title: 'Mail stopped: confirm your e-mail', detail: `The address ${state.email} was not confirmed in 14 days. Press the link in the e-mail we send now to start it again.${lost}`, resend: true};
+  return {state: 'pending', title: 'Check your inbox', detail: `Press the link in our e-mail to ${state.email}. Nothing is sent until you press it.${lost}`, resend: true};
 }
 
-/** The pop-up for an address that waits for its link: `moment` 'day3' | 'day10' | 'stopped' (lib/notify-moments.js), with the real day count and address. */
-export function momentWords({moment, days = 0, email = ''}) {
-  if (moment === 'stopped') return {title: 'Mail stopped: confirm your e-mail', body: `${email} was not confirmed in 14 days, so we stopped mailing it. Send the link again to start.`, go: 'Send the link again', later: 'Not now'};
-  if (moment === 'day10') return {title: 'Your e-mail is still not confirmed', body: `${email} has waited ${days} days. On day 14 we stop mailing it. Press the link, or send it again.`, go: 'Send the link again', later: 'Not now'};
-  return {title: 'Press the link in our e-mail', body: `We sent a link to ${email} ${days} days ago. Nothing is sent to you until you press it.`, go: 'Send the link again', later: 'Not now'};
+// Why a person with no working channel can not be reached: the card's state word (the same four as offerCard).
+const stateOf = state => (!state.email ? 'none' : state.serviceOff ? 'unsubscribed' : state.unconfirmedStopped ? 'stopped' : 'pending');
+const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+const jobLine = ({title = '', company = ''}) => [title, company].filter(Boolean).join(' at ');
+const clock = iso => new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+// What the pop-up's control is, from the card's state: the e-mail field (no address), send the link again (waiting or stopped), or the way to Notifications (the person unsubscribed).
+const ASK = {none: 'email', pending: 'resend', stopped: 'resend', unsubscribed: 'notifications'};
+const GO = {email: 'Send me the link', resend: 'Send the link again', notifications: 'Open Notifications'};
+const WAYS = 'by e-mail or Telegram';
+
+/**
+ * The pop-ups (lib/notify-moments.js moments, renderer/notify-detect.js claims) as words: {title, body, go, later, ask}. `ask` is the control: 'email' (a field for the address), 'resend' or 'notifications' (from
+ * `state` = notifyState's answer). Spec docs/superpowers/specs/2026-11-02-notify-moments-design.md: every line is a delivery fact of today (matches: an e-mail per run or the Telegram digest; interview invites
+ * at once, other Gmail results in the daily digest; a recruiter reminder on Telegram at once and by e-mail in the digest) and none says "reply" for Gmail (the check cannot tell). Guard: test/notify-moment-words.test.js.
+ */
+export function momentWords(moment, state = null) {
+  const ask = ASK[stateOf(state || {})];
+  const base = {later: 'Not now', ask, go: GO[ask]};
+  const {moment: name, days = 0, email = ''} = moment;
+  if (name === 'stopped') return {...base, title: 'Mail stopped: confirm your e-mail', body: `${email} was not confirmed in 14 days, so we stopped mailing it. Send the link again to start.`};
+  if (name === 'day10') return {...base, title: 'Your e-mail is still not confirmed', body: `${email} has waited ${days} days. On day 14 we stop mailing it. Press the link, or send it again.`};
+  if (name === 'day3') return {...base, title: 'Press the link in our e-mail', body: `We sent a link to ${email} ${days} days ago. Nothing is sent to you until you press it.`};
+  if (name === 'waited') {
+    const one = moment.count === 1;
+    return {...base, title: one ? `An application waited ${plural(moment.hours, 'hour')} for you` : `${plural(moment.count, 'application')} waited up to ${plural(moment.hours, 'hour')} for you`,
+      body: `${one ? jobLine(moment) || 'An application' : `${jobLine(moment) || 'One of them'} and ${moment.count - 1} more`} needed you while nobody could tell you. Get a message ${WAYS} the next time.`};
+  }
+  if (name === 'match') return {...base, title: `A ${moment.fit}% match arrived`, body: `Your check at ${clock(moment.endedAt)} found ${jobLine(moment) || 'a job'} while you were away. Get the matches of each check ${WAYS}.`};
+  if (name === 'reply') return {...base, title: `Gmail found ${plural(moment.count, 'application update')}`, body: `Your Gmail check found ${plural(moment.count, 'update')} while you were away. An interview invite reaches you at once by message; other updates come in your daily digest.`};
+  if (name === 'recruiter') return {...base, title: 'A recruiter is waiting for your answer', body: `${moment.company ? `${moment.company} is` : 'Someone is'} waiting. Get a reminder by message: on Telegram at once, by e-mail in your digest.`};
+  return {...base, title: 'Nothing can reach you now', body: 'Full automation is on and keeps running. But when an application needs you, we have no way to tell you. Add an e-mail address or connect Telegram.'};   // lost
 }
 
 /**

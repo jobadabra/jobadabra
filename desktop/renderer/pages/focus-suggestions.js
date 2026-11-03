@@ -25,6 +25,7 @@ import {wand} from '../magic.js';
 import {bindHostedOffer, hostedEntries, turnedOnText} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
 import {notifyEntries, saveChoice} from '../notify-suggestion.js';
+import {recruiterWaiting} from '../notify-detect.js';
 import {setNotifyActions, setNotifyState} from './notify-commands.js';
 import {linkedinEntries} from '../linkedin-words.js';
 import {gmailEntries} from '../gmail-offer-words.js';
@@ -200,6 +201,8 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
+  const waiting = refreshHosted && recruiterWaiting(items);   // a fresh Focus load only; pages/notify-moment.js offers the recruiter pop-up (an event: no import of a page, no cycle)
+  if (waiting) window.dispatchEvent(new CustomEvent('focus-reply-waiting', {detail: waiting}));
   if (refreshHosted) { loadHostedOffer(); loadNotifyOffer(); refreshLinkedin().then(redraw).catch(() => {}); refreshGmail().catch(() => {}); }
   if (!bank) loadBank();
   if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)

@@ -9,11 +9,12 @@ import {log as appLog} from './log.js';
 import {watchWindow} from './window-log.js';
 import {captureQuery} from './e2e-hidden.js';
 import {guardUnsaved} from './unsaved-guard.js';
+import {createWindowSeen} from './window-seen.js';
 
 // The narrowest window: about half of a 14-inch MacBook's screen (1352–1512 px), so Jobadabra and Chrome fit side by side (owner, 9 Oct 2026).
 export const MIN_WIDTH = 640;
 export function createMainWindow(ctx) {
-  const {BrowserWindow, DEMO, HIDDEN, app, dialog, here, nativeTheme, shell, getWindow, setWindow, getZoom = () => null} = ctx;
+  const {BrowserWindow, DEMO, HIDDEN, app, dialog, here, nativeTheme, shell, getWindow, setWindow, getZoom = () => null, getStorage = () => null} = ctx;
   const win = {get window() { return getWindow(); }, set window(value) { setWindow(value); }};   // main.js owns the window: read and set through it
   // Notion inside the app: its own window (Notion refuses to be shown in an iframe). The session is kept
   // (partition persist:notion), so the user signs in to Notion once; links to other sites open in the browser.
@@ -65,6 +66,11 @@ export function createMainWindow(ctx) {
     win.window.webContents.on('did-finish-load', () => getZoom()?.apply());   // the saved size (lib/zoom-handlers.js), after every load and ⌘R
     const opened = win.window;
     opened.on('closed', () => { appLog('window', 'main: closed'); if (win.window === opened) win.window = null; });
+    // Why (2 Nov 2026, owner): a pop-up says "while you were away" only for what ended while the person was out of the app: stamp leaving and coming back (lib/window-seen.js).
+    let seen = null;   // one stamper per window: it keeps the once-a-minute gap
+    const stamp = kind => { if (DEMO) return; const storage = getStorage(); if (!storage) return; seen ||= createWindowSeen(storage); seen[kind](); };
+    for (const name of ['blur', 'hide', 'minimize', 'close']) opened.on(name, () => stamp('left'));
+    for (const name of ['focus', 'show', 'restore']) opened.on(name, () => stamp('back'));
     // Smoke test of the in-app terminal (JOBADABRA_PTY_SMOKE=<file>): a real pseudo-terminal runs a shell command;
     // its output (or the error) goes to the file. The Windows build checks it in the installed app.
     if (process.env.JOBADABRA_PTY_SMOKE) {

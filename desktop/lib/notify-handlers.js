@@ -3,6 +3,9 @@
 import * as channel from './notify-channel.js';
 import {followNotify} from './hosted-email.js';
 import {createNotifyMoments} from './notify-moments.js';
+import {waitingMessageFor} from './waiting-message.js';
+
+const MOMENTS = ['day3', 'day10', 'stopped', 'waited', 'lost', 'match', 'reply', 'recruiter'];
 
 export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   const moments = createNotifyMoments(storage);
@@ -10,9 +13,14 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, marketing: true, cadence: 'daily', reached: true};
     return channel.state(storage);
   });
-  // The pop-up for an address that waits for its link (day 3, day 10, the stop): the next one not shown yet, or null. Demo mode shows none.
-  ipcMain.handle('notifyMoment', async () => (DEMO ? null : moments.next(await channel.state(storage).catch(() => null))));
-  ipcMain.handle('notifyMomentShown', async (_, moment) => { if (!DEMO && ['day3', 'day10', 'stopped'].includes(moment)) moments.shown(moment); });
+  // The pop-ups (lib/notify-moments.js): `moment` is the next one the main process knows (an application that waited, an address reminder, Full automation with nobody to tell) or null; `seenAt`/`backAt`
+  // (lib/window-seen.js) and `done` are what the window needs to judge the moments it detects itself (a match or Gmail update while the person was away, a recruiter waiting). Demo mode shows none.
+  ipcMain.handle('notifyMoment', async () => {
+    if (DEMO) return null;
+    const state = await channel.state(storage).catch(() => null), settings = storage.settings();
+    return {allowed: moments.allowed(state), moment: moments.next(state, Date.now(), {waited: waitingMessageFor(storage).waitedFor()}), seenAt: settings.windowSeenAt || '', backAt: settings.windowBackAt || '', done: moments.done(), state};
+  });
+  ipcMain.handle('notifyMomentShown', async (_, moment) => { if (!DEMO && MOMENTS.includes(moment)) moments.shown(moment); });
   // The card's Resend: the confirm mail again (jobadabra-web #333). Demo mode never reaches our site.
   ipcMain.handle('notifyResend', async () => {
     if (DEMO) return {ok: true};

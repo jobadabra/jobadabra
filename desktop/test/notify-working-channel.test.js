@@ -57,7 +57,7 @@ test('every card state says what is true: nothing is sent until the link is pres
 
 test('the reminder pop-ups say the real day count and address, and day 14 is when the site stops', async () => {
   const {momentWords} = await import('../renderer/notify-words.js');
-  assert.match(momentWords({moment: 'day3', days: 3, email: 'me@example.com'}).body, /me@example\.com 3 days ago/);
+  assert.match(momentWords({moment: 'day3', days: 3, email: 'me@example.com'}, {reached: true, email: 'me@example.com'}).body, /me@example\.com 3 days ago/);
   assert.match(momentWords({moment: 'day10', days: 11, email: 'me@example.com'}).body, /waited 11 days.*day 14/);
   assert.match(momentWords({moment: 'stopped', days: 14, email: 'me@example.com'}).title, /Mail stopped/);
   for (const moment of ['day3', 'day10', 'stopped']) assert.doesNotMatch(JSON.stringify(momentWords({moment, days: 5, email: 'a@b.co'})), /interview/i, 'only what is sent today');
