@@ -1,6 +1,7 @@
 // The numbers of the self-healing loop, for the owner's page /self-heal (site/src/selfheal.js): every issue the loop filed, by the detector that found it and
 // how it ended (real and fixed, real and queued, false positive, duplicate, test or harness, unclear), the fixer's pull requests, the verdict pass, what the
 // AI cost, the recall of the planted bugs, and the real bugs worth knowing. Pure: the CLI (selfheal-stats.mjs) fetches, this computes. 4 Oct 2026.
+// Job: report health
 import {afterEpoch, STATS_SINCE} from './stats-epoch.mjs';
 import {resolutionCounts, resolutionOf} from './resolution.mjs';
 export const SCHEMA = 1;
@@ -8,7 +9,7 @@ export const CATEGORIES = ['fixed', 'queued', 'falsePositive', 'duplicate', 'sta
 // The resolution label an issue was closed with (lib/resolution.mjs) is the loop's own word for why: it is read before any guess from the comments.
 const BY_RESOLUTION = {fixed: 'fixed', 'not-seen': 'unclear', 'fp:harness': 'harness', 'fp:detector': 'falsePositive', 'fp:probe-race': 'falsePositive', 'fp:unknown': 'falsePositive', 'by-design': 'falsePositive', 'stale-sighting': 'stale', duplicate: 'duplicate'};
 export const DETECTORS = {'ai-review': 'AI screenshot review', 'suite-failure': 'Failed test steps', 'interaction-probe': 'Interaction probe',
-  'layout-check': 'Layout and DOM checks', 'code-review': 'AI code review', explorer: 'AI explorer'};
+  'layout-check': 'Layout and DOM checks', 'code-review': 'AI code review', explorer: 'AI explorer', 'ai-user-agent': 'AI user agent'};
 
 const names = issue => (issue.labels || []).map(label => label.name || label);
 const said = issue => (issue.comments || []).map(comment => comment.body || '').join('\n');

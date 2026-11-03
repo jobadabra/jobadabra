@@ -1,13 +1,15 @@
 // Self-healing triage, part 2: the text of an issue (body, evidence, comments, labels), reading a finding back out of an issue body, and similar().
 // Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
+// Job: report health
 import {replayBlock, replayCommand, replayComment} from './replay.mjs';
 import {CONFIRMED, NOT_SEEN} from './triage-findings.mjs';
+import {agentLabels} from './agent-notes.mjs';
 
 // A suite that failed because the AI had no credit says nothing about the product. A suite that tests the spend-limit message on purpose is not read from its logs.
 export const NO_CREDIT = /credit balance is too low|spend limit is reached|AI limit reached|usage limits?\b/i;
 export const LIMIT_TESTED = ['activityfailures'];
 
-const SOURCE_WORDS = {'layout-check': 'the layout check', 'suite-failure': 'a run of the suite (a step failed)', 'ai-review': 'the AI screenshot review', 'explorer': 'the AI explorer (an AI found it, a script proved it again without AI)', 'interaction-probe': 'the interaction probe (it pressed the control and recorded what happened)'};
+const SOURCE_WORDS = {'layout-check': 'the layout check', 'suite-failure': 'a run of the suite (a step failed)', 'ai-review': 'the AI screenshot review', 'explorer': 'the AI explorer (an AI found it, a script proved it again without AI)', 'ai-user-agent': 'the AI user agent (a person-like session that argued why it is a bug; a second call judged the argument)', 'interaction-probe': 'the interaction probe (it pressed the control and recorded what happened)'};
 const sourceWords = finding => (finding.source === 'suite-failure' ? `a run of the ${finding.view} suite (a step of the ${finding.view} suite failed)` : SOURCE_WORDS[finding.source] || SOURCE_WORDS['ai-review']);
 
 // The app's own words for its state when the picture was taken (ui-<view>.json), as table rows; empty ones are left out.
@@ -47,6 +49,7 @@ export function issueBody(finding, runUrl, evidence = {}) {
   if (evidence.build) out.push(`> 🏷️ Build tested: ${evidence.build}`);
   for (const line of [evidence.context, evidence.stepAge]) if (line) out.push(`> ${line}`);
   out.push(`> 🔗 First seen: ${runUrl}`, '', '### What was found', formatDetail(finding));
+  out.push(...agentSections(finding));
   if (finding.impact) out.push('', '### Why it matters', finding.impact);
   if (finding.workaround) out.push('', '### What the person has to do to get past it', finding.workaround);
   if (finding.suggestion) out.push('', '### Suggested', finding.suggestion);
@@ -76,7 +79,16 @@ export function issueBody(finding, runUrl, evidence = {}) {
 
 // Labels so the issue list can be filtered by severity, kind, view, suite and where the finding came from.
 export const labelsFor = (finding, suite = '') => [`severity:${finding.severity}`, `kind:${finding.kind}`, `view:${finding.view}`.slice(0, 50), ...(suite ? [`suite:${suite}`.slice(0, 50)] : []),
-  `source:${finding.source}`];
+  `source:${finding.source}`, ...(finding.agent ? agentLabels(finding.agent) : [])];
+
+/** The sections only an AI user agent's issue has: what it expected (the knowledge entry or UX principle its argument rests on, lib/agent-notes.mjs) and who found it. Empty for every other detector. */
+export const agentSections = finding => [...(finding.expected ? ['', '### What it expected', finding.expected] : []), ...(finding.agent ? ['', '### Who found it', agentBlock(finding.agent)] : [])];
+
+/** The "Who found it" paragraph of an AI user agent issue: the persona and seed to replay it, the second opinion with its reason, and whether a replay without AI held. */
+export function agentBlock(agent) {
+  const replay = agent.persona ? `persona \`${agent.persona}\`, seed \`${agent.seed}\`${agent.snapshot ? `, snapshot \`${agent.snapshot}\`` : ''}` : 'a session of the AI user agent';
+  return `A session of the AI user agent: ${replay}. Second opinion: **${agent.judge || 'unknown'}**${agent.judgeReason ? ` (${agent.judgeReason})` : ''}. ${agent.proved ? 'Replayed without AI: it held.' : 'Not replayed without AI.'}`;
+}
 
 const buildLine = build => (build ? `\n\nBuild tested: ${build}` : '');
 export const seenAgainComment = (runUrl, screenshot = '', build = '') => `Seen again in run ${runUrl}${buildLine(build)}${screenshot ? `\n\n![the page in this run](${screenshot})` : ''}`;

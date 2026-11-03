@@ -139,7 +139,7 @@ const lastBuild = issue => [issue.body, ...(issue.comments || []).filter(comment
 const lastSeen = issue => [issue.createdAt, ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => comment.createdAt)].filter(Boolean).sort().at(-1) || '';
 // Each detector's record over the last 30 days, from the issues themselves: how many it filed, how many were false positives (wontfix-auto), how many were real
 // (confirmed, or closed as completed), how many are still open. With the recall plants (recall.json), this is how "better" is measured, not guessed.
-const SOURCE_NAMES = {'ai-review': 'AI screenshot review', 'interaction-probe': 'Interaction probe', 'layout-check': 'Layout and DOM checks', 'suite-failure': 'Failed test steps', 'code-review': 'AI code review', explorer: 'AI explorer'};
+const SOURCE_NAMES = {'ai-review': 'AI screenshot review', 'interaction-probe': 'Interaction probe', 'layout-check': 'Layout and DOM checks', 'suite-failure': 'Failed test steps', 'code-review': 'AI code review', explorer: 'AI explorer', 'ai-user-agent': 'AI user agent'};
 export function scorecard(issues, now = Date.now(), days = 30) {
   const rows = {};
   for (const issue of issues || []) {
