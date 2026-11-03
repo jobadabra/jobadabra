@@ -1,6 +1,7 @@
 // The rules of the CI refill (.github/workflows/replay-refill.yml; owner, 15 Oct 2026: "a separate CI workflow only for that, with a separate Anthropic API Key"): which pinned rows
 // to refill, what it may cost, and which PRs may start it. Pure parts; guard: e2e/test/refill.test.mjs. Since 3 Nov 2026 (owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker") the asks go
 // through the AI broker relay (lib/broker-relay.mjs, the scheduled lane behind the 70% reserve), no key at all; the dollar figures below are the API-equivalent estimate, no longer money. Fake applicant only, a replay of the network record (no site visit), never Submit.
+// Job: serve stored answers
 import {askChanged, keptOutcome, outdated} from '../replay-gate.mjs';
 
 export const RELAY_KEY = 'codex-relay-local';   // the app's API engine wants a key string; the proxy answers through the AI broker and never sends it anywhere (Why, 3 Nov 2026, owner: "We should not use API Keys at all anymore")

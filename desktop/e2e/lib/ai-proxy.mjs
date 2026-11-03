@@ -141,7 +141,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
       catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
       if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } }
-      else { try { countError(answered.status, answered.body.toString('utf8')); } catch { /* counting never breaks the call */ } }   // a broker "no" is counted like an API refusal: the refill's out-of-credits check reads it (lib/refill.mjs)
+      else { try { countError(answered.status, answered.body.toString('utf8')); } catch (error) { console.error(`ai-proxy: could not count the broker's refusal (${answered.status}): ${error.message}`); } }   // Why (3 Nov 2026): a broker "no" is counted like an API refusal, the refill's out-of-credits check reads it (lib/refill.mjs); counting never breaks the call
       if (answered.status === 200) keepCandidateBody(stored, answered.body);
       res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }

@@ -3,6 +3,7 @@
 //   node fill-memo.mjs <records dir> "<row>" [--out <dir>]      (npm run fill-memo -- <records dir> "<row>"; publish after: node records-publish.mjs <records dir>)
 // Cost: the plan path, about $0.06 a row asked, once per changed ask; never an API key. CI: only the refill workflow (.github/workflows/replay-refill.yml, JP_REFILL_CI=1), whose asks go through the AI broker
 // (lib/broker-relay.mjs, no key; owner, 3 Nov 2026: "We should not use API Keys at all anymore"). Old answers are never changed: a lost or changed old key fails the row. Guard: e2e/test/fill-memo.test.mjs, refill.test.mjs.
+// Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
