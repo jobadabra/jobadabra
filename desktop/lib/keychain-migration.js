@@ -57,6 +57,9 @@ export function readPlan(file, newItem) {
   return sealed.length ? {state: 'not-migrated', all, sealed} : {state: 'fresh', all};
 }
 
+/** The app name whose "<name> Safe Storage" item sealed this folder's secrets.json: the new name once it was moved (or started fresh on macOS), else the legacy one. The one rule for a twin's clone and the twin's token reader. */
+export const sealingName = (folder, {legacy, current}) => (readPlan(path.join(folder, 'secrets.json'), itemOf(current)).state === 'migrated' ? current : legacy);
+
 /** The app's name for the Keychain item is fixed by the first seal of the process, so seal once now. No keychain here (CI): nothing to keep. */
 export function lockName(safeStorage) {
   try { if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString('keychain-name'); } catch { /* no keychain here */ }
