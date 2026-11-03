@@ -20,7 +20,7 @@ const run = (command, args, input) => new Promise(resolve => {
 });
 
 /** The OS secret store for this platform: {get, set, clear} (all async). `exec` and `dir` are seams for tests. Windows keeps a DPAPI blob (only this Windows user can open it) in the bridge's own folder. */
-function secretStore({platform = process.platform, exec = run, dir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Jobadabra', 'desktop-ai-bridge')} = {}) {
+function secretStore({platform = process.platform, exec = run, dir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), ITEM)} = {}) {
   if (platform === 'darwin') {
     return {
       get: async () => { const done = await exec('/usr/bin/security', ['find-generic-password', '-a', 'bridge', '-s', ITEM, '-w']); return done.ok ? done.out : ''; },

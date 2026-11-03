@@ -47,7 +47,7 @@ test('pairing: a code gives a token and the tool names once; the same code, a wr
   assert.equal((await call('/desktop-ai/v1/pair', {body: {code}})).status, 401, 'the same code twice');
   assert.equal((await call('/desktop-ai/v1/pair', {body: {code: 'nope'}})).status, 401);
   assert.equal((await call('/desktop-ai/v1/pair', {body: 'not json'})).status, 401);
-  const old = startPairing(storage, Date.now() - 11 * 60 * 1000);
+  const old = startPairing(storage, 1000);
   assert.equal((await call('/desktop-ai/v1/pair', {body: {code: old.code}})).status, 401, 'over 10 minutes');
 });
 
