@@ -24,11 +24,11 @@ const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infin
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
 const REPO = process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
 // A claude-* model is asked through the AI broker (the model id picks its tier: haiku = small), in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}. usd is 0: the Codex plan, no per-call money.
-// Why (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this was the Anthropic API on E2E_ANTHROPIC_KEY; the table's model name is the tier asked, the broker says which engine answered.
+// Why (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this was the Anthropic API on E2E_ANTHROPIC_KEY; the table's model name is the tier asked (the broker's engine behind it is not shown).
 async function askClaude(request, {model}) {
   const answer = await askBroker({...request, model});
   if (!answer.ok) return {ok: false, status: answer.status, detail: answer.detail};
-  return {ok: true, message: {...answer.message, content: (answer.message.content || []).filter(block => block.type === 'text')}, usd: 0, engine: answer.engine || ''};
+  return {ok: true, message: {...answer.message, content: (answer.message.content || []).filter(block => block.type === 'text')}, usd: 0};
 }
 const ask = (request, {model}) => (model.startsWith('claude-') ? askClaude(request, {model}) : askFree(request, {model}));
 const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
@@ -88,6 +88,8 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const [name, effort = ''] = model.startsWith('claude-') ? model.replace('+checklist', '').split(':') : [model];
     const answer = await ask(checklist ? checklistRequest({view: item.view, pngBase64, lessons: extra, model: name, effort}) : buildRequest({view: item.view, pngBase64, rules, lessons: extra, model: name, effort}), {model: name});
     if (answer.ok && answer.message.stop_reason === 'max_tokens') { run.usd += answer.usd || 0; run.rows.push({...item, failed: 'cut off'}); console.log(`  #${item.number} ${model}: cut off`); continue; }
+    // Why (3 Nov 2026, Gitar on #3103): a refusal of the broker itself (budget used up, no OIDC token, unreachable) stops the run with its reason, like the judge's below; scoring the rest would print a low score nobody earned.
+    if (!answer.ok && ['capped', 'no-token', 'unreachable'].includes(answer.status)) { stopped = `the broker cannot answer (${answer.status}: ${String(answer.detail).slice(0, 100)}): stopped after $${run.usd.toFixed(3)}`; break; }
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
     const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
