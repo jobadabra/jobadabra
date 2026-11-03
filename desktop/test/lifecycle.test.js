@@ -69,15 +69,15 @@ test('instance ownership and ready/activate callbacks preserve startup ordering'
   const app = {requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(), isReady: () => ready,
     on: (event, fn) => { handlers[event] = fn; }, quit: () => calls.push('quit')};
   const createWindow = () => { calls.push('create'); window = {isMinimized: () => true, restore: () => calls.push('restore'), show: () => calls.push('show'), focus: () => calls.push('focus')}; };
-  const firstCopy = claimInstance({app, showDuplicate: () => calls.push('duplicate'), getWindow: () => window, createWindow});
+  const firstCopy = claimInstance({app, onDuplicate: () => calls.push('duplicate'), onSecondCopy: () => calls.push('second'), getWindow: () => window, createWindow});
   handlers['second-instance'](); assert.deepEqual(calls, []);
   await startWhenReady({app, firstCopy, start: () => calls.push('start'), getWindows: () => window ? [window] : [], createWindow});
   assert.deepEqual(calls, ['start']); ready = true; handlers['second-instance']();
-  assert.deepEqual(calls.slice(-4), ['create', 'restore', 'show', 'focus']);
+  assert.deepEqual(calls.slice(-5), ['second', 'create', 'restore', 'show', 'focus']);   // the first copy logs the launch, then brings its window forward
   handlers.activate(); assert.equal(calls.filter(value => value === 'create').length, 1);
   window = null; handlers.activate(); assert.equal(calls.at(-1), 'create');
   app.requestSingleInstanceLock = () => false;
-  assert.equal(claimInstance({app, showDuplicate: () => calls.push('duplicate'), getWindow: () => window, createWindow}), false);
+  assert.equal(claimInstance({app, onDuplicate: () => calls.push('duplicate'), getWindow: () => window, createWindow}), false);
   await Promise.resolve(); assert.deepEqual(calls.slice(-2), ['duplicate', 'quit']);
 });
 test('moving the app does not install activation callbacks or start a second instance', async () => {
@@ -135,4 +135,14 @@ test('any quit with a data job and an engine child stops the job, then the child
   assert.deepEqual(both.calls.filter(call => ['stop-data', 'stop', 'quit', 'shutdown'].includes(call)), ['stop-data', 'quit', 'stop', 'quit', 'shutdown']);
   const none = fixture({busy: null}); none.handlers['will-quit']({preventDefault: () => assert.fail('no child, no hold')});
   assert.ok(none.calls.includes('shutdown'));
+});
+
+// Windows tester on 0.9.2, 3 Nov 2026 (issue #3060): starting the app while it runs showed a "Jobadabra is already running" dialog instead of bringing the open window forward.
+test('a second copy quits on its own, with no callback needed and no other app call', async () => {
+  const calls = [];
+  const app = new Proxy({requestSingleInstanceLock: () => false, whenReady: () => Promise.resolve(), on: () => {}, quit: () => calls.push('quit')},
+    {get: (target, name) => { if (!(name in target)) throw new Error(`a second copy used app.${String(name)}`); return target[name]; }});
+  assert.equal(claimInstance({app, getWindow: () => null, createWindow: () => calls.push('create')}), false);
+  await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(calls, ['quit'], 'it quits at once and creates no window');
 });

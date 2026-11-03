@@ -340,9 +340,8 @@ function restartApp(reason, options) { restarter.restart(reason, options, {how: 
 app.on('will-quit', () => appLog('window', 'quitting'));
 process.on('exit', code => appLog('window', `process exit ${code}`));
 // One copy per data folder: lifecycle callbacks are tested without launching Electron.
-const firstCopy = claimInstance({app, getWindow: () => window, createWindow,
-  showDuplicate: () => appLog('window', 'another copy holds this data folder: this one quits') || dialog.showMessageBoxSync({type: 'info', message: 'Jobadabra is already running',
-    detail: `Quit the other copy first (${process.platform === 'darwin' ? '⌘Q' : 'close its window'}), then open this one again.`}),
+const firstCopy = claimInstance({app, getWindow: () => window, createWindow,   // Why (3 Nov 2026, #3060, Windows tester): a second copy quits at once; the first brings its window forward (lifecycle.js). It used to stop on a blocking box first.
+  onSecondCopy: () => appLog('window', 'a second copy was started: it quits, this window is brought forward'),
 });
 
 // Apply with Claude sessions run without asking before each action (--permission-mode bypassPermissions), so the
