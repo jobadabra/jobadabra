@@ -1,16 +1,19 @@
 # Sets a PR's two labels, in one job so a PR draws one row for it, not one per label (owner, 4 Nov 2026: "why we have 3 checks related to gh label? Cna't we have just oen ?").
 #   "Merge conflict" (owner, 30 Oct 2026): orange on each open PR GitHub says conflicts with its base. On a push to main (any open PR may now conflict) and on a PR push (it may be fixed).
-#   "Gitar: …" (owner, 28 Oct 2026): one coloured label from Gitar's verdict comment. On a PR push ("reviewing" until Gitar judges the head), on Gitar's review and on a new Gitar comment.
+#   "Gitar: …" (owner, 28 Oct 2026): one coloured label from Gitar's verdict comment. On a PR push ("reviewing" until Gitar judges the head), on Gitar's review, on a new Gitar comment and when Gitar's check starts or ends.
 #     Gray labels: "reviewing" (no verdict for the head), "working on PR comments" (set by the agent).
 # Every event checks out main's copy of the scripts and NEVER runs a PR's code; the only writes are labels.
+# Design (5 Nov 2026): Gitar's comment is the one source of the verdict and it arrives in 3 ways, each with its own event: a new comment (issue_comment), an edit with a new check (check_run), an edit with a review after a thread reply (pull_request_review).
+#   On any of them, or a push, a run reads the comment and sets the label. Replayed on 29 PRs: of 4 verdict changes the old triggers missed 2 and check_run alone missed the other 2; together 0.
+# Why (5 Nov 2026, #3176, owner saw yellow on an approved PR): Gitar only edited its comment, and edits start nothing, but its check ended the same second. check_run draws no PR row: it runs on main.
 # Why (4 Nov 2026, a8): a Gitar review still draws a second row, since pull_request_review runs on the PR's head. A new comment can't replace it: 47 of 145 reviews came with none, and Gitar's own check ended before its last comment on 4 of 21 PRs.
 # Why (30 Oct 2026, owner chose "run only on review + push"): on every Gitar comment edit it ran 151 times an hour, used up the repo's REST budget, and the runs
 # that met the limit left labels wrong in silence (#2516). Edits start nothing; a new Gitar comment does (about 12 an hour): after a push with an unchanged verdict
 # Gitar posts a new comment and submits no review (9 of the last 60 PRs, #2516 at 00:13).
 # Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs; their gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
 name: CI · PR labels
-# Why (30 Oct 2026, run names): the value stays quoted, or the ' #' in it starts a YAML comment and cuts the number off; a push to main has no number, so it gets its own words (4 Nov 2026).
-run-name: "${{ github.event_name == 'push' && 'PR labels after a push to main' || format('PR labels on #{0}', github.event.pull_request.number || github.event.issue.number) }}"
+# Why (30 Oct 2026, run names): the value stays quoted, or the ' #' in it starts a YAML comment and cuts the number off; a push to main and a Gitar check have no number, so they get their own words (4 and 5 Nov 2026).
+run-name: "${{ github.event_name == 'push' && 'PR labels after a push to main' || github.event_name == 'check_run' && 'PR labels after a Gitar check' || format('PR labels on #{0}', github.event.pull_request.number || github.event.issue.number) }}"
 
 on:
   push:
@@ -21,6 +24,8 @@ on:
     types: [submitted, dismissed]
   issue_comment:
     types: [created]
+  check_run:
+    types: [created, completed]
 
 permissions:
   contents: read
@@ -41,7 +46,8 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'pull_request_target' ||
       (github.event_name == 'pull_request_review' && github.event.review.user.login == 'gitar-bot[bot]') ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]')
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]') ||
+      (github.event_name == 'check_run' && github.event.check_run.app.slug == 'gitar-bot')
     runs-on: ubuntu-24.04
     timeout-minutes: 15   # a hang guard: the two steps took 267 s at the very worst, queue included, in the last 30 runs of each
     steps:
@@ -64,5 +70,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}   # empty on a check_run: the script finds the PR from the check's commit
         run: node tools/gitar-label.mjs "$PR"
