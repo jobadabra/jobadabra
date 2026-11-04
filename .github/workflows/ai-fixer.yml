@@ -207,7 +207,7 @@ jobs:
             exit 0
           fi
           # A first run needs a new test; a follow-up round fixes what an event shows and needs only the allowed folders (the walls below still apply).
-          if [ -n "$PR" ]; then echo "$changed" | node "$FBT/tools/fixer/run.mjs" paths || stop "the proposed change touched files a fix may not touch"
+          if [ -n "$PR" ]; then echo "$changed" | node "$FBT/tools/fixer/round.mjs" paths || stop "the proposed change touched files a fix may not touch"
           else echo "$changed" | node desktop/e2e/check-change.mjs || stop "the proposed change touched files a fix may not touch, or had no test"; fi
           # At most 72 BYTES in all (the title is the commit subject): the prefix first, the AI's summary cut at a word to what is left.
           prefix="[fixer] $SOURCE $REF${ROUND:+ r$ROUND} "
@@ -247,6 +247,7 @@ jobs:
     env:
       HEAD: ${{ needs.guard.outputs.head }}
       BRANCH: ${{ needs.guard.outputs.branch }}
+      KIND: ${{ inputs.kind }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -284,7 +285,7 @@ jobs:
           name: fixer-patch
           path: .fb
       - name: Apply the patch, or merge main (a conflict round)
-        run: node "$FBT/tools/fixer/round.mjs" apply --kind "${{ inputs.kind }}" --patch .fb/change.patch
+        run: node "$FBT/tools/fixer/round.mjs" apply --kind "$KIND" --patch .fb/change.patch
       - name: Copy the patched workspace for the box
         run: |
           cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"
@@ -327,7 +328,7 @@ jobs:
       - name: Keep a copy of our script that the patch cannot change
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs tools/bot-commit.sh desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         if: needs.fix.outputs.go == 'pr'
@@ -372,13 +373,14 @@ jobs:
           [ "$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" = "$PATCH_SHA" ] || stop "the patch is not the one that was scanned"
           # The patch again, as if it were a stranger's: only the allowed folders, no link, no mode change, no rename.
           if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | grep -q -v ' 100644$'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
-          git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"
+          if [ -n "$PR" ]; then git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/fixer/round.mjs" paths || stop "the patch touches files a fix may not touch"
+          else git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"; fi
           git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < .fb/change.patch)" || stop "the patch touches files a fix may never touch, or is too big (8 files, 60 KB)"
           git apply .fb/change.patch
           git add -A -- src desktop/renderer desktop/lib desktop/test tests
           title=$(cat .fb/title.txt); summary=$(cat .fb/summary.txt)
           [ -n "$PR" ] || git checkout -q -b "fixer/$SOURCE-$REF"
-          tools/bot-commit.sh "$title" "the fix is proven by its own unit test (fails before on an assertion, passes after) and the suites, not by a page"
+          bash "$FBT/tools/bot-commit.sh" "$title" "the fix is proven by its own unit test (fails before on an assertion, passes after) and the suites, not by a page"
           fi
           branch="fixer/$SOURCE-$REF"
           if [ -n "$PR" ]; then
@@ -389,6 +391,8 @@ jobs:
             echo "Round $ROUND added to the pull request's own branch."
             exit 0
           fi
+          # Why (4 Nov 2026, review): the follow chain adds rounds to this branch; a second first run must not erase them. With no open PR on it, a second run still replaces the old branch.
+          [ -z "$(gh pr list --repo "$REPO" --head "$branch" --state open --json number --jq '.[].number')" ] || stop "an open pull request is already on that branch"
           # -f: the branch is this workflow's own namespace; a second run for the same item replaces the old branch.
           git push -q -f "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $summary" --why="the owner sent a $SOURCE item to the AI fixer" \
@@ -416,7 +420,7 @@ jobs:
   # The end of a ROUND (reply, label, next follow job or the ONE stop comment): .github/actions/fixer-round-end. Trusted code only; no AI, no App token.
   after:
     needs: [guard, fix, prove, publish]
-    if: always() && !cancelled() && inputs.pr != ''
+    if: always() && !cancelled() && inputs.pr != '' && vars.AI_FIXER != 'off'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

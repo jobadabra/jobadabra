@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {scrub} from '../context/lib.mjs';
-import {BRANCH, STOPS, checkTarget, classify, failureKey, firstErrorLine, stopReason, stopText} from './driver.mjs';
+import {BRANCH, STOPS, checkTarget, classify, failureKey, firstErrorLine, ours, stopReason, stopText} from './driver.mjs';
 
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
 const MARK = '<!-- ai-fixer-stop -->', LOG_BYTES = 24000, TEXT_BYTES = 12000;
@@ -19,23 +19,31 @@ const flag = (args, name) => (args.includes(name) ? args[args.indexOf(name) + 1]
  * say(text) posts the stop/ready comment once, label() sets the Gitar "working" label, telegram(text), out(key, value), writeRound(obj), setStop() stops the watcher}. -> the action taken.
  * Why (4 Nov 2026, owner: "a max timeout of 1h"; "resolving all the checks, all the PR comments"): every exit says why, once, on the PR.
  */
-export async function runFollow({round, deadline, lastKey = '', source, ref, io, now = Date.now}) {
+export async function runFollow({pr, round, deadline, lastKey = '', source, ref, io, now = Date.now}) {
   let others = 0;
   const finish = action => { io.out('action', action); io.setStop?.(); return action; };
-  const stop = reason => { io.say(stopText(reason, {round, others})); io.telegram(`AI fixer: ${STOPS[reason]} (${source} ${ref})`); io.out('reason', reason); return finish('stop'); };
-  const target = checkTarget(io.pr(), {repo: io.repo, source, ref});
-  if (!target.ok) { io.out('reason', target.why.slice(0, 80)); return finish('end'); }   // merged, closed, or taken over by the owner: nothing to follow
-  const first = stopReason({round, deadline, now: now()});
+  const mine = () => checkTarget(io.pr(), {repo: io.repo, source, ref});
+  // Why (4 Nov 2026, review): the PR can be taken over or merged during the hour; a comment is posted only while it is still the fixer's own open draft.
+  const speak = (text, reason) => { if (!mine().ok) { io.out('reason', 'taken over'); return finish('end'); } io.say(text); io.telegram(`AI fixer: ${STOPS[reason]} (${source} ${ref})`); io.out('reason', reason); return null; };
+  const stop = reason => speak(stopText(reason, {round, others}), reason) || finish('stop');
+  if (!mine().ok) { io.out('reason', mine().why.slice(0, 80)); return finish('end'); }   // merged, closed, or taken over by the owner: nothing to follow
+  const first = stopReason({round: 1, deadline, now: now()});   // the round cap is checked when a round would START: a PR that turns READY after round 6 is still reported
   if (first) return stop(first);
   const go = (kind, key, data) => {
     const reason = stopReason({round, deadline, key, lastKey, now: now()});
     if (reason) return stop(reason);
-    io.label(); io.writeRound({kind, ...data}); io.out('kind', kind); io.out('key', key); io.out('round', String(round));
+    io.label(); io.writeRound({pr, kind, ...data}); io.out('kind', kind); io.out('key', key); io.out('round', String(round));
     return finish('round');
   };
   for await (const line of io.lines()) {
     const [, type, , rest] = /^ship: (READY|RED|COMMENT|CONFLICT|MERGED|CLOSED|WATCH ENDED) #(\d+)\s*(.*)$/.exec(line) || [];
-    if (type === 'READY') { io.say(stopText('ready', {round, others})); io.telegram(`AI fixer: PR ${source} ${ref} is READY (still a draft)`); return finish('ready'); }
+    if (type === 'READY') {
+      // ship-watch decides "ours" by the comment's text; here it is the author, so a pasted Claude Code line cannot hide an owner's comment from the READY verdict.
+      const got = await io.items(), sorted = classify(got.items, got);
+      others = sorted.others.length;
+      if (sorted.owner.length) return go('comment', hash(failureKey('comment', 'owner', firstErrorLine(sorted.owner[0].body))), {check: '', log: '', owner: sorted.owner.map(item => scrub(item.body).slice(0, TEXT_BYTES)), gitar: []});
+      return speak(stopText('ready', {round, others}), 'ready') || finish('ready');
+    }
     if (type === 'MERGED' || type === 'CLOSED') return finish('end');
     if (type === 'WATCH ENDED') return stop('time');
     if (type === 'CONFLICT') return go('conflict', hash('conflict'), {check: '', log: ''});
@@ -62,10 +70,11 @@ function realIo({pr, repo, env, deadline}) {
   let child;
   async function* lines() {
     const left = Math.max(1, Math.floor((Date.parse(deadline) - Date.now()) / 1000));
-    child = spawn('bash', [path.join(import.meta.dirname, '../ship-watch.sh'), pr, log, path.join(dir, 'watch.pid'), repo], {env: {...env, SHIP_WATCH_DRAFT_OK: '1', SHIP_WATCH_POLL: '30', SHIP_WATCH_CAP: String(left), SHIP_WATCH_FIX: '/bin/true'}, stdio: 'ignore'});
+    child = spawn('bash', [path.join(import.meta.dirname, '../ship-watch.sh'), pr, log, path.join(dir, 'watch.pid'), repo], {env: {...env, SHIP_WATCH_DRAFT_OK: '1', SHIP_WATCH_POLL: '30', SHIP_WATCH_CAP: String(left), SHIP_WATCH_FIX: '/dev/null'}, stdio: 'ignore'});
     let done = false, seen = 0;
     child.on('exit', () => { done = true; });
-    for (;;) {
+    // Why (4 Nov 2026, review): ship-watch counts only its sleeps against its cap, so its look time could outlast the job; the deadline is read from the clock here.
+    while (Date.now() < Date.parse(deadline)) {
       const all = fs.readFileSync(log, 'utf8').split('\n').filter(Boolean);
       for (; seen < all.length; seen++) yield all[seen];
       if (done && seen >= fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).length) return;
@@ -83,15 +92,16 @@ function realIo({pr, repo, env, deadline}) {
       try { return job ? gh('api', `repos/${repo}/actions/jobs/${job}/logs`) : `${check}: ${run?.output?.title || 'failed'} (no log)`; } catch { return `${check}: failed (its log could not be read)`; }
     },
     items: () => {
-      const page = rest => api('--paginate', rest) || [], owner = env.PR_COMMENTS_OWNER || 'GarryOne', view = api(`repos/${repo}/pulls/${pr}`);
-      const items = [...page(`repos/${repo}/issues/${pr}/comments?per_page=100`).map(c => ({id: c.id, login: c.user?.login, body: c.body, at: c.created_at})),
-        ...page(`repos/${repo}/pulls/${pr}/reviews?per_page=100`).filter(r => r.body).map(r => ({id: r.id, login: r.user?.login, body: r.body, at: r.submitted_at})),
-        ...page(`repos/${repo}/pulls/${pr}/comments?per_page=100`).map(c => ({id: `L${c.id}`, login: c.user?.login, body: c.body, at: c.created_at}))];
-      const mine = items.filter(c => /Generated with.{0,4}Claude Code/.test(c.body || '')).map(c => c.at), commits = page(`repos/${repo}/pulls/${pr}/commits?per_page=100`).map(c => c.commit?.author?.date || '');
+      const owner = env.PR_COMMENTS_OWNER || 'GarryOne', view = api(`repos/${repo}/pulls/${pr}`);
+      const who = c => ({login: c.user?.login, bot: c.user?.type === 'Bot'});
+      const items = [...page(`repos/${repo}/issues/${pr}/comments?per_page=100`).map(c => ({id: c.id, ...who(c), body: c.body, at: c.created_at})),
+        ...page(`repos/${repo}/pulls/${pr}/reviews?per_page=100`).filter(r => r.body).map(r => ({id: r.id, ...who(r), body: r.body, at: r.submitted_at})),
+        ...page(`repos/${repo}/pulls/${pr}/comments?per_page=100`).map(c => ({id: `L${c.id}`, ...who(c), body: c.body, at: c.created_at}))];
+      const mine = items.filter(c => ours(c, owner)).map(c => c.at), commits = page(`repos/${repo}/pulls/${pr}/commits?per_page=100`).map(c => c.commit?.author?.date || '');
       return {items, owner, answeredAt: [...mine, ...commits].sort().at(-1) || '', gitarOpen: (view.labels || []).some(l => /^Gitar: (changes requested|approved with suggestions)$/.test(l.name))};
     },
     say: text => {
-      if (page(`repos/${repo}/issues/${pr}/comments?per_page=100`).some(c => String(c.body).includes(MARK))) return;   // the ONE stop comment
+      if (page(`repos/${repo}/issues/${pr}/comments?per_page=100`).some(c => c.user?.login === 'github-actions[bot]' && String(c.body).includes(MARK))) return;   // the ONE stop comment (a stranger's copy of the marker does not count)
       const file = path.join(dir, 'comment.md'); fs.writeFileSync(file, `${MARK}\n${text}\n`); gh('pr', 'comment', pr, '--repo', repo, '--body-file', file);
     },
     telegram: text => {
@@ -100,7 +110,8 @@ function realIo({pr, repo, env, deadline}) {
       fetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({chat_id: chat, text}), signal: AbortSignal.timeout(15000)}).catch(() => {});
     }};
 }
-const page = rest => api('--paginate', rest) || [];
+/** Every page of a list, as one array (--slurp: several pages are not one JSON text). */
+function page(rest) { return (api('--paginate', '--slurp', rest) || []).flat(); }
 
 async function main(argv = process.argv.slice(2), env = process.env) {
   const [command, ...args] = argv, pr = flag(args, '--pr'), round = Number(flag(args, '--round')), deadline = flag(args, '--deadline'), repo = env.GITHUB_REPOSITORY;
@@ -116,7 +127,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     if (!checkTarget(io.pr(), {repo, source, ref}).ok) return console.log('stop: the pull request is closed, merged or taken over: no comment');   // nothing to say on a PR that is no longer the fixer's
     io.say(stopText(reason, {round})); io.telegram(`AI fixer: ${STOPS[reason]} (${source} ${ref})`);
   } else if (command === 'watch') {
-    const action = await runFollow({round, deadline, lastKey: flag(args, '--last-key'), source, ref, io});
+    const action = await runFollow({pr, round, deadline, lastKey: flag(args, '--last-key'), source, ref, io});
     console.log(`follow: ${action} (round ${round})`);   // the word only: the log is public
   } else throw new Error('usage: follow.mjs watch|stop (see the header)');
   process.exit(0);   // the watcher child is killed by process exit

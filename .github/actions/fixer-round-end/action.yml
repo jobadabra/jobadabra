@@ -49,7 +49,7 @@ runs:
         PR: ${{ inputs.pr }}
         ROUND: ${{ inputs.round }}
         REASON: ${{ steps.end.outputs.reason }}
-      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$ROUND" --reason "$REASON"
+      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$((ROUND + 1))" --reason "$REASON"   # the comment counts rounds done: the next round number minus one
     - name: Start the next follow job
       if: steps.end.outputs.reason == ''
       shell: bash
@@ -70,4 +70,4 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         PR: ${{ inputs.pr }}
         ROUND: ${{ inputs.round }}
-      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$ROUND" --reason dispatch
+      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$((ROUND + 1))" --reason dispatch

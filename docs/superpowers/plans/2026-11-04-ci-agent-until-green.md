@@ -41,8 +41,8 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 
 ## Progress
 - [x] 1/7 This plan and the spec amendment (proof: docs/superpowers/specs/2026-11-03-ai-fixer-core-design.md)
-- [x] 2/7 Move walls, proof, leaks, publish into `tools/fixer/` (proof: tools/fixer/walls.mjs)
-- [x] 3/7 Loop, Feedback and Linear sources, one-run workflow (proof: desktop/test/tooling/ci/fixer-loop.test.js)
+- [x] 2/7 Move walls, proof, leaks, publish into `tools/fixer/` (proof: tools/fixer/walls.mjs @6e998e2)
+- [x] 3/7 Loop, Feedback and Linear sources, one-run workflow (proof: desktop/test/tooling/ci/fixer-loop.test.js @5766dddb)
 - [ ] 4/7 Until-green chain: follow job, rounds, stop rules
 - [ ] 5/7 Every fixer run writes a record
 - [ ] 6/7 First until-green run on a feedback card
