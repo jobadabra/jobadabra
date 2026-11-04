@@ -105,8 +105,7 @@ function draw(model) {
     if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
     card.replaceChildren(head, again('Find jobs again'));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
-    const head = model.first ? findHead('Find jobs', model, 'Reads employer sites and job boards, and adds your matches here.')
-      : findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
+    const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
     card.replaceChildren(head, again('Find jobs'));
   } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
     const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out

@@ -137,7 +137,8 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
   if (last && last.ok === false && (finishedHere || !hasJobs)) return {state: 'failed', problem: last.problem || last.result || '', listed};
   if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log), ...(last.endedByTime ? {partial: partialSites(last.log)} : {})};
   if (!lastSearchAt && !hasJobs) return {state: 'empty'};
-  return lastSearchAt ? {state: 'none'} : {state: 'none', first: true};   // first: no search ran, so the card cannot say "again"
+  // Why (5 Nov 2026, owner: "make sure you don't affect the small card logic"): one small card for everyone past the empty first run, whatever their search history.
+  return {state: 'none'};
 }
 
 // "empty" (no jobs yet) and "failed" (with none listed) depend on the list's count: before the list is read, the card keeps its first paint

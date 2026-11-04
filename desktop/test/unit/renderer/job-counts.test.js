@@ -39,9 +39,15 @@ test('tracked jobs and no search yet are not the empty first run: the big Find j
   assert.equal(jobCounts({jobs: tracked, total: tracked.length}, NOW).total, 0, 'none of them is a match');
   const card = cardFor({jobs: tracked, total: tracked.length});
   assert.equal(card.state, 'none', 'the compact card, which the Applied and Inbound lists hide');
-  assert.equal(card.first, true, 'no search ran: it cannot say "again"');
   assert.equal(cardFor({jobs: []}).state, 'empty', 'no job at all is still the first run');
   assert.equal(cardFor(undefined).state, 'empty');
+});
+
+test('the small card is one card whoever has jobs: nothing about it depends on a search having run (owner, 5 Nov 2026)', () => {
+  const matches = {jobs: [row(1, {fit: 80}), row(2, {fit: 60})], total: 2};
+  assert.deepEqual(cardFor(matches), {state: 'none'}, 'matches and no recorded search');
+  assert.deepEqual(cardFor(matches, {lastSearchAt: '2026-10-01'}), {state: 'none'});
+  assert.deepEqual(cardFor({jobs: tracked, total: tracked.length}), {state: 'none'}, 'tracked jobs read the same card');
 });
 
 test('an old failed search never covers a list of tracked jobs, as it never covers a list of matches (the same cause, the class)', () => {
