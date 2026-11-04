@@ -1,4 +1,5 @@
 """Job aggregators with public APIs (src/sources/aggregators.py) and role words in other languages (src/coverage.py LOCAL_VOCAB). No network."""
+import io
 import json
 import sqlite3
 import sys
@@ -9,6 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src import coverage  # noqa: E402
+from src.ai import decide  # noqa: E402
 from src.sources import aggregators, feeds  # noqa: E402
 from src.sources import careers  # noqa: E402
 
@@ -159,6 +161,29 @@ class AggregatorTests(unittest.TestCase):
             raise OSError('down')
         report = aggregators.scan(db, {}, NOW, readers=[('Jobicy', broken)])
         self.assertEqual(report['sources'], [{'company': 'Jobicy', 'ok': False, 'error': 'OSError: down'}])
+
+    def test_a_source_whose_ai_step_is_refused_fails_alone_and_the_run_goes_on(self):
+        """Sentry APP-4B/4A: EURES asked the AI, the API answered 401 (a key it refused), and the error left the guard and ended the whole run."""
+        class Refused(Exception):   # stands in for the SDK's AuthenticationError (a status error that is neither a network nor a value error)
+            pass
+        self.addCleanup(decide.reset_run)   # the refusal is counted as a waiting item; the next test starts clean
+        db = sqlite3.connect(':memory:')
+        def refused(search):
+            raise Refused('invalid x-api-key')
+        out = io.StringIO()
+        with mock.patch('src.ai.engine.permanent_errors', return_value=(Refused,)), mock.patch('sys.stdout', out), mock.patch('sys.stderr', io.StringIO()):
+            report = aggregators.scan(db, {}, NOW, readers=[('EURES', refused), ('Jobicy', lambda search: [])])
+        self.assertEqual([(s['company'], s['ok']) for s in report['sources']], [('EURES', False), ('Jobicy', True)])
+        self.assertIn('Technical: EURES read: Refused', out.getvalue())
+
+    def test_a_source_whose_answer_was_cut_short_fails_alone(self):
+        """Sentry APP-2Y/2Z: a server ended a chunked body early, http.client raised IncompleteRead, and the run ended with a traceback."""
+        import http.client
+        db = sqlite3.connect(':memory:')
+        def cut(search):
+            raise http.client.IncompleteRead(b'x' * 10)
+        report = aggregators.scan(db, {}, NOW, readers=[('Jobicy', cut), ('Arbeitnow', lambda search: [])])
+        self.assertEqual([(s['company'], s['ok']) for s in report['sources']], [('Jobicy', False), ('Arbeitnow', True)])
 
     def test_keyed_sources_only_with_their_keys_and_free_ones_can_be_switched_off(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]

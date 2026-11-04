@@ -7,6 +7,7 @@ search reads at once: 25 Oct 2026, a pilot search 8 minutes after a software one
 this user's search are kept. Remotive is not used: its terms forbid passing its jobs to another product. job-room.ch (the Swiss public
 employment service) is not used either until it offers a documented public API.
 """
+import http.client
 import json
 import os
 import re
@@ -310,11 +311,30 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
                 on_jobs(matched)
             report['jobs'].extend(matched)
             report['sources'].append({'company': name, 'ok': True, 'total': len(found), 'matches': len(matched)})
-        except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError) as error:
-            report['sources'].append({'company': name, 'ok': False, 'error': f'{type(error).__name__}: {error}'})
+        except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
+            _source_failed(report, name, error)
     if late:
         time_budget.later('free job APIs', len(late), 'sources' if len(late) != 1 else 'source')
     return _done(report)
+
+
+def ai_errors():
+    """The errors a model call can end with (the contract's own and the SDK's, after its retries): one source's AI step failing is that source failing."""
+    from ..ai import engine
+    from ..ai.providers.contract import AiError
+    return (AiError, *engine.transient_errors(), *engine.permanent_errors())
+
+
+def _source_failed(report, name, error):
+    """One source could not be read: it is listed as failed and the run goes on with the others. An AI error is also said as a plain warning with its
+    technical line (decide.failed), and a spent limit stops the run's further asks.
+    Why (se, 4 Nov 2026, Sentry APP-4B/4A): EURES asks the AI which area a place is in; a key the API refused (401) is not a network error, so it left
+    this guard and ended the whole Find jobs run in its first minute, with every other source unread. Same boundary, same day: a server that cut a sitemap
+    short mid-body raises http.client.IncompleteRead (an HTTPException, not an OSError) and ended a run the same way (APP-2Y/2Z, 20 Oct 2026)."""
+    report['sources'].append({'company': name, 'ok': False, 'error': f'{type(error).__name__}: {error}'})
+    if isinstance(error, ai_errors()):
+        from ..ai import decide
+        decide.failed(f'{name} read', error)
 
 
 def _done(report):
