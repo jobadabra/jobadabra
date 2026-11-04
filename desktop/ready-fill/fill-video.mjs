@@ -44,13 +44,13 @@ export function ffmpegArgs({width, height, fps, out, encoder = 'libvpx'}) {
 
 // page: a Playwright page; or null with `tabOf: () => page`, read again every second, when the tab being filled changes (the Form Lab's runs open new tabs at account steps):
 // the video then follows the new tab in the same file. Starts at once; the last frame is written every 1/fps second, so the video's time is real time.
-// It stops by itself at maxSeconds (never over 180). -> {stop(): Promise<{path, bytes, secs (whole, >= 1)} | null>, limit}. null: no frame, no ffmpeg or no encoder; the file is then removed.
-export async function startFillVideo(page, {tabOf = () => page, dir = os.tmpdir(), maxSeconds = MAX_SECONDS, width = 1280, fps = 10, ffmpeg = findFfmpeg(), encoder, spawnImpl = spawn} = {}) {
-  const limit = Math.min(MAX_SECONDS, Math.max(0, Number(maxSeconds) || 0)), first = safe(tabOf);
+// It stops by itself at maxSeconds (never over hardMaxSeconds, 180 unless a caller with its own cap says otherwise: the AI user agent's session, its own cap plus a minute). -> {stop(): Promise<{path, bytes, secs (whole, >= 1)} | null>, limit, position(): the second of the video the next frame lands on (frames written / fps; a dropped frame is not counted, so this is where a moment is in the file, not the wall clock)}. null: no frame, no ffmpeg or no encoder; the file is then removed.
+export async function startFillVideo(page, {tabOf = () => page, dir = os.tmpdir(), maxSeconds = MAX_SECONDS, hardMaxSeconds = MAX_SECONDS, width = 1280, fps = 10, ffmpeg = findFfmpeg(), encoder, spawnImpl = spawn} = {}) {
+  const limit = Math.min(hardMaxSeconds, Math.max(0, Number(maxSeconds) || 0)), first = safe(tabOf);
   const viewport = first?.viewportSize?.() || {width: 1280, height: 720}, codec = ffmpeg ? encoder ?? encoderOf(ffmpeg) : '';
   const size = {width: even(width), height: even(width * viewport.height / viewport.width)};
   const out = path.join(dir, `fill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webm`);
-  if (!ffmpeg || !codec || !limit || !first) return {limit, stop: async () => null};
+  if (!ffmpeg || !codec || !limit || !first) return {limit, stop: async () => null, position: () => null};
   fs.mkdirSync(dir, {recursive: true});
   const proc = spawnImpl(ffmpeg, ffmpegArgs({...size, fps, out, encoder: codec}), {stdio: ['pipe', 'ignore', 'ignore']});
   const ended = new Promise(resolve => { proc.on('error', () => resolve(-1)); proc.on('close', code => resolve(code)); });
@@ -89,7 +89,7 @@ export async function startFillVideo(page, {tabOf = () => page, dir = os.tmpdir(
     })();
     return stopping;
   }
-  return {limit, stop};
+  return {limit, stop, position: () => frames / fps};
 }
 
 function safe(tabOf) { try { return tabOf() || null; } catch { return null; } }

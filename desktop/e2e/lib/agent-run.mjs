@@ -24,13 +24,13 @@ Controls marked [not allowed] are refused (they delete, send, sign in, leave the
  * The agent's extra action and fields for explore(): `note` (an argued bug, validated by lib/agent-notes.mjs, never repaired) and the verdict a goal ends with. `sink` collects the valid notes.
  * `knowledgeIds`: the rule ids a note may cite; `views`: the screens it may name; `goal`: the goal being worked, kept on each note.
  */
-export function agentExtend({knowledgeIds, views, goal, sink, shoot = null}) {
+export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null}) {
   const text = {type: 'string'};
   return {actions: ['note'], without: ['report_bug'], properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), expected: text, observed: text, why: text, verdict: choice(GOAL_VERDICTS)},
     async take(input, row, {steps = []} = {}) {
       const checked = validateNote({...input, view: input.view || row.view}, {knowledgeIds, views});
       if (!checked.ok) { row.refused = checked.why; return `Refused: ${checked.why}. Note it again with an argument, or leave it.`; }
-      sink.push({...checked.note, goal: goal.n, trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
+      sink.push({...checked.note, goal: goal.n, at: Date.now(), videoSec: where(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
       row.title = checked.note.title;
       return 'Noted. Carry on with your goal.';
     }};
@@ -52,7 +52,7 @@ export const goalIntro = (goal, knowledge) => `Your goal (${goal.group}): ${goal
  * shared out between the goals (at least 6 steps each); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, session = {}}) {
+export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [];
@@ -62,7 +62,7 @@ export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '
     if (callsLeft <= 0 || minutesLeft <= 0) break;
     const mine = [];
     const result = await explore({act, ask, views, caps: {maxSteps: perGoal, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge),
-      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot})});
+      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
     notes.push(...mine);

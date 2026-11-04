@@ -324,7 +324,9 @@ Replay: for each tester bug, run the app at the **pre-fix commit** (table above)
 - [x] [ag] 8/12 part 2a and 2b: the agent reaches Profile; persona data seeded (CV as a PDF, inbound rows) and the app's CV read answered from the persona's CV (merged as #3097 and #3102) (proof: desktop/e2e/lib/agent-seed.mjs @1684eed)
 - [ ] [ag] 8/12 part 2c: the session waits for the app's CV read (#3105 open; measured 49 s; it does not make the language bug reachable, see "Result of 8/12")
 - [x] [ag] 8/12 part 3: the table on `b4d64112` / `b6014b04` / `df66db14` for the two reachable bugs, numbers into this spec; the target is not met and the spec says so; runs 41669131433 41669148675 41669166780 41670681855 41670699940 41670718389 41681777001 41681793353 41681812017 41683890765 41683907271 41683924129 41685864371 41685881279 41685897627 41687323389 41687340122 (proof: docs/superpowers/specs/2026-11-03-ai-user-agents-design.md)
-- [ ] [ag] 9/12 (jobadabra-web) `/admin/testing/agent`: sessions, stories, coverage map, fed by the self-heal publish
+- [ ] [ag] 9/12 part 1 video: `AGENT_VIDEO` records the session (`lib/agent-video.mjs`), a note carries its clock time, size per minute measured on one real run (proof: desktop/e2e/test/pool/agent-video.test.mjs)
+- [ ] [ag] 9/12 part 2 upload: the video to a private R2 bucket in `jobadabra-web`, 14 days
+- [ ] [ag] 9/12 part 3 (jobadabra-web) `/admin/testing/agent`: sessions, stories, path, bugs, video with the bug's second, coverage map, fed by the self-heal publish
 - [ ] [ag] 10/12 aged states: the day-30 folder generator and the first deep-state sessions (phase 2; fresh random states first, the owner's answer)
 - [ ] [ag] 11/12 a living persona: snapshot saved and restored across nights, chapters, staggered personas, replay from a snapshot (phase 2)
 - [ ] [ag] 12/12 the moving world: daily jobs and mail, a clock option, the off-script moves (phase 2)
