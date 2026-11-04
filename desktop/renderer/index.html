@@ -6,6 +6,7 @@
 <title>Jobadabra</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="always-on-choice.css">
 <link rel="stylesheet" href="add-dialog.css">
 <link rel="stylesheet" href="ui-menu.css">
 <link rel="stylesheet" href="chips.css">
@@ -1176,6 +1177,23 @@
           <div class="setting panel" id="setting-cloud">
             <div class="summary-head"><i data-icon="refresh"></i><h3>Always on: your GitHub</h3></div>
             <p class="muted panel-lead">Keep Jobadabra working when this Mac is asleep or off.</p>
+            <p class="muted small" id="aon-own-count"></p>
+            <div class="aon-row aon-stack" id="aon-notion">
+              <span class="ui-tile tone-signal"><i data-icon="database"></i></span>
+              <div class="aon-text">
+                <div class="aon-title" data-about-notion><b>Notion</b><span id="aon-notion-pill"></span></div>
+                <p class="muted small" id="aon-notion-line"></p>
+              </div>
+              <div class="aon-actions"><button class="secondary" id="aon-notion-go" hidden></button></div>
+            </div>
+            <div class="aon-row aon-stack" id="aon-key">
+              <span class="ui-tile tone-signal"><i data-icon="key"></i></span>
+              <div class="aon-text">
+                <div class="aon-title"><b id="aon-key-title">Anthropic API key</b><span id="aon-key-pill"></span></div>
+                <p class="muted small" id="aon-key-line"></p>
+              </div>
+              <div class="aon-actions"><button class="secondary" id="aon-key-go" hidden></button><button class="secondary" id="aon-key-alt" hidden>Use our servers →</button></div>
+            </div>
             <div class="aon-row aon-stack" id="cloud-row">
               <span class="ui-tile tone-signal"><i data-icon="cloud"></i></span>
               <div class="aon-text">
@@ -1190,7 +1208,6 @@
               </div>
               <div class="aon-body">
                 <p class="message" id="cloud-message"></p>
-                <div class="aon-sub aon-needs small" id="cloud-needs" hidden></div>
                 <div class="aon-sub howto small" id="cloud-steps" hidden>
                   <p><b>On the GitHub page that opened:</b> choose <b>Only select repositories</b> → pick a <b>private</b> repository in GitHub's list
                     → <b>Install</b>. Jobadabra continues by itself as soon as it's installed.</p>

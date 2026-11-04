@@ -21,7 +21,10 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
   }
   ipcMain.handle('hostedMoment', async () => (DEMO ? null : moments.next()));
   ipcMain.handle('hostedMomentShown', async (_, name) => { if (!DEMO && name === 'missed') moments.shown(name); return {ok: true}; });
-  ipcMain.handle('hostedState', async () => ({...hosted.state(storage), canRun: !DEMO && hosted.canRun(storage), shared: DEMO ? 'alex@example.com' : emailOf(storage), available: !DEMO, schedule: !DEMO && hosted.state(storage).on ? await hosted.schedule(storage) : null}));
+  ipcMain.handle('hostedState', async () => {
+    const [open, schedule] = await Promise.all([DEMO ? true : hosted.isOpen(storage), !DEMO && hosted.state(storage).on ? hosted.schedule(storage) : null]);   // together: one slow answer does not wait for the other
+    return {...hosted.state(storage), canRun: !DEMO && hosted.canRun(storage), shared: DEMO ? 'alex@example.com' : emailOf(storage), available: !DEMO, open, schedule};
+  });
   ipcMain.handle('hostedOn', async (_, given) => {
     if (DEMO) return {ok: true};
     const done = await turnOnShared(storage, given || {});   // the Notifications address (#1711); one typed in the setup step becomes it

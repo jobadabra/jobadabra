@@ -28,6 +28,21 @@ export async function call(storage, route, {method = 'GET', body, fetcher = glob
   } catch { return {ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'}; }
 }
 
+// Whether our servers take a schedule yet: the site answers 404 while Always on is switched off there (HOSTED_ALWAYS_ON). Only a real HTTP answer counts and is remembered (10 minutes, per key);
+// no answer (offline, a hang past 4 s) or an install that cannot call the site is "open" and is asked again next time, so a bad connection never claims "Not open yet" nor hides a closed site for long.
+// Why (4 Nov 2026, owner): the choice card shows "Not open yet" for a way that cannot run, and is not pickable.
+let openAt = 0, openNow = true, openFor = '';
+const HANG = 4000;
+/** Whether our servers take a schedule yet: `true` unless the site answered 404 for Always on (asked at most every 10 minutes per key; no HTTP answer, a hang past 4 s or a key that cannot call the site counts as open and is not remembered). `now` is for tests. */
+export async function isOpen(storage, options = {}, now = Date.now()) {
+  const who = keyOf(storage) || '';
+  if (who === openFor && now - openAt < 10 * 60 * 1000) return openNow;
+  const got = await Promise.race([call(storage, '/api/hosted/schedule', options), new Promise(resolve => setTimeout(() => resolve({ok: false}), HANG).unref?.())]);
+  if (!got.status && !got.ok) return true;   // no HTTP answer: unknown, not remembered
+  openNow = got.status !== 404; openAt = now; openFor = who;
+  return openNow;
+}
+
 // What the hosted run reads: the search settings and the profile text as they are on this Mac. (The CV file is not sent: the profile is what the search scores against.)
 export function config(storage) {
   const read = name => { try { return fs.readFileSync(storage.path(name), 'utf8'); } catch { return ''; } };

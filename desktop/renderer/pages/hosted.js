@@ -5,6 +5,7 @@ import {$, message, show} from './core.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
 import {NAME, STORED, SUBTITLE, model} from '../hosted-words.js';
+import {draw as drawChoice, mountChoice} from './always-on-choice.js';
 
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
 
@@ -65,8 +66,9 @@ const hostedAddress = now => now.email || now.shared || '';
 export async function refresh() {
   const [now, mail] = await Promise.all([window.pilot.hostedState(), window.pilot.notifyState().catch(() => null)]);
   shared.hosted = now;
+  drawChoice();
   if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared, mail), hostedAddress(now));
 }
 
 /** Mount the Always on Settings card and subscribe to its status refreshes. */
-export function init() { mountCard(); }
+export function init() { mountCard(); mountChoice(); }
