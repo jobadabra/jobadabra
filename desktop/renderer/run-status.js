@@ -11,10 +11,15 @@ export const partialResult = run => { const m = /(\d+) of (\d+) (?:tailored|draf
 export const notChecked = run => !!run && (!!run.off || /^not checked:/i.test(String(run.problem || '')));
 export const runWarned = run => !!run && !run.live && !run.waiting && !!run.ok && !run.off && (!!run.warned || runWarningLines(run).length > 0 || !!deliveryHead(run) || partialResult(run));
 
+// A search that ran out of its 3 minutes (the press sets `endedByTime` once: lib/search-steps.js): not failed, not finished. Why (4 Nov 2026, #3108, a tester on 0.9.2: such a run read
+// green "Completed, No jobs added to your list" beside a report that said only 2 of 14 employer sites were searched): its own state, amber, "Partial" (owner's pick, 4 Nov 2026).
+export const partialSearch = run => !!run && !run.live && !run.waiting && !!run.ok && !run.off && !!run.endedByTime;
+
 // The title of the toast when a run ends: a run that worked but warned is not "done" with a green check, the detail pane says "Completed with warnings" (#276).
 export function doneTitle(name, run) {
   if (notChecked(run)) return `⚠️ ${name} not checked`;
   if (!run?.ok) return `⚠️ ${name} had problems`;
+  if (partialSearch(run)) return `⚠️ ${name} ended at the time limit`;
   return runWarned(run) ? `⚠️ ${name} done with warnings` : `✅ ${name} done`;
 }
 
@@ -191,6 +196,7 @@ export function runStatus(run, warned) {
   if (run.interrupted) return ['Interrupted', 'warn'];   // the app was closed while it ran (lib/pipeline.js takeQueue)
   if (run.stopped === 'you') return ['Stopped by you', 'neutral'];   // Stop on Actions or Recent activity: not a failure
   if (!run.ok) return stoppedHead(run) ? ['Stopped', 'bad'] : ['Failed', 'bad'];
+  if (partialSearch(run)) return ['Partial', 'warn'];   // it did not reach everything: more than a warning says, less than a failure
   if (warned) return ['With warnings', 'warn'];   // a warning says more than an empty result
   return unsavedRun(run) ? ['No result', 'neutral'] : ['Completed', 'good'];   // nothing saved: never "Completed" (owner, 25 Oct 2026)
 }

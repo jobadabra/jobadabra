@@ -7,7 +7,7 @@ import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wand, wire} from '../magic.js';
 import {jobCounts} from '../jobs-view.js';
-import {findCard, keptFindCard, readProgressModel, waitsForList} from '../find-card-model.js';
+import {findCard, keptFindCard, limitWords, readProgressModel, waitsForList} from '../find-card-model.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
@@ -32,7 +32,8 @@ const button = (text, handler, className = 'primary') => Object.assign(el('butto
 
 // This search's one number (find-card-model.js addedSoFar): the jobs it added to your list, a green "+9 added" beside the title (owner, 24 Oct 2026: scoring and its
 // queue are internal, never shown). A search that added nothing yet shows no pill while it runs, and a quiet "No jobs added" when it is done.
-const addedPill = (model, done) => (model.added ? pill(`+${model.added.toLocaleString('en-US')} added`, 'good') : done ? pill('No jobs added', 'neutral') : null);
+// A search that ended at the 3-minute limit (model.partial, #3108) is an amber "Partial" when it added nothing: never the quiet "No jobs added" of a search that finished and found nothing.
+const addedPill = (model, done) => (model.added ? pill(`+${model.added.toLocaleString('en-US')} added`, 'good') : done && model.partial ? pill('Partial', 'warn') : done ? pill('No jobs added', 'neutral') : null);
 function findHead(title, model, lead, {done = false, spinner = false} = {}) {
   const row = el('div', 'find-head'), pillNode = addedPill(model, done);
   if (spinner) row.append(Object.assign(el('span', 'spinner'), {ariaHidden: 'true'}));
@@ -98,7 +99,9 @@ function draw(model) {
     card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
     if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
-    const head = findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
+    const head = model.partial
+      ? findHead('Search ended at the time limit', model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
+      : findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
     if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
     card.replaceChildren(head, again('Find jobs again'));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")

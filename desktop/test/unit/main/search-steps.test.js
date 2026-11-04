@@ -48,6 +48,7 @@ const press = async (settings, trigger, spend = {}) => {
 };
 const flag = (args, name) => (args.includes(name) ? Number(args[args.indexOf(name) + 1]) : undefined);
 const stale = () => new Date(Date.now() - 2 * 86400000).toISOString();
+const justNow = () => new Date().toISOString();   // clock: relative the step compares "today" with a stamp made a moment ago, whenever this runs
 
 test('every step of one press counts from the press: one 3-minute deadline', async () => {
   for (const trigger of ['first', 'you']) {
@@ -93,4 +94,42 @@ test('every step is ended at the press\'s 180 s, whatever the engine does with i
   assert.equal(seen[0].stopAfterMs, 175000, 'discover may run until the press\'s end, less the stop margin');
   assert.equal(seen[1].stopAfterMs, 125000, 'daily has what is left: 180 s minus the 5 s stop margin and the 50 s gone');
   assert.match(lines.join('\n'), /^⏱ Time is up \(.*\) for the search: what it has not reached waits for the next search$/m);
+});
+
+// #3108 (a tester on 0.9.2: a Find jobs run that stopped at the time limit showed green "Completed" and "No jobs added to your list"): the press knows it ended by time,
+// so it says so once, in what it returns; the run record keeps it and every card only draws it.
+test('a press that ended by time returns that verdict; one that reached every stage does not', async () => {
+  const play = endedByTime => searchSteps(storage({lastScoutAt: justNow()}), () => {}, 'run', 'you', async (_storage, args) => ({code: 0, result: {}, endedByTime: endedByTime && args[1] === 'daily'}));
+  assert.equal((await play(true)).endedByTime, true, 'the search step hit the limit');
+  assert.equal((await play(false)).endedByTime, false, 'positive control: the same steps with time to spare');
+});
+
+// The engine stops itself at its budget and exits 0 (src/time_budget.py `later`: every line about work left over starts with "⏱ "), usually before the press's hard stop at 175 s:
+// that is the common way a run is cut, so the verdict reads that mark too. The employer finder is an add-on: its own stop does not make the search Partial.
+test('the engine\'s own "⏱" stop line makes the press Partial, with no hard kill', async () => {
+  const engineStops = async (_storage, args, onLine) => { if (args[1] === 'daily') onLine('⏱ Time is up (2 min 58 s) for employer sites: 12 sites wait for the next search'); return {code: 0, result: {}, endedByTime: false}; };
+  assert.equal((await searchSteps(storage({lastScoutAt: justNow()}), () => {}, 'run', 'you', engineStops)).endedByTime, true);
+  const quiet = async () => ({code: 0, result: {}, endedByTime: false});
+  assert.equal((await searchSteps(storage({lastScoutAt: justNow()}), () => {}, 'run', 'you', quiet)).endedByTime, false, 'positive control: the same steps without that line');
+});
+
+test('the employer finder running out of time does not make a whole search Partial', async () => {
+  const scoutStops = async (_storage, args, onLine) => {
+    if (args[1] !== 'scout') return {code: 0, result: {}, endedByTime: false};
+    onLine('⏱ Time is up (2 min 59 s) for finding more employers: 3 employers wait for the next search');
+    return {code: 0, result: {}, endedByTime: true};   // hard-stopped too
+  };
+  const done = await searchSteps(storage({lastScoutAt: stale()}), () => {}, 'run', 'you', scoutStops);
+  assert.equal(done.endedByTime, false);
+});
+
+// Gitar on #3154: only the engine's own ran-out-of-time lines count. Its batch-plan line ("⏱ This refresh scores 40 of 90 …", src/time_budget.py) and the scoring backlog line
+// ("⏱ 3 found job(s) wait for the next refresh …", src/daily_search_scoring.py) also start with the mark, and a search that finishes early with them is not Partial.
+test('the engine\'s plan and backlog lines do not make a search Partial; its "no time left" and "still open at the run\'s time" lines do', async () => {
+  const says = line => searchSteps(storage({lastScoutAt: justNow()}), () => {}, 'run', 'you', async (_storage, args, onLine) => { if (args[1] === 'daily') onLine(line); return {code: 0, result: {}, endedByTime: false}; });
+  assert.equal((await says('⏱ This refresh scores 40 of 90 jobs (about 2 s each, to finish in about 80 s)')).endedByTime, false);
+  assert.equal((await says('⏱ 3 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)')).endedByTime, false);
+  assert.equal((await says('⏱ No time left in this refresh to score any: 12 jobs wait for the next one')).endedByTime, true);
+  assert.equal((await says('⏱ 12 site read(s) still open at the run\'s time: the next search reads those sites')).endedByTime, true);
+  assert.equal((await says('⏱ Time is up for this refresh: 4 titles left for the next one (it stops at 3 min)')).endedByTime, true);
 });

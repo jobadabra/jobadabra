@@ -2,9 +2,9 @@
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
 // Guarded by test/unit/renderer/run-result-card.test.js.
-import {addedWords} from './find-card-model.js';
+import {addedWords, partialWords} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
-import {runPill, stepCount} from './run-status.js';
+import {partialSearch, runPill, stepCount} from './run-status.js';
 
 // Every kind's run has this top once it ended (owner, 25 Oct 2026: "Every action run result, should have its status in a consistent way").
 // Kept as the list of kinds the top was built for: test/unit/renderer/run-result-card.test.js fails on a new kind until it is drawn and checked.
@@ -35,7 +35,7 @@ export function cleanTop(run, {kind, added = 0, asks = 0, title = ''} = {}) {
   if (label === 'No result') return null;
   const step = NEXT[kind], counts = {added, asks};
   const next = run.ok !== false && step && (!step.when || step.when(counts)) ? {label: step.label(counts), view: step.view} : null;
-  return {tone, icon: ICONS[tone] || 'pulse', title: NUMBER[kind]?.(added) || title || label, next};
+  return {tone, icon: ICONS[tone] || 'pulse', title: partialSearch(run) && kind === 'search' ? partialWords(run, added) : NUMBER[kind]?.(added) || title || label, next};
 }
 // A running run's top, the same for every kind (owner, 25 Oct 2026: "Every action run loading should be in the same way"): the step it is on, in words,
 // and its count when the step has one ({done, total, percent}; the bar slides without one). `words`: the step as the panel names it (a search's phase label),

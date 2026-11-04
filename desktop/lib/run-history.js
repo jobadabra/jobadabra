@@ -5,7 +5,8 @@
 import {call} from './notion.js';   // Notion-only: copyLocal() writes this Mac's earlier runs into a connected Notion (migrate.js); the run list is the store's
 import {openStore} from './store/index.js';
 import {jobFrom} from './job-line.js';
-import {runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {partialSearch, runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {partialWords} from '../renderer/find-card-model.js';
 import {KIND, fromRow, result} from './run-rows.js';
 
 export {fromRow, jobFrom, result};
@@ -67,7 +68,7 @@ export function localRow(run, name = kind => kind) {
   const summary = run.ok ? (run.summary || run.problem || fresh || 'Done') : (run.problem || run.summary || why || `${name(run.kind)} failed`);
   // The row's Status is what the list and the panel read back (run-rows.js warned): it follows the one rule they share (renderer/run-status.js runWarned), so a run whose log
   // has warning lines (a 429 retried 216 times) is recorded "Warnings", not "OK" (beta 13 Mac+Linux, beta 19 Windows: the list said "With warnings", the panel "Completed").
-  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}));
+  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}) || partialSearch({...run, live: false, waiting: false, off: false}));   // a run cut at the limit (#3108) is at least amber when only this machine's row is read
   const properties = {
     Run: {title: [{text: {content: `${name(run.kind)} · on this Mac`}}]},
     Started: {date: {start: run.startedAt}},
@@ -180,6 +181,15 @@ export function notice(run) {
   const said = run.rescore ? rescoreNotice(run) : noticeText(run);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }
+// Why (4 Nov 2026, #3108): the Find jobs pop-up. Kept out of noticeText() so its complexity does not grow (tools/clean-code-js.mjs: an old function over the limit may not grow).
+// A search that did not finish is never "done" with "No jobs added"; it says it ended at the time limit.
+function searchNotice(run, {where, verdict, look}) {
+  const name = run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs';
+  if (partialSearch(run)) return {title: `${name} ended at the time limit${where}`, body: `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`};
+  const fresh = run.new;
+  return {title: `${name} ${verdict}${where}`,
+    body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
+}
 function noticeText(run) {
   if (!NAMES[run.kind] && run.kind) return null;
   const where = run.where === 'github' ? ' (on GitHub)' : '';
@@ -195,11 +205,7 @@ function noticeText(run) {
   // and a pop-up that says "done" over a refused AI call is the contradiction the UI loop found (#51, #52).
   const verdict = runWarned(run) ? 'finished with warnings' : 'done';
   const look = runWarned(run) ? ' Open Jobadabra to see what it said.' : '';
-  if (!run.kind || run.kind === 'search') {
-    const fresh = run.new;
-    return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ${verdict}${where}`,
-      body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
-  }
+  if (!run.kind || run.kind === 'search') return searchNotice(run, {where, verdict, look});
   return {title: `${name} ${verdict}${where}`, body: String(run.result || run.summary || run.message || 'Done.').split('\n')[0].slice(0, 180) + look};
 }
 export {KIND as RUN_KINDS};   // every app task kind must be here, or its runs never get a Notion row (test/unit/main/run-kinds.test.js)

@@ -155,7 +155,7 @@ export function tracked(storage, kind, trigger, onLine, work, resume, summarize,
       keepRunLine(log, line);
       current = {...current, log: log.slice(-300)};
     };
-    let ok = false, result = null;
+    let ok = false, result = null, endedByTime = false;
     // A task can go quiet for minutes (an AI call, a wait for another run): say it is still alive, with how long it has been quiet (tasks 'tracked' here are all of them).
     const beat = setInterval(() => {
       const quiet = awakeNow() - lastAt;
@@ -165,13 +165,14 @@ export function tracked(storage, kind, trigger, onLine, work, resume, summarize,
       const outcome = (await work(tee, ticket.abort.signal)) || {};
       ok = outcome.ok;
       result = outcome.result || null;
+      endedByTime = !!outcome.endedByTime;   // a search that ran out of its 3 minutes (lib/search-steps.js): the record says so, the cards draw it
     } catch (error) {
       tee(`${taskName(kind)} failed: ${error.message}`);
     } finally {
       clearInterval(beat);
       const notionUrl = result?.notion_url || log.map(line => line.match(/^Cronjob run logged: (\S+)/)?.[1]).filter(Boolean).pop() || null;
       Object.assign(record, {endedAt: new Date().toISOString(), ok, notionUrl, runId: result?.run_id || null,
-        log: log.slice(-400), ...summarize(record, log)});
+        log: log.slice(-400), ...(endedByTime ? {endedByTime: true} : {}), ...summarize(record, log)});
       if (ticket.stopped) {   // the app's own work can return normally after Stop: still not a success
         ok = false;
         Object.assign(record, {ok: false, stopped: 'you', summary: 'Stopped by you. What it saved is kept; the next run continues from there.'});
