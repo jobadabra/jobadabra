@@ -36,9 +36,9 @@ export function cut(text, maxBytes) {
 /** The result of a source that gave nothing: no markdown, and a note `unavailable: <why>` the pack records. -> {markdown, truncated, notes} */
 export const unavailable = why => ({markdown: '', truncated: false, notes: `unavailable: ${why}`});
 
-/** The one exit of every fetcher: banner + scrub + bound, then leaks() over the result; any hit drops the file (fail closed). -> {markdown, truncated, notes} */
-export function finish(title, body, limits = LIMITS) {
-  const clean = scrub(`${title}\n\n${body}`), {text, truncated} = cut(`${BANNER}\n\n${clean}`, limits.maxBytes ?? LIMITS.maxBytes);
+/** The one exit of every fetcher: banner + scrub + bound, then leaks() over the result; any hit drops the file (fail closed). `ownTitle` true = the title was built from the caller's own validated ref (an event or Worker name), so only the body is scrubbed and the title stays readable. -> {markdown, truncated, notes} */
+export function finish(title, body, limits = LIMITS, ownTitle = false) {
+  const clean = ownTitle ? `${title}\n\n${scrub(body)}` : scrub(`${title}\n\n${body}`), {text, truncated} = cut(`${BANNER}\n\n${clean}`, limits.maxBytes ?? LIMITS.maxBytes);
   const reasons = leaks(text, NO_BRIEF);
   if (reasons.length) return unavailable(`withheld, it still held ${reasons.join(', ')}`);
   return {markdown: text, truncated, notes: truncated ? 'cut at the size limit' : ''};

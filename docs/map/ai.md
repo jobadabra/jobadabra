@@ -28,7 +28,7 @@ updated: 2026-11-03
 - [Desktop AI through MCP](../superpowers/specs/2026-11-03-desktop-ai-mcp-design.md): a local MCP server so a person's Claude desktop app can help.
 
 ## Ask the sources
-ask: cloudflare analytics worker=ai-broker days=7
+ask: cloudflare analytics worker=jobadabra-ai-broker days=7
 ask: github issues label=ai-budget state=open
 ask: posthog events event=ai_setup_state days=7
 
