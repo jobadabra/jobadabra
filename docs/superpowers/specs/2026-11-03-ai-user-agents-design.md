@@ -331,7 +331,7 @@ Replay: for each tester bug, run the app at the **pre-fix commit** (table above)
 - [ ] [ag] 11/12 a living persona: snapshot saved and restored across nights, chapters, staggered personas, replay from a snapshot (phase 2)
 - [ ] [ag] 12/12 the moving world: daily jobs and mail, a clock option, the off-script moves (phase 2)
 - [ ] [ag] FR 1/4 rule scope: `profile-1` is about the list of open questions only (the control on `df66db14` files nothing, the pre-fix commit still finds it)
-- [ ] [ag] FR 2/4 step budget: fewer goals, more steps each (could-not-finish share from 44% to under 20% over 3 nights)
+- [ ] [ag] FR 2/4 step budget: a repeated action on an unchanged page ends the goal, freeing its steps (could-not-finish share from 44% to under 20% over 3 nights)
 - [ ] [ag] FR 3/4 a seeded known-bug shape per night before the free goals (2 free sessions on `b6014b04`, rules off, shape seeded)
 - [ ] [ag] FR 4/4 one judge decides, after scoring both on the recorded replay notes
 - [ ] First daily session's findings on /admin/testing/self-healing
