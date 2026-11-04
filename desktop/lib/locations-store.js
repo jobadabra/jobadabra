@@ -10,7 +10,7 @@ import {itemsOf} from './profile-move.js';
 import {fieldFor} from '../renderer/preferences-model.js';
 import {applyLocations, classify, judgeProfile, readSide, resolveConflict} from './locations-move.js';
 import {settleSame} from './locations-same.js';
-import {publishSearchSettings} from './strategy-settings.js';
+import {saveSettings} from './strategy-settings.js';
 import * as backup from './backup.js';
 import {keep} from './set-aside.js';
 
@@ -25,10 +25,10 @@ export async function profileRows(storage, fetcher) {
   return itemsOf(outline, 'profile').filter(item => KEYS.has(fieldFor(item.label)?.key)).map(({label, value}) => ({label, value}));
 }
 
-// The default writer: the file, then the Notion settings page when the caller has its deps (what editLists does).
+// The default writer: the Notion settings page, then the file, when the caller has its deps (saveSettings, what editLists does); else the file.
 const defaultWrite = async (storage, next, deps) => {
-  storage.writeText(SEARCH_FILE, JSON.stringify(next, null, 2) + '\n');
-  if (deps) await publishSearchSettings(storage, deps);
+  if (deps) await saveSettings(storage, {search: next}, deps);
+  else storage.writeText(SEARCH_FILE, JSON.stringify(next, null, 2) + '\n');
 };
 
 // The copy taken before anything is written: the Profile page and the search settings as they were, then the backup.

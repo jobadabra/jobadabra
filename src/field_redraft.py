@@ -129,8 +129,11 @@ def refresh(asker=None, profile=None, publish=_publish):
             STAMP.parent.mkdir(parents=True, exist_ok=True)
             STAMP.write_text(json.dumps(stamp))
         return False
-    search_settings.apply({('search', path): (new[path[0]] if len(path) == 1 else new[path[0]][path[1]]) for path in DERIVED}, files)
-    publish(search_settings.load_cached())
+    # Why (3 Nov 2026, owner: "Notion first, then here"): the page is written before the copy. Copy first left a window in which a pull of the old page put the old words back over the redraft.
+    # A refused page raises here: the copy and the stamp stay as they were, so the next run redrafts again.
+    redrafted_files = search_settings.merged({('search', path): (new[path[0]] if len(path) == 1 else new[path[0]][path[1]]) for path in DERIVED}, files)
+    publish(redrafted_files)
+    search_settings.write_files(redrafted_files)
     STAMP.parent.mkdir(parents=True, exist_ok=True)
     STAMP.write_text(json.dumps(field_of(new)))
     print('Field change: your roles moved to another field, so the employer-finding words, skills and Google Jobs searches were redrafted for it.', flush=True)

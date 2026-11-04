@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import os
 import re
@@ -54,6 +56,31 @@ class SearchSettingsTests(unittest.TestCase):
             (Path(tmp) / 'preferences.json').write_text(json.dumps(FILES['preferences']))
             files = s.apply(values)
         self.assertEqual(files, WITH_ROLES)  # the page never changes what a search matches: the same keywords, now also the one list of titles
+
+    def test_the_page_renders_from_given_settings_the_same_as_from_the_same_files_and_touches_none(self):
+        # Notion first, then the copy (3 Nov 2026, owner): the app renders the page from the settings it is about to save, before config/*.json holds them.
+        given = json.loads(json.dumps(WITH_ROLES))
+        given['search']['locations']['top_tier'].append('lugano')
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(s, 'CONFIG', Path(tmp)):
+            (Path(tmp) / 'given.json').write_text(json.dumps(given))
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                self.assertEqual(s.main(['render', '--from', str(Path(tmp) / 'given.json')]), 0)
+            self.assertEqual(sorted(path.name for path in Path(tmp).iterdir()), ['given.json'], 'rendering from given settings wrote a file')
+            (Path(tmp) / 'search.json').write_text(json.dumps(given['search']))
+            (Path(tmp) / 'preferences.json').write_text(json.dumps(given['preferences']))
+            self.assertEqual(said.getvalue(), s.render(), 'the page from given settings differs from the page of the same files')
+        self.assertIn('- lugano', said.getvalue())
+
+    def test_merged_settings_are_what_apply_writes_and_merging_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(s, 'CONFIG', Path(tmp)):
+            (Path(tmp) / 'search.json').write_text(json.dumps(FILES['search']))
+            (Path(tmp) / 'preferences.json').write_text(json.dumps(FILES['preferences']))
+            values = {('search', ('locations', 'top_tier')): ['lugano'], ('preferences', ('digest_min_score',)): 70}
+            before = {path.name: path.read_text() for path in Path(tmp).iterdir()}
+            merged = s.merged(values, s.load_cached())
+            self.assertEqual({path.name: path.read_text() for path in Path(tmp).iterdir()}, before, 'merging wrote a file')
+            self.assertEqual(s.apply(values), merged)
 
     def test_the_locations_kinds_and_the_search_only_override_survive_the_page(self):
         # Locations, one source (17 Oct 2026): relocation yes / no / unspecified and a search-only list are settings too, on every store.
