@@ -116,7 +116,7 @@ export function parseLive(output) {
     if (layerLeft) errors.push(`cookie layer still open at the end: ${layerLeft[1].trim().slice(0, 100)}`);
     const video = line.match(/^live: fill video: (.+)\|(\d+)\|(\d+)$/);   // the row's fill video, kept in CI for the Lab's ▶ Watch (lib/live-video.mjs, uploaded by pool-ci-rows.mjs)
     if (video) fillVideo = {path: video[1], bytes: Number(video[2]), secs: Number(video[3])};
-    const spend = line.match(/^live: AI spend \$([\d.]+)(?: on the CI key \((\d+) calls)?/);   // a row on the CI key (lib/live-row.mjs): what its asks cost; the pool's dollar cap sums it (lib/pool-ci.mjs)
+    const spend = line.match(/^live: AI spend \$([\d.]+)(?: on the AI broker \((\d+) calls)?/);   // a row asked through the AI broker (lib/live-row.mjs): what its asks cost; the pool's dollar cap sums it (lib/pool-ci.mjs)
     if (spend) { usd = Number(spend[1]); if (spend[2] != null) aiCalls = Number(spend[2]); }   // the calls: /admin/intelligence/ai-cost counts them (pool-ai-cost.mjs)
     if (/^live: privacy tripwire: .* typed into "/.test(line)) tripped = true;   // a hit names the field (lib/privacy-tripwire.mjs); a line about the tripwire is not one
     const refused = line.match(/^live: AI refused (\d+) call\(s\): (.*)$/);   // the key was refused (no credit, a limit, a bad key): the row ran without AI

@@ -22,9 +22,10 @@ test('a suite that pins the API keeps it (its steps are answered by the proxy); 
   assert.throws(() => pickEngine({env: {E2E_AI_ENGINE: 'gpt'}, installed: yes}), /E2E_AI_ENGINE/);
 });
 
-test('on a Mac the test key is empty whatever the environment holds; in CI it is the secret', () => {
+test('the test key is empty on a Mac whatever the environment holds; in CI it is the placeholder under Codex and never an Anthropic key', () => {
   assert.equal(testKey({E2E_ANTHROPIC_KEY: 'sk-ant-real'}), '');
-  assert.equal(testKey({CI: 'true', E2E_ANTHROPIC_KEY: 'sk-ant-real'}), 'sk-ant-real');
+  assert.equal(testKey({CI: 'true', CI_AI_PROVIDER: 'codex', E2E_ANTHROPIC_KEY: 'sk-ant-real'}), DUMMY_KEY, 'Codex: the broker relay answers, the app holds the placeholder');
+  assert.equal(testKey({CI: 'true', E2E_ANTHROPIC_KEY: 'sk-ant-real', ANTHROPIC_API_KEY: 'sk-ant-real'}), '', 'CI reads no Anthropic key, even one left in the environment');
   assert.equal(isCi({}), false);
 });
 
@@ -44,7 +45,7 @@ test('CI forces the cheap model; a Mac lets the app use its own production model
 });
 
 test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never without the OpenAI key; the judges stay on Claude', async () => {
-  const {pickEngine, pickFamily, keySecret, testKey} = await import('../../lib/engine.mjs');
+  const {pickEngine, pickFamily, familySecret, testKey} = await import('../../lib/engine.mjs');
   const ci = (run, extra = {}) => ({CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_OPENAI_KEY: 'sk-test', E2E_ANTHROPIC_KEY: 'sk-ant-test', ...extra});
   assert.equal(pickFamily(ci(7)), 'openai');
   assert.equal(pickFamily(ci(8)), 'claude');
@@ -55,8 +56,9 @@ test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never wit
   assert.equal(pickEngine({env: ci(7), family: 'claude'}), 'api', 'the judges (lib/model.mjs) stay on Claude');
   assert.equal(pickEngine({env: ci(7), suiteEngine: 'api'}), 'openai', 'CI: a proxy suite still runs the family (the proxy is per step: ctx.withApi)');
   assert.equal(testKey(ci(7), 'openai'), 'sk-test');
-  assert.equal(testKey(ci(7), 'api'), 'sk-ant-test');
-  assert.equal(keySecret('codex'), 'E2E_OPENAI_KEY');
+  assert.equal(testKey(ci(7), 'api'), '', 'no Anthropic key is read (3 Nov 2026)');
+  assert.equal(familySecret('openai', 'codex'), 'E2E_OPENAI_KEY');
+  assert.equal(familySecret('claude', 'api'), 'CI_AI_PROVIDER=codex', 'a Claude suite with no key says what it needs: the broker');
   // A Mac: Claude unless pinned; pinned OpenAI runs the user's own Codex, never an API key.
   assert.equal(pickFamily({}), 'claude');
   assert.equal(pickEngine({env: {E2E_AI_FAMILY: 'openai'}, installed: () => true}), 'codex');
@@ -64,16 +66,13 @@ test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never wit
   assert.throws(() => pickFamily({E2E_AI_FAMILY: 'gpt'}), /claude, openai, free or rotate/);
 });
 
-// Owner, 12 Oct 2026: each live run's AI cost shows apart in the Console and on /admin/intelligence/ai-cost: the CI recording by hand asks on its own key (the PR key went on 15 Oct 2026).
-test('live runs ask on their own key (a recording run by hand), the Tests key until it is set; the name is said, never the value', async () => {
-  const {liveKeyName, testKey} = await import('../../lib/engine.mjs');
-  const env = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', LIVE_POOL_ANTHROPIC_KEY: 'pool'};
-  assert.deepEqual([liveKeyName({...env, JOBADABRA_VISIT_KIND: 'hand'}), testKey({...env, JOBADABRA_VISIT_KIND: 'hand'})], ['LIVE_POOL_ANTHROPIC_KEY', 'pool']);
-  assert.deepEqual([liveKeyName(env), testKey(env)], ['E2E_ANTHROPIC_KEY', 'tests'], 'an e2e suite (no visit kind): the Tests key');
-  const notYet = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', JOBADABRA_VISIT_KIND: 'hand'};
-  assert.deepEqual([liveKeyName(notYet), testKey(notYet)], ['E2E_ANTHROPIC_KEY', 'tests'], 'its own key not set yet: the Tests key');
-  assert.equal(testKey({...env, CI: '', JOBADABRA_VISIT_KIND: 'hand'}), '', 'never on a Mac');
-  assert.equal(liveKeyName({...env, JOBADABRA_VISIT_KIND: 'hand'}, 'openai'), 'E2E_OPENAI_KEY', 'an OpenAI engine keeps its own Tests key');
+// Owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker." A recording run by hand used to ask on LIVE_POOL_ANTHROPIC_KEY (its cost apart); it asks the broker now.
+test('a live run on CI has no key of its own: neither the Tests key nor the pool key becomes its key', async () => {
+  const {testKey} = await import('../../lib/engine.mjs');
+  const env = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', LIVE_POOL_ANTHROPIC_KEY: 'pool', JOBADABRA_VISIT_KIND: 'hand'};
+  assert.equal(testKey(env), '');
+  assert.equal(testKey({...env, CI_AI_PROVIDER: 'codex'}), DUMMY_KEY, 'under Codex the row asks through the broker relay (lib/live-row.mjs)');
+  assert.equal(testKey({...env, CI: ''}), '', 'never on a Mac');
 });
 
 // Owner, 26 Oct 2026 (CI's Anthropic credit ran out): "Let's just switch to Free AI (CloudFlare workers AI). I don't want to top up anymore". With the relay up on the
@@ -87,7 +86,8 @@ test('CI on Free AI: with the relay up the app and the judges run on Free AI, it
   assert.equal(testKey(ci(8, relay), 'api', 'free'), relay.E2E_FREE_AI_KEY);
   assert.equal(familySecret('free'), 'E2E_FREE_AI_KEY');
   assert.equal(judgeFamily(ci(8, relay)), 'free');
-  assert.equal(judgeFamily(ci(8, {...relay, E2E_JUDGE_FAMILY: 'claude'})), 'claude', 'one switch puts the judges back on Claude when he funds it');
+  assert.throws(() => judgeFamily(ci(8, {...relay, E2E_JUDGE_FAMILY: 'claude'})), /no Anthropic API key/, 'no switch puts CI\'s judges back on a paid key');
+  assert.equal(judgeFamily({E2E_JUDGE_FAMILY: 'claude'}), 'claude', 'a Mac\'s judges are its own Claude Code');
   assert.equal(pickFamily(ci(8, {...relay, E2E_AI_FAMILY: 'openai'})), 'openai', 'a pin still wins');
   // No relay (a fork, or the token unset): today's rotation, unchanged.
   assert.equal(pickFamily(ci(7)), 'openai');

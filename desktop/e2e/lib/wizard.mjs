@@ -96,7 +96,7 @@ export async function runWizard(ctx) {
         const state = await page.evaluate(() => window.pilot.state());
         if (!state.secrets.ANTHROPIC_API_KEY || state.settings.aiEngine !== 'api') throw new Error('the accepted API key or engine was not saved');
       } finally { await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: null})); }
-    }, {needs: [{name: 'E2E_ANTHROPIC_KEY', value: KEY}]});
+    }, {needs: ctx.needsKey});
   }
   await ctx.run('a CV is chosen and read', async () => {
     await ctx.pickCv();

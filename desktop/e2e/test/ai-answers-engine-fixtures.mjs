@@ -195,7 +195,7 @@ export function tempTable(t, items = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-answers-')), file = path.join(dir, 'table.json');
   fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, items}));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  return {dir, file, env: {E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir, E2E_AI_CACHE: dir, E2E_AI_CANDIDATES: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'claude', E2E_JUDGE_FAMILY: 'claude', E2E_AI_REPLAY: '0'}};
+  return {dir, file, env: {E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir, E2E_AI_CACHE: dir, E2E_AI_CANDIDATES: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'free', E2E_AI_REPLAY: '0'}};
 }
 /** Record a fixture reply and load its candidate items for replay assertions. */
 export function recorded(t, c, env = {}) {

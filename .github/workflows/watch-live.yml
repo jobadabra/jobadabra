@@ -18,6 +18,7 @@ on:
 permissions:
   contents: read
   actions: read   # the earlier runs' state artifacts
+  id-token: write   # the AI broker knows a run by its OIDC token: the rows ask it through the harness relay (lib/live-row.mjs; 3 Nov 2026, owner: "Everything should be around the ai-broker")
 
 jobs:
   # No AI, no browser: which watch rows, and what the month's cap leaves.

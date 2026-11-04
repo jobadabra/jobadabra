@@ -21,7 +21,7 @@ async function harness(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quality-backbone-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const env = {E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: tableFile, E2E_ARTIFACTS: dir, E2E_SUITE: 'quality',
-    E2E_AI_REPLAY: '0', E2E_AI_CACHE: dir, E2E_QUALITY_PERSONA: '', E2E_JUDGE_FAMILY: 'claude', E2E_AI_PROVIDER: 'claude'};
+    E2E_AI_REPLAY: '0', E2E_AI_CACHE: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'free'};
   const saved = {...process.env};
   Object.assign(process.env, env);
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); });

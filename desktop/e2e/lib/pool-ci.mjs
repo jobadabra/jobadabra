@@ -3,10 +3,10 @@
 // wall on the runner's data-center IP shown as "blocked (CI IP)" and never a failure, red only for a row that did not finish (a harness error), the tripwire, or a
 // refused AI (12 Oct 2026: the Tests key had no credit and the row ran without AI, which is no result).
 // Used by record-sites.mjs and pool-ci-summary.mjs. Guard: e2e/test/pool-ci.test.mjs.
+// Job: report health
 import {SITE_REFUSED} from './record-sites.mjs';
 import {recordVar} from '../../../tools/record-env.mjs';
 import {fallsBelow} from './pool-ci-state.mjs';
-import {LIVE_KEYS, keySecret} from './engine.mjs';
 
 // -> {maxRows, maxUsd}; 0 = no cap. On CI both come from the workflow, or the run is refused before any site is visited.
 export function ciLimits(env = process.env) {
@@ -63,9 +63,9 @@ const endingCell = item => (item.ending === 'unresolved' ? '❌ unresolved' : it
 
 // The day's report (record-sites.mjs: results + thisRun) and each row's last CI run (baseline: lib/pool-ci-state.mjs baselines) -> {markdown, red: [reasons]} for
 // the job log; red is empty when the run is green. Only the rows this run ran (the day's report also keeps other runs' rows).
-// keyName: which Anthropic key the run used, by NAME (lib/engine.mjs liveKeyName); anything but a known name is never printed.
-const KEY_NAMES = [keySecret('api'), ...Object.values(LIVE_KEYS)];   // the names come from the engine rule, the only file that names keys (e2e/test/no-local-key.test.mjs)
-export function summary(report = {}, {baseline = {}, now = new Date(), keyName = ''} = {}) {
+// Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): the pool asks the AI broker through the harness relay (lib/live-row.mjs), not an Anthropic key,
+// so the spend line no longer names a key; its dollar figure is the API-equivalent estimate the cap works on, not money.
+export function summary(report = {}, {baseline = {}, now = new Date()} = {}) {
   const run = report.thisRun || {}, ran = run.ran ? new Set(run.ran) : null;
   const results = Object.entries(report.results || {}).filter(([shape]) => !ran || ran.has(shape));
   const last = shape => { const base = baseline[shape]; return base ? `${base.reached}${base.filled != null ? ` ${base.filled} / ${base.left}` : ''} (run ${base.run}, ${base.branch})` : '–'; };
@@ -79,7 +79,7 @@ export function summary(report = {}, {baseline = {}, now = new Date(), keyName =
     'Held: the fake applicant, never Submit, no account or consent button, no password, no captcha. Nothing uploaded from CI.', '',
     '| Row | Applicant | Reached | Ending | Filled / left | Blocked | Last CI run | AI | Time |', '|---|---|---|---|---|---|---|---|---|',
     ...results.map(([shape, item]) => `| ${cell(shape)} | ${cell(item.applicant || 'thin')} | ${cell(item.reached)} | ${cell(endingCell(item))} | ${item.filled != null ? `${item.filled} / ${item.left}` : '–'} | ${cell(blockedWord(item))} | ${cell(last(shape))} | ${money(item.usd)} | ${item.seconds ?? '?'} s |`),
-    '', `AI spend: ${money(run.usd)} of the $${Number(run.maxUsd || 0).toFixed(2)} cap (key: ${KEY_NAMES.includes(keyName) ? keyName : keySecret('api')}).`];
+    '', `AI spend: ${money(run.usd)} of the $${Number(run.maxUsd || 0).toFixed(2)} cap (an API-equivalent estimate: the calls went to the AI broker, the Codex plan, no key).`];
   if (run.stopped) lines.push(`Stopped early: ${run.stopped}.`);
   if ((run.cut || []).length) lines.push(`Not run: ${run.cut.join(', ')} (row cap ${run.maxRows}).`);
   if ((run.skipped || []).length) lines.push(`Skipped by CI's site limit: ${run.skipped.map(item => item.shape).join(', ')}.`);

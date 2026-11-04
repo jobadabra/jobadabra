@@ -47,7 +47,7 @@ test('apply preserves contact answers and each context\'s unmatched-ask fallback
 function environment(t, extra = {}) {
   const saved = {...process.env};
   for (const key of Object.keys(process.env)) if (/^(E2E_|CI_AI_PROVIDER)/.test(key)) delete process.env[key];
-  Object.assign(process.env, {CI: 'true', E2E_AI_PROVIDER: 'claude', ...extra});
+  Object.assign(process.env, {CI: 'true', E2E_AI_PROVIDER: 'free', ...extra});
   t.after(() => { for (const key of Object.keys(process.env)) delete process.env[key]; Object.assign(process.env, saved); });
 }
 
@@ -69,14 +69,17 @@ test('offline context keys bypass every key check, use the dummy and require no 
   assert.deepEqual((await context.contextAiKeys({offlineAi: true, family: 'claude', engine: 'api'})).needs, []);
 });
 
-test('a live context still checks the CI key and requires it; Mac key selection stays unchanged', async t => {
-  environment(t, {E2E_ANTHROPIC_KEY: 'revoked'});
+test('a live context holds no Anthropic key: Codex gets the placeholder, nothing else gets one and the suite names what it needs; Mac key selection stays unchanged', async t => {
+  // Owner, 3 Nov 2026: "We should not use API Keys at all anymore." A key left in the environment is neither used nor asked about.
+  environment(t, {E2E_ANTHROPIC_KEY: 'revoked', E2E_AI_PROVIDER: 'codex'});
   let checked = 0;
   t.mock.method(globalThis, 'fetch', async () => { checked++; return new Response('{}', {status: 401}); });
-  await assert.rejects(context.contextAiKeys({family: 'claude', engine: 'api'}), /refused \(401\)/);
-  assert.equal(checked, 1);
-  delete process.env.E2E_ANTHROPIC_KEY;
-  assert.deepEqual((await context.contextAiKeys({family: 'claude', engine: 'api'})).needs, [{name: 'E2E_ANTHROPIC_KEY', value: ''}]);
+  const brokered = await context.contextAiKeys({family: 'claude', engine: 'api'});
+  assert.equal(brokered.key, DUMMY_KEY);
+  assert.deepEqual(brokered.needs, [{name: 'CI_AI_PROVIDER=codex', value: DUMMY_KEY}]);
+  process.env.E2E_AI_PROVIDER = 'free';
+  assert.deepEqual((await context.contextAiKeys({family: 'claude', engine: 'api'})).needs, [{name: 'CI_AI_PROVIDER=codex', value: ''}], 'no Codex, no relay: skipped, saying what it needs');
+  assert.equal(checked, 0, 'no key is asked about');
   delete process.env.CI;
   const keys = await context.contextAiKeys({offlineAi: true, family: 'claude', engine: 'cli'});
   assert.equal(keys.key, '');

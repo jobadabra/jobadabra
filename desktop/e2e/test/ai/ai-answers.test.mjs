@@ -27,7 +27,7 @@ function fixture(t, answers = {'app.score': {'3001': {reply: stored}}}) {
   const file = path.join(dir, 'table.json');
   fs.writeFileSync(file, JSON.stringify({v: 1, about: 'Test answers.', answers}));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  return {dir, file, env: {E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir, E2E_SUITE: 'quality', E2E_JUDGE_FAMILY: 'claude', E2E_AI_PROVIDER: 'claude'}};
+  return {dir, file, env: {E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir, E2E_SUITE: 'quality', E2E_AI_PROVIDER: 'free'}};
 }
 
 function environment(t, env) {
