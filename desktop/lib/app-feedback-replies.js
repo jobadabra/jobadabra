@@ -34,7 +34,7 @@ export async function fetchReplies(storage, {version, fetcher = globalThis.fetch
   } catch { return null; }
 }
 
-/** The person closed a card. -> true when the website took it; false leaves the card to come back at the next ask. */
+/** The person closed a card: POST /api/feedback/replies/seen {ref} (written out here because the URL is built as `${base}/seen`, and the route list's guard reads this text). -> true when the website took it; false leaves the card to come back at the next ask. */
 export async function closeReply(storage, ref, {fetcher = globalThis.fetch, base = BASE} = {}) {
   try {
     const key = keyOf(storage);
