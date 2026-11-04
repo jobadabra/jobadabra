@@ -48,7 +48,11 @@ export function observePage() {
     const kind = /^(INPUT|TEXTAREA)$/.test(el.tagName) ? 'field' : el.tagName === 'SELECT' ? 'select' : el.tagName === 'A' ? 'link' : 'button';
     const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || el.getAttribute('name') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
     el.setAttribute('data-explore', String(controls.length));
-    controls.push({i: controls.length, kind, label, disabled: !!el.disabled, cls: String(el.className || ''), href: el.getAttribute('href') || '', type: el.getAttribute('type') || ''});
+    // Why (4 Nov 2026, AI user agents, owner: "Yes, fix it now"): the badge in a control ("What we learned" + the pill "2 to check") is information, not the press; safety reads the name without the app's pills, so "check" in a count never refuses the tab (replay 41807054784: the whole Profile tab was [not allowed]).
+    const named = el.cloneNode(true);
+    for (const badge of named.querySelectorAll('.ui-pill')) badge.remove();
+    const safeLabel = el.getAttribute('aria-label') ? label : named.textContent.replace(/\s+/g, ' ').trim().slice(0, 80);
+    controls.push({i: controls.length, kind, label, safeLabel, disabled: !!el.disabled, cls: String(el.className || ''), href: el.getAttribute('href') || '', type: el.getAttribute('type') || ''});
   }
   const shown = document.querySelector('.view:not([hidden])');
   const text = (shown?.innerText || document.body.innerText || '').replace(/\n{3,}/g, '\n\n').slice(0, 3000);
@@ -56,8 +60,9 @@ export function observePage() {
   return {view: shown?.dataset.view || '', text, overlays, controls};
 }
 
+// A control's safety is judged on its own name (safeLabel: the label without the app's pills, as a count "2 to check" is not a press); an old record without one keeps its label.
 // Typing into a field presses nothing (Enter is never sent), so a field named "Search" is allowed; a password field never is. Anything pressable follows the probe's rule.
-export const allowed = control => !control.disabled && control.type !== 'password' && (control.kind === 'field' || isSafe({text: control.label, cls: control.cls, href: control.href}));
+export const allowed = control => !control.disabled && control.type !== 'password' && (control.kind === 'field' || isSafe({text: control.safeLabel ?? control.label, cls: control.cls, href: control.href}));
 
 export function formatObservation(seen) {
   return [`Page: ${seen.view || '(unknown)'}`, ...(seen.overlays.length ? [`Open dialogs and toasts: ${seen.overlays.join(' | ')}`] : []), '', 'Visible text:', seen.text, '',
