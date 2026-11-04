@@ -45,9 +45,14 @@ def template_json(name):
 
 
 def files_for(repo):
-    """The workflow files a repo gets, from profiles.json (jobadabra: none, it is their source; web: the two labels; everyone else: all three)."""
+    """The workflow files a repo gets, from profiles.json (jobadabra: none, it is their source; web: the labels workflow; everyone else: the PR checks and the labels)."""
     profiles = template_json('profiles.json')
     return profiles.get(repo, profiles['default'])
+
+
+def retired_files():
+    """The workflow files no repo may keep, from profiles.json. Why (4 Nov 2026, #3143): `files` only ever wrote and the check only read the profile, so a merged-away workflow stayed on every repo, unseen, and went on running beside its replacement."""
+    return template_json('profiles.json').get('retired', [])
 
 
 def normalize(text):
@@ -132,6 +137,7 @@ def check_repo(repo):
             gaps.append(f'{WORKFLOWS}/{name} is missing')
         elif normalize(text) != normalize((TEMPLATES / name).read_text(encoding='utf-8')):
             gaps.append(f'{WORKFLOWS}/{name} differs from templates/org-repo/{name}')
+    gaps += [f'{WORKFLOWS}/{name} is retired and still there' for name in retired_files() if default_file(repo, info['default_branch'], name) is not None]
     return gaps
 
 
@@ -187,7 +193,7 @@ def cmd_check(args):
 
 
 def cmd_files(args):
-    """`files`: write the repo's workflow files from the templates into the clone at args.clone, only those that differ. -> 0."""
+    """`files`: write the repo's workflow files from the templates into the clone at args.clone, only those that differ, and delete the retired ones. -> 0."""
     target = Path(args.clone) / WORKFLOWS
     if not args.dry_run:
         target.mkdir(parents=True, exist_ok=True)
@@ -197,6 +203,11 @@ def cmd_files(args):
             if not args.dry_run:
                 (target / name).write_text(source, encoding='utf-8')
             print(f'{"would write" if args.dry_run else "wrote"} {WORKFLOWS}/{name}')
+    for name in retired_files():
+        if (target / name).exists():
+            if not args.dry_run:
+                (target / name).unlink()
+            print(f'{"would remove" if args.dry_run else "removed"} {WORKFLOWS}/{name}')
     return 0
 
 
