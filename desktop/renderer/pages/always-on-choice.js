@@ -5,6 +5,7 @@ import {icon} from '../icons.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {beforeOpen} from './open-hooks.js';
+import {setWay} from './always-on-test.js';
 import {NAME, LEAD, choices, pill as statePill, running, startWay, notice} from '../always-on-choice-words.js';
 
 const CARDS = {ours: 'setting-hosted', own: 'setting-cloud'};
@@ -56,4 +57,14 @@ export function draw() {
     node.classList.add('aon-way');
     node.hidden = way !== picked;
   }
+  placeTest();
+}
+
+// The Test row is one node that sits at the end of the picked way's card (owner, 4 Nov 2026: the test button is for "our servers" and for "own accounts"), so it is never twice in the page.
+function placeTest() {
+  const row = $('aon-test'), card = $(CARDS[picked]);
+  if (!row || !card) return;
+  if (picked === 'own') { const before = $('tg-cloud'); if (row.nextElementSibling !== before) before.before(row); }
+  else if (row.parentElement !== card) card.append(row);
+  setWay(picked);
 }
