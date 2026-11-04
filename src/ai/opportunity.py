@@ -233,20 +233,24 @@ def message_markdown(text):
 
 
 def track(stores, lead, text, *, source, event_source, talking=False, at=None, gmail_id='', note='', seed=None, url=None,
-          extra_markdown=''):
+          extra_markdown='', applied=False):
     """The job's record, its message section and the events. Returns (record, one-line summary); record is None when the
-    message is already tracked. extra_markdown: what goes under the message (what to check, the screenshots' link)."""
+    message is already tracked. extra_markdown: what goes under the message (what to check, the screenshots' link).
+    applied: the person's own application (a confirmation email), not a recruiter's pitch: Stage Applied, Origin Outbound."""
     if gmail_id and lead.get('platform') not in ('LinkedIn',):
         lead = {**lead, 'platform': 'Email'}  # found in Gmail: an email (LinkedIn's notification emails stay LinkedIn)
     url = url or lead_url(lead, text, gmail_id, seed)
     if stores.applications.get(url) or same_pitch(stores, lead):
         return None, f'Already tracked: {label(lead)}'
     talking = talking or bool(lead.get('owner_agreed'))
-    stage = 'Screening' if talking else LEAD_STAGE
+    stage = 'Applied' if applied else 'Screening' if talking else LEAD_STAGE
     # A recruiter's pitch: it found you (Inbound, src/notion/origin.py); an Inbound job's title names who it is for
-    # ("Principal SRE · via Huxley", src/notion/titles.py), as the Notion store writes it.
-    record = stores.applications.create({**fields(lead, url, stage, source), 'origin': origin_rule.LABELS[origin_rule.INBOUND]},
-                                        stage)
+    # ("Principal SRE · via Huxley", src/notion/titles.py), as the Notion store writes it. An application you sent went to them: Outbound.
+    found = origin_rule.OUTBOUND if applied else origin_rule.INBOUND
+    # The email's day is an upper bound for when they applied (as src/ai/mail_leads.py and inbox_notion._new_row write it): in the one create(), never a second write.
+    day = {'applied_on': at[:10], 'date_approximate': True} if applied and at else {}
+    record = stores.applications.create({**fields(lead, url, stage, source, origin='Application email' if applied else 'Recruiter message'),
+                                         'origin': origin_rule.LABELS[found], **day}, stage)
     body = '\n\n'.join(part for part in (message_markdown(text), extra_markdown) if part)
     try:
         if body:
@@ -254,14 +258,14 @@ def track(stores, lead, text, *, source, event_source, talking=False, at=None, g
     except Exception as error:  # noqa: BLE001 — the job is what matters; the message is a convenience
         print(f'Warning: message not copied to the job: {type(error).__name__}: {error}', file=sys.stderr)
     at = at or datetime.now(timezone.utc).isoformat(timespec='seconds')
-    event, existing = rules.add_event(stores, record, LEAD_STAGE, event_source, at=at,
+    event, existing = rules.add_event(stores, record, 'Applied' if applied else LEAD_STAGE, event_source, at=at,
                                       note=note or f'Recruiter message: {label(lead)}'[:300])
     if gmail_id and not existing:
         stores.events.update(event['id'], {'source_id': gmail_id})
     if talking:
         rules.add_event(stores, record, 'Screening', event_source, note='Already talking to the recruiter when tracked')
     facts = ' · '.join(p for p in (lead.get('salary'), lead.get('location') or lead.get('work_mode')) if p)
-    return record, f"Tracked recruiter lead: {label(lead)}{f' · {facts}' if facts else ''} ({stage})"
+    return record, f"Tracked {'application' if applied else 'recruiter lead'}: {label(lead)}{f' · {facts}' if facts else ''} ({stage})"
 
 
 def add_from_text(stores, text, *, client=None, model=DEFAULT_MODEL, source='Manual', event_source='CLI',

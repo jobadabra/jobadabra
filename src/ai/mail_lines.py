@@ -25,7 +25,7 @@ def ask(stores, email, result, suggested, index, lines, stats):
                       note=f"{result.get('summary') or kind} (email: \"{subject}\")"[:1990],
                       suggested_job=_field(suggested, 'url') if suggested is not None else '',
                       interview_at=result.get('interview_at') or '',
-                      changes=changes_of({}, email, result.get('feedback') or ''))
+                      changes=changes_of({}, email, result.get('feedback') or '', read=result))
     index[0].add(email['id'])
     guess = f" (maybe {_label(suggested)})" if suggested is not None else ''
     lines.append(tgcard.block('Which job is this for?', escape(result.get('company') or email['subject'][:60]) + ': '
