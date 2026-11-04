@@ -311,7 +311,7 @@ def select(changed, base_ref=None):
              'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
              'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
              'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
-    unknown = [f for f in relevant if not f.startswith(KNOWN)]
+    unknown = [f for f in relevant if not f.startswith(KNOWN) and not starts_desktop_job(f)]
     if everything or unknown:
         why['all'] = everything + unknown
         return {**{k: 'all' for k in AREAS}, 'reasons': why}

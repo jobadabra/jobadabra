@@ -42,8 +42,9 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertGreater(len(outside), 10)
         self.assertEqual([f for f in outside if not self.picker.starts_desktop_job(f)], [])
         self.assertIn('test/unit/main/rename-guard.test.js', self.picker.select(['tools/rename-inventory.mjs'])['desktop'])
-        for one_of_each in ('docs/gtm-journeys.json', next(f for f in outside if f.endswith('.md')), next(f for f in outside if f.startswith('.github/'))):
-            self.assertTrue(self.picker.select([one_of_each])['desktop'], one_of_each)
+        for one_of_each in ('docs/gtm-journeys.json', 'AGENTS.md', '.gitignore', next(f for f in outside if f.startswith('.claude/')), next(f for f in outside if f.startswith('.github/'))):
+            picked = self.picker.select([one_of_each])['desktop']
+            self.assertTrue(picked and picked != 'all', one_of_each)   # a listed file picks by reach and mention; it never runs everything
         self.assertEqual(self.picker.select(['docs/rules/change-loop.md'])['desktop'], [])   # a doc no test reads still runs nothing
 
     def test_a_change_to_what_runs_the_tests_runs_everything(self):
