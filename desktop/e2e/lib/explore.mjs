@@ -102,6 +102,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
   let seen = await act.observe(), stopped = 'steps';
   const messages = [{role: 'user', content: `${first ? `${first}\n\n` : ''}Start. You have at most ${maxSteps} steps.\n\n${formatObservation(seen)}`}];
   let final = null;
+  const tries = new Map();
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
@@ -110,16 +111,31 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
-    const turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
+    const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
+    const again = repeated(tries, row, was);
+    if (again === REPEAT_NUDGE) turned.reply += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
     // Older page views are dropped from the conversation: the latest one is what matters, and the prompt stays short.
     for (const message of messages) if (message.role === 'user' && message.content.length > 400 && message !== messages[0]) message.content = '(an earlier page view, omitted)';
     messages.push({role: 'user', content: turned.reply});
     trace.push(row);
     log(`  step ${turn + 1}: ${row.action} (${spent.calls} calls, ${spent.input + spent.output} tokens)`);
     if (turned.finished) { stopped = 'done'; final = input; break; }
+    if (again >= REPEAT_STOP) { stopped = `repeat: "${row.did}" ${again} times on the same page`; break; }
   }
   return {steps, bugs, trace, spent, stopped, final};
+}
+
+// Why (4 Nov 2026, AI user agents FR 2/4; replays 41857211406 and 41857218091): one goal with all 100 steps spent 93 of them on two buttons (Expand all 39 times, a tab 54 times) on a page that did not change, so more
+// steps would not have helped: the same action on the same page view is nudged at the 3rd time and ends the goal at the 5th, which leaves the goal's other steps (and the night's minutes) to the goals after it.
+const REPEAT_NUDGE = 3, REPEAT_STOP = 5;
+
+/** How many times this action has now been done on this same page view (an action that failed or was refused, and a note, is not counted). */
+function repeated(tries, row, view) {
+  if (!row.did || row.failed) return 0;
+  const key = `${row.did}\n${view}`, count = (tries.get(key) || 0) + 1;
+  tries.set(key, count);
+  return count;
 }
 
 /** Why an action is refused, or '' when it may run: the control must be in the latest view and allowed, a page and a key must come from their lists. */

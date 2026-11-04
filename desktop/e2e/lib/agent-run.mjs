@@ -41,7 +41,8 @@ function goalResult(goal, result) {
   const final = result.final;
   if (final && GOAL_VERDICTS.includes(final.verdict)) return {n: goal.n, verdict: final.verdict, summary: final.summary, steps: result.steps.length};
   if (final) return {n: goal.n, verdict: 'doubts', summary: `ended without a verdict: ${String(final.summary || '').slice(0, 120)}`, steps: result.steps.length};
-  return {n: goal.n, verdict: 'could-not-finish', summary: `the goal ran out of room (${result.stopped})`, steps: result.steps.length};
+  const why = result.stopped.startsWith('repeat: ') ? `it kept doing the same thing, ${result.stopped.slice(8)}, and the page did not change` : `the goal ran out of room (${result.stopped})`;   // a loop is not a lack of room (replays 41857211406, 41857218091)
+  return {n: goal.n, verdict: 'could-not-finish', summary: why, steps: result.steps.length};
 }
 
 /** The text put before a goal's first page view: the goal, then what is known about the areas it touches. */

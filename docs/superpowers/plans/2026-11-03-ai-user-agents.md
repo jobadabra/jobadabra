@@ -27,7 +27,7 @@ The replay table (spec, "Result of 8/12") and night 1 (run 41774669528) gave fou
 | PR | What | Measured by | Who gets what |
 |---|---|---|---|
 | FR 1/4 | **rule scope**: `profile-1` says it is about the list of open questions, not an answer already given or a form field's label (knowledge data, no code) | control on `df66db14` ×2: 0 filed; `b4d64112` ×3: found with the rule | no more false filings on settled screens |
-| FR 2/4 | **step budget**: fewer goals, more steps each, same total steps and minutes | "could not finish" share over the next 3 nights: from 44% (4 of 9) to under 20% | more goals reach their answer |
+| FR 2/4 | **step budget**: the same action on the same page view is nudged at the 3rd time and ends the goal at the 5th, so a loop frees its steps for the goals after it (changed 4 Nov 2026 from "fewer goals, more steps each": replays 41857211406 and 41857218091 gave a goal all 100 steps and it spent 93 on two buttons, so more steps would not have helped) | "could not finish" share over the next 3 nights: from 44% (4 of 9) to under 20%; and a replay of `learned-questions` ends a loop in about 10 steps, not 100 | more goals reach their answer |
 | FR 3/4 | **seeded shape per night**: one known-bug shape (CV with headings, inbound rows) seeded before the free goals, picked by the night's seed | 2 free sessions on `b6014b04`, rules off, shape seeded: found unprompted, n of 2 | free sessions can see the bugs |
 | FR 4/4 | **one judge decides**: score the agent's second opinion and the Finder's pre-filing judge on the ~23 recorded replay notes, keep one | hits and misses per judge | the filed issues are the ones worth reading |
 
