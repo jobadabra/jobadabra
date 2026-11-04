@@ -1,5 +1,6 @@
 // The posting a live run tries (lib/apply-live.mjs): LIVE_URL, else a real one from the owner's own job list, opened read-only. Its own file with no browser
-// import, so the unit test (test/apply-live.test.js) runs where only desktop/node_modules exist (CI's desktop job has no playwright).
+// import, so the unit test (test/tooling/ci/apply-live.test.js) runs where only desktop/node_modules exist (CI's desktop job has no playwright).
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';

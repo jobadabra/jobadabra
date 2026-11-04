@@ -13,7 +13,7 @@ import {planSession} from '../../lib/agent-plan.mjs';
 const EXPECTATIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'docs', 'app-expectations');
 const LOG = `@@aaaa1111\t[x] Focus shows the quick check again (#1)
 desktop/renderer/pages/focus-check.js
-desktop/test/focus-check.test.js
+desktop/test/unit/renderer/focus-check.test.js
 @@bbbb2222\tProfile: no heading is saved as an answer (#2)
 desktop/renderer/pages/application-answers.js
 desktop/lib/about-you.js
@@ -45,7 +45,7 @@ test('a changed file puts its area into the plan; a test or doc file does not; a
   const changed = changedSince(LOG, {bbbb2222: 'Profile: no heading is saved as an answer'});
   assert.deepEqual(changed.areas, ['Focus', 'Profile']);
   assert.deepEqual(changed.unmapped, ['desktop/renderer/pages/zoo-new.js']);
-  assert.equal(areaOf('desktop/test/focus-check.test.js'), null);
+  assert.equal(areaOf('desktop/test/unit/renderer/focus-check.test.js'), null);
   assert.equal(areaOf('docs/superpowers/specs/x.md'), null);
   const moves = ['Focus', 'Profile', 'Jobs', 'Strategy', 'Settings', 'Actions'].flatMap(group => [1, 2, 3].map(n => ({group, label: `${group} ${n}`})));
   for (const seed of [1, 2, 3, 4]) assert.deepEqual(['Focus', 'Profile'].filter(area => !planSession({seed, moves, changed: changed.areas}).goals.some(goal => goal.group === area)), []);

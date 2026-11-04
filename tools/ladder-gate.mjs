@@ -8,7 +8,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OWN = /^desktop\/(e2e\/ladder-fixtures\/|e2e\/ladder-baseline\.json$|e2e\/lib\/ladder-|lib\/(page-kind|account-judge|form-judge)\.js$|lib\/ladder\/|test\/ladder-ratchet\.test\.js$)/;
+const OWN = /^desktop\/(e2e\/ladder-fixtures\/|e2e\/ladder-baseline\.json$|e2e\/lib\/ladder-|lib\/(page-kind|account-judge|form-judge)\.js$|lib\/ladder\/|test\/unit\/main\/ladder-ratchet\.test\.js$)/;
 
 export const touchedLadderFiles = (changed, flowFiles) => { const flows = new Set(flowFiles); return changed.map(file => file.trim()).filter(file => flows.has(file) || OWN.test(file)); };
 
@@ -22,7 +22,7 @@ async function main() {
   const desktop = path.join(repo, 'desktop');
   if (!fs.existsSync(path.join(desktop, 'shared'))) spawnSync('node', ['scripts/stage.mjs'], {cwd: desktop, stdio: 'ignore'});   // the app's lib imports shared/
   const started = Date.now();
-  const run = spawnSync('node', ['--test', 'test/ladder-ratchet.test.js'], {cwd: desktop, encoding: 'utf8'});
+  const run = spawnSync('node', ['--test', 'test/unit/main/ladder-ratchet.test.js'], {cwd: desktop, encoding: 'utf8'});
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   if (run.status === 0) { console.log(`ladder gate: every fixture is no worse than the baseline (${seconds} s; touched: ${touched.length})`); return 0; }
   const failures = String(run.stdout || '').split('\n').filter(line => /^not ok|^\s+(\+|-) |^\s+0: /.test(line)).join('\n');

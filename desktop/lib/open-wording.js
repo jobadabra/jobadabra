@@ -2,7 +2,7 @@
 // just 'Workload'… Which doesn't make any sense"). ONE AI call through the queue's one question writer (lib/queue-wording.js) writes a real question and a short hint for
 // each label (kept per label in settings.questionWords, so a label is worded once). Why (2 Nov 2026, owner): a question that cannot be worded is not shown, never shown
 // as its label; the code only checks the reply's shape (not empty, not the label again). Items whose question is already worded (a learning, "which is right?", the
-// contact and base-fact asks) pass untouched. Guarded by test/details-review-sense.test.js and test/question-sense.test.js (prompt-case set "question-words", tools/prompt-cases.json).
+// contact and base-fact asks) pass untouched. Guarded by test/unit/main/details-review-sense.test.js and test/unit/renderer/question-sense.test.js (prompt-case set "question-words", tools/prompt-cases.json).
 import {written} from './queue-wording.js';
 import {isBareLabel} from '../renderer/question-sense.js';
 

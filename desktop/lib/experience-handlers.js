@@ -1,5 +1,5 @@
 // The experience bank's IPC (Settings → Profile → Experience): what the window shows, adding another CV version, removing one, matching
-// again after the main CV changed. The data and the AI match are lib/experience.js; guarded by test/experience.test.js.
+// again after the main CV changed. The data and the AI match are lib/experience.js; guarded by test/unit/main/experience.test.js.
 import * as claudeCode from './claude-code.js';
 import * as added from './experience-added.js';
 import * as experience from './experience.js';

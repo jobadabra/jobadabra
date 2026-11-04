@@ -50,7 +50,7 @@ Your own keys live in the macOS Keychain (`jobadabra.*`), never in files you com
 
 ### The applying flow core (10 Oct 2026)
 Files in `FLOW_CORE` / `FLOW_FILES` (`desktop/e2e/flows.mjs`) are owned by one session at a time (claim it with the other sessions, release it when done).
-Read the file's **Invariants:** block before editing; a bug becomes a scenario in `desktop/test/journeys.test.js` that fails first; the push hook's
+Read the file's **Invariants:** block before editing; a bug becomes a scenario in `desktop/test/unit/main/journeys.test.js` that fails first; the push hook's
 journey gate (`tools/journey-gate.mjs`) runs them. Spec: `docs/superpowers/specs/2026-10-10-application-journey.md`.
 
 ## 3 · Where things go
@@ -100,4 +100,4 @@ Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md). Security proble
 More: [CLAUDE.md](CLAUDE.md) (project rules and data ownership), [AGENTS.md](AGENTS.md) (agents, form filling),
 [README.md](README.md) (what the product does).
 
-For session workflow changes, extend `desktop/test/app-scenarios.test.js`: real preload and handlers, fictional terminal/service responses, temporary persistence, and checks after restart. Run `cd desktop && npm run test:scenarios` for that suite alone. It runs in normal desktop CI and `tools/check.sh --fast`; graphical and live-service smoke checks remain separate.
+For session workflow changes, extend `desktop/test/unit/main/app-scenarios.test.js`: real preload and handlers, fictional terminal/service responses, temporary persistence, and checks after restart. Run `cd desktop && npm run test:scenarios` for that suite alone. It runs in normal desktop CI and `tools/check.sh --fast`; graphical and live-service smoke checks remain separate.

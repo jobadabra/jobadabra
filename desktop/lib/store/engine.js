@@ -2,7 +2,7 @@
 // this Mac is reached through the engine's own adapter and its schema is never copied here. Its stdout is {"result": …} or {"error": …};
 // a line on stderr may say the engine follows the app's folder. The arguments and the answer are the person's data: they never reach
 // engine.log, app.log or a report (logArgs + privateOutput); app.log gets one [store] line with the call's identity only.
-// Guarded by test/store-runs.test.js and test/store-call-private.test.js.
+// Guarded by test/unit/main/store-runs.test.js and test/unit/main/store-call-private.test.js.
 import {log} from '../log.js';
 import * as pipelineRun from '../pipeline-run.js';
 

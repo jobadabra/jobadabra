@@ -2,7 +2,7 @@
 // {[question key]: {question, at}}, read by the one list builder (lib/question-lists.js openShown), so a dismissed question leaves both drawers, their counts and
 // Focus together, and comes back with "Bring back" from the drawer's Dismissed group. Dismissing changes nothing in the store: no line is removed or blanked.
 // Why (2 Nov 2026, owner): this replaces "Don't keep an answer for this", which blanked the line, saved an empty answer or filled a per-kind "never" list.
-// Guarded by test/question-dismissed.test.js.
+// Guarded by test/unit/main/question-dismissed.test.js.
 import {keyOf} from '../renderer/question-filter.js';
 
 const SETTING = 'dismissedQuestions';

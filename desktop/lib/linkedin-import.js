@@ -2,7 +2,7 @@
 // the consent through the website (it holds the client secret; the key comes back to this app's own socket), the access key in the Keychain, and the Member Snapshot reads made HERE, on this Mac, so the
 // profile data never passes our server. Same consent shape as lib/linkedin-oauth.js. Settings: settings.linkedinImport = {connectedAt, expiresAt} (no value;
 // settings.linkedin is the identity connection). The key is a credential: Keychain only (lib/keychain.js: a test or the twin writes its own file), never a log,
-// the store, Notion or an upload; deleted by Disconnect, at expiry and on any 401/403. Nothing here is about LinkedIn jobs. Guard: test/linkedin-import.test.js.
+// the store, Notion or an upload; deleted by Disconnect, at expiry and on any 401/403. Nothing here is about LinkedIn jobs. Guard: test/unit/main/linkedin-import.test.js.
 import * as realKeychain from './keychain.js';
 import {begin, cancel as cancelFlow, fail} from './oauth-handoff.js';
 import {toCv} from './linkedin-export.js';

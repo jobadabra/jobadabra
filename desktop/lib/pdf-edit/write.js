@@ -1,6 +1,6 @@
 // Writes a plan from layout.js into the PDF with pdf-lib: the edited show operators become bare advances ([-n] TJ, so the rest of their line
 // stays put), moved vector markers leave their place, and the new lines are appended in the same fonts. Every other byte of the page stays.
-// The page's stream is wrapped in q … Q so the appended text starts from a clean state. Guards: test/pdf-edit.test.js, test/cv-inplace.test.js.
+// The page's stream is wrapped in q … Q so the appended text starts from a clean state. Guards: test/unit/main/pdf-edit.test.js, test/unit/cv/cv-inplace.test.js.
 import {PDFDocument, PDFName, PDFArray, PDFDict, PDFRef, decodePDFRawStream} from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import {lex, SHOW} from './lex.js';

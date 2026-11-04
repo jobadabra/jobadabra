@@ -1,5 +1,5 @@
 // A Word file opened and written back with only word/document.xml changed: every other part (styles, fonts, pictures, numbering) is
-// copied as it was. Guards: test/docx-edit.test.js.
+// copied as it was. Guards: test/unit/main/docx-edit.test.js.
 import JSZip from 'jszip';
 
 const BODY = 'word/document.xml';

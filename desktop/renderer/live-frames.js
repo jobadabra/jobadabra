@@ -1,4 +1,4 @@
-// The live view's picture pacing: only the newest picture is ever painted, at most once per display refresh. Guard: test/live-frames.test.js.
+// The live view's picture pacing: only the newest picture is ever painted, at most once per display refresh. Guard: test/unit/renderer/live-frames.test.js.
 
 /**
  * push(frame) keeps the newest picture and asks for one paint; at the next refresh paint(frame) runs once with that newest picture; clear() drops one not painted yet.
@@ -22,7 +22,7 @@ export function createFramePacer(paint, schedule = requestAnimationFrame) {
 
 /**
  * The window's picture: first(message) paints at once, frame(message) paints the newest once per refresh; both set `img.src` and call onShown(message) (size and lag bookkeeping).
- * session-live.js sets the live image only through this sink; test/live-frames.test.js pins the sink's own behaviour.
+ * session-live.js sets the live image only through this sink; test/unit/renderer/live-frames.test.js pins the sink's own behaviour.
  */
 export function createPictureSink(img, schedule = requestAnimationFrame, onShown = () => {}) {
   const show = message => { img.src = `data:image/jpeg;base64,${message.data}`; onShown(message); };

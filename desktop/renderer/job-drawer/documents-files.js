@@ -1,5 +1,5 @@
 // The job's files as attachment rows (Application → Submitted lists the files as sent). Moved out of application-preparation.js when the
-// Documents tab took the tailored CV and the cover letter; guarded by test/job-documents.test.js.
+// Documents tab took the tailored CV and the cover letter; guarded by test/unit/renderer/job-documents.test.js.
 import {el} from '../components.js';
 import {group} from './parts.js';
 

@@ -2,7 +2,7 @@
 // doesn't, one report names the step that failed (the extension silent, or alive but not on the tab); a Review in form that got no page answer
 // reports its own step. An expectation exists only because the app opened the tab, so a tab the person opened never reports. Cancelled sessions,
 // and windows the app slept through, never report. Reports go to the Technical reports as kind "tab" (lib/telemetry.js, site/src/telemetry.js).
-// Guard: test/tab-expect.test.js.
+// Guard: test/unit/main/tab-expect.test.js.
 export const WINDOW_MS = 20000, SILENT_MS = 90000, TICK_MS = 5000;
 const SLEPT_MS = 3 * TICK_MS;   // a tick later than this: the app was asleep or busy, not the extension
 

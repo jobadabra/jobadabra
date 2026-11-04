@@ -1,5 +1,5 @@
 // What the window itself can tell happened while the person was away (spec docs/superpowers/specs/2026-11-02-notify-moments-design.md, 2/2): a strong match from a scheduled search, Gmail updates, a
-// recruiter waiting. Pure; each claim is true or not made (no stamps, a search the person ran themselves, a failed check, an older job: null). Guard: test/notify-detect.test.js.
+// recruiter waiting. Pure; each claim is true or not made (no stamps, a search the person ran themselves, a failed check, an older job: null). Guard: test/unit/renderer/notify-detect.test.js.
 
 /** Whether something that ended at `endedAt` happened while the person was away: after they left (`seenAt`, lib/window-seen.js) and before they came back (`backAt`). Missing stamps, or a last stamp that is a leave (away right now), claim nothing. */
 export function wasAway(seenAt, backAt, endedAt) {

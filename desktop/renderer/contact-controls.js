@@ -1,6 +1,6 @@
 // Draws the typed control of each Your details contact field from renderer/contact-kinds.js: the existing input stays the one value everything reads and writes
 // (the save, the proposals from the CV, the links tiles), hidden, and its `value` also redraws the control, so nothing else in the page changes. A control change
-// sets the input and fires its "input" event, which marks the details as unsaved. Guarded by test/contact-kinds.test.js.
+// sets the input and fires its "input" event, which marks the details as unsaved. Guarded by test/unit/renderer/contact-kinds.test.js.
 import {answerControl} from './question-control.js';
 import {formatFor} from './question-kind.js';
 import {CONTACT_KINDS} from './contact-kinds.js';

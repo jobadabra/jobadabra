@@ -1,6 +1,6 @@
 // What the AI judges about the questions a form asked: reusable across jobs or one job's, and whether the applicant's standard answers already cover it
 // (owner, 17 Oct 2026: "text-3219", "Colonist Profile", one-off essays and "earliest start date" filled Needs review / Answer once). The fixed answer is
-// validated here: an unknown label, an unclear verdict or a covered_by that is not one of the given answers keeps nothing. Guarded by test/question-reuse.test.js.
+// validated here: an unknown label, an unclear verdict or a covered_by that is not one of the given answers keeps nothing. Guarded by test/unit/main/question-reuse.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
 import {splitPermit} from '../renderer/question-values.js';

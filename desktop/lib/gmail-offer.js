@@ -1,7 +1,7 @@
 // When the app offers Gmail (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the main process decides WHEN (a first Submit, a page that asks for a mailed code)
 // and tells the window; the window draws the dialog (renderer/pages/gmail-offer.js). Nothing is asked on day one and nothing once Gmail is connected.
 // Invariants: `gmailOffer.asked` in the app's settings is written only here (0..MAX_ASKS, counted when the window is told); the code dialog is once per app run and never limited by that count.
-// Guard: test/gmail-offer.test.js.
+// Guard: test/unit/renderer/gmail-offer.test.js.
 import {googleSecrets} from './google-keys.js';
 
 export const MAX_ASKS = 2;   // the first Submit and one later one; then only Settings, ⌘K and Suggestions (owner, 2 Nov 2026)

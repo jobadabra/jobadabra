@@ -51,7 +51,7 @@ class SwissPlacesTable(unittest.TestCase):
     def test_it_agrees_with_the_window_on_the_shared_table_of_cases(self):
         from src.sources import boards
         table = json.loads((Path(__file__).resolve().parents[2] / 'fixtures' / 'swiss_cases.json').read_text())['cases']
-        for case in table:   # desktop/renderer/audience.js swissPlaces is held to the same rows (desktop/test/audience.test.js)
+        for case in table:   # desktop/renderer/audience.js swissPlaces is held to the same rows (desktop/test/unit/renderer/audience.test.js)
             self.assertEqual(boards.swiss_places({'locations': {'top_tier': case['places'], 'country_wide': [], 'abroad': []}}), case['swiss'], case['places'])
 
 

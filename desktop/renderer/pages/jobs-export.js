@@ -1,6 +1,6 @@
 // Jobs page, "Export" (Pro): saves the jobs on screen, or all of them, as a spreadsheet file. The lock here is only a hint: the main process checks the licence
 // (lib/jobs-export-handlers.js). A free person always sees the button with a Pro label: with paying off it opens the Upgrade dialog, with paying on Settings → Plan (renderer/pro-gate.js).
-// Guarded by: test/jobs-export.test.js, test/pro-gate.test.js.
+// Guarded by: test/unit/main/jobs-export.test.js, test/guards/money/pro-gate.test.js.
 import {el, openMenu} from '../components.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';

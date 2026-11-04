@@ -1,6 +1,6 @@
 // The lists of open questions, each through the one shared filter (renderer/question-filter.js): the two drawers (openShown: Fill your details, What we learned)
 // and the session's "what Claude needs" (groups). Nothing is deleted; `hidden` is what the filter set aside.
-// Guarded by test/question-queues.test.js and test/question-lists.test.js.
+// Guarded by test/unit/main/question-queues.test.js and test/guards/rules/question-lists.test.js.
 import * as questions from './questions.js';
 import * as verdicts from './question-verdicts.js';
 import * as jobAnswers from './job-answers.js';

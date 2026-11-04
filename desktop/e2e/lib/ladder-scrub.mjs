@@ -1,5 +1,6 @@
 // Scrubs what goes into a ladder fixture (a public repo): an email that is not example.* becomes contact@example.com, a phone-shaped number becomes "(phone)", a URL loses its query string and fragment.
-// Used by ladder-capture.mjs and ladder-candidates.mjs. Guard: test/ladder-candidates.test.js, test/ladder-fixtures.test.js (the same rules, checked on the stored fixtures).
+// Used by ladder-capture.mjs and ladder-candidates.mjs. Guard: test/unit/main/ladder-candidates.test.js, test/unit/main/ladder-fixtures.test.js (the same rules, checked on the stored fixtures).
+// Job: serve stored answers
 const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
 const PHONE = /\+?\d[\d\s().\/-]{6,}\d/g;
 const deep = (value, one) => (typeof value === 'string' ? one(value) : Array.isArray(value) ? value.map(item => deep(item, one)) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deep(item, one)])) : value);

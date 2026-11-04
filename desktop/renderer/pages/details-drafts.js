@@ -1,6 +1,6 @@
 // Your details' drafts on the Profile page's one save bar (pages/profile-save-bar.js; owner, 18 Oct 2026, UI redesign D2): Contact with its links (one saved
 // record, lib/contact.js) and the fact sections (Work eligibility, Availability & compensation, Languages: one save, lib/profile-sections.js). Each counts the
-// fields that differ from what was last read or saved, so the bar says how many and a refresh never draws over them. Guarded by test/details-drafts.test.js.
+// fields that differ from what was last read or saved, so the bar says how many and a refresh never draws over them. Guarded by test/unit/renderer/details-drafts.test.js.
 import {profileBar} from './profile-save-bar.js';
 import {factsNow, showFacts} from './details-facts.js';
 import {clearProposals} from './contact-proposals.js';

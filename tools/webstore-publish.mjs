@@ -3,7 +3,7 @@
 //   check    reads the store and says what a publish would do; changes nothing (the PR and by-hand runs).
 //   publish  builds the store zip (tools/store-zip.mjs), uploads it, waits for the store to read it, submits it (DEFAULT_PUBLISH: live once review passes).
 // API: Chrome Web Store API v2 (chromewebstore.googleapis.com). The token comes from GitHub OIDC → Google (no stored key) and is never printed.
-// Guard: desktop/test/webstore-publish.test.js.
+// Guard: desktop/test/tooling/release/webstore-publish.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

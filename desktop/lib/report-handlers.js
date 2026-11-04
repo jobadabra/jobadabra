@@ -2,7 +2,7 @@
 // asks the app whether the button is on, hands over the recording (POST /extension/report-form {action: 'submit'}); the app scrubs it and checks it (lib/report-form.js), holds it in memory and answers
 // with counts (pages, what was removed); {action: 'send', note} runs the gate once more and the uploader (lib/report-upload.js); {action: 'cancel'} drops it. The Settings switch "Show Report this form"
 // (default on) hides the button and refuses a recording. Sending goes through `uploader`: without one nothing can be sent and the button stays hidden. Owner values (name, e-mail, phone, place) come from
-// the app's own files and never leave. Guard: test/report-panel.test.js.
+// the app's own files and never leave. Guard: test/unit/extension/report-panel.test.js.
 import {setVisitRoute} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {appProfileTexts, ownerValuesOf} from './owner-values.js';

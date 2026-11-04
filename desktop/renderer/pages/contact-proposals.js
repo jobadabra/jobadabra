@@ -3,7 +3,7 @@
 // value), and after the person's yes they fill in the open card, marked "From your CV", as drafts that the page bar's Save all changes confirms. Nothing unsure changes before the yes.
 // Why (2 Nov 2026, owner: "I go to Profile, I don't modify anything and when I want to leave it asks me if I want to save or discard the changes"): only the person's own edit
 // or press makes a draft; opening Profile filled the boxes itself, so leaving asked. Also the nudge after Apply when the details forms usually ask for are missing.
-// Guarded by test/contact-from-cv.test.js and integration/app/profile-no-draft-on-open.test.js.
+// Guarded by test/unit/renderer/contact-from-cv.test.js and integration/app/profile-no-draft-on-open.test.js.
 import {el, pill} from '../components.js';
 import {message} from './core.js';
 import {contactSavedAs, detailsChanged} from './details-drafts.js';

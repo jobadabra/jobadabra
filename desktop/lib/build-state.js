@@ -1,7 +1,7 @@
 // Which build runs, told the same way in the app window and the extension panel (owner, 16 Oct 2026: the app ran a build older than the merged fixes and he tested old code without knowing).
 // The app: the commit it started on (a package's build-info.json, or the checkout's HEAD at start) and how many PRs merged into the checkout since change desktop/extension ("Restart to get N fixes").
 // The extension: the commit its version names (a checkout stamps base.<commits that changed extension/>, scripts/extension-stamp.mjs) and how many fixes it lacks ("Reload the extension to get N fixes").
-// Git failing, a shallow clone or an unnamed version says nothing rather than a wrong number. Guard: desktop/test/build-state.test.js.
+// Git failing, a shallow clone or an unnamed version says nothing rather than a wrong number. Guard: desktop/test/guards/release/build-state.test.js.
 import {execFileSync} from 'node:child_process';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

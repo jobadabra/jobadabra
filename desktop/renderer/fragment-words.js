@@ -1,7 +1,7 @@
 // A crawl match pattern as the words a person reads (owner, 17 Oct 2026: "the person never sees a pattern"): \bz[uü]rich\b -> zürich, "zug" -> zug,
 // st\.? ?gallen -> st gallen, a|b -> a, b. Structure only, never a list of words. Display and comparison only: the patterns themselves are kept as
 // stored. One rule for every screen (Strategy chips, the setup review, "Which locations are right?", set-aside rows) and src/desktop_strategy.py
-// _readable(). Guarded by test/fragment-words.test.js.
+// _readable(). Guarded by test/unit/renderer/fragment-words.test.js.
 
 // The top-level alternatives of a pattern ("a|(b|c)" -> ["a", "(b|c)"]).
 function alternatives(text) {

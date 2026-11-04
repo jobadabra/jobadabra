@@ -1,5 +1,5 @@
 // A fake form page that runs a WHOLE extension fill in node: the real page scripts (FILL_FILES and the helpers they need) in a vm, with every
-// page helper the fill calls stubbed, so a test gives rows and answers and reads the summary and trace. Used by desktop/test/fill-categories.test.js.
+// page helper the fill calls stubbed, so a test gives rows and answers and reads the summary and trace. Used by desktop/test/unit/extension/fill-categories.test.js.
 // 11 Oct 2026: a test needed four stubs, found one error at a time (upload, audit, profile entries, required-mark), before a fill could run.
 // rows: [{field, label, type, required, filled, legal, options}] as page/fill-read.js describes them. The post-fill audit returns the same rows,
 // still as they were (a fake page has no controls that change), with `legal` read as the real audit reads it (page/browser-form-fastpath.js):

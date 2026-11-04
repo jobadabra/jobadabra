@@ -1,7 +1,7 @@
 // The ONE place that says which of Chrome's tabs is a session's: the tab id it is bound to in the current browser run, else a tab whose own address
 // names the session (#jobpilotto-fill=<id>, what Chrome restores after a restart). Nothing else picks a tab: no score, no address or title match, no
 // "the only armed one" (owner, 12 Oct 2026; spec docs/superpowers/specs/2026-10-12-tab-owned.md). No owned tab means null: the card says "reopen?",
-// and nothing here opens or takes another tab. Guards: test/session-tab.test.js (the matrix, and a scan that fails when another file picks a tab by guess).
+// and nothing here opens or takes another tab. Guards: test/unit/main/session-tab.test.js (the matrix, and a scan that fails when another file picks a tab by guess).
 //
 // Invariants: 1. a tab with no id of its own and no mark naming the session is never returned (the person's own tab of the same job, an unowned sign-in tab);
 //             2. a bound tab id counts only inside the browser run it was bound in (Chrome reuses ids across restarts and browsers).

@@ -1,6 +1,7 @@
 // Reads a pool replay candidate's `ai-calls.json` ([{route, at, request, answer}], written by the harness's app-side capture): the page-kind requests the APP REALLY RECEIVED in the failing run.
 // A fixture built from one has the sketch the model actually saw, frame candidates included (the load-time sketch rebuilt from page.html lacked them: datadog-greenhouse-frame, 11 Oct 2026).
-// Scrubbed like the recorded pages: no query string, no address, no phone number, frame addresses never kept. Reader only: the writer is the e2e harness's. Guard: test/ladder-ai-calls.test.js.
+// Scrubbed like the recorded pages: no query string, no address, no phone number, frame addresses never kept. Reader only: the writer is the e2e harness's. Guard: test/unit/extension/ladder-ai-calls.test.js.
+// Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
 import {SKETCH_FIELDS} from '../../lib/ladder/rung2-sketch.js';

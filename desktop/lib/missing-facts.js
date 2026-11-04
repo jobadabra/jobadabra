@@ -2,7 +2,7 @@
 // of the most important things not filled; step by step, don't overwhelm; be proactive"). The kind "missing" of lib/details-review.js. Most important first =
 // the queue's own score (renderer/question-filter.js factScore: form questions that mean this fact, blocked a fill first, then how many forms asked), then the share of installs whose forms asked it (the alias pack, lib/fact-asks.js), else the catalogue's
 // order. Paced: at most PER_DAY new facts a day (a fact that blocked a fill is asked at once, beyond the cap), never again after "Don't keep", and only for
-// FRESH_DAYS after the first ask, then only the facts a fill is blocked on. Guarded by test/missing-facts.test.js.
+// FRESH_DAYS after the first ask, then only the facts a fill is blocked on. Guarded by test/unit/main/missing-facts.test.js.
 import {formatFor} from '../renderer/question-kind.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {MODEL} from './question-reuse.js';

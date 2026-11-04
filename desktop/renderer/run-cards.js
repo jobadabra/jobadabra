@@ -1,5 +1,5 @@
 // Recent activity: a run's message (the Telegram text) as a small card, for the two long ones: Today's list /
-// a jobs check's digest, and Find new employers. The parsers are plain (tested in test/run-cards.test.js); a message
+// a jobs check's digest, and Find new employers. The parsers are plain (tested in test/unit/renderer/run-cards.test.js); a message
 // they don't recognise stays text. Light on purpose: counts, then one line per item.
 // A job line: "1. Title (https://…) · 🎯 78"; the link and the fit can be missing (a job not scored: an AI limit reached).
 // A "New since last run" line instead carries a title-match percentage after the title: "1. Title - 100% (https://…)".

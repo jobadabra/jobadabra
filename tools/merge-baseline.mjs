@@ -2,7 +2,7 @@
 // without a rebase conflict (11 Oct 2026 post-mortems: a conflict twice per fix, then a full re-run of --update-baseline).
 // Per fixture and per prompt-fingerprint key, a three-way merge: the side that changed wins; both changed the SAME entry differently = a
 // real conflict (exit 1, git stops as before). Reasons: the union, in order. Wired by .gitattributes (merge=ladder-baseline) and tools/ship.sh
-// (git config merge.ladder-baseline.driver). Guard: desktop/test/merge-baseline.test.js; the ratchet test still checks the merged file.
+// (git config merge.ladder-baseline.driver). Guard: desktop/test/tooling/ci/merge-baseline.test.js; the ratchet test still checks the merged file.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

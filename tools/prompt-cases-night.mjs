@@ -5,7 +5,7 @@
 // No live prompt changed since the baseline's commit: nothing is asked, the baseline is carried forward ($0). Otherwise every case is asked once; a case right last night and wrong now is asked once
 // more: wrong twice = "flipped" (a regression of the prompt), right on the re-ask = "model noise" (the model varied, the prompt did not). Not asked (no token, broker said no) = said, baseline kept.
 // Usage: node tools/prompt-cases-night.mjs --out <dir> [--baseline <prompt-cases-night.json>] [--max-calls 160] [--jobs 6]   writes <dir>/prompt-cases-night.json (the next night's baseline).
-// Guard: desktop/test/prompt-cases-night.test.js.
+// Guard: desktop/test/tooling/ci/prompt-cases-night.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

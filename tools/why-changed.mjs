@@ -5,7 +5,7 @@
 // trailing Why sits on. A Why that quotes `three or more words` found in its own block's code (to the next Why, at most 80 lines) guards those words instead of the line
 // under it: a prompt sentence (a comment cannot sit inside the string). A backticked name or path (`retryCount`) is not a sentence: the line under it stays guarded.
 // Free: a new Why, a pure move or re-indent (the same lines come back elsewhere in the push), any edit nowhere near a Why.
-// Usage: node tools/why-changed.mjs [--base origin/main]   exit 1 with the guarded lines when the trailer is missing. Guard: desktop/test/why-changed.test.js.
+// Usage: node tools/why-changed.mjs [--base origin/main]   exit 1 with the guarded lines when the trailer is missing. Guard: desktop/test/tooling/ci/why-changed.test.js.
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

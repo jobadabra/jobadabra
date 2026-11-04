@@ -1,5 +1,5 @@
 // "Your details" for the extension (GET /extension/me): the contact, CV and cover letter it fills a form with, read from Notion with the last
-// good read kept on this Mac. Re-exported by server.js. Guarded by desktop/test/kept.test.js, cv.test.js and local-server.test.js.
+// good read kept on this Mac. Re-exported by server.js. Guarded by desktop/test/unit/main/kept.test.js, cv.test.js and local-server.test.js.
 import * as cv from './cv.js';
 import {availableLetter} from './letter-availability.js';
 import fs from 'node:fs';
@@ -51,7 +51,7 @@ export const contactOf = storage => kept(storage, 'contact', () => readContact(s
 export function contactSaved(storage, contact) { lastContact = contact; viewCache.remember(storage, 'contact', {contact}); }
 
 // The CV a form gets: the job's tailored one, else the general one (twin, 9 Oct 2026: a tailored PDF missing on disk left the form with NO CV,
-// silently: an empty catch). Each miss is logged with why (never the file's content). Guard: test/server-contact-cv.test.js.
+// silently: an empty catch). Each miss is logged with why (never the file's content). Guard: test/unit/main/server-contact-cv.test.js.
 export function pickCv({tailored, general, url = '', read = file => fs.readFileSync(file), say = log}) {
   const host = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
   for (const [kind, choice] of [['tailored', tailored], ['general', general]]) {
@@ -63,7 +63,7 @@ export function pickCv({tailored, general, url = '', read = file => fs.readFileS
 }
 
 // A detail left empty that the CV states plainly goes to the form, named in contact._fromCv (an array: never typed, never a value the page compares) so the
-// page marks it "from your CV: check it" (page/fill.js). Not saved: the Profile stays as the person left it (contact-from-cv.js cvFallback). Guard: test/contact-cv-fallback.test.js.
+// page marks it "from your CV: check it" (page/fill.js). Not saved: the Profile stays as the person left it (contact-from-cv.js cvFallback). Guard: test/unit/main/contact-cv-fallback.test.js.
 export function withCvFallback(storage, details, cvFile = hashOf(storage)) {
   const {details: fromCv, keys} = cvFallbackFor(storage, cvFile, details.contact || {});
   if (!keys.length) return details;

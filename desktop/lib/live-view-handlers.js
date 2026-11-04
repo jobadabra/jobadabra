@@ -1,6 +1,6 @@
 // The app screen's thin connection to a hidden-browser session's live view (spec 2026-10-27-background-apply-execution, step B): the core is
 // desktop/ready-fill/live.mjs attachLive (any channel, any CDP session); here the channel is the window's IPC, so a phone viewer later reuses the
-// core with its own channel. Guards: test/ipc.test.js (every call handled), test/live-view-handlers.test.js.
+// core with its own channel. Guards: test/guards/rules/ipc.test.js (every call handled), test/unit/ready-fill/live-view-handlers.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -30,7 +30,7 @@ const PRESS_FAILED = {covered: 'Something on the page covers its Submit button. 
 export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, submitControl = async () => '', stop = () => false, getWindow = () => null, dialog, log = () => {},
   openCdp = openCdpSession, attach = null, core = null}) {
   // Why (2026-10-28, Gitar on #2339, twice): a close or a newer open can land at ANY await of an open (the page's address, the CDP session, the attach). Each open takes
-  // its token BEFORE the first await and re-checks it after each; a stale open detaches what it opened and attaches nothing. Guard: the class test in test/live-view-handlers.test.js.
+  // its token BEFORE the first await and re-checks it after each; a stale open detaches what it opened and attaches nothing. Guard: the class test in test/unit/ready-fill/live-view-handlers.test.js.
   const tokens = new Map();  // session -> the token of the open (or close) that is current
   const views = new Map();   // session -> {input, close}
   const stale = (id, mine) => tokens.get(id) !== mine;

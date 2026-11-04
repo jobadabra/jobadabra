@@ -4,7 +4,7 @@
 // request (refusing any param it does not know, so nothing is dropped in silence), hands it to the engine's `complete`, and returns
 // {content: [{type: 'text', text}], usage, stop_reason, model}: the app's AI modules work the same whatever the engine.
 // Errors: AiUnavailable (transient: down or busy), AiLimit (aiLimit: a plan or spend limit, not signed in, not installed), AiError.
-// Guarded by test/ai-contract.test.js (every adapter, the same request).
+// Guarded by test/unit/main/ai-contract.test.js (every adapter, the same request).
 
 export const API = 'api', SUBSCRIPTION = 'subscription';
 export const STOP_REASONS = ['end_turn', 'max_tokens', 'refusal', 'max_turns'];

@@ -2,7 +2,7 @@
 // have it under "Job Pilotto" and are moved at first start (migrateDataFolder). The Keychain item that seals the tokens is "Jobadabra Safe Storage" on macOS;
 // an install sealed under "Job Pilotto Safe Storage" is moved by lib/keychain-migration.js (Why (3 Nov 2026, owner): "It still points to Job PIlotto keychain/secrests...
 // It shuold be Jobadabra." — chosen: "Yes, with a migration"; it replaces the 25 Oct 2026 rule that kept the old name because a plain rename leaves every token unreadable).
-// Guarded by test/app-identity.test.js and test/unit/main/keychain-migration.test.js.
+// Guarded by test/guards/data/app-identity.test.js and test/unit/main/keychain-migration.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -1,7 +1,7 @@
 // panel popup: restyled by the panel redesign. "Report" in the panel's footer (owner, 19 Oct 2026: the recording is always on, so Report sends it): a small popup ON the panel that says what goes, takes an
 // optional note, then Send or Cancel. Nothing is recorded or reloaded by pressing it: the worker (messages-report.js) hands the trace kept so far to the app, which removes the personal details, holds
 // the result and answers with counts; Send sends that, Cancel drops it. Drawn inside the panel's own shadow root with the panel's CSS tokens (so its theme reaches it); review.js mounts it and opens it.
-// It still works after a Stop (the recording kept until then is what is sent). Guard: desktop/test/report-panel.test.js, desktop/e2e/test/report-button.test.mjs.
+// It still works after a Stop (the recording kept until then is what is sent). Guard: desktop/test/unit/extension/report-panel.test.js, desktop/e2e/test/report-button.test.mjs.
 (() => {
   if (window.__jobadabraReport) return;
   const STYLE = `.report-pop { position: fixed; right: 18px; bottom: 84px; width: 348px; max-width: calc(100vw - 36px); z-index: 2; padding: 14px; border-radius: 14px; color: var(--ink); background: var(--card);
@@ -75,5 +75,5 @@
     (root.querySelector('.jp') || root).append(pop);   // inside the panel's own box: its fonts and colour tokens apply
     ask({type: 'report-state'}).then(onState);
   }
-  window.__jobadabraReport = {mount, open, words: WORDS, sentence: refusal};   // words and sentence: for desktop/test/report-failures.test.js
+  window.__jobadabraReport = {mount, open, words: WORDS, sentence: refusal};   // words and sentence: for desktop/test/unit/extension/report-failures.test.js
 })();

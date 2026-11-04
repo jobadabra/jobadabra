@@ -3,7 +3,7 @@
 // next miss on that widget is repaired without asking the model (rung 1, free); one miss drops it (the ladder's contradiction rule, learning.js). Only page-independent repairs are kept:
 // retype, commit, trusted_click, toggle, wait, and choose_option with option 0 (the page finds the option from the fill's own answer); a numbered option or a layer's button belongs to
 // one page and is asked again. Fixed values only (fp, widget, verb, counts): there is no field for text. File fill-repairs.json, a cache (deleting it only means asking again).
-// counts() -> [{fp, verb, ok, failed}] for the feed (next-move's sendMoves `repairs`, fixed values and integers). Guard: test/repair-kept.test.js.
+// counts() -> [{fp, verb, ok, failed}] for the feed (next-move's sendMoves `repairs`, fixed values and integers). Guard: test/unit/main/repair-kept.test.js.
 import fs from 'node:fs';
 import {VERBS, WIDGETS} from './fill-repair.js';
 

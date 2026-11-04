@@ -5,7 +5,7 @@
 // how many applications need it (importance 0-3: 3 = nearly every form, 0 = not worth asking) and drops a field the saved lines already answer under another wording
 // ("Mobile" answers Phone). Kept per set (settings.contactAsks), so a Profile is read once. The weight is that importance, raised by what forms measurably asked
 // (renderer/question-filter.js factScore). The same wording asks a contact value the CV proposes (lib/cv-queue.js). No AI: the first four empty fields' own labels, in the
-// schema's order. Guarded by test/details-review.test.js (the class loop), test/contact-review.test.js and test/queue-wording.test.js.
+// schema's order. Guarded by test/unit/main/details-review.test.js (the class loop), test/unit/main/contact-review.test.js and test/unit/main/queue-wording.test.js.
 import * as contactDetails from './contact.js';
 import {written} from './queue-wording.js';
 import {BLOCKED, MUST} from '../renderer/question-filter.js';

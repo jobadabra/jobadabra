@@ -3,7 +3,7 @@
 // disagree, lib/profile-move.js openConflicts), "Where does this go?" (the move's AI answered "unsure"), a kind to check (a typed line kept as written: the
 // "Check" chip of renderer/fact-line.js, one rule: needsCheck) and a ❓ on the Profile that nothing asked. Each item has the queue's shape ({key, question,
 // format, hint, value}) plus .details {kind, source, where, fact (the label it is scored by)}; lib/question-lists.js openShown sorts them into the two drawers the Jobs cards,
-// the drawers and the Profile tabs count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/details-review.test.js.
+// the drawers and the Profile tabs count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/unit/main/details-review.test.js.
 import {openStore} from './store/index.js';
 import * as sections from './profile-sections.js';
 import {itemsOf, openConflicts, resolve, unsureKey} from './profile-move.js';

@@ -1,6 +1,6 @@
 // The one rule for every Pro-gated feature (owner, 25 Oct 2026: Pro by promo code and a visible Export while paying is off). Three states, from the licence state alone:
 // 'open' = licensed, it works; 'waitlist' = not licensed and paying is off (Pro label, a dialog with the waitlist and "Have a promo code?"); 'buy' = not licensed and paying is on (Pro label, Settings → Plan).
-// The window only hints; the main process stays the real check (lib/jobs-export-handlers.js). Guard: test/pro-gate.test.js.
+// The window only hints; the main process stays the real check (lib/jobs-export-handlers.js). Guard: test/guards/money/pro-gate.test.js.
 export const payingOn = (state = {}) => ['test', 'live'].includes(state.proMode);
 export const proGate = (state = {}) => (state.licensed ? 'open' : payingOn(state) ? 'buy' : 'waitlist');
 

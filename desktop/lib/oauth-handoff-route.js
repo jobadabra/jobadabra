@@ -1,7 +1,7 @@
 // The app's own socket takes a sign-in or connect result (POST /<flow>/callback, a form body), posted here by a page of the website in the person's own browser after they consented
 // (website shared/oauth-handoff.js; app lib/oauth-handoff.js receive() keeps it only for the state this app made and is waiting on). The result is in the body, never in an address, so it
 // does not stay in the browser's history (independent review, 3 Nov 2026). Why (3 Nov 2026, Gitar on web#336): the result must land on the consenting person's machine only.
-// Guard: test/oauth-handoff.test.js (real requests to a real local server, every flow).
+// Guard: test/unit/main/oauth-handoff.test.js (real requests to a real local server, every flow).
 import {FLOWS, receive} from './oauth-handoff.js';
 
 const flowOf = url => /^\/([a-z-]+)\/callback(?:\?|$)/.exec(String(url))?.[1] || '';

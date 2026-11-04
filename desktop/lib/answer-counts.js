@@ -1,6 +1,6 @@
 // Each AI answer call for a form (app-core/src/extension.js answerForm -> env.onAnswer trace), summed per engine for the site's per-AI-family
 // metrics (owner, 9 Oct 2026: compare the AI itself, Claude vs OpenAI, not the user mix). Counts only: never a field id, a label or an answer.
-// Pure: the site imports the lists to validate what it stores (site/src/knowledge.js). Guarded by desktop/test/answer-counts.test.js.
+// Pure: the site imports the lists to validate what it stores (site/src/knowledge.js). Guarded by desktop/test/unit/main/answer-counts.test.js.
 
 export const ANSWER_ENGINES = ['api', 'cli', 'openai', 'codex'];
 export const ANSWER_COUNTS = ['calls', 'fields', 'returned', 'kept', 'empty', 'unknown', 'proposed', 'cut'];

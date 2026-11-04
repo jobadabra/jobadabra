@@ -17,7 +17,7 @@ const DAY_MS = 86400000;
 
 /** The fast unit folders CI's unit jobs run (tests-desktop.yml, harness.yml, tests-python.yml), one process per file. Integration needs browsers and Electron and is not here. */
 export const AREAS = [
-  {name: 'desktop', cwd: 'desktop', dir: 'test', match: /\.test\.js$/, command: file => ['node', '--import', './test/no-live-site.mjs', file]},
+  {name: 'desktop', cwd: 'desktop', dir: 'test', nested: 2, match: /\.test\.js$/, command: file => ['node', '--import', './test/no-live-site.mjs', file]},
   {name: 'e2e', cwd: 'desktop/e2e', dir: 'test', nested: true, match: /\.test\.mjs$/, command: file => ['node', '--import', './test/stdout-to-stderr.mjs', file]},
   {name: 'python', cwd: '.', dir: 'tests', nested: 2, match: /^test_.*\.py$/, env: {PYTHONPATH: 'tests'},   // suite_ids sets the fake IDs every module imports against (tools/py-shards.py)
     command: file => ['python3', '-m', 'unittest', '-q', '-b', 'suite_ids', file.replace(/^tests\//, '').replace(/\.py$/, '').split('/').join('.')]},
@@ -73,7 +73,8 @@ export async function probe({run = execute, areas = AREAS, days = SHIFTS[0], cwd
 
 /** The test files of an area, relative to its cwd. */
 // Why (c27, 1 Nov 2026, area folders): the e2e harness tests sit one folder down (test/<area>/x.test.mjs); `fixtures` holds stand-ins, never tests.
-// Why-changed (3 Nov 2026, test folders 2/3): `nested` is a depth; Python tests sit two folders down (tests/<kind>/<scope>/test_x.py, TESTS.md).
+// Why-changed (3 Nov 2026, test folders 2/3 and 3/3): `nested` is a depth; Python and desktop tests sit two folders down (tests/<kind>/<scope>/test_x.py,
+// desktop/test/<kind>/<scope>/x.test.js, TESTS.md).
 const foldersOf = (base, depth) => depth < 1 ? [''] : ['', ...fs.readdirSync(base, {withFileTypes: true})
   .filter(item => item.isDirectory() && item.name !== 'fixtures' && item.name !== '__pycache__').map(item => item.name).sort()
   .flatMap(name => foldersOf(path.join(base, name), depth - 1).map(sub => path.posix.join(name, sub)))];

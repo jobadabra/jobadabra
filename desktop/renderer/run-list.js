@@ -1,5 +1,5 @@
 // Recent activity's run list: the runs under "Today" and "Earlier", the time each row shows, and the header's filter.
-// Kept free of the window so desktop/test/run-list.test.js can check the day boundary (23:59 vs 00:01), the labels,
+// Kept free of the window so desktop/test/unit/renderer/run-list.test.js can check the day boundary (23:59 vs 00:01), the labels,
 // the filter and its counts.
 const TIME = {hour: '2-digit', minute: '2-digit', hourCycle: 'h23'};
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();

@@ -1,6 +1,6 @@
 // Interviews page, the job list helpers (names, the picker's options, the pasted link), the unsaved-recordings list and
 // the speaker-name fields. Moved out of interviews.js, which passes in the open draft and what to do with it.
-// Guarded by test/interviews.test.js, test/interview-library.test.js and test/review-again.test.js.
+// Guarded by test/unit/main/interviews.test.js, test/unit/renderer/interview-library.test.js and test/unit/renderer/review-again.test.js.
 import {el, moreButton, pill, tile} from '../components.js';
 import {shared} from './shared.js';
 import {$, osText, show} from './core.js';

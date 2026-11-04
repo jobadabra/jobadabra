@@ -1,6 +1,6 @@
 // Owns: the steps of one "Find jobs" run (the search task): the first run's order (jobs in seconds: a slice of fast feeds, 3 scored, then the rest), the usual
 // order (job boards, then the employers' pages), and the employer finder (the scout) at the end when it is due, so one action grows the sources and crawls them.
-// Guarded by: test/search-steps.test.js, test/app-scenarios.test.js. Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md.
+// Guarded by: test/unit/main/search-steps.test.js, test/unit/main/app-scenarios.test.js. Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md.
 import * as claudeCode from './claude-code.js';
 import {dailyArgs, SEARCH_BUDGET_S, deliveryReady, triggerEnv} from './pipeline-args.js';
 import {run} from './pipeline-run.js';

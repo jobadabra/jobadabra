@@ -1,7 +1,7 @@
 // Codex (the owner's plan, through the CI broker) as the asker of the live prompt-case sets: the same `run(model, input)` shape as free-ai-eval-claude.mjs's claudeRun, so evaluate() uses either.
 // Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"; the 28 Oct rule: scheduled AI runs on the Codex plan, never a paid API): the nightly replay
 // (tools/prompt-cases-night.mjs) asks here; the PR re-ask (prompt-cases-live.mjs) stays on Haiku. The model id picks the broker tier (broker-client.mjs tierOf: haiku -> small).
-// It catches prompt regressions, not model ones: Free AI users get qwen on Workers AI. Guard: desktop/test/prompt-cases-night.test.js.
+// It catches prompt regressions, not model ones: Free AI users get qwen on Workers AI. Guard: desktop/test/tooling/ci/prompt-cases-night.test.js.
 import {askBroker} from '../desktop/e2e/lib/broker-client.mjs';
 
 export const MODEL = 'claude-haiku-5-5';

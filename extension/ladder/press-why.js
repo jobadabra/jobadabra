@@ -1,7 +1,7 @@
 // Why the Apply button the page-kind AI NAMED was not pressed (fill-flow.js, "no Apply button to press"): evidence for the log only, no decision.
 // It looks at the page's controls whose text equals the name (case and spacing aside) and returns flags and counts, never a text; `pickable` says whether
 // the named-button finder (tab-pages.js pickNamedButton: the AI chose, structure finds, the floors AND) would have pressed one of them.
-// Guarded by desktop/test/press-why.test.js.
+// Guarded by desktop/test/unit/extension/press-why.test.js.
 import {pickNamedButton} from '../tab-pages.js';
 
 const same = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();

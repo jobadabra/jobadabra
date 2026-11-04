@@ -1,6 +1,6 @@
 """The 💡 Insights records the Reports page reads (insights.list), made by the engine's own writers with fictional data: a weekly
 report (its body: src/ai/insights_text.weekly_blocks through the Notion codec), a process issue (src/ai/learning.publish) and a daily
-insight (src/ai/insights.record). Printed as a JSON list, newest first. desktop/test/reports-view.test.js reads them, and
+insight (src/ai/insights.record). Printed as a JSON list, newest first. desktop/test/unit/renderer/reports-view.test.js reads them, and
 desktop/demo/reports.json is this output, so a writer's format change fails a test."""
 import json
 import sys

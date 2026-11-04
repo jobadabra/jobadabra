@@ -1,7 +1,7 @@
 // Reports (renderer/pages/reports.js): the 💡 Insights history from the active store through the engine (insights.list), and the feedback a
 // person gives an insight (Useful / Not useful / Acting on it), merged into its fields so the others stay. Demo mode: demo/reports.json,
 // made by the engine's own writers (test/fixtures/report_insights.py). Also Focus's answer to a suggestion (Not now, Not true;
-// lib/suggestion-answers.js), kept in the same 💡 Insights. Guarded by test/reports-handlers.test.js, test/suggestion-answers.test.js.
+// lib/suggestion-answers.js), kept in the same 💡 Insights. Guarded by test/unit/main/reports-handlers.test.js, test/unit/main/suggestion-answers.test.js.
 import fs from 'node:fs';
 import * as engine from './store/engine.js';
 import {demoPath} from './demo.js';

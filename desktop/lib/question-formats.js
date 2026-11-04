@@ -1,7 +1,7 @@
 // What kind of answer each question takes, kept on this Mac (settings.questionFormats, keyed like the verdicts): specific fill controls and their options are structural;
 // generic text controls need one AI judgment from the label to distinguish dates, durations and prose (owner, 17 Oct 2026: "Title", "Country/Region of Residence"
 // were text boxes). The store's mark on the line wins over both (renderer/question-kind.js formatFor). Rebuildable form structure,
-// never the person's answers. Spec docs/superpowers/specs/2026-10-17-base-facts.md. Guarded by test/question-formats.test.js.
+// never the person's answers. Spec docs/superpowers/specs/2026-10-17-base-facts.md. Guarded by test/unit/main/question-formats.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {AI_KINDS, KINDS_VERSION, cleanOptions, formatOfField} from '../renderer/question-kind.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';

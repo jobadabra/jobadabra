@@ -1,5 +1,5 @@
 // A Ready to send row while the night works on it (owner, 18 Oct 2026: "2 rows, 2 progress bars", "a stop button once a row started", "a line with live updates"):
-// its badge, its Stop (words, a secondary action), and under it a bar with the live line and a clock. The words come from ready-rows.js liveOf. Guard: test/ready-card.test.js.
+// its badge, its Stop (words, a secondary action), and under it a bar with the live line and a clock. The words come from ready-rows.js liveOf. Guard: test/unit/renderer/ready-card.test.js.
 import {el, pill} from '../components.js';
 import {tick} from './ready-progress.js';
 

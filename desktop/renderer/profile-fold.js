@@ -1,6 +1,6 @@
 // Every card on a Profile tab folds to its title and a one-line summary, and one bar at the bottom of the page opens or folds ALL the cards of the tab you are on, never another tab's
 // (owner, 18 Oct 2026: "all the tabs in Profile", "it should close/expand only the cards in the current tab"). The panels use the shared collapsiblePanel (components.js, remembered per
-// panel); the Experience cards (details.qa-fold, pages/experience-profile.js) are folded through the same registry. Guarded by test/profile-fold.test.js.
+// panel); the Experience cards (details.qa-fold, pages/experience-profile.js) are folded through the same registry. Guarded by test/unit/renderer/profile-fold.test.js.
 import {collapsiblePanel} from './components.js';
 
 export const TABS = ['cv', 'details', 'experience', 'answers', 'letter'];

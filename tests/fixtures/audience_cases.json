@@ -1,4 +1,4 @@
-{"_comment": "One table, two implementations: src/coverage.py looks_technical and desktop/renderer/audience.js looksTechnical must agree on every row (tests/unit/sources/test_coverage.py, desktop/test/audience.test.js).",
+{"_comment": "One table, two implementations: src/coverage.py looks_technical and desktop/renderer/audience.js looksTechnical must agree on every row (tests/unit/sources/test_coverage.py, desktop/test/unit/renderer/audience.test.js).",
  "cases": [
   {"keywords": ["\\bsre\\b", "devops"], "technical": true},
   {"keywords": ["site reliability", "platform engineer"], "technical": true},

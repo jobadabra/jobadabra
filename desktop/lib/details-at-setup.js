@@ -2,7 +2,7 @@
 // extract the values from CV and put them in 'your details'"; "we can also deduct some of the things, for example, the location"). One CV read (contact-from-cv.js)
 // for the details still empty after the draft's contact; every value the CV states plainly is SAVED. A value the AI inferred or was not sure of stays a proposal
 // (Your details shows it in its empty box) until the review queue takes those (hand-off "CV facts to the review queue"). A detail you already have is never replaced.
-// Guard: test/details-at-setup.test.js.
+// Guard: test/unit/main/details-at-setup.test.js.
 import * as contactDetails from './contact.js';
 import * as fromCv from './contact-from-cv.js';
 import {hashOf} from './cv-check.js';

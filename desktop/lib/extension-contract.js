@@ -1,4 +1,4 @@
-// The one list of every message between the Chrome extension and the app (routes, request fields, answer fields, events) and validate() for fakes; guard: test/extension-contract.test.js.
+// The one list of every message between the Chrome extension and the app (routes, request fields, answer fields, events) and validate() for fakes; guard: test/unit/extension/extension-contract.test.js.
 //
 // Type words: string number boolean array object any; a trailing ? makes a field optional. `open: true` = the extension spreads more keys of a page sketch into the body, so
 // extra keys are allowed (the listed ones still are the only ones the app reads). `unread` = sent by the extension, read by no app handler (said, not hidden).

@@ -1,5 +1,5 @@
 // The version a development copy (Chrome loads the checkout's extension/ itself) is told to be at: the manifest's base plus the number of commits that changed extension/ (the same stamp a build gets, desktop/scripts/extension-stamp.mjs), so a pulled change reaches the running extension.
-// Guarded by desktop/test/dev-extension-version.test.js.
+// Guarded by desktop/test/unit/extension/dev-extension-version.test.js.
 import {execFileSync} from 'node:child_process';
 
 const TTL_MS = 20000;   // the app asks on every check-in; a pull changes the count at most every couple of minutes

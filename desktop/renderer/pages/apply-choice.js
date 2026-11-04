@@ -1,7 +1,7 @@
 // The first-Apply dialog (owner, 26 Oct 2026: new installs and existing users see it once; Standard automation pre-selected): any Apply before the choice
 // answers {needsApplyChoice} (lib/apply-choice-gate.js), preload.cjs holds that press and raises pilot-needs-apply-choice; this asks "How should Jobadabra
 // apply for you?". Continue saves the choice and the held press goes on (pilot-apply-chosen); Adjust settings… opens Settings → Apply with Confirm;
-// Not now or Esc lets it go (pilot-apply-not-chosen). Guard: test/apply-choice-gate.test.js, test/apply-settings.test.js.
+// Not now or Esc lets it go (pilot-apply-not-chosen). Guard: test/guards/safety/apply-choice-gate.test.js, test/unit/renderer/apply-settings.test.js.
 import {$} from './core.js';
 import {applyOf} from '../apply-settings-model.js';
 import {askConfirm, confirming, modeCards, save, settingsNow} from './apply-settings.js';

@@ -1,7 +1,7 @@
 // The GitHub owner and repository names the app reads, in one place: a move of the repos to an organization changes OWNER here and nowhere else.
 // Why (1 Nov 2026, owner: "start a session now that will move the github repos to a github organization"): the owner was a literal in the updater,
 // the engine name and the starter, and GitHub redirects a GET after a transfer but not a POST or a workflow `uses:`.
-// Spec: docs/superpowers/specs/2026-11-01-github-org-move-design.md. Guarded by desktop/test/repos.test.js.
+// Spec: docs/superpowers/specs/2026-11-01-github-org-move-design.md. Guarded by desktop/test/unit/main/repos.test.js.
 
 // The owner of the engine, the website and the lab: the organization since the transfer (2 Nov 2026). tools/*.mjs and desktop/e2e/*.mjs import these names too,
 // src/repos.py and tools/repos.sh mirror OWNER (tests/guards/rules/test_repos_owner.py keeps the three equal and the old owner out of everything else).

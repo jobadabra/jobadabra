@@ -6,7 +6,7 @@
 // - no Telegram polling, no schedules, no telemetry, no AppleScript on Chrome or Terminal (no Apply with Claude); form LEARNING is the one
 //   exchange with the site it keeps (lib/telemetry.js learningOff): its fills are real use, and it fills with the shared recipes and meanings;
 // - the engine sees no Keychain (src/secret_store.py isolated(): no Telegram bot); it may READ the owner's Google sign-in, never write it (TWIN_MAY_READ, 10 Oct 2026).
-// Guarded by desktop/test/twin.test.js.
+// Guarded by desktop/test/guards/safety/twin.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

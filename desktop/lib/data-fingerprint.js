@@ -1,6 +1,6 @@
 // What a user's data folder holds, as one flat map of hashes, and the compare that says whether an update lost or changed any of it (upgrade + data test, spec 2026-11-01-upgrade-data-test-design.md).
 // Report only: the daily job reads the result, nothing blocks on it. Pure apart from reading the folder it is given; never reads secrets.json, logs or Chromium's own files.
-// Guard: desktop/test/data-fingerprint.test.js.
+// Guard: desktop/test/unit/main/data-fingerprint.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';

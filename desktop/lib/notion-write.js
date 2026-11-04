@@ -1,6 +1,6 @@
 // Notion, writing pages: Markdown to blocks, rewriting a page in place (patch plan, delete passes, leftover sweep), appending answers,
 // bullets and headings' siblings, finding or creating a page beside another. Re-exported by notion.js.
-// Guarded by desktop/test/notion.test.js, notion-existing-page.test.js, notion-truth.test.js and strategy-rebuild.test.js.
+// Guarded by desktop/test/unit/main/notion.test.js, notion-existing-page.test.js, notion-truth.test.js and strategy-rebuild.test.js.
 // ---------- writing a page from Markdown (headings, lists, paragraphs, tables, **bold**, `code`) ----------
 import {log} from './log.js';
 import {call, listBlocks, listChildren, liveOnly, normalise, searchAll, titleOf} from './notion-core.js';
@@ -70,7 +70,7 @@ export const rewriteTuning = {waitMs: 1500};   // between delete passes (a test 
 const COMPARABLE = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item'];
 // Blocks that are not the page's text (the Profile's 📎 CV file, a child page such as ⚙️ Search settings, a linked database): Markdown cannot say
 // them, so a rewrite never deletes them (deleting a child page's block archives the page itself) and the new text goes in around them.
-// The same list as src/stores/notion_texts.py KEPT (desktop/test/notion-write-kept.test.js checks they agree).
+// The same list as src/stores/notion_texts.py KEPT (desktop/test/unit/main/notion-write-kept.test.js checks they agree).
 export const KEPT = ['child_page', 'child_database', 'link_to_page', 'file', 'pdf', 'image', 'video', 'audio', 'embed', 'bookmark',
   'synced_block', 'column_list', 'table_of_contents', 'breadcrumb'];
 export const isKept = block => KEPT.includes(block?.type);

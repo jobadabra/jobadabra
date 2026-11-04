@@ -1,7 +1,7 @@
 // "Review my answer" and "Keep as is" beside each open written question's box (owner, 16 Oct 2026): the answers call drafts these questions from the person's facts, this lets the person
 // have the draft, or their own text, read by the AI (does it answer what was asked, what is missing, one improved version) and keeps a draft marked until they have read it.
 // Never types on its own: the improved version goes into the box only on the person's "Use this version" press, and only if the box still holds the text that was reviewed.
-// A small shadow-root host sits after the box; the panel (review.js) lists the same rows. Injected before review.js (panel-files.js). Guarded by desktop/test/written-draft.test.js.
+// A small shadow-root host sits after the box; the panel (review.js) lists the same rows. Injected before review.js (panel-files.js). Guarded by desktop/test/unit/extension/written-draft.test.js.
 (() => {
   const STYLE = `<style>:host{all:initial}*{box-sizing:border-box}.w{font:12.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#182537;margin:4px 0 8px}
     button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:4px 10px;font-weight:600}.go{background:#132439;color:#fff}.go[disabled]{opacity:.6;cursor:wait}.alt{background:#eef2f7;color:#182537;margin-left:6px}

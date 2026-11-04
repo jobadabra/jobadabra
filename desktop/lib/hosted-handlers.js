@@ -1,5 +1,5 @@
 // The hosted Always on IPC (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4): turn it on or off, read its state, download my data, push the profile again after a change.
-// main.js passes in the services they share. Guard: test/hosted-search.test.js and test/ipc.test.js.
+// main.js passes in the services they share. Guard: test/unit/main/hosted-search.test.js and test/guards/rules/ipc.test.js.
 import * as hosted from './hosted-search.js';
 import * as pipeline from './pipeline.js';
 import {emailOf} from './notify-channel.js';

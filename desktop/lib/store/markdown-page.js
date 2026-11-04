@@ -1,6 +1,6 @@
 // A Markdown text (profile.md, answers.md, knowledge.md) read and edited as a page of blocks, the same shape the Notion
 // adapter gives (lib/store/notion.js): headings, list items, paragraphs and tables, each with an id. Pure functions over the text;
-// lib/store/sqlite.js reads and writes the file. Guarded by desktop/test/store-contract.test.js.
+// lib/store/sqlite.js reads and writes the file. Guarded by desktop/test/unit/main/store-contract.test.js.
 //
 // Ids are line numbers (`L<n>`) of the text the block was read from. An edit names the block it read; if that line no longer
 // holds the same text (the file changed in between), the edit throws instead of touching the wrong line.

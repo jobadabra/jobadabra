@@ -2,7 +2,7 @@
 // 28 Oct 2026, mockup https://claude.ai/artifact/Lq3MeVUtavGRm8W2sZekPS): a Live strip (address, zoom, Expand), the page's picture with the required
 // fields still empty framed, a note line, then the actions. Four states: Filling, A bot check needs you, Review, Ready to submit. Pictures, the page's
 // facts and the dropdown/file asks come from main's 'liveEvent' (lib/live-view-handlers.js); the person's mouse and keys go back as liveInput.
-// Guard: test/session-live.test.js.
+// Guard: test/unit/renderer/session-live.test.js.
 import {el, liveDot, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';

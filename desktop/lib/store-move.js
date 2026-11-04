@@ -1,7 +1,7 @@
 // "Move my data to Notion" (spec P4, docs/superpowers/specs/2026-10-09-store-adapters.md): the person's data goes from the store on this Mac
 // to their Notion, once, in one direction. The engine copies every entity (src/stores/copy.py: resumable, a job matched by its URL, a text
 // Notion already has wins); only when the copy finished does the store switch to Notion, and this Mac's files go to an archive folder
-// (one copy in use). A copy that stops changes nothing: the next try goes on where it stopped. Guarded by test/store-move.test.js.
+// (one copy in use). A copy that stops changes nothing: the next try goes on where it stopped. Guarded by test/unit/main/store-move.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import * as notion from './notion.js';   // Notion-only: the move's Notion side (Move my data to Notion)

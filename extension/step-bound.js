@@ -1,4 +1,4 @@
-// A deadline for one awaited step of the fill (a debugger command, a page call, an AI pick): one control that never answers must not hold back the rest of the fill (14 Oct 2026, 5afa5a8: a suggest-only combobox held the late answers' pass for 40 s, then "dead end: silent"). Guard: desktop/test/step-bounds.test.js.
+// A deadline for one awaited step of the fill (a debugger command, a page call, an AI pick): one control that never answers must not hold back the rest of the fill (14 Oct 2026, 5afa5a8: a suggest-only combobox held the late answers' pass for 40 s, then "dead end: silent"). Guard: desktop/test/unit/extension/step-bounds.test.js.
 export class StepTimeout extends Error {
   constructor(label, ms) { super(`${label} did not answer in ${ms} ms`); this.step = label; this.ms = ms; }
 }

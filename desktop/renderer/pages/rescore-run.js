@@ -2,7 +2,7 @@
 // thing from one counter; Re-scoring has its own card on Jobs, not the Find jobs card). Both screens READ the state here and never keep their own: Strategy's notice,
 // Jobs' call to action and card, and the "Score first" gate on every Find jobs press. Changed only by runRescore (start and end of the re-score) and by noteOutdated
 // (a fresh read from the engine: the Jobs list or Strategy). <body data-rescoring> is the one attribute style.css turns into "the re-scoring card shows, the Find jobs
-// card does not", so no draw order matters. Guarded by test/rescore-call.test.js.
+// card does not", so no draw order matters. Guarded by test/unit/renderer/rescore-call.test.js.
 import {refusal} from '../refusal.js';
 import {$} from './core.js';
 import {dialogLead, jobs, pressLabel} from '../rescore-words.js';

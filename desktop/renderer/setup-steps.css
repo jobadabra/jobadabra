@@ -1,4 +1,4 @@
-/* Setup steps' shared parts: the lead as chips with a fold (step 1), the chosen-CV line on the CV card (step 2). The card itself is magic.css. Guard: test/setup-steps-lead.test.js. */
+/* Setup steps' shared parts: the lead as chips with a fold (step 1), the chosen-CV line on the CV card (step 2). The card itself is magic.css. Guard: test/unit/renderer/setup-steps-lead.test.js. */
 .step-facts { margin: var(--sp-3) 0 0; padding: 0; list-style: none; }   /* the lead as chips: the facts, not a paragraph */
 .step-facts .icon { width: 14px; height: 14px; color: var(--signal); }
 .step-more { margin-top: var(--sp-2); padding: 0; border: 0; background: none; box-shadow: none; }

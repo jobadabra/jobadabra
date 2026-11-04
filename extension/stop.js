@@ -4,7 +4,7 @@
 // and nothing starts again until the person presses Apply again (the app opens a tab with the fill mark, the panel's Fill, the popup's "Apply on this page").
 // Who asks: the popup's and the panel's Stop button, the app (its answer to any report carries `stop`), Chrome's own "Cancel" on the debugging bar (watchDebugger).
 // Every way the extension acts checks it here: attachDebugger (the one place the debugger is attached, only to a tab the app opened), mayAct (before a press), isStopped (the
-// fill's entry, the worker's messages, a tab joining an application). Guard: desktop/test/extension-stop.test.js (it fails when a press or an attach skips these).
+// fill's entry, the worker's messages, a tab joining an application). Guard: desktop/test/guards/safety/extension-stop.test.js (it fails when a press or an attach skips these).
 import {IDENTITY_KEYS} from './tab-identity.js';
 import {decide} from './log.js';
 import {setApply, workingTabs} from './apply-state.js';

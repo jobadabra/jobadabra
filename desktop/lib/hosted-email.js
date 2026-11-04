@@ -1,6 +1,6 @@
 // Always on uses the one e-mail address Settings → Notifications keeps (lib/notify-channel.js), never a second copy: #1711, owner 27 Oct 2026 ("One shared e-mail").
 // The Settings card turns it on with that address; an address typed in the setup step becomes the Notifications address too; a changed address or news
-// choice moves Always on with it while it is on (never turns it on by itself: that stores the profile on our servers, the person's own press). Guard: test/hosted-email.test.js.
+// choice moves Always on with it while it is on (never turns it on by itself: that stores the profile on our servers, the person's own press). Guard: test/unit/main/hosted-email.test.js.
 import * as channel from './notify-channel.js';
 import * as hosted from './hosted-search.js';
 

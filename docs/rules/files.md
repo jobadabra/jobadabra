@@ -6,7 +6,7 @@ Linked from CLAUDE.md. Why: [why.md](why.md#files), [why comments](why.md#why-co
 - **No source file (.js, .mjs, .cjs, .py) over 500 lines.** About to cross it? Move a concern into its own file first (the pattern:
   `lib/session-flow.js`, `extension/fill-flow.js`: shared state passed in, a header naming what it owns and the tests guarding it).
 - Files already over it are in `tools/file-size-allowed.json` at their size and may only shrink; `tools/file-size.mjs` (push hook +
-  `desktop/test/file-size.test.js`) fails a new big file or a listed one that grew.
+  `desktop/test/tooling/ci/file-size.test.js`) fails a new big file or a listed one that grew.
 - A classic content script can be split: `extension/page/fill.js` became six files, injected in order (`extension/page-files.js`), sharing helpers through
   `window.__jobadabraFillKit`; the panel `extension/review.js` became four (`extension/panel-files.js`: form reading, markup, learning, the panel), sharing
   `window.__jobadabraPanel*`. `EXCEPTIONS` in `tools/file-size.mjs` is empty (15 Oct 2026).

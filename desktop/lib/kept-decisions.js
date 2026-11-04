@@ -1,7 +1,7 @@
 // Decisions the AI made once and the app keeps (spec: docs/superpowers/specs/2026-10-10-application-journey.md, step 5): every kept answer carries when it was
 // made, is asked again once it is older than MAX_AGE_MS, and is dropped at once when the page contradicts it (forget). 10 Oct 2026: a cookie banner's
 // "Cookie notice" LINK was kept as its close button and opened a tab per visit, with nothing that could ever undo it.
-// Users: lib/popup-pick.js, lib/option-pick.js. Guard: test/kept-decisions.test.js.
+// Users: lib/popup-pick.js, lib/option-pick.js. Guard: test/unit/main/kept-decisions.test.js.
 // Invariants: 1. an answer without a time (kept before 10 Oct 2026) counts as expired; 2. forget removes exactly one key; 3. nothing here asks the AI.
 export const MAX_AGE_MS = 30 * 24 * 3600 * 1000;
 

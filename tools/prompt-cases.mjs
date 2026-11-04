@@ -5,7 +5,7 @@
 // A prompt: a top-level string constant named *SYSTEM, *PROMPT, *RULE(S), *INSTRUCTIONS or *EXAMPLES in app-core/src/*.js, desktop/lib/*.js or src/**/*.py.
 // Usage: node tools/prompt-cases.mjs [--base origin/main]            exit 1 with the prompts and what to add.
 //        node tools/prompt-cases.mjs --live [--base origin/main]     prints the live sets the push reaches, one per line (prompt-cases.yml re-asks them).
-// Guard: desktop/test/prompt-cases.test.js.
+// Guard: desktop/test/tooling/ci/prompt-cases.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

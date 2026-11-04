@@ -3,7 +3,7 @@
 // page/browser-form-fastpath.js); a box that holds something else now is not filled, whatever its count says. A box the person edited loses that mark.
 // Also the one rule for "does this box hold anything" where the readers ask (window.__jobadabraBoxGiven; loaded in both worlds).
 // A changed box also asks the page script to type it again (event jobadabra-retype, at most every 3 s, 6 times a page). Content-script world (the panel's list in
-// background.js). Same rule as the fill's typedSame in the page script: desktop/test/typed-match.test.js keeps the two equal.
+// background.js). Same rule as the fill's typedSame in the page script: desktop/test/unit/extension/typed-match.test.js keeps the two equal.
 (() => {
   const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
   const same = (typed, now) => {

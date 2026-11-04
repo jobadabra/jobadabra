@@ -1,6 +1,6 @@
 // The parts every tab of the job drawer is built from (pages/job-panel.js, job-drawer/tab-*.js): a titled group of lines, a copy button,
 // the state card (empty, loading, failed, notice: one component, so every tab says "nothing yet" the same way), the key-facts grid and
-// the loading skeleton. DOM builders only; the words come from renderer/job-page-view.js. Guarded by test/job-drawer.test.js.
+// the loading skeleton. DOM builders only; the words come from renderer/job-page-view.js. Guarded by test/unit/renderer/job-drawer.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 

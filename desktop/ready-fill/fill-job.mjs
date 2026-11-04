@@ -1,6 +1,6 @@
 // One job of the night (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): open the job's form (the address the app's Apply opens, lib/form-address.js) in a tab of the night's browser, ask the real extension to fill it the way the app's "Apply" does (the address hash, then the panel's Fill
 // button), and read what it reported to the stand-in. The tab stays open, filled, for the morning. Nothing here presses Submit or an account button: the extension copy holds the account press and no-submit.mjs refuses a submission.
-// -> {state, filled, left, humanCheck, wall, ms}, never a field value. Guard: desktop/test/ready-fill.test.js (classify) and the one-night image check (hosted/ready-fill/image-check.mjs in jobadabra-web).
+// -> {state, filled, left, humanCheck, wall, ms}, never a field value. Guard: desktop/test/unit/ready-fill/ready-fill.test.js (classify) and the one-night image check (hosted/ready-fill/image-check.mjs in jobadabra-web).
 import {formUrl} from '../../desktop/lib/form-address.js';   // in the image: /desktop/lib, reached by the same path from /night
 import {startFillVideo} from './fill-video.mjs';
 
@@ -8,7 +8,7 @@ const FILL_BUTTON = /^(fill anyway|fill this form|fill again)$/i;
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Pure: the outcome word from what the extension reported. `outcome` is the stand-in's {filled, left, role} or null; `panel` says whether the extension's panel appeared and offered Fill.
-// The extension's own fixed sentence for a posting that is closed or gone (extension/ladder/site-broken.js brokenNeed; desktop/test/ready-fill.test.js keeps the two in step).
+// The extension's own fixed sentence for a posting that is closed or gone (extension/ladder/site-broken.js brokenNeed; desktop/test/unit/ready-fill/ready-fill.test.js keeps the two in step).
 export const CLOSED_NEED = /^This posting is (closed|gone)/;
 export function classify({outcome, panel, role, stuck = null}) {
   if (!outcome?.filled && stuck?.why === 'site_broken' && CLOSED_NEED.test(stuck.needs || '')) return {state: 'closed', wall: ''};   // the AI said the posting is closed: not "no form"

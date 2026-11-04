@@ -2,7 +2,7 @@
 // user's login" … "but headlessly"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md). The step: the person's LinkedIn session (copied from their Chrome by the
 // extension, kept in the Keychain: lib/linkedin-session.js, copied again at each press: lib/linkedin-refresh.js) goes into the app's OWN hidden browser for the read and leaves it again on every way out; up to 3 searches, 3 pages each,
 // one after another, read by the owned browser's extension exactly as in Chrome (extension/visit.js). It never solves a check, types a password or changes the browser's identity;
-// a sign-in page, a check or a 401/403/429/999 ends it with no retry (a 429 also pauses LinkedIn for a day). Guard: test/linkedin-headless.test.js.
+// a sign-in page, a check or a 401/403/429/999 ends it with no retry (a 429 also pauses LinkedIn for a day). Guard: test/unit/main/linkedin-headless.test.js.
 // Invariant: the session value is only ever in the `Storage.setCookies` call; not in a line, a result, an error or a log.
 import * as realSession from './linkedin-session.js';
 import {openCdpSession} from './cdp-session.js';

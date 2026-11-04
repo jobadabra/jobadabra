@@ -1,7 +1,7 @@
 // Build a CV with the AI (Setup → Your CV, Settings → Profile → CV): a short form's answers become a CV in the app's schema (cv/cv.json).
 // The AI only writes words (a summary, one role's bullets, a skills line); every fact (employer, title, dates, place, school) comes from the
 // person's answers in code, and a bullet holding a number the person never said is dropped. A built CV is saved as the main CV with its PDF and
-// marked as already imported, so the PDF import never reads it a second time. Guarded by test/cv-build.test.js.
+// marked as already imported, so the PDF import never reads it a second time. Guarded by test/unit/cv/cv-build.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {nameOfClient} from './ai/names.js';
 import {MODEL, usd} from './cv.js';

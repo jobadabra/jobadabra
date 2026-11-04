@@ -1,6 +1,6 @@
 // Form-fill history, without a window (pages/form-fills.js draws it): one agent run (src/stores/base.py AGENT_RUN_FIELDS + EXTRAS) as
 // the list row and the detail, read from the shapes in the store spec's "Agent run shapes": fields.data = {fields, left_for_you,
-// attachments, steps}; fields.timeline = a Claude session's status line. Guarded by test/form-fills-view.test.js.
+// attachments, steps}; fields.timeline = a Claude session's status line. Guarded by test/unit/renderer/form-fills-view.test.js.
 import {shortDay} from './date.js';
 
 // Outcome → tone: done good, waiting for you warn, still going info, failed bad, the rest (not submitted, cancelled…) neutral.

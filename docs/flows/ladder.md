@@ -52,11 +52,11 @@ no AI = nothing pressed. A rung's answer is accepted only when it is one of the 
 |---|---|---|
 | Fixtures | 120+ page sketches (real captures, recorded pages, reconstructed, invented, traps) with expected outcome and the model's stored answer | `desktop/e2e/ladder-fixtures/` |
 | Score | per fixture expected vs got, rung that decides, rates **per source** (never blended), the wrong-and-confident list | `cd desktop && npm run ladder-score` (live, plan path) · `-- --offline` (stored answers) |
-| Ratchet | no fixture may get worse than `desktop/e2e/ladder-baseline.json` | `desktop/test/ladder-ratchet.test.js` (runs offline in seconds; `tools/ladder-gate.mjs` on a flow push) |
+| Ratchet | no fixture may get worse than `desktop/e2e/ladder-baseline.json` | `desktop/test/unit/main/ladder-ratchet.test.js` (runs offline in seconds; `tools/ladder-gate.mjs` on a flow push) |
 | Recorded pages | a fixed site replayed with the real extension | `cd desktop/e2e && npm run recorded` |
 | Real extension | the extension alone on a real form | `cd desktop/e2e && npm run real-extension` |
 
-| Prompt fingerprint | a hash of every model-facing prompt and schema (rung 2, 3, 4, account judge, form judge) in the baseline: the gate replays STORED answers, so only the hash sees a changed prompt | `desktop/e2e/lib/ladder-fingerprint.mjs`, `desktop/test/ladder-fingerprint.test.js` |
+| Prompt fingerprint | a hash of every model-facing prompt and schema (rung 2, 3, 4, account judge, form judge) in the baseline: the gate replays STORED answers, so only the hash sees a changed prompt | `desktop/e2e/lib/ladder-fingerprint.mjs`, `desktop/test/tooling/ci/ladder-fingerprint.test.js` |
 
 **A prompt or schema changed** (the gate says "the prompt of rung N changed"): re-run `npm run ladder-score` live (plan path), `--record` the changed answers, then `--offline --update-baseline "<why>"` (it rewrites the fingerprints too).
 
@@ -74,6 +74,6 @@ no AI = nothing pressed. A rung's answer is accepted only when it is one of the 
 A fixture that got worse is a bug, not a baseline edit; the only exception is a deliberate trade-off the owner agrees to, said in the commit.
 
 ## Invariants (what the tests guard)
-- A rung's answer is one of its fixed values (`desktop/test/page-kind.test.js`); the structure rule never overrides a rung that answered (`desktop/test/flow-invariants.test.js`).
+- A rung's answer is one of its fixed values (`desktop/test/unit/main/page-kind.test.js`); the structure rule never overrides a rung that answered (`desktop/test/unit/main/flow-invariants.test.js`).
 - Unsure currently goes **down** to rung 0 (spec gap 1); the score prints it as `unsure`, rung 0. Slice B changes this on purpose, with the baseline updated.
 - Counts and logs carry the shape and the rung, never the page's text.

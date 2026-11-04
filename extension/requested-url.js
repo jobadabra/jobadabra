@@ -1,6 +1,6 @@
 // The address the app asked a tab to open, kept per tab BEFORE any server redirect (webNavigation.onBeforeNavigate sees the request; the tab afterwards only shows where it landed).
 // Why (27 Oct 2026, fair round form 264402): http -> https dropped "?gh_jid=<job>"; the tab's own first look already had the redirected address, so the query could only be
-// restored from the request. The app's mark (#jobpilotto-fill) says which navigations are the app's. Read by restore-query.js. Guard: desktop/test/restore-query.test.js.
+// restored from the request. The app's mark (#jobpilotto-fill) says which navigations are the app's. Read by restore-query.js. Guard: desktop/test/unit/extension/restore-query.test.js.
 const MARK = /#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/;
 const KEY = tabId => `requested:${tabId}`;
 

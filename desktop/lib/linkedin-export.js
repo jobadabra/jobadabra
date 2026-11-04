@@ -1,7 +1,7 @@
 // LinkedIn's own data export (Settings → Data privacy → Get a copy of your data) turned into a CV in the app's schema, so the experience bank
 // (lib/experience.js) can compare it with the main CV like any other version. Read by STRUCTURE only: the export's CSV files and their column
 // headers; what a position means (which CV role it is) is decided later by the AI match, never here. A file or column that is missing is
-// reported, not guessed. Nothing is sent anywhere; the ZIP itself is not kept, only this parsed data. Guarded by test/linkedin-export.test.js.
+// reported, not guessed. Nothing is sent anywhere; the ZIP itself is not kept, only this parsed data. Guarded by test/unit/main/linkedin-export.test.js.
 import path from 'node:path';
 import {listZip, readEntry} from './zip-read.js';
 

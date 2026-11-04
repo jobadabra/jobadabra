@@ -1,5 +1,5 @@
 // "Set aside" under a Which-is-right card (owner, 17 Oct 2026: a pick never deletes the other value): each value a pick moved out of the way, with Undo
-// (lib/set-aside.js). Shared by the Profile facts card and Strategy's Locations card. Guarded by test/set-aside-view.test.js.
+// (lib/set-aside.js). Shared by the Profile facts card and Strategy's Locations card. Guarded by test/unit/renderer/set-aside-view.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 

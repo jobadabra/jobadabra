@@ -1,7 +1,7 @@
 // The saved text of the base-fact kinds that hold more than one part (owner, 17 Oct 2026: "Base facts fixed, AI the rest"): a salary (amount, currency, period,
 // net or gross), a duration (a notice period), a work status per country, a language level, a range and a link. Each pair reads the text the store keeps and
 // writes it back the same way; text the code cannot read gives empty parts, so the control shows it as it was written and nothing is lost.
-// Pure (no DOM): guarded by test/question-kinds-composite.test.js.
+// Pure (no DOM): guarded by test/unit/renderer/question-kinds-composite.test.js.
 import {COMPOSITE} from './question-kind.js';
 import {OLDER, STATUSES} from './work-eligibility.js';
 

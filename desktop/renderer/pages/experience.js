@@ -1,5 +1,5 @@
 // Settings → Profile → Experience: the sources of what tailoring knows about the person (the main CV, other CV versions) and, per job,
-// the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/experience-page.test.js.
+// the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/unit/main/experience-page.test.js.
 import {plainError} from '../run-warnings.js';
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';

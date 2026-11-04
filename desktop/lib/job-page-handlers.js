@@ -1,7 +1,7 @@
 // A job's page in the app (Jobs → a row → the side panel, renderer/pages/job-panel.js): the job's record, its sections (kit, prep, review,
 // record, messages, description) and its events, from the active store through the engine (lib/store/engine.js), so it reads the same on
 // every store. "Open in Notion" only when the store has pages to open (caps LINKS). Demo mode: demo/job-pages.json (fictional).
-// Guarded by test/job-page-handlers.test.js and test/job-page-timing.test.js.
+// Guarded by test/unit/main/job-page-handlers.test.js and test/unit/renderer/job-page-timing.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

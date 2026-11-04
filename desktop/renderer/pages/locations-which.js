@@ -1,6 +1,6 @@
 // Strategy → "Which locations are right?" (owner, 17 Oct 2026: "Resolve genuine conflicts individually, showing both existing values. Don't preselect a winner."):
 // one row per kind where the search settings and the Profile said different places: the two sides as equal boxes (Use Strategy's / Use Profile's), then
-// one quiet "Choose…" menu (Other places…, Search with Strategy's, score with Profile's). Nothing is picked for the person. Guarded by test/locations-which.test.js.
+// one quiet "Choose…" menu (Other places…, Search with Strategy's, score with Profile's). Nothing is picked for the person. Guarded by test/unit/renderer/locations-which.test.js.
 import {chip, el, openMenu} from '../components.js';
 import {$, message} from './core.js';
 import {shared} from './shared.js';

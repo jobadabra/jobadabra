@@ -3,7 +3,7 @@
 // (ISO country codes, cities with a country, languages with a CEFR level or native, relocation yes/no/maybe + where, roles with a certainty, seniority and
 // employment enums, and which fields hold unparsed text). An answer outside the shape is rejected and asked again once; a second miss is an error, never
 // kept as sure. Asked only when the text changed (cached per input), about 1.2k tokens (about $0.002 on the small model). Nothing is written here.
-// Guarded by test/preferences-parse.test.js.
+// Guarded by test/unit/renderer/preferences-parse.test.js.
 import crypto from 'node:crypto';
 import {nameOfClient} from './ai/names.js';
 import {inFlight} from './in-flight.js';

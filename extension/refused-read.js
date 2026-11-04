@@ -2,7 +2,7 @@
 // "Find jobs using your browser" in the app (owner, 26 Oct 2026: "shouldn't start automatically in the background"): the one-minute look asks the app whether a
 // press waits, and only then the app lists the sites that refused its own reading and are due (no timer, no start by itself). Each is fetched ONCE, one at a time, with a pause, WITHOUT cookies or logins (credentials omitted), and the page goes to the app, which keeps its jobs
 // or the stop. Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit (checked here too, whatever the app says); a refusal, bot check or login page is the app's stop, never retried and
-// never solved; a site that still refuses goes on to a real tab in an incognito window (refused-tab.js, no cookies). Not a flow file: nothing here touches an application. Guard: desktop/test/extension-refused-read.test.js.
+// never solved; a site that still refuses goes on to a real tab in an incognito window (refused-tab.js, no cookies). Not a flow file: nothing here touches an application. Guard: desktop/test/unit/extension/extension-refused-read.test.js.
 import {api, settings} from './flow.js';
 import {ALL_SITES} from './site-allow.js';
 import {tabReader} from './refused-tab.js';

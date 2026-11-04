@@ -2,7 +2,7 @@
 // The AI maps each bullet that is not yet an answer to a question and a choice from renderer/survey-model.js; the code writes the line itself and checks it against the bullet:
 // the choice is on the question's list, the note is copied word for word from the bullet, every digit is kept, and one question answered twice is trusted for neither.
 // A bullet that is no survey question stays as written; an instruction for the AI becomes a "Notes for the AI" line. The pages are copied and backed up first, every line is read
-// back, else all go back; Undo restores the bullets. Works on every store (lib/store). Guarded by test/survey-move.test.js.
+// back, else all go back; Undo restores the bullets. Works on every store (lib/store). Guarded by test/unit/main/survey-move.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {saveCopy} from './profile-move.js';
 import {applyEdits} from './text-outline-handlers.js';

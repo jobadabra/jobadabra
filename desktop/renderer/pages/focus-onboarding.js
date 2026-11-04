@@ -1,5 +1,5 @@
 // Focus → Get started (moved out of pages/focus.js, 9 Oct 2026): the first steps after the setup, and Focus without Notion, which shows only
-// this list (showFocusStarted, opened by nav.js). The steps' states are renderer/onboarding.js. Guards: test/onboarding.test.js.
+// this list (showFocusStarted, opened by nav.js). The steps' states are renderer/onboarding.js. Guards: test/unit/renderer/onboarding.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {focusMode, onboarding} from '../onboarding.js';

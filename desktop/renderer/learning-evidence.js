@@ -1,6 +1,6 @@
 // Which Form fills taught each learning of What we learned (owner, 28 Oct 2026, PR B2 sketch: evidence "by meaning"): the learnings writer keeps each form
 // label's learning in the verdict cache (lib/learnings.js, lib/question-verdicts.js noteLearned), and a fill's record keeps its labels (never the answers:
-// src/ai/apply_record.py). Matched here when the tab draws, so no fill id is written in the person's answers page. Pure: guarded by test/learning-evidence.test.js.
+// src/ai/apply_record.py). Matched here when the tab draws, so no fill id is written in the person's answers page. Pure: guarded by test/unit/renderer/learning-evidence.test.js.
 import {keyOf} from './question-filter.js';
 
 export const SHOWN = 3;   // chips per learning, then "+N"

@@ -2,7 +2,7 @@
 // Suggestions, renderer/question-entries.js, no longer cards on Jobs): "Fill your details · N missing", "What we learned · N to check", each opening its
 // drawer (pages/question-review.js, one question at a time). One count per drawer everywhere: those rows, its Profile tab's count and the drawer's header read
 // the same list (questionsNow). It reads the open questions (cached on this computer first, then the store) and keeps them for the drawer.
-// Guarded by: test/question-drawers.test.js, test/question-review.test.js, questions-load-error.test.js, questions-error-text.test.js, test/question-entries.test.js.
+// Guarded by: test/unit/renderer/question-drawers.test.js, test/unit/renderer/question-review.test.js, questions-load-error.test.js, questions-error-text.test.js, test/unit/renderer/question-entries.test.js.
 import {$, show} from './core.js';
 
 // The questions saved last time are used at once (cached on this computer), then the store's answer replaces them.

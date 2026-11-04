@@ -1,7 +1,7 @@
 // "What came in from LinkedIn" (spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md, "Merging"): the rows the person ticks, built from what LinkedIn
 // returned and what they already have, and what ticking saves. Pure, no AI of its own: which of their roles a LinkedIn position is, and which bullets add something, is the
 // AI match of lib/experience.js (fixed integers the code validates). Invariants: nothing is added until a row is ticked; a Your details line that has a value and differs
-// is unticked and never replaces; the main CV is never edited; Birth Date and the other unmapped columns never leave the fetch. Guard: test/linkedin-import-review.test.js.
+// is unticked and never replaces; the main CV is never edited; Birth Date and the other unmapped columns never leave the fetch. Guard: test/unit/main/linkedin-import-review.test.js.
 
 export const DETAIL_COLUMNS = {first_name: 'First Name', last_name: 'Last Name', location: 'Geo Location', street: 'Address', postal_code: 'Zip Code', website: 'Websites'};
 const norm = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();

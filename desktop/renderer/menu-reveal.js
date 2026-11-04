@@ -1,4 +1,4 @@
-// Which sidebar pages show yet: Interviews after the first application, Reports after the first weekly report, Employers after the first employer; once shown they stay, with a dot until opened. Guarded by test/menu-reveal.test.js.
+// Which sidebar pages show yet: Interviews after the first application, Reports after the first weekly report, Employers after the first employer; once shown they stay, with a dot until opened. Guarded by test/unit/renderer/menu-reveal.test.js.
 export const PROGRESSIVE = {
   interviews: signals => signals.applied,
   calendar: signals => signals.applied,   // with Interviews (owner, 18 Oct 2026: always once there is an interview, else under More)

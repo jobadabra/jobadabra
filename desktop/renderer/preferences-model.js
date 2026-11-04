@@ -3,7 +3,7 @@
 // its control; the other rows of the known sections (Hard constraints, Compensation, Preferences: profile-model.js kindOf) are "Other
 // preferences"; every other line of the page is "The rest of your Profile". Values stay the free text the AI reads: a control only rewrites its
 // own cell or line when the person changes it, and a field the page lacks is added as a "Label: value" line. ❓ = not set (answers-model.js).
-// No DOM: guarded by test/preferences-model.test.js.
+// No DOM: guarded by test/unit/renderer/preferences-model.test.js.
 import {changeFor, labelledLine, valueOf} from './answers-model.js';
 import {SUGGESTIONS, kindOf} from './profile-model.js';
 

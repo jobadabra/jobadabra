@@ -8,7 +8,7 @@ One entry, the producer interface every screen draws (Focus Suggestions, the Job
 - key: the evidence it rests on. An answer is kept against it in 💡 Insights (State, Hidden until): on its own row for a finding
   (today's insight, the weekly report), else in a row of ANSWER_CATEGORY whose Input hash is the key.
 - actions[].do: what the app does in one press (renderer/suggestions.js maps each to its handler).
-Guarded by tests/unit/ai/test_suggestions.py; the screens by desktop/test/suggestions.test.js.
+Guarded by tests/unit/ai/test_suggestions.py; the screens by desktop/test/unit/renderer/suggestions.test.js.
 """
 from datetime import date, datetime, timedelta
 import json

@@ -3,7 +3,7 @@
 // eligibility status"). Two sources, one item kind ("cvcheck" of lib/details-review.js): the contact proposals the setup read left (lib/contact-from-cv.js, cached per CV
 // file) and the base facts of lib/fact-catalog.js (work permit, sponsorship, notice, start, salary, languages), read from the CV by ONE AI call, cached per CV file in
 // cv/fact-proposals.json. The AI decides what the CV implies and says how (stated / inferred) and why; the code only validates the shape. Confirm saves the value into
-// its home (a Your details section, or 📇 Contact details); an edit replaces it. A value is never saved without that press. Guarded by test/cv-queue.test.js.
+// its home (a Your details section, or 📇 Contact details); an edit replaces it. A value is never saved without that press. Guarded by test/unit/main/cv-queue.test.js.
 import fs from 'node:fs';
 import * as contactDetails from './contact.js';
 import * as fromCv from './contact-from-cv.js';

@@ -8,7 +8,7 @@ updated: 2026-11-03
 
 ## Rules
 - Reuse before styling: find the nearest sibling in the same container (`components.js`, `.insight-card`, `.summary-card`) and build from it. New CSS only for what is missing, scoped under the new root; a part needed twice goes to the shared library.
-- Values live in `desktop/renderer/tokens.css` only (colours, radii, type scale, spacing); a raw value anywhere else fails `desktop/test/design.test.js`.
+- Values live in `desktop/renderer/tokens.css` only (colours, radii, type scale, spacing); a raw value anywhere else fails `desktop/test/guards/rules/design.test.js`.
 - The value's kind picks the control: short text a sized field, long text a growing box, yes or no two buttons, one of many a menu, several chips with an add. Never prose in a text box; a note for the AI is a muted line under its value.
 - Chips are values, pills are status, tags are labels. A saved value is never cut by its box. One primary button per card; every button solid; icon-only buttons are secondary with a tooltip. No card inside a card.
 - Contrast AA in both themes; look at light and dark. Pop-ups carry no button: the click is the one thing, and every call names a target or an action.

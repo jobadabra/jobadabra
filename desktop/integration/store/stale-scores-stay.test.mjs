@@ -4,7 +4,7 @@
 //   (a) the Jobs read still carries every fit, each scored job marked `stale` (src/desktop_strategy.py mark_outdated);
 //   (b) the Jobs call to action's count (`outdated.count` of the jobs read) is Strategy's `outdated.count`, from the same engine function;
 //   (d) Re-score (the app's rescore-outdated command, then the search it starts) replaces the fits with new ones and the marks go.
-// The window side (c: Find jobs with stale scores asks "Score first" and starts no search) is desktop/integration/app/screen-jobs-rescore.test.js; the words and the one state owner are test/rescore-call.test.js.
+// The window side (c: Find jobs with stale scores asks "Score first" and starts no search) is desktop/integration/app/screen-jobs-rescore.test.js; the words and the one state owner are test/unit/renderer/rescore-call.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

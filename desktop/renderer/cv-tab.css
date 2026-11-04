@@ -1,4 +1,4 @@
-/* Profile → CV: the document row and the CV check card (renderer/cv-check-view.js, mockup 08, 18 Oct 2026). Tokens only (test/design.test.js).
+/* Profile → CV: the document row and the CV check card (renderer/cv-check-view.js, mockup 08, 18 Oct 2026). Tokens only (test/guards/rules/design.test.js).
    The match dialog shares .cvc-score / .cvc-check / .cvc-fix from style.css; this file styles only the CV tab's own parts. */
 .cv-card-actions.inline { flex-direction: row; align-items: center; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
 #cv-more:empty { display: none; }

@@ -1,5 +1,5 @@
 // What a "Find jobs using your browser" run says when it ends, as the card reads it (moved out of visits.js, 16 Oct 2026, a pure move to keep that file
-// under its size limit). Pure: no state. Guards: desktop/test/visits-run.test.js (the card parses exactly this).
+// under its size limit). Pure: no state. Guards: desktop/test/unit/main/visits-run.test.js (the card parses exactly this).
 const key = url => String(url || '').split('#')[0].replace(/\/$/, '');   // the same as visits.js key
 
 // Why a site read in part stopped, worth saying beside its jobs; a list read to its end is not (extension/visit.js readSite's own words).

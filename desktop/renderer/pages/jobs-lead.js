@@ -1,4 +1,4 @@
-// Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/lead-confirm.test.js.
+// Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
 import {el, pill, tile} from '../components.js';
 import * as confirmStep from '../lead-confirm.js';
 import {shared} from './shared.js';

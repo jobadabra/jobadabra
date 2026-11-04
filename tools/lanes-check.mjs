@@ -7,7 +7,7 @@
 // Every suite named in the head registry must have a file in desktop/e2e/suites.
 // Why (28 Oct 2026, spec rule E): 5395279 ("allowance for model noise (1 in 9)") loosened a test to get green; a suite listed as tolerant with no named
 // input is the same move one level up, so the entry itself carries the input and the reason, and a test that cannot name one stays in the backbone (our own races are bugs).
-// Usage: node tools/lanes-check.mjs [--base origin/main]   exit 1 with the entries and what each lacks. Guard: desktop/test/lanes-check.test.js.
+// Usage: node tools/lanes-check.mjs [--base origin/main]   exit 1 with the entries and what each lacks. Guard: desktop/test/tooling/ci/lanes-check.test.js.
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

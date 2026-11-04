@@ -101,7 +101,7 @@ Guard: `desktop/e2e/test/ai/stored-answer-suites-no-live-ai.test.mjs`, `desktop/
 **B · Clock.** Backbone steps wait on state (the row exists, the fill ended) with a cap of about 3× main's p95 that only catches hangs. No wall-clock limit is an
 assertion in the backbone. User promises (Find jobs ≤ 3 min, Focus ≤ 20 s) live in the `clock` lane: the median of main's nightly runs vs the promise.
 The same cap sits on every CI step around the suite run (scan, upload, report, lock, setup; 31 Oct 2026, a 17-min hung scan lost a job's logs): `timeout-minutes` of about 3× the step's p95, 5 min at least.
-Guard: `desktop/e2e/test/harness/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/tooling/ci/test_e2e_step_timeouts.py`.
+Guard: `desktop/e2e/test/harness/timing-ratchet.test.mjs`, `desktop/test/tooling/ci/e2e-reliability-check.test.js`, `tests/tooling/ci/test_e2e_step_timeouts.py`.
 
 **C · Outside world.** Real Notion, the AI key's credit, real websites and runners are `outside`. The backbone stubs Notion; real Notion runs in one tolerant
 outside-world suite, nightly and before beta. The backbone has none of them (owner, 31 Oct 2026: "The backbone shouldn't have any external world, flaky related
@@ -126,13 +126,13 @@ backbone test to a tolerant lane, carries one of:
 - `Test-was-wrong: <why>`: shown to the owner in the PR summary.
 Without one the PR cannot go green. A real fix in product code leaves the test untouched and never meets this rule. `5395279` ("allowance for model noise
 (1 in 9)") is the case it refuses.
-Guard: `desktop/test/e2e-reliability-check.test.js`.
+Guard: `desktop/test/tooling/ci/e2e-reliability-check.test.js`.
 
 **F · The plumbing brake.** Every e2e workflow (the list in `tools/e2e-reliability-check.mjs`; label, mail and site workflows have no e2e job) and e2e harness module carries one `Job:` line naming which of the design's jobs it does (run the backbone, serve
 stored answers, wait on state, pick the suites, run tolerant suites as rates, keep the scorecard, report health). A harness PR carries `Harness-job: <job>`
 or `Fixes-backbone-red: <run>` (a backbone red seen twice on the same commit). A PR that answers a tolerant result, a red already gone, or names no job cannot
 go green. Legitimate plumbing (a runner image, a new suite) names its job.
-Guard: `desktop/test/e2e-reliability-check.test.js`.
+Guard: `desktop/test/tooling/ci/e2e-reliability-check.test.js`.
 
 **Design-first repair (owner, 29 Oct 2026):** before diagnosing or editing a red e2e, read this design, the lane registry and the repair skill; name the failed input and the evidence before selecting an implementation. A failure's "split the suite" advice never overrides the lane boundary. A modified pass with an original pass is not a demonstrated causal fix. Changed suite limits (`shards`, `budgetMinutes`, `minutes`) need both rule E citation and rule F design job/`Job:` label, even under `suites/`. The measured weights (`stepSeconds`, `flowSeconds`) only assign steps to shards: weight-only edits need rule F, not a rule E citation. One extractor owns both checks.
 
@@ -153,9 +153,9 @@ Guard: `desktop/e2e/test/harness/pr-suites.test.mjs`.
 app reaches the owner's computer is closed for every suite where the app starts, and asserted before step 1; a run that finds one open stops. The doors today: `open` on
 PATH (`makeOpenShim`, `opensIntoSpool`, #2362), Electron's `shell.openExternal`, `openPath`, `showItemInFolder`, the clipboard and login items (`desktop/lib/e2e-host.js`,
 checked by `lib/app.mjs`), the browser profile and backup folder (`openContext`), the Keychain (a step compares it before and after). CI cannot show an open door (a runner
-has no owner's browser), so the check is at run start and a class test lists every host call in the app (`test/e2e-host.test.js`): a new call is a door or on its reviewed
+has no owner's browser), so the check is at run start and a class test lists every host call in the app (`test/guards/safety/e2e-host.test.js`): a new call is a door or on its reviewed
 list in the PR that adds it. Re-running a repro of a door incident locally waits until its door is closed, and the spool says what the app tried to open.
-Guard: `desktop/test/e2e-host.test.js`.
+Guard: `desktop/test/guards/safety/e2e-host.test.js`.
 
 **H · Cheapest place.** A pure check that runs in seconds (no browser, no app, no e2e) runs on push when its files changed (`tools/pre-push-check.sh`); a CI red
 that push could have caught is a harness bug (#2322: no-question-mark, solid-buttons). E2E suites never run on the Mac except one: fixing a real backbone red,

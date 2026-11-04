@@ -1,6 +1,6 @@
 // The drawer's fixed header (pages/job-panel.js): the score ring, the title, "company · place", the job's own status and key chips, and
 // the controls: previous / next ("3 of 38"), expand, close; "Back to Recent activity" above them when a run opened the job.
-// One header for every tab. Words: renderer/job-page-view.js headerFacts, interviewFacts. Guarded by test/job-drawer.test.js.
+// One header for every tab. Words: renderer/job-page-view.js headerFacts, interviewFacts. Guarded by test/unit/renderer/job-drawer.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {fitRing} from '../fit-ring.js';

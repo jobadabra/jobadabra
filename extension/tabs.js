@@ -4,8 +4,8 @@
 // applications side by side". Guards: extension-same-tab.test.js, review.test.js, the e2e rows "Apply opens a new tab" and "side by side".
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
 //  1. A tab joins an application only through the extension's own press on its opener (Apply, a route, a next step, an account button) a moment before: a tab the person opens, even from the application's tab, is theirs,
-//     never armed, never given the session or the fill mark (13 Oct 2026, owner: GitHub pages filled; desktop/test/extension-tab-adoption.test.js). A tab the app opened for another job stays that job's, whatever order the events come in (desktop/test/extension-opener-race.test.js).
-//  2. Tab identity keys are named only in tab-identity.js (desktop/test/extension-tab-identity.test.js).
+//     never armed, never given the session or the fill mark (13 Oct 2026, owner: GitHub pages filled; desktop/test/unit/extension/extension-tab-adoption.test.js). A tab the app opened for another job stays that job's, whatever order the events come in (desktop/test/unit/extension/extension-opener-race.test.js).
+//  2. Tab identity keys are named only in tab-identity.js (desktop/test/unit/extension/extension-tab-identity.test.js).
 import {IDENTITY_KEYS, fromOf, inheritedEntries} from './tab-identity.js';
 import {FOLD_MS, postingToClose, pressedLately, realOpener} from './same-tab.js';
 import {pageKey} from './tab-pages.js';

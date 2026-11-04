@@ -1,6 +1,6 @@
 // The Notion store's runs (⏱️ Search runs rows), desktop side: the latest rows, closing a row a killed run left Running, and a run's
 // page (result, report, technical log). Moved unchanged out of lib/run-history.js, which reaches it through openStore(storage).runs.
-// Guarded by test/run-history.test.js and store-runs.test.js.
+// Guarded by test/unit/main/run-history.test.js and store-runs.test.js.
 import {call} from '../notion.js';
 import {jobFrom} from '../job-line.js';
 import {fromRow, text} from '../run-rows.js';

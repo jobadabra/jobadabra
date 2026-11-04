@@ -1,7 +1,7 @@
 // The top-up dialog (owner, 26 Oct 2026: "Blocking, but showing a topup popup/dialog ... a smaller button/option to topup using promo code"; "on every action that requires
 // AI and their cap is reached"): opened by every start refused for AI credit or a Free AI line (pages/startup.js sayRefused, the Find jobs card) and by a line found after a
 // run or a refused AI call (main's 'aiCap'). Top-ups (greyed while paying is off), "Use my own key", and "Have a promo code?": a credit code adds AI credit, then the refused
-// start runs again. Words: renderer/plan-view.js topupWords / redeemWords. Built from the shared dialog, pill and button parts. Guard: test/topup-dialog.test.js.
+// start runs again. Words: renderer/plan-view.js topupWords / redeemWords. Built from the shared dialog, pill and button parts. Guard: test/guards/money/topup-dialog.test.js.
 import {el} from '../components.js';
 import {redeemWords, topupWords} from '../plan-view.js';
 import {openSetting} from './settings.js';

@@ -1,6 +1,6 @@
 // The fonts a Word CV names (its styles, its text and its theme) that this computer lacks, as faces the renderer loads before drawing it
 // (cv/docx-render.html): the same font downloaded once or its same-width twin, through lib/pdf-edit/fonts.js. An installed font needs
-// nothing: Chromium finds it by name. A font that can't be found is left to Chromium's fallback. Guards: test/docx-render.test.js.
+// nothing: Chromium finds it by name. A font that can't be found is left to Chromium's fallback. Guards: test/unit/main/docx-render.test.js.
 import {findFont} from '../pdf-edit/fonts.js';
 
 const SYMBOL = /^(symbol|wingdings|webdings|marlett|ms (outlook|reference))/i;

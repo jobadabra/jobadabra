@@ -2,7 +2,7 @@
 // Profile), edited block by block on every store (IPC textOutline / textEdit, lib/text-outline-handlers.js). This module owns the loading, the pending
 // changes per text, saved through the page's one save bar (save-bar.js; owner, 18 Oct 2026: one bar per page, no bar of its own since D's swap);
 // a tab only draws and calls change(name, change).
-// A change to the same block replaces the earlier one. Guarded by test/profile-tabs-render.test.js.
+// A change to the same block replaces the earlier one. Guarded by test/unit/renderer/profile-tabs-render.test.js.
 import {plainError} from '../run-warnings.js';
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';

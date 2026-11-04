@@ -168,7 +168,7 @@ export const notionPageUrl = id => (id ? `https://www.notion.so/${String(id).rep
 // What the Job cell of an Interviews row shows and can do: the job in the list (opens in Jobs), a job that is
 // only linked in Notion (opens in Notion), or none ("Link a job").
 // An interview's application id → its job in the list: by the store's id (page_id: every store; on SQLite it is the only one) or by the
-// Notion page in its URL. Pure, so a SQLite-shaped list is tested (test/jobs-view-interview.test.js).
+// Notion page in its URL. Pure, so a SQLite-shaped list is tested (test/unit/renderer/jobs-view-interview.test.js).
 const plainId = id => String(id || '').replace(/-/g, '');
 export const jobOfApplication = (jobs, pageId) => (!pageId ? undefined : (jobs || []).find(job => (job.page_id && plainId(job.page_id) === plainId(pageId))
   || (job.notion_url && plainId(job.notion_url).includes(plainId(pageId)))));

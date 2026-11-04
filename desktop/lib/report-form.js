@@ -1,7 +1,7 @@
 // The app's side of "Report this form" (spec docs/superpowers/specs/2026-10-15-report-this-form.md §1-§3): what the extension's collector hands over (entries with their bodies in base64) becomes
 // a record, is scrubbed (lib/report-scrub.js), searched again by the last gate, and held IN MEMORY with a preview the person can read; nothing is written to disk and nothing leaves. finalize()
 // applies the hosts the person dropped and runs the gate once more: the record that comes out is the one that may be sent. Not wired to a route or a dialog yet (PR 4 and PR 5).
-// Guard: test/report-recorder.test.js.
+// Guard: test/unit/extension/report-recorder.test.js.
 import crypto from 'node:crypto';
 import {recordable, sha} from './net-keep.js';
 import {lastGate, scrubRecord} from './report-scrub.js';

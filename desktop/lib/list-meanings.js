@@ -2,7 +2,7 @@
 // same thing (USA / US / United States; Switzerland / Schweiz / Suisse) and which look misspelt ("Accountanting"). A fixed answer the code checks:
 // every entry it names must be one it was given, an entry is in one group at most, a suggestion differs from the entry. Display only: the lists are
 // never changed here (a "Fix" goes through editTargets like any edit). Cached by the lists' contents, so it is asked again only when a list
-// changes. Guarded by test/list-meanings.test.js.
+// changes. Guarded by test/unit/main/list-meanings.test.js.
 import crypto from 'node:crypto';
 import {anthropicApi} from './ai/anthropic-api.js';
 

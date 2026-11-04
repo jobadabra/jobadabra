@@ -1,5 +1,5 @@
 // The Profile's CV gaps over IPC (owner, 17 Oct 2026, review M7): opening Experience splits the paragraph once into one line per gap (lib/gaps-move.js, copy and backup first) and says so,
-// with Undo. Registered by lib/contact-handlers.js. Guarded by test/gaps-move.test.js and test/ipc.test.js.
+// with Undo. Registered by lib/contact-handlers.js. Guarded by test/unit/main/gaps-move.test.js and test/guards/rules/ipc.test.js.
 import * as gaps from './gaps-move.js';
 import {claudeAi} from './question-ai.js';
 

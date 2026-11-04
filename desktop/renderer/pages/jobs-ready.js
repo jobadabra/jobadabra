@@ -1,6 +1,6 @@
 // The Jobs list's "Ready to submit" mark (owner, 19 Oct 2026: "how can we distinguish the jobs that are already ready to submit, filled on the server?"): which jobs
 // the night filled and left complete, from the one rule the Ready card uses too (ready-rows.js readyToSubmit). The codes come from the app (readyCodes); the list marks
-// its jobs with `ready`, a rerender follows when the set changed. Guard: test/ready-to-submit.test.js.
+// its jobs with `ready`, a rerender follows when the set changed. Guard: test/unit/renderer/ready-to-submit.test.js.
 let known = new Set();
 
 // Marks the jobs (a fresh list from the store) with the codes known so far.

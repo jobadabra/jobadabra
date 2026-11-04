@@ -1,7 +1,7 @@
 // Every country calling code (+351, +852, +7…) and its country, for phone widgets with a separate country menu (page/fill.js DIAL). Data
 // from libphonenumber's code -> main region table (generated 8 Oct 2026; 206 codes), named by the browser itself (Intl.DisplayNames, English,
 // as the old table), so no country list is written by hand. The 31 codes page/fill.js names itself keep their names exactly as before.
-// Guarded by desktop/test/fill-categories.test.js.
+// Guarded by desktop/test/unit/extension/fill-categories.test.js.
 (() => {
   const REGION = {
   '+1': 'US', '+7': 'RU', '+20': 'EG', '+27': 'ZA', '+30': 'GR', '+31': 'NL', '+32': 'BE', '+33': 'FR', '+34': 'ES', '+36': 'HU', '+39': 'IT',

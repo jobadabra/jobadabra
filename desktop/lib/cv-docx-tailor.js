@@ -1,7 +1,7 @@
 // Tailor for a Word CV: the person's own .docx (lib/cv-docx.js currentDocx) edited in place, each word in its own style (lib/docx/edit.js),
 // then drawn to PDF the same way as the CV itself (LibreOffice, else the app's renderer). The review boxes are found on the drawn pages.
 // Returns what lib/cv-inplace-run.js make returns, so kit-handlers saves and reviews it the same way; {why} sends Tailor to the PDF path.
-// Guard: test/cv-docx-tailor.test.js.
+// Guard: test/unit/cv/cv-docx-tailor.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

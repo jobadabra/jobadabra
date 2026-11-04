@@ -1,6 +1,6 @@
 // Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the ONE dialog behind the first Submit and a page that asks for a mailed code,
 // the window's copy of "is Gmail connected" (for the Suggestions card and ⌘K), and the connect press, which is Settings' own button so there is one sign-in flow.
-// Invariants: one dialog at a time; the main process decides when (lib/gmail-offer.js) and the window only shows what it is told; connected → nothing is shown. Guard: test/gmail-offer.test.js.
+// Invariants: one dialog at a time; the main process decides when (lib/gmail-offer.js) and the window only shows what it is told; connected → nothing is shown. Guard: test/unit/renderer/gmail-offer.test.js.
 import {$} from './core.js';
 import {offerWords} from '../gmail-offer-words.js';
 import {slot} from '../popup-slot.js';

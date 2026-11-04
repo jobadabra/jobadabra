@@ -1,8 +1,8 @@
 // Owns: the run queue and its state: serial() (one crawl at a time), tracked() (one task from queued to its history row), Stop (stopTask),
 // unqueue, the saved queue (queue.json), runs.json history, keep(), queued(), running(), whenIdle().
 // The shared mutable state (current, waiting, runningTicket, keepLine) lives only in this file; others reach it through the getters.
-// Guarded by: test/queue.test.js, test/unqueue.test.js, test/stop-task.test.js, test/run-join.test.js, test/run-note.test.js,
-// test/interrupted-task.test.js, test/resume-queue.test.js, test/task-log-keep.test.js, test/live-status-line.test.js.
+// Guarded by: test/unit/main/queue.test.js, test/unit/main/unqueue.test.js, test/unit/main/stop-task.test.js, test/unit/main/run-join.test.js, test/unit/main/run-note.test.js,
+// test/unit/main/interrupted-task.test.js, test/unit/main/resume-queue.test.js, test/unit/main/task-log-keep.test.js, test/unit/renderer/live-status-line.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports the public names.
 import {awakeNow} from './awake.js';
 import {killTree} from './kill-tree.js';

@@ -1,7 +1,7 @@
 // The name of the AI the user chose, for every text the window shows: "Claude" (Anthropic API key, Claude Code), "OpenAI" (OpenAI API key)
 // or "Codex", and its model per tier ("Claude Opus" / "GPT-6.1 Sol"). Texts write {AI} and {AI:big|main|small} and pass through ai();
 // a text about a Claude-only feature (Apply with Claude, Claude Code, the Claude plan) keeps its name. The same names as lib/ai/names.js
-// (the main process); test/ai-name.test.js keeps them equal and fails on a new hard-coded "Claude" in a generic text.
+// (the main process); test/unit/renderer/ai-name.test.js keeps them equal and fails on a new hard-coded "Claude" in a generic text.
 
 export const NAMES = {api: 'Claude', cli: 'Claude', openai: 'OpenAI', codex: 'Codex', free: 'Free AI'};
 export const MODELS = {

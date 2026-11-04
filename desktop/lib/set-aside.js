@@ -1,6 +1,6 @@
 // Values a "Which is right?" pick set aside (owner, 17 Oct 2026: a pick deleted the other value; "nothing is ever deleted"): kept in settings.setAside
 // as {id, source: 'profile' | 'locations', title, label, value, restore, at} until the person undoes it (lib/set-aside-undo.js). `value` is the text the
-// card shows; `restore` is what Undo needs to put it back. Guarded by test/set-aside.test.js.
+// card shows; `restore` is what Undo needs to put it back. Guarded by test/unit/main/set-aside.test.js.
 import crypto from 'node:crypto';
 
 export const list = storage => storage.settings().setAside || [];

@@ -1,5 +1,6 @@
 // The ladder ratchet's baseline (e2e/ladder-baseline.json): each fixture's expectation, the outcome its stored answer gives and its status, plus a dated reason for every update. compareToBaseline says
-// what got worse (a fail), better (reported), was added or removed, or had its expectation edited (each needs a baseline update with a reason). Guard: test/ladder-ratchet.test.js.
+// what got worse (a fail), better (reported), was added or removed, or had its expectation edited (each needs a baseline update with a reason). Guard: test/unit/main/ladder-ratchet.test.js.
+// Job: keep the scorecard
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

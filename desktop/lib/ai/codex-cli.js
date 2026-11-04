@@ -5,7 +5,7 @@
 // Codex lists (`codex features list`, once per binary). The system prompt leads the prompt (no flag for it); a schema goes in --output-schema
 // in OpenAI's strict form; images go in -i; a PDF goes as its pages' pictures (-i) and its text in the prompt (pdf-pages.js), the shell always off. It never reads or
 // copies ~/.codex and never signs in for the user; the env drops the API keys the app holds. Billing 'subscription'.
-// Guarded by test/ai-contract.test.js (recorded `codex exec --json` output, no real Codex).
+// Guarded by test/unit/main/ai-contract.test.js (recorded `codex exec --json` output, no real Codex).
 import {execFile} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

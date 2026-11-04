@@ -1,5 +1,5 @@
 // Which engine repository and release the user's Always-on workflows call, by the name GitHub uses for it now.
-// Moved out of lib/github.js (24 Oct 2026, repo rename). Guarded by desktop/test/engine-repo.test.js and cloud-sync.test.js.
+// Moved out of lib/github.js (24 Oct 2026, repo rename). Guarded by desktop/test/unit/main/engine-repo.test.js and cloud-sync.test.js.
 
 import {ENGINE, OWNER_PATTERN} from './repos.js';
 

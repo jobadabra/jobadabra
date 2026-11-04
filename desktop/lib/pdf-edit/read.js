@@ -1,7 +1,7 @@
 // What a PDF's pages say, as pdf.js reads them: every page-level text-show operator in stream order with its glyphs (unicode, code, advance,
 // position), font, size, spacing and colour, plus the small filled shapes (vector bullet markers). Plain data, so it can come back from the
 // hidden window that runs pdf.js in the app (cv/pdf-probe.html) as well as from Node in the tests. Positions are points from the page's top left.
-// Guards: test/pdf-edit.test.js, test/cv-inplace.test.js.
+// Guards: test/unit/main/pdf-edit.test.js, test/unit/cv/cv-inplace.test.js.
 const mul = (a, b) => [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3],
   a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5]];
 const six = m => Array.isArray(m) ? m : [0, 1, 2, 3, 4, 5].map(k => m[k]);

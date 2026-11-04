@@ -8,7 +8,7 @@
 //   {view: 'sessions', session: 'a094bc8f'}   an application session's card, selected (owner, 8 Oct 2026: "Filling the application…" opened the list only)
 //   {card: 'license'}                   a card by its id (setting-<id> or <id>, on any page): its page opens, it scrolls into view and glows (pages/settings.js openSetting)
 // Every pop-up names its target, or one of NO_PLACE below (owner, 27 Oct 2026: "on clicking on any notification, it should forward/redirect us and
-// highlight a specific section/screen/card"). test/toast-targets.test.js fails on a call with neither.
+// highlight a specific section/screen/card"). test/unit/renderer/toast-targets.test.js fails on a call with neither.
 export const VIEWS = ['actions', 'calendar', 'focus', 'interviews', 'jobs', 'sessions', 'settings', 'strategy'];
 export const SECTIONS = ['overview', 'profile', 'connections', 'automation', 'notifications', 'data', 'license', 'advanced', 'appearance'];
 // Why a pop-up opens nothing: a string a click ignores (clean() keeps no string). Only these, so the reason is one of a few, said once.

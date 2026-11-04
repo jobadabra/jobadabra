@@ -1,5 +1,5 @@
 // A session's state as the window shows it, from what the app reports (lib/terminals.js publicView) and Claude's
-// last message. No window needed: tested in desktop/test/session-state.test.js.
+// last message. No window needed: tested in desktop/test/unit/renderer/session-state.test.js.
 import {READY_LINE, readSessionMessage} from './session-message.js';
 import {backgroundStatus} from './background-status.js';
 
@@ -103,7 +103,7 @@ export function sessionDuration(item, now = Date.now()) {
   return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s` : `${seconds}s`;
 }
 // The Sessions page's clock: every node made by ticking() (session-log, next step) shows prefix + how long since. Only those nodes: the Ready card's bars
-// carry their own data-ready-since (owner, 19 Oct 2026: this clock once rewrote them as "undefinedNaNs"). Guard: test/ready-card-no-garbage.test.js.
+// carry their own data-ready-since (owner, 19 Oct 2026: this clock once rewrote them as "undefinedNaNs"). Guard: test/unit/renderer/ready-card-no-garbage.test.js.
 export function tickSessionClocks(root, now = Date.now()) {
   for (const node of root.querySelectorAll('[data-since][data-prefix]')) node.textContent = node.dataset.prefix + sessionDuration({startedAt: node.dataset.since}, now);
 }
@@ -148,7 +148,7 @@ export function tabClosed(item, formsOpen, seen = false, now = Date.now()) {
 // a session's tab is still there, so its card shows that it is checking instead of the last state it had (owner, 8 Oct 2026:
 // for 2 s the old question and "Can't reach form" showed, then "The form tab was closed" replaced them).
 // At least one report of the extension's (extension/report-alarm.js: every 30 s, Chrome's shortest alarm) plus a margin: at 15 s every card said "Chrome isn't
-// reporting" for up to 15 s after each app start while Chrome was fine (twin, 9 Oct 2026). Guard: test/session-state.test.js.
+// reporting" for up to 15 s after each app start while Chrome was fine (twin, 9 Oct 2026). Guard: test/unit/renderer/session-state.test.js.
 export const CHECK_MS = 45 * 1000;
 const waitsOnTab = item => !!item && !isSubmitted(item) && !item.outcome && (item.kind === 'form' || ((item.kind || 'claude') === 'claude' && !isLive(item)));
 // Chrome is heard and nothing says this session's tab is open or closed (the app restarted: the binding is gone, no tab matches by look).
@@ -210,7 +210,7 @@ export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 
 export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.code === 'EADDRINUSE' ? `Another program is using the connection ${who} reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
   : `Jobadabra could not open the connection ${who} reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
 
-// Full-automation jobs in Jobadabra's browser that are queued, filling or submitting: the same states as lib/lifecycle.js WORKING (test/stop-everywhere.test.js keeps them equal; a queued job still needs Stop, or a later poll fills what the person stopped, bot review #2324).
+// Full-automation jobs in Jobadabra's browser that are queued, filling or submitting: the same states as lib/lifecycle.js WORKING (test/unit/renderer/stop-everywhere.test.js keeps them equal; a queued job still needs Stop, or a later poll fills what the person stopped, bot review #2324).
 const BACKGROUND_ACTING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']);
 /**
  * -> whether the extension is acting right now, so the header's Stop is worth showing: a form open in Chrome that the extension reports, with nothing stopped or waiting on the person and not yet
@@ -240,7 +240,7 @@ export function accountCardOf(item, state) {
 export const accountProgress = state => (state?.account && state.total > 0 ? `· ${Math.max(0, state.total - state.left)} of ${state.total} filled` : '· nothing filled yet');
 
 // The account record on a session's card (owner, 10 Oct 2026): where an account was made, which terms the extension accepted (the page's own wording) and whether a code came from the
-// mail. '' for an application with no account made by us (an existing account, a refused sign-in). Guarded by test/account-record.test.js.
+// mail. '' for an application with no account made by us (an existing account, a refused sign-in). Guarded by test/unit/renderer/account-record.test.js.
 export function accountRecordLine(item) {
   if (!item || !item.accountHost || !['created', 'confirm'].includes(item.accountState)) return '';
   const terms = Array.isArray(item.accountTerms) ? item.accountTerms : [];

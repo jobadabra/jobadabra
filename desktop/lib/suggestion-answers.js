@@ -2,7 +2,7 @@
 // as src/suggestions.answered reads it back. A finding (today's insight, the weekly report: key "row:<id>") keeps it on its own row, merged
 // into its fields; a computed entry (Tune, Analyze now, a rejection lesson) gets one answer row of its own (category Suggestion, Input
 // hash = the entry's key), updated when answered again. Reports leaves answer rows and set-aside insights out (visibleInReports).
-// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/suggestion-answers.test.js.
+// Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/main/suggestion-answers.test.js.
 import * as engine from './store/engine.js';
 
 export const ANSWERS = ['Not now', 'Not true'];   // what a person may say here (src/stores/base.INSIGHT_STATES also has Done and Stale)

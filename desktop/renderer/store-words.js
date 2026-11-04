@@ -1,6 +1,6 @@
 // Where the person's data is kept, in the words the window says (lib/store: Notion, or Jobadabra on this Mac). A page says
 // "Saved to Notion 🎤 Interviews" only while Notion holds the data; with the data on this Mac the same sentence names Jobadabra.
-// Before the state is read it is Notion, as before 9 Oct 2026. Guarded by test/store-words.test.js (a ratchet on hard-coded "Notion").
+// Before the state is read it is Notion, as before 9 Oct 2026. Guarded by test/unit/renderer/store-words.test.js (a ratchet on hard-coded "Notion").
 import {shared} from './pages/shared.js';
 import {setWhere} from './store-name.js';
 

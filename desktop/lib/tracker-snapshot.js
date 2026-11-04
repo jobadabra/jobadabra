@@ -1,7 +1,7 @@
 // A consistent copy of data/tracker.sqlite (the SQLite store's records, a user's only copy) for an export or backup.
 // The live file runs in WAL mode while the app and the engine write it, so copying it and its -wal file byte by byte can give a broken
 // database; SQLite's own VACUUM INTO writes one complete file instead. Only a copy is made here: the schema stays the engine's
-// (src/stores/sqlite.py). Guarded by desktop/test/tracker-snapshot.test.js.
+// (src/stores/sqlite.py). Guarded by desktop/test/unit/main/tracker-snapshot.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';

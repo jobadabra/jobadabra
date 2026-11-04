@@ -43,7 +43,7 @@ export function leftReason(reason) {
   if (text.startsWith('no answer') || text.startsWith('a detail of yours not saved yet')) return 'no_answer';   // the second: a known detail with no value
   if (/^question (on the page not read|text not found)/.test(text)) return 'unread';
   if (text.startsWith('answer given')) return 'not_taken';
-  // A menu left empty, as the pick observed it (extension/menu-reason.js; test/menu-reason-copies.test.js keeps these equal).
+  // A menu left empty, as the pick observed it (extension/menu-reason.js; test/unit/main/menu-reason-copies.test.js keeps these equal).
   if (text.startsWith('dropdown not clicked')) return 'menu_not_clicked';
   if (text.startsWith('dropdown clicked, but its menu did not open')) return 'menu_not_opened';
   if (text.startsWith('dropdown option clicked, but not selected')) return 'menu_not_selected';

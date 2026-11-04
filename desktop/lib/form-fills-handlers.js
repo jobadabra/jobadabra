@@ -2,7 +2,7 @@
 // active store's agent_runs (src/stores/base.py AGENT_RUN_FIELDS + AGENT_RUN_EXTRAS; fields.data and fields.timeline as the spec's
 // "Agent run shapes"). The conversation (`transcript`) stays out: it is large and the session page shows it; the list asks the store
 // for no conversation at all (Notion keeps it in each page's body: one request per run, minutes for 200 runs); `formFill` reads one run whole. Demo mode: demo/form-fills.json
-// (fictional). Guarded by test/form-fills-handlers.test.js.
+// (fictional). Guarded by test/unit/main/form-fills-handlers.test.js.
 import fs from 'node:fs';
 import * as engine from './store/engine.js';
 import {demoPath} from './demo.js';

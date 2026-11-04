@@ -1,7 +1,7 @@
 // The settings files' notes kept out of every setting and prompt: the repo's defaults (config/*.json, copied by pipeline-env.js ensureConfig) carry notes for
 // their readers ("_comment": "Example search settings ... not anyone's real search"), and a copy reached the fill prompt's <search_preferences> (11 Oct 2026).
 // A key starting with "_" is such a note, never a setting: dropped when a file is created or saved, when a prompt reads it, and from existing files at start.
-// Guard: desktop/test/config-notes.test.js.
+// Guard: desktop/test/guards/rules/config-notes.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 

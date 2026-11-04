@@ -1,5 +1,5 @@
 // The drawer's tab strip (job-drawer's header sits above it): the nine tabs in their fixed order (renderer/job-page-view.js TABS), the
-// active one underlined; on a narrow window the strip scrolls sideways instead of wrapping. Guarded by test/job-drawer.test.js.
+// active one underlined; on a narrow window the strip scrolls sideways instead of wrapping. Guarded by test/unit/renderer/job-drawer.test.js.
 import {el} from '../components.js';
 
 export function tabStrip(tabs, active, pick) {

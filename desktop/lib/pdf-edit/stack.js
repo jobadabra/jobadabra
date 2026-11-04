@@ -1,6 +1,6 @@
 // Re-stacks a block of bullets (one role's) in a new order inside the block's own lines: same line pitch and gap between bullets as the
 // original, each bullet in its own indentation and style, its marker (a glyph or a small vector shape) moving with it. Pure, like layout.js.
-// Guards: test/cv-inplace.test.js.
+// Guards: test/unit/cv/cv-inplace.test.js.
 import {setWords, lineOp, copyShow} from './layout.js';
 
 const med = list => { const t = [...list].sort((a, b) => a - b); return t.length ? t[Math.floor(t.length / 2)] : null; };

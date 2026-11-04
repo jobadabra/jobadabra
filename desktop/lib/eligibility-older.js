@@ -4,7 +4,7 @@
 // and the zones filled from them. Owner, 28 Oct 2026, "Save them automatically" (reversing #2322's "a fold is a draft you save"): lib/eligibility-settle.js saves that
 // conclusion when Your details opens (a backup first, Undo after); a Save that drops folded lines still folds them (beforeSave). Nothing is changed here.
 // The AI judges (any language); the code keeps only zones, statuses, dates and countries from the fixed sets (renderer/work-eligibility.js). Kept per set
-// of lines (settings.eligibilityOlder), so a Profile is read once. Guarded by test/eligibility-older.test.js.
+// of lines (settings.eligibilityOlder), so a Profile is read once. Guarded by test/unit/main/eligibility-older.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';

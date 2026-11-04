@@ -1,6 +1,6 @@
 // The AI's verdict per question, kept on this Mac so a question is never asked twice (settings.questionVerdicts, keyed by the question's normalized words),
 // what every list shows reads through renderer/question-filter.js: the two drawers and the saved answers that are no learning (lib/question-lists.js openShown),
-// and the session's "what Claude needs". Guarded by test/question-lists.test.js and test/question-queues.test.js.
+// and the session's "what Claude needs". Guarded by test/guards/rules/question-lists.test.js and test/unit/main/question-queues.test.js.
 import {classify} from './question-reuse.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
 

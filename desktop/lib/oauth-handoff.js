@@ -3,7 +3,7 @@
 // lib/oauth-handoff-route.js; in the body, never in an address, so it stays out of the browser history) and receive() hands the fields to the waiting call, only for that `state`, once. Nothing is polled and the website keeps nothing.
 // Why (3 Nov 2026, Gitar on web#336; owner: "Both now"): these flows used to poll the website with an id the app chose, and the website gave the result to whoever asked with that id, so a link
 // carrying someone else's id could make a person's consent deliver their key (or name and e-mail) to that someone. A result that can only arrive on the consenting person's own machine, for a
-// state only this app knows, has no one else to go to. Guard: test/oauth-handoff.test.js (every flow).
+// state only this app knows, has no one else to go to. Guard: test/unit/main/oauth-handoff.test.js (every flow).
 import crypto from 'node:crypto';
 
 export const FLOWS = ['notion-connect', 'linkedin-signin', 'linkedin-import'];   // the website's shared/oauth-handoff.js FLOWS: the same names

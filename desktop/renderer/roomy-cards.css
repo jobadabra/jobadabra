@@ -1,7 +1,7 @@
 /* Roomy cards: the owner's mockups' density for Strategy and Profile (18 Oct 2026: "Look at the cards with chips how roomier they are"; mockup 03).
    A page opts in with .roomy-cards on the cards' container. Parts: card-shell.js readRows (icon · label on its own line over the value, dividers full width),
    page-parts.js summaryTiles is-divided; the header from strategy-cards.js cardHeader.
-   Loaded after style.css so its older .review/.card rules give way. Tokens only (test/design.test.js). Rules: docs/rules/desktop-ui.md "Roomy cards". */
+   Loaded after style.css so its older .review/.card rules give way. Tokens only (test/guards/rules/design.test.js). Rules: docs/rules/desktop-ui.md "Roomy cards". */
 .roomy-cards { display: grid; gap: var(--sp-4); container-type: inline-size; }
 .roomy-cards .card { padding: var(--card-pad); border-radius: var(--r-lg); margin: 0; }
 

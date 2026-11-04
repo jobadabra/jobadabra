@@ -141,7 +141,8 @@ class TheClass(unittest.TestCase):
     def test_repo_reads_finds_every_way_a_test_names_a_file(self):
         # positive controls on the real tests that read outside their folder in each way
         def reads(name):
-            return {target.relative_to(ROOT).as_posix() for target in repo_reads(ROOT / 'desktop/test' / name, 'desktop')}
+            test = next((ROOT / 'desktop/test').rglob(name))   # Why (3 Nov 2026, test folders 3/3): tests live in unit/, guards/, tooling/ scope folders
+            return {target.relative_to(ROOT).as_posix() for target in repo_reads(test, 'desktop')}
         self.assertIn('src', reads('settings-paths-exist.test.js'), "a folder in a list walked from `new URL('../../')` (#2099)")
         self.assertIn('tools/ship.sh', reads('merge-baseline.test.js'), "a file read as new URL('tools/ship.sh', root)")
         self.assertIn('tests/fixtures/audience_cases.json', reads('audience.test.js'), "path.join(dirname, '..', '..', 'tests', ...)")
@@ -236,7 +237,7 @@ class TheShapes(unittest.TestCase):
 
     def test_docs_and_tools_start_python_only(self):
         self.assertEqual(self.started(['docs/ARCHITECTURE.md', 'CLAUDE.md']), {'tests-python.yml'})
-        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
+        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml'})   # desktop/test/tooling/ci/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
         self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")

@@ -2,7 +2,7 @@
 // kept answer for the page shape, so the next visit is free; one miss drops it. Only fixed values are ever stored: a shape (host + path template, no query: page-kind.js kindKey), a kind,
 // an outcome class (digest.js OUTCOMES), a rung, a signal and counts. There is no field for text: sentences, addresses, URLs and names cannot be stored, whatever a caller passes.
 // An email outcome keeps its class only (a hint that this shape asks for addresses: lookup flags it `askAgain`, the address is never kept). The flow core calls record/lookup/hit/miss
-// (the wiring is its own change); this file owns the store. Guard: desktop/test/ladder-learning.test.js.
+// (the wiring is its own change); this file owns the store. Guard: desktop/test/unit/main/ladder-learning.test.js.
 // The fast tier's decisions (0 structure, 1 kept, 2 sketch) are kept by rung 1's own store (rung1-kept.js); what the page confirmed of them is only COUNTED here (confirm), so real use,
 // the CI pool and the recorded replays feed the same counts (spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 1). A count never answers a page: lookup reads `kept` only.
 //

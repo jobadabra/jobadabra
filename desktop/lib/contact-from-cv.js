@@ -4,7 +4,7 @@
 // a Coop form stopped on 9 questions whose answers were half in the CV). A field you filled is never proposed over.
 // The Profile's text goes beside the CV (9 Oct 2026: Coop's "Localité" stayed empty with no proposal; the town was in the Profile, not the CV):
 // a value only the Profile states is marked source "profile" and always "check it". Asked again when the CV or the Profile changes.
-// Guarded by test/contact-from-cv.test.js.
+// Guarded by test/unit/renderer/contact-from-cv.test.js.
 import {nameOfClient} from './ai/names.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

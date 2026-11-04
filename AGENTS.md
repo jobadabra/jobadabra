@@ -239,7 +239,7 @@ cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop 
   `JOBADABRA_DATA_DIR=<a writable folder>`. The DSH sandbox starts that way for this repo, since the session
   workspace is elsewhere; the first write needs the user to widen the policy, after which the rules above apply as they
   are.
-- **Adding a file?** Start it with a one-line comment saying what it does (the live code map reads it; `desktop/test/codemap.test.js` checks it says enough).
+- **Adding a file?** Start it with a one-line comment saying what it does (the live code map reads it; `desktop/test/unit/main/codemap.test.js` checks it says enough).
 - **The smoke hooks** (`desktop/main.js`): `JOBADABRA_SMOKE_JS` must be an IIFE — top-level `await` hangs the window —
   `JOBADABRA_SMOKE_EVAL`'s result is written to `<JOBADABRA_SMOKE>.json`, and `..._SELECTOR` crops the picture.
 - **Notion, if your harness has no tool for it**: the change loop (CLAUDE.md, step 5 "After landing, only what applies")

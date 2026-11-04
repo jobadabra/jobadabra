@@ -1,6 +1,6 @@
 // No source file over 500 lines (owner, 8 Oct 2026): a big file is read in parts, so its far-away shared state and imports get missed,
 // and several sessions editing it at once collide. Files already over it are listed in tools/file-size-allowed.json at their size and may
-// only shrink, down to 500 and off the list: one concern per file. Run by the push hook and desktop/test/file-size.test.js.
+// only shrink, down to 500 and off the list: one concern per file. Run by the push hook and desktop/test/tooling/ci/file-size.test.js.
 //   node tools/file-size.mjs      exit 1 with each file over its limit, and each listed file that can come off the list
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

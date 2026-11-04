@@ -1,6 +1,6 @@
 // Owns: the command lines the app gives the engine: dailyArgs (the workflow's own command), mailArgs, visitsArgs, syncMatchesArgs,
 // the search and scout budgets, and triggerEnv.
-// Guarded by: test/pipeline-run.test.js, test/mail-report.test.js, test/run-kinds.test.js, test/tune.test.js, test/notion-trying.test.js.
+// Guarded by: test/unit/main/pipeline-run.test.js, test/unit/renderer/mail-report.test.js, test/unit/main/run-kinds.test.js, test/unit/main/tune.test.js, test/unit/main/notion-trying.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import * as claudeCode from './claude-code.js';
 import {cadence} from './cadence.js';
@@ -10,7 +10,7 @@ export {deliveryReady, telegramReady};
 
 // The same command .github/workflows/daily.yml runs for these inputs (mode, job, action, page, seed,
 // file, note), so Telegram buttons and commands work the same from the app as from the cloud.
-// A run is asked to send (--send) only when the person has a channel besides the app: Telegram set up, or e-mail chosen (lib/notify-channel.js). Without one the app shows the message itself. Guard: test/telegram-send.test.js.
+// A run is asked to send (--send) only when the person has a channel besides the app: Telegram set up, or e-mail chosen (lib/notify-channel.js). Without one the app shows the message itself. Guard: test/unit/main/telegram-send.test.js.
 // The inputs passed to the engine as they are, in this order (the cloud workflow runs the same flags).
 const PASSED_INPUTS = [['target', '--target'], ['jobTitle', '--job-title'], ['jobCompany', '--job-company'], ['jobText', '--job-text'], ['page', '--page'], ['seed', '--seed'],
   ['file', '--file'], ['note', '--note'], ['origin', '--origin'], ['interview', '--interview']];

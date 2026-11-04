@@ -1,5 +1,5 @@
 // A fill's record on the store keeps what Notion's run page shows (spec "Agent run shapes"): the field table without answer values,
-// "Left for you" and step timings in fields.data. The columns stay as they were (desktop/test/extension-store.test.js).
+// "Left for you" and step timings in fields.data. The columns stay as they were (desktop/test/unit/extension/extension-store.test.js).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { runRecord } from '../src/extension.js';

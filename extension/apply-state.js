@@ -3,7 +3,7 @@
 // working -> done | stopped | your-turn. It is set to working when the app opens or marks the tab (before any page loads) and changes only on a verdict: the run ends (done), Stop (stopped), or the person
 // must act (your-turn). The page only DRAWS it (panel-overlay.js, review.js, early-dim.js): dim + centred panel while working, nothing decided by a timer, a page event or a removed layer.
 // Held in the worker and in chrome.storage.session (a sleeping worker wakes to the same answer); every change is pushed to the tab as {type: 'applyState'}. Guards: desktop/e2e/test/fill-overlay-early-reload.test.mjs,
-// desktop/test/apply-state-owner.test.js.
+// desktop/test/guards/rules/apply-state-owner.test.js.
 // Design (#2800, 1 Nov 2026): working from the run's start to ONE end verdict. A piece of the run ending (a fill pass, a cleared step) is not a verdict: it clears its step and the tab stays working (sayApply). Run 41274202726: a pass's own `done`
 // came ~310 ms before the fill's end was written on its page, so the page drew "Fill again" (busy false, no dim) with the fill still going.
 // Try 2 (#2800): one verdict PER READ, from the tab's CURRENT read (read-gen.js) and only while the tab still shows its page. The posting's read, ending after the tab went on to the form, said `done` (local trace, 2 of 8 runs) and `your-turn` then `done` (CI run 41276590786) ahead of the form's own end; a no-form read said two verdicts itself (watchPage's your-turn, then writeState's done).

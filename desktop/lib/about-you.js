@@ -1,6 +1,6 @@
 // About you, everywhere (spec docs/superpowers/specs/2026-10-28-about-you-everywhere-design.md, owner 28 Oct 2026): what every AI step knows about the person
 // comes through here, by named parts, each read from its one source; a reader takes only its parts, minus its fixed exclusions. Built on this Mac (the
-// sketch's option a); an engine step it starts gets the bundle, a cloud run without one names the parts it lacked. Guarded by test/about-you.test.js.
+// sketch's option a); an engine step it starts gets the bundle, a cloud run without one names the parts it lacked. Guarded by test/unit/main/about-you.test.js.
 import {keyOf} from '../renderer/question-filter.js';
 import {FIELDS, readProfile} from '../renderer/preferences-model.js';
 import {learningsOf} from './learnings.js';
@@ -39,7 +39,7 @@ export const READERS = {
 // What the readers page on the website shows (owner via the coordinator, 28 Oct 2026: "publish on the website … this table", live only, nothing claimed before it works).
 // LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). GATHERED: the parts aboutYou() reads today (history
 // and this job come with D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
-// Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/about-you-readers.test.js fails when the exported JSON
+// Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/guards/rules/about-you-readers.test.js fails when the exported JSON
 // (docs/about-you-readers.json) is out of date, or when GATHERED disagrees with a real aboutYou() call.
 export const LIVE = ['kit', 'portrait', 'cv_tailor', 'letter'];   // cv_tailor: lib/cv.js tailor takes its bundle (D1c-1); letter: job-letter.js and cover-letter.js (D1c-2, 28 Oct 2026)
 export const GATHERED = ['details', 'cv', 'learned', 'strategy', 'voice'];

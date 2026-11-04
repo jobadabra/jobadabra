@@ -2,7 +2,7 @@
 // preferences first, read as a summary, a quiet Edit opens the inputs). Why (PR B1b, owner 28 Oct 2026: "Beside the letter"): the rules live in
 // cover-letter/style.json (lib/letter-style.js, read and saved through letterStyle / letterStyleSave), no longer in the answers page. Read: one column per
 // rule with its own label (no icon guessed from words); Edit: one input per rule and "Add a style rule", a draft on Profile's one save bar
-// (pages/profile-save-bar.js). Guarded by test/letter-style.test.js.
+// (pages/profile-save-bar.js). Guarded by test/unit/renderer/letter-style.test.js.
 import {el} from '../components.js';
 import {doneButton, factColumns, setEditing} from '../card-shell.js';
 import {profileBar} from './profile-save-bar.js';

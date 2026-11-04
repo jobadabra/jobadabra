@@ -1,7 +1,7 @@
 // The pop-ups for an e-mail address that waits for its confirm link (spec docs/superpowers/specs/2026-11-02-notify-moments-design.md): a reminder on day 3 and day 10 after the address was saved,
 // and one when the site stopped the mail on day 14; with 2/2 also an application that waited over an hour (waited) and Full automation with nobody who can be told (lost). The moments the window itself
 // detects (match, reply, recruiter: renderer/notify-detect.js) are recorded here too. Each opens once for the address; a new address starts over. The window asks (pages/notify-moment.js) and shows what it is told.
-// State: `settings.notifyOffer = {emailAt, moments: {day3, day10, stopped, waited, lost, match, reply, recruiter: ISO}}`, written only here. Guard: test/notify-moments.test.js.
+// State: `settings.notifyOffer = {emailAt, moments: {day3, day10, stopped, waited, lost, match, reply, recruiter: ISO}}`, written only here. Guard: test/unit/main/notify-moments.test.js.
 import {workingChannel} from '../renderer/notify-words.js';
 
 const DAY = 24 * 60 * 60 * 1000;

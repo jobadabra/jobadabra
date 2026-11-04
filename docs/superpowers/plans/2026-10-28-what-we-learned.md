@@ -35,11 +35,11 @@ Files:
 - `desktop/renderer/index.html`, ⌘K entries (`nav.js`): both drawers reachable; renamed tab.
 
 Tests (written first, watched failing):
-- `desktop/test/question-queues.test.js` (new): fixture = the owner's 21-item queue of 27 Oct (fictional values) → drawer 1
+- `desktop/test/unit/main/question-queues.test.js` (new): fixture = the owner's 21-item queue of 27 Oct (fictional values) → drawer 1
   gets exactly the Your details items, ranked name/email first; drawer 2 has no duplicate topic, no per-company question, no
   cover letter; each count equals its list length.
-- Update `test/question-lists.test.js`, `test/question-review.test.js`, `test/profile-tabs-render.test.js`,
-  `test/answers-layout.test.js` where they assert the single queue (list each assertion changed in the PR body).
+- Update `test/guards/rules/question-lists.test.js`, `test/unit/renderer/question-review.test.js`, `test/unit/renderer/profile-tabs-render.test.js`,
+  `test/unit/renderer/answers-layout.test.js` where they assert the single queue (list each assertion changed in the PR body).
 
 Preview: `npm run side-by-side` (file name starts `wwl-`), light + dark, wide + narrow: both cards, both drawers, the renamed tab.
 Owner's yes before the UI commit.
@@ -48,7 +48,7 @@ Owner's yes before the UI commit.
 
 **Open facts settled from code (coordinator, 28 Oct 2026):**
 - **Where:** the `answers` page (`lib/store/index.js` TEXTS: `profile | answers | knowledge`). Every adapter already supports it,
-  so the store contract (`test/store-contract.test.js`) stays unchanged. No new page.
+  so the store contract (`test/unit/main/store-contract.test.js`) stays unchanged. No new page.
 - **Topic key:** fixed Your details facts keep the meanings pack's fixed `KEYS` (`shared/alias-schema.js`, `lib/aliases.js`).
   Open topics use the verdict's AI `topic` (`lib/question-reuse.js`), BUT a free topic drifts between batches ("willing to travel" vs
   "travel willingness"), so the learning call gets **the existing topics as a closed list** and must pick one or say "new". The

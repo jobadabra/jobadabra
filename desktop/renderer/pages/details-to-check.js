@@ -1,6 +1,6 @@
 // Your details → "To check", the card at the top of the tab (owner, 28 Oct 2026: "this should be at the top in this tab… slightly better UI"). Three things can sit in it,
 // each on its own: the details to review (the count and the one primary "Review" in the header), what the app concluded for the person (a notice row with Undo) and the values
-// a pick set aside (one row each, with Undo). Nothing to show = the card is hidden. Drawn here, called by pages/details-facts.js. Guarded by test/details-to-check.test.js.
+// a pick set aside (one row each, with Undo). Nothing to show = the card is hidden. Drawn here, called by pages/details-facts.js. Guarded by test/unit/renderer/details-to-check.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {showOnTab} from './tab-part.js';

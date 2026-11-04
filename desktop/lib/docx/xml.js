@@ -1,6 +1,6 @@
 // Reads a Word document's body (word/document.xml) as paragraphs of text, each character traced back to its place in the XML and the
 // style of its run, so lib/docx/edit.js can replace a text in place and keep its look. One pass over the tags, no XML library:
-// the text of w:t, w:tab, w:br and w:noBreakHyphen inside runs; text boxes' fallback copies (mc:Fallback) are skipped. Guards: test/docx-edit.test.js.
+// the text of w:t, w:tab, w:br and w:noBreakHyphen inside runs; text boxes' fallback copies (mc:Fallback) are skipped. Guards: test/unit/main/docx-edit.test.js.
 
 const ENTITIES = {amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"};
 export const decode = s => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (all, e) => e[0] === '#'

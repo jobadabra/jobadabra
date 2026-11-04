@@ -1,6 +1,6 @@
 // The owner's answer to a feedback this person sent, as a card at the top of the app ("Fixed in 0.9.12", "Noted: not now"). Cards come from the main process
 // (lib/app-feedback-replies.js asks the website); closing one tells the site, which stops showing it. Looks like the run banner (run-banner.css), one primary button.
-// Guarded by test/feedback-reply-card.test.js.
+// Guarded by test/unit/renderer/feedback-reply-card.test.js.
 import {el, tile} from '../components.js';
 import {$} from './core.js';
 import {cardText} from '../feedback-reply-text.js';

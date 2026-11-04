@@ -1,5 +1,5 @@
 // Settings → Profile → Your details over IPC: read and save the 📇 Contact details (lib/contact.js), and the values Claude proposes
-// for the empty ones from the CV (lib/contact-from-cv.js). Moved out of main.js (8 Oct 2026). Guarded by test/contact-from-cv.test.js.
+// for the empty ones from the CV (lib/contact-from-cv.js). Moved out of main.js (8 Oct 2026). Guarded by test/unit/renderer/contact-from-cv.test.js.
 import * as contactDetails from './contact.js';
 import * as fromCv from './contact-from-cv.js';
 import {keysFor} from './contact-keys.js';

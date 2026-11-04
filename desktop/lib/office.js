@@ -2,7 +2,7 @@
 // Windows): a LibreOffice already on the computer is used as it is; otherwise one pinned release is downloaded once, checked against its
 // published SHA-256 and unpacked into the app's folder (Mac: copied out of the disk image; Windows: an administrative install of the MSI,
 // which only extracts files): nothing is installed system-wide and no admin rights are asked. While it is not there, the app draws the PDF
-// itself (cv/docx-render.html). Guards: test/office.test.js; the real download on Mac and Windows: .github/workflows/office-addon.yml.
+// itself (cv/docx-render.html). Guards: test/unit/main/office.test.js; the real download on Mac and Windows: .github/workflows/office-addon.yml.
 import {execFile} from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

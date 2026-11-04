@@ -3,7 +3,7 @@
 // Capturing a page for the recorded pages (layer 2, spec docs/superpowers/specs/2026-10-10-applying-reliability-layers.md): its STRUCTURE only. In the page
 // (snapshotInPage): scripts and event handlers dropped, frames kept as elements, the applied CSS kept (11 Oct 2026), every typed value, check and choice removed, URL queries and fragments cut, the extension's
 // own elements left out. Here (scrub): any email but example.*, any phone number and the person's own values (personalValues: from the app's profile.md /
-// answers.md) replaced by the fake applicant's. The result goes into a PUBLIC repo; desktop/test/recorded-privacy.test.js checks it again.
+// answers.md) replaced by the fake applicant's. The result goes into a PUBLIC repo; desktop/test/guards/privacy/recorded-privacy.test.js checks it again.
 // Used by: twin-drive.mjs `capture`, lib/capture-journey.mjs (every page of a live run). Guard: e2e/test/capture-page.test.mjs, capture-journey.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,5 +1,5 @@
 // The Strategy Locations card's words and edits, no DOM (owner, 17 Oct 2026): relocation is Yes / No / Not specified (all values), remote work in plain
-// words, the search-only list ("Custom search coverage") and the one edit that resets it. Guarded by test/locations-model.test.js.
+// words, the search-only list ("Custom search coverage") and the one edit that resets it. Guarded by test/unit/renderer/locations-model.test.js.
 export const RELOCATION = [['yes', 'Yes'], ['no', 'No'], ['unspecified', 'Not specified']];
 
 const words = text => String(text || '').replace(/(^|[\s,(-])(\p{L})/gu, (_, before, letter) => before + letter.toUpperCase());

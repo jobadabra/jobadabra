@@ -1,6 +1,6 @@
 // Target roles in the app: the one list of job titles that is both matched against job titles and searched on job boards (twin of src/target_roles.py).
 // search.target_roles = [{title, also: [fragments], fragment?}]; role_keywords and jobs_board_search_queries are derived from it. Guarded by
-// desktop/test/target-roles.test.js, which runs the same cases as tests/unit/engine/test_target_roles.py (tests/fixtures/target_roles_cases.json).
+// desktop/test/unit/main/target-roles.test.js, which runs the same cases as tests/unit/engine/test_target_roles.py (tests/fixtures/target_roles_cases.json).
 export const SEARCHED = 5;   // titles typed into job boards (owner, 21 Oct 2026)
 const META = /[\\^$.|?*+()[\]{}]/g;
 const clean = text => String(text ?? '').split(/\s+/).filter(Boolean).join(' ');

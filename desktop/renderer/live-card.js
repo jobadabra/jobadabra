@@ -1,5 +1,5 @@
 // The live card's pure parts (renderer/pages/session-live.js draws them): what a hidden-browser session's Applying card says in each of its four
-// states, and how a press or a key on the page's picture becomes the page's own. No DOM here. Guard: test/session-live.test.js.
+// states, and how a press or a key on the page's picture becomes the page's own. No DOM here. Guard: test/unit/renderer/session-live.test.js.
 import {backgroundStatus} from './background-status.js';
 import {linkOffLine} from './session-state.js';
 const FILLING = new Set(['preflight', 'filling']);

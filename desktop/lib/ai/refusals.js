@@ -1,6 +1,6 @@
 // Our AI and its lines, as the Anthropic API engine (anthropic-api.js) meets them on a Free AI key: before a call, a line already reached (the gate main sets,
 // lib/ai-caps.js) stops it at once; a refused call (429/503) is heard. The listeners (main: lib/app-allowance.js) open the top-up dialog or ask the site which line.
-// Nothing else here: no retry, no wording. Guard: test/ai-caps.test.js.
+// Nothing else here: no retry, no wording. Guard: test/guards/money/ai-caps.test.js.
 const listeners = new Set();
 let gate = () => null;
 

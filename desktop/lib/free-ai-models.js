@@ -10,7 +10,7 @@ export const STRONG_STEPS = new Set(['kit', 'prep', 'insight', 'interview', 'int
 
 // Every other step reads or judges (a score, job facts, a mail, a title, a decision): it answers at temperature 0 (owner, 26 Oct 2026: "Reading + judging steps").
 // Measured 26 Oct 2026 (690 draws on CI's quality fixtures): at the model's default 0.6, 26% of score texts invented a fact; at 0, 11%. Writing keeps the default.
-// Guard: desktop/test/free-ai-temperature.test.js.
+// Guard: desktop/test/unit/main/free-ai-temperature.test.js.
 // The interview review judges a call's notes for gaps and practice steps (owner, 26 Oct 2026: "Yes, temp 0 for interview"; beta 3's Windows run named no gap):
 // it keeps the stronger model when that is on, but answers at 0.
 const JUDGED_WRITING = new Set(['interview', 'interview_patterns']);

@@ -1,6 +1,6 @@
 // Jobs → Board and the saved views, the rules without a window: the stage columns in funnel order, the Applications database's 10 views
 // (read from the real workspace's view filters, 9 Oct 2026) and which app action a card dropped on a column asks for.
-// Guarded by: test/jobs-board-rules.test.js. Drawn by pages/jobs-board.js and pages/jobs-views.js.
+// Guarded by: test/unit/renderer/jobs-board-rules.test.js. Drawn by pages/jobs-board.js and pages/jobs-views.js.
 import {READY_LABEL} from './pages/ready-rows.js';
 
 // Every Applications Stage (config/notion_schema.json), in the order a job moves through them.
@@ -32,7 +32,7 @@ export const VIEWS = [
   {id: 'all-applications', label: 'All applications', title: 'Every job you applied to or are applying to, whatever became of it', test: among(['Applying', ...SENT, ...CLOSED_OUT])},
   {id: 'active', label: 'Active', title: 'Sent and still open: waiting for a reply, screening, interviews, an offer', test: among(SENT)},
   // Named by its stage, as every row's pill and the stuck banner say it (Notion's view is "In progress"; owner, 12 Oct 2026: "I don't have a way to
-  // filter for Applying" beside a chip that did it under another word). A chip of one stage carries that stage's name (test/jobs-board-rules.test.js).
+  // filter for Applying" beside a chip that did it under another word). A chip of one stage carries that stage's name (test/unit/renderer/jobs-board-rules.test.js).
   {id: 'applying', label: 'Applying', title: 'A form under way, its session open or not', test: among(['Applying'])},
   {id: 'kit-ready', label: 'Kit ready', title: 'A kit is drafted: ready to apply', test: among(['Kit ready'])},
   {id: 'ready-to-submit', label: READY_LABEL, title: 'Filled on the server: open the form, check it and press Submit yourself', test: job => !!job.ready && job.status !== 'applied'},

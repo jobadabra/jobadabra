@@ -1,6 +1,6 @@
 // Interviews page, recording: the macOS permission panel and the recorder (your microphone on the left channel, the
 // call's audio on the right). Moved out of interviews.js; it opens the finished draft through the openDraft passed to
-// startRecording. Guarded by test/interviews.test.js and test/interview-library.test.js.
+// startRecording. Guarded by test/unit/main/interviews.test.js and test/unit/renderer/interview-library.test.js.
 import {$, message, show} from './core.js';
 
 const iv = window.pilot.interviews;

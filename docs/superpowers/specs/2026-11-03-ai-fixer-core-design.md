@@ -44,7 +44,7 @@ One run at a time (`concurrency`), 3 a day (the feedback cap, shared), step cap 
 | Linear | a task with label `ai-ready` (team JOB) | a comment with the PR link, then move to In Review | `LINEAR_API_KEY`: a free developer key, Keychain then GitHub secret, never in code |
 
 ## Moving in, with no change in behaviour (PR 5/6)
-1. Move walls, proof, leaks and publish out of `tools/feedback-ai.mjs` into `tools/fixer/` as a pure move; the existing guard `desktop/test/feedback-ai.test.js` keeps passing unchanged.
+1. Move walls, proof, leaks and publish out of `tools/feedback-ai.mjs` into `tools/fixer/` as a pure move; the existing guard `desktop/test/tooling/ci/feedback-ai.test.js` keeps passing unchanged.
 2. Feedback and Sentry call the core with the **quick edit** as their engine (the same `edit-codex.mjs` / `codex-fix.mjs` calls), so their prompts, caps and outputs do not change.
 3. Add the loop beside the quick edit as a second engine; a source picks it by one value in the registry `tools/ci-agents.json` (`today: loop`), which also makes the CI Agents rows honest.
 

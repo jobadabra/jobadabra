@@ -1,7 +1,7 @@
 // A site that refuses the phone number's writing ("This Phone Number Format is not Allowed", HelloFresh, 11 Oct 2026): the number is typed again in another writing,
 // at most twice per box. The site's own error text goes to the AI (phase "format", lib/format-judge.js), which names one writing from a fixed list; the page script builds
 // the text (page/browser-form-fastpath.js __jobadabraRetypeAs) from the number we typed, so no value ever goes to the AI. Called by form-ready.js when the judge says
-// the page shows an error about what was entered. Guard: desktop/test/format-judge.test.js, desktop/e2e/recorded/phone-format-refused-1.
+// the page shows an error about what was entered. Guard: desktop/test/unit/main/format-judge.test.js, desktop/e2e/recorded/phone-format-refused-1.
 import {apiFor} from './flow.js';
 import {decide} from './log.js';
 

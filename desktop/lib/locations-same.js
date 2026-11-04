@@ -2,7 +2,7 @@
 // in plain place names"; cost approved: Haiku, ~$0.001 once per install). The crawl side's names (Zurich-area towns, spellings in four languages) and
 // the Profile's words ("Zurich and surroundings") go to the AI with a fixed answer: which places only one side covers. The code checks every name
 // it returns is one it was given; a mangled answer keeps the question (a weak answer is never kept as sure). The verdict is saved on the queue entry
-// (checked), so it is asked once. Guarded by test/locations-same.test.js.
+// (checked), so it is asked once. Guarded by test/unit/main/locations-same.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {MODEL} from './locations-move.js';
 

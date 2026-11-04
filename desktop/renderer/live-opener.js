@@ -1,4 +1,4 @@
-// One owner of "is this session's hidden page open in main for its live view": none -> opening -> open, changed only by main's answer to liveOpen. Guard: test/live-opener.test.js.
+// One owner of "is this session's hidden page open in main for its live view": none -> opening -> open, changed only by main's answer to liveOpen. Guard: test/unit/renderer/live-opener.test.js.
 
 /**
  * open() -> Promise<{ok, error?}> (window.pilot.liveOpen for the session); onResult(result) tells the view what to show (the picture comes by its own events, a refusal's reason is drawn).

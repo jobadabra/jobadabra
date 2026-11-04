@@ -138,7 +138,7 @@ test('a sign-up page before the form: the account step is kept apart from the ap
 }));
 
 // Night journey J15, second half: a menu whose choices are not the answer's words (Coop, 8 Oct 2026: "+41" asked, country names listed). The first form asks the app once for the choice that means the same
-// ("Suisse"); once the app remembers it for the site (lib/menu-choices.js, served with the details), the next form there has it with no ask. Remembering itself is desktop/test/menu-choices.test.js.
+// ("Suisse"); once the app remembers it for the site (lib/menu-choices.js, served with the details), the next form there has it with no ask. Remembering itself is desktop/test/unit/main/menu-choices.test.js.
 const MENU_ANSWER = {ok: true, eligible: true, answers: [{field: 'country_code', value: '+41', confidence: 'high', note: '', category: 'other', use: 'fill'}, {field: 'question_3001', value: '6', confidence: 'high', note: '', category: 'other', use: 'fill'}]};
 // The stand-in app plays what lib/menu-rearm.js does with the extension's report: the form reports the menu it could not answer with its choices (proposals), the app picks the one that means the same
 // ONCE ("Suisse") and answers the next report with the arm command (commands: [{fill}]); the app half itself is integration/store/menu-choice.test.mjs.

@@ -183,7 +183,7 @@ Screenshots cannot show a button that does nothing. `suites/interactions.mjs` pr
 - **Never pressed:** anything that deletes, sends, signs in, leaves the app, runs a task or can spend AI credit (`isSafe`: word list, `danger` class, `data-command`, external links). The option already chosen is skipped.
 - **Artifacts:** `interactions.json` (every press: effects, calls, loading, errors) next to `ui-findings.json`.
 - **Secret:** `E2E_NOTION_TOKEN_INTERACTIONS` (a test page of its own); without it a local run falls back to the wizard token. No AI is called.
-- **Tests:** `test/interact.test.mjs` (a fixture page with one broken control of each kind, in real Chrome), `desktop/test/e2e-ipc.test.js`.
+- **Tests:** `test/interact.test.mjs` (a fixture page with one broken control of each kind, in real Chrome), `desktop/test/unit/main/e2e-ipc.test.js`.
 
 ## Varying the path: seeded, replayable (`lib/variation.mjs`)
 The suites follow scripted paths on fixed fixtures, so running them again re-walks the same path. To find different bugs each run, **scheduled, top-up and manual runs take a seeded random path** (`E2E_SEED=<run id>`): the interactions suite visits the pages in another order, presses the controls in another order (from a wider pool than its 40-control cap), and sizes the window from six real sizes (1024x700 up to 1680x1000).

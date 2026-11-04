@@ -1,7 +1,7 @@
 // The connection pop-ups (lib/notify-moments.js; spec docs/superpowers/specs/2026-11-02-notify-moments-design.md): an address that waits for its link (day 3, day 10, the stop), an application that waited,
 // Full automation with nobody to tell, and what the window itself detects (a strong match or Gmail updates while the person was away: renderer/notify-detect.js; a recruiter waiting: Focus).
 // All of them offer themselves to the one pop-up slot (renderer/popup-slot.js): at most one opens per app open, each once (the app records it as it opens). The control follows the state:
-// an e-mail field (no address), "send the link again" (waiting or stopped), or the way to Notifications (unsubscribed); "Use Telegram" opens Settings → Notifications. Guard: test/notify-moment-words.test.js.
+// an e-mail field (no address), "send the link again" (waiting or stopped), or the way to Notifications (unsubscribed); "Use Telegram" opens Settings → Notifications. Guard: test/unit/renderer/notify-moment-words.test.js.
 import {$, message} from './core.js';
 import {NO_PLACE} from '../targets.js';
 import {momentWords} from '../notify-words.js';

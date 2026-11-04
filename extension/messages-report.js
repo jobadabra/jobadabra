@@ -1,7 +1,7 @@
 // The worker's side of "Report this form" (spec docs/superpowers/specs/2026-10-16-report-from-the-trace.md): owns the one form trace (trace.js) that every application tab keeps while the Settings switch
 // is on, starts it when a tab the app opened begins to load, and answers the panel flag's messages: report-state (is it drawn, is there a trace, did the tab move past its first page) and report-send
 // (hand the trace in memory to the app at once, POST /extension/report-form: the app scrubs it and answers with counts; report-confirm / report-cancel send or drop it). No reload and no new recording. The trace is dropped when the
-// tab closes; Stop only stops recording and keeps what was recorded, so Report still sends it. A message counts only from a tab the app opened (the debugger attach checks it too). A FLOW FILE (docs/flows/applying.md). Guard: desktop/test/report-panel.test.js.
+// tab closes; Stop only stops recording and keeps what was recorded, so Report still sends it. A message counts only from a tab the app opened (the debugger attach checks it too). A FLOW FILE (docs/flows/applying.md). Guard: desktop/test/unit/extension/report-panel.test.js.
 import {createTrace} from './trace.js';
 import {api, settings} from './flow.js';
 import {isStopped, onStopped} from './stop.js';

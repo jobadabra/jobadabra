@@ -1,7 +1,7 @@
 // Your details' fact cards as a calm summary (owner, 21 Oct 2026: "ugly, too disorganized, too crowded"): at most two columns of a short label over a short value,
 // lines that say the same thing joined into one, the first few lines with "Show all N", and ONE "N to check" count in the card's header instead of a mark on every
 // cell. Shortening is by shape only (a common start, a clause, a length), never by words; the full saved words stay on hover, nothing is dropped or invented.
-// Guarded by test/fact-summary.test.js.
+// Guarded by test/unit/renderer/fact-summary.test.js.
 import {el, pill} from './components.js';
 import {shortLabel, valueAndNote} from './survey-rows.js';
 import {splitPermit} from './question-values.js';

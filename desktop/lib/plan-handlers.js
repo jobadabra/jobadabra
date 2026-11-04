@@ -1,5 +1,5 @@
 // The window's side of the readiness states (lib/plan-readiness.js): the status of each family's own CLI (Claude Code, Codex) with its state, Verify, the file picker, the official install page and "Copy details for support".
-// Moved out of setup-handlers.js (2 Nov 2026) so the states have one place. Guards: test/plan-readiness.test.js, integration/app/ai-plan-states.test.js.
+// Moved out of setup-handlers.js (2 Nov 2026) so the states have one place. Guards: test/unit/main/plan-readiness.test.js, integration/app/ai-plan-states.test.js.
 // Invariants: the window never receives a raw message (the check's text stays in settings and in the support details); a file the person chose must be the real CLI (right name, starts, not the chat app);
 // one anonymous counted event per state reached (family, state, system only): it follows the "Technical reports" switch like every analytics event (lib/analytics.js).
 import path from 'node:path';
@@ -44,7 +44,7 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
   const verify = {claude: () => claudeCode.verify(storage), openai: () => verifyCodex(storage), ...verifyFns};   // verifyFns: a test's stand-ins (never the real CLI)
   const DEMO_READY = family => ({family, state: 'ready', installed: true, path: family === 'claude' ? '/usr/local/bin/claude' : '/usr/local/bin/codex', version: '2.1.0', authenticated: true, checkedAt: '2026-09-30T09:00:00Z', desktopApp: true});
 
-  // Literal channel names (not a loop over names): test/ipc.test.js finds each handler by its quoted name.
+  // Literal channel names (not a loop over names): test/guards/rules/ipc.test.js finds each handler by its quoted name.
   const handleStatus = family => () => (DEMO ? DEMO_READY(family) : status(family));
   const handleVerify = family => async () => {
     if (DEMO) return DEMO_READY(family);

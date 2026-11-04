@@ -1,8 +1,8 @@
 // Rung 1 of the ladder: the kept answer per page shape (docs/flows/ladder.md). The page's shape key (its host and its path with the per-job parts blanked), how it is built, the cache of answers
 // kept on this Mac, and the self-correction that drops a kept answer the page contradicts. No AI and no page text here: rung 2 (rung2-sketch.js) asks when nothing is kept.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. A kept kind the page contradicts is forgotten and asked again (desktop/test/page-kind.test.js).
-//  2. The key never holds a query string or any text of the page: host, blanked path and a fixed build code only (desktop/test/page-kind.test.js).
+//  1. A kept kind the page contradicts is forgotten and asked again (desktop/test/unit/main/page-kind.test.js).
+//  2. The key never holds a query string or any text of the page: host, blanked path and a fixed build code only (desktop/test/unit/main/page-kind.test.js).
 import fs from 'node:fs';
 
 // The page's shape for the cache: its host and its path with the parts that differ per job (numbers, ids, long tokens) blanked,

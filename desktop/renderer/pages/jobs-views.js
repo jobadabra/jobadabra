@@ -1,6 +1,6 @@
 // Jobs page, List | Board: the toggle between the list and the board (pages/jobs-board.js). renderJobs (jobs-render.js) calls paintViews at its end.
 // The Applications database's views are options of the Show menu now (jobs-filters.js, pages/jobs-filter-menu.js).
-// Guarded by: test/jobs-board-rules.test.js (the rules), test/jobs-board-page.test.js (this wiring).
+// Guarded by: test/unit/renderer/jobs-board-rules.test.js (the rules), test/unit/renderer/jobs-board-page.test.js (this wiring).
 import {$, show} from './core.js';
 import {jobsState} from './jobs-state.js';
 import {renderBoard} from './jobs-board.js';

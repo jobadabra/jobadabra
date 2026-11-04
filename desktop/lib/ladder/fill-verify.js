@@ -2,7 +2,7 @@
 // its value? The model sees the judges' sketch (lib/account-judge.js accountSketch: controls with label, kind, required, state, never a value) with each control NUMBERED and a
 // `match` the extension measured on the Mac (yes: the page holds what the fill entered; no: it holds something else or nothing; blank: the fill did not touch it). It answers per
 // numbered control one fixed verdict and one fixed reason class; the code keeps only numbers the sketch has. SHADOW (owner, 12 Oct 2026): the answer is logged, nothing acts on it
-// (one zoo pass + one pool pass, then repair goes live). Asked through /extension/account-judge phase "fill" (lib/server-pages.js). Guard: test/fill-verify.test.js.
+// (one zoo pass + one pool pass, then repair goes live). Asked through /extension/account-judge phase "fill" (lib/server-pages.js). Guard: test/unit/main/fill-verify.test.js.
 import {MODEL} from './rung2-sketch.js';
 import {accountSketch} from '../account-judge.js';
 

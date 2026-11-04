@@ -1,5 +1,5 @@
 // Fill now's popup (owner, 19 Oct 2026: "a popup asking for the number"; sketch approved the same day): the choice 1 / 3 / 5 / 10 (default 3) as the app's segmented control,
-// the top jobs it would take with what each still needs, and the cost of making it, before any AI is spent. The answer is the promise's: {codes, prepare} or null. Guard: test/ready-card.test.js.
+// the top jobs it would take with what each still needs, and the cost of making it, before any AI is spent. The answer is the promise's: {codes, prepare} or null. Guard: test/unit/renderer/ready-card.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 

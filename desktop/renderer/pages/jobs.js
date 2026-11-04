@@ -49,7 +49,7 @@ import {showOutdatedJobs} from './jobs-outdated.js';
 const writes = jobWrites({read: options => window.pilot.jobs(options), paint: fresh => { showJobsData(fresh); renderJobs(); }});
 export const jobsChanged = (job = null, patch = {}) => writes.changed(job, patch);
 // An application started (Apply, a night's form, Start again, a batch): main marked its job Applying before answering, so the row says so at once
-// and the list is read again (#1737: eight forms open, the chips said "Applying 0"). Guarded by test/apply-starts-reread.test.js.
+// and the list is read again (#1737: eight forms open, the chips said "Applying 0"). Guarded by test/guards/data/apply-starts-reread.test.js.
 const BEFORE_APPLYING = new Set(['', 'Saved', 'Kit ready']);
 export const startedApplying = (job = null) => jobsChanged(job, job && BEFORE_APPLYING.has(job.stage || '') ? {stage: 'Applying'} : {});
 

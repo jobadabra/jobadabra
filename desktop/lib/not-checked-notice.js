@@ -1,4 +1,4 @@
-// The notification for a Gmail check that read nothing (not connected, sign-in revoked): "not checked", never "had problems". Guarded by test/gmail-not-checked-one-state.test.js.
+// The notification for a Gmail check that read nothing (not connected, sign-in revoked): "not checked", never "had problems". Guarded by test/unit/main/gmail-not-checked-one-state.test.js.
 import {notChecked} from '../renderer/run-status.js';
 
 export function notCheckedNotice(run) {

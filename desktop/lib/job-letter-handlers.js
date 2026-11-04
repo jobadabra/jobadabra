@@ -1,5 +1,5 @@
 // The job's own cover letter's IPC and the step Tailor CV + cover letter runs after the CV: make the letter (kit's or drafted), print it as a PDF in the
-// CV's design, keep it, put it on the job beside the CV. Edit remakes the PDF at once; Write again drafts anew. Guards: desktop/test/job-letter.test.js.
+// CV's design, keep it, put it on the job beside the CV. Edit remakes the PDF at once; Write again drafts anew. Guards: desktop/test/unit/renderer/job-letter.test.js.
 import * as claudeCode from './claude-code.js';
 import * as contactDetails from './contact.js';
 import * as cvlib from './cv.js';

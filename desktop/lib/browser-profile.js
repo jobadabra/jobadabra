@@ -1,5 +1,5 @@
 // Which browser profile a launch should use, so Chrome opens the page instead of its "Who's using Chrome?" picker.
-// Guarded by test/browser-launch-profile.test.js.
+// Guarded by test/unit/main/browser-launch-profile.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,7 +14,7 @@ const DATA = {
 // The folder that holds the browsers' user data: ~/Library/Application Support (Mac) or %LOCALAPPDATA% (PC). JOBADABRA_BROWSER_DATA replaces
 // it: the e2e harness points it at its own empty folder (desktop/e2e/lib/context.mjs), so a test run never reads the owner's browser profiles
 // (16 Oct 2026: a local run read the owner's Chrome Local State and launched with its profile). Every reader of browser data goes through here
-// (lastUsedProfile, lib/extension-install.js support, lib/apply.js chromeProfiles; guarded by test/browser-data-root.test.js).
+// (lastUsedProfile, lib/extension-install.js support, lib/apply.js chromeProfiles; guarded by test/guards/privacy/browser-data-root.test.js).
 export function browserData(platform = process.platform, env = process.env, home = '') {
   if (env.JOBADABRA_BROWSER_DATA) return env.JOBADABRA_BROWSER_DATA;
   if (platform === 'win32') return env.LOCALAPPDATA || (home && path.win32.join(home, 'AppData', 'Local')) || '';

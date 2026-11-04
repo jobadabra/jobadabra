@@ -2,7 +2,7 @@
 // found in its paragraph and its words replaced, each new word in the style its own word had (bold numbers stay bold), the rest of the
 // paragraph and file untouched; a role's bullets are reordered by moving their paragraphs. Word re-flows the lines, so nothing is laid
 // out here. An item that is not found, or whose text crosses a link or a field, keeps its original wording (a warning says so).
-// Pure: XML in, XML out; lib/docx/zip.js reads and writes the file. Guards: test/docx-edit.test.js.
+// Pure: XML in, XML out; lib/docx/zip.js reads and writes the file. Guards: test/unit/main/docx-edit.test.js.
 import {summaryParts} from '../cv-inplace.js';
 import {balanced, encode, paragraphsOf} from './xml.js';
 

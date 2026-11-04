@@ -118,14 +118,19 @@ def git(*args, root=ROOT):
 
 def changed_files(base, root=ROOT):
     """The in-scope Python files the committed HEAD adds or edits since `base`, as [{path, source, added, base}]: the pushed commits only (never the
-    working tree) and renames counted as new files (base None), so a moved-and-edited file is checked too."""
-    rows = [row.split('\t') for row in git('diff', '--name-status', '--no-renames', '--diff-filter=AM', base, 'HEAD', root=root).split('\n') if '\t' in row]
+    working tree). A moved file is compared with its old path, so its edited lines are checked and the code it only carried is not."""
+    # Why-changed (3 Nov 2026, test folders 3/3): renames were counted as new files (#f222bc71), so a pure move judged old functions as new;
+    # comparing with the old path still checks a moved-and-edited file's new lines, which is what #f222bc71 wanted.
+    rows = [row.split('\t') for row in git('diff', '--name-status', '-M', '--diff-filter=AMR', base, 'HEAD', root=root).split('\n') if '\t' in row]
     files = []
-    for status, name in rows:
+    for status, *paths in rows:
+        source_path, name = paths[0], paths[-1]
+        if status.startswith('R'):
+            status = 'M'
         if not SCOPE.match(name):
             continue
-        diff = git('diff', '-U0', '--no-renames', base, 'HEAD', '--', name, root=root)
-        before = {'source': git('show', f'{base}:{name}', root=root), 'line_of': base_line_of(diff)} if status == 'M' else None
+        diff = git('diff', '-U0', '-M', base, 'HEAD', '--', source_path, name, root=root)
+        before = {'source': git('show', f'{base}:{source_path}', root=root), 'line_of': base_line_of(diff)} if status == 'M' else None
         files.append({'path': name, 'source': git('show', f'HEAD:{name}', root=root), 'added': added_lines(diff), 'base': before})
     return files
 

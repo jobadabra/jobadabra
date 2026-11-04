@@ -3,7 +3,7 @@
 // card-shell.js doneButton closes one that holds no change;
 // nothing saves per card: Strategy's one page bar (save-bar.js pageSaveBar, "Save strategy changes") saves or discards every card's draft, and never a
 // Profile draft. Goals follow the same Edit → Save. The cards: Main goals (main-goals.js), Locations and the Advanced ones (strategy-targets.js), Job
-// preferences (job-preferences.js, through outline-tab.js's {bar}). Guarded by test/strategy-cards.test.js.
+// preferences (job-preferences.js, through outline-tab.js's {bar}). Guarded by test/unit/renderer/strategy-cards.test.js.
 import {cardEdit, pill} from '../components.js';
 import {cardHead, doneButton, setEditing} from '../card-shell.js';
 import {pageSaveBar} from '../save-bar.js';

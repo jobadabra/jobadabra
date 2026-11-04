@@ -1,6 +1,6 @@
 """Every stable release goes to the stores: its extension to the Chrome Web Store, its Windows app to the Microsoft Store (#2134 made the Store copy update only from there), (owner, 26 Oct 2026: "when we do the beta/stable release we should publish the newest
 extension version in Chrome Web Store"; stable only). The class: every path that makes a release stable goes through tools/release-stable.sh, which starts
-extension-store-publish.yml; each job that runs it may start a workflow. The publisher itself: desktop/test/webstore-publish.test.js."""
+extension-store-publish.yml; each job that runs it may start a workflow. The publisher itself: desktop/test/tooling/release/webstore-publish.test.js."""
 import re
 import unittest
 from pathlib import Path

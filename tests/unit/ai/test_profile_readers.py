@@ -19,7 +19,7 @@ READERS = {
     'fit score (src/ai/score.py scoring_profile)': score.scoring_profile,
     'kit freshness (src/ai/provenance.py kit_inputs)': lambda profile: provenance.kit_inputs(profile, '', cv_path='/nonexistent'),
 }
-# The files that filter Profile sections by heading, and where each is checked (desktop/test/strategy-rebuild.test.js for the JS one).
+# The files that filter Profile sections by heading, and where each is checked (desktop/test/unit/main/strategy-rebuild.test.js for the JS one).
 FILTERS = {'src/ai/score.py', 'desktop/lib/strategy-rebuild.js'}
 
 

@@ -1,6 +1,6 @@
 // The Ready to send card's progress bar (owner, 18 Oct 2026: "I'd expect it to start instantly", "some progress bar", statuses as badges): Sending > Starting the server >
 // Filling k of n > Ready, from the card's own press first (shown before any answer), then the site's night (/state). progressOf is pure; strip() draws it from the
-// app's pill parts. Guard: test/ready-fill-now.test.js (the steps), test/ready-card.test.js (on the card).
+// app's pill parts. Guard: test/unit/ready-fill/ready-fill-now.test.js (the steps), test/unit/renderer/ready-card.test.js (on the card).
 import {el, pill} from '../components.js';
 
 const FINISHED = ['finished', 'capped', 'deleted'];

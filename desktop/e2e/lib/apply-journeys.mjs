@@ -145,6 +145,6 @@ export async function runJourneys(ctx, h) {
     fail(problems);
   }, {needs: ctx.needs});
 
-  // Why (1 Nov 2026, owner as above): 'a menu whose choices are not the answer's words' (J15, Tier 2) is two integration tests in the same file (the pick, the remembered choice); remembering is desktop/test/menu-choices.test.js.
+  // Why (1 Nov 2026, owner as above): 'a menu whose choices are not the answer's words' (J15, Tier 2) is two integration tests in the same file (the pick, the remembered choice); remembering is desktop/test/unit/main/menu-choices.test.js.
 
 }

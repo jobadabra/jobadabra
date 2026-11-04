@@ -1,6 +1,6 @@
 // Logged activity: the green box that links to the job a run created or updated ("Job created — <title>", Open job
 // in Notion, Show in Jobs), in Recent activity's run detail and the Log box's result. No imports, so it's tested
-// without a window (test/job-link.test.js); jobActions builds its buttons only when called.
+// without a window (test/unit/main/job-link.test.js); jobActions builds its buttons only when called.
 export const jobHeadline = job => `${job?.created ? 'Job created' : 'Job updated'}${job?.title ? ` — ${job.title}` : ''}`;
 
 const bare = id => String(id || '').replace(/-/g, '');

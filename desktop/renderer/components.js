@@ -109,7 +109,7 @@ export function choiceCards(choices, {selected = null, onPick = () => {}, label 
 // Items: {label, run(event), title?, danger?, icon?} (icon: a name from icons.js) or '-' for a divider. A list row (the question navigator,
 // renderer/question-nav.js; owner, 18 Oct 2026) adds detail (a muted second line), tile (an icon in a tile), badge ([text, tone]: a pill) and
 // current (marked); {heading} names the group below it. Options: search (a search box from that many rows), width 'anchor' (the anchor's width).
-// Styles in ui-menu.css. Guarded by test/ui-menu-rows.test.js and test/more-button-menu.test.js.
+// Styles in ui-menu.css. Guarded by test/unit/renderer/ui-menu-rows.test.js and test/unit/renderer/more-button-menu.test.js.
 const menu = el('div', 'ui-menu');
 menu.hidden = true;
 menu.setAttribute('role', 'menu');
@@ -384,7 +384,7 @@ export function cardHead(category, title, {badges = [], subtitles = []} = {}) {
 // (owner, 18 Oct 2026, UI redesign D1: "a compact pencil + Edit button at the right of each card header, with a neutral outline and readable contrast";
 // it was solid that morning only so it sat in sight). Hidden while its card is edited (card-shell.js setEditing): filled orange is for Save. Static markup
 // uses the same classes (`secondary small-btn with-icon card-edit` + <i data-icon="edit">). what = the card's name, for the screen reader ("Edit summary").
-// A row's own action (a rule's Edit, a letter's Edit beside Copy) is not a card's Edit. Guarded by test/card-edit.test.js and test/card-system.test.js.
+// A row's own action (a rule's Edit, a letter's Edit beside Copy) is not a card's Edit. Guarded by test/guards/rules/card-edit.test.js and test/guards/rules/card-system.test.js.
 export const CARD_EDIT = '.card-edit';   // finds a card's Edit, static or drawn (pages/details-read.js)
 export function cardEdit(label, what, onClick) {
   const button = Object.assign(el('button', 'secondary small-btn with-icon card-edit'), {type: 'button'});

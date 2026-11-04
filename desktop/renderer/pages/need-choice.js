@@ -2,7 +2,7 @@
 // The proposal is one button that agrees in one click ("✓ Keep it", "✓ Apply anyway"); "Change…" opens your saved answers for the same
 // question as chips and a box for something else (the extension fills it in; need-send.js). It replaced the "Proposed answer ▾" dropdown, whose pre-selected
 // proposal could not be picked (a select fires no change for the option it already shows). The choices come from answer-options.js;
-// session-needs.js passes in what a pick does. Guard: test/need-choice.test.js.
+// session-needs.js passes in what a pick does. Guard: test/unit/renderer/need-choice.test.js.
 
 const capital = text => text.replace(/^./, c => c.toUpperCase());
 

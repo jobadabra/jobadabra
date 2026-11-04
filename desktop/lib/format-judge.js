@@ -1,6 +1,6 @@
 // The AI's pick of another way to write a value a site refused ("This Phone Number Format is not Allowed", HelloFresh, 11 Oct 2026): it reads only the site's own error
 // message and the field's label (never the value) and answers with one of a fixed list of writings; the extension builds the text itself (extension/format-retry.js).
-// A writing already tried is never chosen again. Without AI nothing changes. Guard: test/format-judge.test.js.
+// A writing already tried is never chosen again. Without AI nothing changes. Guard: test/unit/main/format-judge.test.js.
 import {MODEL} from './page-kind.js';
 
 export const FORMATS = ['e164', 'e164_digits', 'international_00', 'national', 'national_plain'];

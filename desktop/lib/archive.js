@@ -1,7 +1,7 @@
 // Runs tar without blocking the app (Settings → Move your data, the automatic backup): the window keeps drawing while a big data folder is packed or unpacked,
 // and a caller gets {done, total} to show. Export counts the entries tar lists as it goes against the entries counted first; import counts the bytes
 // of the file fed to tar against the file's size. Replaces the blocking tar call in lib/reset.js (21 Oct 2026: the whole app froze, beachball, for the length of an export).
-// Guards: desktop/test/archive.test.js (no *Sync tar call in the main process, progress, cancel, the event loop answers during a pack).
+// Guards: desktop/test/guards/data/archive.test.js (no *Sync tar call in the main process, progress, cancel, the event loop answers during a pack).
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

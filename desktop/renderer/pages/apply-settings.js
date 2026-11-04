@@ -1,7 +1,7 @@
 // Settings → Apply (owner, 26 Oct 2026, hybrid fill step 2): how applying works (3 modes), where answers come from, Full automation's checks, and the
 // Confirm bar the first-Apply dialog's "Adjust settings…" opens (pages/apply-choice.js). Each change saves at once into settings.apply
 // (renderer/apply-settings-model.js); the consent and accounts cards moved here keep their own modules (consent-setting.js, assistant-mode.js).
-// Guards: test/apply-settings.test.js, test/apply-choice-gate.test.js.
+// Guards: test/unit/renderer/apply-settings.test.js, test/guards/safety/apply-choice-gate.test.js.
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
 import {ANSWERS_TEXT, MODES, applyOf, modeBuilt, needsBrowser} from '../apply-settings-model.js';

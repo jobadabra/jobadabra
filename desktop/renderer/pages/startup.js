@@ -22,7 +22,7 @@ import {bindToast} from './linkedin-consent.js';
 import {plainError} from '../run-warnings.js';
 
 // toastMessage(title, body, target, tone) or toastMessage({title, body, target, tone, action, hint}). target: where a click leads (renderer/targets.js),
-// or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/toast-targets.test.js
+// or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/unit/renderer/toast-targets.test.js
 // checks every call names both.
 export function toastMessage(title, body, target = null, tone = 'info') {
   let hint = false, action = null;

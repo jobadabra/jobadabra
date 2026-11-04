@@ -1,4 +1,4 @@
-// The one place that turns the store's "not answered yet" marker (a question-mark emoji in the Profile and answers pages) into words on screen: owner, 18 Oct 2026, never that character in the app. Guard: test/no-question-mark.test.js.
+// The one place that turns the store's "not answered yet" marker (a question-mark emoji in the Profile and answers pages) into words on screen: owner, 18 Oct 2026, never that character in the app. Guard: test/guards/rules/no-question-mark.test.js.
 import {el, pill} from './components.js';
 
 const MARK = String.fromCodePoint(0x2753);

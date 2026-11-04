@@ -1,6 +1,6 @@
 // ⌘K for the notification offer: set it up, and send the confirm mail again. They exist only while the Suggestions card would be drawn (renderer/notify-words.js offerCard).
 // The state and the two actions are handed in by pages/focus-suggestions.js, which owns the card and already opens Settings and shows toasts: this module imports no page, so the palette
-// (pages/nav.js) adds no import cycle (the arch gate counts them: #3011). `add` is the palette's (group, label, hint, keywords, run). Guard: test/notify-commands.test.js.
+// (pages/nav.js) adds no import cycle (the arch gate counts them: #3011). `add` is the palette's (group, label, hint, keywords, run). Guard: test/unit/renderer/notify-commands.test.js.
 import {offerCard} from '../notify-words.js';
 
 let state = null, actions = {open: () => {}, resend: () => {}};

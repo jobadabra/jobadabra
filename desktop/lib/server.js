@@ -3,7 +3,7 @@
 // keys from the Keychain-backed store, and the local job list. Only this computer can connect, and
 // every call still needs the extension token. This file is the HTTP routes (start); the pieces it re-exports:
 // server-hooks.js (what main.js plugs in), server-env.js (token, tickets, localEnv), server-contact.js (/extension/me),
-// server-pages.js (confirmation and page kind). Guarded by desktop/test/local-server.test.js and extension-cors.test.js.
+// server-pages.js (confirmation and page kind). Guarded by desktop/test/unit/extension/local-server.test.js and extension-cors.test.js.
 import {isFormOf} from './apply.js';
 import http from 'node:http';
 import {routeTable} from './server-routes.js';
@@ -33,7 +33,7 @@ export {DEFAULT_PORT, portFrom};   // defined in server-listen.js (the demo's ca
 export const PORT = portFrom();
 // The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
 // The first is the copy loaded from the app's folder (the public "key" in extension/manifest.json); the second the Chrome Web Store item's
-// (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/extension-store-id.test.js.
+// (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/unit/extension/extension-store-id.test.js.
 export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk', 'nmbnjhmpofifgcdalfefddbiihccogoi'];   // the second = server-env.js STORE_EXTENSION_ID (an import here runs before it is set)
 export const EXTENSION_ID = EXTENSION_IDS[0];
 // The request's Origin when it is one of our extensions' (else ''), to echo back in Access-Control-Allow-Origin.

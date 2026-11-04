@@ -1,7 +1,7 @@
 // LinkedIn jobs on every Find jobs, PR 1/3 (owner, 31 Oct 2026: "Opt-in, warned once"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the person's LinkedIn
 // sign-in is copied to the app on this Mac so the app's own hidden browser can read their job searches. Chrome Web Store rules shape this file: the permissions are optional and
 // asked only from linkedin.html on a click (consent shown there first); only li_at and JSESSIONID are read; they go only to the app's loopback address; the session is copied again only when the app says a Find jobs press wants it; and the permissions are
-// given back when the app says the switch is off. Guard: desktop/test/extension-linkedin.test.js. Not a flow file: nothing here touches an application.
+// given back when the app says the switch is off. Guard: desktop/test/unit/extension/extension-linkedin.test.js. Not a flow file: nothing here touches an application.
 // Display-only: copies the two LinkedIn sign-in cookies to the app; it reads and acts on no web page. The app transport (call) and settings come from the caller, so this file imports nothing.
 
 export const LINKEDIN = {origins: ['https://www.linkedin.com/*'], permissions: ['cookies']};

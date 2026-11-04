@@ -4,7 +4,7 @@
 // (each subclass's env() drops the API keys the app holds), or signs in for the user. Each call gets a fresh temp folder (its working
 // directory and the only place the CLI may read: attached images/PDFs are written there), a hard timeout, at most 2 processes at once per
 // CLI plus one kept for an open form's own questions (slots, below; #2674), and one repair when a structured answer does not match its schema. A subclass says how to call its binary (build, parse, answer,
-// usage). Guarded by test/ai-contract.test.js (both CLIs) and test/claude-code.test.js.
+// usage). Guarded by test/unit/main/ai-contract.test.js (both CLIs) and test/unit/main/claude-code.test.js.
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -63,7 +63,7 @@ export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS
 
 // At most `size` callers at once; the rest wait their turn. A 'page' ask (the extension's questions while a form is open: page kind, digest,
 // judges, answers) is served before waiting side work and has one more slot of its own, so it never waits behind the app's background
-// asks (details from the CV, contact keys: 11.5 s measured ahead of a page's first question, 11 Oct 2026). Guard: test/ai-lanes.test.js.
+// asks (details from the CV, contact keys: 11.5 s measured ahead of a page's first question, 11 Oct 2026). Guard: test/unit/main/ai-lanes.test.js.
 export function slots(size = 2) {
   let busy = 0;
   const waiting = [];   // [{lane, go}], page asks first

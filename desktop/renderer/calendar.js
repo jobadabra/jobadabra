@@ -1,4 +1,4 @@
-// Calendar page: every screening and interview on one calendar. Pure (tested in test/calendar.test.js); the page is
+// Calendar page: every screening and interview on one calendar. Pure (tested in test/unit/renderer/calendar.test.js); the page is
 // pages/calendar.js. Two sources, both from Notion: a job's Next interview (Applications; filled by the Gmail and Calendar
 // check) and the saved recordings (🎤 Interviews: Date, Round, Application). A recording on the same day as its job's
 // Next interview is the same meeting, so it is shown once, as held.

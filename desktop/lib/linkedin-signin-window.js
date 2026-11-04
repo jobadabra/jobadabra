@@ -1,7 +1,7 @@
 // "Turn on LinkedIn" sign-in window (owner, 3 Nov 2026: "Both: window first"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md "Sign-in window"): a Jobadabra window on
 // LinkedIn's own sign-in page. The person types their password THERE; this module never sees it, only the two session cookies LinkedIn sets once they are in. It disguises nothing (Electron's
 // own honest user agent), solves no check (a checkpoint page is the person's to finish, or to close), and keeps nothing: the window's storage is its own in-memory partition, cleared when it
-// ends. The cookies go back to the caller (lib/linkedin-handlers.js -> linkedin-session.js -> Keychain); they are never logged. Guard: test/linkedin-signin-window.test.js.
+// ends. The cookies go back to the caller (lib/linkedin-handlers.js -> linkedin-session.js -> Keychain); they are never logged. Guard: test/unit/main/linkedin-signin-window.test.js.
 export const PARTITION = 'linkedin-signin';   // no "persist:" prefix = in memory only
 export const TIMEOUT_MS = 10 * 60 * 1000;
 export const START_URL = 'https://www.linkedin.com/login';

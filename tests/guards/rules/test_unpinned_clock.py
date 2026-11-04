@@ -1,5 +1,5 @@
 """A new python test that reads the real clock fails here, in the python workflow (tools/unpinned-clock.mjs; owner, 31 Oct 2026: "No test reads the real date/clock unpinned").
-The same check runs in desktop/test/unpinned-clock.test.js; this one exists because a PR that only changes tests/*.py does not start the desktop workflow (Gitar on #2734)."""
+The same check runs in desktop/test/tooling/ci/unpinned-clock.test.js; this one exists because a PR that only changes tests/*.py does not start the desktop workflow (Gitar on #2734)."""
 import shutil
 import subprocess
 import unittest

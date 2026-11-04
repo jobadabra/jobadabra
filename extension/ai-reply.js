@@ -1,4 +1,4 @@
-// Claude's reply checked once where it is read, and every error text a person sees turned into a plain sentence (the raw text goes to the log only). Guard: desktop/test/panel-plain-errors.test.js.
+// Claude's reply checked once where it is read, and every error text a person sees turned into a plain sentence (the raw text goes to the log only). Guard: desktop/test/guards/rules/panel-plain-errors.test.js.
 // Invariants: readReply never lets a reply without an answers list reach the fill; plainWhy never returns a JS error text.
 export const UNREADABLE = "its answer couldn't be read";
 

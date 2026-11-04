@@ -1,5 +1,5 @@
 // The Jobs row's company, place and compact meta cells, drawn from the row model (job-row-model.js): a slot with nothing to say says N/A, and a company not named is a blank avatar.
-// Moved out of pages/jobs-render.js (its file-size warning); guarded by integration/app/screen-jobs-inbound.test.js and test/job-row-model.test.js.
+// Moved out of pages/jobs-render.js (its file-size warning); guarded by integration/app/screen-jobs-inbound.test.js and test/unit/renderer/job-row-model.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {ago, avatar, placeAndMode, shortPlace, workMode} from '../jobs-view.js';

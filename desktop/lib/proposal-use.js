@@ -3,7 +3,7 @@
 // another ... by leveraging data"). Fixed words only, never a value or a question's wording. The renderer says shown / used / edited
 // (renderer/pages/need-proposal.js); the main process adds the board and the app's version (session-handlers.js) and the reporter batches
 // them (lib/recipes.js proposalUse); the site keeps counts per day (site/src/knowledge.js, proposal_use) and the digest shows the share used.
-// Guarded by test/proposal-use.test.js.
+// Guarded by test/unit/main/proposal-use.test.js.
 // Where the proposal came from (renderer/proposal-pick.js):
 //   fill_guess  the form AI's most likely answer (worker use: "propose")   fill_tried  an answer the fill gave and the form did not take
 //   details     your saved detail   cv  your CV   profile  your Profile (contact-from-cv.js)   empty  no proposal: a box to type in

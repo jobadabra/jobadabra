@@ -1,5 +1,5 @@
 // Jobs "+ Add": one button and a small dialog of three choices; each row presses the opener of the flow that already exists (Add a job, Applied elsewhere, Log job activity).
-// Guarded by: test/add-dialog.test.js.
+// Guarded by: test/unit/renderer/add-dialog.test.js.
 import {$} from './core.js';
 
 const rows = () => [...document.querySelectorAll('#add-dialog .add-choice')];

@@ -1,4 +1,4 @@
-// The schedule line under a task on the Actions page: "runs every 4 h · next Today 05:29", from the real schedule (Settings → Automation) and the next run the app computes. Guarded by test/actions-layout.test.js.
+// The schedule line under a task on the Actions page: "runs every 4 h · next Today 05:29", from the real schedule (Settings → Automation) and the next run the app computes. Guarded by test/unit/renderer/actions-layout.test.js.
 export const DEFAULT_SCHEDULE = {search: 4, mail: 3};
 const dayWord = (date, now) => {
   if (date.toDateString() === now.toDateString()) return 'today';

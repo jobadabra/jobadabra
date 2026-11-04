@@ -1,7 +1,7 @@
 /* The AI writing a text box (ai-writing.js; owner, 28 Oct 2026: option A, then "Make it more like a glowing/magic"), from the app's magic look (magic.css,
    components.css .is-lit): a lit strip above the box (a twinkling sparkle, the title shimmering, a live m:ss, one muted line); around the box a frame whose
    amber light circles its edge and breathes; star sparkles over the old text, which is faded under a slow amber sweep; letter-shaped skeleton lines when
-   there is no text yet. Everything stops with reduced motion. Guarded by test/ai-writing.test.js. */
+   there is no text yet. Everything stops with reduced motion. Guarded by test/unit/renderer/ai-writing.test.js. */
 .ai-writing-strip { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2);
   border: 1px solid var(--lit-line); border-radius: var(--r-md); font-size: var(--fs-base); font-weight: 400;
   background: radial-gradient(60% 160% at 0% 50%, var(--lit-glow), transparent 70%), var(--surface); animation: ai-writing-in .28s var(--ease); }

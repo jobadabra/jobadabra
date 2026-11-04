@@ -1,7 +1,7 @@
 // The test harness's list of the owner's own values, as the app under test receives it (owner, 14 Oct 2026: an answer that is the owner's value is never typed, see
 // app-core/src/owner-guard.js). Honoured ONLY under the e2e harness (JOBADABRA_E2E) and only when the harness handed a list (JOBADABRA_E2E_OWNER_VALUES, a JSON
 // array of [value, kind]); the variable is removed from this process at once, so no child process (claude -p, a terminal) can read it. A user's app has neither
-// variable: no code path, and its own fills use its own identity on purpose. Guard: desktop/test/owner-guard-wiring.test.js.
+// variable: no code path, and its own fills use its own identity on purpose. Guard: desktop/test/guards/safety/owner-guard-wiring.test.js.
 import {parseOwnerValues} from '../shared/app-core/owner-guard.js';
 
 export function takeOwnerValues(env = process.env) {

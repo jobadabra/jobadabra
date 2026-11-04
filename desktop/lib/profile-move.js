@@ -4,7 +4,7 @@
 // original label and value. Before anything moves both pages are copied into the app's folder and the backup runs; two copies of one fact that
 // disagree are never resolved here: both stay where they are, queued for "Which is right?" (settings.profileConflicts). After the move every
 // original value is checked to be on a page still, else it throws with the backup's place. Works on every store (lib/store).
-// Guarded by test/profile-move.test.js.
+// Guarded by test/unit/main/profile-move.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {anthropicApi} from './ai/anthropic-api.js';

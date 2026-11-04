@@ -45,7 +45,7 @@ class WindowsPaths(unittest.TestCase):
             if made: shared.rmdir()
 
     def test_the_installer_the_shell_and_the_tests_start_windows(self):
-        for file in ('desktop/main.js', 'desktop/package.json', 'desktop/scripts/stage.mjs', 'desktop/test/credentials.test.js', 'tools/check.sh', '.github/workflows/tests-desktop-windows.yml'):
+        for file in ('desktop/main.js', 'desktop/package.json', 'desktop/scripts/stage.mjs', 'desktop/test/unit/main/credentials.test.js', 'tools/check.sh', '.github/workflows/tests-desktop-windows.yml'):
             self.assertTrue(starts(NAME, [file]), file)
 
     def test_a_change_that_cannot_reach_windows_does_not_start_it(self):

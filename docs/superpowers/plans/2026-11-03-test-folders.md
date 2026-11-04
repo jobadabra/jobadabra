@@ -5,12 +5,12 @@
 | PR | What | State |
 |---|---|---|
 | 1/3 | `TESTS.md`, the runners read the new folders (`tools/affected-tests.py` `python_tests`/`desktop_tests`), the guard `tests/guards/rules/test_test_folders.py` with a shrinking allowlist | this PR |
-| 2/3 | `tests/`: the 449 flat files into `unit/<scope>`, `guards/<scope>`, `tooling/<scope>`, each placed by reading its header (the import-based classifier filed app tests as tooling); helpers stay beside the tests; references rewritten | next |
-| 3/3 | `desktop/test/`: the 1,004 flat files the same way; the 3 that launch a real browser go to `desktop/integration/`; `e2e-step-timings.test.mjs` and `e2e/test/fidelity-report.test.js` (run by no command) run or go | after 2/3 |
+| 2/3 | `tests/`: the 449 flat files into `unit/<scope>`, `guards/<scope>`, `tooling/<scope>`, each placed by reading its header (the import-based classifier filed app tests as tooling); helpers stay beside the tests; references rewritten | merged #3110 |
+| 3/3 | `desktop/test/`: the 1,010 flat files the same way (none launches a real browser: the 3 counted first read code or use a fake); `e2e-step-timings.test.mjs` and `e2e/test/fidelity-report.test.js` (run by no command) deleted (owner, 3 Nov 2026: "Delete both"); the allowlist goes | this PR |
 
 Each move ships while few other PRs are open (a move conflicts with any open PR editing the same tests).
 
 ## Progress
 - [x] 1/3 map, runners, guard (proof: tests/guards/rules/test_test_folders.py @fe19dbdf)
 - [x] 2/3 Python tests moved (proof: tests/guards/data/test_store_env.py)
-- [ ] 3/3 desktop tests moved (proof: none: not written yet)
+- [x] 3/3 desktop tests moved (proof: tests/guards/rules/test_test_folders.py)

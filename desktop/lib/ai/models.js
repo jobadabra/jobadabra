@@ -1,7 +1,7 @@
 // The models each AI engine family uses, by tier (owner-approved 9 Oct 2026): data, never literals in the AI modules.
 // A module asks for a tier (`model('small')`) or sends a Claude model id; an OpenAI engine maps that id to its tier's model.
 // Environment overrides: JOBADABRA_OPENAI_SMALL_MODEL / _MAIN_MODEL / _BIG_MODEL. Prices are $ per million tokens.
-// Mirrors the engine's tiers (src/ai/providers). Guarded by test/ai-contract.test.js.
+// Mirrors the engine's tiers (src/ai/providers). Guarded by test/unit/main/ai-contract.test.js.
 
 export const TIERS = {
   small: {claude: 'claude-haiku-5-5', openai: 'gpt-6-luna'},
@@ -30,6 +30,6 @@ export function openaiModel(id, effort = null, env = process.env) {
 
 // The price per million tokens for a call's usage: the OpenAI model's own for an OpenAI API call (its adapter records usage.model),
 // else the caller's Claude price. A subscription call costs 0 wherever the caller checks usage.billing. app-core/src/ai.js has the same
-// (the Worker cannot import the app); test/ai-contract.test.js keeps the two equal.
+// (the Worker cannot import the app); test/unit/main/ai-contract.test.js keeps the two equal.
 export const priceOf = (usage, claudePrice) => (usage?.provider === 'openai'
   ? OPENAI_PRICES[usage.model] || OPENAI_PRICES[TIERS.main.openai] : claudePrice);

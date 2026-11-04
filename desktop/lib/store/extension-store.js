@@ -1,6 +1,6 @@
 // The extension's routes with the data on this Mac (app-core/src/extension.js env.store): the tracked job for a form, its kit and the fill
 // run's record, from the engine's store (lib/store/engine.js) instead of Notion. The values are the shared worker's own (runRecord), so a
-// fill logs the same thing in either store. Guarded by test/extension-store.test.js.
+// fill logs the same thing in either store. Guarded by test/unit/extension/extension-store.test.js.
 import * as engine from './engine.js';
 import {jobKey, runRecord} from '../../shared/app-core/extension.js';
 import {KIT_SECTION, kitOf} from './kit-section.js';

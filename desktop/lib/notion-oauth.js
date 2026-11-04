@@ -1,7 +1,7 @@
 // "Connect with Notion": Notion's own consent page instead of a token to create and paste. The app opens the Jobadabra website's /api/notion/start with a random `state` it made; after the
 // user approves in Notion (picking a page, or letting Notion copy the Jobadabra template), the website trades Notion's code for the token (it holds the connection's secret) and redirects the
 // person's own browser to this app's socket, where lib/oauth-handoff.js takes it for that state only. The website keeps nothing and nothing is polled (Why 3 Nov 2026: a poll gave the token to
-// whoever knew the id). Guarded by test/notion-oauth.test.js.
+// whoever knew the id). Guarded by test/unit/main/notion-oauth.test.js.
 import {begin, cancel as cancelFlow, fail} from './oauth-handoff.js';
 
 export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobadabra.top';

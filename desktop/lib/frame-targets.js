@@ -1,5 +1,5 @@
 // The iframes of a hidden-browser tab that run in their own process (another site's form inside the page), each with its own CDP session, for the live view's facts.
-// Loopback only: the tab's address names the browser's own debugging port. Guard: test/frame-targets.test.js.
+// Loopback only: the tab's address names the browser's own debugging port. Guard: test/unit/main/frame-targets.test.js.
 import {openCdpSession} from './cdp-session.js';
 
 /**

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 class FragmentWordsTest(unittest.TestCase):
     def test_python_reads_every_case_of_the_js_test_the_same(self):
-        source = (ROOT / 'desktop/test/fragment-words.test.js').read_text()
+        source = (ROOT / 'desktop/test/unit/renderer/fragment-words.test.js').read_text()
         block = source[source.index('const SHAPES = ['):source.index('];', source.index('const SHAPES = ['))]
         cases = re.findall(r"\['((?:[^'\\]|\\.)*)', (\[[^\]]*\])\]", block)
         self.assertGreater(len(cases), 10)

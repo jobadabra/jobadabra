@@ -6,7 +6,7 @@
 //     JOBADABRA_ISOLATED_SECRETS for the engine) holds what the run itself saved;
 //   - a live-test twin (JOBADABRA_TWIN, docs/live-test.md): writes to its own file too; it READS that file first, then the real Keychain for the
 //     job-site passwords only (jobadabra.sites.password, jobadabra.<host>.password), so it signs in like the real app. Nothing else of the owner's.
-// Guards: desktop/test/keychain.test.js (an isolated run never calls `security`), tests/unit/ai/test_secret_store.py.
+// Guards: desktop/test/guards/safety/keychain.test.js (an isolated run never calls `security`), tests/unit/ai/test_secret_store.py.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

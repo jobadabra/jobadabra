@@ -1,7 +1,7 @@
 // LinkedIn jobs on every Find jobs, PR 2/3 (spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the engine's search and the LinkedIn step run side by side
 // on the press's ONE clock (lib/search-steps.js). Design: the step never changes or delays the engine's result; Stop, a failing search or the press's deadline ends it; its verdict is
 // recorded once (lib/linkedin-session.js noteRun); the jobs it found are scored by the existing light run (visitsArgs) only when the press has time left.
-// The step is registered once by the visits handlers (it needs visits.js, which imports pipeline.js: registering here keeps the imports one-way). Guard: test/search-beside.test.js.
+// The step is registered once by the visits handlers (it needs visits.js, which imports pipeline.js: registering here keeps the imports one-way). Guard: test/unit/main/search-beside.test.js.
 import {noteRun} from './linkedin-session.js';
 
 let registered = null, registeredScore = null;

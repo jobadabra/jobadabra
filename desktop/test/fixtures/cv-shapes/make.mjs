@@ -1,4 +1,4 @@
-// Makes the made-up CV look-alikes the in-place tailoring is tested on (lib/cv-inplace.js; test/cv-inplace.test.js). Run by hand, once:
+// Makes the made-up CV look-alikes the in-place tailoring is tested on (lib/cv-inplace.js; test/unit/cv/cv-inplace.test.js). Run by hand, once:
 //   npx electron test/fixtures/cv-shapes/make.mjs <folder with Carlito-Regular/Bold/Italic.ttf>
 // CV_SHAPES=french,band makes only those (the others stay byte for byte).
 // The four HTML shapes are printed by Chromium like the app prints (CID TrueType from Carlito, Type 3 from the variable Inter); the two

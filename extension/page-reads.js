@@ -1,6 +1,6 @@
 // What the flow reads off a page, as two closed scripts run in the tab (moved out of fill-flow.js, 13 Oct 2026, a pure move): pageShape (the counts of fields, files, frames and the document's status)
 // and pageSketchOf (the page's sketch for the AI that decides its kind: headings, controls, buttons, frames). Both are closed scripts: desktop/e2e/ladder-capture.mjs runs pageSketchOf's body on its own.
-// Guards: desktop/test/named-controls.test.js, desktop/e2e/test/own-ui-not-read.test.mjs, desktop/e2e/test/ladder-capture-frames.test.mjs.
+// Guards: desktop/test/unit/extension/named-controls.test.js, desktop/e2e/test/own-ui-not-read.test.mjs, desktop/e2e/test/ladder-capture-frames.test.mjs.
 export function pageShape(tabId) {
   return chrome.scripting.executeScript({target: {tabId}, func: () => {
     const shown = el => el.getClientRects().length > 0 && el.type !== 'hidden';

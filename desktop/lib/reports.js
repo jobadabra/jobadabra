@@ -16,7 +16,7 @@ export function reportToken(storage) {
 }
 
 export const ENDPOINT = process.env.JOBADABRA_REPORT_URL || 'https://www.jobadabra.top/report/fill-failure';
-// The menu reasons are extension/menu-reason.js MENU_REASONS (what the pick observed) and the older fixed one; test/menu-reason-copies.test.js keeps them equal.
+// The menu reasons are extension/menu-reason.js MENU_REASONS (what the pick observed) and the older fixed one; test/unit/main/menu-reason-copies.test.js keeps them equal.
 export const MECHANICAL = ['dropdown not clicked', 'dropdown clicked, but its menu did not open', 'dropdown clicked, but no option matched',
   'dropdown option clicked, but not selected', 'dropdown selected, but the reader cannot see it', 'dropdown clicked, but it selected another choice', 'dropdown that opens only on a real click',
   'answer given, but the field did not take it', 'question text not found on the page',
@@ -24,7 +24,7 @@ export const MECHANICAL = ['dropdown not clicked', 'dropdown clicked, but its me
 const SNAPPED = '#snapshot';  // reportedFailures entry "<label key> #snapshot": reported with its snapshot
 const AT = '@';               // reportedFailures entry "<label key> @<build>": reported from that extension build
 
-// Is build `build` later than `than`? The same rule as the Worker's (app-core/src/report.js newer; test/reports-build.test.js keeps them equal).
+// Is build `build` later than `than`? The same rule as the Worker's (app-core/src/report.js newer; test/unit/main/reports-build.test.js keeps them equal).
 export function newer(build, than) {
   const parts = text => { const m = /^(\d+(?:\.\d+)*)/.exec(String(text || '')); return m ? m[1].split('.').map(Number) : null; };
   const mine = parts(build), theirs = parts(than);

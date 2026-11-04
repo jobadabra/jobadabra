@@ -1,7 +1,7 @@
 // "What happened" on the session page (owner, 9 Oct 2026: "not sure we want the Claude terminal visible all the time … it confuses non-technical users"): the
 // session's steps in plain words, from what the app already knows (the session, the form's report), drawn as Recent activity's step list (.activity-phases:
 // ✓ done, ! needs you, ● now). The terminal (#ss-log) is shown instead only for a Claude conversation with Claude help on (claude-help.js); elsewhere it is
-// one click away ("Technical log", for support). Guard: test/session-steps.test.js.
+// one click away ("Technical log", for support). Guard: test/unit/renderer/session-steps.test.js.
 import {el} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {isSubmitted} from '../session-state.js';

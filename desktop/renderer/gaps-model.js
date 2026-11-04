@@ -1,6 +1,6 @@
 // The Profile's "Possible CV gaps" as one line per gap with its state (owner, 17 Oct 2026, review M7: "one chip per gap with ✓ / ✕, kept in the same store"): to check, a confirmed skill
 // (the CV and the fill read it as one), or not a gap (hidden from the checking list, kept so it is not asked again). "Prometheus (CV gap: to check)", the same text on every store; a line
-// this app did not write is read as a note. Pure (no DOM): guarded by test/gaps-model.test.js.
+// this app did not write is read as a note. Pure (no DOM): guarded by test/unit/renderer/gaps-model.test.js.
 export const STATES = {check: 'to check', skill: 'confirmed skill', dropped: 'not a gap'};
 const LINE = new RegExp(`^(.*?)\\s*\\(CV gap: (${Object.values(STATES).join('|')})\\)\\s*$`);
 const bare = text => String(text || '').replace(/\*\*/g, '').replace(/^[-*•]\s*/, '').trim();

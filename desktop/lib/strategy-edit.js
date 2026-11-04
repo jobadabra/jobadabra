@@ -1,5 +1,5 @@
 // Strategy, the "What you're targeting" lists edited in the app: which lists, cleaning the edits, applying them, editLists.
-// Re-exported by strategy.js. Guarded by desktop/test/strategy-edit-loading.test.js and strategy-targets.test.js.
+// Re-exported by strategy.js. Guarded by desktop/test/unit/renderer/strategy-edit-loading.test.js and strategy-targets.test.js.
 import {ADD_ROLES_ATTEMPTS, escapeRegex, publishSearchSettings} from './strategy-settings.js';
 import {editTitles, titlesOf} from './target-roles.js';
 

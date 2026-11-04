@@ -2,7 +2,7 @@
 // option A of https://claude.ai/artifact/7hsZipME4De62YarGwUTTP): one segment per question (click to jump; one plain bar past 30), a button that
 // names the question and opens the queue list (the shared ⋯ menu's list rows: kind tile, where it comes from, its state, the set-aside ones
 // apart, a search box from 9), and previous / next arrows. Replaces the native <select> (qr-pick). Drawn by pages/question-review.js, which owns
-// the state and passes it in. Guarded by test/question-review.test.js ("navigator: …") and test/ui-menu-rows.test.js.
+// the state and passes it in. Guarded by test/unit/renderer/question-review.test.js ("navigator: …") and test/unit/renderer/ui-menu-rows.test.js.
 import {el, openMenu} from './components.js';
 import {icon} from './icons.js';
 

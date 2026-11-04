@@ -1,7 +1,7 @@
 // The status to preselect in each work zone for a nationality outside Europe and the US (owner, 28 Oct 2026: "considering the nationality can be 190 countries on the
 // globe, that's too much of a scripted list… use AI if the nationality is not US or Europe"). Europe and the US stay the fixed table (renderer/work-eligibility.js).
 // The AI judges (a Canadian: UK, EU, US); the code keeps only zones and statuses from the fixed sets, per country, cached in settings.zoneSuggestions, so a country
-// is asked once. No AI or a failed call leaves the zone unsuggested (never a guess), tried again at the next change. Guarded by test/zone-suggest.test.js.
+// is asked once. No AI or a failed call leaves the zone unsuggested (never a guess), tried again at the next change. Guarded by test/unit/main/zone-suggest.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {MODEL} from './question-reuse.js';
 import {STATUSES, ZONES, countryCode} from '../renderer/work-eligibility.js';

@@ -3,7 +3,7 @@
 // automation" (R3, 1 Nov 2026). (1) The app's own socket is off: the card says at once that Jobadabra can't hear Chrome, the list pill says "Connection off", and no button is offered (none
 // could help). (2) The socket is up and Chrome reports nothing (demoLinkSilent, lib/demo.js): after the wait the card says Chrome isn't reporting, and its FIRST button is "Open it again",
 // which asks the app to reopen THIS job's form (sessionReopen), never the extension's settings page (extensionOptions). The app side of that press, opening the job's form with its fill mark
-// for the same session, is session-tabs.test.js; the clock rules (CHECK_MS, WAIT_MS) are test/session-state.test.js. The window's clock is moved the way the e2e step moved it.
+// for the same session, is session-tabs.test.js; the clock rules (CHECK_MS, WAIT_MS) are test/unit/renderer/session-state.test.js. The window's clock is moved the way the e2e step moved it.
 // Job: serve stored answers
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';

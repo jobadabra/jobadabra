@@ -1,5 +1,5 @@
 /* The card shell of Profile and Strategy cards (card-shell.js, save-bar.js; owner, 18 Oct 2026, UI redesign): read summary → quiet Edit → editor in place,
-   one sticky save bar per page. Rules: docs/rules/desktop-ui.md "Cards: read → Edit → editor". Tokens only (test/design.test.js). */
+   one sticky save bar per page. Rules: docs/rules/desktop-ui.md "Cards: read → Edit → editor". Tokens only (test/guards/rules/design.test.js). */
 
 /* The quiet Edit (components.js cardEdit): neutral outline with a field's 3:1 edge, pencil + word, always visible; gone while its card is edited. */
 button.card-edit { margin-left: auto; flex: none; white-space: nowrap; border-color: var(--field-line); color: var(--ink); }

@@ -202,7 +202,7 @@ export async function fillSettled(page, ms = 4000) {
   if (state) await wait(300);
 }
 
-// The applicant details a case runs with (null: the harness default). contact.phoneParts: the number in pieces, a public case holds no phone number (test/recorded-privacy.test.js).
+// The applicant details a case runs with (null: the harness default). contact.phoneParts: the number in pieces, a public case holds no phone number (test/guards/privacy/recorded-privacy.test.js).
 export const contactOf = item => (item.contact ? {first_name: 'Test', last_name: 'Candidate', email: 'test.candidate@example.com', ...item.contact, ...(item.contact.phoneParts ? {phone: item.contact.phoneParts.join(' ')} : {})} : null);
 
 // One case in its own browser (JP_REPLAY_TABS=1, and the run alone after a failure in parallel): the same checks over every request of that browser.

@@ -3,7 +3,7 @@
 // Matching values move by themselves; an unset side yields to the populated one; "No relocation" and "Anywhere" are values, not missing data; a conflict
 // is queued with both values and NO preselected winner (profile / strategy / choose / separate). The AI only reads the Profile rows into a fixed answer
 // (judgeProfile); it never writes a place. The crawl lists are match PATTERNS (\bz[uü]rich\b): read as place names to compare and show (placeNames), kept as patterns when written back;
-// lists that differ in words but may mean the same places go to the AI's same-meaning check (lib/locations-same.js). Guarded by test/locations-move.test.js. Where you live (Home base) is Your details' and is not compared here.
+// lists that differ in words but may mean the same places go to the AI's same-meaning check (lib/locations-same.js). Guarded by test/unit/main/locations-move.test.js. Where you live (Home base) is Your details' and is not compared here.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {fragmentNames} from '../renderer/fragment-words.js';
 

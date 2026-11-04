@@ -2,7 +2,7 @@
 fictional data and turned into Markdown by the Notion adapter's one codec (src/stores/notion_blocks.to_markdown), the shapes the
 real pages have (kit with a form read, rejection review with its to-dos and footer, the record with an edited answer, the prep kit's
 sections, a recruiter message with its Full message toggle, a logged entry). Printed as JSON {section name: markdown}.
-desktop/test/job-page-real.test.js feeds them to renderer/job-page-view.js, so a writer's format change fails a test."""
+desktop/test/unit/renderer/job-page-real.test.js feeds them to renderer/job-page-view.js, so a writer's format change fails a test."""
 import json
 import sys
 from datetime import datetime

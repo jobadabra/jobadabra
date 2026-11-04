@@ -1,6 +1,6 @@
 """Every message the engine writes that the desktop window draws as a card, made by the engine's own writers (sample data in,
 the text the run's Notion page holds out: cron_runs.plain flattens the Telegram HTML). Printed as JSON {name: text}.
-desktop/test/engine-message-contract.test.js feeds each one to its parser, so a format change on either side fails a test."""
+desktop/test/unit/renderer/engine-message-contract.test.js feeds each one to its parser, so a format change on either side fails a test."""
 import json
 import sys
 import tempfile

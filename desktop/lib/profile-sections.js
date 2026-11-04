@@ -1,7 +1,7 @@
 // Your details' sections beyond Contact (owner, 17 Oct 2026: "Your details = facts, in 3 sections"): Work eligibility, Availability & compensation and
 // Languages. Each is a heading on the Profile page with "Label: value" lines under it, the shape of 📇 Contact details (lib/contact.js), on every store
 // (lib/store): the Profile stays one page, so a value moved here never leaves it. Forms and Strategy read these facts from here: one source per value.
-// Guarded by test/profile-sections.test.js.
+// Guarded by test/unit/main/profile-sections.test.js.
 import {openStore} from './store/index.js';
 import {splitMark, withMark} from '../renderer/question-kind.js';
 

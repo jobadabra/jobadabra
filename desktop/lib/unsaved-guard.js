@@ -1,7 +1,7 @@
 // Closing or reloading the main window while a page holds unsaved edits asks first (owner, 18 Oct 2026, UI redesign D2: "Warn before leaving Profile or
 // closing the window with unsaved changes"): the page's save bar holds the unload (renderer/save-bar.js beforeunload), Electron then fires
 // 'will-prevent-unload', and this asks Stay / Leave without saving. A hidden test window (e2e, screenshots) never waits on a dialog: it leaves.
-// Guarded by test/unsaved-guard.test.js.
+// Guarded by test/unit/main/unsaved-guard.test.js.
 export const UNSAVED_DIALOG = {type: 'question', buttons: ['Stay', 'Leave without saving'], defaultId: 0, cancelId: 0,
   message: 'You have unsaved changes', detail: 'Your edits on this page are not saved yet. Leave without saving them?'};
 

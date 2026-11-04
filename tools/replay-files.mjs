@@ -1,6 +1,6 @@
 // The files a recorded replay loads, found by structure (owner, 12 Oct 2026): the extension's files reached from its manifest (service worker, content scripts,
 // pages) through imports and the file lists it names (PAGE_FILES), and the app modules the offline app runs (desktop/lib reached from desktop/e2e/lib/offline-app-child.mjs).
-// tools/recorded-cases.mjs asks a recorded page for a change to any of them. No hand list: a new file is covered once something imports it. Guard: desktop/test/recorded-cases.test.js.
+// tools/recorded-cases.mjs asks a recorded page for a change to any of them. No hand list: a new file is covered once something imports it. Guard: desktop/test/tooling/ci/recorded-cases.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';

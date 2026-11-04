@@ -1,5 +1,5 @@
 // Finds every pop-up and notification call in desktop/ (renderer toastMessage, main notify, toasts sent to the window) and says which name no place.
-// Used by test/toast-targets.test.js; pure string scanning, no imports of the app.
+// Used by test/unit/renderer/toast-targets.test.js; pure string scanning, no imports of the app.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

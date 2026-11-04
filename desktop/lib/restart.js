@@ -1,6 +1,6 @@
 // The one way the app restarts itself (Restart to get fixes, permission toast, reset, import, demo): exactly one new copy, started only once the quit is certain.
 // Why: Electron starts one new copy per app.relaunch() at exit, so a second click during the quit guard's wait started two (probe, 18 Oct 2026), and a cancelled quit left a relaunch pending.
-// Guards: test/restart.test.js (incl. "app.relaunch( appears only in this file"), test/build-handlers.test.js.
+// Guards: test/unit/main/restart.test.js (incl. "app.relaunch( appears only in this file"), test/unit/main/build-handlers.test.js.
 export function createRestarter({app, log = () => {}, beforeExit = () => {}}) {
   let pending = null;
   app.on('will-quit', () => {

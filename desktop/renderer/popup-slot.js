@@ -1,5 +1,5 @@
 // The one slot for connection pop-ups (owner, 2 Nov 2026: "I don't want to overwhelm the user"; spec docs/superpowers/specs/2026-11-02-notify-moments-design.md): Gmail (pages/gmail-offer.js), Always on
-// (pages/hosted-moment.js) and the notification pop-ups offer themselves here; at most ONE opens per app run. Guard: test/popup-slot.test.js.
+// (pages/hosted-moment.js) and the notification pop-ups offer themselves here; at most ONE opens per app run. Guard: test/unit/renderer/popup-slot.test.js.
 // Invariant: a pop-up's "shown once" is written inside its own open(), so one that loses (or does not show) comes back at a later app open, never lost.
 
 export const WINDOW_MS = 5000;   // Why (2 Nov 2026): the moments are noticed within seconds of each other at start (the window asks 3 s after load); wait for all of them, then the highest rank wins

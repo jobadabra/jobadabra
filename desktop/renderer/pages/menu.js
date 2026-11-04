@@ -1,4 +1,4 @@
-// The sidebar's progressive pages: Interviews, Reports and Employers appear when they have something, a "More" row lists the others with when they unlock, and a one-time tour points at the menu. Rules in renderer/menu-reveal.js and menu-tour.js; guarded by test/menu-reveal.test.js.
+// The sidebar's progressive pages: Interviews, Reports and Employers appear when they have something, a "More" row lists the others with when they unlock, and a one-time tour points at the menu. Rules in renderer/menu-reveal.js and menu-tour.js; guarded by test/unit/renderer/menu-reveal.test.js.
 import {icon} from '../icons.js';
 import {$} from './core.js';
 import {shared} from './shared.js';

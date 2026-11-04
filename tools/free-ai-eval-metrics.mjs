@@ -1,5 +1,5 @@
 // What the Free AI quality table measures (tools/free-ai-eval.mjs): is the answer valid JSON in the asked shape, and does it rank like the baseline.
-// Pure functions, tested in desktop/test/free-ai-eval.test.js.
+// Pure functions, tested in desktop/test/tooling/ci/free-ai-eval.test.js.
 
 // A small JSON-schema check for the shapes the app asks for (type, enum, required, properties, items): -> [problems].
 export function schemaProblems(value, schema, at = '$') {

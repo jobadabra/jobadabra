@@ -2,7 +2,7 @@
 // "Decline", never prose. An answer is one line of the Profile's survey part, "Gender identity: Man (note: or Male when that is the equivalent option)
 // [pick one: Man | Woman | Non-binary | Decline]", the same text on every store; the words an answer carries besides its choice (a date it was confirmed, which
 // option label to use) are its note, and instructions written for the AI are lines "Notes for the AI: …". A line that is none of these stays as written.
-// The forms' own wording is mapped by the fill (worker FACT_RULE), so these choices are meanings, not a form's labels. Pure (no DOM): guarded by test/survey-model.test.js.
+// The forms' own wording is mapped by the fill (worker FACT_RULE), so these choices are meanings, not a form's labels. Pure (no DOM): guarded by test/unit/renderer/survey-model.test.js.
 import {markOf} from './question-kind.js';
 
 export const DECLINE = 'Decline to self-identify';

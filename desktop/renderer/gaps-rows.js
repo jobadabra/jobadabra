@@ -2,7 +2,7 @@
 // Confirm skill (the CV and the fill read it as a skill) and Dismiss (kept, so it is not asked again); reviewed ones fold under "Reviewed · N", each with Undo.
 // The card's own words (GAPS_LEAD, in its header) say what the list is; the Profile's other lines under the heading are shown as notes, apart from the decisions. No reason or source
 // column: the store keeps only the skill and its state (owner, 18 Oct 2026: no invented evidence). Lines of the part are the model's (gaps-model.js).
-// Guarded by test/gaps-rows.test.js.
+// Guarded by test/unit/renderer/gaps-rows.test.js.
 import {el, pill} from './components.js';
 import {icon} from './icons.js';
 import {readLines} from './gaps-model.js';

@@ -2,7 +2,7 @@
 // Interviewing writes the stage and its event to the store and is still there after a reload (journey J9, Track an application through its stages). Moved from the e2e `stores` suite
 // (1 Nov 2026, owner: "This again should be an integrations"). The Jobs read is the app's own (lib/pipeline.js jobs), the columns are the board's own rule (renderer/jobs-board-rules.js
 // boardColumns), the move is the engine step the board's `setStage` handler runs (lib/apply-handlers.js -> pipeline.markOutcome); a "reload" is a fresh read from the store.
-// What it does not prove: the click on ⋯ "Move to" in the window (renderer/pages/jobs-board.js moveJob, guarded by test/jobs-board-page.test.js and test/jobs-board-rules.test.js).
+// What it does not prove: the click on ⋯ "Move to" in the window (renderer/pages/jobs-board.js moveJob, guarded by test/unit/renderer/jobs-board-page.test.js and test/unit/renderer/jobs-board-rules.test.js).
 // Isolation: the storage is a temp folder, the engine gets only that folder's data and config (lib/pipeline-env.js), its secrets file is the run's own, and no window, Notion, AI or Keychain is reached.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

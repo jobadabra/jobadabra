@@ -3,7 +3,7 @@
 // ("EU / EEA + Switzerland: yes, freely"). Why (28 Oct 2026, owner): no permit date or "only in" ("a bit too much, too in depth") and no added country
 // ("they'll use it either for EEA or for US… there is no point for 'Add a country'"). Needing sponsorship is derived from the status, never a fact of its own. Which zone a form's country is in is
 // the AI's judgment, checked here against the zones' fixed members (lib/question-reuse.js). Pure: the lib and the renderer share it.
-// Guarded by test/work-eligibility.test.js.
+// Guarded by test/unit/renderer/work-eligibility.test.js.
 import {CODES} from './countries.js';
 
 // Why (28 Oct 2026, owner): EU citizens may work across the EEA and Switzerland, so they are one row.

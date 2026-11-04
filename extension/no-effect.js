@@ -1,5 +1,5 @@
 // Remembers which control a press left unchanged (no navigation, no new fields), per tab and page, so no route presses it again and the AI is told "pressed, no effect" on a re-ask.
-// Owns: the memory and the same-control test only; the callers are fill-flow.js (notes it, sends it) and apply-press.js (the floor). Guard: desktop/test/no-effect.test.js.
+// Owns: the memory and the same-control test only; the callers are fill-flow.js (notes it, sends it) and apply-press.js (the floor). Guard: desktop/test/unit/extension/no-effect.test.js.
 const dead = new Map();   // `${tab id} ${page}` -> the labels (as pressed, 40 characters) of controls whose press changed nothing
 export const sameControl = (a, b) => { const norm = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40); return !!norm(a) && norm(a) === norm(b); };
 export function noteNoEffect(key, label) {

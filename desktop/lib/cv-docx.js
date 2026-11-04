@@ -2,7 +2,7 @@
 // part reads as today. The PDF comes from LibreOffice when the add-on is there (lib/office-addon.js, downloaded on first use), else from the
 // app's own renderer (cv/docx-render.html); when LibreOffice arrives later, the PDF is drawn again. cv/docx.json names the PDF the .docx was
 // drawn as: the .docx counts only while cv.pdf is still that PDF, so a PDF picked later (any path) leaves it unused.
-// Guard: test/cv-docx.test.js.
+// Guard: test/unit/cv/cv-docx.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

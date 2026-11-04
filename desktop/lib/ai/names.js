@@ -1,6 +1,6 @@
 // The name of the AI the user chose, for the texts the main process sends to the window, toasts and dialogs: "Claude" (Anthropic API
 // key, Claude Code), "OpenAI" or "Codex", and its model per tier. Texts write {AI} and {AI:big|main|small} and pass through aiText(storage,
-// text). The window's twin is renderer/ai-name.js (test/ai-name.test.js keeps the two equal).
+// text). The window's twin is renderer/ai-name.js (test/unit/renderer/ai-name.test.js keeps the two equal).
 import {chosen} from './index.js';
 import {isOn, isFreeKey} from '../ai-free.js';
 

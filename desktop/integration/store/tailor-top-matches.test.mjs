@@ -3,7 +3,7 @@
 // jobs without a CV, in fit order, and leaves the third alone" (R3 follow-up, 1 Nov 2026, owner: only Tier 1 journeys are e2e). What this file runs for real: the store's own commands seed the jobs,
 // the shared Jobs read (lib/pipeline.js jobs, which marks `tailored` from the PDFs on this Mac, lib/job-flags.js) lists them, and the picker the handler uses (lib/apply.js pickUntailored) chooses.
 // What it does not run: the tailoring itself (AI and Chromium: cv.test.js, cv-inplace*.test.js), the run's card (integration/app/screen-cardstates.test.js "Tailored 3 of 5 CVs, 2 failed"), Run held
-// off while a task runs (test/actions-layout.test.js) and "View activity" opening the running task (test/run-view.test.js). The CVs are saved the way the app saves them (cv.save).
+// off while a task runs (test/unit/renderer/actions-layout.test.js) and "View activity" opening the running task (test/unit/renderer/run-view.test.js). The CVs are saved the way the app saves them (cv.save).
 // Isolation: the storage is a temp folder, the engine gets only that folder's data and config (lib/pipeline-env.js), its secrets file is the run's own, and no window, Notion, AI or Keychain is reached.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

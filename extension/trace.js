@@ -2,7 +2,7 @@
 // timing, content type, location, body) through Chrome's debugger Network events, IN MEMORY ONLY (trace-buffer.js), so "Report this form" can hand it over at once, with no reload.
 // It never reads request bodies, request headers or cookies. A page with a password field is never kept: that page is dropped whole, the debugger is released while it is shown (Chrome's bar goes
 // away there) and the trace goes on after it. It shares the one debugger attachment with the fill's clicks (stop-state.js). Off when the Settings switch is off: no attach, no bar.
-// Guards: desktop/test/trace.test.js, trace-buffer.test.js, trace-debugger.test.js.
+// Guards: desktop/test/unit/extension/trace.test.js, trace-buffer.test.js, trace-debugger.test.js.
 import {attachDebugger, detachDebugger, forgetDebuggerUsers, isStopped} from './stop-state.js';
 import {createBuffer} from './trace-buffer.js';
 

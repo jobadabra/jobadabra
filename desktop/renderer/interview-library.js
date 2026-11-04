@@ -1,5 +1,5 @@
 // Interviews → the library's read from Notion (src/ai/interviews.py list, through lib/interviews.js): what the page
-// shows after it. Pure, so the failure cases are tested (test/interview-library.test.js): a failed read says why and
+// shows after it. Pure, so the failure cases are tested (test/unit/renderer/interview-library.test.js): a failed read says why and
 // keeps the rows already on screen (the last good copy), and is never shown as an empty table.
 import {where} from './store-name.js';
 export const libraryError = () => `Couldn't read your interviews from ${where()}. Try again with ↻; the reason is in the app log.`;

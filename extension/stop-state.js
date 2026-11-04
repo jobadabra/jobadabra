@@ -1,5 +1,5 @@
 // Whether the extension is stopped, and the one door the debugger goes through (extension/stop.js says why and does the stopping). A leaf with no imports on purpose: the files that
-// act (the fill, the presses, the debugger users) check it without pulling the worker in. Guard: desktop/test/extension-stop.test.js.
+// act (the fill, the presses, the debugger users) check it without pulling the worker in. Guard: desktop/test/guards/safety/extension-stop.test.js.
 let stoppedAt = 0, generation = 0;
 export const isStopped = () => stoppedAt > 0;
 export const mayAct = () => stoppedAt === 0;
@@ -21,7 +21,7 @@ export function noteStarting(tabId, done) { starting.set(tabId, done); done.fina
 export const pageStarted = tabId => starting.get(tabId) || Promise.resolve();
 // The one place the debugger is attached (it shows Chrome's "started debugging this browser" bar): never while stopped, and only on a tab the app opened for an application.
 // Several users share one attachment (the fill's menu clicks and typing, the repair clicks, the picture, the form trace: trace.js): each attachDebugger is matched by ONE detachDebugger, and
-// Chrome's detach happens when the last user leaves, so a menu click finishing never ends the trace (spec 2026-10-16-report-from-the-trace.md §1). Guard: desktop/test/trace-debugger.test.js.
+// Chrome's detach happens when the last user leaves, so a menu click finishing never ends the trace (spec 2026-10-16-report-from-the-trace.md §1). Guard: desktop/test/unit/extension/trace-debugger.test.js.
 const users = new Map();   // tab id -> how many hold the attachment
 export async function attachDebugger(tabId) {
   if (isStopped()) throw new Error('stopped: the person pressed Stop');

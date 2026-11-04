@@ -1,13 +1,13 @@
 // The Applying flows' decisions in the app, out of main.js so they are unit-tested (docs/flows/applying.md): what a "can't reach the
 // form" report from the extension does (account step, Claude's hand-over), which step each form report puts the session at, and the
 // form tab Claude's hand-over closes. Scenarios owned: "Sign-up page before the form", "Claude takes over an account page",
-// "Two applications side by side" (stuck reports). Guards: test/session-flow.test.js, the apply e2e rows (npm run flows).
+// "Two applications side by side" (stuck reports). Guards: test/unit/main/session-flow.test.js, the apply e2e rows (npm run flows).
 // Every service is passed in (terminals, review, apply, the log, the window, startClaude), so a test drives these with fakes.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. A stuck report from a tab the session has left is ignored (desktop/test/session-flow.test.js).
+//  1. A stuck report from a tab the session has left is ignored (desktop/test/unit/main/session-flow.test.js).
 //  2. Claude is offered on a page the extension could not finish; this module never starts it. It starts only on the person's press in the panel or, with settings.claudeAuto,
-//     after the panel's visible 5 s countdown with Cancel (owner, 10 Oct 2026; replaces "never started by itself") (desktop/test/session-flow.test.js).
-//  3. The session is found one way (lib/journey-identity.js) and its step changes only through terminals.js -> lib/application-journey.js (desktop/test/journeys.test.js).
+//     after the panel's visible 5 s countdown with Cancel (owner, 10 Oct 2026; replaces "never started by itself") (desktop/test/unit/main/session-flow.test.js).
+//  3. The session is found one way (lib/journey-identity.js) and its step changes only through terminals.js -> lib/application-journey.js (desktop/test/unit/main/journeys.test.js).
 
 import {identityServices, resolveSession} from './journey-identity.js';
 import {STUCK} from './application-journey.js';

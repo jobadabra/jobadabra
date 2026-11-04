@@ -5,7 +5,7 @@
 // answer), conflicts (Two answers), new (a topic of its own), or none of ours: owned (Your details, Strategy), private (right to work, criminal record,
 // demographics) or one_job. The code checks the reply's shape and that a picked topic is one of the list, and writes what the verdict says; no word list
 // or string compare decides a merge. Sources: answers the fill's AI wrote (state new, guess when unsure) and what the person typed at Submit (confirmed).
-// Plan docs/superpowers/plans/2026-10-28-what-we-learned.md (PR B2). Guarded by test/learnings.test.js; prompt cases test/fixtures/learnings-cases.json.
+// Plan docs/superpowers/plans/2026-10-28-what-we-learned.md (PR B2). Guarded by test/unit/main/learnings.test.js; prompt cases test/fixtures/learnings-cases.json.
 import {KEYS} from '../shared/alias-schema.js';
 import {FIELDS, readProfile} from '../renderer/preferences-model.js';
 import {changeFor, sections, withState} from '../renderer/answers-model.js';

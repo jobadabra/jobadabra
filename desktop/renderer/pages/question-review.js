@@ -5,7 +5,7 @@
 // Back · Skip · Save. Drafts are kept when it closes. Two drawers, one frame (Why (28 Oct 2026, owner, superseding 18 Oct "One queue for all"): "Fill your
 // details" walks the Your details items, "What we learned" the reusable questions with Later · Confirm / Save change); each is one list of
 // pages/jobs-questions.js questionsNow, so its count is the card's and the tab's. Set-aside questions are listed apart in What we learned's navigator.
-// Opened from Jobs' cards, the Profile tabs and ⌘K (nav.js). Guarded by test/question-drawers.test.js, test/question-review.test.js, test/question-kinds-screens.test.js.
+// Opened from Jobs' cards, the Profile tabs and ⌘K (nav.js). Guarded by test/unit/renderer/question-drawers.test.js, test/unit/renderer/question-review.test.js, test/unit/renderer/question-kinds-screens.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {answerControl} from '../question-control.js';

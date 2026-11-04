@@ -103,7 +103,7 @@ jobs:
         # The folders a UI fix may touch (ui-fix-prompt.md rule 4); check-change.mjs checks them again, and the step below runs every suite and the lint.
         run: >-
           node desktop/e2e/edit-codex.mjs --prompt .heal/prompt.md --roots desktop/renderer,desktop/lib,desktop/test,src,tests --image .heal/screenshot.png
-          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/[A-Za-z0-9._-]+\.test\.js$|tests/test_[A-Za-z0-9_]+\.py$)'
+          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/((unit|guards)/[A-Za-z0-9_-]+/)?[A-Za-z0-9._-]+\.test\.js$|tests/((unit|guards)/[A-Za-z0-9_]+/)?test_[A-Za-z0-9_]+\.py$)'
           --none-as verdict --none-out .heal/verdict.md --body-out .heal/pr-body.md
       - uses: actions/upload-artifact@v6
         if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'

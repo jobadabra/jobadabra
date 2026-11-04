@@ -1,7 +1,7 @@
 // A broken page in the middle of an application starts it again from its job posting (owner, 16 Oct 2026: "it's just a broken page which we need to close and reopen from
 // scratch"; a SuccessFactors form address had lost its site session and showed "An error occurred"). Decided by the page's own judgment, never by its words: the page-kind
 // AI's "other" (no job page here) or a page the server answered with an error (ladder/site-broken.js). Only when the tab is NOT on the posting itself, and once per posting
-// per tab in ten minutes, so a posting that keeps failing ends in its plain report, never a loop. Guard: desktop/test/page-steps.test.js.
+// per tab in ten minutes, so a posting that keeps failing ends in its plain report, never a loop. Guard: desktop/test/unit/extension/page-steps.test.js.
 import {moveTab} from './tabs.js';
 import {pageKey} from './tab-pages.js';
 

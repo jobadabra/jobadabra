@@ -1,7 +1,7 @@
 // The one way the app gets this install's site token for a purpose ('ai', 'report', 'recipes', 'index', 'trial'): asked once and kept (an install's token never
 // changes), one ask at a time, and after a refusal (the site's per-address daily limit, 429) not asked again before the next UTC day.
 // 17-18 Oct 2026: the app asked again on every call and retried at once; ~1 ask a second from this Mac used up the day's 20 'ai' tokens and the
-// owner's Ready to send card stayed hidden. 'trial' is the repo key an Always-on repo holds (JPT1.…): the site mints it only on `proof`, the install's own AI key, sent as x-api-key (ai-free.js ensureRepoKey). Callers: ai-free.js, ready-site.js, plan.js, report-upload.js, recipes.js. Guard: test/install-token.test.js.
+// owner's Ready to send card stayed hidden. 'trial' is the repo key an Always-on repo holds (JPT1.…): the site mints it only on `proof`, the install's own AI key, sent as x-api-key (ai-free.js ensureRepoKey). Callers: ai-free.js, ready-site.js, plan.js, report-upload.js, recipes.js. Guard: test/unit/main/install-token.test.js.
 const KEPT = 'siteTokens', WAIT = 'siteTokenWait';
 const LEGACY = {report: 'reportToken', recipes: 'recipesToken'};   // where these two were kept before: read once, so no install asks again
 const asking = new Map();

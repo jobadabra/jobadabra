@@ -1,7 +1,7 @@
 // What the extension runs INSIDE a page it reads (chrome.scripting.executeScript { func }): each function is self-contained (it is serialised
 // and sent to the page, so it may use nothing outside itself). They read the job list, outline it for Claude, close consent banners, list
 // and apply filter controls, find the way on to the next page. The visit itself (pages, pauses, progress) is visit.js.
-// Guarded by desktop/test/extension-tab-pages.test.js, visits-run.test.js and local-server.test.js.
+// Guarded by desktop/test/unit/extension/extension-tab-pages.test.js, visits-run.test.js and local-server.test.js.
 
 // Runs inside the page (chrome.scripting): self-contained. What a person sees: the page, and each job card's visible lines.
 export function extractPage() {

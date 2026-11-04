@@ -1,5 +1,5 @@
 // Where a posting's application form lives and whether a reported page is that form: ONE rule for opening a tab (apply.js) and for knowing whose tab it is (review.js,
-// journey-identity). Moved out of apply.js 12 Oct 2026 so the page-to-session match uses the same rule as the opener. Guards: test/review.test.js, test/app-apply.test.js.
+// journey-identity). Moved out of apply.js 12 Oct 2026 so the page-to-session match uses the same rule as the opener. Guards: test/unit/main/review.test.js, test/unit/main/app-apply.test.js.
 
 // Tier 1: where the application form lives for a known site, when the posting page only has an "Apply" button in front of it.
 // Ashby: <posting>/application, Lever: <posting>/apply, Workable: <posting>/apply. Anything else (or a URL already there) opens as it is.

@@ -1,5 +1,5 @@
 // "Report this form" in the app window: the switch in Settings and the line about what this install has sent (and may delete). The report itself is made and sent from the extension's panel (owner, 19 Oct 2026):
-// its popup shows what goes and sends; lib/report-handlers.js holds the record meanwhile. Guard: test/report-panel.test.js.
+// its popup shows what goes and sends; lib/report-handlers.js holds the record meanwhile. Guard: test/unit/extension/report-panel.test.js.
 import {$} from './core.js';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;

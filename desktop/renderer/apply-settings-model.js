@@ -1,6 +1,6 @@
 // Settings → Apply (owner, 26 Oct 2026, hybrid fill step 2): how Jobadabra applies for the person, kept in settings.apply and read by the window
 // (pages/apply-settings.js, pages/apply-choice.js) and the app (lib/apply-choice-gate.js). Pure. The consent switch (acceptConsents) and accounts
-// (accountAutomation) keep their own keys: the extension reads them. Guard: test/apply-settings.test.js.
+// (accountAutomation) keep their own keys: the extension reads them. Guard: test/unit/renderer/apply-settings.test.js.
 
 // Why (27 Oct 2026, owner): approved labels state browser visibility and who submits; persisted mode IDs stay stable.
 // runner: the batch runner the main process starts for the mode (lib/apply-handlers.js); a mode with none is not built. Why (28 Oct 2026, owner, #2317

@@ -2,7 +2,7 @@
 // Why (28 Oct 2026, owner): "let's improve the loading state UI of the cover letter"; he picked option A of the lw sketch (a strip that says what runs with a
 // live timer, the old text faded and kept until the new text lands), then "Make it more like a glowing/magic": the app's magic look (magic.css: amber light,
 // a lit edge, star sparkles) around the box. An empty box shows letter-shaped skeleton lines. Look: ai-writing.css. Used by pages/base-letter.js and
-// job-drawer/job-letter.js. Guarded by test/ai-writing.test.js.
+// job-drawer/job-letter.js. Guarded by test/unit/renderer/ai-writing.test.js.
 import {el} from './components.js';
 import {icon} from './icons.js';
 

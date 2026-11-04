@@ -4,9 +4,9 @@
 //   page -> app  POST /extension/review {url, title, left, total, missing: [label], filled: [label], watch: [{id, filled: true|false|null}]}
 //   app -> page  the reply: {matched, watch: [{id, label}], commands: [{focus: label}]}
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. A form page is matched to its session by the job, the company, or neither (never a guess) (desktop/test/review.test.js).
-//  2. The last form states come back after a restart only for sessions that still exist (desktop/test/review.test.js).
-//  3. A job address alone never moves a session to a tab of another browser run that still reports; the tab's own session mark still does (desktop/test/session-tab.test.js). The same holds for every other job-address match (focus report, account handlers, stuck report): they ask this file's heldElsewhere (desktop/test/tab-match-class.test.js).
+//  1. A form page is matched to its session by the job, the company, or neither (never a guess) (desktop/test/unit/main/review.test.js).
+//  2. The last form states come back after a restart only for sessions that still exist (desktop/test/unit/main/review.test.js).
+//  3. A job address alone never moves a session to a tab of another browser run that still reports; the tab's own session mark still does (desktop/test/unit/main/session-tab.test.js). The same holds for every other job-address match (focus report, account handlers, stuck report): they ask this file's heldElsewhere (desktop/test/guards/rules/tab-match-class.test.js).
 import fs from 'node:fs';
 import {markedSession} from './session-tab.js';
 import {isFormOf} from './form-address.js';

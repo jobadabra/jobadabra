@@ -4,7 +4,7 @@
 // "Label:" line with its values as chips (× and "Add, then Enter"), a line with no label as its words, + Add a group (strengths-model.js). Education:
 // Degree / qualification · School · Years per entry, + Add education and Remove entry; a line not in that shape stays as written until the person
 // chooses Organize into fields (education-model.js); a table's rows stay cells; notes in brackets are kept and shown. Any other section: a field per
-// line and per cell, + Add a line. Guarded by test/experience-editors.test.js.
+// line and per cell, + Add a line. Guarded by test/unit/renderer/experience-editors.test.js.
 import {el} from './components.js';
 import {editRows} from './card-shell.js';
 import {chipsInput, longText} from './edit-controls.js';

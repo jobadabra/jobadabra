@@ -1,7 +1,7 @@
 // Display-only: turns a stored run row into the record Recent activity shows; it judges and fills nothing.
 // One run as an activity record (the shape of this Mac's runs.json records), from a store's row: a Notion ⏱️ Search runs page
 // (fromRow) or a store record (fromRecord: src/stores CRON_RUN_FIELDS). Pure: no store, no Notion calls. Moved out of
-// run-history.js so the store adapters (lib/store/*) and Recent activity share it. Guarded by test/run-history.test.js, store-runs.test.js.
+// run-history.js so the store adapters (lib/store/*) and Recent activity share it. Guarded by test/unit/main/run-history.test.js, store-runs.test.js.
 import {CRASH_LINE} from './crash-line.js';
 
 export const KIND = {scheduled: 'search', run: 'search', first: 'search', today: 'today', mail: 'mail', scout: 'scout', insight: 'insight',

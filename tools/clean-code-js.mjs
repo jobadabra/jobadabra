@@ -139,14 +139,17 @@ export function baseCommit(cwd = root) {
 
 /**
  * The in-scope JS files the committed HEAD adds or edits since `base`, as [{path, source, added, base}]: the pushed commits only (never the
- * working tree) and renames counted as new files (base null), so a moved-and-edited file is checked too.
+ * working tree). A moved file is compared with its old path, so its edited lines are checked and the code it only carried is not.
  */
+// Why-changed (3 Nov 2026, test folders 3/3): renames were counted as new files (#f222bc71), so moving 1,010 tests judged their old functions
+// as written by the move; comparing with the old path still checks a moved-and-edited file's new lines, which is what #f222bc71 wanted.
 export function changedFiles(base, cwd = root) {
-  const changes = gitIn(cwd, 'diff', '--name-status', '--no-renames', '--diff-filter=AM', base, 'HEAD').split('\n')
-    .map(row => row.split('\t')).filter(([, name]) => name && SCOPE.test(name) && !SKIP.test(name));
-  return changes.map(([status, name]) => {
-    const diff = gitIn(cwd, 'diff', '-U0', '--no-renames', base, 'HEAD', '--', name);
-    const before = status === 'M' ? {source: gitIn(cwd, 'show', `${base}:${name}`), lineOf: baseLineOf(diff)} : null;
+  const changes = gitIn(cwd, 'diff', '--name-status', '-M', '--diff-filter=AMR', base, 'HEAD').split('\n')
+    .map(row => row.split('\t')).map(([status = '', from, to]) => status.startsWith('R') ? ['M', to, from] : [status, from, from])
+    .filter(([, name]) => name && SCOPE.test(name) && !SKIP.test(name));
+  return changes.map(([status, name, from]) => {
+    const diff = gitIn(cwd, 'diff', '-U0', '-M', base, 'HEAD', '--', from, name);
+    const before = status === 'M' ? {source: gitIn(cwd, 'show', `${base}:${from}`), lineOf: baseLineOf(diff)} : null;
     return {path: name, source: gitIn(cwd, 'show', `HEAD:${name}`), added: addedLines(diff), base: before};
   });
 }

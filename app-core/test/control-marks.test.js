@@ -1,5 +1,5 @@
 // The cause of each left control travels from the fill to the panel's report: fillCard lists marks, markCauses writes them onto the controls (and drops the list), the report's `why` carries them as fixed words
-// (extension/ladder/control-marks.js, page/review-payload.js). Guard for the person card's reason line (desktop/test/reason-class.test.js).
+// (extension/ladder/control-marks.js, page/review-payload.js). Guard for the person card's reason line (desktop/test/unit/renderer/reason-class.test.js).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';

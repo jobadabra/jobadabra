@@ -1,4 +1,4 @@
-// The window's zoom (lib/zoom.js has the rules): applied at every load, changed by the View menu's ⌘- ⌘+ ⌘0 and by Settings → Appearance → Text size, saved in the app's settings. Guarded by test/zoom.test.js.
+// The window's zoom (lib/zoom.js has the rules): applied at every load, changed by the View menu's ⌘- ⌘+ ⌘0 and by Settings → Appearance → Text size, saved in the app's settings. Guarded by test/unit/renderer/zoom.test.js.
 import {choiceOf, defaultFactor, factorFor, factorOfChoice, step} from './zoom.js';
 
 export function createZoom({screen, getWindow, getStorage, toWindow = () => {}}) {

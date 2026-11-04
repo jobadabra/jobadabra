@@ -1,7 +1,7 @@
 // "Needs your attention": a question the employer can reject on by itself stands out in its row, whether it has a proposed answer, an
 // empty box or Claude's own question (owner, 9 Oct 2026: suggest the answer anyway, but highlight the knockouts). The test is the one the
 // "Before you submit" card uses (pages/session-form-card.js): the AI that read the form in any language (the form's report `knockouts`),
-// or the shared pattern. Guarded by test/need-proposal.test.js.
+// or the shared pattern. Guarded by test/unit/renderer/need-proposal.test.js.
 import {el} from '../components.js';
 import {KNOCKOUT} from '../knockout.js';
 import {reviewStates} from './session-needs.js';

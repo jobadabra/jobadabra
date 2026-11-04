@@ -2,7 +2,8 @@
 // 2026-10-12-one-next-move.md box 7): TODAY, the button rung 2 names (the fixture's stored answer through the real pageKind: its applyButton, matched to the numbered candidates by their own
 // text) -> right / stop (no button: a dead end) / wrong; and the FALLBACK, the one question's digest answer (rung 3) -> right / unsure (right but below 0.8: it climbs, never acts) /
 // wrong (it would not act) / wrong-confident (it would act on the wrong control). With the fallback, a page today stops on gets the fallback's move; elsewhere today's stands.
-// Per source, never blended. Guard: test/ladder-move-score.test.js.
+// Per source, never blended. Guard: test/unit/main/ladder-move-score.test.js.
+// Job: keep the scorecard
 import {SOURCE_GROUP, SURE} from './ladder-score.mjs';
 
 const textKey = text => String(text ?? '').toLowerCase().replace(/\s+/g, ' ').trim();

@@ -1,4 +1,4 @@
-{"_comment": "One table, two implementations: src/sources/boards.py swiss_places and desktop/renderer/audience.js swissPlaces must agree on every row (tests/unit/sources/test_aggregators.py, desktop/test/audience.test.js). A row is the place fragments of a search (top cities, country, abroad).",
+{"_comment": "One table, two implementations: src/sources/boards.py swiss_places and desktop/renderer/audience.js swissPlaces must agree on every row (tests/unit/sources/test_aggregators.py, desktop/test/unit/renderer/audience.test.js). A row is the place fragments of a search (top cities, country, abroad).",
  "cases": [
   {"places": ["zurich"], "swiss": true},
   {"places": ["\\bz[u\u00fc]rich\\b", "berlin"], "swiss": true},

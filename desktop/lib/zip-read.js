@@ -1,6 +1,6 @@
 // A small ZIP reader on node:zlib (no dependency): list the entries of a .zip file and read chosen ones, from the central directory,
 // without loading the whole archive (a full LinkedIn export can be large). Stored and deflated entries only; ZIP64 is refused with a
-// clear error. Used by lib/linkedin-export.js. Guarded by test/linkedin-export.test.js.
+// clear error. Used by lib/linkedin-export.js. Guarded by test/unit/main/linkedin-export.test.js.
 import fs from 'node:fs';
 import zlib from 'node:zlib';
 

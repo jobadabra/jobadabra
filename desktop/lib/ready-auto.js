@@ -1,7 +1,7 @@
 // Ready to send by itself (owner, 18 Oct 2026: "before I turn off the laptop"; he chose "on change + at shutdown"): tonight's finished jobs go to
 // the server whenever their list changes (checked every few minutes and when the screen locks), and once more when the app quits, the Mac sleeps
 // or shuts down, so the night runs with the laptop off. Never after tonight's fill time, never over a night already started (Fill now), only on
-// the owner's install. Wired in lib/ready-handlers.js. Guard: test/ready-auto.test.js.
+// the owner's install. Wired in lib/ready-handlers.js. Guard: test/unit/ready-fill/ready-auto.test.js.
 import {nightOf} from './ready-batch.js';
 
 export const CHECK_EVERY_MS = 5 * 60 * 1000;

@@ -1,6 +1,6 @@
 // Letters a CV's embedded font subset lacks (a PDF keeps only the letters it printed): the same face installed on this computer, else the
 // same free font downloaded once (Google Fonts), else a free twin with the same letter widths, else nothing (the item keeps its wording).
-// The font found is embedded by write.js for those letters only. Downloads are cached in the app's folder. Guards: test/pdf-edit-fonts.test.js.
+// The font found is embedded by write.js for those letters only. Downloads are cached in the app's folder. Guards: test/unit/cv/pdf-edit-fonts.test.js.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

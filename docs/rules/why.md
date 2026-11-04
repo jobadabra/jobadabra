@@ -96,7 +96,7 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - 8 Oct 2026: an owner-approved card layout was overwritten by a later session that never knew it was approved (CLAUDE.local "A card has many states").
 - 27 Oct 2026: a session first built the Website box by its label, against the owner's choice that the AI judges the box (#2201); another reworded a prompt
   to pass one benchmark case. Owner: "next time an AI agent/session comes, doesn't get overwrite with no reasoning/understanding why that code was like that";
-  asked "rule + gate", he chose it. Hence the Why comment and `tools/why-changed.mjs` (guard: `desktop/test/why-changed.test.js`).
+  asked "rule + gate", he chose it. Hence the Why comment and `tools/why-changed.mjs` (guard: `desktop/test/tooling/ci/why-changed.test.js`).
 - Same day, the owner on stale comments ("an outdated comment misleads an AI more than no comment"): a Why left above changed code is refused.
   Then "let's adopt all these rules/recommendations": why-not-what, doc comments on new exported functions, invariants, tagged debt
   (`tools/new-code-comments.mjs`, guard `desktop/test/new-code-comments.test.js`; over main's last 150 commits it would have asked on 29, 55 functions).
@@ -179,7 +179,7 @@ An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick whi
   "0 of 1 · Airbase · Next" for 15 minutes: the extension read the site at once, but the pass's task waited behind Find jobs and missed the answer.
   Hence: the judge sees where a site was found, judges what an organisation does (never its name), and an automatic read leaves an unsure site
   out; a pass exists from the moment its sites are handed out and each site answers within 45 s or ends it with that reason.
-  Guards: `tests/unit/sources/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
+  Guards: `tests/unit/sources/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/unit/main/refused-reads-pass-timing.test.js`.
 - Employers from the shared list (audit PR 4): the pilot search read 763 index employers, none known to hire pilots: 494 with no kind mix yet and
   269 with an old mix mostly "other" were kept on a guess, and a mix counted over all jobs worldwide spoke for one country. Owner: "Not read" for an
   employer not judged yet, old mixes the same; the countries of job places judged "using any user's machine/installation (being it Pro/Free AI/
@@ -196,7 +196,7 @@ An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick whi
   your browser" shouldn't start automatically in the backgruond. It should be suggested to the user as an action button"; "there should be a button
   on the card where the "find jobs" finished"; "I don't think we should have a switch at all".
 - Hence: one gate (`desktop/lib/refused-now.js`): the app hands the extension sites only after the press; a finished Find jobs run counts the due
-  sites and its card offers the button (also ⌘K); the Settings switch is gone. Guard: `desktop/test/refused-reads-button.test.js` (loops over every
+  sites and its card offers the button (also ⌘K); the Settings switch is gone. Guard: `desktop/test/guards/safety/refused-reads-button.test.js` (loops over every
   path that used to start reads; press() has one caller).
 
 ## Suites run on CI only (26 Oct 2026)

@@ -1,6 +1,6 @@
 // The floor "the server never presses Submit" as a net under the filler (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): the extension has no Submit path, and this stops what it would never do anyway.
 // Every request the night's browser makes goes through `net`: a form submission (a POST that navigates a page) or a POST/PUT whose address ends in a submit or apply word is refused and counted. A CV upload on choice
-// (a multipart POST that is not a navigation) goes through: the fill needs it. A word list is a safety floor here, never a meaning. Guard: desktop/test/ready-fill.test.js.
+// (a multipart POST that is not a navigation) goes through: the fill needs it. A word list is a safety floor here, never a meaning. Guard: desktop/test/unit/ready-fill/ready-fill.test.js.
 const SUBMIT_PATH = /\/(submit|apply|applications?)(\.json)?\/?$/i;
 
 // Pure: is this request a submit? `request` is {method, url, navigation}.

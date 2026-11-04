@@ -1,5 +1,5 @@
 // The IPC of "Build a CV with the AI" (setup's CV step and Settings → Profile → CV): the draft from the form's answers, saving the edited draft as the
-// main CV (with its PDF), and saving that PDF where the person chooses. The AI and the checks are in lib/cv-build.js. Guard: test/cv-build.test.js.
+// main CV (with its PDF), and saving that PDF where the person chooses. The AI and the checks are in lib/cv-build.js. Guard: test/unit/cv/cv-build.test.js.
 import * as claudeCode from './claude-code.js';
 import * as cvlib from './cv.js';
 import {buildCv, saveBuilt} from './cv-build.js';

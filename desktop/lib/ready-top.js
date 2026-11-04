@@ -1,5 +1,5 @@
 // Fill now's pick (owner, 19 Oct 2026: "fills how many jobs... the highest ranking jobs that were not filled already"): the top jobs by fit, with what each still lacks
-// (kit, tailored CV, cover letter) and what making it costs. Pure: the handler (lib/ready-handlers.js) prepares and sends; the card's popup shows it. Guard: test/ready-top.test.js.
+// (kit, tailored CV, cover letter) and what making it costs. Pure: the handler (lib/ready-handlers.js) prepares and sends; the card's popup shows it. Guard: test/unit/ready-fill/ready-top.test.js.
 import {DEFAULT_MIN_FIT} from './ready.js';
 
 export const CHIPS = [1, 3, 5, 10];

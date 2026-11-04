@@ -118,7 +118,7 @@ for repo in "${repos[@]}"; do
   for s in "${suites[@]}"; do
     case "$s" in
       python) cmd=(bash tools/check.sh --area python $affected_flag); dir="$repo" ;;
-      codemap) cmd=(node --test test/codemap.test.js); dir="$repo/desktop" ;;
+      codemap) cmd=(node --test test/unit/main/codemap.test.js); dir="$repo/desktop" ;;
       *) cmd=(bash tools/check.sh --area "$s" $affected_flag); dir="$repo" ;;
     esac
     if [ "$s" != python ] && [ ! -e "$dir/node_modules" ] && [ ! -e "$repo/$s/node_modules" ]; then   # an area keeps its own node_modules (desktop/, worker/, site/): the repo root has none (11 Oct 2026: every worktree said "not tested")
@@ -144,7 +144,7 @@ for repo in "${repos[@]}"; do
     [ "$code" = 0 ] && continue
     case "$s" in
       python) how="JOBADABRA_DISABLE=mail,notion,telegram,google_jobs $py -m unittest discover -s tests" ;;
-      codemap) how="cd desktop && node --test test/codemap.test.js (a new file needs a one-line header saying what it does)" ;;
+      codemap) how="cd desktop && node --test test/unit/main/codemap.test.js (a new file needs a one-line header saying what it does)" ;;
       *) how="cd $s && npm test" ;;
     esac
     failed+="--- $s failed (exit $code). Reproduce in $repo: $how"$'\n'

@@ -12,7 +12,7 @@ export const notionConnected = () => !!shared.state?.notion?.NOTION_PROFILE_PAGE
 // The data has a home (Notion connected, or kept on this Mac: lib/store), so tracking works; false only while trying.
 export const tracking = () => notionConnected() || shared.state?.store?.tracking === true;
 // A page behind the Notion gate (LOCKED_VIEWS) while not tracking: its loader reads nothing, so a background caller (a finished check,
-// a saved answer) never opens the connect prompt uninvited (#410). Guard: test/notion-gate-window.test.js.
+// a saved answer) never opens the connect prompt uninvited (#410). Guard: test/guards/data/notion-gate-window.test.js.
 export const gatedOut = name => !!LOCKED_VIEWS[name] && !tracking();
 export const reasonText = reason => {
   const words = shared.state?.notionReasons?.[reason];

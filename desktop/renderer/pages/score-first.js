@@ -1,6 +1,6 @@
 // "Score first": every Find jobs press while scores are from the previous strategy (owner, 2 Nov 2026: "Find jobs should be only for finding jobs. But pressing
 // Find jobs should open a dialog saying: Score first"). Two ways on: Re-score N (or "Re-score 60 now" past 60) (the re-score's own card runs), or Find jobs without re-scoring. Cancel starts nothing.
-// The words are rescore-words.js's (the Strategy notice's, the same sentence); the count is rescore-run.js's. Guarded by test/rescore-call.test.js.
+// The words are rescore-words.js's (the Strategy notice's, the same sentence); the count is rescore-run.js's. Guarded by test/unit/renderer/rescore-call.test.js.
 import {$} from './core.js';
 import {knownOutdated, rescoring, runRescore} from './rescore-run.js';
 import {pressLabel, scoreFirstLead, scoreFirstSkip, scoreFirstTitle} from '../rescore-words.js';

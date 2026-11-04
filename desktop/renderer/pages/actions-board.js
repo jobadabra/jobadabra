@@ -1,6 +1,6 @@
 // "Read this board" (owner, 16 Oct 2026): a job list behind a login (LinkedIn and the like) read through a tab the app opens and manages in the person's own
 // Chrome. The card sits beside "Find jobs using your browser" (built here, not in index.html, which may only shrink); Run opens a small dialog for the board's
-// search address, or one of the sites the app knows; the tab waits for the person's Read (extension popup), after they sign in themselves. Guard: desktop/test/read-board.test.js.
+// search address, or one of the sites the app knows; the tab waits for the person's Read (extension popup), after they sign in themselves. Guard: desktop/test/unit/extension/read-board.test.js.
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {$, show} from './core.js';

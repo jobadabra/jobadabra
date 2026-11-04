@@ -1,6 +1,6 @@
 // Jobs → Board: the applications in columns by Stage (the 🎯 Pipeline page's board in Notion), a card per job like the "In conversation"
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
-// dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/jobs-board-page.test.js.
+// dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
 import {el, moreButton, pill} from '../components.js';
 import {boardColumns, dropFor, STAGES, takesDrop} from '../jobs-board-rules.js';
 import {matchLabel} from '../jobs-view.js';
