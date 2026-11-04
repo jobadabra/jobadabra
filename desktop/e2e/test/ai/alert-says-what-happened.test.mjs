@@ -43,13 +43,25 @@ test('the broker\'s budget reason and the neuron cap are still told as credit', 
 });
 
 test('a 503 about one bad reply, a lost login or a 401 is no credit, though the client files them under capped', async () => {
-  for (const why of ['AI skipped/failed: 3 AI calls were refused (the AI broker said no (broker: fallback:reply-refused))', 'broker: login-lost', 'mail reading: 401: invalid x-api-key']) {
+  for (const why of ['AI skipped/failed: 3 AI calls were refused (the AI broker said no (broker: fallback:reply-refused))', 'broker: login-lost', 'mail reading: 401: invalid x-api-key', 'unreadable of 100000 neurons; 0 skipped step(s)']) {
     const {text} = await alertOf({why});
     assert.doesNotMatch(text, /ran out|refused the AI/i, why);
+    assert.doesNotMatch(text, /not a credit/i, 'a 503 can hide a used-up engine: the alert never claims it was not credit');
   }
   assert.equal(kindOf('capped', 'broker: fallback:reply-refused'), 'overloaded');
   assert.equal(kindOf('capped', 'broker: login-lost'), 'limit');
   assert.equal(kindOf('capped', 'broker: budget:week 100% of 100% (scheduled)'), 'limit');
+});
+
+test('a limit among many failed notes is the one the alert keeps', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), sent = [], print = console.log;
+  console.log = () => {};
+  try {
+    for (const [job, why] of [['a', 'broker: 500'], ['b', 'broker: 502'], ['c', 'broker: 503'], ['d', 'broker: 504'], ['e', 'broker: budget:week 100% of 100%']]) noteSkipped({job, why, dir: path.join(dir, job), env: {}});
+  } finally { console.log = print; }
+  await alertCappedSteps({artifacts: dir, verdict: REFUSED, env, log: () => {}, fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{}'); }});
+  fs.rmSync(dir, {recursive: true, force: true});
+  assert.match(sent.join(''), /budget:week/);
 });
 
 test('a failed connection is its own kind and its words name no limit; a broker 5xx is not called unreachable', () => {
