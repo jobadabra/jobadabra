@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Canonical local store for jobs, companies, sources and application state."""
 from datetime import datetime, timezone
+from html import unescape
 import json
 import re
 from pathlib import Path
@@ -157,6 +158,9 @@ def added_source_ids(db):
 
 def upsert_job(db, item, source_name, source_url='', source_kind='job board', now=None):
     now = now or _now()
+    # Why (4 Nov 2026, a tester on 0.9.6: "Audit Pharmaceutical &amp; Life Sciences" in the Jobs list): a feed may send its title, employer and place as HTML text;
+    # this is the one write every source goes through, so they are decoded here and a row stored escaped is repaired when its job is seen again.
+    item = {**item, **{key: unescape(str(item[key])).strip() for key in ('title', 'company', 'location') if item.get(key)}}
     company_name = item.get('company') or 'Unknown employer'
     source_id = _id(db, 'sources', source_name, {'url': source_url, 'kind': source_kind})
     company_id = _id(db, 'companies', company_name, {'updated_at': now})
