@@ -16,6 +16,17 @@ const RUN_DAYS = 14;
 // A run's id from its link (store:cron_runs/<id>, run-rows.js recordLink), or the id itself.
 const runId = link => String(link || '').replace(/^store:cron_runs\//, '');
 const lines = value => (Array.isArray(value) ? value : String(value || '').split('\n')).filter(line => String(line).trim());
+// Inline Markdown a report can hold, the marks src/stores/notion_blocks.py INLINE reads: an escape, code, bold, italic, a link.
+const INLINE = /\\(.)|`([^`]*)`|\*\*(.+?)\*\*|\*(.+?)\*|\[((?:\\.|[^\]\\])*)\]\(([^)\s]*)\)/gs;
+const plainText = text => String(text).replace(INLINE, (_, escaped, code, bold, italic, label) => escaped ?? code ?? plainText(bold ?? italic ?? label));
+// Why (5 Nov 2026, owner: "Fix it, then film"): the engine stores a report as Markdown, and every reader expects the lines a Notion run gives (notion-runs.js detail),
+// so a Gmail check on this Mac drew 1 card for 7 emails. The same rule as src/stores/notion_cron_runs.py _body: with sections its bullets, plain; else each line.
+const reportLines = value => {
+  const rows = lines(value);
+  return rows.some(row => /^#{1,3} /.test(row))
+    ? rows.filter(row => row.startsWith('- ')).map(row => plainText(row.slice(2)))
+    : rows.map(row => row.replace(/^- /, ''));
+};
 
 export function open(storage, {call = engine.call} = {}) {
   const page = name => {
@@ -63,7 +74,7 @@ export function open(storage, {call = engine.call} = {}) {
     },
     async detail(link) {
       const row = await call(storage, 'cron_runs', 'get', {run_id: runId(link)});
-      const report = lines(row?.report), log = lines(row?.log);
+      const report = reportLines(row?.report), log = lines(row?.log);
       return {message: row?.result || null, log: log.length ? log : report, report};
     },
   };
