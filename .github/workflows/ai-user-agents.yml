@@ -76,6 +76,8 @@ jobs:
           git checkout --quiet --detach FETCH_HEAD
           rm -rf desktop/e2e docs/app-expectations tools .github/actions
           git checkout "$NOW" -- desktop/e2e docs/app-expectations tools .github/actions
+          # Why (4 Nov 2026, replays 41854824553 and 41854829958): agent-seed.mjs reads the CV read's file name and hash from this node-only app file, which is newer than the commits a replay tests ("Cannot find module desktop/lib/cv-read-key.js"); an app file the harness imports and an older commit lacks is put back here, one line each.
+          git checkout "$NOW" -- desktop/lib/cv-read-key.js
           echo "The app is $(git rev-parse --short FETCH_HEAD); the tests, the agent, the knowledge and the tools are $(git rev-parse --short "$NOW")." | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v5
         timeout-minutes: 5
