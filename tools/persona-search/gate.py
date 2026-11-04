@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))   # scores_rows.py sits beside this file, as for metrics.py
+from scores_rows import table_rows  # noqa: E402
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
@@ -58,11 +60,16 @@ def make_cv(n, out):
 
 
 def extract(db_path, out):
-    """The open jobs of the persona's install, without URLs or posting text: what the judge reads."""
-    db = sqlite3.connect(db_path)
-    rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': s or ''} for t, c, loc, s in db.execute(
-        "SELECT j.title, co.name, j.location, s.name FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
-        "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")]
+    """The open jobs of the persona's install, without URLs or posting text: what the judge reads. A store the press never created, or created empty, reads as no jobs.
+    Why (PR 3130, run 41813036119, personas 3 and 6, 4 Nov 2026): the press was cut by the 3-minute stop before any step opened the store, so this call died on "unable to open"
+    or "no such table: jobs", the press step went red, and the judge never ran; the row should read as zero jobs, grey."""
+    if not Path(db_path).exists():
+        rows = []
+    else:
+        db = sqlite3.connect(db_path)
+        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': s or ''} for t, c, loc, s in table_rows(
+            db, 'jobs', "SELECT j.title, co.name, j.location, s.name FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+            "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 

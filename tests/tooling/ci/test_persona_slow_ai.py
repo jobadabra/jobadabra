@@ -6,6 +6,7 @@ The fixtures are the `relay:` lines of persona 1's press in those two runs (timi
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -113,6 +114,17 @@ class APressCutBeforeTheStoreOpened(unittest.TestCase):
                 json.loads(done.stdout.strip().splitlines()[-1])
             numbers = json.loads(subprocess.run([sys.executable, str(ROOT / 'tools' / 'persona-search' / 'metrics.py')], cwd=ROOT, env=env, capture_output=True, text=True).stdout)
         self.assertEqual((numbers['open'], numbers['in_places'], numbers['local_jobs'], numbers['scored_in_places'], numbers['top10']), (0, 0, 0, 0, []))
+
+    def test_the_judge_input_reads_a_store_the_press_never_opened_as_no_jobs(self):
+        """The press step's last line, `gate.py extract`, ran on the store path of a press cut before any step opened it (the file missing, or created empty)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, make in (('never-created.sqlite', False), ('created-empty.sqlite', True)):
+                store, out = Path(tmp) / name, Path(tmp) / (name + '.json')
+                if make:
+                    sqlite3.connect(store).close()
+                done = subprocess.run([sys.executable, str(ROOT / 'tools' / 'persona-search' / 'gate.py'), 'extract', str(store), str(out)], cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0, f'{name}: {done.stderr[-300:]}')
+                self.assertEqual(json.loads(out.read_text()), [], name)
 
 
 if __name__ == '__main__':
