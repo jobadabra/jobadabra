@@ -1,5 +1,5 @@
-name: CI · Harness tests · daily
-# Every harness test (desktop/e2e/test/*/*.test.mjs) once a day on main, with the same command a PR runs (harness.yml, `npm test`).
+name: CI · E2E tooling tests · daily
+# Every E2E tooling test (desktop/e2e/test/*/*.test.mjs) once a day on main, with the same command a PR runs (harness.yml, `npm test`).
 # Why (a8, 30 Oct 2026, option C): a PR runs the whole folder too, but only when it changes what a test reaches; this run catches what no PR starts: runner or package drift,
 # data outside harness.yml's paths, a test that depends on the date. One message to the CI alerts chat, only when something fails.
 on:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   harness-all:
-    name: all harness tests
+    name: all E2E tooling tests
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -35,7 +35,7 @@ jobs:
       - name: The browsers for the tests' own tests (the full one loads the extension)
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
-      - name: Every harness test
+      - name: Every E2E tooling test
         working-directory: desktop/e2e
         run: npm test
       - name: One message to the CI alerts chat when a test failed
@@ -46,4 +46,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: node ci-alert.mjs failure "A harness test no longer passes" "The failing test is in the run, step Every harness test"
+        run: node ci-alert.mjs failure "An E2E tooling test no longer passes" "The failing test is in the run, step Every E2E tooling test"

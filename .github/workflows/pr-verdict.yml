@@ -20,7 +20,7 @@ on:
       - 'CI · E2E steps a PR changes'
       - 'CI · End-to-end on Mac + Linux'
       - 'CI · Control tests (measure, not required)'
-      - 'CI · Harness tests'
+      - 'CI · E2E tooling tests'
       - 'CI · Integration tests'
       - 'CI · Smoke (the app starts)'
       - 'CI · Hosted Always on cost probe (one-off)'

@@ -51,7 +51,7 @@ export function suiteOfJob(name = '', steps = [], windows = false) {
   const step = (steps || []).map(item => /^Run the (\S+) suite(?: on Windows)?(?: \((?:first|the only) try\))?$/.exec(item.name || '')).find(Boolean);
   return step ? {suite: step[1], platform: windows || /Windows/.test(name) ? 'windows' : 'mac'} : null;
 }
-const isSuiteStep = name => /\bsuite\b|harness test/i.test(name || '');
+const isSuiteStep = name => /\bsuite\b|harness test|e2e tooling test/i.test(name || '');
 
 // The red's own words from its log: the first "✗ step: reason" that is not "not run: over budget", else the first Error line, else the first ::error that is not an exit code.
 export function failureLine(log = '') {
