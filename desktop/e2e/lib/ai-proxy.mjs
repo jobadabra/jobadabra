@@ -187,10 +187,18 @@ export function whenDrained(fault) {
   return fault.pending ? new Promise(resolve => { fault.waiters.add(resolve); }) : Promise.resolve();
 }
 
+// How the app words a failed AI call in a run's warning (lowercase): the limit, the call, the busy service, the technical line.
+const AI_WARNING_WORDS = ['limit', 'the ai call failed', 'busy or unavailable', 'ai unavailable', 'technical:'];
+
 /** Send the same provider-shaped error for a suite stand-in and a declared stored refusal. */
 function sendRefusal(res, mode, openai, stats) {
   const refusal = openai ? openaiFailureFor(mode) : failureFor(mode);
   stats.failed++; STUBBED.add(mode);
+  // Why (se, 4 Nov 2026, owner: "fix the noise"; Gitar on #3163): a stand-in or declared refusal is a failure served on purpose, like serveFault's; unmarked, the app reported its
+  // warning to Sentry as a real spending-limit/AI-call-failed issue (APP-6: 187 events from the strategy suite, whose stand-in refuses every non-scoring call with "no-credit").
+  // The plant names the words the app's AI warnings use (src/ai/providers/contract.py reason/detail), not "any warning": the strategy suite refuses all through its run, so a
+  // blank plant would mute every run_warning/run_failed of the suite. An ask nothing answered (refuseUnanswered, the 503 above) is a harness failure and stays reported.
+  for (const text of AI_WARNING_WORDS) markPlanted(`ai refusal ${mode}`, {text});
   res.writeHead(refusal.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(refusal.body), 'retry-after-ms': '10'}); res.end(refusal.body);
 }
 
