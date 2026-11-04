@@ -22,7 +22,7 @@ permissions:
   contents: read
   actions: read         # the measured history of earlier runs on main
 
-concurrency:   # one at a time, so a by-hand run never shares the broker with the night's; it waits, never cancels
+concurrency:   # one at a time, so no two runs share the broker; a newer queued run replaces an older queued one (GitHub keeps one pending per group)
   group: search-personas
   cancel-in-progress: false
 
