@@ -44,21 +44,29 @@ import {extensionWorker} from './own-worker.mjs';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Takes {refill, ask, aiProxy}; returns whether this row's AI goes through the AI broker's relay (a refill, or a live ask on CI with no proxy of the caller's), and throws when it would but the run has no OIDC token.
+ * Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): a live row on CI asked Anthropic on the Tests key; it asks the broker, as the refill does. The broker knows a
+ * run by its GitHub OIDC token, so the workflow needs `permissions: id-token: write`; without it the row would run without AI, which is no result.
+ */
+function relayedAsk({refill, ask, aiProxy}) {
+  const relayed = refill || (ask && isCi() && !aiProxy);
+  if (relayed && !process.env.ACTIONS_ID_TOKEN_REQUEST_URL) throw new Error('live row on CI: no GitHub OIDC token for the AI broker (the workflow needs `permissions: id-token: write`); the app has no other way to ask the AI on a runner');
+  return relayed;
+}
+
 // posting: {url, title, company}; captureDir: where the journey, the AI calls and the asks go; ask: false keeps the AI to kept answers (a test), true asks live.
 // aiProxy: a started lib/ai-proxy.mjs (a test's canned one). On CI one is started here: the runner has no Claude Code, so the app's API engine asks through it on the
 // AI broker (lib/broker-relay.mjs; .github/workflows/record-sites.yml) and the row's spend is metered (-> ai). A Mac without aiProxy: the plan's claude -p, no spend line.
 export async function runLiveRow({posting, captureDir, extensionDir, ask = true, seconds = 120, stillSeconds = stillSecondsFor(process.env, 'cli'), browser = startRealExtension, say = () => {}, aiProxy = null, atEnd = null, fill = false, loose = '', watch = null} = {}) {   // atEnd(tab, replies): a replay's own reading of the last tab (replay-net.mjs: lib/wrong-values.mjs)
   const refill = fill && isCi() && process.env.JP_REFILL_CI === '1';   // the refill workflow (lib/refill.mjs): the AI broker through the relay, no API key
-  // Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): a live row on CI asks the AI broker through the proxy's relay, as the refill does; it had asked
-  // Anthropic on the Tests key. The broker knows the run by its GitHub OIDC token, so the workflow needs `permissions: id-token: write`; without it the row would run without AI, which is no result.
-  const relayed = refill || (ask && isCi() && !aiProxy);
-  if (relayed && !process.env.ACTIONS_ID_TOKEN_REQUEST_URL) throw new Error('live row on CI: no GitHub OIDC token for the AI broker (the workflow needs `permissions: id-token: write`); the app has no other way to ask the AI on a runner');
+  const relayed = relayedAsk({refill, ask, aiProxy});
   guardLiveVisit(posting.url, {who: process.env.JOBADABRA_SESSION || 'live row'});   // the per-site daily limit (lib/site-ledger.mjs): refused before anything starts
   ensureStagedWorker({say});   // a worker edit since the last staging would run the old prompt
   const started = Date.now();
   let shotAsked = false;
   fs.mkdirSync(captureDir, {recursive: true});
-  const proxy = aiProxy || (refill ? await startAiProxy({maxCalls: refillCap(), live: true, relay: body => answerViaBroker(body)}) : ask && isCi() ? await startAiProxy({live: true, relay: body => answerViaBroker(body)}) : null),   // a replay never asks: no proxy; a live row asks the real model on purpose
+  const proxy = aiProxy || (relayed ? await startAiProxy({...(refill ? {maxCalls: refillCap()} : {}), live: true, relay: body => answerViaBroker(body)}) : null),   // a replay never asks: no proxy; a live row asks the real model on purpose
     before = {...usage().app};
   const errorsBefore = {...apiErrors()};   // calls Anthropic refused (no credit, a limit, a bad key): the row then ran without AI, which the run must say
   const spend = () => {
