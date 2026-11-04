@@ -6,6 +6,7 @@ until it has a case in ENGINE_CASES here.
 import json
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -161,6 +162,39 @@ class ErrorFactsTests(unittest.TestCase):
         error = contract.AiLimit('Your OpenAI key was refused.', final=True)
         error.ai_status, error.code, error.ai_model, error.ai_engine = 401, 'invalid_api_key', 'gpt-x', 'openai'
         self.assertIn('HTTP 401 invalid_api_key, model gpt-x, engine openai', cost.limit_reason(error))
+
+    def test_the_api_adapter_makes_a_refused_key_a_limit_with_a_plain_line_and_leaves_other_errors_alone(self):
+        """Sentry APP-42/43/44: the Anthropic SDK's 401 left the adapter raw, so interview, interview insights and a run's AI judgments failed with
+        "AuthenticationError: Error code: 401 - invalid x-api-key"; the OpenAI adapter already turns a refused key into AiLimit."""
+        from src.ai import cost
+        sdk = type('AuthenticationError', (Exception,), {'__module__': 'anthropic._exceptions'})
+        for status in (401, 403):
+            refused = sdk('Error code: invalid x-api-key')
+            refused.status_code = status
+            api = AnthropicApi(client=SimpleNamespace(messages=SimpleNamespace(create=lambda **params: (_ for _ in ()).throw(refused))))
+            with self.assertRaises(contract.AiLimit) as raised:
+                api.create(**PARAMS)
+            error = raised.exception
+            self.assertTrue(error.final)
+            self.assertIn('key was refused', str(error))
+            self.assertNotIn('x-api-key', str(error))
+            self.assertIn(f'HTTP {status}', contract.named(error))
+            self.assertTrue(cost.limit_reached(error))
+            self.assertIn('key was refused', cost.limit_reason(error))
+            self.assertNotIn('Claude Code', cost.limit_reason(error))
+        from src import daily_helpers
+        from src.ai import interview_insights
+        self.assertEqual(cost.limit_kind(error), 'key')
+        self.assertEqual(cost.limit_kind(contract.AiLimit('plan limit', final=True)), 'cli')
+        self.assertIn('the AI key was refused', daily_helpers.left_out({'pending': 3, 'done': 0, 'limit': cost.limit_kind(error)}, 'scored')[0])
+        self.assertNotIn('spending limit', daily_helpers.left_out({'pending': 3, 'done': 0, 'limit': cost.limit_kind(error)}, 'scored')[0])
+        with unittest.mock.patch.object(interview_insights, 'update', side_effect=error):
+            self.assertIn('the AI key was refused', interview_insights.after_review())
+        busy = sdk('overloaded')
+        busy.status_code = 529
+        api = AnthropicApi(client=SimpleNamespace(messages=SimpleNamespace(create=lambda **params: (_ for _ in ()).throw(busy))))
+        with self.assertRaises(sdk):
+            api.create(**PARAMS)
 
 
 class RegistryTests(unittest.TestCase):

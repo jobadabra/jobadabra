@@ -87,6 +87,16 @@ def limit_reached(error):
     return 'usage limit' in text or 'credit balance' in text
 
 
+def refused_key(error):
+    """The AI answered 401 or 403: the key is not accepted (the contract's AiLimit keeps the API's status, contract.error_facts)."""
+    return getattr(error, 'ai_status', None) in (401, 403)
+
+
+def limit_kind(error):
+    """What stopped the step, for its stats: 'key' (the key was refused), 'cli' (the engine's own limit or sign-in) or True (the API account's spend limit)."""
+    return 'key' if refused_key(error) else 'cli' if cli_limit(error) else True
+
+
 def cli_limit(error):
     """The limit was the user's Claude Code (its plan, its sign-in), not the API account."""
     return bool(getattr(error, 'ai_limit', False))
@@ -102,6 +112,8 @@ def limit_reason(error):
     from .providers.contract import error_facts
     chosen = providers.spec()
     said = error_facts(error)   # status, code, model, engine: tells a spent limit from a refused key or a model the key may not use
+    if refused_key(error):   # a refused key is not "cannot go on" (Sentry APP-42/43/44)
+        return f'{chosen.label} key was refused' + (f' ({said})' if said else '')
     return ('Claude Code (your Claude plan) cannot go on' if chosen.name in ('api', 'cli') else f'{chosen.label} cannot go on') + (f' ({said})' if said else '')
 
 
