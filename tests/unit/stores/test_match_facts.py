@@ -25,6 +25,15 @@ class MatchFactsTests(unittest.TestCase):
     def test_a_job_read_by_ai_has_every_fact_as_its_column(self):
         self.assertSameColumns({**scored('https://jobs.example/a', 80), 'ai': AI})
 
+    def test_a_job_the_extractor_never_read_still_has_its_posted_date_from_the_store(self):
+        # Why (4 Nov 2026, a tester on 0.9.6): Overview said Posted "Not stated" while the Description tab, reading the store, said "2 Nov".
+        job = {**scored('https://jobs.example/g', 70), 'posted_at': '2026-11-02T09:30:00+00:00'}
+        self.assertEqual(matches_sync.facts(job)['posted'], '2026-11-02')
+        self.assertEqual(job_matches.properties(job, 'Open')['Posted'], {'date': {'start': '2026-11-02'}}, 'the Notion writer says the same (the reporter\'s store)')
+        self.assertEqual(matches_sync.facts({**job, 'ai': AI})['posted'], '2026-11-02', 'the store date wins over the extraction text')
+        self.assertNotIn('posted', matches_sync.facts({**scored('https://jobs.example/h', 70), 'posted_at': ''}), 'no date, no column')
+        self.assertNotIn('posted', matches_sync.facts({**scored('https://jobs.example/i', 70), 'posted_at': 'Posted 3 days ago'}), 'only a real day')
+
     def test_the_posting_facts_are_read_and_a_job_from_an_older_extractor_leaves_the_new_ones_empty(self):
         facts = matches_sync.facts({**scored('https://jobs.example/d', 80), 'ai': AI})
         self.assertEqual({k: facts[k] for k in ('workload', 'on_call', 'visa', 'remote_scope', 'contract', 'deadline', 'posted', 'responsibilities')},
