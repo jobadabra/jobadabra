@@ -125,17 +125,19 @@ export const readProgressModel = employers => (employers
   ? {kind: 'count', done: employers.done, total: employers.total, percent: employers.total ? Math.max(2, Math.min(100, Math.round(100 * employers.done / employers.total))) : 2}
   : {kind: 'indeterminate'});
 
-// running: window.pilot.runs().running; last: the newest finished search run; listed/scored: the Jobs list's counts (kept for the none state); finishedHere: a search ended while this window was open.
-export function findCard({running = null, last = null, lastSearchAt = '', listed = 0, scored = 0, finishedHere = false} = {}) {
+// running: window.pilot.runs().running; last: the newest finished search run; listed/scored: the Jobs list's counts (kept for the none state); anyJob: the list holds a job, a match or not (jobCounts); finishedHere: a search ended while this window was open.
+export function findCard({running = null, last = null, lastSearchAt = '', listed = 0, scored = 0, anyJob = false, finishedHere = false} = {}) {
+  // Why (4 Nov 2026, owner: "should not appear if there are more than 0 jobs"): listed counts matches only, so jobs tracked by hand or from email read as an empty list.
+  const hasJobs = !!listed || anyJob;
   const searching = running && (running.kind || 'search') === 'search';
   if (searching) {
     const log = running.log || [];
     return {state: 'searching', chips: stepChips(log), lines: liveLines(log), ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
   }
-  if (last && last.ok === false && (finishedHere || !listed)) return {state: 'failed', problem: last.problem || last.result || '', listed};
+  if (last && last.ok === false && (finishedHere || !hasJobs)) return {state: 'failed', problem: last.problem || last.result || '', listed};
   if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log), ...(last.endedByTime ? {partial: partialSites(last.log)} : {})};
-  if (!lastSearchAt && !listed) return {state: 'empty'};
-  return {state: 'none'};
+  if (!lastSearchAt && !hasJobs) return {state: 'empty'};
+  return lastSearchAt ? {state: 'none'} : {state: 'none', first: true};   // first: no search ran, so the card cannot say "again"
 }
 
 // "empty" (no jobs yet) and "failed" (with none listed) depend on the list's count: before the list is read, the card keeps its first paint
