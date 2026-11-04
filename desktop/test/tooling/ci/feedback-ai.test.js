@@ -303,8 +303,8 @@ test('our scripts that hold a token import nothing the AI may edit (src/, tests/
     walk(path.join(root, entry));
     return [...found];
   };
-  // Our script runs from a snapshot that holds exactly these two files: anything else it imports would be missing there, and anything the second imports would be too.
-  assert.deepEqual(imports('tools/feedback-ai.mjs'), ['desktop/lib/feedback-bundle.js'], 'the snapshot copies exactly what the script imports');
+  // Our script runs from a snapshot that holds exactly these files (tools/fixer/*.mjs and the bundle; 4 Nov 2026, [hm] 2/6): anything else it imports would be missing there, and anything the bundle imports would be too.
+  assert.deepEqual(imports('tools/feedback-ai.mjs').sort(), ['desktop/lib/feedback-bundle.js', 'tools/fixer/leaks.mjs', 'tools/fixer/proof.mjs', 'tools/fixer/publish.mjs', 'tools/fixer/walls.mjs'], 'the snapshot copies exactly what the script imports');
   assert.deepEqual(imports('desktop/lib/feedback-bundle.js'), [], 'and that file imports nothing relative');
   // check-change.mjs and edit-codex.mjs run from the checkout (desktop/e2e is not editable by the AI) and must not load an editable folder either.
   const editable = /^(?:src|tests|desktop\/(?:renderer|lib|test))\//;
