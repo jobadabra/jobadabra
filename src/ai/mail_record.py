@@ -134,10 +134,12 @@ def gmail_link(message_id):
     return f'https://mail.google.com/mail/u/0/#all/{message_id}' if message_id else ''
 
 
-def changes_of(fields, email=None, feedback=''):
+def changes_of(fields, email=None, feedback='', read=None):
     """An event's `changes` (src/stores/base.py): what it moved and which email it was. Its interview time is the event's own
-    field; the Notion store keeps both in the one Changes JSON, as before."""
+    field; the Notion store keeps both in the one Changes JSON, as before. `read`: the company and role the AI read in the email
+    (a question left on no job keeps them, so "A new job" is made from them: src/ai/reassign.py)."""
     data = {'fields': fields}
+    data.update({name: str(value)[:200] for name, value in (read or {}).items() if name in ('company', 'role') and value})
     if email:
         data['from'], data['subject'] = email.get('from', '')[:200], email.get('subject', '')[:200]
     if feedback:

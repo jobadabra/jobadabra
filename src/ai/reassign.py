@@ -13,24 +13,29 @@ import sys
 
 from ..app_source import APP_SOURCE
 from ..stores import open_stores
+from ..notion import origin
 from . import mail, opportunity
 
 NONE, NEW = 'none', 'new'
 
 
 def _new_job(stores, event, changes):
-    """A job from the email alone (sender, subject): Focus then asks for its details. Its store record, or None."""
+    """A job from the email: what the AI read in it (company, role: kept on the event by ask()) and, for the rest, the sender and subject; Focus then asks
+    for any details still missing. A confirmation is the person's own application (Stage Applied, Outbound), anything else a lead. Its store record, or None."""
     sender, subject = changes.get('from', ''), changes.get('subject', '') or event['kind']
     parsed = re.match(r'\s*"?([^"<]*)"?\s*<([^>]+)>', sender)
     name, address = parsed.groups() if parsed else ('', sender)
     linkedin = 'linkedin.com' in sender.lower()
+    company, role = changes.get('company', ''), changes.get('role', '')
+    applied = event['kind'] in origin.APPLIED_KINDS and bool(company and role)
     org, person = mail._sender_org(sender), '' if linkedin else mail.person_name(name)
-    lead = {'title': opportunity.reply_title(org, person, 'LinkedIn' if linkedin else 'Email'), 'role_unknown': True, 'company': '', 'recruiter_company': org,
-            'recruiter_name': person, 'recruiter_email': '' if linkedin else address.strip(),
-            'platform': 'LinkedIn' if linkedin else 'Email', 'in_house': False}
+    lead = {'title': role or opportunity.reply_title(company or org, person, 'LinkedIn' if linkedin else 'Email'), 'role_unknown': not role, 'company': company,
+            'recruiter_company': '' if applied else org, 'recruiter_name': '' if applied else person,
+            'recruiter_email': '' if linkedin or applied else address.strip(),
+            'platform': 'LinkedIn' if linkedin else 'Email', 'in_house': applied}
     url = opportunity.lead_url(lead, '', event['source_id'])
     record, _ = opportunity.track(stores, lead, f"Subject: {subject}\n\n{event['note']}", source='Gmail',
-                                  event_source=APP_SOURCE, gmail_id=event['source_id'], at=event['at'] or None, url=url,
+                                  event_source=APP_SOURCE, gmail_id=event['source_id'], at=event['at'] or None, url=url, applied=applied,
                                   note=f'From an email you placed: "{subject[:120]}"')
     return record or stores.applications.get(url) or opportunity.same_pitch(stores, lead)   # already tracked: that job
 
