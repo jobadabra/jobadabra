@@ -9,13 +9,13 @@ import * as contactDetails from './contact.js';
 import * as fromCv from './contact-from-cv.js';
 import {CATALOG, byId} from './fact-catalog.js';
 import {HOME_NAMES, writeHome} from './answer-home.js';
-import {hashOf} from './cv-check.js';
+import {FILE, hashOf} from './cv-read-key.js';
 import {formatFor} from '../renderer/question-kind.js';
 import {splitPermit} from '../renderer/question-values.js';
 import {nameOfCode, nationalityOf} from '../renderer/work-eligibility.js';
 import {detailsFromCvAtSetup} from './details-at-setup.js';
 
-export const FILE = 'cv/fact-proposals.json';
+export {FILE};   // defined in cv-read-key.js (no app imports), kept exported here for the callers that already take it from this file
 export const MODEL = fromCv.MODEL;
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['facts'], properties: {facts: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['id', 'value', 'how', 'reason'], properties: {id: {type: 'string', enum: CATALOG.map(fact => fact.id)}, value: {type: 'string'}, how: {type: 'string', enum: ['stated', 'inferred']}, reason: {type: 'string'}}}}}};
