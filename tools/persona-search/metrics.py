@@ -17,7 +17,12 @@ LIST_LOCATION = 60   # a longer location names many places: not counted as local
 
 def main():
     db = sqlite3.connect(JOBS_DB)
-    rows = db.execute("SELECT j.id, j.title, j.location, COALESCE(c.name, ''), j.url FROM jobs j LEFT JOIN companies c ON c.id = j.company_id "
+    # Why (PR 3130, run 41807509648, 4 Nov 2026): a press cut by the 3-minute stop before any step opened the store has no tables; that is zero jobs, not a crash,
+    # so gate.py can class it ("AI slow" grey when the calls were slow, a measured zero otherwise) instead of "the press wrote no numbers".
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'jobs'").fetchone():
+        print(json.dumps({'open': 0, 'in_places': 0, 'local_jobs': 0, 'local_by_source': {}, 'scored_in_places': 0, 'fit70_in_places': 0, 'top10': [], 'sources': []}))
+        return
+    rows =db.execute("SELECT j.id, j.title, j.location, COALESCE(c.name, ''), j.url FROM jobs j LEFT JOIN companies c ON c.id = j.company_id "
                       "WHERE j.state = 'open'").fetchall()
     scores = {job_id: json.loads(data or '{}') for job_id, data in scores_rows(db, 'SELECT job_id, data_json FROM scores')}
     source_names = dict(db.execute('SELECT j.id, COALESCE(s.name, \'\') FROM jobs j LEFT JOIN sources s ON s.id = j.source_id').fetchall())
