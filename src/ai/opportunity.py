@@ -247,11 +247,10 @@ def track(stores, lead, text, *, source, event_source, talking=False, at=None, g
     # A recruiter's pitch: it found you (Inbound, src/notion/origin.py); an Inbound job's title names who it is for
     # ("Principal SRE · via Huxley", src/notion/titles.py), as the Notion store writes it. An application you sent went to them: Outbound.
     found = origin_rule.OUTBOUND if applied else origin_rule.INBOUND
+    # The email's day is an upper bound for when they applied (as src/ai/mail_leads.py and inbox_notion._new_row write it): in the one create(), never a second write.
+    day = {'applied_on': at[:10], 'date_approximate': True} if applied and at else {}
     record = stores.applications.create({**fields(lead, url, stage, source, origin='Application email' if applied else 'Recruiter message'),
-                                         'origin': origin_rule.LABELS[found]}, stage)
-    if applied and at:   # the email's day is an upper bound for when they applied (as src/ai/mail_leads.py writes it)
-        stores.applications.update(record['id'], {'applied_on': at[:10], 'date_approximate': True})
-        record.update(applied_on=at[:10], date_approximate=True)
+                                         'origin': origin_rule.LABELS[found], **day}, stage)
     body = '\n\n'.join(part for part in (message_markdown(text), extra_markdown) if part)
     try:
         if body:
