@@ -108,16 +108,16 @@ test('a round is allowed only on the fixer\'s own open draft PR, and a push goes
   const gone = await play({lines: ['ship: RED #7 lint abc'], pr: goodPr({draft: false})});
   assert.deepEqual([gone.action, gone.rounds.length, gone.said.length], ['end', 0, 0], 'a PR the owner took over is left alone, silently');
 
-  const env = {GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'o/r', GH_TOKEN: 't', PR: '7', ROUND: '1', KIND: 'red', SOURCE: 'feedback', REF, FOLLOW_RUN: '99', DEADLINE: new Date(Date.now() + 1800e3).toISOString().replace(/\.\d+Z$/, 'Z')};
-  const followRun = {path: '.github/workflows/ai-fixer-follow.yml', event: 'workflow_dispatch', head_branch: 'main', created_at: new Date().toISOString()};
+  const env = {GITHUB_REF: 'refs/heads/main', GITHUB_REPOSITORY: 'o/r', GH_TOKEN: 't', PR: '7', ROUND: '1', KIND: 'red', SOURCE: 'feedback', REF, FOLLOW_RUN: '99', DEADLINE: '2026-11-05T10:30:00Z'};
+  const followRun = {path: '.github/workflows/ai-fixer-follow.yml', event: 'workflow_dispatch', head_branch: 'main', created_at: '2026-11-05T09:50:00Z'};
   const github = (pr, run = {}) => async url => ({ok: true, json: async () => (String(url).includes('/actions/runs/') ? {...followRun, ...run} : pr)});
-  assert.equal((await target(env, '', github(goodPr()))).branch, `fixer/feedback-${REF}`);
-  await assert.rejects(target(env, 'moved', github(goodPr())), /moved while the round ran/);
-  await assert.rejects(target({...env, GITHUB_REF: 'refs/heads/evil'}, '', github(goodPr())), /only from main/);
-  await assert.rejects(target({...env, ROUND: '7'}, '', github(goodPr())), /not a round/);
-  await assert.rejects(target({...env, KIND: 'rm'}, '', github(goodPr())), /not a round/);
-  await assert.rejects(target({...env, DEADLINE: '2030-01-01T00:00:00Z'}, '', github(goodPr())), /more than an hour/);
-  for (const run of [{path: '.github/workflows/other.yml'}, {path: '.github/workflows/ai-fixer-follow.yml@refs/heads/evil'}, {head_branch: 'evil'}, {event: 'push'}, {created_at: '2026-11-01T00:00:00Z'}]) await assert.rejects(target(env, '', github(goodPr(), run)), /not from a recent follow run/, JSON.stringify(run));
+  assert.equal((await target(env, '', github(goodPr()), NOW)).branch, `fixer/feedback-${REF}`);
+  await assert.rejects(target(env, 'moved', github(goodPr()), NOW), /moved while the round ran/);
+  await assert.rejects(target({...env, GITHUB_REF: 'refs/heads/evil'}, '', github(goodPr()), NOW), /only from main/);
+  await assert.rejects(target({...env, ROUND: '7'}, '', github(goodPr()), NOW), /not a round/);
+  await assert.rejects(target({...env, KIND: 'rm'}, '', github(goodPr()), NOW), /not a round/);
+  await assert.rejects(target({...env, DEADLINE: '2030-01-01T00:00:00Z'}, '', github(goodPr()), NOW), /more than an hour/);
+  for (const run of [{path: '.github/workflows/other.yml'}, {path: '.github/workflows/ai-fixer-follow.yml@refs/heads/evil'}, {head_branch: 'evil'}, {event: 'push'}, {created_at: '2026-11-01T00:00:00Z'}]) await assert.rejects(target(env, '', github(goodPr(), run), NOW), /not from a recent follow run/, JSON.stringify(run));
   assert.throws(() => cleanRound({kind: 'red', pr: 8}, {pr: '7'}), /another pull request/, 'a round file made for another PR is refused');
   assert.equal(cleanRound({kind: 'red', pr: 7}, {pr: '7'}).kind, 'red');
   // A first run carries no round inputs; a round needs no new test but only the allowed folders; the workflow never puts an input into a script.

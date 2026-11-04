@@ -12,12 +12,12 @@ import {EDITABLE} from './walls.mjs';
 const flag = (args, name) => (args.includes(name) ? args[args.indexOf(name) + 1] : '');
 const git = (...args) => execFileSync('git', ['-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com', ...args], {stdio: 'inherit'});
 
-/** The round's guard. -> {head, branch}; throws with the reason (the comment says which word). `fetchImpl` is for tests. */
-export async function target(env, expect = '', fetchImpl = fetch) {
+/** The round's guard. -> {head, branch}; throws with the reason (the comment says which word). `fetchImpl` and `now` (ms) are for tests. */
+export async function target(env, expect = '', fetchImpl = fetch, now = Date.now()) {
   const {PR, ROUND, DEADLINE, KIND, SOURCE, REF, FOLLOW_RUN, GITHUB_REPOSITORY: repo} = env;
   if (env.GITHUB_REF !== 'refs/heads/main') throw new Error('a round runs only from main\'s workflow');
   if (!/^\d{1,7}$/.test(PR || '') || !new RegExp(`^[1-${LIMITS.rounds}]$`).test(ROUND || '') || !KINDS.includes(KIND) || !/^\d{1,15}$/.test(FOLLOW_RUN || '') || !BRANCH.test(`fixer/${SOURCE}-${REF}`)) throw new Error('not a round this fixer takes');
-  const late = deadlineWhy(DEADLINE);
+  const late = deadlineWhy(DEADLINE, now);
   if (late) throw new Error(late === 'time' ? 'the hour is up' : late);
   const get = async path => { const answer = await fetchImpl(`https://api.github.com/repos/${repo}/${path}`, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(20000)}); if (!answer.ok) throw new Error(`could not read ${path.split('/')[0]} (HTTP ${answer.status})`); return answer.json(); };
   const found = checkTarget(await get(`pulls/${PR}`), {repo, source: SOURCE, ref: REF});
@@ -25,7 +25,7 @@ export async function target(env, expect = '', fetchImpl = fetch) {
   if (expect && found.head !== expect) throw new Error('the pull request moved while the round ran');
   // Why (4 Nov 2026, review): the event data is believed only if it came from main's own follow workflow, dispatched, and in the last hour and a bit (a replayed or forged file is refused; round.json also names its PR).
   const run = await get(`actions/runs/${FOLLOW_RUN}`);
-  if (run.path !== '.github/workflows/ai-fixer-follow.yml' || run.event !== 'workflow_dispatch' || run.head_branch !== 'main' || Date.now() - Date.parse(run.created_at) > (LIMITS.seconds + 300) * 1000) throw new Error('the event data is not from a recent follow run of main');
+  if (run.path !== '.github/workflows/ai-fixer-follow.yml' || run.event !== 'workflow_dispatch' || run.head_branch !== 'main' || now - Date.parse(run.created_at) > (LIMITS.seconds + 300) * 1000) throw new Error('the event data is not from a recent follow run of main');
   return found;
 }
 
