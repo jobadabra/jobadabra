@@ -45,8 +45,10 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
   // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
   // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180.
-  const step = (args, what) => exec(storage, args, onLine, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
-    if (done.endedByTime) { endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
+  // `counts`: whether this step's time-up makes the SEARCH Partial; the employer finder is an add-on, so its own stop (or hard stop) does not. Why (4 Nov 2026, #3108): the engine stops itself at
+  // its budget and exits 0, usually before this hard stop, and says so on a line starting "⏱ " (src/time_budget.py `later`; desktop/e2e/lib/quality.mjs workLeft reads the same mark).
+  const step = (args, what, counts = true) => exec(storage, args, line => { if (counts && line.startsWith('⏱ ')) endedByTime = true; onLine(line); }, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
+    if (done.endedByTime) { if (counts) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
     return done;
   });
   const timeUp = (what, partial = true) => { if (partial) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`); };   // partial=false: the employer finder is an add-on, the search itself was whole
@@ -74,7 +76,7 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   else if (scout) {
     onLine('Growing your sources: finding more employers…');
     storage.saveSettings({lastScoutAt: new Date().toISOString()});
-    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'finding more employers');
+    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'finding more employers', false);
   }
   return {code, result, endedByTime};
 }

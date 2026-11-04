@@ -5,7 +5,8 @@
 import {call} from './notion.js';   // Notion-only: copyLocal() writes this Mac's earlier runs into a connected Notion (migrate.js); the run list is the store's
 import {openStore} from './store/index.js';
 import {jobFrom} from './job-line.js';
-import {runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {partialSearch, runWarned} from '../renderer/run-status.js';
+import {partialWords} from '../renderer/find-card-model.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
 import {KIND, fromRow, result} from './run-rows.js';
 
 export {fromRow, jobFrom, result};
@@ -67,7 +68,7 @@ export function localRow(run, name = kind => kind) {
   const summary = run.ok ? (run.summary || run.problem || fresh || 'Done') : (run.problem || run.summary || why || `${name(run.kind)} failed`);
   // The row's Status is what the list and the panel read back (run-rows.js warned): it follows the one rule they share (renderer/run-status.js runWarned), so a run whose log
   // has warning lines (a 429 retried 216 times) is recorded "Warnings", not "OK" (beta 13 Mac+Linux, beta 19 Windows: the list said "With warnings", the panel "Completed").
-  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}));
+  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}) || partialSearch({...run, live: false, waiting: false, off: false}));   // a run cut at the limit (#3108) is at least amber on a Mac that reads only the row
   const properties = {
     Run: {title: [{text: {content: `${name(run.kind)} · on this Mac`}}]},
     Started: {date: {start: run.startedAt}},
@@ -195,6 +196,9 @@ function noticeText(run) {
   // and a pop-up that says "done" over a refused AI call is the contradiction the UI loop found (#51, #52).
   const verdict = runWarned(run) ? 'finished with warnings' : 'done';
   const look = runWarned(run) ? ' Open Jobadabra to see what it said.' : '';
+  if ((!run.kind || run.kind === 'search') && partialSearch(run)) {   // #3108: never "done" and "No jobs added" for a search that did not finish
+    return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ended at the time limit${where}`, body: `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`};
+  }
   if (!run.kind || run.kind === 'search') {
     const fresh = run.new;
     return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ${verdict}${where}`,

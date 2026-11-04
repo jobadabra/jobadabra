@@ -2,7 +2,7 @@
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
 // Guarded by test/unit/renderer/run-result-card.test.js.
-import {addedWords, limitWords, partialSites} from './find-card-model.js';
+import {addedWords, partialWords} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
 import {partialSearch, runPill, stepCount} from './run-status.js';
 
@@ -23,9 +23,6 @@ export function resultWords(line, name = '') {
   const text = String(line || '').replace(new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*`, 'i'), '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
   return !text || /^done$/i.test(text) ? '' : text[0].toUpperCase() + text.slice(1);
 }
-// The title of a search that ended at the 3-minute limit (#3108): says so, how many employer sites it read when the engine reported that, and the jobs it did add.
-// Never "No jobs added to your list" alone: that reads as a finished search that found nothing.
-export const partialWords = (run, added = 0) => `Partial: ${limitWords(partialSites(run?.log))}${added ? ` · ${addedWords(added)}` : ''}`;
 export const TOP_TONES = ['good', 'warn', 'bad', 'neutral', 'info'];
 export const topTone = (run, kind) => (run ? runPill({...run, kind}, {long: true})[1] : 'neutral');
 const ICONS = {good: 'check-circle', warn: 'alert', bad: 'alert', neutral: 'pulse', info: 'pulse'};

@@ -116,6 +116,9 @@ export function employersRead(log = []) {
 export const partialSites = log => { const sites = employersRead(log || []); return sites ? {done: sites.done, total: sites.total} : {}; };
 // How a search that ended at the 3-minute limit says so, lower-case, for a title or a lead: with the engine's count when it gave one, else without any number (#3108).
 export const limitWords = (sites = {}) => `ended at the 3-minute limit${sites.total ? `, ${sites.done.toLocaleString('en-US')} of ${sites.total.toLocaleString('en-US')} sites searched` : ''}`;
+// The title of a search that ended at the 3-minute limit (#3108): says so, how many employer sites it read when the engine reported that, and the jobs it did add.
+// Never "No jobs added to your list" alone: that reads as a finished search that found nothing. Used by the result card, the pop-up and the Find card.
+export const partialWords = (run, added = 0) => `Partial: ${limitWords(partialSites(run?.log))}${added ? ` · ${addedWords(added)}` : ''}`;
 
 // The bar under the numbers: counted once the engine says "N of M" employers, a sliding bar before (the search is working, the count is not known yet).
 export const readProgressModel = employers => (employers

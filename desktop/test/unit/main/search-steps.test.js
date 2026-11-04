@@ -102,3 +102,22 @@ test('a press that ended by time returns that verdict; one that reached every st
   assert.equal((await play(true)).endedByTime, true, 'the search step hit the limit');
   assert.equal((await play(false)).endedByTime, false, 'positive control: the same steps with time to spare');
 });
+
+// The engine stops itself at its budget and exits 0 (src/time_budget.py `later`: every line about work left over starts with "⏱ "), usually before the press's hard stop at 175 s:
+// that is the common way a run is cut, so the verdict reads that mark too. The employer finder is an add-on: its own stop does not make the search Partial.
+test('the engine\'s own "⏱" stop line makes the press Partial, with no hard kill', async () => {
+  const engineStops = async (_storage, args, onLine) => { if (args[1] === 'daily') onLine('⏱ Time is up (2 min 58 s) for employer sites: 12 sites wait for the next search'); return {code: 0, result: {}, endedByTime: false}; };
+  assert.equal((await searchSteps(storage({lastScoutAt: new Date().toISOString()}), () => {}, 'run', 'you', engineStops)).endedByTime, true);
+  const quiet = async () => ({code: 0, result: {}, endedByTime: false});
+  assert.equal((await searchSteps(storage({lastScoutAt: new Date().toISOString()}), () => {}, 'run', 'you', quiet)).endedByTime, false, 'positive control: the same steps without that line');
+});
+
+test('the employer finder running out of time does not make a whole search Partial', async () => {
+  const scoutStops = async (_storage, args, onLine) => {
+    if (args[1] !== 'scout') return {code: 0, result: {}, endedByTime: false};
+    onLine('⏱ Time is up (2 min 59 s) for finding more employers: 3 employers wait for the next search');
+    return {code: 0, result: {}, endedByTime: true};   // hard-stopped too
+  };
+  const done = await searchSteps(storage({lastScoutAt: new Date(Date.now() - 2 * 86400000).toISOString()}), () => {}, 'run', 'you', scoutStops);
+  assert.equal(done.endedByTime, false);
+});
