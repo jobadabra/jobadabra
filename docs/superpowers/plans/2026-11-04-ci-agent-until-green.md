@@ -16,7 +16,7 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 | 1/6 | This plan and the spec amendment | The owner decides the until-green rules before any build | docs-only: skips `/code-review` |
 | 2/6 | `tools/fixer/`: walls, proof, leaks, publish moved out of `tools/feedback-ai.mjs` (no behaviour change) | Every source shares one set of safety checks | `/code-review` (trust boundary) |
 | 3/6 | `tools/fixer/loop.mjs` (read, search, edit, run_tests, finish), sources Feedback and Linear, `ai-fixer.yml` for one run, Sonnet-level engine pinned | One run opens a draft PR from a card or a Linear issue | `/code-review` |
-| 4/6 | `tools/fixer/driver.mjs`: rounds on the PR from `ship-watch` events, comment and log handling, the 1 h cap | The PR goes on to READY without a session | `/code-review` |
+| 4/6 | `tools/fixer/driver.mjs`: rounds on the PR from `ship-watch` events (new switch `SHIP_WATCH_DRAFT_OK=1`: READY for a PR that stays a draft), comment and log handling, the 1 h cap | The PR goes on to READY without a session | `/code-review` |
 | 5/6 | First real run on a feedback card; cost shown and the owner's yes BEFORE it starts | The owner sees how the agent does | report only |
 | 6/6 | Run on a Linear issue; harness map 8/8 (none, map, map+pack) on the same driver; one table | A measured yes or no, for the agent and for each map layer | report only |
 
