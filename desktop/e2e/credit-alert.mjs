@@ -35,9 +35,9 @@ export async function alertCreditOut({provider, text, always = false, env = proc
   return send(creditMessage({provider, text, env}), env, fetcher);
 }
 
-// Why (4 Nov 2026, a8 via mac-32): a dropped connection was told as "AI credit ran out · Codex refused". Money is named only on the broker's own budget reason (`budget:`), the neuron cap or a provider's credit words: a 503 about one bad reply or a lost login is no budget. The caller's verdict is about a refusal, so it is used only then.
-const saidLimit = text => /budget:|\bneurons?\b/i.test(text) || isCreditOut(text);
-const CREDIT_TITLE = 'AI credit ran out', FAILED_TITLE = 'AI calls failed', FAILED_VERDICT = 'Not a credit problem: these calls got no answer, and their work waits for a later run';
+// Why (4 Nov 2026, a8 via mac-32): a dropped connection was told as "AI credit ran out · Codex refused". Money is named only on the broker's own budget reason (`budget:`), a counted neuron cap or a provider's credit words; an unreadable count says nothing about money. The other way round is not claimed either: a 503 can hide a used-up engine (fallback:unsupported), so the alert says what happened and never "not credit". The caller's verdict is about a refusal, so it is used only then.
+const saidLimit = text => /budget:|\d+ of \d+ neurons/i.test(text) || isCreditOut(text);
+const CREDIT_TITLE = 'AI credit ran out', FAILED_TITLE = 'AI calls failed', FAILED_VERDICT = 'These calls failed; their work waits for a later run';
 
 // Read cap files and the runner's aiCapped results; unrelated failed values keep their ordinary verdict.
 function capNotes(folder) {
@@ -64,7 +64,7 @@ export async function alertCappedSteps({artifacts, marker, verdict = 'AI steps a
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
   const credit = notes.some(saidLimit);
   const result = await send(alertHtml({icon: credit ? '🩶' : '🟠', title: credit ? CREDIT_TITLE : FAILED_TITLE, verdict: credit ? verdict : FAILED_VERDICT,
-    bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [notes.slice(0, 3).join('; ')]}],
+    bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [[...notes].sort((a, b) => saidLimit(b) - saidLimit(a)).slice(0, 3).join('; ')]}],
     links: [{text: 'Open the run', url: run}]}), env, fetcher);
   if (marker && result === 'ci-alert: sent') {
     fs.mkdirSync(path.dirname(marker), {recursive: true});
