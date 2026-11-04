@@ -7,10 +7,10 @@
 import {nameOfClient} from './ai/names.js';
 import {priceOf} from './ai/models.js';
 import {anthropicApi} from './ai/anthropic-api.js';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {writePrivate} from './private-file.js';
+import {hashOf} from './cv-read-key.js';
 
 export const MODEL = process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-sonnet-5-5';
 const PRICE = {input: 2, output: 10};  // USD per million tokens
@@ -219,7 +219,7 @@ export async function review(storage, apiKey, text, {client = null, profile = ''
 
 // ---------- the cache of the PDF's check (cv/check.json) ----------
 const file = storage => path.join(storage.path('cv'), 'check.json');
-export const hashOf = storage => { try { return crypto.createHash('sha256').update(fs.readFileSync(storage.path('cv.pdf'))).digest('hex').slice(0, 16); } catch { return ''; } };
+export {hashOf};   // defined in cv-read-key.js (no AI imports), kept exported here for the callers that already take it from this file
 export function saved(storage) {
   try {
     const data = JSON.parse(fs.readFileSync(file(storage), 'utf8'));

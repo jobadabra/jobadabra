@@ -87,7 +87,7 @@ test('Always on stays in Settings while setup ends after strategy with the share
   await view.click('finish');
   assert.equal(view.settings.setupDone, true);
   const page = fs.readFileSync(new URL('../../../renderer/pages/hosted.js', import.meta.url), 'utf8');
-  assert.match(page, /export function init\(\) \{ mountCard\(\); \}/);
+  assert.match(page, /export function init\(\) \{ mountCard\(\); mountChoice\(\); \}/);
   assert.match(page, /\$\('setting-cloud'\)\.after\(card\)/);
   assert.match(page, /window\.pilot\.hostedOn\(\{\}\)/, 'Settings retains the shared notification-address turn-on action');
 });

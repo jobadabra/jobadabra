@@ -1,8 +1,9 @@
 // Guards the CI AI provider switch (lib/ai-provider.mjs) and CI's side of the Codex broker (lib/broker-client.mjs): precedence, parity of tiers, the broker's refusals as skips.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import {aiProvider, providerLine} from '../../lib/ai-provider.mjs';
-import {AUDIENCE, BROKER_URL, aiLine, askBroker, resetTold, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
+import {AUDIENCE, BROKER_URL, aiLine, askBroker, failureOf, resetTold, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
 
 test('the switch: input beats a job override beats the repo variable beats the default; nothing silently changes provider', () => {
   const ci = {CI: 'true'};
@@ -60,6 +61,38 @@ test('the broker saying no (budget, login lost) is a skip with its reason, never
   assert.equal((await ask(fake(() => new Response('{"why":"oidc: wrong repository"}', {status: 401})))).status, 401);
   assert.equal((await ask(fake(() => { throw new Error('boom'); }))).status, 'unreachable');
   assert.equal((await askBroker({model: 'x', messages: []}, {env: {}, fetchImpl: async () => { throw new Error('no call without a token'); }})).status, 'no-token');
+});
+
+test('a connection the broker never answered names its cause and how long it was open, from a real socket', async () => {
+  const server = http.createServer(req => req.socket.destroy());
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const clock = [1000, 64000], tokenOnly = (url, init) => (String(url).startsWith('https://gh.example') ? new Response('{"value":"t"}') : fetch(url, init));
+  try {
+    const answer = await askBroker({model: 'x', messages: []}, {env: {...env, CODEX_BROKER_URL: `http://127.0.0.1:${server.address().port}`}, fetchImpl: tokenOnly, now: () => clock.shift()});
+    assert.equal(answer.status, 'unreachable');
+    assert.match(answer.detail, /^no answer from the broker: fetch failed \((UND_ERR_SOCKET|ECONNRESET): .+\) after 63 s$/);
+  } finally { server.close(); }
+});
+
+test('a connection lost after the headers is no answer, not an empty success', async () => {
+  const server = http.createServer((req, res) => { res.writeHead(200, {'content-type': 'application/json', 'content-length': '100'}); res.write('{"reply":'); setImmediate(() => req.socket.destroy()); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const tokenOnly = (url, init) => (String(url).startsWith('https://gh.example') ? new Response('{"value":"t"}') : fetch(url, init));
+  try {
+    const answer = await askBroker({model: 'x', messages: []}, {env: {...env, CODEX_BROKER_URL: `http://127.0.0.1:${server.address().port}`}, fetchImpl: tokenOnly});
+    assert.equal(answer.status, 'unreachable');
+    assert.match(answer.detail, /^the broker's answer was cut off: /);
+  } finally { server.close(); }
+});
+
+test('every address failing still names a cause, and no cause leaves the message alone', () => {
+  assert.equal(failureOf(Object.assign(new Error('fetch failed'), {cause: Object.assign(new AggregateError([Object.assign(new Error('connect ETIMEDOUT 1.2.3.4:443'), {code: 'ETIMEDOUT'})]), {code: 'ETIMEDOUT'})})), 'fetch failed (ETIMEDOUT: connect ETIMEDOUT 1.2.3.4:443)');
+  assert.equal(failureOf(new Error('The operation was aborted due to timeout')), 'The operation was aborted due to timeout');
+});
+
+test('a network failure on the way to the run token is not called a job without id-token', async () => {
+  const answer = await askBroker({model: 'x', messages: []}, {env, fetchImpl: async () => { throw Object.assign(new TypeError('fetch failed'), {cause: {code: 'EAI_AGAIN', message: 'getaddrinfo EAI_AGAIN'}}); }});
+  assert.deepEqual(answer, {ok: false, status: 'unreachable', detail: 'no run token from GitHub: fetch failed (EAI_AGAIN: getaddrinfo EAI_AGAIN)'});
 });
 
 test('the judges on codex: an answer returns in Messages shape; a broker refusal is a skip with its reason, said by the runner\'s cap path', async () => {

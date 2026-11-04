@@ -1,7 +1,7 @@
 // Builds the context pack the CI fixer agent reads before it starts (harness map spec, "The context pack"): the only code that holds a token.
 //   node tools/context/pack.mjs --task linear:JOB-123 [--also sentry:123456 --also "github:paths src/a.py"] [--area apply] [--files a.js,b.md] --out <dir>
 // writes <dir>/context/INDEX.md (task, area, hub path, one line per file) and <dir>/context/<source>.md; each file ≤ 24 KB, the pack ≤ 80 KB; the hub itself is not copied.
-// Tokens come from env (LINEAR_READ_KEY, SENTRY_READ_TOKEN, GITHUB_TOKEN, POSTHOG_READ_KEY, CLOUDFLARE_READ_TOKEN); on a Mac, missing ones are lent from the Keychain (jobadabra.fixer.*) or the `gh` login. Never printed.
+// Tokens come from env (LINEAR_READ_KEY, SENTRY_READ_TOKEN, GITHUB_TOKEN, POSTHOG_READ_KEY, CLOUDFLARE_READ_TOKEN, NOTION_READ_TOKEN); on a Mac, missing ones are lent from the Keychain (jobadabra.fixer.*) or the `gh` login. Never printed.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,8 +10,8 @@ import {frontMatter} from './check-map.mjs';
 import {LIMITS, unavailable} from './lib.mjs';
 
 export const PACK_MAX = 80 * 1024;
-export const BUILT = ['linear', 'sentry', 'github', 'posthog', 'cloudflare'];
-const KEYCHAIN = {LINEAR_READ_KEY: 'jobadabra.fixer.linear.read', SENTRY_READ_TOKEN: 'jobadabra.fixer.sentry.read', POSTHOG_READ_KEY: 'jobadabra.fixer.posthog.read', POSTHOG_PROJECT_ID: 'jobadabra.fixer.posthog.project', CLOUDFLARE_READ_TOKEN: 'jobadabra.fixer.cloudflare.read', CLOUDFLARE_ACCOUNT_ID: 'jobadabra.fixer.cloudflare.account'};
+export const BUILT = ['linear', 'sentry', 'github', 'posthog', 'cloudflare', 'notion'];
+const KEYCHAIN = {LINEAR_READ_KEY: 'jobadabra.fixer.linear.read', SENTRY_READ_TOKEN: 'jobadabra.fixer.sentry.read', POSTHOG_READ_KEY: 'jobadabra.fixer.posthog.read', POSTHOG_PROJECT_ID: 'jobadabra.fixer.posthog.project', CLOUDFLARE_READ_TOKEN: 'jobadabra.fixer.cloudflare.read', CLOUDFLARE_ACCOUNT_ID: 'jobadabra.fixer.cloudflare.account', NOTION_READ_TOKEN: 'jobadabra.fixer.notion.read'};
 const rootDefault = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** The hub for a task: the named area, else the Linear label that names one, else the longest `paths:` prefix of the files the task names. -> {area, hub} or {} */
