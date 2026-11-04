@@ -49,10 +49,10 @@ Run 41867775615: 276 files, 232 s of tests, 89.5 s on the step. The 8 slowest fi
 
 | 30 merged web PRs | Files | Modelled step time, of 72 s for all |
 |---|---|---|
-| Median | 108 of 276 | 57 s |
+| Median | 106 of 276 | 55 s |
 | Page, API or Worker change (22) | 90-186 | 52-68 s |
-| CI, job or test change (6) | 42-55 | 8-19 s |
-| Everything: the test runner, or a file nothing maps (2) | 276 | 72 s |
+| CI, job or test change (7) | 42-55 | 8-19 s |
+| Everything: the test runner changed (1) | 276 | 72 s |
 
 - **Why not less:** a page change really reaches the page walkers, and the ⌘K walk alone takes 50 s. Making that walk faster is the next lever, not a better pick.
 - **Why a name is not a scan:** 93 of 97 "scanners" only listed `db/migrations/` to seed a database. Treated as tree scans, every PR ran the slowest tests: 64 s at best.

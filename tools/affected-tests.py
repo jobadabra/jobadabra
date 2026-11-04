@@ -169,18 +169,25 @@ def site_tree():
     return (ROOT / 'admin').is_dir()
 
 
+def named_folder(path, url, joined):
+    """The real sub-folder of the repo a read names, or None: a read of the root, or of a folder that isn't there (`path.join(here, 'fixtures')`), narrows nothing."""
+    target = (path.parent / url if url else ROOT / joined).resolve()
+    return target if target.is_dir() and target != ROOT.resolve() and target.is_relative_to(ROOT.resolve()) else None
+
+
 @functools.lru_cache(maxsize=None)
 def folders_listed(path):
     """The folders a file reads by name."""
     text = read(path)
-    found = [(path.parent / url if url else ROOT / joined).resolve() for url, joined in FOLDER_READ_RE.findall(text)] + [(ROOT / joined).resolve() for joined in JOINED_DIR_RE.findall(text)]
-    return {f.relative_to(ROOT.resolve()).as_posix() + '/' for f in found if f.is_relative_to(ROOT.resolve()) and f.is_dir()}
+    found = [named_folder(path, url, joined) for url, joined in FOLDER_READ_RE.findall(text)] + [named_folder(path, '', joined) for joined in JOINED_DIR_RE.findall(text)]
+    return {f.relative_to(ROOT.resolve()).as_posix() + '/' for f in found if f}
 
 
 @functools.lru_cache(maxsize=None)
 def scans_tree(path):
     """Does this file read the repo in a way no name narrows? An import line reads nothing."""
-    return bool(SCANNER_RE.search(FOLDER_READ_RE.sub('', IMPORT_LINE_RE.sub('', read(path)))))
+    narrowed = FOLDER_READ_RE.sub(lambda read_of: '' if named_folder(path, *read_of.groups(default='')) else read_of.group(0), IMPORT_LINE_RE.sub('', read(path)))
+    return bool(SCANNER_RE.search(narrowed))
 
 
 def closure(start, edges):
@@ -355,7 +362,7 @@ def select(changed, base_ref=None):
              'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
              'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
              'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
-    unknown = [f for f in relevant if not f.startswith(KNOWN) and not starts_desktop_job(f)]
+    unknown = [f for f in relevant if not f.startswith(KNOWN) and not NO_TEST_EFFECT.search(f) and not starts_desktop_job(f)]   # a root doc in the joined tree: mentions decide
     if everything or unknown:
         why['all'] = everything + unknown
         return {**{k: 'all' for k in AREAS}, 'reasons': why}

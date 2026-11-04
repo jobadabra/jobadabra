@@ -25,6 +25,9 @@ TREE = {
     'test/admin/deep.test.js': "import {top} from '../../shared/top.js';\n",
     'test/admin/by-value.test.js': "import {readFileSync} from 'node:fs';\nreadFileSync(`admin/${name}.js`);\n",
     'test/admin/whole-tree.test.js': "import {execFileSync} from 'node:child_process';\nexecFileSync('git', ['ls-files']);\n",
+    'test/admin/own-fixtures.test.js': "import {readdirSync} from 'node:fs';\nimport path from 'node:path';\nreaddirSync(path.join(here, 'fixtures'));\n",
+    'test/admin/repo-root.test.js': "import {readdirSync} from 'node:fs';\nreaddirSync(new URL('../../', import.meta.url));\n",
+    'test/admin/reads-readme.test.js': "import {readFileSync} from 'node:fs';\nreadFileSync('README.md');\n",
     'test/admin/alone.test.js': "export const nothing = 1;\n",
 }
 
@@ -75,6 +78,15 @@ class PrSitePicks(unittest.TestCase):
 
     def test_a_test_of_the_whole_tree_runs_for_any_change(self):
         self.assertIn('test/admin/whole-tree.test.js', self.site('.github/workflows/other.yml'))
+
+    def test_a_read_that_names_no_real_sub_folder_stays_a_scan(self):
+        for test in ('test/admin/own-fixtures.test.js', 'test/admin/repo-root.test.js'):
+            self.assertIn(test, self.site('admin/page.js'), test)
+
+    def test_a_root_doc_runs_only_the_tests_that_name_it(self):
+        picked = self.site('README.md')
+        self.assertIn('test/admin/reads-readme.test.js', picked)
+        self.assertNotIn('test/admin/alone.test.js', picked)
 
     def test_an_unrelated_test_is_left_out(self):
         self.assertNotIn('test/admin/alone.test.js', self.site('admin/page.js'))
