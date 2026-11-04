@@ -29,6 +29,7 @@ const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the
 // Why (27 Oct 2026, Gitar on #2285): the SIGTERM handler writes the row (a Notion call) and may wait EXIT_GRACE_S (3 s); the stop starts this long before 180 s
 // so the step is gone by the press's end.
 const STOP_MARGIN_S = 5;
+const RAN_OUT = /^⏱ (?:Time is up\b|No time left\b|\d+ site read\(s\) still open at the run's time)/;   // the engine's own ran-out-of-time lines, not its batch plans or backlogs
 const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
 
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {
@@ -45,9 +46,10 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
   // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
   // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180; and (4 Nov 2026, #3108) this same wrapper is the one owner of the verdict "the press ended by time" (hard stop or the engine's own stop line), so the run record can say Partial.
-  // `counts`: whether this step's time-up makes the SEARCH Partial; the employer finder is an add-on, so its own stop (or hard stop) does not. Why (4 Nov 2026, #3108): the engine stops itself at
-  // its budget and exits 0, usually before this hard stop, and says so on a line starting "⏱ " (src/time_budget.py `later`; desktop/e2e/lib/quality.mjs workLeft reads the same mark).
-  const step = (args, what, counts = true) => exec(storage, args, line => { if (counts && line.startsWith('⏱ ')) endedByTime = true; onLine(line); }, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
+  // `counts`: whether this step's time-up makes the SEARCH Partial; the employer finder is an add-on, so its own stop (or hard stop) does not. Why (4 Nov 2026, #3108; Gitar on #3154): the engine stops itself at
+  // its budget and exits 0, usually before this hard stop, and says so on its ran-out-of-time lines (src/time_budget.py `later`, the refresh's end and "No time left", src/run_exit.py "still open at the run's time").
+  // Other lines that start with the mark are plans and backlogs ("This refresh scores 40 of 90", "found job(s) wait … to be scored"): a search that finishes early with them is not Partial.
+  const step = (args, what, counts = true) => exec(storage, args, line => { if (counts && RAN_OUT.test(line)) endedByTime = true; onLine(line); }, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
     if (done.endedByTime) { if (counts) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
     return done;
   });

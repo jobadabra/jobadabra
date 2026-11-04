@@ -5,8 +5,8 @@
 import {call} from './notion.js';   // Notion-only: copyLocal() writes this Mac's earlier runs into a connected Notion (migrate.js); the run list is the store's
 import {openStore} from './store/index.js';
 import {jobFrom} from './job-line.js';
-import {partialSearch, runWarned} from '../renderer/run-status.js';
-import {partialWords} from '../renderer/find-card-model.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {partialSearch, runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {partialWords} from '../renderer/find-card-model.js';
 import {KIND, fromRow, result} from './run-rows.js';
 
 export {fromRow, jobFrom, result};

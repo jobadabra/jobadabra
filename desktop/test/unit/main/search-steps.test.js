@@ -121,3 +121,14 @@ test('the employer finder running out of time does not make a whole search Parti
   const done = await searchSteps(storage({lastScoutAt: new Date(Date.now() - 2 * 86400000).toISOString()}), () => {}, 'run', 'you', scoutStops);
   assert.equal(done.endedByTime, false);
 });
+
+// Gitar on #3154: only the engine's own ran-out-of-time lines count. Its batch-plan line ("⏱ This refresh scores 40 of 90 …", src/time_budget.py) and the scoring backlog line
+// ("⏱ 3 found job(s) wait for the next refresh …", src/daily_search_scoring.py) also start with the mark, and a search that finishes early with them is not Partial.
+test('the engine\'s plan and backlog lines do not make a search Partial; its "no time left" and "still open at the run\'s time" lines do', async () => {
+  const says = line => searchSteps(storage({lastScoutAt: new Date().toISOString()}), () => {}, 'run', 'you', async (_storage, args, onLine) => { if (args[1] === 'daily') onLine(line); return {code: 0, result: {}, endedByTime: false}; });
+  assert.equal((await says('⏱ This refresh scores 40 of 90 jobs (about 2 s each, to finish in about 80 s)')).endedByTime, false);
+  assert.equal((await says('⏱ 3 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)')).endedByTime, false);
+  assert.equal((await says('⏱ No time left in this refresh to score any: 12 jobs wait for the next one')).endedByTime, true);
+  assert.equal((await says('⏱ 12 site read(s) still open at the run\'s time: the next search reads those sites')).endedByTime, true);
+  assert.equal((await says('⏱ Time is up for this refresh: 4 titles left for the next one (it stops at 3 min)')).endedByTime, true);
+});
