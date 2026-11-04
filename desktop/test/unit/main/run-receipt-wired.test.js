@@ -5,11 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import * as server from '../../../lib/server.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const URL_ = 'https://jobs.example.test/acme/1';
 const storage = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-receipt-'));
-  return {settings: () => ({}), secret: () => 't', setSecret: () => {}, path: (...p) => path.join(dir, ...p)};
+  return {settings: () => ({}), secret: () => 't', setSecret: strictSetSecret(), path: (...p) => path.join(dir, ...p)};
 };
 const envOf = ({stamps, statusOk = true, stamp = async () => ({ok: true})}) => server.localEnv(storage(), () => {}, {
   find: async () => ({url: URL_, title: 'SRE', company: 'Acme', status: 'kit_ready'}),

@@ -11,6 +11,7 @@ import {MAX_ASKS, WAITING, afterApply, createCodeOffer, gmailConnected, state} f
 import * as server from '../../../lib/server.js';
 import {KEY, gmailEntries, offerWords} from '../../../renderer/gmail-offer-words.js';
 import {DOES, LOOK, jobsEntries} from '../../../renderer/suggestions.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const store = (settings = {}) => { const mine = {...settings}; return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch)}; };
 const off = () => false, on = () => true;
@@ -58,7 +59,7 @@ test('the real connection read sees none in a test run (isolated Keychain)', () 
 
 test('markApplied, the one verdict of a Submit in every Apply mode, tells the window; a failing offer never undoes Applied', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-gmail-offer-'));
-  const base = {secret: () => 't', setSecret: () => {}, path: (...p) => path.join(dir, ...p)};
+  const base = {secret: () => 't', setSecret: strictSetSecret(), path: (...p) => path.join(dir, ...p)};
   const told = [];
   server.setWindowSignal((...args) => told.push(args));
   const find = async () => ({url: 'https://jobs.example.test/acme/1', title: 'SRE', company: 'Acme', status: 'kit_ready'});

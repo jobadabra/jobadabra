@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {create} from '../../../lib/license.js';
 import {refresh} from '../../../lib/trial-server.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.tok', now = Date.parse('2026-10-16T10:00:00Z');
 function store(settings = {}, secrets = {ANTHROPIC_API_KEY: FREE}) {
   const mine = {firstRunAt: '2026-10-10T00:00:00.000Z', ...settings};
-  return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => secrets[name] || '', setSecret() {}};
+  return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => secrets[name] || '', setSecret: strictSetSecret()};
 }
 const answer = body => async () => Response.json({ok: true, ...body});
 

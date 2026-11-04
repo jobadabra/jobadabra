@@ -8,13 +8,14 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {deleteData, pushConfig, state, turnOff} from '../../../lib/hosted-search.js';
 import {model, stamp} from '../../../renderer/hosted-words.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.tok';
 function store(settings = {}, key = FREE) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-hosted-del-')), mine = {...settings};
   fs.mkdirSync(path.join(dir, 'config'));
   fs.writeFileSync(path.join(dir, 'config', 'search.json'), '{}');
-  return {dir, settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => (name === 'ANTHROPIC_API_KEY' ? key : ''), setSecret() {}, path: name => path.join(dir, name)};
+  return {dir, settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => (name === 'ANTHROPIC_API_KEY' ? key : ''), setSecret: strictSetSecret(), path: name => path.join(dir, name)};
 }
 function site(routes) {
   const calls = [];

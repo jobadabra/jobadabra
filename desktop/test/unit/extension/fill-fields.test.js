@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import {loggedFields} from '../../../../extension/fill-fields.js';
 import {fieldLines} from '../../../e2e/lib/record-sites.mjs';
 import {logText} from '../../log-text.mjs';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const TRACE = [
   {label: 'First Name', type: 'text', required: true, outcome: 'filled', source: 'your details', reason: ''},
@@ -34,7 +35,7 @@ test('required reaches the app log and the smoke report\'s field list, through t
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-fieldlog-'));
   log.logTo(dir);
   try {
-    const storage = {settings: () => ({}), secret: () => 't', setSecret: () => {}, path: (...p) => path.join(dir, ...p)};
+    const storage = {settings: () => ({}), secret: () => 't', setSecret: strictSetSecret(), path: (...p) => path.join(dir, ...p)};
     const body = {entries: [{at: '2026-10-11T01:31:58.075Z', kind: 'fill', text: 'fields: 1 filled, 1 left', fields: {fields: loggedFields(TRACE), recipes: 0, url: 'https://forms.example.com/apply', version: '0.9.192'}}]};   // keys sorted, as chrome.storage.local hands them to the push
     const response = await handleExtension(new Request('http://127.0.0.1/extension/log', {method: 'POST', headers: {Authorization: 'Bearer t', 'Content-Type': 'application/json'},
       body: JSON.stringify(body)}), server.localEnv(storage));

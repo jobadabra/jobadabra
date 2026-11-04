@@ -5,10 +5,11 @@ import {test} from 'node:test';
 import {keyHealth, watchKeyHealth} from '../../../lib/ai-key-health.js';
 import {AnthropicApi} from '../../../lib/ai/anthropic-api.js';
 import {OpenAiApi} from '../../../lib/ai/openai-api.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const storage = (secrets = {}) => {
   let settings = {};
-  return {settings: () => settings, saveSettings: patch => { settings = {...settings, ...patch}; }, secret: name => secrets[name] || '', setSecret: (name, value) => { secrets[name] = value; }};
+  return {settings: () => settings, saveSettings: patch => { settings = {...settings, ...patch}; }, secret: name => secrets[name] || '', setSecret: strictSetSecret((name, value) => { secrets[name] = value; })};
 };
 const refuse = () => ({messages: {create: async () => { throw Object.assign(new Error('401 {"error":{"message":"invalid x-api-key"}}'), {status: 401}); }}});
 const accept = () => ({messages: {create: async () => ({content: [{type: 'text', text: 'ok'}], usage: {}})}});

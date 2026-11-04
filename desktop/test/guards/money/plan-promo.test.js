@@ -9,8 +9,9 @@ import {createPlan} from '../../../lib/plan.js';
 import {createAppAllowance} from '../../../lib/app-allowance.js';
 import {redeemWords} from '../../../renderer/plan-view.js';
 import {canExport} from '../../../lib/jobs-export.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
-const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
+const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret: strictSetSecret()}; };
 const site = (calls, reply) => async (url, init = {}) => {
   if (String(url).endsWith('/install-token')) return Response.json({ok: true, token: 'tok'});
   calls.push([String(url).replace(/^.*\/api/, ''), init.method, JSON.parse(init.body || '{}'), init.headers?.['x-api-key']?.startsWith('JPF1.')]);

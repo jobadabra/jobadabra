@@ -2,9 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {apply, isFreeKey, migrate, start, stop, FREE_BASE} from '../../../lib/ai-free.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const storage = (settings = {}) => { let s = settings; const secrets = {};
-  return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, setSecret: (n, v) => { secrets[n] = v; }, secret: n => secrets[n], secrets,
+  return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, setSecret: strictSetSecret((n, v) => { secrets[n] = v; }), secret: n => secrets[n], secrets,
     readText: () => '', writeText: () => {}, dir: '/tmp/none'}; };
 const site = (seen = []) => async (url, init) => { seen.push({url, body: JSON.parse(init.body)}); return Response.json({ok: true, token: 'tok123'}); };
 

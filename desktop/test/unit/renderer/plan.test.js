@@ -9,8 +9,9 @@ import {createAppAllowance} from '../../../lib/app-allowance.js';
 import {chip} from '../../../renderer/license-chip.js';
 import {INCLUDED, PACKAGE_INCLUDES, NOTES, NO_CREDIT, OWN_KEY, TOPUP_NOTE, creditWords, planView, warnNow} from '../../../renderer/plan-view.js';
 import {planLine} from '../../../renderer/plan-line.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
-const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
+const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret: strictSetSecret()}; };
 const answer = (status, body = {}) => async url => (String(url).endsWith('/install-token') ? Response.json({ok: true, token: 'tok'}) : new Response(JSON.stringify({ok: true, ...body}), {status}));
 const DAY = 86400000;
 

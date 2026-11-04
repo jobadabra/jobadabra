@@ -5,8 +5,9 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {createPlan} from '../../../lib/plan.js';
 import {SHOW_I_HAVE_PRO, signinWords} from '../../../renderer/plan-view.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
-const storage = () => { let s = {}; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
+const storage = () => { let s = {}; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret: strictSetSecret()}; };
 const site = (calls, reply) => async (url, init = {}) => {
   if (String(url).endsWith('/install-token')) return Response.json({ok: true, token: 'tok'});
   calls.push([String(url).replace(/^.*\/api/, ''), init.method, JSON.parse(init.body || '{}'), init.headers?.['x-api-key']?.startsWith('JPF1.')]);

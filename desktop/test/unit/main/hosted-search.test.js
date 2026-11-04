@@ -7,6 +7,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {wizardFixture} from '../../setup-step-fixture.js';
 import {canRun, config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../../../lib/hosted-search.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.tok';
 function store(settings = {}) {
@@ -14,7 +15,7 @@ function store(settings = {}) {
   fs.mkdirSync(path.join(dir, 'config'));
   fs.writeFileSync(path.join(dir, 'config', 'search.json'), JSON.stringify({role_keywords: ['sre']}));
   fs.writeFileSync(path.join(dir, 'profile.md'), 'My profile');
-  return {dir, settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => (name === 'ANTHROPIC_API_KEY' ? FREE : ''), setSecret() {}, path: name => path.join(dir, name)};
+  return {dir, settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => (name === 'ANTHROPIC_API_KEY' ? FREE : ''), setSecret: strictSetSecret(), path: name => path.join(dir, name)};
 }
 function site(routes) {
   const calls = [];

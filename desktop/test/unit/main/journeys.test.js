@@ -34,6 +34,7 @@ import {stopsOf} from '../../../e2e/lib/pool-shadow.mjs';
 import {doorLines, runEvents} from '../../../e2e/lib/pool-gaps.mjs';
 import * as questionFormats from '../../../lib/question-formats.js';
 import {formatFor} from '../../../renderer/question-kind.js';
+import {strictSetSecret} from '../../strict-set-secret.js';
 
 const POSTING = 'https://www.jobs.ch/en/vacancies/detail/12181ac1/', SIGNIN = 'https://auth.jobs.ch/u/login/identifier', FORM = 'https://apply.example/form';
 function journeyOf(id = 'f1') {
@@ -439,7 +440,7 @@ test('scenario: Free is on, the person presses the API key card: Free is left, i
   const {leave} = await import('../../../lib/ai-free.js');
   const {chosen} = await import('../../../renderer/ai-engine-view.js');
   let settings = {aiFree: true, aiEngine: 'api'}; const secrets = {ANTHROPIC_API_KEY: 'JPF1.inst.tok'};
-  const storage = {settings: () => settings, saveSettings: p => { settings = {...settings, ...p}; }, secret: n => secrets[n] || '', setSecret: (n, v) => { secrets[n] = v; }};
+  const storage = {settings: () => settings, saveSettings: p => { settings = {...settings, ...p}; }, secret: n => secrets[n] || '', setSecret: strictSetSecret((n, v) => { secrets[n] = v; })};
   assert.equal(chosen(settings, !!secrets.ANTHROPIC_API_KEY), 'free');
   leave(storage, {});
   assert.equal(chosen(settings, !!secrets.ANTHROPIC_API_KEY), 'api');
