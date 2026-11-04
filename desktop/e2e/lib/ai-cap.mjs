@@ -53,7 +53,7 @@ export function noteCapped(neurons, env = process.env) {
   writeNote(fired, env);
 }
 
-// The AI broker refused a call (its budget, a lost login, no engine that can answer: jobadabra-web workers/ai-broker): the same skip-or-fail path as the neuron cap, with the broker's reason. Takes the reason and env; returns nothing.
+// The AI broker refused a call for its BUDGET (a reason starting `budget:`; any other refusal is a failure, not this note: jobadabra-web workers/ai-broker): the same skip-or-fail path as the neuron cap, with the broker's reason. Takes the reason and env; returns nothing.
 export function noteBrokerCapped(why, env = process.env) {
   fired = {neurons: null, why};
   console.log(`ai-capped: ${env.E2E_SUITE || env.E2E_STEPS_SUITE || 'e2e'} (AI broker: ${why})`);

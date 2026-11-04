@@ -1,5 +1,5 @@
-// One broker call for a scheduled job that may be refused: the Codex budget is used up, the login is lost, the broker is down. The job then SKIPS with the reason (green with a warning, its later steps grey),
-// writes ai-capped.json for the one alert of the run (credit-alert.mjs --artifacts), and never moves to another provider.
+// One broker call for a scheduled job that may be refused. Only the broker's BUDGET (a reason starting `budget:`), no OIDC token or no answer SKIPS with the reason (green with a warning, its later steps grey);
+// a lost login or any other refusal throws, so the job is red (4 Nov 2026, owner via mac-32). A skip writes ai-capped.json for the one alert of the run (credit-alert.mjs --artifacts) and never moves to another provider.
 //   const answer = await askOrSkip(body, {job: 'ui-verdict'});   // {ok: true, text, model, tier, ms, usage} or {ok: false, why}
 // Why (31 Oct 2026, owner: "is this expected? Why Anthropic is reached? We should use fully the Codex"; "over-budget jobs skip (grey) until Codex resets on 4 Nov, never paid"): four jobs of one UI-verdict run
 // each failed red on Anthropic's empty credit and each sent its own Telegram alert. A refused call is a skip with a reason, and one alert per run.

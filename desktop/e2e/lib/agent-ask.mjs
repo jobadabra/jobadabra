@@ -1,7 +1,7 @@
 // The AI user agent's two ways to think: the acting call (small tier by default) and the second opinion (mid tier), both through the AI broker (Codex, then Claude, then Free AI). No API key, no other path.
 // Job: report health
-// Why (3 Nov 2026, AI user agents 6/12): the manual explorer suite builds this inline; the agent needs it twice with two tiers, so it is a function. A broker that says no (budget, login) greys the step with an alert
-// (lib/ai-cap.mjs), as in the explorer, and the session keeps what it found.
+// Why (3 Nov 2026, AI user agents 6/12): the manual explorer suite builds this inline; the agent needs it twice with two tiers, so it is a function. A broker that says no on its BUDGET greys the step with an alert
+// (lib/ai-cap.mjs), as in the explorer, and the session keeps what it found; a lost login or any other refusal fails the step (4 Nov 2026, owner via mac-32).
 import {askBroker} from './broker-client.mjs';
 import {noteBrokerCapped} from './ai-cap.mjs';
 

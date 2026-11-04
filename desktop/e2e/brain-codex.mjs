@@ -48,7 +48,7 @@ async function main() {
   if (!MODEL[step]) throw new Error('--step must be brief, another, review or explore');
   const prompt = promptFor(step);
   if (!prompt) throw new Error(`the prompt secret of the ${step} step is empty (BRAIN_PROMPT_${step === 'another' ? 'BRIEF' : step.toUpperCase()})`);
-  // A refused call (budget, login, broker down) skips: no file, skipped=true for the steps after it, one alert from the run's last step. Never another provider.
+  // A call refused for the broker's budget skips: no file, skipped=true for the steps after it, one alert from the run's last step. Never another provider. A lost login or a broker down throws: the step is red.
   const answer = await askOrSkip(buildRequest({step, prompt}), {job: `product brain ${step}`});
   if (!answer.ok) return;
   const out = step === 'explore' ? '.brain/plan.md' : '.brain/brief.json';

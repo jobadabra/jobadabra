@@ -2,7 +2,7 @@ name: UI loop · Finder self-review
 # The Finder learns from its own week (owner, 4 Oct 2026: "make the Finder and Fixer autonomous"): the facts are the false positives' verdict reasons,
 # harness issues, duplicates, detector misses and fixes handed to a person (desktop/e2e/finder-review.mjs, no AI). Codex (the owner's plan, through the broker: one call picks the files, one proposes the edits;
 # desktop/e2e/edit-codex.mjs) proposes at most 3 rule/prompt changes in desktop/e2e with a test each (desktop/e2e/finder-review-prompt.md). The e2e unit tests must pass; ONE PR, never merged by itself.
-# Why (31 Oct 2026, owner: "We should use fully the Codex"): it ran claude-code-action on an API key. A refused broker call (budget until Codex resets, login, broker down) skips the review with its reason; one alert.
+# Why (31 Oct 2026, owner: "We should use fully the Codex"): it ran claude-code-action on an API key. A broker call refused for its budget (until Codex resets) skips the review with its reason; one alert. A lost login or a broker down fails the job.
 on:
   schedule:
     - cron: '0 17 * * 6'  # Saturday 17:00 UTC: a week of findings, a day before the rules self-review
