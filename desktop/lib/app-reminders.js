@@ -32,7 +32,15 @@ export function createAppReminders(ctx) {
 
   // Jobs you started that were running or waiting when the app quit (pipeline queue.json): the app asks whether to start them again (owner,
   // 7 Oct 2026). The schedule's own (searches, Gmail checks) aren't asked about: its catch-up runs whatever is due anyway.
+  // Why (4 Nov 2026, #3025): every start closes this Mac's Running rows that went quiet (the OS ended their engine: sleep, crash, a force-quit with nothing queued), jobs or none,
+  // so the store says what Recent activity already showed. Before the resume question, which only handles the jobs the quit interrupted.
+  async function closeQuietRows() {
+    try {
+      for (const row of await runHistory.closeQuiet(getStorage())) appLog('run', 'closed the row of a run that went quiet', {kind: row.kind, started: row.startedAt});
+    } catch (error) { appLog('run', 'quiet rows not closed', {error: error.message}); }
+  }
   async function resumeQueue(jobs) {
+    await closeQuietRows();
     if (!jobs.length) return;
     const names = [...new Set(jobs.map(job => pipeline.taskName(job.kind)))];
     const parent = getWindow() && !getWindow().isDestroyed() ? getWindow() : null;
