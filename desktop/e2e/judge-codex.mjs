@@ -4,7 +4,7 @@
 //   node judge-codex.mjs --mode exam     [--heal .heal]   judge-exam.yml: .heal/exam-prompt.md + pending.json      -> .heal/verdicts.md (judge-exam.mjs --score)
 // Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"; run of CI · UI verdicts, 4 jobs "Credit balance is too low"): the Claude step opened files with up to 25 tool turns. One broker call has
 // no tools, so lib/judge-evidence.mjs fetches the cited code, the places the finding's words are written and the step's logs, and the model answers with the fixed verdict object this file writes in the format
-// the old session wrote. A refused call (budget, login, broker down) skips the job with its reason (lib/broker-job.mjs): never red, never another provider.
+// the old session wrote. A call refused for the broker's budget skips the job with its reason (lib/broker-job.mjs), never another provider; a lost login or a broker down is red.
 // Job: report health
 import fs from 'node:fs';
 import path from 'node:path';

@@ -108,8 +108,8 @@ test("the owner's beta case: the broker refuses on its own-share budget inside a
 test('a broker refusal names the AI broker (it runs Codex, Claude or Free AI), never only Codex', () => {
   const lines = [], log = console.log;
   console.log = line => lines.push(String(line));
-  try { noteBrokerCapped('broker: fallback:search-unsupported', {E2E_SUITE: 'search'}); } finally { console.log = log; takeCapped(); }
-  assert.deepEqual(lines, ['ai-capped: search (AI broker: broker: fallback:search-unsupported)']);
+  try { noteBrokerCapped('broker: budget:fallback-day $2 Free AI (UTC)', {E2E_SUITE: 'search'}); } finally { console.log = log; takeCapped(); }
+  assert.deepEqual(lines, ['ai-capped: search (AI broker: broker: budget:fallback-day $2 Free AI (UTC))']);
   assert.match(capMessage(null, {}, 'broker: budget:own-share'), /the AI broker said no/);
 });
 

@@ -97,13 +97,13 @@ jobs:
         id: check
         env:
           FIXER_OUTCOME: ${{ steps.fixer.outcome }}
-          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused (budget, login, down)
+          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused on its budget (a lost login or a broker down fails the fixer step instead: FIXER_OUTCOME)
         run: |
           set -euo pipefail
           tell() { node "$FBT/tools/feedback-ai.mjs" report --ref "$REF" "$@"; }
           # Every refusal tells the site WHY in words of our own (never the report's), so the card shows it; a run that stops here is red.
           stop() { tell --status failed --why "$1" || true; echo "::error::$1"; exit 1; }
-          if [ "$AI_SKIPPED" = true ]; then stop "the AI broker refused the call (limit, login or down): see the run's warning"; fi
+          if [ "$AI_SKIPPED" = true ]; then stop "the AI broker refused the call (its budget is used up): see the run's warning"; fi
           if [ "$FIXER_OUTCOME" != success ]; then stop "the AI step did not run ($FIXER_OUTCOME)"; fi
           roots="src desktop/renderer desktop/lib desktop/test tests"
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^(\.fb/|e2e-artifacts/)' || true)

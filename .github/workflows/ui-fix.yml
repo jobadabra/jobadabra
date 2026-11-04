@@ -126,7 +126,7 @@ jobs:
         env:
           PR_TOKEN: ${{ steps.pr_app.outputs.token }}
           FIXER_OUTCOME: ${{ steps.fixer.outcome }}
-          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused (budget, login, down): says nothing about the finding
+          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused on its budget (a lost login or a broker down fails the step instead): says nothing about the finding
           SHOT_OUTCOME: ${{ steps.shot.outcome }}
           AUTOMERGE: ${{ vars.JOBADABRA_FIXER_AUTOMERGE }}   # "on": a small UI-only fix that passed every suite merges itself (off by default)
           AUTOMERGE_ENGINE: ${{ vars.JOBADABRA_FIXER_AUTOMERGE_ENGINE }}   # "on": also a small, confirmed fix in src/ or desktop/lib/ that brings its own test
@@ -141,7 +141,7 @@ jobs:
               exit 1
             fi
           done
-          # The AI did not answer (the broker refused: budget, login, down; or the step failed): that says nothing about the finding. Nothing is labelled or closed (2 Oct 2026: a first run that
+          # The AI did not answer (the broker refused on its budget; or the step failed, a lost login or a broker down included): that says nothing about the finding. Nothing is labelled or closed (2 Oct 2026: a first run that
           # failed on "Credit balance is too low" parked the issue as needs-human, "Claude made no change").
           if [ "$AI_SKIPPED" = true ]; then
             echo "The broker refused the fixer (see the warning above): the issue is left as it is and the run is skipped, not failed."

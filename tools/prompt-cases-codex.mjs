@@ -20,7 +20,7 @@ export function brokerBody(input) {
 }
 
 /**
- * run(name, input) -> an answer in the shape evaluate() reads. A refusal throws an Error with `.capped` (the broker's budget or login said no: stop asking) or `.broker` (any other failure).
+ * run(name, input) -> an answer in the shape evaluate() reads. A refusal throws an Error with `.capped` (the broker's budget said no: stop asking) or `.broker` (any other failure).
  * @param {{ask?: Function, env?: object, onCall?: Function}} options ask: the broker call (injectable); onCall: told once per attempted call
  */
 export const codexRun = ({ask = askBroker, env = process.env, onCall = () => {}} = {}) => async (_name, input) => {
