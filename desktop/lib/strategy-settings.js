@@ -1,7 +1,6 @@
 // Strategy, saving and tuning: accepting a draft (Profile, answers, search settings), the ⚙️ Search settings page, the daily target, widening
 // (roles, places), loosening and Tune. Re-exported by strategy.js. Guarded by desktop/test/unit/main/strategy-roles.test.js, strategy-targets.test.js,
 // strategy-remote.test.js, notion-trying.test.js and tune.test.js.
-import {randomBytes} from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -76,17 +75,25 @@ export async function publishSearchSettings(storage, {run, ensurePage, writePage
   forgetPageCopy(storage, page);
   return page;
 }
-// The page as markdown. given goes to the engine in a private file of its own (an env var or an argument would hit Windows' length limits), removed after.
+// The page as markdown. given goes to the engine in a file of its own (an env var or an argument would hit Windows' length limits), in a folder made for this one call.
+// Why (5 Nov 2026, #3186, Gitar): a throwaway file is not a writePrivate file: writePrivate may queue a write for later (Windows holds a file) and write it after this call has
+// given up, leaving the settings in the temp folder; and {mode} on a file path trips the privacy guard. A folder from mkdtemp is 0700 and new, so the plain write inside it is private, and
+// removing the folder removes everything, whatever happened.
 async function renderPage(storage, run, given) {
-  let file = '';
+  let folder = '';
   try {
     const args = ['src.notion.search_settings', 'render'];
-    if (given) { file = path.join(os.tmpdir(), `jp-settings-${randomBytes(6).toString('hex')}.json`); if (writePrivate(file, JSON.stringify(given)) !== 'saved') throw new Error('Could not hand the search settings to the engine'); args.push('--from', file); }   // writePrivate is the one private writer (privacy guard); 'waiting' = Windows holds even this new file: the save stops before anything is written
+    if (given) {
+      folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-settings-'));
+      const file = path.join(folder, 'settings.json');
+      fs.writeFileSync(file, JSON.stringify(given));
+      args.push('--from', file);
+    }
     const {code, stdout} = await run(storage, args);
     if (code !== 0 || !stdout.trim()) throw new Error('Could not render the search settings');
     return stdout;
   } finally {
-    if (file) try { fs.rmSync(file, {force: true}); } catch {}
+    if (folder) try { fs.rmSync(folder, {recursive: true, force: true}); } catch {}
   }
 }
 
