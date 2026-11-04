@@ -4,7 +4,7 @@
 // so this lifts that limit to the session's own cap and no further. Off unless AGENT_VIDEO=1 (the workflow's `video` input): sizing it on a real run comes before any upload (spec, plan row 9/12). Never the owner's window: the suite's own app.
 import fs from 'node:fs';
 import path from 'node:path';
-import {startFillVideo} from '../../ready-fill/fill-video.mjs';
+import {findFfmpeg, startFillVideo} from '../../ready-fill/fill-video.mjs';
 
 export const VIDEO_FILE = 'agent-video.webm', VIDEO_META = 'agent-video.json';
 
@@ -13,13 +13,13 @@ export const VIDEO_FILE = 'agent-video.webm', VIDEO_META = 'agent-video.json';
  * `minutes` is the session's cap; the recorder stops by itself a minute after it. `finish()` moves the file to <dir>/agent-video.webm and writes agent-video.json {startedAt (ms epoch), secs, bytes}.
  * Why (4 Nov 2026, Gitar on #3136): a note's place is read from the recorder (frames written / fps), never from the wall clock minus the start: a busy encoder drops frames, so the file runs shorter than the clock and the clock would point past the moment.
  */
-export async function startAgentVideo(page, {dir, minutes, env = process.env, start = startFillVideo, now = Date.now}) {
+export async function startAgentVideo(page, {dir, minutes, env = process.env, start = startFillVideo, now = Date.now, find = findFfmpeg}) {
   if (env.AGENT_VIDEO !== '1') return {startedAt: 0, position: () => null, finish: async () => null};
   const seconds = Math.round((Number(minutes) || 10) * 60) + 60, startedAt = now();
   const recorder = await start(page, {dir, maxSeconds: seconds, hardMaxSeconds: seconds}).catch(error => { console.log(`  video: not started (${error.message})`); return null; });
   return {startedAt, position: () => recorder?.position?.() ?? null, async finish() {
     const video = await recorder?.stop().catch(error => { console.log(`  video: the recorder did not stop cleanly (${error.message})`); return null; });
-    if (!video) { console.log('  video: none kept (no frame, no ffmpeg or the encode failed)'); return null; }
+    if (!video) { console.log(`  video: none kept (${find() ? 'ffmpeg is there, so no frame arrived or the encode failed' : 'no ffmpeg found: npx playwright-core install ffmpeg in desktop/e2e'})`); return null; }   // one reason per log line, not three (run 41860394127)
     const target = path.join(dir, VIDEO_FILE);
     fs.renameSync(video.path, target);
     const meta = {file: VIDEO_FILE, startedAt, secs: video.secs, bytes: video.bytes};

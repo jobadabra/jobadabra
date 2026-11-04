@@ -99,6 +99,12 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
+      # Why (4 Nov 2026, filmed run 41860394127 kept no video): the recorder finds Playwright's own ffmpeg beside its browsers (ready-fill/fill-video.mjs findFfmpeg), and this job installs none, so a run with video on filmed nothing. Only a filmed run pays for it.
+      - name: Playwright's ffmpeg, for a filmed run
+        if: inputs.video
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: npx playwright-core install ffmpeg
       - name: Python packages the engine needs
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
