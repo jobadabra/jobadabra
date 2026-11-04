@@ -53,7 +53,7 @@ def affected(base):
 
 
 def desktop_app_only(folder, node):
-    """The desktop area for the release pipeline: `npm test`'s own node command on every test but the tooling ones (tools/app-tests.py), without its lint (a rule
+    """The desktop area for the release pipeline and a PR's Windows job: `npm test`'s own node command on every test but the tooling ones (tools/app-tests.py), without its lint (a rule
     about the code that CI · Tests checks on every push, not a release gate)."""
     spec = importlib.util.spec_from_file_location('app_tests', ROOT / 'tools/app-tests.py')
     app_tests = importlib.util.module_from_spec(spec)
