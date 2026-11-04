@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import {BRANCH, CLAUDE_LINE, LIMITS, checkTarget, classify, cleanRound, deadlineWhy, gitarFinding, roundBlocks, stopReason, stopText} from '../../../../tools/fixer/driver.mjs';
-import {runFollow} from '../../../../tools/fixer/follow.mjs';
+import {realIo, runFollow} from '../../../../tools/fixer/follow.mjs';
 import {systemFor} from '../../../../tools/fixer/loop.mjs';
 import {target} from '../../../../tools/fixer/round.mjs';
 
@@ -133,6 +133,10 @@ test('a round is allowed only on the fixer\'s own open draft PR, and a push goes
   const follow = fs.readFileSync(path.join(ROOT, '.github/workflows/ai-fixer-follow.yml'), 'utf8'), fixer = fs.readFileSync(path.join(ROOT, '.github/workflows/ai-fixer.yml'), 'utf8');
   const code = follow.split('\n').map(line => line.replace(/\s+#.*$/, '')).filter(line => !/^\s*#/.test(line)).join('\n');   // comments may name what is absent
   assert.doesNotMatch(code, /id-token|CI_APP|LINEAR|broker|ref: /);
+  // A job that takes the PR's branch merges main and diffs origin/main...HEAD: it needs the merge base, so no depth-1 clone.
+  const jobs = fixer.split(/^  (?=[a-z][a-z-]*:\n)/m).filter(job => job.includes('refs/remotes/origin/pr'));
+  assert.ok(jobs.length >= 3, 'fix, prove and publish take the PR branch');
+  for (const job of jobs) assert.match(job, /fetch-depth: 0/, job.slice(0, 20));
   const pushes = fixer.split('\n').filter(line => /git push/.test(line) && !/^\s*#/.test(line));
   assert.equal(pushes.length, 2, 'two pushes: the first run\'s branch and a round\'s');
   assert.ok(pushes.some(line => /HEAD:refs\/heads\/\$branch/.test(line) && !/\s(-f|--force|--force-with-lease)\b/.test(line)), 'the round\'s push is to the PR\'s own branch and never forced');
@@ -140,4 +144,17 @@ test('a round is allowed only on the fixer\'s own open draft PR, and a push goes
   const scripts = fixer.split('\n').filter(line => !/^\s*#/.test(line) && /\$\{\{\s*inputs\./.test(line) && !/^(?:[A-Za-z_-]+: \$\{\{[^}]*\}\}(?:\s+#.*)?|group: .*|run-name: .*)$/.test(line.trim()));   // an env or with: value is the whole expression; anything else is text a shell could read
   assert.deepEqual(scripts, [], 'an input reaches a script only through env:');
   assert.ok(/round\.mjs" paths/.test(fixer.slice(fixer.indexOf('  publish:'))), 'publish judges a round by the allowed folders, not by check-change\'s test rule');
+});
+
+test('a Telegram alert still in flight is awaited before the process exits', async () => {
+  const real = globalThis.fetch;
+  let done = false;
+  globalThis.fetch = () => new Promise(resolve => setTimeout(() => { done = true; resolve({ok: true}); }, 20));
+  try {
+    const io = realIo({pr: '7', repo: 'o/r', env: {RUNNER_TEMP: fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'tg-')), CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c'}, deadline: ''});
+    io.telegram('AI fixer: ready');
+    assert.equal(done, false, 'the send is still in flight');
+    await io.flush();
+    assert.equal(done, true, 'flush waits for it');
+  } finally { globalThis.fetch = real; }
 });

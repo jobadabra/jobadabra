@@ -64,7 +64,9 @@ const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 6
 const api = (...args) => JSON.parse(gh('api', ...args) || 'null');
 
 /** The real effects, on the PR `pr` of `repo` with the job's GH_TOKEN. */
-function realIo({pr, repo, env, deadline}) {
+/** The real ports of a follow run (gh, ship-watch, Telegram); `flush()` waits for the alerts still in flight. */
+export function realIo({pr, repo, env, deadline}) {
+  const pending = [];
   const dir = fs.mkdtempSync(path.join(env.RUNNER_TEMP || '/tmp', 'follow-')), log = path.join(dir, 'ship.log'), out = env.GITHUB_OUTPUT;
   fs.writeFileSync(log, '');
   let child;
@@ -107,8 +109,10 @@ function realIo({pr, repo, env, deadline}) {
     telegram: text => {
       const {CI_ALERTS_TELEGRAM_BOT_TOKEN: token, CI_ALERTS_TELEGRAM_CHAT_ID: chat} = env;
       if (!token || !chat) return;
-      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({chat_id: chat, text}), signal: AbortSignal.timeout(15000)}).catch(() => {});
-    }};
+      // Why (4 Nov 2026, review): the process exits right after the last line, which would drop a send still in flight; main awaits flush() first.
+      pending.push(fetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({chat_id: chat, text}), signal: AbortSignal.timeout(15000)}).catch(() => {}));
+    },
+    flush: () => Promise.all(pending)};
 }
 /** Every page of a list, as one array (--slurp: several pages are not one JSON text). */
 function page(rest) { return (api('--paginate', '--slurp', rest) || []).flat(); }
@@ -130,6 +134,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     const action = await runFollow({pr, round, deadline, lastKey: flag(args, '--last-key'), source, ref, io});
     console.log(`follow: ${action} (round ${round})`);   // the word only: the log is public
   } else throw new Error('usage: follow.mjs watch|stop (see the header)');
+  await io.flush();
   process.exit(0);   // the watcher child is killed by process exit
 }
 
