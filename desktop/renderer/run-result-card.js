@@ -2,9 +2,9 @@
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
 // Guarded by test/unit/renderer/run-result-card.test.js.
-import {addedWords} from './find-card-model.js';
+import {addedWords, limitWords, partialSites} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
-import {runPill, stepCount} from './run-status.js';
+import {partialSearch, runPill, stepCount} from './run-status.js';
 
 // Every kind's run has this top once it ended (owner, 25 Oct 2026: "Every action run result, should have its status in a consistent way").
 // Kept as the list of kinds the top was built for: test/unit/renderer/run-result-card.test.js fails on a new kind until it is drawn and checked.
@@ -23,6 +23,9 @@ export function resultWords(line, name = '') {
   const text = String(line || '').replace(new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*`, 'i'), '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
   return !text || /^done$/i.test(text) ? '' : text[0].toUpperCase() + text.slice(1);
 }
+// The title of a search that ended at the 3-minute limit (#3108): says so, how many employer sites it read when the engine reported that, and the jobs it did add.
+// Never "No jobs added to your list" alone: that reads as a finished search that found nothing.
+export const partialWords = (run, added = 0) => `Partial: ${limitWords(partialSites(run?.log))}${added ? ` · ${addedWords(added)}` : ''}`;
 export const TOP_TONES = ['good', 'warn', 'bad', 'neutral', 'info'];
 export const topTone = (run, kind) => (run ? runPill({...run, kind}, {long: true})[1] : 'neutral');
 const ICONS = {good: 'check-circle', warn: 'alert', bad: 'alert', neutral: 'pulse', info: 'pulse'};
@@ -35,7 +38,7 @@ export function cleanTop(run, {kind, added = 0, asks = 0, title = ''} = {}) {
   if (label === 'No result') return null;
   const step = NEXT[kind], counts = {added, asks};
   const next = run.ok !== false && step && (!step.when || step.when(counts)) ? {label: step.label(counts), view: step.view} : null;
-  return {tone, icon: ICONS[tone] || 'pulse', title: NUMBER[kind]?.(added) || title || label, next};
+  return {tone, icon: ICONS[tone] || 'pulse', title: partialSearch(run) && kind === 'search' ? partialWords(run, added) : NUMBER[kind]?.(added) || title || label, next};
 }
 // A running run's top, the same for every kind (owner, 25 Oct 2026: "Every action run loading should be in the same way"): the step it is on, in words,
 // and its count when the step has one ({done, total, percent}; the bar slides without one). `words`: the step as the panel names it (a search's phase label),

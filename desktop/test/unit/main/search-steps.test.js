@@ -94,3 +94,11 @@ test('every step is ended at the press\'s 180 s, whatever the engine does with i
   assert.equal(seen[1].stopAfterMs, 125000, 'daily has what is left: 180 s minus the 5 s stop margin and the 50 s gone');
   assert.match(lines.join('\n'), /^⏱ Time is up \(.*\) for the search: what it has not reached waits for the next search$/m);
 });
+
+// #3108 (a tester on 0.9.2: a Find jobs run that stopped at the time limit showed green "Completed" and "No jobs added to your list"): the press knows it ended by time,
+// so it says so once, in what it returns; the run record keeps it and every card only draws it.
+test('a press that ended by time returns that verdict; one that reached every stage does not', async () => {
+  const play = endedByTime => searchSteps(storage({lastScoutAt: new Date().toISOString()}), () => {}, 'run', 'you', async (_storage, args) => ({code: 0, result: {}, endedByTime: endedByTime && args[1] === 'daily'}));
+  assert.equal((await play(true)).endedByTime, true, 'the search step hit the limit');
+  assert.equal((await play(false)).endedByTime, false, 'positive control: the same steps with time to spare');
+});

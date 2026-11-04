@@ -39,14 +39,17 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   const budget = SEARCH_BUDGET_S - (scout ? SCOUT_SHARE_S : 0);   // the search's end on the press's clock
   const spent = () => Math.floor((now() - pressAt) / 1000);
   const left = () => SEARCH_BUDGET_S - spent();
+  // Why (4 Nov 2026, #3108, a tester on 0.9.2: a run that stopped at the limit read green "Completed, No jobs added"): this is the one place that knows the press ended by time (a step stopped at
+  // its end, or one that never started for lack of it); it says so once in what it returns, the run record keeps it, and the pill and cards only draw it (renderer/run-status.js runStatus).
+  let endedByTime = false;
   // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
   // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
   // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180.
   const step = (args, what) => exec(storage, args, onLine, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
-    if (done.endedByTime) { onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
+    if (done.endedByTime) { endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
     return done;
   });
-  const timeUp = what => onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`);
+  const timeUp = (what, partial = true) => { if (partial) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`); };   // partial=false: the employer finder is an add-on, the search itself was whole
   const discover = async () => {
     if (budget - spent() < STEP_MIN_S) return timeUp('job boards');
     onLine('Searching job boards…');
@@ -67,11 +70,11 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     onLine('Checking employer career pages' + (ai ? ', then reading and scoring new jobs…' : '…'));
     ({code, result} = await step(dailyArgs(storage, {mode, budget}), 'the search'));
   }
-  if (scout && left() < STEP_MIN_S) timeUp('finding more employers');   // still due: the next press runs it
+  if (scout && left() < STEP_MIN_S) timeUp('finding more employers', false);   // still due: the next press runs it
   else if (scout) {
     onLine('Growing your sources: finding more employers…');
     storage.saveSettings({lastScoutAt: new Date().toISOString()});
     await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'finding more employers');
   }
-  return {code, result};
+  return {code, result, endedByTime};
 }

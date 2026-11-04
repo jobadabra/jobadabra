@@ -112,6 +112,11 @@ export function employersRead(log = []) {
   return null;
 }
 
+// The sites a search that ended at the limit had read, from the engine's own count ({done, total}); {} when it reported none (no number is invented).
+export const partialSites = log => { const sites = employersRead(log || []); return sites ? {done: sites.done, total: sites.total} : {}; };
+// How a search that ended at the 3-minute limit says so, lower-case, for a title or a lead: with the engine's count when it gave one, else without any number (#3108).
+export const limitWords = (sites = {}) => `ended at the 3-minute limit${sites.total ? `, ${sites.done.toLocaleString('en-US')} of ${sites.total.toLocaleString('en-US')} sites searched` : ''}`;
+
 // The bar under the numbers: counted once the engine says "N of M" employers, a sliding bar before (the search is working, the count is not known yet).
 export const readProgressModel = employers => (employers
   ? {kind: 'count', done: employers.done, total: employers.total, percent: employers.total ? Math.max(2, Math.min(100, Math.round(100 * employers.done / employers.total))) : 2}
@@ -125,7 +130,7 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
     return {state: 'searching', chips: stepChips(log), lines: liveLines(log), ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
   }
   if (last && last.ok === false && (finishedHere || !listed)) return {state: 'failed', problem: last.problem || last.result || '', listed};
-  if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log)};
+  if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log), ...(last.endedByTime ? {partial: partialSites(last.log)} : {})};
   if (!lastSearchAt && !listed) return {state: 'empty'};
   return {state: 'none'};
 }
