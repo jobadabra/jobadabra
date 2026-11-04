@@ -31,6 +31,22 @@ class PostingTextTests(unittest.TestCase):
         self.assertEqual(ats.plain(HTML), html_to_text(HTML))
         self.assertEqual(feeds.plain_text(HTML), html_to_text(HTML))
 
+    # Why (4 Nov 2026, a tester on 0.9.6): the EURES portal sends some postings as a converted web page, in markdown, not HTML.
+    def test_a_posting_sent_as_a_markdown_page_loses_its_front_matter_and_marks(self):
+        page = ('---base:meta-keywords:meta-viewport: width=device-width, initial-scale=1.0title: Finance Manager--- Finance Manager==============='
+                'Acme is a promotion agency. ### Your tasks Plan budgets and **report** monthly.')
+        text = html_to_text(page)
+        self.assertEqual(text, 'Finance Manager\nAcme is a promotion agency. Your tasks Plan budgets and report monthly.')
+        for junk in ('---', '===', '###', 'meta-', '**'):
+            self.assertNotIn(junk, text)
+
+    def test_a_posting_with_backslash_escaped_marks_reads_as_plain_words(self):
+        page = r'\[Acme Business \\\&amp; Innovation\](\&lt; \&gt;) hires. Hands\\-on, end\\-to\\-end work. \*\*Do you enjoy it?\*\*'
+        self.assertEqual(html_to_text(page), 'Acme Business & Innovation hires. Hands-on, end-to-end work. Do you enjoy it?')
+
+    def test_markdown_headings_on_their_own_lines_become_headings_and_a_hash_in_a_word_stays(self):
+        self.assertEqual(html_to_text('### Your tasks\nPlan budgets.\nWe use C# and F#. #1 team.'), '## Your tasks\nPlan budgets.\nWe use C# and F#. #1 team.')
+
 
 if __name__ == '__main__':
     unittest.main()
