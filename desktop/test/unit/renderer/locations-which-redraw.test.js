@@ -16,16 +16,18 @@ const {loadLocationsWhich} = await import('../../../renderer/pages/locations-whi
 
 const conflict = {kind: 'preferred', strategy: ['Zurich'], profile: ['Basel'], onlyStrategy: ['Zurich'], onlyProfile: ['Basel'], profileMode: ''};
 
+let current = {changed: 0};
+doc.addEventListener('locations-changed', () => { current.changed += 1; });   // one listener, counting into the running test's calls
+
 function screen({setAside = []} = {}) {
   doc.body.replaceChildren();
   for (const id of ['strategy-locations-which', 'locations-set-aside', 'locations-which-list', 'locations-which-message']) doc.body.append(Object.assign(doc.createElement('div'), {id}));
-  const calls = {resolved: [], undone: [], changed: 0};
+  const calls = current = {resolved: [], undone: [], changed: 0};
   globalThis.window.pilot = {
     locationsWhich: async () => ({ok: true, conflicts: [conflict], setAside}),
     resolveLocationConflict: async (...args) => { calls.resolved.push(args); return {ok: true}; },
     undoSetAside: async id => { calls.undone.push(id); return {ok: true}; },
   };
-  doc.addEventListener('locations-changed', () => { calls.changed += 1; });
   return calls;
 }
 
