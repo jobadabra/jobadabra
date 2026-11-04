@@ -221,6 +221,43 @@ class Gate(unittest.TestCase):
         self.assertEqual(lines, ['Not released: red: Mac + Linux: apply'])
         self.assertEqual(gate.backbone_check([{**job, 'conclusion': 'success'} for job in jobs], {}), (0, []), 'the control: all green is released')
 
+    def late_run(self):
+        # Beta 41860707305 (4 Nov 2026): GitHub still said in_progress / null for a suite that had passed, and the gate refused 0.9.8 as "red: Mac + Linux: wizard".
+        done = [{'name': name, 'status': 'completed', 'conclusion': 'success'} for name in ('Unit tests · Mac', 'Unit tests · Windows', 'E2E · Windows · apply')]
+        return done, {'name': 'E2E · Mac + Linux · wizard', 'status': 'in_progress', 'conclusion': None}
+
+    def test_a_job_github_has_not_reported_is_waited_for_then_judged(self):
+        gate = self.gate()
+        done, late = self.late_run()
+        reads = iter([[*done, late], [*done, late], [*done, {**late, 'status': 'completed', 'conclusion': 'success'}]])
+        naps = []
+        jobs = gate.settled_jobs('o/r', 7, {}, lambda *a: json.dumps([{'jobs': next(reads)}]), naps.append, lambda: 0)
+        self.assertEqual(gate.backbone_check(jobs, {}), (0, []))
+        self.assertEqual(naps, [gate.SETTLE_POLL] * 2)
+
+    def test_a_late_job_that_turns_red_is_red(self):
+        gate = self.gate()
+        done, late = self.late_run()
+        reads = iter([[*done, late], [*done, {**late, 'status': 'completed', 'conclusion': 'failure'}]])
+        jobs = gate.settled_jobs('o/r', 7, {}, lambda *a: json.dumps([{'jobs': next(reads)}]), lambda _: None, lambda: 0)
+        self.assertEqual(gate.backbone_check(jobs, {}), (1, ['Not released: red: Mac + Linux: wizard']))
+
+    def test_a_job_never_reported_refuses_the_release_and_says_so(self):
+        gate = self.gate()
+        done, late = self.late_run()
+        times = iter([0, 0, gate.SETTLE_LIMIT])
+        jobs = gate.settled_jobs('o/r', 7, {}, lambda *a: json.dumps([{'jobs': [*done, late]}]), lambda _: None, lambda: next(times))
+        self.assertEqual(gate.backbone_check(jobs, {}), (1, ['Not released: GitHub has not reported, after 8 min: Mac + Linux: wizard']))
+
+    def test_a_job_with_no_result_reads_from_its_steps_and_only_all_passed_is_a_pass(self):
+        gate = self.gate()
+        done, late = self.late_run()
+        passed = {**late, 'steps': [{'conclusion': 'success'}, {'conclusion': 'skipped'}]}
+        self.assertEqual(gate.backbone_check([*done, passed], {}), (0, []))
+        for steps in ([{'conclusion': 'success'}, {'conclusion': 'failure'}], [{'conclusion': 'success'}, {'conclusion': None}], []):
+            with self.subTest(steps=steps):
+                self.assertEqual(gate.backbone_check([*done, {**late, 'steps': steps}], {})[0], 1)
+
     def test_a_red_unit_leg_holds_both_betas_even_when_every_e2e_job_passed(self):
         # Owner, 31 Oct 2026 ("D: unit red still runs e2e"): the unit tests do not stop the e2e, so the release is where one unit red refuses both platforms.
         # Owner, 1 Nov 2026: they are a leg of the Test matrix, a job named "Unit tests · <lane>", which the gate finds by name in the run's jobs.

@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import subprocess
+import time
 from pathlib import Path
 
 try:
@@ -14,6 +15,7 @@ except ImportError:  # Direct workflow invocation: python3 tools/beta_rate_gate.
 
 LANES = Path(__file__).resolve().parents[1] / 'desktop/e2e/lanes.json'
 MAX_NIGHTS_INSPECTED, MAX_PAGES = 21, 2   # three weeks of nights; two pages of 100 runs hold them with manual runs between
+SETTLE_LIMIT, SETTLE_POLL = 480, 20   # seconds; a hang guard inside the release step's 10 minutes
 
 
 def gh(*args, binary=False):
@@ -37,6 +39,16 @@ def jobs_of(repo, rid, github):
     return [job for page in pages for job in page['jobs']]
 
 
+def conclusion_of(job):
+    """A job's result, or None while GitHub has not reported one: a job whose every step passed has passed, anything else unreported stays unknown, never green.
+    Why (mac-32, beta 41860707305, 4 Nov 2026): in a GitHub incident a finished job kept conclusion null for minutes, and "not success" refused 0.9.8 with wizard green.
+    """
+    if job.get('conclusion'):
+        return job['conclusion']
+    steps = job.get('steps') or []
+    return 'success' if steps and all(step.get('conclusion') in ('success', 'skipped') for step in steps) else None
+
+
 def blocking_jobs(jobs, registry, platform):
     """Ignore all tolerant and suspended reds; other unfinished or failed lane jobs block."""
     prefix = 'E2E · Mac + Linux · ' if platform == 'mac' else 'E2E · Windows · '
@@ -48,7 +60,7 @@ def blocking_jobs(jobs, registry, platform):
         suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
         entry = registry.get(suite, {})
         exempt = entry.get('lane') in ('tolerant', 'suspended')
-        if not exempt and job.get('conclusion') != 'success':
+        if not exempt and conclusion_of(job) != 'success':
             blocked.append(suite)
     return blocked
 
@@ -66,6 +78,36 @@ def blocking_lanes(jobs, registry):
 UNIT_JOBS = ('Unit tests · Mac', 'Unit tests · Windows')
 
 
+def gate_jobs(jobs, registry):
+    """(name to show, job) of every job that decides a release; a missing unit leg comes with an empty job."""
+    found = [(name, next((job for job in jobs if job.get('name') == name), {})) for name in UNIT_JOBS]
+    for label in LANE_NAMES.values():
+        prefix = f'E2E · {label} · '
+        for job in jobs:
+            if job.get('name', '').startswith(prefix):
+                suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
+                if registry.get(suite, {}).get('lane') not in ('tolerant', 'suspended'):
+                    found.append((f'{label}: {suite}', job))
+    return found
+
+
+def unreported(jobs, registry):
+    """The deciding jobs GitHub has no result for yet: not a verdict, red or green."""
+    return sorted({name for name, job in gate_jobs(jobs, registry) if job and job.get('status', 'completed') != 'completed' and conclusion_of(job) is None})
+
+
+def settled_jobs(repo, rid, registry, github=gh, sleep=time.sleep, clock=time.monotonic):
+    """Read the run's jobs until each deciding job has a result, or SETTLE_LIMIT passes (backbone_check then refuses, naming them)."""
+    end = clock() + SETTLE_LIMIT
+    while True:
+        jobs = jobs_of(repo, rid, github)
+        late = unreported(jobs, registry)
+        if not late or clock() >= end:
+            return jobs
+        print('Waiting for GitHub to report: ' + ', '.join(late), flush=True)
+        sleep(SETTLE_POLL)
+
+
 def backbone_check(jobs, registry):
     """Hold either beta on any backbone job that is not green; a suite's single try is the verdict (spec rule L, 31 Oct 2026).
 
@@ -73,20 +115,13 @@ def backbone_check(jobs, registry):
     of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. Anything but conclusion 'success' is red, and so is a missing job: a unit leg that was
     cancelled or skipped never passed (Gitar on #2858), and the e2e jobs do not show it.
     """
-    red = {name for name in UNIT_JOBS if next((job for job in jobs if job.get('name') == name), {}).get('conclusion') != 'success'}
-    for lane, label in LANE_NAMES.items():
-        prefix = f'E2E · {label} · '
-        lane_jobs = [job for job in jobs if job.get('name', '').startswith(prefix)]
-        if not lane_jobs:
-            red.add(f'{label}: lane jobs unavailable')
-        for job in lane_jobs:
-            suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
-            if registry.get(suite, {}).get('lane') in ('tolerant', 'suspended'):
-                continue
-            if job.get('conclusion') != 'success':
-                red.add(f'{label}: {suite}')
+    late = unreported(jobs, registry)
+    red = {name for name, job in gate_jobs(jobs, registry) if conclusion_of(job) != 'success'} - set(late)
+    red |= {f'{label}: lane jobs unavailable' for label in LANE_NAMES.values() if not any(job.get('name', '').startswith(f'E2E · {label} · ') for job in jobs)}
     lines = ['Not released: red: ' + ', '.join(sorted(red))] if red else []
-    return int(bool(red)), lines
+    if late:
+        lines.append(f'Not released: GitHub has not reported, after {SETTLE_LIMIT // 60} min: ' + ', '.join(late))
+    return int(bool(red or late)), lines
 
 
 def main_nights(repo, suite, github, platform='mac', current_run='', *, first_only=False):
@@ -172,7 +207,7 @@ def main():
         print('::warning::AI rate registry unavailable; report only' if not args.e2e_only else '::error::Backbone registry unavailable')
         return int(args.e2e_only)
     if args.e2e_only:
-        status, lines = backbone_check(jobs_of(args.repo, args.run, gh), registry)
+        status, lines = backbone_check(settled_jobs(args.repo, args.run, registry), registry)
         for line in lines:
             print('::error::' + line)
         if status:
