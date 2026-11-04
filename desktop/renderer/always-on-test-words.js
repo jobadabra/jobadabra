@@ -69,12 +69,14 @@ export const TOO_LONG = 'The test is taking far longer than it should. Open the 
 
 const SOFT_MS = 30 * 1000, LISTED_BY_MS = 90 * 1000, GIVE_UP_MS = 6 * 60 * 1000;   // Why (4 Nov 2026, review of 3/3): a run lasts about a minute; every wait ends in a verdict, never a button that stays off for ever
 
-/** One poll's decision, pure: from the phase, what the read said and the time since the press -> {phase, message, again}. Every path out of starting/running ends in a verdict. */
-export function advance({phase, read, elapsedMs}) {
+/** One poll's decision, pure: from the phase, what the read said, the time since the press and whether a run was already seen -> {phase, message, again}. Every path out of starting/running ends in a verdict.
+ *  Why (4 Nov 2026, Gitar on #3159): "never listed" is only true before the first sighting of the run; a failed read (network, GitHub 5xx) or a read after the run was seen keeps polling until the 6-minute limit. */
+export function advance({phase, read, elapsedMs, seen = false}) {
   if (read.found) {
     if (read.verdict === 'running' && elapsedMs > GIVE_UP_MS) return {phase: 'failed', message: TOO_LONG, again: false};
     return {phase: read.verdict, message: '', again: read.verdict === 'running'};
   }
+  if (read.error || seen) return elapsedMs > GIVE_UP_MS ? {phase: 'failed', message: TOO_LONG, again: false} : {phase, message: '', again: true};
   if (elapsedMs > LISTED_BY_MS) return {phase: 'failed', message: NEVER_LISTED, again: false};
   return {phase, message: elapsedMs > SOFT_MS ? NOT_LISTED_YET : '', again: true};
 }

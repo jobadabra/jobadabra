@@ -60,3 +60,11 @@ test('a finished run is final and clears an earlier "not listed yet" line', () =
   for (const verdict of ['passed', 'failed', 'cancelled']) assert.deepEqual(advance({phase: 'running', read: {found: true, verdict}, elapsedMs: 500000}).again, false, verdict);
   assert.equal(advance({phase: 'starting', read: {found: true, verdict: 'running'}, elapsedMs: 40000}).message, '');
 });
+
+test('a failed read, or a read after the run was seen, never says "never listed": it keeps polling to the 6-minute limit', () => {
+  const blip = {found: false, error: 'GitHub 502'};
+  assert.deepEqual(advance({phase: 'running', read: blip, elapsedMs: 120000, seen: true}), {phase: 'running', message: '', again: true});
+  assert.deepEqual(advance({phase: 'starting', read: blip, elapsedMs: 120000}), {phase: 'starting', message: '', again: true});
+  assert.deepEqual(advance({phase: 'running', read: {found: false}, elapsedMs: 120000, seen: true}).again, true);
+  assert.deepEqual(advance({phase: 'running', read: blip, elapsedMs: 361000, seen: true}), {phase: 'failed', message: TOO_LONG, again: false});
+});

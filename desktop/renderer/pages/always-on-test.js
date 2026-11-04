@@ -42,7 +42,7 @@ async function poll() {
   steps = read.steps?.length ? read.steps : steps;
   url = read.url || url;
   runId = read.runId || runId;
-  const next = advance({phase, read, elapsedMs: Date.now() - startedAt});
+  const next = advance({phase, read, elapsedMs: Date.now() - startedAt, seen: runId > 0});
   phase = next.phase; message = next.message;
   if (next.again) timer = setTimeout(poll, POLL_MS);
   draw();
