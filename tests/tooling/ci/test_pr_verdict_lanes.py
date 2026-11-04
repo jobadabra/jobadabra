@@ -9,6 +9,7 @@ import os
 import re
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from unittest import mock
 from pathlib import Path
 
@@ -62,6 +63,12 @@ class LaneGreys(unittest.TestCase):
         self.assertEqual(len(spans), 1)
         listed = {7: [job(71, 'qualityai', 'failure'), job(72, 'settings')]}
         self.assertEqual(pv.verdict([run(7)], files=['tools/pr-verdict.py'], jobs=listed, spans=spans, reports={'qualityai'})[0], 'success')
+
+    def test_a_finished_job_github_has_not_closed_yet_ends_at_its_last_step(self):
+        late = [{'name': 'desktop', 'started_at': '2026-11-04T16:00:00Z', 'completed_at': None, 'last_step': '2026-11-04T16:05:00Z'}]
+        with mock.patch.object(pv, 'gh', return_value=json.dumps(late)):
+            spans = pv.job_spans('o/r', [run(7)])
+        self.assertEqual(pv.running_minutes(spans, datetime(2026, 11, 4, 16, 24, tzinfo=timezone.utc)), 5.0)
 
     def test_a_red_tolerant_suite_is_grey_named_with_its_lane_and_never_red(self):
         jobs = {7: [job(70, 'plan'), job(71, 'quality-1of2', 'failure'), job(72, 'quality-2of2'), job(73, 'HTML report')]}

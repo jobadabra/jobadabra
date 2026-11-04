@@ -31,7 +31,8 @@ def job_spans(repo, runs, gh, counted, keep_job):
     A job counts when keep_job(its name) holds. Moved from pr-verdict.py (460-line limit, #3001)."""
     spans = []
     for r in counted(runs):
-        for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
+        for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name, last_step: ([.steps[]?.completed_at // empty] | max)}]') or '[]'):
             if keep_job(j.get('name', '')):
-                spans.append((j.get('started_at'), j.get('completed_at')))
+                # Why (#3153, 4 Nov 2026): with 40 runs queued GitHub said a run was completed while its jobs had no completed_at for 20 min; read as "still running", 5 min of work became 23.6 and a false budget red.
+                spans.append((j.get('started_at'), j.get('completed_at') or j.get('last_step')))
     return spans
