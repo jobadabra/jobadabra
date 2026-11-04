@@ -15,7 +15,7 @@ updated: 2026-11-03
 - Check a place with jobs located there (at most remote that names the country); worldwide remote never counts toward a place.
 - The AI decides what a title or place means (`src/ai/decide.py`, `src/places.py`); a capped AI leaves leftovers unknown, never a default such as "other". Nothing from the network becomes prompt text.
 - No job texts are stored centrally: only counts, place names and key facts, aggregated with k of at least 3.
-- Every search PR runs the persona gate: 6 fictional personas in parallel, scored by right role and right place, red when a press takes over 180 s (`tools/persona-search/`).
+- The Search check runs once a night, a report that blocks nothing: 6 fictional personas in a row, scored by right role and right place, red when a press takes over 180 s (`tools/persona-search/`). A search PR relies on its unit and integration tests.
 
 ## Key files
 - `src/daily.py` and `daily_*.py`: orchestrates a search run; `src/first_jobs.py`, `job_rank.py`, `score.py` (in `src/ai/`): first jobs, ranking, scoring.

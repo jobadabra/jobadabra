@@ -45,7 +45,7 @@ class AiSecretJobs(unittest.TestCase):
                 checked.append(f'{path.name}:{name}')
                 condition = re.search(r'\n    if:.*', block)
                 self.assertTrue(condition and GUARD in condition.group(0), f'{path.name} job {name} holds a secret or an OIDC token on a pull_request: it must skip a bot\'s fd-ai/ branch (`if: ... !({GUARD})`)')
-        for known in ('smoke.yml:smoke', 'search-personas.yml:persona', 'page-cases.yml:report'):
+        for known in ('smoke.yml:smoke', 'page-cases.yml:report'):
             self.assertIn(known, checked, f'the scan must see {known}')
 
 

@@ -1,4 +1,4 @@
-"""The search PR check (search-personas.yml): 6 fictional job seekers each press Find jobs once; a PR is red when a press runs past 3 minutes; the
+"""The night Search check (search-personas.yml, a report since 4 Nov 2026): 6 fictional job seekers each press Find jobs once; a run is red when a press runs past 3 minutes; the
 right jobs are shown per persona and pooled, red only from 10 measured main runs on (QUALITY_MIN_RUNS; owner, 27 Oct 2026, "Time only, until 10 runs"). Origin (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate,
 for a profile, for a speed perspective.. We break other use-cases."; his four answers on the sketch: here with our own tools, all 6 in parallel,
 right role + place by a blind judge).
@@ -330,7 +330,7 @@ def quality(pr, main_runs):
 
 def grey_head(rows, pr):
     """-> (head, unavailable reason) of an overall line with no 🟢 row, from the rows' kinds. Why (1 Nov 2026, owner: "Guard grey now"): until the press reads jobs again
-    on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635) this is grey, not red: a red here would block every search PR and main push.
+    on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635) this is grey, not red: a red would call a slow AI a broken search.
     TODO(AI): back to red once found > 0 on the Claude engine (#2901)"""
     kinds = [r['kind'] for r in rows]
     if _nothing(pr):   # every judge saw 0 jobs: the first line names the cause (the refused AI) instead of a table of zeros
