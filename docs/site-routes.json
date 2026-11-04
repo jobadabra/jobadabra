@@ -497,6 +497,64 @@
     "POST"
    ],
    "kind": "ci"
+  },
+  {
+   "path": "/gtm/data",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
+   "path": "/integration/data",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
+   "path": "/agent-coding/data",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
+   "path": "/api/synthetic/last",
+   "methods": [
+    "GET"
+   ],
+   "kind": "app"
+  },
+  {
+   "path": "/api/feedback/replies",
+   "methods": [
+    "GET"
+   ],
+   "kind": "app"
+  },
+  {
+   "path": "/api/feedback/replies/seen",
+   "methods": [
+    "POST"
+   ],
+   "kind": "app"
+  },
+  {
+   "path": "/admin/growth/feedback/act",
+   "methods": [
+    "POST"
+   ],
+   "kind": "owner"
+  },
+  {
+   "path": "/admin/growth/feedback/file",
+   "methods": [
+    "GET"
+   ],
+   "kind": "owner"
   }
  ]
 }

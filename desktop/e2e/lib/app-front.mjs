@@ -1,11 +1,13 @@
 // In front of the offline app (lib/offline-app.mjs) for the real extension: pairing is answered here (the extension pairs with this front: the app's own pairing
 // needs the person's click), every other call goes to the app with its token; each is recorded. Used by lib/row-replay.mjs and lib/live-row.mjs (a pure move
 // out of row-replay.mjs, 11 Oct 2026). -> {port, url, requests, close()}
+// Job: serve stored answers
 import http from 'node:http';
-import {freePort} from './extension.mjs';
+import {listenOnFreePort} from './own-port.mjs';
 
 export async function frontOf(app) {
-  const port = await freePort(), requests = [], front = {requests, replies: [], beforeRespond: null};   // replies: the AI routes' answers, in memory only (lib/wrong-values.mjs reads the values the app decided)   // beforeRespond(route, body): awaited before an answer goes back (row-replay: a page state that followed an ask)
+  let port;   // the OS's pick, known once the server listens (own-port.mjs listenOnFreePort: no gap for another process to take it)
+  const requests = [], front = {requests, replies: [], beforeRespond: null};   // replies: the AI routes' answers, in memory only (lib/wrong-values.mjs reads the values the app decided)   // beforeRespond(route, body): awaited before an answer goes back (row-replay: a page state that followed an ask)
   const cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'};
   const server = http.createServer((request, response) => {
     if (request.method === 'OPTIONS') { response.writeHead(204, cors); response.end(); return; }
@@ -27,7 +29,7 @@ export async function frontOf(app) {
       } catch (error) { response.writeHead(502, cors); response.end(JSON.stringify({error: String(error?.message || error)})); }
     });
   });
-  await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
+  port = await listenOnFreePort(server);
   return Object.assign(front, {port, url: `http://127.0.0.1:${port}`, close: () => new Promise(resolve => server.close(() => resolve()))});
 }
 

@@ -17,6 +17,25 @@ export async function freePort() {
   }
 }
 
+/**
+ * Starts `server` listening on a port the OS picks and -> that port. Never the production one (a server that got it is closed and asked again).
+ * Invariant: the port is bound the moment it is known, so nothing can take it in between. Use this for a server the test starts itself; freePort() leaves a gap
+ * between choosing the number and binding it, and is only for a port handed to another process (the app's JOBADABRA_PORT, a browser's debugging port).
+ * Why (4 Nov 2026, run 41859921107): a stand-in app listened on a freePort() number it had chosen earlier (the extension copy was made in between); by then the port
+ * was taken, and the extension test died with "listen EADDRINUSE 127.0.0.1:40371" on code its PR did not touch.
+ */
+export async function listenOnFreePort(server, host = '127.0.0.1') {
+  for (;;) {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, host, () => { server.off('error', reject); resolve(); });
+    });
+    const {port} = server.address();
+    if (port !== DEFAULT_APP_PORT) return port;
+    await new Promise(resolve => server.close(resolve));
+  }
+}
+
 /** -> the env entry that gives a launched test app its own port: the suite's, else a free one. */
 export async function ownPortEnv(env = {}) {
   return {JOBADABRA_PORT: env.JOBADABRA_PORT || String(await freePort())};
