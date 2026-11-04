@@ -87,6 +87,10 @@ def properties(job, status):
         if ai.get('role_family'):
             props['Role family'] = {'select': {'name': ai['role_family']}}
         props.update(_posting_props(job))
+    # Why (4 Nov 2026, a tester on 0.9.6, Gitar on #3132): the posted date is the store's `posted_at`, not an AI field: it is written for a job no extraction read too.
+    from ..stores.matches_sync import stored_posted
+    if stored_posted(job):
+        props['Posted'] = {'date': {'start': stored_posted(job)}}
     return props
 
 

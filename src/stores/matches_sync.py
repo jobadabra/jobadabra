@@ -52,6 +52,11 @@ def posting_facts(job):
             'posted': _day(job.get('posted_at')) or _day(plain(ai.get('posted')))}
 
 
+def stored_posted(job):
+    """The day the store knows the job was posted ('' when none or not a real day): the one reading both write paths use (facts() here, src/notion/matches.py properties())."""
+    return _day(job.get('posted_at'))
+
+
 def facts(job):
     """The scoring facts of one scored job, each as its Job Matches column holds it (src/notion/matches.py properties)."""
     fit, ai = job['fit'], job.get('ai') or {}
@@ -69,8 +74,8 @@ def facts(job):
         found.update(posting_facts(job))
     # Why (4 Nov 2026, a tester on 0.9.6: Overview "Posted: Not stated", Description tab "2 Nov"): the posted date is the store's own `posted_at`, not an AI field. It was
     # written only inside the `if ai:` block, so a job the extractor never read kept an empty Posted column while the store knew the date.
-    if _day(job.get('posted_at')):
-        found['posted'] = _day(job['posted_at'])
+    if stored_posted(job):
+        found['posted'] = stored_posted(job)
     return found
 
 
