@@ -67,6 +67,10 @@ def facts(job):
         found['technologies'] = '; '.join(ai.get('technologies') or [])[:2000]
         found['role_family'] = ai.get('role_family') or ''
         found.update(posting_facts(job))
+    # Why (4 Nov 2026, a tester on 0.9.6: Overview "Posted: Not stated", Description tab "2 Nov"): the posted date is the store's own `posted_at`, not an AI field. It was
+    # written only inside the `if ai:` block, so a job the extractor never read kept an empty Posted column while the store knew the date.
+    if _day(job.get('posted_at')):
+        found['posted'] = _day(job['posted_at'])
     return found
 
 

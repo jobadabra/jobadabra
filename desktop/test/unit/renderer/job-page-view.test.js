@@ -268,16 +268,3 @@ test('A date in the future is no date a job was found or posted: shown as unknow
   assert.equal(timelineOf([], {first_seen_at: future}, null, {}).length, 0, 'no "Job discovered" in the year 2099');
   assert.equal(foundLine({first_seen_at: new Date(Date.now() + 3600 * 1000).toISOString()}, null), shortDay(new Date(Date.now() + 3600 * 1000).toISOString()) ? `First found ${shortDay(new Date(Date.now() + 3600 * 1000).toISOString())}` : '', 'a clock an hour off is still a date');
 });
-
-// Why (4 Nov 2026, a tester on 0.9.6): the Overview said Posted "Not stated" while the Description tab said "2 Nov" for the same job. The match's own `posted`
-// (written when the job was scored) can be empty; the job's list row carries the store's `posted_at`, which the Description reads.
-test('Overview and Description say the same Posted date, whichever of the match or the store holds it', () => {
-  const posted = job => glanceTiles(matchView(job, {match: {fit: 72, posted: ''}})).find(tile => tile.key === 'posted').value;
-  const described = job => postingFacts(job, job, 'text').find(fact => fact.key === 'posted').value;
-  const stored = {fit: 72, posted_at: '2026-11-02T09:30:00Z'};
-  assert.equal(posted(stored), described(stored));
-  assert.notEqual(posted(stored), 'Not stated');
-  assert.equal(glanceTiles({posted: '2026-10-03', posted_at: ''}).find(tile => tile.key === 'posted').value, shortDay('2026-10-03'), 'the match alone still shows');
-  assert.equal(posted({fit: 72}), 'Not stated', 'neither holds it');
-  assert.equal(glanceTiles({posted_at: '2099-01-01T00:00:00Z'}).find(tile => tile.key === 'posted').value, 'Not stated', 'a future date is no date');
-});

@@ -150,9 +150,7 @@ export function glanceTiles(match = null) {
     tile('contract', 'Contract', m.contract, m.workload ? `Workload ${m.workload}` : ''),
     tile('seniority', 'Seniority', m.seniority, m.role_family ? `Role family: ${m.role_family}` : ''),
     tile('languages', 'Languages', languages),
-    // Why (4 Nov 2026, a tester on 0.9.6: Overview "Not stated", Description tab "2 Nov"): one fact, one reading. The store's posted_at (the list row, what the Description
-    // tab shows) first; the match's own `posted` (written when the job was scored, possibly empty then) when the store has none.
-    tile('posted', 'Posted', pastDay(m.posted_at) || pastDay(m.posted), m.deadline ? `Deadline ${day(m.deadline)}` : '')];
+    tile('posted', 'Posted', pastDay(m.posted), m.deadline ? `Deadline ${day(m.deadline)}` : '')];
 }
 
 // "First found 9 Oct · Scored 9 Oct" under the tiles.
