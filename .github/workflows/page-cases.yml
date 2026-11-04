@@ -218,8 +218,8 @@ jobs:
   report:
     name: page cases to /admin/form-filling/lab
     needs: replay
-    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds REPLAYS_PUBLISH_KEY and runs the checked-out tree's script. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
-    if: always() && needs.replay.result != 'cancelled' && !(startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]'))
+    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds REPLAYS_PUBLISH_KEY and runs the checked-out tree's script. A draft fix the bot opens on fd-ai/<ref> or fixer/<source>-<ref> (ai-fixer.yml, 4 Nov 2026) carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
+    if: always() && needs.replay.result != 'cancelled' && !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

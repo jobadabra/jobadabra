@@ -20,6 +20,7 @@ CLASSIFIED = {
     # Why (3 Nov 2026, owner: stable only): tells the feedback reporters; started by tools/release-stable.sh after a promotion, never a push or PR check.
     'Release · Tell the feedback reporters': 'ignored: started by tools/release-stable.sh once a build is stable, or by hand; never runs on a push to main',
     # Why (3 Nov 2026, owner: Send to AI on one feedback): started by the site when the owner clicks it (workflow_dispatch) and by a closed fd-ai/ pull request; never a push or PR check.
+    'CI · AI fixer': 'ignored: started by hand (workflow_dispatch) for one item; never runs on a push to main',
     'CI · Feedback to AI': 'ignored: started by the site on the owner\'s click, or when an fd-ai/ pull request closes; never runs on a push to main',
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     # Why (1 Nov 2026, owner via a8: "Nightly report"): the clock-moved time-bomb report is report only, called by night pass 1, never a push or PR check.

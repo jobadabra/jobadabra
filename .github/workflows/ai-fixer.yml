@@ -1,0 +1,294 @@
+name: CI · AI fixer
+run-name: AI fixer ${{ inputs.source }} ${{ inputs.ref }}
+
+# ONE run of the AI fixer for ONE item: a feedback card (source feedback, ref = its 16-character handle) or a Linear issue (source linear, ref = JOB-123), up to a DRAFT pull request (owner, 4 Nov 2026: "Spin an CI agent to
+# fix a specific feedback and let's see how it performs"; plan 2026-11-04-ci-agent-until-green.md, PR 3/6; the follow-up of that PR is 4/6). Started by hand (workflow_dispatch); at most 3 a day and 1 at a time, counted over this workflow AND feedback-ai.yml (Send to AI still counts only its own runs until it moves onto the core).
+# An agent LOOP (tools/fixer/loop.mjs) asks the AI broker (Sonnet level only, tools/fixer/engine.mjs) for ONE JSON action per turn; our code performs it (tools/fixer/actions.mjs): read, search, edit behind the walls, and run the named
+# tests in the no-network box. The AI never gets a shell or a token. It never merges, never pushes to main. A repository variable AI_FIXER = off pauses it.
+# THIS REPOSITORY IS PUBLIC: the branch, the pull request, the run log and the artifacts are public. The log carries action names and counts only; the pull request text and the diff are scanned for e-mails, secrets, home folders and
+# passages copied from the item before anything is pushed (tools/feedback-ai.mjs leaks).
+# Trust by job, as in feedback-ai.yml (whose header says why): `guard` counts today's runs (read-only token); `fix` runs only OUR code from a snapshot made before the AI step (desktop/lib is a folder the AI may edit) and the AI's tests
+# only through tools/feedback-ai-sandbox.sh (docker, no network, no runner token); `prove` runs the AI's new test and the suites in that box with no token at all; `publish` is the only job that pushes, from a fresh checkout and the scanned patch,
+# with the CI App token so the pull request's checks start. Guard: desktop/test/tooling/ci/fixer-loop.test.js.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Where the item comes from'
+        required: true
+        type: choice
+        options: [feedback, linear]
+      ref:
+        description: "The item: a feedback's 16-character handle, or a Linear issue such as JOB-123"
+        required: true
+
+permissions: {}
+
+jobs:
+  guard:
+    if: vars.AI_FIXER != 'off'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read   # the list of the workflows' runs
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+            desktop/e2e/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: At most 1 at a time and 3 a day
+        run: node tools/fixer/run.mjs cap
+
+  fix:
+    needs: guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45   # the hang guard; the loop's own deadline is 25 minutes (tools/fixer/loop.mjs CAPS)
+    permissions:
+      contents: read   # no write token in this job, and the AI's edits are applied as data by our code
+      id-token: write   # the site and the AI broker know a run by its OIDC token
+    concurrency:
+      group: ai-fixer   # one at a time; a second start waits instead of racing for the same checks
+      cancel-in-progress: false
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+      sha: ${{ steps.check.outputs.sha }}   # of the four files below; publish compares it, so an artifact swapped after the scan is refused
+    env:
+      SOURCE: ${{ inputs.source }}
+      REF: ${{ inputs.ref }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Keep a copy of our scripts that the patch cannot change
+        run: |
+          mkdir -p "$RUNNER_TEMP/fbt"
+          cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs tools/fixer/sources/*.mjs tools/context/lib.mjs tools/context/sources/linear.mjs \
+            desktop/e2e/lib/agent-ask.mjs desktop/e2e/lib/broker-client.mjs desktop/e2e/lib/broker-job.mjs desktop/e2e/lib/ai-cap.mjs "$RUNNER_TEMP/fbt/"
+          { echo "FBT=$RUNNER_TEMP/fbt"; echo "OUT=$RUNNER_TEMP/fx"; echo "BOX=$RUNNER_TEMP/box"; echo "PYDEPS=$RUNNER_TEMP/pydeps"; } >> "$GITHUB_ENV"
+      # The box's dependencies come from main's own files BEFORE the loop edits anything, so an edit cannot change what is installed.
+      - name: Install the app's and the engine's dependencies, build the box
+        run: |
+          (cd desktop && npm ci)
+          pip install --quiet --target "$PYDEPS" -r requirements.txt
+          docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+      - name: Read the item (never printed)
+        env:
+          LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}   # a read-only key, in this one step only
+        run: node "$FBT/tools/fixer/run.mjs" read --source "$SOURCE" --ref "$REF" --out "$OUT"
+      - name: The agent loop (Sonnet level, up to 30 turns and 25 minutes)
+        id: loop
+        timeout-minutes: 30
+        run: node "$FBT/tools/fixer/run.mjs" loop --out "$OUT"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ai-capped-fixer   # present only when the broker refused (its file holds no item text)
+          path: ${{ runner.temp }}/ai-capped/ai-capped.json
+          if-no-files-found: ignore
+      - name: Check the proposed change and write its patch
+        id: check
+        env:
+          AI_SKIPPED: ${{ steps.loop.outputs.skipped }}   # the broker refused (budget, login, down) or answered from an engine below Sonnet
+        run: |
+          set -euo pipefail
+          stop() { echo "::error::$1"; exit 1; }
+          if [ "$AI_SKIPPED" = true ]; then stop "the AI broker refused the call, or no Sonnet-level engine answered: see the run's warning"; fi
+          roots="src desktop/renderer desktop/lib desktop/test tests"
+          changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^e2e-artifacts/' || true)
+          if [ -z "$changed" ]; then
+            echo "The AI proposed no change ($(head -1 "$OUT/verdict.md" 2>/dev/null | tr -d '[:space:]' || true))."
+            echo "go=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$changed" | node desktop/e2e/check-change.mjs || stop "the proposed change touched files a fix may not touch, or had no test"
+          # At most 72 BYTES in all (the title is the commit subject): the prefix first, the AI's summary cut at a word to what is left.
+          prefix="[fixer] $SOURCE $REF "
+          summary=$(PREFIX="$prefix" node -e 'const t=((require("fs").readFileSync(process.argv[1],"utf8").split("\n")[0])||"").trim(); const b=x=>Buffer.byteLength(x), room=72-b(process.env.PREFIX); if(b(t)<=room){console.log(t)}else{let c=[...t]; while(b(c.join(""))>room-3)c.pop(); console.log(c.join("").replace(/\s+\S*$/,"")+"…")}' "$OUT/pr-body.md")
+          [ -n "$summary" ] || summary="fix"
+          printf '%s\n' "$summary" > "$OUT/summary.txt"
+          printf '%s\n' "$prefix$summary" > "$OUT/title.txt"
+          sed '1,2d' "$OUT/pr-body.md" > "$OUT/body.md"
+          node "$FBT/tools/feedback-ai.mjs" leaks --out "$OUT" --title "$OUT/title.txt" --body "$OUT/body.md" || stop "the change or its text held something that may not be public (an e-mail, a secret, a home folder, a phone number or a passage copied from the item): nothing was pushed"
+          # shellcheck disable=SC2086
+          git add -N -- $roots
+          # shellcheck disable=SC2086
+          git diff --no-renames --binary -- $roots > "$OUT/change.patch"
+          # The second wall (check-change.mjs is the first): no workflow, tool, hook, agent-instruction, package, secret or config file, at most 8 files and 60 KB.
+          echo "$changed" | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < "$OUT/change.patch")" || stop "the change touches files a fix may never touch, or is too big (8 files, 60 KB)"
+          echo "sha=$(cat "$OUT/change.patch" "$OUT/title.txt" "$OUT/summary.txt" "$OUT/body.md" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "go=pr" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v6
+        if: steps.check.outputs.go == 'pr'
+        with:
+          name: fixer-patch   # the patch and the pull request text, all scanned above; never the item (brief.json and item.md are not listed)
+          path: |
+            ${{ runner.temp }}/fx/change.patch
+            ${{ runner.temp }}/fx/title.txt
+            ${{ runner.temp }}/fx/summary.txt
+            ${{ runner.temp }}/fx/body.md
+          retention-days: 3
+
+  # The only job that runs the AI's WHOLE test suites. No secret, no write permission, no id-token; every command of it goes through tools/feedback-ai-sandbox.sh (docker, no network, no capabilities, its own copy of the workspace).
+  prove:
+    needs: fix
+    if: needs.fix.outputs.go == 'pr'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Keep a copy of our scripts that the patch cannot change
+        run: |
+          mkdir -p "$RUNNER_TEMP/fbt"
+          cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
+          echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
+          echo "PYDEPS=$RUNNER_TEMP/pydeps" >> "$GITHUB_ENV"
+      # The dependencies are installed from main's own files BEFORE the patch is applied.
+      - name: Install the app's dependencies (for its tests)
+        working-directory: desktop
+        run: npm ci
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the engine's dependencies (for its tests)
+        run: pip install --quiet --target "$PYDEPS" -r requirements.txt
+      - name: Build the box the AI's code runs in
+        run: docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+      - uses: actions/download-artifact@v7
+        with:
+          name: fixer-patch
+          path: .fb
+      - name: Apply the patch
+        run: git apply .fb/change.patch
+      - name: Copy the patched workspace for the box
+        run: |
+          cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"
+          echo "BOX=$RUNNER_TEMP/box" >> "$GITHUB_ENV"
+      - name: The new test must fail on an assertion without the fix and pass with it
+        run: bash "$FBT/tools/feedback-ai-sandbox.sh" node /fbt/tools/feedback-ai.mjs proof
+      - name: The whole suites and the lint must pass with the fix
+        run: |
+          set -euo pipefail
+          bash "$FBT/tools/feedback-ai-sandbox.sh" bash -c 'cd desktop && npm test && npm run lint' > "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole desktop suite or the lint failed with the fix"; exit 1; }
+          bash "$FBT/tools/feedback-ai-sandbox.sh" python3 -m unittest discover -s tests >> "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole Python suite failed with the fix"; exit 1; }
+
+  # The only job that can push. A fresh checkout; it copies our script BEFORE applying the patch, applies the patch `fix` wrote, checks its paths again and opens a DRAFT pull request on fixer/<source>-<ref>.
+  # Never merges, never marks ready, never pushes anywhere else.
+  publish:
+    needs: [fix, prove]
+    if: needs.fix.outputs.go == 'pr' && needs.prove.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write   # the branch fixer/<source>-<ref>
+      pull-requests: write   # the draft pull request and its label
+    env:
+      REPO: ${{ github.repository }}
+      SOURCE: ${{ inputs.source }}
+      REF: ${{ inputs.ref }}
+      PATCH_SHA: ${{ needs.fix.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Keep a copy of our script that the patch cannot change
+        run: |
+          mkdir -p "$RUNNER_TEMP/fbt"
+          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
+          echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v7
+        with:
+          name: fixer-patch
+          path: .fb
+      # GitHub starts no workflow for a push or PR made with GITHUB_TOKEN, so the PR would sit without checks: push and open it with the CI GitHub App's token (else the workflow token, and no checks).
+      - name: The App token, so the PR's checks start
+        id: pr_app
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Apply the patch and open the draft pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TOKEN: ${{ steps.pr_app.outputs.token }}
+        run: |
+          set -euo pipefail
+          stop() { echo "::error::$1"; exit 1; }
+          [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6})$ ]] || stop "not a handle this fixer takes"
+          [ "$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" = "$PATCH_SHA" ] || stop "the patch is not the one that was scanned"
+          # The patch again, as if it were a stranger's: only the allowed folders, no link, no mode change, no rename.
+          if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | grep -q -v ' 100644$'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
+          git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"
+          git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < .fb/change.patch)" || stop "the patch touches files a fix may never touch, or is too big (8 files, 60 KB)"
+          git apply .fb/change.patch
+          git add -A -- src desktop/renderer desktop/lib desktop/test tests
+          title=$(cat .fb/title.txt); summary=$(cat .fb/summary.txt)
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch="fixer/$SOURCE-$REF"
+          git checkout -q -b "$branch"
+          tools/bot-commit.sh "$title" "the fix is proven by its own unit test (fails before on an assertion, passes after) and the suites, not by a page"
+          # -f: the branch is this workflow's own namespace; a second run for the same item replaces the old branch.
+          git push -q -f "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
+          tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $summary" --why="the owner sent a $SOURCE item to the AI fixer" \
+            --unblocks="that item, once the owner reviews and merges" --label="Item $SOURCE $REF" --before='the item is open' --after='fixed by this change' \
+            --rate='Real users=🟡 Medium|an item fixed' --rate='Tests & harness=🟡 Medium|a test with the fix' --detail=.fb/body.md > .fb/laid-out.md
+          # The checks that hold secrets (smoke, page cases) skip a bot's fixer/ branch: AI-written code must not meet a secret before a person has read it.
+          # shellcheck disable=SC2016
+          printf '\n> ⏸ **Some checks wait for you.** Read the diff first; then push any commit to this branch (`git commit --allow-empty -m "start checks"`) to start the checks that hold secrets.\n' >> .fb/laid-out.md
+          gh label create ai-fixer --repo "$REPO" --force --color 5319E7 --description 'A draft fix from the AI fixer'
+          url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --draft --title "$title" --body-file .fb/laid-out.md --label ai-fixer)
+          echo "Draft pull request opened: $url"
+
+  # One alert when the broker refused the run; the note it reads holds the cause, never any item text.
+  ai-skipped:
+    needs: fix
+    if: always() && !cancelled() && needs.fix.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            desktop/e2e
+            .github/actions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/ai-skipped-alert
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          github-token: ${{ github.token }}

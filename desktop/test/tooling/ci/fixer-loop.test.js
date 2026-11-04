@@ -140,3 +140,46 @@ test('a Linear issue is data: its text sits inside a random fence, cannot close 
   const walls = new RegExp(task.allowedPaths);
   for (const file of ['.github/workflows/x.yml', 'tools/ship.sh', 'CLAUDE.md']) assert.equal(walls.test(file), false, file);
 });
+
+// The workflow's trust split (the class of feedback-ai.test.js, for ai-fixer.yml): the AI's code runs only in the box; only `publish` can write; nothing merges; the secret is in one step.
+const WORKFLOW = fs.readFileSync(path.join(ROOT, '.github/workflows/ai-fixer.yml'), 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
+const job = name => { const from = WORKFLOW.indexOf(`\n  ${name}:\n`); assert.ok(from >= 0, name); const rest = WORKFLOW.slice(from + 1), next = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/); return next < 0 ? rest : rest.slice(0, next + 1); };
+
+test('the workflow, by trust: only publish writes (a draft on fixer/, never a merge); prove holds no token; fix runs the AI\'s tests only in the box; the Linear key sits in one step; every job has a timeout; AI_FIXER=off pauses it', () => {
+  const [guard, fix, prove, publish] = ['guard', 'fix', 'prove', 'publish'].map(job);
+  for (const name of ['guard', 'fix', 'prove', 'publish', 'ai-skipped']) assert.match(job(name), /timeout-minutes: \d+/, name);
+  assert.match(guard, /if: vars\.AI_FIXER != 'off'/);
+  assert.match(prove, /permissions:\n      contents: read\n/);
+  assert.doesNotMatch(prove, /id-token|contents: write|pull-requests: write|secrets\.|github\.token|GH_TOKEN|PR_TOKEN|x-access-token|CI_APP/, 'nothing to steal where the AI\'s suites run');
+  for (const line of prove.split('\n').filter(text => /npm test|unittest|feedback-ai\.mjs proof/.test(text))) assert.match(line, /feedback-ai-sandbox\.sh/, line.trim());
+  assert.doesNotMatch(fix, /contents: write|pull-requests: write|github\.token|GH_TOKEN|PR_TOKEN|x-access-token/);
+  assert.doesNotMatch(fix, /npm test|unittest|node --test|npm run lint/, 'the AI\'s tests run through the loop\'s run_tests (the box), never as a step');
+  assert.equal([...WORKFLOW.matchAll(/secrets\.LINEAR_READ_KEY/g)].length, 1);
+  assert.ok(fix.indexOf('secrets.LINEAR_READ_KEY') < fix.indexOf('id: loop'), 'the key is in the read step; the loop step does not hold it');
+  assert.ok(fix.indexOf('cp --parents') < fix.indexOf('run.mjs" loop'), 'our scripts are copied before the AI step');
+  assert.doesNotMatch(fix, /node tools\//, 'only the snapshot runs after the checkout');
+  assert.match(publish, /contents: write/);
+  assert.match(publish, /needs: \[fix, prove\]/);
+  assert.match(publish, /needs\.prove\.result == 'success'/);
+  assert.match(publish, /--draft/);
+  assert.match(publish, /branch="fixer\/\$SOURCE-\$REF"/);
+  assert.match(publish, /\^\(feedback-\[0-9a-f\]\{16\}\|linear-JOB-\[0-9\]\{1,6\}\)\$/, 'the handle is validated before it becomes a branch name');
+  assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the scanned hash is checked before the patch is applied');
+  assert.doesNotMatch(WORKFLOW, /pr merge|pr ready|--admin|--auto|git push[^\n]*\bmain\b|HEAD:main/, 'never merges, never marks ready, never pushes to main');
+  assert.equal([...WORKFLOW.matchAll(/git push/g)].length, 1);
+  assert.ok(publish.includes('git push') && !fix.includes('git push') && !prove.includes('git push'));
+  for (const [name, text] of [['guard', guard], ['fix', fix], ['prove', prove], ['ai-skipped', job('ai-skipped')]]) assert.doesNotMatch(text, /contents: write|pull-requests: write/, name);
+});
+
+test('the script that holds the tokens imports only files the fix job\'s snapshot copies (none of the folders the AI may edit)', () => {
+  const seen = new Set(), walk = file => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    for (const match of fs.readFileSync(path.join(ROOT, file), 'utf8').matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n;]*?\bfrom\s+['"](\.[^'"]+)['"]|(?:^|\n)\s*import\s+['"](\.[^'"]+)['"]/g)) walk(path.relative(ROOT, path.resolve(path.dirname(path.join(ROOT, file)), match[1] || match[2])).split(path.sep).join('/'));
+  };
+  walk('tools/fixer/run.mjs');
+  const copy = /cp --parents (.*?) "\$RUNNER_TEMP\/fbt\/"/s.exec(job('fix'))[1].replace(/\\\n/g, ' ').split(/\s+/).filter(Boolean);
+  const copied = new Set(copy.flatMap(item => (item.includes('*') ? fs.readdirSync(path.join(ROOT, path.dirname(item))).filter(name => name.endsWith('.mjs')).map(name => `${path.dirname(item)}/${name}`) : [item])));
+  for (const file of seen) assert.ok(copied.has(file), `${file} is imported by run.mjs but not in the snapshot`);
+  assert.ok([...seen].every(file => !/^(?:src|tests|desktop\/(?:renderer|test))\//.test(file)) && !seen.has('desktop/lib/add.js'));
+});

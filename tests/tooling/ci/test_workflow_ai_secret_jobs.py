@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / '.github' / 'workflows'
-GUARD = "startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]')"
+GUARD = "(startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')"
 SECRET = re.compile(r"secrets\.(?!GITHUB_TOKEN)[A-Z_]+|id-token: write|secrets:\s*inherit|create-github-app-token")
 # Workflows that start on a pull request only for these paths, none of which the AI's fix may touch (feedback-ai.yml allows src/, desktop/renderer, desktop/lib, desktop/test, tests).
 EXCEPTIONS = {
