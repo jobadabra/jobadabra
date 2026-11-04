@@ -11,6 +11,24 @@ export const NAMED_PLANS = {
   'inbound': {rule: 'jobs-3', data: {inbound: 3}, goals: [{group: 'Jobs', label: 'Open the Inbound list and read each row, then find the same job in the Jobs list and compare them'}]},
 };
 
+// Why (4 Nov 2026, AI user agents FR 3/4, owner: "All four now"): the free goals found 0 of the 4 tester bugs on the commit before each fix because the suite's one applicant never has the data a bug needs (a CV with headings, a many-language line, mail leads). Each night puts ONE of these shapes in the app, picked by the night's seed,
+// before the free goals; the goals and the rules stay free, so the shape only makes the bug reachable and the agent still has to notice it. The data keys are the ones of NAMED_PLANS above (lib/agent-seed.mjs reads both).
+/** Shape id -> the data the app needs for it. */
+export const SHAPES = {
+  headings: {cv: 'headingLines'},
+  languages: {cv: 'manyLanguages'},
+  inbound: {inbound: 3},
+};
+
+/** The shape a night seeds: AGENT_SHAPE when it names one, 'none' (or a named plan, which seeds its own data) = no shape, empty = the one the seed picks (the seed number modulo the shape count). An unknown name throws and says which exist. */
+export function shapeFor(seed, wanted = '', planId = '') {
+  const ids = Object.keys(SHAPES), name = String(wanted || '').trim();
+  if (planId || name === 'none') return '';
+  if (!name) return ids[Math.floor(Math.abs(Number(seed))) % ids.length || 0];
+  if (!Object.hasOwn(SHAPES, name)) throw new Error(`no shape "${name}": the shapes are ${ids.join(', ')}, or none`);
+  return name;
+}
+
 /** A named plan as the session's plan: `{seed, persona: {name}, goals: [{n, group, label, pair}], newShare, changedAreas}`. Throws on an unknown id and says which exist. */
 export function namedPlan(id, seed) {
   const plan = NAMED_PLANS[id];

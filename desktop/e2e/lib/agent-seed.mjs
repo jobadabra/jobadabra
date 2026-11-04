@@ -7,7 +7,7 @@ import path from 'node:path';
 import {cvPdf} from './agent-cv-pdf.mjs';
 import {addApplication} from './focus-data.mjs';
 import {makePersona} from './agent-persona.mjs';
-import {NAMED_PLANS} from './agent-plans.mjs';
+import {NAMED_PLANS, SHAPES} from './agent-plans.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 import {FILE as CV_READ_FILE, hashOf} from '../../lib/cv-read-key.js';   // the light module: cv-check.js and cv-queue.js reach @anthropic-ai/sdk, which the plan job does not install (guard test/pool/suite-imports.test.mjs)
 
@@ -66,8 +66,8 @@ const keptRead = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')
  * Why (3 Nov 2026, AI user agents 8/12, replay 41665993170): the app asks for that read about 40 s after a load, behind its other background reads, and the agent's one-minute session had already looked at What we learned before the answer was kept.
  * No limit of its own (Rule B): it runs to the step's measured hang cap and, if that ends first, the red names the file it waited for and its last content, never "too slow".
  */
-export async function waitCvRead(ctx, planId) {
-  if (!NAMED_PLANS[planId]?.data?.cv) return 0;
+export async function waitCvRead(ctx, planId, shapeId = '') {
+  if (!dataOf(planId, shapeId)?.cv) return 0;
   const file = path.join(ctx.profile, CV_READ_FILE), wanted = hashOf({path: name => path.join(ctx.profile, name)});   // the app keys its read by the hash of cv.pdf (desktop/lib/cv-queue.js), so a read of the old CV, finished after the seed, does not count
   const {ms, value} = await pollUntil(async () => keptRead(file), kept => kept?.cv === wanted, {capMs: stepTimeLeft(), what: `the app keeping the answer of its CV read (${CV_READ_FILE} for the CV ${wanted})`});
   if (value?.cv !== wanted) throw new Error(`the app never kept its CV read within the step's clock: ${CV_READ_FILE} ${value ? `holds the read of another CV (${value.cv}), not ${wanted}` : 'was not written'}`);
@@ -75,12 +75,15 @@ export async function waitCvRead(ctx, planId) {
   return ms;
 }
 
+/** The data a run seeds: the named plan's own, else the night's shape (FR 3/4); undefined = nothing. */
+const dataOf = (planId, shapeId) => NAMED_PLANS[planId]?.data || SHAPES[shapeId];
+
 /**
- * Put the plan's data in the app that `ensureSetUp` built. A plan with no `data` changes nothing. -> a line for the log, or '' when nothing was seeded.
+ * Put the plan's data (or, for a run with no named plan, the night's shape: lib/agent-plans.mjs SHAPES) in the app that `ensureSetUp` built. A plan with no `data` changes nothing. -> a line for the log, or '' when nothing was seeded.
  * `ctx.profile` is the app's data folder, `ctx.data(store, command, args)` the store the app uses. The CV answers are read by the app on the next open of Profile, so the caller reloads the window after.
  */
-export async function seedPlanData(ctx, planId, seed) {
-  const data = NAMED_PLANS[planId]?.data;
+export async function seedPlanData(ctx, planId, seed, shapeId = '') {
+  const data = dataOf(planId, shapeId);
   if (!data) return '';
   const person = makePersona(seed, data.cv ? {shape: data.cv} : {});
   const done = [];
@@ -94,5 +97,5 @@ export async function seedPlanData(ctx, planId, seed) {
     for (const row of inboundRows(person).slice(0, data.inbound)) await addApplication(ctx, row);
     done.push(`${data.inbound} inbound rows`);
   }
-  return `seeded for ${planId}: ${done.join(', ')}`;
+  return `seeded for ${planId || `shape ${shapeId}`}: ${done.join(', ')}`;
 }
