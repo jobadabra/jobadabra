@@ -35,7 +35,7 @@
     {"repo": "jobadabra-lab", "file": "product-brain.yml", "name": "Product brain", "engine": "broker"}
   ],
   "notAi": [
-    "gitar-label.yml", "key-org-proof.yml", "harness.yml", "pr-verdict.yml", "smoke.yml", "fresh-install-smoke.yml",
+    "pr-labels.yml", "key-org-proof.yml", "harness.yml", "pr-verdict.yml", "smoke.yml", "fresh-install-smoke.yml",
     "page-cases.yml", "tests-desktop.yml", "tests-desktop-windows.yml", "tests-python.yml", "tests-worker.yml"
   ]
 }

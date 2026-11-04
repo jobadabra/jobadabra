@@ -34,14 +34,13 @@ CLASSIFIED = {
     'Proof · LibreOffice add-on on Mac and Windows': 'ignored: pull requests that edit the add-on, and by hand; downloads LibreOffice for real on Mac and Windows runners, never on a push to main',
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',
     'Proof · Codex subscription broker': 'ignored: pull requests that edit it, and by hand; proves the OIDC Codex broker without an AI key, never on a push to main',
-    'CI · Gitar label': 'ignored: Gitar comment, review and pull_request_target events only; sets PR labels, never runs on a push to main',
     # Why (2 Nov 2026, owner: "the same workflow on all repos"): the shared PR-description check other org repos call (workflow_call); it never runs on this repo's main.
     'CI · PR description (reusable)': 'ignored: workflow_call only, run for another repo\'s pull request; checks that PR\'s description, never runs on a push to main',
     # Why (2 Nov 2026, owner: "One script + weekly check"): the weekly org-setup check is report only (one issue), started by the Worker timer or by hand, never a push or PR check.
     'CI · E2E weekly summary': 'ignored: Mondays and by hand only; posts the week\'s e2e issue and Telegram message from the site snapshot, never runs on a push to main',
     'CI · Integration intelligence': 'ignored: hourly and by hand only; reads finished integration runs and publishes one snapshot to the site, never runs on a push to main',
     'CI · Org repos on the shared setup (weekly, report only)': 'ignored: weekly report of org repos that drift from templates/org-repo; keeps one issue, never runs on a push to main',
-    'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
+    'CI · PR labels': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     # Why (2 Nov 2026, owner: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check"): the planner of a PR's changed e2e steps; pull_request only, never runs on main.
     'CI · E2E steps a PR changes': 'ignored: pull_request only; plans and starts e2e for the steps a PR adds or edits, never runs on a push to main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
