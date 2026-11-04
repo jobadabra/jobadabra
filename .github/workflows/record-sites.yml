@@ -117,8 +117,6 @@ jobs:
       DEFAULT_ROWS: 'Lever: single page|Personio form in German|Recruitee: one-page form'
       ONLY: ${{ github.event_name == 'schedule' && needs.pick.outputs.only || inputs.only }}
       SHARE: ${{ github.event_name == 'schedule' && '5' || inputs.share }}
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}               # the Tests key: the fallback while a live run's own key is not set
-      LIVE_POOL_ANTHROPIC_KEY: ${{ secrets.LIVE_POOL_ANTHROPIC_KEY }}   # a pool run by hand (owner, 12 Oct 2026: each live run's cost apart)
       JP_NO_REPORT: '1'                # no applying report from CI (the code refuses it anyway); the proven records and ladder moves go with their own narrow key
       JP_APPLICANT: thin   # the thin test applicant: runs are by hand only (the PR proof that ran the grown one was removed on 13 Oct 2026)
       JOBADABRA_HEAVY: '0'           # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
