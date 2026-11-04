@@ -28,7 +28,7 @@ export function kindOf(run, workflow) {
 // The runs a red's fix is looked for in: a PR's own branch, or main (every other kind).
 export const streamOf = run => (run.kind === 'pr' ? `pr:${run.headBranch}` : 'main');
 
-const suiteJob = (job, run) => (run.kind === 'harness' ? (/harness/i.test(job.name || '') || (job.steps || []).some(step => /harness test/i.test(step.name)) ? {suite: 'harness', platform: 'mac'} : null)
+const suiteJob = (job, run) => (run.kind === 'harness' ? (/harness|e2e tooling/i.test(job.name || '') || (job.steps || []).some(step => /harness test|e2e tooling test/i.test(step.name)) ? {suite: 'harness', platform: 'mac'} : null)
   : suiteOfJob(job.name, job.steps, run.workflow === 'e2e-windows.yml'));
 const again = job => (job.steps || []).find(step => /once more, to tell flaky from real/.test(step.name) && step.conclusion && step.conclusion !== 'skipped');
 
