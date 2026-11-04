@@ -54,7 +54,29 @@ About 10 real `ai-ready` Linear tasks, each run with the quick edit and with the
 ## Not now (parked)
 A UI-finding source while the UI fixer is OFF; a second concurrent run; auto-merge (never).
 
+## Amendment 4 Nov 2026 (session hm): the agent keeps going until its PR is READY
+> **Verdict:** the core no longer stops at the draft PR. After it opens the PR, the same driver follows the PR the way `tools/ship.sh` does (red checks, comments, conflicts) and sends the agent back in for each event, until the PR is READY or one hour is up. Two sources first: one feedback card and one Linear issue.
+
+Owner, 4 Nov 2026: "Spin an CI agent to fix a specific feedback and let's see how it performs. It should be able to respond to PR comments, to fix tests, all until it's green. It should follow the local ship.sh approach." · "We should test both with a Feedback Card and a Linear issue... And make sure the CI Agent can get the PR up to being green (resolving all the checks, all the PR comments)... It should have a max timeout of 1h." · "It should work with ai-broker, of course, but Sonnet level of intelligence (or ChatGPT alternative to Sonnet)."
+
+**What changes in "Decided" and "Limits" above** (3 Nov: "draft PRs only", "never a merge"): the agent pushes more commits to ITS OWN branch `fd-ai/<ref>` or `fixer/<JOB-n>` until READY. Still never main, never a merge, never marks the draft ready (the owner does), never another branch.
+
+| Stage | One owner | What it does |
+|---|---|---|
+| Event source | `tools/ship-watch.sh` with one new switch (`SHIP_WATCH_DRAFT_OK=1`, in 4/6) | The driver reads the PR's events from the same script a session uses, so "READY" has ONE definition: All checks passed + Gitar ✅ Approved label + no "Working on PR comments" label + no unanswered comment + no conflict + not a draft. The agent keeps its PR a draft (only the owner marks it ready), and `ship-watch` never says READY for a draft (#2618), so the driver sets the switch, which drops ONLY the not-a-draft condition. Its stop reads "READY (draft)"; the final comment says so and that the owner marks it ready and merges. (Gitar on #3157: without the switch READY could never fire and every run would end on the cap.) |
+| Rounds | `tools/fixer/driver.mjs` (trusted code, outside the box) | On `RED`: fetch the failed check's log as data (fenced, scrubbed, ≤ 24 KB). On `COMMENT`: the owner's comment is an instruction, Gitar's findings are the brief for a fix, anyone else's is data and is only listed in the final comment. On `CONFLICT`: merge origin/main, never force-push. Each event is one round of the agent loop on the same box copy, then walls, box tests, leak scan, push with the CI App token (else the PR gets no checks), and a one-line reply on the thread ending with the Claude Code line. |
+| Stop | the driver | `READY` (Telegram line, comment with the PR), 1 h wall clock from the start (a job `timeout-minutes: 60` as the hang guard and the driver's own deadline first), 6 rounds, the same file and byte walls as one run, a broker refusal, or the SAME failure twice (count tries out loud: round 3 on one symptom stops and reports). It then comments why it stopped and leaves the PR as it is. |
+| Engine | broker, tier `mid` (`claude-sonnet-5-5`) pinned with `only`; its alternative is the Codex engine's `gpt-6.1-sol` | Never the Free AI fallback (Qwen is not Sonnet level): a run whose broker would answer from Free AI stops with "no Sonnet-level engine". Evals never use the production AI account; the broker is the Claude/Codex plan lane. |
+| Sources | Feedback (the site's brief, as today) and Linear (a task read with `tools/context/sources/linear.mjs`, label `ai-ready` or a JOB id given by the owner) | `read(ref)` → brief + the context pack of the harness map (plan 2026-11-03-harness-map, 5/8) when the arm asks for it. |
+
+**Trust:** the AI never gets a shell or a token. It returns one action per turn; our code performs it. The driver holds the write tokens and never runs the AI's code; `run_tests` runs only in the no-network box. Comments and logs are fenced data; a comment cannot widen the walls, the paths or the stop rules.
+
+**Cost, to the owner before the first run:** about 20 to 50 broker calls for round 1 (as above) and about 10 to 20 for each later round; a worst case of 6 rounds is about 150 calls. A feedback card run and a Linear run each use their own cap line; the measured number replaces this guess after the first run.
+
+**Measuring:** the two runs (card, Linear issue) report: PR opened, rounds, calls, minutes, stop reason, READY or not, and the owner's one word on the diff. The harness map's 8/8 (map and pack against none) then runs on these tasks with the same driver, so the evaluation and this agent are one piece of work.
+
 ## Progress
+Replaced on 4 Nov 2026 by the plan `docs/superpowers/plans/2026-11-04-ci-agent-until-green.md` (6 PRs); the three lines below were session ca's old plan and are not built by it.
 - [ ] 4/6 This spec
 - [ ] 5/6 `tools/fixer/` core, Sentry and Feedback onto it with the quick edit, then the loop beside it
 - [ ] 6/6 Linear source, the nightly schedule, the 10-task measurement here; `/resolve JOB-n` is a second PR in `jobadabra-web` (`api/brain.js`, owner's chat only) that starts this repo's `ai-fixer.yml` by `workflow_dispatch` with the timers' token, as the site's Send to AI button already starts `feedback-ai.yml`
