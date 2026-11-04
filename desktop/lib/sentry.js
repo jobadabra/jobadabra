@@ -61,12 +61,18 @@ export function buildEvent(kind, fields = {}, {release = '', environment = 'prod
     event.exception = {values: [{type: scrub(fields.type || 'Error', 60), value: message, stacktrace: {frames: stack}}]};
   } else {
     event.message = `${kind}${fields.job ? ` · ${scrub(fields.job, 60)}` : ''}: ${message}`;
-    // The last few lines the run printed (already scrubbed by the telemetry module's rules): what it was doing when it stopped.
-    if (Array.isArray(fields.tail) && fields.tail.length) event.extra = {tail: fields.tail.slice(-5).map(line => scrub(line, 200))};
-    // The exit code and the seconds of a failed run (numbers only): a run whose last line is no error (Sentry 4T, 4H, 4J: exit 1?) names how it ended instead of guessing.
-    for (const key of ['code', 'seconds']) if (Number.isFinite(fields[key])) event.extra = {...event.extra, [key]: fields[key]};
+    event.extra = runExtra(fields);
   }
   return event;
+}
+
+// What a message event carries beyond its words. The last few lines the run printed (already scrubbed by the telemetry module's rules): what it was doing when it stopped.
+// The exit code and the seconds of a failed run (numbers only): a run whose last line is no error (Sentry 4T, 4H, 4J: exit 1?) names how it ended instead of guessing.
+function runExtra(fields) {
+  const extra = {};
+  if (Array.isArray(fields.tail) && fields.tail.length) extra.tail = fields.tail.slice(-5).map(line => scrub(line, 200));
+  for (const key of ['code', 'seconds']) if (Number.isFinite(fields[key])) extra[key] = fields[key];
+  return extra;
 }
 
 function extensionFields(fields) {
