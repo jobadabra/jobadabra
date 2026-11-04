@@ -25,7 +25,9 @@ export function outcomeOf(stats, job) {
   const line = `broker relay (${job}): ${stats.calls} calls reached the broker, ${stats.ok} answered, ${stats.refused} failed or refused${stats.capHit ? `, ${stats.capHit} past the run's cap (those items wait for the next run)` : ''}`;
   if (!stats.refused) return {line, why: ''};
   const first = stats.latched || stats.reasons[0] || 'unknown';
-  return {line, why: `${stats.refused} AI calls failed or were refused (${first}); their items stay unjudged until a run gets an answer`};
+  const effect = 'their items stay unjudged until a run gets an answer';
+  // Why (4 Nov 2026, a8 via mac-32): one dropped connection in 40 calls read like the whole run being refused; the count says what happened.
+  return {line, why: stats.latched ? `${stats.refused} AI calls were refused (${first}); ${effect}` : `${stats.refused} of ${stats.calls} AI calls failed (${first}); ${effect}`};
 }
 
 /** Runs `argv` behind a relay; resolves to the command's exit code. Takes {job, cap, argv, env, dir}. */

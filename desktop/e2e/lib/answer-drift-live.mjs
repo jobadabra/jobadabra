@@ -3,7 +3,7 @@
 // Invariants: all broker attempts share one counter; refusals stop the night; no answer is recorded or replayed.
 import {buildReport, loadRequests, resolveRequest} from './answer-drift.mjs';
 import {answerViaBroker} from './broker-relay.mjs';
-import {askBroker} from './broker-client.mjs';
+import {askBroker, failureOf} from './broker-client.mjs';
 import {modelFetch} from './model.mjs';
 
 // Why (30 Oct 2026, owner, JOB-45): 20 linked prompts plus at most 4 judges, on Codex only; broker enforcement is independent.
@@ -28,7 +28,7 @@ export function callBudget(ask) {
     counts[kind]++; counts.total++;
     let result;
     try { result = await ask(body, options); }
-    catch (error) { fail(`broker unreachable: ${error.message}`); throw new Error(reason); }
+    catch (error) { fail(`broker unreachable: ${failureOf(error)}`); throw new Error(reason); }
     if (!result?.ok) fail(`broker ${result?.status}: ${result?.detail || 'no completed answer'}`);
     return result;
   }};

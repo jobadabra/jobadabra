@@ -48,6 +48,7 @@ on:
       - 'tools/ai-format-python-capture.py'
       - 'tools/browser-submit-guard.js'
       - 'tools/claim-shape.mjs'
+      - 'tools/ci-intel/lib/ai-refusal.mjs'
       - 'tools/e2e-part-times.mjs'
       - 'tools/design-system/build.mjs'
       - 'tools/design-system/rules-html.mjs'
