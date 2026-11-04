@@ -36,5 +36,5 @@ Session hm, 3 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-harness-map-des
 - [x] 4/8 Hubs desktop, release, site, growth (proof: docs/map/desktop.md @9aafa529)
 - [x] 5/8 Fetchers Linear, Sentry, GitHub + pack builder (proof: desktop/test/guards/rules/context-fetchers.test.js)
 - [x] 6/8 Fetchers PostHog, Cloudflare (proof: desktop/test/guards/rules/context-fetchers.test.js)
-- [ ] 7/8 Fetcher Notion
+- [x] 7/8 Fetcher Notion (proof: desktop/test/guards/rules/context-fetchers.test.js)
 - [ ] 8/8 Evaluation
