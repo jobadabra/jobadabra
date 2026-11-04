@@ -30,7 +30,7 @@ export function agentExtend({knowledgeIds, views, goal, sink, shoot = null}) {
     async take(input, row, {steps = []} = {}) {
       const checked = validateNote({...input, view: input.view || row.view}, {knowledgeIds, views});
       if (!checked.ok) { row.refused = checked.why; return `Refused: ${checked.why}. Note it again with an argument, or leave it.`; }
-      sink.push({...checked.note, goal: goal.n, trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
+      sink.push({...checked.note, goal: goal.n, at: Date.now(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
       row.title = checked.note.title;
       return 'Noted. Carry on with your goal.';
     }};

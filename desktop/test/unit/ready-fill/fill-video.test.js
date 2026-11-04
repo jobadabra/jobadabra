@@ -79,6 +79,16 @@ test('never over 3 minutes, whatever is asked', async () => {
   await rec.stop();
 });
 
+test('a caller with its own cap (the AI user agent, 30 minutes) lifts the limit, and still has one', async () => {
+  const {page} = fakePage();
+  const rec = await startFillVideo(page, {dir: dir(), maxSeconds: 1800, hardMaxSeconds: 1800, ...VP8, spawnImpl: fakeFfmpeg().spawnImpl});
+  assert.equal(rec.limit, 1800);
+  await rec.stop();
+  const over = await startFillVideo(page, {dir: dir(), maxSeconds: 9999, hardMaxSeconds: 1800, ...VP8, spawnImpl: fakeFfmpeg().spawnImpl});
+  assert.equal(over.limit, 1800);
+  await over.stop();
+});
+
 test('no ffmpeg, no frame or a failed encode: null, and no file left', async () => {
   const {page} = fakePage();
   assert.equal(await (await startFillVideo(page, {dir: dir(), ffmpeg: ''})).stop(), null);

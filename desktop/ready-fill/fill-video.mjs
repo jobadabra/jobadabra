@@ -44,9 +44,9 @@ export function ffmpegArgs({width, height, fps, out, encoder = 'libvpx'}) {
 
 // page: a Playwright page; or null with `tabOf: () => page`, read again every second, when the tab being filled changes (the Form Lab's runs open new tabs at account steps):
 // the video then follows the new tab in the same file. Starts at once; the last frame is written every 1/fps second, so the video's time is real time.
-// It stops by itself at maxSeconds (never over 180). -> {stop(): Promise<{path, bytes, secs (whole, >= 1)} | null>, limit}. null: no frame, no ffmpeg or no encoder; the file is then removed.
-export async function startFillVideo(page, {tabOf = () => page, dir = os.tmpdir(), maxSeconds = MAX_SECONDS, width = 1280, fps = 10, ffmpeg = findFfmpeg(), encoder, spawnImpl = spawn} = {}) {
-  const limit = Math.min(MAX_SECONDS, Math.max(0, Number(maxSeconds) || 0)), first = safe(tabOf);
+// It stops by itself at maxSeconds (never over hardMaxSeconds, 180 unless a caller with its own cap says otherwise: the AI user agent's session, 30 minutes). -> {stop(): Promise<{path, bytes, secs (whole, >= 1)} | null>, limit}. null: no frame, no ffmpeg or no encoder; the file is then removed.
+export async function startFillVideo(page, {tabOf = () => page, dir = os.tmpdir(), maxSeconds = MAX_SECONDS, hardMaxSeconds = MAX_SECONDS, width = 1280, fps = 10, ffmpeg = findFfmpeg(), encoder, spawnImpl = spawn} = {}) {
+  const limit = Math.min(hardMaxSeconds, Math.max(0, Number(maxSeconds) || 0)), first = safe(tabOf);
   const viewport = first?.viewportSize?.() || {width: 1280, height: 720}, codec = ffmpeg ? encoder ?? encoderOf(ffmpeg) : '';
   const size = {width: even(width), height: even(width * viewport.height / viewport.width)};
   const out = path.join(dir, `fill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webm`);
