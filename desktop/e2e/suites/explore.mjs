@@ -68,7 +68,7 @@ export async function run(ctx) {
   // One broker call per turn: the Messages-shaped request is the broker's `toBrokerCall` input; the answer's text is the action JSON.
   const ask = async ({system, messages, schema}, model = MODEL) => {
     const answer = await askBroker({model, max_tokens: 1024, system, messages, output_config: {format: {type: 'json_schema', schema}}});
-    // Why (3 Nov 2026, Gitar on #3048; owner 31 Oct 2026): a broker that says no (budget, login) greys the step with an alert, never fails it; the runner reads this note (lib/ai-cap.mjs takeCapped), as for broker-relay and model.
+    // Why (3 Nov 2026, Gitar on #3048; owner 31 Oct 2026): a broker that says no on its BUDGET greys the step with an alert, never fails it (a lost login fails it since 4 Nov 2026, owner via mac-32: a check that skips in grey without its login measures nothing); the runner reads this note (lib/ai-cap.mjs takeCapped), as for broker-relay and model.
     if (!answer.ok) { if (answer.status === 'capped') noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
     return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine};
   };

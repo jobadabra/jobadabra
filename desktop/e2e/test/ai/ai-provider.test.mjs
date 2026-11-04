@@ -54,13 +54,49 @@ test('an answered call comes back in Messages shape with its tokens; the run tok
   assert.deepEqual(answer.message.usage, {input_tokens: 13576, output_tokens: 25});
 });
 
-test('the broker saying no (budget, login lost) is a skip with its reason, never another provider; no token and no answer are said apart', async () => {
+test('the broker\'s budget saying no is a skip with its reason, never another provider; no token and no answer are said apart', async () => {
   const ask = fetchImpl => askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl});
   assert.deepEqual(await ask(fake(() => new Response(JSON.stringify({why: 'budget:own-share 60.1% of 60% (scheduled)'}), {status: 429}))), {ok: false, status: 'capped', detail: 'broker: budget:own-share 60.1% of 60% (scheduled)'});
-  assert.equal((await ask(fake(() => new Response('{"why":"login-lost"}', {status: 503})))).status, 'capped');
   assert.equal((await ask(fake(() => new Response('{"why":"oidc: wrong repository"}', {status: 401})))).status, 401);
   assert.equal((await ask(fake(() => { throw new Error('boom'); }))).status, 'unreachable');
   assert.equal((await askBroker({model: 'x', messages: []}, {env: {}, fetchImpl: async () => { throw new Error('no call without a token'); }})).status, 'no-token');
+});
+
+// Owner via mac-32, 4 Nov 2026: "A check that keeps skipping in grey because its login is gone isn't measuring anything" (the Search check stayed broken through 11 fixes).
+test('only a budget reason is a skip; every other refusal (a lost login, a fallback that cannot answer) is a failure the job shows, with its reason', async () => {
+  const ask = reply => askBroker({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: fake(reply),
+    sleep: async () => { throw new Error('a refusal that gave its reason is not asked again'); }});
+  for (const [status, why] of [[503, 'no-login'], [503, 'login-lost'], [503, 'fallback:search-unsupported'], [503, 'fallback:unavailable'], [503, 'only-codex: unavailable'], [429, 'rate-limited']]) {
+    assert.deepEqual(await ask(() => new Response(JSON.stringify({why}), {status})), {ok: false, status, detail: `broker: ${why}`}, `${status} ${why}`);
+  }
+  assert.equal((await ask(() => new Response(JSON.stringify({why: 'budget:fallback-day $2 Free AI (UTC)'}), {status: 503}))).status, 'capped', 'the reason decides, not the code');
+});
+
+// Treats a symptom (4 Nov 2026, with mac-32): while the broker's container is swapped after a deploy, the platform answers 500 for a few seconds with no reason of the broker's
+// (6 calls in 24 s on 4 Nov). One more try after 30 s rides it out. The cause, calls cut off by the swap, is JOB-274 (drain in-flight calls before it).
+test('a 5xx the broker gave no reason for is asked again once after 30 s, never twice', async () => {
+  const body = {model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, slept = [];
+  let asked = 0;
+  const fixed = {reply: 'ok', tokens: {input: 1, output: 1}, tier: 'small', model: 'gpt-6-luna'};
+  const rides = await askBroker(body, {env, fetchImpl: fake(() => { asked++; return asked === 1 ? new Response('error code: 1101', {status: 500}) : new Response(JSON.stringify(fixed)); }), sleep: async ms => { slept.push(ms); }});
+  assert.deepEqual([rides.ok, asked, slept], [true, 2, [30000]]);
+  asked = 0; slept.length = 0;
+  const stays = await askBroker(body, {env, fetchImpl: fake(() => { asked++; return new Response('error code: 1101', {status: 502}); }), sleep: async ms => { slept.push(ms); }});
+  assert.deepEqual([stays.ok, stays.status, asked, slept], [false, 502, 2, [30000]], 'the second 5xx is the answer');
+});
+
+test('at the job: a budget refusal skips (a note for the one alert); a lost login throws, so the job is red and says why', async () => {
+  const {askOrSkip} = await import('../../lib/broker-job.mjs'), {mkdtempSync} = await import('node:fs'), {tmpdir} = await import('node:os'), {join} = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'broker-job-'));
+  const run = (reply, status) => askOrSkip({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]}, {job: 'search', dir, env: {}, ask: (body, options) => askBroker(body, {...options, env, fetchImpl: fake(() => new Response(JSON.stringify({why: reply}), {status}))})});
+  const log = console.log, lines = [];
+  console.log = line => lines.push(String(line));
+  try {
+    assert.deepEqual(await run('budget:week 85% of 80%', 429), {ok: false, why: 'broker: budget:week 85% of 80%'});
+    await assert.rejects(run('login-lost', 503), /the AI broker failed \(503\): broker: login-lost/);
+    await assert.rejects(run('fallback:search-unsupported', 503), /the AI broker failed \(503\): broker: fallback:search-unsupported/);
+  } finally { console.log = log; }
+  assert.equal(lines.length, 1, 'only the budget refusal was noted as a skip');
 });
 
 test('a connection the broker never answered names its cause and how long it was open, from a real socket', async () => {

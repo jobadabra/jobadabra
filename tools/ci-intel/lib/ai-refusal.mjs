@@ -6,10 +6,10 @@ export class AiRefused extends Error {
   constructor(status, reason) { super(`broker answered ${status}: ${reason}`); this.name = 'AiRefused'; this.status = status; this.reason = reason; this.kind = kindOf(status, reason); }
 }
 
-// The broker's words: 'capped' = its allowance (daily, own share, week) or its login said no (429/503); 'no-token' = this run has no GitHub OIDC token (the workflow needs id-token: write); 'unreachable' = no answer came back, a failed connection that says nothing about limits; else its HTTP status
+// The broker's words: 'capped' = its allowance (a reason starting `budget:`: daily, own share, week, fallback-day; 429/503); any other refusal keeps its HTTP status (a lost login is 503); 'no-token' = this run has no GitHub OIDC token (the workflow needs id-token: write); 'unreachable' = no answer came back, a failed connection that says nothing about limits; else its HTTP status
 // (401/403: it did not know the run's token or repository; 5xx: the Codex call itself failed).
 export function kindOf(status, reason = '') {
-  if (status === 'capped') return /budget:|login/.test(reason) ? 'limit' : 'overloaded';   // Why (4 Nov 2026): the client calls every 503 capped; fallback:reply-refused is one engine's bad reply, not an allowance.
+  if (status === 'capped') return /budget:|login/.test(reason) ? 'limit' : 'overloaded';   // Why (4 Nov 2026): the client used to call every 503 capped; since it calls only a `budget:` reason capped, the `overloaded` branch is for older callers (fallback:reply-refused is one engine's bad reply, not an allowance).
   if (status === 'no-token' || status === 401 || status === 403) return 'auth';
   if (status === 'unreachable') return 'connection';
   if (status === 429) return 'rate';

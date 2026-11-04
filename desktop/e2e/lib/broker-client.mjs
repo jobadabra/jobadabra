@@ -4,6 +4,7 @@
 // Job: report health
 // Why (2 Nov 2026, ai-broker 6/7): the broker accepts both audiences until 7/7; the old one is dropped there.
 export const AUDIENCE = 'jobadabra-ai-broker';
+const RETRY_AFTER_MS = 30000;   // the one retry of a 5xx the broker gave no reason for (see askBroker's Why)
 /** The broker's address: takes env, returns AI_BROKER_URL when set, else the old CODEX_BROKER_URL (still honoured), else the deployed workers.dev address (jobadabra-web workers/ai-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.AI_BROKER_URL || env.CODEX_BROKER_URL || 'https://jobadabra-ai-broker.jobpilotto.workers.dev';
 
@@ -58,20 +59,29 @@ export function failureOf(error) {
 
 /**
  * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model, engine?, fellBack?, ms} (ms is container Codex execution, excluding its later rate-limit lookup) or {ok: false, status, detail}.
- * status 'capped' = the broker's budget or login said no (429/503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer (the detail names the cause and how long the call was open; it says nothing about credit).
+ * status 'capped' = the broker's BUDGET said no (a reason starting `budget:`, 429 or 503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer (the detail names the cause and how long the call was open; it says nothing about credit).
+ * Any other refusal keeps its HTTP status and its reason (a lost login `login-lost`, a fallback that cannot answer `fallback:*`, `only-codex: unavailable`): a failure the job shows red, never a grey skip.
+ * Invariant: a 5xx with no `why` of the broker's is asked once more after RETRY_AFTER_MS; one with a reason is never asked again.
  */
-export async function askBroker(body, {env = process.env, fetchImpl = fetch, now = Date.now} = {}) {
+export async function askBroker(body, {env = process.env, fetchImpl = fetch, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))} = {}) {
   const token = await runToken(env, fetchImpl).catch(error => error);
   // Why (4 Nov 2026): a network failure on the way to GitHub's token service is not a job without id-token; the old catch said it was.
   if (token instanceof Error) return {ok: false, status: 'unreachable', detail: `no run token from GitHub: ${failureOf(token)}`};
   if (!token) return {ok: false, status: 'no-token', detail: 'no GitHub OIDC token here (the job needs permissions: id-token: write; a fork run has none)'};
   const started = now();
-  const answer = await fetchImpl(`${BROKER_URL(env)}/call`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toBrokerCall(body)), signal: AbortSignal.timeout(180000)}).catch(error => error);
+  const ask = async () => {
+    const reply = await fetchImpl(`${BROKER_URL(env)}/call`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toBrokerCall(body)), signal: AbortSignal.timeout(180000)}).catch(error => error);
+    return reply instanceof Error ? {answer: reply} : {answer: reply, data: await reply.json().catch(error => (reply.ok ? error : {}))};
+  };
+  let {answer, data} = await ask();
+  // Why (4 Nov 2026, owner via mac-32): TREATS A SYMPTOM. While a deploy swaps the broker's container the platform answers 5xx for a few seconds with no reason of the broker's (6 calls in 24 s on 4 Nov); one more try
+  // after 30 s rides it out. The cause, calls cut off by the swap, is JOB-274. A refusal that gave a reason (`why`) is a decision, not a swap: never asked again.
+  if (!(answer instanceof Error) && answer.status >= 500 && !data?.why) { await sleep(RETRY_AFTER_MS); ({answer, data} = await ask()); }
   if (answer instanceof Error) return {ok: false, status: 'unreachable', detail: `no answer from the broker: ${failureOf(answer)} after ${Math.round((now() - started) / 1000)} s`};
-  const data = await answer.json().catch(error => (answer.ok ? error : {}));
   // Why (4 Nov 2026, review): a connection lost after the headers left an empty 200 that read as an answer with no text.
   if (data instanceof Error) return {ok: false, status: 'unreachable', detail: `the broker's answer was cut off: ${failureOf(data)} after ${Math.round((now() - started) / 1000)} s`};
-  if (answer.status === 429 || answer.status === 503) return {ok: false, status: 'capped', detail: `broker: ${data.why || answer.status}`};
+  // Why (4 Nov 2026, owner via mac-32: "A check that keeps skipping in grey because its login is gone isn't measuring anything"): only the broker's budget is a skip; a lost login or a fallback that cannot answer is a failure the job shows.
+  if ((answer.status === 429 || answer.status === 503) && /^budget:/.test(String(data.why || ''))) return {ok: false, status: 'capped', detail: `broker: ${data.why}`};
   if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${data.why || data.error || answer.status}`};
   told(data);
   return {ok: true, tier: data.tier, model: data.model, ...(data.engine ? {engine: data.engine} : {}), ...(data.fellBack?.length ? {fellBack: data.fellBack} : {}), ms: Number.isFinite(data.ms) ? data.ms : null, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
