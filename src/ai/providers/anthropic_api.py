@@ -70,8 +70,9 @@ KEY_TEXT = 'The AI key was refused (Settings → Connections → AI): check it, 
 
 
 def key_refused(error):
-    """An Anthropic SDK error answering 401 or 403: the key (or Free AI's trial key) is not accepted. Read by the error's package and status, so nothing here needs the SDK installed."""
-    return type(error).__module__.split('.')[0] == 'anthropic' and getattr(error, 'status_code', None) in (401, 403)
+    """An Anthropic SDK error answering 401: the key (or Free AI's trial key) is not accepted. Read by the error's package and status, so nothing here needs the SDK installed.
+    Why (se, 4 Nov 2026, code review): not a 403: Anthropic also answers 403 for a model or region this key may not use, which skips that one job; calling it a refused key would stop the whole run."""
+    return type(error).__module__.split('.')[0] == 'anthropic' and getattr(error, 'status_code', None) == 401
 
 
 def refused(error):

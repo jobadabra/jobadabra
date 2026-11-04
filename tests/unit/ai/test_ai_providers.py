@@ -4,6 +4,7 @@ No network, no key, no CLI: adapters are fed recorded answers. A new engine in p
 until it has a case in ENGINE_CASES here.
 """
 import json
+import os
 import sys
 import unittest
 import unittest.mock
@@ -168,20 +169,40 @@ class ErrorFactsTests(unittest.TestCase):
         "AuthenticationError: Error code: 401 - invalid x-api-key"; the OpenAI adapter already turns a refused key into AiLimit."""
         from src.ai import cost
         sdk = type('AuthenticationError', (Exception,), {'__module__': 'anthropic._exceptions'})
-        for status in (401, 403):
-            refused = sdk('Error code: invalid x-api-key')
-            refused.status_code = status
-            api = AnthropicApi(client=SimpleNamespace(messages=SimpleNamespace(create=lambda **params: (_ for _ in ()).throw(refused))))
-            with self.assertRaises(contract.AiLimit) as raised:
-                api.create(**PARAMS)
-            error = raised.exception
-            self.assertTrue(error.final)
-            self.assertIn('key was refused', str(error))
-            self.assertNotIn('x-api-key', str(error))
-            self.assertIn(f'HTTP {status}', contract.named(error))
-            self.assertTrue(cost.limit_reached(error))
-            self.assertIn('key was refused', cost.limit_reason(error))
-            self.assertNotIn('Claude Code', cost.limit_reason(error))
+        refused = sdk('Error code: invalid x-api-key')
+        refused.status_code = 401
+        api = AnthropicApi(client=SimpleNamespace(messages=SimpleNamespace(create=lambda **params: (_ for _ in ()).throw(refused))))
+        with self.assertRaises(contract.AiLimit) as raised:
+            api.create(**PARAMS)
+        error = raised.exception
+        self.assertTrue(error.final)
+        self.assertIn('key was refused', str(error))
+        self.assertNotIn('x-api-key', str(error))
+        self.assertIn('HTTP 401', contract.named(error))
+        self.assertTrue(cost.limit_reached(error))
+        self.assertIn('key was refused', cost.limit_reason(error))
+        self.assertNotIn('Claude Code', cost.limit_reason(error))
+        # code review: with Claude Code chosen and the API as fallback, the refused key is the API's
+        self.assertEqual(error.ai_engine, 'api')
+        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_AI_ENGINE': 'cli'}):
+            self.assertTrue(cost.limit_reason(error).startswith('Anthropic API key was refused'))
+        # code review: a Settings "Test" through the real adapter still says the key was refused
+        from src import connection_test
+        ok, line = connection_test.check_ai(api, {'ANTHROPIC_API_KEY': 'k'})
+        self.assertFalse(ok)
+        self.assertIn('refused (401)', line)
+        # code review: the end-of-run line blames the key, not a limit
+        from src.ai import decide
+        self.addCleanup(decide.reset_run)
+        decide.failed('a page read', error)
+        self.assertIn('The AI key was refused', decide.items_waiting())
+        self.assertNotIn('limit', decide.items_waiting())
+        # code review: a 403 can be a model or region this key may not use: it stays the SDK's own error and skips that one job
+        forbidden = sdk('permission_error')
+        forbidden.status_code = 403
+        api = AnthropicApi(client=SimpleNamespace(messages=SimpleNamespace(create=lambda **params: (_ for _ in ()).throw(forbidden))))
+        with self.assertRaises(sdk):
+            api.create(**PARAMS)
         from src import daily_helpers
         from src.ai import interview_insights
         self.assertEqual(cost.limit_kind(error), 'key')

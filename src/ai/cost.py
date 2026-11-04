@@ -88,8 +88,8 @@ def limit_reached(error):
 
 
 def refused_key(error):
-    """The AI answered 401 or 403: the key is not accepted (the contract's AiLimit keeps the API's status, contract.error_facts)."""
-    return getattr(error, 'ai_status', None) in (401, 403)
+    """The AI answered 401: the key is not accepted (the contract's AiLimit keeps the API's status, contract.error_facts). A 403 can be a model the key may not use, so it is not this."""
+    return getattr(error, 'ai_status', None) == 401
 
 
 def limit_kind(error):
@@ -112,8 +112,9 @@ def limit_reason(error):
     from .providers.contract import error_facts
     chosen = providers.spec()
     said = error_facts(error)   # status, code, model, engine: tells a spent limit from a refused key or a model the key may not use
-    if refused_key(error):   # a refused key is not "cannot go on" (Sentry APP-42/43/44)
-        return f'{chosen.label} key was refused' + (f' ({said})' if said else '')
+    if refused_key(error):   # a refused key is not "cannot go on" (Sentry APP-42/43/44); the engine that answered, not the chosen one (Claude Code with an API fallback)
+        answered = providers.ENGINES.get(getattr(error, 'ai_engine', '') or '', chosen)
+        return f'{answered.label} key was refused' + (f' ({said})' if said else '')
     return ('Claude Code (your Claude plan) cannot go on' if chosen.name in ('api', 'cli') else f'{chosen.label} cannot go on') + (f' ({said})' if said else '')
 
 

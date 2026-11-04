@@ -78,8 +78,10 @@ def check_ai(client=None, env=None):
     try:
         client.messages.create(model=SMALL_MODEL, max_tokens=1000, messages=[{'role': 'user', 'content': 'Reply with the word ok.'}])
     except Exception as error:  # noqa: BLE001 — the provider's answer is what the person needs to read
+        from .ai import cost
         text = str(error)
-        refused = any(word in text.lower() for word in ('401', 'invalid x-api-key', 'incorrect api key'))
+        # Why (se, 4 Nov 2026, code review): the Anthropic adapter now turns the SDK's 401 into an AiLimit whose text has none of these words; its status is what says "refused".
+        refused = cost.refused_key(error) or any(word in text.lower() for word in ('401', 'invalid x-api-key', 'incorrect api key'))
         return False, 'Your AI key was refused (401). Paste a working key in the app, then press Test again.' if refused else f'Your AI key did not answer ({type(error).__name__}).'
     # Why (4 Nov 2026, review): any answer proves the key is accepted; a model that spends its whole allowance thinking returns no text, which is not a failure.
     return True, 'Your AI key answered.'
