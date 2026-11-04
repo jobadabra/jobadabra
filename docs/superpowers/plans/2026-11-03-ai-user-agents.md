@@ -20,6 +20,17 @@ Layer: a report-only measurement. No gate, no beta step, no `critical-journeys.j
 | 11/12 | `jobadabra` | **a living persona**: the data folder saved after a night and restored the next (an Actions artifact), the chapters (wizard → search and profile → Gmail → Always on → applying → free days), staggered personas, a finding replayed from its snapshot | two nights restore the same folder; a finding replays from its snapshot and seed | the app is tested as it is lived in, and every finding reproduces |
 | 12/12 | `jobadabra` | **the moving world**: a seeded daily job generator, daily mail into `google-fake`, a clock option on `launch()` (libfaketime on Linux), the off-script moves | a night with a new reply and a day passing shows in the next morning's state | new scenarios every night, never a fresh install |
 
+## The finding rate: 4 PRs, titled `[ag] FR n/4 <what>` (owner, 4 Nov 2026: "All four now"; sketch https://claude.ai/artifact/LDsKu61WjwyCDtoHx3aAZh)
+
+The replay table (spec, "Result of 8/12") and night 1 (run 41774669528) gave four measured causes; 9/12 stays held until the rate is better. Each PR carries its own re-measure in its body.
+
+| PR | What | Measured by | Who gets what |
+|---|---|---|---|
+| FR 1/4 | **rule scope**: `profile-1` says it is about the list of open questions, not an answer already given or a form field's label (knowledge data, no code) | control on `df66db14` ×2: 0 filed; `b4d64112` ×3: found with the rule | no more false filings on settled screens |
+| FR 2/4 | **step budget**: fewer goals, more steps each, same total steps and minutes | "could not finish" share over the next 3 nights: from 44% (4 of 9) to under 20% | more goals reach their answer |
+| FR 3/4 | **seeded shape per night**: one known-bug shape (CV with headings, inbound rows) seeded before the free goals, picked by the night's seed | 2 free sessions on `b6014b04`, rules off, shape seeded: found unprompted, n of 2 | free sessions can see the bugs |
+| FR 4/4 | **one judge decides**: score the agent's second opinion and the Finder's pre-filing judge on the ~23 recorded replay notes, keep one | hits and misses per judge | the filed issues are the ones worth reading |
+
 Order (owner's coordinator, 3 Nov 2026: the first outcome is a nightly run that files real findings, and the count stops moving): 1/12 first (it also stands alone); 2/12 needs no 1/12; 3/12 and 4/12 need 2/12; 5/12 needs 3/12 and 4/12; 6/12 needs 5/12; **7/12 is the first real nightly run**; **8/12, the replay proof on this week's tester bugs, comes next, before any phase-2 PR**; 9/12 the sessions page; phase 2 (10/12 fresh random states, 11/12 the living persona, 12/12 the moving world) follows 8/12. No further split without telling the coordinator why in one line. A small fix several PRs need goes into each branch (CLAUDE.md), never "merge X first".
 
 ## Rules for every PR
