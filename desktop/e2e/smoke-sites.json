@@ -600,6 +600,13 @@
     "https://jobs.lever.co/swile/da48a613-ddea-416e-9556-faaf8dba70c8"
    ],
    "signature": "form@jobs.lever.co#form"
+  },
+  {
+   "shape": "Discovery: careers.ey.com",
+   "urls": [
+    "https://careers.ey.com/ey/job/Amsterdam-Audit-Manager-Financial-Services-Amsterdam-1083-HP/1409197833/"
+   ],
+   "signature": "posting>none>posting>none@careers.ey.com#posting"
   }
  ]
 }
