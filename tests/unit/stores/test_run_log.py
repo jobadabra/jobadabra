@@ -220,11 +220,14 @@ class HeartbeatClock(unittest.TestCase):
         run_log._open.clear()
         self.addCleanup(run_log._open.clear)
         run_log._open.update(stores=mock.Mock(cron_runs=runs), id=7, run=run)
-        wall = [1000.0]
-        fake = mock.Mock(monotonic=lambda: 5.0, time=lambda: wall[0])   # asleep: monotonic frozen
+        calls = []
+
+        def wall():   # the first read is the run's start; every later one is after the 30-minute sleep, whatever the thread timing
+            calls.append(1)
+            return 1000.0 if len(calls) == 1 else 1000.0 + 30 * 60
+        fake = mock.Mock(monotonic=lambda: 5.0, time=wall)   # asleep: monotonic frozen
         with mock.patch.object(run_log, 'time', fake), mock.patch.object(run_log, 'HEARTBEAT_S', 0.01):
             REAL_HEARTBEAT(run)
-            wall[0] += 30 * 60   # the machine slept 30 minutes
             self.assertTrue(beat.wait(5), 'the heartbeat wrote')
             run_log._open['run'] = None   # ends the thread
         self.assertEqual(touched[0]['duration_s'], 30 * 60, 'the sleep is counted: started + duration_s is now')
