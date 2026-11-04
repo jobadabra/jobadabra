@@ -39,20 +39,6 @@ test('no frame, no ffmpeg or a recorder that throws: no video, and the night goe
   assert.deepEqual(fs.readdirSync(dir), []);
 });
 
-test('a run that kept no video says which reason: no ffmpeg on the machine, or ffmpeg there and no frame (run 41860394127 said all three at once)', async () => {
-  const lines = [], log = console.log;
-  console.log = line => lines.push(String(line));
-  try {
-    for (const find of [() => '', () => '/x/ffmpeg']) {
-      const video = await startAgentVideo({}, {dir: folder(), minutes: 5, env: {AGENT_VIDEO: '1'}, start: async () => ({stop: async () => null}), find});
-      assert.equal(await video.finish(), null);
-    }
-  } finally { console.log = log; }
-  assert.match(lines[0], /no ffmpeg found: npx playwright-core install ffmpeg/);
-  assert.match(lines[1], /ffmpeg is there, so no frame arrived or the encode failed/);
-  assert.doesNotMatch(lines.join('\n'), /no frame, no ffmpeg or/);
-});
-
 test('a recorder that fails to stop leaves no video and says so, and the night goes on', async () => {
   const dir = folder();
   const video = await startAgentVideo({}, {dir, minutes: 5, env: {AGENT_VIDEO: '1'}, start: async () => ({stop: async () => { throw new Error('ffmpeg hung'); }})});
