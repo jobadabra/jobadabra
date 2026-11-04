@@ -181,6 +181,15 @@ export function notice(run) {
   const said = run.rescore ? rescoreNotice(run) : noticeText(run);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }
+// Why (4 Nov 2026, #3108): the Find jobs pop-up. Kept out of noticeText() so its complexity does not grow (tools/clean-code-js.mjs: an old function over the limit may not grow).
+// A search that did not finish is never "done" with "No jobs added"; it says it ended at the time limit.
+function searchNotice(run, {where, verdict, look}) {
+  const name = run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs';
+  if (partialSearch(run)) return {title: `${name} ended at the time limit${where}`, body: `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`};
+  const fresh = run.new;
+  return {title: `${name} ${verdict}${where}`,
+    body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
+}
 function noticeText(run) {
   if (!NAMES[run.kind] && run.kind) return null;
   const where = run.where === 'github' ? ' (on GitHub)' : '';
@@ -196,14 +205,7 @@ function noticeText(run) {
   // and a pop-up that says "done" over a refused AI call is the contradiction the UI loop found (#51, #52).
   const verdict = runWarned(run) ? 'finished with warnings' : 'done';
   const look = runWarned(run) ? ' Open Jobadabra to see what it said.' : '';
-  if ((!run.kind || run.kind === 'search') && partialSearch(run)) {   // #3108: never "done" and "No jobs added" for a search that did not finish
-    return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ended at the time limit${where}`, body: `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`};
-  }
-  if (!run.kind || run.kind === 'search') {
-    const fresh = run.new;
-    return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ${verdict}${where}`,
-      body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
-  }
+  if (!run.kind || run.kind === 'search') return searchNotice(run, {where, verdict, look});
   return {title: `${name} ${verdict}${where}`, body: String(run.result || run.summary || run.message || 'Done.').split('\n')[0].slice(0, 180) + look};
 }
 export {KIND as RUN_KINDS};   // every app task kind must be here, or its runs never get a Notion row (test/unit/main/run-kinds.test.js)
