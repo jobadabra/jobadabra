@@ -455,6 +455,7 @@ export async function syncDatabase(storage, {fetcher = globalThis.fetch, unzip} 
   return true;
 }
 
+/** Unpacks the zip file `zip` into the folder `dir` with the system's own tool (unzip, or bsdtar on Windows). Resolves when done; rejects with the tool's error when it fails. Data: a GitHub artifact download. */
 export async function unzipFile(zip, dir) {
   const {execFile} = await import('node:child_process');
   // Windows 10+ ships bsdtar, which also reads zip files.

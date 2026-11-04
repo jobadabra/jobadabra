@@ -67,7 +67,8 @@ export function setReady(names) {
   if ($('aon-test-go')) draw();
 }
 
-/** The way the choice card shows ('own' | 'ours'). Our servers have no test to run yet (TODO(AI): their test, when the hosted runner exists, 4 Nov 2026), so the row says so; the own way's result is kept while you look at the other. */
+// TODO(AI): the Test for our servers, when the hosted runner exists (4 Nov 2026, spec 2026-11-04-always-on-one-choice.md)
+/** The way the choice card shows ('own' | 'ours'). Our servers have no test to run yet, so the row says so; the own way's result is kept while you look at the other. */
 export function setWay(next) {
   way = next;
   if ($('aon-test-go')) draw();
