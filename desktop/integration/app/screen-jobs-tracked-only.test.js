@@ -14,7 +14,8 @@ test('a list with no match says so in words that fit the default list, and the t
   const {result} = probeWindow({files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=jobs]:not([hidden])'), 'the menu');
     await kit.go('jobs');
-    await kit.until(() => document.getElementById('jobs-empty').textContent.trim(), 'the words under the list');
+    await kit.until(() => document.body.dataset.findCard === 'none', 'the small Find jobs card drawn');   // set after draw(), and only once the list was read
+    await kit.until(() => document.querySelector('#jobs-empty:not([hidden])'), 'the words under the list');   // index.html holds other words while it is hidden
     const empty = document.getElementById('jobs-empty').textContent.trim();
     const small = {title: document.querySelector('#find-card .find-title')?.textContent.trim(), lead: document.querySelector('#find-card .find-lead')?.textContent.trim(), shown: !document.getElementById('find-card').hidden};
     document.querySelector('[data-stat=applied]').click();
