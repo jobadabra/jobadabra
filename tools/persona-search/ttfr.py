@@ -8,18 +8,13 @@ import sqlite3
 import sys
 from datetime import datetime
 
-from scores_rows import scores_rows
+from scores_rows import has, scores_rows
 from src.paths import DATA, JOBS_DB
 from src.sources import feeds
 
 
 def ts(text):
     return datetime.fromisoformat(text.replace('Z', '+00:00')).timestamp()
-
-
-def has(db, table):
-    """True when the sqlite connection `db` has a table named `table` (read from sqlite_master; False for a store a press never opened)."""
-    return db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone() is not None
 
 
 def seen_and_fit():
