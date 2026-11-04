@@ -44,7 +44,7 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   let endedByTime = false;
   // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
   // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
-  // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180.
+  // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180; and (4 Nov 2026, #3108) this same wrapper is the one owner of the verdict "the press ended by time" (hard stop or the engine's own stop line), so the run record can say Partial.
   // `counts`: whether this step's time-up makes the SEARCH Partial; the employer finder is an add-on, so its own stop (or hard stop) does not. Why (4 Nov 2026, #3108): the engine stops itself at
   // its budget and exits 0, usually before this hard stop, and says so on a line starting "⏱ " (src/time_budget.py `later`; desktop/e2e/lib/quality.mjs workLeft reads the same mark).
   const step = (args, what, counts = true) => exec(storage, args, line => { if (counts && line.startsWith('⏱ ')) endedByTime = true; onLine(line); }, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
