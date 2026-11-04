@@ -11,7 +11,7 @@ export function matches(job, text) {
   if (!text) return true;
   if (looksLikeLink(text)) return linkKey(job.url) === linkKey(text) || linkKey(job.url).startsWith(`${linkKey(text)}/`);
   const words = text.toLowerCase();
-  // Why (4 Nov 2026, gv's Google film: a recruiter's name under Inbound found 0 rows): an opportunity that found you has its recruiter in `contact` and its agency in `via`
+  // Why (4 Nov 2026, gv's Google film: a recruiter's name under Inbound found 0 rows): an opportunity that found you keeps who wrote in the contact and via fields
   // (its employer is often hidden, company empty), and the row shows them; the box looks where the row looks.
   return `${job.title} ${job.company} ${job.location} ${job.via || ''} ${job.contact || ''}`.toLowerCase().includes(words) || String(job.url || '').toLowerCase().includes(words);
 }
