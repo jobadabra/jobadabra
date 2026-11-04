@@ -9,6 +9,7 @@ import {test} from 'node:test';
 import * as engineLog from '../../../lib/engine-log.js';
 import {logTo} from '../../../lib/log.js';
 import * as pipeline from '../../../lib/pipeline.js';
+import {runFailure} from '../../../lib/telemetry-handlers.js';
 import {logText} from '../../log-text.mjs';
 
 test('a run is written down: engine.log takes its output, app.log its two markers', async () => {
@@ -75,4 +76,45 @@ test('a run given a time limit is ended at it even though it never looks at a cl
   assert.ok(Date.now() - started < 8000, 'ended within seconds of its limit');
   assert.equal(endedByTime, true);
   assert.notEqual(code, 0);
+});
+
+// Sentry APP-4X (4 Nov 2026) and the 20 Oct fix coming back: the engine answers a Stop with its own SIGTERM handler (src/notion/cron_runs.py _on_terminate: it prints that it was
+// stopped, then exits 143), and Windows taskkill /F gives 1. Neither is a null exit code, so the run was reported as failed, with its last ordinary line as the error.
+// This plays the scenario: a child that handles SIGTERM like the engine does, ended by the app.
+const STOPPABLE = `import signal, sys, time
+def stop(signum, frame):
+    print("Stopped before it finished: Jobadabra was closed, or Stop was pressed", flush=True)
+    sys.exit(128 + signum)
+signal.signal(signal.SIGTERM, stop)
+print("⏳ Reading job boards: 5 of 7", flush=True)
+time.sleep(60)
+`;
+const stoppable = () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-stoppable-'));
+  fs.writeFileSync(path.join(dir, 'se_stoppable.py'), STOPPABLE);
+  const storage = {settings: () => ({}), secret: () => '', saveSettings: () => {}, path: (...parts) => path.join(dir, ...parts)};
+  return {dir, storage, ended: [], env: {PYTHONPATH: dir}};
+};
+
+test('a run the app stops (Stop, quit) is not reported as failed, whatever exit code the engine gave', async () => {
+  const {storage, ended, env} = stoppable();
+  pipeline.onRunEnd(item => { if (item.args[0] === 'se_stoppable') ended.push(item); });
+  let ready = () => {};
+  const seen = new Promise(resolve => { ready = resolve; });
+  const running = pipeline.run(storage, ['se_stoppable'], line => { if (/Reading job boards/.test(line)) ready(); }, env);
+  await seen;
+  await pipeline.stopRunning();
+  const {code} = await running;
+  assert.notEqual(code, 0, 'the engine left with an exit code of its own, not a clean 0');
+  assert.equal(ended.at(-1).stopped, true);
+  assert.equal(runFailure(ended.at(-1)), null, 'no run_failed for a stop');
+});
+
+test('a run the press\'s time ended is not reported as failed; one the watchdog ended still is', async () => {
+  const {storage, ended, env} = stoppable();
+  pipeline.onRunEnd(item => { if (item.args[0] === 'se_stoppable') ended.push(item); });
+  await pipeline.run(storage, ['se_stoppable'], () => {}, env, {stopAfterMs: 700});
+  assert.equal(ended.at(-1).stopped, true);
+  assert.equal(runFailure(ended.at(-1)), null, 'a time-up is no failure');
+  assert.equal(runFailure({code: 124, timedOut: 'no output for 16 min', stopped: false, tail: []}).error, 'stopped by the app: no output for 16 min');
 });
