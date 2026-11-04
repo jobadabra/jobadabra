@@ -3,6 +3,7 @@
 // cloud tests in desktop/test.
 import * as aiFree from './ai-free.js';
 import * as github from './github.js';
+import * as aonTest from './always-on-test.js';
 import * as telegram from './telegram.js';
 import * as telegramCloud from './telegram-cloud.js';
 import {cleanSecret} from './secrets.js';
@@ -37,6 +38,20 @@ export function registerCloudHandlers(ctx) {
       return {ok: false, error: error.message, ...(error.needsRepo ? {needsRepo: true, createUrl: await github.createUrl(undefined, storage.secret('GITHUB_TOKEN')), installUrl: github.INSTALL_URL} : {}),
         ...(error.needsChoice ? {needsChoice: true, repos: error.repos} : {})};
     }
+  });
+  // Always on's Test button (renderer/pages/always-on-test.js): start the engine's `test` run in the person's own repo, then read it back as one state per check
+  // (lib/always-on-test.js). Never the real GitHub in demo mode.
+  ipcMain.handle('cloudTestStart', async () => {
+    if (DEMO) return {ok: true, since: Date.now(), repo: 'alexmorgan/jobadabra-personal-always-on'};
+    return aonTest.startTest(storage).catch(error => ({ok: false, error: error.message}));
+  });
+  ipcMain.handle('cloudTestRead', async (_, since = 0) => {
+    if (DEMO) {
+      const ticks = Math.floor((Date.now() - since) / 1500);   // three checks, one every 1.5 s
+      const steps = aonTest.stepStates(null, null).map((item, index) => ({...item, state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
+      return {found: true, verdict: steps.every(item => item.state === 'ok') ? 'passed' : 'running', steps, url: ''};
+    }
+    return aonTest.readTest(storage, {since}).catch(error => ({found: false, verdict: 'running', steps: aonTest.stepStates(null, null), url: '', error: error.message}));
   });
   const turnCloudOff = async () => {
     if (storage.settings().telegramCloud) await telegramCloud.turnOff(storage);  // its buttons start runs there

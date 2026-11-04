@@ -3,3 +3,11 @@
 .setting.aon-chooser { margin-bottom: 0; border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0; }
 .setting.aon-way { border-top: 0; border-radius: 0 0 var(--r-md) var(--r-md); padding-top: 0; }
 .aon-way > .summary-head, .aon-way > .panel-lead { display: none; }
+
+/* The Test row's checks: one line each, a live dot, the check, its word chip; a failed one carries the engine's sentence under it. */
+.aon-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.aon-checks[hidden] { display: none; }
+.aon-check { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--sp-3); align-items: center; }
+.aon-check-line { grid-column: 2 / -1; margin: 0; overflow-wrap: anywhere; }
+#aon-test-result:empty { display: none; }
+.aon-check:is([data-state="waiting"], [data-state="skipped"], [data-state="cancelled"]) .live-dot { background: var(--muted); }

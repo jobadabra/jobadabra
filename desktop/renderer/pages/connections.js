@@ -18,6 +18,7 @@ import {storeName} from '../store-words.js';
 import {bindExtension, paintExtensionCardFirst, showExtensionStatus} from './extension-setup.js';
 import {bindDesktopAiCard, showDesktopAiCard} from './desktop-ai-card.js';
 import {draw as drawChoice, pick as pickWay} from './always-on-choice.js';
+import {bindTest, setReady} from './always-on-test.js';
 
 export {showExtensionStatus};
 
@@ -145,6 +146,7 @@ function showCloudNeeds() {
     if (row.button) go.textContent = row.button;
     go.onclick = () => openSetting(row.id === 'ai' ? 'ai' : 'notion');
   }
+  setReady([...rows.filter(row => row.pill[1] !== 'good').map(row => (row.id === 'ai' ? 'an API key' : row.title)), ...(on ? [] : ['GitHub'])]);   // the Test button needs all three
   $('aon-key-alt').dataset.need = rows[1].alt ? '1' : '';   // shown by always-on-choice.js draw(), which knows whether our servers can take it
   drawChoice();
   $('aon-key-alt').onclick = () => pickWay('ours');
@@ -396,6 +398,7 @@ export async function init() {
     });
   }
   bindExtension();
+  bindTest();
   bindDesktopAiCard();
   $('open-data').addEventListener('click', () => window.pilot.showFolder('data'));
   $('rerun-wizard').addEventListener('click', () => { show($('app'), false); show($('wizard')); goStep('welcome'); });

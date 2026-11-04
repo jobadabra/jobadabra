@@ -302,7 +302,7 @@ function actionsApi(storage, fetcher) {
 }
 
 const asRun = run => ({id: run.id, html_url: run.html_url, status: run.status || '', conclusion: run.conclusion || '',
-  createdAt: run.created_at});
+  createdAt: run.created_at, title: run.display_title || ''});   // title: the run's name, which is its mode (run-name in the workflow)
 
 export async function dispatchedRuns(storage, {workflow, since = 0, fetcher} = {}) {
   const gh = actionsApi(storage, fetcher);
@@ -455,7 +455,7 @@ export async function syncDatabase(storage, {fetcher = globalThis.fetch, unzip} 
   return true;
 }
 
-async function unzipFile(zip, dir) {
+export async function unzipFile(zip, dir) {
   const {execFile} = await import('node:child_process');
   // Windows 10+ ships bsdtar, which also reads zip files.
   const [command, args] = process.platform === 'win32' ? [tar(), ['-xf', zip, '-C', dir]] : ['/usr/bin/unzip', ['-o', zip, '-d', dir]];
