@@ -1,4 +1,5 @@
 // The fixer's walls: which paths a change may never touch, how many files and bytes it may have, and the daily caps (moved out of tools/feedback-ai.mjs, 4 Nov 2026, [hm] 2/6).
+import {TESTS} from './proof.mjs';
 // Walls are CODE, never AI judgment: a refused change is final. Runs from the workflow's trusted copy (the AI may not edit tools/).
 
 /** The most files a draft fix may change (MAX_FILES) and the largest patch, in bytes, it may be (MAX_PATCH_BYTES). */
@@ -26,3 +27,9 @@ export function capVerdict(runs, selfId, now = new Date(), daily = DAILY_RUNS) {
   if (others.length + 1 > daily) return {ok: false, why: `that is more than ${daily} Send to AI runs today (UTC)`};
   return {ok: true};
 }
+
+/**
+ * The only paths an AI-written change may touch (source of `--allow` in feedback-ai.yml, which keeps its own copy): the app and engine code and their tests. A string for `new RegExp`; DENIED above still applies on top.
+ * Why (4 Nov 2026, [hm] 3/6): both sources of the loop (a feedback card, a Linear issue) fix the same code, so the loop and ai-fixer.yml read this one list; a text in an item cannot widen it.
+ */
+export const EDITABLE = `^(?:desktop/(?:renderer|lib)/|src/|${TESTS.source.slice(1, -1)})`;   // the test shapes are TESTS's (proof.mjs): one list, so the loop never accepts a test the proof refuses
