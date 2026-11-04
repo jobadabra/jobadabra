@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {TRIAL_KEY, ensureTrialKey} from '../../../lib/ai-free.js';
 import * as github from '../../../lib/github.js';
-import {SECRET_NAMES} from '../../../lib/storage.js';
 import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.abcd', OWN = 'sk-ant-own', OLD = 'JP1.old.credit';
