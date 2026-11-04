@@ -9,6 +9,7 @@ import {createActs} from '../../../../tools/fixer/actions.mjs';
 import {sonnetAsk} from '../../../../tools/fixer/engine.mjs';
 import {ACTIONS, CAPS, parseAction, runLoop} from '../../../../tools/fixer/loop.mjs';
 import {read as readLinear} from '../../../../tools/fixer/sources/linear.mjs';
+import {TESTS} from '../../../../tools/fixer/proof.mjs';
 import {EDITABLE} from '../../../../tools/fixer/walls.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../..');
@@ -182,4 +183,12 @@ test('the script that holds the tokens imports only files the fix job\'s snapsho
   const copied = new Set(copy.flatMap(item => (item.includes('*') ? fs.readdirSync(path.join(ROOT, path.dirname(item))).filter(name => name.endsWith('.mjs')).map(name => `${path.dirname(item)}/${name}`) : [item])));
   for (const file of seen) assert.ok(copied.has(file), `${file} is imported by run.mjs but not in the snapshot`);
   assert.ok([...seen].every(file => !/^(?:src|tests|desktop\/(?:renderer|test))\//.test(file)) && !seen.has('desktop/lib/add.js'));
+});
+
+test('the loop\'s editable paths and Send to AI\'s own --allow list give the same verdict on every path class (one list in two files must not drift)', () => {
+  const theirs = new RegExp(/--allow '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, '.github/workflows/feedback-ai.yml'), 'utf8'))[1]), ours = new RegExp(EDITABLE);
+  const paths = ['src/a.py', 'desktop/renderer/a.js', 'desktop/lib/a.js', 'desktop/test/a.test.js', 'desktop/test/unit/main/a.test.js', 'desktop/test/guards/rules/a.test.js', 'desktop/test/tooling/ci/a.test.js', 'desktop/test/unit/main/deep/a.test.js',
+    'tests/test_a.py', 'tests/unit/ai/test_a.py', 'tests/guards/rules/test_a.py', 'tests/tooling/ci/test_a.py', 'tests/conftest.py', 'tools/a.mjs', '.github/workflows/a.yml', 'desktop/e2e/lib/a.mjs', 'desktop/package.json', 'CLAUDE.md'];
+  for (const file of paths) assert.equal(ours.test(file), theirs.test(file), file);
+  for (const file of ['desktop/test/unit/main/a.test.js', 'tests/unit/ai/test_a.py']) assert.ok(ours.test(file) && TESTS.test(file), `${file}: what the loop may write, the proof and run_tests accept`);
 });

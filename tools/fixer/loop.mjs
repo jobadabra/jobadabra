@@ -37,7 +37,7 @@ export function systemFor(fence, {what = 'a reported bug', caps = CAPS} = {}) {
 /** One turn's answer text -> the action, or {error} when it is not one JSON object with one of the five actions. */
 export function parseAction(text) {
   let input;
-  try { input = JSON.parse(String(text).trim().replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { return {error: 'your answer was not one JSON object'}; }
+  try { input = JSON.parse(String(text).trim().replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { return {error: 'your answer was not one JSON object (if it was cut off, send smaller edits: one new file per edit)'}; }
   return input && ACTIONS.includes(input.action) ? input : {error: `action must be one of ${ACTIONS.join(', ')}`};
 }
 
