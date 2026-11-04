@@ -1,6 +1,6 @@
 // The explorer's loop (shared with the AI user agent) stops a goal that does the same thing on the same page again and again (replays 41857211406 and 41857218091, 4 Nov 2026: 93 of 100 steps on
 // two buttons, "Expand all" 39 times and a tab 54 times, on a page that never changed). It nudges at the 3rd time, ends the goal at the 5th, and never touches a page that does change.
-// Guard: efficiency — without it one stuck goal spends the whole night's steps and calls on a button that does nothing, and the goals after it never run.
+// Guard: money — without it one stuck goal spends the night's AI calls (up to maxCalls) on a button that does nothing, and the goals after it never run.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {explore} from '../../lib/explore.mjs';
