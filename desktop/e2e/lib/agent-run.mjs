@@ -24,13 +24,13 @@ Controls marked [not allowed] are refused (they delete, send, sign in, leave the
  * The agent's extra action and fields for explore(): `note` (an argued bug, validated by lib/agent-notes.mjs, never repaired) and the verdict a goal ends with. `sink` collects the valid notes.
  * `knowledgeIds`: the rule ids a note may cite; `views`: the screens it may name; `goal`: the goal being worked, kept on each note.
  */
-export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null}) {
+export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null, pressed = () => null}) {
   const text = {type: 'string'};
   return {actions: ['note'], without: ['report_bug'], properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), expected: text, observed: text, why: text, verdict: choice(GOAL_VERDICTS)},
     async take(input, row, {steps = []} = {}) {
       const checked = validateNote({...input, view: input.view || row.view}, {knowledgeIds, views});
       if (!checked.ok) { row.refused = checked.why; return `Refused: ${checked.why}. Note it again with an argument, or leave it.`; }
-      sink.push({...checked.note, goal: goal.n, at: Date.now(), videoSec: where(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
+      sink.push({...checked.note, goal: goal.n, at: Date.now(), videoSec: where(), control: pressed(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
       row.title = checked.note.title;
       return 'Noted. Carry on with your goal.';
     }};
@@ -63,7 +63,7 @@ export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '
     if (callsLeft <= 0 || minutesLeft <= 0) break;
     const mine = [];
     const result = await explore({act, ask, views, caps: {maxSteps: perGoal, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge),
-      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where})});
+      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
     notes.push(...mine);

@@ -17,6 +17,7 @@ import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
 import {planSession, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, withoutRules} from '../lib/agent-plans.mjs';
 import {runSession} from '../lib/agent-run.mjs';
+import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
 import {startAgentVideo} from '../lib/agent-video.mjs';
@@ -63,11 +64,12 @@ export async function run(ctx) {
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
     const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
-    const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes});
+    const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
+    let kept = null;
     try {
-      session = await runSession({act: agentAct(page), ask: brokerAsk('small'), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: brokerAsk('small'), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
-    } finally { await video.finish(); }   // Why (4 Nov 2026): a session that throws still leaves the video of what it did
+    } finally { kept = await video.finish(); }   // Why (4 Nov 2026, 9/12 part 2b): a session that throws still leaves the video of what it did, and `kept` (its meta) is what the run record below reads
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
     // The memory the workflow pushes to the agent-memory branch afterwards (this suite never touches git): merged notes per area, the coverage record, the plan's pairs.
@@ -79,6 +81,9 @@ export async function run(ctx) {
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
+    // Why (4 Nov 2026, AI user agents 9/12 part 2b): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId}, kept)));
+    for (const shot of shotFiles(session.notes)) fs.writeFileSync(path.join(ctx.ARTIFACTS, shot.name), shot.data);
     if (session.stopped.startsWith('api:')) throw new Error(`the agent could not finish thinking (${session.stopped}): what it found so far is kept, the rest of the night is not run`);
   }, {needs: ctx.needs, limitMs: (CAPS.maxMinutes + 5) * 60000});   // Why (3 Nov 2026): the runner's default step limit is 8 minutes; a session runs up to its own minute cap
   fs.writeFileSync(path.join(ctx.ARTIFACTS, 'seed.json'), JSON.stringify({seed, fixed: true, detail: `AI user agent: ${session ? `${session.summary.goals.length} goals, ${session.findings.length} filed` : 'did not run'}`}));

@@ -141,6 +141,7 @@ jobs:
           AGENT_SEED: ${{ inputs.seed }}
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
+          AGENT_KIND: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '') && 'replay' || 'night' }}   # Why (4 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay
           AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
           AGENT_MEMORY_DIR: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
           AGENT_CHANGED_LOG: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.changed_log || '' }}   # same replay condition as the memory: no earlier night, no "changed since"
@@ -185,6 +186,14 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: node agent-nightly.mjs publish
+      # Why (4 Nov 2026, AI user agents 9/12 part 2b, owner: "video recording for each" run, kept 14 days): after the scan, like the memory push, so a file with a CI secret in it is never sent; the line it prints is the whole report, a refused file never fails the night.
+      - name: Send the run to Admin → AI persona (pictures, video, record)
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success'
+        timeout-minutes: 10
+        working-directory: desktop/e2e
+        env:
+          REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
+        run: node agent-run-upload.mjs "$E2E_ARTIFACTS" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       # The same artifact name pattern an e2e suite uses, so ui-findings.yml files this run's findings without a second reader; a replay run is named otherwise, so the Finder never files a bug that was fixed long ago.
       - name: Screenshots, findings, summary and trace
         if: always() && steps.artifact_scan.outcome == 'success' && hashFiles('e2e-artifacts/agent/**') != ''

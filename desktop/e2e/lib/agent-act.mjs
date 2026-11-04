@@ -17,12 +17,19 @@ const PROFILE_NAV = '.nav[data-settings="profile"]';
  */
 export function agentAct(page) {
   const tagged = i => page.locator(`[data-explore="${i}"]`);
+  let pressed = null;   // where the last pressed control sat in the window, for the admin tab to box it in a note's screenshot (9/12 part 2b)
   return {
     observe: () => page.evaluate(observePage),
-    click: async i => { await tagged(i).scrollIntoViewIfNeeded(); await tagged(i).click({noWaitAfter: true}); await settle(page); },
-    type: async (i, text) => { await tagged(i).fill(String(text || '').slice(0, 200)); await settle(page); },
-    press: async key => { await page.keyboard.press(key); await settle(page); },
-    go: async view => { if (view === 'profile') await page.click(PROFILE_NAV); else await goView(page, view); await settle(page); },
+    lastPress: () => pressed,
+    click: async i => {
+      await tagged(i).scrollIntoViewIfNeeded();
+      const box = await tagged(i).boundingBox(), window = await page.evaluate(() => ({w: window.innerWidth, h: window.innerHeight}));
+      pressed = box ? {x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height), window} : null;
+      await tagged(i).click({noWaitAfter: true}); await settle(page);
+    },
+    type: async (i, text) => { pressed = null; await tagged(i).fill(String(text || '').slice(0, 200)); await settle(page); },
+    press: async key => { pressed = null; await page.keyboard.press(key); await settle(page); },
+    go: async view => { pressed = null; if (view === 'profile') await page.click(PROFILE_NAV); else await goView(page, view); await settle(page); },
   };
 }
 
