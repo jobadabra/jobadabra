@@ -76,6 +76,8 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
             return [(ROOT, [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-q'])]
         return [(ROOT, [sys.executable, 'tools/py-shards.py', *(['--app-only'] if app_only else [])])]
     if area == 'site':   # the website's tests sit in test/ at the top level of the joined tree (jobadabra-web, 21 Oct 2026)
+        if not picked:   # `node --test` with no file runs every test it can find
+            return []
         return [(ROOT, [node, '--test', *(picked if picked != 'all' else ['test/**/*.test.js'])])]
     folder = ROOT / AREA_DIR.get(area, area)
     if picked != 'all':

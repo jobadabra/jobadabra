@@ -1,4 +1,4 @@
-"""Which tests a change can break: the local push check and a PR's `desktop (ubuntu)` job run only these; main runs everything. For every other PR job GitHub's `paths:` decides (tests/tooling/ci/test_workflow_paths.py).
+"""Which tests a change can break: the local push check, a PR's `desktop (ubuntu)` job and a web PR's Site tests run only these; main runs everything. For every other PR job GitHub's `paths:` decides (tests/tooling/ci/test_workflow_paths.py).
 
   python3 tools/affected-tests.py --base origin/main            (JSON on stdout: per area a list of test files, or "all")
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js
@@ -26,13 +26,24 @@ JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
 # Why (4 Nov 2026, PR time 2/2): rename-guard runs tools/rename-inventory.mjs as a process; its reach and its text name nothing, and it was the only test the picker missed in 40 red PR runs.
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]|(?:execFile|exec|spawn)(?:Sync)?\([^\n]*['"]tools/''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
+# Why (4 Nov 2026, owner: "We run "site tests" (which are all tests) no matter what's the PR change"): the website's tests load what they test in ways an import line does not show.
+SPAWNED_RE = re.compile(r"""new URL\(\s*['"](\.[^'"]+)['"]\s*,\s*import\.meta\.url""")   # a page walker starts its tool as a process
+NAMED_PATH_RE = re.compile(r"""['"]((?:[\w.-]+/)+[\w.-]+\.m?js)['"]""")   # and the tool loads the Worker by a joined path
+# Why (same): 93 of 97 "scanners" only listed db/migrations/ to seed a database, which put the slowest tests in every PR. A named folder is reach; only an unnamed one is a scan.
+FOLDER_READ_RE = re.compile(r"""readdirSync\(\s*(?:new URL\(\s*['"]([^'"]+/)['"]\s*,\s*import\.meta\.url\s*\)|path\.join\(\s*\w+\s*,\s*['"]([\w./-]+)['"]\s*\))""")
+JOINED_DIR_RE = re.compile(r"""path\.join\(\s*\w+\s*,\s*['"]([\w./-]+)['"]\s*\)""")   # the public pages' phone check serves path.join(repo, 'web/public')
+IMPORT_LINE_RE = re.compile(r'^\s*import\b[^\n]*$', re.M)
+COMPUTED_DIR_RE = re.compile(r"""[`'"](?:\.{1,2}/)*((?:[\w.-]+/)+)\$\{""")   # `admin/${page}.js`: a file named by a value
+SITE_PAGES = ('web/', 'admin/', 'api/', 'shared/', 'workers/')
+# What runs the site tests themselves, as a web PR lists it after tools/layout-map.txt; a change here can break any test without reaching it.
+SITE_RUNNER = re.compile(r'^(tools/(check\.(py|sh)|affected-tests\.py|tree\.sh|overlay\.sh|lay-private\.sh|layout-map\.txt|site-guards\.sh|site-run\.sh)|\.github/workflows/tests\.yml)$')
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
 NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
 AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
 # Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (the folders desktop/, extension/, app-core/) (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
-PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
+PREFIX = {'worker': 'app-core/', 'site': '', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
 # Why (4 Nov 2026, PR time 2/2): what runs the desktop tests themselves; a change here can break any test without reaching it.
 DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop\.yml)$')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
@@ -153,6 +164,25 @@ def is_tree_reader(f):
     return bool(parts) and ('scripts' in parts or 'tools' in parts or 'test' in parts or 'e2e' in parts)
 
 
+def site_tree():
+    """Is this the joined tree of jobadabra-web? Only there do site tests exist."""
+    return (ROOT / 'admin').is_dir()
+
+
+@functools.lru_cache(maxsize=None)
+def folders_listed(path):
+    """The folders a file reads by name."""
+    text = read(path)
+    found = [(path.parent / url if url else ROOT / joined).resolve() for url, joined in FOLDER_READ_RE.findall(text)] + [(ROOT / joined).resolve() for joined in JOINED_DIR_RE.findall(text)]
+    return {f.relative_to(ROOT.resolve()).as_posix() + '/' for f in found if f.is_relative_to(ROOT.resolve()) and f.is_dir()}
+
+
+@functools.lru_cache(maxsize=None)
+def scans_tree(path):
+    """Does this file read the repo in a way no name narrows? An import line reads nothing."""
+    return bool(SCANNER_RE.search(FOLDER_READ_RE.sub('', IMPORT_LINE_RE.sub('', read(path)))))
+
+
 def closure(start, edges):
     seen, stack = set(), [start]
     while stack:
@@ -177,11 +207,17 @@ def resolve_js(base, spec):
 
 
 @functools.lru_cache(maxsize=None)
-def js_graph():
-    files = walk(set(JS_EXT))
+def js_graph(site=False):
+    """file -> the files it imports; site: also what it starts or loads by path, and the top-level shared/ (SKIP means desktop's ignored copy)."""
+    files = walk(set(JS_EXT)) + (sorted(p for p in (ROOT / 'shared').rglob('*') if p.suffix in JS_EXT) if site else [])
     edges = {}
     for p in files:
-        edges[p.resolve()] = {r for spec in IMPORT_RE.findall(read(p)) if (r := resolve_js(p, spec))}
+        text = read(p)
+        found = {r for spec in IMPORT_RE.findall(text) if (r := resolve_js(p, spec))}
+        if site:
+            found |= {r for spec in SPAWNED_RE.findall(text) if (r := (p.parent / spec).resolve()).is_file() and r.suffix in JS_EXT}
+            found |= {r for spec in NAMED_PATH_RE.findall(text) if (r := (ROOT / spec).resolve()).is_file()}
+        edges[p.resolve()] = found
     return edges
 
 
@@ -238,9 +274,12 @@ def reaches_changed(paths, changed):
 def pick_node_area(area, folder, relevant, graph, engine_changed):
     """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
     changed_js = {(ROOT / f).resolve() for f in relevant}
+    if area == 'site' and any(f.startswith(SITE_PAGES) and not f.endswith(JS_EXT) for f in relevant):
+        changed_js.add((ROOT / 'workers/www/index.js').resolve())   # a page's html, css or image: the Worker serves it by path, so every test that reaches the Worker counts
     # Why (R2, 1 Nov 2026, owner: "whatever e2e suite we'd feel to run on a PR, we should run the integrations counterpart"): the integration layer is the PR-time counterpart of the e2e journeys, in three
     # sub-folders (app, extension, store); it is picked by the same reach, mention and scanner rules as the unit tests, not by a second picker.
     pattern = '**/*.test.*' if area == 'integration' else '*.test.*'
+    pattern = '**/*.test.*' if area == 'site' else pattern   # the site's tests sit in sub-folders too
     tests = desktop_tests() if area == 'desktop' else sorted((ROOT / folder).glob(pattern)) if (ROOT / folder).is_dir() else []
     if area == 'e2e':   # Why (c27, 1 Nov 2026, area folders): the harness tests sit one folder down (test/<area>/x.test.mjs); test/fixtures holds stand-ins, never tests
         tests += sorted(t for t in (ROOT / folder).glob('*/*.test.*') if t.parent.name != 'fixtures')
@@ -254,7 +293,11 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         reach = closure(t.resolve(), graph)
         # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
         via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
-        scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
+        if area == 'site':
+            scanner = scans_tree(t) or any(scans_tree(f) for f in via if '/e2e/lib/' not in f.as_posix())
+            reached = {rel(t): {d for f in reach for d in folders_listed(f)} | set(COMPUTED_DIR_RE.findall(text))}
+        else:
+            scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
         if (area == 'desktop' and '/guards/' in rel(t)) or (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
@@ -300,7 +343,8 @@ def select(changed, base_ref=None):
         why['data'] = readers
         changed = sorted(set(changed) | {reader for found in readers.values() for reader in found})
     # A doc or fixture outside desktop/ on the job's `paths:` is there because a desktop test reads it, so it counts.
-    relevant = [f for f in changed if not NO_TEST_EFFECT.search(f) or (starts_desktop_job(f) and not f.startswith(('desktop/', 'extension/')))]
+    # In the joined tree a doc counts too: site tests read docs by path.
+    relevant = list(changed) if site_tree() else [f for f in changed if not NO_TEST_EFFECT.search(f) or (starts_desktop_job(f) and not f.startswith(('desktop/', 'extension/')))]
     if not relevant:
         return result
     scoped = [f for f in relevant if SCOPED_DEPS.match(f)]
@@ -325,18 +369,22 @@ def select(changed, base_ref=None):
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).
     engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/(?:[^/]+/)*test_[^/]+\.py', f)) for f in relevant)
     for area, folder in NODE_AREAS.items():
-        if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
+        if not (area == 'site' and site_tree()) and not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
             continue
         graph = graph or js_graph()
-        picked = pick_node_area(area, folder, relevant, graph, engine_changed)
+        picked = pick_node_area(area, folder, relevant, js_graph(True) if area == 'site' else graph, engine_changed)
         result[area] = picked
         if picked == 'all':
             why[area] = 'tools/e2e-test-reach.mjs failed'
     runner = [f for f in relevant if DESKTOP_RUNNER.match(f)]
     if runner:
         result['desktop'] = 'all'; why['desktop'] = f'test runner: {runner[0]}'
+    site_runner = [f for f in relevant if SITE_RUNNER.match(f)]
+    if site_runner:
+        result['site'] = 'all'; why['site'] = f'test runner: {site_runner[0]}'
     for f in scoped:
         area = 'worker' if f.startswith('app-core/') else f.split('/')[0]   # Why (1 Nov 2026): the area key `worker` is kept, its folder is app-core/
+        area = 'site' if area == 'workers' else area   # workers/www is the site's Worker
         result[area] = 'all'; why[area] = f'dependency file: {f}'
         if f.startswith('desktop/e2e/'):
             result['e2e'] = 'all'; why['e2e'] = f'dependency file: {f}'
@@ -353,7 +401,7 @@ def commands(result):
         out[area] = {'python': f'python3 tools/py-shards.py {files}',
                      'desktop': f'cd desktop && node --test {files}',
                      'worker': f'cd app-core && node --test {files}',
-                     'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
+                     'site': f'node --test {files}',
                      'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}',
                      'integration': f'cd desktop && node --import ./test/no-live-site.mjs --test {" ".join("integration/" + name for name in picked)}'}[area]
     return out
