@@ -31,7 +31,11 @@ export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalT
       const text = plain(b[type]?.rich_text);
       if (!text) continue;
       if (type === 'to_do') lines.push(`- [${b.to_do.checked ? 'x' : ' '}] ${text}`);
-      else if (type === 'code') lines.push(`\`\`\`${/^[\w+#-]{1,20}$/.test(String(b.code?.language)) ? b.code.language : ''}\n${text}\n\`\`\``);
+      else if (type === 'code') {
+        // Why (3 Nov 2026, Gitar on #3129): the fence must be longer than any backtick run in the text, or a code block could close it early and the rest would read as page prose.
+        const fence = '`'.repeat(Math.max(3, ...(text.match(/`+/g) || []).map(run => run.length + 1)));
+        lines.push(`${fence}${/^[\w+#-]{1,20}$/.test(String(b.code?.language)) ? b.code.language : ''}\n${text}\n${fence}`);
+      }
       else lines.push(`${prefix}${text}`);
     }
     return finish(`# Notion: ${title}`, [
