@@ -191,6 +191,10 @@ export function whenDrained(fault) {
 function sendRefusal(res, mode, openai, stats) {
   const refusal = openai ? openaiFailureFor(mode) : failureFor(mode);
   stats.failed++; STUBBED.add(mode);
+  // Why (se, 4 Nov 2026, owner: "fix the noise"): a stand-in or declared refusal is a failure served on purpose, like serveFault's; unmarked, the app reported its warning to Sentry
+  // as a real spending-limit/AI-call-failed issue (APP-6: 187 events from the strategy suite, whose stand-in refuses every non-scoring call with "no-credit"). A miss nothing answered
+  // is NOT this path (refuseUnanswered, a 503 below): it is a harness failure and stays reported.
+  markPlanted(`ai refusal ${mode}`);
   res.writeHead(refusal.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(refusal.body), 'retry-after-ms': '10'}); res.end(refusal.body);
 }
 
