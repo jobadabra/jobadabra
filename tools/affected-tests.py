@@ -27,8 +27,8 @@ IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s
 # Why (4 Nov 2026, PR time 2/2): rename-guard runs tools/rename-inventory.mjs as a process; its reach and its text name nothing, and it was the only test the picker missed in 40 red PR runs.
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]|(?:execFile|exec|spawn)(?:Sync)?\([^\n]*['"]tools/''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
-NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
-AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
+NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
+AREAS = ('python', 'desktop', 'worker', 'e2e', 'integration')
 # Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (the folders desktop/, extension/, app-core/) (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
@@ -37,10 +37,10 @@ PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/
 DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop\.yml)$')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
-# harness's package.json, ran Python, worker and site whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
-SCOPED_DEPS = re.compile(r'^(desktop|app-core|worker|workers/www)/(.+/)?package(-lock)?\.json$')
+# harness's package.json, ran Python and worker whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
+SCOPED_DEPS = re.compile(r'^(desktop|app-core|worker)/(.+/)?package(-lock)?\.json$')
 NO_TEST_EFFECT = re.compile(r'\.md$|^docs/|^LICENSE|\.gitignore$')
-KNOWN = ('src/', 'tests/', 'tools/', 'config/', 'templates/', 'desktop/', 'extension/', 'app-core/', 'worker/', 'site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/', '.github/', 'docs/', '.gitattributes')   # .gitattributes: the tests that name it (test_ship, merge-baseline) are picked by mention
+KNOWN = ('src/', 'tests/', 'tools/', 'config/', 'templates/', 'desktop/', 'extension/', 'app-core/', 'worker/', '.github/', 'docs/', '.gitattributes')   # .gitattributes: the tests that name it (test_ship, merge-baseline) are picked by mention
 
 
 @functools.lru_cache(maxsize=None)
@@ -287,7 +287,7 @@ def pick_python(py_changed, result, why):
 
 def select(changed, base_ref=None):
     changed = sorted(set(changed))
-    result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'integration': [], 'reasons': {}}
+    result = {'python': [], 'desktop': [], 'worker': [], 'e2e': [], 'integration': [], 'reasons': {}}
     why = result['reasons']
     if not changed:
         return result
@@ -308,7 +308,6 @@ def select(changed, base_ref=None):
     areas = {'python': (lambda f: f.startswith(('src/', 'tests/', 'tools/', 'config/', 'templates/', '.github/workflows/')) or f == '.gitattributes'),
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
              'worker': (lambda f: f.startswith(('app-core/', 'extension/'))),
-             'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
              'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
              'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
     unknown = [f for f in relevant if not f.startswith(KNOWN) and not starts_desktop_job(f)]
@@ -353,7 +352,6 @@ def commands(result):
         out[area] = {'python': f'python3 tools/py-shards.py {files}',
                      'desktop': f'cd desktop && node --test {files}',
                      'worker': f'cd app-core && node --test {files}',
-                     'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
                      'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}',
                      'integration': f'cd desktop && node --import ./test/no-live-site.mjs --test {" ".join("integration/" + name for name in picked)}'}[area]
     return out
