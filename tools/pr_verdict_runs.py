@@ -26,13 +26,11 @@ def refresh(repo, sha, runs, jobs, gh, counted, red, e2e_title):
             break
 
 
-def job_spans(repo, runs, gh, counted, skipped_workflows, keep_job):
+def job_spans(repo, runs, gh, counted, keep_job):
     """[(started_at, completed_at)] of every job of the counted runs (one call per run; only for a CI change, the one kind of PR with a budget).
-    Runs of `skipped_workflows` are not timed; a job counts when keep_job(its name) holds. Moved from pr-verdict.py (460-line limit, #3001)."""
+    A job counts when keep_job(its name) holds. Moved from pr-verdict.py (460-line limit, #3001)."""
     spans = []
     for r in counted(runs):
-        if r.get('workflowName') in skipped_workflows:
-            continue
         for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
             if keep_job(j.get('name', '')):
                 spans.append((j.get('started_at'), j.get('completed_at')))

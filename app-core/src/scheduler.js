@@ -6,6 +6,7 @@
 //   e2e.yml      -scheduled: true  the three-a-day journey runs, planned exactly as the schedule event plans them
 //   e2e.yml      -night_pass: n/5  the night burn-in: five full runs at fixed UTC times (NIGHT_SLOTS below), each on the commit of pass 1
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
+//   search-personas.yml           the Search check's night run (SEARCH_SLOT below)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
 // One trigger for the night's four UTC hours (00-03): Cloudflare's free plan allows 5 cron triggers per ACCOUNT (other Workers hold 2), a sixth could not be registered
@@ -20,6 +21,9 @@ export const NIGHT_SLOTS = ['21:00', '23:30', '01:30', '03:30', '05:30'];
 // The daily AI user agent session (ai-user-agents.yml), UTC HH:MM. Why (3 Nov 2026, AI user agents 7/12; owner: "start it now"): it rides the ten-minute trigger like the night passes (a 4th trigger cannot be registered),
 // at an hour no pass, stats start or beta uses (the passes are above; stats start at minute 40 of hours divisible by 3; 04:40 is none of them), so its AI calls never queue behind another night job's.
 export const AGENT_SLOT = '04:40';
+// The night's Search check (search-personas.yml), UTC HH:MM. Why (4 Nov 2026, owner: "Night run, off PRs"): it rides the ten-minute trigger too, at the broker's quietest hour: 0 and 2 calls in the 00 hour of the last two nights.
+// Six presses in a row took about 33-44 min (a press's job: median 5.4, max 7.2), so it ends before the 01:30 pass; the night's other AI, the scout at about 02:30 and AGENT_SLOT, comes later.
+export const SEARCH_SLOT = '00:00';
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 /** The night pass due at this moment as "n/5", or '' when none. */
 export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
@@ -39,6 +43,7 @@ export function jobsFor(cron, now = new Date()) {
     const pass = nightPassAt(now);
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
     if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
+    if (hhmm(now) === SEARCH_SLOT) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true'}});
     return jobs;
   }
   if (cron === '40 */3 * * *') return [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}];
@@ -52,7 +57,7 @@ export function jobsFor(cron, now = new Date()) {
 export const LEGACY_NAMES = {'site-replays.yml': 'replay-offline.yml'};
 const isNotFound = error => /\b404\b/.test(String(error?.message));
 
-export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)'};
+export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'search-personas.yml': 'Search check · nightly (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)'};
 
 // dispatch(env, inputs, workflow) starts a workflow on main (index.js); notify(text) tells the owner when it could not, on Telegram; report(text) on GitHub, in the
 // watchdog's issue (watchdog.js), where the owner looks. Neither can reach anyone when the token is the problem: the GitHub-side watchdog covers that.

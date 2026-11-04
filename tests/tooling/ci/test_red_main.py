@@ -55,7 +55,7 @@ CLASSIFIED = {
     'E2E · Suspend a flaky step': 'ignored: after an e2e run on main ends; it reads that run\'s failed steps and opens one owner issue per flaky step, never tests a push to main',
     'E2E · Weekly root causes': 'ignored: a Monday report (gate G6); it reads runs and writes one issue, never runs on a push to main',
     'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
-    'CI · Search check (6 personas)': 'ignored: live public job sites; its main runs only record the floor that the next search PR is compared with (owner, 27 Oct 2026), so their noise never blocks a landing',
+    'CI · Search check (6 personas)': 'ignored: a night report on live public job sites; started by the Worker, never by a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'CI · E2E tooling tests': 'ignored: alone only on pull requests that change the harness (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',

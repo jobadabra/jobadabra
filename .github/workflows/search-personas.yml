@@ -1,97 +1,30 @@
 name: CI · Search check (6 personas)
-# Every PR that changes search: six fictional job seekers press Find jobs once on fresh installs; a press over 180 s is red.
-# Quality is shown per persona and pooled; it gates only after 10 measured complete main runs, below their mean minus twice the sample standard deviation
-# (owner, 27 Oct 2026: "Time only, until 10 runs"). Each relevant main merge contributes another measured run.
+# Once a night, alone on the broker: six fictional job seekers press Find jobs once on fresh installs, one after the other; a press over 180 s reads red. A report: it blocks nothing.
+# Why (4 Nov 2026, owner: "still doesn't work. We tried to fix it 10+ times", chose "Night run, off PRs"; reverses 27 Oct's check on every search PR, #2285): none of the last 15 PR results found a job (8 not measured,
+# 5 found 0, 2 red) because the result follows the broker's load, so it could not judge a PR. A search PR relies on its unit and integration tests. The coordinator reads each night; two not measured or a drop goes to the owner.
+# Quality is shown per persona and pooled; it reads red only after 10 measured complete runs on main, below their mean minus twice the sample standard deviation
+# (owner, 27 Oct 2026: "Time only, until 10 runs"). Each night contributes another measured run.
 # Why (30 Oct 2026, owner; supersedes 27 Oct's proof-key decision): PR workflows cannot reach an AI key; CI AI uses the Codex subscription.
 # The app and engine keep their Messages contract; codex.mjs sends every call to the existing OIDC broker, including the blind judge. No secret or API fallback.
 # Tools: tools/persona-search/gate.py (cv, result, compare), gate_judge.py (the blind judge), run.mjs (the press). Guard: tests/test_search_personas_gate.py.
+# The Worker starts it once a night (app-core/src/scheduler.js SEARCH_SLOT); a person can start it any time.
+run-name: ${{ inputs.scheduled && 'Search check · nightly (Worker cron)' || 'Search check · by hand' }}
+
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/daily_search.py'
-      - 'src/daily_args.py'
-      - 'src/daily_modes.py'
-      - 'src/first_jobs.py'
-      - 'src/time_budget.py'
-      - 'src/budget_tape.py'   # Why (#2285, 27 Oct 2026): the 3-minute clock's owners, app and engine; a change to it is measured on its PR (tests/test_search_personas_gate.py)
-      - 'src/run_log.py'
-      - 'desktop/lib/search-steps.js'
-      - 'desktop/lib/pipeline-args.js'
-      - 'desktop/lib/pipeline-run.js'
-      - 'src/run_counts.py'
-      - 'src/places.py'
-      - 'src/geo.py'
-      - 'src/regions.py'
-      - 'src/pool_served.py'
-      - 'src/source_rank.py'
-      - 'src/job_rank.py'
-      - 'src/role_kinds.py'
-      - 'src/target_roles.py'
-      - 'src/scout*.py'
-      - 'src/sources/**'
-      - 'src/ai/board_ideas.py'
-      - 'src/ai/batch_scope.py'
-      - 'src/ai/engine.py'
-      - 'src/ai/few_jobs.py'
-      - 'src/ai/locations.py'
-      - 'src/ai/place_triage.py'
-      - 'src/ai/role_ideas.py'
-      - 'src/ai/score*.py'
-      - 'src/ai/scout_ideas.py'
-      - 'src/ai/slots.py'
-      - 'src/ai/title_triage.py'
-      - 'src/ai/providers/**'
-      - 'tools/persona-search/**'
-      - '.github/workflows/search-personas.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'src/daily_search.py'
-      - 'src/daily_args.py'
-      - 'src/daily_modes.py'
-      - 'src/first_jobs.py'
-      - 'src/time_budget.py'
-      - 'src/budget_tape.py'   # Why (#2285, 27 Oct 2026): the 3-minute clock's owners, app and engine; a change to it is measured on its PR (tests/test_search_personas_gate.py)
-      - 'src/run_log.py'
-      - 'desktop/lib/search-steps.js'
-      - 'desktop/lib/pipeline-args.js'
-      - 'desktop/lib/pipeline-run.js'
-      - 'src/run_counts.py'
-      - 'src/places.py'
-      - 'src/geo.py'
-      - 'src/regions.py'
-      - 'src/pool_served.py'
-      - 'src/source_rank.py'
-      - 'src/job_rank.py'
-      - 'src/role_kinds.py'
-      - 'src/target_roles.py'
-      - 'src/scout*.py'
-      - 'src/sources/**'
-      - 'src/ai/board_ideas.py'
-      - 'src/ai/batch_scope.py'
-      - 'src/ai/engine.py'
-      - 'src/ai/few_jobs.py'
-      - 'src/ai/locations.py'
-      - 'src/ai/place_triage.py'
-      - 'src/ai/role_ideas.py'
-      - 'src/ai/score*.py'
-      - 'src/ai/scout_ideas.py'
-      - 'src/ai/slots.py'
-      - 'src/ai/title_triage.py'
-      - 'src/ai/providers/**'
-      - 'tools/persona-search/**'
-      - '.github/workflows/search-personas.yml'
   workflow_dispatch:
+    inputs:
+      scheduled:
+        description: 'The Worker started it (the name says so); leave off by hand'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  actions: read         # main's measured history, and the commit's runs and jobs for the PR's verdict
-  pull-requests: read
+  actions: read         # the measured history of earlier runs on main
 
-concurrency:   # a PR's newer push replaces its older run; a newer merge replaces main's older run (tests/test_main_runs_finish.py); a by-hand run is its own group
-  group: search-personas-${{ github.event_name == 'pull_request' && github.head_ref || github.event_name == 'push' && 'main' || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+concurrency:   # one at a time, so no two runs share the broker; a newer queued run replaces an older queued one (GitHub keeps one pending per group)
+  group: search-personas
+  cancel-in-progress: false
 
 env:
   CI_AI_PROVIDER: codex
@@ -101,8 +34,6 @@ env:
 jobs:
   persona:
     name: Persona ${{ matrix.persona }}
-    # Why (3 Nov 2026, 7/7 Send to AI review): this job holds the broker's OIDC token. A draft fix the bot opens on fd-ai/<ref> carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
-    if: ${{ !(startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
@@ -110,17 +41,15 @@ jobs:
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        persona: [1, 2, 3, 4, 5, 6]   # Why (30 Oct 2026, owner): keep all six cases, two at a time; six at once left 17 calls outstanding on the four-slot broker
+        persona: [1, 2, 3, 4, 5, 6]   # Why (4 Nov 2026, owner's "Night run, off PRs"; 30 Oct kept all six cases): one at a time, so a slow call is the AI's and never another press's queue
     steps:
       - name: This run can use the Codex broker
         id: token
-        env:
-          TRUSTED: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           mkdir -p out
-          if [ "$TRUSTED" = true ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
             echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "::warning::No trusted GitHub OIDC token: the search check is not measured"
@@ -187,14 +116,13 @@ jobs:
   compare:
     name: Search check
     needs: persona
-    if: ${{ !cancelled() && !(startsWith(github.head_ref, 'fd-ai/') && endsWith(github.actor, '[bot]')) }}   # Why (#2243, 3 Nov 2026 7/7): a cancelled run posted a red table ("p6: no result"), and so would the personas that skip a bot's fd-ai/ branch; compare only when they ran and were not cancelled
+    if: ${{ !cancelled() }}   # Why (#2243, 3 Nov 2026 7/7): a cancelled run posted a red table ("p6: no result"), so compare only when the personas were not cancelled
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
       actions: read
       statuses: write
-      pull-requests: write   # the table as one comment on the PR, edited on each push
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -204,12 +132,12 @@ jobs:
         timeout-minutes: 5
       - uses: actions/download-artifact@v7
         with: {pattern: 'search-personas-p*', path: results}
-      - name: Main's measured runs (the quality gate, from 10)
+      - name: Earlier measured runs on main (the quality gate, from 10)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p main
-          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --event push --status completed --limit 40 \
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --status completed --limit 40 \
                         --json databaseId --jq '.[].databaseId'); do
             [ "$id" = "$GITHUB_RUN_ID" ] && continue
             # Why (#2295, gitar): fetch more than the ten measured runs the gate requires; neutral or incomplete runs must not consume all history slots.
@@ -218,7 +146,7 @@ jobs:
           printf 'main runs: '
           for dir in main/*; do [ ! -d "$dir" ] || printf '%s ' "${dir#main/}"; done
           printf '\n'
-      - name: Compare with main
+      - name: Compare with the earlier runs
         id: compare
         run: |
           set +e
@@ -228,12 +156,10 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: always()
         with: {name: search-personas-result, path: result/verdict.json, retention-days: 90}
-      - name: The table on the PR
-        if: always() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr comment "${{ github.event.pull_request.number }}" -R "$GITHUB_REPOSITORY" --body-file result/table.md --edit-last --create-if-none
-      - name: Red when a persona is below main's range or a press is over 3 minutes
+      - name: The table in the run's summary
+        if: always()
+        run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
         env:
           CODE: ${{ steps.compare.outputs.code }}
         run: test "$CODE" = 0
