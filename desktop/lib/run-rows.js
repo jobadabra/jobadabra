@@ -37,6 +37,10 @@ export function telegramOf(said) {
   return {telegram: !!said && !/^(not sent|nothing)/i.test(words), telegramNote: words};
 }
 
+// Why (4 Nov 2026, #3025): the one place that says a Running row went quiet (silent for LOST_MS: a run started more than STALE_MS ago that still beats its heart is not quiet). Both readers mark it and
+// lib/run-history.js closeQuiet() closes this Mac's marked rows on the next start, so the store says what the activity list already showed. `heardAt`: its last sign of life.
+const quietMark = (status, seen, now) => (status === 'Running' && now - seen >= LOST_MS ? {quiet: true, heardAt: new Date(seen).toISOString()} : {});
+
 // One row as an activity record (the same shape as the Mac's own runs.json records).
 export function fromRow(page, now = Date.now()) {
   const p = page.properties || {};
@@ -62,7 +66,7 @@ export function fromRow(page, now = Date.now()) {
   if (running) return {...record, live: true, step: step && !CRASH_LINE.test(step) ? step : 'Running'};
   const ok = status !== 'Failed' && !(status === 'Running');  // a stale "Running" row: the job never reported
   const job = ok ? rowJob(p, mode, summary) : null;
-  return {...record, endedAt: ended, ok, warned: status === 'Warnings', new: p['New jobs']?.number ?? null, feeds: p.Feeds?.number ?? null, usd: p['AI cost (USD)']?.number || 0,
+  return {...record, endedAt: ended, ok, ...quietMark(status, seen, now), warned: status === 'Warnings', new: p['New jobs']?.number ?? null, feeds: p.Feeds?.number ?? null, usd: p['AI cost (USD)']?.number || 0,
     billing: p['Billed to']?.select?.name || null, ...telegramOf(text(p.Telegram)),
     result: result(summary, status, p['New jobs']?.number, mode), ...(job ? {job} : {})};
 }
@@ -72,7 +76,7 @@ export function result(summary, status, fresh, mode) {
   // Why (2 Nov 2026, owner: a Windows tester's footer read "Last refresh Mon 09:53 PM · never finished (see the log)"): a Running row nobody has touched for 30 minutes is a run that
   // went quiet and was never closed (a closer exists for a watchdog stop, a quit with jobs queued and an orphaned engine, but not for a machine that slept or a process the OS ended);
   // the cause is not in the row, so the line says what is known: it stopped without finishing, and the run in Recent activity has its last lines. It names no cause.
-  // TODO(AI): a closer for a run that went quiet (on the next start, close this Mac's Running rows silent for LOST_MS) (#3025)
+  // The closer for this row is lib/run-history.js closeQuiet() (#3025): it writes Failed on this Mac's next start; this line is for a row it has not reached (another machine's, or before the app starts).
   if (status === 'Running') return 'stopped without finishing (see Recent activity)';
   const cost = String.raw`(?:AI cost \$[\d.]+(?: \+ Claude Code)?|Claude Code, your plan)`;
   const line = summary.replace(new RegExp(String.raw`\s*\(${cost}\)\.?$`), '').replace(new RegExp(String.raw`;?\s*${cost}\.?$`), '').trim();
@@ -105,6 +109,6 @@ export function fromRecord(row, now = Date.now()) {
   }
   const ok = status !== 'Failed' && status !== 'Running';
   const job = ok && mode === 'add' && row.application ? {pageId: row.application, url: null, title: '', jobUrl: '', created: /^\W*Tracked\b/.test(summary)} : null;
-  return {...record, endedAt: ended, ok, warned: status === 'Warnings', new: stats.new_jobs ?? null, feeds: stats.feeds ?? null, usd: stats.ai_cost_usd || 0,
+  return {...record, endedAt: ended, ok, ...quietMark(status, seen, now), warned: status === 'Warnings', new: stats.new_jobs ?? null, feeds: stats.feeds ?? null, usd: stats.ai_cost_usd || 0,
     billing: stats.billed_to || null, ...telegramOf(stats.telegram), result: where === 'cloud' ? summary : result(summary, status, stats.new_jobs, mode), ...(job ? {job} : {})};
 }

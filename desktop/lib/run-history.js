@@ -51,6 +51,19 @@ export async function closeLost(storage, startedAt, reason, {fetcher, size = 25,
   return closed;
 }
 
+// A run whose engine the OS ended (sleep, crash, force-quit with no queued job) keeps Status Running in the store: nothing else closes it (#3025, a Windows tester's footer
+// "never finished"). The activity list already reads such a row as lost after LOST_MS (lib/run-rows.js marks it `quiet`); this writes that verdict, on this Mac's own rows only,
+// with when it was last heard from. A row the run closed itself meanwhile is left alone (runs.close). Returns the rows it closed.
+export async function closeQuiet(storage, {fetcher, size = 25} = {}) {
+  const rows = (await list(storage, {fetcher, size}) || []).filter(row => row.quiet && row.where === 'mac');
+  const closed = [];
+  for (const row of rows) {
+    const reason = `Stopped without finishing: nothing was heard from it after ${new Date(row.heardAt).toLocaleString()}.`;
+    if (await closeStopped(storage, row.notionUrl, reason, {fetcher})) closed.push({kind: row.kind, pageId: row.pageId, startedAt: row.startedAt});
+  }
+  return closed;
+}
+
 // ---- Runs made on this Mac that never got a row (before Notion was connected, or a row write that failed) -> ⏱️ Search runs ----
 // 7 Oct 2026: runs made while trying the app stayed only in runs.json (listed by merge(), never in Notion or Telegram /status). Each
 // finished local run with no row is written as the engine would have (src/notion/cron_runs.py run_page + extra_blocks); a row of the

@@ -126,7 +126,9 @@ def begin(stores, run):
 
 def _heartbeat(run):
     """While this run's row is open, write its elapsed seconds every HEARTBEAT_S (a daemon thread: it ends with the process)."""
-    began = time.monotonic()
+    # Why (4 Nov 2026, #3025, Gitar on #3171): wall-clock seconds, not time.monotonic(): the app reads started + duration_s as the run's last sign of life (desktop/lib/run-rows.js),
+    # and monotonic stands still while the machine sleeps, so a live run looked silent after a sleep and the app's closer wrote Failed on it.
+    began = time.time()
 
     def beat():
         stop = threading.Event()
@@ -134,7 +136,7 @@ def _heartbeat(run):
             if _open.get('run') is not run:
                 return
             try:
-                _open['stores'].cron_runs.touch(_open['id'], {'duration_s': round(time.monotonic() - began)})
+                _open['stores'].cron_runs.touch(_open['id'], {'duration_s': round(time.time() - began)})
             except Exception:  # noqa: BLE001 - best effort, like progress
                 pass
     threading.Thread(target=beat, name='run-row-heartbeat', daemon=True).start()
