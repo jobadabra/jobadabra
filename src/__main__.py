@@ -8,6 +8,7 @@ Commands:
   feeds     crawl employer feeds only and write a local HTML report
   enrich    run AI stage 1 on pending jobs
   doctor    readiness checklist and the one next step (--next, --json)
+  selftest  the three quick checks of Always on's Test button: github, notion, ai (src/connection_test.py); searches and writes nothing
   hosted    one hosted Always on run in the cloud container (run token in, new matches out; src/hosted_run.py)
   search_report  one finished search as counts and seconds (--since <time>; src/search_report.py)
   contribute  what "Help the pool grow" would send (--show); nothing is sent by this command
@@ -20,7 +21,7 @@ def main():
     crash_reporting.install()  # unhandled errors to Sentry, only when the app turned reports on (JOBADABRA_SENTRY_DSN)
     commands = {
         'check': 'src.daily', 'daily': 'src.daily', 'scout': 'src.scout', 'discover': 'src.sources.boards',
-        'hosted': 'src.hosted_run', 'search_report': 'src.search_report', 'feeds': 'src.sources.feeds', 'enrich': 'src.ai.enrich', 'doctor': 'src.doctor', 'contribute': 'src.contribute',
+        'hosted': 'src.hosted_run', 'selftest': 'src.connection_test', 'search_report': 'src.search_report', 'feeds': 'src.sources.feeds', 'enrich': 'src.ai.enrich', 'doctor': 'src.doctor', 'contribute': 'src.contribute',
     }
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
         print(__doc__)

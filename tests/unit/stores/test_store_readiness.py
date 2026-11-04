@@ -26,6 +26,8 @@ ALLOWED = {
     # The one client a run makes (src/store_access.py open_run, used by daily and the scout), handed to run_stores: kept only while
     # the active store is Notion (JOBADABRA_STORE from the app; NOTION_TOKEN alone for Always on and the terminal, D7).
     ('src/store_access.py', 'client'): 'open_run: the engine client, kept by run_stores only while the store is Notion',
+    ('src/connection_test.py', 'client'): 'the Test button checks the Notion token of an Always on repository (src/connection_test.py)',
+    ('src/connection_test.py', 'request'): 'the Test button reads users/me and the jobs database, nothing else',
     ('src/desktop_tracker.py', 'client'): 'run_stores / open_stores(tracker=): the app passes JOBADABRA_STORE',
 }
 

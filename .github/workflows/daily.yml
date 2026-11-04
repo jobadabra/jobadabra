@@ -20,7 +20,7 @@ on:
       mode:
         description: 'scheduled sends only when new jobs exist; run and today always send; apply marks a job applied; prepare drafts its application kit; insight sends an insight now; weekly sends the search analysis now; kits drafts kits for the top matches; interview analyses a transcript sent to the bot; add tracks an application made elsewhere'
         type: choice
-        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits, rescore]
+        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits, rescore, test]
         default: scheduled
       job:
         description: 'job code from /apply_<code> (apply and prepare modes), or a job URL (add mode)'
@@ -96,6 +96,8 @@ env:
 
 jobs:
   run:
+    # The Test button's mode has its own job below: a test run never reaches the search (Why, 4 Nov 2026, owner: "a simple test of the e2e flow").
+    if: inputs.mode != 'test'
     runs-on: ubuntu-24.04
     # Runs share one SQLite state file; never let two overlap. Apply, more, prepare, insight, weekly,
     # interview and add runs only read it, so they get their own group and a queued run can't displace them.
@@ -274,4 +276,44 @@ jobs:
           path: |
             reports/
             data/jobs.sqlite
+          if-no-files-found: warn
+
+  # Always on's Test button (Settings → Connections): three quick checks in the user's own repository, with the secrets a real run uses (src/connection_test.py).
+  # Nothing is searched, written or sent; the one AI call is a short question on the user's own key. The app reads each step's result and selftest.json.
+  test:
+    if: inputs.mode == 'test'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: ${{ github.repository }}-test
+      cancel-in-progress: true
+    env:   # the engine choice, models and Notion IDs come from the workflow-level env above; only the secrets are added here
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.code_repository || github.repository }}
+          ref: ${{ inputs.code_ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: 'Check · GitHub run'
+        run: python -m src selftest github
+      - name: 'Check · Notion'
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2   # Notion retries a busy moment for up to a minute; two calls must not use up the job's 5
+        run: python -m src selftest notion
+      - name: 'Check · AI key'
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        run: pip install --quiet -r requirements.txt && python -m src selftest ai
+      - name: Keep the result for the app
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: jobadabra-selftest
+          path: selftest.json
+          retention-days: 1
           if-no-files-found: warn
