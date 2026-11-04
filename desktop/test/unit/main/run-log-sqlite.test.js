@@ -12,6 +12,7 @@ import {fileURLToPath} from 'node:url';
 import * as engine from '../../../lib/store/engine.js';
 import * as sqliteStore from '../../../lib/store/sqlite.js';
 import {recordLink} from '../../../lib/run-rows.js';
+import {mailResults, parseMailReport} from '../../../renderer/mail-report.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '../../../..');
@@ -28,7 +29,9 @@ from src.stores import open_stores
 stores = open_stores()
 run = run_log.new_run('mail')
 run.update(mail={'model': 'claude-haiku-5-5', 'pending': 3, 'done': 3, 'usd': 0.012, 'tokens_in': 900, 'tokens_out': 120},
-           updates=['Acme: Stage → Rejected'], telegram='sent 1 message(s)', seconds=42)
+           updates=['Acme: Stage → Rejected'], telegram='sent 1 message(s)', seconds=42,
+           emails=[{'subject': 'Your application', 'from': 'Nora Fielding <nora@acme.example>', 'at': '2026-11-05T00:22:00+00:00', 'action': 'recorded',
+                    'label': 'Acme — Nurse', 'changes': 'Stage Applied → Rejected', 'link': 'https://mail.example/1'}])
 run_log.begin(stores, run)
 telegram.MESSAGES.append('<b>1 application update</b>\\nAcme: rejected')
 print('LOGGED ' + run_log.log_run(stores, run))
@@ -58,6 +61,9 @@ test('a run the engine logs on SQLite is listed by Recent activity with its numb
   const detail = await store.runs.detail(row.notionUrl);
   assert.equal(detail.message, '1 application update\nAcme: rejected');
   assert.ok(detail.report.some(line => /Gmail check/.test(line)), JSON.stringify(detail.report));
+  assert.ok(!detail.report.some(line => /^#|^- |\]\(/.test(line)), `lines, not Markdown: ${JSON.stringify(detail.report)}`);
+  const report = parseMailReport('', row.result, detail.report);   // the engine's real writer through to the card (owner, 5 Nov 2026: 7 emails drew 1 card)
+  assert.deepEqual(mailResults(report).results.map(card => [card.company, card.role]), [['Acme', 'Nurse']]);
 });
 
 test.after(() => fs.rmSync(data, {recursive: true, force: true}));

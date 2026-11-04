@@ -6,6 +6,7 @@ import * as engine from '../../../lib/store/engine.js';
 import * as sqliteStore from '../../../lib/store/sqlite.js';
 import {fromRecord, recordLink} from '../../../lib/run-rows.js';
 import {merge} from '../../../lib/run-history.js';
+import {mailResults, parseMailReport} from '../../../renderer/mail-report.js';
 
 const storage = {settings: () => ({store: 'sqlite'}), readText: () => '', writeText: () => {}};
 const now = Date.now(), iso = ms => new Date(ms).toISOString();
@@ -45,6 +46,32 @@ test('this Mac: a stopped run is closed Failed with why; one that already ended 
   assert.equal(await runs.close(recordLink('r1'), 'x'), false);
   assert.deepEqual(await runs.detail(recordLink('r1')), {message: 'Gmail check: 4 emails', log: ['Checked 4 emails', 'Warning: one sender unread'],
     report: ['Checked 4 emails', 'Warning: one sender unread']});
+});
+
+// The shape the engine stores for a Gmail check (src/notion/cron_report.py): Markdown with sections, as read off a real run (fictional names).
+const MAIL_REPORT = `### Report
+- Gmail check: 3 new email(s) read, 3 update(s) recorded; Claude Code, your plan.
+- 💬 Reply received · Fernhollow Clinic — Clinic Nurse
+- 🗓 Interview scheduled · Harbor Clinic — Registered Nurse · Tue 10 Nov 14:00 · Stage Applied → Interview scheduled
+- ❌ Rejected · Lakeside Care — Care Assistant · Stage Applied → Rejected
+### Emails read
+- [A question about your application · Nora Fielding · 05 Nov 00:22 — \\[recorded\\] · Fernhollow Clinic — Clinic Nurse](https://mail.example/1)
+- [Re: your application at Harbor Clinic · Nora Fielding · 05 Nov 00:23 — \\[recorded\\] · Harbor Clinic — Registered Nurse · changed Stage Applied → Interview scheduled](https://mail.example/2)
+- **Your application** at \`Lakeside Care\` · Nora Fielding · 05 Nov 00:23 — \\[recorded\\] · Lakeside Care — Care Assistant
+### Stages
+- Emails with claude-sonnet-5-5: 3 of 3; tokens in 6, out 3256`;
+
+test('this Mac: a sectioned report reaches the Gmail card as lines, the shape a Notion run gives (owner, 5 Nov 2026: 7 emails drew 1 card)', async () => {
+  const row = {...ROWS.r1, id: 'r3', report: MAIL_REPORT, result: ''};
+  const detail = await sqliteStore.open(storage, {call: async () => row}).runs.detail(recordLink('r3'));
+  assert.deepEqual(detail.report.slice(0, 2), ['Gmail check: 3 new email(s) read, 3 update(s) recorded; Claude Code, your plan.', '💬 Reply received · Fernhollow Clinic — Clinic Nurse']);
+  assert.equal(detail.report.length, 8, 'the bullets only: no heading stays a line');
+  assert.equal(detail.report[4], 'A question about your application · Nora Fielding · 05 Nov 00:22 — [recorded] · Fernhollow Clinic — Clinic Nurse');
+  assert.equal(detail.report[6], 'Your application at Lakeside Care · Nora Fielding · 05 Nov 00:23 — [recorded] · Lakeside Care — Care Assistant');
+  const report = parseMailReport('', 'Gmail check: 3 new email(s) read, 3 update(s) recorded', detail.report);
+  assert.equal(report.emails.length, 3, 'every email read');
+  assert.equal(report.updates.length, 3, 'every update');
+  assert.deepEqual(mailResults(report).results.map(card => card.company), ['Fernhollow Clinic', 'Harbor Clinic', 'Lakeside Care']);
 });
 
 test('a run this Mac tracked merges with its store record by the printed link: listed once', () => {
