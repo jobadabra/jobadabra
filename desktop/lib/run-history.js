@@ -68,7 +68,7 @@ export function localRow(run, name = kind => kind) {
   const summary = run.ok ? (run.summary || run.problem || fresh || 'Done') : (run.problem || run.summary || why || `${name(run.kind)} failed`);
   // The row's Status is what the list and the panel read back (run-rows.js warned): it follows the one rule they share (renderer/run-status.js runWarned), so a run whose log
   // has warning lines (a 429 retried 216 times) is recorded "Warnings", not "OK" (beta 13 Mac+Linux, beta 19 Windows: the list said "With warnings", the panel "Completed").
-  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}) || partialSearch({...run, live: false, waiting: false, off: false}));   // a run cut at the limit (#3108) is at least amber on a Mac that reads only the row
+  const warned = run.ok && (run.problem || run.warnings?.length || runWarned({...run, live: false, waiting: false, off: false}) || partialSearch({...run, live: false, waiting: false, off: false}));   // a run cut at the limit (#3108) is at least amber when only this machine's row is read
   const properties = {
     Run: {title: [{text: {content: `${name(run.kind)} · on this Mac`}}]},
     Started: {date: {start: run.startedAt}},
