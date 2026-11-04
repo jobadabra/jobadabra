@@ -18,6 +18,7 @@ def ts(text):
 
 
 def has(db, table):
+    """True when the sqlite connection `db` has a table named `table` (read from sqlite_master; False for a store a press never opened)."""
     return db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone() is not None
 
 
