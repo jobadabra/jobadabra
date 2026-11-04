@@ -20,6 +20,10 @@ export const sideText = (places, mode) => {
 export const differs = conflict => [['Only in Strategy', conflict.onlyStrategy], ['Only in Profile', conflict.onlyProfile]]
   .filter(([, list]) => list?.length).map(([label, list]) => `${label}: ${sideText(list)}`);
 
+// Why (4 Nov 2026, a tester on 0.9.2: "after choosing Use Profile's, Locations still shows the old list until reopened"): a pick, or the Undo of one, changes the Locations
+// section above this card, which the Strategy page draws in its own load. Tell the page (strategy.js reloads on it); the card itself redraws in that reload.
+const changed = () => document.dispatchEvent(new Event('locations-changed'));
+
 function ask(kind, choice, places = []) {
   return window.pilot.resolveLocationConflict(kind, choice, places);
 }
@@ -43,14 +47,14 @@ function sideChips(places, mode, only, tone) {
 
 // One conflict: its name in the label column, then the two sides as equal boxes, no winner picked (violet = Strategy, teal = Profile), each with its own
 // "Use …" button; beside them one quiet "Choose…" menu: other places, or search one list and score the other.
-function row(conflict, reload) {
+function row(conflict) {
   const box = el('div', 'which-row');
   box.dataset.kind = conflict.kind;
   const go = (choice, places) => async event => {
     const button = event.currentTarget;
     button.disabled = true;
     const result = await ask(conflict.kind, choice, places?.()).catch(error => ({ok: false, error: error.message}));
-    if (result.ok) reload(); else { message('locations-which-message', result.error || ''); button.disabled = false; }
+    if (result.ok) changed(); else { message('locations-which-message', result.error || ''); button.disabled = false; }
   };
   const button = (label, className, handler) => { const node = el('button', className, label); node.type = 'button'; node.addEventListener('click', handler); return node; };
   const option = (side, label, places, mode, only, tone, use) => {
@@ -92,6 +96,6 @@ export async function loadLocationsWhich() {
   const aside = result.setAside || [];
   card.hidden = !conflicts.length && !aside.length;
   message('locations-which-message', result.ok ? '' : result.error || '');
-  $('locations-set-aside').replaceChildren(...setAsideRows(aside, loadLocationsWhich, text => message('locations-which-message', text)));
-  $('locations-which-list').replaceChildren(...conflicts.map(conflict => row(conflict, loadLocationsWhich)));
+  $('locations-set-aside').replaceChildren(...setAsideRows(aside, changed, text => message('locations-which-message', text)));
+  $('locations-which-list').replaceChildren(...conflicts.map(conflict => row(conflict)));
 }

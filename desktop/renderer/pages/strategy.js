@@ -17,6 +17,9 @@ import {loadLocationsWhich} from './locations-which.js';
 export {TARGET_CARDS, TARGET_LISTS, editedList} from './strategy-targets.js';
 export {reviewSuggestion, loadCoverage} from './strategy-suggestions.js';
 
+// A Which-locations pick or Undo changed the Locations section: read and draw the page again (pages/locations-which.js).
+document.addEventListener('locations-changed', () => loadStrategy());
+
 export async function loadStrategy() {
   if (inDraft()) { reloadDraft(); return; }   // setup step 3 draws these cards from the draft (pages/setup-strategy.js)
   shared.state = await window.pilot.state();
