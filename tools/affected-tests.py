@@ -1,4 +1,4 @@
-"""Which tests a change can break: the local push check runs only these. Guarded by tests/test_affected_tests.py. CI does not use it: GitHub's `paths:` decides there (tests/tooling/ci/test_workflow_paths.py).
+"""Which tests a change can break: the local push check and a PR's `desktop (ubuntu)` job run only these; main runs everything. For every other PR job GitHub's `paths:` decides (tests/tooling/ci/test_workflow_paths.py).
 
   python3 tools/affected-tests.py --base origin/main            (JSON on stdout: per area a list of test files, or "all")
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js
@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SKIP = {'node_modules', '.git', '.claude', 'dist', 'build', '__pycache__', '.venv', 'shared'}
 JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
-SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
+# Why (4 Nov 2026, PR time 2/2): rename-guard runs tools/rename-inventory.mjs as a process; its reach and its text name nothing, and it was the only test the picker missed in 40 red PR runs.
+SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]|(?:execFile|exec|spawn)(?:Sync)?\([^\n]*['"]tools/''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
 NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
 AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
@@ -32,6 +33,8 @@ AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
 PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
+# Why (4 Nov 2026, PR time 2/2): what runs the desktop tests themselves; a change here can break any test without reaching it.
+DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop\.yml)$')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python, worker and site whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
@@ -235,7 +238,7 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
         via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
         scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
-        if (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+        if (area == 'desktop' and '/guards/' in rel(t)) or (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
                 or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine
@@ -311,6 +314,9 @@ def select(changed, base_ref=None):
         result[area] = picked
         if picked == 'all':
             why[area] = 'tools/e2e-test-reach.mjs failed'
+    runner = [f for f in relevant if DESKTOP_RUNNER.match(f)]
+    if runner:
+        result['desktop'] = 'all'; why['desktop'] = f'test runner: {runner[0]}'
     for f in scoped:
         area = 'worker' if f.startswith('app-core/') else f.split('/')[0]   # Why (1 Nov 2026): the area key `worker` is kept, its folder is app-core/
         result[area] = 'all'; why[area] = f'dependency file: {f}'

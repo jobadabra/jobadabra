@@ -41,7 +41,7 @@ def find_node(env=None):
 
 
 def affected(base):
-    """The tests a change can break (tools/affected-tests.py), or None: run everything. Local pushes only; CI never passes --affected-from."""
+    """The tests a change can break (tools/affected-tests.py), or None: run everything. Local pushes and a PR's `desktop (ubuntu)` job; main never passes --affected-from."""
     if not base:
         return None
     listed = os.environ.get('JOBADABRA_AFFECTED_FILES', '').splitlines()   # the Stop hook: the changed files incl. uncommitted ones (a commit-only diff misses them)
@@ -52,14 +52,19 @@ def affected(base):
         return None
 
 
+def desktop_test_flags(folder):
+    """`npm test`'s own node flags, without its test globs: every desktop run keeps the no-live-site import and the reporter. Why (4 Nov 2026, PR time 2/2): a picked run went without them."""
+    words = json.loads((folder / 'package.json').read_text())['scripts']['test'].split('&&')[-1].split()
+    return [w for w in words[1:] if not w.strip('\'"').startswith('test/')]
+
+
 def desktop_app_only(folder, node):
     """The desktop area for the release pipeline and a PR's Windows job: `npm test`'s own node command on every test but the tooling ones (tools/app-tests.py), without its lint (a rule
     about the code that CI · Tests checks on every push, not a release gate)."""
     spec = importlib.util.spec_from_file_location('app_tests', ROOT / 'tools/app-tests.py')
     app_tests = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app_tests)
-    words = json.loads((folder / 'package.json').read_text())['scripts']['test'].split('&&')[-1].split()
-    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *[w for w in words[1:] if not w.strip('\'"').startswith('test/')], *app_tests.desktop_glob()])]
+    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *desktop_test_flags(folder), *app_tests.desktop_glob()])]
 
 
 def commands(area, fast, node, npm, picked='all', app_only=False):
@@ -76,7 +81,7 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
     if picked != 'all':
         pre = {'desktop': [(folder, [node, 'scripts/stage.mjs']), (folder, [npm, 'run', 'lint'])],
                'worker': [(folder, [node, 'scripts/stage-shared.mjs'])]}.get(area, [])
-        return pre + ([(folder, [node, '--test', *picked])] if picked else [])
+        return pre + ([(folder, [node, *(desktop_test_flags(folder) if area == 'desktop' else ['--test']), *picked])] if picked else [])
     if app_only and area == 'desktop':
         return desktop_app_only(folder, node)
     if fast and area == 'desktop':
@@ -139,7 +144,8 @@ def main(argv=None):
     for area in dict.fromkeys(areas):
         started = time.monotonic()
         picked = plan.get(area, 'all') if plan else 'all'
-        print(f'check: {area} started' + ('' if picked == 'all' else f' ({len(picked)} affected test files; the full suite runs on CI)'), flush=True)
+        reason = (plan or {}).get('reasons', {}).get(area) or (plan or {}).get('reasons', {}).get('all')
+        print(f'check: {area} started' + (f' (every test: {reason})' if picked == 'all' and reason else '' if picked == 'all' else f' ({len(picked)} test files: what this change reaches, its mentions, guards and tree scanners; main runs every test)'), flush=True)
         for folder, command in commands(area, args.fast, node, npm, picked, args.app_only):
             try:
                 result = subprocess.run(command, cwd=folder, env=env, check=False)

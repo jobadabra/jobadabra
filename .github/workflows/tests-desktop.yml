@@ -1,5 +1,5 @@
 name: CI · Tests · desktop
-# On a pull request, GitHub's `paths:` below decides whether it runs (owner, 14 Oct 2026: "drop your shared pick logic, rely fully on gh workflow paths"). Not a required
+# On a pull request, GitHub's `paths:` below decides whether it runs, and tools/affected-tests.py which test files (owner, 4 Nov 2026: "run only the ones that make sense", ending 14 Oct's "rely fully on gh workflow paths"). Not a required
 # check: a workflow `paths:` skips never reports, and a required one would block the PR (tests/tooling/ci/test_workflow_paths.py). On main, build.yml (CI · Tests) calls it on
 # every push: the backstop for a break from outside these paths.
 on:
@@ -178,6 +178,8 @@ jobs:
         shell: bash   # `npm test` globs test/*.test.js, which pwsh would hand to node unexpanded
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2   # a PR's merge commit and its base: HEAD^1 below
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -197,7 +199,7 @@ jobs:
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
-      - run: xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop
+      - run: xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop ${{ github.event_name == 'pull_request' && '--affected-from HEAD^1' || '' }}
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
           DESKTOP_RENDER_REQUIRED: '1'   # test/needs-electron.js: no electron or display is a red job here, never a green skip
