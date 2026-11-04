@@ -94,6 +94,7 @@ export function fetchRuns(repo, now, run = gh, download = (id, dir) => execFileS
   return records;
 }
 function fetchInput(plan, now, repo = process.env.REPO || PUBLIC_REPO) {
+  // Why (4 Nov 2026): jobadabra-web is PUBLIC (owner, 1 Nov 2026: keep all repos public for now), so the run's own token reads its pull requests; making it private again needs a read token here (Gitar #3188 assumed private).
   const prs = repoName => gh('pr', 'list', '--repo', repoName, '--state', 'all', '--limit', '300', '--json', 'number,title,body,state,mergedAt,createdAt');   // an error throws: never store "every row is next" because GitHub failed
   return {plan: readFileSync(join(ROOT, plan), 'utf8'), prs: prs(repo), webPrs: prs(WEB_REPO), runs: fetchRuns(repo, now)};
 }

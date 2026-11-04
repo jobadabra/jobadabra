@@ -60,6 +60,7 @@ test('the workflow gives the site key to the store step only, never to the step 
   const yml = fs.readFileSync(new URL('../../../../.github/workflows/harness-stats.yml', import.meta.url), 'utf8');
   const [head, readStep, storeStep] = yml.split(/\n      - name: /);
   assert.ok(!/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(head) && !/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(readStep), 'the read step has no secret'); assert.match(storeStep, /SELFHEAL_PUBLISH_KEY: \$\{\{ secrets\.SELFHEAL_PUBLISH_KEY \}\}/);
+  assert.match(head, /\n    if: github\.ref == format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)\n/, 'a by-hand start on another branch never holds the site key');
   assert.match(storeStep, /case "\$code" in 200\).*400\).*exit 1/s, 'only 400 is a notice: a refused key or a server error is red');
   assert.ok(!/head_branch|head_sha|workflow_run\.(head|pull)|inputs\./.test(yml.replace(/^#.*$/gm, '')), 'nothing from the triggering run reaches a command or a checkout');
 });
