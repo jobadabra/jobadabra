@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Canonical local store for jobs, companies, sources and application state."""
 from datetime import datetime, timezone
-from html import unescape
 import json
 import re
 from pathlib import Path
@@ -9,6 +8,7 @@ import sqlite3
 
 from .notion.dedupe import normalize_url
 from .sources.feeds import excluded_title
+from .sources.posting_text import label
 
 
 SCHEMA = """
@@ -157,10 +157,11 @@ def added_source_ids(db):
 
 
 def upsert_job(db, item, source_name, source_url='', source_kind='job board', now=None):
+    """Write one found job. Invariant: its title, employer, place and city are stored as plain text (HTML entities decoded)."""
     now = now or _now()
-    # Why (4 Nov 2026, a tester on 0.9.6: "Audit Pharmaceutical &amp; Life Sciences" in the Jobs list): a feed may send its title, employer and place as HTML text;
-    # this is the one write every source goes through, so they are decoded here and a row stored escaped is repaired when its job is seen again.
-    item = {**item, **{key: unescape(str(item[key])).strip() for key in ('title', 'company', 'location') if item.get(key)}}
+    # Why (4 Nov 2026, a tester on 0.9.6: "Audit Pharmaceutical &amp; Life Sciences" in the Jobs list): the sources decode their own text (ats._job, aggregators._job);
+    # this is the backstop for any writer that did not, and a row stored escaped is repaired when its exact job is seen again. The caller's dict is copied, not changed.
+    item = {**item, **{key: label(item[key]) for key in ('title', 'company', 'location', 'city') if isinstance(item.get(key), str) and item[key]}}
     company_name = item.get('company') or 'Unknown employer'
     source_id = _id(db, 'sources', source_name, {'url': source_url, 'kind': source_kind})
     company_id = _id(db, 'companies', company_name, {'updated_at': now})
@@ -233,7 +234,7 @@ def import_watch_report(db, report):
     statuses = []
     for job in report.get('jobs', []):
         # Employer feeds are their own source; aggregated results (Google Jobs) name theirs.
-        _, status = upsert_job(db, job, job.get('source') or job['company'], source_url=job['url'],
+        _, status = upsert_job(db, job, job.get('source') or label(job['company']), source_url=job['url'],
                                source_kind=job.get('source_kind', 'employer feed'))
         statuses.append(status)
     db.commit()
@@ -254,7 +255,7 @@ def import_company_report(db, report):
         now = _now()
         db.execute("""UPDATE companies SET website=?, careers_url=?, size=?, verification=?, updated_at=? WHERE name=?""",
                    (company.get('website'), (company.get('career_pages') or [None])[0], company.get('size'),
-                    'career_link_found' if company.get('career_pages') else 'needs_research', now, company.get('company')))
+                    'career_link_found' if company.get('career_pages') else 'needs_research', now, label(company.get('company'))))
     db.commit()
     return statuses
 

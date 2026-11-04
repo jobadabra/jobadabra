@@ -16,7 +16,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from .. import read_methods
-from . import ats, board_employers, boards_ahead, eures, feeds, host_pace
+from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
 
 SPACING_HOURS = 6
 PAGES = 2
@@ -47,7 +47,7 @@ def _when(value):
 
 
 def _job(source, id, title, company, location, url, posted='', description='', remote=False, salary=''):
-    return {**ats._job(f'{source}:{id}', title, location, url, posted, ats.plain(description), remote, salary), 'company': (company or '').strip() or 'Unknown employer'}
+    return {**ats._job(f'{source}:{id}', title, location, url, posted, ats.plain(description), remote, salary), 'company': posting_text.label(company) or 'Unknown employer'}
 
 
 def arbeitnow(get=_get):

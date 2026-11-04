@@ -60,6 +60,12 @@ class EuresTest(unittest.TestCase):
         self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
         self.assertEqual(calls[0]['locationCodes'], ['be'])
 
+    def test_a_title_and_employer_the_portal_sends_escaped_are_text(self):
+        # Why (4 Nov 2026, a tester on 0.9.6): "Audit Pharmaceutical &amp; Life Sciences" in the Jobs list, from a EURES job.
+        found = eures.eures(SEARCH, get=lambda url, data=None, headers=None, timeout=None: {'jvs': [jv('a', 'Audit Pharmaceutical &amp; Life Sciences', 'BE100', 'Smith &amp; Sons')]},
+                            client=Client({'Brussels': 'BE10'}))
+        self.assertEqual([(j['title'], j['company']) for j in found], [('Audit Pharmaceutical & Life Sciences', 'Smith & Sons')])
+
     def test_a_country_word_does_not_admit_other_cities_when_the_person_named_a_city(self):
         # Why (27 Oct 2026, benchmark 40509412515, persona Krakow): "poland" matched every Polish job, shown as "poland, Poland": 1 of 52 local.
         search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels', 'Belgium'], 'country_wide': [], 'abroad': []}}

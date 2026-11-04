@@ -27,6 +27,17 @@ class JobTextDecoded(unittest.TestCase):
         store.upsert_job(self.db, {**job, 'title': 'R&amp;D Lead'}, 'EURES')
         self.assertEqual(read(self.db, job_id)['title'], 'R&D Lead')
 
+    def test_a_title_that_is_text_keeps_its_words_even_with_a_bare_entity_name(self):
+        job_id, _ = store.upsert_job(self.db, {'url': 'https://jobs.example/4', 'title': 'Q&A Lead &copy', 'company': 'Smith &not Sons', 'location': 'R&amp;amp;D Park'}, 'EURES')
+        self.assertEqual(read(self.db, job_id), {'title': 'Q&A Lead &copy', 'company': 'Smith &not Sons', 'location': 'R&D Park'})
+
+    def test_a_company_report_still_finds_the_employer_named_with_an_entity(self):
+        report = {'companies': [{'company': 'Smith &amp; Sons', 'website': 'https://smith.example', 'career_pages': ['https://smith.example/jobs'],
+                                 'jobs': [{'url': 'https://smith.example/jobs/1', 'title': 'Cook'}]}]}
+        store.import_company_report(self.db, report)
+        row = self.db.execute("SELECT name, website FROM companies WHERE name LIKE 'Smith%'").fetchall()
+        self.assertEqual([tuple(r) for r in row], [('Smith & Sons', 'https://smith.example')])
+
     def test_a_title_that_is_already_text_is_untouched(self):
         job_id, _ = store.upsert_job(self.db, {'url': 'https://jobs.example/3', 'title': 'Finance & Controlling <Lead>', 'company': 'Acme'}, 'EURES')
         self.assertEqual(read(self.db, job_id)['title'], 'Finance & Controlling <Lead>')

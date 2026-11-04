@@ -68,7 +68,7 @@ def plain(markup):
 
 
 def _job(id, title, location, url, date_posted='', description='', remote=False, salary=''):
-    return {'id': str(id), 'title': (title or '').strip(), 'location': (location or '').strip(),
+    return {'id': str(id), 'title': posting_text.label(title), 'location': posting_text.label(location),
             'url': url, 'date_posted': date_posted or '', 'description': description or '',
             'remote': bool(remote), 'salary': salary or ''}
 
