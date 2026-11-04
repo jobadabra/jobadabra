@@ -362,17 +362,19 @@ def select(changed, base_ref=None):
 
     # Python
     py_changed = [f for f in relevant if areas['python'](f)]
-    if py_changed:
+    if py_changed and not site_tree():
         pick_python(py_changed, result, why)
     # Node areas
     graph = None
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).
     engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/(?:[^/]+/)*test_[^/]+\.py', f)) for f in relevant)
     for area, folder in NODE_AREAS.items():
-        if not (area == 'site' and site_tree()) and not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
+        if site_tree() and area != 'site':   # the joined tree's only reader is the Site tests step: the other areas cost it 5 s and nobody reads them
             continue
-        graph = graph or js_graph()
-        picked = pick_node_area(area, folder, relevant, js_graph(True) if area == 'site' else graph, engine_changed)
+        if not site_tree() and not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
+            continue
+        graph = graph or (js_graph(True) if area == 'site' else js_graph())
+        picked = pick_node_area(area, folder, relevant, graph, engine_changed)
         result[area] = picked
         if picked == 'all':
             why[area] = 'tools/e2e-test-reach.mjs failed'
