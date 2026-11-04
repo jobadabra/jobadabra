@@ -17,7 +17,7 @@ export async function startAgentVideo(page, {dir, minutes, env = process.env, st
   const seconds = Math.round((Number(minutes) || 10) * 60) + 60, startedAt = now();
   const recorder = await start(page, {dir, maxSeconds: seconds, hardMaxSeconds: seconds}).catch(error => { console.log(`  video: not started (${error.message})`); return null; });
   return {startedAt, async finish() {
-    const video = await recorder?.stop().catch(() => null);
+    const video = await recorder?.stop().catch(error => { console.log(`  video: the recorder did not stop cleanly (${error.message})`); return null; });
     if (!video) { console.log('  video: none kept (no frame, no ffmpeg or the encode failed)'); return null; }
     const target = path.join(dir, VIDEO_FILE);
     fs.renameSync(video.path, target);

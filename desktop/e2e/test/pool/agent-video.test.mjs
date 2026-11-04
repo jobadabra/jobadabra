@@ -38,6 +38,12 @@ test('no frame, no ffmpeg or a recorder that throws: no video, and the night goe
   assert.deepEqual(fs.readdirSync(dir), []);
 });
 
+test('a recorder that fails to stop leaves no video and says so, and the night goes on', async () => {
+  const dir = folder();
+  const video = await startAgentVideo({}, {dir, minutes: 5, env: {AGENT_VIDEO: '1'}, start: async () => ({stop: async () => { throw new Error('ffmpeg hung'); }})});
+  assert.equal(await video.finish(), null);
+});
+
 test('a note made at a clock time is found that many seconds into the video, never before its start', () => {
   assert.equal(seekSeconds({startedAt: 10_000}, 75_400), 65);
   assert.equal(seekSeconds({startedAt: 10_000}, 5_000), 0);
