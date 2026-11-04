@@ -1,5 +1,5 @@
 // The rule, enforced for every suite that exists or will exist (owner, 5 Oct 2026: "no local e2e suite should ever load the Anthropic key"): test code reaches a model only through
-// lib/model.mjs, and only lib/engine.mjs reads E2E_ANTHROPIC_KEY, so a new suite cannot spend a key on a Mac by accident. CI-only tools are listed, each with its reason.
+// lib/model.mjs, and since 3 Nov 2026 (owner: "We should not use API Keys at all anymore") no harness file under lib/ or suites/ reads E2E_ANTHROPIC_KEY at all: CI holds none. CI-only tools are listed, each with its reason.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,9 +12,8 @@ const CI_ONLY = new Set([
   'ai-cost-report.mjs',     // reads what Anthropic billed (admin key), spends nothing
   'lib/ai-proxy.mjs',       // the stand-in for the API: it forwards only when a key is behind it
   'lib/model.mjs',          // the one door: the API in CI, Claude Code on a Mac
-  'lib/engine.mjs',         // reads E2E_ANTHROPIC_KEY, and only in CI
-  'lib/context.mjs',        // hands the CI key to a suite, empty on a Mac
-  'lib/key-check.mjs',      // CI only (context.mjs calls it only in CI): one free GET of the model list with the key; the secret's name is in its error
+  'lib/engine.mjs',         // the key rule: the placeholder under Codex, Free AI's relay key, empty on a Mac; reads no Anthropic key
+  'lib/context.mjs',        // hands that key to a suite, empty on a Mac
 ]);
 const files = dir => fs.readdirSync(path.join(E2E, dir), {withFileTypes: true}).flatMap(entry => entry.isDirectory() ? [] : /\.mjs$/.test(entry.name) ? [path.join(dir, entry.name)] : []);
 // Code only: a comment may name the key.
@@ -26,14 +25,12 @@ test('no suite or helper posts to the Anthropic API itself', () => {
   assert.deepEqual(offenders, [], `ask a model through lib/model.mjs (modelFetch / modelClient), never fetch the API directly: ${offenders.join(', ')}`);
 });
 
-test('nothing but the engine rule reads E2E_ANTHROPIC_KEY or the Keychain item', () => {
+test('nothing in lib/ or suites/ names E2E_ANTHROPIC_KEY or the Keychain item', () => {
   const offenders = sources.filter(file => /E2E_ANTHROPIC_KEY|e2e\.anthropic_key/.test(code(file))
     && !/^(skip\.mjs|lib\/skip\.mjs)$/.test(file));
-  // The CI tooling below reads its own secrets from the environment GitHub gives it, never from a Mac's Keychain.
-  const allowed = new Set(['lib/wizard.mjs',   // only the label of the CI-only step that types the key
-    'plan-run.mjs', 'finder-review.mjs', 'judge-exam.mjs', 'prejudge.mjs', 'verdict-audit.mjs', 'selfheal-stats.mjs', 'triage.mjs', 'lib/judge-exam.mjs', 'lib/prejudge.mjs', 'lib/triage.mjs', 'lib/breaker.mjs', 'lib/signatures.mjs']);
-  const unexpected = offenders.filter(file => !allowed.has(file));
-  assert.deepEqual(unexpected, [], `only lib/engine.mjs may read the key: ${unexpected.join(', ')}`);
+  // Why (3 Nov 2026, owner: "We should not use API Keys at all anymore"): the allow list that held the CI tooling (plan-run, triage, the Finder's files) and the wizard's label is empty; review-ui.mjs, the one CI tool
+  // left, is listed in CI_ONLY above until the review action moves (plan 4/5, docs/superpowers/specs/2026-11-03-ci-no-api-keys.md). A new name here is a key coming back.
+  assert.deepEqual(offenders, [], `CI holds no Anthropic key; do not name E2E_ANTHROPIC_KEY in: ${offenders.join(', ')}`);
 });
 
 test('a suite never reads the key straight from the environment', () => {

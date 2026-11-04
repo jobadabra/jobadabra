@@ -9,20 +9,22 @@ test('the switch: input beats a job override beats the repo variable beats the d
   const ci = {CI: 'true'};
   assert.deepEqual(aiProvider({...ci}), {provider: 'free', from: 'default'});
   assert.equal(aiProvider({...ci, CI_AI_PROVIDER: 'codex'}).provider, 'codex');
-  assert.equal(aiProvider({...ci, CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER_JUDGES: 'claude'}, 'judges').provider, 'claude');
-  assert.equal(aiProvider({...ci, CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER_JUDGES: 'claude'}, 'review').provider, 'codex');   // another consumer keeps the global
-  assert.deepEqual(aiProvider({...ci, CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER_JUDGES: 'claude', E2E_AI_PROVIDER: 'free'}, 'judges'), {provider: 'free', from: 'E2E_AI_PROVIDER'});
+  assert.equal(aiProvider({...ci, CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER_JUDGES: 'free'}, 'judges').provider, 'free');
+  assert.equal(aiProvider({...ci, CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER_JUDGES: 'free'}, 'review').provider, 'codex');   // another consumer keeps the global
+  assert.deepEqual(aiProvider({...ci, CI_AI_PROVIDER: 'free', E2E_AI_PROVIDER_JUDGES: 'free', E2E_AI_PROVIDER: 'codex'}, 'judges'), {provider: 'codex', from: 'E2E_AI_PROVIDER'});
   assert.equal(aiProvider({...ci, CI_AI_PROVIDER: ' Codex '}).provider, 'codex');
-  assert.throws(() => aiProvider({...ci, CI_AI_PROVIDER: 'gpt'}), /must be codex, claude or free/);
+  assert.throws(() => aiProvider({...ci, CI_AI_PROVIDER: 'gpt'}), /must be codex or free/);
+  // Owner, 3 Nov 2026: "We should not use API Keys at all anymore." CI has no claude value, in any of the three variables, and says why.
+  for (const name of ['CI_AI_PROVIDER', 'E2E_AI_PROVIDER', 'E2E_AI_PROVIDER_JUDGES']) assert.throws(() => aiProvider({...ci, [name]: 'claude'}, 'judges'), /CI holds no Anthropic API key/, name);
   assert.equal(aiProvider({CI_AI_PROVIDER: 'codex'}).provider, 'claude');   // a Mac keeps its own Claude Code
   assert.equal(providerLine({...ci, CI_AI_PROVIDER: 'codex'}), 'AI provider: codex (from CI_AI_PROVIDER)');
 });
 
-test('the switch reaches the judges: claude puts them on Claude even with the relay up; images are numbered across turns', async () => {
+test('the switch reaches the judges: no claude on CI, even with the relay up; images are numbered across turns', async () => {
   const {judgeFamily} = await import('../../lib/engine.mjs');
   const relay = {CI: 'true', E2E_FREE_AI_URL: 'http://x', E2E_FREE_AI_KEY: 'k'};
   assert.equal(judgeFamily(relay), 'free');
-  assert.equal(judgeFamily({...relay, CI_AI_PROVIDER: 'claude'}), 'claude');
+  assert.throws(() => judgeFamily({...relay, CI_AI_PROVIDER: 'claude'}), /CI holds no Anthropic API key/);
   const part = data => ({type: 'image', source: {media_type: 'image/png', data}});
   const call = toBrokerCall({model: 'claude-haiku-5-5', messages: [{role: 'user', content: [part('A')]}, {role: 'assistant', content: 'ok'}, {role: 'user', content: [part('B')]}]});
   assert.deepEqual(call.images.map(i => i.name), ['image0.png', 'image1.png']);

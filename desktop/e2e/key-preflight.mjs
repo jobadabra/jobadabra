@@ -1,8 +1,9 @@
-// One check of the E2E AI key before a gate's whole matrix starts: a refused key or an empty credit balance stops the run with one line, not as ~60 red jobs (run 11, 23 Oct 2026).
-// CI on Free AI (owner, 26 Oct 2026: "Let's just switch to Free AI"): with CI's Workers AI token set, the suites run on the relay, so the token is what is checked
-// (Cloudflare's free verify call); the Claude and OpenAI keys become warnings, never a stop (the Claude smoke is parked until he funds Claude).
-import {freeAiPlanned, freeToken, testKey} from './lib/engine.mjs';
-import {checkKeyAccepted, checkOtherKeys} from './lib/key-check.mjs';
+// One check of CI's AI before a gate's whole matrix starts: a refused Free AI token stops the run with one line, not as ~60 red jobs (run 11, 23 Oct 2026).
+// CI on Free AI (owner, 26 Oct 2026: "Let's just switch to Free AI"): with CI's Workers AI token set, the suites run on the relay, so the token is what is checked (Cloudflare's free verify call).
+// Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this also checked the Claude and OpenAI test keys. CI holds neither now; under Codex
+// the AI broker answers and its own refusals are said and skipped by the call (lib/ai-cap.mjs), so there is no key to check before the matrix.
+// Job: run the backbone
+import {freeAiPlanned, freeToken} from './lib/engine.mjs';
 import {checkFreeToken} from './lib/free-ai-check.mjs';
 
 const summary = line => console.log(line);
@@ -10,13 +11,6 @@ const stop = (title, error) => { summary(`### ❌ ${title}, so no suite was star
 if (freeAiPlanned()) {
   try { await checkFreeToken({token: freeToken()}); } catch (error) { stop('CI\'s Free AI token is refused', error); }
   console.log('preflight: CI runs on Free AI; its Workers AI token is active');
-  await checkOtherKeys({engine: 'free'});   // the Claude and OpenAI keys: a warning each, never a stop
-  process.exit(0);
+} else {
+  console.log('preflight: no Free AI token here; the suites ask the AI broker (CI_AI_PROVIDER=codex) or have no AI key and skip their AI steps');
 }
-const key = testKey(process.env, 'api');   // only lib/engine.mjs reads the key (test/no-local-key.test.mjs)
-if (!key) { console.log('preflight: no test key here (a fork): nothing to check'); process.exit(0); }
-try {
-  await checkKeyAccepted({engine: 'api', key});
-  await checkOtherKeys({engine: 'api'});   // the other family: a warning, never a stop
-  console.log('preflight: the E2E AI key is accepted');
-} catch (error) { stop('The E2E AI key is refused', error); }

@@ -13,7 +13,9 @@ const claudeInstalled = () => { try { execFileSync('claude', ['--version'], {env
 // THE RULE (owner, 5 Oct 2026): the e2e key is for CI only. On a Mac no suite loads, reads or spends an Anthropic key: the app under test and every judge use this Mac's
 // Claude Code (the plan, a fixed price). A step that needs the proxy in front of the app (a refusal, a delay) runs on the API engine with DUMMY_KEY, so it costs nothing.
 export const isCi = (env = process.env) => !!env.CI;
-export const testKey = (env = process.env, engine = 'api', family = '') => !isCi(env) ? '' : aiProvider(env, 'app').provider === 'codex' ? DUMMY_KEY : family === 'free' ? env.E2E_FREE_AI_KEY || '' : env[liveKeyName(env, engine)] || '';   // a live run's own key when it has one (liveKeyName)
+// Why (3 Nov 2026, owner: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): CI holds no Anthropic key. The app's key is the placeholder under Codex (the broker relay answers), the
+// relay's own JPF1 key on Free AI, and '' otherwise (the suite then skips, saying what it needs: familySecret). Only the OpenAI engine still reads its test key, until the family turn goes (spec 2026-11-03-ci-no-api-keys.md, 5/5).
+export const testKey = (env = process.env, engine = 'api', family = '') => !isCi(env) ? '' : aiProvider(env, 'app').provider === 'codex' ? DUMMY_KEY : family === 'free' ? env.E2E_FREE_AI_KEY || '' : familyOf(engine) === 'openai' ? env.E2E_OPENAI_KEY || '' : '';
 export const appKey = (key, env = process.env) => isCi(env) ? key : DUMMY_KEY;
 
 // The app's models under test. CI forces every step onto one cheap model (Haiku) to save credit; a Mac has no per-token cost, so the app uses its own production models
@@ -22,7 +24,7 @@ export const appModelEnv = (env = process.env) => isCi(env) ? {JOBADABRA_MODEL_O
 
 // Which AI family the app under test runs on (owner, 9 Oct 2026: "make sure the OpenAI/Codex integration works well and produces good results"): CI ALTERNATES
 // per run, by GitHub's run number (odd: OpenAI, even: Claude), so both families are tested every other run at today's cost; the report names the family.
-// E2E_AI_FAMILY=claude|openai pins one. Without the OpenAI test key (E2E_OPENAI_KEY) an OpenAI turn runs on Claude and says so. A Mac: Claude unless pinned.
+// E2E_AI_FAMILY=claude|openai pins one. Without the OpenAI test key (E2E_OPENAI_KEY, which no workflow passes since 2/5) an OpenAI turn runs on Claude and says so. A Mac: Claude unless pinned.
 export function pickFamily(env = process.env) {
   const pinned = env.E2E_AI_FAMILY;
   if (pinned && !['claude', 'openai', 'free', 'rotate'].includes(pinned)) throw new Error(`E2E_AI_FAMILY must be claude, openai, free or rotate, not "${pinned}"`);
@@ -42,16 +44,18 @@ export function pickFamily(env = process.env) {
 // CI on Free AI (owner, 26 Oct 2026, CI's Anthropic credit out: "Let's just switch to Free AI (CloudFlare workers AI). I don't want to top up anymore"): the site's own
 // Free AI handler runs on the runner (.github/actions/free-ai-relay, CI's own Workers AI token, never production's /api/ai) and hands the suite its URL and a throwaway
 // JPF1 key. With it up, the app under test runs on Free AI (the 'api' engine with a JPF1 key, as desktop/lib/ai-free.js does for users) and the judges ask it too.
-// freeAiPlanned: the token is set, so the jobs will start the relay (key-preflight.mjs checks the token instead of the Claude key). Never on a Mac.
+// freeAiPlanned: the token is set, so the jobs will start the relay (key-preflight.mjs checks the token). Never on a Mac.
 export const freeAi = (env = process.env) => isCi(env) && !!env.E2E_FREE_AI_URL && !!env.E2E_FREE_AI_KEY;
 export const freeAiPlanned = (env = process.env) => isCi(env) && !!env.CI_FREE_AI_CF_TOKEN;
 export const freeToken = (env = process.env) => (isCi(env) ? env.CI_FREE_AI_CF_TOKEN || '' : '');
-// The judges' family: Free AI while the relay is up; E2E_JUDGE_FAMILY=claude puts them back on Claude (the owner's switch, for when he funds Claude again).
+// The judges' family: Free AI while the relay is up, else Claude (a Mac's Claude Code; CI under Codex never gets here, lib/model.mjs answers it first). CI has no Claude judges: no key.
 export function judgeFamily(env = process.env) {
   const pinned = env.E2E_JUDGE_FAMILY;
   if (pinned && !['claude', 'free'].includes(pinned)) throw new Error(`E2E_JUDGE_FAMILY must be claude or free, not "${pinned}"`);
-  // Why (#2416, Gitar): the provider switch (lib/ai-provider.mjs) decides here too; 'claude' puts the judges on Claude even while the relay is up, 'codex' is answered before this runs (lib/model.mjs).
-  return pinned === 'claude' || aiProvider(env, 'judges').provider === 'claude' || !freeAi(env) ? 'claude' : 'free';
+  // Why (3 Nov 2026, owner: "We should not use API Keys at all anymore"): E2E_JUDGE_FAMILY=claude was the switch back to the paid key; on CI it says so and stops, instead of asking Anthropic with an empty key.
+  if (pinned === 'claude' && isCi(env)) throw new Error('E2E_JUDGE_FAMILY=claude: CI holds no Anthropic API key since 3 Nov 2026; the judges use codex (the AI broker, CI_AI_PROVIDER) or free');
+  aiProvider(env, 'judges');   // validates the switch (a CI value of claude throws, lib/ai-provider.mjs)
+  return pinned === 'claude' || !freeAi(env) ? 'claude' : 'free';
 }
 // 'api' | 'cli' | 'openai' | 'codex'. CI: the family's API key, as it ships to users. A Mac: the family's own CLI (Claude Code, Codex), always. A suite may pin 'api' (its
 // steps are answered by the Anthropic-shaped AI proxy), which on a Mac runs with the placeholder key, whatever the family. E2E_AI_ENGINE forces one engine; an API engine is
@@ -66,16 +70,10 @@ export function pickEngine({env = process.env, suiteEngine = '', installed = cla
   if (!installed()) throw new Error('Claude Code is not installed or not on the PATH: the e2e on a Mac runs on it (it never uses an Anthropic key). Install it and sign in with `claude`.');
   return 'cli';
 }
-// The family of an engine, and the CI secret its API key comes from.
+// The family of an engine.
 export const familyOf = engine => (engine === 'openai' || engine === 'codex' ? 'openai' : 'claude');
-export const keySecret = engine => (familyOf(engine) === 'openai' ? 'E2E_OPENAI_KEY' : 'E2E_ANTHROPIC_KEY');
-export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2E_FREE_AI_KEY' : keySecret(engine));
-// Live runs on real sites ask on their own Anthropic keys, so each one's cost shows apart in the Console and on /admin/intelligence/ai-cost (owner, 12 Oct 2026): a CI recording
-// run by hand (JOBADABRA_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
-// the key comes from (for the job log), never its value. The one place that picks it (e2e/test/no-local-key.test.mjs).
-export const LIVE_KEYS = {hand: 'LIVE_POOL_ANTHROPIC_KEY'};
-/** Name of the env var holding a live run's AI key (never its value): the run kind's own key when it is set, else the engine's default secret; reads only the given env. */
-export const liveKeyName = (env = process.env, engine = 'api') => { const own = familyOf(engine) === 'claude' ? LIVE_KEYS[env.JOBADABRA_VISIT_KIND] : ''; return own && env[own] ? own : keySecret(engine); };
+/** What a CI suite is missing when its AI key is empty, by NAME (for the skip line, never a value): Free AI's relay key, the OpenAI test key, or the provider switch (a Claude run needs the broker: CI_AI_PROVIDER=codex). */
+export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2E_FREE_AI_KEY' : familyOf(engine) === 'openai' ? 'E2E_OPENAI_KEY' : 'CI_AI_PROVIDER=codex');
 export const appSecretName = engine => (familyOf(engine) === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY');
 
 // The applyflows suite's engine (npm run live / flows / the pool's smoke). A live run on a real site asks the AI things no proxy answer covers (which popup button, which

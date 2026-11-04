@@ -119,12 +119,11 @@ test('a run refused by the site limit says so in its NOT RUN line', () => {
     /^NOT RUN: Personio form in German: the site limit \(jobs\.personio\.example: 2 live visits today \(limit 2\)/);
 });
 
-test('the summary names the Anthropic key the run used (its name, never its value): the live key when set, else the Tests key', () => {
+test('the summary says the pool asked the AI broker, with no key: the dollars are an estimate', () => {
   const report = {day: '2026-10-12', thisRun: {ran: ['A'], usd: 0.05, maxUsd: 0.5}, results: {A: {reached: 'form', filled: 3, left: 1, usd: 0.05}}};
-  assert.match(summary(report).markdown, /AI spend: \$0\.0500 of the \$0\.50 cap \(key: E2E_ANTHROPIC_KEY\)\./);
-  assert.match(summary(report, {keyName: 'LIVE_POOL_ANTHROPIC_KEY'}).markdown, /\(key: LIVE_POOL_ANTHROPIC_KEY\)\./);
-  assert.match(summary(report, {keyName: 'LIVE_POOL_ANTHROPIC_KEY'}).markdown, /\(key: LIVE_POOL_ANTHROPIC_KEY\)\./);
-  assert.match(summary(report, {keyName: 'sk-ant-api03-secret'}).markdown, /\(key: E2E_ANTHROPIC_KEY\)\./, 'anything but a known key name is never printed');
+  const {markdown} = summary(report);
+  assert.match(markdown, /AI spend: \$0\.0500 of the \$0\.50 cap \(an API-equivalent estimate: the calls went to the AI broker, the Codex plan, no key\)\./);
+  assert.doesNotMatch(markdown, /ANTHROPIC|_KEY/, 'no key name is printed: CI holds none');
 });
 
 test('the summary shows each row\'s ending: unresolved stands out, the test\'s own hold says so', () => {

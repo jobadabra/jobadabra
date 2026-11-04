@@ -16,7 +16,7 @@ import {startGoogleFake} from './google-fake.mjs';
 import {startReleasesFake} from './releases-fake.mjs';
 import {buildStandIn, startNotionFake} from './notion-fake.mjs';
 import {useNotionAt} from './notion.mjs';
-import {appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
+import {appModelEnv, DUMMY_KEY, familySecret, isCi, judgeFamily, pickEngine, pickFamily, testKey} from './engine.mjs';
 import {checkRelay} from './free-ai-check.mjs';
 import {startForms} from './forms.mjs';
 import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
@@ -34,17 +34,14 @@ import {tally} from './faults.mjs';
 
 // A suite is a file in suites/ (adding one needs no other list). It may export `minutes` (its time limit in CI, default 15).
 import {readdirSync} from 'node:fs';
-import {checkAppKey, checkOtherKeys, keyFingerprint} from './key-check.mjs';
 import {waitForFolderFree} from './folder-free.mjs';
 import {countNotionRequestsByStep, writeNotionRequests} from './notion-request-count.mjs';
 export const SUITES = readdirSync(path.join(E2E, 'suites')).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4)).sort();
-const KEY = () => testKey();   // empty on a Mac, whatever the environment holds: the key is for CI (lib/engine.mjs)
-/** CI only: checks the app's AI key (never under Codex: checkAppKey), then the other family's, and logs the key's fingerprint when one was checked. */
-async function preflightKeys({family, engine, key}) {
-  let checked = true;
-  if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else checked = await checkAppKey({provider: aiProvider(process.env, 'app').provider, engine, key});
-  await checkOtherKeys({engine: family === 'free' ? 'free' : engine});
-  if (checked) console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
+const KEY = () => testKey(process.env, 'api', judgeFamily() === 'free' ? 'free' : '');   // the judges' own: the placeholder under Codex, the relay's key on Free AI; empty on a Mac, whatever the environment holds (lib/engine.mjs)
+/** CI only: on Free AI asks the relay one question before any step (a refused token fails the suite by name); under Codex there is no key to check (the broker relay answers). */
+async function preflightKeys({family, key}) {
+  if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key});
+  else if (aiProvider(process.env, 'app').provider === 'codex') console.log('  preflight: the app is on Codex (the broker relay); there is no API key to check');
 }
 
 /** Select the context's keys and prerequisites, checking live CI keys only for AI suites. */
@@ -52,9 +49,9 @@ export async function contextAiKeys({offlineAi = false, light = false, family, e
   // Why (29 Oct 2026, owner): an offline suite must run with revoked or missing CI AI secrets, without checking either family's key.
   const offlineCi = offlineAi && isCi();
   const key = offlineCi ? DUMMY_KEY : light ? KEY() : testKey(process.env, engine, family);
-  if (!offlineAi && !light && isCi()) await preflightKeys({family, engine, key});
+  if (!offlineAi && !light && isCi()) await preflightKeys({family, key});
   const needsKey = isCi() && !offlineAi ? [{name: familySecret(family, engine), value: key}] : [];
-  const lightNeeds = !offlineAi && isCi() ? [{name: 'E2E_ANTHROPIC_KEY', value: key}] : [];
+  const lightNeeds = !offlineAi && isCi() ? [{name: familySecret('claude'), value: key}] : [];
   return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: offlineCi || !isCi() ? DUMMY_KEY : family === 'free' ? FREE_AI_ALIAS : APP_AI_ALIAS, needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
 }
 

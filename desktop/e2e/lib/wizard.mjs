@@ -5,6 +5,7 @@
 // Job: run the backbone
 import fs from 'node:fs';
 import path from 'node:path';
+import {familySecret} from './engine.mjs';
 import {pageText} from './notion.mjs';
 import {pollUntil, stepTimeLeft, stepWait} from './wait-on-state.mjs';
 
@@ -96,7 +97,7 @@ export async function runWizard(ctx) {
         const state = await page.evaluate(() => window.pilot.state());
         if (!state.secrets.ANTHROPIC_API_KEY || state.settings.aiEngine !== 'api') throw new Error('the accepted API key or engine was not saved');
       } finally { await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: null})); }
-    }, {needs: [{name: 'E2E_ANTHROPIC_KEY', value: KEY}]});
+    }, {needs: [{name: familySecret('claude'), value: KEY}]});   // Why (Gitar on #3177): gated on the placeholder it types, as before; it needs no real key, so it never skips for want of one
   }
   await ctx.run('a CV is chosen and read', async () => {
     await ctx.pickCv();

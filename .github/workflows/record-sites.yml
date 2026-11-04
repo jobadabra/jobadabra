@@ -11,9 +11,8 @@
 # - Floors unchanged: the fake applicant, HELD (never Submit, no account or consent button, no password, no captcha), the privacy tripwire on, nothing uploaded
 #   (lib/applying-report.mjs refuses CI) but what the last step sends with the narrow REPLAYS_PUBLISH_KEY: the rows' results (a run on main only), their endings, and the ladder moves the rows' pages
 #   confirmed (desktop/e2e/pool-moves.mjs: fixed values per page shape, marked source 'ci' so they never pose as a user's; spec 2026-10-12-one-next-move.md).
-# - AI: the app's own API engine on the Tests key (E2E_ANTHROPIC_KEY, the Tests workspace's $20 limit), through the harness's metering proxy (lib/live-row.mjs).
-#   Hard caps per run, here: MAX_ROWS rows and MAX_USD dollars (the run stops between rows once its spend reaches it). Its own key, so its cost shows apart:
-#   LIVE_POOL_ANTHROPIC_KEY by hand (lib/engine.mjs liveKeyName), else the Tests key; the summary names the one used. Every run reports its spend to /admin/intelligence/ai-cost (pool-live).
+# - AI: the app's own API engine, pointed at the harness's metering proxy, which asks the AI broker (the Codex plan, lib/live-row.mjs; no key since 3 Nov 2026, owner: "Everything should be around the ai-broker").
+#   Hard caps per run, here: MAX_ROWS rows and MAX_USD dollars (an API-equivalent estimate: the run stops between rows once it reaches it). Every run still reports that estimate to /admin/intelligence/ai-cost (pool-live): plan 4/5.
 # - Site limit: CI's own ledger per UTC day, at most 2 visits per host across ALL CI runs, a host that showed a block page rests the day;
 #   a by-hand run may use both (no PR proof keeps one back since 15 Oct 2026).
 #   Each run uploads a small state artifact (its ledger and rows); the next run reads them all (GitHub's cache is per branch: a PR's visits would be unseen).
@@ -45,6 +44,7 @@ on:
 permissions:
   contents: read
   actions: read   # the earlier CI runs' state artifacts (site ledger, last results)
+  id-token: write   # the AI broker knows a run by its OIDC token: the rows ask it through the harness relay (lib/live-row.mjs; 3 Nov 2026, owner: "Everything should be around the ai-broker")
 
 jobs:
   # The daily batch's picker: no AI, no browser. Skipped on a by-hand run.
@@ -124,7 +124,7 @@ jobs:
       JOBADABRA_HEAVY: '0'           # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
       JOBADABRA_SESSION: record-sites CI run ${{ github.run_id }}
       JOBADABRA_SITE_LIMIT: '2'
-      JOBADABRA_VISIT_KIND: hand   # each visit says its kind (lib/site-ledger.mjs; lib/engine.mjs liveKeyName)
+      JOBADABRA_VISIT_KIND: hand   # each visit says its kind (lib/site-ledger.mjs)
       JP_NET_RECORD_DIR: ${{ github.workspace }}/net-records   # each row's network record (lib/net-record.mjs): uploaded encrypted below, never in the plain captures
       JOBADABRA_SITE_LEDGER_DIR: ${{ github.workspace }}/record-sites-out/site-ledger
       RECORD_PAIRED: '0'
