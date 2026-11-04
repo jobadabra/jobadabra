@@ -81,7 +81,7 @@ async function renderPage(storage, run, given) {
   let file = '';
   try {
     const args = ['src.notion.search_settings', 'render'];
-    if (given) { file = path.join(os.tmpdir(), `jp-settings-${randomBytes(6).toString('hex')}.json`); fs.writeFileSync(file, JSON.stringify(given), {mode: 0o600}); args.push('--from', file); }   // a new file of its own, written at once (writePrivate may defer on Windows)
+    if (given) { file = path.join(os.tmpdir(), `jp-settings-${randomBytes(6).toString('hex')}.json`); if (writePrivate(file, JSON.stringify(given)) !== 'saved') throw new Error('Could not hand the search settings to the engine'); args.push('--from', file); }   // writePrivate is the one private writer (privacy guard); 'waiting' = Windows holds even this new file: the save stops before anything is written
     const {code, stdout} = await run(storage, args);
     if (code !== 0 || !stdout.trim()) throw new Error('Could not render the search settings');
     return stdout;
