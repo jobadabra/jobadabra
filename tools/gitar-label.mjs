@@ -4,7 +4,7 @@
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (30 Oct 2026, owner chose "run only on review + push"): the labels change only on a push (the head moved: "reviewing" until Gitar judges it), on Gitar
-// submitting or dismissing a review or posting a new comment (its verdict), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
+// submitting or dismissing a review, posting a new comment or its check starting or ending (its verdict; 5 Nov 2026, #3176), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
 // them used up the repo's REST budget, and the runs that hit the limit left labels wrong in silence (#2516, 29 Oct 2026). Reads are one GraphQL call.
 // Usage (workflow .github/workflows/pr-labels.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
@@ -197,9 +197,16 @@ function markWorking(pr) {
   main(pr); // Reconcile a push or verdict that arrived while marking work.
 }
 
-/** The review time a run must wait for: Gitar's review's submitted_at on a pull_request_review event, else null (a push, a new Gitar comment or a by-hand run reads at once). */
+/** The review time a run must wait for: Gitar's review's submitted_at on a pull_request_review event, else null (a push, a new Gitar comment, its check or a by-hand run reads at once). */
 export function reviewSince(event, payload) {
   return event === 'pull_request_review' && payload?.review?.user?.login === 'gitar-bot[bot]' ? payload.review.submitted_at || null : null;
+}
+
+/** The open PR whose head is the commit of Gitar's check, or null. Why (5 Nov 2026): the check_run payload's own PR list isn't relied on: REST listed one on 3 of 40 checks, and a commit's PRs are one call. `run` is the gh call. */
+export function prOfCheck(repo, payload, run = gh) {
+  const sha = payload?.check_run?.head_sha;
+  if (!sha) return null;
+  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/pulls`)).find(pr => pr.state === 'open' && pr.head.sha === sha)?.number ?? null;
 }
 
 /** A failure stays red, rate limit or not: a label left wrong in silence is what this design removes (#2516). */
@@ -209,7 +216,10 @@ function cli() {
     try {
       if (process.env.GITHUB_EVENT_PATH) payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
     } catch { /* An unreadable event file only means no review time to wait for: the run reads at once. */ }
-    process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2], reviewSince(process.env.GITHUB_EVENT_NAME, payload));
+    if (process.argv[2] === 'working') return markWorking(process.argv[3]);
+    const pr = process.argv[2] || prOfCheck(process.env.GITHUB_REPOSITORY, payload);
+    if (!pr) return console.log('gitar-label: no open PR has this commit as its head, nothing to label');
+    main(pr, reviewSince(process.env.GITHUB_EVENT_NAME, payload));
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
