@@ -79,12 +79,22 @@ function kindField(view, item) {
   });
 }
 
+// Why (4 Nov 2026, #3152): the chevron and the bar of a row. Kept out of row() so its complexity does not grow (tools/clean-code-js.mjs: an old function over the limit may not grow).
+// A row with no answer control (`field`) does what its button does (`run`); one with a control opens or closes in place.
+const isOpenRow = (key, field) => !!field && opened.has(key);
+function rowToggle(view, {key, field, run, isOpen}) {
+  if (!field) return () => run?.();
+  return () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
+}
+
 // One row: chevron · question (and its hint) · its answer or "Not set"; a row that needs an answer keeps "Add answer". Open: "Editing", the answer
 // field, and "Answer as" folded under Advanced options (the kind is read from forms or the AI; the picker only corrects it).
 function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, chip = null, action = 'Add answer', run = null}) {
-  const isOpen = opened.has(key);
+  // Why (4 Nov 2026, #3152, the AI user agent: a New learned question's chevron threw a TypeError and left the list empty): only a row with an answer control (`field`) opens in place;
+  // a row with none (a New one, answered in the review drawer) does with its chevron and its bar what its button does, and is never open.
+  const isOpen = isOpenRow(key, field);
   const head = el('div', `qa-row${isOpen ? ' is-open' : ''}${button ? '' : ' no-action'}`);
-  const toggle = () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
+  const toggle = rowToggle(view, {key, field, run, isOpen});
   const chevron = Object.assign(el('button', 'link qa-chevron', icon('chevron')), {type: 'button', ariaLabel: isOpen ? 'Close' : 'Open'});
   chevron.classList.add('is-bar-chevron');
   chevron.addEventListener('click', toggle);
