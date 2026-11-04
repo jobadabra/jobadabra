@@ -6,6 +6,7 @@ import {CHOICES, readSide} from './locations-move.js';
 import {claudeAi} from './question-ai.js';
 import {list} from './set-aside.js';
 import {undo} from './set-aside-undo.js';
+import {afterWrite} from './shared-read.js';
 
 // Demo mode: fictional places (the screenshots), one conflict.
 const DEMO_WHICH = [{kind: 'acceptable', strategy: ['Netherlands', 'Germany'], profile: ['Switzerland']}];
@@ -34,19 +35,20 @@ export function registerLocationsHandlers({ipcMain, storage, DEMO, needsNotion, 
     }
     return {ok: !error, error, conflicts: storage.settings().locationsConflicts || [], setAside: list(storage).filter(each => each.source === 'locations')};
   });
-  ipcMain.handle('resolveLocationConflict', async (_, kind, choice, places) => {
+  // Why (4 Nov 2026): the two writes below are afterWrite: the page reloads Strategy right after them, and that read must not join one that began before the write (shared-read.js, #325).
+  ipcMain.handle('resolveLocationConflict', afterWrite(async (_, kind, choice, places) => {
     if (DEMO) return {ok: true};
     if (!CHOICES.includes(choice)) return {ok: false, error: 'Unknown choice'};
     const result = await resolveLocation(storage, String(kind || ''), choice, {places: Array.isArray(places) ? places.map(String) : [], deps: settingsDeps?.()})
       .catch(error => ({ok: false, error: error.message}));
     if (result.ok) storage.saveSettings({searchChangedAt: new Date().toISOString()});
     return result;
-  });
+  }));
   // Undo of a value a pick set aside (Locations or a Profile fact: lib/set-aside.js).
-  ipcMain.handle('undoSetAside', async (_, id) => {
+  ipcMain.handle('undoSetAside', afterWrite(async (_, id) => {
     if (DEMO) return {ok: true};
     const result = await undo(storage, String(id || ''), {deps: settingsDeps?.()}).catch(error => ({ok: false, error: error.message}));
     if (result.ok) storage.saveSettings({searchChangedAt: new Date().toISOString()});
     return result;
-  });
+  }));
 }
