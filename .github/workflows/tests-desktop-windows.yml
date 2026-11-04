@@ -98,6 +98,7 @@ on:
       - 'desktop/test/**'
       - 'tools/check.sh'
       - 'tools/check.py'
+      - 'tools/app-tests.py'   # decides what --app-only leaves out
       - '.github/workflows/tests-desktop-windows.yml'
 
 permissions:
@@ -135,4 +136,6 @@ jobs:
         working-directory: desktop
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      - run: bash tools/check.sh --area desktop
+      # Why (4 Nov 2026, owner: "Leave them out"; PR time 1/2): a PR's Windows run was the slowest job on 10 of 25 PRs. Lint reads the same files on Linux, and the tooling tests are git-spawn bound
+      # here (one file 109 s, 10 s on Linux). A PR leaves both out; both still run on Linux on the PR, and on Windows after each merge.
+      - run: bash tools/check.sh --area desktop ${{ github.event_name == 'pull_request' && '--app-only' || '' }}

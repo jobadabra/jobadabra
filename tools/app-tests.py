@@ -1,4 +1,4 @@
-"""Which unit tests test the repo's own tooling, not what the app ships: the release pipeline's unit legs leave them out (tools/check.py --app-only); guarded by tests/test_app_tests.py.
+"""Which unit tests test the repo's own tooling, not what the app ships: the release pipeline's unit legs and a PR's Windows job leave them out (tools/check.py --app-only); guarded by tests/test_app_tests.py.
 
   python3 tools/app-tests.py python|desktop     (the tests left out, one per line: a Python module name, or a desktop/test path relative to desktop/)
 
