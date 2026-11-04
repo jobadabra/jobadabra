@@ -1,4 +1,5 @@
 // The explorer's safety word list reads a control's own name, never the app's pill inside it (replay 41807054784, 4 Nov 2026: "What we learned 2 to check" was [not allowed] because the pill says "check").
+// Guard: safety — without it a control whose own name is unsafe ("Delete", "Send") could be pressed, or a pill's count could again refuse a safe tab.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {allowed, formatObservation} from '../../lib/explore.mjs';
