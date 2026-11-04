@@ -9,8 +9,7 @@ import {addApplication} from './focus-data.mjs';
 import {makePersona} from './agent-persona.mjs';
 import {NAMED_PLANS} from './agent-plans.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
-import {hashOf} from '../../lib/cv-check.js';
-import {FILE as CV_READ_FILE} from '../../lib/cv-queue.js';
+import {FILE as CV_READ_FILE, hashOf} from '../../lib/cv-read-key.js';   // the light module: cv-check.js and cv-queue.js reach @anthropic-ai/sdk, which the plan job does not install (guard test/pool/suite-imports.test.mjs)
 
 /** The inbound rows of a persona: a recruiter lead waiting for an answer, an agency interview, and a lead whose application is already sent. Fictional employers on the e2e test host only. */
 export function inboundRows(person, today = new Date()) {
