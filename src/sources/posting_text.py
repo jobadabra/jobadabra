@@ -14,10 +14,11 @@ _ITEM = re.compile(r'<\s*li\b[^>]*>', re.I)
 _BREAK = re.compile(r'<\s*/?\s*(?:p|div|section|article|header|footer|ul|ol|table|tr|br|hr|blockquote)\b[^>]*>', re.I)
 _TAG = re.compile(r'<[^>]+>')
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
-_FRONT_MATTER = re.compile(r'\A\s*---.{0,800}?---', re.S)
+_FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules
 _ESCAPE = re.compile(r'\\+(?=[^\w\s])')   # "\-", "\\&amp;": marks escaped once or twice
+_ESCAPED_MARKS = re.compile(r'\\[-\[\]*&()<>]')
 _LINK = re.compile(r'\[([^\]\n]{1,300})\]\([^)\n]{0,300}\)')
-_BOLD = re.compile(r'\*\*(?=\S)(.+?)(?<=\S)\*\*', re.S)
+_BOLD = re.compile(r'\*\*(?=\S)([^*\n]{1,300}?)(?<=\S)\*\*')
 _RULE = re.compile(r'={3,}')
 _HASHES = re.compile(r'(?m)^(#{1,6})[ \t]+(?=\S)|(?<=\s)#{2,6}[ \t]+(?=\S)')
 
@@ -26,10 +27,18 @@ def _clean(fragment):
     return re.sub(r'\s+', ' ', _TAG.sub(' ', fragment)).strip()
 
 
+def _is_markdown_page(text):
+    """True for a posting that is a converted web page: it opens on front matter (key: value pairs between two "---"), or its punctuation is backslash-escaped
+    (three marks or more). Plain text and HTML keep every "#", "===", backslash and "[x](y)" they have ("# of openings", "C:\\temp", "arr[i](j)")."""
+    return bool(_FRONT_MATTER.match(text)) or len(_ESCAPED_MARKS.findall(text)) >= 3
+
+
 def _markdown(text):
     """A markdown page's marks taken out (structure only): its front matter, escapes, links (the words stay), bold and "===" underlines; a "#" heading
-    on its own line is the shared "## " marker, a "#" run inside a line is dropped. Why (4 Nov 2026, a tester on 0.9.6): EURES sent a posting as such a page and
-    the job's Description tab opened on "---base:meta-keywords…" and literal "###"."""
+    on its own line is the shared "## " marker, a "#" run inside a line is dropped. Only for a text that _is_markdown_page. Why (4 Nov 2026, a tester on 0.9.6):
+    EURES sent a posting as such a page and the job's Description tab opened on "---base:meta-keywords…" and literal "###"."""
+    if not _is_markdown_page(text):
+        return text
     text = _FRONT_MATTER.sub(' ', text)
     text = _LINK.sub(r'\1', _ESCAPE.sub('', text))
     text = _RULE.sub('\n', _BOLD.sub(r'\1', text))

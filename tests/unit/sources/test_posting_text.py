@@ -1,4 +1,6 @@
 """A posting's HTML keeps its shape as text (src/sources/posting_text.py): headings, paragraphs and list items on their own lines."""
+import re
+import time
 import unittest
 
 from src.sources import ats, feeds
@@ -44,8 +46,17 @@ class PostingTextTests(unittest.TestCase):
         page = r'\[Acme Business \\\&amp; Innovation\](\&lt; \&gt;) hires. Hands\\-on, end\\-to\\-end work. \*\*Do you enjoy it?\*\*'
         self.assertEqual(html_to_text(page), 'Acme Business & Innovation hires. Hands-on, end-to-end work. Do you enjoy it?')
 
-    def test_markdown_headings_on_their_own_lines_become_headings_and_a_hash_in_a_word_stays(self):
-        self.assertEqual(html_to_text('### Your tasks\nPlan budgets.\nWe use C# and F#. #1 team.'), '## Your tasks\nPlan budgets.\nWe use C# and F#. #1 team.')
+    def test_plain_text_and_html_postings_keep_their_marks(self):
+        # a posting is read as a markdown page only when it opens on front matter or its punctuation is backslash-escaped
+        for text in ('# of openings: 3\n# Python\n# SQL', 'Files in C:\\temp\\x and \\\\server\\share', 'arr[i](j) and list[0](5)', 'a === b', 'issue ## 3 and C# or F#',
+                     '--- Requirements ---\nPython', '---\nAbout us\n---\nWe hire', 'We want **bold** people'):
+            self.assertEqual(html_to_text(text), re.sub(r'[ \t]+', ' ', text), text)
+
+    def test_a_long_run_of_unmatched_bold_marks_is_read_in_linear_time(self):
+        page = '---base:meta: x--- ' + '**a ' * 50000
+        began = time.monotonic()
+        html_to_text(page)
+        self.assertLess(time.monotonic() - began, 2.0)
 
 
 if __name__ == '__main__':
