@@ -75,7 +75,7 @@ jobs:
       - name: Keep a copy of our script that the patch cannot change (desktop/lib is a folder the AI may edit)
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
       - name: Read the report (never printed)
         run: node "$FBT/tools/feedback-ai.mjs" brief --ref "$REF" --out .fb
@@ -163,7 +163,7 @@ jobs:
       - name: Keep a copy of our scripts that the patch cannot change (desktop/lib is a folder the AI may edit)
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
           echo "PYDEPS=$RUNNER_TEMP/pydeps" >> "$GITHUB_ENV"
       # The dependencies are installed from main's own files BEFORE the patch is applied, so a patch cannot change what is installed or run an install script on the runner.
@@ -225,7 +225,7 @@ jobs:
       - name: Keep a copy of our script that the patch cannot change (desktop/lib is a folder the AI may edit)
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         with:

@@ -88,6 +88,7 @@ on:
       - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
       - 'tools/feedback-released.mjs'   # desktop/test/tooling/release/feedback-released.test.js
       - 'tools/feedback-ai.mjs'   # desktop/test/tooling/ci/feedback-ai.test.js
+      - 'tools/fixer/**'   # the walls, proof and leak scan feedback-ai.test.js drives through tools/feedback-ai.mjs
       - 'tools/feedback-ai-sandbox.sh'   # desktop/test/tooling/ci/feedback-ai.test.js reads its flags
       - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
       - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
