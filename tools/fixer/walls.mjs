@@ -26,3 +26,9 @@ export function capVerdict(runs, selfId, now = new Date(), daily = DAILY_RUNS) {
   if (others.length + 1 > daily) return {ok: false, why: `that is more than ${daily} Send to AI runs today (UTC)`};
   return {ok: true};
 }
+
+/**
+ * The only paths an AI-written change may touch (source of `--allow` in feedback-ai.yml, which keeps its own copy): the app and engine code and their tests. A string for `new RegExp`; DENIED above still applies on top.
+ * Why (4 Nov 2026, [hm] 3/6): both sources of the loop (a feedback card, a Linear issue) fix the same code, so the loop and ai-fixer.yml read this one list; a text in an item cannot widen it.
+ */
+export const EDITABLE = '^(desktop/(renderer|lib)/|src/|desktop/test/((unit|guards)/[A-Za-z0-9_-]+/)?[A-Za-z0-9._-]+\\.test\\.js$|tests/((unit|guards)/[A-Za-z0-9_]+/)?test_[A-Za-z0-9_]+\\.py$)';

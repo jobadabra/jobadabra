@@ -2,7 +2,8 @@
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 
-const TESTS = /^(?:desktop\/test\/[A-Za-z0-9._-]+\.test\.js|tests\/test_[A-Za-z0-9_]+\.py)$/;
+// Why (4 Nov 2026, [hm] 3/6 review): the repo's test folders are scoped (TESTS.md: desktop/test/{unit,guards}/<scope>/, tests/{unit,guards}/<scope>/; tests/guards/rules/test_test_folders.py), so the proof must accept them as EDITABLE does; the flat form stays for old callers.
+export const TESTS = /^(?:desktop\/test\/(?:(?:unit|guards)\/[A-Za-z0-9_-]+\/)?[A-Za-z0-9._-]+\.test\.js|tests\/(?:(?:unit|guards)\/[A-Za-z0-9_]+\/)?test_[A-Za-z0-9_]+\.py)$/;
 
 /** The lines a diff adds (what would be pushed), without the file headers. */
 export const addedLines = diff => String(diff || '').split('\n').filter(line => line.startsWith('+') && !line.startsWith('+++')).map(line => line.slice(1)).join('\n');
