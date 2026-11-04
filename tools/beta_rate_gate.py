@@ -50,19 +50,11 @@ def conclusion_of(job):
 
 
 def blocking_jobs(jobs, registry, platform):
-    """Ignore all tolerant and suspended reds; other unfinished or failed lane jobs block."""
-    prefix = 'E2E · Mac + Linux · ' if platform == 'mac' else 'E2E · Windows · '
-    lane = [job for job in jobs if job.get('name', '').startswith(prefix)]
-    if not lane:
+    """Ignore all tolerant and suspended reds; a lane job that did not pass by conclusion_of blocks."""
+    label = LANE_NAMES[platform]
+    if not any(job.get('name', '').startswith(f'E2E · {label} · ') for job in jobs):
         return ['lane jobs unavailable']
-    blocked = []
-    for job in lane:
-        suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
-        entry = registry.get(suite, {})
-        exempt = entry.get('lane') in ('tolerant', 'suspended')
-        if not exempt and conclusion_of(job) != 'success':
-            blocked.append(suite)
-    return blocked
+    return [name[len(label) + 2:] for name, job in gate_jobs(jobs, registry) if name.startswith(f'{label}: ') and conclusion_of(job) != 'success']
 
 
 # Why (30 Oct 2026, owner): Windows runs few suites of its own (the rest were duplicates of Mac + Linux), so each release reads both lanes (--e2e-only).
@@ -112,8 +104,8 @@ def backbone_check(jobs, registry):
     """Hold either beta on any backbone job that is not green; a suite's single try is the verdict (spec rule L, 31 Oct 2026).
 
     The "Unit tests · <lane>" job is read here too. Why (31 Oct 2026, owner, "D: unit red still runs e2e"): a red unit test does not stop the e2e (beta 41215677698 lost 45 minutes
-    of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. Anything but conclusion 'success' is red, and so is a missing job: a unit leg that was
-    cancelled or skipped never passed (Gitar on #2858), and the e2e jobs do not show it.
+    of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. A finished job that did not pass by conclusion_of is red, and so is a missing job: a unit leg
+    that was cancelled or skipped never passed (Gitar on #2858), and the e2e jobs do not show it. A job with no result yet is neither: it refuses on its own line.
     """
     late = unreported(jobs, registry)
     red = {name for name, job in gate_jobs(jobs, registry) if conclusion_of(job) != 'success'} - set(late)
