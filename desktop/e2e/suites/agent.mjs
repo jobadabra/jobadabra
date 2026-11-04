@@ -15,7 +15,7 @@ import {changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
 import {planSession, recordSession} from '../lib/agent-plan.mjs';
-import {namedPlan, rulesOff, withoutRules} from '../lib/agent-plans.mjs';
+import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
@@ -51,8 +51,10 @@ export async function run(ctx) {
 
   let session = null;
   await ctx.run(`the AI user agent works its goals (seed ${seed}, at most ${CAPS.maxMinutes} min, ${CAPS.maxCalls} broker calls, ${CAPS.maxSteps} steps)`, async () => {
-    const seeded = await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed);
-    if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '')} ms`); }   // the app reads the CV and the rows again on a fresh load
+    // Why (4 Nov 2026, AI user agents FR 3/4, owner: "All four now"): a night with free goals gets ONE known-bug data shape in the app, picked by its seed (AGENT_SHAPE pins it, 'none' turns it off), because the suite's one applicant never has the data the tester bugs needed (lib/agent-plans.mjs SHAPES). A named plan seeds its own data and no shape.
+    const shapeId = shapeFor(seed, process.env.AGENT_SHAPE, process.env.AGENT_PLAN);
+    const seeded = await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed, shapeId);
+    if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '', shapeId)} ms`); }   // the app reads the CV and the rows again on a fresh load
     const moves = movesFromPalette(await readPalette(page));
     const coverage = memoryDir && fs.existsSync(path.join(memoryDir, 'coverage.json')) ? JSON.parse(fs.readFileSync(path.join(memoryDir, 'coverage.json'), 'utf8')) : [];
     const changedLog = process.env.AGENT_CHANGED_LOG && fs.existsSync(process.env.AGENT_CHANGED_LOG) ? fs.readFileSync(process.env.AGENT_CHANGED_LOG, 'utf8') : '';
@@ -81,8 +83,8 @@ export async function run(ctx) {
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
-    // Why (4 Nov 2026, AI user agents 9/12 part 2b): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId}, kept)));
+    // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId || (shapeId ? `shape ${shapeId}` : '')}, kept)));
     for (const shot of shotFiles(session.notes)) fs.writeFileSync(path.join(ctx.ARTIFACTS, shot.name), shot.data);
     if (session.stopped.startsWith('api:')) throw new Error(`the agent could not finish thinking (${session.stopped}): what it found so far is kept, the rest of the night is not run`);
   }, {needs: ctx.needs, limitMs: (CAPS.maxMinutes + 5) * 60000});   // Why (3 Nov 2026): the runner's default step limit is 8 minutes; a session runs up to its own minute cap

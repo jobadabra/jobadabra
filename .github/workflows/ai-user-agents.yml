@@ -27,6 +27,9 @@ on:
       rules_off:
         description: 'Replay: rule ids taken out of what the agent knows, comma separated (profile-1,jobs-3): the unprompted run'
         required: false
+      shape:
+        description: 'The known-bug data shape put in the app before the free goals: headings, languages, inbound, none, or empty = the one the seed picks'
+        required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
         type: boolean
@@ -140,6 +143,7 @@ jobs:
         env:
           AGENT_SEED: ${{ inputs.seed }}
           AGENT_PLAN: ${{ inputs.plan }}
+          AGENT_SHAPE: ${{ inputs.shape }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
           AGENT_KIND: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '') && 'replay' || 'night' }}   # Why (4 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay
           AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
