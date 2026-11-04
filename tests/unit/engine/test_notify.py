@@ -136,6 +136,18 @@ class DeliveryTests(unittest.TestCase):
             self.assertFalse(ok)
             self.assertIn('Warning: the e-mail was not sent', out.getvalue())
 
+    def test_a_refusal_with_a_status_names_its_reason_not_just_HTTPError(self):
+        """Sentry APP-4R/4V: the site refuses with a 4xx and JSON; urllib raised, and the warning said only "(HTTPError)"."""
+        import urllib.error
+        for status, body, said in ((401, b'{"ok": false, "error": "unauthorized"}', 'unauthorized'), (502, b'<html>Bad gateway</html>', 'HTTP 502'),
+                                   (503, b'null', 'HTTP 503'), (500, b'["x"]', 'HTTP 500'), (400, b'{"error": {"a": 1}}', 'HTTP 400'), (403, ('{"error": "' + 'w' * 500 + '"}').encode(), 'w' * 80)):
+            error = urllib.error.HTTPError('https://site.test/api/notify/email', status, 'x', {}, io.BytesIO(body))
+            out = io.StringIO()
+            with mock.patch('sys.stderr', out):
+                ok = run_with(EMAIL, Site(error), lambda: (telegram.send(CARD, None, None), notify.flush())[1])
+            self.assertFalse(ok)
+            self.assertIn(f'Warning: the e-mail was not sent ({said}).', out.getvalue())
+
     def test_no_install_key_means_no_email_and_no_crash(self):
         out = io.StringIO()
         with mock.patch('sys.stderr', out):
