@@ -1,6 +1,7 @@
 """Guard: release — a PR's `desktop (ubuntu)` job runs only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
 Why (4 Nov 2026, owner: "run only the ones that make sense"): the cases below are what that job must never lose. Replay of 40 red PR runs: spec 2026-11-04-pr-time-design.md."""
 import importlib.util
+import re
 import subprocess
 import sys
 import unittest
@@ -31,6 +32,19 @@ class PrDesktopPicks(unittest.TestCase):
 
     def test_a_test_that_runs_a_tool_as_a_process_is_picked(self):
         self.assertIn('test/unit/main/rename-guard.test.js', self.picked)   # the one test missed in the replay: red on 2 PRs, 3 Nov 2026
+
+    def test_every_file_outside_desktop_that_starts_the_job_picks_tests(self):
+        # Gitar on PR time 2/2: a PR changing only such a file started the job and ran no test at all.
+        graph = self.picker.js_graph()
+        self.picker.js_graph = lambda: graph
+        listed = re.findall(r"^ {6}- '([^'!*]+)'", (ROOT / '.github/workflows/tests-desktop.yml').read_text(encoding='utf-8').split('\npermissions:')[0], re.M)
+        outside = [f for f in listed if not f.startswith(('desktop/', 'extension/'))]
+        self.assertGreater(len(outside), 10)
+        self.assertEqual([f for f in outside if not self.picker.starts_desktop_job(f)], [])
+        self.assertIn('test/unit/main/rename-guard.test.js', self.picker.select(['tools/rename-inventory.mjs'])['desktop'])
+        for one_of_each in ('docs/gtm-journeys.json', next(f for f in outside if f.endswith('.md')), next(f for f in outside if f.startswith('.github/'))):
+            self.assertTrue(self.picker.select([one_of_each])['desktop'], one_of_each)
+        self.assertEqual(self.picker.select(['docs/rules/change-loop.md'])['desktop'], [])   # a doc no test reads still runs nothing
 
     def test_a_change_to_what_runs_the_tests_runs_everything(self):
         for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', '.github/workflows/tests-desktop.yml', 'desktop/package.json', 'eslint.config.mjs'):

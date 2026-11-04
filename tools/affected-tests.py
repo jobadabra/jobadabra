@@ -43,6 +43,23 @@ NO_TEST_EFFECT = re.compile(r'\.md$|^docs/|^LICENSE|\.gitignore$')
 KNOWN = ('src/', 'tests/', 'tools/', 'config/', 'templates/', 'desktop/', 'extension/', 'app-core/', 'worker/', 'site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/', '.github/', 'docs/', '.gitattributes')   # .gitattributes: the tests that name it (test_ship, merge-baseline) are picked by mention
 
 
+@functools.lru_cache(maxsize=None)
+def desktop_job_paths():
+    """[(negated, compiled pattern)] of tests-desktop.yml's `paths:`, in order. Why (4 Nov 2026, Gitar on PR time 2/2): that list names files outside desktop/ that the tests read; a PR changing only one started the job and picked no test."""
+    text = (ROOT / '.github/workflows/tests-desktop.yml').read_text(encoding='utf-8').split('\npermissions:')[0]
+    glob = lambda p: re.compile('.*'.join('[^/]*'.join(re.escape(part) for part in piece.split('*')) for piece in p.split('**')) + '$')
+    return [(p.startswith('!'), glob(p.lstrip('!'))) for p in re.findall(r"^ {6}- '([^']+)'", text, re.M)]
+
+
+def starts_desktop_job(f):
+    """Does a change to this file start the desktop job? The last pattern that matches decides, as on GitHub."""
+    verdict = False
+    for negated, pattern in desktop_job_paths():
+        if pattern.match(f):
+            verdict = not negated
+    return verdict
+
+
 def walk(suffixes):
     out = []
     for p in ROOT.rglob('*'):
@@ -282,7 +299,8 @@ def select(changed, base_ref=None):
     if readers:
         why['data'] = readers
         changed = sorted(set(changed) | {reader for found in readers.values() for reader in found})
-    relevant = [f for f in changed if not NO_TEST_EFFECT.search(f)]
+    # A doc or fixture outside desktop/ on the job's `paths:` is there because a desktop test reads it, so it counts.
+    relevant = [f for f in changed if not NO_TEST_EFFECT.search(f) or (starts_desktop_job(f) and not f.startswith(('desktop/', 'extension/')))]
     if not relevant:
         return result
     scoped = [f for f in relevant if SCOPED_DEPS.match(f)]
@@ -307,7 +325,7 @@ def select(changed, base_ref=None):
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).
     engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/(?:[^/]+/)*test_[^/]+\.py', f)) for f in relevant)
     for area, folder in NODE_AREAS.items():
-        if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed):
+        if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
             continue
         graph = graph or js_graph()
         picked = pick_node_area(area, folder, relevant, graph, engine_changed)
