@@ -27,9 +27,10 @@ def _new_job(stores, event, changes):
     name, address = parsed.groups() if parsed else ('', sender)
     linkedin = 'linkedin.com' in sender.lower()
     company, role = changes.get('company', ''), changes.get('role', '')
-    applied = event['kind'] in origin.APPLIED_KINDS and bool(company and role)
+    applied = event['kind'] in origin.APPLIED_KINDS and bool(company or role)   # a confirmation often names the employer and no role
     org, person = mail._sender_org(sender), '' if linkedin else mail.person_name(name)
-    lead = {'title': role or opportunity.reply_title(company or org, person, 'LinkedIn' if linkedin else 'Email'), 'role_unknown': not role, 'company': company,
+    title = role or (f'Application to {company}' if applied else opportunity.reply_title(company or org, person, 'LinkedIn' if linkedin else 'Email'))
+    lead = {'title': title, 'role_unknown': not role, 'company': company,
             'recruiter_company': '' if applied else org, 'recruiter_name': '' if applied else person,
             'recruiter_email': '' if linkedin or applied else address.strip(),
             'platform': 'LinkedIn' if linkedin else 'Email', 'in_house': applied}

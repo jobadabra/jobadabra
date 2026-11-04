@@ -33,6 +33,7 @@ class NewJobKeepsTheReading(unittest.TestCase):
         # A confirmation is the person's own application: Outbound (under Applied), never a recruiter's lead under Inbound.
         self.assertEqual(origin.stored(job.get('origin')), origin.OUTBOUND)
         self.assertNotEqual(job['stage'], opportunity.LEAD_STAGE)
+        self.assertEqual(job['applied_on'], '2026-11-04', 'the email\'s day: Focus waits-7-days and the week flag need it')
         return job
 
     def test_on_this_macs_store(self):
@@ -49,6 +50,14 @@ class NewJobKeepsTheReading(unittest.TestCase):
         self.assertTrue(reassign.move(stores, question['id'], reassign.NEW, now=NOW)['ok'])
         job = stores.applications.get('https://mail.google.com/mail/u/0/#all/g2')
         self.assertEqual((job['title'], job['company']), ('Finance Controller', 'Fincruit'))
+
+    def test_a_confirmation_that_names_only_the_employer_is_still_the_persons_application(self):
+        stores = memory.open_store()
+        question = asked(stores, EMAIL, {**READ, 'role': ''})
+        self.assertTrue(reassign.move(stores, question['id'], reassign.NEW, now=NOW)['ok'])
+        job = stores.applications.get('https://mail.google.com/mail/u/0/#all/g1')
+        self.assertEqual((job['title'], job['company']), ('Application to Google', 'Google'))
+        self.assertEqual(origin.stored(job.get('origin')), origin.OUTBOUND)
 
     def test_no_reading_stays_as_before(self):
         # Positive control for the old path: an email the AI could not name still becomes "Reply from <sender>".

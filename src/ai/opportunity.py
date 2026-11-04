@@ -249,6 +249,9 @@ def track(stores, lead, text, *, source, event_source, talking=False, at=None, g
     found = origin_rule.OUTBOUND if applied else origin_rule.INBOUND
     record = stores.applications.create({**fields(lead, url, stage, source, origin='Application email' if applied else 'Recruiter message'),
                                          'origin': origin_rule.LABELS[found]}, stage)
+    if applied and at:   # the email's day is an upper bound for when they applied (as src/ai/mail_leads.py writes it)
+        stores.applications.update(record['id'], {'applied_on': at[:10], 'date_approximate': True})
+        record.update(applied_on=at[:10], date_approximate=True)
     body = '\n\n'.join(part for part in (message_markdown(text), extra_markdown) if part)
     try:
         if body:
