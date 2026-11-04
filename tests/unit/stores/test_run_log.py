@@ -4,6 +4,7 @@ writes today (every column it sets, the same page), for a jobs check and a Gmail
 import io
 import shutil
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -15,6 +16,8 @@ from src.stores import base, memory, notion, notion_blocks, sqlite
 from tests.unit.notion.test_cron_runs import sample_run
 from tests.unit.stores.test_store_notion_blocks import runs as shown
 from tests.unit.stores.test_store_notion_cron_runs import RunsNotion, mail_run
+
+REAL_HEARTBEAT = run_log._heartbeat   # Quiet.setUp replaces it; the test below plays the real one
 
 RUN_PAGE_COLUMNS = ('Run', 'Started', 'Duration (s)', 'Mode', 'Trigger', 'Status', 'AI cost (USD)', 'Tokens (total)', 'Billed to',
                     'Telegram', 'Summary', 'Feeds', 'Feed errors', 'New jobs', 'Changed jobs', 'Closed stale', 'Scored', 'Kits',
@@ -205,3 +208,23 @@ def tearDownModule():
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class HeartbeatClock(unittest.TestCase):
+    def test_the_heartbeat_counts_wall_clock_seconds_so_a_sleeping_machine_does_not_look_silent(self):
+        """#3025: the app reads started + duration_s as the last sign of life. After a 30-minute sleep the awake clock (time.monotonic) stands still, the wall clock moved on."""
+        touched, beat = [], threading.Event()
+        runs = mock.Mock()
+        runs.touch = lambda row_id, fields: (touched.append(fields), beat.set())
+        run = object()
+        run_log._open.clear()
+        self.addCleanup(run_log._open.clear)
+        run_log._open.update(stores=mock.Mock(cron_runs=runs), id=7, run=run)
+        wall = [1000.0]
+        fake = mock.Mock(monotonic=lambda: 5.0, time=lambda: wall[0])   # asleep: monotonic frozen
+        with mock.patch.object(run_log, 'time', fake), mock.patch.object(run_log, 'HEARTBEAT_S', 0.01):
+            REAL_HEARTBEAT(run)
+            wall[0] += 30 * 60   # the machine slept 30 minutes
+            self.assertTrue(beat.wait(5), 'the heartbeat wrote')
+            run_log._open['run'] = None   # ends the thread
+        self.assertEqual(touched[0]['duration_s'], 30 * 60, 'the sleep is counted: started + duration_s is now')
