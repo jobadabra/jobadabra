@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Why (1 Nov 2026, owner: jobadabra is desktop + extension only): the `worker` suite's code moved to app-core/; the area key keeps its name so check names, caches and
 # required checks stay (renaming it is parked in Linear).
 AREA_DIR = {'worker': 'app-core'}
-AREAS = ('python', 'worker', 'site', 'desktop') if (ROOT / 'admin').is_dir() else ('python', 'worker', 'desktop')   # the website is in the private repo jobadabra-web: its CI lays web/, admin/, api/, test/ … over this tree
+AREAS = ('python', 'worker', 'desktop')
 
 
 def node_supported(version):
@@ -75,8 +75,6 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
         if os.environ.get('JOBADABRA_PY_SERIAL'):      # the old single-process run, to compare with the shards
             return [(ROOT, [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-q'])]
         return [(ROOT, [sys.executable, 'tools/py-shards.py', *(['--app-only'] if app_only else [])])]
-    if area == 'site':   # the website's tests sit in test/ at the top level of the joined tree (jobadabra-web, 21 Oct 2026)
-        return [(ROOT, [node, '--test', *(picked if picked != 'all' else ['test/**/*.test.js'])])]
     folder = ROOT / AREA_DIR.get(area, area)
     if picked != 'all':
         pre = {'desktop': [(folder, [node, 'scripts/stage.mjs']), (folder, [npm, 'run', 'lint'])],
@@ -97,7 +95,7 @@ def main(argv=None):
     parser.add_argument('--app-only', action='store_true', help='python, desktop: leave out the tests of the repo\'s own tooling (tools/app-tests.py; the release pipeline\'s unit legs); other areas ignore it')
     parser.add_argument('--fast', action='store_true', help='desktop lint and focused lifecycle/contract checks (default area: desktop)')
     parser.add_argument('--affected-from', metavar='REF', help='local pushes: run only the tests this change (HEAD vs REF) can break; without it everything runs, as on CI')
-    parser.add_argument('--clean-install', action='store_true', help='verify desktop/Worker/site lockfiles in temporary folders before checks')
+    parser.add_argument('--clean-install', action='store_true', help='verify desktop and Worker lockfiles in temporary folders before checks')
     args = parser.parse_args(argv)
     areas = args.area or (['desktop'] if args.fast else list(AREAS))
     if sys.version_info < (3, 12):
@@ -118,7 +116,7 @@ def main(argv=None):
             print(f'check: Node {version}', flush=True)
         print(f'check: Python {sys.version.split()[0]}', flush=True)
         for area in areas:
-            package = json.loads((ROOT / ('workers/www' if area == 'site' else AREA_DIR.get(area, area)) / 'package.json').read_text()) if area != 'python' else {}
+            package = json.loads((ROOT / AREA_DIR.get(area, area) / 'package.json').read_text()) if area != 'python' else {}
             needs_modules = bool(package.get('dependencies') or package.get('devDependencies'))
             where = AREA_DIR.get(area, area)
             if needs_modules and not (ROOT / where / 'node_modules').is_dir():

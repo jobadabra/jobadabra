@@ -57,7 +57,7 @@ Desktop `npm test` runs ESLint first across `desktop/` and `extension/` (includi
 
 <a id="shared-verification"></a>
 ## Shared verification and checked desktop boundaries
-`tools/check.sh` is what CI and the push hook run (`--fast`, `--area desktop|python|worker|site`, `--clean-install`); in a session run the one test file you changed instead (owner, 26 Oct 2026: suites run on CI only). The command selects Python 3.12+ and supported Node, stages desktop shared files, and reports setup problems without installing packages. CI and Claude hooks delegate to this same runner; it works from any directory and any agent.
+`tools/check.sh` is what CI and the push hook run (`--fast`, `--area desktop|python|worker`, `--clean-install`); in a session run the one test file you changed instead (owner, 26 Oct 2026: suites run on CI only). The command selects Python 3.12+ and supported Node, stages desktop shared files, and reports setup problems without installing packages. CI and Claude hooks delegate to this same runner; it works from any directory and any agent.
 
 Electron lifecycle callbacks are in `desktop/lib/lifecycle.js` with injected services; import them directly in tests. `main.js` supplies startup initialization and current app services. Session IPC channels must register through `sessionIpc` in `desktop/lib/session-contracts.js`; every exposed session channel has argument and response checks. Public terminal session views use that same contract. Add a channel's contract and tests before exposing it. Contracts cover the session bridge, not every IPC action yet. Contract failures log channel/direction/field names only, never argument values or session content.
 

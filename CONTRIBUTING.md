@@ -23,8 +23,8 @@ Your own keys live in the macOS Keychain (`jobadabra.*`), never in files you com
 4. **Check it:** every AI tool and CI use the same runner, which selects supported Python and Node runtimes:
 
    - `tools/check.sh --fast` — desktop lint, staging, lifecycle, app scenarios and session contract tests.
-   - `tools/check.sh --area desktop` (or `python`, `worker`, `site`) — a complete suite; repeat `--area` to select several.
-   - `tools/check.sh` — all four suites, external Python services disabled as in CI.
+   - `tools/check.sh --area desktop` (or `python`, `worker`) — a complete suite; repeat `--area` to select several.
+   - `tools/check.sh` — every suite (python, worker, desktop), external Python services disabled as in CI.
    - `tools/check.sh --clean-install` — also prove dependency lockfiles install in temporary folders before landing.
    - Missing dependencies are reported, never silently installed; `tools/worktree.sh` links the existing packages.
 
