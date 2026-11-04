@@ -8,6 +8,22 @@ test('a run stopped from outside (no exit code, not the watchdog) is not a faile
   assert.equal(runFailure({code: null, timedOut: false, tail: ['Enriched 100 of 100 job(s); 0 failed']}), null);
 });
 
+test('a run the app ended on purpose is not a failed run, whatever exit code the OS gave (143 from the engine, 1 from taskkill)', () => {
+  for (const code of [143, 1, 130]) assert.equal(runFailure({code, timedOut: false, stopped: true, tail: ['Stopped before it finished: Jobadabra was closed, or Stop was pressed']}), null);
+  assert.ok(runFailure({code: 124, timedOut: 'no output for 16 min', stopped: true, tail: []}), 'the watchdog is never a stop');
+});
+
+test('"0 failed" is a count, not the error line', () => {
+  assert.equal(runFailure({code: 1, timedOut: false, tail: ['Boom: ValueError: x', 'Enriched 0 of 0 job(s) with a model; 0 failed; tokens in 0, out 0', 'Interview sweep: 0 application(s) moved on']}).error, 'Boom: ValueError: x');
+});
+
+test('a failed run\'s Sentry event carries its exit code and seconds', async () => {
+  const sentry = await import('../../../lib/sentry.js');
+  const event = sentry.buildEvent('run_failed', {job: 'src scheduled', code: 1, seconds: 42, error: 'exit 1, no error line', tail: ['x']}, {});
+  assert.deepEqual(event.extra, {tail: ['x'], code: 1, seconds: 42});
+  assert.deepEqual(sentry.buildEvent('run_failed', {job: 'j', error: 'e', tail: ['x']}, {}).extra, {tail: ['x']});
+});
+
 test('the watchdog and a non-zero exit are failed runs, with their error line', () => {
   assert.deepEqual(runFailure({code: 124, timedOut: 'no output for 16 min', tail: ['AI budget: $0.00']}),
     {error: 'stopped by the app: no output for 16 min', timedOut: 'no output for 16 min', cutOff: false});
