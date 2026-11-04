@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 
 SITE = 'https://www.jobadabra.top'
@@ -106,6 +107,17 @@ def _post(items, urlopen=None, env=None, kind='matches'):
     try:
         with urlopen(request, timeout=20) as response:
             answer = json.load(response)
+    except urllib.error.HTTPError as error:
+        # Why (se, 4 Nov 2026, Sentry APP-4R/4V): the site answers a refusal as JSON with a status (401 {"ok": false, "error": "unauthorized"}, api/account-email.js), but urllib raises
+        # for any 4xx/5xx, so the run said only "(HTTPError)" and the reason the line below already prints was never read. The reason, else the status, now reaches the log.
+        try:
+            answer = json.loads(error.read(4096))
+        except Exception:  # noqa: BLE001 - a body that is not JSON: the status is the reason
+            answer = None
+        # Only a word the site sent as text, cut short (a body that is `null`, a list or an object has no reason): never an exception out of a site outage.
+        word = next((str(answer[key])[:80] for key in ('reason', 'error') if isinstance(answer, dict) and isinstance(answer.get(key), str) and answer[key]), f'HTTP {error.code}')
+        print(f'Warning: the e-mail was not sent ({word}).', file=sys.stderr)
+        return False
     except Exception as error:  # noqa: BLE001 - a site outage must not stop a person's search
         print(f'Warning: the e-mail was not sent ({type(error).__name__}).', file=sys.stderr)
         return False
