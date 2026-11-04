@@ -84,7 +84,8 @@ function kindField(view, item) {
 function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, chip = null, action = 'Add answer', run = null}) {
   const isOpen = opened.has(key);
   const head = el('div', `qa-row${isOpen ? ' is-open' : ''}${button ? '' : ' no-action'}`);
-  const toggle = () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
+  // Why (4 Nov 2026, #3152, AI user agent replays 41857211406 and 41857218091): a New question has no answer control (field), its review is the drawer (run); opening it in place called field() and threw inside the redraw, which left the list blank under the count of open rows.
+  const toggle = () => { if (!field) { if (run) run(); return; } if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
   const chevron = Object.assign(el('button', 'link qa-chevron', icon('chevron')), {type: 'button', ariaLabel: isOpen ? 'Close' : 'Open'});
   chevron.classList.add('is-bar-chevron');
   chevron.addEventListener('click', toggle);
