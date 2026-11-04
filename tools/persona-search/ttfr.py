@@ -8,7 +8,7 @@ import sqlite3
 import sys
 from datetime import datetime
 
-from scores_rows import scores_rows
+from scores_rows import has, scores_rows
 from src.paths import DATA, JOBS_DB
 from src.sources import feeds
 
@@ -17,10 +17,17 @@ def ts(text):
     return datetime.fromisoformat(text.replace('Z', '+00:00')).timestamp()
 
 
-def main():
-    tracker = sqlite3.connect(DATA / 'tracker.sqlite')
-    t0 = min(ts(r[0]) for r in tracker.execute('SELECT started_at FROM cron_runs') if r[0])
-    db = sqlite3.connect(JOBS_DB)
+def seen_and_fit():
+    """(seconds each in-places job appeared, seconds each fit 70+ was scored), both empty when the press was cut before any step opened the stores.
+    Why (PR 3130, run 41807509648, 4 Nov 2026): the 3-minute stop came before the first step, the tables were missing and this died, so the row went red
+    "wrote no numbers" and the persona's row was lost."""
+    tracker, db = sqlite3.connect(DATA / 'tracker.sqlite'), sqlite3.connect(JOBS_DB)
+    if not has(tracker, 'cron_runs') or not has(db, 'jobs'):
+        return [], []
+    starts = [ts(r[0]) for r in tracker.execute('SELECT started_at FROM cron_runs') if r[0]]
+    if not starts:
+        return [], []
+    t0 = min(starts)
     rows = db.execute("SELECT id, title, location, first_seen_at FROM jobs WHERE state = 'open'").fetchall()
     places = [r for r in rows if feeds.wanted_location({'location': r[2] or '', 'title': r[1]})]
     seen = sorted(ts(r[3]) - t0 for r in places if r[3])
@@ -28,6 +35,11 @@ def main():
     for job_id, created, data in scores_rows(db, 'SELECT job_id, created_at, data_json FROM scores'):   # none yet when the 180 s budget stopped the press first
         scores[job_id] = (created, (json.loads(data or '{}').get('score') or 0))
     fit = sorted(max(ts(scores[r[0]][0]), ts(r[3])) - t0 for r in places if r[0] in scores and scores[r[0]][1] >= 70 and scores[r[0]][0])
+    return seen, fit
+
+
+def main():
+    seen, fit = seen_and_fit()
     at = lambda xs, n: round(xs[n - 1]) if len(xs) >= n else None
     out = {'first_in_places_s': at(seen, 1), 'tenth_in_places_s': at(seen, 10), 'first_fit70_s': at(fit, 1), 'tenth_fit70_s': at(fit, 10),
            'in_places': len(seen), 'fit70': len(fit)}

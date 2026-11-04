@@ -4,6 +4,9 @@ plus 8-18 s in the queue) against 7-10 s on 41359673068 (the last run that found
 the job boards or scoring, and the check read "found 0 right jobs on all six", so main's last three runs were 0 / 0 / 0 and the gate could not go red.
 The fixtures are the `relay:` lines of persona 1's press in those two runs (timings only)."""
 import json
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -88,6 +91,28 @@ class SlowAiIsNotAProductZero(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0, code=1))
         self.assertNotIn('not_measured', row, 'a non-zero exit is a fault, not a slow AI')
+
+
+class APressCutBeforeTheStoreOpened(unittest.TestCase):
+    """Guard: release — a persona whose press was cut before the store opened loses its whole row ("wrote no numbers"), so the Search check report has a hole.
+    Why (PR 3130, run 41807509648, persona 6, 4 Nov 2026): the Codex relay took 69 s to draft the strategy and 101 s for one decide call, the 3-minute stop came
+    before any step opened the job store, and metrics.py died on "no such table: jobs". run.mjs then wrote no presses.jsonl and the row went red "wrote no numbers"
+    while the five personas whose press was cut a little later kept their row."""
+
+    def test_every_script_run_after_a_press_reads_a_missing_store_as_zero(self):
+        log = Path(tempfile.mkdtemp()) / 'run-1.log'
+        log.write_text('[0s] Finding your first jobs…\n[175s] ⏱ Time is up (2 min 55 s) for the search: what it has not reached waits for the next search\n')
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / 'config', Path(tmp) / 'config')   # what run.mjs's ensureConfig does before any press; only the stores are missing
+            (Path(tmp) / 'data').mkdir()
+            env = {**os.environ, 'PYTHONPATH': str(ROOT), 'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_FOLLOW_APP': '0',
+                   'JOBADABRA_CONFIG_DIR': str(Path(tmp) / 'config'), 'JOBADABRA_DATA_DIR': str(Path(tmp) / 'data')}
+            for script, args in (('metrics.py', []), ('crashes.py', [str(log)]), ('funnel.py', [str(log), '--since', '2026-11-04T09:39:00']), ('ttfr.py', [str(log)])):   # the four run.mjs calls per press
+                done = subprocess.run([sys.executable, str(ROOT / 'tools' / 'persona-search' / script), *args], cwd=ROOT, env=env, capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0, f'{script}: {done.stderr[-300:]}')
+                json.loads(done.stdout.strip().splitlines()[-1])
+            numbers = json.loads(subprocess.run([sys.executable, str(ROOT / 'tools' / 'persona-search' / 'metrics.py')], cwd=ROOT, env=env, capture_output=True, text=True).stdout)
+        self.assertEqual((numbers['open'], numbers['in_places'], numbers['local_jobs'], numbers['scored_in_places'], numbers['top10']), (0, 0, 0, 0, []))
 
 
 if __name__ == '__main__':
