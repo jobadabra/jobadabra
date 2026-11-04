@@ -35,6 +35,15 @@ test('a real error in the same minute as a plant is sent', () => {
   assert.equal(asked({kind: 'fill_error', message: 'anything'}, AI), false);
 });
 
+// Gitar on #3163: the e2e AI stand-in plants one line per word its refusals make the app say (lib/ai-proxy.mjs AI_WARNING_WORDS): a suite that refuses all through its run must not mute its other warnings.
+test('a refusal plant with words hides its AI warning, not an unrelated run warning in the same minute', () => {
+  const REFUSED = ['limit', 'the ai call failed', 'technical:'].map(text => line({at: 99_000, why: 'ai refusal no-credit', kinds: ['run_warning', 'run_failed'], text})).join('');
+  assert.equal(asked({kind: 'run_warning', message: 'src run: 2 job(s) not read by AI: the Anthropic API spending limit was reached'}, REFUSED), true);
+  assert.equal(asked({kind: 'run_warning', message: 'src scout: job titles not sorted by Claude (the AI call failed): asked again next run'}, REFUSED), true);
+  assert.equal(asked({kind: 'run_warning', message: 'src scheduled: Job boards: 4 read in the last 6 h skipped; reading 3 new ones'}, REFUSED), false);
+  assert.equal(asked({kind: 'run_failed', message: 'src run: PermissionError: [Errno 13] Permission denied'}, REFUSED), false);
+});
+
 test('an old plant, an unreadable file, a missing file and a user install drop nothing', () => {
   const report = {kind: 'run_warning', message: 'AI limit reached'};
   assert.equal(asked(report, AI, 99_000 + PLANT_WINDOW_MS + 1), false);
