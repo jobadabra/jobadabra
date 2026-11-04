@@ -16,7 +16,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import {E2E} from './app.mjs';
-import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extension.mjs';
+import {EXTENSION_DIR, browserChannel, copyExtension} from './extension.mjs';
+import {listenOnFreePort} from './own-port.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../desktop/ready-fill/extension-storage.mjs';
 import {endBrowser} from './browser-end.mjs';
@@ -43,15 +44,7 @@ export const FAKE_CONTACT = {first_name: 'Test', last_name: 'Candidate', email: 
 // options: {extensionDir (default: this checkout's extension/), cv: true|false (the CV the app has), resume: {data (base64), name, type} (the CV file the app hands over: a tailored one under its own name; default cv.pdf), menuChoices: [{host, label, value, choice}] (the choices the app remembers per site, lib/menu-choices.js), letter: true|false (an approved cover letter file),
 // contact (fake details)}. -> {context, page, port, requests, assertIsolated, panel, fillWithPanel, told, controlReports, close}
 export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = true, resume = null, menuChoices = [], letter = false, contact = FAKE_CONTACT, answer = {}, allowAllSites = false, offline = false, appPort = 0, cdp = false, timezoneId = '', contactFor = null, signal, onCleanup = () => {}} = {}) {   // answer: {route: () => body} the stub app gives instead of {} (e.g. the page-kind AI's word)
-  const port = appPort || await freePort();   // appPort: the caller's own stand-in app answers on it (row replay): this file starts no stub, and `answer`/`requests` stay unused
-  const copy = copyExtension(port, extensionDir);
-  // allowAllSites: a fresh test Chrome has not pressed the extension's Allow (the optional "any site" permission a person has granted once), so a site outside the
-  // hiring systems in manifest.json (a local copy of Deloitte's page) would wait for Allow. The copy holds it, as if the person had pressed it; the default leaves it out.
-  if (allowAllSites) {
-    const manifestFile = path.join(copy, 'manifest.json'), manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-    manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])];
-    fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
-  }
+  let port = appPort;   // appPort: the caller's own stand-in app answers on it (row replay): this file starts no stub, and `answer`/`requests` stay unused. Else the stub below takes its port from the OS
   const requests = [];
   const answers = {'/extension/pair': () => ({url: `http://127.0.0.1:${port}`, token: 'e2e'}),
     '/extension/run': () => ({ok: true, id: 'e2e-run'}),   // the app's store answers with the run's id: the extension's record update is sent to that run (extension/ladder/record-update.js)
@@ -78,8 +71,17 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   onCleanup(close);
   const checkCancelled = async () => { if (signal?.aborted) { await close(); signal.throwIfAborted(); } };
   await checkCancelled();
-  if (stub) await new Promise(resolve => stub.listen(port, '127.0.0.1', resolve));
+  // Why (4 Nov 2026, run 41859921107): the stub binds first and the extension copy is made with the port it got; a number chosen first and bound later could be taken in between.
+  if (stub) port = await listenOnFreePort(stub);
   await checkCancelled();
+  const copy = copyExtension(port, extensionDir);
+  // allowAllSites: a fresh test Chrome has not pressed the extension's Allow (the optional "any site" permission a person has granted once), so a site outside the
+  // hiring systems in manifest.json (a local copy of Deloitte's page) would wait for Allow. The copy holds it, as if the person had pressed it; the default leaves it out.
+  if (allowAllSites) {
+    const manifestFile = path.join(copy, 'manifest.json'), manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+    manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])];
+    fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
+  }
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-real-ext-'));
   try {
     launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per case (lib/launch-guard.mjs)

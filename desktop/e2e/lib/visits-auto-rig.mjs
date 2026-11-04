@@ -9,7 +9,8 @@ import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
-import {browserChannel, copyExtension, freePort} from './extension.mjs';
+import {browserChannel, copyExtension} from './extension.mjs';
+import {listenOnFreePort} from './own-port.mjs';
 import {extensionWorker} from './own-worker.mjs';
 
 const FIXTURES = path.join(import.meta.dirname, '..', 'fixtures', 'visits');
@@ -20,7 +21,7 @@ const pause = ms => new Promise(done => setTimeout(done, ms));
 export async function until(check, ms = 15000) { for (let waited = 0; waited < ms; waited += 250) { if (await check()) return true; await pause(250); } return false; }
 
 // The app's side of the extension's calls: pairing, no recipe, no filters, each page read (its cards counted), and the done report.
-function standInApp(port) {
+function standInApp() {   // its port is the OS's pick, read from the listening server (listenOnFreePort in startRig)
   const calls = [];
   const jobs = new Map();
   const server = http.createServer((req, res) => {
@@ -31,7 +32,7 @@ function standInApp(port) {
       if (req.method === 'POST') calls.push({path: req.url, payload});   // a CORS preflight (OPTIONS) is not a call
       const reply = data => { res.writeHead(200, {'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': '*'}); res.end(JSON.stringify(data)); };
       if (req.method === 'OPTIONS') { reply({}); return; }
-      if (req.url === '/extension/pair') { reply({url: `http://127.0.0.1:${port}`, token: 'e2e-token'}); return; }
+      if (req.url === '/extension/pair') { reply({url: `http://127.0.0.1:${server.address().port}`, token: 'e2e-token'}); return; }
       if (req.url === '/extension/visit-read') {
         const seen = jobs.get(payload.session) || new Set();
         const before = seen.size;
@@ -63,10 +64,8 @@ export async function startRig() {
     res.end(fs.readFileSync(file));
   });
   await new Promise(done => sites.listen(0, '127.0.0.1', done));
-  const appPort = await freePort();
-  if (appPort === 47111) throw new Error('the test app must not use the live app\'s port');
-  const app = standInApp(appPort);
-  await new Promise(done => app.server.listen(appPort, '127.0.0.1', done));
+  const app = standInApp();
+  const appPort = await listenOnFreePort(app.server);   // never the live app's port 47111 (own-port.mjs)
   const extensionDir = copyExtension(appPort);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-visits-chromium-'));
   const rules = [`MAP ${ALLOWED} 127.0.0.1:${sites.address().port}`, `MAP ${OTHER} 127.0.0.1:${sites.address().port}`, 'MAP * ~NOTFOUND , EXCLUDE 127.0.0.1 , EXCLUDE localhost'].join(', ');
