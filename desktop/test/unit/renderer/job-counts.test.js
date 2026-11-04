@@ -31,6 +31,26 @@ test('every count is within the total and the card repeats the counters', () => 
   assert.equal(card.listed, count.total, 'a run without a counts line falls back to the list count, the same one');
 });
 
+// The owner's list: seven rows, none a match and none a sent application, so every tile but Inbound says 0.
+const tracked = Array.from({length: 7}, (_, index) => row(index + 1, {status: 'applied', origin: 'inbound', stage: 'Reply received'}));
+const cardFor = (data, extra = {}) => { const count = jobCounts(data, NOW); return findCard({listed: count.total, anyJob: count.anyJob, ...extra}); };
+
+test('tracked jobs and no search yet are not the empty first run: the big Find jobs card stays away (owner, 4 Nov 2026)', () => {
+  assert.equal(jobCounts({jobs: tracked, total: tracked.length}, NOW).total, 0, 'none of them is a match');
+  const card = cardFor({jobs: tracked, total: tracked.length});
+  assert.equal(card.state, 'none', 'the compact card, which the Applied and Inbound lists hide');
+  assert.equal(card.first, true, 'no search ran: it cannot say "again"');
+  assert.equal(cardFor({jobs: []}).state, 'empty', 'no job at all is still the first run');
+  assert.equal(cardFor(undefined).state, 'empty');
+});
+
+test('an old failed search never covers a list of tracked jobs, as it never covers a list of matches (the same cause, the class)', () => {
+  const last = {ok: false, problem: 'No AI credit'};
+  assert.equal(cardFor({jobs: tracked, total: tracked.length}, {last, lastSearchAt: '2026-10-01'}).state, 'none');
+  assert.equal(cardFor({jobs: []}, {last, lastSearchAt: '2026-10-01'}).state, 'failed', 'with no job at all it is still the news');
+  assert.equal(cardFor({jobs: tracked, total: tracked.length}, {last, finishedHere: true}).state, 'failed', 'a search that failed just now is news on any list');
+});
+
 test('a list that is not cut has nothing beyond: total is the matches', () => {
   const count = jobCounts({jobs: loaded, total: loaded.length}, NOW);
   assert.equal(count.total, 7);
@@ -43,4 +63,5 @@ test('the Find jobs card reads jobCounts, never the loaded list', async () => {
   const source = fs.readFileSync(new URL('../../../renderer/pages/jobs-find.js', import.meta.url), 'utf8');
   assert.match(source, /jobCounts\(/);
   assert.doesNotMatch(source, /jobs\.length|jobs\.filter/);
+  assert.match(source, /anyJob: [^,]*counts\.anyJob/, 'the card is told about tracked jobs: a test of the model alone would stay green without this line');
 });

@@ -28,7 +28,8 @@ export function jobCounts(data, now = Date.now()) {
   const count = stats(matched, matched.length + beyond, now);
   count.week += data?.week_beyond || 0;
   count.high += data?.high_beyond || 0;
-  return {...count, scored: matched.filter(job => job.fit != null).length + (data?.scored_beyond || 0)};
+  // anyJob: any row at all, applications and inbound too. A yes or no, never a count: the list may be cut.
+  return {...count, anyJob: loaded.length > 0, scored: matched.filter(job => job.fit != null).length + (data?.scored_beyond || 0)};
 }
 
 // Applications right now, by their Notion Stage, with the same stage sets as the Focus funnel (src/notion/funnel.py):
