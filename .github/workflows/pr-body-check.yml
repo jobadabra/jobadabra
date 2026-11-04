@@ -30,5 +30,6 @@ jobs:
       - name: PR description laid out
         env:
           BODY: ${{ github.event.pull_request.body }}
-          PR_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
+          # Why (4 Nov 2026, #3095): '' is falsy in a GitHub expression, so "&& '' ||" always gave the title and a bot's PR went red on the session tag. The PR's author, not the actor: a person may edit a bot's PR.
+          PR_TITLE: ${{ github.event.pull_request.user.type != 'Bot' && github.event.pull_request.title || '' }}   # the "[xx] " session tag (a bot's PR has none)
         run: printf '%s' "$BODY" | python3 engine/tools/pr-body-check.py
