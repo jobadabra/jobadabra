@@ -586,6 +586,20 @@
    "urls": [
     "https://jobs.ashbyhq.com/synthesia/497cc4cf-a6e7-4165-852f-e65bc817dc9b"
    ]
+  },
+  {
+   "shape": "Discovery: jobs.suva.ch",
+   "urls": [
+    "https://jobs.suva.ch/job/Bern-Revisorin-80-100-BE-3008/1453264933/"
+   ],
+   "signature": "posting>account>posting>account>posting>account>posting>account@career2.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: jobs.lever.co",
+   "urls": [
+    "https://jobs.lever.co/swile/da48a613-ddea-416e-9556-faaf8dba70c8"
+   ],
+   "signature": "form@jobs.lever.co#form"
   }
  ]
 }
