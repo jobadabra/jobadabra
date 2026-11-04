@@ -15,13 +15,13 @@ import {PUBLIC_REPO, WEB_REPO} from '../desktop/e2e/lib/repos.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const PLAN = 'docs/superpowers/plans/2026-11-04-ci-agent-until-green.md';
 export const WORKFLOW = 'ai-fixer.yml', ARTIFACT = 'ai-fixer-record', FILE = 'record.json';
-const WINDOW_DAYS = 30, MAX_RUNS = 60, MAX_RECORD = 64 * 1024;
+const WINDOW_DAYS = 30, LIST_RUNS = 100, MAX_RUNS = 60, MAX_RECORD = 64 * 1024, MAX_BODY = 350000;   // the site refuses a body over 400,000 characters
 // Where each source's fetcher lives (docs/superpowers/specs/2026-11-03-harness-map-design.md, L3): a file there = "built".
 export const SOURCES = [['Linear', 'tools/context/sources/linear.mjs'], ['Sentry', 'tools/context/sources/sentry.mjs'], ['GitHub', 'tools/context/sources/github.mjs'], ['PostHog', 'tools/context/sources/posthog.mjs'], ['Cloudflare', 'tools/context/sources/cloudflare.mjs'], ['Notion', 'tools/context/sources/notion.mjs']];
 
 /** The Progress list of the plan -> {rows, web}: `- [x] 3/7 Name` rows (the chain, N = its last number) and `- [ ] web 1/3 Name` rows (this plan's pages on the private site). Every row {n, of, name, checked}. */
 export function parsePlan(markdown) {
-  const section = String(markdown).split(/^## Progress\s*$/m)[1] || '', rows = [], web = [];
+  const section = (String(markdown).split(/^## Progress\s*$/m)[1] || '').split(/^## /m)[0], rows = [], web = [];   // Why (review, 4 Nov 2026): up to the next heading, not the end of the file
   for (const line of section.split('\n')) {
     const found = /^- \[([ xX])\]\s+(web\s+)?(\d+)\/(\d+)\s+(.+?)\s*$/.exec(line);
     if (found) (found[2] ? web : rows).push({n: Number(found[3]), of: Number(found[4]), name: found[5].replace(/[`*]/g, ''), checked: found[1] !== ' '});
@@ -29,11 +29,12 @@ export function parsePlan(markdown) {
   return {rows, web};
 }
 
-/** Rows + the PRs that carry them -> [{n, name, state, pr}]: done (ticked, or a merged PR titled `[tag] n/N ...`), doing (an open one), else next. `prs` = [{number, title, state, mergedAt, createdAt}]; a PR counts only for the N of its own group. */
-export function chain(rows, prs, since = '') {
+/** Rows + the PRs that carry them -> [{n, name, state, pr}]: done (ticked, or a merged PR titled `[tag] n/N ...`), doing (an open one), else next. `prs` = [{number, title, body, state, mergedAt, createdAt}].
+ * A PR counts only for the N of its own group AND when its body names this plan's file (the PR template's "Plan progress" block carries it), so another plan's `3/6` never flips a row (review, 4 Nov 2026). */
+export function chain(rows, prs, since = '', plan = PLAN) {
   return rows.map(row => {
     const title = new RegExp(`^(?:\\[[^\\]]*\\]\\s+)+${row.n}/${row.of}\\s`);
-    const mine = prs.filter(pr => title.test(String(pr.title)) && String(pr.createdAt) >= since).sort((a, b) => b.number - a.number);
+    const mine = prs.filter(pr => title.test(String(pr.title)) && String(pr.body || '').includes(plan.split('/').pop()) && String(pr.createdAt) >= since).sort((a, b) => b.number - a.number);
     const merged = mine.find(pr => pr.mergedAt), open = mine.find(pr => pr.state === 'OPEN');
     const state = row.checked || merged ? 'done' : open ? 'doing' : 'next';
     return {n: row.n, name: row.name, state, pr: (state === 'done' ? merged : open)?.number || 0};
@@ -49,41 +50,51 @@ export function layers(has, count) {
   sources: SOURCES.map(([name, file]) => ({name, built: has(file)}))};
 }
 
-/** One run's record from its parsed JSON, or null when it is not an object. The run id and url are GitHub's own for this run, never the record's. */
+/** One run's record from its parsed JSON: a COPY of the known fields, each bounded (no unknown key, no nesting, a few KB at most), or null when it is not an object. The run id and url are GitHub's own for this run, never the record's. */
 export function recordOf(parsed, run) {
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? {...parsed, run_id: run.id, url: run.html_url} : null;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const str = (value, max) => (typeof value === 'string' ? value.slice(0, max) : ''), num = value => (Number.isFinite(value) ? value : 0), list = (value, max) => (Array.isArray(value) ? value.slice(0, max) : []);
+  return {v: parsed.v === 1 ? 1 : 0, workflow: str(parsed.workflow, 20), run_id: run.id, url: run.html_url, started: str(parsed.started, 32), minutes: num(parsed.minutes), source: str(parsed.source, 12), ref: str(parsed.ref, 40), round: num(parsed.round),
+    engine: str(parsed.engine, 60), model: str(parsed.model, 60), turns: num(parsed.turns), calls: num(parsed.calls), tokens_in: num(parsed.tokens_in), tokens_out: num(parsed.tokens_out), steps: list(parsed.steps, 60).map(step => ({n: num(step?.n), action: str(step?.action, 20)})),
+    verdict: str(parsed.verdict, 24), reason: str(parsed.reason, 400), changed_files: list(parsed.changed_files, 20).map(file => str(file, 120)), pr: Number.isInteger(parsed.pr) ? parsed.pr : null, stop: str(parsed.stop, 20), errors: list(parsed.errors, 5).map(error => str(error, 200))};
 }
 
 /** All of it -> the body to PUT: {kind: 'harness', days: [today's card]}. `input` = {plan, prs, webPrs, runs: [records]} (what fetchInput collects); `fs` = {has, count}. */
-export function compute(input, fs, now = new Date()) {
+export function compute(input, fs, now = new Date(), maxBody = MAX_BODY) {
   const {rows, web} = parsePlan(input.plan || ''), since = (PLAN.match(/(\d{4}-\d\d-\d\d)/) || [])[1] || '';
-  return {kind: 'harness', days: [{day: now.toISOString().slice(0, 10), plan: {rows: chain(rows, input.prs || [], since), web: chain(web, input.webPrs || [], since)}, ...layers(fs.has, fs.count), runs: (input.runs || []).slice(0, MAX_RUNS)}]};
+  const body = {kind: 'harness', days: [{day: now.toISOString().slice(0, 10), plan: {rows: chain(rows, input.prs || [], since), web: chain(web, input.webPrs || [], since)}, ...layers(fs.has, fs.count), runs: (input.runs || []).slice(0, MAX_RUNS)}]};
+  while (body.days[0].runs.length && JSON.stringify(body).length > maxBody) body.days[0].runs.pop();   // the oldest go first, so the plan and layers always arrive
+  return body;
 }
 
 const gh = (...args) => JSON.parse(execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 << 20}) || 'null');
 const lsCount = (dir, suffix) => { try { return readdirSync(join(ROOT, dir)).filter(name => (suffix ? name.endsWith(suffix) : statSync(join(ROOT, dir, name)).isDirectory())).length; } catch { return 0; } };
 const checkout = {has: file => existsSync(join(ROOT, file)), count: lsCount};
 
-/** The record of each run (`run` = the gh api reader, `download(id, dir)` puts the artifact's files in dir: both injectable for the test) of the fixer in the window that has one (the run's artifact `ai-fixer-record`); a run without one, an expired artifact or an unreadable file is skipped. */
+/** The record of each run of the fixer in the window that has one (the run's artifact `ai-fixer-record`). Normal and skipped: no artifact, an expired one, a file over 64 KB or not JSON. A gh failure (rate limit, 5xx, auth) is NOT "no data": it throws,
+ * so the job fails and the stored card stays as it was (review, 4 Nov 2026). `run` = the gh api reader, `download(id, dir)` puts the artifact's files in dir: both injectable for the test. */
 export function fetchRuns(repo, now, run = gh, download = (id, dir) => execFileSync('gh', ['run', 'download', String(id), '--repo', repo, '--name', ARTIFACT, '--dir', dir], {stdio: 'ignore'})) {
   const since = new Date(now.getTime() - WINDOW_DAYS * 86400000).toISOString().slice(0, 10), records = [];
-  const list = run('api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?per_page=${MAX_RUNS}&created=>=${since}`, '--jq', '[.workflow_runs[] | {id, html_url}]') || [];
+  const list = run('api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?per_page=${LIST_RUNS}&created=>=${since}`, '--jq', '[.workflow_runs[] | {id, html_url}]') || [];
+  if (list.length >= LIST_RUNS) console.error(`harness-stats: ${LIST_RUNS} runs listed, older ones are not read`);
   for (const item of list) {
+    const found = run('api', `repos/${repo}/actions/runs/${item.id}/artifacts?name=${ARTIFACT}`, '--jq', `[.artifacts[] | select(.expired == false and .size_in_bytes <= ${MAX_RECORD}) | .name]`) || [];   // the size is the zip's: a bigger one is never extracted
+    if (!found.length) continue;
     const dir = mkdtempSync(join(tmpdir(), 'harness-'));
     try {
-      const found = run('api', `repos/${repo}/actions/runs/${item.id}/artifacts?name=${ARTIFACT}`, '--jq', '[.artifacts[] | select(.expired == false) | .name]') || [];
-      if (!found.length) continue;
       download(item.id, dir);
       const file = join(dir, FILE);
-      if (!existsSync(file) || statSync(file).size > MAX_RECORD) continue;
-      const record = recordOf(JSON.parse(readFileSync(file, 'utf8')), item);
+      if (!existsSync(file) || !statSync(file).isFile() || statSync(file).size > MAX_RECORD) continue;
+      let parsed;
+      try { parsed = JSON.parse(readFileSync(file, 'utf8')); } catch { console.error(`harness-stats: run ${item.id} skipped: record.json is not JSON`); continue; }
+      const record = recordOf(parsed, item);
       if (record) records.push(record);
-    } catch (error) { console.error(`harness-stats: run ${item.id} skipped: ${String(error.message).split('\n')[0].slice(0, 120)}`); } finally { rmSync(dir, {recursive: true, force: true}); }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
   }
   return records;
 }
 function fetchInput(plan, now, repo = process.env.REPO || PUBLIC_REPO) {
-  const prs = (repoName) => { try { return gh('pr', 'list', '--repo', repoName, '--state', 'all', '--limit', '300', '--json', 'number,title,state,mergedAt,createdAt'); } catch { return []; } };
+  const prs = repoName => gh('pr', 'list', '--repo', repoName, '--state', 'all', '--limit', '300', '--json', 'number,title,body,state,mergedAt,createdAt');   // an error throws: never store "every row is next" because GitHub failed
   return {plan: readFileSync(join(ROOT, plan), 'utf8'), prs: prs(repo), webPrs: prs(WEB_REPO), runs: fetchRuns(repo, now)};
 }
 

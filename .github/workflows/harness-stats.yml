@@ -2,7 +2,7 @@ name: CI · Agent harness stats
 # The numbers behind https://www.jobadabra.top/admin/ai/harness (tab "Agent harness", owner, 4 Nov 2026: "details about each run. What happened. Some logs, some achievements, errors"):
 # the CI fixer's plan rows, the context layers and sources (file facts), and the run record of each "CI · AI fixer" run of the last 30 days (tools/harness-stats.mjs). Report only: it never blocks anything. No AI, $0.
 # Daily (after agent-coding-stats.yml's 04:41) and when an AI fixer run completes, so a run shows on the page within minutes. A run that wrote no record is normal and skipped; the site answers 400 for this kind until
-# its page is deployed: that is a notice here, never a red run. The workflow reads artifacts as data: it checks out the default branch (never the fixer run's branch) and runs only that branch's script.
+# its page is deployed: that is a notice here, never a red run (a refused key or a server error is red). The workflow reads artifacts as data: it checks out the default branch (never the fixer run's branch) and runs only that branch's script.
 on:
   schedule:
     - cron: '53 4 * * *'
@@ -44,4 +44,5 @@ jobs:
           fi
           # Why (4 Nov 2026, owner's coordinator): the site answers 400 for kind "harness" until its page is merged and deployed; a notice, not a red run (a report, like the other stats uploads).
           code=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/harness.json" "https://www.jobadabra.top/agent-coding/data" || echo 000)
-          if [ "$code" = 200 ]; then echo "Stored."; else echo "::notice::The site did not store the harness numbers (HTTP $code): its page may not be deployed yet."; fi
+          # 400 = the site has no page for this kind yet (not deployed): a notice. A rejected key (401/403/404), a 5xx or no answer is a real failure: red, so the numbers do not go stale unseen.
+          case "$code" in 200) echo "Stored." ;; 400) echo "::notice::The site answered 400 for the harness numbers: its page may not be deployed yet." ;; *) echo "::error::The site did not store the harness numbers (HTTP $code)."; exit 1 ;; esac
