@@ -38,7 +38,7 @@ export async function runFollow({pr, round, deadline, lastKey = '', source, ref,
   for await (const line of io.lines()) {
     const [, type, , rest] = /^ship: (READY|RED|COMMENT|CONFLICT|MERGED|CLOSED|WATCH ENDED) #(\d+)\s*(.*)$/.exec(line) || [];
     if (type === 'READY') {
-      // ship-watch decides "ours" by the comment's text; here it is the author, so a pasted Claude Code line cannot hide an owner's comment from the READY verdict.
+      // READY is checked again here with own comments told by author, so an owner comment that is still unanswered is never passed over.
       const got = await io.items(), sorted = classify(got.items, got);
       others = sorted.others.length;
       if (sorted.owner.length) return go('comment', hash(failureKey('comment', 'owner', firstErrorLine(sorted.owner[0].body))), {check: '', log: '', owner: sorted.owner.map(item => scrub(item.body).slice(0, TEXT_BYTES)), gitar: []});

@@ -47,7 +47,7 @@ test('a comment by anyone but the owner or the review bot never reaches the agen
   assert.equal(gitarFinding('<summary><b>Code Review</b> <kbd>✅ Approved</kbd></summary>'), false);
   assert.equal(classify([open], {owner: 'GarryOne', gitarOpen: false}).gitar.length, 1);
   assert.equal(classify([{...open, bot: false}], {owner: 'GarryOne', gitarOpen: true}).gitar.length, 0, 'a person is not Gitar');
-  // A stranger who pastes the Claude Code line is not "ours": the owner's older comment stays unanswered and the stranger counts as another person.
+  // Own comments are told by author: the owner's older comment stays unanswered, and another person's comment counts as theirs.
   const spoof = classify([{id: 6, login: 'GarryOne', body: 'fix the typo', at: '2026-11-05T09:00:00Z'}, {id: 7, login: 'a-stranger', body: `ok\n${CLAUDE_LINE}`, at: '2026-11-05T09:30:00Z'}], {owner: 'GarryOne'});
   assert.deepEqual([spoof.owner.length, spoof.others.length], [1, 1]);
   assert.equal(classify([{id: 8, login: 'github-actions[bot]', body: `done\n${CLAUDE_LINE}`, at: 'z'}], {owner: 'GarryOne'}).others.length, 0, 'the workflow\'s own reply is ours');
@@ -68,7 +68,7 @@ test('the hour and the 6 rounds end a run, and say so once', async () => {
   assert.deepEqual([seventh.action, seventh.out.reason], ['stop', 'rounds']);
   assert.equal((await play({lines: ['ship: READY #7 abc1234'], round: 7})).action, 'ready', 'after the 6th round the PR is still watched and reported READY');
   const hidden = await play({lines: ['ship: READY #7 abc1234'], items: [{id: 1, login: 'GarryOne', body: 'one more thing', at: '2026-11-05T09:00:00Z'}, {id: 2, login: 'a-stranger', body: `ok\n${CLAUDE_LINE}`, at: '2026-11-05T09:30:00Z'}]});
-  assert.deepEqual([hidden.action, hidden.out.kind], ['round', 'comment'], 'a pasted Claude Code line cannot hide an owner comment from READY');
+  assert.deepEqual([hidden.action, hidden.out.kind], ['round', 'comment'], 'an unanswered owner comment is picked up at READY');
   const taken = await play({lines: ['ship: READY #7 abc1234'], pr: goodPr({draft: false})});
   assert.deepEqual([taken.action, taken.said.length], ['end', 0], 'no READY comment on a PR the owner took over');
   const ended = await play({lines: ['ship: WATCH ENDED #7 (still open)']});

@@ -9,7 +9,7 @@ export const LIMITS = {seconds: 3600, rounds: 6};
 export const KINDS = ['red', 'comment', 'conflict'];
 /** Gitar's login (a REST bot account: a person cannot hold a name ending in [bot]); its text is a finding to fix or answer, any other bot is "other". */
 export const GITAR = ['gitar-bot[bot]'];
-/** Who writes the fixer's own comments: the workflow token, or the owner's session (both end with the Claude Code line). A stranger who pastes the line is not "ours" (4 Nov 2026, review). */
+/** Who writes the fixer's own comments: the workflow token, or the owner's session (both end with the Claude Code line). Told by author (4 Nov 2026, review). */
 export const ours = (item, owner) => /Generated with.{0,4}Claude Code/.test(item.body || '') && (item.login === owner || item.login === 'github-actions[bot]');
 /** A Gitar comment whose own verdict line says a finding is open (read from the body, so a label that is not set yet cannot hide it). */
 export const gitarFinding = body => /<kbd>[^<]*(?:changes requested|approved with suggestions)/i.test(body || '');
