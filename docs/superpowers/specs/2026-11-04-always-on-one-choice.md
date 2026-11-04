@@ -9,6 +9,8 @@ Owner, 4 Nov 2026: "The user should choose between these 2 options. Either going
 - **Deep links** (`openSetting('cloud')`, `openSetting('hosted')`) pick the way first (`settings.js` `beforeOpen`).
 
 ## Progress
-- [x] 1/2 The card, the two ways, the three sibling rows (this PR) (proof: desktop/test/unit/renderer/always-on-choice-words.test.js)
-- [ ] 2/2 The Test button: Notion read, one tiny AI call on the person's own key, one test run of Always on in their repository, a tick per step (needs an engine test mode and a workflow update in users' repos)
+- [x] 1/3 The card, the two ways, the three sibling rows (#3131) (proof: desktop/test/unit/renderer/always-on-choice-words.test.js @9a02f9d)
+- [x] 2/3 The checks in the engine: `python -m src selftest github|notion|ai`, a `test` job in the workflow, `test` in the template's modes (this PR) (proof: tests/unit/engine/test_connection_test.py)
+- [ ] 3/3 The Test button in the card: starts the test run (cloudDispatch), reads each step's result (runJobs) and selftest.json, a tick per step, the failing step in words, ⌘K entry, light and dark preview first (owner, 4 Nov 2026: "Build as sketched", sketch CfrP3ieo3n6AMAY3cZT4VN)
+  - For the button (review of 2/3, 4 Nov 2026): a missing `jobadabra-selftest` artifact means the run failed before the checks (treat it as a failure); a second press cancels the first run (show it as cancelled); link to the `test` job, not the skipped `run` job (`runLink` may pick `jobs[0]` for a moment); the AI check with `max_tokens=8` on a thinking model has never run for real, so the first real press proves it.
 - [ ] Not built: only one way on at a time is enforced by the card's note, not by the buttons (a turn-on press while the other way runs should offer to turn that off)

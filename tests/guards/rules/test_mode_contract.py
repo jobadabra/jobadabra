@@ -11,6 +11,8 @@ from src.paths import ROOT as REPO
 
 # Run on the Mac only (the app waits for the answer: "Applied elsewhere" → Add a job), never dispatched to GitHub.
 LOCAL_ONLY = {'import'}
+# Offered by the workflows but never run by `daily`: the Test button's checks have their own job (src/connection_test.py).
+WORKFLOW_ONLY = {'test'}
 
 
 def options(path):
@@ -25,7 +27,8 @@ class ModeContract(unittest.TestCase):
             with self.subTest(path):
                 offered = options(path)
                 self.assertEqual(engine - offered, set(), f'{path} cannot dispatch these modes')
-                self.assertEqual(offered - engine, set(), f'{path} offers modes the engine rejects')
+                self.assertEqual(offered - engine - WORKFLOW_ONLY, set(), f'{path} offers modes the engine rejects')
+                self.assertTrue(WORKFLOW_ONLY <= offered, f'{path} cannot dispatch the Test button')
 
     def test_every_mode_that_writes_a_run_row_is_a_known_notion_option(self):
         import json
@@ -42,6 +45,16 @@ class ModeContract(unittest.TestCase):
         condition = text.splitlines()[text.splitlines().index(line) - 1]
         for mode in ('scheduled', 'run', 'today', 'rescore'):
             self.assertIn(f'[ "$MODE" = {mode} ]', condition)
+
+    def test_a_test_run_never_reaches_the_search_job(self):
+        """The Test button's run only checks: the search job skips mode test, and the test job is the only one that runs for it (Always on, 4 Nov 2026)."""
+        text = (REPO / '.github' / 'workflows' / 'daily.yml').read_text()
+        jobs = re.split(r'\n(?=  [a-z][a-z0-9_-]*:\n)', text[text.index('\njobs:\n'):])
+        run = next(job for job in jobs if job.startswith('  run:') or job.startswith('\njobs:\n  run:'))
+        test = next(job for job in jobs if job.startswith('  test:'))
+        self.assertIn("if: inputs.mode != 'test'", run)
+        self.assertIn("if: inputs.mode == 'test'", test)
+        self.assertEqual(set(re.findall(r'python -m src (\w+)', test)), {'selftest'}, 'the test job may only run the selftest checks')
 
 
 if __name__ == '__main__':
