@@ -6,7 +6,7 @@
 // Design (30 Oct 2026, owner chose "run only on review + push"): the labels change only on a push (the head moved: "reviewing" until Gitar judges it), on Gitar
 // submitting or dismissing a review or posting a new comment (its verdict), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
 // them used up the repo's REST budget, and the runs that hit the limit left labels wrong in silence (#2516, 29 Oct 2026). Reads are one GraphQL call.
-// Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
+// Usage (workflow .github/workflows/pr-labels.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
