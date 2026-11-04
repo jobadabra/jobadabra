@@ -60,6 +60,12 @@ class EuresTest(unittest.TestCase):
         self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
         self.assertEqual(calls[0]['locationCodes'], ['be'])
 
+    def test_a_title_and_employer_the_portal_sends_escaped_are_text(self):
+        # Why (4 Nov 2026, a tester on 0.9.6): "Audit Pharmaceutical &amp; Life Sciences" in the Jobs list, from a EURES job.
+        found = eures.eures(SEARCH, get=lambda url, data=None, headers=None, timeout=None: {'jvs': [jv('a', 'Audit Pharmaceutical &amp; Life Sciences', 'BE100', 'Smith &amp; Sons')]},
+                            client=Client({'Brussels': 'BE10'}))
+        self.assertEqual([(j['title'], j['company']) for j in found], [('Audit Pharmaceutical & Life Sciences', 'Smith & Sons')])
+
     def test_a_posting_the_portal_sends_as_a_markdown_page_is_kept_as_plain_text(self):
         # Why (4 Nov 2026, a tester on 0.9.6): the Description tab opened on "---base:meta-keywords…" and literal "###" for a EURES job.
         page = '---base:meta-keywords:meta-viewport: width=device-width, initial-scale=1.0title: Cook--- Cook=====Acme hires. ### Tasks Cook **well**.'

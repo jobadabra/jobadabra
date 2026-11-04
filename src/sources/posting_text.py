@@ -23,6 +23,18 @@ _RULE = re.compile(r'={3,}')
 _HASHES = re.compile(r'(?m)^(#{1,6})[ \t]+(?=\S)|(?<=\s)#{2,6}[ \t]+(?=\S)')
 
 
+_ENTITY = re.compile(r'&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);')
+
+
+def label(value):
+    """A job's title, employer or place as plain text: HTML entities decoded (twice, as a feed may escape twice) and whitespace tidied. Only entities that
+    end in ';' count, so "Smith &not Sons" keeps its words (html.unescape would turn that into a "¬")."""
+    text = str(value or '')
+    for _ in range(2):
+        text = _ENTITY.sub(lambda found: html.unescape(found[0]), text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def _clean(fragment):
     return re.sub(r'\s+', ' ', _TAG.sub(' ', fragment)).strip()
 
