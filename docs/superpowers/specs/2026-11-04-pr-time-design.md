@@ -30,7 +30,19 @@ Script: label, Gitar, verdict and `cancel` jobs left out, since they end long af
 - main keeps running everything after each merge, on both systems.
 - After a week: compare red-on-main before and after, and bring the numbers to the coordinator. Windows follows only on the owner's yes.
 
+## Would it have missed anything? (replay, 4 Nov 2026)
+The last 40 red `desktop (ubuntu)` PR runs, through `tools/affected-tests.py` with each PR's changed files:
+
+| Reds | Runs | Caught |
+|---|---|---|
+| A test failed | 29 | 29, after one fix |
+| Lint failed, before any test | 11 | 11, lint still runs on every PR |
+
+- The one fix: `rename-guard` runs a tool as a process, so neither imports nor its text named what it reads. It missed 2 runs before the fix.
+- 2/2 uses that picker, already proven by the push gate: no new list. Files are matched by name on today's tree, so this is strong evidence, not proof; the week's red-on-main count is the proof.
+- Last 25 PRs: median 358 of 1,018 files, 5 run everything. Test time 164 s → about 58 s, estimated.
+
 ## Progress
-- [ ] 1/2 Windows job leaves out lint and tooling tests on a PR
-- [ ] 2/2 Linux job runs only what a change reaches
+- [x] 1/2 Windows job leaves out lint and tooling tests on a PR: 5 min 44 s → 4 min 26 s (proof: .github/workflows/tests-desktop-windows.yml @08129648)
+- [x] 2/2 Linux job runs only what a change reaches (proof: tests/guards/rules/test_pr_desktop_picks.py)
 - [ ] Red-on-main compared after a week
