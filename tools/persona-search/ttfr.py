@@ -20,7 +20,7 @@ def ts(text):
 def seen_and_fit():
     """(seconds each in-places job appeared, seconds each fit 70+ was scored), both empty when the press was cut before any step opened the stores.
     Why (PR 3130, run 41807509648, 4 Nov 2026): the 3-minute stop came before the first step, the tables were missing and this died, so the row went red
-    "wrote no numbers" instead of grey "AI slow"."""
+    "wrote no numbers" and the persona's row was lost."""
     tracker, db = sqlite3.connect(DATA / 'tracker.sqlite'), sqlite3.connect(JOBS_DB)
     if not has(tracker, 'cron_runs') or not has(db, 'jobs'):
         return [], []

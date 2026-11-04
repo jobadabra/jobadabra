@@ -94,10 +94,10 @@ class SlowAiIsNotAProductZero(unittest.TestCase):
 
 
 class APressCutBeforeTheStoreOpened(unittest.TestCase):
-    """Guard: release — a persona the Codex relay starved turns a PR's Search check red ("wrote no numbers") instead of grey, so every PR waits on a re-run.
+    """Guard: release — a persona whose press was cut before the store opened loses its whole row ("wrote no numbers"), so the Search check report has a hole.
     Why (PR 3130, run 41807509648, persona 6, 4 Nov 2026): the Codex relay took 69 s to draft the strategy and 101 s for one decide call, the 3-minute stop came
     before any step opened the job store, and metrics.py died on "no such table: jobs". run.mjs then wrote no presses.jsonl and the row went red "wrote no numbers"
-    instead of grey "AI slow" like the five personas whose press was cut a little later."""
+    while the five personas whose press was cut a little later kept their row."""
 
     def test_every_script_run_after_a_press_reads_a_missing_store_as_zero(self):
         log = Path(tempfile.mkdtemp()) / 'run-1.log'
