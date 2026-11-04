@@ -35,6 +35,10 @@ export async function alertCreditOut({provider, text, always = false, env = proc
   return send(creditMessage({provider, text, env}), env, fetcher);
 }
 
+// Why (4 Nov 2026, a8 via mac-32): a dropped connection was told as "AI credit ran out · Codex refused". Money is named only on the broker's own budget reason (`budget:`), the neuron cap or a provider's credit words: a 503 about one bad reply or a lost login is no budget. The caller's verdict is about a refusal, so it is used only then.
+const saidLimit = text => /budget:|\bneurons?\b/i.test(text) || isCreditOut(text);
+const CREDIT_TITLE = 'AI credit ran out', FAILED_TITLE = 'AI calls failed', FAILED_VERDICT = 'Not a credit problem: these calls got no answer, and their work waits for a later run';
+
 // Read cap files and the runner's aiCapped results; unrelated failed values keep their ordinary verdict.
 function capNotes(folder) {
   let entries;
@@ -55,10 +59,11 @@ function capNotes(folder) {
 export async function alertCappedSteps({artifacts, marker, verdict = 'AI steps are grey; the beta is not held', env = process.env, fetcher = fetch, log = console.log}) {
   const notes = [...new Set(capNotes(artifacts))];
   if (!notes.length) return 'credit-alert: no capped AI steps';
-  for (const note of notes) log(`::warning title=AI credit ran out::${note.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
+  for (const note of notes) log(`::warning title=${saidLimit(note) ? CREDIT_TITLE : FAILED_TITLE}::${note.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
   if (marker && fs.existsSync(marker)) return 'credit-alert: this run already alerted';
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
-  const result = await send(alertHtml({icon: '🩶', title: 'AI credit ran out', verdict,
+  const credit = notes.some(saidLimit);
+  const result = await send(alertHtml({icon: credit ? '🩶' : '🟠', title: credit ? CREDIT_TITLE : FAILED_TITLE, verdict: credit ? verdict : FAILED_VERDICT,
     bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [notes.slice(0, 3).join('; ')]}],
     links: [{text: 'Open the run', url: run}]}), env, fetcher);
   if (marker && result === 'ci-alert: sent') {

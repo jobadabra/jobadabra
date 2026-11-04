@@ -6,19 +6,19 @@ export class AiRefused extends Error {
   constructor(status, reason) { super(`broker answered ${status}: ${reason}`); this.name = 'AiRefused'; this.status = status; this.reason = reason; this.kind = kindOf(status, reason); }
 }
 
-// The broker's words: 'capped' = its allowance (daily, own share, week) or its login said no (429/503); 'no-token' = this run has no GitHub OIDC token (the workflow needs id-token: write); 'unreachable' = no answer; else its HTTP status
+// The broker's words: 'capped' = its allowance (daily, own share, week) or its login said no (429/503); 'no-token' = this run has no GitHub OIDC token (the workflow needs id-token: write); 'unreachable' = no answer came back, a failed connection that says nothing about limits; else its HTTP status
 // (401/403: it did not know the run's token or repository; 5xx: the Codex call itself failed).
 export function kindOf(status, reason = '') {
-  if (status === 'capped') return 'limit';
+  if (status === 'capped') return /budget:|login/.test(reason) ? 'limit' : 'overloaded';   // Why (4 Nov 2026): the client calls every 503 capped; fallback:reply-refused is one engine's bad reply, not an allowance.
   if (status === 'no-token' || status === 401 || status === 403) return 'auth';
-  if (status === 'unreachable') return 'overloaded';
+  if (status === 'unreachable') return 'connection';
   if (status === 429) return 'rate';
   if (status === 529 || status >= 500) return 'overloaded';
   if (/usage limit|spend(ing)? limit|credit balance|billing|quota|budget/i.test(reason)) return 'limit';
   return 'other';
 }
-// Why (2 Nov 2026): the broker runs Codex, Claude or Free AI, so a refusal never names one of them; the broker's own words follow in `reason`.
-const WORDS = {limit: 'no AI engine has an allowance left, or its login is not available', auth: 'the AI broker did not accept this run (no run token, or a repository it does not know)', rate: 'the AI broker is rate-limiting', overloaded: 'the AI broker is unreachable or its call failed', other: 'the AI broker refused the request'};
+// Why (2 Nov 2026; 4 Nov 2026, a8 via mac-32): the broker runs Codex, Claude or Free AI, so no refusal names one of them, and its own words follow in `reason`; a failed connection has its own words, since "overloaded" claimed a load nobody measured.
+const WORDS = {limit: 'no AI engine has an allowance left, or its login is not available', auth: 'the AI broker did not accept this run (no run token, or a repository it does not know)', rate: 'the AI broker is rate-limiting', overloaded: 'the AI broker failed this call', connection: 'no answer came back from the AI broker (a failed connection, not a limit)', other: 'the AI broker refused the request'};
 
 /** One log line for the engine that answered, e.g. "AI: claude / claude-haiku-5-5 (codex ran-out)"; '' when the answer says nothing. A client that sends no engine yet shows the model alone. */
 export function aiLine(answer) {
@@ -34,7 +34,7 @@ export const isRefusal = error => error instanceof AiRefused;
 // "AI skipped (limit): <the broker's own words>": for the log line, the red run and the Telegram message.
 export const describe = error => `AI skipped (${error.kind}): ${WORDS[error.kind]}. ${error.reason}`;
 // A limit or a bad key will not clear within the run: the job stops asking and uses its fallback for everything left.
-export const staysDown = error => isRefusal(error) && ['limit', 'auth', 'rate', 'overloaded'].includes(error.kind);
+export const staysDown = error => isRefusal(error) && ['limit', 'auth', 'rate', 'overloaded', 'connection'].includes(error.kind);
 
 // Tell the owner once per outage: when the run before this one was not red (the outage just began) or once a day at 08:xx Zurich as a reminder. `previous` = that run's conclusion, null when unknown (then tell).
 export const shouldTell = ({previous = null, zurichHour = -1}) => previous !== 'failure' || zurichHour === 8;

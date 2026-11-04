@@ -47,15 +47,30 @@ const told = answer => { const line = aiLine(answer); if (line && !printed.has(l
 export const resetTold = () => printed.clear();
 
 /**
- * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model, engine?, fellBack?, ms} (ms is container Codex execution, excluding its later rate-limit lookup) or {ok: false, status, detail}.
- * status 'capped' = the broker's budget or login said no (429/503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer.
+ * Why a fetch failed, in the words of the layer that failed. Takes the caught error; returns e.g. "fetch failed (UND_ERR_SOCKET: other side closed)", or the message alone when no cause came with it.
+ * Why (4 Nov 2026, a8 via mac-32): Node's fetch always says "fetch failed" and keeps the socket's code on error.cause (an AggregateError's first error when every address failed), so two night alerts carried no cause at all.
  */
-export async function askBroker(body, {env = process.env, fetchImpl = fetch} = {}) {
-  const token = await runToken(env, fetchImpl).catch(() => null);
+export function failureOf(error) {
+  const cause = error?.cause?.errors?.[0] || error?.cause;
+  const said = [cause?.code, cause?.message].filter(Boolean).join(': ');
+  return `${error?.message || error}${said ? ` (${said})` : ''}`;
+}
+
+/**
+ * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model, engine?, fellBack?, ms} (ms is container Codex execution, excluding its later rate-limit lookup) or {ok: false, status, detail}.
+ * status 'capped' = the broker's budget or login said no (429/503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer (the detail names the cause and how long the call was open; it says nothing about credit).
+ */
+export async function askBroker(body, {env = process.env, fetchImpl = fetch, now = Date.now} = {}) {
+  const token = await runToken(env, fetchImpl).catch(error => error);
+  // Why (4 Nov 2026): a network failure on the way to GitHub's token service is not a job without id-token; the old catch said it was.
+  if (token instanceof Error) return {ok: false, status: 'unreachable', detail: `no run token from GitHub: ${failureOf(token)}`};
   if (!token) return {ok: false, status: 'no-token', detail: 'no GitHub OIDC token here (the job needs permissions: id-token: write; a fork run has none)'};
+  const started = now();
   const answer = await fetchImpl(`${BROKER_URL(env)}/call`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toBrokerCall(body)), signal: AbortSignal.timeout(180000)}).catch(error => error);
-  if (answer instanceof Error) return {ok: false, status: 'unreachable', detail: `no answer from the broker: ${answer.message}`};
-  const data = await answer.json().catch(() => ({}));
+  if (answer instanceof Error) return {ok: false, status: 'unreachable', detail: `no answer from the broker: ${failureOf(answer)} after ${Math.round((now() - started) / 1000)} s`};
+  const data = await answer.json().catch(error => (answer.ok ? error : {}));
+  // Why (4 Nov 2026, review): a connection lost after the headers left an empty 200 that read as an answer with no text.
+  if (data instanceof Error) return {ok: false, status: 'unreachable', detail: `the broker's answer was cut off: ${failureOf(data)} after ${Math.round((now() - started) / 1000)} s`};
   if (answer.status === 429 || answer.status === 503) return {ok: false, status: 'capped', detail: `broker: ${data.why || answer.status}`};
   if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${data.why || data.error || answer.status}`};
   told(data);
