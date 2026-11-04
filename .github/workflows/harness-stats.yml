@@ -26,8 +26,7 @@ jobs:
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+      REPO: ${{ github.repository }}   # the site's write key is NOT here: only the step that stores the file has it (the step that reads the artifacts never does)
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -36,6 +35,8 @@ jobs:
       - name: Read the plan, the layers and the run records
         run: node tools/harness-stats.mjs --out "$RUNNER_TEMP/harness.json"
       - name: Store it for the admin page
+        env:
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # Why (4 Nov 2026, owner's coordinator): no step that parses a CI artifact holds this secret
         run: |
           if [ -z "$SELFHEAL_PUBLISH_KEY" ] || [ ! -s "$RUNNER_TEMP/harness.json" ]; then
             echo "::notice::Nothing stored (no key, or no harness numbers)."

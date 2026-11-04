@@ -44,6 +44,12 @@ test('runs without a record are skipped, a record is read from record.json only,
   const got = fetchRuns('jobadabra/jobadabra', now, api, download);
   assert.deepEqual(got.map(item => item.run_id), [2], 'run 1 has no artifact, 3 is not JSON, 4 is over 64 KB');
 });
+test('the workflow gives the site key to the store step only, never to the step that reads the artifacts, and never checks out the fixer run', () => {
+  const yml = fs.readFileSync(new URL('../../../../.github/workflows/harness-stats.yml', import.meta.url), 'utf8');
+  const [head, readStep, storeStep] = yml.split(/\n      - name: /);
+  assert.ok(!/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(head) && !/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(readStep), 'the read step has no secret'); assert.match(storeStep, /SELFHEAL_PUBLISH_KEY: \$\{\{ secrets\.SELFHEAL_PUBLISH_KEY \}\}/);
+  assert.ok(!/head_branch|head_sha|workflow_run\.(head|pull)|inputs\./.test(yml.replace(/^#.*$/gm, '')), 'nothing from the triggering run reaches a command or a checkout');
+});
 test('the body is one card for today: plan rows, the web group, layers, sources and the records', () => {
   const body = compute({plan, prs: [pr(10, '[hm] 2/7 Move walls')], webPrs: [pr(366, '[57] 1/3 One agent card per row', {state: 'MERGED', mergedAt: '2026-11-04T20:00:00Z'})], runs: [recordOf(record, run)]}, {has: () => false, count: () => 0}, now);
   const [day] = body.days;
