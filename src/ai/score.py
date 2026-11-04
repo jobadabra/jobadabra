@@ -446,7 +446,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
                     if cost.limit_reached(error):
                         # The account's spend limit: every other call would fail the same way. Stop; the next run continues.
                         if stats is not None:
-                            stats['limit'] = 'cli' if cost.cli_limit(error) else True
+                            stats['limit'] = cost.limit_kind(error)
                         print(f'AI limit reached: {cost.limit_reason(error)}, {len(jobs) - scored - failures} job(s) left for the next check')
                         for pending in futures:
                             pending.cancel()

@@ -187,8 +187,8 @@ export function whenDrained(fault) {
   return fault.pending ? new Promise(resolve => { fault.waiters.add(resolve); }) : Promise.resolve();
 }
 
-// How the app words a failed AI call in a run's warning (lowercase): the limit, the call, the busy service, the technical line.
-const AI_WARNING_WORDS = ['limit', 'the ai call failed', 'busy or unavailable', 'ai unavailable', 'technical:'];
+// How the app words a failed AI call in a run's warning (lowercase): the limit, the call, the busy service, the technical line, the refused key.
+const AI_WARNING_WORDS = ['limit', 'the ai call failed', 'busy or unavailable', 'ai unavailable', 'technical:', 'key was refused'];
 
 /** Send the same provider-shaped error for a suite stand-in and a declared stored refusal. */
 function sendRefusal(res, mode, openai, stats) {

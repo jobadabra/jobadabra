@@ -5,7 +5,7 @@ it is: the Anthropic path is the contract's reference shape, so nothing is trans
 """
 import os
 
-from .contract import Adapter
+from .contract import Adapter, AiLimit
 from .schema import without_limits
 
 ACTIONS = ('enrich', 'score', 'kit', 'prep', 'insight', 'mail', 'inbox', 'review', 'interview', 'interview_patterns', 'opportunity', 'added', 'import', 'scout', 'decide', 'tailor', 'cover_letter', 'answer', 'answer_review', 'web_search',
@@ -66,6 +66,26 @@ def named_by_answer(response):
     return response
 
 
+KEY_TEXT = 'The AI key was refused (Settings → Connections → AI): check it, or switch engines there.'
+
+
+def key_refused(error):
+    """An Anthropic SDK error answering 401: the key (or Free AI's trial key) is not accepted. Read by the error's package and status, so nothing here needs the SDK installed.
+    Why (se, 4 Nov 2026, code review): not a 403: Anthropic also answers 403 for a model or region this key may not use, which skips that one job; calling it a refused key would stop the whole run."""
+    return type(error).__module__.split('.')[0] == 'anthropic' and getattr(error, 'status_code', None) == 401
+
+
+def refused(error):
+    """A refused key as the contract's `AiLimit` (final: no retry helps), keeping the API's own status and error type for the log (contract.error_facts).
+    Why (se, 4 Nov 2026, Sentry APP-42/43/44): the SDK's raw 401 left this adapter, so interview, interview insights and a run's AI judgments failed with
+    "AuthenticationError: invalid x-api-key"; the OpenAI adapter (openai_api.error_of) already maps its 401/403 this way."""
+    body = getattr(error, 'body', None)
+    body = body.get('error', body) if isinstance(body, dict) else {}
+    limit = AiLimit(KEY_TEXT, final=True)
+    limit.ai_status, limit.code = error.status_code, str(body.get('type') or '') if isinstance(body, dict) else ''
+    return limit
+
+
 class AnthropicApi(Adapter):
     name, family = 'api', 'claude'
     label = 'Anthropic API'
@@ -75,5 +95,10 @@ class AnthropicApi(Adapter):
         self.client = client if client is not None else sdk(action)   # made now, as before: a missing SDK says so at once
 
     def complete(self, request):
-        response = self.client.messages.create(**for_api(request.params))
+        try:
+            response = self.client.messages.create(**for_api(request.params))
+        except Exception as error:   # noqa: BLE001 - only a refused key is mapped; every other SDK error leaves as it was
+            if key_refused(error):
+                raise refused(error) from error
+            raise
         return named_by_answer(response)

@@ -32,7 +32,8 @@ def left_out(stats, what):
         return []
     from .ai import providers
     # The engine's own limit (an engine that can't go on: its plan, its sign-in, its key); a bare True is the Anthropic API's spend limit.
-    why = (providers.spec().limit if stats.get('limit') == 'cli' else
+    why = ('the AI key was refused (Settings → Connections → AI)' if stats.get('limit') == 'key' else
+           providers.spec().limit if stats.get('limit') == 'cli' else
            providers.ENGINES['api'].limit if stats.get('limit') else 'the AI call failed')
     return [f'{left} job(s) not {what}: {why}']
 

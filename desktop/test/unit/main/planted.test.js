@@ -37,9 +37,10 @@ test('a real error in the same minute as a plant is sent', () => {
 
 // Gitar on #3163: the e2e AI stand-in plants one line per word its refusals make the app say (lib/ai-proxy.mjs AI_WARNING_WORDS): a suite that refuses all through its run must not mute its other warnings.
 test('a refusal plant with words hides its AI warning, not an unrelated run warning in the same minute', () => {
-  const REFUSED = ['limit', 'the ai call failed', 'technical:'].map(text => line({at: 99_000, why: 'ai refusal no-credit', kinds: ['run_warning', 'run_failed'], text})).join('');
+  const REFUSED = ['limit', 'the ai call failed', 'technical:', 'key was refused'].map(text => line({at: 99_000, why: 'ai refusal no-credit', kinds: ['run_warning', 'run_failed'], text})).join('');
   assert.equal(asked({kind: 'run_warning', message: 'src run: 2 job(s) not read by AI: the Anthropic API spending limit was reached'}, REFUSED), true);
   assert.equal(asked({kind: 'run_warning', message: 'src scout: job titles not sorted by Claude (the AI call failed): asked again next run'}, REFUSED), true);
+  assert.equal(asked({kind: 'run_warning', message: 'src run: 3 job(s) not scored: the AI key was refused (Settings → Connections → AI)'}, REFUSED), true);
   assert.equal(asked({kind: 'run_warning', message: 'src scheduled: Job boards: 4 read in the last 6 h skipped; reading 3 new ones'}, REFUSED), false);
   assert.equal(asked({kind: 'run_failed', message: 'src run: PermissionError: [Errno 13] Permission denied'}, REFUSED), false);
 });

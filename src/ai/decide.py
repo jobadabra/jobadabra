@@ -37,7 +37,7 @@ _own = {}   # model calls per topic that has its own allowance (decide(allowance
 SCOPE = {'name': None, 'n': 0}   # own_allowance(): the calls inside count against this, not the run's cap
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
-STOPPED = {'why': ''}   # a spent limit: no more asks this run (every page would fail the same way)
+STOPPED = {'why': '', 'key': False}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
 WAITING = {'n': 0, 'said': False, 'calls': {}}   # items left unknown this run; model calls per topic
 
 
@@ -51,6 +51,12 @@ def _is_limit(error):
     return bool(getattr(error, 'ai_limit', False) or getattr(error, 'status_code', None) == 429 or 'HTTP 429' in text or 'reached today' in text)
 
 
+def _stop(error):
+    """Ends the AI's asks for this run; remembers a refused key so the end-of-run line blames the key, not a limit (Sentry APP-42/43/44)."""
+    STOPPED['why'] = f'{error_facts(error)} {error}'
+    STOPPED['key'] = cost.refused_key(error)
+
+
 def items_waiting():
     """The one plain line for this run about items the AI left unknown, or '' (printed once, at the run's end)."""
     n = WAITING['n']
@@ -59,6 +65,8 @@ def items_waiting():
     why = STOPPED['why']
     if 'Free AI' in why:
         return f"Today's Free AI limit is reached: {n} items wait for tomorrow (or add your own key in Settings → Connections → AI)"
+    if why and STOPPED['key']:
+        return f'The AI key was refused: {n} items wait until you check it in Settings → Connections → AI'
     if why:
         return f'The AI limit is reached: {n} items wait for the next run (or add your own key in Settings → Connections → AI)'
     return f'The AI could not judge {n} items this time; they wait for the next run'
@@ -82,7 +90,7 @@ def failed(what, error, n=1):
     """A model call made outside decide() failed (a page read, a link choice): the item stays unknown and the run goes on, never stops on it. A spent
     limit also stops decide()'s asks for the rest of the run (owner's discover run, 26 Oct 2026: a 429 inside a page read ended the step after 163 s)."""
     if _is_limit(error):
-        STOPPED['why'] = f'{error_facts(error)} {error}'
+        _stop(error)
     detail(what, error)
     _wait(None, n)
 
@@ -118,7 +126,7 @@ def cache_only():
 
 def reset_run():
     """A new run's state (tests simulate several runs in one process; the engine starts a fresh process per run)."""
-    STOPPED['why'] = ''
+    STOPPED.update(why='', key=False)
     WAITING.update(n=0, said=False, calls={})
     _calls['n'] = 0
     _own.clear()
@@ -262,7 +270,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
                 results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
             except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
                 if _is_limit(error):
-                    STOPPED['why'] = f'{error_facts(error)} {error}'
+                    _stop(error)
                 detail(f'decide {topic}', error)
                 return _wait(out, len(todo) - start)   # unknown, not guessed: asked again next run
             for result in results:
