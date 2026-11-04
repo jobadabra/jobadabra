@@ -15,7 +15,7 @@ export function installId(storage) {
 }
 
 // Why (4 Nov 2026, a tester: "The feedback box silently cuts text at about 2,000 characters… My last report lost its ending"): the site keeps 8000 (jobadabra-web api/feedback.js MAX_TEXT);
-// the box's maxlength (renderer/index.html) says the same number and its counter (renderer/pages/app-feedback.js) shows how much is left.
+// the box's maxlength (renderer/index.html) says the same number and its count line (renderer/feedback-count.js) shows how much is used from 80% on.
 export const MAX_CHARS = 8000;
 
 /** Posts one feedback to the website. Takes the words, an optional contact, and (only when the person left them on) the page name, the window's JPEG data URL, the redacted logs text, this screen's data and the Profile snapshot (both redacted JSON text);
