@@ -8,6 +8,7 @@ import {STEPS, readTest, startTest, stepStates, verdictOf} from '../../../lib/al
 
 const step = (name, status, conclusion = null) => ({name, status, conclusion});
 const jobWith = (...steps) => ({id: 7, name: 'engine / test', status: 'in_progress', html_url: 'https://github.com/me/r/actions/runs/5/job/7', steps});
+const idle = {listRuns: async () => [], wait: async () => {}};   // no network, no real pause
 const storage = (repo = 'me/r', token = 'ghu_x') => ({settings: () => ({cloud: repo ? {repo} : null}), secret: name => (name === 'GITHUB_TOKEN' ? token : '')});
 
 test('before the job exists every check waits', () => {
@@ -41,11 +42,12 @@ test('the verdict: passed only when every check is ok; cancelled is not failed; 
 test('a test starts only in the person\'s own connected repository, as mode test', async () => {
   const sent = [];
   const dispatch = async (inputs, workflow, why) => { sent.push({inputs, workflow, why}); return {ok: true}; };
-  assert.equal((await startTest(storage(''), {dispatch})).ok, false);
-  assert.equal((await startTest(storage('me/r', ''), {dispatch})).ok, false);
+  assert.equal((await startTest(storage(''), {dispatch, ...idle})).ok, false);
+  assert.equal((await startTest(storage('me/r', ''), {dispatch, ...idle})).ok, false);
   assert.deepEqual(sent, [], 'nothing is sent while GitHub is not connected');
-  const started = await startTest(storage(), {dispatch, now: () => 1_000_000});
+  const started = await startTest(storage(), {dispatch, now: () => 1_000_000, listRuns: async () => [{id: 40}, {id: 38}], wait: idle.wait});
   assert.equal(started.ok, true);
+  assert.equal(started.after, 40, 'the newest run listed before the press: only a higher id is this press\'s');
   assert.equal(started.since, 985_000, 'looks 15 s back: GitHub stamps the run with its own clock');
   assert.deepEqual(sent, [{inputs: {mode: 'test'}, workflow: 'daily.yml', why: 'always-on test button'}]);
 });
@@ -54,13 +56,13 @@ test('an older repo that does not list the test mode is updated once, then asked
   const calls = [];
   const dispatch = async () => { calls.push('dispatch'); return calls.filter(item => item === 'dispatch').length === 1 ? {ok: false, error: "Provided value 'test' for input 'mode' not in the list of allowed values"} : {ok: true}; };
   const update = async () => { calls.push('update'); return []; };
-  assert.equal((await startTest(storage(), {dispatch, update})).ok, true);
+  assert.equal((await startTest(storage(), {dispatch, update, ...idle})).ok, true);
   assert.deepEqual(calls, ['dispatch', 'update', 'dispatch']);
 });
 
 test('any other refusal is reported and the repo is left alone', async () => {
   const calls = [];
-  const result = await startTest(storage(), {dispatch: async () => ({ok: false, error: 'Resource not accessible by integration'}), update: async () => { calls.push('update'); }});
+  const result = await startTest(storage(), {dispatch: async () => ({ok: false, error: 'Resource not accessible by integration'}), update: async () => { calls.push('update'); }, ...idle});
   assert.equal(result.ok, false);
   assert.match(result.error, /not accessible/);
   assert.deepEqual(calls, []);
@@ -120,4 +122,40 @@ test('a missing result file is not a crash: the failed check says to open the ru
 test('another dispatch in the same minute is not the test', async () => {
   const gh = fakeGitHub({runs: [run({id: 6, display_title: 'scheduled'})], jobs: []});
   assert.equal((await readTest(storage(), {since: 0, fetcher: gh.fetcher})).found, false);
+});
+
+test('a 422 that is not the mode list leaves the repo\'s files alone', async () => {
+  const calls = [];
+  const result = await startTest(storage(), {dispatch: async () => ({ok: false, error: 'HTTP 422: Workflow does not have workflow_dispatch trigger'}), update: async () => { calls.push('update'); }, ...idle});
+  assert.equal(result.ok, false);
+  assert.deepEqual(calls, []);
+});
+
+test('a run at or below the id seen before the press is the previous test, not this one', async () => {
+  const gh = fakeGitHub({runs: [run({id: 40, status: 'completed', conclusion: 'success'})], jobs: []});
+  assert.equal((await readTest(storage(), {since: 0, after: 40, fetcher: gh.fetcher})).found, false);
+  const newer = fakeGitHub({runs: [run({id: 40, status: 'completed', conclusion: 'success'}), run({id: 41})], jobs: [jobWith(step('Check · GitHub run', 'in_progress'))]});
+  const read = await readTest(storage(), {since: 0, after: 40, fetcher: newer.fetcher});
+  assert.deepEqual([read.found, read.runId], [true, 41]);
+});
+
+test('once a run was found a later read stays on it, even when a newer test run appears', async () => {
+  const gh = fakeGitHub({runs: [run({id: 41}), run({id: 42})], jobs: [jobWith(step('Check · GitHub run', 'in_progress'))]});
+  assert.equal((await readTest(storage(), {since: 0, after: 40, runId: 41, fetcher: gh.fetcher})).runId, 41);
+});
+
+test('the test job ending before the run list says so still reads the result file (the two lists are read a moment apart)', async () => {
+  const job = {...jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'completed', 'success'), step('Check · AI key', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
+  const file = {steps: {ai: {ok: false, line: 'Your AI key was refused (401). Paste a working key in the app, then press Test again.'}}};
+  const gh = fakeGitHub({runs: [run({status: 'in_progress'})], jobs: [job], artifacts: [{name: 'jobadabra-selftest', expired: false, archive_download_url: 'https://download/result'}], file});
+  const read = await readTest(storage(), {since: 0, fetcher: gh.fetcher, unzip: gh.unzip, wait: async () => {}});
+  assert.match(read.steps[2].line, /refused \(401\)/);
+  assert.equal(read.verdict, 'failed');
+});
+
+test('a failed check whose result file is not listed yet is asked for once more before it is shown without words', async () => {
+  const job = {...jobWith(step('Check · GitHub run', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
+  const gh = fakeGitHub({runs: [run({status: 'completed', conclusion: 'failure'})], jobs: [job], artifacts: []});
+  await readTest(storage(), {since: 0, fetcher: gh.fetcher, wait: async () => {}});
+  assert.equal(gh.asked.filter(route => route.endsWith('/artifacts')).length, 2);
 });

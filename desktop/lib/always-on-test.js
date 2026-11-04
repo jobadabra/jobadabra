@@ -37,17 +37,23 @@ export function verdictOf(states, job, run) {
 }
 
 /** Starts the test run in the person's repository. -> {ok, since} (since: when to look for the run), or {ok: false, error}. An older repo whose workflow does not list the `test` mode is brought up to date once, then asked again. */
-export async function startTest(storage, {fetcher, siteFetcher, now = Date.now, dispatch, update = github.updateRepo} = {}) {
+export async function startTest(storage, {fetcher, siteFetcher, now = Date.now, dispatch, update = github.updateRepo, wait = ms => new Promise(done => setTimeout(done, ms)), listRuns = github.dispatchedRuns} = {}) {
   const {repo} = storage.settings().cloud || {};
   if (!repo || !storage.secret('GITHUB_TOKEN')) return {ok: false, error: 'Always on is not connected to GitHub yet. Turn it on first.'};
   const send = dispatch || github.cloudDispatch(storage, () => {}, {fetcher});
   const since = now() - 15000;   // GitHub stamps the run with its own clock
+  // Why (4 Nov 2026, review of 3/3): `since` alone can match the previous test run when it started less than 15 s before this press (a stale verdict, the new run never read), so the newest run id listed
+  // BEFORE the dispatch is kept too, and only a run with a higher id is this press's. Best effort: no list means 0, and `since` still bounds it.
+  const before = await listRuns(storage, {workflow: 'daily.yml', since: 0, fetcher}).catch(() => []);
+  const after = before.reduce((top, run) => Math.max(top, Number(run.id) || 0), 0);
   let result = await send({mode: 'test'}, 'daily.yml', 'always-on test button');
-  if (!result.ok && /allowed values|input .*mode|422/i.test(result.error || '')) {
+  // Only the "mode lists no `test`" refusal updates the repo; any other 422 (workflow disabled, no dispatch trigger) must not rewrite the person's workflow files and secrets.
+  if (!result.ok && /allowed values|not in the list/i.test(result.error || '')) {
     await update(storage, {fetcher, siteFetcher});
+    await wait(3000);   // GitHub indexes the pushed workflow file a moment later
     result = await send({mode: 'test'}, 'daily.yml', 'always-on test button');
   }
-  return result.ok ? {ok: true, since, repo} : {ok: false, error: result.error || 'GitHub did not start the test.'};
+  return result.ok ? {ok: true, since, after, repo} : {ok: false, error: result.error || 'GitHub did not start the test.'};
 }
 
 // selftest.json from the run's artifact, or null (the run ended before it could write one, or the artifact is not there yet).
@@ -69,15 +75,22 @@ async function resultOf(storage, runId, {fetcher = globalThis.fetch, unzip} = {}
   } catch { return null; } finally { fs.rmSync(folder, {recursive: true, force: true}); }
 }
 
-/** Reads the test started at `since`: {found, verdict, steps, url}. found is false until GitHub lists the run. Asks for the result file only once the run has ended. */
-export async function readTest(storage, {since = 0, fetcher, unzip} = {}) {
+/** Reads the test started at `since`, newer than run `after`: {found, verdict, steps, url, runId}. Once a run was found, pass its `runId` back so a later read stays on it. found is false until GitHub lists the run.
+ *  Asks for the result file once the run or its test job has ended, and once more after a pause when a failed check came back with no words (the artifact can be listed a moment late). */
+export async function readTest(storage, {since = 0, after = 0, runId = 0, fetcher, unzip, wait = ms => new Promise(done => setTimeout(done, ms))} = {}) {
   const runs = await github.dispatchedRuns(storage, {workflow: 'daily.yml', since, fetcher});
-  const run = runs.filter(item => !item.title || item.title === 'test').pop();   // the newest test run (a run's title is its mode); another dispatch in the same minute is not ours
-  if (!run) return {found: false, verdict: 'running', steps: stepStates(null, null), url: ''};
+  const mine = runs.filter(item => (!item.title || item.title === 'test') && (runId ? item.id === runId : item.id > after));   // a run's title is its mode; another dispatch in the same minute is not ours
+  const run = mine.pop();
+  if (!run) return {found: false, verdict: 'running', steps: stepStates(null, null), url: '', runId: 0};
   const jobs = await github.runJobs(storage, run.id, {fetcher});
   const job = jobs.find(item => /(^|\/ )test$/.test(item.name || '')) || null;
-  const ended = run.status === 'completed';
-  const result = ended ? await resultOf(storage, run.id, {fetcher, unzip}).catch(() => null) : null;
-  const steps = stepStates(job, result);
-  return {found: true, verdict: verdictOf(steps, job, run), steps, url: job?.html_url || run.html_url || ''};
+  const ended = run.status === 'completed' || job?.status === 'completed';   // the same test verdictOf uses: the run list and the job list are read a moment apart
+  let result = ended ? await resultOf(storage, run.id, {fetcher, unzip}).catch(() => null) : null;
+  let steps = stepStates(job, result);
+  if (ended && !result && steps.some(item => item.state === 'failed')) {
+    await wait(2000);
+    result = await resultOf(storage, run.id, {fetcher, unzip}).catch(() => null);
+    steps = stepStates(job, result);
+  }
+  return {found: true, verdict: verdictOf(steps, job, run), steps, url: job?.html_url || run.html_url || '', runId: run.id};
 }

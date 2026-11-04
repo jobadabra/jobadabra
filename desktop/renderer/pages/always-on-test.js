@@ -2,11 +2,11 @@
 // (lib/always-on-test.js reads the run). One owner of the state here: `phase`, changed only by press, poll and setReady. Guard: test/unit/renderer/always-on-test-words.test.js (words); the page is checked in the demo.
 import {el, pill, liveDot} from '../components.js';
 import {$, show} from './core.js';
-import {NAME, lead, pillFor, buttonFor, chipFor, summary, startFailed, NEVER_LISTED} from '../always-on-test-words.js';
+import {NAME, lead, pillFor, buttonFor, chipFor, summary, startFailed, advance} from '../always-on-test-words.js';
 
 const POLL_MS = 3000;
-const GIVE_UP_MS = 6 * 60 * 1000;   // Why (4 Nov 2026): a test run lasts about a minute; six minutes of "running" is a stuck runner, and the row then says so instead of spinning for ever
-let way = 'own', phase = 'idle', since = 0, startedAt = 0, timer = 0, missing = [], steps = [], url = '', message = '';
+// `turn` counts presses and resets: a read that was in flight when it changed belongs to an older test and is dropped (review of 3/3, 4 Nov 2026).
+let way = 'own', phase = 'idle', since = 0, after = 0, runId = 0, turn = 0, startedAt = 0, timer = 0, missing = [], steps = [], url = '', message = '';
 
 function drawSteps() {
   const list = $('aon-test-steps');
@@ -35,32 +35,35 @@ function draw() {
 
 async function poll() {
   clearTimeout(timer);
+  const mine = turn;
   let read;
-  try { read = await window.pilot.cloudTestRead(since); } catch (error) { read = {found: false, verdict: 'running', steps: [], url: '', error: String(error?.message || error)}; }
-  if (phase !== 'starting' && phase !== 'running') return;   // a newer press or setReady already decided
+  try { read = await window.pilot.cloudTestRead(since, after, runId); } catch (error) { read = {found: false, steps: [], error: String(error?.message || error)}; }
+  if (mine !== turn || (phase !== 'starting' && phase !== 'running')) return;   // a newer press or setReady already decided
   steps = read.steps?.length ? read.steps : steps;
   url = read.url || url;
-  if (read.found) { phase = read.verdict; message = ''; }
-  else if (Date.now() - startedAt > GIVE_UP_MS / 6) message = NEVER_LISTED;   // GitHub lists a dispatched run within seconds
-  if (phase === 'running' && Date.now() - startedAt > GIVE_UP_MS) { phase = 'failed'; message = 'The test is taking far longer than it should. Open the run to see where it waits.'; }
-  if (phase === 'starting' || phase === 'running') timer = setTimeout(poll, POLL_MS);
+  runId = read.runId || runId;
+  const next = advance({phase, read, elapsedMs: Date.now() - startedAt});
+  phase = next.phase; message = next.message;
+  if (next.again) timer = setTimeout(poll, POLL_MS);
   draw();
 }
 
 async function press() {
   clearTimeout(timer);
-  phase = 'starting'; steps = []; url = ''; message = '';
+  const mine = ++turn;
+  phase = 'starting'; steps = []; url = ''; message = ''; runId = 0;
   draw();
   const started = await window.pilot.cloudTestStart();
+  if (mine !== turn) return;
   if (!started?.ok) { phase = 'failed'; message = startFailed(started?.error); draw(); return; }
-  since = started.since; startedAt = Date.now();
+  since = started.since; after = started.after || 0; startedAt = Date.now();
   poll();
 }
 
 /** Called by the GitHub card whenever its three requirements change: `names` are the ones still to set up (empty = the test may run). */
 export function setReady(names) {
   missing = names;
-  if (names.length && (phase === 'starting' || phase === 'running')) { clearTimeout(timer); phase = 'idle'; steps = []; }   // a key removed mid-test: the result is no longer about the setup
+  if (names.length && (phase === 'starting' || phase === 'running')) { clearTimeout(timer); turn++; phase = 'idle'; steps = []; message = ''; }   // a key removed mid-test: the result is no longer about the setup
   if ($('aon-test-go')) draw();
 }
 

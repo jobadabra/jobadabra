@@ -1,7 +1,7 @@
 // Always on's Test button, every sentence a person can meet (renderer/always-on-test-words.js): why it is off, what it does, one chip per state, what a failed or stopped test says.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lead, list, pillFor, buttonFor, chipFor, summary, startFailed, OURS_CLOSED, FOR} from '../../../renderer/always-on-test-words.js';
+import {advance, NEVER_LISTED, TOO_LONG, lead, list, pillFor, buttonFor, chipFor, summary, startFailed, OURS_CLOSED, FOR} from '../../../renderer/always-on-test-words.js';
 
 test('the line names what is still missing, or says what the test does and does not do', () => {
   assert.equal(list(['Notion']), 'Notion');
@@ -45,4 +45,18 @@ test('a refused start is one short line', () => {
   assert.equal(startFailed('Resource not accessible\n by integration'), 'The test did not start: Resource not accessible by integration');
   assert.match(startFailed(''), /did not answer/);
   assert.ok(startFailed('x'.repeat(500)).length < 260);
+});
+
+test('every wait ends in a verdict: a run never listed fails after 90 s, a running one after 6 min, so the button always comes back', () => {
+  const none = {found: false}, running = {found: true, verdict: 'running'};
+  assert.deepEqual(advance({phase: 'starting', read: none, elapsedMs: 5000}), {phase: 'starting', message: '', again: true});
+  assert.match(advance({phase: 'starting', read: none, elapsedMs: 40000}).message, /not listed the test run yet/);
+  assert.deepEqual(advance({phase: 'starting', read: none, elapsedMs: 91000}), {phase: 'failed', message: NEVER_LISTED, again: false});
+  assert.deepEqual(advance({phase: 'running', read: running, elapsedMs: 60000}), {phase: 'running', message: '', again: true});
+  assert.deepEqual(advance({phase: 'running', read: running, elapsedMs: 361000}), {phase: 'failed', message: TOO_LONG, again: false});
+});
+
+test('a finished run is final and clears an earlier "not listed yet" line', () => {
+  for (const verdict of ['passed', 'failed', 'cancelled']) assert.deepEqual(advance({phase: 'running', read: {found: true, verdict}, elapsedMs: 500000}).again, false, verdict);
+  assert.equal(advance({phase: 'starting', read: {found: true, verdict: 'running'}, elapsedMs: 40000}).message, '');
 });

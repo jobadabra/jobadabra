@@ -45,13 +45,13 @@ export function registerCloudHandlers(ctx) {
     if (DEMO) return {ok: true, since: Date.now(), repo: 'alexmorgan/jobadabra-personal-always-on'};
     return aonTest.startTest(storage).catch(error => ({ok: false, error: error.message}));
   });
-  ipcMain.handle('cloudTestRead', async (_, since = 0) => {
+  ipcMain.handle('cloudTestRead', async (_, since = 0, after = 0, runId = 0) => {
     if (DEMO) {
       const ticks = Math.floor((Date.now() - since) / 1500);   // three checks, one every 1.5 s
       const steps = aonTest.stepStates(null, null).map((item, index) => ({...item, state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
       return {found: true, verdict: steps.every(item => item.state === 'ok') ? 'passed' : 'running', steps, url: ''};
     }
-    return aonTest.readTest(storage, {since}).catch(error => ({found: false, verdict: 'running', steps: aonTest.stepStates(null, null), url: '', error: error.message}));
+    return aonTest.readTest(storage, {since, after, runId}).catch(error => ({found: false, verdict: 'running', steps: [], url: '', error: error.message}));   // no steps: the ticks already shown stay
   });
   const turnCloudOff = async () => {
     if (storage.settings().telegramCloud) await telegramCloud.turnOff(storage);  // its buttons start runs there

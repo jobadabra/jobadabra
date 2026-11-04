@@ -52,7 +52,7 @@ export function chipFor(state) {
 /** The one line under the checks once a test ended (empty while it runs). */
 export function summary(phase, steps) {
   if (phase === 'passed') return 'All three work. Your next scheduled run can use them.';
-  if (phase === 'cancelled') return 'That test was stopped, probably by a second press. Press Test again.';
+  if (phase === 'cancelled') return 'That test was stopped (a second press, or GitHub\'s time limit). Press Test again.';
   if (phase !== 'failed') return '';
   const bad = steps.find(item => item.state === 'failed');
   return bad ? `${bad.title}: no. Fix that one, then press Test again.` : 'The test ended before every check ran. Open the run to see why, then press Test again.';
@@ -61,5 +61,20 @@ export function summary(phase, steps) {
 /** The sentence when the run could not even be started (GitHub refused, not connected). */
 export const startFailed = error => `The test did not start: ${String(error || 'GitHub did not answer.').replace(/\s+/g, ' ').slice(0, 200)}`;
 
-/** The sentence when nothing shows up after a while: GitHub lists a new run within seconds, so this is a stuck start, not a slow test. */
-export const NEVER_LISTED = 'GitHub has not listed the test run yet. Open the repository and look under Actions, or press Test again.';
+/** The sentence while GitHub has not listed the run yet (it lists a dispatched run within seconds, so this is a slow start, not a slow test). */
+export const NOT_LISTED_YET = 'GitHub has not listed the test run yet. It can take a moment; the repository\'s Actions page shows it too.';
+/** The sentence when it never does: the button is back, so the person can press again. */
+export const NEVER_LISTED = 'GitHub never listed the test run. Open the repository and look under Actions, then press Test again.';
+export const TOO_LONG = 'The test is taking far longer than it should. Open the run to see where it waits, then press Test again.';
+
+const SOFT_MS = 30 * 1000, LISTED_BY_MS = 90 * 1000, GIVE_UP_MS = 6 * 60 * 1000;   // Why (4 Nov 2026, review of 3/3): a run lasts about a minute; every wait ends in a verdict, never a button that stays off for ever
+
+/** One poll's decision, pure: from the phase, what the read said and the time since the press -> {phase, message, again}. Every path out of starting/running ends in a verdict. */
+export function advance({phase, read, elapsedMs}) {
+  if (read.found) {
+    if (read.verdict === 'running' && elapsedMs > GIVE_UP_MS) return {phase: 'failed', message: TOO_LONG, again: false};
+    return {phase: read.verdict, message: '', again: read.verdict === 'running'};
+  }
+  if (elapsedMs > LISTED_BY_MS) return {phase: 'failed', message: NEVER_LISTED, again: false};
+  return {phase, message: elapsedMs > SOFT_MS ? NOT_LISTED_YET : '', again: true};
+}
