@@ -18,13 +18,15 @@ export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalT
       json(fetchImpl, `${API}/pages/${id}`, init, limits.timeoutMs),
       json(fetchImpl, `${API}/blocks/${id}/children?page_size=100`, init, limits.timeoutMs),
     ]).catch(error => { throw /HTTP (403|404)\b/.test(String(error?.message)) ? new Error('page not found, or not shared with the integration (HTTP 404/403)') : error; });
-    if (!Array.isArray(blocks?.results)) return unavailable('Notion answered in an unexpected shape');
+    if (!Array.isArray(blocks?.results) || !page || typeof page.properties !== 'object') return unavailable('Notion answered in an unexpected shape');
     if (page?.archived || page?.in_trash) return unavailable('the page is in the trash');
-    const plain = rich => (Array.isArray(rich) ? rich : []).map(t => String(t?.plain_text ?? '')).join('');
+    // Why (3 Nov 2026, review of 7/8): a mention's plain_text is a person's name or a linked page's title, which no pattern scrub can clean; it is replaced by a marker.
+    const plain = rich => (Array.isArray(rich) ? rich : []).map(t => (t?.type === 'mention' ? '[mention]' : String(t?.plain_text ?? ''))).join('');
     const title = plain(Object.values(page?.properties || {}).find(p => p?.type === 'title')?.title) || '(untitled)';
     const lines = [], skipped = new Set();
     for (const b of blocks.results) {
-      const type = b?.type, prefix = typeof type === 'string' ? TEXT_BLOCKS[type] : undefined;
+      // Why (3 Nov 2026, review of 7/8): the response is untrusted; a block type such as "constructor" must not find a prototype property in the table.
+      const type = b?.type, prefix = typeof type === 'string' && Object.hasOwn(TEXT_BLOCKS, type) ? TEXT_BLOCKS[type] : undefined;
       if (prefix === undefined) { skipped.add(String(type).replace(/[^\w]/g, '').slice(0, 30) || 'unknown'); continue; }
       const text = plain(b[type]?.rich_text);
       if (!text) continue;
@@ -34,7 +36,7 @@ export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalT
     }
     return finish(`# Notion: ${title}`, [
       lines.join('\n') || '(no text blocks)',
-      skipped.size ? `\nNot read: blocks of type ${[...skipped].sort().join(', ')} (only text blocks are read, and not their children).` : '',
+      `\nOnly top-level text blocks are read: what is nested inside toggles, lists and callouts, tables, columns and child pages is not.${skipped.size ? ` Skipped block types: ${[...skipped].sort().join(', ')}.` : ''}`,
       blocks.has_more ? '\nCut: the page has more than 100 top-level blocks; the rest is not read.' : '',
     ].join('\n'), limits);
   });

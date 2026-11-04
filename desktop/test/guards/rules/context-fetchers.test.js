@@ -26,7 +26,7 @@ function web(extra = {}, thread = null) {
   const fetchImpl = async (url, init = {}) => {
     calls.push({url: String(url), method: init.method || 'GET', body: init.body, headers: init.headers || {}});
     if (String(url).includes('api.notion.com')) return String(url).includes('/blocks/')
-      ? ok({results: [{type: 'paragraph', paragraph: {rich_text: [{plain_text: DIRTY}]}}, {type: 'child_page', child_page: {title: 'sub page'}}, {type: 'image', image: {}}, {type: 'heading_2', heading_2: {rich_text: [{plain_text: 'Plan'}]}}], has_more: Boolean(extra.more)})
+      ? ok({results: [{type: 'paragraph', paragraph: {rich_text: [{plain_text: DIRTY}]}}, {type: 'child_page', child_page: {title: 'sub page', rich_text: [{plain_text: 'sub page'}]}}, {type: 'image', image: {rich_text: [{plain_text: 'file.png'}]}}, {type: 'heading_2', heading_2: {rich_text: [{plain_text: 'Plan'}]}}], has_more: Boolean(extra.more)})
       : ok({properties: {Name: {type: 'title', title: [{plain_text: 'Data notes'}]}, Status: {type: 'select'}}});
     if (String(url).includes('posthog.com')) return String(url).endsWith('/api/projects/') ? ok({results: [{id: 4242}]}) : ok({results: [['2026-11-02T00:00:00Z', 12, 5], ['2026-11-03T00:00:00Z', 7, 3]]});
     if (String(url).includes('api.cloudflare.com')) return String(url).endsWith('/accounts') ? ok({result: [{id: 'a'.repeat(32)}]}) : ok({data: {viewer: {accounts: [{workersInvocationsAdaptive: [
@@ -95,11 +95,12 @@ test('the pack names the hub, records what is missing, and stays under its cap',
   fs.mkdirSync(path.join(root, 'docs', 'map'), {recursive: true});
   fs.writeFileSync(path.join(root, 'docs', 'map', 'apply.md'), '---\narea: apply\npaths: [extension]\nupdated: 2026-11-03\n---\n# Apply\n');
   const {fetchImpl} = web();
-  const result = await buildPack({task: 'linear:JOB-1', also: ['jira:ABC-1', 'github:#7'], out, root, env, fetchImpl});
+  const result = await buildPack({task: 'linear:JOB-1', also: ['jira:ABC-1', 'github:#7', 'notion:page id=0123456789abcdef0123456789abcdef'], out, root, env, fetchImpl});
   const index = fs.readFileSync(path.join(result.dir, 'INDEX.md'), 'utf8');
   assert.match(index, /Area: apply/);
   assert.match(index, /docs\/map\/apply\.md/);
   assert.match(index, /jira ABC-1: unavailable: source "jira" is not built yet/);
+  assert.match(index, /notion page id=0123456789abcdef0123456789abcdef: `notion\.md`/);
   assert.ok(result.total <= PACK_MAX);
   for (const f of fs.readdirSync(result.dir)) assert.ok(!/k-linear|k-sentry|k-github|k-posthog|k-cloudflare|k-notion/.test(fs.readFileSync(path.join(result.dir, f), 'utf8')));
 });
@@ -211,12 +212,18 @@ test('Notion keeps a to-do\'s state and code fences, names what it did not read,
   const done = await run([{type: 'to_do', to_do: {...text('reproduce'), checked: true}}, {type: 'to_do', to_do: {...text('fix'), checked: false}}, {type: 'code', code: {...text('select 1'), language: 'sql'}}, {type: 'table'}, {type: 'column_list'}]);
   assert.match(done.markdown, /- \[x\] reproduce\n- \[ \] fix/);
   assert.match(done.markdown, /```sql\nselect 1\n```/);
-  assert.match(done.markdown, /Not read: blocks of type column_list, table/);
+  assert.match(done.markdown, /Skipped block types: column_list, table\./);
+  assert.match(done.markdown, /nested inside toggles, lists and callouts/);
   assert.ok(!done.markdown.includes('Cut:'), 'a page under 100 blocks must not claim a cut');
-  assert.match((await run([{type: 'table'}])).markdown, /\(no text blocks\)[\s\S]*Not read: blocks of type table/);
+  assert.match((await run([{type: 'table'}])).markdown, /\(no text blocks\)[\s\S]*Skipped block types: table\./);
   assert.match((await run([], {}, {...page, archived: true})).notes, /^unavailable: the page is in the trash/);
   assert.match((await run([{type: 'paragraph', paragraph: {rich_text: 'x'}}], {results: 'nope'})).notes, /^unavailable/);
   assert.match((await notion.fetch('page id=0123456789abcdef0123456789abcdef', {env, fetchImpl: async () => ({ok: false, status: 404, json: async () => ({})})})).notes, /not found, or not shared with the integration/);
+  // The response is untrusted: a prototype name is not a block type, a mention's name is not copied, a null page is not a page.
+  const odd = await run([{type: 'constructor', constructor: text('x')}, {type: 'paragraph', paragraph: {rich_text: [{type: 'mention', plain_text: '@Ana Fake'}, {plain_text: ' agreed'}]}}]);
+  assert.ok(!odd.markdown.includes('native code') && !odd.markdown.includes('Ana Fake'), odd.markdown);
+  assert.match(odd.markdown, /\[mention\] agreed/);
+  assert.match((await notion.fetch('page id=0123456789abcdef0123456789abcdef', {env, fetchImpl: async u => ok(String(u).includes('/blocks/') ? {results: []} : null)})).notes, /^unavailable/);
   const dirtyTitle = await run([], {}, {properties: {Name: {type: 'title', title: [{plain_text: 'call ana.fake@example.com'}]}}});
   assert.ok(!dirtyTitle.markdown.includes('ana.fake@example.com'));
 });
