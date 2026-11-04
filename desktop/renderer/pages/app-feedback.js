@@ -6,6 +6,7 @@ import {toastMessage} from './startup.js';
 import {NO_PLACE} from '../targets.js';
 import {plainError} from '../run-warnings.js';
 import {readScreenData} from '../feedback-data.js';
+import {countLine} from '../feedback-count.js';
 import './feedback-screens.js';   // registers each page's data
 
 let prepared = {shot: null, logs: null, page: null, profile: null, identity: null};
@@ -70,11 +71,21 @@ async function open() {
   $('app-feedback-contact-note').hidden = !email;
   drawShot();
   drawPreview();
+  drawCount();   // derived from the box's current value: a reopened dialog keeps its text
   $('app-feedback-dialog').showModal();
   $('app-feedback-text').focus();
 }
 
+// The count is said only near the end (80% of the box's maxlength) and at it: a short note shows nothing (countLine). Why (4 Nov 2026): the box cut text with no word at all.
+// Not a live region: it would read every keystroke past 6,400 (code review, 4 Nov 2026).
+function drawCount() {
+  const line = $('app-feedback-count'), text = countLine($('app-feedback-text').value.length, Number($('app-feedback-text').maxLength));
+  line.hidden = !text;
+  line.textContent = text;
+}
+
 export async function init() {
+  $('app-feedback-text').addEventListener('input', drawCount);
   $('nav-feedback').addEventListener('click', open);
   window.pilot.onOpenFeedback(open);
   $('app-feedback-include-shot').addEventListener('change', drawShot);
@@ -93,6 +104,7 @@ export async function init() {
     button.disabled = false;
     if (!result?.ok) { $('app-feedback-message').textContent = plainError(result?.error || 'Couldn\'t send it.'); return; }
     $('app-feedback-text').value = '';
+    drawCount();
     prepared = {...EMPTY};
     $('app-feedback-dialog').close();
     const left = result.skipped?.length ? ` (without the ${result.skipped.join(' and the ')}: too big)` : '';

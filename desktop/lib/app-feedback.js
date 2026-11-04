@@ -14,12 +14,16 @@ export function installId(storage) {
   return id;
 }
 
+// Why (4 Nov 2026, a tester: "The feedback box silently cuts text at about 2,000 characters… My last report lost its ending"): the site keeps 8000 (jobadabra-web api/feedback.js MAX_TEXT);
+// the box's maxlength (renderer/index.html) says the same number and its counter (renderer/pages/app-feedback.js) shows how much is left.
+export const MAX_CHARS = 8000;
+
 /** Posts one feedback to the website. Takes the words, an optional contact, and (only when the person left them on) the page name, the window's JPEG data URL, the redacted logs text, this screen's data and the Profile snapshot (both redacted JSON text);
  *  `storage` gives the install id. -> {ok: true, skipped?: [parts the site left out as too big]} | {ok: false, error: <words for the person>}; a 429, a bad status and being offline each have their own error. */
 export async function send({text, contact = '', screen = '', screenshot = '', logs = '', page = '', profile = ''}, {storage, version, platform = platformLine(), fetcher = globalThis.fetch, endpoint = ENDPOINT}) {
   const words = String(text || '').trim();
   if (!words) return {ok: false, error: 'Write a few words first.'};
-  if (words.length > 2000) return {ok: false, error: 'Please keep it under 2000 characters.'};
+  if (words.length > MAX_CHARS) return {ok: false, error: `Please keep it under ${MAX_CHARS.toLocaleString('en-US')} characters.`};
   try {
     const response = await fetcher(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({text: words, contact: String(contact || '').trim().slice(0, 200), install: installId(storage), version, platform,
