@@ -16,10 +16,12 @@ test('a list with no match says so in words that fit the default list, and the t
     await kit.go('jobs');
     await kit.until(() => document.getElementById('jobs-empty').textContent.trim(), 'the words under the list');
     const empty = document.getElementById('jobs-empty').textContent.trim();
+    const small = {title: document.querySelector('#find-card .find-title')?.textContent.trim(), lead: document.querySelector('#find-card .find-lead')?.textContent.trim(), shown: !document.getElementById('find-card').hidden};
     document.querySelector('[data-stat=applied]').click();
     await kit.until(() => document.querySelectorAll('article.job-row').length === 3, 'the three applications');
-    return {empty, card: !document.getElementById('find-card').hidden};
+    return {empty, small, card: !document.getElementById('find-card').hidden};
   }});
   assert.equal(result.empty, 'No new matches yet.');
+  assert.deepEqual(result.small, {title: 'Find more jobs', lead: 'Reads your employers and job boards again, and adds what is new.', shown: true}, 'the small card, in its own words (owner, 5 Nov 2026)');
   assert.equal(result.card, false, 'under Applied no Find jobs card');
 });
