@@ -18,6 +18,7 @@ import {SERVICES, isRequired} from './services-list.js';
 import {openLinkedinConsent, refreshLinkedin, view as linkedinView} from './linkedin-consent.js';
 import {emailSetupCard} from './setup-email-card.js';
 import {plainError} from '../run-warnings.js';
+import {beforeOpen} from './open-hooks.js';
 
 // ---------- Settings: sub-pages (Overview, Application profile, Automation, Connections, Data & backup, Advanced) ----------
 let pageNow = '';
@@ -39,6 +40,7 @@ export function settingsPage(name) {
 }
 // One Settings card (setting-<id>): its sub-page, then scrolled to. Used by every link into Settings.
 export function openSetting(id) {
+  beforeOpen[id]?.();
   const card = $(`setting-${id}`) || $(id);  // a card, or a part of one (tg-cloud: inside Always on)
   if (!card || card.closest('[data-parked]')) return;   // a parked feature's card never opens (src/features.py PARKED)
   const view = card.closest('.view')?.dataset.view;

@@ -1,0 +1,5 @@
+/* The Always on choice card and the one way's card under it, drawn as one card (owner, 4 Nov 2026). Why: the two ways used to be two cards that both said "Always on"; now the picked one joins the choice.
+   .setting.x, not .x: style.css loads later and sets .setting's margin and radius. */
+.setting.aon-chooser { margin-bottom: 0; border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0; }
+.setting.aon-way { border-top: 0; border-radius: 0 0 var(--r-md) var(--r-md); padding-top: 0; }
+.aon-way > .summary-head, .aon-way > .panel-lead { display: none; }
