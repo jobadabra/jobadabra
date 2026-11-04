@@ -60,6 +60,12 @@ class EuresTest(unittest.TestCase):
         self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
         self.assertEqual(calls[0]['locationCodes'], ['be'])
 
+    def test_a_posting_the_portal_sends_as_a_markdown_page_is_kept_as_plain_text(self):
+        # Why (4 Nov 2026, a tester on 0.9.6): the Description tab opened on "---base:meta-keywords…" and literal "###" for a EURES job.
+        page = '---base:meta-keywords:meta-viewport: width=device-width, initial-scale=1.0title: Cook--- Cook=====Acme hires. ### Tasks Cook **well**.'
+        found = eures.eures(SEARCH, get=lambda url, data=None, headers=None, timeout=None: {'jvs': [{**jv('a', 'Cook', 'BE100'), 'description': page}]}, client=Client({'Brussels': 'BE10'}))
+        self.assertEqual(found[0]['description'], 'Cook\nAcme hires. Tasks Cook well.')
+
     def test_a_country_word_does_not_admit_other_cities_when_the_person_named_a_city(self):
         # Why (27 Oct 2026, benchmark 40509412515, persona Krakow): "poland" matched every Polish job, shown as "poland, Poland": 1 of 52 local.
         search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels', 'Belgium'], 'country_wide': [], 'abroad': []}}
