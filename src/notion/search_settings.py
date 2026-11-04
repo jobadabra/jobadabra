@@ -20,6 +20,7 @@ page never changes what a search matches. Pages written before this format (no "
 treated every plain entry as a whole word; they are still read that way until `upgrade` rewrites them.
 
     python -m src.notion.search_settings render   # the page as markdown, from the cached files (to create it)
+    python -m src.notion.search_settings render --from settings.json   # the page from {"search": …, "preferences": …} given, the files untouched
     python -m src.notion.search_settings sync     # Notion page -> cached files (what __main__ runs)
     python -m src.notion.search_settings upgrade  # an older page -> this format (prints the new page, or nothing)
 """
@@ -27,6 +28,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 from ..paths import CONFIG, whole_word, write_whole
 
@@ -257,8 +259,8 @@ def _roles_from_titles(search, titles):
     return [dict(have.get(' '.join(title.split()).lower()) or {'title': ' '.join(title.split()), 'also': []}, title=' '.join(title.split())) for title in titles]
 
 
-def apply(values, files=None):
-    """Merge parsed values into the cached settings and write them; returns the files."""
+def merged(values, files=None):
+    """The cached settings with these parsed values merged in, written nowhere: what apply() would write."""
     files = {name: _without_notes(data) for name, data in (files or load_cached()).items()}   # a "_" key is a note of the example files, never a setting
     for (name, path), value in values.items():
         if path == ('target_roles',):
@@ -267,6 +269,11 @@ def apply(values, files=None):
     if ('search', ('target_roles',)) in values:
         from .. import target_roles
         files['search'] = target_roles.with_derived(files['search'])   # role_keywords and the searches follow the one list
+    return files
+
+
+def write_files(files):
+    """Write the cached settings (config/search.json and preferences.json, each in whole); the repo's own example config/ is never written over."""
     if _is_tracked_example_dir():
         # A source checkout with no config folder of its own: config/ here is the example files the repo ships (public). The user's
         # real settings must never be written over them (1 Oct 2026: they were, then nearly committed). The desktop app and the
@@ -277,6 +284,11 @@ def apply(values, files=None):
     for name in ('search', 'preferences'):
         write_whole(CONFIG / f'{name}.json', json.dumps(files[name], indent=2, ensure_ascii=False) + '\n')   # whole: an engine started beside this one reads it at import (src/paths.py)
     return files
+
+
+def apply(values, files=None):
+    """Merge parsed values into the cached settings and write them; returns the files."""
+    return write_files(merged(values, files))
 
 
 def sync(tracker=None, page_id=PAGE_ID):
@@ -371,9 +383,14 @@ def sync_quietly():
 
 
 def main(argv=None):
-    command = (argv or sys.argv[1:] or ['render'])[0]
+    args = argv or sys.argv[1:] or ['render']
+    command = args[0]
     if command == 'render':
-        sys.stdout.write(render())
+        if len(args) == 3 and args[1] == '--from':   # the settings about to be saved, in a file: the page is written before the copy (desktop/lib/strategy-settings.js saveSettings)
+            given = json.loads(Path(args[2]).read_text(encoding='utf-8'))
+            sys.stdout.write(render({name: given.get(name) or {} for name in ('search', 'preferences')}))
+        else:
+            sys.stdout.write(render())
     elif command == 'upgrade':
         sys.stdout.write(upgrade() or '')
     elif command == 'sync':
