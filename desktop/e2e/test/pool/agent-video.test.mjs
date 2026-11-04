@@ -1,10 +1,11 @@
-// The AI user agent's video (lib/agent-video.mjs): off unless AGENT_VIDEO=1, one file and one json with the start time, and a note's clock time maps to a second in the video.
+// The AI user agent's video (lib/agent-video.mjs): off unless AGENT_VIDEO=1, one file and one json, and a note's place is the recorder's own second.
+// Guard: privacy — without it a run could record the app window when AGENT_VIDEO is not set.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {startAgentVideo, seekSeconds, VIDEO_FILE, VIDEO_META} from '../../lib/agent-video.mjs';
+import {startAgentVideo, VIDEO_FILE, VIDEO_META} from '../../lib/agent-video.mjs';
 
 const folder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jp-agent-video-'));
 
@@ -44,7 +45,12 @@ test('a recorder that fails to stop leaves no video and says so, and the night g
   assert.equal(await video.finish(), null);
 });
 
-test('a note made at a clock time is found that many seconds into the video, never before its start', () => {
-  assert.equal(seekSeconds({startedAt: 10_000}, 75_400), 65);
-  assert.equal(seekSeconds({startedAt: 10_000}, 5_000), 0);
+test('a note\'s place is the recorder\'s second (frames written), not the clock: dropped frames do not shift it', async () => {
+  const dir = folder();
+  let written = 0;
+  const video = await startAgentVideo({}, {dir, minutes: 5, env: {AGENT_VIDEO: '1'}, start: async () => ({position: () => written / 10, stop: async () => null})});
+  written = 125;   // 12.5 s of frames went into the file, whatever the wall clock says
+  assert.equal(video.position(), 12.5);
+  const off = await startAgentVideo({}, {dir, minutes: 5, env: {}});
+  assert.equal(off.position(), null);
 });

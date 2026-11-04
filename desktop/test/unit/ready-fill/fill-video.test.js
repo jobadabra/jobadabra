@@ -63,6 +63,7 @@ test('frames go in at the fixed rate and it stops by itself at its limit', async
   const video = await rec.stop();
   assert.equal(ffmpeg.runs[0].written.length, 3, '0.3 s at 10 fps, then no more');
   assert.equal(video.secs, 1, 'whole seconds, at least 1');
+  assert.equal(rec.position(), 0.3, 'the video\'s second is frames written / fps');
   assert.ok(video.bytes > 0 && fs.existsSync(video.path));
   assert.ok(ffmpeg.runs[0].args.join(' ').includes('scale=1280:720'), '720p, the page\'s own shape');
   assert.ok(calls.includes('Page.startScreencast') && calls.includes('Page.stopScreencast') && calls.includes('detach'));
@@ -79,7 +80,7 @@ test('never over 3 minutes, whatever is asked', async () => {
   await rec.stop();
 });
 
-test('a caller with its own cap (the AI user agent, 30 minutes) lifts the limit, and still has one', async () => {
+test('a caller with its own cap (the AI user agent: its session cap plus a minute) lifts the limit, and still has one', async () => {
   const {page} = fakePage();
   const rec = await startFillVideo(page, {dir: dir(), maxSeconds: 1800, hardMaxSeconds: 1800, ...VP8, spawnImpl: fakeFfmpeg().spawnImpl});
   assert.equal(rec.limit, 1800);
@@ -87,6 +88,15 @@ test('a caller with its own cap (the AI user agent, 30 minutes) lifts the limit,
   const over = await startFillVideo(page, {dir: dir(), maxSeconds: 9999, hardMaxSeconds: 1800, ...VP8, spawnImpl: fakeFfmpeg().spawnImpl});
   assert.equal(over.limit, 1800);
   await over.stop();
+});
+
+test('position() is the video\'s own second: a tick the encoder dropped does not move it', async () => {
+  const {page} = fakePage(), run = fakeFfmpeg(), spawnImpl = (...args) => { const proc = run.spawnImpl(...args); proc.stdin.write = () => false; return proc; };   // the first write says "backed up", so every tick after it is dropped
+  const rec = await startFillVideo(page, {dir: dir(), maxSeconds: 5, fps: 10, ...VP8, spawnImpl});
+  await new Promise(resolve => setTimeout(resolve, 450));
+  assert.equal(rec.position(), 0.1, 'one frame written, the later ticks dropped: the file holds 0.1 s though 0.45 s passed');
+  await rec.stop();
+  assert.equal((await startFillVideo(page, {dir: dir(), maxSeconds: 5, ffmpeg: '', ...VP8, encoder: ''})).position(), null, 'no recorder, no position');
 });
 
 test('no ffmpeg, no frame or a failed encode: null, and no file left', async () => {
