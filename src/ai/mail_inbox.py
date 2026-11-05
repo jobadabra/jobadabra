@@ -103,9 +103,9 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             continue
         if result.get('kind') == OUTREACH:
             if not row:
-                made = new_lead(stores, client, model, email, apps, stats, on_new)
+                made, lead = new_lead(stores, client, model, email, apps, stats, on_new)
                 lines += made
-                note(email, 'tracked', result.get('company') or 'recruiter lead', 'new lead; nothing else changed')
+                note(email, 'tracked', _label(lead) if lead else (result.get('company') or 'recruiter lead'), 'new lead; nothing else changed')
                 continue
             result['kind'] = REPLY  # the same recruiter again, about a role already tracked
         if not row and result.get('kind') == 'Interview scheduled':

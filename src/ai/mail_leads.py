@@ -8,7 +8,7 @@ from .. import tgcard
 from ..notion.ledger import REPLY
 from ..stores import rules
 from . import opportunity
-from .mail_lines import _head
+from .mail_lines import _head, _who
 from .mail_match import PLATFORMS, _matches, _same_person, _sender_org, person_name
 from .mail_read import _field, _role
 
@@ -110,27 +110,29 @@ def interview_lead(stores, client, model, email, apps, result, stats):
 
 
 def new_lead(stores, client, model, email, apps, stats, on_new=None):
-    """A recruiter's pitch -> a tracked recruiter lead (opportunity.track); lines for Telegram."""
+    """A recruiter's pitch -> a tracked recruiter lead (opportunity.track): (lines for Telegram, the lead's row or None)."""
     text = f"Subject: {email['subject']}\n\n{email['body']}"
     try:
         lead = opportunity.extract(client, model, text, sender=email['from'], stats=stats)
     except Exception as error:  # noqa: BLE001 — one unreadable email must not stop the check
         print(f"Warning: recruiter email {email['id']} not read: {type(error).__name__}: {error}", file=sys.stderr)
-        return []
+        return [], None
     if not lead.get('is_opportunity'):
-        return []
+        return [], None
     row, _ = opportunity.track(stores, lead, text, source='Gmail', event_source='Gmail', at=email['date'],
                                gmail_id=email['id'], note=f"Recruiter email: \"{email['subject'][:120]}\"")
     if not row:
-        return []
+        return [], None
     apps.append(row)  # a second email in this batch about the same role matches it
     fit = on_new(opportunity.lead_url(lead, text, email['id']), {
         'title': opportunity.title(lead), 'company': lead.get('company') or '', 'location': lead.get('location') or '',
         'work_mode': lead.get('work_mode') or '', 'description': text[:8000]}, row) if on_new else None
     if stats is not None:
-        stats.setdefault('updates', []).append(f"🤝 Recruiter lead · {opportunity.label(lead)}"[:140])
+        # Why (5 Nov 2026, #3187): the job is named as every other update names it ("Who — Role", mail_lines._short) and as this email's own
+        # line does, so the desktop card joins them into one row; opportunity.label() ("Role — Client via Agency") drew a second card.
+        stats.setdefault('updates', []).append(f"🤝 Recruiter lead · {_who(row)} — {_role(row)[:70]}"[:140])
     page = stores.link(row['id'])  # a store without pages (this Mac) has no link: the card shows none
     link = (f"<a href=\"{escape(page, quote=True)}\">In Notion</a>" if page else '')
     return [tgcard.block(f"New recruiter lead · {escape(opportunity.label(lead))}",
                          escape(tgcard.dot(lead.get('salary'), fit)), link,
-                         tgcard.fact('Next step', 'set Stage to Screening once you reply'))]
+                         tgcard.fact('Next step', 'set Stage to Screening once you reply'))], row
