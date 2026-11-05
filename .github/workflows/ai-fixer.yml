@@ -577,7 +577,7 @@ jobs:
           github-token: ${{ github.token }}
 
   # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.
-  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed. A run the guard refused (cap, one at a time) says nothing: it is not the card's run.
+  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed. A run the guard refused (cap, one at a time) says nothing here: it never took the brief, so the site would refuse its report (it owns no card) and the card ages out.
   card:
     needs: [guard, publish, record]
     if: always() && !cancelled() && vars.AI_FIXER != 'off' && needs.guard.result == 'success' && inputs.source == 'feedback' && inputs.pr == ''
