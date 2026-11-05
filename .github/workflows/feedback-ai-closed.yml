@@ -1,0 +1,36 @@
+name: AI fixer
+run-name: Send to AI closed ${{ github.event.pull_request.head.ref }}
+
+# The site learns that the pull request of a "Send to AI" card (feedback-ai.yml opened it as a draft on fd-ai/<ref>) was merged or closed; it moves the card to Fixed (waiting for the release) or back to new.
+# Why (5 Nov 2026, owner: "Yes, rename + fold"; plan docs/superpowers/plans/2026-11-05-check-names.md 3/4): this job lived in feedback-ai.yml beside 6 jobs that run only on a click, so every pull request's close drew
+# 7 rows, 6 of them skipped. On its own it draws 1 row, skipped unless the branch is fd-ai/.
+# pull_request_target runs THIS file from main and checks out the BASE branch: the pull request's own code never runs here. Nothing from the pull request is read except its number, branch name and merged
+# flag (tools/feedback-ai.mjs closedReport: only a branch fd-ai/<ref> of this repository, opened by the workflow, labelled fd-ai; `merged` only when GitHub says so).
+# The site trusts this file's run token only as merged on main and only for merged/closed (jobadabra-web admin/feedback-ai.js CLOSE_WORKFLOW). Guard: desktop/test/tooling/ci/feedback-ai.test.js.
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  closed:
+    name: tell the site
+    if: startsWith(github.event.pull_request.head.ref, 'fd-ai/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write   # the run token the site checks (audience jobadabra-feedback)
+    steps:
+      - uses: actions/checkout@v5   # pull_request_target checks out the BASE branch: the pull request's own code never runs here
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Tell the site
+        run: node tools/feedback-ai.mjs closed
