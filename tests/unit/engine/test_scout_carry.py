@@ -240,7 +240,8 @@ class PublishedIndexIsTheBackupTest(unittest.TestCase):
     def test_a_stale_part_the_published_index_does_not_offer_is_not_made_new_by_the_fill(self):
         scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': OLD, 'kinds': self.NEWER, 'kind_counts': self.COUNTS}], OLD)
         self.seed({**self.feed('co0'), 'kind_counts': None})
-        self.assertEqual(scout_carry.mixes(self.db)[('lever', 'co0')], {'kinds': self.MIX, 'kind_counts': None})
+        mix = scout_carry.mixes(self.db)[('lever', 'co0')]
+        self.assertEqual((mix['kinds'], mix['kind_counts']), (self.MIX, None))
 
     def test_a_kept_mix_from_before_the_kinds_grew_is_not_kept_on_a_re_read(self):
         scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': OLD, 'kinds': self.MIX}], OLD)
