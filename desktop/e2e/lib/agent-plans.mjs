@@ -9,6 +9,8 @@ export const NAMED_PLANS = {
   'saved-answers': {rule: 'profile-2', data: {cv: 'headingLines'}, goals: [{group: 'Profile', label: 'Open What we learned and read the answers it shows as already saved'}]},
   'languages': {rule: 'profile-3', data: {cv: 'manyLanguages'}, goals: [{group: 'Profile', label: 'Open What we learned and answer the question it asks about the languages you speak'}]},
   'inbound': {rule: 'jobs-3', data: {inbound: 3}, goals: [{group: 'Jobs', label: 'Open the Inbound list and read each row, then find the same job in the Jobs list and compare them'}]},
+  // Why (5 Nov 2026, AI user agents FR 3/4, owner: a session told only "fill up all my details and report what you see" filed 8 real messages; replays 41935417039, 41938143953: 7 navigation goals of ~14 steps ended could-not-finish): one open task like a person's, with the data of two bugs in the app and all the steps. Its goal names no defect.
+  'fill-details': {rule: 'profile-1', data: {cv: 'headingLines', inbound: 3}, goals: [{group: 'Profile', label: 'Fill in all my details from my CV in the app, then go through my jobs and my inbound list as I would; if something looks off, note it'}]},
 };
 
 // Why (4 Nov 2026, AI user agents FR 3/4, owner: "All four now"): the free goals found 0 of the 4 tester bugs on the commit before each fix because the suite's one applicant never has the data a bug needs (a CV with headings, a many-language line, mail leads). Each night puts ONE of these shapes in the app, picked by the night's seed,

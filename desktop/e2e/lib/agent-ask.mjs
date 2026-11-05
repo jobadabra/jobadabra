@@ -5,7 +5,7 @@
 import {askBroker} from './broker-client.mjs';
 import {noteBrokerCapped} from './ai-cap.mjs';
 
-export const MODELS = {small: 'claude-haiku-5-5', mid: 'claude-sonnet-5-5'};
+export const MODELS = {small: 'claude-haiku-5-5', mid: 'claude-sonnet-5-5', large: 'claude-opus-5-5'};   // large: the broker maps an Opus id to its large tier (broker-client.mjs tierOf); without it an AGENT_TIER=large run silently acted on small (replay 41938143953)
 
 // Why (3 Nov 2026, coordinator, the broker pane's change): the second opinion asks for one engine alone (`only`), so a busy Claude makes it wait and never answers it from Free AI; a refusal of such a call means the judge is unavailable (its note is held, lib/agent-judge.mjs),
 // not that the budget is spent, so it does not grey the step.
