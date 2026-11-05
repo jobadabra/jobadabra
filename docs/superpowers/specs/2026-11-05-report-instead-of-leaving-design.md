@@ -1,6 +1,6 @@
 # Report instead of leaving (design)
 
-Status: owner said yes 5 Nov 2026 to PRs 1/7 to 6/7 (sketch: https://claude.ai/artifact/K7QhaLe5Q9M2dYtDSi89qK). Session `fb`.
+Status: owner said yes 5 Nov 2026 to PRs 1/7 to 6/7; 7/7 is held for the owner's yes (sketch: https://claude.ai/artifact/K7QhaLe5Q9M2dYtDSi89qK). Session `fb`.
 
 ## Verdict
 
@@ -8,7 +8,7 @@ Status: owner said yes 5 Nov 2026 to PRs 1/7 to 6/7 (sketch: https://claude.ai/a
 - 🟢 Every report gets an automatic **"We got it. You will hear from us within 24 hours."** at send; /admin shows a due / overdue chip so the 24 hours is visible.
 - 🟢 A report **we validate as a bug** earns **5 free applications**, in the "fixed" message only (a surprise, never advertised). No cap; one grant per report.
 - 🟢 One owner decides whether any card may show (the ask gate); every prompt passes it.
-- 🟡 Held: the check-in e-mail to people who stopped applying, and the "Enjoying Jobadabra?" card (needs the news split on the site).
+- 🟡 Held: 7/7, the "Enjoying Jobadabra?" card (needs the e-mail types split on the site, built by `hr`), and the check-in e-mail to people who stopped applying (outside the n/7 count; needs the owner again).
 
 Owner, 5 Nov 2026: "how we can encourage users (or tell them about the existence of send feeback button). We'd like to encourage them to report bugs/problems.." · "I'd just want to make sure that they don't stop using the app because something is nt working as expected or is hard to use" · "But instead submit bug and have the promise that it willl get fixed in 24h-48h". Answers to the sketch: promise "Within 24 hours (Recommended)"; the engagement card "First application and + 3 day fallback it's a good idae" with both news boxes ticked by default and no promotional mail before the person has seen and acknowledged the card; thank-you "As long as the feedback is validated on our side, and we acknoweledge it as a problem/bug. Then it's unlimited."
 
@@ -51,11 +51,12 @@ Words (confident): "We read every report and write back within a day." Never "he
 | 3/7 | app | The ask gate, and the card after an application that failed, stuck or was taken over (tell `ap` first: Applying is theirs) |
 | 4/7 | app | Find jobs failed, AI did not answer, crash on last start: same gate, same card |
 | 5/7 | app | "Were you expecting more jobs?" after a thin search; the typed role and place only on the person's own press; privacy page updated (tell `gi`) |
-| 6/7 | app | A sixth tour stop on the Send feedback icon (`renderer/menu-tour.js`), after 1/7 |
+| 6/7 | app | A sixth tour stop on the Send feedback icon (`desktop/renderer/menu-tour.js`), after 1/7 |
+| 7/7 | app | **Held.** The "Enjoying Jobadabra?" card: Yes shows the two news boxes, Not really shows "What got in the way?". Lands after `hr`'s three e-mail lists and the owner's yes on the final wording |
 
 Held, each needs the owner again:
 
-- **"Enjoying Jobadabra?" card** (first application, or 3 separate days of use; Yes shows New releases and Tips and offers, both ticked by default; Not really shows "What got in the way?"). Needs the two-list split on the site: `shared/mail.js` (`mailAllowed`, `FROM`, footer, `stopLink`), a stop on the old `marketing` list meaning both, the opt-in column becoming two (one migration), `PUT /api/account/email` taking `{news: {releases, tips}}`, `admin/email-audience.js` counting per type. And no news to an address that has not answered the card: this reverses the 28 Oct `mail.js` rule (a waitlist signup or wizard address agrees to news); the waitlist was promised "One email when Pro is ready. No newsletter." (`pricing.html:161`, `privacy.html:131`); session `hr` is making accounts count only when ticked.
+- **7/7 "Enjoying Jobadabra?" card** (first application, or 3 separate days of use; Yes shows **New releases** and **Tips and tricks**, ticked by default on the card; Not really shows "What got in the way?"). Owner, 5 Nov 2026: "we should not treat all the emails as one box. There are 1. service mails (user own activity, kind of functional mails, not promotaionl/marketing) 2. New releases 3. Tips and Tricks (these are the most promotional/marketing ones)". So three kinds of e-mail, three lists: `service` (as today, #3282's switch), `releases`, `tips`. Session `hr` builds the three lists on the site: `shared/mail.js` (`mailAllowed`, `FROM`, footer, `stopLink`), a stop on the old `marketing` list meaning both news types, the opt-in column becoming two (one migration), `PUT /api/account/email` taking the two news values, `admin/email-audience.js` counting per type; the field names are agreed with `hr`, not invented here. Settings → Notifications shows the same two boxes, and an address that never answered the card shows them unticked. No news goes to an address that has not answered: this reverses the 28 Oct `mail.js` rule (a waitlist signup or wizard address agrees to news); the waitlist was promised "One email when Pro is ready. No newsletter." (`pricing.html:161`, `privacy.html:131`); `hr` is making accounts count only when ticked.
 - **Check-in e-mail** to people who stopped applying: #3282's consent sentence ("E-mail me when an application needs me or a strong match comes in. We only write when something needs you.") does not cover it. Needs the wording agreed with `co`, and first the "last applied" date next to the trial's applied count so we can see who stopped.
 
 ## Non-goals
@@ -82,5 +83,5 @@ No AI spend in any step (every word is fixed). No new gate, hook or CI check. No
 - [ ] 4/7 app: run failed, AI error, crash
 - [ ] 5/7 app: "Were you expecting more jobs?"
 - [ ] 6/7 app: tour stop
-- [ ] Held: "Enjoying Jobadabra?" card and the news split
-- [ ] Held: check-in e-mail
+- [ ] 7/7 held: "Enjoying Jobadabra?" card (after `hr`'s three lists and the owner's yes)
+- [ ] Held, outside n/7: check-in e-mail
