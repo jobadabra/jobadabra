@@ -17,6 +17,7 @@ import {runTests} from './proof.mjs';
 import * as feedback from './sources/feedback.mjs';
 import * as linear from './sources/linear.mjs';
 import {capVerdict} from './walls.mjs';
+import {LIMITS, ROUND_RULES, cleanRound, roundBlocks} from './driver.mjs';
 
 const SOURCES = {feedback, linear};
 const flag = (args, name) => (args.includes(name) ? args[args.indexOf(name) + 1] : '');
@@ -34,16 +35,22 @@ export function boxRun(files, env = process.env, cwd = '.') {
   return {ok: done.status === 0, output: `${done.stdout || ''}${done.stderr || ''}`};
 }
 
+const emit = (env, key, value) => { if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, `${key}=${value}\n`); };
+
 async function main(argv = process.argv.slice(2), env = process.env) {
   const [command, ...args] = argv, out = flag(args, '--out'), source = flag(args, '--source'), ref = flag(args, '--ref');
-  if (command === 'cap') {
+  if (command === 'cap') {   // a first run only; a round's guard is round.mjs target
+    // Why (4 Nov 2026, review): the round inputs belong to the follow chain; a first run that carries one is refused, so it cannot pose as a round or dodge the daily count.
+    if (['ROUND', 'KIND', 'DEADLINE', 'FOLLOW_RUN', 'LAST_KEY'].some(name => env[name])) throw new Error('a first run takes no round inputs');
+    emit(env, 'deadline', new Date(Date.now() + LIMITS.seconds * 1000).toISOString().replace(/\.\d+Z$/, 'Z'));   // the hour starts at the first run and is passed on unchanged
     const day = new Date().toISOString().slice(0, 10), runs = [];
     for (const file of ['ai-fixer.yml', 'feedback-ai.yml']) {   // the daily cap of 3 is shared with Send to AI
       const answer = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${file}/runs?event=workflow_dispatch&created=%3E%3D${day}&per_page=100`, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(20000)});
       if (!answer.ok) throw new Error(`could not count today's runs (HTTP ${answer.status})`);   // fails closed
       runs.push(...(await answer.json()).workflow_runs);
     }
-    const verdict = capVerdict(runs, env.GITHUB_RUN_ID);
+    // Why (4 Nov 2026, [hm] 4/7): a follow-up round is part of an item already counted; a finished round does not use the day's 3, a running one still blocks (one at a time).
+    const verdict = capVerdict(runs.filter(run => !(/ round \d$/.test(run.display_title || '') && run.status === 'completed')), env.GITHUB_RUN_ID);
     if (!verdict.ok) throw new Error(verdict.why);
     console.log('cap: this run may start');
   } else if (command === 'read') {
@@ -51,15 +58,17 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     const task = await SOURCES[source].read(ref, {env}), fence = newFence();
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'brief.json'), JSON.stringify(task.brief));   // for the leak scan only
-    fs.writeFileSync(path.join(out, 'system.md'), systemFor(fence, task));   // instructions only: no text of the item
-    fs.writeFileSync(path.join(out, 'item.md'), task.block(fence));   // the item, as fenced data
-    fs.writeFileSync(path.join(out, 'meta.json'), JSON.stringify({allowedPaths: task.allowedPaths, caps: task.caps, what: task.what}));
+    const round = flag(args, '--round') ? cleanRound(JSON.parse(fs.readFileSync(flag(args, '--round'), 'utf8')), {pr: env.PR}) : null;   // a follow-up round: the event, as fenced data (other people's comments are not in it)
+    fs.writeFileSync(path.join(out, 'system.md'), systemFor(fence, task) + (round ? `\n${ROUND_RULES}` : ''));   // instructions only: no text of the item
+    fs.writeFileSync(path.join(out, 'item.md'), task.block(fence) + (round ? `\n\n${roundBlocks(round, fence)}` : ''));   // the item, as fenced data
+    fs.writeFileSync(path.join(out, 'meta.json'), JSON.stringify({allowedPaths: task.allowedPaths, caps: task.caps, what: task.what, round: Boolean(round)}));
     console.log(`item read: ${task.brief.text.length} characters, ${Object.keys(task.brief.files || {}).join(', ') || 'no files'}`);   // sizes and kinds only
   } else if (command === 'loop') {
     const meta = JSON.parse(fs.readFileSync(path.join(out, 'meta.json'), 'utf8')), acts = createActs({cwd: '.', allow: new RegExp(meta.allowedPaths), boxRun: files => boxRun(files, env)});
-    const result = await runLoop({ask: sonnetAsk(), act: acts.act, system: fs.readFileSync(path.join(out, 'system.md'), 'utf8'), first: fs.readFileSync(path.join(out, 'item.md'), 'utf8'), caps: meta.caps, log: console.log});
+    const result = await runLoop({ask: sonnetAsk(), act: acts.act, system: fs.readFileSync(path.join(out, 'system.md'), 'utf8'), first: fs.readFileSync(path.join(out, 'item.md'), 'utf8'), caps: meta.caps, log: console.log, allowAnswer: meta.round});
     console.log(`loop: ${result.outcome}${result.stopped ? ` (${result.stopped})` : ''} after ${result.steps} turn(s), ${result.spent.calls} broker call(s), ${result.spent.input}+${result.spent.output} tokens`);
     if (result.outcome === 'fix') fs.writeFileSync(path.join(out, 'pr-body.md'), `${result.title}\n\n${result.body}\n`);
+    else if (result.outcome === 'answer') { discard(); fs.writeFileSync(path.join(out, 'reply.md'), `${result.body}\n`); }   // a reply on the PR, no change pushed
     else {
       discard();
       fs.writeFileSync(path.join(out, 'verdict.md'), `${result.verdict || 'needs-human'}\nWhy: ${result.body || `the run stopped (${result.stopped.split(':')[0]}) before a fix was proven`}\n`);

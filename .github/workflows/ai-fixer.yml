@@ -1,5 +1,5 @@
 name: CI · AI fixer
-run-name: AI fixer ${{ inputs.source }} ${{ inputs.ref }}
+run-name: AI fixer ${{ inputs.source }} ${{ inputs.ref }}${{ inputs.round && format(' round {0}', inputs.round) || '' }}
 
 # ONE run of the AI fixer for ONE item: a feedback card (source feedback, ref = its 16-character handle) or a Linear issue (source linear, ref = JOB-123), up to a DRAFT pull request (owner, 4 Nov 2026: "Spin an CI agent to
 # fix a specific feedback and let's see how it performs"; plan 2026-11-04-ci-agent-until-green.md, PR 3/6; the follow-up of that PR is 4/6). Started by hand (workflow_dispatch); at most 3 a day and 1 at a time, counted over this workflow AND feedback-ai.yml (Send to AI still counts only its own runs until it moves onto the core).
@@ -10,6 +10,8 @@ run-name: AI fixer ${{ inputs.source }} ${{ inputs.ref }}
 # Trust by job, as in feedback-ai.yml (whose header says why): `guard` counts today's runs (read-only token); `fix` runs only OUR code from a snapshot made before the AI step (desktop/lib is a folder the AI may edit) and the AI's tests
 # only through tools/feedback-ai-sandbox.sh (docker, no network, no runner token); `prove` runs the AI's new test and the suites in that box with no token at all; `publish` is the only job that pushes, from a fresh checkout and the scanned patch,
 # with the CI App token so the pull request's checks start. Guard: desktop/test/tooling/ci/fixer-loop.test.js.
+# FOLLOW-UP ROUNDS (PR 4/7, owner 4 Nov 2026: "all until it's green", "a max timeout of 1h"): the same jobs run again on the PR's own branch when ai-fixer-follow.yml started them with `pr` set (event data = the follow run's artifact, scrubbed, fenced);
+# `publish` then pushes (never forced) only to the head ref GitHub reports for that PR, `after` starts the next follow or posts the ONE stop comment. The deadline is an absolute time every job checks (tools/fixer/round.mjs target). Guard: fixer-driver.test.js.
 on:
   workflow_dispatch:
     inputs:
@@ -21,8 +23,36 @@ on:
       ref:
         description: "The item: a feedback's 16-character handle, or a Linear issue such as JOB-123"
         required: true
+      pr:
+        description: 'Set by ai-fixer-follow.yml only: a follow-up round on this draft pull request'
+        required: false
+        default: ''
+      round:
+        description: 'Set by ai-fixer-follow.yml only: the round number (1 to 6)'
+        required: false
+        default: ''
+      deadline:
+        description: 'Set by ai-fixer-follow.yml only: the absolute end of the hour (UTC)'
+        required: false
+        default: ''
+      kind:
+        description: 'Set by ai-fixer-follow.yml only: red, comment or conflict'
+        required: false
+        default: ''
+      follow_run:
+        description: 'Set by ai-fixer-follow.yml only: the follow run whose artifact holds the event'
+        required: false
+        default: ''
+      last_key:
+        description: 'Set by ai-fixer-follow.yml only: the hash of the event this round answers'
+        required: false
+        default: ''
 
 permissions: {}
+
+concurrency:
+  group: ai-fixer-pr-${{ inputs.pr || github.run_id }}   # a round and the PR's follow job never run together; a first run has a group of its own
+  cancel-in-progress: false
 
 jobs:
   guard:
@@ -32,8 +62,20 @@ jobs:
     permissions:
       actions: read   # the list of the workflows' runs
       contents: read
+      pull-requests: read   # a round re-reads its PR
     env:
       GH_TOKEN: ${{ github.token }}
+      PR: ${{ inputs.pr }}
+      ROUND: ${{ inputs.round }}
+      DEADLINE: ${{ inputs.deadline }}
+      KIND: ${{ inputs.kind }}
+      FOLLOW_RUN: ${{ inputs.follow_run }}
+      SOURCE: ${{ inputs.source }}
+      REF: ${{ inputs.ref }}
+    outputs:
+      deadline: ${{ steps.cap.outputs.deadline || inputs.deadline }}   # a first run starts the hour; a round passes it on unchanged
+      head: ${{ steps.round.outputs.head }}
+      branch: ${{ steps.round.outputs.branch }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -45,8 +87,23 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: At most 1 at a time and 3 a day
+      - name: At most 1 at a time and 3 a day (a first run)
+        id: cap
+        if: inputs.pr == ''
         run: node tools/fixer/run.mjs cap
+      - name: The PR is still the fixer's own open draft, the deadline is ahead (a round)
+        id: round
+        if: inputs.pr != ''
+        run: node tools/fixer/round.mjs target
+      - name: Fetch the event data of the follow run (a round; checked above to be a follow run's)
+        if: inputs.pr != ''
+        run: gh run download "$FOLLOW_RUN" --repo "$GITHUB_REPOSITORY" --name fixer-round --dir "$RUNNER_TEMP/event"
+      - uses: actions/upload-artifact@v6
+        if: inputs.pr != ''
+        with:
+          name: fixer-event
+          path: ${{ runner.temp }}/event/round.json
+          retention-days: 3
 
   fix:
     needs: guard
@@ -59,15 +116,21 @@ jobs:
       group: ai-fixer   # one at a time; a second start waits instead of racing for the same checks
       cancel-in-progress: false
     outputs:
-      go: ${{ steps.check.outputs.go }}
+      go: ${{ steps.check.outputs.go || steps.merge.outputs.go }}
       sha: ${{ steps.check.outputs.sha }}   # of the four files below; publish compares it, so an artifact swapped after the scan is refused
     env:
       SOURCE: ${{ inputs.source }}
       REF: ${{ inputs.ref }}
+      PR: ${{ inputs.pr }}
+      ROUND: ${{ inputs.round }}
+      KIND: ${{ inputs.kind }}
+      HEAD: ${{ needs.guard.outputs.head }}
+      BRANCH: ${{ needs.guard.outputs.branch }}
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0   # Why (4 Nov 2026, review): a round merges main and diffs origin/main...HEAD; both need the merge base, which a depth-1 clone hides
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -80,18 +143,40 @@ jobs:
           cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs tools/fixer/sources/*.mjs tools/context/lib.mjs tools/context/sources/linear.mjs \
             desktop/e2e/lib/agent-ask.mjs desktop/e2e/lib/broker-client.mjs desktop/e2e/lib/broker-job.mjs desktop/e2e/lib/ai-cap.mjs "$RUNNER_TEMP/fbt/"
           { echo "FBT=$RUNNER_TEMP/fbt"; echo "OUT=$RUNNER_TEMP/fx"; echo "BOX=$RUNNER_TEMP/box"; echo "PYDEPS=$RUNNER_TEMP/pydeps"; } >> "$GITHUB_ENV"
+      # A round works on the PR's own tree; our scripts stay the snapshot above (main's), so nothing on the branch can change what runs.
+      - name: Take the pull request's branch and the event (a round)
+        if: inputs.pr != ''
+        run: |
+          set -euo pipefail
+          git fetch -q --no-tags origin "+refs/heads/$BRANCH:refs/remotes/origin/pr"
+          [ "$(git rev-parse origin/pr)" = "$HEAD" ] || { echo "::error::the branch moved since the guard"; exit 1; }
+          git checkout -q --detach origin/pr
+      - uses: actions/download-artifact@v7   # the event, passed on by the guard job: this job holds no token at all
+        if: inputs.pr != ''
+        with:
+          name: fixer-event
+          path: ${{ runner.temp }}/fx/in
       # The box's dependencies come from main's own files BEFORE the loop edits anything, so an edit cannot change what is installed.
       - name: Install the app's and the engine's dependencies, build the box
+        if: inputs.kind != 'conflict'
         run: |
           (cd desktop && npm ci)
           pip install --quiet --target "$PYDEPS" -r requirements.txt
           docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+      - name: Merge main into the branch (a conflict round, no AI)
+        id: merge
+        if: inputs.kind == 'conflict'
+        run: |
+          node "$FBT/tools/fixer/round.mjs" apply --kind conflict
+          echo "go=merge" >> "$GITHUB_OUTPUT"
       - name: Read the item (never printed)
+        if: inputs.kind != 'conflict'
         env:
           LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}   # a read-only key, in this one step only
-        run: node "$FBT/tools/fixer/run.mjs" read --source "$SOURCE" --ref "$REF" --out "$OUT"
+        run: node "$FBT/tools/fixer/run.mjs" read --source "$SOURCE" --ref "$REF" --out "$OUT" ${PR:+--round "$OUT/in/round.json"}
       - name: The agent loop (Sonnet level, up to 30 turns and 25 minutes)
         id: loop
+        if: inputs.kind != 'conflict'
         timeout-minutes: 30
         run: node "$FBT/tools/fixer/run.mjs" loop --out "$OUT"
       - uses: actions/upload-artifact@v6
@@ -102,6 +187,7 @@ jobs:
           if-no-files-found: ignore
       - name: Check the proposed change and write its patch
         id: check
+        if: inputs.kind != 'conflict'
         env:
           AI_SKIPPED: ${{ steps.loop.outputs.skipped }}   # the broker refused (budget, login, down) or answered from an engine below Sonnet
         run: |
@@ -110,14 +196,22 @@ jobs:
           if [ "$AI_SKIPPED" = true ]; then stop "the AI broker refused the call, or no Sonnet-level engine answered: see the run's warning"; fi
           roots="src desktop/renderer desktop/lib desktop/test tests"
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^e2e-artifacts/' || true)
+          if [ -f "$OUT/reply.md" ]; then   # a round answered without a change: the reply is scanned like a pull request text, then `after` posts it
+            printf 'answer\n' > "$OUT/title.txt"; cp "$OUT/reply.md" "$OUT/body.md"
+            node "$FBT/tools/feedback-ai.mjs" leaks --out "$OUT" --title "$OUT/title.txt" --body "$OUT/body.md" || stop "the reply held something that may not be public: nothing was posted"
+            echo "go=answer" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -z "$changed" ]; then
             echo "The AI proposed no change ($(head -1 "$OUT/verdict.md" 2>/dev/null | tr -d '[:space:]' || true))."
             echo "go=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "$changed" | node desktop/e2e/check-change.mjs || stop "the proposed change touched files a fix may not touch, or had no test"
+          # A first run needs a new test; a follow-up round fixes what an event shows and needs only the allowed folders (the walls below still apply).
+          if [ -n "$PR" ]; then echo "$changed" | node "$FBT/tools/fixer/round.mjs" paths || stop "the proposed change touched files a fix may not touch"
+          else echo "$changed" | node desktop/e2e/check-change.mjs || stop "the proposed change touched files a fix may not touch, or had no test"; fi
           # At most 72 BYTES in all (the title is the commit subject): the prefix first, the AI's summary cut at a word to what is left.
-          prefix="[fixer] $SOURCE $REF "
+          prefix="[fixer] $SOURCE $REF${ROUND:+ r$ROUND} "
           summary=$(PREFIX="$prefix" node -e 'const t=((require("fs").readFileSync(process.argv[1],"utf8").split("\n")[0])||"").trim(); const b=x=>Buffer.byteLength(x), room=72-b(process.env.PREFIX); if(b(t)<=room){console.log(t)}else{let c=[...t]; while(b(c.join(""))>room-3)c.pop(); console.log(c.join("").replace(/\s+\S*$/,"")+"…")}' "$OUT/pr-body.md")
           [ -n "$summary" ] || summary="fix"
           printf '%s\n' "$summary" > "$OUT/summary.txt"
@@ -133,7 +227,7 @@ jobs:
           echo "sha=$(cat "$OUT/change.patch" "$OUT/title.txt" "$OUT/summary.txt" "$OUT/body.md" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "go=pr" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
-        if: steps.check.outputs.go == 'pr'
+        if: steps.check.outputs.go == 'pr' || steps.check.outputs.go == 'answer'
         with:
           name: fixer-patch   # the patch and the pull request text, all scanned above; never the item (brief.json and item.md are not listed)
           path: |
@@ -145,16 +239,21 @@ jobs:
 
   # The only job that runs the AI's WHOLE test suites. No secret, no write permission, no id-token; every command of it goes through tools/feedback-ai-sandbox.sh (docker, no network, no capabilities, its own copy of the workspace).
   prove:
-    needs: fix
-    if: needs.fix.outputs.go == 'pr'
+    needs: [guard, fix]
+    if: needs.fix.outputs.go == 'pr' || needs.fix.outputs.go == 'merge'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
+    env:
+      HEAD: ${{ needs.guard.outputs.head }}
+      BRANCH: ${{ needs.guard.outputs.branch }}
+      KIND: ${{ inputs.kind }}
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0   # Why (4 Nov 2026, review): a round merges main and diffs origin/main...HEAD; both need the merge base, which a depth-1 clone hides
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -175,17 +274,26 @@ jobs:
         run: pip install --quiet --target "$PYDEPS" -r requirements.txt
       - name: Build the box the AI's code runs in
         run: docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+      - name: Take the pull request's branch (a round)
+        if: inputs.pr != ''
+        run: |
+          set -euo pipefail
+          git fetch -q --no-tags origin "+refs/heads/$BRANCH:refs/remotes/origin/pr"
+          [ "$(git rev-parse origin/pr)" = "$HEAD" ] || { echo "::error::the branch moved since the guard"; exit 1; }
+          git checkout -q --detach origin/pr
       - uses: actions/download-artifact@v7
+        if: needs.fix.outputs.go == 'pr'
         with:
           name: fixer-patch
           path: .fb
-      - name: Apply the patch
-        run: git apply .fb/change.patch
+      - name: Apply the patch, or merge main (a conflict round)
+        run: node "$FBT/tools/fixer/round.mjs" apply --kind "$KIND" --patch .fb/change.patch
       - name: Copy the patched workspace for the box
         run: |
           cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"
           echo "BOX=$RUNNER_TEMP/box" >> "$GITHUB_ENV"
-      - name: The new test must fail on an assertion without the fix and pass with it
+      - name: The new test must fail on an assertion without the fix and pass with it (a first run; a round is judged by the whole suites below)
+        if: inputs.pr == ''
         run: bash "$FBT/tools/feedback-ai-sandbox.sh" node /fbt/tools/feedback-ai.mjs proof
       - name: The whole suites and the lint must pass with the fix
         run: |
@@ -196,31 +304,37 @@ jobs:
   # The only job that can push. A fresh checkout; it copies our script BEFORE applying the patch, applies the patch `fix` wrote, checks its paths again and opens a DRAFT pull request on fixer/<source>-<ref>.
   # Never merges, never marks ready, never pushes anywhere else.
   publish:
-    needs: [fix, prove]
-    if: needs.fix.outputs.go == 'pr' && needs.prove.result == 'success'
+    needs: [guard, fix, prove]
+    if: (needs.fix.outputs.go == 'pr' || needs.fix.outputs.go == 'merge') && needs.prove.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write   # the branch fixer/<source>-<ref>
       pull-requests: write   # the draft pull request and its label
+      actions: write   # a first run starts the follow job
     env:
       REPO: ${{ github.repository }}
       SOURCE: ${{ inputs.source }}
       REF: ${{ inputs.ref }}
       PATCH_SHA: ${{ needs.fix.outputs.sha }}
+      GO: ${{ needs.fix.outputs.go }}
+      PR: ${{ inputs.pr }}
+      HEAD: ${{ needs.guard.outputs.head }}
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0   # Why (4 Nov 2026, review): a round merges main and diffs origin/main...HEAD; both need the merge base, which a depth-1 clone hides
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Keep a copy of our script that the patch cannot change
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
-          cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
+          cp --parents tools/feedback-ai.mjs tools/bot-commit.sh desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
+        if: needs.fix.outputs.go == 'pr'
         with:
           name: fixer-patch
           path: .fb
@@ -234,27 +348,54 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
-      - name: Apply the patch and open the draft pull request
+      - name: Apply the change; open the draft pull request, or add the round to the PR's own branch
+        id: open
         env:
           GH_TOKEN: ${{ github.token }}
           PR_TOKEN: ${{ steps.pr_app.outputs.token }}
+          ROUND: ${{ inputs.round }}
+          DEADLINE: ${{ inputs.deadline }}
+          KIND: ${{ inputs.kind }}
+          FOLLOW_RUN: ${{ inputs.follow_run }}
         run: |
           set -euo pipefail
           stop() { echo "::error::$1"; exit 1; }
           [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6})$ ]] || stop "not a handle this fixer takes"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ -n "$PR" ]; then
+            # Why (4 Nov 2026, coordinator): dispatch rights alone must not point a round at another PR: GitHub is asked again NOW, and the branch is the one it names, never a name from an event.
+            node "$FBT/tools/fixer/round.mjs" target --expect "$HEAD" || stop "the pull request is no longer the fixer's own open draft, or moved while the round ran"
+            git fetch -q --no-tags origin "+refs/heads/fixer/$SOURCE-$REF:refs/remotes/origin/pr"
+            [ "$(git rev-parse origin/pr)" = "$HEAD" ] || stop "the branch moved"
+            git checkout -q --detach origin/pr
+          fi
+          if [ "$GO" = merge ]; then
+            node "$FBT/tools/fixer/round.mjs" apply --kind conflict
+          else
           [ "$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" = "$PATCH_SHA" ] || stop "the patch is not the one that was scanned"
           # The patch again, as if it were a stranger's: only the allowed folders, no link, no mode change, no rename.
           if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | grep -q -v ' 100644$'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
-          git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"
+          if [ -n "$PR" ]; then git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/fixer/round.mjs" paths || stop "the patch touches files a fix may not touch"
+          else git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"; fi
           git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < .fb/change.patch)" || stop "the patch touches files a fix may never touch, or is too big (8 files, 60 KB)"
           git apply .fb/change.patch
           git add -A -- src desktop/renderer desktop/lib desktop/test tests
           title=$(cat .fb/title.txt); summary=$(cat .fb/summary.txt)
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          [ -n "$PR" ] || git checkout -q -b "fixer/$SOURCE-$REF"
+          bash "$FBT/tools/bot-commit.sh" "$title" "the fix is proven by its own unit test (fails before on an assertion, passes after) and the suites, not by a page"
+          fi
           branch="fixer/$SOURCE-$REF"
-          git checkout -q -b "$branch"
-          tools/bot-commit.sh "$title" "the fix is proven by its own unit test (fails before on an assertion, passes after) and the suites, not by a page"
+          if [ -n "$PR" ]; then
+            # The walls again on the WHOLE branch against main (a round adds to earlier rounds), then a send that is never forced: a branch that moved is refused.
+            git fetch -q --no-tags origin main
+            git diff --no-renames --numstat origin/main...HEAD | awk '{print $3}' | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(git diff --no-renames --binary origin/main...HEAD | wc -c)" || stop "the branch as a whole would touch files a fix may never touch, or is too big (8 files, 60 KB)"
+            git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "HEAD:refs/heads/$branch"
+            echo "Round $ROUND added to the pull request's own branch."
+            exit 0
+          fi
+          # Why (4 Nov 2026, review): the follow chain adds rounds to this branch; a second first run must not erase them. With no open PR on it, a second run still replaces the old branch.
+          [ -z "$(gh pr list --repo "$REPO" --head "$branch" --state open --json number --jq '.[].number')" ] || stop "an open pull request is already on that branch"
           # -f: the branch is this workflow's own namespace; a second run for the same item replaces the old branch.
           git push -q -f "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $summary" --why="the owner sent a $SOURCE item to the AI fixer" \
@@ -266,6 +407,57 @@ jobs:
           gh label create ai-fixer --repo "$REPO" --force --color 5319E7 --description 'A draft fix from the AI fixer'
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --draft --title "$title" --body-file .fb/laid-out.md --label ai-fixer)
           echo "Draft pull request opened: $url"
+          echo "number=${url##*/}" >> "$GITHUB_OUTPUT"
+      # The hour starts at the first run (guard); from here a follow job watches the PR. A dispatch that fails fails this job: a chain that never starts is not silent.
+      - name: Start the follow job (a first run)
+        if: inputs.pr == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ steps.open.outputs.number }}
+          DEADLINE: ${{ needs.guard.outputs.deadline }}
+        run: |
+          set -euo pipefail
+          [[ "$NUMBER" =~ ^[0-9]{1,7}$ ]] || { echo "::error::no pull request number"; exit 1; }
+          gh workflow run ai-fixer-follow.yml --repo "$REPO" --ref main -f pr="$NUMBER" -f round=1 -f deadline="$DEADLINE" -f last_key=""
+
+  # The end of a ROUND (reply, label, next follow job or the ONE stop comment): .github/actions/fixer-round-end. Trusted code only; no AI, no App token.
+  after:
+    needs: [guard, fix, prove, publish]
+    if: always() && !cancelled() && inputs.pr != '' && vars.AI_FIXER != 'off'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write   # the reply, the label, the stop comment
+      actions: write   # the next follow job
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+            .github/actions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v7
+        if: needs.fix.outputs.go == 'answer'
+        with:
+          name: fixer-patch
+          path: ${{ runner.temp }}/reply
+      - uses: ./.github/actions/fixer-round-end
+        with:
+          github-token: ${{ github.token }}
+          pr: ${{ inputs.pr }}
+          round: ${{ inputs.round }}
+          deadline: ${{ inputs.deadline }}
+          kind: ${{ inputs.kind }}
+          last-key: ${{ inputs.last_key }}
+          go: ${{ needs.fix.outputs.go }}
+          fix: ${{ needs.fix.result }}
+          prove: ${{ needs.prove.result }}
+          publish: ${{ needs.publish.result }}
 
   # One alert when the broker refused the run; the note it reads holds the cause, never any item text.
   ai-skipped:

@@ -3,7 +3,7 @@
 # failed; once per red check, it keeps watching), `ship: GREEN #n` (every check passed; once per green), `ship: READY #n <sha>` (below), `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`
 # or `ship: WATCH ENDED #n (still open)` after the cap. `ship: CONFLICT #n` (GitHub says the PR cannot merge into main; once per conflict, UNKNOWN is never reported) is followed at once by
 # tools/pr-conflict-fix.sh, which rebases the stacked-parent case and logs `ship: CONFLICT FIXED #n (stacked parent #m)`; a cleared conflict re-arms GREEN. No AI, only gh.
-#   tools/ship-watch.sh <n> <log> <pidfile> [<owner/repo>, default: the cwd's origin, fixed at start]      SHIP_WATCH_FIX=<script> the fixer (default: next to this file)   SHIP_WATCH_POLL=<s> between looks (default 60)   SHIP_WATCH_CAP=<s> give up after (default 172800 = 48 h)
+#   tools/ship-watch.sh <n> <log> <pidfile> [<owner/repo>, default: the cwd's origin, fixed at start]      SHIP_WATCH_FIX=<script> the fixer (default: next to this file)   SHIP_WATCH_POLL=<s> between looks (default 60)   SHIP_WATCH_CAP=<s> give up after (default 172800 = 48 h)   SHIP_WATCH_DRAFT_OK=1 READY also for a draft (the AI fixer's PR)
 # `ship: COMMENT #n <owner|bot|other> <comment|review-<state>|line> <url>` (27 Oct 2026): once per new comment or review by the owner, a review bot or anyone else, never a session's own; the ids already told live in <pidfile>.comments,
 # so a restart or a second ship repeats none. Every read is REST with the last ETag (tools/pr-rest-lib.sh), free while nothing changed. Guard: tests/test_pr_comments.py.
 # `ship: READY #n <sha>` (30 Oct 2026): the owner's "ready" on this head: every check green, Gitar ✅ Approved (its label), no "Working on PR comments" label, no unanswered
@@ -100,8 +100,9 @@ while :; do
     else green=""; fi
     # Why (30 Oct 2026, owner via d3: "my PRs are not fully approved by Gitar"): d3 told the owner ready on GREEN while Gitar read "approved with suggestions".
     # Why (#2618, 30 Oct 2026): an intentionally held draft is never ready for the owner's merge.
+    #   Why (4 Nov 2026, owner: "follow the local ship.sh approach"; fixer driver, plan 2026-11-04-ci-agent-until-green.md 4/6): SHIP_WATCH_DRAFT_OK=1 drops ONLY this condition, for the AI fixer's PR, which stays a draft until the owner marks it ready; every other part of READY is unchanged.
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
-      && jq -e '(.isDraft != true) and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
+      && jq -e --arg draftok "${SHIP_WATCH_DRAFT_OK:-}" '(.isDraft != true or $draftok == "1") and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
       [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
     elif [ -n "$checks" ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi

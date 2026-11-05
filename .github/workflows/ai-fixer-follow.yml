@@ -1,0 +1,82 @@
+name: CI · AI fixer follow
+run-name: AI fixer follow PR ${{ inputs.pr }} round ${{ inputs.round }}
+
+# The watcher of the AI fixer's draft PR (owner, 4 Nov 2026: "It should be able to respond to PR comments, to fix tests, all until it's green. It should follow the local ship.sh approach" · "a max timeout of 1h"; plan 2026-11-04-ci-agent-until-green.md, PR 4/7).
+# ONE job, no AI, no id-token, no App token, main's code only (tools/fixer/follow.mjs): it runs tools/ship-watch.sh (the one definition of READY / RED / COMMENT / CONFLICT; SHIP_WATCH_DRAFT_OK=1 because the PR stays a draft) until an event needs the agent,
+# then uploads the event as scrubbed data and starts ONE round of ai-fixer.yml (`pr` set). The round's last job starts this workflow again with the next round number: a chain of short jobs, so the AI's code never runs next to a write token.
+# The deadline is an absolute time set by the first run and passed on unchanged; this job stops and says why on READY, the deadline, 6 rounds, or the same failure twice (tools/fixer/driver.mjs stopReason).
+# Started by ai-fixer.yml's publish job (round 1) and by the round's `after` job; by hand only for a fixer PR. Guard: desktop/test/tooling/ci/fixer-driver.test.js.
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "The fixer's draft pull request number"
+        required: true
+      round:
+        description: 'The next round number (1 to 6)'
+        required: true
+      deadline:
+        description: 'The absolute end of the hour, UTC, like 2026-11-05T14:30:00Z'
+        required: true
+      last_key:
+        description: 'The key of the failure the previous round tried to fix (a hash; empty at the start)'
+        required: false
+        default: ''
+
+permissions: {}
+
+concurrency:
+  group: ai-fixer-pr-${{ inputs.pr }}   # the same group as the PR's rounds: one chain per PR, a start waits for the round that is ending
+  cancel-in-progress: false
+
+jobs:
+  follow:
+    if: vars.AI_FIXER != 'off'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65   # the hang guard; the deadline inside is at most 60 minutes away
+    permissions:
+      contents: read
+      pull-requests: write   # the one stop comment and the Gitar "working" label
+      actions: write   # starts the round
+      checks: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ inputs.pr }}
+      ROUND: ${{ inputs.round }}
+      DEADLINE: ${{ inputs.deadline }}
+      LAST_KEY: ${{ inputs.last_key }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Watch the pull request until an event needs the agent
+        id: watch
+        env:
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: node tools/fixer/follow.mjs watch --pr "$PR" --round "$ROUND" --deadline "$DEADLINE" --last-key "$LAST_KEY"
+      - uses: actions/upload-artifact@v6
+        if: steps.watch.outputs.action == 'round'
+        with:
+          name: fixer-round   # the event as scrubbed, size-bounded data; the round reads it by this run's id
+          path: ${{ runner.temp }}/round/round.json
+          retention-days: 3
+      - name: Start the round
+        if: steps.watch.outputs.action == 'round'
+        env:
+          SOURCE: ${{ steps.watch.outputs.source }}
+          REF: ${{ steps.watch.outputs.ref }}
+          KIND: ${{ steps.watch.outputs.kind }}
+          KEY: ${{ steps.watch.outputs.key }}
+        run: |
+          set -euo pipefail
+          [[ "$KIND" =~ ^(red|comment|conflict)$ && "$KEY" =~ ^[0-9a-f]{16}$ ]] || { echo "::error::the watcher named an event this job does not start"; exit 1; }
+          # A dispatch that fails fails this job (red), so a broken chain is never silent.
+          gh workflow run ai-fixer.yml --repo "$GITHUB_REPOSITORY" --ref main -f source="$SOURCE" -f ref="$REF" -f pr="$PR" -f round="$ROUND" -f deadline="$DEADLINE" -f kind="$KIND" -f follow_run="$GITHUB_RUN_ID" -f last_key="$KEY"
