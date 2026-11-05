@@ -35,6 +35,8 @@ class SourceCostTests(unittest.TestCase):
         """Why (#2915): 'which step spent the 40' could not be read from any log; the AI decide calls line prints at exit, which a stuck-thread leave skips."""
         cost.TOPICS.clear()
         self.addCleanup(cost.TOPICS.clear)
+        decide.reset_run()   # a new run: another test file may have left this process's cap spent
+        self.addCleanup(decide.reset_run)
         usage = SimpleNamespace(input_tokens=1, output_tokens=0, cache_read_input_tokens=0, cache_creation_input_tokens=0)
         answer = SimpleNamespace(type='text', text='{"results": [{"index": 0, "answer": "yes"}], "places": []}')
         client = SimpleNamespace(messages=SimpleNamespace(create=lambda **_: SimpleNamespace(usage=usage, stop_reason='end_turn', content=[answer])))
