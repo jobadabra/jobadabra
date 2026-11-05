@@ -30,8 +30,16 @@ function fakes({load} = {}) {
     destroy() { this.destroyed = true; this.emit('closed'); }
     async go(url, cookies = this.cookies) { this.url = url; this.cookies = cookies; this.webContents.emit('did-navigate'); await new Promise(done => setImmediate(done)); }
   }
+  // A window Electron made for a page's popup (webContents 'did-create-window'): `popup()` opens one through the parent's handler and hands it to the window as Electron does.
+  const children = [];
+  const child = () => {
+    const win = Object.assign(new EventEmitter(), {destroyed: false, isDestroyed: () => win.destroyed, destroy() { win.destroyed = true; win.emit('closed'); }});
+    win.webContents = Object.assign(new EventEmitter(), {setWindowOpenHandler: fn => { win.openHandler = fn; }});
+    children.push(win);
+    return win;
+  };
   const opened = [];
-  return {made, opened, shell: {openExternal: url => opened.push(url)}, BrowserWindow: FakeWindow};
+  return {made, opened, children, child, shell: {openExternal: url => opened.push(url)}, BrowserWindow: FakeWindow};
 }
 
 test('the verdict: li_at AND a page past the sign-in pages; li_at on /login or /checkpoint is not signed in', () => {
@@ -89,11 +97,11 @@ test('a second press brings the same window forward and shares its answer; other
   const first = signIn(), second = signIn();
   assert.equal(f.made.length, 1, 'one window');
   assert.equal(f.made[0].shown, 1, 'the second press showed it');
-  assert.deepEqual(f.made[0].openHandler({url: 'https://www.linkedin.com/legal/user-agreement'}), {action: 'deny'});
-  assert.deepEqual(f.opened, ['https://www.linkedin.com/legal/user-agreement'], 'a new-window link goes to the person\'s browser');
+  for (const disposition of ['foreground-tab', 'background-tab', 'default', 'other']) assert.deepEqual(f.made[0].openHandler({url: 'https://www.linkedin.com/legal/user-agreement', disposition}), {action: 'deny'}, disposition);
+  assert.deepEqual(f.opened, Array(4).fill('https://www.linkedin.com/legal/user-agreement'), 'a plain link (a tab, not a popup) goes to the person\'s browser');
   const event = {prevented: false, preventDefault() { this.prevented = true; }};
   f.made[0].webContents.emit('will-navigate', event, 'https://accounts.example.org/oauth');
-  assert.deepEqual([event.prevented, f.opened.length], [true, 2], 'a non-LinkedIn page does not load here');
+  assert.deepEqual([event.prevented, f.opened.length], [true, 5], 'a non-LinkedIn page does not load here');
   const inside = {prevented: false, preventDefault() { this.prevented = true; }};
   f.made[0].webContents.emit('will-navigate', inside, 'https://www.linkedin.com/uas/login');
   assert.equal(inside.prevented, false);
@@ -146,11 +154,11 @@ test('the window\'s view says whether the Chrome extension is connected (it show
 });
 
 test('every way the window can end has words, and none of them blames Chrome', () => {
-  for (const reason of ['cancelled', 'timeout', 'load-failed', 'no-keychain', 'not-kept', 'something-new', undefined]) {
+  for (const reason of ['cancelled', 'timeout', 'load-failed', 'no-keychain', 'not-kept', 'popup-ended', 'something-new', undefined]) {
     const [title, body, , tone] = signInEnded({ok: false, reason});
     assert.ok(title && body, `${reason}: has words`);
     assert.match(tone, /^(info|warn)$/);
-    assert.doesNotMatch(`${title} ${body}`, /Chrome extension|needed/, `${reason}: no extension blame`);
+    if (reason !== 'popup-ended') assert.doesNotMatch(`${title} ${body}`, /Chrome extension|needed/, `${reason}: no extension blame`);   // popup-ended names Chrome on purpose: it is the way out
   }
   assert.equal(signInEnded({ok: false, reason: 'not-kept', error: 'The Keychain would not keep it.'})[1], 'The Keychain would not keep it.');
 });
@@ -204,4 +212,78 @@ test('without a Keychain (not macOS, not an isolated run) the window never opens
   assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'no-keychain'}]]);
   assert.equal((await handlers.get('linkedinJobsState')()).on, false);
   assert.equal(signInEnded({ok: false, reason: 'no-keychain'})[0], 'LinkedIn jobs is not available here yet');
+});
+
+// Owner, 5 Nov 2026: "When I try to enable LInkedin jobs. And I click login with Google, it doesn't really work" (Chrome showed a blank accounts.google.com/gsi/select page); decision "Allow popup, you try once".
+// A provider's popup (Electron disposition 'new-window') needs window.opener, so it opens as a child window of this one instead of in Chrome. It is told from a link by how it opens, never by a host.
+const POPUP = {url: 'https://sso.standin.example/choose', disposition: 'new-window', frameName: 'sso', features: 'width=480,height=640'};
+test('a page\'s popup opens as a child window, hardened like the parent; a link still goes to the browser', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  const win = f.made[0], answer = win.openHandler(POPUP);
+  assert.equal(answer.action, 'allow');
+  const prefs = answer.overrideBrowserWindowOptions.webPreferences;
+  assert.deepEqual([prefs.partition, prefs.sandbox, prefs.contextIsolation, prefs.nodeIntegration, prefs.preload, prefs.webviewTag], [PARTITION, true, true, false, undefined, false], 'same private partition, sandboxed, no node, no preload');
+  assert.equal(answer.overrideBrowserWindowOptions.parent, win, 'a child of the sign-in window');
+  assert.equal(win.options.webPreferences.partition, prefs.partition);
+  assert.deepEqual(f.opened, [], 'nothing went to the browser');
+  assert.deepEqual(win.openHandler({url: 'http://insecure.example/', disposition: 'new-window'}), {action: 'deny'}, 'a popup is https only');
+  win.emit('closed'); await pending;
+});
+
+test('the popup is held to the same rules: its own links go to the browser, a popup of a popup is a child, three at once is the limit; no host is named', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  const win = f.made[0], one = f.child();
+  win.webContents.emit('did-create-window', one, POPUP);
+  assert.deepEqual(one.openHandler({url: 'https://help.standin.example/', disposition: 'foreground-tab'}), {action: 'deny'});
+  assert.deepEqual(f.opened, ['https://help.standin.example/']);
+  assert.equal(one.openHandler(POPUP).action, 'allow', 'a popup of the popup follows the same rule');
+  const two = f.child(), three = f.child();
+  one.webContents.emit('did-create-window', two, POPUP); win.webContents.emit('did-create-window', three, POPUP);
+  assert.deepEqual(win.openHandler(POPUP), {action: 'deny'}, 'a fourth popup while three are open is refused');
+  two.destroy();
+  assert.equal(win.openHandler(POPUP).action, 'allow', 'one closed, room again');
+  win.emit('closed'); await pending;
+  assert.deepEqual(f.children.map(c => c.destroyed), [true, true, true], 'every child ends with the sign-in');
+});
+
+test('closing the popup alone does not end the sign-in; signing in closes the popup and clears the storage once', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  const win = f.made[0], one = f.child();
+  win.openHandler(POPUP); win.webContents.emit('did-create-window', one, POPUP);
+  one.destroy();   // the provider page closes itself after answering
+  assert.equal(win.destroyed, false);
+  const again = f.child(); win.webContents.emit('did-create-window', again, POPUP);
+  await win.go('https://www.linkedin.com/feed/', [li()]);
+  assert.equal((await pending).ok, true, 'a sign-in that came through a popup is the same verdict');
+  assert.deepEqual([again.destroyed, win.destroyed, win.cleared], [true, true, 1]);
+});
+
+test('a popup opened and the window ended without a sign-in: its own reason, so the words can point to Chrome; with no popup the reasons stay', async () => {
+  const f = fakes(), signIn = createSignIn(f), closed = signIn();
+  f.made[0].openHandler(POPUP); f.made[0].webContents.emit('did-create-window', f.child(), POPUP);
+  f.made[0].emit('closed');
+  assert.deepEqual(await closed, {ok: false, reason: 'popup-ended'});
+  const quiet = signIn();
+  f.made[1].emit('closed');
+  assert.deepEqual(await quiet, {ok: false, reason: 'cancelled'}, 'a new attempt starts clean');
+  const slow = createSignIn({...f, timeoutMs: 20})();
+  f.made[2].openHandler(POPUP);
+  assert.deepEqual(await slow, {ok: false, reason: 'popup-ended'}, 'the timeout after a popup reads the same');
+});
+
+test('a popup that did come through is still a sign-in: the refusal reason is only for a window that ended without one', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  f.made[0].openHandler(POPUP);
+  await f.made[0].go('https://www.linkedin.com/feed/', [li()]);
+  assert.equal((await pending).ok, true);
+});
+
+test('the handler logs the popup outcome without a value, and the words for it point to Chrome', async () => {
+  const {handlers, lines} = app({signIn: async () => ({ok: false, reason: 'popup-ended'})});
+  assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: false, reason: 'popup-ended', error: undefined});
+  assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'popup-ended'}]]);
+  const connected = signInEnded({ok: false, reason: 'popup-ended'}, {extension: true}), notYet = signInEnded({ok: false, reason: 'popup-ended'}, {extension: false});
+  assert.match(connected[1], /Google or Apple/); assert.match(connected[1], /Use my Chrome sign-in/);
+  assert.match(notYet[1], /Settings → Connections → Chrome extension/);
+  assert.doesNotMatch(connected[1], /Settings → Connections → Chrome extension/, 'the shortcut is named only when it is there');
 });
