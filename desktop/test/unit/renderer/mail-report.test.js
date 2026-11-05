@@ -284,3 +284,15 @@ test('a Gmail check that did not finish draws no result card: never "No new job 
   assert.equal(mailCardShown({ok: false, updates: ['💬 Reply received · Acme — SRE']}), true);   // what it did record before failing is still shown
   assert.equal(mailCardShown({ok: false, report: ['', '✅ Applied · Acme — SRE']}), true);
 });
+
+// #3187 (5 Nov 2026): one recruiter pitch drew two cards, a "Recruiter lead" update and the email with no change. The lines are the
+// ones the engine writes since the fix (src/ai/mail_leads.py new_lead, src/notion/cron_report.py email_lines): one job name in both.
+test('a recruiter pitch is one row holding its Recruiter lead update', () => {
+  const run = ['1 new email(s), 1 update(s) recorded',
+    'Charge Nurse opportunity · Ann Lee · Thu 05 Nov 10:00 — [tracked a new job] · Thornbeck Recruiting — Charge Nurse · changed new lead; nothing else changed',
+    '🤝 Recruiter lead · Thornbeck Recruiting — Charge Nurse'];
+  const {results, updates} = mailResults(parseMailReport('', run[0], run));
+  assert.equal(results.length, 1);
+  assert.equal(results[0].update?.summary, 'Recruiter lead');
+  assert.deepEqual(updates, []);
+});

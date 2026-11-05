@@ -46,10 +46,15 @@ def _short(stats, kind, row, extra='', changes=''):
     and — the part that was missing — what it changed there ("📬 Application received · Canonical — SRE · Stage Applied →
     Confirmation received; Confirmation email set")."""
     if stats is not None:
-        job = re.sub(r'\s*\|\s*Remote\s*$', '', _role(row))[:70]
         detail = f" · {changes}" if changes else ''
-        stats.setdefault('updates', []).append(
-            f"{EMOJI.get(kind, '•')} {SHORT_KIND.get(kind, kind)} · {_who(row)} — {job}{extra}{detail}")
+        stats.setdefault('updates', []).append(f"{EMOJI.get(kind, '•')} {SHORT_KIND.get(kind, kind)} · {_job_name(row)}{extra}{detail}")
+
+
+def _job_name(row):
+    """The job as every plain line of a check names it, its updates and its email trail: "Who — Role", unescaped.
+    Why (5 Nov 2026, #3187): the desktop card joins an email to its update by this name (renderer/mail-report.js mailResults); a second
+    wording (a lead's long label, or _label's HTML escaping of "R&D") drew one email as two cards. Telegram's HTML keeps _label."""
+    return f"{_who(row)} — {re.sub(r'\s*\|\s*Remote\s*$', '', _role(row))[:70]}"
 
 
 def _who(row):
