@@ -11,6 +11,10 @@ from pathlib import Path
 from src import scout_overrun
 
 
+def tearDownModule():
+    scout_overrun._armed[0] = False   # Why (5 Nov 2026, #2915): armed here, another file's stop would reach the real os._exit and end its CI shard
+
+
 class OverrunTest(unittest.TestCase):
     def tearDown(self):
         scout_overrun.disarm()
@@ -76,6 +80,18 @@ class OverrunTest(unittest.TestCase):
                 'scout_overrun.leave_if_stuck(grace_s=0.1)\nprint("still here", flush=True)\n')
         done = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[3], capture_output=True, text=True, timeout=30)
         self.assertIn('still here', done.stdout, done.stdout + done.stderr)
+
+    def test_a_stopped_run_fails_even_while_a_check_thread_still_runs(self):
+        # #2915: a stuck check would hold the exit until the job's cancel, and leaving with 0 would hide the stop from the workflow's failure step
+        hang = threading.Event()
+        self.addCleanup(hang.set)
+        scout_overrun.arm(0)
+        stuck = threading.Thread(target=hang.wait)
+        stuck.start()
+        with mock.patch.object(scout_overrun.os, '_exit') as leave, self.assertRaises(SystemExit) as stopped:
+            scout_overrun.stop_run('nothing to publish', grace_s=0.1)
+        leave.assert_called_once_with(1)
+        self.assertEqual(stopped.exception.code, 1)
 
     def test_a_central_run_leaves_at_once_only_while_a_check_thread_still_runs(self):
         # 26 Oct 2026: counting every thread, os._exit(0) ended a unittest shard halfway with exit 0: a just-shut pool's idle workers

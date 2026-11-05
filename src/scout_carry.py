@@ -6,7 +6,7 @@ import json
 import urllib.request
 from datetime import datetime, timedelta
 
-from . import role_kinds
+from . import role_kinds, scout_overrun
 
 CARRY_DAYS = 7   # a feed not verified for this long leaves the index until it answers again
 
@@ -104,8 +104,10 @@ def seed(db, url, key, get=None):
     """The index published now is the backup of what this scout stored: a first slice run, or a cache lost, must never drop a feed or a mix (24 Oct 2026: the first slice
     run left 1250 feeds out of the index; 2 Nov 2026: a new repo's empty cache took 6,833 feeds to 3,848, as a feed with an entry but no source is neither read nor carried).
     Adds the entries this scout lacks, dated by their own read; the sources it lacks; the mix parts its entries lack.
-    Returns the number of entries added; a download that fails adds none (said, never fatal)."""
+    Returns the number of entries added; a download that fails adds none (said), and stops the run when this scout has no entry of its own."""
     ensure(db)
+    db.commit()   # Why (5 Nov 2026, #2915): main's `with connect` rolls back on a stop, and the run's finds are worth keeping; an index read halfway is not
+    empty = not db.execute('SELECT 1 FROM feed_entries LIMIT 1').fetchone()
 
     def default_get(request):
         with urllib.request.urlopen(request, timeout=60) as response:
@@ -114,7 +116,7 @@ def seed(db, url, key, get=None):
         published = (get or default_get)(urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': 'jobadabra-scout'}))
         have = {(r[0], r[1]): r[2] for r in db.execute('SELECT ats, slug, entry FROM feed_entries')}
         added = sources = filled = 0
-        for entry in published.get('feeds') or []:
+        for entry in published['feeds']:
             if not isinstance(entry, dict) or not entry.get('ats') or not entry.get('slug') or not entry.get('checked'):
                 continue
             feed = (entry['ats'], entry['slug'])
@@ -129,6 +131,8 @@ def seed(db, url, key, get=None):
         if added or sources or filled:
             print(f'Scout: restored from the published index: {added} entries, {sources} sources, {filled} mixes')
         return added
-    except Exception as error:  # noqa: BLE001 — without it the run still goes on, with what it stored itself
+    except Exception as error:  # noqa: BLE001 — with entries of its own the run goes on; with none it stops below
         print(f'Warning: the published index was not read for carrying ({type(error).__name__}: {error})')
+        if empty:   # Why (5 Nov 2026, #2915): the last count is unknown, so any publish could shrink the index; the site only refuses a loss of more than half (2 Nov: 6,833 to 3,848)
+            scout_overrun.stop_run('Scout: stopped, nothing published: no stored feeds and the published index was not read, so this run could lose feeds')
         return 0

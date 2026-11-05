@@ -293,10 +293,38 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(sorted(f['slug'] for f in feeds), [f'co{i}' for i in range(5)])
         self.assertEqual({f['checked'] for f in feeds}, {'2026-10-22'})   # dated by their real read
 
-    def test_a_download_that_fails_adds_nothing_and_is_not_fatal(self):
+    def test_a_download_that_fails_adds_nothing_and_is_not_fatal_when_the_scout_has_its_own_feeds(self):
+        scout.build_index(self.db, [{'company': 'Co 0', 'ats': 'lever', 'slug': 'co0'}], lambda s, slug: job(), today='2026-10-23', carry=True)
         def down(request):
             raise OSError('offline')
         self.assertEqual(scout_carry.seed(self.db, 'https://x/api/index', 'k', get=down), 0)
+
+    def test_an_empty_store_that_cannot_read_the_published_index_stops_the_run(self):
+        # #2915: the last count is unknown, so whatever this run built could be fewer feeds than the index holds
+        def down(request):
+            raise OSError('offline')
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as stopped, contextlib.redirect_stdout(out):
+            scout_carry.seed(self.db, 'https://x/api/index', 'k', get=down)
+        self.assertEqual(stopped.exception.code, 1)
+        self.assertIn('stopped, nothing published', out.getvalue())
+
+    def test_an_answer_with_no_feeds_list_is_a_read_that_failed(self):
+        with self.assertRaises(SystemExit):
+            scout_carry.seed(self.db, 'https://x/api/index', 'k', get=lambda request: {'ok': False})
+
+    def test_a_published_index_that_holds_no_feeds_is_read_and_has_nothing_to_lose(self):
+        self.assertEqual(scout_carry.seed(self.db, 'https://x/api/index', 'k', get=lambda request: {'feeds': []}), 0)
+
+    def test_a_stopped_run_keeps_what_it_found_and_no_part_of_the_index(self):
+        # main's `with connect` rolls back on SystemExit, and an entry saved from a broken answer would make the next empty store look filled
+        self.db.execute("INSERT INTO feed_sources (ats, slug, company, tier, added_at) VALUES ('lever', 'found', 'Found', 'Standard', '2026-11-05')")
+        broken = {'feeds': [dict(self.published['feeds'][0]), {'ats': 'lever', 'slug': 'bad', 'checked': '2026-10-22', 'company': object()}]}
+        with self.assertRaises(SystemExit):
+            with self.db:
+                scout_carry.seed(self.db, 'https://x/api/index', 'k', get=lambda request: broken)
+        self.assertEqual(self.db.execute("SELECT count(*) FROM feed_sources WHERE slug = 'found'").fetchone()[0], 1)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM feed_entries').fetchone()[0], 0)
 
     def test_an_entry_this_scout_stored_itself_is_not_replaced(self):
         scout.build_index(self.db, [{'company': 'Co 0', 'ats': 'lever', 'slug': 'co0'}], lambda s, slug: job(), today='2026-10-23', carry=True)
