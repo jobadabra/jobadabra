@@ -28,10 +28,11 @@ test('the same click on an unchanged page is nudged at the 3rd time and ends the
 });
 
 test('two buttons pressed in turn on a page that never changes are one loop too', async () => {
-  const {act, ask} = rig(() => page(), Array.from({length: 40}, (_, n) => click(n % 2)));
+  const {act, ask, seenByAi} = rig(() => page(), Array.from({length: 40}, (_, n) => click(n % 2)));
   const result = await explore({act, ask, views: ['profile'], caps: {maxSteps: 40}});
   assert.ok(result.trace.length <= 10, `ended at ${result.trace.length} turns`);
-  assert.match(result.stopped, /^repeat: /);
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "Expand all"" and "Press "Save"" 3 times on the same page$/, 'the page did not change, and it says so');
+  assert.equal(seenByAi.filter(text => /nothing new came of it/.test(text)).length, 1, 'one warning for one loop, not the cycle rule and the per-pair rule a turn apart');
 });
 
 // Run 42047462968 (5 Nov 2026, tour goal 1, "Fill in all my details from my CV"): 11 of the first 12 steps alternated Press "Your details" / Press "CV" (183k of the 250k cap, 0 of 6 goals finished). The page view
@@ -42,7 +43,7 @@ const tabs = (count, counter) => {
   const view = () => ({view: 'settings', text: `Profile, ${TABS[active]} tab${counter ? ` ${taken}` : ''}`, overlays: [], controls: TABS.slice(0, count).map((label, i) => control(i, label))});
   return {observe: async () => view(), click: async i => { active = i; taken++; }, type: async () => {}, press: async () => {}, go: async () => {}};
 };
-const nudges = seenByAi => seenByAi.filter(text => /going back and forth/.test(text));
+const nudges = seenByAi => seenByAi.filter(text => /nothing new came of it/.test(text));   // any warning, whichever rule wrote it: one loop is warned once
 
 test('two tabs pressed in turn, the page changing with the active tab (run 42047462968): nudged after the 2nd round, ends the goal after the 3rd', async () => {
   const seenByAi = [], answers = Array.from({length: 40}, (_, n) => click(n % 2));

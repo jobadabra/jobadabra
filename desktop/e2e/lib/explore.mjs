@@ -157,16 +157,19 @@ const named = (dids, length) => {
 
 /** One goal's loop watch: call it after every step with (row, the page view the step was done on, turn); it returns {note, stop}: a nudge to add to the reply ('' or one), and the stop reason ('' while the goal may go on). */
 function loopWatch() {
-  const tries = new Map(), keys = [], dids = [];
+  const tries = new Map(), keys = [], dids = [], views = [];
   return (row, was, turn) => {
-    let note = '';
     const again = repeated(tries, row, was);
-    if (again === REPEAT_NUDGE) note += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
-    keys.push(row.did && !row.failed ? `${row.did}\n${was}` : `#${turn}`); dids.push(row.did);   // a step that did nothing (failed, a note) is its own key: it breaks a cycle
+    keys.push(row.did && !row.failed ? `${row.did}\n${was}` : `#${turn}`); dids.push(row.did); views.push(was);   // a step that did nothing (failed, a note) is its own key: it breaks a cycle
     const loop = cycling(keys), closed = loop?.done ? loop.rounds : 0;
+    let note = '';
+    // Why (5 Nov 2026, Gitar on #3258): one loop gets one warning; while a cycle is being counted the per-pair nudge stays quiet, or the same loop was warned twice a turn apart.
+    if (again === REPEAT_NUDGE && !loop) note += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
     if (closed === CYCLE_NUDGE) note += `\n\nNote: you are going back and forth between ${named(dids, loop.length)} ${loop.rounds} times and nothing new came of it. Do not go round again: if they do nothing new, that is a finding to note; otherwise try another route or end the goal.`;
     if (again >= REPEAT_STOP) return {note, stop: `repeat: "${row.did}" ${again} times on the same page`};
-    return {note, stop: closed >= CYCLE_STOP ? `repeat: going back and forth between ${named(dids, loop.length)} ${loop.rounds} times` : ''};
+    // "on the same page" only when the page really did not change during the cycle: agent-run.mjs adds "and the page did not change" from it.
+    const still = loop && new Set(views.slice(-loop.length)).size === 1 ? ' on the same page' : '';
+    return {note, stop: closed >= CYCLE_STOP ? `repeat: going back and forth between ${named(dids, loop.length)} ${loop.rounds} times${still}` : ''};
   };
 }
 
