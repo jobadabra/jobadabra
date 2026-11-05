@@ -1,6 +1,7 @@
 // `npm run check:fill`: the fast local pass/fail of the form filler. One process, one browser, offline: the widget zoo plus the recorded pages that are not slow (slow-cases.json),
 // by default the cases measured at 6 s or less (case-seconds.json; the zoo has no measure and always runs), --all every non-slow case (~5 min); each case scored right / wrong / empty / not reached (lib/check-fill-score.mjs) and compared with main's numbers (the baseline main's last green build kept, artifact check-fill-baseline, read with gh). Last line: `CHECK fill PASS|FAIL <numbers vs main>`.
 // --baseline <file> compares with that file instead, --write <file> saves a green --all run as the next baseline; --only <part of a name> runs those cases; --json <file> keeps every case's verdict. Guard: e2e/test/check-fill.test.mjs.
+// Job: keep the scorecard
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
