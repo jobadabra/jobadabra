@@ -63,7 +63,7 @@ test('a fresh account gets a helpful Focus: nothing urgent, one suggested next s
   const [step] = result.suggested;
   assert.ok(step.headline.startsWith('Apply to your next role'), step.headline);
   assert.match(step.meta, /Your application is prepared automatically when you apply/);
-  assert.ok(step.buttons.includes('Browse jobs'));
+  assert.ok(step.buttons.includes('Apply'));
   assert.equal(result.page.skeleton, false, 'a skeleton is still showing');
   assert.equal(result.page.inbound, false, 'an Inbound funnel is drawn although nothing found this account');
   assert.deepEqual([result.page.funnel, result.page.funnelEmpty, result.page.funnelHint], [true, true, 'Fills in as you prepare and send applications.']);

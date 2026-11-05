@@ -22,7 +22,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
   let tail = Promise.resolve();
   const serial = work => { const result = tail.then(work); tail = result.catch(() => {}); return result; };
   const ask = (entity, method, args = {}) => call(storage, entity, method, args);
-  const appOf = async url => { const app = await ask('applications', 'get', {url}); if (!app) throw new Error('This job has no Application record. Prepare its kit first.'); return app; };
+  const appOf = async url => { const app = await ask('applications', 'get', {url}); if (!app) throw new Error('This job has no Application record. Press Apply on it first.'); return app; };
   const load = async app => readState(await ask('applications', 'section', {app_id: app.id, name: BACKGROUND_SECTION}));
   const save = async (app, state) => { await ask('applications', 'set_section', {app_id: app.id, name: BACKGROUND_SECTION, markdown: JSON.stringify(state)}); return state; };
   const own = (state, session, owner) => !!state && state.session === session && state.owner === owner;

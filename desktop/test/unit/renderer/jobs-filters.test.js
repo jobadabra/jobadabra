@@ -28,6 +28,8 @@ test('the old menu entries hold the same jobs', () => {
   assert.ok(shows(match('applied'), 'everything') && shows(inbound('Screening'), 'everything'));
   // A job a chip called Saved (its stage) is Saved here too, even with another status.
   assert.ok(shows({url: 's', stage: 'Saved', status: 'unreviewed'}, 'saved'));
+  // A job with a stored Kit ready stage is a Saved job to the person, even with another status.
+  assert.ok(shows({url: 'k', stage: 'Kit ready', status: 'unreviewed'}, 'saved'));
 });
 
 test('each chip view holds the jobs it held', () => {

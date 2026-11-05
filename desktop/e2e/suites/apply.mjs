@@ -16,6 +16,7 @@ import {openPanel} from '../lib/panel-open.mjs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
+import {showFilter} from '../lib/jobs-filter.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines, extensionTail} from '../lib/app-log.mjs';
 import {lostTabIn} from '../lib/tab-bound.mjs';
@@ -156,7 +157,10 @@ export async function runApply(ctx, parts) {
       await page.click('.nav[data-view="jobs"]');
       // viaApi: the same call the button makes ("Fill in Chrome" in the ⋯ menu), for a job whose button now says "View session".
       if (viaApi) await page.evaluate(job => window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: 'Zurich, Switzerland', workMode: ''}), form);
-      else await page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`).locator('.row-main').click();
+      else {
+        await showFilter(page, 'saved');   // a prepared job is a Saved job, not a New match (src/desktop_jobs.py stage_status)
+        await page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`).locator('.row-main').click();
+      }
       let attemptUrl = '';
       const pickTab = () => ({tab: formTab(ctx.browser, attemptUrl), tabs: ctx.browser.context.pages().length});
       const opening = await waitForFill({pickTab: async () => {

@@ -65,6 +65,11 @@ test('Chrome mode marks each job link so the extension fills every tab by itself
   assert.ok(ids.every(Boolean) && new Set(ids).size === 2, ids.join());
 });
 
+test('Apply with no job at all says to find jobs, not that preparing failed', async () => {
+  const result = await apply.start(tempStorage(), {n: 2, mode: 'chrome'}, () => ({unref() {}}), async () => ({jobs: []}), undefined, undefined, async () => ({ok: false}));
+  assert.deepEqual(result, {ok: false, error: 'No job to apply to yet. Press Find jobs first.'});
+});
+
 test('an Apply batch drafts the missing kits for the best jobs first, quietly, and says so', {skip: process.platform === 'win32' && 'Mac launcher'}, async () => {
   const storage = tempStorage();
   const spawned = [];
@@ -76,7 +81,7 @@ test('an Apply batch drafts the missing kits for the best jobs first, quietly, a
   const prepare = async code => { prepared.push(code); jobs.find(job => job.code === code).kit = true; return {ok: true}; };
   const result = await apply.start(storage, {n: 2, mode: 'chrome'}, fakeSpawn, async () => ({jobs}), undefined, undefined, prepare);
   assert.deepEqual(prepared, ['b']);  // only the shortfall, best fit first
-  assert.match(result.message, /^Drafted 1 kit first\. Opened 2 job/);
+  assert.match(result.message, /^Prepared 1 application first\. Opened 2 job/);
   assert.equal(spawned[0].length, 3 + 2);
 });
 

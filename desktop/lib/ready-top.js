@@ -26,6 +26,6 @@ export function costLine(picked, count, {showCost = false} = {}) {   // showCost
   const total = Math.round(list.reduce((sum, job) => sum + job.usd, 0) * 100) / 100, jobsWord = `${list.length} job${list.length === 1 ? '' : 's'}`;
   if (!list.length) return 'No job is left to fill: every good match is on the server already.';
   if (!kits && !cvs) return `${jobsWord} ready: nothing to prepare, no AI cost.`;
-  const parts = [kits && `${kits} kit${kits === 1 ? '' : 's'}`, cvs && `${cvs} CV${cvs === 1 ? '' : 's'} with letter${cvs === 1 ? '' : 's'}`].filter(Boolean);
+  const parts = [kits && `${kits} application${kits === 1 ? '' : 's'}`, cvs && `${cvs} CV${cvs === 1 ? '' : 's'} with letter${cvs === 1 ? '' : 's'}`].filter(Boolean);
   return `${jobsWord}: prepare ${parts.join(' + ')}${showCost ? `, about $${total.toFixed(2)} of AI` : ''}.`;
 }

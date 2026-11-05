@@ -120,9 +120,9 @@ def kits_mode(args, stores=None):
     if drafted:
         message = kits_message(drafted)
     else:
-        message = (f"No kit to prepare: every open match scoring {args.auto_kit_min_score}+ already has one. "
+        message = (f"Nothing to prepare: every open match scoring {args.auto_kit_min_score}+ already has its application. "
                    "Run a search for new jobs first.")
-    run['headline'] = f'Kits ready: {len(drafted)}' if drafted else 'Kits ready: 0, no new top match'
+    run['headline'] = f'Applications ready: {len(drafted)}' if drafted else 'Applications ready: 0, no new top match'
     run['kit_titles'] = [f"{job['title']} ({job['company']})" for job, _ in drafted]
     print(run['headline'])
     log_ai_run(stores, run, args)

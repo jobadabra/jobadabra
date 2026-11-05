@@ -196,7 +196,7 @@ export function paletteCommands() {
   add('Jobs', 'Export job list', exporting === 'open' ? 'Save your jobs as a spreadsheet (CSV) or JSON file' : 'Part of Pro: save your jobs as a spreadsheet', 'export download save csv json excel spreadsheet jobs list pro',
     () => { if (exporting === 'locked') return openProGate(); openView('jobs'); setTimeout(() => $('jobs-export').click(), 150); }, exporting === 'locked' ? {badge: ['Pro']} : {});
   FILTER_OPTIONS.forEach(option => add('Jobs', `Jobs filter: ${option.label}`, option.title,
-    'show menu filter saved views applications active applying in progress kit ready rejected this week', () => { openView('jobs'); setFilters([option.id]); document.dispatchEvent(new CustomEvent('jobs-rerender')); }));
+    'show menu filter saved views applications active applying in progress rejected this week', () => { openView('jobs'); setFilters([option.id]); document.dispatchEvent(new CustomEvent('jobs-rerender')); }));
   // Each Reports tab (pages/reports.js), by what it holds.
   for (const [tab, label, words] of REPORT_TABS) add('Reports', `Open Reports: ${label}`, '', words, () => { openView('reports'); loadReports(tab); });
   // The AI engine's choices (pages/ai-engine.js): open Settings → Connections → AI and press the card, as by hand.

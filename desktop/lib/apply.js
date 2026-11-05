@@ -66,6 +66,8 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}) 
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
+const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
+const nothingStarted = jobs => (jobs.some(startable) ? NO_KITS : NO_JOBS);
 const ON_GITHUB = 'Your applications are being prepared on GitHub (Always on). Press Apply again in a few minutes.';
 
 import {formUrl, isFormOf} from './form-address.js';
@@ -204,7 +206,7 @@ export function claudePrereqs(platform = process.platform, {binary = claudeBinar
 export function claudeReady(storage, binary = claudeBinary, platform = process.platform, bash = gitBash) {
   if (!binary()) return {ok: false, error: 'Apply with Claude needs Claude Code: install it from claude.com/claude-code, or use Fill in Chrome.'};
   if (platform === 'win32' && !bash()) return {ok: false, error: 'Apply with Claude on Windows needs Git for Windows (git-scm.com), which Claude Code uses. Or use Fill in Chrome.'};
-  if (!storage.secret('NOTION_TOKEN')) return {ok: false, error: 'Apply with Claude reads the kit from Notion. Connect Notion in Settings first, or use Fill in Chrome.'};
+  if (!storage.secret('NOTION_TOKEN')) return {ok: false, error: 'Apply with Claude reads your application from Notion. Connect Notion in Settings first, or use Fill in Chrome.'};
   return {ok: true};
 }
 
@@ -279,7 +281,7 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
     const here = launch === session.launch && await inApp(storage);
     (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
     n = urls.length;
-    const first = drafted ? `Drafted ${drafted} kit${drafted === 1 ? '' : 's'} first. ` : '';
+    const first = drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : '';
     return {ok: true, inApp: here, message: first + (here
       ? `Starting ${n} Claude session(s) in the app, a few seconds apart. Each shows in Application sessions at the bottom; you're notified when one needs you. It stops before Submit for your review.`
       : `Starting ${n} Claude session(s), one window per job. Each reads sign-up emails itself, asks you in its window for a CAPTCHA, and stops before Submit for your review.`)};
@@ -293,7 +295,7 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
     drafted = result.done;
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
   }
-  if (!chosen.length) return {ok: false, error: NO_KITS};
+  if (!chosen.length) return {ok: false, error: nothingStarted(jobs)};
   // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
   if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.
@@ -304,6 +306,6 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
   if (!chrome) { toOpen.forEach(([, owner]) => terminals.remove(owner.id)); return {ok: false, error: NO_CHROME}; }   // no tab will carry these sessions' ids (applyOne does the same); a reused tab keeps its session
   if (toOpen.length) open(...chrome, {detached: true, stdio: 'ignore'}).unref();
   return {ok: true, jobs: chosen.map(job => `${job.title} · ${job.company}`),
-    message: `${drafted ? `Drafted ${drafted} kit${drafted === 1 ? '' : 's'} first. ` : ''}Opened ${chosen.length} job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself. ` +
+    message: `${drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : ''}Opened ${chosen.length} job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself. ` +
       '(If a form sits behind an "Apply" button, open it and click ✈️ → Fill with AI.)'};
 }

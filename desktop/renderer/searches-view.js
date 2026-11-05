@@ -7,7 +7,7 @@ export const SEARCH_MODES = ['scheduled', 'run', 'first', 'visits', 'scout'];   
 export const KEPT = 50;                                                          // runs listed (owner, 25 Oct 2026)
 const NAMES = {scheduled: 'Find jobs', run: 'Find jobs', first: 'First jobs', visits: 'Find jobs using your browser', scout: 'More employers'};
 const WHERE = {mac: 'This Mac', github: 'GitHub', cloud: 'In the cloud'};
-const STAGES = {enrich: 'Reading jobs with AI', kits: 'Kits', insight: 'Insights', interview: 'Interviews', mail: 'Emails', sources: 'Reading sources'};
+const STAGES = {enrich: 'Reading jobs with AI', kits: 'Applications', insight: 'Insights', interview: 'Interviews', mail: 'Emails', sources: 'Reading sources'};
 const TONES = {OK: 'good', Quiet: 'neutral', Warnings: 'warn', Failed: 'bad', Running: 'info'};
 const n = value => (value === null || value === undefined || value === '' ? null : Number(value).toLocaleString('en-US'));
 const some = pairs => pairs.filter(([, value]) => value !== null && value !== undefined && value !== '');

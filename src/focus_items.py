@@ -151,10 +151,10 @@ def present(item, gmail=True):
             else f'Who is the employer behind {who}?'
         meta = [_short(item['job'], 40), 'missing: ' + ', '.join(item.get('missing', []))]
     elif kind == 'apply':
-        done, left, kits = item.get('applied', 0), item.get('left', 0), item.get('kits', 0)
+        done, left, best = item.get('applied', 0), item.get('left', 0), item.get('best', [])
         icon, badge, tone = 'briefcase', 'Next step', 'info'
         headline = 'Apply to your next role' if not done else f'Apply to {left} more today'
-        meta = ['Your application is prepared automatically when you apply',
+        meta = [f"Your best: {', '.join(best)}" if best else 'Your application is prepared automatically when you apply',
                 f"{done} of {item.get('target', DEFAULT_TARGET)} today"]
     elif kind == 'happened':
         at = _when(item.get('at', ''))
@@ -178,13 +178,11 @@ def summary(items):
                'prepare': 'prepare for your interview', 'review': 'review your last interview',
                'happened': 'confirm your last interview happened', 'nudge': 'follow up where things went quiet',
                'follow_up': 'follow up where your message got no answer',
-               'apply': 'review ready applications', 'waiting': 'follow up on applications waiting for a reply',
+               'apply': 'apply to your next role', 'waiting': 'follow up on applications waiting for a reply',
                'feedback': 'ask for feedback to improve your next interview', 'feedback_review': 'learn from employer feedback'}
     order = []
     for item in items:
         phrase = None if item.get('after_interview') else phrases.get(item['kind'])
-        if item['kind'] == 'apply' and not item.get('kits'):
-            phrase = 'prepare kits from your best matches'  # Why (5 Nov 2026, #3227 #3202): the item's own text says so; "review ready applications" is true only with a kit
         if phrase and phrase not in order:
             order.append(phrase)
     if not order:

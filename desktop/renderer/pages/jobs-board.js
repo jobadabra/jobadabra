@@ -2,7 +2,7 @@
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
 // dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
 import {el, moreButton, pill} from '../components.js';
-import {boardColumns, dropFor, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
+import {boardColumns, columnOf, dropFor, nextStepOf, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
 import {matchLabel} from '../jobs-view.js';
 import {rowModel} from '../job-row-model.js';
 import {$} from './core.js';
@@ -36,9 +36,9 @@ function card(job) {
   const body = el('div', 'focus-body'), parts = rowModel(job);
   body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
-  if (job.next_step && !/kit ready/i.test(job.next_step)) body.append(el('div', 'muted small', `Next: ${job.next_step}`));
+  if (nextStepOf(job)) body.append(el('div', 'muted small', `Next: ${nextStepOf(job)}`));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
-  const moves = STAGES.filter(stage => stage !== job.stage && takesDrop(stage))
+  const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
     .map(stage => ({label: stageLabel(stage), run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: 'Move to', disabled: true}, ...moves], 'Move to another stage'));
   item.addEventListener('dragstart', event => { dragged = job; event.dataTransfer.setData('text/plain', job.url || ''); item.classList.add('is-dragging'); });
@@ -61,7 +61,7 @@ export function renderBoard(jobs) {
     list.append(...column.jobs.map(card));
     box.append(head, list);
     if (takesDrop(column.stage)) {
-      box.addEventListener('dragover', event => { if (dragged && dragged.stage !== column.stage) { event.preventDefault(); box.classList.add('is-over'); } });
+      box.addEventListener('dragover', event => { if (dragged && columnOf(dragged) !== column.stage) { event.preventDefault(); box.classList.add('is-over'); } });
       box.addEventListener('dragleave', () => box.classList.remove('is-over'));
       box.addEventListener('drop', event => { event.preventDefault(); box.classList.remove('is-over'); if (dragged) moveJob(dragged, column.stage); });
     } else box.title = `${stageLabel(column.stage)} is set by Jobadabra, not by moving a card`;

@@ -40,7 +40,7 @@ const CASES = [
   {what: 'Mark a job Applied', job: 'alder/sre', write: url => call('setStatus', url, 'applied'), reads: list => shown(list, at('alder/sre')) === 'applied/Applied'},
   {what: '"This wasn\'t submitted" on an Applied job', job: 'cedar/devops', write: url => pipeline.notSubmitted(kit.storage, url), reads: list => shown(list, at('cedar/devops')) === 'applied/Applying'},
   {what: 'A session ended without a submission (Applying back to Kit ready)', job: 'delta/sre', before: url => pipeline.notSubmitted(kit.storage, url), write: url => pipeline.unapply(kit.storage, url),
-    reads: list => shown(list, at('delta/sre')) === 'unreviewed/Kit ready'},
+    reads: list => shown(list, at('delta/sre')) === 'saved/Kit ready'},
   {what: 'Delete a dismissed job', job: 'ibis/infra', before: url => call('setStatus', url, 'dismissed'), write: url => call('deleteJob', url), reads: list => shown(list, at('ibis/infra')) === 'not listed'},
 ];
 

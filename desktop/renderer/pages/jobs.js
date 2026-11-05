@@ -160,7 +160,7 @@ export function showJobsData(data) {
   if ('profile_empty' in data) showProfileEmpty(!!data.profile_empty);   // "Your Profile is empty, so fit scores are paused" (#2759): setup ends here
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
-      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job), 'warn');
+      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your application is kept.`, jobPlace(job), 'warn');
     }
     shared.allJobs = data.jobs;
     noteOutdated(data.outdated);   // the scores from the previous strategy: Strategy's own count, kept by rescore-run.js (after the rows: its redraw reads them)

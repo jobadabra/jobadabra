@@ -15,9 +15,10 @@ from .sources.posting_text import label
 # Notion Applications Stage -> the app's status. With Notion connected the Stage is the only source of truth;
 # the local applications.status column is a cache refreshed from it on every list.
 def stage_status(stage):
-    if not stage or stage == 'Kit ready':
+    if not stage:
         return 'unreviewed'
-    if stage in ('Saved', 'Recruiter lead'):  # a recruiter's pitch you haven't answered yet: worth a look, not applied
+    # Why (5 Nov 2026, owner): Kit ready is internal, a prepared job is a Saved job ("The user cares only about applying"); as 'unreviewed' its row read New.
+    if stage in ('Saved', 'Kit ready', 'Recruiter lead'):  # a recruiter's pitch you haven't answered yet: worth a look, not applied
         return 'saved'
     if stage in ('Dismissed', 'Closed'):
         return 'dismissed'

@@ -131,7 +131,7 @@ function renderLost(item) {
   renderChecking();
   $('ss-decision').className = 'ss-next tone-warn';
   $('ss-next-title').textContent = 'Tab not found';
-  $('ss-question').replaceChildren(el('p', 'rich-p', 'Jobadabra can\'t find this application\'s tab in Chrome. It may still be open under another address. Open it again and the extension fills it from your kit; if the tab shows up by itself, this card updates.'));
+  $('ss-question').replaceChildren(el('p', 'rich-p', 'Jobadabra can\'t find this application\'s tab in Chrome. It may still be open under another address. Open it again and the extension fills it for you; if the tab shows up by itself, this card updates.'));
   $('ss-actions').replaceChildren(reopenButton(item));
 }
 export function renderNextStep(item) {
@@ -194,9 +194,9 @@ export function renderNextStep(item) {
       : 'This page has no form the extension can open by itself (no Apply button it may press, or it leads to another site). Open it in Chrome to go on; if it stays stuck, Claude can find the form and fill it; you still submit it.'),
       // The next press, in the AI's own words (e.g. 'Solve the check, then press "Créer un compte"'): what is left for you on this page.
       ...(['account', 'incomplete'].includes(item.stuck) && item.accountNeeds ? [el('p', 'rich-p', el('b', '', 'Left for you: '), item.accountNeeds)] : [])]
-    : stopped ? [el('p', 'rich-p', 'Nothing runs on this application until you start it again. Reopen form opens it in a new Chrome tab and the extension fills it from your kit; the form already open in Chrome is left as it is.')]
+    : stopped ? [el('p', 'rich-p', 'Nothing runs on this application until you start it again. Reopen form opens it in a new Chrome tab and the extension fills it for you; the form already open in Chrome is left as it is.')]
     : gone && asking ? [el('p', 'rich-p', 'This application was open in the Chrome tab you closed, so its last question was about that tab. Reopen form opens it again (you choose whether to start over).')]
-    : gone ? [el('p', 'rich-p', item.kind === 'form' ? 'You closed the form\'s Chrome tab. Reopen it and the extension fills it again from your kit. If you submitted it, the extension has already marked it Applied.' : 'The filled form was in the Chrome tab you closed. Reopen it to fill it again from your kit, or mark it submitted if you already sent it.')]
+    : gone ? [el('p', 'rich-p', item.kind === 'form' ? 'You closed the form\'s Chrome tab. Reopen it and the extension fills it again. If you submitted it, the extension has already marked it Applied.' : 'The filled form was in the Chrome tab you closed. Reopen it to fill it again, or mark it submitted if you already sent it.')]
     : open ? [el('p', 'rich-p', 'The form is open in Chrome. Complete the remaining fields shown below, then review the answers before submitting.') ]
     : review ? [el('p', 'rich-p', item.kind === 'form' || item.inChrome ? 'The extension fills the form in Chrome. Check the answers and legal boxes there, then submit it yourself.' : 'Check the answers and legal boxes in Chrome, then submit it yourself.')]
     : asking ? (forYou.length
