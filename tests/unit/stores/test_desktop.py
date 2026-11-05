@@ -63,7 +63,7 @@ class DesktopTests(unittest.TestCase):
         # No row in Notion (e.g. the Saved row was deleted there) = not reviewed.
         self.assertEqual(desktop.jobs(self.db, stages={}, notion=True)['jobs'][0]['status'], 'unreviewed')
         self.assertEqual([desktop.stage_status(s) for s in (None, 'Kit ready', 'Saved', 'Dismissed', 'Closed', 'Interview scheduled')],
-                         ['unreviewed', 'unreviewed', 'saved', 'dismissed', 'dismissed', 'applied'])
+                         ['unreviewed', 'saved', 'saved', 'dismissed', 'dismissed', 'applied'])
 
     def test_dismissing_a_job_in_process_closes_it_instead_of_pretending(self):
         stores = memory.open_store()  # the store keeps a real stage against Saved/Dismissed (src/stores/rules.py)
@@ -246,7 +246,7 @@ class StrategyTests(unittest.TestCase):
         self.assertIn('Title: sales', data['avoid'])
         self.assertEqual({c['key']: c['value'] for c in data['components']},
                          {'role_fit': 70, 'location': 50, 'compensation': 50, 'growth': 50, 'risk': 80})  # risk shown as "low risk"
-        self.assertEqual(data['counts'], {'matches': 2, 'kits': 1, 'sent': 2})
+        self.assertEqual(data['counts'], {'matches': 2, 'kits': 1, 'saved': 2, 'sent': 2})
         self.assertFalse(data['profile_empty'])
         tracker.page_text = lambda: '# Hard constraints\nConstraint | Value\nCountries | ❓ e.g. "Switzerland (anywhere)"\nHome base | ❓ your current city'
         with mock.patch.object(desktop.digest, 'eligible_jobs', lambda db: ([], [])), mock.patch.object(desktop.score, 'load', lambda db: {}), \

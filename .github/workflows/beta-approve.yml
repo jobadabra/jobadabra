@@ -21,6 +21,14 @@ on:
         description: 'The commit it was built from'
         type: string
         required: true
+    # Why (5 Nov 2026, owner via coordinator: "do NOT use secrets: inherit"): a called workflow sees no secret its caller does not name, so the by-hand callers pass exactly these two; without them release-stable.sh's "store publish did not start" alert could never send from here
+    secrets:
+      CI_ALERTS_TELEGRAM_BOT_TOKEN:
+        required: false
+      CI_ALERTS_TELEGRAM_CHAT_ID:
+        required: false
+      SELFHEAL_PUBLISH_KEY:   # the owner's Notifications switch for that alert (desktop.yml and canary-promote.yml already hold it on this release path)
+        required: false
 
 permissions:
   contents: read
@@ -71,6 +79,7 @@ jobs:
           SOAK: ${{ vars.JOBADABRA_SOAK }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           if [ "$PLATFORM" = windows ]; then

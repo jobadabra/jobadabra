@@ -220,7 +220,7 @@ def log_text(html):
 def kits_message(drafted, subtitle=None):
     """The "Prepare top matches" message: the count, then each drafted job's linked title and company (the window's
     kits card reads it: desktop/renderer/kits-ready.js, checked against this writer in desktop/test/unit/renderer/engine-message-contract.test.js)."""
-    return tgcard.card('Application kits ready', subtitle or f"{len(drafted)} drafted for your top matches · nothing sent", [
+    return tgcard.card('Applications ready', subtitle or f"{len(drafted)} prepared for your top matches · nothing sent", [
         f"<a href=\"{escape(job['url'], quote=True)}\">{escape(job['title'])}</a>\n{escape(job['company'])}"
         for job, _ in drafted], emoji='📝')
 

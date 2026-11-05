@@ -38,6 +38,7 @@ from . import telegram, tgcard, tz
 from .app_source import APP_SOURCE, is_app_source
 from .ai import meanings
 from . import feedback
+from .desktop_jobs import has_kit
 from .features import disabled
 from .notion import client as notion
 from .notion import funnel as funnel_steps
@@ -57,6 +58,11 @@ from .focus_state import (  # noqa: F401
 STRATEGY_ROWS = (*suggestions_search.ROWS, 'ideas')   # the rows Strategy hides by an answer kept in the store
 # Why (insights PR 1c, owner 28 Oct 2026): the Jobs drawers' rows are made in the window (renderer/question-entries.js), so Focus only says which of their keys a Not now still hides.
 QUESTION_ROWS = ('letter', 'details', 'learned')
+
+
+def _prepared(row):
+    """True when Apply would start this application first: it has its kit (src/desktop_jobs.py has_kit, the rule the Jobs list gives Apply)."""
+    return has_kit(_field(row, 'stage') or '', _field(row, 'next_step') or '')
 
 
 def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None, search=()):
@@ -209,16 +215,15 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
                                    'Propose times for the next call, or ask where things stand.', row, quiet=quiet))
     items += questions(rows, events)
     done_today = _applied_today(rows, by_app, today)
-    kits = sorted((r for r in rows if _field(r, 'stage') == 'Kit ready'),
-                  key=lambda r: -(r.get('fit') or 0))
     left = max(target - done_today, 0)
     if left:
-        names = ', '.join(f"{_field(r, 'company')}" for r in kits[:3])
+        # Why (5 Nov 2026, owner): "The user cares only about applying": the row names the best jobs to apply to; Kit ready is internal, so a job there is a Saved job.
+        # Prepared jobs first, then by fit: the order an Apply batch takes them (desktop/lib/apply.js pick, then pickMissing).
+        waiting_jobs = sorted((r for r in rows if _field(r, 'stage') in ('Saved', 'Kit ready')), key=lambda r: (not _prepared(r), -(r.get('fit') or 0)))
+        best = list(dict.fromkeys(name for r in waiting_jobs if (name := _field(r, 'company'))))[:2]
         items.append(_item(3, 'apply', '📨', f'Apply to {left} more job{"s" if left != 1 else ""} today',
-                           f'{done_today} of {target} today.' + (f' {len(kits)} kit{"s" if len(kits) != 1 else ""} ready'
-                                                                  f'{f" ({names}…)" if names else ""}.' if kits else
-                                                                  ' Prepare kits from your best matches (Jobs).'),
-                           applied=done_today, left=left, kits=len(kits), target=target))
+                           f'{done_today} of {target} today.' + (f' Your best: {", ".join(best)}.' if best else ''),
+                           applied=done_today, left=left, best=best, target=target))
     waiting = [r for r in rows if _field(r, 'stage') in ('Applied', 'Confirmation received')
                and (applied := _when(_field(r, 'applied_on'))) and (now - applied).days >= WAITING_DAYS]
     if waiting:
@@ -232,7 +237,7 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
     items = [{**present(item, gmail), 'place': suggestions.place(item['kind']), 'topic': suggestions.item_topic(item['kind'])} for item in items]
     # The weekly report's door counts only when the app can carry it out now (src/suggestions.py DOORS).
     doors = {'find_jobs', 'tailor'} | ({'tune'} if suggestions.tune_entry(tune) else set()) | ({'prep'} if any(i['kind'] == 'prepare' for i in items) else set())
-    return {'items': items, 'today': {'applied': done_today, 'target': target, 'kits_ready': len(kits),
+    return {'items': items, 'today': {'applied': done_today, 'target': target,
                                       'history': _applied_by_day(rows, by_app, today)},
             'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows, search=search),
             # Strategy draws its rows from its own fresh check: these are the ones answered (Not now, Not true) wherever they were shown.
@@ -317,8 +322,7 @@ def reminder(focus, now=None):
         parts.append(f"💬 {len(learning)} feedback action(s): " + ', '.join(i['company'] for i in learning[:3])
                      + ' — one useful point can improve your next interview')
     if behind:
-        parts.append(f"📨 {today['applied']}/{today['target']} applications today"
-                     + (f"; {today['kits_ready']} kits ready" if today['kits_ready'] else ''))
+        parts.append(f"📨 {today['applied']}/{today['target']} applications today")
     return '\n'.join(parts)
 
 
@@ -339,8 +343,7 @@ def reminder_card(focus, now=None):
     for item in learning[:3]:
         blocks.append(tgcard.block(escape(item['company']), 'Review one learning point before your next interview.'))
     if behind or not blocks:
-        kits = f"{today['kits_ready']} kits ready" if today['kits_ready'] else ''
-        blocks.append(tgcard.block('Today', escape(tgcard.dot(f"{today['applied']} of {today['target']} applications", kits))))
+        blocks.append(tgcard.block('Today', escape(f"{today['applied']} of {today['target']} applications")))
     counts = [f"{len(waiting)} waiting for you" if waiting else '', f"{len(soon)} interview soon" if soon else '',
               f"{len(learning)} feedback item{'s' if len(learning) != 1 else ''} to review" if learning else '']
     return tgcard.card('Your focus', tgcard.dot(*counts), blocks, emoji='🧭')

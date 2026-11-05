@@ -99,7 +99,7 @@ if [ "$was_beta" = true ]; then GITHUB_REPOSITORY="$repo" node "$here/../desktop
 if [ "$was_beta" = true ]; then
   if ! out=$(gh workflow run feedback-released.yml -R "$repo" --ref main -f tag="$tag" 2>&1); then
     echo "(feedback reporters not told: ${out}. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag)" >&2
-    MESSAGE="⚠️ $tag is stable, but the run that tells the feedback reporters did not start. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))" || echo "(alert not sent)" >&2
+    MESSAGE="⚠️ $tag is stable, but the run that tells the feedback reporters did not start. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'feedback-not-told', level: 'problem'}))" || echo "(alert not sent)" >&2
   fi
 fi
 # Both store publishes start on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
@@ -132,8 +132,9 @@ if [ "${#failed[@]}" -gt 0 ]; then
   message="⚠️ $tag is stable, but the publish to the $names did not start. Start it by hand:"
   for command in "${by_hand[@]}"; do message+=$'\n'"$command"; done
   message+=$'\n'"Run: ${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
+  # Why (5 Nov 2026, Gitar on #3298): a store publish that did not start is a failure: it goes out as release-failed at level problem, not as the stable announcement, which the owner may switch off or set to problems-only and would then never hear this.
   # The one alert path the other CI checks use (desktop/e2e/ci-alert.mjs; CI_ALERTS_TELEGRAM_BOT_TOKEN and _CHAT_ID from the calling step); an alert that cannot go out never hides the failure.
-  MESSAGE="$message" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))" || echo "(alert not sent)" >&2
+  MESSAGE="$message" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'release-failed', level: 'problem'}))" || echo "(alert not sent)" >&2
   echo "$tag is stable, but the $names publish did not start: this run ends red (exit 4) so it is seen. Start it by hand, as above." >&2
   exit 4
 fi

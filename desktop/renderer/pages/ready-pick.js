@@ -24,7 +24,7 @@ export function pickFill(top, {start = 3} = {}) {
       for (const button of group.children) button.classList.toggle('is-active', Number(button.dataset.count) === count);
       list.replaceChildren(...shown.map(job => {
         const item = el('li', '', job.name || job.code);
-        item.append(' ', pill(job.needsKit ? 'needs kit, CV and letter' : job.needsCv ? 'needs CV and letter' : 'ready', job.needsKit || job.needsCv ? 'warn' : 'good'));
+        item.append(' ', pill(job.needsKit ? 'needs application, CV and letter' : job.needsCv ? 'needs CV and letter' : 'ready', job.needsKit || job.needsCv ? 'warn' : 'good'));
         return item;
       }));
       cost.textContent = top.lines?.[count] || '';

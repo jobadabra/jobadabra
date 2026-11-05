@@ -937,7 +937,7 @@
             <article class="summary-card">
               <div class="summary-head"><i data-icon="clock"></i><h3>Automation</h3></div>
               <p class="muted">Your job search schedule and automation settings.</p>
-              <dl class="summary-rows"><dt>Find jobs</dt><dd id="ov-search"></dd><dt>Application preparation</dt><dd id="ov-kits"></dd>
+              <dl class="summary-rows"><dt>Find jobs</dt><dd id="ov-search"></dd>
                 <dt>Always on: your GitHub</dt><dd id="ov-cloud"></dd></dl>
               <button class="arrow-link" data-settings-go="automation">Manage automation</button>
             </article>
@@ -1091,7 +1091,7 @@
             <div class="outline-body" id="letter-style-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-letter" data-profile-panel="letter" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">Used when a job has no usable tailored letter; each job's own letter lives in its preparation kit.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">Used when a job has no usable tailored letter; each job's own letter lives in its Documents tab.</p></div></div>
               <div class="panel-actions"><span id="letter-state"></span></div></div>
             <div id="letter-empty" hidden></div>
             <div class="letter-editor" id="letter-editor">
@@ -1154,10 +1154,6 @@
                   <option value="1">Every hour</option><option value="2">Every 2 hours</option><option value="3">Every 3 hours</option>
                   <option value="4">Every 4 hours</option><option value="6">Every 6 hours</option><option value="8">Every 8 hours</option>
                   <option value="12">Twice a day</option><option value="24">Once a day (07:30)</option><option value="0">Only when I ask</option></select><span class="task-state" data-schedule-state="search"></span></label>
-              <label class="task-row"><span><b>Draft applications</b><small>Cover letter and form answers for the best new matches; uses your AI key</small></span>
-                <select data-schedule="kits">
-                  <option value="0">On demand</option><option value="1">Best new match, each search</option>
-                  <option value="3">3 best new matches, each search</option><option value="5">5 best new matches, each search</option></select><span class="task-state" data-schedule-state="kits"></span></label>
               <label class="task-row"><span><b>Insights</b><small>What's working and what to change; weekly report on Mondays</small></span>
                 <select data-schedule="insights">
                   <option value="daily">Every morning</option><option value="off">Off</option></select><span class="task-state" data-schedule-state="insights"></span></label>
@@ -1366,7 +1362,7 @@
       </div>
       <div class="setting conn-panel" id="setting-notion" hidden>
         <div><h3 data-about-notion>🗂️ Notion</h3><p class="muted status-line" data-secret="NOTION_TOKEN"></p>
-          <p class="muted small" data-about-notion>Where your applications, kits and interviews are kept. Needed for Always on, Telegram and Gmail. Reconnect if Jobadabra lost access (for example after you removed it in Notion).</p></div>
+          <p class="muted small" data-about-notion>Where your applications and interviews are kept. Needed for Always on, Telegram and Gmail. Reconnect if Jobadabra lost access (for example after you removed it in Notion).</p></div>
         <ul class="ui-benefits" id="set-notion-benefits" hidden></ul>
         <div class="inline"><button class="secondary" id="set-notion-oauth">Reconnect with Notion</button></div>
         
@@ -1997,13 +1993,13 @@
         <div class="inline spaced" id="cv-base-actions" hidden><button class="secondary" id="cv-base-read">Read the new CV</button></div></div><span id="cv-base-pill"></span></li>
   </ul>
   <section class="cv-kits-card" id="cv-kits-row" hidden>
-    <div class="cv-kits-head"><b>Existing draft kits</b><span class="ui-pill tone-neutral" id="cv-kits-count"></span><span class="muted small">Optional review</span></div>
+    <div class="cv-kits-head"><b>Applications not sent yet</b><span class="ui-pill tone-neutral" id="cv-kits-count"></span><span class="muted small">Optional review</span></div>
     <p class="muted small">Created with the previous Profile. Redraft the ones you still want, after applying Profile changes.</p>
     <div id="cv-kits" class="cv-kits"></div>
     <button class="link" id="cv-kits-more" hidden></button>
   </section>
   <p class="cv-unchanged"><i data-icon="info"></i>Search preferences, match scores and applications already sent are unchanged (they keep the CV you sent).</p>
-  <div class="dialog-foot"><span class="muted small">You can review draft kits later.</span><button class="primary" id="cv-done">Done</button></div>
+  <div class="dialog-foot"><span class="muted small">You can come back to these later.</span><button class="primary" id="cv-done">Done</button></div>
 </dialog>
 
 <!-- Tune my strategy: changes the user's own outcomes support (src/tune.py), applied only when ticked (pages/tune.js) -->

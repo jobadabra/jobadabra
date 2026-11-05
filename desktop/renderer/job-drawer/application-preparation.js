@@ -34,7 +34,7 @@ export function preparationView({job, parts}) {
   const nodes = [...(parts.kit ? kitView(parts.kit) : []),
     ...parts.groups.prep.map(part => group(part.title || '🎤 Interview preparation', part.lines)), ...jobQuestionsView(job)];
   const filled = nodes.length > 0 && (parts.has.application || parts.groups.prep.length > 0);
-  if (!filled) return [stateCard({icon: 'file', title: 'Not prepared', text: 'Apply drafts the kit: what to check, what to lead with and the form\'s answers. It shows here. The CV and cover letter are under Documents.'})];
+  if (!filled) return [stateCard({icon: 'file', title: 'Not prepared', text: 'Apply prepares it: what to check, what to lead with and the form\'s answers. It shows here. The CV and cover letter are under Documents.'})];
   // The kit was written by the engine now in charge: on Free AI, a one-time hint that an own key writes stronger (own-key-hint.js).
   const hint = parts.kit && ownKeyHint(shared.state, {openSettings: () => import('../pages/settings.js').then(({openSetting}) => openSetting('ai'))});
   return hint ? [...nodes, hint] : nodes;

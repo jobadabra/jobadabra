@@ -185,6 +185,7 @@ jobs:
         env:
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
           why="$(head -n 3 "$RUNNER_TEMP/auto-why.txt" 2>/dev/null | tr '\n' ' ')"
           node refill-auto.mjs alert "PR $PR: ${why:-the pick failed, see the run}. Nothing was asked. By hand: gh workflow run replay-refill.yml -f pr=$PR"
@@ -509,6 +510,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           RESULTS: pick=${{ needs.pick.result }} bundles=${{ needs.bundles.result }} refill=${{ needs.refill.result }} publish=${{ needs.publish.result }} finish=${{ needs.finish.result }}
           PICK: ${{ needs.pick.outputs.line }}
         run: |

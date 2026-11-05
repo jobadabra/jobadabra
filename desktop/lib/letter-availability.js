@@ -29,7 +29,7 @@ export function availableLetter(storage, url = '', {given = false, failed = fals
   const status = base.text && letters.hasGap(base.text) ? gap('invalid', 'The cover letter still has placeholders to complete.', 'Complete cover letter')
     : base.state === 'draft' ? gap('draft', 'Your cover letter is a draft and needs your review and approval.', 'Review cover letter')
     : base.state === 'approved' && !base.pdf ? gap('unavailable', 'The approved cover-letter PDF is missing. Make it again.', 'Review cover letter')
-    : job?.text ? gap('unavailable', 'This job’s cover letter needs a complete text and PDF. Review its preparation kit.', 'Review cover letter')
+    : job?.text ? gap('unavailable', 'This job’s cover letter needs a complete text and PDF. Review its Documents tab.', 'Review cover letter')
     : gap('missing', 'No usable cover letter has been created. Create and review it before applying.', 'Create cover letter');
   return {status, text: '', file: null};
 }

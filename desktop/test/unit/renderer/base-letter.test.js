@@ -56,7 +56,7 @@ test('the empty state is the shared one (page-parts.js emptyState) with two choi
   assert.match(panel, /<div id="letter-empty" hidden><\/div>/, 'drawn by emptyState, not markup');
   assert.equal((panel.match(/data-letter-usage/g) || []).length, 1, 'the editor\'s line; the empty state carries it as its note');
   assert.doesNotMatch(panel, /id="letter-save"/, 'typed changes go on Profile\'s one save bar');
-  assert.match(panel, /preparation kit/);
+  assert.match(panel, /Documents tab/);
   const source = fs.readFileSync(new URL('../../../renderer/pages/base-letter.js', import.meta.url), 'utf8');
   assert.match(source, /emptyState\(\{[\s\S]*label: 'Draft with AI'[\s\S]*label: 'Write my own'[\s\S]*note: usageLine\(\)/);
   assert.match(source, /ai\.id = 'letter-start-ai';[\s\S]*own\.id = 'letter-own';/, 'the ids ⌘K and the tests find');

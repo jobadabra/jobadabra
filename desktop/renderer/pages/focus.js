@@ -184,7 +184,7 @@ function focusCard(item) {
     }));
     actions.append(focusButton(item.suggested_url ? 'Other job…' : 'Pick the job', item.suggested_url ? 'secondary' : 'primary', () => whichJob(item)));
   }
-  if (item.kind === 'apply') actions.append(focusButton('Browse jobs', 'primary', () => openView('jobs')));
+  if (item.kind === 'apply') actions.append(focusButton('Apply', 'primary', () => { openView('jobs'); $('apply-open')?.click(); }));   // the same door as Get started's Apply
   if (item.kind === 'review') actions.append(focusButton('Interviews', 'primary', () => openView('interviews')));
   if (item.kind === 'happened' && item.page_id) {  // its time passed, nothing recorded: yes (notes) or no (moved/cancelled)
     const no = focusButton('No', 'secondary', () => openHappened(item, 'no'));

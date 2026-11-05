@@ -52,21 +52,22 @@ export function pickUntailored(jobs, n) {
 }
 
 // Draft the missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
-// Returns how many are ready now, or {cloud: true} when they are drafted on GitHub and cannot be waited for here.
+// Returns how many are ready now, and the first reason a kit was refused ('' when none gave one).
 export async function draftMissing(jobs, shortfall, prepare, report = () => {}) {
-  let done = 0;
+  let done = 0, why = '';
   const missing = pickMissing(jobs, shortfall);
   for (const [index, job] of missing.entries()) {
     report(`Preparing application ${index + 1} of ${missing.length}: ${job.title} · ${job.company} (about 20 s each)…`);
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(() => ({ok: false}));
-    if (result.cloud) return {cloud: true, done};
     if (result.ok) done++;
+    else why ||= result.error || '';
   }
-  return {done};
+  return {done, why};
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
-const ON_GITHUB = 'Your applications are being prepared on GitHub (Always on). Press Apply again in a few minutes.';
+const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
+const nothingStarted = jobs => (jobs.some(startable) ? NO_KITS : NO_JOBS);
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -204,7 +205,7 @@ export function claudePrereqs(platform = process.platform, {binary = claudeBinar
 export function claudeReady(storage, binary = claudeBinary, platform = process.platform, bash = gitBash) {
   if (!binary()) return {ok: false, error: 'Apply with Claude needs Claude Code: install it from claude.com/claude-code, or use Fill in Chrome.'};
   if (platform === 'win32' && !bash()) return {ok: false, error: 'Apply with Claude on Windows needs Git for Windows (git-scm.com), which Claude Code uses. Or use Fill in Chrome.'};
-  if (!storage.secret('NOTION_TOKEN')) return {ok: false, error: 'Apply with Claude reads the kit from Notion. Connect Notion in Settings first, or use Fill in Chrome.'};
+  if (!storage.secret('NOTION_TOKEN')) return {ok: false, error: 'Apply with Claude reads your application from Notion. Connect Notion in Settings first, or use Fill in Chrome.'};
   return {ok: true};
 }
 
@@ -268,32 +269,32 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
     const ready = claudeReady(storage);
     if (!ready.ok) return ready;
     let urls = await next(storage, n);
-    let drafted = 0;
+    let drafted = 0, why = '';
     if (urls.length < n && prepare) {
       const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report);
-      if (result.cloud) return {ok: false, error: ON_GITHUB};
       drafted = result.done;
+      why = result.why;
       if (drafted) urls = await next(storage, n);
     }
-    if (!urls.length) return {ok: false, error: NO_KITS};
+    if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs)};
     const here = launch === session.launch && await inApp(storage);
     (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
     n = urls.length;
-    const first = drafted ? `Drafted ${drafted} kit${drafted === 1 ? '' : 's'} first. ` : '';
+    const first = drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : '';
     return {ok: true, inApp: here, message: first + (here
       ? `Starting ${n} Claude session(s) in the app, a few seconds apart. Each shows in Application sessions at the bottom; you're notified when one needs you. It stops before Submit for your review.`
       : `Starting ${n} Claude session(s), one window per job. Each reads sign-up emails itself, asks you in its window for a CAPTCHA, and stops before Submit for your review.`)};
   }
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n);
-  let drafted = 0;
+  let drafted = 0, why = '';
   if (chosen.length < n && prepare) {
     const result = await draftMissing(jobs, n - chosen.length, prepare, report);
-    if (result.cloud) return {ok: false, error: ON_GITHUB};
     drafted = result.done;
+    why = result.why;
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
   }
-  if (!chosen.length) return {ok: false, error: NO_KITS};
+  if (!chosen.length) return {ok: false, error: why || nothingStarted(jobs)};
   // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
   if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.
@@ -304,6 +305,6 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
   if (!chrome) { toOpen.forEach(([, owner]) => terminals.remove(owner.id)); return {ok: false, error: NO_CHROME}; }   // no tab will carry these sessions' ids (applyOne does the same); a reused tab keeps its session
   if (toOpen.length) open(...chrome, {detached: true, stdio: 'ignore'}).unref();
   return {ok: true, jobs: chosen.map(job => `${job.title} · ${job.company}`),
-    message: `${drafted ? `Drafted ${drafted} kit${drafted === 1 ? '' : 's'} first. ` : ''}Opened ${chosen.length} job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself. ` +
+    message: `${drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : ''}Opened ${chosen.length} job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself. ` +
       '(If a form sits behind an "Apply" button, open it and click ✈️ → Fill with AI.)'};
 }

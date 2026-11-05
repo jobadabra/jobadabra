@@ -46,4 +46,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node ci-alert.mjs failure "An E2E tooling test no longer passes" "The failing test is in the run, step Every E2E tooling test"

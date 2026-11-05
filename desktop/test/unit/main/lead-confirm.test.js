@@ -307,5 +307,5 @@ test('no call time is asked, or sent, for a kind that has no call coming (a reje
 
 test('job picker labels hide the stored preparation stage', () => {
   const groups = lead.jobChoices([{url: 'https://example.test/job', label: 'Example · SRE', stage: 'Kit ready'}]);
-  assert.equal(groups[0].options[0].text, 'Example · SRE (Ready to apply)');
+  assert.equal(groups[0].options[0].text, 'Example · SRE (Saved)');
 });

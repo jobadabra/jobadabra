@@ -10,11 +10,13 @@
 // pending, so the next hour retries just the part that failed. A runner that dies between a claim and its send loses that message (at most once); the 5-minute job cap and 15 s Telegram timeout make it rare.
 // Invariants: a refused version is never sent again by this tool; only a version newer than the finished one is auto-sent; nothing here submits anything itself, it starts msix-store.yml.
 import fs from 'node:fs';
-import {send} from '../desktop/e2e/ci-alert.mjs';
+import {delivered, send as sendAlert} from '../desktop/e2e/ci-alert.mjs';
+
+// Why (5 Nov 2026, nt 3/4c): the owner's switchboard may hold this alert (switched off): that is done, not a failed send, so the claim stays and nothing is retried hourly.
+const send = (text, env) => sendAlert(text, env, fetch, {event: 'msstore-status'});
 
 const APP_ID = '9NW1JJ7Z90MP';
 const STORE_PAGE = `https://apps.microsoft.com/detail/${APP_ID}`;
-const SENT = 'ci-alert: sent';
 const ansi = text => String(text || '').replace(/\x1b\[[0-9;]*m/g, '');
 
 /** Semver compare of "X.Y.Z" strings: negative, 0 or positive. */
@@ -99,7 +101,7 @@ export async function pendingVersions(gh) {
 /** Sends `text`; a send that did not reach Telegram throws. */
 async function tellOwner(text, env, sender) {
   const result = await sender(text, env);
-  if (result !== SENT) throw new Error(result);
+  if (!delivered(result)) throw new Error(result);
 }
 
 /** One message under its claim: claimed, sent; a send that fails releases the claim and throws, so the next hour retries it. */

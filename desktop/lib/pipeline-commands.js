@@ -170,7 +170,7 @@ export async function focusReminder(storage, send = false) {
 export const unapply = afterWrite(async (storage, url) => {
   const {stdout} = await run(storage, ['src.desktop', 'unapply', url]);
   const result = JSON.parse(stdout.trim().split('\n').pop() || '{"ok":false}');
-  if (result.ok && result.notion === 'updated') viewCache.statusChanged(storage, url, 'unreviewed', 'Kit ready');
+  if (result.ok && result.notion === 'updated') viewCache.statusChanged(storage, url, 'saved', 'Kit ready');
   return result;
 });
 // The owner says an Applied was wrong (the extension inferred a submission that never happened): the engine puts the

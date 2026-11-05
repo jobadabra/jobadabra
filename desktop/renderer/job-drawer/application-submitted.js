@@ -26,6 +26,6 @@ export function submittedView({parts, page}) {
   }
   if (sent.letter) nodes.push(group('✉️ Cover letter sent', sent.letter.split(/\n\s*\n/).map(text => el('div', 'iv-moment', text)), copyButton(sent.letter)));
   nodes.push(...documentsView(parts.documents || [], '📎 Documents'));
-  nodes.push(el('p', 'muted small', 'Later edits to the kit or the CV do not change this snapshot.'));
+  nodes.push(el('p', 'muted small', 'Later edits to your answers or the CV do not change this snapshot.'));
   return nodes;
 }

@@ -63,7 +63,7 @@ export function registerCloudHandlers(ctx) {
     if (!repo) return {ok: true, already: true};
     const {response} = await dialog.showMessageBox(getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined,
       {type: 'question', buttons: ['Turn Always on off', 'Cancel'], defaultId: 1, cancelId: 1, message: 'Turn Always on off?',
-        detail: `${osText('Scheduled searches, kits, insights and mail checks run on this Mac while Jobadabra is open.', process.platform)} Your repository ${repo} stays on GitHub.`});   // a native dialog: renderer/os.js never runs in it (test/guards/rules/mac-words.test.js)
+        detail: `${osText('Scheduled searches, insights and mail checks run on this Mac while Jobadabra is open.', process.platform)} Your repository ${repo} stays on GitHub.`});   // a native dialog: renderer/os.js never runs in it (test/guards/rules/mac-words.test.js)
     if (response !== 0) return {ok: false, cancelled: true};
     await turnCloudOff();
     return {ok: true};

@@ -19,6 +19,14 @@ class StorePublishOnStable(unittest.TestCase):
             with self.subTest(flow=flow):
                 self.assertGreater(script.index(f' {flow} "'), promote, 'started (start_store) after the release is stable')
 
+    def test_a_store_publish_that_did_not_start_alerts_as_a_failure_not_as_the_stable_announcement(self):
+        # Gitar on #3298: under 'stable-promoted' without a level, an owner who switched announcements off or set problems-only never heard it.
+        script = (ROOT / 'tools' / 'release-stable.sh').read_text()
+        failure = next(line for line in script.splitlines() if 'ci-alert.mjs' in line and 'did not start' not in line and 'MESSAGE=' in line)
+        self.assertIn("event: 'release-failed'", failure)
+        self.assertIn("level: 'problem'", failure)
+        self.assertNotIn('stable-promoted', failure)
+
     def test_no_switch_sits_between_the_promotion_and_the_store_starts(self):
         # 31 Oct 2026, owner: "We should have this always, even if we go on the hot path". SKIP_E2E, E2E_NO_START, E2E_ALREADY_GREEN and FRESH_E2E only decide the end-to-end gate,
         # which is before the promotion; only DRY_RUN may end the script early, and it does so before the promotion too (tests/tooling/release/test_release_stable_guard.py plays every route).
@@ -91,7 +99,7 @@ class StorePublishOnStable(unittest.TestCase):
         self.assertIn('webstore-publish.mjs publish', publish)
         self.assertNotIn('webstore-publish.mjs publish', check)
         self.assertNotIn('secrets.', flow[:flow.index('\n  alert:')], 'keyless: GitHub OIDC to Google, no stored key')
-        self.assertEqual(set(re.findall(r'secrets\.(\w+)', flow)), {'CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'}, 'only the failure alert holds a secret: the alerts bot')
+        self.assertEqual(set(re.findall(r'secrets\.(\w+)', flow)), {'CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID', 'SELFHEAL_PUBLISH_KEY'}, 'only the failure alert holds secrets: the alerts bot and the key to the owner\'s switchboard (nt 3/4c)')
 
 
 class MicrosoftStoreOnStable(unittest.TestCase):
@@ -214,6 +222,35 @@ class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
         self.assertIn("from '../desktop/e2e/ci-alert.mjs'", (ROOT / 'tools' / 'msix-store-watch.mjs').read_text())
         self.assertIn("workflow: 'msix-store-watch.yml'", (ROOT / 'app-core' / 'src' / 'scheduler.js').read_text(), 'GitHub cron barely fires; the Worker starts it')
         self.assertNotRegex(self.WATCH, r'(?m)^\s+schedule:', 'no GitHub cron: it would double the Worker\'s start')
+
+
+class AlertSecretsReachReleaseStable(unittest.TestCase):
+    """Guard: release - without these links a by-hand gate's "store publish did not start" alert never reaches the owner.
+    A called workflow sees only the secrets its caller names (owner via coordinator, 5 Nov 2026: never `secrets: inherit`). The chain: caller `secrets:` -> beta-approve.yml
+    `workflow_call.secrets` -> the step's env -> release-stable.sh. Broken at any link, the "store publish did not start" alert has nothing to send with."""
+    NAMES = ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID', 'SELFHEAL_PUBLISH_KEY')   # the third: the owner's Notifications switch (coordinator, 5 Nov 2026)
+
+    def test_each_caller_passes_the_two_named_secrets_and_never_inherits(self):
+        for caller in ('e2e.yml', 'e2e-windows.yml'):
+            text = (WORKFLOWS / caller).read_text()
+            block = text[text.index('uses: ./.github/workflows/beta-approve.yml'):]
+            block = block[:block.index('\n\n')]
+            with self.subTest(caller=caller):
+                self.assertNotIn('inherit', block)
+                for name in self.NAMES:
+                    self.assertIn(f'{name}: ${{{{ secrets.{name} }}}}', block)
+
+    def test_the_called_workflow_declares_them_and_hands_them_to_the_step_that_runs_the_script(self):
+        text = (WORKFLOWS / 'beta-approve.yml').read_text()
+        declared = text[text.index('workflow_call:'):text.index('permissions:')]
+        step = text[text.index('Release it to this platform'):]
+        for name in self.NAMES:
+            with self.subTest(name=name):
+                self.assertIn(f'{name}:', declared)
+                self.assertIn(f'{name}: ${{{{ secrets.{name} }}}}', step)
+                self.assertLess(step.index(f'{name}:'), step.index('tools/release-stable.sh'))
+        script = (ROOT / 'tools' / 'release-stable.sh').read_text()
+        self.assertIn('ci-alert.mjs', script, 'positive control: the script is the alert sender these values are for')
 
 
 class PromotionByHandRunsInGitHub(unittest.TestCase):

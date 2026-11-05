@@ -235,6 +235,49 @@ def reaches_changed(paths, changed):
     return any(f in paths or any(f.startswith(d) for d in folders) for f in changed)
 
 
+# Why (5 Nov 2026, #3257; owner-visible: a screen test red on main only): a test that runs a repo script (spawnSync(..., ['scripts/shot.mjs', ...])) reaches what the script imports and what it launches only
+# at run time, so the import graph stopped at the spawn: #3257 changed renderer files and apply-ui-state.test.js, which starts the app through shot.mjs, was never picked. One rule for the class: the closure of
+# every repo script a test (or a module it imports) spawns counts as the test's reach; a script that starts the Electron app reaches the app (its entry's imports plus the folders it loads at run time).
+SPAWN_RE = re.compile(r'spawn|execFile|execSync|fork\(')
+SCRIPT_RE = re.compile(r"""['"`]((?:desktop/)?(?:scripts|tools)/[\w./-]+\.(?:m?js|cjs))['"`]""")
+APP_LAUNCH_RE = re.compile(r'\.bin\W+electron|_electron\.launch')
+APP_ENTRY, APP_FOLDERS = 'desktop/start.js', ('desktop/renderer/', 'desktop/demo/', 'desktop/assets/')   # html/css/data the window loads by path, not by import
+
+
+@functools.lru_cache(maxsize=None)
+def spawned_scripts(f):
+    """The repo scripts a JS file starts as a process: a path literal under scripts/ or tools/ in a file that spawns something (relative to the repo or to desktop/, as the cwd of the spawn is)."""
+    text = read(f)
+    if not SPAWN_RE.search(text):
+        return ()
+    found = {c.resolve() for m in SCRIPT_RE.findall(text) for c in (ROOT / m, ROOT / 'desktop' / m) if c.is_file()}
+    return tuple(sorted(found))
+
+
+@functools.lru_cache(maxsize=None)
+def script_reach(script):
+    """(every file the script imports, does it start the Electron app) for one spawned script."""
+    files = closure(script, js_graph()) or {script}
+    return frozenset(files), any(APP_LAUNCH_RE.search(read(g)) for g in files)
+
+
+def touches_app(changed):
+    """Does a change belong to the running app: a file its entry imports, or one in the folders it loads by path?"""
+    app = {rel(g) for g in closure((ROOT / APP_ENTRY).resolve(), js_graph()) or () if g.is_relative_to(ROOT)}
+    return any(f in app or f.startswith(APP_FOLDERS) for f in changed)
+
+
+def driven_reach(reach):
+    """(files reached through scripts this test's reach spawns, does one of them start the app)."""
+    files, launches = set(), False
+    for f in reach:
+        for script in spawned_scripts(f):
+            got, app = script_reach(script)
+            files |= got
+            launches = launches or app
+    return files, launches
+
+
 def pick_node_area(area, folder, relevant, graph, engine_changed):
     """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
     changed_js = {(ROOT / f).resolve() for f in relevant}
@@ -248,6 +291,7 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
     if reached is None:
         return 'all'
     scan_ok = any(f.startswith(E2E_SCAN_FOR) for f in relevant) if area == 'e2e' else area != 'integration'   # an integration test is never a whole-tree guard: only reach and mention pick it
+    app_changed = area != 'e2e' and touches_app(relevant)   # e2e: its own reach parser decides
     picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
     for t in tests:
         text = read(t)
@@ -255,7 +299,8 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
         via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
         scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
-        if (area == 'desktop' and '/guards/' in rel(t)) or (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+        driven, launches = driven_reach(reach) if area != 'e2e' else (set(), False)
+        if (area == 'desktop' and '/guards/' in rel(t)) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, relevant, {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
                 or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine

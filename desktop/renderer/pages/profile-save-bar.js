@@ -10,6 +10,6 @@ export const wireTabLinks = (root, open) => root.querySelectorAll('[data-open-pr
 let bar = null;
 export function profileBar() {
   bar ||= pageSaveBar({host: document.getElementById('profile-dock') || document.querySelector('[data-settings-page="profile"]'), tabs: PROFILE_TABS, tabButton, openTab: key => tabButton(key)?.click(),
-    words: 'Your drafts stay while you switch tabs. Forms, kits and letters use them once saved.', area: 'Profile'});
+    words: 'Your drafts stay while you switch tabs. Forms and letters use them once saved.', area: 'Profile'});
   return bar;
 }

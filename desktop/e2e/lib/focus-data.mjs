@@ -118,7 +118,7 @@ export const EXPECTED_SUGGESTIONS = [
   {who: 'Seniority mismatch', badge: 'Rejection', buttons: ['Review rejection']},
   {who: 'A lot happened since your last analysis', badge: 'Analyze', buttons: ['Analyze now']},
   {who: 'Kestrel Agency', badge: 'Add details', buttons: ['Add details', 'Skip']},
-  {who: 'Apply to', badge: 'Next step', buttons: ['Browse jobs']},
+  {who: 'Apply to', badge: 'Next step', buttons: ['Apply']},
   {who: 'Fjord Networks', badge: 'Asked for feedback', buttons: ['Add feedback']},
 ];
 
