@@ -252,20 +252,42 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             + (' → readable in your browser (Actions, Find jobs using your browser)' if refused_at or walled_at or closed_at or empty else ''))
 
 
+def _board_of(url):
+    """The record's key for the board this address belongs to; '' for an address on no board. Never a host: the record's other keys are."""
+    found = ats.detect(url)
+    return f'board:{":".join(found)}' if found else ''
+
+
 def refused_lately(url, now=None):
-    """True when this address's host refused a read this week: nothing asks it again (backfill, read_posting, a board's feed, Fetch original)."""
-    return (urlsplit(url or '').hostname or '').lower() in _refused_hosts(now or datetime.now(timezone.utc))
+    """True when this address's host or its board refused a read this week: read_posting, a board's feed and Fetch original do not ask again."""
+    kept = _refused_hosts(now or datetime.now(timezone.utc))
+    return (urlsplit(url or '').hostname or '').lower() in kept or _board_of(url) in kept
+
+
+def _refused(error):
+    """A 401/403. A board's own reads raise the plain HTTPError, so a refusal is told by its code too."""
+    return isinstance(error, Refused) or getattr(error, 'code', None) in REFUSED_CODES
+
+
+def _keep(key, error, now):
+    _keep_refused({**_refused_hosts(now), key: {'at': now.isoformat(), 'why': str(error)}})
 
 
 def keep_refusal(url, error, now=None):
-    """Keeps a 401/403 for the week, under the job address's host; any other failure keeps nothing. True when it was a refusal.
-    A board's own reads raise the plain HTTPError, so a refusal is told by its code too."""
-    if not (isinstance(error, Refused) or getattr(error, 'code', None) in REFUSED_CODES):
+    """Keeps a page's 401/403 for the week under its host; any other failure keeps nothing. True when it was a refusal."""
+    if not _refused(error):
         return False
     now = now or datetime.now(timezone.utc)
     read_routes.record(url, 'refused', now)
-    _keep_refused({**_refused_hosts(now), (urlsplit(url or '').hostname or '').lower(): {'at': now.isoformat(), 'why': str(error)}})
+    _keep((urlsplit(url or '').hostname or '').lower(), error, now)
     return True
+
+
+def keep_board_refusal(url, error, now=None):
+    """Keeps a board feed's 401/403 for the week under that board. Why (5 Nov 2026, Gitar on #3314): the feed is another host than the job's page, and
+    a platform serves every company from one job host, so one company's refusal under that host would stop every other company's jobs."""
+    if _refused(error):
+        _keep(_board_of(url), error, now or datetime.now(timezone.utc))
 
 
 def read_posting(url, now=None):

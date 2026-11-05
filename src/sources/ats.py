@@ -355,7 +355,7 @@ def posting(url):
         jobs = _board(*found)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, KeyError, ET.ParseError,
             json.JSONDecodeError, OSError) as error:
-        describe.keep_refusal(url, error)
+        describe.keep_board_refusal(url, error)
         return None
     return next((job for job in jobs if _same_job(job, wanted)), None)
 

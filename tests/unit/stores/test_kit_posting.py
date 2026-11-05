@@ -257,6 +257,26 @@ class OneRefusalRecord(unittest.TestCase):
         self.assertEqual(self.press(self.refused), (None, 1, '', 0))
         self.assertEqual(self.press(self.refused), (None, 0, '', 0))
 
+    def test_one_company_s_403_never_blocks_another_company_on_the_same_platform(self):
+        """Greenhouse, Lever and Ashby serve every company from one job host, so a board's refusal is that board's alone (Gitar, #3314)."""
+        ours = 'https://boards.greenhouse.io/birch-fixture/jobs/42'
+        other = 'https://boards.greenhouse.io/alder-fixture/jobs/7'
+        with mock.patch.object(ats, '_board', side_effect=self.refused) as asked:
+            self.assertIsNone(ats.posting(ours))
+            self.assertIsNone(ats.posting(ours))
+        self.assertEqual(asked.call_count, 1)
+        self.assertTrue(describe.refused_lately(ours))
+        self.assertFalse(describe.refused_lately(other))
+        with mock.patch.object(ats, '_board', return_value=()) as asked, mock.patch.object(describe, 'fetch', return_value=PAGE):
+            ats.posting(other)
+            self.assertEqual(describe.read_posting(other), PAGE)
+        self.assertEqual(asked.call_count, 1)
+
+    def test_a_board_s_refusal_is_not_counted_as_the_shared_host_s_route(self):
+        with mock.patch.object(ats, '_board', side_effect=self.refused):
+            ats.posting('https://boards.greenhouse.io/birch-fixture/jobs/42')
+        describe.read_routes.record.assert_not_called()
+
     def test_a_board_that_failed_another_way_leaves_the_page_readable(self):
         def down(*_):
             raise TimeoutError('slow')
