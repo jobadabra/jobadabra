@@ -385,7 +385,7 @@ function mediaAccess(type) {
 // through ScreenCaptureKit behind these switches; without them (or without Screen Recording permission)
 // the recorder falls back to the microphone alone.
 app.commandLine.appendSwitch('enable-features', 'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride');
-installCrashMonitors({getTelemetry: () => telemetry});   // lib/crash-monitors.js
+installCrashMonitors({getTelemetry: () => telemetry, getStorage: () => storage});   // lib/crash-monitors.js
 
 startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(), createWindow, start: () => {
   // Why (31 Oct 2026, #2729 red on sonarjs: start() may not grow): one check for both quits; moving to Applications (Electron quits and opens the moved copy), or a Store copy's private data going to the real folder first (lib/store-data-copy.js)

@@ -9,7 +9,7 @@
  "desktop/lib/questions.js": 1,
  "desktop/lib/request-log.js": 1,
  "desktop/lib/strategy.js": 2,
- "desktop/lib/telemetry-handlers.js": 1,
+ "desktop/lib/run-failure.js": 1,
  "extension/alias-schema.js": 2,
  "extension/ladder/press-why.js": 1,
  "extension/page/fill-checks.js": 1,
