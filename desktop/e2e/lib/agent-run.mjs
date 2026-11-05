@@ -4,6 +4,7 @@
 // so a scripted model plays a whole night in a unit test; the suite (suites/agent.mjs) only wires the real app and the broker. Nothing here reaches a network, a clock or the owner's data.
 import {explore, formatObservation, stepWords} from './explore.mjs';
 import {quotedWords, readScreen} from './agent-screen.mjs';
+import {CAP_REACHED} from './agent-tier.mjs';
 import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
@@ -67,7 +68,8 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
     if (read.has(observation)) return made;
     read.add(observation);
     const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : ''});
-    spent.calls++; spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
+    if (!String(seen.failed || '').includes(CAP_REACHED)) spent.calls++;   // a read the night token cap refused made no call
+    spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
     for (const note of seen.notes) made.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shootNote(note) : '', by: 'screen'});
     log(`  goal ${goal.n}: the screen reader ${seen.failed ? `gave no answer (${seen.failed})` : `noted ${seen.notes.length}${seen.refused.length ? `, refused ${seen.refused.length} (${seen.refused[0]})` : ''}`}`);
   } catch (error) { log(`  goal ${goal.n}: the screen reader failed, the session goes on: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a page that changed under the read must not lose the notes of the goals already done
@@ -77,8 +79,9 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
 /** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
 async function judgeNotes({notes, judgeAsk, spent}) {
   // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
+  // Why (5 Nov 2026, code review on the 250k cap): when the run's cap leaves room for fewer judge calls than there are notes, the ones refused are held, so the serious notes are asked first and the low ones (never filed) last.
   let judgeDown = '';
-  for (const note of notes) {
+  for (const note of [...notes].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
     const skipped = Boolean(judgeDown);
     const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
     if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
