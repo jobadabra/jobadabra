@@ -32,6 +32,12 @@ const requestTokens = args => Math.ceil((String(args?.system ?? '').length + JSO
 const tokensOf = (answer, args) => (answer?.tokens?.counted > 0 ? answer.tokens.counted : 0) || ((answer?.usage?.input_tokens || 0) + (answer?.usage?.output_tokens || 0)) || requestTokens(args) + Math.ceil(String(answer?.text ?? '').length / 4);
 
 /**
+ * The input a call really added, to compare with its estimate: the metered count less the answer when the broker gave one (a resumed turn's `usage.input_tokens` is the whole thread, cached part included), else the reported input.
+ * Why (5 Nov 2026, code review on SC 2/2, simulated): calibrating from the whole thread's input grew the worst case to 60-90k on 2.6k calls and stopped a run at 108k of 250k; a restart's full cost is still seen, because the opening call is metered in full.
+ */
+const calibrationInput = answer => (answer?.tokens?.counted > 0 ? Math.max(0, answer.tokens.counted - (answer.usage?.output_tokens || 0)) : answer?.usage?.input_tokens || 0);
+
+/**
  * The run's token meter and the three asks that spend against it. -> {actor(ask), reader(ask), judge(ask), state}: each takes an `ask({system, messages, schema})` and returns one that counts every answer and refuses (throws CAP_REACHED, nothing sent) a call whose worst case would pass the cap;
  * `actor` and `reader` leave the judge's reserve free, `judge` may use it. `state` {capTokens, used: {actor, reader, judge}, total, calls, stoppedAtCap} is read after the session for the report.
  * Why (5 Nov 2026, code review on the 250k cap): the broker does not forward max_tokens and the Claude engine counts its thinking as output, and its input count includes a wrapper the estimate does not see; so the worst case of a call is its estimate plus the largest gap seen so far between a real count and the estimate (added or in proportion), plus the largest answer seen so far (at least 1,024). The first call of a run is the only one judged on the flat estimate; one answer larger than any before it can still pass the cap by its excess, and the report then shows the total over the cap.
@@ -43,7 +49,7 @@ export function runBudget({capTokens = RUN_CAP_TOKENS, reserve = JUDGE_RESERVE_T
     const estimate = requestTokens(args), worst = estimate + Math.max(seen.add, Math.ceil(estimate * seen.mul)) + seen.output;
     if (state.total + worst > state.capTokens - kept) { state.stoppedAtCap = true; throw new Error(CAP_REACHED); }
     state.calls++;
-    const answer = await ask(args), spent = tokensOf(answer, args), input = answer?.usage?.input_tokens || 0;
+    const answer = await ask(args), spent = tokensOf(answer, args), input = calibrationInput(answer);
     if (input) { seen.add = Math.max(seen.add, input - estimate); seen.mul = Math.max(seen.mul, input / Math.max(1, estimate) - 1); }
     seen.output = Math.max(seen.output, answer?.usage?.output_tokens || 0);
     state.used[part] += spent; state.total += spent;
@@ -89,7 +95,7 @@ export function conversationLine(trace) {
   const why = {}; for (const row of count('restarted')) why[row.reason || 'unknown'] = (why[row.reason || 'unknown'] || 0) + 1;
   const restarts = Object.entries(why).map(([reason, n]) => `${reason} ${n}`).join(', ');
   const avg = list => (list.length ? `${Math.round(counted(list) / list.length / 100) / 10}k` : '-');
-  return `Codex conversations: ${count('opened').length} opened (${avg(count('opened'))} counted each), ${count('resumed').length} resumed (${avg(count('resumed'))} each), ${count('restarted').length} restarted${restarts ? ` (${restarts})` : ''}.`;
+  return `Codex conversations: ${count('opened').length} opened (${avg(count('opened'))} counted each), ${count('resumed').length} resumed (${avg(count('resumed'))} each), ${count('restarted').length} restarted${restarts ? ` (${restarts})` : ''}${count('ended').length ? `, ${count('ended').length} ended` : ''}.`;
 }
 
 /** The report line of a night on one engine ('' for the broker's own order): the numbers the owner compares, and that they are not comparable with a Codex night. */
