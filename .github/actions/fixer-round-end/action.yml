@@ -14,6 +14,8 @@ inputs:
   fix: {description: "The fix job's result", required: true}
   prove: {description: "The prove job's result", required: true}
   publish: {description: "The publish job's result", required: true}
+outputs:
+  reason: {description: 'The stop word of this round, or empty when the chain goes on', value: '${{ steps.end.outputs.reason }}'}
 runs:
   using: composite
   steps:

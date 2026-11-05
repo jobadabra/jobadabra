@@ -43,12 +43,12 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 - [x] 1/7 This plan and the spec amendment (proof: docs/superpowers/specs/2026-11-03-ai-fixer-core-design.md)
 - [x] 2/7 Move walls, proof, leaks, publish into `tools/fixer/` (proof: tools/fixer/walls.mjs @6e998e2)
 - [x] 3/7 Loop, Feedback and Linear sources, one-run workflow (proof: desktop/test/tooling/ci/fixer-loop.test.js @5766dddb)
-- [ ] 4/7 Until-green chain: follow job, rounds, stop rules
+- [x] 4/7 Until-green chain: follow job, rounds, stop rules (proof: tools/fixer/driver.mjs @a42e9ee)
 - [ ] 5/7 Every fixer run writes a record
 - [ ] 6/7 First until-green run on a feedback card
 - [ ] 7/7 Run on a Linear issue and the harness map evaluation
 
 Admin group (private repo `jobadabra-web`, numbered apart):
-- [ ] web 1/3 One agent card per row on /admin/ai/agents
-- [ ] web 2/3 The tab "Agent harness" with a card per run
-- [ ] web 3/3 Upload of the records and the plan progress to the site
+- [x] web 1/3 One agent card per row on /admin/ai/agents (proof: none: jobadabra-web #366, merged b29cabc)
+- [x] web 2/3 The tab "Agent harness" with a card per run (proof: none: jobadabra-web #367, merged a5f9c3c)
+- [x] web 3/3 Upload of the records and the plan progress to the site (proof: tools/harness-stats.mjs @ca38e8e4)

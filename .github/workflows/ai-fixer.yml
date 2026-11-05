@@ -76,6 +76,7 @@ jobs:
       deadline: ${{ steps.cap.outputs.deadline || inputs.deadline }}   # a first run starts the hour; a round passes it on unchanged
       head: ${{ steps.round.outputs.head }}
       branch: ${{ steps.round.outputs.branch }}
+      started: ${{ steps.start.outputs.at }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -87,6 +88,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: When this run started (for its record)
+        id: start
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: At most 1 at a time and 3 a day (a first run)
         id: cap
         if: inputs.pr == ''
@@ -226,6 +230,17 @@ jobs:
           echo "$changed" | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < "$OUT/change.patch")" || stop "the change touches files a fix may never touch, or is too big (8 files, 60 KB)"
           echo "sha=$(cat "$OUT/change.patch" "$OUT/title.txt" "$OUT/summary.txt" "$OUT/body.md" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "go=pr" >> "$GITHUB_OUTPUT"
+      - name: Keep the facts of this run (its record; the reason is scanned like a pull request text)
+        if: always() && inputs.kind != 'conflict'
+        continue-on-error: true
+        run: node "$FBT/tools/fixer/record.mjs" part --out "$OUT" --dest "$RUNNER_TEMP/rec"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: fixer-record-part   # counts, action names, file names and one scanned sentence: never the item
+          path: ${{ runner.temp }}/rec/part.json
+          if-no-files-found: ignore
+          retention-days: 3
       - uses: actions/upload-artifact@v6
         if: steps.check.outputs.go == 'pr' || steps.check.outputs.go == 'answer'
         with:
@@ -308,6 +323,8 @@ jobs:
     if: (needs.fix.outputs.go == 'pr' || needs.fix.outputs.go == 'merge') && needs.prove.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      number: ${{ steps.open.outputs.number }}   # for the run record
     permissions:
       contents: write   # the branch fixer/<source>-<ref>
       pull-requests: write   # the draft pull request and its label
@@ -426,6 +443,8 @@ jobs:
     if: always() && !cancelled() && inputs.pr != '' && vars.AI_FIXER != 'off'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      reason: ${{ steps.end.outputs.reason }}   # the stop word of this round, for the run record
     permissions:
       contents: read
       pull-requests: write   # the reply, the label, the stop comment
@@ -447,6 +466,7 @@ jobs:
           name: fixer-patch
           path: ${{ runner.temp }}/reply
       - uses: ./.github/actions/fixer-round-end
+        id: end
         with:
           github-token: ${{ github.token }}
           pr: ${{ inputs.pr }}
@@ -458,6 +478,47 @@ jobs:
           fix: ${{ needs.fix.result }}
           prove: ${{ needs.prove.result }}
           publish: ${{ needs.publish.result }}
+
+  # The record of this run (5/7): one small file, schema v:1, read by tools/harness-stats.mjs for the admin tab "Agent harness". Trusted code only: no AI, no token, no checkout of any branch the run touched.
+  # Why (5 Nov 2026, owner: "details about each run. What happened. Some logs, some achievements, errors"): run 1 ended needs-human with nothing to read. It holds counts, action names, file names, fixed words and one scanned sentence: the repository is public.
+  record:
+    needs: [guard, fix, prove, publish, after]
+    if: always() && !cancelled() && vars.AI_FIXER != 'off' && needs.guard.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      SOURCE: ${{ inputs.source }}
+      REF: ${{ inputs.ref }}
+      ROUND: ${{ inputs.round }}
+      PR: ${{ inputs.pr || needs.publish.outputs.number }}
+      STARTED: ${{ needs.guard.outputs.started }}
+      STOP: ${{ needs.after.outputs.reason }}
+      FIX: ${{ needs.fix.result }}
+      PROVE: ${{ needs.prove.result }}
+      PUBLISH: ${{ needs.publish.result }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v7
+        continue-on-error: true   # a run that never reached the loop has no part: its record still says what failed
+        with:
+          name: fixer-record-part
+          path: ${{ runner.temp }}/part
+      - run: node tools/fixer/record.mjs build --part "$RUNNER_TEMP/part/part.json" --out "$RUNNER_TEMP/record"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ai-fixer-record
+          path: ${{ runner.temp }}/record/record.json
+          retention-days: 35   # the admin tab reads the last 30 days
 
   # One alert when the broker refused the run; the note it reads holds the cause, never any item text.
   ai-skipped:
