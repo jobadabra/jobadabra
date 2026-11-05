@@ -72,13 +72,13 @@ export function harnessTokens({system, schema, intros}, max = HARNESS_MAX_TOKENS
 const k = tokens => `${Math.round(tokens / 1000).toLocaleString('en-US')}k`;
 
 /** The tokens line of the run report: the total against the cap and each part's share, or that the run stopped at the cap; then the actor's tier. */
-/** The report line of a night on one engine ('' for the broker's own order): the numbers the owner compares, and that they are not comparable with a Codex night. */
-export function engineLine({engine, steps, actorTokens}) {
-  return engine ? `Engine: ${engine}, not comparable with Codex nights: ${steps} steps, ${steps ? Math.round(actorTokens / steps / 100) / 10 : 0}k tokens per actor call.` : '';
-}
-
 export function tokensLine(state, tier) {
   const {actor, reader, judge} = state.used, parts = `actor ${k(actor)}, screen reader ${k(reader)}, second opinion ${k(judge)}`;
   const head = state.stoppedAtCap ? `Stopped at the ${k(state.capTokens)} cap: ${k(state.total)} / ${k(state.capTokens)} tokens; the notes made so far are kept` : `Tokens: ${k(state.total)} / ${k(state.capTokens)}`;
   return `${head} (${parts}). Actor tier: ${tier}.`;
+}
+
+/** The report line of a night on one engine ('' for the broker's own order): the numbers the owner compares, and that they are not comparable with a Codex night. */
+export function engineLine({engine, steps, actorTokens}) {
+  return engine ? `Engine: ${engine}, not comparable with Codex nights: ${steps} steps, ${steps ? Math.round(actorTokens / steps / 100) / 10 : 0}k tokens per actor call.` : '';
 }

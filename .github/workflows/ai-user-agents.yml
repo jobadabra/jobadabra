@@ -37,7 +37,7 @@ on:
         description: 'off = no screen reader after each goal (empty = on)'
         required: false
       engine:
-        description: 'claude = the acting calls go to Claude alone, not Codex first (empty = the broker order). The repository variable AI_USER_AGENT_CLAUDE_ON = a UTC date does the same for that one night'
+        description: 'claude = the acting calls go to Claude alone, not Codex first (empty = the broker order). A dispatch is a replay (no memory, small tier unless tier=large is also set); the repository variable AI_USER_AGENT_CLAUDE_ON = a UTC date puts the scheduled night on Claude, on the large tier, for that one night'
         required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
@@ -70,7 +70,7 @@ jobs:
       AI_USER_AGENT_MINUTES: ${{ vars.AI_USER_AGENT_MINUTES }}
       AI_USER_AGENT_CALLS: ${{ vars.AI_USER_AGENT_CALLS }}
       AI_USER_AGENT_STEPS: ${{ vars.AI_USER_AGENT_STEPS }}
-      AGENT_ENGINE: ${{ inputs.engine }}   # Why (5 Nov 2026, owner: "Try Claude on one night"): both the ping (prepare) and the actor (the session) read the same two values, tests/tooling/ci covers the names
+      AGENT_ENGINE: ${{ inputs.engine }}   # Why (5 Nov 2026, owner: "Try Claude on one night"): both the ping (prepare) and the actor (the session) read the same two values
       AGENT_CLAUDE_ON: ${{ vars.AI_USER_AGENT_CLAUDE_ON }}
     steps:
       - uses: actions/checkout@v5
