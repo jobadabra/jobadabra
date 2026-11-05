@@ -87,7 +87,7 @@ test('the workflow writes the record from a job that holds no token and no branc
 });
 
 test('why a run did not succeed is ONE fixed word: a failed job first, then the stop, the loop, the verdict; a wall refusal is counted by the loop', async () => {
-  const ok = {fix: 'success', prove: 'success', publish: 'success'}, part = over => partOf({loop: {...LOOP, ...over}, brief: BRIEF});
+  const ok = {fix: 'success', prove: 'success', publish: 'success'}, part = over => partOf({loop: {...LOOP, ...over}, brief: BRIEF, exists: EXISTS});
   assert.equal(blockedBy(part({verdict: 'needs-human', walls: 3}), {results: ok}), 'walls');
   assert.equal(blockedBy(part({verdict: 'needs-human', walls: 0}), {results: ok}), 'needs-human');
   assert.equal(blockedBy(part({verdict: 'not-reproducible'}), {results: ok}), 'no-repro');
@@ -100,7 +100,10 @@ test('why a run did not succeed is ONE fixed word: a failed job first, then the 
   assert.equal(blockedBy(null, {results: ok, stop: 'toString'}), 'none', 'an inherited name is no stop word');
   // One list: every answer blockedBy can give is on BLOCKED, and every word on BLOCKED can be given (over every verdict, stop word, loop stop, job result and wall count).
   const given = new Set();
-  for (const verdict of [...VERDICTS, '']) for (const stop of [...Object.keys(STOPS), '']) for (const stopped of ['', 'steps', 'time', 'api: x']) for (const walls of [0, 1]) for (const results of [ok, {...ok, fix: 'failure'}, {...ok, prove: 'failure'}, {...ok, publish: 'failure'}]) given.add(blockedBy(part({verdict, stopped, walls}), {results, stop}));
+  for (const verdict of [...VERDICTS, '']) for (const stopped of ['', 'steps', 'time', 'api: x']) for (const walls of [0, 1]) {
+    const built = partOf({loop: {...LOOP, verdict, stopped, walls}, brief: BRIEF, exists: EXISTS});   // once per part, and no git: the stand-in knows the files
+    for (const stop of [...Object.keys(STOPS), '']) for (const results of [ok, {...ok, fix: 'failure'}, {...ok, prove: 'failure'}, {...ok, publish: 'failure'}]) given.add(blockedBy(built, {results, stop}));
+  }
   assert.deepEqual([...given].sort(), [...BLOCKED].sort());
   assert.equal(buildRecord(part({verdict: 'needs-human', walls: 2}), FACTS).blocked_by, 'walls');
   assert.equal(recordOf(buildRecord(part({verdict: 'needs-human', walls: 2}), FACTS), RUN).blocked_by, 'walls', 'the admin reader keeps it');
