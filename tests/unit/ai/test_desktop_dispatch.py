@@ -390,7 +390,7 @@ import src.desktop
         self.from_env.return_value = None
         self.call('jobs', JOBS_OUT, outside=True)
         rows = [{'stage': 'Kit ready', 'next_step': 'é'}]
-        self.patch('src.desktop._kit', return_value=True)
+        self.patch('src.desktop.has_kit', return_value=True)
         self.tracker.notion_jobs.side_effect = None
         self.tracker.notion_jobs.return_value = rows
         self.from_env.return_value = self.tracker

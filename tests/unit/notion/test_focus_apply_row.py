@@ -31,6 +31,11 @@ class ApplyRowTests(unittest.TestCase):
         item = next(i for i in focus.build(rows, [], target=3, now=NOW)['items'] if i['kind'] == 'apply')
         self.assertEqual(item['best'], ['Prepared', 'Saved Prepared'])
 
+    def test_a_kit_that_says_not_eligible_counts_as_prepared_as_it_does_for_apply(self):
+        rows = [row('a', 'Not Prepared', 'x', stage='Saved', fit=95), row('b', 'Flagged', 'y', stage='Saved', fit=70, Next_step='⛔ Not eligible: needs a visa')]
+        item = next(i for i in focus.build(rows, [], target=3, now=NOW)['items'] if i['kind'] == 'apply')
+        self.assertEqual(item['best'], ['Flagged', 'Not Prepared'])
+
     def test_with_no_saved_job_the_apply_row_says_the_application_is_prepared_for_you(self):
         # #3227 / #3202: the Focus page told a new person to "review ready applications" with nothing there to review.
         built = focus.build([row('a', 'A', 'x', stage='Found')], [], target=3, now=NOW)

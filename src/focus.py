@@ -38,6 +38,7 @@ from . import telegram, tgcard, tz
 from .app_source import APP_SOURCE, is_app_source
 from .ai import meanings
 from . import feedback
+from .desktop_jobs import has_kit
 from .features import disabled
 from .notion import client as notion
 from .notion import funnel as funnel_steps
@@ -60,8 +61,8 @@ QUESTION_ROWS = ('letter', 'details', 'learned')
 
 
 def _prepared(row):
-    """True when this application already has its answers drafted: the stage, or the Next step a draft writes on a Saved job (src/ai/kit.py next_step)."""
-    return _field(row, 'stage') == 'Kit ready' or (_field(row, 'next_step') or '').startswith('📝 Kit ready')
+    """True when Apply would start this application first: it has its kit (src/desktop_jobs.py has_kit, the rule the Jobs list gives Apply)."""
+    return has_kit(_field(row, 'stage') or '', _field(row, 'next_step') or '')
 
 
 def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None, search=()):

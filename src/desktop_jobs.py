@@ -47,7 +47,8 @@ def blank_profile(profile, local=None, readable=True):
     return score.unfilled(profile) if readable and profile is not None else False
 
 
-def _kit(stage, step):
+def has_kit(stage, step):
+    """True when an application's answers are drafted: its stage, or the Next step a draft writes (src/ai/kit.py next_step). Apply and Focus read this one rule."""
     return stage == 'Kit ready' or step.startswith(('📝 Kit ready', NOT_ELIGIBLE))
 
 
@@ -91,7 +92,7 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                 'notion_url': page or '',  # the job's Applications page: kit, verdict, notes
                 'stage': stage or '',  # the Applications Stage (Applied, Interviewing, Rejected…): the app's application counters
                 # A kit writes Next step (Kit ready / Not eligible); the stage can stay Saved if the job was starred first.
-                'kit': _kit(stage, step or ''),
+                'kit': has_kit(stage, step or ''),
                 'ineligible': step[len(NOT_ELIGIBLE):] if (step or '').startswith(NOT_ELIGIBLE) else '', **extra}
 
     if notion_jobs is not None:
@@ -111,7 +112,7 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
             job = {'url': url, 'title': item.get('title'), 'company': item.get('company'), 'location': item.get('location'),
                    'work_mode': item.get('work_mode'), 'first_seen_at': item.get('first_seen', '')}
             # A kit's inputs vs today's: current, earlier (drafted before the CV, Profile or answers changed), unknown.
-            kit_state = provenance.kit_state(item.get('kit_inputs'), kit_inputs) if _kit(stage, item.get('next_step') or '') else ''
+            kit_state = provenance.kit_state(item.get('kit_inputs'), kit_inputs) if has_kit(stage, item.get('next_step') or '') else ''
             rows.append(row(job, item.get('fit'), item.get('reason'), status, stage, item.get('next_step'), item.get('notion_url'),
                             rejection=item.get('rejection') or '', rejection_lesson=item.get('rejection_lesson') or '',
                             feedback_status=item.get('feedback_status') or '', employer_feedback=item.get('employer_feedback') or '',

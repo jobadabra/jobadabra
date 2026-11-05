@@ -171,7 +171,9 @@ test('Apply to N with Claude: the best N jobs with a kit, one session each; none
   assert.equal(result.ok, true);
   assert.deepEqual(launched[0], ['https://a/1', 'https://b/2']);
   assert.match(result.message, /Starting 2 Claude/);
-  assert.match((await apply.start(storage, {n: 3, mode: 'agents'}, null, null, launch, async () => [])).error, /Could not prepare any applications/);
+  const listed = jobs => async () => ({jobs});
+  assert.match((await apply.start(storage, {n: 3, mode: 'agents'}, null, listed([{url: 'https://a/1', status: 'saved', stage: 'Saved'}]), launch, async () => [])).error, /Could not prepare any applications/);
+  assert.match((await apply.start(storage, {n: 3, mode: 'agents'}, null, listed([]), launch, async () => [])).error, /Press Find jobs first/);
 });
 
 test('the next jobs with a kit come from apply_batch --next, links only', async () => {

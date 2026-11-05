@@ -277,7 +277,7 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
       drafted = result.done;
       if (drafted) urls = await next(storage, n);
     }
-    if (!urls.length) return {ok: false, error: NO_KITS};
+    if (!urls.length) return {ok: false, error: nothingStarted((await list(storage)).jobs)};
     const here = launch === session.launch && await inApp(storage);
     (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
     n = urls.length;
