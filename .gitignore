@@ -26,3 +26,4 @@ desktop/e2e/blob-report/
 
 # The design system page, built locally from the repository (npm run design-system); never committed
 desktop/.design-system/
+.finder-review/
