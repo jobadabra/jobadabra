@@ -1,7 +1,7 @@
 // The one Always on card: which way is running, which one it shows first, and that a way that is not open yet cannot be picked.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {choices, notice, pill, running, startWay} from '../../../renderer/always-on-choice-words.js';
+import {choices, notice, oursPickable, pill, running, startWay} from '../../../renderer/always-on-choice-words.js';
 
 test('the running way is read from the two settings', () => {
   assert.equal(running({}), null);
@@ -34,4 +34,13 @@ test('the pill and the notice say what runs, and nothing turns off by itself', (
   assert.deepEqual(pill('both'), ['On twice', 'warn']);
   assert.match(notice({now: 'both', picked: 'own'}), /every search happens twice/);
   assert.match(notice({now: 'ours', picked: 'own'}), /running on our servers.*stays on until you turn it off/);
+});
+
+test('the way that runs now stays pickable whatever the site and the key say (#3158)', () => {
+  assert.equal(oursPickable({open: false, canRun: true, now: 'ours'}), true, 'hosted runs, site closed: it is where Always on is turned off');
+  assert.equal(oursPickable({open: true, canRun: false, now: 'both'}), true);
+  assert.equal(oursPickable({open: false, canRun: true, now: 'own'}), false);
+  assert.equal(oursPickable({open: false, canRun: true, now: null}), false);
+  const running = choices({open: false, canRun: false, now: 'ours'})[0];
+  assert.deepEqual([running.disabled, running.note], [false, '']);
 });

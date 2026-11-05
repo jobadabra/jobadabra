@@ -8,7 +8,7 @@ import {beforeOpen} from './open-hooks.js';
 import {setWay} from './always-on-test.js';
 import {openProtect} from './always-on-protect.js';
 import {NOTE as PRIVACY, LINK as PRIVACY_LINK} from '../always-on-protect-words.js';
-import {NAME, LEAD, choices, pill as statePill, running, startWay, notice} from '../always-on-choice-words.js';
+import {NAME, LEAD, choices, oursPickable, pill as statePill, running, startWay, notice} from '../always-on-choice-words.js';
 
 const CARDS = {ours: 'setting-hosted', own: 'setting-cloud'};
 let picked = '', lastNow;
@@ -17,10 +17,12 @@ const nowRunning = () => running({hostedOn: !!shared.hosted?.on, cloudRepo: shar
 // Our servers can take it: the site is open and this install holds the in-house key (Free AI or Pro). Unknown (not loaded yet) counts as yes, so the card is not wrong for a moment.
 const canRun = () => shared.hosted?.canRun !== false || shared.hosted?.available === false;   // available:false is the demo, which pretends
 const isOpen = () => shared.hosted?.open !== false && canRun();
+// The way that runs now stays pickable whatever open/canRun say (#3158).
+const oursReachable = () => oursPickable({open: isOpen(), now: nowRunning()});
 
-/** Show one way: its card under the choice, the other hidden. A way that is not open yet cannot be picked. */
+/** Show one way: its card under the choice, the other hidden. A way that is not open yet cannot be picked, unless it is what runs now (#3158: it is where Always on is turned off). */
 export function pick(way) {
-  if (way === 'ours' && !isOpen()) way = 'own';
+  if (way === 'ours' && !oursReachable()) way = 'own';
   picked = way;
   draw();
 }
@@ -49,10 +51,10 @@ export function mountChoice() {
 export function draw() {
   if (!$('setting-always-on')) return;
   const now = nowRunning();
-  if (!picked || (picked === 'ours' && !isOpen())) picked = startWay({now, open: isOpen()});
+  if (!picked || (picked === 'ours' && !oursReachable())) picked = startWay({now, open: isOpen()});
   if (now !== lastNow) { if (now && now !== 'both') picked = now; lastNow = now; }   // the view follows what starts running
   $('aon-choice-pill').replaceChildren(pill(...statePill(now), {dot: true}));
-  $('aon-choices').replaceChildren(choiceCards(choices({open: shared.hosted?.open !== false, canRun: canRun()}), {selected: picked, onPick: pick, label: NAME}));
+  $('aon-choices').replaceChildren(choiceCards(choices({open: shared.hosted?.open !== false, canRun: canRun(), now}), {selected: picked, onPick: pick, label: NAME}));
   $('aon-choice-note').textContent = notice({now, picked});
   show($('aon-choice-note'), !!notice({now, picked}));
   show($('aon-privacy'), picked === 'ours');
