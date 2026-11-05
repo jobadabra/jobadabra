@@ -65,3 +65,12 @@ test('a night\'s memory commit: the suite\'s files and last.json go to the branc
   assert.deepEqual(pushMemory({dir: work, files, git: args => run(args, work), message: 'night 1 again'}), {pushed: false});
   assert.deepEqual(Object.keys(memoryCommitFiles(path.join(root, 'missing'), {sha: 'x', today: 'y'})), ['last.json']);
 });
+
+test('Codex at capacity is a blip, not "ran out": the ping names it and the night keeps its full size', () => {
+  const busy = {ok: true, engine: 'claude', fellBack: [{engine: 'codex', why: 'overloaded', detail: 'Selected model is at capacity'}]};
+  const mixed = {ok: true, engine: 'claude', fellBack: [{engine: 'codex', why: 'overloaded'}, {engine: 'codex', why: 'ran-out'}]};
+  assert.equal(engineState(busy), 'codex-busy');
+  assert.equal(engineState(mixed), 'codex-out', 'any other reason from Codex is still out');
+  assert.equal(capsFor('codex-busy', {}).steps, FULL.steps);
+  assert.match(capsFor('codex-busy', {}).note, /Codex was at capacity at the first call: the full session/);
+});
