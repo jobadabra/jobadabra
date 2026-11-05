@@ -1,3 +1,4 @@
+// Guard: money — activityfailures sends an unstored ask to live AI.
 // Prove activityfailures uses stored decide answers and declared refusals without a live key or AI.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

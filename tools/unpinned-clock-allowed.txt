@@ -1,5 +1,5 @@
 2	desktop/e2e/test/harness/timing-ratchet.test.mjs
-1	desktop/e2e/test/record/recorded-pages.test.mjs
+1	desktop/integration/extension/recorded-pages.test.mjs
 5	desktop/integration/extension/net-record-lost-body.test.mjs
 6	desktop/integration/extension/replay-watch-window.test.mjs
 2	desktop/test/guards/data/archive.test.js

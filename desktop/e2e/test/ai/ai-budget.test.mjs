@@ -1,3 +1,4 @@
+// Guard: money — the loop keeps starting AI jobs after the provider's limit was hit.
 // The loop's AI budget breaker (ai-budget.mjs): a run that hit the provider's limit pauses the AI jobs for a few hours and tells the owner; a run that gets
 // through clears it; every run's cost is read from claude-code-action's record. 3-4 Oct 2026: the loop hit the limit twice and kept starting jobs.
 import assert from 'node:assert/strict';

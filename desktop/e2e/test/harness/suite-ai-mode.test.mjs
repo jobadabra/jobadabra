@@ -1,3 +1,4 @@
+// Guard: money — a suite that stubs AI reaches a real model without declaring it.
 // Every suite that stubs AI calls declares whether the rest may reach a real model (`export const realAi`); one that declares false is checked by the harness (lib/suite-main.mjs).
 import {loadAppModule} from '../../lib/app-module.mjs';
 import assert from 'node:assert/strict';

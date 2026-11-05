@@ -1,3 +1,4 @@
+// Guard: data — a data step (store write, export, import, move, backup) gets the beta retry.
 // The data steps are marked {data: true} like the safety steps, and one reader finds both (lib/safety-steps.mjs). A data step proves a store write, an export/import/move, a backup
 // or where a credential goes; it gets no retry in a beta (lib/beta-retry.mjs).
 // Why (1 Nov 2026, owner: "Auto-retry in betas only" / "Safety and data steps get no retry"): the list is the data rows of the keep-in-the-beta inventory (c27 test-stages, 1 Nov 2026);

@@ -1,3 +1,4 @@
+// Guard: release — an engine question family reaches a live model or no answer, and a stored-answer suite's verdict depends on the outside world.
 // Every engine question family must serve or refuse through the same three answer seams without live calls.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

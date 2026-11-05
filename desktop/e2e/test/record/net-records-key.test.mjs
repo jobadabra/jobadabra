@@ -1,3 +1,4 @@
+// Guard: data — a record-sites run loses its recordings to an unreadable bundle key.
 // The key that encrypts a network-record bundle is read by openssl as a pass FILE: its first line is the password. 32 random bytes start with a newline once in 256 keys
 // ("Error reading password from BIO": the harness test went red on 17 Oct 2026, and a record-sites run would lose its recordings the same way), so the key is hex, never raw bytes.
 import assert from 'node:assert/strict';

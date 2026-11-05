@@ -1,3 +1,4 @@
+// Guard: release — a PR runs one step of a suite alone and goes red on the missing step before it.
 // A pull request runs every e2e suite it picks whole, never a step alone (owner, 28 Oct 2026: a suite is a journey; lib/pr-suites.mjs stepLists).
 // Plays #2342: its change sat inside focus's "Edit target" step; the PR ran that step alone, it found no target (the step before it adds one) and went red.
 import assert from 'node:assert/strict';

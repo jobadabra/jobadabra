@@ -1,3 +1,4 @@
+// Guard: release — the offline replay counts a row that is not the same as live, or calls noise a fall.
 // The offline replay's gate (replay-gate.mjs): only rows 100% same as live in the baseline count; a counted row is worse only when its outcome falls, a fix that
 // changes the asks or goes further passes as "different", and a fall the retry does not repeat is noise. Pure: no browser.
 import assert from 'node:assert/strict';

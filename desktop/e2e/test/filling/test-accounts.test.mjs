@@ -1,3 +1,4 @@
+// Guard: privacy — a live pool row signs in with something other than a listed test account.
 // A live pool row signs in only with a listed test account (lib/test-accounts.mjs, docs/rules/applying.md "Signing in"): the account goes into the test
 // app's own secrets file as the product saves a site password, the privacy tripwire lets that email through and nothing else of the owner's. Pure: no browser.
 import assert from 'node:assert/strict';

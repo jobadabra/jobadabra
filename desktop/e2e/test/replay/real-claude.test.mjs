@@ -1,3 +1,4 @@
+// Guard: privacy — a terminal's claude wrapper puts the owner's settings and name into the test app's answers.
 // The harness runs the Claude Code install itself, never a wrapper script a terminal put first on PATH (lib/real-claude.mjs; 11 Oct 2026: a terminal's `claude`
 // added its session's settings to every `claude -p`, and the test app's form answers carried the owner's real name). A place that starts the app or `claude`
 // without the guard fails the last test.

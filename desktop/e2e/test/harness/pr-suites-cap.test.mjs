@@ -1,3 +1,4 @@
+// Guard: release — the PR suite budget drops a journey without reporting it for after the merge.
 // The PR suite budget keeps five strongest reaches and reports every deferred journey after merge.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

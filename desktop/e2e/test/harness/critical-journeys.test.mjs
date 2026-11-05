@@ -1,3 +1,4 @@
+// Guard: release — the journey registry names a missing step or loses a safety or data mark.
 // The critical-journey registry (critical-journeys.json) names real steps, gives every journey a tier and copies no safety or data mark.
 // Reaches: ../critical-journeys.json, ../lib/critical-journeys.mjs
 import assert from 'node:assert/strict';

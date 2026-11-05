@@ -1,3 +1,4 @@
+// Guard: release — CI picks the wrong AI provider or tier, or a broker refusal reads as a red or green step.
 // Guards the CI AI provider switch (lib/ai-provider.mjs) and CI's side of the Codex broker (lib/broker-client.mjs): precedence, parity of tiers, the broker's refusals as skips.
 import test from 'node:test';
 import assert from 'node:assert/strict';

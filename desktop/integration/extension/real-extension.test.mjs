@@ -5,8 +5,8 @@
 // the report of each upload actually leaves the extension for the app.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {startRealExtension} from '../../lib/real-extension.mjs';
-import {extensionWorker} from '../../lib/own-worker.mjs';
+import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
+import {extensionWorker} from '../../e2e/lib/own-worker.mjs';
 
 const POSTING = 'https://jobs.coop.ch/Coop/job/Nyon-Assistante-Assistant-du-commerce-de-d%C3%A9tail-AFP-Vaud/1405093533/?locale=en_US';
 // REAL_EXTENSION_DIR=<folder> runs the same checks on another build of the extension (a positive control: the build from before a fix must fail them).
@@ -207,7 +207,7 @@ test('a stuck page: the offer, the consent line on the first press, the countdow
 // The page sketch the extension SENDS to the app (desktop/lib/page-kind.js SKETCH_FIELDS): the same keys the app forwards, no more and no fewer. A field added on one side only is
 // the gap that dropped the bot check's frames (9 Oct 2026) and the address lines (10 Oct 2026) at the endpoint; this fails the day the two lists differ. Offline: a local posting page.
 test('the page sketch the extension sends has exactly the fields the app forwards, and carries an address line when the page has one', {skip}, async () => {
-  const {SKETCH_FIELDS} = await import('../../../lib/page-kind.js');
+  const {SKETCH_FIELDS} = await import('../../lib/page-kind.js');
   const run = await startRealExtension({extensionDir, cv: false, allowAllSites: true, answer: {'/extension/page-kind': () => ({ok: true, kind: 'other', role: 'no-form', by: 'ai', confidence: 0.9})}});
   try {
     await serve(run, '<body><h1>Engineer</h1><main><p>Please send your application to jobs@example.com</p></main></body>');

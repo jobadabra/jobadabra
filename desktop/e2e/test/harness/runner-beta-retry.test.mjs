@@ -1,3 +1,4 @@
+// Guard: release — a safety or data step gets a retry, or a non-beta run hides a flake behind one.
 // A beta retries a failed step once; safety and data steps never get that retry; every other run keeps its one try (owner, 1 Nov 2026, "Auto-retry in betas only").
 // Why (1 Nov 2026, owner): "In a beta (nightly or by hand), a non-safety, non-data step that fails gets one automatic retry. If it passes, the beta releases and the notes list it.
 // PR, main and night runs keep one try, so flakes are still counted and fixed. Safety and data steps get no retry." The cases: (a) retry passes in a beta, (b) fails twice,

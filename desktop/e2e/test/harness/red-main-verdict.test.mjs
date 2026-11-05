@@ -1,3 +1,4 @@
+// Guard: release — a red on main stops a beta it should not, or lets one through after a failed safety or data step.
 // "Does a red on main stop a beta?" (owner, 1 Nov 2026: "Safety strict, rest tolerant"; a8's option "Same rule as the beta"): only a failed safety or data step does; every other red
 // goes on and is listed; results that cannot be read stop it. The recorded tables are steps.json as lib/runner.mjs writes them. Tonight's case: applyflows, run 41267492981.
 import assert from 'node:assert/strict';

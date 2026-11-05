@@ -1,3 +1,4 @@
+// Guard: money — a run on a Mac loads an Anthropic key and spends on it instead of the plan or the broker.
 // Which AI engine the app under test uses. THE RULE (owner, 5 Oct 2026): the e2e key is for CI only. A Mac runs the app, the judges and the explorer on its own Claude Code (the
 // plan's fixed price); no suite loads, reads or spends an Anthropic key there. A step the AI proxy answers runs on the API engine with a placeholder key.
 import assert from 'node:assert/strict';

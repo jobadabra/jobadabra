@@ -1,3 +1,4 @@
+// Guard: data — notion-real empties the page another token sees (the wizard's fallback).
 // notion-real, the one suite on real Notion (suites/notion-real.mjs): it takes its own (borrowed) token or none, never the wizard's fallback, since its
 // `fresh` start empties the page the token sees; run-all loads the borrowed token's Keychain item; it runs as outside-world health once a night (night-report), is pinned, and cleans its page.
 import assert from 'node:assert/strict';

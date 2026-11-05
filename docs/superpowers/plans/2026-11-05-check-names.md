@@ -31,6 +31,6 @@ Waiting on the owner, not a PR yet: the 2 PR labels rows become 1 only after the
 - [x] 2/4 the site trusts the close file (jobadabra-web#381) (proof: none: the test is in jobadabra-web, test/unit/admin/feedback-ai.test.js @3719418)
 - [x] 3/4 the AI fixer draws 1 row (proof: desktop/test/tooling/ci/feedback-ai.test.js)
 - [x] 3/4, second half, in jobadabra-web: merged and closed trusted only from `feedback-ai-closed.yml` (jobadabra-web#385) (proof: none: the test is in jobadabra-web, test/unit/admin/feedback-ai.test.js @51c7eb6)
-- [x] 4/4a the Tooling check drops 15 tests that guard nothing (owner: "Yes, as sketched", sketch https://claude.ai/artifact/V4yZobhiRyQBX2rdEL4tVt) (proof: none: removes tests; the picker's harness tests pass)
-- [ ] 4/4b the 2 real-browser tests move to `desktop/integration/extension/`; every harness test that stays says what it guards (`Guard:` line)
+- [x] 4/4a the Tooling check drops 10 tests that guard nothing (#3226; the 5 step-picker tests stay: rules G/G2 name them) (owner: "Yes, as sketched", sketch https://claude.ai/artifact/V4yZobhiRyQBX2rdEL4tVt) (proof: none: removes tests; the picker's harness tests pass)
+- [x] 4/4b the 2 real-browser tests move to `desktop/integration/extension/`; every harness test that stays says what it guards (`Guard:` line; the 9 AI user agent tests have no guard kind and are listed on the PR) (proof: desktop/integration/extension/applying-report.test.mjs)
 - [ ] Drop the old names from `pr-verdict.yml` once no open PR runs them (12 Nov 2026)

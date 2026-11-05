@@ -1,7 +1,8 @@
 // Fill time per recorded case, and a PR's against main's (owner, 12 Oct 2026: a flow PR that makes filling slower fails, as one that makes it wrong does).
 // A case's fill time is its fill record's own clock (/extension/run: started, ended; flow.js), not the case's whole window, which waits on its checks.
 // Rule: the median, over the cases both runs filled, of (PR - main) seconds; +1 s or more is slower. Fewer than MIN_CASES in both: nothing to judge, said.
-// Used by e2e/test/recorded-pages.test.mjs (each result's `fill`) and e2e/replay-time.mjs (the report job). Guard: e2e/test/replay-time.test.mjs.
+// Used by integration/extension/recorded-pages.test.mjs (each result's `fill`) and e2e/replay-time.mjs (the report job). Guard: e2e/test/replay-time.test.mjs.
+// Job: keep the scorecard
 export const SLOWER_SECONDS = 1;
 export const MIN_CASES = 5;
 

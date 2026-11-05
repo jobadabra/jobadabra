@@ -1,3 +1,4 @@
+// Guard: safety — a real site is visited past its daily limit, or a new live path skips the ledger.
 // The per-site daily limit (lib/site-ledger.mjs): the 4th visit of a host is refused, a blocked host rests the day, the override works and is logged, a new day resets,
 // and every file that sends a browser to a real site goes through guardLiveVisit (the class test: a new live path fails here until it does).
 import assert from 'node:assert/strict';

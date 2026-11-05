@@ -1,3 +1,4 @@
+// Guard: privacy — a network record keeps cookies, request headers or request bodies.
 // The network recorder's keep rules (lib/net-record.mjs): what a record may hold (never cookies, request headers or request bodies), beacons dropped,
 // images blanked to their size, request bodies kept only as a key. Pure: no browser.
 import assert from 'node:assert/strict';

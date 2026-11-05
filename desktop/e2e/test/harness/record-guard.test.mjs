@@ -1,3 +1,4 @@
+// Guard: privacy — a recording that a guard refuses is published.
 // The recording-side guards (lib/record-guard.mjs, records-publish.mjs): every refusal fails on a fixture record, and the owner's named accept lifts only the pinned and worse ones.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

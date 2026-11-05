@@ -1,3 +1,4 @@
+// Guard: money — the quality suite selects a live AI transport.
 // Prove the reviewed quality fixture reaches every real answer seam without selecting a live transport.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

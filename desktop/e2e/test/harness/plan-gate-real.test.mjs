@@ -1,3 +1,4 @@
+// Guard: release — the release gate plans zero suites and reads green.
 // The release gate planned from the REAL suites never plans none: a gate that tests zero suites approves nothing and, with a pipe or a count check that skips quietly, read green for 3 days (18-21 Oct 2026).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

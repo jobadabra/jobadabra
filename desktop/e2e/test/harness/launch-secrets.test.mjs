@@ -1,3 +1,4 @@
+// Guard: safety — the app under test inherits CI credentials.
 // Guard the actual Electron launch boundary against inherited CI credentials without launching the app.
 import test from 'node:test';
 import assert from 'node:assert/strict';

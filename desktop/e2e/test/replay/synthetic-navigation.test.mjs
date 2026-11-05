@@ -1,3 +1,4 @@
+// Guard: privacy — a synthetic redirect fixture keeps captured query values.
 // Synthetic redirect fixtures construct invented queries without retaining captured query values.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

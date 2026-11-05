@@ -19,7 +19,7 @@ const slow = new Set(readSlow().slow), seconds_ = JSON.parse(fs.readFileSync(pat
 const items = [...loadZoo().map(one => ({...one, set: 'zoo'})), ...loadCases().filter(one => !slow.has(one.name) && (args.includes('--all') || (seconds_[one.name] ?? 99) <= QUICK_MAX)).map(one => ({...one, set: 'recorded'}))].filter(one => one.name.includes(only));
 let results = [], error = '';
 try { results = await replayInTabs(items, {tabs: Number(process.env.JP_REPLAY_TABS || 4), extensionDir: process.env.REAL_EXTENSION_DIR || undefined}); } catch (e) { error = String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200); }
-// Why (27 Oct 2026, as test/recorded-pages.test.mjs): a case that fails among parallel tabs counts only if it fails alone too; a case main already had not right is not re-run. A pass alone is said as FLAKY.
+// Why (27 Oct 2026, as desktop/integration/extension/recorded-pages.test.mjs): a case that fails among parallel tabs counts only if it fails alone too; a case main already had not right is not re-run. A pass alone is said as FLAKY.
 // Why (owner, 27 Oct 2026: "Main, red on regression"): main's build compares with the baseline its last green run wrote (--baseline, an artifact) and writes the next one (--write).
 //   No baseline yet (the first run, an expired artifact): the run only counts, it never goes red on a guess.
 // Why (Gitar on #2286): a local run with no baseline only counted, so it could never catch a drop; it reads the one main's last green build kept, the file CI compares with.

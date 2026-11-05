@@ -1,3 +1,4 @@
+// Guard: release — a pinned row stops replaying the same as live without a named accept.
 // The replay ratchet (owner, 15 Oct 2026): a pinned row must stay same as live; every way a replay stops being same (ask changed, other asks, out of date, worse, not replayed) is red
 // on a pinned row, unless an accept NAMES it. Guards lib/replay-ratchet.mjs and the pins path of replay-gate.mjs. Pure: no browser.
 import assert from 'node:assert/strict';

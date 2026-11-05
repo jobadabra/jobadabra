@@ -122,7 +122,7 @@ test('a dry run (a PR proving the step) says what it would send and sends nothin
 
 test('the recorded replay never uploads from its own run: it writes its results for CI\'s report job', async () => {
   const {readFileSync} = await import('node:fs');
-  const source = readFileSync(new URL('../../e2e/test/record/recorded-pages.test.mjs', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./recorded-pages.test.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /upload\(\s*'recorded'/);
   assert.match(source, /JP_REPLAY_RESULTS/);
 });

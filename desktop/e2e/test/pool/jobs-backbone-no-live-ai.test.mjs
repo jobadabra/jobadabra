@@ -1,3 +1,4 @@
+// Guard: money — a jobs ask outside the reviewed answers reaches live AI.
 // Prove jobs' captured engine asks use reviewed answers, feed scores and enrichments included, without live AI.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

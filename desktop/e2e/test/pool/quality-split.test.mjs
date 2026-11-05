@@ -1,3 +1,4 @@
+// Guard: release — the rates the release gate reads lose early failures or count dropped jobs wrong.
 // Pin the quality journey split and the plain rates artifact consumed by the release gate.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

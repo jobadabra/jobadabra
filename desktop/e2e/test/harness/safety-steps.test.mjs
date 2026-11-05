@@ -1,3 +1,4 @@
+// Guard: safety — a safety step is suspended and leaves the gate.
 // A step marked {safety: true} is never suspended: the runner fails it even when lanes.json lists it, suspend-flip refuses to propose it, lanes-check refuses its registry entry.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

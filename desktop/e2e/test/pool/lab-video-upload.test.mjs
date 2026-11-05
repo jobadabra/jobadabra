@@ -1,3 +1,4 @@
+// Guard: privacy — a fill video is sent from a PR, or with the page's address.
 // A pool row's fill video for the Lab (lib/lab-video-upload.mjs): sent from CI on main only, one PUT with the narrow key, the row's name and length in the address, never the page's address; anything else sends nothing.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

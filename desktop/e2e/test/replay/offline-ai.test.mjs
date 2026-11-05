@@ -1,3 +1,4 @@
+// Guard: money — an offline suite reaches an AI secret or a live model.
 // Offline suites use no AI secret or live transport and refuse background questions without reaching a real model.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

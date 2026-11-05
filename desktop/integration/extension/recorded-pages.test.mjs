@@ -3,12 +3,12 @@
 import assert from 'node:assert/strict';
 import {after, test} from 'node:test';
 import fs from 'node:fs';
-import {replayReason} from '../../lib/applying-report.mjs';
-import {loadCases, runCase} from '../../lib/page-replay.mjs';
-import {replayInTabs, replayRetryMessage} from '../../lib/replay-browser.mjs';
-import {isRowCase, runRowCase} from '../../lib/row-case-run.mjs';
-import {parseShard, shardOf} from '../../lib/replay-shard.mjs';
-import {readSlow, splitForPr, touchedCases} from '../../lib/replay-slow.mjs';
+import {replayReason} from '../../e2e/lib/applying-report.mjs';
+import {loadCases, runCase} from '../../e2e/lib/page-replay.mjs';
+import {replayInTabs, replayRetryMessage} from '../../e2e/lib/replay-browser.mjs';
+import {isRowCase, runRowCase} from '../../e2e/lib/row-case-run.mjs';
+import {parseShard, shardOf} from '../../e2e/lib/replay-shard.mjs';
+import {readSlow, splitForPr, touchedCases} from '../../e2e/lib/replay-slow.mjs';
 
 const extensionDir = process.env.REAL_EXTENSION_DIR || undefined;
 const skip = process.env.JP_REPLAY ? false : 'opt-in: set JP_REPLAY=1 (npm run recorded); it starts Chromium with the real extension';

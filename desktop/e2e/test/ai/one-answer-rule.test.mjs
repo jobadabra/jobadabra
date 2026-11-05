@@ -1,3 +1,4 @@
+// Guard: release — an AI ask answered by its exact text, or by nothing, makes a step's verdict change between runs.
 // One rule for every e2e suite and integration test: an app's AI ask is answered by a stand-in or by its name, never by its exact text; one nothing answers is refused, naming the step.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';

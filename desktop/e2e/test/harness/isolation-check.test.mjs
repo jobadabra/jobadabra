@@ -1,3 +1,4 @@
+// Guard: safety — the extension under test talks to the owner's live app on 47111.
 // The harness's isolation check (lib/real-extension.mjs isolationProblem): the extension talks to the stand-in app only, never the owner's live app on 47111.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
