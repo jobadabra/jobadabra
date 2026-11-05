@@ -121,3 +121,13 @@ test('the Test on our servers: a finished run passes, a failed step or status fa
   const offline = await testRead(st, 'r', {fetcher: async () => { throw new Error('down'); }});
   assert.deepEqual([offline.found, offline.verdict], [false, 'running']);   // a failed read keeps polling; the row's limit ends it
 });
+
+test('a lasting refusal while reading ends the test with its reason; a blip or a busy site keeps polling', async () => {
+  const st = store(), answer = (status, error) => site({'GET /api/hosted/test': {status, error}}).fetcher;
+  const revoked = await testRead(st, 'r', {fetcher: answer(401, 'Bad key.')});
+  assert.deepEqual([revoked.found, revoked.verdict, revoked.error], [true, 'failed', 'Bad key.']);
+  assert.equal((await testRead(st, 'r', {fetcher: answer(404, 'Not open.')})).verdict, 'failed');
+  for (const status of [429, 408, 500, 503]) assert.deepEqual([(await testRead(st, 'r', {fetcher: answer(status, 'later')})).found, status], [false, status]);
+  const nokey = await testRead({...store(), secret: () => ''}, 'r', {fetcher: answer(200, '')});
+  assert.deepEqual([nokey.found, nokey.verdict], [true, 'failed']);   // the key was removed mid-test: nothing to wait for
+});

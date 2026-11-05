@@ -48,7 +48,7 @@ async function poll(w) {
   st.url = read.url || st.url;
   st.runId = read.runId || st.runId;
   const next = advance({phase: st.phase, read, elapsedMs: Date.now() - st.startedAt, seen: !!st.runId, way: w});
-  st.phase = next.phase; st.message = next.message;
+  st.phase = next.phase; st.message = next.message || (next.phase === 'failed' && read.error ? `${read.error} Press Test again.` : '');   // a lasting refusal names its reason
   if (next.again) st.timer = setTimeout(() => poll(w), POLL_MS);
   if (w === way) draw();
 }
