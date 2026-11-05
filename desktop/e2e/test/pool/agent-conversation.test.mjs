@@ -100,7 +100,8 @@ test('a session names each goal\'s conversation, and the trace row keeps what th
 
 test('a refused call says which call of which conversation it was and how big', () => {
   const messages = [{role: 'user', content: 'a'.repeat(100)}, {role: 'assistant', content: 'b'.repeat(20)}, {role: 'user', content: 'c'.repeat(30)}];
-  assert.equal(refusedLine({session: 'agent-g1', delta: 'c'.repeat(30), messages}, 4), '  call 5 of agent-g1 was refused (delta 30 chars, 3 turns, 150 chars in all)');
+  assert.equal(refusedLine({session: 'agent-g1', delta: 'c'.repeat(30), messages}, 4), `  call 5 of agent-g1 was refused (delta 30 chars, 3 turns, 150 chars in all)\n  the newest turn it was given:\n${'c'.repeat(30)}`);
+  assert.equal(refusedLine({session: 'agent-g1', delta: 'd'.repeat(5000), messages}, 0).split('\n')[2].length, 3000, 'the turn is cut at 3,000 characters');
   assert.match(refusedLine({messages: [{role: 'user', content: 'x'}]}, 0), /call 1 of no conversation was refused \(full prompt, 1 turns, 1 chars/);
 });
 

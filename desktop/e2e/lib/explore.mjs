@@ -96,8 +96,11 @@ export const conversation = (session, messages, turn, maxSteps) => {
   return {session, ...(turn > 0 && typeof newest === 'string' ? {delta: newest} : {}), ...(turn === maxSteps - 1 ? {endSession: true} : {})};
 };
 
-/** The log line of a refused call: which call of which conversation, a delta or the full prompt, and how many turns and characters travelled. */
-export const refusedLine = (args, turn) => `  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${args.messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)`;
+/**
+ * The log of a refused call: which call of which conversation, a delta or the full prompt, how many turns and characters travelled, then the newest user turn (at most 3,000 characters).
+ * Why (5 Nov 2026, run 42064112764: a Codex turn stalled twice in a row on the same content, the retry too): the text is what the broker's side needs to replay the stall; it is a fictional persona's app page.
+ */
+export const refusedLine = (args, turn) => `  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${args.messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)\n  the newest turn it was given:\n${String(args.delta || args.messages.at(-1)?.content || '').slice(0, 3000)}`;
 
 /**
  * What the broker said about one call beyond its totals: input, output, the cached part of the input (Codex's cache, Claude's cache reads), what was written to Claude's cache and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
