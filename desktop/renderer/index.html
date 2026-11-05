@@ -1232,6 +1232,7 @@
               <div class="aon-body">
                 <ul class="aon-checks" id="aon-test-steps" hidden></ul>
                 <p class="small" id="aon-test-result" role="status"></p>
+                <p class="small muted aon-test-search" id="aon-test-search" role="status"></p>
               </div>
             </div>
             <div class="aon-row" id="tg-cloud" hidden>
@@ -1275,6 +1276,7 @@
                 <span><span>App notifications</span><span class="muted small">A notification on this computer while the app is open.</span></span></div>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-telegram" aria-label="Tell me by Telegram"><span></span></span>
                 <span><span>Telegram</span><span class="muted small"><span id="notify-telegram-note">Your own bot. Connect it first:</span> <button type="button" class="link small" id="notify-telegram-connect" hidden>Connect Telegram</button></span></span></div>
+              <button type="button" class="secondary" id="notify-resend" hidden>Send the confirm link again</button>
               <p class="message" id="notify-message"></p>
             </div>
           </div>
@@ -2084,6 +2086,17 @@
     <div class="actions">
       <button class="secondary" id="hosted-moment-later" type="button">Not now</button>
       <button class="primary" id="hosted-moment-go" type="button">Turn on Always on</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="aon-notify-dialog" class="save-dialog panel-dialog aon-notify-dialog">
+  <form method="dialog">
+    <h2>Check your notifications</h2>
+    <p id="aon-notify-lead"></p>
+    <div id="aon-notify-slot"></div>   <!-- the one Settings → Notifications card (#setting-notify) is moved in while this is open -->
+    <div class="actions">
+      <button class="secondary" id="aon-notify-close" type="button">Close</button>
+      <button class="primary" id="aon-notify-test" type="button">Test again</button>
     </div>
   </form>
 </dialog>

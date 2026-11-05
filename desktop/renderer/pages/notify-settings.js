@@ -24,6 +24,7 @@ export async function showNotify(error = '') {
   const said = notes(state, error);
   $('notify-telegram-note').textContent = said.telegram;
   $('notify-telegram-connect').hidden = state.telegram;
+  $('notify-resend').hidden = !state.email || !state.reached || state.confirmed;   // unknown while the site is unreachable, and a confirmed address has nothing to confirm
   $('notify-email-note').textContent = said.email;
   $('notify-message').textContent = plainError(said.message);
 }
@@ -45,4 +46,10 @@ export function bindNotify({savedToast, updateRepo}) {
   };
   for (const id of [...Object.values(BOXES), 'notify-address', 'notify-marketing', 'notify-cadence']) $(id).addEventListener('change', save);
   $('notify-telegram-connect').addEventListener('click', () => openSetting('telegram'));
+  // Why (5 Nov 2026, owner): the card also lives in Always on's Test pop-up, where an address is confirmed right away; one button for both places.
+  $('notify-resend').addEventListener('click', async () => {
+    const sent = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
+    $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || 'Try again in a minute.');
+  });
+  window.addEventListener('notify-refresh', () => showNotify());   // the Test pop-up borrows this card and asks it to read the state again
 }

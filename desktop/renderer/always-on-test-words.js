@@ -5,7 +5,7 @@
 export const NAME = 'Test Always on';
 export const FOR = 'Checks in your own GitHub repository that GitHub, Notion and your API key work together. It searches and sends nothing.'; // about Notion
 
-export const OURS_FOR = 'Runs one real search on our servers now, with your profile, and e-mails you what it finds. It counts as one of your free runs.';
+export const OURS_FOR = 'Checks in about 10 seconds that our servers hold your profile and the AI answers. Then it starts your first search and e-mails you what it finds. It counts as one of your free runs.';
 
 /** The sentence under the title: why the button is off, or what it does. `missing` lists the names still to set up above (the three the card shows); `way` is 'own' (your accounts) or 'ours' (our servers: nothing to set up first). */
 export function lead(missing, way = 'own') {
@@ -49,11 +49,31 @@ export function chipFor(state) {
   }[state] || {text: 'Waiting', tone: 'neutral'};
 }
 
+/** The button beside a check that depends on the person's own notification choice (the test e-mail): it opens a pop-up to switch, check and confirm them.
+ *  Why (5 Nov 2026, owner: "a popup instead of plain message", "enable/check/confirm the notifications right away, from that page"). */
+export const NOTIFY_CHECK = 'Check notifications';
+/** The same button when the test message did not go out (nothing is switched on, or the address is not confirmed): it proposes to set a way up. */
+export const NOTIFY_SETUP = 'Set up notifications';
+/** The pop-up's first sentence: after a check that went through, or after one that found nothing able to reach the person (owner, 5 Nov 2026: "detect the notifications settings … or propose him to enable"). */
+export const NOTIFY_LEAD = 'The test sends one message to every way you chose. Change a way here, then test again.';
+export const NOTIFY_LEAD_PROPOSE = 'The test message did not reach you.';
+
+/** The pop-up's lead when the test could not reach the person: the site's own sentence for the step (why), then what to do. */
+export const proposeLead = note => `${String(note || NOTIFY_LEAD_PROPOSE).replace(/\s+/g, ' ').trim()} Change a way here, then test again.`;
+
+/** Whether the pop-up should open by itself now, pure: the test has ended (`again` false), its notification step failed, and it was not already proposed for this press. -> the step, or null.
+ *  Why (5 Nov 2026, owner: "propose him to enable the notification settings"; review): never mid-test, never twice for one press. */
+export function shouldPropose({steps, again, proposed}) {
+  if (proposed || again) return null;
+  return steps.find(step => step.settings && step.state === 'failed') || null;
+}
+
 /** The one line under the checks once a test ended (empty while it runs). */
 export function summary(phase, steps, way = 'own') {
   if (phase === 'passed') return way === 'ours' ? 'Everything works on our servers. Your next daily run does the same.' : 'All three work. Your next scheduled run can use them.';
   if (way === 'ours' && phase === 'failed') {
     const bad = steps.find(item => item.state === 'failed');
+    if (bad?.settings) return `${bad.title}: no. Set up notifications, then test again.`;
     return bad ? `${bad.title}: no. Press Test again in a few minutes. If it fails again, e-mail contact@jobadabra.top.` : 'The test ended before every step ran. Press Test again in a few minutes.';
   }
   if (phase === 'cancelled') return 'That test was stopped (a second press, or GitHub\'s time limit). Press Test again.';
@@ -72,17 +92,36 @@ export const NEVER_LISTED = 'GitHub never listed the test run. Open the reposito
 export const TOO_LONG = 'The test is taking far longer than it should. Open the run to see where it waits, then press Test again.';
 export const TOO_LONG_OURS = 'The test is taking far longer than it should. Press Test again in a few minutes.';
 
-const SOFT_MS = 30 * 1000, LISTED_BY_MS = 90 * 1000, GIVE_UP_MS = 6 * 60 * 1000;   // Why (4 Nov 2026, review of 3/3): a run lasts about a minute; every wait ends in a verdict, never a button that stays off for ever
+const SOFT_MS = 30 * 1000, LISTED_BY_MS = 90 * 1000, GIVE_UP_MS = 6 * 60 * 1000, GIVE_UP_STEPS_MS = 60 * 1000, SEARCH_WATCH_MS = 20 * 60 * 1000;   // Why (4 Nov 2026, review of 3/3; 5 Nov 2026, owner): a GitHub run lasts about a minute and our servers' steps about 10 s (GIVE_UP_STEPS_MS); every wait ends in a verdict, never a button that stays off for ever; the first search is watched apart (SEARCH_WATCH_MS)
+
+/** The first search on our servers, one line under the steps (empty while there is nothing to say). `search` is {state: running | ok | failed, found, note} from the site; it never changes the verdict above it.
+ *  Why (5 Nov 2026, owner: "a test shuold not take more than 10 seconds"): the Test answers in about 10 s about the setup; the real search takes minutes and is told here, apart. */
+export function searchLine(search) {
+  if (!search) return '';
+  if (search.state === 'running') return 'First search: running, results by e-mail in about 10 minutes';
+  if (search.state === 'late') return 'Last search: no answer yet. If it finishes, the results come by e-mail.';
+  if (search.state === 'failed') return `Last search: failed${search.note ? `: ${search.note}` : ''}`;
+  return `Last search: ${search.found === 1 ? '1 new job' : `${search.found} new jobs`}`;
+}
+
+/** What to do with the first search after a read, pure: 'again' (re-read it in 15 s), 'late' (20 minutes since the press and still running: say "no answer yet" and stop) or 'done' (nothing to watch:
+ *  it ended, the site sent none, or the verdict failed, so no e-mail is promised). Why (5 Nov 2026, review): a failed test must not promise an e-mail, and the line must not say "running" for ever. */
+export function searchWatch(search, phase, elapsedMs) {
+  if (phase !== 'passed' || search?.state !== 'running') return 'done';
+  return elapsedMs > SEARCH_WATCH_MS ? 'late' : 'again';
+}
 
 /** One poll's decision, pure: from the phase, what the read said, the time since the press and whether a run was already seen -> {phase, message, again}. Every path out of starting/running ends in a verdict.
  *  Why (4 Nov 2026, Gitar on #3159): "never listed" is only true before the first sighting of the run; a failed read (network, GitHub 5xx) or a read after the run was seen keeps polling until the 6-minute limit. */
 export function advance({phase, read, elapsedMs, seen = false, way = 'own'}) {
   const tooLong = way === 'ours' ? TOO_LONG_OURS : TOO_LONG;
+  // Why (5 Nov 2026, owner): with a `search` in the answer the verdict is about the steps only (about 10 s), so a verdict still running after a minute is stuck; a running search never counts.
+  const giveUp = way === 'ours' && read.search ? GIVE_UP_STEPS_MS : GIVE_UP_MS;
   if (read.found) {
-    if (read.verdict === 'running' && elapsedMs > GIVE_UP_MS) return {phase: 'failed', message: tooLong, again: false};
+    if (read.verdict === 'running' && elapsedMs > giveUp) return {phase: 'failed', message: tooLong, again: false};
     return {phase: read.verdict, message: '', again: read.verdict === 'running'};
   }
-  if (read.error || seen) return elapsedMs > GIVE_UP_MS ? {phase: 'failed', message: tooLong, again: false} : {phase, message: '', again: true};
+  if (read.error || seen) return elapsedMs > giveUp ? {phase: 'failed', message: tooLong, again: false} : {phase, message: '', again: true};
   if (elapsedMs > LISTED_BY_MS) return {phase: 'failed', message: NEVER_LISTED, again: false};
   return {phase, message: elapsedMs > SOFT_MS ? NOT_LISTED_YET : '', again: true};
 }

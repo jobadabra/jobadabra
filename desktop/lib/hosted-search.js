@@ -121,9 +121,17 @@ export async function testRead(storage, runId, options = {}) {
   }
   const run = got.run;
   if (!run) return {found: false, verdict: 'running', steps: [], url: ''};
-  const steps = (run.steps || []).map(step => ({id: step.key, title: step.label, state: step.state, line: step.state === 'failed' || step.state === 'skipped' ? step.note || '' : step.note && step.key === 'found' ? `${step.note} new` : ''}));
+  const steps = (run.steps || []).map(step => ({id: step.key, title: step.label, state: step.state, line: step.state === 'failed' || step.state === 'skipped' ? step.note || '' : step.note && step.key === 'found' ? `${step.note} new` : '', settings: step.settings === true}));   // settings: the site asks for the "Check your notification settings" link beside this step (owner, 5 Nov 2026)
   const verdict = run.status === 'running' ? 'running' : run.status === 'ok' && steps.every(step => step.state !== 'failed') ? 'passed' : 'failed';
-  return {found: true, verdict, steps, url: '', runId: run.id};
+  return {found: true, verdict, steps, url: '', runId: run.id, search: searchOf(run.search)};
+}
+
+/** The first search the Test started, apart from the verdict (the site answers the verdict in about 10 s and the search later): {state: running | ok | failed, found, note} or null when the site sends none (an older site: the verdict then waits for the search itself). */
+function searchOf(search) {
+  if (!search || typeof search !== 'object') return null;
+  const state = search.status === 'ok' ? 'ok' : search.status === 'failed' ? 'failed' : 'running';
+  const note = (search.steps || []).find(step => step.state === 'failed' && step.note)?.note || '';
+  return {state, found: Number.isFinite(search.found) ? search.found : 0, note};
 }
 
 // Pull what arrived while this Mac was off into its own store (the engine adds the rows: src/hosted_run.py --merge). -> {ok, added}

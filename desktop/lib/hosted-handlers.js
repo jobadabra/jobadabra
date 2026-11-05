@@ -38,10 +38,10 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
   ipcMain.handle('hostedTestStart', async () => (DEMO ? {ok: true, run: 'demo', since: Date.now()} : hosted.testStart(storage).then(done => ({...done, since: Date.now()}))));
   ipcMain.handle('hostedTestRead', async (_, runId = '', since = 0) => {
     if (!DEMO) return hosted.testRead(storage, runId).catch(error => ({found: false, verdict: 'running', steps: [], url: '', error: error.message}));
-    const ticks = Math.floor((Date.now() - since) / 1500);   // six steps, one every 1.5 s
-    const titles = ['Always on is on for you', 'Your profile is held on our servers', 'The search started', 'The search finished', 'New jobs found', 'The e-mail was sent'];
-    const steps = titles.map((title, index) => ({id: String(index), title, line: '', state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
-    return {found: true, verdict: steps.every(step => step.state === 'ok') ? 'passed' : 'running', steps, url: '', runId: 'demo'};
+    const ticks = Math.floor((Date.now() - since) / 1500);   // five steps, one every 1.5 s, then the first search runs on its own and ends 20 s later
+    const titles = ['Always on is on for you', 'Your profile is held on our servers', 'Our server started and read it', 'The AI answers', 'A test e-mail was sent to you'];
+    const steps = titles.map((title, index) => ({id: String(index), title, line: '', settings: index === 4, state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
+    return {found: true, verdict: steps.every(step => step.state === 'ok') ? 'passed' : 'running', steps, url: '', runId: 'demo', search: {state: ticks > 18 ? 'ok' : 'running', found: 3, note: ''}};
   });
   ipcMain.handle('hostedExport', async () => {
     if (DEMO) return {ok: true};
