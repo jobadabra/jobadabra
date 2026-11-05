@@ -120,6 +120,15 @@ export const labelOf = node => {
 const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L}+/u, '').trim()).filter((step, i, all) => step && step !== all[i - 1]);
 /** ⌘K "Re-score N": listed only while old scores wait (the Jobs bar's row, rescore-entry.js); asks for the same Re-score dialog, never starts it.
  * Why (5 Nov 2026, arch-check no-circular): an event, not an import of jobs.js / startup.js, which import this page; pages/focus-suggestions.js answers it with the row's own handler. */
+/** The Sessions header's two ways out, as ⌘K entries: Stop the extension (always) and Cancel all applications (only while one is unfinished). */
+function addSessionExits(addNode) {
+  // Why (#2512, Gitar; owner 18 Oct 2026: an entry brings you to a button, never presses it; 5 Nov 2026: the header shows Stop no more): this entry (always listed) opens Sessions and shows Stop for 30 s, then the usual reveal focuses it.
+  addNode($('ss-stop'), 'Sessions', 'Stop the extension', 'Stops everything the extension does, on every tab', 'stop freeze halt panic extension chrome everything cancel emergency', () => {
+    openView('sessions'); shared.stopPinnedUntil = Date.now() + 30 * 1000; $('ss-stop').hidden = false;
+    setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
+  });
+  if (!$('ss-cancel-all').hidden) addNode($('ss-cancel-all'), 'Sessions', 'Cancel all applications', 'Stops applying to every job not finished yet; nothing is submitted', 'cancel all clear every applications sessions stop end close', () => openView('sessions'));
+}
 function addOldScoresCommand(add) {
   const count = knownOutdated().count;
   if (!(count > 0) || rescoring()) return;
@@ -211,11 +220,7 @@ export function paletteCommands() {
   if (GATED_FEATURES.promo(proGate(shared.licenseState || {})).shown) add('Settings', 'Redeem a promo code', 'Get Pro with a code you were given', 'promo code redeem pro voucher coupon gift free', () => openPromoDialog(reloadPlan));
   // Pro is not open yet: the Pro card on the Plan page, and its waitlist (pages/plan-waitlist.js).
   if (showsProWaitlist(shared.licenseState || {}) && !shared.state?.settings?.proWaitlist?.email) add('Settings', 'Join the Pro waitlist', 'Get one e-mail when Pro opens', 'pro waitlist early access upgrade plan price join email', () => { openSetting('license'); setTimeout(openWaitlist, 150); });
-  // Why (#2512, Gitar; owner 18 Oct 2026: an entry brings you to a button, never presses it): the header Stop shows only while the extension acts, so this entry (always listed) opens Sessions and shows it for 30 s, then the usual reveal focuses it.
-  addNode($('ss-stop'), 'Sessions', 'Stop the extension', 'Stops everything the extension does, on every tab', 'stop freeze halt panic extension chrome everything cancel emergency', () => {
-    openView('sessions'); shared.stopPinnedUntil = Date.now() + 30 * 1000; $('ss-stop').hidden = false;
-    setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopActing, shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
-  });
+  addSessionExits(addNode);
   button('jobs', 'refresh', 'find jobs scan');
   addOldScoresCommand(add);
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');

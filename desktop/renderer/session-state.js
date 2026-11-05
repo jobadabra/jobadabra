@@ -210,21 +210,22 @@ export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 
 export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.code === 'EADDRINUSE' ? `Another program is using the connection ${who} reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
   : `Jobadabra could not open the connection ${who} reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
 
-// Full-automation jobs in Jobadabra's browser that are queued, filling or submitting: the same states as lib/lifecycle.js WORKING (test/unit/renderer/stop-everywhere.test.js keeps them equal; a queued job still needs Stop, or a later poll fills what the person stopped, bot review #2324).
-const BACKGROUND_ACTING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']);
+/** -> whether this application is being sent right now: Full automation pressed Submit and waits for the site's reply (lib/background-apply-store.js `submitting`). */
+export const beingSent = item => item?.background?.state === 'submitting';
 /**
- * -> whether the extension is acting right now, so the header's Stop is worth showing: a form open in Chrome that the extension reports, with nothing stopped or waiting on the person and not yet
- * ready, or a Full-automation fill or submit running in Jobadabra's browser. Never when Chrome is not reporting (the stop rides on the answer to the extension's next report and could not reach it).
- * Why (29 Oct 2026, owner: "stop the extension shouldn't be shown in the desktop app all the times"): the extension has its own Stop on every tab; ⌘K and the ⋯ menu keep this one always reachable.
- * items: the session list; formsOpen: the extension's tab report ({known, ids}); readyOf(item): the form page says every required field is filled.
+ * -> the sessions "Cancel all applications" ends: every one not finished yet (filling, queued, waiting on the person, ready to submit); a submitted or already ended one keeps its outcome.
+ * The window's button and the app's handler (lib/session-handlers.js sessionsCancelAll) read this same rule.
+ * Why (5 Nov 2026, review of [ap] 3/7): one being sent is left out: cancelling it closed the tab that reads the site's reply and set the job back to Kit ready while the
+ * employer may have the application; its reply, or the person, settles it.
  */
-export function extensionActing(items, formsOpen, readyOf = () => false) {
-  return (items || []).some(item => !!item && !isSubmitted(item) && !item.outcome && (BACKGROUND_ACTING.has(item.background?.state)
-    || (item.kind === 'form' && !item.stuck && !!formsOpen?.known && formsOpen.ids.includes(String(item.id)) && !readyOf(item))));
-}
+export const cancellable = items => (items || []).filter(item => !!item && item.kind !== 'read' && !item.outcome && !beingSent(item));   // a Read with Claude is not an application (pages/sessions.js stillOpen)
 
-/** -> whether the header Stop is drawn: the extension is acting, or the ⌘K entry pinned it visible until `pinnedUntil` (ms). The one rule for the page's render and the entry's timer (#2512). */
-export const stopShown = (acting, pinnedUntil = 0, now = Date.now()) => !!acting || now < pinnedUntil;
+/**
+ * -> whether the header Stop is drawn: only while its ⌘K entry pinned it visible, until `pinnedUntil` (ms). The one rule for the page's render and the entry's timer (#2512).
+ * Why (5 Nov 2026, owner: "we should remove the "Stop extension" button. And we should add another button isntead … "Cancel all applications""): the header's
+ * place is Cancel all's; Stop stays reachable from ⌘K, the ⋯ menu and the extension's own popup and page button.
+ */
+export const stopShown = (pinnedUntil = 0, now = Date.now()) => now < pinnedUntil;
 
 // What the card says on a sign-in or sign-up page (owner, 9 Oct 2026: the account step gets its own count, what is left for you and the next press, apart from the application's
 // progress). state: the form page's review state ({account, total, left, needs, pending, missing}); null when this is not an account page with fields.
