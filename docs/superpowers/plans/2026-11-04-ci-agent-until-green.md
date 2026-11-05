@@ -29,6 +29,13 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 | web 2/3 | The tab "Agent harness": a card per run, reading the run record of 5/7 (site side first, empty state until data) | The owner reads what each run did |
 | web 3/3 | The public-repo upload of the records and of this plan's progress to the site | The page fills itself |
 
+### The card button starts this agent (owner, 5 Nov 2026, "Button starts the new agent"; numbered `web n/5`, apart from the N above)
+| n/5 | What | Who gets what |
+|---|---|---|
+| web 4/5 | The site also trusts `ai-fixer.yml` for a card's brief and its pr / none / failed report (`jobadabra-web`) | The first card run of the agent can read its card |
+| web 5/5a | The fixer reports back to the card in fixed words; its draft PR's merge or close reaches the card; a round does not re-read the brief (this repo) | The owner's card shows what the agent did instead of hanging an hour |
+| web 5/5 | "Send to AI" starts `ai-fixer.yml` instead of `feedback-ai.yml` (`jobadabra-web`; not before 5/5a is merged and READY) | The owner's click runs the new agent |
+
 ## Order and dependencies
 - 2/6 and the spec first; 3/6 needs 2/6; 4/7 needs 3/6; 5/7 starts from merged 4/7; 6/7 needs 5/7 and a feedback card handle; 7/7 needs an `ai-ready` or an owner-named JOB issue.
 - 2/6 runs in a pane (slot 1) while this spec waits for the owner.
@@ -54,3 +61,6 @@ Admin group (private repo `jobadabra-web`, numbered apart):
 - [x] web 1/3 One agent card per row on /admin/ai/agents (proof: none: jobadabra-web #366, merged b29cabc)
 - [x] web 2/3 The tab "Agent harness" with a card per run (proof: none: jobadabra-web #367, merged a5f9c3c)
 - [x] web 3/3 Upload of the records and the plan progress to the site (proof: tools/harness-stats.mjs @ca38e8e4)
+- [ ] web 4/5 The site also trusts ai-fixer.yml for a card (jobadabra-web, PR open)
+- [ ] web 5/5a The fixer reports back to the card (this repo)
+- [ ] web 5/5 The button starts ai-fixer.yml (jobadabra-web; after 5/5a)

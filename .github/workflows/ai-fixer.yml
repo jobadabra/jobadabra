@@ -507,6 +507,9 @@ jobs:
   # Why (5 Nov 2026, owner: "details about each run. What happened. Some logs, some achievements, errors"): run 1 ended needs-human with nothing to read. It holds counts, action names, file names, fixed words and one scanned sentence: the repository is public.
   record:
     needs: [guard, fix, prove, publish, after]
+    outputs:
+      verdict: ${{ steps.build.outputs.verdict }}   # words only (tools/fixer/record.mjs), for the card job
+      blocked: ${{ steps.build.outputs.blocked }}
     if: always() && !cancelled() && vars.AI_FIXER != 'off' && (needs.guard.result == 'success' || needs.guard.outputs.failure != '')   # a cap refusal has no record; a failed read of the item does
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -539,12 +542,41 @@ jobs:
         with:
           name: fixer-record-part
           path: ${{ runner.temp }}/part
-      - run: node tools/fixer/record.mjs build --part "$RUNNER_TEMP/part/part.json" --out "$RUNNER_TEMP/record"
+      - id: build
+        run: node tools/fixer/record.mjs build --part "$RUNNER_TEMP/part/part.json" --out "$RUNNER_TEMP/record"
       - uses: actions/upload-artifact@v6
         with:
           name: ai-fixer-record
           path: ${{ runner.temp }}/record/record.json
           retention-days: 35   # the admin tab reads the last 30 days
+
+  # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.
+  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed.
+  card:
+    needs: [guard, publish, record]
+    if: always() && !cancelled() && vars.AI_FIXER != 'off' && inputs.source == 'feedback' && inputs.pr == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write   # the run token the site checks
+    env:
+      REF: ${{ inputs.ref }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ needs.publish.outputs.number }}
+      VERDICT: ${{ needs.record.outputs.verdict }}
+      BLOCKED: ${{ needs.record.outputs.blocked }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node tools/fixer/card.mjs
 
   # One alert when the broker refused the run; the note it reads holds the cause, never any item text.
   ai-skipped:
