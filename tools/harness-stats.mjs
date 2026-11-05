@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The numbers behind https://www.jobadabra.top/admin/ai/harness (tab "Agent harness", owner, 4 Nov 2026: "details about each run. What happened. Some logs, some achievements, errors"): the CI fixer's plan rows (done / in progress / next),
-// the context layers and sources as FILE FACTS (a fetcher file in the repo proves nothing about its key or a live read), and the last 30 days of run records the fixer writes (artifact `ai-fixer-record`, file `record.json`, schema v1).
+// the context layers and sources as FILE FACTS plus one yes/no per source: is its read-only key stored (booleans from one workflow step, never a value; neither fact proves a live read), and the last 30 days of run records the fixer writes (artifact `ai-fixer-record`, file `record.json`, schema v1).
 // Reads data, runs nothing from it: a record is parsed as JSON (64 KB at most, only that one file); its run_id and url are replaced by GitHub's own for that run, so a record cannot point at another run. The site clamps and escapes every field.
 // A run with no record is normal (a run before the record existed has none) and is left out: nothing is invented for it. Report only, never blocks anything. No AI, $0.
 //   node tools/harness-stats.mjs [--out harness.json] [--plan docs/superpowers/plans/2026-11-04-ci-agent-until-green.md] [--keys keys.json] [--now 2026-11-05T04:41:00Z]

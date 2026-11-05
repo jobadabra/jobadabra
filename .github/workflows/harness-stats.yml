@@ -1,6 +1,6 @@
 name: CI · Agent harness stats
 # The numbers behind https://www.jobadabra.top/admin/ai/harness (tab "Agent harness", owner, 4 Nov 2026: "details about each run. What happened. Some logs, some achievements, errors"):
-# the CI fixer's plan rows, the context layers and sources (file facts), and the run record of each "CI · AI fixer" run of the last 30 days (tools/harness-stats.mjs). Report only: it never blocks anything. No AI, $0.
+# the CI fixer's plan rows, the context layers and sources (file facts, plus whether each read key is stored: booleans from one step, never a value), and the run record of each "CI · AI fixer" run of the last 30 days (tools/harness-stats.mjs). Report only: it never blocks anything. No AI, $0.
 # Daily (after agent-coding-stats.yml's 04:41) and when an AI fixer run completes, so a run shows on the page within minutes. A run that wrote no record is normal and skipped; the site answers 400 for this kind until
 # its page is deployed: that is a notice here, never a red run (a refused key or a server error is red). The workflow reads artifacts as data: it checks out the default branch (never the fixer run's branch) and runs only that branch's script:
 # schedule and workflow_run always run on it, and the job's `if:` refuses a by-hand start on any other branch (Gitar on #3188), because that run would hold the site key.
