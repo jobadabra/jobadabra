@@ -21,6 +21,14 @@ on:
         description: 'The commit it was built from'
         type: string
         required: true
+    # Why (5 Nov 2026, owner via coordinator: "do NOT use secrets: inherit"): a called workflow sees no secret its caller does not name, so the by-hand callers pass exactly these two; without them release-stable.sh's "store publish did not start" alert could never send from here
+    secrets:
+      CI_ALERTS_TELEGRAM_BOT_TOKEN:
+        required: false
+      CI_ALERTS_TELEGRAM_CHAT_ID:
+        required: false
+      SELFHEAL_PUBLISH_KEY:   # declared so the step below may read it; no caller passes it yet (coordinator named only the two bot secrets), so the alert goes through the old bot
+        required: false
 
 permissions:
   contents: read

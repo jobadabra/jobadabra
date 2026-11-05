@@ -1021,6 +1021,9 @@ jobs:
       platform: mac
       tag: ${{ needs.plan.outputs.tag }}
       sha: ${{ needs.plan.outputs.ref }}
+    secrets:
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
 
   windows:
     # The same suites on Windows (e2e-windows.yml), started here only when this run tested something, so Windows never runs empty; it skips a commit it
