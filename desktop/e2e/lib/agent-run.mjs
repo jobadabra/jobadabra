@@ -106,7 +106,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
     if (callsLeft <= 0 || minutesLeft <= 0) break;
     const mine = [];
-    const result = await explore({act, ask, views, caps: {maxSteps: perGoal, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge),
+    const result = await explore({act, ask, views, caps: {maxSteps: perGoal, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge), session: `agent-g${goal.n}`,
       extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
