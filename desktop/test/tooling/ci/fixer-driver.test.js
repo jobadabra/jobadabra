@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {BRANCH, CLAUDE_LINE, LIMITS, checkTarget, classify, cleanRound, deadlineWhy, gitarFinding, roundBlocks, stopReason, stopText} from '../../../../tools/fixer/driver.mjs';
@@ -151,7 +152,7 @@ test('a Telegram alert still in flight is awaited before the process exits', asy
   let done = false;
   globalThis.fetch = () => new Promise(resolve => setTimeout(() => { done = true; resolve({ok: true}); }, 20));
   try {
-    const io = realIo({pr: '7', repo: 'o/r', env: {RUNNER_TEMP: fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'tg-')), CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c'}, deadline: ''});
+    const io = realIo({pr: '7', repo: 'o/r', env: {RUNNER_TEMP: fs.mkdtempSync(path.join(os.tmpdir(), 'tg-')), CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c'}, deadline: ''});
     io.telegram('AI fixer: ready');
     assert.equal(done, false, 'the send is still in flight');
     await io.flush();
