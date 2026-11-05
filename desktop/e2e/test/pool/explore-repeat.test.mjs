@@ -70,6 +70,25 @@ test('two rounds and then something new is not a loop, and a page that changes e
   assert.equal(counting.stopped, 'done'); assert.equal(counting.trace.length, 12);
 });
 
+test('one switch pressed on and off is a loop too, said once, not as "T and T"', async () => {
+  let on = false;
+  const act = {observe: async () => ({view: 'settings', text: `Profile, switch ${on ? 'on' : 'off'}`, overlays: [], controls: [control(0, 'Dark mode')]}), click: async () => { on = !on; }, type: async () => {}, press: async () => {}, go: async () => {}};
+  const answers = Array.from({length: 40}, () => click(0));
+  const result = await explore({act, ask: async () => answers.shift() || stop, views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(result.trace.length, 6, 'six turns: the switch starting view is already in the cycle, so its first press counts');
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "Dark mode"" and its undo \(the page flips back each time\) 3 times$/);
+});
+
+test('a tab loop is a could-not-finish whose summary does not claim the page did not change', async () => {
+  const plan = planSession({seed: 7, moves: [{group: 'Profile', label: 'Edit your phone number'}, {group: 'Jobs', label: 'Open a job'}], count: 2});
+  const answers = [...Array.from({length: 7}, (_, n) => click(n % 2)), stop];
+  const result = await runSession({act: tabs(2), ask: async () => answers.shift() || stop, judgeAsk: async () => ({text: '{}', usage: {}, tier: 'mid'}), views: ['settings'], plan, knowledgeIds: [], caps: {maxSteps: 60}});
+  const [first] = result.summary.goals;
+  assert.equal(first.verdict, 'could-not-finish');
+  assert.match(first.summary, /kept doing the same thing, going back and forth between/);
+  assert.doesNotMatch(first.summary, /the page did not change/);
+});
+
 test('the same click on a page that changes each time is never a loop', async () => {
   let n = 0;
   const {act, ask} = rig(() => page(`Profile ${n++}`), [...Array.from({length: 12}, () => click(0)), stop]);

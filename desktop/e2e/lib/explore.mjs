@@ -138,7 +138,7 @@ const REPEAT_NUDGE = 3, REPEAT_STOP = 5;
 
 // Why (5 Nov 2026, run 42047462968, mac-32): going back and forth between 2 tabs counted each (action, page view) pair only every 2nd step, so the 5th count above came at step 10 (step 14 for 3 tabs) of a
 // run that has ~15 steps under the 250k cap: 11 of 12 steps went round "Your details" / "CV" and 0 of 6 goals finished. A cycle of 2 to 4 steps is counted in rounds: nudged after the 2nd, ended after the 3rd
-// (a single action keeps its 3rd/5th: pressing one thing again is a retry, going round the same states 3 times is not). TODO(AI): measure the rounds on the next real persona runs (2026-11-19)
+// (one action on a page that does not change keeps its 3rd/5th: pressing one thing again is a retry; going round the same states 3 times is not, even when it is one switch pressed on and off). TODO(AI): measure the rounds on the next real persona runs (2026-11-19)
 const CYCLE_NUDGE = 2, CYCLE_STOP = 3, CYCLE_MAX = 4;
 
 /** The shortest cycle (2 to CYCLE_MAX different steps) the latest `keys` are going round: {length, rounds, done} (`done` = a whole round has just closed), or null. A key is a step's action with its page view. */
@@ -154,7 +154,10 @@ export function cycling(keys) {
 }
 
 /** The steps of the cycle's latest round, said once each: `"a" and "b"`, `"a", "b" and "c"`. */
-const named = (dids, length) => { const names = dids.slice(-length).map(did => `"${did}"`); return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`; };
+const named = (dids, length) => {
+  const names = [...new Set(dids.slice(-length))].map(did => `"${did}"`);
+  return names.length === 1 ? `${names[0]} and its undo (the page flips back each time)` : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;   // one action whose page view alternates: a switch pressed on and off
+};
 
 /** How many times this action has now been done on this same page view (an action that failed or was refused, and a note, is not counted). */
 function repeated(tries, row, view) {
