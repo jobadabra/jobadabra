@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {draftMissing} from '../../../lib/apply.js';
-import {registerKitHandlers} from '../../../lib/kit-handlers.js';
+import {registerKitHandlers, stoppedWith} from '../../../lib/kit-handlers.js';
 import {dailyArgs} from '../../../lib/pipeline-args.js';
 import * as pipeline from '../../../lib/pipeline.js';
 
@@ -22,13 +22,13 @@ test('Settings has no Draft applications row and no Application preparation line
 
 // The real handler with the app's services faked; the demo switch keeps the engine from running, and its scripted run is cut short.
 process.env.JOBADABRA_DEMO_SEARCH_SECONDS = '0.01';
-function prepareKit({settings = {}, aiReady = () => true, syncJobs = async () => false} = {}) {
+function prepareKit({settings = {}, aiReady = () => true, syncJobs = async () => false, engineRun} = {}) {
   const handlers = new Map(), notes = [];
   const storage = {settings: () => settings, secret: () => '', path: name => `/fake/${name}`};
-  registerKitHandlers({DEMO: true, aiReady, allowanceBlock: async () => null, app: {on: () => {}}, cloud: () => true, ipcMain: {handle: (name, run) => handlers.set(name, run)}, log: () => {}, needsNotion: () => null,
-    notify: title => notes.push(title), powerMonitor: {on: () => {}}, shell: {}, storage, syncJobs, track: () => {},
+  const handed = registerKitHandlers({DEMO: true, aiReady, allowanceBlock: async () => null, app: {on: () => {}}, cloud: () => true, ipcMain: {handle: (name, run) => handlers.set(name, run)}, log: () => {}, needsNotion: () => null,
+    notify: title => notes.push(title), powerMonitor: {on: () => {}}, shell: {}, storage, syncJobs, track: () => {}, ...(engineRun ? {engineRun} : {}),
     dispatchCloud: () => { throw new Error('a kit never goes to GitHub'); }});
-  return {press: () => handlers.get('prepareKit')({}, 'ab12cd34', 'Analyst · Birch'), notes};
+  return {press: () => handlers.get('prepareKit')({}, 'ab12cd34', 'Analyst · Birch'), notes, handed};
 }
 
 test('with Always on, Apply prepares here: nothing sends a kit to GitHub', async () => {
@@ -74,4 +74,51 @@ test('a batch that could prepare nothing gives the reason it was told, not the g
   const refused = async () => ({ok: false, error: 'Choose your AI in Settings → Connections → AI first.'});
   assert.equal((await draftMissing(jobs, 1, refused)).why, 'Choose your AI in Settings → Connections → AI first.');
   assert.equal((await draftMissing(jobs, 1, async () => ({ok: false}))).why, '');
+});
+
+const POSTING_UNREAD = "This job's posting could not be read, so no application was written.";
+const stoppedRun = async (_storage, _args, onLine) => { onLine('Reading the form'); onLine(`⚠️ ${POSTING_UNREAD}`); return {code: pipeline.JOB_STOPPED}; };
+
+test('a job the engine stopped says why at the press, once, naming the job', async () => {
+  const {press, notes} = prepareKit({engineRun: stoppedRun});
+  assert.deepEqual(await press(), {ok: false, stopped: true, error: `Analyst · Birch: ${POSTING_UNREAD}`});
+  assert.equal(notes.length, 0, 'the press shows it; a notification would say it twice');
+});
+
+test('in a batch the stopped job is also notified, so a batch that started others still says it', async () => {
+  const {handed, notes} = prepareKit({engineRun: stoppedRun});
+  assert.equal((await handed.prepareKitFor('ab12cd34', 'Analyst · Birch', {quiet: true})).error, `Analyst · Birch: ${POSTING_UNREAD}`);
+  assert.deepEqual(notes, ['Application could not be prepared']);
+});
+
+test('the app and the engine agree on the stop code', () => {
+  assert.match(fs.readFileSync(new URL('../../../../src/ai/kit.py', import.meta.url), 'utf8'), new RegExp(`^JOB_STOPPED = ${pipeline.JOB_STOPPED}\\b`, 'm'));
+});
+
+test('only the engine\'s own stop code is a reason in words: a crash or a run that worked never is', () => {
+  assert.equal(stoppedWith(pipeline.JOB_STOPPED, ['⚠️ It stopped.']), 'It stopped.');
+  assert.equal(stoppedWith(pipeline.JOB_STOPPED, ['⚠️ It stopped.', 'AI: waiting for an answer']), 'It stopped.', 'a line printed at exit does not hide it');
+  assert.equal(stoppedWith(1, ['⚠️ An early warning', 'Traceback (most recent call last):', 'TypeError: x']), '');
+  assert.equal(stoppedWith(0, ['⚠️ A warning on a run that worked']), '');
+});
+
+const openJobs = codes => codes.map((code, index) => ({code, url: `https://jobs.example/${code}`, title: 'Analyst', company: 'Birch', status: 'saved', stage: 'Saved', fit: 90 - index}));
+
+test('a stopped job does not hold a batch: the next best job is tried in its place', async () => {
+  const asked = [], lines = [];
+  const prepare = async code => { asked.push(code); return code === 'a' ? {ok: false, stopped: true, error: 'a: unread'} : {ok: true}; };
+  const result = await draftMissing(openJobs(['a', 'b', 'c']), 1, prepare, line => lines.push(line));
+  assert.deepEqual(asked, ['a', 'b']);
+  assert.deepEqual(result, {done: 1, why: 'a: unread'});
+  assert.ok(lines.every(line => line.startsWith('Preparing application 1 of 1')), lines.join(' | '));
+});
+
+test('a batch of stopped jobs ends after three spare tries, and a job that failed uses its try', async () => {
+  const asked = [];
+  const stopping = async code => { asked.push(code); return {ok: false, stopped: true, error: `${code}: unread`}; };
+  assert.equal((await draftMissing(openJobs(['a', 'b', 'c', 'd', 'e', 'f']), 1, stopping)).done, 0);
+  assert.deepEqual(asked, ['a', 'b', 'c', 'd']);
+  asked.length = 0;
+  await draftMissing(openJobs(['a', 'b']), 1, async code => { asked.push(code); return {ok: false}; });
+  assert.deepEqual(asked, ['a']);
 });

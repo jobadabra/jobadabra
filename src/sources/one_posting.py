@@ -5,6 +5,8 @@ own page or a category page looks like a job to the title filter. Fixed answers 
 A failed, busy or capped AI leaves a page unjudged: not kept this time, asked again next read. With no AI page reader (no AI at all, or
 switched off: careers.reader() is None) nothing is asked and the pages stand, as before (the offline floor). At most MAX_ASKS calls per run:
 decide's call cap is shared with title sorting and kinds of work, which a run cannot do without. Tests: tests/unit/sources/test_one_posting.py."""
+from contextlib import closing
+import sqlite3
 
 TOPIC = 'one-posting'
 ANSWERS = ('one_posting', 'other')
@@ -19,6 +21,15 @@ TASK = ('A page a job site links to from its list, read as a possible job: its h
 
 def _text(job):
     return f"Heading: {job['title']}\nAddress: {job['url']}\nText: {(job.get('description') or '')[:TEXT]}"
+
+
+def is_one(job):
+    """True when the AI judged this page, as it reads now, one open posting; False for any other answer and for no answer (no AI, busy): not judged =
+    not read on a guess. Why (5 Nov 2026, review): asked at an Apply press beside a running search, so its answer is kept nowhere: a prepare run leaves
+    the job cache alone (src/__main__.py), and a page that closed or came back is judged afresh."""
+    from ..ai import decide
+    with closing(sqlite3.connect(':memory:')) as db:
+        return decide.one(TOPIC, job['url'], _text(job), ANSWERS, TASK, db=db) == 'one_posting'
 
 
 def kept(jobs, reader_on, judge=None):

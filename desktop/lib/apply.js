@@ -51,16 +51,22 @@ export function pickUntailored(jobs, n) {
   return jobs.filter(job => open(job) && job.code && !job.tailored).sort(best).slice(0, n);
 }
 
+// Why (5 Nov 2026, review): a job stopped for its posting stays the best missing one, so without spare tries every batch would stop on it.
+const SPARE_TRIES = 3;
+
 // Draft the missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
-// Returns how many are ready now, and the first reason a kit was refused ('' when none gave one).
+// A job the engine stopped uses no try, up to SPARE_TRIES. Returns how many are ready now, and the first reason a kit was refused ('' when none gave one).
 export async function draftMissing(jobs, shortfall, prepare, report = () => {}) {
-  let done = 0, why = '';
-  const missing = pickMissing(jobs, shortfall);
-  for (const [index, job] of missing.entries()) {
-    report(`Preparing application ${index + 1} of ${missing.length}: ${job.title} · ${job.company} (about 20 s each)…`);
+  let done = 0, why = '', tries = 0;
+  const missing = pickMissing(jobs, shortfall + SPARE_TRIES);
+  const wanted = Math.min(shortfall, missing.length);
+  for (const job of missing) {
+    if (tries >= shortfall) break;
+    report(`Preparing application ${tries + 1} of ${wanted}: ${job.title} · ${job.company} (about 20 s each)…`);
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(() => ({ok: false}));
     if (result.ok) done++;
     else why ||= result.error || '';
+    if (!result.stopped) tries++;
   }
   return {done, why};
 }

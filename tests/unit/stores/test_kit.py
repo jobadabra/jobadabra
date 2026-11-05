@@ -102,7 +102,7 @@ class KitTests(unittest.TestCase):
 
     def test_select_answer_outside_options_needs_review(self):
         questions = kit.form_questions(URL, opener)
-        drafted, _ = kit.draft(FakeClient(), 'm', {'title': 'SRE', 'company': 'Acme', 'url': URL}, 'p', 'a', questions)
+        drafted, _ = kit.draft(FakeClient(), 'm', {'title': 'SRE', 'company': 'Acme', 'url': URL, 'description': 'Kubernetes.'}, 'p', 'a', questions)
         self.assertFalse(drafted['answers'][0]['needs_review'])
         self.assertTrue(drafted['answers'][1]['needs_review'])
 
@@ -217,7 +217,7 @@ class EffortTests(unittest.TestCase):
 
     def effort_for(self, model):
         client = FakeClient()
-        kit.draft(client, model, {'title': 'SRE', 'company': 'Acme', 'url': URL}, 'p', 'a', [])
+        kit.draft(client, model, {'title': 'SRE', 'company': 'Acme', 'url': URL, 'description': 'Kubernetes.'}, 'p', 'a', [])
         return client.requests[0]['output_config'].get('effort')
 
     def test_haiku_gets_no_effort_and_other_models_keep_medium(self):

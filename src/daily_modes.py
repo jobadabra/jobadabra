@@ -93,8 +93,14 @@ def prepare_mode(args, stores=None):
     run = new_cron_run('prepare')
     run['kits'] = {}
     drafted = []
-    with store.connect(args.db) as db:
-        messages, log = prepare_kit(db, _job_arg(args.job), stores, stats=run['kits'], run=run, drafted_out=drafted)
+    try:
+        with store.connect(args.db) as db:
+            messages, log = prepare_kit(db, _job_arg(args.job), stores, stats=run['kits'], run=run, drafted_out=drafted)
+    except kit.NoPosting as error:
+        run['headline'] = f'⚠️ {error}'[:300]
+        log_ai_run(stores, run, args, failed=True)
+        print(f'⚠️ {error}')   # the app shows it at the press (desktop/lib/kit-handlers.js stoppedWith)
+        return kit.JOB_STOPPED
     print(log)
     log_ai_run(stores, run, args)
     print('\n\n'.join(messages))  # the kit is saved in Notion; no Telegram message (owner, 5 Oct 2026: not relevant)
