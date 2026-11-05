@@ -7,7 +7,7 @@ updated: 2026-11-04
 > People's feedback, Sentry crashes and the UI Finder's findings reach AI fixers that open DRAFT pull requests; the owner merges. One shared fixer core with an agent loop is being built.
 
 ## Rules
-- Draft PRs only, never a merge, never main; at most 3 a day, one at a time. The UI Fixer (`ui-fix.yml`) stays OFF; only the UI Finder runs. Auto-merge of fixer PRs stays off.
+- Draft PRs only, never a merge, never main; AI fixer and Send to AI: at most 10 attempts a UTC day, one at a time. The UI Fixer (`ui-fix.yml`) stays OFF; only the UI Finder runs. Auto-merge of fixer PRs stays off.
 - The repo is public and the AI reads text strangers wrote: the AI's code runs only in the no-network box (`tools/feedback-ai-sandbox.sh`), tokens stay in the driver, PR text and diff are leak-scanned (`leaks()`, `prText()` in `tools/fixer/leaks.mjs`).
 - Walls: allowed and denied paths, at most 8 files and 60 KB; a refused change is final, never patched up afterwards.
 - Proof: the changed tests must fail on a clean checkout and pass with the change (`proof()`); a fix without a test is not opened.

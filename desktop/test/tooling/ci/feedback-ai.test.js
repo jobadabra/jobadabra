@@ -73,13 +73,15 @@ test('the second wall: no workflow, tool, hook, agent-instruction, package, secr
   assert.equal(MAX_FILES, 8); assert.equal(MAX_PATCH_BYTES, 60000);
 });
 
-test('the caps on the CI side: one at a time and three a UTC day; this run is not counted against itself; yesterday, skipped and non-click runs do not count', () => {
+test('the caps on the CI side: one at a time and ten a UTC day; this run is not counted against itself; yesterday, skipped and non-click runs do not count', () => {
   const run = (id, extra = {}) => ({id, event: 'workflow_dispatch', created_at: '2026-11-03T08:00:00Z', status: 'completed', conclusion: 'success', ...extra}), now = new Date('2026-11-03T12:00:00Z');
   assert.deepEqual(capVerdict([], 9, now), {ok: true});
   assert.deepEqual(capVerdict([run(9, {status: 'in_progress'})], 9, now), {ok: true}, 'itself');
-  assert.deepEqual(capVerdict([run(1), run(2), run(9, {status: 'in_progress'})], 9, now), {ok: true}, 'the 3rd of the day is allowed');
+  const previous = n => Array.from({length: n}, (_, i) => run(i + 20));
+  assert.deepEqual(capVerdict([...previous(3), run(9, {status: 'in_progress'})], 9, now), {ok: true}, 'the fourth attempt is now allowed');
+  assert.deepEqual(capVerdict([...previous(9), run(9, {status: 'in_progress'})], 9, now), {ok: true}, 'the tenth attempt is allowed');
   for (const status of ['in_progress', 'queued', 'waiting']) assert.match(capVerdict([run(1, {status, conclusion: null}), run(9, {status: 'in_progress'})], 9, now).why, /one at a time/, status);
-  assert.match(capVerdict([run(1), run(2), run(3), run(9, {status: 'in_progress'})], 9, now).why, /more than 3/, 'the 4th is refused');
+  assert.match(capVerdict([...previous(10), run(9, {status: 'in_progress'})], 9, now).why, /more than 10/, 'the eleventh is refused');
   assert.deepEqual(capVerdict([run(1, {created_at: '2026-11-02T23:59:59Z'}), run(2, {created_at: '2026-11-02T08:00:00Z'}), run(3, {event: 'pull_request_target'}), run(4, {conclusion: 'skipped'}), run(5)], 9, now), {ok: true});
 });
 
