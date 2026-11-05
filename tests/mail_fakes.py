@@ -176,7 +176,13 @@ class FakeGoogle:
         self.emails, self.cal, self.queries = {e['id']: e for e in emails}, list(events), []
 
     def search(self, query, limit=50):
+        """Every email, except that Gmail's `in:sent` / `-in:sent` keep or drop the ones you sent (the SENT label)."""
         self.queries.append(query)
+        sent = lambda e: 'SENT' in (e.get('labels') or [])
+        if '-in:sent' in query:
+            return [i for i, e in self.emails.items() if not sent(e)]
+        if 'in:sent' in query:
+            return [i for i, e in self.emails.items() if sent(e)]
         return list(self.emails)
 
     def message(self, message_id):
@@ -193,7 +199,7 @@ class FakeClient:
     def create(self, **params):
         self.calls.append(params)
         answer = {'results': self.results.pop(0)}
-        return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(answer))],
+        return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(answer))],
                                usage=SimpleNamespace(input_tokens=3000, output_tokens=300, cache_read_input_tokens=0,
                                                      cache_creation_input_tokens=0))
 

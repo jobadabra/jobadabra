@@ -49,7 +49,7 @@ class TriageTests(unittest.TestCase):
         job, other = mail_triage.new_from_inbox(google, client, 3, known={'known'}, seen={'old'})
         self.assertEqual((job, other), (['pt', 'de'], ['shop']))
         self.assertEqual(google.read, ['pt', 'de', 'shop'], 'known senders and seen emails are not judged again')
-        self.assertEqual(google.queries, ['newer_than:3d in:inbox -in:chats -category:promotions -category:social -category:forums'])
+        self.assertEqual(google.queries, ['newer_than:3d in:inbox -in:chats -in:sent -category:promotions -category:social -category:forums'])
         sent = client.calls[0]['messages'][0]['content']
         self.assertIn('A sua candidatura', sent)
         self.assertNotIn('subject:', google.queries[0], 'no words decide what is fetched')
