@@ -145,8 +145,9 @@ def serve(port=8080):
                     body = run(site, token, Path(folder))
                 self.reply(200, {'ok': True, 'status': body['status'], 'matches': len(body['matches'])})
             except Exception as error:   # the Worker sees a failed run; the run token expires by itself
-                print(f'hosted run crashed: {type(error).__name__}: {error}', file=sys.stderr)
-                self.reply(500, {'ok': False})
+                reason = f'{type(error).__name__}: {error}'.replace(token, '[run token]')[:300]   # the run token is the only credential: never in an answer
+                print(f'hosted run crashed: {reason}', file=sys.stderr)
+                self.reply(500, {'ok': False, 'error': reason})   # Why (5 Nov 2026, hr 6/6 try 3): the Worker saw only "500"; the reason was in a stderr nobody reads
             finally:
                 lock.release()
 
