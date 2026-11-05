@@ -9,17 +9,18 @@ import {TESTS} from './proof.mjs';
 const SKIP = /^(?:\.git|\.fb|node_modules|e2e-artifacts)$/;   // never read, listed or searched: git internals, the run's work folder, installed packages
 const RESULT_CHARS = 6000, READ_LINES = 200, MATCHES = 40;
 
-/** The workspace file `rel` names, or {why}: a relative path inside `cwd` that is no git internal and whose real location (symlinks resolved) is still inside `cwd`. */
+/** The workspace file `rel` names, or {why, word}: `word` is `bad-path` (a path written wrongly: empty, absolute, a NUL; the agent may try again) or `wall-path` (a `..`, `.git`, `node_modules` or a way out of the repository: final): a relative path inside `cwd` that is no git internal and whose real location (symlinks resolved) is still inside `cwd`. */
 function resolve(cwd, rel) {
   let name = String(rel || '').trim();
   if (name === '.') return {name, full: cwd};   // the repository itself (a search of the whole tree)
-  if (!name || name.includes('\0') || path.isAbsolute(name) || name.split('/').some(part => part === '..' || SKIP.test(part))) return {why: 'that path is not one you may use (a relative path inside the repository)'};
+  if (!name || name.includes('\0') || path.isAbsolute(name)) return {why: 'that path is not a path inside the repository. Try again with a path relative to the repository root, such as src/store.py', word: 'bad-path'};   // Why (5 Nov 2026, review of 6b): a path written wrongly is the agent's slip, not a wall
+  if (name.split('/').some(part => part === '..' || SKIP.test(part))) return {why: 'that path is not one you may use', word: 'wall-path'};
   name = path.posix.normalize(name);   // 'src/./a.py' and 'src/a.py' are one file (the file cap counts it once)
   const full = path.join(cwd, name), root = fs.realpathSync(cwd);
   let near = path.dirname(full);
   while (!fs.existsSync(near)) near = path.dirname(near);   // a new file may start a new folder: the nearest folder that exists must still be inside
   const real = fs.realpathSync(near);
-  if (real !== root && !real.startsWith(root + path.sep)) return {why: 'that path leaves the repository'};
+  if (real !== root && !real.startsWith(root + path.sep)) return {why: 'that path leaves the repository', word: 'wall-path'};
   return {name, full};
 }
 
@@ -33,18 +34,22 @@ export function createActs({cwd, allow, boxRun}) {
   const cut = text => (text.length > RESULT_CHARS ? `${text.slice(0, RESULT_CHARS)}\n… (cut)` : text);
   const lstat = full => { try { return fs.lstatSync(full); } catch { return null; } };
 
+  /** The refusal of a path `resolve` did not accept: a wall says it is final, a slip says how to try again. */
+  const refuse = at => (at.word === 'wall-path' ? {text: `Refused (wall): ${at.why}.`, refusal: 'wall-path'} : {text: `Refused: ${at.why}.`, refusal: at.word});
+
   function read({path: rel, range}) {
     const at = resolve(cwd, rel), stat = at.full && lstat(at.full);
-    if (at.why) return {text: `Refused: ${at.why}.`};
-    if (!stat?.isFile()) return {text: 'Refused: no such file (a symlink or a folder is not read).'};
+    if (at.why) return refuse(at);
+    if (!stat?.isFile()) return {text: 'Refused: no such file (a symlink or a folder is not read). Try again with the path of a file that exists; search finds it.', refusal: 'no-such-file'};
     const [from, to] = /^(\d+)-(\d+)$/.test(range || '') ? range.split('-').map(Number) : [1, READ_LINES], start = Math.max(1, from), end = Math.min(to, start + READ_LINES - 1);
     return {text: cut(fs.readFileSync(at.full, 'utf8').split('\n').slice(start - 1, end).map((line, i) => `${start + i}: ${line.slice(0, 300)}`).join('\n') || '(nothing in that range)')};
   }
 
   function search({pattern, folder}) {
     const needle = String(pattern || '').toLowerCase(), at = resolve(cwd, folder || '.');
-    if (needle.length < 2) return {text: 'Refused: search for at least 2 characters of literal text.'};
-    if (at.why || !lstat(at.full)?.isDirectory()) return {text: `Refused: ${at.why || 'not a folder (a link is not followed)'}.`};
+    if (needle.length < 2) return {text: 'Refused: search for at least 2 characters of literal text. Try again with a longer word or name from the code.', refusal: 'short-pattern'};
+    if (at.why) return refuse(at);
+    if (!lstat(at.full)?.isDirectory()) return {text: 'Refused: not a folder (a link is not followed). Try again with a folder, or "" for the whole repository.', refusal: 'not-a-folder'};
     const hits = [];
     const walk = dir => {
       for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
@@ -62,15 +67,15 @@ export function createActs({cwd, allow, boxRun}) {
 
   function edit({path: rel, old, new: next}) {
     const at = resolve(cwd, rel);
-    if (at.why) return {text: `Refused: ${at.why}.`};
-    if (!allow.test(at.name)) return {text: 'Refused: outside the folders a fix may touch (src/, desktop/renderer/, desktop/lib/ and their tests).', wall: true};   // `wall`: the run record's "blocked by the walls" (5/7)
+    if (at.why) return refuse(at);
+    if (!allow.test(at.name)) return {text: 'Refused (wall): outside the folders a fix may touch (src/, desktop/renderer/, desktop/lib/ and their tests).', wall: true, refusal: 'wall-folder'};   // `wall`: the run record's "blocked by the walls" (5/7)
     const stat = lstat(at.full), before = old === '' ? null : stat?.isFile() ? fs.readFileSync(at.full, 'utf8') : null;
-    if (stat && !stat.isFile()) return {text: 'Refused: that is a link or a folder.'};
-    if (old === '' ? stat : before === null) return {text: old === '' ? 'Refused: the file exists already; an edit needs the old text.' : 'Refused: no such file.'};
+    if (stat && !stat.isFile()) return {text: 'Refused: that is a link or a folder. Try again with a file.', refusal: 'no-such-file'};
+    if (old === '' ? stat : before === null) return old === '' ? {text: 'Refused: the file exists already; an edit needs the old text. Try again with old text from the file.', refusal: 'file-exists'} : {text: 'Refused: no such file. Try again with a path that exists (read or search first), or old "" to create a new file.', refusal: 'no-such-file'};
     const count = old === '' ? 1 : before.split(old).length - 1;
-    if (count !== 1) return {text: `Refused: the old text occurs ${count} times, not once.`};
+    if (count !== 1) return {text: `Refused: the old text occurs ${count} times, not once. Try again with ${count ? 'more of the surrounding lines, so it occurs once' : 'old text copied exactly from a read of the file'}.`, refusal: 'not-unique'};
     const why = gateChange([...new Set([...files, at.name])], bytes + Buffer.byteLength(old) + Buffer.byteLength(next));
-    if (why) return {text: `Refused: ${why}.`, wall: true};   // the wall's answer is final; the edit is never shrunk or repaired
+    if (why) return {text: `Refused (wall): ${why}.`, wall: true, refusal: 'wall-limit'};   // the wall's answer is final; the edit is never shrunk or repaired
     fs.mkdirSync(path.dirname(at.full), {recursive: true});
     fs.writeFileSync(at.full, old === '' ? next : before.replace(old, () => next));
     files.add(at.name); bytes += Buffer.byteLength(old) + Buffer.byteLength(next);
@@ -79,15 +84,15 @@ export function createActs({cwd, allow, boxRun}) {
 
   function runTests({files: list}) {
     const tests = [...new Set(Array.isArray(list) ? list.map(String) : [])];
-    if (!tests.length || tests.length > 4 || !tests.every(file => TESTS.test(file))) return {text: 'Refused: name 1 to 4 test files: desktop/test/unit/<scope>/<name>.test.js or tests/unit/<scope>/test_<name>.py.'};
+    if (!tests.length || tests.length > 4 || !tests.every(file => TESTS.test(file))) return {text: 'Refused: name 1 to 4 test files: desktop/test/unit/<scope>/<name>.test.js or tests/unit/<scope>/test_<name>.py. Try again with such names.', refusal: 'bad-tests'};
     const missing = tests.filter(file => !lstat(path.join(cwd, file))?.isFile());
-    if (missing.length) return {text: `Refused: no such test file: ${missing.join(', ')}.`};
+    if (missing.length) return {text: `Refused: no such test file: ${missing.join(', ')}. Try again with files that exist (a new test is created with edit first).`, refusal: 'no-such-test'};
     const run = boxRun(tests);
     return {text: `${run.ok ? 'PASSED' : 'FAILED'}\n${cut(String(run.output || '').slice(-RESULT_CHARS))}`, passed: run.ok};
   }
 
   const table = {read, search, edit, run_tests: runTests};
-  return {act: async action => (table[action.action] ? table[action.action](action) : {text: `Refused: ${action.action} is not an action you can use here.`}), changed: () => [...files]};
+  return {act: async action => (table[action.action] ? table[action.action](action) : {text: `Refused: ${action.action} is not an action you can use here. Try again with read, search, edit, run_tests or finish.`, refusal: 'bad-action'}), changed: () => [...files]};
 }
 
 /** Puts the workspace back to the commit (tracked files and new ones; ignored folders such as node_modules stay): a run that ends without a fix must leave no edit for the next step to find. */

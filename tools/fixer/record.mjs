@@ -11,6 +11,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {STOPS} from './driver.mjs';
 import {leaks} from './leaks.mjs';
+import {REFUSAL_WORDS} from './loop.mjs';
 
 /** Why a run did not end in a fix, as ONE fixed word (the admin's "why it did not succeed"); `none` = it did (or it is READY). */
 // Why (5 Nov 2026, Gitar on #3197): ONE owner for the words of blockedBy: the tables below, the words that come from a failed job or the loop, and nothing else; BLOCKED is built from them.
@@ -51,7 +52,7 @@ export function partOf({loop, brief, title = '', files = [], exists = inBase, fa
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
   const turns = Array.isArray(loop.steps) ? loop.steps : [], n = value => Math.max(0, Math.round(Number(value) || 0));
   return {walls: Number(loop.walls) > 0 ? 1 : 0, stopped: ['steps', 'time', 'api'].includes(stopped) ? stopped : '', engine: one(loop.engine).slice(0, 60), model: MODELS[loop.engine] || '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
-    steps: turns.slice(0, 60).map((turn, i) => ({n: i + 1, action: one(turn?.action).slice(0, 20), s: Math.round(n(turn?.ms) / 100) / 10, ok: turn?.ok !== false, path: safePath(turn, brief, exists), tout: n(turn?.tout)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
+    steps: turns.slice(0, 60).map((turn, i) => ({n: i + 1, action: one(turn?.action).slice(0, 20), s: Math.round(n(turn?.ms) / 100) / 10, ok: turn?.ok !== false, refusal: REFUSAL_WORDS.includes(turn?.refusal) ? turn.refusal : '', path: safePath(turn, brief, exists), tout: n(turn?.tout)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
 }
 
 /**

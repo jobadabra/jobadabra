@@ -19,6 +19,7 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 | 4/7 | The until-green chain: `ai-fixer-follow.yml` (watches the PR with `ship-watch.sh`, new switch `SHIP_WATCH_DRAFT_OK=1`: READY for a PR that stays a draft), rounds of `ai-fixer.yml` on the PR's own branch, `tools/fixer/driver.mjs` rules, comment and log handling, the 1 h cap | The PR goes on to READY without a session | `/code-review` |
 | 5/7 | Every fixer run writes a record (`ai-fixer-record` / `record.json`, schema v:1): what happened, steps, the agent's reason, errors | The owner can see WHY a run ended (run 1 ended needs-human with nothing in the log) | `/code-review` |
 | 6/7 | First until-green run on a feedback card; cost shown and the owner's yes BEFORE it starts | The owner sees how the agent does | report only |
+| 6b/7 | A refused action the agent can recover from does not end the run: walls stay final, the other refusals say how to try again, each refusal is one fixed word on its step | Run 41946389132 (issue #3180, 5 Nov 2026) ended `needs-human` after 4 turns / 4 broker calls: one refused search was read as final | the loop test plays that run |
 | 7/7 | Run on a Linear issue; harness map 8/8 (none, map, map+pack) on the same driver; one table | A measured yes or no, for the agent and for each map layer | report only |
 
 ### Admin: Agent harness tab (`jobadabra-web`, private repo, pane hm-ai-harness-tab; numbered `web n/3`, so the CI plan's N stays 7)
@@ -45,7 +46,8 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 - [x] 3/7 Loop, Feedback and Linear sources, one-run workflow (proof: desktop/test/tooling/ci/fixer-loop.test.js @5766dddb)
 - [x] 4/7 Until-green chain: follow job, rounds, stop rules (proof: tools/fixer/driver.mjs @a42e9ee)
 - [x] 5/7 Every fixer run writes a record (proof: tools/fixer/record.mjs @4d34185)
-- [ ] 6/7 First until-green run on a feedback card
+- [ ] 6/7 First until-green run on a GitHub issue (run 1: site 401; run 2, issue #3180: needs-human after one refused search, 4 broker calls)
+- [ ] 6b/7 A refused action the agent can recover from does not end the run
 - [ ] 7/7 Run on a Linear issue and the harness map evaluation
 
 Admin group (private repo `jobadabra-web`, numbered apart):

@@ -38,7 +38,7 @@ test("a record keeps GitHub's run id and url, whatever the artifact says; a non-
   for (const bad of [null, 'text', 7, [record]]) assert.equal(recordOf(bad, run), null);
   const deep = JSON.parse(`{"v":1,"extra":${'['.repeat(20000)}${']'.repeat(20000)},"reason":"${'r'.repeat(5000)}","errors":["a",{"x":1}],"steps":[{"n":1,"action":"read","z":2}],"pr":"7"}`);
   const bounded = recordOf(deep, run);
-  assert.ok(!('extra' in bounded) && JSON.stringify(bounded).length < 2000, 'unknown keys and nesting never leave the script'); assert.equal(bounded.reason.length, 400); assert.equal(bounded.pr, null); assert.deepEqual(bounded.steps, [{n: 1, action: 'read', s: 0, ok: true, path: '', tout: 0}], 'a step is a copy of its known fields: seconds, refused or not, tokens written (5/7)');
+  assert.ok(!('extra' in bounded) && JSON.stringify(bounded).length < 2000, 'unknown keys and nesting never leave the script'); assert.equal(bounded.reason.length, 400); assert.equal(bounded.pr, null); assert.deepEqual(bounded.steps, [{n: 1, action: 'read', s: 0, ok: true, refusal: '', path: '', tout: 0}], 'a step is a copy of its known fields: seconds, refused or not, tokens written (5/7)');
 });
 test('runs without a record are skipped, a record is read from record.json only, an oversize or broken one is skipped, nothing else throws', () => {
   const runs = [{id: 1, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/1'}, {id: 2, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/2'}, {id: 3, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/3'}, {id: 4, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/4'}];

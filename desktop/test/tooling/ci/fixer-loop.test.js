@@ -7,7 +7,8 @@ import path from 'node:path';
 import test from 'node:test';
 import {createActs} from '../../../../tools/fixer/actions.mjs';
 import {sonnetAsk} from '../../../../tools/fixer/engine.mjs';
-import {ACTIONS, CAPS, parseAction, runLoop} from '../../../../tools/fixer/loop.mjs';
+import {ACTIONS, CAPS, REFUSAL_WORDS, WALL_WORDS, parseAction, runLoop, systemFor} from '../../../../tools/fixer/loop.mjs';
+import {partOf} from '../../../../tools/fixer/record.mjs';
 import {read as readLinear} from '../../../../tools/fixer/sources/linear.mjs';
 import {TESTS} from '../../../../tools/fixer/proof.mjs';
 import {EDITABLE} from '../../../../tools/fixer/walls.mjs';
@@ -191,4 +192,43 @@ test('the loop\'s editable paths and Send to AI\'s own --allow list give the sam
     'tests/test_a.py', 'tests/unit/ai/test_a.py', 'tests/guards/rules/test_a.py', 'tests/tooling/ci/test_a.py', 'tests/conftest.py', 'tools/a.mjs', '.github/workflows/a.yml', 'desktop/e2e/lib/a.mjs', 'desktop/package.json', 'CLAUDE.md'];
   for (const file of paths) assert.equal(ours.test(file), theirs.test(file), file);
   for (const file of ['desktop/test/unit/main/a.test.js', 'tests/unit/ai/test_a.py']) assert.ok(ours.test(file) && TESTS.test(file), `${file}: what the loop may write, the proof and run_tests accept`);
+});
+
+test('only a wall ends a run\'s attempts: run 41946389132 (a refused search, then "needs-human") is played, the agent is told how to recover, and every refusal is one fixed word in the record', async () => {
+  const {dir, act} = setup();
+  fs.writeFileSync(path.join(dir, 'src/a.py'), 'title = "x"\n');
+  const seen = [];
+  const result = await runLoop({
+    ask: script([{action: 'read', path: 'src/a.py'}, {action: 'search', pattern: '&'}, {action: 'search', pattern: 'title'}, {action: 'edit', path: 'src/a.py', old: 'zzz', new: 'y'}, {action: 'edit', path: 'tools/x.mjs', old: 'a', new: 'b'}, {action: 'finish', verdict: 'needs-human', body: 'a wall'}]),
+    act: async action => { const out = await act(action); seen.push(out); return out; }, system: systemFor('F'), first: 'item', caps: CAPS});
+  assert.deepEqual(seen.map(out => out.refusal || ''), ['', 'short-pattern', '', 'not-unique', 'wall-folder'], 'an old text that occurs 0 times is also "not once"');
+  assert.match(seen[1].text, /^Refused: .*Try again with/, 'a recoverable refusal says how to try again');
+  assert.match(seen[4].text, /^Refused \(wall\)/, 'a wall says it is final');
+  assert.equal(seen[2].text.startsWith('src/a.py:1:'), true, 'positive control: after the short pattern the agent really got a turn that searched');
+  assert.equal(result.steps, 6, 'one refusal did not end the run');
+  assert.deepEqual(result.timeline.map(step => step.refusal), ['', 'short-pattern', '', 'not-unique', 'wall-folder', '']);
+  assert.equal(result.walls, 1, 'only the wall counts as a wall');
+  // A path written wrongly is a slip to try again (review of 6b); a way out of the repository is a wall, and counts as one.
+  for (const [input, word] of [[{action: 'read', path: ''}, 'bad-path'], [{action: 'read', path: '/home/runner/work/x/src/a.py'}, 'bad-path'], [{action: 'search', pattern: 'title', folder: '/src'}, 'bad-path'], [{action: 'read', path: '../x'}, 'wall-path'], [{action: 'read', path: '.git/config'}, 'wall-path']]) {
+    const out = await act(input);
+    assert.equal(out.refusal, word, JSON.stringify(input));
+    assert.equal(/^Refused \(wall\)/.test(out.text), word === 'wall-path', JSON.stringify(input));
+  }
+  const probe = await runLoop({ask: script([{action: 'edit', path: '.git/config', old: 'a', new: 'b'}, {action: 'finish', verdict: 'needs-human', body: 'wall'}]), act, system: 'S', first: 'item'});
+  assert.deepEqual([probe.walls, probe.timeline[0].refusal], [1, 'wall-path'], 'the record says walls when a wall-path refused the edit');
+  const system = systemFor('F');
+  assert.doesNotMatch(system, /is final: do not try to get around a wall/, 'the prompt no longer calls every refusal final');
+  assert.match(system, /"Refused \(wall\)" is final/);
+  // The word list is closed: a made-up word, or an item's text, never reaches the record.
+  const turns = result.timeline.map(step => ({...step, ms: 1})).concat([{action: 'read', ms: 1, ok: false, refusal: 'ana.private@example.com'}]);
+  const part = partOf({loop: {verdict: 'needs-human', steps: turns}, brief: {text: 'x', files: {}}, exists: () => true});
+  assert.ok(part.steps.every(step => step.refusal === '' || REFUSAL_WORDS.includes(step.refusal)));
+  assert.equal(part.steps.at(-1).refusal, '');
+  assert.deepEqual(WALL_WORDS.filter(word => !REFUSAL_WORDS.includes(word)), []);
+});
+
+test('a recoverable refusal cannot carry a run past its caps: every refusal costs a turn, so 30 refused searches end at the step cap', async () => {
+  const {act} = setup();
+  const result = await runLoop({ask: script([{action: 'search', pattern: 'a'}]), act, system: 'S', first: 'item', caps: {maxSteps: 30, maxMinutes: 25}});
+  assert.deepEqual([result.steps, result.stopped, new Set(result.timeline.map(step => step.refusal)).size], [30, 'steps', 1]);
 });
