@@ -1,7 +1,7 @@
 name: AI fixer round end
 description: >-
   The end of a follow-up round of the AI fixer (PR 4/7): posts the agent's reply if it answered without a change, clears the Gitar "working" label, then either starts the next follow job or posts the ONE stop comment.
-# Trusted code only (main's tools/, no AI, no App token). The caller needs a checkout with tools/ and desktop/lib, Node 22, and `pull-requests: write` + `actions: write`.
+# Trusted code only (main's tools/, no AI, no App token). The caller needs a checkout with tools/, desktop/lib and desktop/e2e/lib (follow.mjs imports the switchboard sender from it), Node 22, and `pull-requests: write` + `actions: write`.
 # Why (4 Nov 2026, coordinator): a dispatch that fails fails the job (red) and tries the stop comment, so a dead chain is visible. Guard: desktop/test/tooling/ci/fixer-driver.test.js.
 inputs:
   github-token: {description: 'github.token', required: true}

@@ -13,6 +13,10 @@ inputs:
     description: 'secrets.CI_ALERTS_TELEGRAM_CHAT_ID'
     required: false
     default: ''
+  switchboard-key:
+    description: 'secrets.SELFHEAL_PUBLISH_KEY: asks the owner''s Notifications switchboard first (event ai-credit); empty sends with the CI-alerts bot as before'
+    required: false
+    default: ''
   github-token:
     description: 'github.token: this run''s artifacts'
     required: true
@@ -29,6 +33,7 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ inputs.bot-token }}
         CI_ALERTS_TELEGRAM_CHAT_ID: ${{ inputs.chat-id }}
+        SELFHEAL_PUBLISH_KEY: ${{ inputs.switchboard-key }}
         NOTES_DIR: ${{ inputs.notes-dir }}
       run: |
         notes="${NOTES_DIR:-ai-capped-notes}"

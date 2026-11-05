@@ -26,8 +26,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
       SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
     steps:
       - uses: actions/checkout@v5
@@ -35,6 +35,10 @@ jobs:
           sparse-checkout: |   # the repo-name constant it imports comes with it
             tools/pr-check-scorecard.mjs
             desktop/e2e/lib/repos.mjs
+            desktop/e2e/tell-owner.mjs
+            desktop/e2e/lib/telegram-post.mjs
+            desktop/e2e/lib/switchboard.mjs
+            desktop/e2e/lib/ci-state.mjs
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v5
         with:
@@ -42,13 +46,8 @@ jobs:
       - name: Count the last window's PR runs
         run: node tools/pr-check-scorecard.mjs --days "${{ inputs.days || 30 }}" --out "$RUNNER_TEMP/scorecard.json" --message "$RUNNER_TEMP/message.txt" || true
       - name: Post it to Telegram
-        run: |
-          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-            curl -sS -o /dev/null --fail "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text@$RUNNER_TEMP/message.txt"
-          else
-            echo "::notice::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are not set: nothing posted."
-          fi
+        # Why (5 Nov 2026, nt 3/4e): through the owner's switchboard (event pr-check-scorecard: on/off, when, bot); the CI-alerts bot sends it when the switchboard cannot deliver
+        run: node desktop/e2e/tell-owner.mjs --event pr-check-scorecard --file "$RUNNER_TEMP/message.txt" || true
       - name: Store it for the admin page
         run: |
           if [ -n "$SELFHEAL_PUBLISH_KEY" ]; then

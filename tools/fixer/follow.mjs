@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {scrub} from '../context/lib.mjs';
+import {postTelegram} from '../../desktop/e2e/lib/telegram-post.mjs';
 import {BRANCH, STOPS, checkTarget, classify, failureKey, firstErrorLine, ours, stopReason, stopText} from './driver.mjs';
 
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
@@ -109,9 +110,9 @@ export function realIo({pr, repo, env, deadline}) {
     },
     telegram: text => {
       const {CI_ALERTS_TELEGRAM_BOT_TOKEN: token, CI_ALERTS_TELEGRAM_CHAT_ID: chat} = env;
-      if (!token || !chat) return;
-      // Why (4 Nov 2026, review): the process exits right after the last line, which would drop a send still in flight; main awaits flush() first.
-      pending.push(fetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({chat_id: chat, text}), signal: AbortSignal.timeout(15000)}).catch(() => {}));
+      // Why (4 Nov 2026, review; the send goes through postTelegram since 5 Nov 2026, nt 3/4e): the process exits right after the last line, which would drop a send still in flight (the switchboard call and, if it cannot deliver, the old bot's); main awaits flush() first.
+      // Why (5 Nov 2026, nt 3/4e): through the owner's switchboard (event ai-fixer-round: on/off, when, bot); the CI-alerts bot sends it when the switchboard cannot deliver.
+      pending.push(postTelegram(text, {env, event: 'ai-fixer-round', bot: {token, chat}}).catch(() => {}));
     },
     flush: () => Promise.all(pending)};
 }

@@ -9,6 +9,7 @@ export const WORKFLOW_EVENTS = {
   'journeys.yml': 'journey-failing',
   'harness-daily.yml': 'harness-daily',
   'replay-refill.yml': 'replay-refill',
+  'site-replays.yml': 'replay-drift',
 };
 
 /** The event of the workflow file that runs this step (GITHUB_WORKFLOW_REF), or '' for one with no registry alert yet. */

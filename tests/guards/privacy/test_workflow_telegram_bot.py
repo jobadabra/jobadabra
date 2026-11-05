@@ -26,5 +26,19 @@ class TelegramBotTest(unittest.TestCase):
         self.assertIn('ai-fixer.yml', internal)
 
 
+    def test_every_caller_of_the_ai_skipped_alert_passes_the_switchboard_key(self):
+        """Guard: release - an AI-skipped alert whose caller leaves out the key bypasses the owner's Notifications switch (nt 3/4e, 5 Nov 2026)."""
+        callers = [path.name for path in sorted(WORKFLOWS.glob('*.yml')) if 'uses: ./.github/actions/ai-skipped-alert' in path.read_text()]
+        self.assertGreaterEqual(len(callers), 6, f'positive control: {callers}')
+        # finder-review.yml applies Codex's edits to desktop/e2e/lib in the same job as this step: the site's key stays out of it (code review of nt 3/4e)
+        self.assertNotIn('switchboard-key', (WORKFLOWS / 'finder-review.yml').read_text().split('uses: ./.github/actions/ai-skipped-alert')[1].split('github-token:')[0])
+        for name in [n for n in callers if n != 'finder-review.yml']:
+            text = (WORKFLOWS / name).read_text()
+            block = text[text.index('uses: ./.github/actions/ai-skipped-alert'):]
+            block = block[:block.index('github-token:')]
+            with self.subTest(workflow=name):
+                self.assertIn('switchboard-key: ${{ secrets.SELFHEAL_PUBLISH_KEY }}', block)
+
+
 if __name__ == '__main__':
     unittest.main()
