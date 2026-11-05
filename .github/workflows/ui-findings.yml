@@ -47,7 +47,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       NOTION_BRAIN_WRITE_TOKEN: ${{ secrets.NOTION_BRAIN_WRITE_TOKEN }}   # a planted bug no detector caught becomes a Bug Tracker row (desktop/e2e/lib/tracker-write.mjs); no token, no row
       BUG_TRACKER_DB: ${{ vars.BUG_TRACKER_DB }}
-      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register (the Judged noise card of /admin/testing/self-healing): read and appended by triage.mjs
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
       RUN_URL: ${{ github.event.workflow_run.html_url || format('https://github.com/{0}/actions/runs/{1}', github.repository, inputs.run_id || github.run_id) }}
@@ -81,6 +80,8 @@ jobs:
       - name: New findings to judge before filing
         id: pending
         if: vars.JOBADABRA_FIXER_VERDICTS == 'on' && env.PLANT == ''
+        env:
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register (the Judged noise card of /admin/testing/self-healing)
         run: |
           mkdir -p .heal
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json
@@ -102,6 +103,8 @@ jobs:
         if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0' && steps.judge.outputs.skipped != 'true'
         run: node desktop/e2e/prejudge.mjs --parse .heal/verdicts.md --pending .heal/pending.json --out .heal/verdicts.json || true
       - name: File the findings
+        env:
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register: read, and appended with this run's noise
         run: |
           mkdir -p .heal
           # Which code was tested: an issue about a finding already fixed on main must be recognisable at a glance.

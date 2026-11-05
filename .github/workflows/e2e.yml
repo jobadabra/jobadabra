@@ -201,7 +201,7 @@ jobs:
           GATE_TAG: ${{ inputs.gate_tag }}
           NIGHT_PASS: ${{ inputs.night_pass }}
           OVER: ${{ steps.spend.outputs.over }}
-          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise breaker reads the noise register; empty on a pull request run, which never reviews
+          SELFHEAL_PUBLISH_KEY: ${{ github.event_name != 'pull_request' && secrets.SELFHEAL_PUBLISH_KEY || '' }}   # the noise breaker reads the noise register; a pull request run executes its own plan-run.mjs and never reviews
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: node plan-run.mjs | { if [ "$OVER" = true ] || [ -n "$PR_SUITES" ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"   # a pull request: no AI screenshot review
       # Why (29 Oct 2026, owner): only selected AI suites need preflight; offline settings must run with missing or revoked AI secrets.

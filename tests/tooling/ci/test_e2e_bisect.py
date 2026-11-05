@@ -130,6 +130,29 @@ class AfterRun(unittest.TestCase):
         b.after_run('9')
         self.assertEqual(self.started(), ['suite=settings'])
 
+    def test_the_entry_is_written_before_the_bisect_is_dispatched(self):
+        def refuse(reds):
+            raise OSError('site refused the write')
+        b.save = refuse
+        with self.assertRaises(OSError):
+            b.after_run('9')
+        self.assertEqual(self.started(), [], 'a bisect no entry knows about would be started again by the next check')
+
+    def test_a_restarted_bisect_keeps_the_time_the_suite_first_went_red(self):
+        b.jobs_of = lambda rid: [{'id': 6, 'name': 'settings', 'conclusion': 'failure'}]
+        self.stored[1].update(status='bisecting', bisectAt='2026-01-01T00:00:00Z', sinceAt='2026-01-01T00:00:00Z', since='s' * 40)
+        b.after_run('9')
+        entry = next(red for red in self.stored if red['suite'] == 'settings')
+        self.assertEqual((entry['sinceAt'], entry['since']), ('2026-01-01T00:00:00Z', 's' * 40))
+        self.assertGreater(entry['bisectAt'], '2026-01-02')
+
+    def test_a_bisect_that_never_reported_and_is_now_red_on_the_environment_leaves_the_list(self):
+        self.logs[6] = CREDIT
+        b.jobs_of = lambda rid: [{'id': 6, 'name': 'settings', 'conclusion': 'failure'}]
+        self.stored[1].update(status='bisecting', bisectAt='2026-01-01T00:00:00Z')
+        b.after_run('9')
+        self.assertEqual(self.suites(), ['cardstates'])
+
     def test_a_site_that_cannot_be_read_stops_the_check_and_writes_nothing(self):
         def down():
             raise OSError('site down')

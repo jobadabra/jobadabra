@@ -144,28 +144,33 @@ def after_run(run_id):
     jobs = jobs_of(run_id)
     results = suite_results(jobs)
     reds = {red['suite']: red for red in load()}
-    started = None
     excluded = lane_suites()
-    green, added = [], []
+    drop, added, to_start = [], None, None
     for suite, result in sorted(results.items()):
         red = reds.get(suite)
         if result == 'success' and red:
-            green.append(suite)
+            drop.append(suite)
             print(f'cleared: {suite} green again')
         elif result == 'failure' and (not red or stale(red)) and suite not in excluded:
-            if started:
-                print(f'{suite}: red, bisected after `{started}` (one bisect at a time: the next main check starts it)')
+            if to_start:
+                print(f'{suite}: red, bisected after `{to_start}` (one bisect at a time: the next main check starts it)')
                 continue
             cause = red_cause(jobs, suite)
             if cause in ENVIRONMENT_CAUSES:
                 print(f'{suite}: red on the test environment ({cause}): not bisected, no PR broke it')
+                if red:   # a bisect that never reported, and the red is no PR's: the entry goes
+                    drop.append(suite)
                 continue
-            gh('workflow', 'run', 'e2e-bisect.yml', '-R', REPO, '--ref', 'main', '-f', f'suite={suite}', '-f', f"bad={run['head_sha']}", '-f', f"run_url={run['html_url']}")
-            print(f'bisect started: {suite} red at {run["head_sha"][:7]} ({cause})')
-            added.append(red_record(suite, run['head_sha'], run['html_url'], since_at=run.get('created_at')))
-            started = suite
-    if green or added:
-        update(lambda current: [red for red in current if red['suite'] not in green and red['suite'] not in {new['suite'] for new in added}] + added)
+            # A restarted bisect keeps the time the suite first went red.
+            added = red_record(suite, red['since'] if red else run['head_sha'], run['html_url'], since_at=(red or {}).get('sinceAt') or run.get('created_at'))
+            to_start = suite
+            print(f'bisect starting: {suite} red at {run["head_sha"][:7]} ({cause})')
+    if drop or added:
+        # The entry is written BEFORE the workflow is dispatched: a failed write must not leave a bisect running that no entry knows about (the next check would start a second one).
+        update(lambda current: [red for red in current if red['suite'] not in drop and not (added and red['suite'] == added['suite'])] + ([added] if added else []))
+    if to_start:
+        gh('workflow', 'run', 'e2e-bisect.yml', '-R', REPO, '--ref', 'main', '-f', f'suite={to_start}', '-f', f"bad={run['head_sha']}", '-f', f"run_url={run['html_url']}")
+        print(f'bisect started: {to_start}')
 
 
 def after_merge(run_id):

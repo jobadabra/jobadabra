@@ -5,7 +5,7 @@
 import {loopQuality} from './lib/loop-quality.mjs';
 import {readTracker} from './lib/bug-tracker.mjs';
 import {asIssues} from './lib/prejudge.mjs';
-import {noiseEntries, readState} from './lib/ci-state.mjs';
+import {readState, tryRead} from './lib/ci-state.mjs';
 import {rankIssues, rankingOf} from './lib/triage-match.mjs';
 import {scorecard} from './lib/finder-scorecard.mjs';
 import {execFileSync} from 'node:child_process';
@@ -32,7 +32,10 @@ function learnedCount() {
 export async function collect({days = 30} = {}) {
   const filed = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '1000', '--json', 'number,title,body,state,stateReason,labels,comments,createdAt,url']));
   // Plus what was judged noise before filing (the noise register): still a false positive of its detector, or precision would look better than it is.
-  const judged = asIssues(noiseEntries());
+  // An unreadable register must not publish a flattering precision for the day (the judged noise would be missing): no snapshot rather than a wrong one.
+  const register = tryRead('noise-register');
+  if (!register.ok) throw new Error('the noise register was not read: no snapshot this time');
+  const judged = asIssues(Array.isArray(register.value?.entries) ? register.value.entries : []);
   const issues = [...filed, ...judged];
   const prs = JSON.parse(gh(['pr', 'list', '--label', 'auto-ui-fix', '--state', 'all', '--limit', '200', '--json', 'state,createdAt,comments']))
     .map(pr => ({state: pr.state, createdAt: pr.createdAt, closingNote: (pr.comments || []).at(-1)?.body || ''}));
