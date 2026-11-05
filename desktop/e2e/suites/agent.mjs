@@ -11,13 +11,14 @@ import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
 import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
-import {actorTierOf, nightBudget, tierLine} from '../lib/agent-tier.mjs';
+import {actorTierOf, harnessTokens, runBudget, tokensLine} from '../lib/agent-tier.mjs';
+import {actionSchema} from '../lib/explore.mjs';
 import {changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
 import {planSession, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
-import {runSession} from '../lib/agent-run.mjs';
+import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
@@ -72,14 +73,19 @@ export async function run(ctx) {
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
     const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
+    // Why (5 Nov 2026, owner via mac-32: "Assuming the initial context/harness would be max 20k"): what every actor call carries before the page is measured now and the run fails here, before any call, when it is over 20k; the cap of 250k is spent on the app, not on the same words again.
+    const harness = harnessTokens({system: AGENT_SYSTEM, schema: actionSchema(AGENT_VIEWS, agentExtend({knowledgeIds: [], views: AGENT_VIEWS, goal: {}, sink: []})), intros: plan.goals.map(goal => goalIntro(goal, knowledge))});
+    console.log(`  harness: ${harness} tokens in every call before the page (limit 20000)`);
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
-    const budget = nightBudget({tier: actorTier});
+    const budget = runBudget();
     try {
-      session = await runSession({act, ask: budget.actor(brokerAsk(actorTier), brokerAsk('small')), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: budget.actor(brokerAsk(actorTier)), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
-    } finally { kept = await video.finish(); console.log(`  ${tierLine(budget.state)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
+    } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
+    // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
+    if (budget.state.stoppedAtCap && session.stopped.startsWith('api:')) session.stopped = `stopped at the ${Math.round(budget.state.capTokens / 1000)}k token cap`;
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
     // The memory the workflow pushes to the agent-memory branch afterwards (this suite never touches git): merged notes per area, the coverage record, the plan's pairs.
@@ -89,7 +95,7 @@ export async function run(ctx) {
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, plan), null, 1));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state}, null, 2));
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tierLine(budget.state)}\n`);
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
     // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId || (shapeId ? `shape ${shapeId}` : '')}, kept)));

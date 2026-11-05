@@ -1,63 +1,56 @@
-// Which model tier the AI user agent acts on, and the nightly token cap that drops it back to small when a night on the large tier has used its share of the Codex week.
+// Which model tier the AI user agent acts on, and the hard token cap of one run: every call of a run (actor, screen reader, second opinion) counts against 250,000 tokens and the run stops cleanly at it; what every call carries before the page is at most 20,000.
 // Job: report health
-// Why (5 Nov 2026, owner via mac-32: "Large, with a cost cap (Recommended)"; "capped at 2% of the Codex week a night. Over the cap, the run falls back to small and says so in the night report"): the one large Board run found the planted bug the small actor never reached, at 43,675 tokens; a whole night on Opus can cost far more, so the money has a ceiling the run keeps by itself.
-// Why (5 Nov 2026, coordinator mac-32: "The 2% cap is for the whole night, the reader's mid-tier calls included, not only the actor's"): one meter counts the actor, the screen reader and the second opinion; at the cap the actor falls to small and the reader stops, the second opinion still judges the notes already made (a note is never filed unjudged), so a night can pass the cap by one actor call, one reader call, every later small actor call (bounded by the night's own call, minute and step caps) and one judge call per note made (low notes included); the report shows the total and each part.
-// 1% of the Codex week is about 720k tokens (measured 3 Nov 2026 from the small runs: 1.3-1.9M tokens = about 2%). A call that crosses the cap is allowed to finish; how far past the cap a night can go is in the Why above.
-export const CODEX_WEEK_PCT_TOKENS = 720_000;
-export const NIGHT_CAP_PCT = 2;
-export const CAP_REACHED = 'the night token cap was reached';   // the reader's refusal at the cap; the session reads it as "no answer" and does not count a call that was never made
-export const NIGHT_CAP_TOKENS = CODEX_WEEK_PCT_TOKENS * NIGHT_CAP_PCT;
+// Why (5 Nov 2026, owner via mac-32: "cap each run at 200k tokens", then "we can start with 250k tokens then. Assuming the initial context/harness would be max 20k"; he found a share of a weekly allowance "variable, confusing, abstract"): one number per run, counted in the tokens the broker reports, input plus output, for every call of the run together. A call is refused BEFORE it is made when its worst case (its request plus the broker's output limit) would pass the cap, so the total never goes over; the actor and the reader keep a reserve so the notes already made can still be judged (a note is never filed unjudged); the second opinion may use the reserve.
+// The run's loop reads a refusal as the end: the actor's turn ends the session with `stopped at the cap`, the reader notes nothing, a note left unjudged is held, never filed. What is measured: a Board-style run is 40-80k tokens; a full seeded session on the small tier was 1.3-1.9M (5 Nov 2026), so a full night stops at this cap after its first goals.
+export const RUN_CAP_TOKENS = 250_000;
+export const HARNESS_MAX_TOKENS = 20_000;   // what each call carries before the page: instructions, answer shape, goal and what is known (owner, 5 Nov 2026)
+export const JUDGE_RESERVE_TOKENS = 25_000;
+export const MAX_OUTPUT_TOKENS = 1024;   // brokerAsk's max_tokens: the most one answer can add
+export const CAP_REACHED = 'the run token cap was reached';   // the refusal the loops read as "stop here"; a read it refused made no call
+const IMAGE_TOKENS = 1_500;   // a screenshot costs about this, whatever its bytes: its base64 text must not be counted as words
 
 /** The acting tier of a run: what the dispatch asked for, else large for a night (kind 'night', set by the workflow) and small for anything else, so a run with no kind (a local one) never spends the large tier by default. */
 export const actorTierOf = ({requested = '', kind = ''} = {}) => requested || (kind === 'night' ? 'large' : 'small');
 
-// Why (5 Nov 2026, code review): the broker client reads a missing token count as 0 (broker-client.mjs), and a cap that counts 0 never trips; an answer with no count is charged an estimate of its request (4 characters a token) plus its text.
-const estimate = (args, answer) => Math.ceil((JSON.stringify(args?.messages ?? '').length + String(args?.system ?? '').length + String(answer?.text ?? '').length) / 4);
-const tokensOf = (answer, args) => ((answer?.usage?.input_tokens || 0) + (answer?.usage?.output_tokens || 0)) || estimate(args, answer);
+const partTokens = part => part?.type === 'image' ? IMAGE_TOKENS : Math.ceil(String(part?.text ?? part ?? '').length / 4);
+/** What a request costs going in: its words at 4 characters a token plus a flat price per picture. */
+const requestTokens = args => Math.ceil((String(args?.system ?? '').length + JSON.stringify(args?.schema ?? '').length) / 4)
+  + (args?.messages ?? []).reduce((sum, message) => sum + (Array.isArray(message.content) ? message.content.reduce((inner, part) => inner + partTokens(part), 0) : partTokens(message.content)), 0);
+// Why (5 Nov 2026, code review): the broker client reads a missing token count as 0 (broker-client.mjs), and a cap that counts 0 never trips; an answer with no count is charged its request plus its text.
+const tokensOf = (answer, args) => ((answer?.usage?.input_tokens || 0) + (answer?.usage?.output_tokens || 0)) || requestTokens(args) + Math.ceil(String(answer?.text ?? '').length / 4);
 
 /**
- * The night's token meter and the three asks that spend against it. `tier` is the actor's tier; only a large night is capped (small and mid cost little), and then `capTokens` counts the actor, the screen reader and the second opinion together.
- * -> {actor(primary, fallback), reader(ask), judge(ask), state}: each returns an `ask({system, messages, schema})`. `actor` runs `primary` until the meter reaches the cap, then `fallback` (the small tier); `reader` refuses once the meter has reached the cap (the reader then notes nothing, as when it gets no answer);
- * `judge` always answers (a note is never filed unjudged) and is counted. `state` {tier, capTokens, used: {actor, reader, judge}, total, calls, fellBackAtCall, readerStopped} is read after the session for the report.
+ * The run's token meter and the three asks that spend against it. -> {actor(ask), reader(ask), judge(ask), state}: each takes an `ask({system, messages, schema})` and returns one that counts every answer and refuses (throws CAP_REACHED, nothing sent) a call whose worst case would pass the cap;
+ * `actor` and `reader` leave the judge's reserve free, `judge` may use it. `state` {capTokens, used: {actor, reader, judge}, total, calls, stoppedAtCap} is read after the session for the report.
  */
-export function nightBudget({tier, capTokens = NIGHT_CAP_TOKENS}) {
-  const state = {tier, capTokens: tier === 'large' ? capTokens : null, used: {actor: 0, reader: 0, judge: 0}, total: 0, calls: 0, fellBackAtCall: null, readerStopped: 0};
-  const over = () => state.capTokens !== null && state.total >= state.capTokens;
-  const counted = (part, ask) => async args => {
+export function runBudget({capTokens = RUN_CAP_TOKENS, reserve = JUDGE_RESERVE_TOKENS} = {}) {
+  const state = {capTokens, used: {actor: 0, reader: 0, judge: 0}, total: 0, calls: 0, stoppedAtCap: false};
+  const counted = (part, ask, kept) => async args => {
+    if (state.total + requestTokens(args) + MAX_OUTPUT_TOKENS > state.capTokens - kept) { state.stoppedAtCap = true; throw new Error(CAP_REACHED); }
+    state.calls++;
     const answer = await ask(args), spent = tokensOf(answer, args);
     state.used[part] += spent; state.total += spent;
     return answer;
   };
-  const actor = (primary, fallback) => {
-    const first = counted('actor', primary), second = counted('actor', fallback);
-    return async args => {
-      state.calls++;
-      if (!over()) return first(args);
-      state.fellBackAtCall ??= state.calls;
-      return second(args);
-    };
-  };
-  const reader = ask => {
-    const counting = counted('reader', ask);
-    return async args => {
-      if (over()) { state.readerStopped++; throw new Error(CAP_REACHED); }
-      return counting(args);
-    };
-  };
-  return {actor, reader, judge: ask => counted('judge', ask), state};
+  return {actor: ask => counted('actor', ask, reserve), reader: ask => counted('reader', ask, reserve), judge: ask => counted('judge', ask, 0), state};
+}
+
+/**
+ * The fixed part every actor call carries before the page and the history: the instructions, the shape of the answer and the goal with what is known. -> the largest over the goals' intros, in tokens (4 characters a token).
+ * Throws when it is over HARNESS_MAX_TOKENS: a run whose harness alone is that big would spend its cap on the same words again and again, so it fails at start, before any call.
+ */
+export function harnessTokens({system, schema, intros}, max = HARNESS_MAX_TOKENS) {
+  const fixed = Math.ceil((String(system).length + JSON.stringify(schema).length) / 4);
+  const worst = fixed + Math.max(0, ...intros.map(intro => Math.ceil(String(intro).length / 4)));
+  if (worst > max) throw new Error(`the harness alone is ${worst} tokens, over the ${max} each call may carry before the page: shorten the instructions or the knowledge`);
+  return worst;
 }
 
 const k = tokens => `${Math.round(tokens / 1000).toLocaleString('en-US')}k`;
 
-/** The tier line of the night report: what the actor ran on and, on the large tier, the night's tokens against the cap with the share of each part, or where the cap was reached. */
-export function tierLine(state) {
-  if (state.capTokens === null) return `Actor tier: ${state.tier}.`;
-  const {actor, reader, judge} = state.used;
-  const parts = `actor ${k(actor)}, screen reader ${k(reader)}, second opinion ${k(judge)}`;
-  const cap = `${k(state.capTokens)} tokens, ${NIGHT_CAP_PCT}% of the Codex week`;
-  if (state.fellBackAtCall || state.readerStopped) {
-    const rest = [state.fellBackAtCall ? `from the actor's call ${state.fellBackAtCall} the actor ran on small` : '', state.readerStopped ? `the screen reader stopped (${state.readerStopped} read${state.readerStopped === 1 ? '' : 's'} skipped)` : ''].filter(Boolean).join(' and ');
-    return `Night tokens: the cap (${cap}) was reached; ${rest}. Total ${k(state.total)} (${parts}).`;
-  }
-  return `Night tokens: ${k(state.total)} of ${k(state.capTokens)} (${parts}); the actor ran on large; cap = ${cap}.`;
+/** The tokens line of the run report: the total against the cap and each part's share, or that the run stopped at the cap; then the actor's tier. */
+export function tokensLine(state, tier) {
+  const {actor, reader, judge} = state.used, parts = `actor ${k(actor)}, screen reader ${k(reader)}, second opinion ${k(judge)}`;
+  const head = state.stoppedAtCap ? `Stopped at the ${k(state.capTokens)} cap: ${k(state.total)} / ${k(state.capTokens)} tokens; the notes made so far are kept` : `Tokens: ${k(state.total)} / ${k(state.capTokens)}`;
+  return `${head} (${parts}). Actor tier: ${tier}.`;
 }

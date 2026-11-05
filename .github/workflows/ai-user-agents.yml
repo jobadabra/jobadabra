@@ -31,7 +31,7 @@ on:
         description: 'The known-bug data shape put in the app before the free goals: headings, languages, inbound, none, or empty = the one the seed picks'
         required: false
       tier:
-        description: 'The model tier that acts: small, mid or large (the Opus map); another word fails the run. Empty = large for a night, small for a replay. Large stops at the nightly cap (2% of the Codex week) and the rest of the run goes on small'
+        description: 'The model tier that acts: small, mid or large (the Opus map); another word fails the run. Empty = large for a night, small for a replay. Every run stops cleanly at 250k tokens in total'
         required: false
       screen:
         description: 'off = no screen reader after each goal (empty = on)'
