@@ -32,6 +32,8 @@ CLASSIFIED = {
     'CI · Coverage report (nightly, report only)': 'ignored: nightly line % per layer and GTM journeys with a test; called by night pass 1, never counted for main',
     # Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"): the prompt-case replay is report only, called by night pass 1, never a push or PR check.
     'CI · Prompt cases (nightly, report only)': 'ignored: nightly replay of the live prompt-case set on the Codex plan; called by night pass 1, never counted for main',
+    # Why (5 Nov 2026, owner via mac-32: "Judge first"): the judge exam is report only, started by hand, never a push or PR check.
+    'CI · AI judge exam': 'ignored: by hand only; scores the AI user agent\'s judge on 11 recorded notes through the broker, never runs on a push to main',
     'CI · Tests': 'counted',
     'CI · Re-run jobs that did not run': 'ignored: after a beta or e2e run ends; only re-runs jobs that got no runner or failed in setup before their suite, never tests a push to main',
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',
