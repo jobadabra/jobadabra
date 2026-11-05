@@ -108,6 +108,12 @@
       "about": "Your portrait (desktop/lib/portrait.js): second person, every statement cited, soft skills as observed behaviour never a type label, no demographic or protected facts, contradictions stated as neither (owner, 28 Oct 2026). Offline: fake-client cases check what is sent and what is kept",
       "cases": ["desktop/test/unit/renderer/portrait.test.js"],
       "prompts": {"desktop/lib/portrait.js": ["INSTRUCTIONS"]}
+    },
+    "eures-regions": {
+      "live": false,
+      "about": "which NUTS-2 region a place lies in (src/sources/eures.py): the AI chooses from the real regions of the place's country, a code no region has is dropped and a kept one is asked again (#2918: the same Toulouse got FRJ2 in 2 installs and FR61, no real code, in 2); offline stub-client checks",
+      "cases": ["tests/unit/sources/test_eures.py"],
+      "prompts": {"src/sources/eures.py": ["SYSTEM"]}
     }
   }
 }
