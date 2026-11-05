@@ -1,7 +1,7 @@
 // The AI user agent's acting tier and the hard token cap of one run: a night acts on the large tier, a replay on small, and every call of a run counts against 250,000 tokens and is refused before it is made when it could pass the cap.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {actorTierOf, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, JUDGE_RESERVE_TOKENS, MAX_OUTPUT_TOKENS, RUN_CAP_TOKENS, runBudget, tokensLine} from '../../lib/agent-tier.mjs';
+import {actorTierOf, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
 
 const answer = (tokens, tier = 'large') => ({text: '{}', usage: {input_tokens: tokens - 100, output_tokens: 100}, tier});
 const asks = (tokens, tier) => { const calls = []; const ask = async args => { calls.push(args); return answer(tokens, tier); }; ask.calls = calls; return ask; };
@@ -62,7 +62,6 @@ test('an answer with no usage is charged an estimate, so the cap still trips', a
   await budget.actor(blind)({system: 's', messages: [{role: 'user', content: 'y'.repeat(4_000)}]});
   assert.ok(budget.state.total >= 100_000, `charged ${budget.state.total}`);
   await assert.rejects(budget.actor(asks(1))(small), /cap was reached/);
-  assert.ok(MAX_OUTPUT_TOKENS > 0 && JUDGE_RESERVE_TOKENS > 0);
 });
 
 // Guard: money. The words every actor call carries before the page are measured at the start and a run whose harness alone is over 20k tokens fails before any call (owner, 5 Nov 2026).
@@ -72,4 +71,21 @@ test('the fixed part of a call is measured by its largest goal intro and a harne
   assert.throws(() => harnessTokens({system, schema, intros: ['c'.repeat(4 * HARNESS_MAX_TOKENS)]}), /harness alone is \d+ tokens, over the 20000/);
   assert.equal(HARNESS_MAX_TOKENS, 20_000);
   assert.equal(harnessTokens({system, schema, intros: []}), 1_005, 'a plan with no goal still measures the instructions');
+});
+
+// Guard: money. The broker does not forward max_tokens and the Claude engine counts its thinking as output, and its input count includes a wrapper: after a call that reported more than the estimate, the next worst case is raised by that gap, so a run that sees big answers stops earlier instead of passing the cap.
+test('a big answer and a larger input count than the estimate raise the next worst case', async () => {
+  const budget = runBudget({capTokens: 70_000, reserve: 0});
+  const heavy = async () => ({text: '{}', usage: {input_tokens: 2_000, output_tokens: 30_000}, tier: 'large'});
+  await budget.actor(heavy)(small);   // judged on the flat 1,024 headroom: the first call of a run
+  await budget.actor(heavy)(small);   // 32k + the 2k gap + a 30k answer = 64k, under 70k
+  assert.equal(budget.state.total, 64_000);
+  await assert.rejects(budget.actor(heavy)(small), /cap was reached/, 'a third 32k call would end at 96k; the flat 1,024 headroom would have let it through at 65k');
+});
+
+test('a refusal by the reader or judge earlier does not relabel a real broker failure as the cap', async () => {
+  const state = {capTokens: 250_000, stoppedAtCap: true};
+  assert.equal(stoppedLabel(`api: ${CAP_REACHED}`, state), 'stopped at the 250k token cap');
+  assert.equal(stoppedLabel('api: 502 broker: unreachable', state), 'api: 502 broker: unreachable');
+  assert.equal(stoppedLabel('goals', state), 'goals');
 });

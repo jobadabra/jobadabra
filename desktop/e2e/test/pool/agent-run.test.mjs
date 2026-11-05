@@ -56,6 +56,15 @@ test('a note with no argument is sent back to the agent and never reaches the fi
   assert.equal(result.findings[0].agent.judge, 'disagrees');
 });
 
+// Guard: money. When the cap leaves room for fewer judge calls than there are notes, the serious notes are judged first (a refused judge holds the rest).
+test('notes are judged high first, then medium, then low', async () => {
+  const ask = script([turn('note', {...NOTE, severity: 'low', title: 'Low one'}), turn('note', {...NOTE, severity: 'high', title: 'High one', observed: 'The phone number is listed twice.'}), turn('note', {...NOTE, severity: 'medium', title: 'Medium one', observed: 'The email is listed twice.'}), done('bug', 'Three problems.')]);
+  const order = [];
+  const judgeAsk = async ({messages}) => { order.push(String(messages.at(-1).content?.at?.(-1)?.text ?? messages.at(-1).content).match(/(Low|High|Medium) one/)?.[1]); return {text: JSON.stringify({verdict: 'agrees', reason: 'ok'}), usage: {}, tier: 'mid', engine: 'codex'}; };
+  await runSession({act: fakeAct(), ask, judgeAsk, views: ['profile'], plan: {...plan, goals: [plan.goals[0]]}, knowledgeIds: ['profile-4']});
+  assert.deepEqual(order, ['High', 'Medium', 'Low']);
+});
+
 test('a second opinion that gets no answer holds the notes, asks once not once per note, and the summary names what was held', async () => {
   const ask = script([turn('note', NOTE), turn('note', {...NOTE, title: 'Phone shown twice', observed: 'The phone number is listed twice.'}), done('bug', 'Two problems.')]);
   let asked = 0;

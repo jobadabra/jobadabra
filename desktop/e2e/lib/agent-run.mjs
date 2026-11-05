@@ -79,8 +79,9 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
 /** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
 async function judgeNotes({notes, judgeAsk, spent}) {
   // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
+  // Why (5 Nov 2026, code review on the 250k cap): when the run's cap leaves room for fewer judge calls than there are notes, the ones refused are held, so the serious notes are asked first and the low ones (never filed) last.
   let judgeDown = '';
-  for (const note of notes) {
+  for (const note of [...notes].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
     const skipped = Boolean(judgeDown);
     const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
     if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
