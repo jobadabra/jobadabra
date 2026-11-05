@@ -17,7 +17,7 @@
 .aon-privacy[hidden], #aon-protect-open[hidden] { display: none; }
 .aon-privacy > p { flex: 1 1 18rem; margin: 0; }
 
-/* The popup: seven measures, each a title with its chip on one line and its sentence under it. A tone bar on the left says protection (green), to know (blue) or what it is not (amber). */
+/* The popup: each measure is a title with its chip on one line and its sentence under it. A tone bar on the left says protection (green), to know (blue) or what it is not (amber). */
 .aon-protect-dialog { width: min(640px, 94vw); }
 /* The dialog is a column the window's height at most (its own max-height): a short window scrolls only the list, the title and Close stay (code review, 5 Nov 2026). */
 .aon-protect-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }

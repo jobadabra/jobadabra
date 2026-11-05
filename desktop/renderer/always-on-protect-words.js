@@ -10,7 +10,7 @@ export const LEAD = 'Your profile and search settings are encrypted, kept apart 
 
 const IN_PLACE = ['In place', 'good', 'check-circle'], KNOW = ['Good to know', 'info', 'info'], NOT = ['What it is not', 'warn', 'info'];
 
-/** The measures, in the order the popup shows them: six protections, then two things to know. `chip` = [word, tone, icon]. */
+/** The measures, in the order the popup shows them: six protections, one thing to know, then what it is not. `chip` = [word, tone, icon]. */
 export const MEASURES = [
   {id: 'rest', title: 'Encrypted when stored', chip: IN_PLACE,
     text: 'Your profile, search settings and the search\'s saved state are stored encrypted, with a separate key for each account.'},
