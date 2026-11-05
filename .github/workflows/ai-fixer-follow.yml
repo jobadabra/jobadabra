@@ -50,9 +50,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          # desktop/e2e/lib: the switchboard sender (lib/telegram-post.mjs) that tools/fixer/follow.mjs imports; a comment on a list line would be read as part of the path
           sparse-checkout: |
             tools
             desktop/lib
+            desktop/e2e/lib
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -61,6 +63,7 @@ jobs:
         env:
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node tools/fixer/follow.mjs watch --pr "$PR" --round "$ROUND" --deadline "$DEADLINE" --last-key "$LAST_KEY"
       - uses: actions/upload-artifact@v6
         if: steps.watch.outputs.action == 'round'

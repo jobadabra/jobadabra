@@ -20,7 +20,8 @@ function net(site) {
 test('every workflow that calls ci-alert.mjs and has a registry alert maps to it; an unmapped one stays on the old bot', () => {
   const at = file => ({GITHUB_WORKFLOW_REF: `o/jobadabra/.github/workflows/${file}@refs/heads/main`});
   assert.deepEqual(Object.fromEntries(Object.keys(WORKFLOW_EVENTS).map(file => [file, eventOfWorkflow(at(file))])), WORKFLOW_EVENTS);
-  assert.deepEqual([eventOfWorkflow(at('site-replays.yml')), eventOfWorkflow({})], ['', '']);
+  assert.deepEqual([eventOfWorkflow(at('daily.yml')), eventOfWorkflow({})], ['', '']);   // daily/mail/scout are the person's own product notifications: never on the owner's switchboard
+  assert.equal(eventOfWorkflow(at('site-replays.yml')), 'replay-drift');
 });
 
 test('level: a failure is a problem, a recovery an all-clear; and NO state is sent, so a later identical red is never held as "same state" behind a green that was never recorded', () => {
@@ -61,4 +62,31 @@ test('telegram-post (the Build Log bot): the switchboard first when it has an ev
   const plain = net({status: 200, body: {}});
   await postTelegram('hello', {env: KEY, fetcher: plain.fetcher});
   assert.deepEqual([plain.site().length, plain.bot().length], [0, 1]);
+});
+
+test('a caller with its own bot (the CI-alerts bot of the AI fixer and the scorecard): the switchboard first, that bot when it cannot deliver, and a missing bot says so', async () => {
+  const bot = {token: '1:OLD', chat: '4'};
+  const ok = net({status: 200, body: {ok: true, sent: true}});
+  assert.equal(await postTelegram('hi', {env: KEY, fetcher: ok.fetcher, event: 'ai-fixer-round', bot}), 'telegram: sent');
+  assert.deepEqual([ok.site()[0].body.event, ok.bot().length], ['ai-fixer-round', 0]);
+  const down = net({status: 503, body: {ok: false}});
+  await postTelegram('hi', {env: KEY, fetcher: down.fetcher, event: 'ai-fixer-round', bot});
+  assert.deepEqual([down.bot().length, down.bot()[0].url.includes('/bot1:OLD/')], [1, true]);
+  const none = net({status: 503, body: {ok: false}});
+  assert.match(await postTelegram('hi', {env: KEY, fetcher: none.fetcher, event: 'ai-fixer-round', bot: {token: '', chat: ''}}), /not sent \(the bot token/);
+});
+
+test('tell-owner.mjs reads the message file and sends it with the CI-alerts bot behind the switchboard', async () => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tell-')), 'message.txt');
+  fs.writeFileSync(file, 'Scorecard: 3 checks slow\n');
+  const real = globalThis.fetch, calls = [], argv = process.argv;
+  globalThis.fetch = async (url, init = {}) => { calls.push({url: String(url), body: init.body ? JSON.parse(init.body) : null}); return new Response(String(url).includes('/ops/notify') ? '{"ok":false}' : '{"ok":true}', {status: String(url).includes('/ops/notify') ? 503 : 200}); };
+  process.argv = [argv[0], argv[1], '--event', 'pr-check-scorecard', '--file', file];
+  try {
+    const {main} = await import('../../tell-owner.mjs');
+    assert.equal(await main(KEY), 'telegram: sent');
+  } finally { globalThis.fetch = real; process.argv = argv; }
+  const bot = calls.find(c => c.url.includes('api.telegram.org'));
+  assert.deepEqual([calls[0].body.event, bot.url.includes('/bot1:OLD/'), bot.body.text], ['pr-check-scorecard', true, 'Scorecard: 3 checks slow']);
 });
