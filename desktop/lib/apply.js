@@ -66,7 +66,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}) 
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
-const ON_GITHUB = 'Kits are being drafted on GitHub (Always on). Press Apply again in a few minutes, when the jobs show 📝 Kit.';
+const ON_GITHUB = 'Your applications are being prepared on GitHub (Always on). Press Apply again in a few minutes.';
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';

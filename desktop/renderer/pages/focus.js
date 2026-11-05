@@ -283,8 +283,8 @@ async function loadHistory() {
 // The prep dialog tells the row at once (not after Focus is read again from Notion): building, ready, or back to idle.
 let lastFocus = null;
 // Emails the last Gmail check could not place (Needs you). Recent activity asks about them on that check.
-// The prep-kit button for an interview, as Focus draws it (prep-card.js): "Prepare the interview", "Open prep kit" or "Build new
-// prep kit", for the company's interview in Focus; null when Focus holds none (not loaded, or not an upcoming interview).
+// The prep-kit button for an interview, as Focus draws it (prep-card.js): "Prepare the interview" or "Open prep kit",
+// for the company's interview in Focus; null when Focus holds none (not loaded, or not an upcoming interview).
 export function prepAction(company) {
   const key = String(company || '').toLowerCase().trim();
   const item = key && (lastFocus?.items || []).find(one => one.kind === 'prepare' && one.page_id && String(one.company || '').toLowerCase().trim() === key);

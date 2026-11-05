@@ -35,7 +35,8 @@ export async function cancelSession(item) {
   if (!result?.ok) { toastMessage('Not cancelled', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
   jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready'} : {});
-  toastMessage('Application cancelled', '', null, 'info');
+  // Why (2026-11-05, owner): cancellation confirms only the result, without internal stages or missing-tab instructions.
+  toastMessage('Application cancelled', '', NO_PLACE.done, 'info');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();
   if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs();
