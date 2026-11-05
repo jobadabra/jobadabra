@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
-import {brokerAsk} from '../lib/agent-ask.mjs';
+import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
 import {changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
@@ -42,6 +42,9 @@ const todaySeed = () => Number(new Date().toISOString().slice(0, 10).replace(/-/
  */
 export async function run(ctx) {
   ctx.findings = [];
+  // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts.
+  const actorTier = process.env.AGENT_TIER || 'small';
+  if (!Object.hasOwn(MODELS, actorTier)) throw new Error(`AGENT_TIER must be ${Object.keys(MODELS).join(', ')}, got "${actorTier}"`);
   const {page} = ctx;
   await ensureSetUp(ctx);
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
@@ -68,9 +71,6 @@ export async function run(ctx) {
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
-    // Why (5 Nov 2026, code review of the tier input): a typo such as "Large" must not silently run the small tier.
-    const actorTier = process.env.AGENT_TIER || 'small';
-    if (!['small', 'mid', 'large'].includes(actorTier)) throw new Error(`AGENT_TIER must be small, mid or large, got "${actorTier}"`);
     try {
       session = await runSession({act, ask: brokerAsk(actorTier), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
