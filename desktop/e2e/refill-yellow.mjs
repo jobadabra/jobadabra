@@ -15,6 +15,6 @@ else {
   if (args.includes('--alert')) {
     const previous = args.includes('--previous') ? read(flag('--previous')) : null, env = process.env;
     if (sameSet(merged, previous)) console.log('refill: the same rows need a re-record as in the run before: no new alert');
-    else console.log(await send(message(merged, `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`)));
+    else console.log(await send(message(merged, `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`), env, fetch, {event: 'replay-refill'}));
   }
 }

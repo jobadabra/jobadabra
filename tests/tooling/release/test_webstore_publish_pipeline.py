@@ -91,7 +91,7 @@ class StorePublishOnStable(unittest.TestCase):
         self.assertIn('webstore-publish.mjs publish', publish)
         self.assertNotIn('webstore-publish.mjs publish', check)
         self.assertNotIn('secrets.', flow[:flow.index('\n  alert:')], 'keyless: GitHub OIDC to Google, no stored key')
-        self.assertEqual(set(re.findall(r'secrets\.(\w+)', flow)), {'CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'}, 'only the failure alert holds a secret: the alerts bot')
+        self.assertEqual(set(re.findall(r'secrets\.(\w+)', flow)), {'CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID', 'SELFHEAL_PUBLISH_KEY'}, 'only the failure alert holds secrets: the alerts bot and the key to the owner\'s switchboard (nt 3/4c)')
 
 
 class MicrosoftStoreOnStable(unittest.TestCase):

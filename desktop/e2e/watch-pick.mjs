@@ -24,7 +24,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
   if (alert) {   // told once a month: this state file (uploaded by the workflow) is how the next runs know
     fs.mkdirSync(path.join(out, 'alert-state'), {recursive: true});
     fs.writeFileSync(path.join(out, 'alert-state', 'watch.json'), `${JSON.stringify({at: now.toISOString(), usd: 0, rows: {}, capAlertMonth: money.month})}\n`);
-    console.log(`watch: ${await send(capText({month: money.month, spent: money.spent, cap: 25}), {env}).catch(error => `telegram failed (${String(error?.message || error).slice(0, 80)})`)}`);
+    console.log(`watch: ${await send(capText({month: money.month, spent: money.spent, cap: 25}), {env, event: 'record-sites'}).catch(error => `telegram failed (${String(error?.message || error).slice(0, 80)})`)}`);
   }
   fs.writeFileSync(path.join(out, 'picked.json'), `${JSON.stringify({day: now.toISOString().slice(0, 10), rows: rows.map(row => row.shape), budget: money}, null, 1)}\n`);
   const lines = [`watch: month ${money.month}: spent $${money.spent} of $25, ${rows.length} watch row(s), AI cap $${money.maxUsd} for this run${money.capped ? ' (cap reached: no run)' : ''}`, ...rows.map(row => `watch: ${row.shape}`)];

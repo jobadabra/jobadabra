@@ -50,6 +50,7 @@ jobs:
         env:
           BUILDLOG_TELEGRAM_TOKEN: ${{ secrets.BUILDLOG_TELEGRAM_TOKEN }}   # only the once-a-month "cap reached" note
           BUILDLOG_TELEGRAM_CHAT: ${{ secrets.BUILDLOG_TELEGRAM_CHAT }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node desktop/e2e/watch-pick.mjs watch-out watch-states 2>&1 | tee watch-out.log
       - name: The picked rows
         uses: actions/upload-artifact@v6
@@ -185,6 +186,7 @@ jobs:
         env:
           BUILDLOG_TELEGRAM_TOKEN: ${{ secrets.BUILDLOG_TELEGRAM_TOKEN }}
           BUILDLOG_TELEGRAM_CHAT: ${{ secrets.BUILDLOG_TELEGRAM_CHAT }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p watch-states watch-out

@@ -11,6 +11,7 @@ import {aiFailureCauses} from './lib/ai-miss-cause.mjs';
 import {ghIo, verdictsForCauses} from './lib/flaky-evidence.mjs';
 import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
 import {reportFallback, viaSwitchboard} from './lib/switchboard.mjs';
+import {eventOfWorkflow, stateOf} from './lib/alert-events.mjs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
 // Invariant: a non-backbone suite result cannot cause an owner failure or recovery alert.
@@ -230,6 +231,9 @@ function footer(since, where, jobs) {
     ...(where.sha ? [' · ', {text: where.sha.slice(0, 7), url: `${where.repo}/commit/${where.sha}`}] : [])]}];
 }
 
+/** True when a send() line means the alert is DONE: delivered, or held on purpose by the owner's switch (a hold is final: no retry, no claim to release). */
+export const delivered = line => /^ci-alert: (sent|held)\b/.test(String(line));
+
 // text: a message from messageOf (or a plain string) -> the line to print.
 // With `event` (an id of shared/notify-registry.js in jobadabra-web) the alert goes through the owner's switchboard first (Admin → Operations → Notifications: on/off, when, which bot);
 // a switchboard that cannot deliver (down, no key, 400/503) leaves the old CI-alerts bot to send it, and tells the switchboard so ("sent without switchboard").
@@ -259,6 +263,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     const seen = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
     const causes = failure && placeOf(process.env, new Date()).e2e ? await flakyCauses(seen, process.env.GITHUB_RUN_ID) : seen;
     const recovered = red && previousId ? await failedJobs(previousId).catch(() => []) : [];
-    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs})));
+    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status, jobs)}));
   }
 }

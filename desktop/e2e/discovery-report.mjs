@@ -30,7 +30,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
   const lines = [`discovery: ${judged.length} row(s) judged, ${judged.filter(item => FAILURES.includes(item.verdict)).length} failed, $${usd.toFixed(2)} spent (week $${money.spent.toFixed(2)} of $${WEEK_CAP_USD.toFixed(2)})`,
     ...judged.map(item => `discovery: ${item.host || item.shape}: ${verdictWord(item.verdict)}${item.detail ? ` (${item.detail})` : ''}`), `discovery: ${additions.length} new shape(s) for the pool`];
   console.log(lines.join('\n'));
-  try { console.log(`discovery: ${await send(text, {env})}`); } catch (error) { console.log(`discovery: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
+  try { console.log(`discovery: ${await send(text, {env, event: 'record-sites'})}`); } catch (error) { console.log(`discovery: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main());

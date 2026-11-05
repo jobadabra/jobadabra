@@ -43,7 +43,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
     const text = capText({week, spent: result.budget.spent, cap: WEEK_CAP_USD});
     fs.mkdirSync(path.join(out, 'alert-state'), {recursive: true});
     fs.writeFileSync(path.join(out, 'alert-state', 'discovery.json'), `${JSON.stringify({at: now.toISOString(), usd: 0, rows: [], capAlertWeek: week})}\n`);
-    console.log(`discovery: ${await send(text, {env}).catch(error => `telegram failed (${String(error?.message || error).slice(0, 80)})`)}`);
+    console.log(`discovery: ${await send(text, {env, event: 'record-sites'}).catch(error => `telegram failed (${String(error?.message || error).slice(0, 80)})`)}`);
   }
   const lines = [`discovery: week ${week}: spent $${result.budget.spent} of $${WEEK_CAP_USD}, room for ${result.budget.rows} row(s)`,
     ...result.rows.map(row => `discovery: pick [${row.source}] ${row.shape}: ${row.why}`), ...result.skipped.map(item => `discovery: skipped [${item.source}] ${item.why}`),

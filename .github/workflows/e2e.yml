@@ -984,6 +984,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           RESULT: ${{ needs.plan.result == 'success' && needs.suite.result || needs.plan.result }}
           AFTER_MERGE: ${{ inputs.after_merge }}
         run: |
@@ -1105,9 +1106,11 @@ jobs:
         GH_TOKEN
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
       GH_TOKEN: ${{ github.token }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5

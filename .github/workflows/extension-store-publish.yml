@@ -110,6 +110,7 @@ jobs:
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
           message="⚠️ $TAG is stable, but its Chrome Web Store publish failed."$'\n'"Run: $RUN"$'\n'"Once its cause is fixed: gh workflow run extension-store-publish.yml -R $GITHUB_REPOSITORY --ref main -f tag=$TAG"
-          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'chrome-store-failed', level: 'problem'}))"
