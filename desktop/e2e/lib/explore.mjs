@@ -104,7 +104,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
   let seen = await act.observe(), stopped = 'steps';
   const messages = [{role: 'user', content: `${first ? `${first}\n\n` : ''}Start. You have at most ${maxSteps} steps.\n\n${formatObservation(seen)}`}];
   let final = null;
-  const tries = new Map();
+  const watch = loopWatch();
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
@@ -115,15 +115,15 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
-    const again = repeated(tries, row, was);
-    if (again === REPEAT_NUDGE) turned.reply += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
+    const repeat = watch(row, was, turn);
+    turned.reply += repeat.note;
     // Older page views are dropped from the conversation: the latest one is what matters, and the prompt stays short.
     for (const message of messages) if (message.role === 'user' && message.content.length > 400 && message !== messages[0]) message.content = '(an earlier page view, omitted)';
     messages.push({role: 'user', content: turned.reply});
     trace.push(row);
     log(`  step ${turn + 1}: ${row.action} (${spent.calls} calls, ${spent.input + spent.output} tokens)`);
     if (turned.finished) { stopped = 'done'; final = input; break; }
-    if (again >= REPEAT_STOP) { stopped = `repeat: "${row.did}" ${again} times on the same page`; break; }
+    if (repeat.stop) { stopped = repeat.stop; break; }
   }
   return {steps, bugs, trace, spent, stopped, final};
 }
@@ -131,6 +131,47 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
 // Why (4 Nov 2026, AI user agents FR 2/4; replays 41857211406 and 41857218091): one goal with all 100 steps spent 93 of them on two buttons (Expand all 39 times, a tab 54 times) on a page that did not change, so more
 // steps would not have helped: the same action on the same page view is nudged at the 3rd time and ends the goal at the 5th, which leaves the goal's other steps (and the night's minutes) to the goals after it.
 const REPEAT_NUDGE = 3, REPEAT_STOP = 5;
+
+// Why (5 Nov 2026, run 42047462968, mac-32): going back and forth between 2 tabs counted each (action, page view) pair only every 2nd step, so the 5th count above came at step 10 (step 14 for 3 tabs) of a
+// run that has ~15 steps under the 250k cap: 11 of 12 steps went round "Your details" / "CV" and 0 of 6 goals finished. A cycle of 2 to 4 steps is counted in rounds: nudged after the 2nd, ended after the 3rd
+// (one action on a page that does not change keeps its 3rd/5th: pressing one thing again is a retry; going round the same states 3 times is not, even when it is one switch pressed on and off). TODO(AI): measure the rounds on the next real persona runs (2026-11-19)
+const CYCLE_NUDGE = 2, CYCLE_STOP = 3, CYCLE_MAX = 4;
+
+/** The shortest cycle (2 to CYCLE_MAX different steps) the latest `keys` are going round: {length, rounds, done} (`done` = a whole round has just closed), or null. A key is a step's action with its page view. */
+export function cycling(keys) {
+  for (let length = 2; length <= CYCLE_MAX; length++) {
+    if (new Set(keys.slice(-length)).size < 2) continue;   // one action again and again is the 3rd/5th rule's
+    let run = 0;
+    for (let i = keys.length - 1; i >= length && keys[i] === keys[i - length]; i--) run++;
+    const rounds = Math.floor((run + length) / length);
+    if (rounds >= CYCLE_NUDGE) return {length, rounds, done: run % length === 0};
+  }
+  return null;
+}
+
+/** The steps of the cycle's latest round, said once each: `"a" and "b"`, `"a", "b" and "c"`. */
+const named = (dids, length) => {
+  const names = [...new Set(dids.slice(-length))].map(did => `"${did}"`);
+  return names.length === 1 ? `${names[0]} and its undo (the page flips back each time)` : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;   // one action whose page view alternates: a switch pressed on and off
+};
+
+/** One goal's loop watch: call it after every step with (row, the page view the step was done on, turn); it returns {note, stop}: a nudge to add to the reply ('' or one), and the stop reason ('' while the goal may go on). */
+function loopWatch() {
+  const tries = new Map(), keys = [], dids = [], views = [];
+  return (row, was, turn) => {
+    const again = repeated(tries, row, was);
+    keys.push(row.did && !row.failed ? `${row.did}\n${was}` : `#${turn}`); dids.push(row.did); views.push(was);   // a step that did nothing (failed, a note) is its own key: it breaks a cycle
+    const loop = cycling(keys), closed = loop?.done ? loop.rounds : 0;
+    let note = '';
+    // Why (5 Nov 2026, Gitar on #3258): one loop gets one warning; while a cycle is being counted the per-pair nudge stays quiet, or the same loop was warned twice a turn apart.
+    if (again === REPEAT_NUDGE && !loop) note += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
+    if (closed === CYCLE_NUDGE) note += `\n\nNote: you are going back and forth between ${named(dids, loop.length)} ${loop.rounds} times and nothing new came of it. Do not go round again: if they do nothing new, that is a finding to note; otherwise try another route or end the goal.`;
+    if (again >= REPEAT_STOP) return {note, stop: `repeat: "${row.did}" ${again} times on the same page`};
+    // "on the same page" only when the page really did not change during the cycle: agent-run.mjs adds "and the page did not change" from it.
+    const still = loop && new Set(views.slice(-loop.length)).size === 1 ? ' on the same page' : '';
+    return {note, stop: closed >= CYCLE_STOP ? `repeat: going back and forth between ${named(dids, loop.length)} ${loop.rounds} times${still}` : ''};
+  };
+}
 
 /** How many times this action has now been done on this same page view (an action that failed or was refused, and a note, is not counted). */
 function repeated(tries, row, view) {

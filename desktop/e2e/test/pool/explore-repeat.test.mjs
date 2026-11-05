@@ -28,10 +28,66 @@ test('the same click on an unchanged page is nudged at the 3rd time and ends the
 });
 
 test('two buttons pressed in turn on a page that never changes are one loop too', async () => {
-  const {act, ask} = rig(() => page(), Array.from({length: 40}, (_, n) => click(n % 2)));
+  const {act, ask, seenByAi} = rig(() => page(), Array.from({length: 40}, (_, n) => click(n % 2)));
   const result = await explore({act, ask, views: ['profile'], caps: {maxSteps: 40}});
   assert.ok(result.trace.length <= 10, `ended at ${result.trace.length} turns`);
-  assert.match(result.stopped, /^repeat: /);
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "Expand all"" and "Press "Save"" 3 times on the same page$/, 'the page did not change, and it says so');
+  assert.equal(seenByAi.filter(text => /nothing new came of it/.test(text)).length, 1, 'one warning for one loop, not the cycle rule and the per-pair rule a turn apart');
+});
+
+// Run 42047462968 (5 Nov 2026, tour goal 1, "Fill in all my details from my CV"): 11 of the first 12 steps alternated Press "Your details" / Press "CV" (183k of the 250k cap, 0 of 6 goals finished). The page view
+// depends on the active tab, so each (action, page view) pair is met every 2nd step and the 5th meeting of one pair came at step 10: most of a ~15-step run. A cycle is counted in rounds instead.
+const TABS = ['Your details', 'CV', 'Strategy'];
+const tabs = (count, counter) => {
+  let active = 0, taken = 0;
+  const view = () => ({view: 'settings', text: `Profile, ${TABS[active]} tab${counter ? ` ${taken}` : ''}`, overlays: [], controls: TABS.slice(0, count).map((label, i) => control(i, label))});
+  return {observe: async () => view(), click: async i => { active = i; taken++; }, type: async () => {}, press: async () => {}, go: async () => {}};
+};
+const nudges = seenByAi => seenByAi.filter(text => /nothing new came of it/.test(text));   // any warning, whichever rule wrote it: one loop is warned once
+
+test('two tabs pressed in turn, the page changing with the active tab (run 42047462968): nudged after the 2nd round, ends the goal after the 3rd', async () => {
+  const seenByAi = [], answers = Array.from({length: 40}, (_, n) => click(n % 2));
+  const result = await explore({act: tabs(2), ask: async ({messages}) => { seenByAi.push(messages.at(-1).content); return answers.shift() || stop; }, views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(result.trace.length, 7, 'seven turns, not ten');
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "CV"" and "Press "Your details"" 3 times$/);
+  assert.equal(nudges(seenByAi).length, 1, 'one nudge');
+  assert.match(seenByAi[5], /going back and forth between "Press "CV"" and "Press "Your details"" 2 times/, 'the nudge is the reply to the 5th turn, the one that closed the 2nd round');
+});
+
+test('a cycle of three tabs is a loop too, whatever its length up to four', async () => {
+  const answers = Array.from({length: 40}, (_, n) => click(n % 3));
+  const result = await explore({act: tabs(3), ask: async () => answers.shift() || stop, views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(result.trace.length, 10, 'the 5th meeting of one (action, page) pair would have come at turn 14');
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "CV"", "Press "Strategy"" and "Press "Your details"" 3 times$/);
+});
+
+test('two rounds and then something new is not a loop, and a page that changes each time never is', async () => {
+  const seenByAi = [], first = [click(0), click(1), click(0), click(1), click(0), click(2)];   // the first press is not part of the cycle: its page view is the starting one
+  const ask = rest => async ({messages}) => { seenByAi.push(messages.at(-1).content); return rest.shift() || stop; };
+  const moved = await explore({act: tabs(3), ask: ask(first), views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(moved.stopped, 'done'); assert.equal(moved.trace.length, 7);
+  assert.equal(nudges(seenByAi).length, 1, 'told once, then it moved on');
+  const counting = await explore({act: tabs(2, true), ask: ask(Array.from({length: 11}, (_, n) => click(n % 2))), views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(counting.stopped, 'done'); assert.equal(counting.trace.length, 12);
+});
+
+test('one switch pressed on and off is a loop too, said once, not as "T and T"', async () => {
+  let on = false;
+  const act = {observe: async () => ({view: 'settings', text: `Profile, switch ${on ? 'on' : 'off'}`, overlays: [], controls: [control(0, 'Dark mode')]}), click: async () => { on = !on; }, type: async () => {}, press: async () => {}, go: async () => {}};
+  const answers = Array.from({length: 40}, () => click(0));
+  const result = await explore({act, ask: async () => answers.shift() || stop, views: ['settings'], caps: {maxSteps: 40}});
+  assert.equal(result.trace.length, 6, 'six turns: the switch starting view is already in the cycle, so its first press counts');
+  assert.match(result.stopped, /^repeat: going back and forth between "Press "Dark mode"" and its undo \(the page flips back each time\) 3 times$/);
+});
+
+test('a tab loop is a could-not-finish whose summary does not claim the page did not change', async () => {
+  const plan = planSession({seed: 7, moves: [{group: 'Profile', label: 'Edit your phone number'}, {group: 'Jobs', label: 'Open a job'}], count: 2});
+  const answers = [...Array.from({length: 7}, (_, n) => click(n % 2)), stop];
+  const result = await runSession({act: tabs(2), ask: async () => answers.shift() || stop, judgeAsk: async () => ({text: '{}', usage: {}, tier: 'mid'}), views: ['settings'], plan, knowledgeIds: [], caps: {maxSteps: 60}});
+  const [first] = result.summary.goals;
+  assert.equal(first.verdict, 'could-not-finish');
+  assert.match(first.summary, /kept doing the same thing, going back and forth between/);
+  assert.doesNotMatch(first.summary, /the page did not change/);
 });
 
 test('the same click on a page that changes each time is never a loop', async () => {
