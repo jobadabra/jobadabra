@@ -206,8 +206,20 @@ def about_you():
     return (json.dumps(cv, ensure_ascii=False) if cv else ''), lacked
 
 
+NO_POSTING = ("This job's posting could not be read, so no application was written. "
+              "If the job is still open, add its description in the job's Description tab, then press Apply.")
+JOB_STOPPED = 3   # the run's exit code for a job stopped on purpose, its reason the last ⚠️ line (desktop/lib/run-failure.js JOB_STOPPED)
+
+
+class NoPosting(Exception):
+    """A job with no posting text: its application is not written."""
+
+
 def draft(client, model, job, profile, answers, questions, cv=''):
-    """One Claude call; returns (kit dict, usage). cv: about_you()'s CV text, '' when the run has none."""
+    """One Claude call; returns (kit dict, usage). cv: about_you()'s CV text, '' when the run has none. Raises NoPosting for a job with no text."""
+    # Why (5 Nov 2026, #3300 follow-up): Full automation submits with no check, so a letter written from an empty Posting could go out unseen.
+    if not (job.get('description') or '').strip():
+        raise NoPosting(NO_POSTING)
     context = {'stage_1_facts': job.get('ai') or {}, 'fit': job.get('fit') or {}}
     params = dict(
         model=model,

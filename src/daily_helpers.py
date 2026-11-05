@@ -235,6 +235,24 @@ def log_ai_run(stores, run, args, failed=False):
             print(f'Cronjob run logged: {url}')  # the app's Recent activity links "See it full in Notion" to this
 
 
+def with_posting(job, stores):
+    """The job with its posting text: the crawl's, else what the store holds, else one read of its page the AI judged one posting; anything else raises
+    kit.NoPosting and writes nothing. Why (5 Nov 2026, #3300 follow-up): a kit is written here at the Apply press, a job the local crawl has no text for
+    (a search still running, a board that lists no text) got an empty Posting, and Full automation submits with no check."""
+    if (job.get('description') or '').strip():
+        return job
+    from .ai import prep
+    from .sources import describe, one_posting
+    record = stores.applications.get(job['url'])
+    saved = prep.saved_posting(stores, record) if record else ''
+    if saved:
+        return dict(job, description=saved)
+    read = dict(job, description=describe.read_posting(job['url']))
+    if read['description'] and one_posting.is_one(read):
+        return read
+    raise kit.NoPosting(kit.NO_POSTING)
+
+
 def prepare_kit(db, code, stores, client=None, model=kit.DEFAULT_MODEL, opener=None, stats=None, run=None, drafted_out=None):
     """Draft the application kit for one job; save it on its Notion Applications row (run: its ⏱️ Search runs row
     links to that row, shown on the job's page as Runs).
@@ -245,6 +263,7 @@ def prepare_kit(db, code, stores, client=None, model=kit.DEFAULT_MODEL, opener=N
         return [f"⚠️ <b>Job not found</b>\nNo job with code <code>{escape(code)}</code>. It may have closed."], 'job not found'
     if job['id'] is not None:
         job = dict(job, ai=enrich.load(db).get(job['id']), fit=score.load(db).get(job['id']))
+    job = with_posting(job, stores)
     try:
         questions = kit.form_questions(job['url'], opener)
     except Exception as error:  # An unreadable form still gets a kit, with likely questions.

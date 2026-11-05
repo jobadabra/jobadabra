@@ -23,8 +23,14 @@ import {findOffice} from './office.js';
 
 const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
 
+/** Why the engine stopped a job, in words: a stopped run's last ⚠️ line (src/daily_modes.py prepare_mode); '' for a crash or a run that worked. */
+export function stoppedWith(exit, lines) {
+  if (exit !== pipeline.JOB_STOPPED) return '';
+  return (lines.filter(line => line?.startsWith('⚠️')).at(-1) || '').replace(/^⚠️\s*/, '');
+}
+
 export function registerKitHandlers(ctx) {
-  const {DEMO, aiReady, allowanceBlock, app, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, syncJobs = github.syncDatabase, track} = ctx;
+  const {DEMO, aiReady, allowanceBlock, app, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, syncJobs = github.syncDatabase, engineRun = pipeline.run, track} = ctx;
   registerReadyHandlers({ipcMain, notify, shell, storage, app, powerMonitor, prepare: {kit: (code, name) => prepareKitFor(code, name, {quiet: true}), cv: (code, name) => tailorCv(code, name, {show: false, quiet: true})}});   // Ready to send (the owner's install only): the card beside Tailor on Actions, its calls in lib/ready-handlers.js
   const {makeFor: makeJobLetter} = registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage});   // the job's own cover letter, made after its CV
   // The application kit: the form's questions (read from the ATS), an answer for each and a cover letter,
@@ -41,8 +47,13 @@ export function registerKitHandlers(ctx) {
     if (storage.settings().cloud?.repo) await syncJobs(storage).catch(error => log(`Cloud job list: ${error.message}`));
     // Quietly: the result comes as a notification (and the row's Apply), not as log output.
     const lines = [];
-    const {code: exit} = await pipeline.run(storage, pipeline.dailyArgs(storage, {mode: 'prepare', job: code}), line => lines.push(line),
+    const {code: exit} = await engineRun(storage, pipeline.dailyArgs(storage, {mode: 'prepare', job: code}), line => lines.push(line),
       pipeline.triggerEnv('you'));
+    const stopped = stoppedWith(exit, lines);
+    if (stopped) {
+      if (quiet) notify('Application could not be prepared', `${name}: ${stopped}`, {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it
+      return {ok: false, stopped: true, error: `${name}: ${stopped}`};
+    }
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
     if (quiet) { if (exit === 0) track('kit_prepared', {}); return {ok: exit === 0}; }  // an Apply batch: it reports once at the end
     if (exit !== 0) notify('Application could not be prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');

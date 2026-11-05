@@ -78,7 +78,7 @@ export function registerTelemetryHandlers(ctx) {
     server.setAppliedHook(info => track('applied', info));
     app.on('before-quit', () => { void analytics?.flush(); });
     pipeline.onRunEnd(({args, code, seconds, tail, timedOut, stopped, result, errorKind}) => {
-      telemetry.countRun(code === 0);  // the health line's runsOk / runsFailed (release check evidence)
+      telemetry.countRun(code === 0 || code === pipeline.JOB_STOPPED);  // the health line's runsOk / runsFailed (release check evidence)
       if (args[0] === 'src' && ['daily', 'check'].includes(args[1])) {
         const searched = args.includes('--mode') ? args[args.indexOf('--mode') + 1] : '';
         if (['run', 'scheduled'].includes(searched)) {

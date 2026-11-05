@@ -252,6 +252,62 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             + (' → readable in your browser (Actions, Find jobs using your browser)' if refused_at or walled_at or closed_at or empty else ''))
 
 
+def _board_of(url):
+    """The record's key for the board this address belongs to; '' for an address on no board. Never a host: the record's other keys are."""
+    found = ats.detect(url)
+    return f'board:{":".join(found)}' if found else ''
+
+
+def refused_lately(url, now=None):
+    """True when this address's host or its board refused a read this week: read_posting, a board's feed and Fetch original do not ask again."""
+    kept = _refused_hosts(now or datetime.now(timezone.utc))
+    return (urlsplit(url or '').hostname or '').lower() in kept or _board_of(url) in kept
+
+
+def _refused(error):
+    """A 401/403. A board's own reads raise the plain HTTPError, so a refusal is told by its code too."""
+    return isinstance(error, Refused) or getattr(error, 'code', None) in REFUSED_CODES
+
+
+def _keep(key, error, now):
+    _keep_refused({**_refused_hosts(now), key: {'at': now.isoformat(), 'why': str(error)}})
+
+
+def keep_refusal(url, error, now=None):
+    """Keeps a page's 401/403 for the week under its host; any other failure keeps nothing. True when it was a refusal."""
+    if not _refused(error):
+        return False
+    now = now or datetime.now(timezone.utc)
+    read_routes.record(url, 'refused', now)
+    _keep((urlsplit(url or '').hostname or '').lower(), error, now)
+    return True
+
+
+def keep_board_refusal(url, error, now=None):
+    """Keeps a board feed's 401/403 for the week under that board. Why (5 Nov 2026, Gitar on #3314): the feed is another host than the job's page, and
+    a platform serves every company from one job host, so one company's refusal under that host would stop every other company's jobs."""
+    if _refused(error):
+        _keep(_board_of(url), error, now or datetime.now(timezone.utc))
+
+
+def read_posting(url, now=None):
+    """The posting text of one job a person pressed Apply on: '' when it cannot be read here. One read of ours, under backfill's limits: no sign-in
+    site, no host that refused this week, no site other installs found closed; a new refusal is kept for the week. host_pace's own pacing of a 429 holds."""
+    now = now or datetime.now(timezone.utc)
+    from . import visits
+    try:
+        if not readable(url) or refused_lately(url, now) or read_routes.skip(url, visits.pool_facts().get('route') or {}, now):
+            return ''
+        _ROUTE.route = None
+        text = fetch(url)
+        read_routes.record(url, _ROUTE.route if text else 'browser_only', now)
+        return text
+    except Exception as error:  # noqa: BLE001 -- the caller stops the job and says why; the read's own failure is only logged
+        if not keep_refusal(url, error, now):
+            print(f'Warning: the posting could not be read: {type(error).__name__}: {error}')
+        return ''
+
+
 BROWSER_AFTER = timedelta(hours=6)   # a job whose text this Mac could not read for this long (a page drawn by scripts) is a browser job too
 
 

@@ -181,8 +181,7 @@ def posting(db, code):
     return {'ok': False, 'error': 'job not found'}
 
 
-NO_POSTING = 'This job has no description yet. Add it first (⋯ → Log job activity, or paste it in the job page), then tailor.'
-MIN_POSTING = 200  # characters that really describe the role (prep.about_role): a Teams invite or a greeting is not a posting
+NO_POSTING = "This job has no description yet. Paste it in the job's Description tab, then tailor."
 
 
 def store_posting(stores, code):
@@ -194,7 +193,7 @@ def store_posting(stores, code):
     if not record:
         return {'ok': False, 'error': 'job not found'}
     text = prep.role_text(stores, record)
-    if prep.about_role(text) < MIN_POSTING:
+    if prep.about_role(text) < prep.MIN_POSTING:
         return {'ok': False, 'error': NO_POSTING}
     return {'ok': True, 'code': code, 'title': record['title'], 'company': record['company'] or record['via'] or '',
             'url': record['url'], 'location': record['location'] or '', 'description': text}

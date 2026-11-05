@@ -2,6 +2,7 @@
 // Why: 20 Oct 2026, private issues #28 and #34 were runs the person stopped, filed as failures with their last ordinary line as the error.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {JOB_STOPPED} from '../../../lib/pipeline.js';
 import {runFailure} from '../../../lib/telemetry-handlers.js';
 
 test('a run stopped from outside (no exit code, not the watchdog) is not a failed run', () => {
@@ -11,6 +12,11 @@ test('a run stopped from outside (no exit code, not the watchdog) is not a faile
 test('a run the app ended on purpose is not a failed run, whatever exit code the OS gave (143 from the engine, 1 from taskkill)', () => {
   for (const code of [143, 1, 130]) assert.equal(runFailure({code, timedOut: false, stopped: true, tail: ['Stopped before it finished: Jobadabra was closed, or Stop was pressed']}), null);
   assert.ok(runFailure({code: 124, timedOut: 'no output for 16 min', stopped: true, tail: []}), 'the watchdog is never a stop');
+});
+
+test('a job the engine stopped on purpose is not a failed run: it said why at the press', () => {
+  assert.equal(runFailure({code: JOB_STOPPED, timedOut: false, tail: ['⚠️ This job\'s posting could not be read']}), null);
+  assert.ok(runFailure({code: JOB_STOPPED, timedOut: 'no output for 16 min', tail: []}), 'the watchdog is never a stop');
 });
 
 test('"0 failed" is a count, not the error line', () => {

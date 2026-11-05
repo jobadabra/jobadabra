@@ -346,11 +346,16 @@ def posting(url):
     found = detect(url)
     if not found:
         return None
+    from . import describe   # describe reads this module at import
+    # Why (5 Nov 2026, review): this runs at every Apply press and hid a 403, so the next press and the page read asked a host that had just refused.
+    if describe.refused_lately(url):
+        return None
     wanted = _wanted(url)
     try:
         jobs = _board(*found)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, KeyError, ET.ParseError,
-            json.JSONDecodeError, OSError):
+            json.JSONDecodeError, OSError) as error:
+        describe.keep_board_refusal(url, error)
         return None
     return next((job for job in jobs if _same_job(job, wanted)), None)
 

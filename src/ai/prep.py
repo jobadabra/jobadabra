@@ -89,11 +89,24 @@ def _sections(text):
     return {name: '\n'.join(lines).strip() for name, lines in parts.items()}
 
 
+def saved_text(stores, record):
+    """What the store holds about the role, as a list: the job's description, the recruiter's message, the messages you logged."""
+    sections = stores.applications.sections(record['id'])
+    return [sections.get(name, '') for name in SECTIONS if sections.get(name)]
+
+
+def saved_posting(stores, record):
+    """The posting the store holds: the job's description as it is (a person's paste is never measured), else the messages saved on it when they
+    say enough about the role; '' when neither."""
+    description = stores.applications.sections(record['id']).get(DESCRIPTION_HEADING, '').strip()
+    known = '\n\n'.join(saved_text(stores, record))
+    return description or (known if about_role(known) >= MIN_POSTING else '')
+
+
 def role_text(stores, record, db_path=None):
     """What's known about the role: the job's description, the posting in the job cache, the recruiter's message and the
     messages you logged on the job."""
-    sections = stores.applications.sections(record['id'])
-    known = [sections.get(name, '') for name in SECTIONS if sections.get(name)]
+    known = saved_text(stores, record)
     url = record.get('url') or ''
     if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobadabra', url):
         try:
@@ -108,6 +121,9 @@ def role_text(stores, record, db_path=None):
     return '\n\n'.join(known).strip()
 
 
+MIN_POSTING = 200  # characters that really describe the role (about_role): a Teams invite or a greeting is not a posting
+
+
 def about_role(text):
     """Characters that actually describe the role (a Teams invite or legal footer don't)."""
     noise = re.compile(r'teams\.microsoft|meeting id|passcode|dial in|confidential|registered|unsubscribe|https?://', re.I)
@@ -118,7 +134,8 @@ def describe(stores, record, text='', url=''):
     """You gave the role: pasted text, or a posting link (read, except LinkedIn and the like)."""
     body = (text or '').strip()
     if url and not body:
-        meta = ledger.page_meta(url)
+        from ..sources import describe as pages
+        meta = {} if pages.refused_lately(url) else ledger.page_meta(url)
         body = (meta.get('description') or '').strip()
         if not body:
             return {'ok': False, 'text': "That page can't be read (LinkedIn and some sites never are): paste the description instead."}
