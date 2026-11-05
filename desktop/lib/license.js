@@ -46,9 +46,11 @@ export function allowance({applied: local = 0, firstRunAt, key = '', revoked = [
   const started = Math.min(...[Date.parse(firstRunAt) || now, Date.parse(server?.first)].filter(time => time > 0));
   const daysLeft = Math.max(0, Math.ceil(FREE_DAYS - (now - started) / DAY));
   const mine = key ? check(key, {now, revoked, publicKey}) : null;
-  const ended = applied >= FREE_APPLICATIONS && daysLeft === 0;
+  // Why (fb 2/7, 5 Nov 2026, owner): a validated report adds free applications on the site (the bonus, web shared/trial.js); the wall moves with it, so the app and Always on (which read the site's verdict) agree.
+  const bonus = Math.max(0, Math.floor(Number(server?.bonus) || 0)), limit = FREE_APPLICATIONS + bonus;
+  const ended = applied >= limit && daysLeft === 0;
   return {licensed: !!mine?.ok, license: mine?.ok ? mine.license : null, keyProblem: mine && !mine.ok ? mine.error : '',
-    used: applied, limit: FREE_APPLICATIONS, daysLeft, ended: ended && !mine?.ok && !server?.pro};
+    used: applied, limit, bonus, daysLeft, ended: ended && !mine?.ok && !server?.pro};
 }
 
 export const text = state => (state.licensed ? `Licensed to ${state.license.name} · ${state.license.kind} key${state.license.until ? ` · until ${state.license.until}` : ''}`
