@@ -161,5 +161,29 @@ class HostedRun(unittest.TestCase):
         server.shutdown(); server.server_close()
 
 
+    def test_a_crashed_run_answers_500_with_what_crashed_and_never_the_token(self):
+        # Why (5 Nov 2026, hr 6/6 try 3): the Worker saw "500" after 1.7 s and nothing else; the reason was only in the container's stderr, which nobody reads.
+        import urllib.request
+        from http.server import HTTPServer
+        boom = mock.patch.object(hosted_run, 'run', side_effect=urllib.error.URLError('Temporary failure in name resolution HR1.r.secret'))
+        boom.start(); self.addCleanup(boom.stop)
+        with mock.patch('http.server.ThreadingHTTPServer', lambda addr, handler: HTTPServer(('127.0.0.1', 0), handler)), \
+                mock.patch.object(HTTPServer, 'serve_forever', lambda server: setattr(self, 'handler', server.RequestHandlerClass)):
+            hosted_run.serve()
+        server = HTTPServer(('127.0.0.1', 0), self.handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        request = urllib.request.Request(f'http://127.0.0.1:{server.server_port}/run', data=json.dumps({'site': 'https://s.test', 'token': 'HR1.r.secret'}).encode(), method='POST')
+        with self.assertRaises(urllib.error.HTTPError) as crashed:
+            urllib.request.urlopen(request)
+        body = json.loads(crashed.exception.read())
+        self.assertEqual(crashed.exception.code, 500)
+        self.assertFalse(body['ok'])
+        self.assertIn('URLError', body['error'])
+        self.assertIn('name resolution', body['error'])
+        self.assertNotIn('HR1.', body['error'])   # the run token is the only credential: never in an answer
+        self.assertLessEqual(len(body['error']), 300)
+        server.shutdown(); server.server_close()
+
+
 if __name__ == '__main__':
     unittest.main()

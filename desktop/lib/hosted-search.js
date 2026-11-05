@@ -18,9 +18,10 @@ export const state = storage => ({on: false, skipped: false, email: '', marketin
 const save = (storage, patch) => storage.saveSettings({hostedSearch: {...state(storage), ...patch}});
 
 export const UNAVAILABLE = 'Always on is not available just now.';   // the line when the site gave no reason of its own (lib/ready-site.js tells them apart)
+const NO_KEY = 'Always on needs a regular install with its key.';
 export async function call(storage, route, {method = 'GET', body, fetcher = globalThis.fetch, key: given, headers = {}} = {}) {
   const key = given || keyOf(storage);   // `key`: one minted for an install that runs on its own engine (lib/ready-site.js)
-  if (!key || !isFreeKey(key) || siteOffForUser()) return {ok: false, error: 'Always on needs a regular install with its key.'};
+  if (!key || !isFreeKey(key) || siteOffForUser()) return {ok: false, error: NO_KEY};
   try {
     const response = await fetcher(`${BASE}${route}`, {method, headers: {'x-api-key': key, 'Content-Type': 'application/json', ...headers}, ...(body ? {body: JSON.stringify(body)} : {})});
     const text = await response.text(), json = (() => { try { return JSON.parse(text); } catch { return {}; } })();
@@ -103,6 +104,26 @@ export async function exportTo(storage, file, options = {}) {
   delete data.ok;
   fs.writeFileSync(file, JSON.stringify(data, null, 1));
   return {ok: true, file};
+}
+
+// Test on our servers (owner, 4 Nov 2026: "the test button should be both for easiest (our servers) and for Advanced"; 5 Nov: "One real run"): one real run now, the site's POST /api/hosted/test,
+// then its steps read back in the shape the Test row already draws (renderer/pages/always-on-test.js). -> {ok, run} or {ok: false, error}.
+export const testStart = (storage, options = {}) => call(storage, '/api/hosted/test', {method: 'POST', ...options});
+
+/** The run's steps from the site, as the Test row reads them: {found, verdict: running | passed | failed, steps: [{id, title, state, line}], runId, url}. A failed read keeps the ticks already shown. */
+export async function testRead(storage, runId, options = {}) {
+  const got = await call(storage, `/api/hosted/test${runId ? `?run=${encodeURIComponent(runId)}` : ''}`, options);
+  if (!got.ok) {
+    // Why (5 Nov 2026, Gitar on #3199): a 4xx (revoked key, unknown run, a closed route) or the local no-key refusal never clears by polling: end the test with the reason now.
+    // Only "no answer" (offline), 408, 429 and 5xx are worth another poll.
+    const lasting = got.status ? got.status >= 400 && got.status < 500 && got.status !== 408 && got.status !== 429 : got.error === NO_KEY;
+    return lasting ? {found: true, verdict: 'failed', steps: [], url: '', error: got.error} : {found: false, verdict: 'running', steps: [], url: '', error: got.error};
+  }
+  const run = got.run;
+  if (!run) return {found: false, verdict: 'running', steps: [], url: ''};
+  const steps = (run.steps || []).map(step => ({id: step.key, title: step.label, state: step.state, line: step.state === 'failed' || step.state === 'skipped' ? step.note || '' : step.note && step.key === 'found' ? `${step.note} new` : ''}));
+  const verdict = run.status === 'running' ? 'running' : run.status === 'ok' && steps.every(step => step.state !== 'failed') ? 'passed' : 'failed';
+  return {found: true, verdict, steps, url: '', runId: run.id};
 }
 
 // Pull what arrived while this Mac was off into its own store (the engine adds the rows: src/hosted_run.py --merge). -> {ok, added}
