@@ -1252,7 +1252,11 @@ main { min-width: 0; }
 .ss-title h1 { margin: 0; }
 .ss-title-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 #ss-status { display: inline-flex; align-items: center; gap: var(--sp-2); }   /* the state pill and the mode chip */
+/* Why (5 Nov 2026, owner: "2 yellow chips. Looks bad", "text should start from the same vertical line"): the mode is an outline, so the status is the only filled chip: a row never
+   stacks two filled chips, whatever their tones; the row's dot takes the icon's 12px slot (a 1px outline replaces 1px of padding), so stacked words start on one line. */
+.mode-pill { background: none; padding: 1px 8px; border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent); }
 .mode-pill > .icon { width: 12px; height: 12px; flex: none; }
+.ss-row-words > .ui-pill.dot::before { margin-inline: 3px; }
 .ss-row-words > .mode-pill { max-width: 100%; white-space: normal; }   /* the list column is narrow: a long chip wraps inside the row, never past it */
 .ss-subtitle { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-1); font-size: var(--fs-base); }
 .ss-empty { display: grid; justify-items: center; text-align: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4); }

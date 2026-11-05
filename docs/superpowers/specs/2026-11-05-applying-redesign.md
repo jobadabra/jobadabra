@@ -72,7 +72,7 @@ Nothing reactive is added: the preview, the log and the chip only draw these sta
 UI PRs (3, 4, 5, 7) each get a light + dark, wide + narrow side-by-side and the owner's yes before their UI commit.
 
 ## Decisions (owner's approval of the plan, 5 Nov 2026: the sketch's recommendations)
-1. **Mode wording:** one chip on list, header, log and ⌘K: "⚡ Full automation · sends by itself", "◐ Background · you submit", "👁 In Chrome · you submit".
+1. **Mode wording:** one chip on the list and the header: "⚡ Full auto · sends itself" (owner, 5 Nov 2026: shorter so it fits one line of the list, and an outline so only the status is filled), "◐ Background · you submit", "👁 In Chrome · you submit".
 2. **Cancel all applications:** ends every unfinished session (filling, queued, needs you, ready) after one confirm; stops the extension's work first; Applied ones untouched; "Stop the extension" stays in ⌘K and the extension's popup.
 3. **How many at once:** all of a batch, up to 10; no new setting.
 4. **Preview size:** pages at 1440 × 900; the preview fits the card's width; zoom and Expand stay.
@@ -83,7 +83,7 @@ UI PRs (3, 4, 5, 7) each get a light + dark, wide + narrow side-by-side and the 
 - [x] 1/7 Desktop-size hidden pages, all live: 1440 × 813 pages, every one visible and drawing; without the flag the first page stops at frame 53 (positive control on Chrome for Testing 156). (proof: desktop/integration/extension/hidden-browser-pages.test.mjs)
 - [x] 2/7 A new run starts fresh (#3251): a re-applied job after Stop, Cancel or a quit launches as a new session in the new mode; "picture only when the page exists" moves to 7/7. (proof: desktop/test/unit/main/background-apply-controller.test.js)
 - [x] 3/7 Cancel all applications (#3255): one question, every unfinished application ends, a job being sent is left alone. (proof: desktop/test/unit/main/session-cancel-all.test.js @0c65354e)
-- [x] 4/7 Mode at a glance (#3257): one chip on the list and the header; a handed-over Full automation job says "you submit now". (proof: desktop/test/unit/renderer/background-status.test.js @bfbf8450)
+- [x] 4/7 Mode at a glance (#3257): one chip on the list and the header; a handed-over Full automation job says "you submit" (5 Nov 2026: "Full auto · you submit", its mode's colour; "Needs you" beside it is the status). (proof: desktop/test/unit/renderer/background-status.test.js @bfbf8450)
 - [x] 5/7 Live step log (#3261): a hidden form's card says each step with its time, its first line the mode in Jobadabra's browser. (proof: desktop/test/unit/main/session-journal-run.test.js @f8e25144)
 - [x] 6/7 10 at once (#3273): the poll claims every queued job while fewer than 10 fill and reads the store once per job; the fill itself measured on 10 recorded forms through the extension, 13.4 s → 7–9 s per application, ~2 GB at 10 (not a batch time through the controller); Stop on one hands it over at once. (proof: desktop/test/unit/main/background-apply-stop-one.test.js @f19e3183)
-- [ ] 7/7 Preview on request
+- [x] 7/7 Preview on request (#3283): a hidden page shows only on Watch live, a gone page says why, one state owner. (proof: desktop/test/unit/renderer/live-view-state.test.js @7b39e5e8)
