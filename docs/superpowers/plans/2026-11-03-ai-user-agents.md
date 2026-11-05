@@ -46,3 +46,12 @@ Order (owner's coordinator, 3 Nov 2026: the first outcome is a nightly run that 
 - A Windows daily session (the app layer runs on Windows; the agent runs on Linux only at first).
 - A week brake as one more repository variable, if the cost view shows the agent starving PR checks.
 - Promoting a confirmed agent note to an expectation by a bot PR (today a person does it).
+
+## The run cap, the summary loop and chained runs (owner, 5 Nov 2026: "Both: summary loop + chained runs"; spec `docs/superpowers/specs/2026-11-05-ai-agent-summary-and-chains.md`)
+
+Each run stops at 250k tokens (#3220). Two PRs, titled `[ag] SC n/2 <what>`, in this order; a fresh `/code-review` before each ship.
+
+| PR | What | Measured by | Who gets what |
+|---|---|---|---|
+| SC 1/2 | **the summary loop**: each call sends the fixed part, the current screen and a short code-written summary of the steps so far; the first page view and the full history are dropped | the same plan, seed, app commit and tier before and after: tokens per step (median, p90), steps per run, goals reached, notes real | a 250k run reaches ~13-15 steps, not ~6: a night gets through its goals |
+| SC 2/2 | **chained runs**: a run ends with a summary and a snapshot of the app's data; the next run restores both and continues the goal (up to 4 runs a chain, each with its own 250k cap); a note names the snapshot it replays from | one deep flow (Strategy → search → results, or an apply stopped before Submit) reached over 2-4 runs, snapshot hash equal between links | a bug deep in a flow is reachable and replayable |
