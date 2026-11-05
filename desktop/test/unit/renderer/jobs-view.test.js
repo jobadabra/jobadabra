@@ -11,7 +11,7 @@ test('place and mode on one line say the mode once', () => {
   assert.equal(placeAndMode('Bern', ''), 'Bern');
 });
 
-test('compact list: match label and age', () => {
+test('match label and age', () => {
   assert.deepEqual([matchLabel(78), matchLabel(62), matchLabel(30), matchLabel(null)], ['Strong match', 'Good match', 'Weak match', 'Not scored']);
   const now = Date.parse('2026-09-28T12:00:00Z');
   assert.equal(ago('2026-09-28T11:30:00Z', now), 'just now');
@@ -220,7 +220,7 @@ test('a posting that lists many places shows the first two and a count, with all
   assert.deepEqual(shortPlace('Zurich; Geneva'), {text: 'Zurich; Geneva', full: ''});   // two or fewer: as written
   assert.deepEqual(shortPlace('Zurich, Switzerland'), {text: 'Zurich, Switzerland', full: ''});
   assert.deepEqual(shortPlace(''), {text: '', full: ''});
-  assert.equal(placeAndMode(many, 'Remote').split(' · ')[0], 'Remote - European Union; Spain +18');   // the compact list too
+  assert.equal(placeAndMode(many, 'Remote').split(' · ')[0], 'Remote - European Union; Spain +18');   // the row and the board card too
 });
 
 test('a saved or kit-ready job found Closed on refresh is named; other changes are not', async () => {

@@ -35,7 +35,7 @@ const probe = width => probeWindow({env: {JOBADABRA_SHOT_WIDTH: String(width)}, 
         height: Math.round(box.height), actionsTop: actions ? Math.round(actions.top - box.top) : -1, actionsLeft: actions ? Math.round(actions.left - box.left) : -1,
         actionsGap: actions ? Math.round(box.right - actions.right) : -1,
         ring: item.querySelector('.fit-ring')?.textContent.trim(), roleChips: [...item.querySelectorAll('.role > .chip-tag')].map(chip => chip.textContent.trim()),
-        meta: item.querySelector('.meta')?.innerText.replace(/\s+/g, ' ').trim(), blankLogos: item.querySelectorAll('.logo.is-blank').length, logos: [...item.querySelectorAll('.logo')].map(logo => logo.textContent.trim()),
+        meta: `${item.querySelector('.company')?.innerText} ${item.querySelector('.place')?.innerText}`.replace(/\s+/g, ' ').trim(), blankLogos: item.querySelectorAll('.logo.is-blank').length, logos: [...item.querySelectorAll('.logo')].map(logo => logo.textContent.trim()),
         tags: [...item.querySelectorAll('.tags .ui-tag')].map(tag => tag.textContent.trim())};
     }),
   });

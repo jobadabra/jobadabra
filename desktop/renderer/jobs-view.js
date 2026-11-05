@@ -201,7 +201,7 @@ export function shortPlace(location, max = 2) {
 // Fit ring colour band.
 export const band = fit => (fit == null ? 'none' : fit >= 70 ? 'high' : fit >= 50 ? 'mid' : 'low');
 
-// Under the ring in the compact list.
+// The match words in a ring's tooltip and a board card.
 export const matchLabel = fit => (fit == null ? 'Not scored' : fit >= 70 ? 'Strong match' : fit >= 50 ? 'Good match' : 'Weak match');
 
 // The fit score's bands, a few words each: the same bands the scoring prompt states (src/ai/score.py; Notion "Fit score - the scoring
