@@ -11,11 +11,16 @@ const HALF_FLOOR = {minutes: 5, calls: 30, steps: 30};
 const MAX_MINUTES = 35;   // Why (3 Nov 2026, Gitar on 7/12): the session step has timeout-minutes 45 and the suite stops itself at its minute cap plus 5, so a repository variable above 40 would let Actions kill a working night before it writes anything.
 const whole = value => (Number(value) > 0 ? Math.floor(Number(value)) : 0);
 
-/** Who answered the broker's ping: 'refused' (no answer), 'codex', 'codex-out' (another engine answered and Codex is named in fellBack) or 'other' (another engine, nothing said about Codex). */
+/**
+ * Who answered the broker's ping: 'refused' (no answer), 'codex', 'codex-busy' (another engine answered because Codex's model was at capacity: fellBack says `overloaded`, a blip), 'codex-out' (another engine answered and Codex is named in fellBack for any other reason) or 'other' (another engine, nothing said about Codex).
+ * Why (5 Nov 2026, a8's broker change via mac-32): a capacity blip at the first call must not give a half session labelled "Codex ran out".
+ */
 export function engineState(answer) {
   if (!answer || answer.ok === false) return 'refused';
   if (answer.engine === 'codex') return 'codex';
-  return (answer.fellBack || []).some(item => item.engine === 'codex') ? 'codex-out' : 'other';
+  const codex = (answer.fellBack || []).filter(item => item.engine === 'codex');
+  if (!codex.length) return 'other';
+  return codex.every(item => item.why === 'overloaded') ? 'codex-busy' : 'codex-out';
 }
 
 /**
@@ -25,7 +30,7 @@ export function engineState(answer) {
 export function capsFor(state, vars = {}, detail = '') {
   const base = {minutes: Math.min(MAX_MINUTES, whole(vars.minutes) || FULL.minutes), calls: whole(vars.calls) || FULL.calls, steps: whole(vars.steps) || FULL.steps};
   if (state === 'refused') return {skip: true, reason: detail || 'the AI broker did not answer', ...base, note: `No session tonight: ${detail || 'the AI broker did not answer'}.`};
-  if (state !== 'codex-out') return {skip: false, reason: '', ...base, note: state === 'codex' ? 'Codex answers: the full session.' : 'Another engine answers: the full session.'};
+  if (state !== 'codex-out') return {skip: false, reason: '', ...base, note: {codex: 'Codex answers: the full session.', 'codex-busy': 'Codex was at capacity at the first call: the full session (each call tries Codex first).'}[state] || 'Another engine answers: the full session.'};
   const half = key => Math.max(HALF_FLOOR[key], Math.floor(base[key] / 2));
   return {skip: false, reason: '', minutes: half('minutes'), calls: half('calls'), steps: half('steps'), note: 'Codex ran out: a half session on the engine that answers.'};
 }
