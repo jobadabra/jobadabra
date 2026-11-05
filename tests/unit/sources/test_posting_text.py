@@ -73,6 +73,17 @@ class PostingTextTests(unittest.TestCase):
         self.assertEqual(html_to_text('Salary < 100 and > 50; please send <your CV> by mail'), 'Salary < 100 and > 50; please send <your CV> by mail')
         self.assertEqual(html_to_text('<p>Hi <o:p></o:p><my-widget a="1">there</my-widget><!-- note --><br/>All<img src="x"></p>'), 'Hi there\nAll')
 
+    def test_legacy_word_svg_and_uppercase_markup_still_goes(self):
+        for markup in ('<BR>t', '<FONT size=2>t</FONT>', '<xml><w:WordDocument></w:WordDocument></xml>t', '<marquee>t</marquee>', '<dir><li>t</li></dir>',
+                       '<svg viewBox="0 0 1 1"><path d="M0 0"/><g><circle r="1"/></g><use href="#a"/></svg>t', '<math><mi>t</mi></math>', '< span>t</ span>'):
+            with self.subTest(markup=markup):
+                self.assertEqual(html_to_text(markup).replace('- ', '').strip(), 't')
+
+    def test_many_unclosed_comment_openers_are_read_in_linear_time(self):
+        began = time.monotonic()
+        html_to_text('<!--' * 20000)
+        self.assertLess(time.monotonic() - began, 2.0)
+
 
 if __name__ == '__main__':
     unittest.main()

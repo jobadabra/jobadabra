@@ -15,12 +15,17 @@ _BREAK = re.compile(r'<\s*/?\s*(?:p|div|section|article|header|footer|ul|ol|tabl
 # Why (5 Nov 2026, tester card f9e48e, #3182): `<[^>]+>` took any angle-bracket text for markup, so "Fluency in <German> and English" read
 # "Fluency in and English" and the posting's summary lost its required language. Only a tag that IS HTML goes: the standard's element names (a
 # fixed list from the spec, not a word list of ours), a namespaced (<o:p>) or custom (<my-tag>) element, a comment, a doctype, a declaration.
+# Known limit: a placeholder that spells a real element ("Permis <B>", "<address>") is still taken for that tag.
 _ELEMENTS = ('a abbr address area article aside audio b base bdi bdo big blockquote body br button canvas caption center cite code col colgroup data '
              'datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head '
              'header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav nobr noscript object ol optgroup '
              'option output p param picture pre progress q rp rt ruby s samp script section select slot small source span strike strong style sub '
-             'summary sup svg table tbody td template textarea tfoot th thead time title tr track tt u ul var video wbr').split()
-TAG = re.compile(r'</?(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<!--.*?-->|<![a-z\[][^<>]*>|<\?[^<>]*>'
+             'summary sup svg table tbody td template textarea tfoot th thead time title tr track tt u ul var video wbr '
+             # legacy and Word markup an ATS still sends, SVG and MathML children (the standards' names)
+             'acronym applet basefont bgsound blink dir image keygen listing marquee menuitem multicol noembed noframes noindex plaintext rb rtc '
+             'spacer xml xmp g path rect circle ellipse line polyline polygon defs use symbol text tspan lineargradient radialgradient stop clippath '
+             'mask pattern foreignobject desc math mi mo mn ms mrow msup msub mfrac msqrt mtext mtable mtr mtd').split()
+TAG = re.compile(r'<\s*/?\s*(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<!--(?:(?!-->).){0,5000}-->|<![a-z\[][^<>]*>|<\?[^<>]*>'
                  % '|'.join(_ELEMENTS), re.I | re.S)
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
 _FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules
