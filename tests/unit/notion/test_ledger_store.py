@@ -114,6 +114,13 @@ class AddApplicationTests(unittest.TestCase):
         self.assertEqual((event['kind'], event['at']), ('Applied', '2026-09-23'))
         self.assertTrue(stores.applications.get(URL)['recorded'])
 
+    def test_a_link_with_no_company_named_is_tracked_under_what_its_slug_spells(self):
+        for link, company in (('https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', 'Acme'),
+                              ('https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2', '')):
+            stores, found = memory.open_store(), {}
+            ledger_store.add_application(stores, link, meta={'title': 'Designer'}, found=found)
+            self.assertEqual(found['row']['company'], company, link)
+
     def test_a_later_stage_is_left_as_it_is(self):
         stores, _ = stores_with('Screening')
         self.assertEqual(ledger_store.add_application(stores, URL, meta={'title': 'SRE'}), 'Already tracked at Screening: SRE')

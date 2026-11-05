@@ -264,7 +264,7 @@ URL_PATTERNS = [
     # Oracle Recruiting Cloud: tenant, region and site number, written `tenant.region.SITE` (src/sources/ats_oracle.py)
     ('oracle', r'([\w-]+)\.fa\.([a-z0-9]{2,8})\.oraclecloud\.com/hcmUI/CandidateExperience/(?:[a-z]{2}(?:[-_][A-Za-z]{2})?/)?sites/([\w-]+)'),
 ]
-IGNORED_SLUGS = {'embed', 'j', 'api', 'v1', 'jobs', 'careers', 'www', 'o', 'career', 'app', 'support', 'help', 'blog', 'static', 'tt', 'assets', 'scripts', 'cdn'}
+IGNORED_SLUGS = {'embed', 'j', 'api', 'v1', 'jobs', 'careers', 'www', 'o', 'career', 'app', 'support', 'help', 'blog', 'static', 'tt', 'assets', 'scripts', 'cdn', 'oneclick-ui'}
 
 
 def detect(url):

@@ -57,6 +57,9 @@ class CompanyInSlugTest(unittest.TestCase):
     def test_no_link_found_is_no_name(self):
         self.assertEqual(ats.company_in_slug(None), '')
 
+    def test_a_system_s_own_apply_path_is_no_employer(self):
+        self.assertIsNone(ats.detect('https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/1'))
+
 
 if __name__ == '__main__':
     unittest.main()

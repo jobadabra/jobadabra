@@ -282,12 +282,12 @@ class AddApplicationTests(unittest.TestCase):
         ledger.add_application(tracker2, URL, meta={'title': 'SRE'})
         self.assertEqual(tracker2.created[0]['Company']['rich_text'][0]['text']['content'], 'Acme')
 
-    def test_a_workday_link_gives_the_tenant_never_the_whole_slug(self):
+    def test_a_workday_link_is_tracked_under_its_tenant_never_the_whole_slug(self):
         tracker = FakeTracker([])
         tracker.find = lambda url: None
-        link = 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1'
-        with mock.patch.object(ledger, 'match_for', lambda tracker, url: {}):
-            self.assertEqual(ledger.company_for(tracker, link, {}), 'Acme')
+        tracker.create_page = lambda db, props: tracker.created.append(props) or {'id': 'n', 'properties': props}
+        ledger.add_application(tracker, 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', meta={'title': 'Designer'})
+        self.assertEqual(tracker.created[0]['Company']['rich_text'][0]['text']['content'], 'Acme')
 
     def test_later_stage_is_left_alone(self):
         tracker = FakeTracker([row(stage='Screening')])
