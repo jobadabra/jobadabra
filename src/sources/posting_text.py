@@ -25,7 +25,7 @@ _ELEMENTS = ('a abbr address area article aside audio b base bdi bdo big blockqu
              'acronym applet basefont bgsound blink dir image keygen listing marquee menuitem multicol noembed noframes noindex plaintext rb rtc '
              'spacer xml xmp g path rect circle ellipse line polyline polygon defs use symbol text tspan lineargradient radialgradient stop clippath '
              'mask pattern foreignobject desc math mi mo mn ms mrow msup msub mfrac msqrt mtext mtable mtr mtd').split()
-TAG = re.compile(r'<\s*/?\s*(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<![a-z\[][^<>]*>|<\?[^<>]*>'
+TAG = re.compile(r'</?(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<![a-z\[][^<>]*>|<\?[^<>]*>'
                  % '|'.join(_ELEMENTS), re.I | re.S)
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
 _FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules

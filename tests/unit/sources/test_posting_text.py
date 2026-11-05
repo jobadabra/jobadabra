@@ -75,9 +75,13 @@ class PostingTextTests(unittest.TestCase):
 
     def test_legacy_word_svg_and_uppercase_markup_still_goes(self):
         for markup in ('<BR>t', '<FONT size=2>t</FONT>', '<xml><w:WordDocument></w:WordDocument></xml>t', '<marquee>t</marquee>', '<dir><li>t</li></dir>',
-                       '<svg viewBox="0 0 1 1"><path d="M0 0"/><g><circle r="1"/></g><use href="#a"/></svg>t', '<math><mi>t</mi></math>', '< span>t</ span>'):
+                       '<svg viewBox="0 0 1 1"><path d="M0 0"/><g><circle r="1"/></g><use href="#a"/></svg>t', '<math><mi>t</mi></math>'):
             with self.subTest(markup=markup):
                 self.assertEqual(html_to_text(markup).replace('- ', '').strip(), 't')
+
+    def test_a_space_after_the_angle_bracket_is_text_not_a_tag(self):
+        said = 'We need < a dozen people and > 5 years of experience'
+        self.assertEqual(html_to_text(said), said)
 
     def test_many_unclosed_comment_openers_are_read_in_linear_time(self):
         began = time.monotonic()
