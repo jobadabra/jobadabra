@@ -14,7 +14,6 @@ export function paintViews(boardJobs) {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === jobsState.mode)));
   show($('jobs-board'), board);
   show($('jobs-split'), !board);
-  document.querySelector('[data-density]').parentElement.hidden = board;   // density is the list's
   if (!board) return;
   $('jobs-head').hidden = true;
   show($('jobs-more'), false);
@@ -31,7 +30,7 @@ export function openFromBoard(open) {
 function setMode(mode, render = true) {
   jobsState.mode = mode === 'board' ? 'board' : 'list';
   try { localStorage.setItem(MODE_KEY, jobsState.mode); } catch {}
-  if (jobsState.mode !== 'board') $('jobs-head').hidden = $('jobs-body').classList.contains('compact');
+  if (jobsState.mode !== 'board') $('jobs-head').hidden = false;
   if (render) document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 

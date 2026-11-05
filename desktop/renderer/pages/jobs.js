@@ -70,15 +70,6 @@ async function linkToJob(dialogId, messageId, result) {
 
 const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.fyi|reddit\.com)$/i;
 
-// List density: Comfortable (columns) or Compact (one block per job); remembered on this computer.
-function setDensity(value) {
-  const compact = value === 'compact';
-  $('jobs-body').classList.toggle('compact', compact);
-  $('jobs-head').hidden = compact;
-  document.querySelectorAll('[data-density]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.density === value)));
-  try { localStorage.setItem('jobsDensity', value); } catch {}
-}
-
 let freshJobs = false;
 let leftOpenAsked = false;  // the start-up question about sessions left open was asked (once per launch)
 export async function loadJobs() {
@@ -354,8 +345,6 @@ export async function init() {
   });
   wireLead();
   wireAdd();
-  document.querySelectorAll('[data-density]').forEach(button => button.addEventListener('click', () => setDensity(button.dataset.density)));
-  try { setDensity(localStorage.getItem('jobsDensity') || 'comfortable'); } catch { setDensity('comfortable'); }
   $('filter-text').addEventListener('input', renderJobs);
 
   // ---------- questions to answer once ----------

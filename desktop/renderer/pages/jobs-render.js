@@ -31,7 +31,7 @@ import {jobsChanged, loadJobs, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
-import {companyCell, metaCell, placeCell} from './jobs-row-cells.js';
+import {companyCell, placeCell} from './jobs-row-cells.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {kitLabel} from './jobs-kit-label.js';
@@ -89,7 +89,7 @@ export function renderJobs() {
     const row = el('article', 'job-row');
     const parts = rowModel(job);   // what this job's state and source draw (job-row-model.js)
     Object.assign(row.dataset, {code: job.code || '', url: job.url || ''});   // a notification's click scrolls to it (pages/open-target.js)
-    // Fit: a ring filled to the score (the compact list adds "Strong match" under it). A row whose score has a
+    // Fit: a ring filled to the score. A row whose score has a
     // breakdown behind it says so with a caret, and the ring opens it.
     const fit = el('div', `fit-cell ${band(job.fit)}${job.stale && job.fit != null ? ' is-stale' : ''}`);   // the old score stays, muted (owner, 2 Nov 2026), until the re-score replaces it
     const ring = fitRing(job.fit);
@@ -114,11 +114,10 @@ export function renderJobs() {
     const inNotion = isInbound(job) && !!job.notion_url;
     const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
-    titleLine.append(link, Object.assign(pill(statusLabel, statusTone), {className: `ui-pill tone-${statusTone} status-inline`}));
+    titleLine.append(link);
     role.append(titleLine);
     // Why (2026-10-30, owner; 2 Nov 2026 N/A for a job with nothing to apply to, the slot stays so every row is built alike): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
     role.append(parts.triage ? triageChip(job) : chip(NA, {tone: 'neutral', title: 'Nothing to apply to: you already applied, or it came to you'}));
-    role.append(metaCell(job, parts));   // compact list: company · place · mode · age (jobs-row-cells.js)
     // Always: no reason keeps its line, so every row is the same height; Why (2 Nov 2026, owner: "for the content we're missing, we should add N/A"): an empty line read as a hole.
     role.append(Object.assign(el('div', 'reason', job.reason || NA), job.reason ? {title: job.reason} : {className: 'reason is-na'}));
     const chips = el('div', 'tags');
@@ -238,14 +237,6 @@ export function renderJobs() {
       });
       box.append(prepare);
     }
-    // Compact list: save with one click (filled once saved).
-    const saved = job.status === 'saved';
-    const bookmark = Object.assign(el('button', `secondary icon-btn bookmark${saved ? ' on' : ''}`), {disabled: saved,
-      title: saved ? 'Saved' : 'Save: keep this job on your list'});
-    bookmark.setAttribute('aria-label', bookmark.title);
-    bookmark.append(icon('bookmark'));
-    bookmark.addEventListener('click', () => setStatus('saved')());
-    if (job.status !== 'applied') box.prepend(bookmark);
 
     // Long work started from the menu: a note on the row until it's done.
     const background = async (note, work) => {

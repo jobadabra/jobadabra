@@ -1,8 +1,8 @@
-// The Jobs row's company, place and compact meta cells, drawn from the row model (job-row-model.js): a slot with nothing to say says N/A, and a company not named is a blank avatar.
+// The Jobs row's company and place cells, drawn from the row model (job-row-model.js): a slot with nothing to say says N/A, and a company not named is a blank avatar.
 // Moved out of pages/jobs-render.js (its file-size warning); guarded by integration/app/screen-jobs-inbound.test.js and test/unit/renderer/job-row-model.test.js.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {ago, avatar, placeAndMode, shortPlace, workMode} from '../jobs-view.js';
+import {avatar, shortPlace, workMode} from '../jobs-view.js';
 import {NA} from '../job-row-model.js';
 
 // Pill tones: how a job is worked.
@@ -14,16 +14,6 @@ export function logoOf(who) {
   const badge = el('span', `logo${who.blank ? ' is-blank' : ''}`, who.blank ? '' : logo.initials);
   badge.style.setProperty('--hue', logo.hue);
   return badge;
-}
-
-/** Compact list: company · place · mode · age on one line, in place of those columns. Takes the job and its row model; returns the element. */
-export function metaCell(job, parts) {
-  const meta = el('div', 'meta');
-  meta.append(logoOf(parts.who), el('b', parts.who.blank ? 'is-na' : '', parts.who.name));
-  for (const part of [placeAndMode(job.location, job.work_mode) || NA, ago(job.first_seen_at)].filter(Boolean)) {
-    meta.append(el('span', 'sep', '·'), el('span', part === NA ? 'is-na' : '', part));
-  }
-  return meta;
 }
 
 /** The company column: logo and name (N/A when none is named). Takes the row model; returns the element. */
