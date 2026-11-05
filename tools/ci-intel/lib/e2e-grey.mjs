@@ -76,7 +76,7 @@ export function greyNightText(night) {
 // Why (31 Oct 2026, owner: "A: retire it, one-line note"; a suite past its budget is our bug, red): the 7-day suite x reason table lost its only writer, so the card says what grey means now.
 export const GREY_NOTE = 'Since 31 Oct 2026 a suite is red or green: its one try is the verdict. Grey now means only a problem outside our code (runner, install, AI credit) and shows on the PR that met it.';
 
-/** Weekly issue and Telegram use the page's computed rows and night wording, without another count. */
+/** The Grey card as text lines, from the page's computed rows and night wording, without another count (the web page's tests read it; Telegram draws its own compact rows). */
 export function greyLines(grey) {
   return ['Grey', ...(!grey.read ? ['lane registry not read yet'] : !grey.rows.length ? ['No tolerant or suspended suites.'] : grey.rows.map(row =>
     `${row.suite} · ${row.lane} · ${row.input || 'input not named'} · ${row.why || 'reason not named'} · since ${row.since || 'unknown'} (${row.ageText}) · ${row.returns}\n${row.nights.map(greyNightText).join(' | ') || 'No suite nights stored yet.'}`))];

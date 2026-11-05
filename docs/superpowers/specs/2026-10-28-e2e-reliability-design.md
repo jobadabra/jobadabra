@@ -115,7 +115,7 @@ Guard: `tests/tooling/ci/test_workflow_outside.py`, `tests/tooling/ci/test_pr_ve
 | A PR | backbone checks only; for a PR that changes what reaches the AI or a timed path, a **number in the check summary** ("AI rate 84%, main 86%, within noise"; "Find jobs 2m40, main median 2m10"), never red, **never a PR comment** (the owner's rule makes every comment a task) |
 | Main, nightly | /admin/operations/e2e: one tolerant section (AI rate, speed medians, outside-world health) |
 | Before a beta | tolerant rates decide with the baseline band |
-| Weekly | Telegram + one GitHub issue, same numbers as the page, one decision for the owner if any |
+| Weekly | Telegram, same numbers as the page, one decision for the owner if any (no GitHub issue since 5 Nov 2026) |
 
 Grey suites are tracked: /admin/operations/e2e Grey section and the weekly (age, returns, 7 nights); the weekly asks keep/fix/retire past 14 days grey or 3 nights below band (owner, 30 Oct 2026).
 Guard: `tests/tooling/ci/test_pr_verdict_lanes.py` (tolerant results never a check result); the Grey page and the weekly: none, they live in the private jobadabra-web repo.
@@ -199,7 +199,7 @@ Guard: none: an inventory, done once per step; each step keeps main green.
 - No backbone suite asserts a wall-clock limit (guard test over the backbone suites). Since 30 Oct 2026 (owner, #2612): new or changed inline bounds in step code are refused by `tools/e2e-reliability-check.mjs` rule B; the existing ones are moved out step by step.
 - The expectation check refuses a replay of `5395279` and passes `2625cef` with its citation (fixture test); the plumbing check refuses a PR answering a
   tolerant result (fixture test).
-- /admin/operations/e2e, the weekly GitHub issue and Telegram show the same counts from one classifier.
+- /admin/operations/e2e and the weekly Telegram message show the same counts from one classifier.
 - Tolerant suites never appear as a PR check result; a beta run is blocked by an AI rate below main's band (tested with a fixture night).
 - The scorecard lists catches, false reds and minutes per suite; prune candidates and gap ranking appear in the weekly summary.
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
