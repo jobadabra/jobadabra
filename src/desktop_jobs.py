@@ -133,8 +133,9 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                                 job.get('application_status') or 'unreviewed', None, '', '', unsynced=True, fit_detail=_fit_detail(fit),
                                 place_unclear=unclear))
     else:
+        stage_of = {key(url): value for url, value in stages.items()}   # Notion's form of a link may differ from the cache's
         def notion_row(job):  # (Stage, Next step, Notion page URL); tests may pass plain stages
-            value = stages.get((job.get('url') or '').strip(), (None, '', ''))
+            value = stage_of.get(key(job.get('url')), (None, '', ''))
             return (tuple(value) + ('', ''))[:3] if isinstance(value, tuple) else (value, '', '')
         for job in candidates:
             fit = fits.get(job['id'])

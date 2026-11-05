@@ -327,6 +327,25 @@ class DeleteTests(unittest.TestCase):
         self.db.commit()
         self.assertEqual(desktop.jobs(self.db)['jobs'], [], 'still deleted')
 
+    def test_the_list_shows_notions_form_of_the_link_and_delete_finds_the_cache_copy(self):
+        # fq, 5 Nov 2026 (a tester: the same posting several times): Notion holds "…/a/", the cache "…/a"; deleting from the row the list showed must mark the cache copy.
+        desktop.set_status(self.db, 'https://x.test/a/', 'dismissed')
+        self.assertEqual(self.db.execute("SELECT status FROM applications").fetchone()[0], 'dismissed')
+        self.assertEqual(desktop.delete_job(self.db, 'https://x.test/a/', self.stores('Dismissed')), {'ok': True, 'trashed': 2})
+        lagging = [{'url': 'https://x.test/a/', 'stage': 'Dismissed', 'title': 'Staff Software Engineer', 'company': 'Anthropic', 'location': 'Remote'}]
+        self.assertEqual(desktop.jobs(self.db, notion_jobs=lagging)['jobs'], [], 'the cache copy was marked deleted, so the lagging Notion row stays out')
+
+    def test_a_job_closed_here_stays_out_under_another_link_form(self):
+        self.db.execute("UPDATE jobs SET state='expired'")
+        self.db.commit()
+        row = {'url': 'https://x.test/a/', 'stage': 'Saved', 'title': 'Staff Software Engineer', 'company': 'Anthropic', 'location': 'Remote'}
+        self.assertEqual(desktop.jobs(self.db, notion_jobs=[row])['jobs'], [])
+
+    def test_the_cache_only_list_finds_a_stage_stored_under_another_link_form(self):
+        stages = {'https://x.test/a/': ('Applied', 'Kit ready', 'https://notion.so/page')}
+        listed = desktop.jobs(self.db, stages=stages, notion=True)['jobs']
+        self.assertEqual([(row['status'], row['stage'], row['notion_url']) for row in listed], [('applied', 'Applied', 'https://notion.so/page')])
+
     def test_a_store_refusing_changes_nothing(self):
         desktop.set_status(self.db, 'https://x.test/a', 'dismissed')
         stores = self.stores('Dismissed')
