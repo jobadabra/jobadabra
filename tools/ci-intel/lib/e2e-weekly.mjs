@@ -1,5 +1,5 @@
-// The weekly e2e summary (owner, 28 Oct 2026; public repo docs/superpowers/specs/2026-10-28-e2e-reliability-design.md rule D: "Weekly: Telegram, same numbers as the page,
-// one decision for the owner if any"; rules I and J). Drawn from the snapshot /admin/testing/e2e draws (jobadabra-web admin/e2e-intel.js) with the page's
+// The weekly e2e summary (owner, 28 Oct 2026; public repo docs/superpowers/specs/2026-10-28-e2e-reliability-design.md rule D, amended 5 Nov 2026: Telegram only,
+// same numbers as the page, one decision for the owner if any; rules I and J). Drawn from the snapshot /admin/testing/e2e draws (jobadabra-web admin/e2e-intel.js) with the page's
 // own functions, so there is no second count. Pure: tools/ci-intel/jobs/e2e-weekly.mjs posts it.
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): the weekly GitHub issue is gone; its tables are the Admin page PAGE.
 import {GROUPS} from './e2e-causes.mjs';
