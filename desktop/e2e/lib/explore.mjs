@@ -109,7 +109,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
     let answer;
-    try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 160)}`; break; }
+    try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; break; }   // Why (5 Nov 2026, run 42040707448): 160 cut the broker's reason at "Selec"
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};

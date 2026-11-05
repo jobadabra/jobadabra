@@ -8,6 +8,13 @@ const RETRY_AFTER_MS = 30000;   // the one retry of a 5xx the broker gave no rea
 /** The broker's address: takes env, returns AI_BROKER_URL when set, else the old CODEX_BROKER_URL (still honoured), else the deployed workers.dev address (jobadabra-web workers/ai-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.AI_BROKER_URL || env.CODEX_BROKER_URL || 'https://jobadabra-ai-broker.jobpilotto.workers.dev';
 
+/** A broker refusal's reason as one line: a failed Codex run's JSON event stream ("codex-failed:1 {"type":"thread.started",…} {"type":"error","message":"…"}") becomes its head plus the server's last "message". */
+// Why (5 Nov 2026, run 42040707448): the stream's preamble filled the 160 characters a caller kept, so the cause was cut at "Selec"; the words that say why come last.
+export function reasonOf(why) {
+  const text = String(why), said = [...text.matchAll(/"message":"((?:[^"\\]|\\.)*)"/g)].map(found => { try { return JSON.parse(`"${found[1]}"`); } catch { return found[1]; } });   // a cut-off escape keeps the raw text
+  return (said.length ? `${text.split(/\s*\{"type"/)[0]} ${said.at(-1)}` : text).replace(/\s+/g, ' ').trim();
+}
+
 /** A Claude model id -> the broker's tier name ('small' | 'mid' | 'large'); an unknown id runs on 'mid'. */
 export const tierOf = id => (/haiku/i.test(id || '') ? 'small' : /opus/i.test(id || '') ? 'large' : 'mid');
 
@@ -88,7 +95,7 @@ export async function askBroker(body, {env = process.env, fetchImpl = fetch, now
   if (data instanceof Error) return {ok: false, status: 'unreachable', detail: `the broker's answer was cut off: ${failureOf(data)} after ${Math.round((now() - started) / 1000)} s`};
   // Why (4 Nov 2026, owner via mac-32: "A check that keeps skipping in grey because its login is gone isn't measuring anything"): only the broker's budget is a skip; a lost login or a fallback that cannot answer is a failure the job shows.
   if ((answer.status === 429 || answer.status === 503) && /^budget:/.test(String(data.why || ''))) return {ok: false, status: 'capped', detail: `broker: ${data.why}`};
-  if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${data.why || data.error || answer.status}`};
+  if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${reasonOf(data.why || data.error || answer.status)}`};
   told(data);
   return {ok: true, tier: data.tier, model: data.model, ...(data.engine ? {engine: data.engine} : {}), ...(data.fellBack?.length ? {fellBack: data.fellBack} : {}), ms: Number.isFinite(data.ms) ? data.ms : null, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
 }

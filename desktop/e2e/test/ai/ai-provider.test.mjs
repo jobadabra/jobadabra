@@ -73,6 +73,10 @@ test('only a budget reason is a skip; every other refusal (a lost login, a fallb
     assert.deepEqual(await ask(() => new Response(JSON.stringify({why}), {status})), {ok: false, status, detail: `broker: ${why}`}, `${status} ${why}`);
   }
   assert.equal((await ask(() => new Response(JSON.stringify({why: 'budget:fallback-day $2 Free AI (UTC)'}), {status: 503}))).status, 'capped', 'the reason decides, not the code');
+  // Run 42040707448 (5 Nov 2026): Codex's JSON stream filled the 160 characters the agent kept, so the reason was cut at "Selec". The server's own words come first now, unescaped.
+  const message = 'Selected model is at capacity. Please try a \\"different\\" model.';
+  const stream = `codex-failed:1 {"type":"thread.started","thread_id":"01a1ac05-5b58-7850-8433-3b742820d8cb"} {"type":"turn.started"} {"type":"error","message":"${message}"} {"type":"turn.failed","error":{"message":"${message}"}}`;
+  assert.deepEqual(await ask(() => new Response(JSON.stringify({why: stream}), {status: 502})), {ok: false, status: 502, detail: 'broker: codex-failed:1 Selected model is at capacity. Please try a "different" model.'});
 });
 
 // Treats a symptom (4 Nov 2026, with mac-32): while the broker's container is swapped after a deploy, the platform answers 500 for a few seconds with no reason of the broker's
