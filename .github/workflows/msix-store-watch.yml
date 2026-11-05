@@ -1,0 +1,146 @@
+name: Release · Watch the Microsoft Store review
+run-name: Microsoft Store review check
+
+# Tells the owner on Telegram when Microsoft accepts (or refuses) the version msix-store.yml submitted, then sends the newest stable on at once (tools/msix-store-watch.mjs holds the rules).
+# Why (owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest"): certification takes hours to days, so no job waits for
+# it (GitHub's 6 h cap); the Worker starts this check hourly (app-core/src/scheduler.js, minute 20) because GitHub's own cron barely fires. Ubuntu looks for a submitted version nobody was told about;
+# only then does a Windows job read Partner Center (msstore keeps its secret in the OS keyring, as in msix-store.yml). Nothing is submitted here: a newer stable is started as msix-store.yml, the one submit path.
+# State: tags msstore-submitted- / -announced- / -autosent- / -followed-X.Y.Z (the owner's rule: state in tags, not branches).
+on:
+  workflow_dispatch:
+    inputs:
+      look_only:
+        description: 'Read Partner Center and print the verdict; send nothing, claim nothing, start nothing (the read-only proof, and "is the review done?" by hand)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:   # one check at a time; a second waits, so two runs never read the same pending version together
+  group: msix-store-watch
+  cancel-in-progress: false
+
+jobs:
+  pending:
+    name: Is a submitted version waiting for its message
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.pending.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - id: pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/msix-store-watch.mjs pending
+
+  check:
+    name: Ask Microsoft where ${{ needs.pending.outputs.version }} stands
+    needs: pending
+    if: needs.pending.outputs.version != '' || inputs.look_only
+    # msstore reconfigure stores the client secret in the OS keyring; only Windows has one on a runner (msix-store.yml, 0.8.41).
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      verdict: ${{ steps.decide.outputs.verdict }}
+      reason: ${{ steps.decide.outputs.reason }}
+    env:
+      MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_TENANT_ID }}
+      MS_STORE_SELLER_ID: ${{ secrets.MS_STORE_SELLER_ID }}
+      MS_STORE_CLIENT_ID: ${{ secrets.MS_STORE_CLIENT_ID }}
+      MS_STORE_CLIENT_SECRET: ${{ secrets.MS_STORE_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - uses: microsoft/microsoft-store-apppublisher@v1.4
+      - name: Sign in to Partner Center
+        run: msstore reconfigure --tenantId "$MS_STORE_TENANT_ID" --sellerId "$MS_STORE_SELLER_ID" --clientId "$MS_STORE_CLIENT_ID" --clientSecret "$MS_STORE_CLIENT_SECRET" --verbose   # its reason prints; GitHub masks the secrets
+      - name: Read the submission's status (read only)
+        id: decide
+        run: |
+          msstore submission status 9NW1JJ7Z90MP > status.txt 2>&1 || true
+          sed 's/\x1b\[[0-9;]*m//g' status.txt | tail -6
+          # Only a refusal needs the long form: its reason is in the submission's details.
+          if grep -qE 'Submission Status = .*(Failed|Cancel)' status.txt; then msstore submission get 9NW1JJ7Z90MP > get.txt 2>&1 || true; fi
+          node tools/msix-store-watch.mjs decide status.txt get.txt
+      - name: A status that cannot be read is a red run, never silence
+        if: steps.decide.outputs.verdict == 'unknown'
+        run: echo "::error::msstore printed no 'Submission Status' line (sign-in or API error above)."; exit 1
+
+  tell:
+    name: Tell the owner, send the newest stable on
+    needs: [pending, check]
+    if: ${{ !inputs.look_only && (needs.check.outputs.verdict == 'live' || needs.check.outputs.verdict == 'failed') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write   # the claim tags (git refs)
+      actions: write    # start msix-store.yml for the newest stable
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - name: One message, then the newest stable's submit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.pending.outputs.version }}   # the version the status was read for, never re-picked in the script
+          VERDICT: ${{ needs.check.outputs.verdict }}
+          REASON: ${{ needs.check.outputs.reason }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: node tools/msix-store-watch.mjs tell
+
+  # Why (5 Nov 2026, Gitar on #3196): the Worker and the watchdog do not page for this hourly start, so a check that fails (an expired Partner Center secret, an unreadable status) tells the owner itself,
+  # once per broken streak (claim tag msstore-watch-broken); the first hour without a failure clears it. A hand look_only run never alerts. Guard: tests/tooling/release/test_webstore_publish_pipeline.py
+  alert:
+    name: Tell the owner the Store watcher is failing
+    needs: [pending, check, tell]
+    if: ${{ failure() && !inputs.look_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write   # the streak's claim tag
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - name: One message per broken streak
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: node tools/msix-store-watch.mjs broken
+
+  clear:
+    name: A green check ends the broken streak
+    needs: [pending, check, tell]
+    # Why (5 Nov 2026, Gitar on #3196): success() is false when a needed job was skipped, and most hours skip check and tell; !failure() lets a skipped job count as a green check.
+    if: ${{ !failure() && !cancelled() && !inputs.look_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/msix-store-watch.mjs recovered

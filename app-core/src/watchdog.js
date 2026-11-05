@@ -6,6 +6,8 @@ import {CRONS, jobsFor, TITLES} from './scheduler.js';
 
 export const LABEL = 'schedule-watchdog';
 export const TITLE = '⏰ On-time starts missing';
+// Why (5 Nov 2026): the hourly Store review check is not watched either; a missed tick delays one message by an hour, and the daily starts already show a dead Worker.
+const UNWATCHED = ['pr-verdict.yml', 'msix-store-watch.yml'];
 export const GRACE_MIN = 30;     // a slot younger than this is not judged yet (the run may still be starting)
 export const WINDOW_MIN = 10;    // a Worker start appears within seconds of its slot; a hand start in the same ten minutes is accepted too
 
@@ -25,7 +27,7 @@ export function dueStarts(now = new Date(), {hours = 26, grace = GRACE_MIN, cron
       // Why (31 Oct 2026, owner, Worker cron; a8, night burn-in): the ten-minute verdict repairs would churn the hourly missing-start issue, so only the longer schedules are watched; a night burn-in pass is a start of e2e.yml of its own, keyed apart, or it would replace the three-a-day start (01:47) in this check.
       for (const job of jobsFor(cron, date)) {
         const night = job.inputs?.night_pass || '', key = night ? `${job.workflow}#night` : job.workflow;
-        if (job.workflow !== 'pr-verdict.yml' && !latest.has(key)) latest.set(key, {workflow: job.workflow, cron, at: date.toISOString(), ...(night ? {night} : {})});
+        if (!UNWATCHED.includes(job.workflow) && !latest.has(key)) latest.set(key, {workflow: job.workflow, cron, at: date.toISOString(), ...(night ? {night} : {})});
       }
     }
   }
