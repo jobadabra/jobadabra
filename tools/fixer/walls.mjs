@@ -17,6 +17,7 @@ export function gateChange(files, bytes) {
 
 /** How many Send to AI runs may start per UTC day. */
 // Why (5 Nov 2026, owner): raise the daily limit to 10 after the fourth attempt was refused in run 41955735940.
+// Why (5 Nov 2026, owner): Keep 10 a day.
 export const DAILY_RUNS = 10;
 /**
  * The CI side of the caps (the site enforces them too; mac-07 on #3086: not only there). `runs` = this workflow's workflow_dispatch runs created today (GitHub's list); `selfId` = this run.

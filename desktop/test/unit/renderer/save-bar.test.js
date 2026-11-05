@@ -59,6 +59,16 @@ test('Save all saves every tab, then says Saved and clears the dots', async () =
   assert.equal(buttons.details.classList.contains('has-drafts'), false);
 });
 
+test('while "Saved ✓" shows, the bar title no longer says anything is unsaved (#3225, owner scenario: Strategy → Save)', async () => {
+  const {bar, card, note, title} = setup();
+  card('salary', 'details', 'Strategy').edit('minSalary', '140000');
+  assert.equal(title(), '1 unsaved change in Your details');
+  await bar.saveAll();
+  assert.equal(note(), 'Saved ✓');
+  assert.equal(bar.node.hidden, false, 'the bar is still shown for the "Saved" moment');
+  assert.equal(title(), '', 'no "unsaved change" text next to "Saved ✓"');
+});
+
 test('a failed check saves nothing, keeps every draft and names the tab and field', async () => {
   const {bar, opened, card, note} = setup();
   const contact = card('contact', 'details', 'Contact', {invalid: {field: 'Email', error: 'not an e-mail address'}});
