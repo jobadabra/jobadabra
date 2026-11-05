@@ -9,7 +9,7 @@ import {NA} from '../job-row-model.js';
 const MODE_TONE = {remote: 'good', hybrid: 'info'};
 
 /** The company's logo: its initials on its hue, or a blank avatar when no company is named. Takes the row model's `who`; returns the element. */
-export function logoOf(who) {
+function logoOf(who) {
   const logo = avatar(who.name);
   const badge = el('span', `logo${who.blank ? ' is-blank' : ''}`, who.blank ? '' : logo.initials);
   badge.style.setProperty('--hue', logo.hue);

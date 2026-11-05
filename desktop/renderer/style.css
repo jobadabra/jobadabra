@@ -552,7 +552,6 @@ body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, 
 .icon-btn { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; color: var(--ink); border-radius: var(--r-sm); flex: none; }
 .icon-btn:hover { background: var(--bg); }
 
-
 /* Jobs → Board (pages/jobs-board.js): one column per stage, side by side, scrolling sideways; cards are the In conversation rows
    (.focus-item); an empty column stays narrow but still takes a drop. */
 .board { display: flex; gap: var(--sp-3); overflow-x: auto; align-items: flex-start; padding-bottom: var(--sp-3); }
