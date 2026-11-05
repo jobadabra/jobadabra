@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src import geo  # noqa: E402
-from src.sources import aggregators, careers, eures, nuts_names  # noqa: E402
+from src.sources import aggregators, careers, eures, host_pace, nuts_names  # noqa: E402
 
 _READER = careers.READER
 
@@ -155,8 +155,10 @@ class EuresTest(unittest.TestCase):
         self.assertEqual(client.asked, [])
 
     def test_with_no_table_a_code_of_the_right_shape_is_still_read(self):
+        client = Client({'Brussels': 'BE10'})
         with mock.patch.object(nuts_names, 'names', lambda fetch=None: {}):
-            self.assertEqual(eures.regions(['Brussels'], Client({'Brussels': 'BE10'})), {'Brussels': ['BE10']})
+            self.assertEqual(eures.regions(['Brussels'], client), {'Brussels': ['BE10']})
+        self.assertIn(eures.NO_LIST, client.asked[0]['system'][0]['text'], 'the question never points at a list that is not there')
 
     def test_registered_as_a_free_api_and_off_by_its_switch(self):
         self.assertIn('EURES', [name for name, _ in aggregators.sources({})])
@@ -186,7 +188,7 @@ class EuresTest(unittest.TestCase):
         try:
             time_budget.start(180, now=1000.0)
             self.assertFalse(eures.out_of_time(1000.0 + 72, now=1000.0 + 80), 'at 80 s there is room')
-            self.assertTrue(eures.out_of_time(1000.0 + 72, now=1000.0 + 100), '25 s after its start')
+            self.assertFalse(eures.out_of_time(1000.0 + 20, now=1000.0 + 90), 'a read that started early uses the time up to the AI steps, not a share of its own (#2918)')
             self.assertTrue(eures.out_of_time(1000.0 + 90, now=1000.0 + 95), 'titles reserve (70 s) + tail (15 s) before 180 s')
         finally:
             time_budget.DEADLINE = time_budget.STARTED = time_budget.BEGAN = time_budget.STAGE_END = None
@@ -306,10 +308,12 @@ class EuresTest(unittest.TestCase):
         def get(area, word, page):
             asked.append(area)
             if area == 'bg':
-                raise urllib.error.HTTPError(eures.URL, 429, 'Too Many Requests', {}, None)
+                raise refusal
             return {'jvs': [jv('a', 'Teacher', 'BG411')]}
-        found = self._read(get, {'Sofia': ['BG41']}, words=('one', 'two'))
-        self.assertEqual((len(found), eures.CUT[0], asked), (1, True, ['bg41', 'bg41', 'bg']), 'never retried: the read ends on the refusal')
+        for refusal in (urllib.error.HTTPError(eures.URL, 403, 'Forbidden', {}, None), host_pace.Busy(eures.URL, 0)):   # Busy: what a 429 past host_pace's own wait reaches a reader as
+            asked.clear()
+            found = self._read(get, {'Sofia': ['BG41']}, words=('one', 'two'))
+            self.assertEqual((len(found), eures.CUT[0], asked), (1, True, ['bg41', 'bg41', 'bg']), 'the read ends on the refusal')
 
     def test_a_first_page_that_times_out_waits_for_the_next_search(self):
         def get(area, word, page):
@@ -322,12 +326,76 @@ class EuresTest(unittest.TestCase):
         eures._early[aggregators.search_key(SEARCH)] = started
         return started
 
-    def test_a_read_still_running_when_the_stage_ends_says_so(self):
+    def test_a_read_still_running_when_the_stage_ends_says_so_and_keeps_what_it_holds(self):
         self._early_read(**{'result.side_effect': TimeoutError(), 'done.return_value': False})
+        eures.HELD[0] = [{'id': 'eures:a'}]
         with mock.patch('builtins.print') as printed:
-            self.assertEqual(eures.read(SEARCH), [])
+            self.assertEqual(eures.read(SEARCH), [{'id': 'eures:a'}])
         self.assertTrue(eures.CUT[0])
         self.assertIn('still reading', printed.call_args[0][0])
+
+    def test_a_read_that_ends_just_after_the_wait_gives_its_jobs(self):
+        self._early_read(**{'result.side_effect': [TimeoutError(), [{'id': 'eures:a'}]], 'done.return_value': True})
+        with mock.patch('builtins.print'):
+            self.assertEqual(eures.read(SEARCH), [{'id': 'eures:a'}])
+
+    def _cold_press(self, answer_at, get, wanted, words):
+        """eures() on a 135 s press with the AI's region answers saved at `answer_at` and each page taking what `get(area, word, page, clock)` adds to the clock."""
+        from src import time_budget
+        clock = [1000.0]
+
+        def ask(url, data=None, headers=None, timeout=None):
+            body = json.loads(data)
+            return get(body['locationCodes'][0], body['keywords'][0]['keyword'], body['page'], clock)
+
+        def answers(places, client=None):
+            clock[0] = 1000.0 + answer_at
+            return wanted
+        search = {'role_keywords': list(words), 'locations': {'top_tier': list(wanted), 'country_wide': [], 'abroad': []}}
+        try:
+            time_budget.start(135, now=1000.0)
+            with mock.patch.object(eures, 'time', SimpleNamespace(monotonic=lambda: clock[0])), mock.patch.object(eures, 'regions', answers):
+                return eures.eures(search, get=ask)
+        finally:
+            time_budget.DEADLINE = time_budget.STARTED = time_budget.BEGAN = time_budget.STAGE_END = None
+
+    def test_a_cold_press_reaches_every_word_and_the_next_place(self):
+        # Why (5 Nov 2026, #2918, code review): 3.7 s a cold page; a share of its own gave 5 pages: 7 words used them all on the first place, the next was never asked, though the stage takes the read at ~68 s.
+        asked = []
+
+        def get(area, word, page, clock):
+            clock[0] += 3.7
+            asked.append(area)
+            return {'jvs': [jv(f'{area}{word}', 'Teacher', 'BG411' if area == 'bg41' else 'BG421')]}
+        found = self._cold_press(20, get, {'Sofia': ['BG41'], 'Plovdiv': ['BG42']}, [f'word{n}' for n in range(7)])
+        self.assertEqual((asked.count('bg41'), asked.count('bg42') > 0, len(found) > 7), (7, True, True))
+
+    def test_a_cold_press_with_late_answers_finds_the_word_after_the_narrow_ones(self):
+        # Why (5 Nov 2026, #2918, Copenhagen): 5 board searches with no rows came first; a page with no rows answers in ~0.5 s, a full cold one in 3.7 s.
+        def get(area, word, page, clock):
+            clock[0] += 3.7 if word == 'teacher' else 0.5
+            return {'jvs': [jv('a', 'Teacher', 'BG411')] if word == 'teacher' else []}
+        found = self._cold_press(56.5, get, {'Sofia': ['BG41']}, [f'narrow{n}' for n in range(5)] + ['teacher'])
+        self.assertEqual([job['title'] for job in found], ['Teacher'], 'answers at 56.5 s (run c16) still leave 14.5 s of a 135 s press')
+
+    def test_a_person_in_toulouse_gets_jobs_of_their_region_whatever_code_the_ai_remembers(self):
+        # Why (5 Nov 2026, #2918, the owner's scenario): listed 0 near home; the same place got FRJ2 in 2 installs, FR61 in 2. The whole path: place, the AI's choice, the code, the portal, the job's area.
+        table = {'FRJ2': 'Midi-Pyrénées', 'FRJ23': 'Haute-Garonne', 'FR10': 'Ile-de-France', 'FR101': 'Paris'}
+        search = {'role_keywords': ['commercial'], 'locations': {'top_tier': ['toulouse'], 'country_wide': [], 'abroad': []}}
+        portal = {'frj2': [jv('near', 'Commercial', 'FRJ23')], 'fr': [jv('far', 'Commercial', 'FR101')]}
+
+        class Remembers(Client):
+            def create(self, **kwargs):   # answers from memory unless the code it remembers is on the list it was given
+                listed = kwargs['system'][0]['text']
+                self.answers = {'toulouse': 'FRJ2' if 'FRJ2 Midi-Pyrénées' in listed else 'FR61'}
+                return super().create(**kwargs)
+
+        def get(url, data=None, headers=None, timeout=None):
+            return {'jvs': portal.get(json.loads(data)['locationCodes'][0], [])}
+        eures.STORE.write_text(json.dumps({'toulouse': 'FR61'}))   # an install that kept the code no region has
+        with mock.patch.object(nuts_names, 'names', lambda fetch=None: table), mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'city', 'cc': 'FR'} for w in words}):
+            found = eures.eures(search, get=get, client=Remembers({}))
+        self.assertEqual([(j['id'], j['location']) for j in found], [('eures:near', 'Haute-Garonne, France')])
 
     def test_a_timeout_inside_the_read_is_a_failure_not_a_late_read(self):
         self._early_read(**{'result.side_effect': TimeoutError('the AI answer timed out'), 'done.return_value': True})

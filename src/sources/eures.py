@@ -29,19 +29,21 @@ MAX_PAGES = 6   # per role word and area: the best matches first, the rest waits
 KEEP = 100   # per area: enough near home, the next place gets its turn
 MOST = 200   # per read: a read returned 173-234 jobs before areas (#2918), so the AI steps after it keep their load
 LAST_PAGE = 3   # seconds a page asked just before the stop time still gets
-SECONDS = 25   # a read stops asking for more pages this long after its first page may go (it runs past the search's read cut, src/sources/aggregators.py CHEAP_PAST_CUT)
+SECONDS = 25   # with no run deadline, a read stops asking for more pages this long after its first page may go
 
 
 CUT = [False]   # the last read ended on its clock, not on its pages: src/sources/aggregators.py scan queues it instead of marking it read
+HELD = [[]]   # the jobs the read under way has so far: read() keeps them when that read runs past its time
 
 
 def stop_at(began):
-    """The monotonic time after which nothing more may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/unit/sources/test_three_minutes.py; 6e's
-    review): EURES runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail)."""
+    """The monotonic time after which nothing more may be asked: where the AI steps' share starts (titles reserve + tail), so EURES, which runs past the read cut, never extends the press
+    (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/unit/sources/test_three_minutes.py; 6e's review). `began` counts only with no run deadline.
+    Why (5 Nov 2026, #2918): the read started with the search is taken at the ~68 s cut, so a share of its own (18.75 s of a 135 s press, about 5 cold pages) left up to 30 s unused while
+    words and places went unasked. The run's end, not a step's share: the AI steps run in their own stage (benchmark 40504636029: a stage end of ~75 s cut every read)."""
     from .. import time_budget
-    stop = began + time_budget.part(SECONDS)
-    end = time_budget.DEADLINE   # the run's end, not a step's share: the AI steps run in their own stage (benchmark 40504636029: a stage end of ~75 s cut every read)
-    return stop if end is None else min(stop, end - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL))
+    end = time_budget.DEADLINE
+    return began + time_budget.part(SECONDS) if end is None else end - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL)
 
 
 def out_of_time(began, now=None):
@@ -60,6 +62,7 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['regions
 SYSTEM = """You give the EU's NUTS-2 statistical region that each numbered place lies in, for a town, city or area, from the regions listed below (code and name): answer its code exactly as \
 listed. The place words come from a job seeker, in any language. When a place is a whole country, a region wider than one listed region or you are unsure, answer "". Never answer a code that \
 is not listed."""
+NO_LIST = 'No list could be read: answer the NUTS 2021 code only when you are sure of it.'   # the table's fetch failed: "listed below" would point at nothing and every place come back ""
 
 
 def _read():
@@ -71,7 +74,7 @@ def _read():
 
 
 def _real(code, country, table):
-    """True for a NUTS-2 code of this country that exists; with no table (a failed fetch) its shape is all there is to check: a wrong code then costs a page each, the country is still asked."""
+    """True for a NUTS-2 code of this country that exists; with no table (a failed fetch) its shape is all there is to check: a wrong code then costs a page a word, the country is still asked."""
     return bool(NUTS2.fullmatch(code or '')) and code[:2] == country and (not table or code in table)
 
 
@@ -119,7 +122,7 @@ def _ask(words, client=None, choices=''):
     if client is None:
         return {}
     listed = '\n'.join(f'{n}. {word}' for n, word in enumerate(words, 1))
-    response = client.messages.create(model=SMALL_MODEL, max_tokens=1500, system=[{'type': 'text', 'text': f'{SYSTEM}\n\n{choices}'}],
+    response = client.messages.create(model=SMALL_MODEL, max_tokens=1500, system=[{'type': 'text', 'text': f'{SYSTEM}\n\n{choices or NO_LIST}'}],
                                       messages=[{'role': 'user', 'content': f'Places:\n{listed}'}], output_config=engine.structured(SCHEMA, SMALL_MODEL, 'low'))
     cost.side(SMALL_MODEL, response.usage)
     answer = json.loads(next(b.text for b in response.content if b.type == 'text'))
@@ -205,12 +208,13 @@ def eures(search, get=None, client=None):
     """EURES vacancies for the user's role words, kept only where a job's region code lies in one of the user's places; each carries "<area its own code names>,
     <country>" as its location (the country alone when unnamed), never the person's place word. [] with no place in the portal's countries. `get(url, data, headers)` returns the parsed JSON.
     Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that times out, or fails after jobs were read, ends the read with them and CUT set;
-    a failure with nothing read raises, so the source is reported as failed. Nothing is ever asked twice: a 401/403/429 ends the read."""
+    a failure with nothing read raises, so the source is reported as failed. A refusal (401/403) or a slow-down past host_pace's own wait (Busy) ends the read: it asks nothing again."""
     from . import aggregators
     from ..notion.search_settings import readable, terms
     get = get or aggregators._get
     began = time.monotonic()
     CUT[0] = False
+    jobs = HELD[0] = []
     if out_of_time(began):   # started past its share: nothing is asked, not even the region question (gitar-bot, #2251)
         CUT[0] = True
         return []
@@ -222,7 +226,7 @@ def eures(search, get=None, client=None):
     began = time.monotonic()
     anywhere = {geo.norm(readable(str(p))) for p in terms((search.get('locations') or {}).get('country_wide'))[:6]}
     words = _words(search)
-    jobs, seen = [], set()
+    seen = set()
     try:
         for codes in areas:
             country = codes[0][:2].upper()
@@ -294,10 +298,11 @@ def read(search):
             jobs = future.result(timeout=max(0, stop_at(time.monotonic()) - time.monotonic()) + LAST_PAGE + 1)
         except Late:
             # Why (5 Nov 2026, #2918): on Python 3.11+ Late is the builtin TimeoutError, so a timeout inside the task lands here too; only a task still running is late.
-            if future.done():
-                raise
-            CUT[0] = True
-            print('EURES: still reading when its time ended, it waits for the next search', flush=True)
-            return []
+            if not future.done():
+                jobs = list(HELD[0])
+                CUT[0] = True
+                print(f'EURES: still reading when its time ended, keeping the {len(jobs)} read so far; the rest waits for the next search', flush=True)
+                return jobs
+            jobs = future.result()
     print(f'EURES: {len(jobs)} vacanc{"y" if len(jobs) == 1 else "ies"} in your places read', flush=True)
     return jobs
