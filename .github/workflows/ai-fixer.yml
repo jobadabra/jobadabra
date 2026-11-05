@@ -335,11 +335,27 @@ jobs:
       - name: The new test must fail on an assertion without the fix and pass with it (a first run; a round is judged by the whole suites below)
         if: inputs.pr == ''
         run: bash "$FBT/tools/feedback-ai-sandbox.sh" node /fbt/tools/feedback-ai.mjs proof
-      - name: The whole suites and the lint must pass with the fix
+      # Why (5 Nov 2026, run 41963140323): the Python failure lost its output; stream and retain only redacted evidence from the trusted logger.
+      - name: Desktop suite and lint must pass with the fix
         run: |
           set -euo pipefail
-          bash "$FBT/tools/feedback-ai-sandbox.sh" bash -c 'cd desktop && npm test && npm run lint' > "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole desktop suite or the lint failed with the fix"; exit 1; }
-          bash "$FBT/tools/feedback-ai-sandbox.sh" python3 -m unittest discover -s tests >> "$RUNNER_TEMP/suite.log" 2>&1 || { echo "the whole Python suite failed with the fix"; exit 1; }
+          echo "Desktop suite: unit, guard and tooling tests, including lint. Redacted output follows."
+          bash "$FBT/tools/feedback-ai-sandbox.sh" bash -c 'cd desktop && npm test' 2>&1 | node "$FBT/tools/fixer/suite-log.mjs" desktop "$RUNNER_TEMP/desktop-suite.log"
+      - name: Python suite must pass with the fix
+        run: |
+          set -euo pipefail
+          echo "Python suite: every discovered test name, traceback and final counts. Redacted output follows."
+          bash "$FBT/tools/feedback-ai-sandbox.sh" python3 -u -m unittest discover -v -s tests 2>&1 | node "$FBT/tools/fixer/suite-log.mjs" python "$RUNNER_TEMP/python-suite.log"
+      - name: Keep the redacted proof logs, including failures
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fixer-proof-logs
+          path: |
+            ${{ runner.temp }}/desktop-suite.log
+            ${{ runner.temp }}/python-suite.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   # The only job that can push. A fresh checkout; it copies our script BEFORE applying the patch, applies the patch `fix` wrote, checks its paths again and opens a DRAFT pull request on fixer/<source>-<ref>.
   # Never merges, never marks ready, never pushes anywhere else.
