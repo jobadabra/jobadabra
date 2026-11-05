@@ -162,14 +162,14 @@ def serve(port=8080):
                 lock.release()
 
     server = http.server.ThreadingHTTPServer(('0.0.0.0', port), Handler)
+    # Why (5 Nov 2026, review and Gitar on #3222): a rollout's stop mid-run cut a search whose AI was already paid (a run is at most 14 min), and
+    # waiting on the run lock missed a call accepted but still reading its body. Non-daemon handlers: server_close() joins every accepted call.
+    server.daemon_threads = False
     # Why (5 Nov 2026, hr 6/6 try 6): as PID 1 in the container a default SIGTERM is never delivered, so Cloudflare's stop (sleepAfter, a new
     # rollout) was ignored ten times and old code kept answering after a deploy. shutdown() from the serving thread would deadlock: a thread does it.
     signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown, daemon=True).start())
     server.serve_forever()
-    # Why (5 Nov 2026, review): a rollout's stop mid-run cut a search whose AI was already paid; a run is at most 14 min.
-    server.server_close()   # no new calls; a run in progress finishes and answers the Worker before the process ends (handler threads are daemons)
-    if lock.acquire(timeout=15 * 60):   # waits for a run in progress, then lets go
-        lock.release()
+    server.server_close()   # no new calls; each accepted call (a run included) answers the Worker before the process ends
 
 
 def merge(path):

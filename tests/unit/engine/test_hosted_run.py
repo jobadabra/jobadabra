@@ -281,6 +281,38 @@ class HostedRun(unittest.TestCase):
             client.join(5)
         self.assertEqual(answers, [{'ok': True, 'status': 'ok', 'matches': 1}])   # the run finished and answered the Worker
 
+    def test_a_stop_before_an_accepted_call_reaches_its_run_still_answers_that_call(self):
+        # Why (5 Nov 2026, Gitar on jobadabra#3222): the drain waited on the run lock, so a POST accepted but still reading its body was not seen:
+        # the process ended under it and the Worker got a dropped connection. Every accepted call is answered before the process ends.
+        import signal, socket
+        from http.server import ThreadingHTTPServer
+        handlers, servers, accepted, returned = {}, [], threading.Event(), threading.Event()
+
+        class Watched(ThreadingHTTPServer):
+            def process_request(self, request, client_address):
+                super().process_request(request, client_address); accepted.set()
+
+        def make(addr, handler):
+            servers.append(Watched(('127.0.0.1', 0), handler)); return servers[0]
+
+        body = json.dumps({'site': 'https://s.test', 'token': 'HR1.r.t'}).encode()
+        with mock.patch.object(hosted_run, 'run', return_value={'status': 'ok', 'matches': [1, 2]}), \
+                mock.patch('signal.signal', side_effect=lambda sig, h: handlers.__setitem__(sig, h)), mock.patch('http.server.ThreadingHTTPServer', make):
+            serving = threading.Thread(target=lambda: (hosted_run.serve(), returned.set()), daemon=True)
+            serving.start()
+            while not servers or signal.SIGTERM not in handlers:
+                time.sleep(0.01)
+            with socket.create_connection(('127.0.0.1', servers[0].server_port), timeout=10) as call:
+                call.sendall(b'POST /run HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n' % len(body))
+                self.assertTrue(accepted.wait(5))
+                handlers[signal.SIGTERM](signal.SIGTERM, None)   # the stop arrives while the call still reads its body
+                self.assertFalse(returned.wait(0.5))
+                call.sendall(body)
+                answer = b''.join(iter(lambda: call.recv(4096), b''))
+            self.assertTrue(returned.wait(5))
+        self.assertIn(b'200 OK', answer.split(b'\r\n')[0])
+        self.assertEqual(json.loads(answer.split(b'\r\n\r\n', 1)[1]), {'ok': True, 'status': 'ok', 'matches': 2})
+
 
 if __name__ == '__main__':
     unittest.main()
