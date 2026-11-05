@@ -5,6 +5,8 @@
 import {availableLetter} from './letter-availability.js';
 import {createAsks, runMomentOf} from './asks.js';
 import {takeCrashMark} from './crash-monitors.js';
+import {openInPlaces} from './open-matches.js';
+import {onSearchDone} from './search-report.js';
 import {takeoverOffered, claudeAutoStart} from './claude-ready.js';
 import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 import {noteReport, observe, pageKeyOf} from './ladder/rung5-takeover-teach.js';
@@ -135,6 +137,7 @@ export function registerExtServerHandlers(ctx) {
   ipcMain.handle('asksPending', () => asks.pending());
   ipcMain.handle('asksAnswer', (_, kind, how) => asks.answer(String(kind), String(how)));
   pipeline.onRunEnd(info => { if (!testRun()) asks.moment(runMomentOf(info)); });   // Find jobs pressed by the person and failed
+  onSearchDone(info => { if (!testRun() && !DEMO) void asks.search(info, () => openInPlaces(storage)); });   // a finished press with few jobs in the person's places
   if (!testRun() && takeCrashMark(storage)) asks.moment('crashed');   // the app crashed last time (lib/crash-monitors.js left the mark)
   // How an application ended (submitted clean / assisted / by Claude, or failed and where): one fixed word per finished application, by board. Never from a test run.
   terminals.onOutcome(session => {
