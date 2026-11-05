@@ -12,7 +12,7 @@ import {registerInterviewHandlers} from '../../../lib/interview-handlers.js';
 const fresh = () => {
   const called = [];
   const real = name => async (...args) => { called.push(`${name}(${args})`); return 'REAL'; };
-  const host = {shell: {openExternal: real('openExternal'), openPath: real('openPath'), showItemInFolder: real('showItemInFolder')}, clipboard: {writeText: real('writeText'), readImage: real('readImage')}, app: {setLoginItemSettings: real('setLoginItemSettings')}};
+  const host = {shell: {openExternal: real('openExternal'), openPath: real('openPath'), showItemInFolder: real('showItemInFolder')}, clipboard: {writeText: real('writeText'), readImage: real('readImage')}, app: {setLoginItemSettings: real('setLoginItemSettings'), setAsDefaultProtocolClient: real('setAsDefaultProtocolClient')}};
   return {host, called};
 };
 
@@ -68,8 +68,9 @@ test('a test run records each door and never calls the real one; the spool gets 
   assert.equal(await host.shell.openPath('/Users/someone/Documents'), '', 'openPath answers "" like a real success');
   host.shell.showItemInFolder('/tmp/x'); host.clipboard.writeText('secret'); host.app.setLoginItemSettings({openAtLogin: true});
   assert.equal(host.clipboard.readImage().isEmpty(), true, 'the owner\'s clipboard is never read');
+  assert.equal(host.app.setAsDefaultProtocolClient('jobadabra'), true, 'protocol registration stays inside the test');
   assert.deepEqual(called, [], 'no real call was made');
-  assert.deepEqual(globalThis.__jpHost.map(entry => entry.api), ['shell.openExternal', 'shell.openPath', 'shell.showItemInFolder', 'clipboard.writeText', 'app.setLoginItemSettings', 'clipboard.readImage']);
+  assert.deepEqual(globalThis.__jpHost.map(entry => entry.api), ['shell.openExternal', 'shell.openPath', 'shell.showItemInFolder', 'clipboard.writeText', 'app.setLoginItemSettings', 'clipboard.readImage', 'app.setAsDefaultProtocolClient']);
   const lines = fs.readFileSync(path.join(spool, 'host.log'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.equal(lines[0].api, 'shell.openExternal');
   assert.deepEqual(lines[0].args, ['https://ch.indeed.com/job/1']);

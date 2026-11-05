@@ -45,3 +45,16 @@ test('packaged Mac and Windows installers register the same scheme the handler a
   const {build} = JSON.parse(fs.readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
   assert.deepEqual(build.protocols, [{name: 'Jobadabra', schemes: ['jobadabra']}]);
 });
+
+test('a packaged test run records protocol registration before startup instead of changing the host', async () => {
+  const before = process.env.JOBADABRA_E2E, oldLog = globalThis.__jpHost;
+  process.env.JOBADABRA_E2E = '1'; globalThis.__jpHost = [];
+  try {
+    const w = world(); await Promise.resolve();
+    assert.ok(!w.calls.includes('jobadabra'), 'the real OS registration is never called');
+    assert.deepEqual(globalThis.__jpHost.map(entry => entry.api), ['app.setAsDefaultProtocolClient']);
+  } finally {
+    if (before === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = before;
+    globalThis.__jpHost = oldLog;
+  }
+});
