@@ -136,6 +136,8 @@ def parse_jobs(source, source_url, label, roles=True):
     for j in walk(Page(source).schemas,'JobPosting'):
         if roles and not ROLE.search(j.get('title','')): continue
         swiss=posting_places(j)
+        # Why (5 Nov 2026, #3242): a jobs.ch posting with no jobLocation is on a Swiss board, so it is Swiss; its town comes from the page below.
+        if not swiss and towns and not j.get('jobLocation'): swiss=['Switzerland']
         if not swiss: continue
         ident=re.search(r'/detail/([0-9a-f-]{36})',str(j.get('url') or ''))
         if swiss==['Switzerland'] and ident and towns.get(ident.group(1)): swiss=[towns[ident.group(1)]]

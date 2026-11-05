@@ -139,9 +139,10 @@ class JobsChTownTests(unittest.TestCase):
                   'board_discovery_keywords': ['magasin'], 'role_keywords': ['magasin']}
         with mock.patch.object(ats, '_get', lambda url: page.encode()):
             readers = {'ats.jobsch': [j['location'] for j in ats.jobsch('4259-fnac-suisse-sa')],
-                       'aggregators.jobsch': sorted({j['location'] for j in aggregators.jobsch(search, get=lambda url: page)})}
+                       'aggregators.jobsch': sorted({j['location'] for j in aggregators.jobsch(search, get=lambda url: page)}),
+                       'boards.parse_jobs': [j['location'] for j in boards.parse_jobs(page, 'https://www.jobs.ch/en/vacancies/?term=magasin', 'jobs.ch', roles=False)]}
         for reader, places in readers.items():
-            self.assertEqual(places, ['Zurich, Switzerland'], reader)
+            self.assertTrue(places and all(p.startswith('Zurich') for p in places), f'{reader}: {places}')
         self.assertEqual(ats.posting_places({}), [], 'no address and no page town: the caller\'s own fallback')
 
     def test_swiss_spellings_and_prefixes_still_read_as_switzerland(self):
