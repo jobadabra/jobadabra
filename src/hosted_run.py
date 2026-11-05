@@ -2,11 +2,11 @@
 Spec private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §1-2. The run token is the only credential: it asks the Worker for the state (GET /api/hosted/state), is the AI key
 (x-api-key on /api/ai), and posts the one result (POST /api/hosted/result). No Notion, Gmail, Telegram or user key is ever here. Guard: tests/unit/engine/test_hosted_run.py.
 """
-import hashlib
 import io
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from .build_stamp import build_of
 from .sources.ats import USER_AGENT
 
 SEARCH_ARGS = ['--mode', 'scheduled', '--enrich-max', '100', '--score-max', '60', '--auto-kit-max', '0', '--budget', '600']
@@ -24,16 +25,8 @@ MAX_MATCHES = 200
 DEFAULT_CONFIG = Path(__file__).resolve().parents[1] / 'config'
 
 
-def build_of(root):
-    """-> 12 hex: a hash of every .py file under `root` (path and bytes), so it moves when any engine module does, with nothing to bump by hand."""
-    digest = hashlib.sha256()
-    for file in sorted(Path(root).rglob('*.py')):
-        digest.update(str(file.relative_to(root)).encode() + b'\0' + file.read_bytes() + b'\0')
-    return digest.hexdigest()[:12]
-
-
-# Why (5 Nov 2026, hr 6/6 try 4): the instance's image digest was the new one, yet the 500 had the old body. The Worker logs this on every run, so the code that answered is named.
-BUILD = build_of(Path(__file__).resolve().parent)
+# Why (5 Nov 2026, hr 6/6 try 4 and 6): the instance's image digest was the new one, yet the 500 had the old body. The Worker logs this on every run and, since try 6, compares it with the stamp the deploy built (src/build_stamp.py).
+BUILD = build_of(Path(__file__).resolve().parent)   # src/build_stamp.py: the deploy prints the same stamp
 
 
 def _call(url, token, method='GET', data=None):
@@ -145,7 +138,7 @@ def serve(port=8080):
             self.send_response(code); self.send_header('Content-Type', 'application/json'); self.end_headers(); self.wfile.write(data)
 
         def do_GET(self):
-            self.reply(200, {'ok': True, 'build': BUILD, 'started': started})
+            self.reply(200, {'ok': True, 'build': BUILD, 'started': started, 'busy': lock.locked()})   # busy: the runner never restarts it mid-run
 
         def do_POST(self):
             try:
@@ -168,7 +161,15 @@ def serve(port=8080):
             finally:
                 lock.release()
 
-    http.server.ThreadingHTTPServer(('0.0.0.0', port), Handler).serve_forever()
+    server = http.server.ThreadingHTTPServer(('0.0.0.0', port), Handler)
+    # Why (5 Nov 2026, hr 6/6 try 6): as PID 1 in the container a default SIGTERM is never delivered, so Cloudflare's stop (sleepAfter, a new
+    # rollout) was ignored ten times and old code kept answering after a deploy. shutdown() from the serving thread would deadlock: a thread does it.
+    signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown, daemon=True).start())
+    server.serve_forever()
+    # Why (5 Nov 2026, review): a rollout's stop mid-run cut a search whose AI was already paid; a run is at most 14 min.
+    server.server_close()   # no new calls; a run in progress finishes and answers the Worker before the process ends (handler threads are daemons)
+    if lock.acquire(timeout=15 * 60):   # waits for a run in progress, then lets go
+        lock.release()
 
 
 def merge(path):
