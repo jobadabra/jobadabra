@@ -170,23 +170,14 @@ def jobsch(search, get=None):
             towns = ats.jobsch_towns(markup if isinstance(markup, str) else markup.decode('utf-8', 'replace'))
             fresh = 0
             for j in listed:
-                places = j.get('jobLocation') or []
-                places = places if isinstance(places, list) else [places]
-                where = []
-                for spot in places:   # not `place`: that is the search's town, still used for the next page and the fallback below
-                    address = (spot or {}).get('address') or {}
-                    town = re.sub(r'^[A-Z]{2} ', '', str(address.get('addressLocality') or address.get('addressRegion') or '').strip())   # "ZH Herrliberg" -> "Herrliberg"
-                    if town and town not in where:
-                        where.append(town)
                 url = j.get('url') or ''
                 key = re.search(r'/detail/([0-9a-f-]{36})', url)
                 if not (url and j.get('title') and key) or key.group(1) in seen:
                     continue
                 seen.add(key.group(1))
-                if not where and towns.get(key.group(1)):
-                    where.append(towns[key.group(1)])
+                where = ats.posting_places(j, towns.get(key.group(1), ''))
                 fresh += 1
-                jobs.append(_job('jobsch', key.group(1), j['title'], (j.get('hiringOrganization') or {}).get('name'), ', '.join(f'{town}, Switzerland' for town in where) or (f'{place} area, Switzerland' if place else 'Switzerland'),   # a search in a town: near it
+                jobs.append(_job('jobsch', key.group(1), j['title'], (j.get('hiringOrganization') or {}).get('name'), ', '.join(where) or (f'{place} area, Switzerland' if place else 'Switzerland'),   # a search in a town: near it
                                  url, str(j.get('datePosted') or '')[:10], j.get('description')))
             if len(listed) < boards.PAGE_SIZE or not fresh:
                 break

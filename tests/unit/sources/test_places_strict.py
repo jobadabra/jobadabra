@@ -112,6 +112,31 @@ class JobsChTownTests(unittest.TestCase):
         for reader, places in readers.items():
             self.assertTrue(places and all(p.startswith('Morges') for p in places), f'{reader}: {places}')
 
+    def test_a_posting_abroad_keeps_its_own_country_in_every_jobsch_reader(self):
+        # Tester card f9e48e (#3181): a job abroad was listed as "Switzerland" and scored as local. Both jobs.ch readers appended ", Switzerland" to
+        # every town and fell back to "Switzerland" for an address with no town, whatever country the posting's address named.
+        def posting(n, address):
+            return {'@type': 'JobPosting', 'title': 'Field Engineer', 'url': f'https://www.jobs.ch/en/vacancies/detail/{n}0000000-0000-4000-8000-000000000000/',
+                    'hiringOrganization': {'name': 'Acme', 'sameAs': 'https://www.jobs.ch/en/companies/4259-4259-fnac-suisse-sa/'},
+                    'jobLocation': {'@type': 'Place', 'address': {'@type': 'PostalAddress', **address}}}
+        page = '<script type="application/ld+json">' + json.dumps({'@graph': [
+            posting(1, {'addressLocality': 'Konstanz', 'addressCountry': 'DE'}), posting(2, {'addressCountry': 'DE'}),
+            posting(3, {'addressLocality': 'Lyon', 'addressCountry': {'name': 'France'}}), posting(4, {'addressLocality': 'Basel', 'addressCountry': 'CH'})]}) + '</script>'
+        search = {'locations': {'top_tier': ['basel'], 'country_wide': ['switzerland'], 'abroad': []}, 'jobs_board_search_queries': ['engineer'],
+                  'board_discovery_keywords': ['engineer'], 'role_keywords': ['engineer']}
+        with mock.patch.object(ats, '_get', lambda url: page.encode()):
+            readers = {'ats.jobsch': [j['location'] for j in ats.jobsch('4259-fnac-suisse-sa')],
+                       'aggregators.jobsch': [j['location'] for j in aggregators.jobsch(search, get=lambda url: page)][:4]}
+        for reader, places in readers.items():
+            self.assertEqual(sorted(places), ['Basel, Switzerland', 'Germany', 'Konstanz, Germany', 'Lyon, France'], reader)
+
+    def test_swiss_spellings_and_prefixes_still_read_as_switzerland(self):
+        for country in ('CH', 'ch ', 'Schweiz', 'Suisse', {'name': 'Switzerland'}):
+            job = {'jobLocation': [{'address': {'addressLocality': 'ZH Herrliberg', 'addressCountry': country}}]}
+            self.assertEqual(ats.posting_places(job), ['Herrliberg, Switzerland'], country)
+        self.assertEqual(ats.posting_places({'jobLocation': {'address': {'addressCountry': 'CH'}}}, 'Vevey'), ['Vevey, Switzerland'])
+        self.assertEqual(ats.posting_places({'jobLocation': {'address': {'addressCountry': 'CH'}}}), [], 'no town: the caller\'s own fallback')
+
     def test_the_board_search_asks_every_page_in_the_same_town(self):
         # The posting loop reused the name `place`: page 2 searched location=<a posting's address>, not the user's town.
         asked = []

@@ -1,5 +1,6 @@
 // tools/feedback-ai.mjs, the script of the "Send to AI" run (feedback-ai.yml): what it reads, what it redacts again, what may never be posted in public, the before/after proof and what it tells the site.
 // Nothing here calls the site, GitHub or the AI broker: fetchers are fakes and the broker's answers are not needed (edit-codex.mjs has its own test).
+// Guard: safety — without it the run that reads the owner's feedback could hand a token to the AI's code, push outside fd-ai/, or start on a pull request.
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -203,16 +204,18 @@ test('scenario: the leak scan stops a pull request text or a new file that copie
 });
 
 // The workflow's trust split (mac-07 on #3086). The AI's edits are applied as DATA by edit-codex.mjs; the only job that RUNS the AI's code (`prove`) holds no token of any kind, and the only job that can push (`publish`) never runs it.
-const WORKFLOW = fs.readFileSync(path.resolve(import.meta.dirname, '../../../../.github/workflows/feedback-ai.yml'), 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
-const job = name => {
-  const from = WORKFLOW.indexOf(`\n  ${name}:\n`);
+const uncommented = file => fs.readFileSync(file, 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
+const WORKFLOW = uncommented(path.resolve(import.meta.dirname, '../../../../.github/workflows/feedback-ai.yml'));
+const CLOSED = uncommented(path.resolve(import.meta.dirname, '../../../../.github/workflows/feedback-ai-closed.yml'));
+const job = (name, text = WORKFLOW) => {
+  const from = text.indexOf(`\n  ${name}:\n`);
   assert.ok(from >= 0, `job ${name}`);
-  const rest = WORKFLOW.slice(from + 1), next = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/);
+  const rest = text.slice(from + 1), next = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/);
   return next < 0 ? rest : rest.slice(0, next + 1);
 };
 
 test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds no token; `fix` and the reporting jobs run only our code; only `publish` pushes, as a draft, to fd-ai/, and nothing merges', () => {
-  const guard = job('guard'), fix = job('fix'), prove = job('prove'), publish = job('publish'), failed = job('report-failure'), closed = job('closed');
+  const guard = job('guard'), fix = job('fix'), prove = job('prove'), publish = job('publish'), failed = job('report-failure'), closed = job('closed', CLOSED);
   // prove: runs the AI's new test and the suites. Read-only permission, no secret, no GitHub token, no run token (id-token is not granted at all).
   assert.match(prove, /permissions:\n      contents: read\n/);
   assert.doesNotMatch(prove, /id-token|contents: write|pull-requests: write|actions: write|secrets\.|github\.token|GH_TOKEN|PR_TOKEN|x-access-token|ACTIONS_ID_TOKEN|CI_APP/, 'nothing to steal where the AI\'s code runs');
@@ -285,8 +288,20 @@ test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds n
   assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the hash is checked before the patch is applied');
   assert.doesNotMatch(prove, /cache:/);
   assert.match(failed, /case "\$WHY" in/);
-  // closed (pull_request_target): never checks out the pull request's code.
-  assert.doesNotMatch(closed, /ref: \$\{\{|head\.sha|secrets\./);
+});
+
+test('a pull request\'s close is told to the site from its own file, so a close draws 1 row and the click\'s 6 jobs never start on a pull request', () => {
+  // Why (5 Nov 2026, owner: "Yes, rename + fold"): the close lived in feedback-ai.yml, so every pull request's close drew its 6 click-only jobs as skipped rows.
+  assert.doesNotMatch(WORKFLOW, /pull_request/, 'feedback-ai.yml starts only on the site\'s click');
+  assert.match(WORKFLOW, /^on:\n  workflow_dispatch:\n/m);
+  assert.match(CLOSED, /^on:\n  pull_request_target:\n    types: \[closed\]\n\npermissions: \{\}\n/m, 'only a close, with no permission by default');
+  assert.equal([...CLOSED.slice(CLOSED.indexOf('\njobs:')).matchAll(/^  [^\s#][^:\n]*:/gm)].length, 1, 'one job, one row');
+  const closed = job('closed', CLOSED);
+  assert.match(closed, /if: startsWith\(github\.event\.pull_request\.head\.ref, 'fd-ai\/'\)/);
+  assert.match(closed, /permissions:\n      contents: read\n      id-token: write( +#[^\n]*)?\n    steps:/, 'read, plus the run token the site checks; nothing else');
+  assert.match(closed, /persist-credentials: false/);
+  assert.match(closed, /run: node tools\/feedback-ai\.mjs closed\n/);
+  assert.doesNotMatch(closed, /ref: \$\{\{|head\.sha|secrets\.|github\.token|GH_TOKEN|npm|pip|git (push|fetch|checkout)/, 'never the pull request\'s code, no secret, no install');
 });
 
 test('our scripts that hold a token import nothing the AI may edit (src/, tests/, desktop/renderer, desktop/lib, desktop/test), except the one file the workflow copies before the AI step', () => {

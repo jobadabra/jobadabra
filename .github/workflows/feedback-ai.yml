@@ -1,5 +1,5 @@
 name: AI fixer
-run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
+run-name: Send to AI ${{ inputs.ref }}
 
 # "Send to AI" on a feedback card of the site (owner, 3 Nov 2026: "send it to a claude session (on the CI using the ai-broker), that the outcome should be a PR with the fix"). ONE run per click of the owner's;
 # the site starts it (workflow_dispatch, input `ref` only, with the timers' token), at most 3 a day and 1 at a time. The run reads that one report from the site with GitHub's own run token (audience
@@ -10,23 +10,20 @@ run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
 # The AI's code and the tokens never meet (7/7 reviews, 3 Nov 2026; Gitar, mac-07). Trust by job: `guard` counts today's runs (read-only token); `fix` runs only OUR code (the AI's edits are applied as data by
 # edit-codex.mjs, scanned and written as a patch; our script runs from a copy made before the AI step, because desktop/lib is a folder the AI may edit); `prove` runs the AI's new test and the suites inside a container with no network
 # and no runner token (tools/feedback-ai-sandbox.sh), after installing the dependencies from main's files; `publish` (the only job that can push) starts from a fresh checkout, copies our script first, applies only the patch and calls the site without the write tokens in that call's environment;
-# `report-failure` tells the site when any job broke. The last job tells the site when such a pull request is merged or closed (pull_request_target, so it runs THIS file from main and never checks out the pull request's code).
-# Guard: desktop/test/tooling/ci/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch or pull_request_target).
+# `report-failure` tells the site when any job broke. When such a pull request is merged or closed, feedback-ai-closed.yml tells the site (its own file since 5 Nov 2026, so a close draws 1 row, not 7).
+# Guard: desktop/test/tooling/ci/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch; merged/closed also from this file until the site's follow-up of plan 2026-11-05-check-names 3/4).
 on:
   workflow_dispatch:
     inputs:
       ref:
         description: "The feedback's 16-character handle (the site sends it)"
         required: true
-  pull_request_target:
-    types: [closed]
 
 permissions: {}
 
 jobs:
   # The CI side of the caps (the site enforces 1 at a time and 3 a day too; mac-07 on #3086: not only there). A READ-only token counts this workflow's runs of the UTC day; no AI, no write.
   guard:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -51,7 +48,6 @@ jobs:
 
   fix:
     needs: guard
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -281,7 +277,7 @@ jobs:
   # Tells the site when any job above broke, so the card shows why instead of staying "AI running" (the site also sends a silent run back after an hour). A fresh checkout and no write token: nothing the AI wrote runs here.
   report-failure:
     needs: [guard, fix, prove, publish]
-    if: always() && github.event_name == 'workflow_dispatch' && (needs.guard.result == 'failure' || needs.fix.result == 'failure' || needs.prove.result == 'failure' || needs.publish.result == 'failure')
+    if: always() && (needs.guard.result == 'failure' || needs.fix.result == 'failure' || needs.prove.result == 'failure' || needs.publish.result == 'failure')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -335,24 +331,3 @@ jobs:
           bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           github-token: ${{ github.token }}
-
-  # The site learns that the pull request of a card was merged or closed; it moves the card to Fixed (waiting for the release) or back to new. Runs only for a branch fd-ai/<ref> of THIS repository;
-  # `merged` only when GitHub says so (tools/feedback-ai.mjs closedReport). Nothing from the pull request is read except its number, branch name and merged flag.
-  closed:
-    if: github.event_name == 'pull_request_target' && startsWith(github.event.pull_request.head.ref, 'fd-ai/')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v5   # pull_request_target checks out the BASE branch: the pull request's own code never runs here
-        with:
-          sparse-checkout: |
-            tools
-            desktop/lib
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - name: Tell the site
-        run: node tools/feedback-ai.mjs closed

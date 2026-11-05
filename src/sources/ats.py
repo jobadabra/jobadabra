@@ -223,7 +223,7 @@ from .ats_oracle import (ORACLE_ALL_PAGE, ORACLE_ALL_PAGES, ORACLE_TERM_PAGE, sp
 from .ats_phenom import (PHENOM_PAGE, PHENOM_ALL_PAGES, PHENOM_TERM_PAGES, phenom_site, phenom)  # noqa: E402,F401
 from .ats_eightfold import (EIGHTFOLD_STEP, EIGHTFOLD_ALL_PAGES, EIGHTFOLD_TERM_PAGES, eightfold_site, eightfold)  # noqa: E402,F401
 from .ats_slugs import slug_ok  # noqa: E402,F401
-from .ats_jobsch import (JOBSCH_PAGES, JOBSCH_COMPANY, jobsch_company, _postings, _unescape, jobsch_towns, jobsch_find, jobsch)  # noqa: E402,F401
+from .ats_jobsch import (JOBSCH_PAGES, JOBSCH_COMPANY, jobsch_company, _postings, _unescape, jobsch_towns, posting_places, jobsch_find, jobsch)  # noqa: E402,F401
 
 
 # Boards whose list has no description, and how to fetch one posting's (ats -> fn(slug, job_id) -> text).

@@ -14,7 +14,7 @@ A workflow's name is its layer, and the job says what it runs, so a row reads `I
 | Guard | `pr-gate.yml` |
 | Tooling | `harness.yml` |
 | PR | `pr-labels.yml`, `pr-closed-cancel.yml` |
-| AI fixer | `feedback-ai.yml` |
+| AI fixer | `feedback-ai.yml` (the site's click), `feedback-ai-closed.yml` (a PR's close, 1 row) |
 
 The required status "All checks passed" is unchanged.
 
@@ -27,8 +27,9 @@ The required status "All checks passed" is unchanged.
 Waiting on the owner, not a PR yet: the 2 PR labels rows become 1 only after the owner's answer on Gitar after its trial.
 
 ## Progress
-- [ ] 1/4 names by layer
-- [ ] 2/4 the site trusts the close file
-- [ ] 3/4 the AI fixer draws 1 row
+- [x] 1/4 names by layer (#3208) (proof: tests/tooling/ci/test_pr_verdict.py @89bdb07)
+- [x] 2/4 the site trusts the close file (jobadabra-web#381) (proof: none: the test is in jobadabra-web, test/unit/admin/feedback-ai.test.js @3719418)
+- [x] 3/4 the AI fixer draws 1 row (proof: desktop/test/tooling/ci/feedback-ai.test.js)
+- [ ] 3/4, second half, in jobadabra-web: merged and closed trusted only from `feedback-ai-closed.yml` (drops the `TODO(AI)` there)
 - [ ] 4/4 the Tooling check keeps its guards
 - [ ] Drop the old names from `pr-verdict.yml` once no open PR runs them (12 Nov 2026)

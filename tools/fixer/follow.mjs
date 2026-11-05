@@ -5,6 +5,7 @@
 import {execFileSync, spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {scrub} from '../context/lib.mjs';
@@ -67,7 +68,7 @@ const api = (...args) => JSON.parse(gh('api', ...args) || 'null');
 /** The real ports of a follow run (gh, ship-watch, Telegram); `flush()` waits for the alerts still in flight. */
 export function realIo({pr, repo, env, deadline}) {
   const pending = [];
-  const dir = fs.mkdtempSync(path.join(env.RUNNER_TEMP || '/tmp', 'follow-')), log = path.join(dir, 'ship.log'), out = env.GITHUB_OUTPUT;
+  const dir = fs.mkdtempSync(path.join(env.RUNNER_TEMP || os.tmpdir(), 'follow-')), log = path.join(dir, 'ship.log'), out = env.GITHUB_OUTPUT;
   fs.writeFileSync(log, '');
   let child;
   async function* lines() {
