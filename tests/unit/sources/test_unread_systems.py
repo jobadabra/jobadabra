@@ -23,7 +23,15 @@ class TeamtailorOwnDomainTests(unittest.TestCase):
         with mock.patch.object(ats, '_get', lambda url: asked.append(url) or RSS), mock.patch.object(careers, '_public', return_value=True):
             self.assertEqual(ats.teamtailor('acme')[0]['title'], 'Fotograf:in')
             self.assertEqual(ats.teamtailor('jobs.example.ch')[0]['location'], 'Zurich, Switzerland')
-        self.assertEqual(asked, ['https://acme.teamtailor.com/jobs.rss', 'https://jobs.example.ch/jobs.rss'])
+        self.assertEqual(asked, [f'https://acme.teamtailor.com/jobs.rss?per_page={ats.TEAMTAILOR_PAGE}', f'https://jobs.example.ch/jobs.rss?per_page={ats.TEAMTAILOR_PAGE}'])
+
+    def test_a_board_over_the_default_page_is_read_whole(self):
+        def board(url):
+            size = 100 if 'per_page' not in url else 459   # the feed's own default page, and the whole board
+            items = ''.join(f'<item><guid>{n}</guid><title>Job {n}</title><link>https://jobs.example.ch/jobs/{n}</link></item>' for n in range(size))
+            return f'<rss><channel>{items}</channel></rss>'.encode()
+        with mock.patch.object(ats, '_get', board):
+            self.assertEqual(len(ats.teamtailor('acme')), 459)
 
     def test_an_address_that_is_not_public_or_not_a_plain_host_is_refused(self):
         with mock.patch.object(ats, '_get', side_effect=AssertionError('asked')):

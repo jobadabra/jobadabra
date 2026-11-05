@@ -23,6 +23,8 @@ from .ats_conditional import HEAD, Unchanged, conditional, conditional_state, fi
 USER_AGENT = f'Jobadabra/0.1 (personal job search; contact via GitHub {PUBLIC_REPO})'
 TIMEOUT = 20
 DESCRIPTION_LIMIT = 12000
+# Why (5 Nov 2026, #2915): the feed answers 100 jobs unless told otherwise and `page=2` repeats them, so a big board's other jobs were never seen (one board: 100 of 459).
+TEAMTAILOR_PAGE = 1000
 
 
 def _fixture(folder, url):
@@ -179,7 +181,7 @@ def teamtailor(slug):
         url = f'https://{slug}/jobs.rss'
     else:
         url = f'https://{slug}.teamtailor.com/jobs.rss'
-    root = ET.fromstring(_get(url))
+    root = ET.fromstring(_get(f'{url}?per_page={TEAMTAILOR_PAGE}'))
     ns = {'tt': 'https://teamtailor.com/locations'}
     jobs = []
     for item in root.iter('item'):
@@ -258,7 +260,8 @@ URL_PATTERNS = [
     ('teamtailor', r'([\w-]+)\.teamtailor\.com'),
     ('join', r'join\.com/companies/([\w-]+)'),
     ('umantis', r'(recruitingapp-\d{2,6})\.umantis\.com'),
-    ('workday', r'([\w-]+)\.(wd\d{1,2})\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)'),
+    # Why (5 Nov 2026, #2915): clusters run to three digits (wd502); `wd\d{1,2}` dropped those boards, as describe.py's `wd\d+` never did.
+    ('workday', r'([\w-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)'),
     # Oracle Recruiting Cloud: tenant, region and site number, written `tenant.region.SITE` (src/sources/ats_oracle.py)
     ('oracle', r'([\w-]+)\.fa\.([a-z0-9]{2,8})\.oraclecloud\.com/hcmUI/CandidateExperience/(?:[a-z]{2}(?:[-_][A-Za-z]{2})?/)?sites/([\w-]+)'),
 ]

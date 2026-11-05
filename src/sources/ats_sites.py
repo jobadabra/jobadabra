@@ -34,7 +34,7 @@ def workday_terms(search=None):
 
 def _split_workday(slug):
     tenant, cluster, site = slug.split('.', 2)
-    if not re.fullmatch(r'wd\d{1,2}', cluster) or not re.fullmatch(r'[\w-]+', tenant) or not re.fullmatch(r'[\w-]+', site):
+    if not re.fullmatch(r'wd\d+', cluster) or not re.fullmatch(r'[\w-]+', tenant) or not re.fullmatch(r'[\w-]+', site):
         raise ValueError('not a Workday slug')
     return tenant, cluster, site
 

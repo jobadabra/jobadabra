@@ -28,6 +28,12 @@ class SlugShapeTests(unittest.TestCase):
             self.assertFalse(ats.slug_ok(system, ''))
             self.assertFalse(ats.slug_ok(system, None))
 
+    def test_a_workday_cluster_of_any_length_is_one_board(self):
+        for cluster in ('wd3', 'wd12', 'wd103', 'wd502'):
+            slug = f'acme.{cluster}.Careers'
+            self.assertEqual(ats.detect(f'https://acme.{cluster}.myworkdayjobs.com/en-US/Careers/job/Designer_R1'), ('workday', slug))
+            self.assertTrue(ats.slug_ok('workday', slug))
+
 
 if __name__ == '__main__':
     unittest.main()
