@@ -28,7 +28,7 @@ function rig({now, realNow} = {}) {
     sections.set(`${job.id}:📝 Application kit`, '```json\n{"eligible":true,"answers":[]}\n```');
     return job;
   };
-  return {make, add, apps, events, advance: ms => { time += ms; }, fail: () => { failed = true; }};
+  return {make, add, apps, events, advance: ms => { time += ms; }, fail: () => { failed = true; }, setSection: (id, state) => sections.set(`${id}:Background Apply`, JSON.stringify(state))};
 }
 async function prepared(r, job = r.add(), mode = 'auto', opts = config) {
   const store = r.make(), row = await store.queue(job.url, `session-${job.id}`, mode, {...opts, mode});
@@ -255,4 +255,44 @@ test('a human receipt on a later job uses real time after the wait clock moved',
   offset += 60000;
   wall += 16 * 60000;
   assert.equal((await later.store.humanReceipt(later.job.url, later.session, 'owned-browser', wall - 16 * 60000)).ok, false, 'an old real press is still refused');
+});
+
+// Why (5 Nov 2026, owner's screenshot: a Full automation batch showed Lufthansa "Needs you · Try again" and GLOCK as "Background automation"): both jobs had an
+// earlier run's hand-off, and queue returned it, so the new run never launched and kept the old mode (spec 2026-11-05-applying-redesign.md). The run through the
+// controller and its poll: background-apply-controller.test.js.
+test('a job applied to again after Stop, Cancel, a quit or a mode change starts a new run in the new mode; every other hand-off stays with the person', async () => {
+  for (const reason of ['stopped', 'cancelled', 'app_closed', 'mode_changed']) {
+    const r = rig(), job = r.add(), store = r.make();
+    const first = await store.queue(job.url, 'old-run', 'fill', {...config, mode: 'fill'});
+    await store.claim(job.url, first.session, 'owned-browser');
+    await store.handoff(job.url, first.session, 'owned-browser', reason);
+    const again = await r.make().queue(job.url, 'new-run', 'auto', config);
+    assert.deepEqual([again.session, again.state, again.mode, again.manualOverride, again.reason ?? ''], ['new-run', 'queued', 'auto', false, ''], `${reason}: a new run`);
+    assert.equal((await r.make().claim(job.url, 'new-run', 'owned-browser')).ok, true, `${reason}: the new run launches`);
+  }
+  // Open in my browser / review requested: the person may have submitted it themselves; a bot check, an unknown press, a page that needs the person: theirs to settle.
+  for (const reason of ['opened_in_browser', 'review_requested', 'captcha_preflight', 'captcha_runtime', 'submission_outcome_unknown', 'bot_check_unknown', 'sign_in_required', 'needs_user', 'attempt_already_reserved']) {
+    const r = rig(), job = r.add(), store = r.make();
+    const first = await store.queue(job.url, 'held', 'auto', config);
+    await store.claim(job.url, first.session, 'owned-browser');
+    await store.handoff(job.url, first.session, 'owned-browser', reason);
+    const again = await r.make().queue(job.url, 'new-run', 'auto', config);
+    assert.deepEqual([again.session, again.reason, again.manualOverride], ['held', reason, true], `${reason}: kept for the person`);
+  }
+});
+
+test('a job whose press was reserved never starts over, even when a Stop saved its hand-off without the attempt', async () => {
+  const r = rig(), {store, job, session} = await prepared(r);
+  r.advance(600000);
+  assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, config)).submit, true);
+  await store.handoff(job.url, session, 'owned-browser', 'stopped');
+  assert.ok((await r.make().queue(job.url, 'new-run', 'auto', config)).attempt, 'the attempt on the state');
+  const s2 = r.make(), j2 = r.add('2'), p2 = await prepared(r, j2);
+  r.advance(600000);
+  assert.equal((await p2.store.reserve(j2.url, p2.session, 'owned-browser', ready, config)).submit, true);
+  const app = r.apps.get(j2.url);
+  // A state saved from before the reservation (what a Stop racing the press writes): no attempt, reason stopped, but the reservation event stands.
+  const raw = {version: 1, session: p2.session, mode: 'auto', chosenAt: config.chosenAt, state: 'needs_user_handoff', manualOverride: true, reason: 'stopped', owner: 'owned-browser'};
+  r.setSection(app.id, raw);
+  assert.equal((await s2.queue(j2.url, 'new-run', 'auto', config)).session, p2.session, 'the reservation event keeps the old run');
 });
