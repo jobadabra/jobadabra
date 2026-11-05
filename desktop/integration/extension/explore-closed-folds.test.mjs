@@ -1,10 +1,11 @@
+// Guard: release — without it the AI persona lists and presses controls inside a closed <details> and files false alarms (#3126).
 // The explorer (and the AI user agent) lists only controls a person can reach: one inside a closed <details> is not listed, one in an open fold is, and a button in a closed fold's own heading stays (#3126: it pressed a button in a closed fold and filed a false alarm).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {observePage} from '../../lib/explore.mjs';
+import {chromium} from '../../e2e/lib/visit-page.mjs';
+import {observePage} from '../../e2e/lib/explore.mjs';
 
 test('a control in a closed fold is not listed; the fold\'s summary, an open fold\'s control and a loose control are', async () => {
-  const {chromium} = await import('playwright-core');
   const browser = await chromium.launch({headless: true});
   try {
     const page = await browser.newPage();
