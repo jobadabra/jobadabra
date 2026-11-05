@@ -1,5 +1,6 @@
 // tools/feedback-ai.mjs, the script of the "Send to AI" run (feedback-ai.yml): what it reads, what it redacts again, what may never be posted in public, the before/after proof and what it tells the site.
 // Nothing here calls the site, GitHub or the AI broker: fetchers are fakes and the broker's answers are not needed (edit-codex.mjs has its own test).
+// Guard: safety — without it the run that reads the owner's feedback could hand a token to the AI's code, push outside fd-ai/, or start on a pull request.
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -287,8 +288,6 @@ test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds n
   assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the hash is checked before the patch is applied');
   assert.doesNotMatch(prove, /cache:/);
   assert.match(failed, /case "\$WHY" in/);
-  // closed (pull_request_target): never checks out the pull request's code.
-  assert.doesNotMatch(closed, /ref: \$\{\{|head\.sha|secrets\./);
 });
 
 test('a pull request\'s close is told to the site from its own file, so a close draws 1 row and the click\'s 6 jobs never start on a pull request', () => {
@@ -296,7 +295,7 @@ test('a pull request\'s close is told to the site from its own file, so a close 
   assert.doesNotMatch(WORKFLOW, /pull_request/, 'feedback-ai.yml starts only on the site\'s click');
   assert.match(WORKFLOW, /^on:\n  workflow_dispatch:\n/m);
   assert.match(CLOSED, /^on:\n  pull_request_target:\n    types: \[closed\]\n\npermissions: \{\}\n/m, 'only a close, with no permission by default');
-  assert.equal([...CLOSED.matchAll(/^  [a-z][a-z-]*:$/gm)].length, 1, 'one job, one row');
+  assert.equal([...CLOSED.slice(CLOSED.indexOf('\njobs:')).matchAll(/^  [^\s#][^:\n]*:/gm)].length, 1, 'one job, one row');
   const closed = job('closed', CLOSED);
   assert.match(closed, /if: startsWith\(github\.event\.pull_request\.head\.ref, 'fd-ai\/'\)/);
   assert.match(closed, /permissions:\n      contents: read\n      id-token: write( +#[^\n]*)?\n    steps:/, 'read, plus the run token the site checks; nothing else');

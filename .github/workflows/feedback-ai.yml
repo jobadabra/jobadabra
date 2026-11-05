@@ -11,7 +11,7 @@ run-name: Send to AI ${{ inputs.ref }}
 # edit-codex.mjs, scanned and written as a patch; our script runs from a copy made before the AI step, because desktop/lib is a folder the AI may edit); `prove` runs the AI's new test and the suites inside a container with no network
 # and no runner token (tools/feedback-ai-sandbox.sh), after installing the dependencies from main's files; `publish` (the only job that can push) starts from a fresh checkout, copies our script first, applies only the patch and calls the site without the write tokens in that call's environment;
 # `report-failure` tells the site when any job broke. When such a pull request is merged or closed, feedback-ai-closed.yml tells the site (its own file since 5 Nov 2026, so a close draws 1 row, not 7).
-# Guard: desktop/test/tooling/ci/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch).
+# Guard: desktop/test/tooling/ci/feedback-ai.test.js; the site's side: jobadabra-web admin/feedback-ai.js (what it accepts: workflow_ref = this file on main, event workflow_dispatch; merged/closed also from this file until the site's follow-up of plan 2026-11-05-check-names 3/4).
 on:
   workflow_dispatch:
     inputs:
@@ -24,7 +24,6 @@ permissions: {}
 jobs:
   # The CI side of the caps (the site enforces 1 at a time and 3 a day too; mac-07 on #3086: not only there). A READ-only token counts this workflow's runs of the UTC day; no AI, no write.
   guard:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -49,7 +48,6 @@ jobs:
 
   fix:
     needs: guard
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -279,7 +277,7 @@ jobs:
   # Tells the site when any job above broke, so the card shows why instead of staying "AI running" (the site also sends a silent run back after an hour). A fresh checkout and no write token: nothing the AI wrote runs here.
   report-failure:
     needs: [guard, fix, prove, publish]
-    if: always() && github.event_name == 'workflow_dispatch' && (needs.guard.result == 'failure' || needs.fix.result == 'failure' || needs.prove.result == 'failure' || needs.publish.result == 'failure')
+    if: always() && (needs.guard.result == 'failure' || needs.fix.result == 'failure' || needs.prove.result == 'failure' || needs.publish.result == 'failure')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

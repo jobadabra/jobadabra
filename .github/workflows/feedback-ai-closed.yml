@@ -1,5 +1,5 @@
 name: AI fixer
-run-name: Send to AI closed ${{ github.event.pull_request.head.ref }}
+run-name: Closed ${{ github.event.pull_request.head.ref }}
 
 # The site learns that the pull request of a "Send to AI" card (feedback-ai.yml opened it as a draft on fd-ai/<ref>) was merged or closed; it moves the card to Fixed (waiting for the release) or back to new.
 # Why (5 Nov 2026, owner: "Yes, rename + fold"; plan docs/superpowers/plans/2026-11-05-check-names.md 3/4): this job lived in feedback-ai.yml beside 6 jobs that run only on a click, so every pull request's close drew
