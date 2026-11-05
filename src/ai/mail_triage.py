@@ -47,7 +47,8 @@ def subject_query(days):
 
 def inbox_query(days):
     """Every new email in the inbox outside Gmail's own Promotions, Social and Forums tabs: no words, so any language is found."""
-    return f'newer_than:{days}d in:inbox -in:chats -category:promotions -category:social -category:forums'
+    # Why (5 Nov 2026, Google demo): without -in:sent a reply you cc'd to yourself was read as theirs ("Reply received").
+    return f'newer_than:{days}d in:inbox -in:chats -in:sent -category:promotions -category:social -category:forums'
 
 
 def triage(client, items, stats=None):

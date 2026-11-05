@@ -54,6 +54,24 @@ class MailOnTheMemoryStoreTests(MailCase):
         self.run_check(google, [[]])
         self.assertEqual([e['kind'] for e in self.s.events.list(app_id=self.acme['id'])], ['Replied'])
 
+    def test_your_reply_with_a_copy_in_the_inbox_is_still_replied(self):
+        # Why (5 Nov 2026, Google demo take 3): a copy of your own reply in the inbox (you cc'd yourself) was read as their
+        # mail, so the job logged "Reply received" and Focus kept asking you to reply. Your sent mail is sent_pass's alone.
+        class WithInbox(FakeGoogle):
+            def snippet(self, message_id):
+                e = self.emails[message_id]
+                return {'id': message_id, 'from': e['from'], 'subject': e['subject'], 'snippet': e['body'][:80]}
+        google = WithInbox([{**email('s1', 'Re: the role', sender='me@x.test', body='Hi Ana, happy to talk about the Acme role.'),
+                             'to': 'Ana <ana@acme.test>', 'cc': 'me@x.test',
+                             'labels': ['SENT', 'INBOX']}])
+        # What the AI answered on the real copy: the inbox sort says job mail, the reading says a reply on Acme's job.
+        client = FakeClient([[{'index': 0, 'job': True}], [result(0, 0, 'Reply received')]])
+        with mock.patch('sys.stderr', new_callable=io.StringIO):
+            mail.run(None, google, client=client, days=2, send=[].append, calendar=False, now=NOW, state_path=self.state,
+                     stats={}, stores=self.s)
+        self.assertEqual([e['kind'] for e in self.s.events.list(app_id=self.acme['id'])], ['Replied'])
+        self.assertEqual(client.calls, [], 'the AI is never asked about your own sent mail')
+
     def test_a_calendar_interview_moves_the_job_and_sets_next_interview(self):
         start = NOW + timedelta(days=2)
         event = {'id': 'c1', 'summary': 'Acme interview', 'created': NOW.isoformat(), 'start': {'dateTime': start.isoformat()},
