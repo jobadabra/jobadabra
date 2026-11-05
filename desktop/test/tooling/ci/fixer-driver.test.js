@@ -175,3 +175,15 @@ test('an AI-fixer Telegram line goes to the owner\'s switchboard first and to th
     assert.ok(calls.some(url => url.includes('api.telegram.org/bott/')), 'the switchboard could not deliver: the old bot sends it');
   } finally { globalThis.fetch = real; }
 });
+
+test('every job that runs follow.mjs checks out the switchboard sender it imports (a sparse list without desktop/e2e/lib dies on ERR_MODULE_NOT_FOUND and the stop comment is never posted)', () => {
+  const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const sparseBefore = (text, at) => { const from = text.lastIndexOf('sparse-checkout: |', at); return from < 0 ? '' : text.slice(from, text.indexOf('- uses', from + 1)); };
+  const checks = [['.github/workflows/ai-fixer-follow.yml', 'node tools/fixer/follow.mjs'], ['.github/workflows/ai-fixer.yml', 'uses: ./.github/actions/fixer-round-end']];
+  for (const [file, anchor] of checks) {
+    const text = read(file), at = text.indexOf(anchor);
+    assert.ok(at > 0, `positive control: ${file} still has "${anchor}"`);
+    assert.match(sparseBefore(text, at), /^\s+desktop\/e2e\/lib\s*$/m, `${file}: the checkout before "${anchor}" lacks desktop/e2e/lib`);
+  }
+  assert.match(read('.github/actions/fixer-round-end/action.yml'), /desktop\/e2e\/lib/, 'the action tells its callers what to check out');
+});
