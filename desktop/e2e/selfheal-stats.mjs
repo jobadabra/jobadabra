@@ -29,13 +29,23 @@ function learnedCount() {
   try { return signaturesFromBody(JSON.parse(gh(['issue', 'list', '--label', SIGNATURE_LABEL, '--state', 'open', '--limit', '1', '--json', 'body']))[0]?.body).length; } catch { return 0; }
 }
 
+/** The noise register as closed false-positive issues. An unreadable register stops the snapshot: the judged noise would be missing and the day's precision flattering. */
+function judgedNoise() {
+  const register = tryRead('noise-register');
+  if (!register.ok) throw new Error('the noise register was not read: no snapshot this time');
+  return asIssues(Array.isArray(register.value?.entries) ? register.value.entries : []);
+}
+
+/** The weekly verdict audits (newest first) from the Verdict audit store; [] when none or unreadable (the verdicts tile then says "no audit ticked yet"). */
+function storedAudits() {
+  const stored = readState('verdict-audit', {audits: []});
+  return Array.isArray(stored?.audits) ? stored.audits : [];
+}
+
 export async function collect({days = 30} = {}) {
   const filed = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '1000', '--json', 'number,title,body,state,stateReason,labels,comments,createdAt,url']));
   // Plus what was judged noise before filing (the noise register): still a false positive of its detector, or precision would look better than it is.
-  // An unreadable register must not publish a flattering precision for the day (the judged noise would be missing): no snapshot rather than a wrong one.
-  const register = tryRead('noise-register');
-  if (!register.ok) throw new Error('the noise register was not read: no snapshot this time');
-  const judged = asIssues(Array.isArray(register.value?.entries) ? register.value.entries : []);
+  const judged = judgedNoise();
   const issues = [...filed, ...judged];
   const prs = JSON.parse(gh(['pr', 'list', '--label', 'auto-ui-fix', '--state', 'all', '--limit', '200', '--json', 'state,createdAt,comments']))
     .map(pr => ({state: pr.state, createdAt: pr.createdAt, closingNote: (pr.comments || []).at(-1)?.body || ''}));
@@ -77,7 +87,7 @@ export async function collect({days = 30} = {}) {
     }
   } catch { /* no recall this time */ }
   // How well the loop does (lib/loop-quality.mjs): the audits, the latest mutation test, and the Bug Tracker's escapes.
-  const stored = readState('verdict-audit', {audits: []}), audits = Array.isArray(stored?.audits) ? stored.audits : [];
+  const audits = storedAudits();
   let mutation = null, tracker = null, trackerWhy = '';
   try {
     const [latest] = JSON.parse(gh(['api', `repos/${repo()}/actions/artifacts?name=mutation-result&per_page=1`, '--jq', '[.artifacts[] | select(.expired | not) | {id}]']));

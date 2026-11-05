@@ -75,7 +75,7 @@ export function refreshRanking({gh = realGh, issues, now = Date.now()}) {
 
 // -> {filed, again, gone, candidate}. `gh` and `publish` (the screenshot upload: files -> {to: url}) are injected so the rules can be tested without GitHub.
 // `pendingOnly`: plan, then return the new findings to judge before filing (lib/prejudge.mjs), with no write to GitHub. `verdicts`: {id: raw verdict} from that judgement.
-export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, repo = process.env.REPO || process.env.GITHUB_REPOSITORY || '', build = '', platform = 'mac', pendingOnly = false, verdicts = null, incomplete = [], noise = {read: noiseEntries, append: appendNoise}, today = new Date().toISOString().slice(0, 10)}) {
+export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, repo = process.env.REPO || process.env.GITHUB_REPOSITORY || '', build = '', platform = 'mac', pendingOnly = false, verdicts = null, incomplete = [], today = new Date().toISOString().slice(0, 10)}) {
   const found = filesNamed(artifacts);   // every suite's folder (e2e-artifacts/e2e-artifacts-<suite>/…), or one flat folder
   const withDir = (file, items) => items.map(item => ({...item, _dir: path.dirname(file)}));
   // A suite's failed steps: only the first is a finding (the later ones are its consequences), and none when the AI had no credit (not a product problem).
@@ -146,7 +146,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   // 1. decide what each finding is: new, a repeat of an open issue (even when the AI worded it differently), or already told in this run.
   // A Windows finding the Mac already told becomes a comment on that issue ("also seen on Windows"), or nothing when the Mac one was rejected: not a second issue.
   // What was judged noise before filing in earlier runs (the pinned noise register): dropped like a person's rejection, with no new judgement.
-  const remembered = noise.read();
+  const remembered = noiseEntries();
   const rejected = [...issues, ...asIssues(remembered)];
   const planAll = findings.map(finding => { const existing = matchExisting(finding, issues); return {finding, existing, twin: !existing && platform !== 'mac' ? macTwin(finding, everything) : null}; })
     .filter(({finding, existing, twin}) => existing || twin || !suppressedBy(finding, rejected));   // a closed false positive (or one judged noise before filing) stays closed
@@ -294,7 +294,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   for (const {later, earlier} of links) { gh(['issue', 'edit', String(later), '--add-label', POSSIBLE_DUPLICATE]); gh(['issue', 'comment', String(later), '--body', sameCauseComment(earlier, runUrl)]); }
   out.sameCause = links;
   // The register remembers this run's noise: appended to the Judged noise card's store (the site keeps the newest 300 and drops a repeated id).
-  if (noiseNow.length) noise.append(noiseNow.map(({finding}) => entryOf(finding, verdictFor(finding), today)));
+  if (noiseNow.length) appendNoise(noiseNow.map(({finding}) => entryOf(finding, verdictFor(finding), today)));
   // A commit that says "Fixes #N", between the build the issue was first seen on and this one: the fix is known, so one clean run closes it (otherwise two, as before).
   const fixOf = issue => {
     const from = firstBuildSha(issue), to = testedSha(build);
