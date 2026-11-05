@@ -97,6 +97,9 @@ export const conversation = (session, messages, turn, maxSteps) => {
   return {session, ...(turn > 0 && typeof newest === 'string' ? {delta: newest} : {}), ...(turn === maxSteps - 1 ? {endSession: true} : {})};
 };
 
+/** The log line of a refused call: which call of which conversation, a delta or the full prompt, and how many turns and characters travelled. */
+export const refusedLine = (args, turn) => `  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${args.messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)`;
+
 /**
  * What the broker said about one call beyond its totals: input, output, the cached part of the input (Codex's cache, Claude's cache reads), what was written to Claude's cache and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
  * Why (5 Nov 2026, owner via mac-32: "report per call: input / cached / uncached / output"): whether an engine's own caching discounts the repeated part cannot be read from the sum.
@@ -128,7 +131,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     let answer;
     const args = {system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)};
     // Why (5 Nov 2026, run 42040707448): the reason is kept to 400 characters because 160 cut the broker's reason at "Selec". Why (5 Nov 2026, demo runs 42057090129 and 42058621304: the 5th call of a conversation got no answer in 180 s): a refused call says which call it was and how big, so the broker's side can find it.
-    try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(`  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)`); break; }   // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): 160 cut the broker's reason at "Selec"
+    try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(refusedLine(args, turn)); break; }   // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): 160 cut the broker's reason at "Selec"
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};

@@ -3,7 +3,7 @@
 // Guard: money — without it every step pays Codex's ~12k own context again (~15 steps in a 250k run instead of ~50), or the cap counts the cached part and stops a warm goal at a third of its use.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {conversation, explore} from '../../lib/explore.mjs';
+import {conversation, explore, refusedLine} from '../../lib/explore.mjs';
 import {brokerAsk} from '../../lib/agent-ask.mjs';
 import {toBrokerCall} from '../../lib/broker-client.mjs';
 import {conversationLine, runBudget, CAP_REACHED} from '../../lib/agent-tier.mjs';
@@ -96,4 +96,10 @@ test('a session names each goal\'s conversation, and the trace row keeps what th
   const result = await runSession({act, ask: async args => { sessions.push(args.session); return done; }, judgeAsk: async () => ({text: '{}', usage: {}, tier: 'mid'}), views: ['profile'], plan, knowledgeIds: [], caps: {maxSteps: 5}});
   assert.deepEqual(sessions, ['agent-g1', 'agent-g2'], 'one conversation per goal');
   assert.deepEqual([result.trace[0].cached, result.trace[0].cacheWritten, result.trace[0].counted, result.trace[0].mode], [0, 900, 16_005, 'opened']);
+});
+
+test('a refused call says which call of which conversation it was and how big', () => {
+  const messages = [{role: 'user', content: 'a'.repeat(100)}, {role: 'assistant', content: 'b'.repeat(20)}, {role: 'user', content: 'c'.repeat(30)}];
+  assert.equal(refusedLine({session: 'agent-g1', delta: 'c'.repeat(30), messages}, 4), '  call 5 of agent-g1 was refused (delta 30 chars, 3 turns, 150 chars in all)');
+  assert.match(refusedLine({messages: [{role: 'user', content: 'x'}]}, 0), /call 1 of no conversation was refused \(full prompt, 1 turns, 1 chars/);
 });
