@@ -19,9 +19,9 @@ on:
         description: 'Where the item comes from'
         required: true
         type: choice
-        options: [feedback, linear]
+        options: [feedback, linear, github]
       ref:
-        description: "The item: a feedback's 16-character handle, or a Linear issue such as JOB-123"
+        description: "The item: a feedback's 16-character handle, a Linear issue such as JOB-123, or a GitHub issue number of this repository (filed by the owner)"
         required: true
       pr:
         description: 'Set by ai-fixer-follow.yml only: a follow-up round on this draft pull request'
@@ -77,6 +77,7 @@ jobs:
       head: ${{ steps.round.outputs.head }}
       branch: ${{ steps.round.outputs.branch }}
       started: ${{ steps.start.outputs.at }}
+      failure: ${{ steps.itemfail.outputs.failure }}   # why the issue could not be read: our own line, scanned by the record job
     steps:
       - uses: actions/checkout@v5
         with:
@@ -107,6 +108,23 @@ jobs:
         with:
           name: fixer-event
           path: ${{ runner.temp }}/event/round.json
+          retention-days: 3
+      # A GitHub issue is read HERE, with this job's read-only token, and passed on as one file: the fix job (the AI) holds no token.
+      # Why (5 Nov 2026, review): a follow-up round reads its item again (the agent needs the task), so this is for rounds too.
+      - name: Read the GitHub issue (source github, a first run or a round)
+        id: item
+        if: inputs.source == 'github'
+        run: node tools/fixer/run.mjs item --source github --ref "$REF" --out "$RUNNER_TEMP/item"
+      - name: Keep why the issue could not be read (for the run's record)
+        id: itemfail
+        if: always() && inputs.source == 'github'
+        run: |
+          if [ -s "$RUNNER_TEMP/item/last-error.json" ]; then echo "failure=$(head -c 400 "$RUNNER_TEMP/item/last-error.json" | tr -d '\n\r')" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@v6
+        if: inputs.source == 'github'
+        with:
+          name: fixer-item
+          path: ${{ runner.temp }}/item/item.json
           retention-days: 3
 
   fix:
@@ -160,6 +178,11 @@ jobs:
         with:
           name: fixer-event
           path: ${{ runner.temp }}/fx/in
+      - uses: actions/download-artifact@v7   # source github: the issue, read by the guard job
+        if: inputs.source == 'github'
+        with:
+          name: fixer-item
+          path: ${{ runner.temp }}/fx/item
       # The box's dependencies come from main's own files BEFORE the loop edits anything, so an edit cannot change what is installed.
       - name: Install the app's and the engine's dependencies, build the box
         if: inputs.kind != 'conflict'
@@ -177,6 +200,7 @@ jobs:
         if: inputs.kind != 'conflict'
         env:
           LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}   # a read-only key, in this one step only
+          FIXER_ITEM: ${{ runner.temp }}/fx/item/item.json   # source github: the guard job's file
         run: node "$FBT/tools/fixer/run.mjs" read --source "$SOURCE" --ref "$REF" --out "$OUT" ${PR:+--round "$OUT/in/round.json"}
       - name: The agent loop (Sonnet level, up to 30 turns and 25 minutes)
         id: loop
@@ -377,7 +401,7 @@ jobs:
         run: |
           set -euo pipefail
           stop() { echo "::error::$1"; exit 1; }
-          [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6})$ ]] || stop "not a handle this fixer takes"
+          [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6}|github-[1-9][0-9]{0,6})$ ]] || stop "not a handle this fixer takes"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if [ -n "$PR" ]; then
@@ -483,7 +507,7 @@ jobs:
   # Why (5 Nov 2026, owner: "details about each run. What happened. Some logs, some achievements, errors"): run 1 ended needs-human with nothing to read. It holds counts, action names, file names, fixed words and one scanned sentence: the repository is public.
   record:
     needs: [guard, fix, prove, publish, after]
-    if: always() && !cancelled() && vars.AI_FIXER != 'off' && needs.guard.result == 'success'
+    if: always() && !cancelled() && vars.AI_FIXER != 'off' && (needs.guard.result == 'success' || needs.guard.outputs.failure != '')   # a cap refusal has no record; a failed read of the item does
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -495,6 +519,8 @@ jobs:
       PR: ${{ inputs.pr || needs.publish.outputs.number }}
       STARTED: ${{ needs.guard.outputs.started }}
       STOP: ${{ needs.after.outputs.reason }}
+      GUARD: ${{ needs.guard.result }}
+      FAILURE: ${{ needs.guard.outputs.failure }}
       FIX: ${{ needs.fix.result }}
       PROVE: ${{ needs.prove.result }}
       PUBLISH: ${{ needs.publish.result }}

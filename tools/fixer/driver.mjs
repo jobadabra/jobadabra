@@ -3,7 +3,7 @@
 import {fenced} from './loop.mjs';
 
 /** The only branches a round may push to: the ones ai-fixer.yml opens (a 16-hex feedback handle or a JOB id). */
-export const BRANCH = /^fixer\/(feedback|linear)-([0-9a-f]{16}|JOB-[0-9]{1,6})$/;
+export const BRANCH = /^fixer\/(?=(?:feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6}|github-[1-9][0-9]{0,6})$)(feedback|linear|github)-(.+)$/;   // each source with its own handle; the groups stay [, source, ref]
 /** Why (4 Nov 2026, owner: "a max timeout of 1h"): the whole run, first round to last, and at most 6 rounds (spec "Stop"). */
 export const LIMITS = {seconds: 3600, rounds: 6};
 export const KINDS = ['red', 'comment', 'conflict'];
