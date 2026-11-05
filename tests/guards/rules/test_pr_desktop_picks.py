@@ -1,10 +1,11 @@
-"""Guard: release — a PR's `Unit / desktop (Linux)` job runs only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
+"""Guard: release — a PR's `Unit / desktop (Linux)` and `Unit / desktop (Windows)` jobs run only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
 Why (4 Nov 2026, owner: "run only the ones that make sense"): the cases below are what that job must never lose. Replay of 40 red PR runs: spec 2026-11-04-pr-time-design.md."""
 import importlib.util
 import re
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -48,7 +49,7 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertEqual(self.picker.select(['docs/rules/change-loop.md'])['desktop'], [])   # a doc no test reads still runs nothing
 
     def test_a_change_to_what_runs_the_tests_runs_everything(self):
-        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', '.github/workflows/tests-desktop.yml', 'desktop/package.json', 'eslint.config.mjs'):
+        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', '.github/workflows/tests-desktop.yml', '.github/workflows/tests-desktop-windows.yml', 'desktop/package.json', 'eslint.config.mjs'):
             self.assertEqual(self.picker.select([changed])['desktop'], 'all', changed)
 
     def test_a_picked_run_keeps_lint_and_the_no_live_site_import(self):
@@ -56,6 +57,37 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertIn(['npm', 'run', 'lint'], commands)
         self.assertIn('./test/no-live-site.mjs', commands[-1])
         self.assertEqual(commands[-1][-1], 'test/unit/main/a.test.js')
+
+    def test_a_pr_windows_run_reaches_what_a_tool_change_breaks_there(self):
+        # 5 Nov 2026, owner: "Yes: reached tests, every PR". #3172 changed tools/fixer; its PR never ran Windows (no listed file) and main's Windows was red 12 times on this test.
+        fixer = sorted(subprocess.run(['git', 'ls-files', 'tools/fixer'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split())
+        self.assertGreater(len(fixer), 5, 'positive control: the fixer files are found')
+        for changed in fixer:
+            picked = self.picker.select([changed])['desktop']
+            self.assertIn('test/tooling/ci/fixer-loop.test.js', picked, changed)
+            plan = [command for _, command in self.check.commands('desktop', False, 'node', 'npm', picked, app_only=True)]
+            self.assertIn('test/tooling/ci/fixer-loop.test.js', plan[-1], changed)   # the tooling test it reaches stays on Windows
+            self.assertNotIn(['npm', 'run', 'lint'], plan, changed)   # lint runs on Linux on the PR and on main
+        self.assertEqual(self.check.commands('desktop', False, 'node', 'npm', [], app_only=True), [])   # a change that reaches no test runs nothing on Windows (the job ends before its install)
+
+    def test_the_windows_plan_counts_what_a_change_reaches(self):
+        # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file is all.
+        import contextlib, io, os
+        def plan(changed):
+            out = io.StringIO()
+            with mock.patch.dict(os.environ, {'JOBADABRA_AFFECTED_FILES': changed}), contextlib.redirect_stdout(out):
+                self.check.main(['--plan', '--area', 'desktop', '--app-only', '--affected-from', 'HEAD^1'])
+            return out.getvalue().strip()
+        self.assertEqual(plan('docs/rules/change-loop.md'), '0')
+        self.assertGreater(int(plan('tools/fixer/loop.mjs')), 100)
+        self.assertEqual(plan('desktop/package.json'), 'all')
+
+    def test_main_runs_every_windows_test_and_a_full_fallback_still_leaves_tooling_out(self):
+        main = [command for _, command in self.check.commands('desktop', False, 'node', 'npm', 'all')]
+        self.assertEqual(main, [['npm', 'test']])
+        full = self.check.commands('desktop', False, 'node', 'npm', 'all', app_only=True)
+        self.assertEqual(full[0][1][1], 'scripts/stage.mjs')
+        self.assertTrue(any(arg.startswith('test/') for arg in full[1][1]))
 
 
 if __name__ == '__main__':

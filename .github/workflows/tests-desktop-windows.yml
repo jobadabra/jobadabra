@@ -1,106 +1,168 @@
 name: Unit
 # The desktop tests on Windows, where the app's platform branches really run (Credential Manager instead of the Keychain, python.exe, node-pty, Git Bash for Claude Code).
-# A pull request starts it only when it changes a file with such a branch, the installer or the shell scripts (owner, 15 Oct 2026: a flow PR started ~25 jobs and PRs waited for
-# runners; a change to extension/ or a worker file cannot break Windows). The list is data: tests/tooling/ci/test_windows_paths.py fails when a desktop file that names win32,
-# process.platform or an .exe is missing from it. Not a required check (a workflow `paths:` skips never reports). On main, build.yml (CI · Tests) calls it on every push.
+# A pull request starts it on the same files as the Linux job (tests-desktop.yml: its `paths:` below are a copy, plus this workflow and tools/app-tests.py; tests/tooling/ci/test_workflow_paths.py fails
+# when they drift) and runs only the test files the change reaches (tools/affected-tests.py, the picker the Linux job uses; `tools/check.py --plan` says how many, 0 = nothing to run, the job ends green before the dependency install).
+# Why (5 Nov 2026, owner: "Yes: reached tests, every PR"; before: "do we need awlays to run all the windows servers on any PR, no matter the changes?"): since 15 Oct a hand-kept list of ~60 files started this job and then ran
+# all ~1,000 test files; #3172 changed tools/fixer, no listed file, its PR never ran Windows, and main's Windows was red 12 times on test/tooling/ci/fixer-loop.test.js (4 Nov 23:06 to 5 Nov 01:27 UTC).
+# Not a required check (a workflow `paths:` skips never reports). On main, build.yml (CI · Tests) calls it on every push, with every test file.
 on:
   workflow_call:
   pull_request:
     branches: [main]
     paths:
-      - 'desktop/integration/app/ai-plan-install.test.js'
-      - 'desktop/integration/app/ai-plan-states.test.js'
-      - 'desktop/integration/app/desktop-ai.test.js'
-      - 'desktop/integration/app/fixer-sandbox.test.js'   # its Linux-only Docker check has an explicit platform branch
-      - 'desktop/integration/results-reporter.mjs'   # separators of a test file's path (desktop/test/integration-results-reporter.test.js)
-      - 'desktop/lib/ai/codex-cli.js'
-      - 'desktop/lib/analytics.js'
-      - 'desktop/lib/app-feedback.js'
-      - 'desktop/lib/app-identity.js'
-      - 'desktop/lib/app-notify.js'
-      - 'desktop/lib/app-updates.js'
-      - 'desktop/lib/applications.js'
-      - 'desktop/lib/apply-handlers.js'
-      - 'desktop/lib/apply.js'
-      - 'desktop/lib/background-browser-download.js'
-      - 'desktop/lib/browser-reaper.js'
-      - 'desktop/lib/background-chrome.js'
-      - 'desktop/lib/backup.js'
-      - 'desktop/lib/browser-launch.js'
-      - 'desktop/lib/browser-profile.js'
-      - 'desktop/lib/claude-code.js'
-      - 'desktop/lib/claude-session.js'
-      - 'desktop/lib/cli-files.js'
-      - 'desktop/lib/cloud-handlers.js'
-      - 'desktop/lib/credentials.js'
-      - 'desktop/lib/cv.js'
-      - 'desktop/lib/desktop-ai-bridge/index.cjs'   # the helper Claude Desktop starts: DPAPI branch on Windows
-      - 'desktop/lib/desktop-ai-mcpb.js'   # builds the helper's manifest for darwin and win32
-      - 'desktop/lib/desktop-ai.js'
-      - 'desktop/lib/e2e-hidden.js'
-      - 'desktop/lib/extension-install.js'
-      - 'desktop/lib/feedback-handlers.js'
-      - 'desktop/lib/form-tab.js'
-      - 'desktop/lib/fresh-path.js'
-      - 'desktop/lib/github.js'
-      - 'desktop/lib/google-keys.js'
-      - 'desktop/lib/install-source.js'
-      - 'desktop/lib/keychain.js'
-      - 'desktop/lib/linkedin-handlers.js'
-      - 'desktop/lib/kill-tree.js'
-      - 'desktop/lib/main-window.js'
-      - 'desktop/lib/office.js'
-      - 'desktop/lib/orphans.js'
-      - 'desktop/lib/pdf-edit/fonts.js'
-      - 'desktop/lib/pipeline-env.js'
-      - 'desktop/lib/pipeline-run.js'
-      - 'desktop/lib/plan-handlers.js'
-      - 'desktop/lib/plan-install.js'
-      - 'desktop/lib/plan-readiness.js'
-      - 'desktop/lib/private-file.js'
-      - 'desktop/lib/reports.js'
-      - 'desktop/lib/sentry.js'
-      - 'desktop/lib/site-password.js'
-      - 'desktop/lib/store-data-copy-helper.mjs'
-      - 'desktop/lib/store-data-copy.js'
-      - 'desktop/lib/system-handlers.js'
-      - 'desktop/lib/tar.js'
-      - 'desktop/lib/telemetry.js'
-      - 'desktop/lib/twin.js'
-      - 'desktop/lib/two-installs-notice.js'
-      - 'desktop/lib/two-installs.js'
-      - 'desktop/lib/updater.js'
-      - 'desktop/lib/visits.js'
-      - 'desktop/lib/win-path.js'
-      - 'desktop/main.js'
-      - 'desktop/preload.cjs'
-      - 'desktop/ready-fill/fill-video.mjs'
-      - 'desktop/renderer/os.js'
-      - 'desktop/renderer/pages/office-progress.js'
-      - 'desktop/renderer/pages/startup.js'
-      - 'desktop/scripts/appx-manifest.mjs'
-      - 'desktop/scripts/desktop-ai-spike/server/index.cjs'
-      - 'desktop/scripts/python.sh'
-      - 'desktop/scripts/release-notes.sh'
-      - 'desktop/scripts/side-by-side.mjs'
-      - 'desktop/scripts/smoke-screens.mjs'
-      - 'desktop/scripts/upgrade-data-lib.mjs'
-      - 'desktop/scripts/upgrade-data-proof.mjs'
-      - 'desktop/scripts/windows-smoke.mjs'
-      - 'desktop/scripts/windows-upgrade-proof.mjs'
-      - 'desktop/start.js'
-      - 'desktop/package.json'
-      - 'desktop/package-lock.json'
-      - 'desktop/renderer/ai-plan-guide.js'
-      - 'desktop/renderer/pages/ai-engine.js'
-      - 'desktop/scripts/plan-machine.mjs'
-      - 'desktop/scripts/stage.mjs'
-      - 'desktop/scripts/sign.cjs'
-      - 'desktop/test/**'
+      - 'desktop/**'
+      - '!desktop/e2e/recorded/**'
+      - '!desktop/e2e/recorded-pending/**'
+      - '!desktop/e2e/fixtures/**'
+      - '!desktop/e2e/ladder-fixtures/**'
+      - '!desktop/e2e/widget-zoo/**'
+      - 'extension/**'
+      - 'eslint.config.mjs'
       - 'tools/check.sh'
       - 'tools/check.py'
-      - 'tools/app-tests.py'   # decides what --app-only leaves out
+      # Files outside desktop/ that its tests read (tests/tooling/ci/test_workflow_paths.py fails when one is missing).
+      - '.github/workflows/e2e.yml'
+      - '.github/workflows/feedback-ai-closed.yml'   # and this one's
+      - '.github/workflows/harness.yml'
+      - '.github/workflows/integration.yml'   # desktop/test/integration-workflow-paths.test.js reads its paths
+      - '.gitignore'
+      - 'tools/design-system/**'   # desktop/test/design-system-page.test.js builds the page with it
+      - 'docs/rules/desktop-ui.md'
+      - 'docs/map/**'   # desktop/test/guards/rules/map-check.test.js checks the map's size, links and anchors
+      - 'tools/context/**'   # the map checker it runs
+      - 'AGENTS.md'   # the same test asserts it stays under Codex's 32 KiB cap
+      - 'docs/rules/agent-detail.md'   # map links point at its anchors
+      - '.claude/skills/ui-look-and-feel/SKILL.md'
+      - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
+      - 'app-core/src/**'   # identity-rule.test.js, site-routes.test.js
+      - 'app-core/test/helpers/panel.js'   # the panel tests load the panel scripts through readPanel
+      - 'tests/fixtures/audience_cases.json'   # audience.test.js
+      - 'tests/fixtures/swiss_cases.json'
+      - 'tools/ship.sh'   # merge-baseline.test.js
+      - 'tools/clean-code-js.mjs'   # desktop/test/clean-code-js.test.js, and `npm run lint` runs it on the lines a PR adds
+      - 'docs/flows/ladder.md'   # ladder-architecture.test.js checks the rung map against the code
+      - 'docs/desktop-ai-mcp.md'   # desktop-ai-docs.test.js checks every tool is named in it
+      - 'config/notion_schema.json'
+      - 'config/notion_template.json'
+      - 'docs/notion-profile-template.md'
+      - 'docs/site-routes.json'
+      - 'tools/about-you-readers.mjs'   # desktop/test/guards/rules/about-you-readers.test.js
+      - 'docs/about-you-readers.json'   # the same test checks the file is not stale
+      - 'tools/rename-inventory.mjs'   # desktop/test/unit/main/rename-guard.test.js runs it with --check
+      - 'tools/rename-map.json'   # the map it reads
+      - 'tools/lib/rename-scan.mjs'   # the scanner it imports
+      - 'tools/store-zip.mjs'   # desktop/test/tooling/release/store-zip.test.js builds the Web Store package with it
+      - 'tools/webstore-publish.mjs'   # desktop/test/tooling/release/webstore-publish.test.js
+      - 'tools/pr-assets.mjs'   # desktop/test/pr-assets-args.test.js
+      - 'tools/pr-body-template.md'   # the same test reads the template
+      - 'docs/superpowers/specs/2026-10-10-ai-ladder.md'
+      - 'docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md'   # desktop-ai-tools.test.js checks every tool name is in the spec's table
+      - 'shared/knowledge.js'
+      - 'shared/ladder-moves.js'
+      - 'api/pro-pay.js'
+      - 'shared/telemetry.js'
+      - 'test/host-cases.json'
+      - 'src/role_kinds.py'
+      - 'src/read_methods.py'
+      - 'web/public/privacy.html'
+      - 'src/ai/inbox_fields.py'
+      - 'src/ai/score.py'
+      - 'src/notion/cron_report.py'   # desktop/test/unit/main/automation.test.js reads CRAWL_MODES from it
+      - 'src/notion/ledger.py'
+      - 'src/stores/notion_texts.py'
+      - 'tests/fixtures/eta-sequence.json'
+      - 'tests/fixtures/opportunity_origin.json'
+      - 'tests/fixtures/run-result.json'
+      - 'tests/fixtures/target_roles_cases.json'
+      - 'tests/fixtures/warning_lines.json'
+      - 'tests/fixtures/stores/conversation.json'
+      - 'tests/fixtures/stores/kit-section.md'
+      - 'tools/claim-shape.mjs'
+      - 'tools/clock-moved.mjs'   # desktop/test/clock-moved.test.js
+      - 'tools/ci-intel/**'   # desktop/test/ci-intel-*.test.js: the CI collectors' modules and jobs (moved here from jobadabra-web, 2 Nov 2026)
+      - 'tools/coverage-report.mjs'   # desktop/test/tooling/ci/coverage-report.test.js
+      - 'docs/gtm-journeys.json'   # the same test checks the journey list
+      - 'tools/commit-trailers.mjs'
+      - 'tools/decision-branches.mjs'
+      - 'tools/e2e-unit-wanted.mjs'
+      - 'tools/file-size.mjs'
+      - 'tools/flow-fresh.mjs'
+      - 'tools/pr-check-scorecard.mjs'
+      - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
+      - 'tools/feedback-released.mjs'   # desktop/test/tooling/release/feedback-released.test.js
+      - 'tools/msix-store-watch.mjs'   # desktop/test/tooling/release/msix-store-watch.test.js
+      - 'tools/feedback-ai.mjs'   # desktop/test/tooling/ci/feedback-ai.test.js
+      - 'tools/fixer/**'   # the walls, proof and leak scan feedback-ai.test.js drives through tools/feedback-ai.mjs
+      - 'tools/feedback-ai-sandbox.sh'   # desktop/test/tooling/ci/feedback-ai.test.js reads its flags
+      - 'tools/harness-stats.mjs'   # desktop/test/tooling/ci/harness-stats.test.js
+      - '.github/workflows/harness-stats.yml'   # the same test: the site key sits in the store step only
+      - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
+      - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
+      - 'tools/gate-stats-upload.mjs'
+      - 'tools/free-ai-eval.mjs'
+      - 'tools/free-ai-eval-claude.mjs'
+      - 'tools/free-ai-eval-metrics.mjs'
+      - 'tools/free-ai-form-list.mjs'
+      - 'tools/free-ai-form-applicants.mjs'
+      - 'tools/free-ai-writing-cases.mjs'
+      - 'tools/free-ai-writing-cases-forms.mjs'   # split from free-ai-writing-cases.mjs (ac, branch ai-tier-new-steps); a desktop test imports them
+      - 'tools/free-ai-writing-cases-interview.mjs'
+      - 'tools/free-ai-writing-eval.mjs'
+      - 'tools/free-ai-writing-judge.mjs'
+      - 'tools/free-ai-writing-pairwise.mjs'
+      - 'shared/free-ai-models.js'
+      - 'shared/free-ai-translate.js'
+      - 'tools/hardcoded-page-words.mjs'
+      - 'tools/journey-gate.mjs'
+      - 'tools/ladder-gate.mjs'
+      - 'tools/ladder-progress.mjs'
+      - 'tools/merge-baseline.mjs'
+      - 'tools/pool-rows.mjs'
+      - 'tools/pre-push-check.sh'
+      - 'tools/recorded-cases.mjs'
+      - 'tools/e2e-cause-trailer.mjs'
+      - 'tools/commit-checks.mjs'
+      - 'tools/recorded-fails-on-old.mjs'
+      - 'tools/replay-files.mjs'
+      - 'tools/rung-trailer.mjs'
+      - 'tools/new-code-comments.mjs'
+      - 'tools/unpinned-clock-allowed.txt'
+      - 'tools/unpinned-clock.mjs'
+      - 'tools/why-changed.mjs'
+      - 'tools/lanes-check.mjs'
+      - 'tools/e2e-reliability-check.mjs'
+      - 'tools/e2e-step-timings.mjs'
+      - 'tools/main_e2e_state.py'
+      - '.github/workflows/prompt-cases.yml'
+      - '.github/workflows/prompt-cases-night.yml'
+      - 'src/ai/insights_text.py'
+      - 'src/ai/mail_config.py'
+      - 'src/ai/prep.py'
+      - 'src/ai/rejection.py'
+      - 'src/ai/writing_rules.py'
+      - 'src/sources/board_check.py'
+      - 'tests/fixtures/mail_eval.json'
+      - 'tools/free-ai-form-asks.mjs'
+      - 'tools/free-ai-form-cases.mjs'
+      - 'tools/prompt-cases-codex.mjs'
+      - 'tools/prompt-cases-live.mjs'
+      - 'tools/prompt-cases-night.mjs'
+      - 'tools/prompt-cases.json'
+      - 'tools/prompt-cases.mjs'
+      - 'app-core/src/answer-declarations.js'
+      - 'app-core/src/answer-examples.js'
+      - 'app-core/src/answer-facts.js'
+      - 'app-core/src/cv-facts.js'
+      - 'app-core/src/extension.js'
+      - 'app-core/src/writing-rules.js'
+      - 'app-core/src/written-answer.js'
+      - 'tools/sentry-fixer/lib.mjs'
+      - 'tools/spec-proof.mjs'
+      - 'app-core/src/ai-prices.js'
+      - 'app-core/src/report.js'
+      - '.github/workflows/tests-desktop.yml'
       - '.github/workflows/tests-desktop-windows.yml'
+      - 'tools/app-tests.py'   # decides what the full run leaves out (--app-only)
 
 permissions:
   contents: read
@@ -124,20 +186,40 @@ jobs:
     defaults:
       run:
         shell: bash   # `npm test` globs test/*.test.js, which pwsh would hand to node unexpanded
+    env:
+      # A PR: leave out lint, and run the files its change reaches (HEAD^1 is the PR's base). Main (build.yml calls this file on every push): everything, as the empty string says.
+      CHECK_ARGS: ${{ github.event_name == 'pull_request' && '--app-only --affected-from HEAD^1' || '' }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2   # a PR's merge commit and its base: HEAD^1
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      # Why (5 Nov 2026, owner: "Yes: reached tests, every PR"): the picker needs node (its data and e2e readers), so this comes after setup-node. The output is a count, or the word all.
+      - name: Which test files this change reaches
+        id: plan
+        run: |
+          # shellcheck disable=SC2086  # CHECK_ARGS is several words
+          tests="$(python tools/check.py --plan --area desktop $CHECK_ARGS | tail -n 1)"
+          case "$tests" in all | [0-9]*) ;; *) tests=all ;; esac   # anything else runs everything
+          echo "tests=$tests" >> "$GITHUB_OUTPUT"
+          echo "Windows runs: $tests desktop test files (main runs all)"
+          if [ "$tests" = "0" ]; then echo "No desktop test file is reached by this change: nothing to run on Windows." >> "$GITHUB_STEP_SUMMARY"; fi
       # Install exactly what a developer (and the release workflow) has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild.
       # Only Electron's large binary is skipped, as the tests don't start it. tools/pre-push-check.sh blocks `--omit` here.
       - run: npm ci
+        if: steps.plan.outputs.tests != '0'
         working-directory: desktop
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       # Why (4 Nov 2026, owner: "Leave them out"; PR time 1/2): a PR's Windows run was the slowest job on 10 of 25 PRs. Lint reads the same files on Linux, and the tooling tests are git-spawn bound
-      # here (one file 109 s, 10 s on Linux). A PR leaves both out; both still run on Linux on the PR, and on Windows after each merge.
-      - run: bash tools/check.sh --area desktop ${{ github.event_name == 'pull_request' && '--app-only' || '' }}
+      # here (one file 109 s, 10 s on Linux). A PR leaves lint out; a PR's full fallback (`all`: a dependency file, the test runner) also leaves out the tooling tests; both still run on Windows after each merge.
+      # Why (5 Nov 2026, owner: "Yes: reached tests, every PR"): a tooling test the change reaches stays in the picked list (#3172: test/tooling/ci/fixer-loop.test.js).
+      - if: steps.plan.outputs.tests != '0'
+        run: |
+          # shellcheck disable=SC2086  # CHECK_ARGS is several words
+          bash tools/check.sh --area desktop $CHECK_ARGS
