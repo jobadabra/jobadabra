@@ -326,6 +326,12 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT count(*) FROM feed_sources WHERE slug = 'found'").fetchone()[0], 1)
         self.assertEqual(self.db.execute('SELECT count(*) FROM feed_entries').fetchone()[0], 0)
 
+    def test_an_index_read_halfway_leaves_no_entry_behind_when_the_run_goes_on(self):
+        scout.build_index(self.db, [{'company': 'Co 0', 'ats': 'lever', 'slug': 'co0'}], lambda s, slug: job(), today='2026-10-23', carry=True)
+        broken = {'feeds': [dict(self.published['feeds'][1]), {'ats': 'lever', 'slug': 'bad', 'checked': '2026-10-22', 'company': object()}]}
+        self.assertEqual(scout_carry.seed(self.db, 'https://x/api/index', 'k', get=lambda request: broken), 0)
+        self.assertEqual([r[0] for r in self.db.execute('SELECT slug FROM feed_entries')], ['co0'])
+
     def test_an_entry_this_scout_stored_itself_is_not_replaced(self):
         scout.build_index(self.db, [{'company': 'Co 0', 'ats': 'lever', 'slug': 'co0'}], lambda s, slug: job(), today='2026-10-23', carry=True)
         scout_carry.seed(self.db, 'https://x/api/index', 'k', get=lambda request: self.published)

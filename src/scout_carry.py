@@ -132,6 +132,7 @@ def seed(db, url, key, get=None):
             print(f'Scout: restored from the published index: {added} entries, {sources} sources, {filled} mixes')
         return added
     except Exception as error:  # noqa: BLE001 — with entries of its own the run goes on; with none it stops below
+        db.rollback()
         print(f'Warning: the published index was not read for carrying ({type(error).__name__}: {error})')
         if empty:   # Why (5 Nov 2026, #2915): the last count is unknown, so any publish could shrink the index; the site only refuses a loss of more than half (2 Nov: 6,833 to 3,848)
             scout_overrun.stop_run('Scout: stopped, nothing published: no stored feeds and the published index was not read, so this run could lose feeds')
