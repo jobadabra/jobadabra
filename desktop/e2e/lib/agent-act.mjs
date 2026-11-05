@@ -29,6 +29,14 @@ export function agentAct(page) {
     },
     type: async (i, text) => { pressed = null; await tagged(i).fill(String(text || '').slice(0, 200)); await settle(page); },
     press: async key => { pressed = null; await page.keyboard.press(key); await settle(page); },
+    /** Scrolls the first visible element showing one of `quotes` into view, so the screenshot taken next shows what a note is about; false when none is on the page. */
+    reveal: async quotes => {
+      for (const quote of quotes) {
+        const spot = page.getByText(quote).filter({visible: true}).first();
+        if (await spot.count()) { await spot.scrollIntoViewIfNeeded(); return true; }
+      }
+      return false;
+    },
     go: async view => { pressed = null; if (view === 'profile') await page.click(PROFILE_NAV); else await goView(page, view); await settle(page); },
   };
 }

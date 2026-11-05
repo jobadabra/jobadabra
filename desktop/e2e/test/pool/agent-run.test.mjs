@@ -109,3 +109,22 @@ test('the second opinion sees the screen as it was when the note was made, not w
   assert.deepEqual(judged, ['shot-1']);
   assert.equal(shots, 1);
 });
+
+// Guard: data. A session's notes are what the night keeps; a read or a scroll that fails under the screen reader (the page changed under it) must not lose the notes already made (code review of the screen reader, 5 Nov 2026).
+test('the screen reader: a note is made with the picture taken after the quoted element is revealed, and a reveal that throws loses nothing', async () => {
+  const problem = {type: 'data', kind: 'wrong-result', severity: 'high', view: 'profile', title: 'Phone saved as its label', expected: 'profile-4 a saved answer is what the person typed', observed: 'The phone number now reads "Phone number".', why: 'The person loses their number.'};
+  const reader = async () => ({text: JSON.stringify({problems: [problem]}), usage: {input_tokens: 500, output_tokens: 50}});
+  const run = async reveal => {
+    const quotes = [], log = [];
+    const act = {...fakeAct(), reveal: async words => { quotes.push(words); return reveal(words); }};
+    const result = await runSession({act, ask: script([done('worked'), done('worked'), done('worked')]), judgeAsk: judge('agrees'), screenAsk: reader, views: ['profile', 'jobs', 'focus'], plan, knowledgeIds: ['profile-4'], caps: {maxSteps: 30},
+      shoot: async () => 'png', log: line => log.push(line), session: {id: 'night-2', snapshot: 'abc1234'}});
+    return {result, quotes, log};
+  };
+  const fine = await run(async () => true);
+  assert.deepEqual(fine.quotes[0], ['Phone number'], 'the picture is taken after the first quoted word was brought into view');
+  assert.equal(fine.result.findings.length, 1);
+  const broken = await run(async () => { throw new Error('node detached'); });
+  assert.equal(broken.result.findings.length, 1, 'the note is kept with the picture as it is');
+  assert.ok(broken.log.some(line => /could not bring "Phone number" into view/.test(line)));
+});
