@@ -85,7 +85,7 @@ test('a run that ends each way tells the card the matching words through the rec
     const part = path.join(dir, 'part.json'), output = path.join(dir, 'output.txt');
     fs.writeFileSync(part, JSON.stringify(partOf({loop: {steps: [], ...loop}, brief: BRIEF})));
     fs.writeFileSync(output, '');
-    const run = spawnSync('node', [path.join(ROOT, 'tools/fixer/record.mjs'), 'build', '--part', part, '--out', path.join(dir, 'record')], {encoding: 'utf8', env: {...process.env, GITHUB_OUTPUT: output, SOURCE: 'feedback', REF, ROUND: '0', STARTED: new Date().toISOString(), GUARD: 'success', FIX: results.fix, PROVE: results.prove, PUBLISH: results.publish, ...extra}});
+    const run = spawnSync('node', [path.join(ROOT, 'tools/fixer/record.mjs'), 'build', '--part', part, '--out', path.join(dir, 'record')], {encoding: 'utf8', env: {...process.env, GITHUB_OUTPUT: output, SOURCE: 'feedback', REF, ROUND: '0', STARTED: '2026-11-05T10:00:00Z', GUARD: 'success', FIX: results.fix, PROVE: results.prove, PUBLISH: results.publish, ...extra}});
     assert.equal(run.status, 0, run.stderr);
     const out = Object.fromEntries(fs.readFileSync(output, 'utf8').trim().split('\n').map(line => line.split('=')));
     return cardBody({ref: REF, repo: 'o/r', pr: extra.PR || '', verdict: out.verdict, blocked: out.blocked});
