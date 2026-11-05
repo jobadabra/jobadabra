@@ -21,5 +21,6 @@ export async function viaSwitchboard({event, text, html = false, state, level}, 
 /** Tells the switchboard the sender posted with its old bot (Admin shows "sent without switchboard"). Never throws. */
 export async function reportFallback(event, env = process.env, fetcher = fetch) {
   if (!env.SELFHEAL_PUBLISH_KEY) return;
-  try { await post({event, fallback: true}, env, fetcher); } catch { /* a report that fails changes nothing */ }
+  // Why (5 Nov 2026, nt 3/4b): the alert was already delivered by the old bot; a report that fails only leaves Admin's "sent without switchboard" count one short, and must never fail the release.
+  try { await post({event, fallback: true}, env, fetcher); } catch { /* see Why above */ }
 }
