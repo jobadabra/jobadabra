@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import './journeys-letter-fallback.test.js';
+import './journeys-email-buttons.test.js';
 import '../../journeys-profile.js';
 import '../../journeys-cover-letter-notice.js';
 import '../../journeys-eligibility.js';
