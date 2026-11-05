@@ -11,7 +11,7 @@ import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
 import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
-import {actorEngineOf, actorTierOf, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
+import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
@@ -103,7 +103,7 @@ export async function run(ctx) {
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, plan), null, 1));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n`);
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n${conversationLine(session.trace)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
     // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId || (shapeId ? `shape ${shapeId}` : '')}, kept)));

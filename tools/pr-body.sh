@@ -23,20 +23,24 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   # A PR that changes a screen opens WITH its before/after images (owner, 28 Sep and 13 Oct 2026; #774 opened without them, 14 Oct): an image in the body, or a line
   # "No screenshots: <why>" when nothing visible changed (an API route in site/src). Screens: the app's window, the site's pages, the extension's pages and styles.
   screens="$(git diff --name-only "$base"..HEAD | grep -E '^(desktop/renderer/|admin/|api/|shared/|workers/www/|web/public/)|^(desktop|extension)/.*\.(html|css)$' | head -3 | paste -sd ' ' - || true)"
-  if [ -n "$screens" ] && ! grep -qiE '!\[[^]]*\]\([^)]+\.(png|jpe?g|gif|webp)\)|<img |^No screenshots: .{8,}' "$summary"; then
-    echo "pr-body: this PR changes a screen ($screens) but the summary has no before/after image: add them (memory feedback-ui-pr-before-after: node tools/pr-assets.mjs pr-assets-<branch> <png>... publishes a git tag, NEVER a release), or a line \"No screenshots: <why>\" when nothing visible changed" >&2; exit 2
+  if [ -n "$screens" ] && ! grep -qiE '!\[[^]]*\]\([^)]+\.(png|jpe?g|gif|webp)\)|<img |^No (screenshots|visible change): .{8,}' "$summary"; then
+    echo "pr-body: this PR changes a screen ($screens) but the summary has no before/after image: add them (memory feedback-ui-pr-before-after: node tools/pr-assets.mjs pr-assets-<branch> <png>... publishes a git tag, NEVER a release), or a line \"No screenshots: <why>\" or \"No visible change: <why>\" when nothing visible changed" >&2; exit 2
   fi
   # A site page is always visible (owner, 24 Oct 2026, jobadabra-web #74/#75: "why doesn't the PR include before/after screenshots?"): a change to a web/public or admin
-  # page file (html, css, js) never gets "No screenshots: <why>"; it needs the images. They are hosted in the repo that owns the PR (pr-assets.mjs --repo=<owner/repo>).
+  # page file (html, css, js) never gets "No screenshots: <why>"; it needs the images. 5 Nov 2026, owner: "the screenshots on the PRs in jobadabra-web has nothing to do with the changes":
+  # a change that draws nothing says "No visible change: <why>" instead, so a reader-only PR does not shoot a page it never touched. They are hosted in the repo that owns the PR (pr-assets.mjs --repo=<owner/repo>).
   pages="$(git diff --name-only "$base"..HEAD | grep -E '^(web/public|admin)/.*\.(html|css|js)$' | head -3 | paste -sd ' ' - || true)"
+  # Only a .js file can change without drawing (a reader, a data shape): a changed .html or .css is a drawn change and always needs the images.
+  drawn="$(git diff --name-only "$base"..HEAD | grep -E '^(web/public|admin)/.*\.(html|css)$' | head -1 || true)"
+  [ -z "$drawn" ] && grep -qiE '^No visible change: .{8,}' "$summary" && pages=""
   if [ -n "$pages" ] && ! grep -qiE '!\[[^]]*\]\([^)]+\.(png|jpe?g|gif|webp)\)|<img ' "$summary"; then
-    echo "pr-body: this PR changes a site page ($pages): \"No screenshots:\" is not allowed for it; add the before/after images (live page vs your branch, 1440px and 390px) in a | What changed | Before | After | table: node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo> hosts them in the repo that owns the PR; shoot the page with page-shot.mjs in jobadabra-web (tools/pr-body-template.md)" >&2; exit 2
+    echo "pr-body: this PR changes a site page ($pages): \"No screenshots:\" is not allowed for it. Either the change draws something: add the before/after images of the changed section only (page-shot.mjs --clip '<selector>', live page vs your branch) in a | What changed | Before | After | table; or it draws nothing (a reader or data .js file, never an .html or .css one): a line \"No visible change: <why, what the page still shows>\". Never shoot a page the change does not touch to pass this check. Hosting: node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo> hosts them in the repo that owns the PR; shoot the page with page-shot.mjs in jobadabra-web (tools/pr-body-template.md)" >&2; exit 2
   fi
   # Every image in a row of | What changed | Before | After | (owner, 17 Oct 2026, #1290: "just screens, it's not clear"): tools/pr-screens.py, the same check CI runs on the body.
   python3 "$(dirname "$0")/pr-screens.py" < "$summary" || { echo 'pr-body: the screens are not in the | What changed | Before | After | table (tools/pr-body-template.md)' >&2; exit 2; }
   # A change to the desktop window carries the 6 design checks, ticked on the after-shot (owner, 17 Oct 2026: the design system, docs/rules/desktop-ui.md;
   # the block is in tools/pr-body-template.md). "No screenshots: <why>" (nothing drawn changed) needs none.
-  if git diff --name-only "$base"..HEAD | grep -q '^desktop/renderer/' && ! grep -qE '^No screenshots: ' "$summary"; then
+  if git diff --name-only "$base"..HEAD | grep -q '^desktop/renderer/' && ! grep -qE '^No (screenshots|visible change): ' "$summary"; then
     ticked="$(sed -n '/Design checks/,$p' "$summary" | grep -cE '^[[:space:]]*- \[[xX]\] ' || true)"
     [ "$ticked" -ge 6 ] || { echo "pr-body: this PR changes the desktop window but has $ticked of the 6 design checks ticked: copy the \"Design checks\" block from tools/pr-body-template.md and tick each one you checked on the after-shot; fix the screen for any that fails (docs/rules/desktop-ui.md)" >&2; exit 2; }
   fi

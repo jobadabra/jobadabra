@@ -10,7 +10,7 @@ from ..notion.ledger import REPLY
 from . import cost, mail_triage
 from .mail_config import OUTREACH, TZ
 from .mail_leads import TRACKABLE, _from_email, interview_lead, new_lead
-from .mail_lines import _head, _label, _short, _who, ask
+from .mail_lines import _head, _job_name, _label, _short, _who, ask
 from .mail_match import ENDED, _about_tracked, _ambiguous, _by_mention, _names_it, _names_person, _sender_org
 from .mail_read import _field, _unread_invitation, _when, classify, extra_query, query, verified_feedback
 from .mail_record import changes_readable, gmail_link, record
@@ -94,18 +94,18 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
         if not result.get('relevant'):
             continue  # not about your applications: marked seen, never listed (a receipt or newsletter is not a finding)
         if row:
-            note(email, 'reviewed', _label(row), link='')  # an outcome below replaces this: it says what was done
+            note(email, 'reviewed', _job_name(row), link='')  # an outcome below replaces this: it says what was done
         if row and result.get('relevant') and re.search(r'transcript|recording', email['subject'], re.I):
             lines.append(tgcard.block(_head(row, 'Transcript'), escape(email['subject'][:90]),
                                       tgcard.fact('Next step', 'download it and send it to me for an interview review')))
         if result.get('kind') == 'Other':
-            note(email, 'reviewed', _label(row) if row else (result.get('company') or ''), 'nothing to record')
+            note(email, 'reviewed', _job_name(row) if row else (result.get('company') or ''), 'nothing to record')
             continue
         if result.get('kind') == OUTREACH:
             if not row:
-                made = new_lead(stores, client, model, email, apps, stats, on_new)
+                made, lead_row = new_lead(stores, client, model, email, apps, stats, on_new)
                 lines += made
-                note(email, 'tracked', result.get('company') or 'recruiter lead', 'new lead; nothing else changed')
+                note(email, 'tracked', _job_name(lead_row) if lead_row else (result.get('company') or 'recruiter lead'), 'new lead; nothing else changed')
                 continue
             result['kind'] = REPLY  # the same recruiter again, about a role already tracked
         if not row and result.get('kind') == 'Interview scheduled':
@@ -131,7 +131,7 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             candidates = [r for r in apps if _about_tracked([r], text)]
             suggested = guess or (candidates[0] if candidates else None)
             ask(stores, email, result, suggested, index, lines, stats)
-            note(email, 'asked', _label(suggested) if suggested is not None else (result.get('company') or ''),
+            note(email, 'asked', _job_name(suggested) if suggested is not None else (result.get('company') or ''),
                  f"needs you in Focus (nothing moved; {result.get('kind')})")
             continue
         fields = {}
@@ -142,7 +142,7 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
                          feedback_text=verified_feedback(result.get('feedback'), email['body']), email=email,
                          fields=fields)
         if not changed:
-            note(email, 'duplicate', _label(row),
+            note(email, 'duplicate', _job_name(row),
                  f"nothing new: this job already has a {result.get('kind')} event" if already
                  else f"nothing to record ({result.get('kind')})")
             continue
@@ -150,7 +150,7 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
         extra = f" · {when.astimezone(TZ):%a %d %b %H:%M}" if when else ''
         lines.append(tgcard.block(_head(row, result['kind']), escape(result['summary']) + escape(extra)))
         _short(stats, result['kind'], row, extra, changes=changes_readable(fields))
-        note(email, 'recorded', _label(row), changes_readable(fields))
+        note(email, 'recorded', _job_name(row), changes_readable(fields))
         if changed == 'Rejected' and rejected is not None:
             rejected.append((row, email))
     if stats is not None:

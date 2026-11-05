@@ -2,12 +2,13 @@
 // (lib/hosted-search.js testStart/testRead). One owner of each way's state: its `phase`, changed only by press, poll and setReady. Guard: test/unit/renderer/always-on-test-words.test.js (words); the page is checked in the demo.
 import {el, pill, liveDot} from '../components.js';
 import {$, show} from './core.js';
-import {NAME, lead, pillFor, buttonFor, chipFor, summary, startFailed, advance} from '../always-on-test-words.js';
+import {openNotifyCheck, bindNotifyCheck} from './aon-notify-popup.js';
+import {NAME, lead, pillFor, buttonFor, chipFor, summary, startFailed, advance, searchLine, searchWatch, shouldPropose, NOTIFY_CHECK, NOTIFY_SETUP} from '../always-on-test-words.js';
 
-const POLL_MS = 3000;
-// Why (5 Nov 2026, hr 5/6): each way keeps its own state, so a test running on our servers is not cut by a look at the own-accounts card, and each shows its own last result.
+const POLL_MS = 3000, SEARCH_POLL_MS = 15000;   // Why (5 Nov 2026, owner): the verdict is read fast; the first search takes minutes, so it is asked about slowly
+// Why (5 Nov 2026, hr 5/6; at): each way keeps its own state (verdict phase, steps, the first search line, whether the notifications pop-up was proposed), so a test running on our servers is not cut by a look at the own-accounts card, and each shows its own last result.
 // `turn` counts presses and resets: a read that was in flight when it changed belongs to an older test and is dropped (review of 3/3, 4 Nov 2026).
-const fresh = () => ({phase: 'idle', since: 0, after: 0, runId: 0, turn: 0, startedAt: 0, timer: 0, steps: [], url: '', message: ''});
+const fresh = () => ({phase: 'idle', since: 0, after: 0, runId: 0, turn: 0, startedAt: 0, timer: 0, steps: [], url: '', message: '', search: null, proposed: false});
 const states = {own: fresh(), ours: fresh()};
 let way = 'own', missing = [];
 const now = () => states[way];
@@ -19,6 +20,12 @@ function drawSteps() {
     row.dataset.state = step.state;
     row.append(liveDot(step.state === 'running' ? 'live' : step.state === 'failed' ? 'warn' : 'done'), el('span', 'aon-check-title', step.title), pill(chip.text, chip.tone));
     if (step.line) row.append(el('p', 'muted small aon-check-line', step.line));
+    if (step.settings) {   // the test e-mail depends on the person's own choice: the pop-up lets them fix it here
+      const unsent = step.state === 'failed' || step.state === 'skipped', check = el('button', 'secondary small aon-check-link', unsent ? NOTIFY_SETUP : NOTIFY_CHECK);
+      check.type = 'button';
+      check.addEventListener('click', () => openNotifyCheck(press, {propose: unsent ? step.line || true : false}));
+      row.append(check);
+    }
     return row;
   }));
   show(list, now().steps.length > 0);
@@ -31,9 +38,13 @@ function draw() {
   const go = $('aon-test-go');
   go.textContent = button.text;
   go.disabled = !ready || button.busy;
+  const again = $('aon-notify-test');
+  if (again) again.disabled = button.busy;   // the pop-up's Test again is as busy as the Test button: one test at a time (the site limits them)
   go.title = ready ? '' : lead(missing, way);
   show($('aon-test-open'), !!url);
   $('aon-test-result').textContent = message || summary(phase, steps, way);
+  const text = way === 'ours' && phase === 'passed' ? searchLine(now().search) : '';   // a failed test promises no e-mail
+  $('aon-test-search').replaceChildren(...(text ? [...(now().search.state === 'running' ? [liveDot('live')] : []), el('span', '', text)] : []));
   drawSteps();
 }
 
@@ -47,17 +58,47 @@ async function poll(w) {
   st.steps = read.steps?.length ? read.steps : st.steps;
   st.url = read.url || st.url;
   st.runId = read.runId || st.runId;
+  st.search = read.search || st.search;
   const next = advance({phase: st.phase, read, elapsedMs: Date.now() - st.startedAt, seen: !!st.runId, way: w});
   st.phase = next.phase; st.message = next.message || (next.phase === 'failed' && read.error ? `${read.error} Press Test again.` : '');   // a lasting refusal names its reason
+  proposeNotifications(w, next);
   if (next.again) st.timer = setTimeout(() => poll(w), POLL_MS);
+  else if (w === 'ours') watchSearch(w);
   if (w === way) draw();
+}
+
+/** The test found no way to reach the person (its notification step did not go through): once per press, the pop-up opens on this screen to propose switching one on.
+ *  Why (5 Nov 2026, owner: "propose him to enable the notification settings … directly from that screen"). Only while this way is on screen and no other dialog is open. */
+function proposeNotifications(w, next) {
+  const st = states[w], step = shouldPropose({steps: st.steps, again: next.again, proposed: st.proposed});
+  const onScreen = w === way && $('aon-test-go')?.offsetParent && !document.querySelector('dialog[open]');   // the Test row is visible: not over another page, not over another dialog (the button is still there)
+  if (!step || !onScreen) return;
+  st.proposed = true;
+  openNotifyCheck(press, {propose: step.line});
+}
+
+/** After the verdict, re-read only the first search, slowly, until it ended or 20 minutes passed since the press. It never touches the phase: the verdict was given. */
+function watchSearch(w) {
+  const st = states[w], mine = st.turn;
+  const todo = searchWatch(st.search, st.phase, Date.now() - st.startedAt);
+  if (todo === 'late') { st.search = {state: 'late', found: 0, note: ''}; if (w === way) draw(); }
+  if (todo !== 'again') return;
+  clearTimeout(st.timer);
+  st.timer = setTimeout(async () => {
+    let read;
+    try { read = await window.pilot.hostedTestRead(st.runId, st.since); } catch { read = null; }   // a failed look is asked again at the next tick
+    if (mine !== st.turn) return;
+    if (read?.search) st.search = read.search;
+    if (w === way) draw();
+    watchSearch(w);
+  }, SEARCH_POLL_MS);
 }
 
 async function press() {
   const w = way, st = states[w];
   clearTimeout(st.timer);
   const mine = ++st.turn;
-  Object.assign(st, {phase: 'starting', steps: [], url: '', message: '', runId: 0});
+  Object.assign(st, {phase: 'starting', steps: [], url: '', message: '', runId: 0, search: null, proposed: false});
   draw();
   let started;
   try { started = w === 'ours' ? await window.pilot.hostedTestStart() : await window.pilot.cloudTestStart(); } catch (error) { started = {ok: false, error: String(error?.message || error)}; }   // a rejected call ends in a verdict, not a row stuck on "Starting"
@@ -88,6 +129,7 @@ export function bindTest() {
   if (!go || go.dataset.bound) return;
   go.dataset.bound = '1';
   go.addEventListener('click', press);
+  bindNotifyCheck();
   $('aon-test-open').addEventListener('click', () => window.pilot.openExternal(now().url));
   $('aon-test-title').textContent = NAME;
   draw();

@@ -86,6 +86,26 @@ export function parseAction(text, actions = ACTIONS) {
   return input && actions.includes(input.action) ? input : {error: `action must be one of ${actions.join(', ')}`};
 }
 
+/**
+ * The fields that make a goal one Codex conversation: `session` (the goal's id), `delta` (the newest user turn alone, none on the first call; the full `messages` still travel, so a restart loses nothing) and `endSession` on the call the step cap makes the last.
+ * Why (5 Nov 2026, owner via mac-32, broker contract of jobadabra-web #409): Codex's own ~12k tokens of context were paid again on every call; one conversation per goal pays them once. A delta that is not text (a picture turn) is not sent, so the broker restarts from the full prompt.
+ */
+export const conversation = (session, messages, turn, maxSteps) => {
+  if (!session) return {};
+  const newest = messages.at(-1)?.content;
+  return {session, ...(turn > 0 && typeof newest === 'string' ? {delta: newest} : {}), ...(turn === maxSteps - 1 ? {endSession: true} : {})};
+};
+
+/** The log line of a refused call: which call of which conversation, a delta or the full prompt, and how many turns and characters travelled. */
+export const refusedLine = (args, turn) => `  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${args.messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)`;
+
+/**
+ * What the broker said about one call beyond its totals: input, output, the cached part of the input (Codex's cache, Claude's cache reads), what was written to Claude's cache and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
+ * Why (5 Nov 2026, owner via mac-32: "report per call: input / cached / uncached / output"): whether an engine's own caching discounts the repeated part cannot be read from the sum.
+ */
+export const callDetail = answer => ({input: answer.usage?.input_tokens || 0, output: answer.usage?.output_tokens || 0, cached: answer.tokens?.cached ?? null, cacheWritten: answer.tokens?.cacheWritten ?? null, counted: answer.tokens?.counted ?? null,
+  ...(answer.session?.mode ? {mode: answer.session.mode, ...(answer.session.reason ? {reason: answer.session.reason} : {})} : {})});
+
 /** What one broker call used, added to the session's tally (per tier, so a small-vs-mid run compares). `answer`: {usage, ms, tier}. */
 function spend(spent, answer) {
   const tier = answer.tier || 'unknown', row = spent.tiers[tier] ||= {calls: 0, input: 0, output: 0, ms: 0};
@@ -98,7 +118,7 @@ function spend(spent, answer) {
 // Returns {steps, bugs, trace, spent, stopped, final}: `trace` has one row per turn (what it did and what that turn cost) for the session's step record; `final` is the answer that ended the run (done), or null.
 // A goal-driven session passes `system` (its own instructions), `first` (the goal and what it knows, put before the first page view) and `extend` ({actions, properties, take(input, row) -> reply text}):
 // the extra actions never touch the page, they are answered by `take` (Why, 3 Nov 2026, AI user agents 6/12: one loop for the explorer and the agent, so a fix to the loop reaches both).
-export async function explore({act, ask, views, caps = {}, now = Date.now, log = () => {}, system = SYSTEM, first = '', extend = null}) {
+export async function explore({act, ask, views, caps = {}, now = Date.now, log = () => {}, system = SYSTEM, first = '', extend = null, session = ''}) {
   const {maxSteps = 40, maxCalls = 260, maxMinutes = 35} = caps;
   const started = now(), steps = [], bugs = [], trace = [], spent = {calls: 0, input: 0, output: 0, ms: 0, tiers: {}};
   let seen = await act.observe(), stopped = 'steps';
@@ -109,10 +129,12 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
     let answer;
-    try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; break; }   // Why (5 Nov 2026, run 42040707448): 160 cut the broker's reason at "Selec"
+    const args = {system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)};
+    // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): the reason is kept to 400 characters because 160 cut the broker's reason at "Selec". Why (5 Nov 2026, demo runs 42057090129 and 42058621304: the 5th call of a conversation got no answer in 180 s): a refused call says which call it was and how big, so the broker's side can find it.
+    try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(refusedLine(args, turn)); break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
+    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     const repeat = watch(row, was, turn);

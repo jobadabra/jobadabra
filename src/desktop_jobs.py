@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from . import digest, store
 from .ai import enrich, provenance, score
 from .notion.client import job_code
+from .stores.base import url_key
 from .sources.posting_text import label
 
 # Notion Applications Stage -> the app's status. With Notion connected the Stage is the only source of truth;
@@ -63,16 +64,18 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
     candidates, blocked = digest.eligible_jobs(db)
     fits = score.load(db)
     facts = enrich.load(db)   # the AI's reading of each posting: the skills shown as tags under a job
-    local = {(job.get('url') or '').strip(): job for job in candidates}
+    # Why (fq, 5 Nov 2026, a tester: "the same posting shows up several times in Jobs"): Notion keeps one form of a link and this Mac's cache another (a slash, the host's case,
+    # tracking parameters), so every join below goes by the one identity (stores.base.url_key), never the raw string: a raw join listed the cache copy again as unsynced.
+    local = {url_key(job.get('url')): job for job in candidates}
     # A link you added stays in the list even when a crawl would have filtered that company or that wording out.
-    asked = {(job.get('url') or '').strip() for job in candidates + blocked if (job.get('notes') or '') == 'imported'}
-    hidden = {(job.get('url') or '').strip() for job in blocked} - asked
+    asked = {url_key(job.get('url')) for job in candidates + blocked if (job.get('notes') or '') == 'imported'}
+    hidden = {url_key(job.get('url')) for job in blocked} - asked
     # Deleted here (delete_job): left out even while Notion's query still returns its trashed page (it lags; the totals settled 3 refreshes later).
-    hidden |= _deleted_urls(db)
+    hidden |= {url_key(url) for url in _deleted_urls(db)}
     # Closed on this Mac (gone from its site, or outside your places) while its Notion row still says Open: Notion is told at the end of the
     # refresh; the list leaves it out now, so the count drops as the refresh works (owner, 7 Oct 2026). A job you acted on stays (NOT_YET).
     try:
-        closed_here = {(row[0] or '').strip() for row in db.execute("SELECT url FROM jobs WHERE state IN ('unmatched', 'expired', 'closed')")}
+        closed_here = {url_key(row[0]) for row in db.execute("SELECT url FROM jobs WHERE state IN ('unmatched', 'expired', 'closed')")}
     except sqlite3.Error:   # a test's bare database
         closed_here = set()
     rows = []
@@ -93,12 +96,13 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
         seen = set()
         for item in notion_jobs:
             url, stage = item['url'], item.get('stage')
-            seen.add(url)
-            if url in hidden or (digest.company_excluded(item) and url not in asked) or (
-                    (item.get('match_status') in GONE or url in closed_here) and (stage or '') in NOT_YET):
+            ident = url_key(url)
+            seen.add(ident)
+            if ident in hidden or (digest.company_excluded(item) and ident not in asked) or (
+                    (item.get('match_status') in GONE or ident in closed_here) and (stage or '') in NOT_YET):
                 continue
             status = stage_status(stage) if stage else {'Applied': 'applied', 'Dismissed': 'dismissed'}.get(item.get('match_status'), 'unreviewed')
-            cached = local.get(url)
+            cached = local.get(ident)
             if cached and status != (cached.get('application_status') or 'unreviewed'):  # keep the cache in step
                 store.set_application_status(db, cached['id'], status)
             # Only Notion's fields: a field the list needs is a Notion column (config/notion_schema.json), never cache-only.
@@ -128,8 +132,9 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                                 job.get('application_status') or 'unreviewed', None, '', '', unsynced=True, fit_detail=_fit_detail(fit),
                                 place_unclear=unclear))
     else:
+        stage_of = {url_key(url): value for url, value in stages.items()}   # Notion's form of a link may differ from the cache's
         def notion_row(job):  # (Stage, Next step, Notion page URL); tests may pass plain stages
-            value = stages.get((job.get('url') or '').strip(), (None, '', ''))
+            value = stage_of.get(url_key(job.get('url')), (None, '', ''))
             return (tuple(value) + ('', ''))[:3] if isinstance(value, tuple) else (value, '', '')
         for job in candidates:
             fit = fits.get(job['id'])
