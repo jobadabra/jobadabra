@@ -10,13 +10,15 @@ import {clockTime} from './activity.js';
 import {$, show} from './core.js';
 import {reviewStates} from './session-needs.js';
 
+// A live-log step's time: steps of a hidden form come seconds apart.
+const secondsTime = at => new Date(at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
 // The terminal only for a Claude conversation with Claude help on; else the steps, and the terminal when "Technical log" was pressed for this session.
 const logAsked = new Set();
 export const terminalShown = item => (resumeOffered() && (item.kind || 'claude') === 'claude') || logAsked.has(item.id);
 export function renderSteps(item) {
   const steps = !(resumeOffered() && (item.kind || 'claude') === 'claude');
   show($('ss-steps-card'), steps);
-  if (steps) $('ss-steps').replaceChildren(...sessionSteps(item, reviewStates.get(item.id), {submitted: isSubmitted(item), time: clockTime}).map(step => el('li', step.tone, step.text)));
+  if (steps) $('ss-steps').replaceChildren(...sessionSteps(item, reviewStates.get(item.id), {submitted: isSubmitted(item), time: clockTime, clock: secondsTime}).map(step => el('li', step.tone, step.text)));
   $('ss-steps-log').textContent = logAsked.has(item.id) ? 'Hide technical log' : 'Technical log';
 }
 export function toggleTechnicalLog(item) { if (logAsked.has(item.id)) logAsked.delete(item.id); else logAsked.add(item.id); }

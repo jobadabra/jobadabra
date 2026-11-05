@@ -11,8 +11,11 @@
 
 import {identityServices, resolveSession} from './journey-identity.js';
 import {STUCK} from './application-journey.js';
+import * as journal from './session-journal.js';
 
 const hostOf = url => { try { return new URL(String(url)).hostname; } catch { return ''; } };
+const fillLine = ({total, left}) => (left > 0 ? `Filling the form: ${total - left} of ${total} required fields` : `All ${total} required fields filled`);
+const counted = state => state.total > 0 && Number.isFinite(state.left) && !state.account;
 
 export function createSessionFlow({terminals, review, apply, appLog, toWindow = () => {}, startClaude, claudeAllowed, closeTab, offerNotice = () => {}}) {
   const announced = new Set();   // sessions whose stuck page already got its "Claude can finish this" notice
@@ -56,6 +59,7 @@ export function createSessionFlow({terminals, review, apply, appLog, toWindow = 
     // 'incomplete' (nothing filled) stays until something is filled
     else if (state.total > 0 && !(terminals.get(state.id)?.stuck === 'incomplete' && state.left >= state.total)) { terminals.clearStuck(state.id); if (terminals.setStage(state.id, 'form')) appLog('review', `stage ${state.id}: the application form`, {fields: state.total}); }
     appLog('review', `form ${state.id}: ${state.left}/${state.total} left, ${Object.keys(state.states || {}).length} watched field(s) seen`, {states: state.states});
+    if (counted(state)) journal.note(state.id, {key: 'fill', text: fillLine(state)});   // the live log's fill count: one line per form page, updated in place
     toWindow('review', state);
   }
 

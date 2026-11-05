@@ -45,3 +45,17 @@ test('a page the ladder could not read says so once and asks the person to open 
   const other = {startedAt: 'x', status: 'running', stuck: 'other', note: 'Jobadabra could not tell how to apply: open the page'};
   assert.deepEqual(texts(sessionSteps(other, null, {time})), ['done: Opened the job in Chrome · 14:45', 'warn: Jobadabra could not tell how to apply: open the page']);
 });
+
+// Owner, 5 Nov 2026: "We should have live update log … so that the user gets a good sense even without live preview or opening in the browser" ([ap] 5/7).
+test('a hidden-browser session shows its own live log with times, never "in Chrome", its latest step as now', () => {
+  const time = at => `10:00:0${at % 10}`;
+  const steps = [{at: 1, text: 'Started in Jobadabra\'s browser · Full automation', tone: 'done'}, {at: 2, text: 'Opening the job page', tone: 'done'}, {at: 3, text: 'Filling the form: 4 of 9 required fields', tone: 'done', key: 'fill'}];
+  const filling = {status: 'running', note: 'Filling in the background', background: {mode: 'auto', state: 'filling'}, journal: steps};
+  assert.deepEqual(texts(sessionSteps(filling, {total: 9, left: 5}, {time})),
+    ['done: Started in Jobadabra\'s browser · Full automation · 10:00:01', 'done: Opening the job page · 10:00:02', 'now: Filling the form: 4 of 9 required fields · 10:00:03']);
+  const handed = {...filling, background: {mode: 'auto', state: 'needs_user_handoff'}, journal: [...steps, {at: 4, text: 'Handed to you: a bot check', tone: 'warn'}]};
+  assert.equal(texts(sessionSteps(handed, null, {time})).at(-1), 'warn: Handed to you: a bot check · 10:00:04');
+  const sent = {...filling, outcome: 'submitted', journal: [...steps, {at: 5, text: 'Submitted · marked Applied', tone: 'done'}]};
+  assert.equal(texts(sessionSteps(sent, null, {submitted: true, time})).at(-1), 'done: Submitted · marked Applied · 10:00:05', 'said once, done');
+  assert.ok(texts(sessionSteps({...filling, journal: []}, null, {time})).length, 'no log yet (the app restarted): the derived steps');
+});

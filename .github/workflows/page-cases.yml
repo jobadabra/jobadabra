@@ -97,6 +97,7 @@ on:
       - 'desktop/renderer/fragment-words.js'
       - 'desktop/renderer/human-log.js'
       - 'desktop/renderer/os.js'
+      - 'desktop/renderer/page-lines.js'
       - 'desktop/renderer/preferences-model.js'
       - 'desktop/renderer/profile-model.js'
       - 'desktop/renderer/question-filter.js'

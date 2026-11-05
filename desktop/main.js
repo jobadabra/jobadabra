@@ -24,7 +24,7 @@ import {installAppLinks} from './lib/app-links.js';
 import {claimInstance, startWhenReady, installQuitHandling} from './lib/lifecycle.js';
 import * as critical from './lib/critical.js';
 import * as pageRender from './lib/page-render.js';
-import {closeSessionTab, registerSessionHandlers} from './lib/session-handlers.js';
+import {closeSessionTab, registerSessionHandlers, watchSessions} from './lib/session-handlers.js';
 import {registerAppMetaHandlers} from './lib/app-meta-handlers.js';
 import {registerInterviewHandlers} from './lib/interview-handlers.js';
 import {registerCvAndLettersHandlers} from './lib/cv-handlers.js';
@@ -477,7 +477,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   // Sessions that ended before this was saved (or while Notion was busy): at start-up, none of them is running.
   if (!DEMO) for (const session of terminals.list()) { const record = terminals.record(session.id); if (record) saveConversation(record); }
   createWindow();
-  terminals.onChange((event, payload) => toWindow('session', event, payload));
+  terminals.onChange(watchSessions(toWindow));   // lib/session-journal.js: the live step log
   registerExtServerHandlers({DEMO, app, createWindow, cvOf, flow, ipcMain, notify, readSites, scoreVisitJobs, sessionNeedsYou, storage, getTelemetry: () => telemetry, toWindow, getWindow: () => window,
     setRecipeReporter: value => { recipeReporterRef = value; }});   // lib/ext-server-handlers.js
   registerBackgroundHandlers({BrowserWindow, DEMO, announceRuns, app, backupNow, checkForUpdate, cloud, dialog, focusReminder, log, notify, powerMonitor, restartTelegram, resumeQueue, shell, skipUntilNotion, storage, syncCv, toWindow});   // lib/background-handlers.js

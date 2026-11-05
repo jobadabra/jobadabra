@@ -2,6 +2,7 @@
 // last message. No window needed: tested in desktop/test/unit/renderer/session-state.test.js.
 import {READY_LINE, readSessionMessage} from './session-message.js';
 import {backgroundStatus} from './background-status.js';
+import {PAGE_LINES, pageLine} from './page-lines.js';
 
 export const SESSION_STATE = {running: ['Applying', 'info'], input: ['Question for you', 'warn'], done: ['Ready for review', 'warn'],
   ended: ['Ended', 'neutral'], failed: ['Stopped', 'bad'], submit: ['Ready to submit', 'good'], submitted: ['Submitted', 'good']};
@@ -26,11 +27,7 @@ export const asksYou = item => (item.question ? readSessionMessage(item.question
 export const askOutdated = (item, liveForm) => !!item && item.kind !== 'form' && !isLive(item) && item.status === 'input' && !!liveForm && !liveForm.account && liveForm.total > 0;
 // What the card says while the session's tab is on a step with no form to count (extension/page-mark.js, lib/review.js LINE_PAGES), as it happens (owner, 16 Oct 2026:
 // "Reading this page" → "Apply button detected. Redirecting…" → "Sign in form detected" → "Logging in…" → the form's own state). [the card's line, the list's short word]
-export const PAGE_LINES = {reading: ['Reading this page\u2026', 'Reading\u2026'], posting: ['Apply button detected. Redirecting\u2026', 'Redirecting\u2026'],
-  opening: ['Apply button detected. Redirecting\u2026', 'Redirecting\u2026'], account: ['Sign in form detected', 'Sign-in page'], 'sign-up': ['Sign-up form detected', 'Sign-up page'],
-  other: ['This page shows no application', 'No application here'],
-  'signing-in': ['Logging in\u2026', 'Logging in\u2026'], 'signing-up': ['Creating your account\u2026', 'Creating account\u2026']};
-export const pageLine = (page, short = false) => (PAGE_LINES[page] || PAGE_LINES.reading)[short ? 1 : 0];
+export {PAGE_LINES, pageLine};
 // The card shows a step's line (no counts) when the extension marked the session's page and nothing stopped it that needs the person (owner, 15 Oct 2026). The window adds
 // its Chrome-tab checks on top (pages/session-needs.js redirecting); the journey tests read this same rule on the app's own data (e2e/lib/journey-watch.mjs).
 export const stepShown = (item, state) => !!item && item.outcome !== 'submitted' && !!state?.page && !item.stuck;

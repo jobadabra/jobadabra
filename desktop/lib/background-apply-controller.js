@@ -11,6 +11,8 @@ import {extensionToken} from './server-env.js';
 import {notify as notifyDefault, stopAsked} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {waitingMessageFor} from './waiting-message.js';
+import * as journal from './session-journal.js';
+
 
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
@@ -52,13 +54,19 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
     if (!record || !state) return;
-    const previous = record.background?.waitDecision;
+    const previous = record.background?.waitDecision, before = record.background?.state;
     const verdict = previous?.reason === 'authorized' ? previous : decision || previous;
     const testClock = process.env.JOBADABRA_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
     record.background = {...testClock, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
+    if (state.state !== before) journal.note(item.id, journal.backgroundStep(state.state, words));   // the live step log: each new state once (lib/session-journal.js)
     terminals.report(item.id, {event: 'note', message: words});
+  };
+  // A run enrolled in a batch: its live step log begins (a session the store kept from an earlier run keeps its log), then its first state.
+  const begin = (item, state) => {
+    if (!journal.journalOf(item.id).length) journal.start(item.id, state.mode);
+    cache(item, state);
   };
   // The person who is away: the app's own notification is not enough, so the chosen e-mail and Telegram hear it too (lib/waiting-message.js: one an hour, a burst is one message).
   // It never breaks the hand-over: a failure to queue it is logged.
@@ -109,7 +117,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
         }
         await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
-        cache(item, state); enrolled.push(item.id);
+        begin(item, state); enrolled.push(item.id);
       }
       if (!enrolled.length) return {ok: false, error: `${skipped === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));

@@ -25,6 +25,16 @@ import {stopLiveForms} from './stop-all.js';
 import {demoPath} from './demo.js';
 import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 import {beingSent, cancellable} from '../renderer/session-state.js';
+import * as journal from './session-journal.js';
+
+/** -> the session listener for terminals.onChange: each change also writes the live step log, and a new step of the log tells the window ('journal': the Sessions page redraws if shown). */
+export function watchSessions(toWindow) {
+  journal.onChange(() => toWindow('session', 'journal', {}));
+  return (event, payload) => {
+    if (event === 'update') journal.observe(payload);
+    toWindow('session', event, payload);
+  };
+}
 const REOPEN_MS = 15 * 1000;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
@@ -184,7 +194,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   const demoSessions = () => JSON.parse(fs.readFileSync(demoPath(here, 'sessions.json'), 'utf8'));
   checkedSessions.handle('sessions', () => {
     const started = Date.now();
-    const list = DEMO ? demoSessions() : terminals.list();
+    const list = DEMO ? demoSessions() : terminals.list().map(item => (item.background ? {...item, journal: journal.journalOf(item.id)} : item));
     const ms = Date.now() - started;
     if (ms >= 50) appLog('sessions', 'list was slow', {count: list.length, ms});
     return list;
