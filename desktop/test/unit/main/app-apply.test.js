@@ -166,7 +166,7 @@ test('Apply to N with Claude: the best N jobs with a kit, one session each; none
   assert.equal(result.ok, true);
   assert.deepEqual(launched[0], ['https://a/1', 'https://b/2']);
   assert.match(result.message, /Starting 2 Claude/);
-  assert.match((await apply.start(storage, {n: 3, mode: 'agents'}, null, null, launch, async () => [])).error, /no application kit|application kit yet/i);
+  assert.match((await apply.start(storage, {n: 3, mode: 'agents'}, null, null, launch, async () => [])).error, /Could not prepare any applications/);
 });
 
 test('the next jobs with a kit come from apply_batch --next, links only', async () => {
@@ -183,7 +183,7 @@ test('the kit check asks Notion through apply_batch --has-kit and says how to dr
   const result = await apply.hasKit({}, 'https://x', run);
   assert.deepEqual(seen[0], ['src.ai.apply_batch', '--has-kit', 'https://x']);
   assert.equal(result.ok, false);
-  assert.match(result.error, /Prepare only/);
+  assert.match(result.error, /Press Apply to try again/);
   assert.deepEqual(await apply.hasKit({}, 'https://x', async () => ({code: 0})), {ok: true});
 });
 

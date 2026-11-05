@@ -245,7 +245,7 @@ function interviewPanel(report) {
   // The call to action: the interview's prep kit, built or opened from here as Focus does (focus.js prepAction).
   const side = el('div', 'mail-meeting-side');
   const prep = prepAction(interview.company) || jobPrep(interview.company, interview.title);
-  const go = el('button', prep?.busy ? 'secondary' : 'primary', prep ? prep.label : 'Build prep kit');
+  const go = el('button', prep?.busy ? 'secondary' : 'primary', prep ? prep.label : 'Prepare the interview');
   go.type = 'button';
   wand(go);
   if (prep?.busy) go.prepend(el('span', 'spinner small'));
@@ -297,7 +297,7 @@ function jobPrep(company, title) {
   if (kitBuilding.has(id)) return {label: 'Building…', busy: true, run: () => {}};
   // A ready kit opens where it is: its Notion page, else the job's page here on its Prep tab (never offered as a new build, $0.04).
   if (kitReady.has(id)) return {label: 'Open prep kit', run: event => (found.notion_url ? window.pilot.openNotion(found.notion_url, event?.metaKey) : (openView('jobs'), openJobPanel(found, 'prep')))};
-  return {label: 'Build prep kit', title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
+  return {label: 'Prepare the interview', title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
     openPrep({page_id: id, company: found.company || found.via, job: found.title, notion_url: found.notion_url, url: found.url, badge: ''});
     kitBuilding.add(id);
     document.dispatchEvent(new Event('focus-rendered'));

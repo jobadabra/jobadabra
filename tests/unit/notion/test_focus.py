@@ -86,7 +86,7 @@ class FocusTests(unittest.TestCase):
         self.assertIn('1 kit ready (Grafana Labs…)', result['items'][2]['detail'])
         self.assertNotIn('Zephyr AI', [c for _, c in kinds])  # answered: a Replied event came after
         self.assertEqual(result['summary'], 'Reply to recruiters first, then prepare for your interview.')
-        self.assertEqual(result['items'][2]['meta'], ['1 application kit ready to review', '0 of 30 today'])
+        self.assertEqual(result['items'][2]['meta'], ['Your application is prepared automatically when you apply', '0 of 30 today'])
 
     def test_a_recruiter_pitch_links_to_its_email_and_shows_the_facts(self):
         lead = row('a', '', 'Senior DevOps Engineer', stage='Recruiter lead', applied=None, Via='AG Talent',

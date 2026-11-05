@@ -154,7 +154,7 @@ def present(item, gmail=True):
         done, left, kits = item.get('applied', 0), item.get('left', 0), item.get('kits', 0)
         icon, badge, tone = 'briefcase', 'Next step', 'info'
         headline = 'Apply to your next role' if not done else f'Apply to {left} more today'
-        meta = [f'{kits} application kit{"s" if kits != 1 else ""} ready to review' if kits else 'Prepare kits from your best matches',
+        meta = ['Your application is prepared automatically when you apply',
                 f"{done} of {item.get('target', DEFAULT_TARGET)} today"]
     elif kind == 'happened':
         at = _when(item.get('at', ''))

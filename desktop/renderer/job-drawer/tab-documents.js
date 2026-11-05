@@ -54,7 +54,7 @@ function rowsWithStatus(status, action) {
 // The kit's own letter, when no tailored letter exists: read-only text with Copy.
 function kitLetterCard(letter) {
   return docCard('Cover letter', 'mail', 'signal', rows([
-    ['Status', [pill('Draft', 'neutral'), 'From your application kit']],
+    ['Status', [pill('Draft', 'neutral'), 'Prepared for this application']],
     ['Text', [letterPanel(letter)]],
     ['Actions', [docCopy(letter, 'Copy', true)]],
   ]));

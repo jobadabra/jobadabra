@@ -112,7 +112,7 @@ export async function addFocusData(ctx, data) {
 // ANALYZE_AFTER with no analysis yet); "1 application waiting" has no button and leaves Focus (owner, 28 Oct 2026).
 export const EXPECTED_UP_NEXT = [
   {who: 'Huxley Partners', badge: 'Reply today', buttons: ['Open email', 'Done']},
-  {who: 'Ember Data', badge: /^Interview /, buttons: ['Build prep kit']},
+  {who: 'Ember Data', badge: /^Interview /, buttons: ['Prepare the interview']},
 ];
 export const EXPECTED_SUGGESTIONS = [
   {who: 'Seniority mismatch', badge: 'Rejection', buttons: ['Review rejection']},

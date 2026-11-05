@@ -10,7 +10,7 @@ import {LINE} from '../linkedin-words.js';
 // Always on's card opens its setup on the Automation page).
 const ALL_SERVICES = [
   {id: 'ai', name: 'AI', icon: 'bot', what: 'Claude or OpenAI: an API key, Claude Code or Codex', required: true,
-    why: 'Reading jobs, fit scores and application kits need AI: choose Claude Code, Codex or an API key.'},
+    why: 'Reading jobs, fit scores and applications need AI: choose Claude Code, Codex or an API key.'},
   {id: 'notion', name: 'Notion', icon: 'layers', what: 'Job search workspace', required: false,   // about Notion
     why: 'Where your applications, kits and interviews are kept. Needed for Always on, Telegram and Gmail.'},
   {id: 'google', name: 'Gmail & Calendar', icon: 'mail', what: 'Read-only access', required: true,

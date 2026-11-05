@@ -14,16 +14,16 @@ export function prepCard(item, today) {
   const day = at => prepDay(at, today);
   const on = at => (day(at) === 'today' ? 'today' : `on ${day(at)}`);
   const job = item.meta?.[0];
-  const build = {label: 'Build prep kit', run: 'build', tone: 'primary', title: ai(COST_HINT)};
+  const build = {label: 'Prepare the interview', run: 'build', tone: 'primary', title: ai(COST_HINT)};
   if (item.building) return {meta: [job, 'building the prep kit…'], primary: {label: 'Building…', run: 'join', tone: 'secondary'}, more: []};
   if (!item.prep_at) return {meta: item.meta || [], primary: build, more: []};
   if (item.prep_stale) {
     // The kit was for an earlier call: building the one for this round comes first; the earlier kit stays on the page.
     const since = item.prep_why === 'booked' ? `the interview was booked or moved ${on(item.prep_since)}`
       : `your call ${on(item.prep_since)} was reviewed since`;
-    return {meta: [job, `Kit from ${day(item.prep_at)} · ${since}`], primary: {...build, label: 'Build new prep kit'},
+    return {meta: [job, `Kit from ${day(item.prep_at)} · ${since}`], primary: {...build, label: 'Prepare the interview'},
       more: [{icon: 'file', label: `Open earlier kit (built ${day(item.prep_at)})`, run: 'open'}]};
   }
   return {meta: [job, `✓ prep kit ready · built ${day(item.prep_at)}`], primary: {label: 'Open prep kit', run: 'open', tone: 'primary'},
-    more: [{icon: 'refresh', label: 'Build the prep kit again', run: 'build', title: ai(COST_HINT)}]};
+    more: [{icon: 'refresh', label: 'Prepare the interview again', run: 'build', title: ai(COST_HINT)}]};
 }

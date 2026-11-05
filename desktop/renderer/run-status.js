@@ -29,7 +29,7 @@ export const PROBLEM_FIXES = [[/Google sign-in/i, 'Reconnect Google', 'settings'
 // A run the AI provider stopped (usage/spending limit, or rate-limited) — the engine exits with an error, so the run has no
 // problem line and read "Had problems" over a raw log. It says what happened, what it means and the one fix (the owner's
 // mockup, 6 Oct 2026): a variant of the failure box beside the others, not a replacement.
-const AI_STOPPED_WHAT = {mail: 'Email processing', search: 'Scoring', insight: 'The insight', weekly: 'The report', kit: 'The application kit',
+const AI_STOPPED_WHAT = {mail: 'Email processing', search: 'Scoring', insight: 'The insight', weekly: 'The report', kit: 'Application preparation',
   interview: 'The interview review', review: 'The review'};
 // Which limit, from the error itself and who is billed (owner, 6 Oct 2026: credits, a spend limit, a plan's limit and a rate limit all read
 // "Increase your limit"): its words and the page that fixes it. A cause not recognised keeps the neutral words.

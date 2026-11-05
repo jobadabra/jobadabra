@@ -2,7 +2,7 @@
 export function submitted(company) {
   return {
     message: `Did you submit the application to ${company || 'this company'}?`,
-    detail: 'Yes: it is marked Applied.\nNo: it goes back to Kit ready, so it doesn\'t stay stuck as Applying.\n\nYou can change it later in Jobs.',
+    detail: 'Yes: it is marked Applied.\nNo: nothing is submitted.\n\nYou can change it later in Jobs.',
     buttons: ['Yes, I submitted it', 'No, not submitted', 'Cancel'],
   };
 }
@@ -11,8 +11,7 @@ export function submitted(company) {
 export function cancel(company) {
   return {
     message: `Cancel the ${company ? `${company} application` : 'application'}?`,
-    detail: 'Claude stops, the form tab closes in Chrome (what was filled there is lost), and the job goes back to ' +
-      'Kit ready, so you can apply again later. Nothing is submitted.',
+    detail: 'Applying stops. Nothing is submitted.',
     buttons: ['Cancel application', 'Keep it'],
   };
 }

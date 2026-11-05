@@ -35,7 +35,7 @@ export async function cancelSession(item) {
   if (!result?.ok) { toastMessage('Not cancelled', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
   jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready'} : {});
-  if (!result.closed) toastMessage('Application cancelled', 'The job is back to Kit ready. Its form tab wasn\'t found: close it in Chrome yourself.', NO_PLACE.outside, 'warn');
+  toastMessage('Application cancelled', '', null, 'info');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();
   if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs();

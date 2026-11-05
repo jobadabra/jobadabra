@@ -27,10 +27,14 @@ test('Jobs uses each background state, opens the existing session, and labels it
     await new Promise(r => setTimeout(r, 100));
     const dialog = document.getElementById('apply-dialog');
     const status = document.getElementById('apply-start-status');
-    Object.assign(status, {hidden: false, textContent: 'Drafting kit 1 of 3: Captain (permanent, all genders) · Example City Airlines GmbH (about 20 s each)…'});
+    document.getElementById('apply-start-banner').hidden = false;
+    document.getElementById('apply-progress').hidden = false;
+    Object.assign(status, {textContent: 'Preparing application 1 of 3: Captain (permanent, all genders) · Example City Airlines GmbH (about 20 s each)…'});
     const bounds = dialog.getBoundingClientRect();
     window.__uiProgress = {
       fits: status.scrollWidth <= status.clientWidth,
+      barHeight: Math.round(document.getElementById('apply-progress').getBoundingClientRect().height),
+      barBelowButtons: document.getElementById('apply-progress').getBoundingClientRect().top > dialog.querySelector('.actions').getBoundingClientRect().bottom,
       buttonsInside: [...dialog.querySelectorAll('.actions button')].every(button => {
         const box = button.getBoundingClientRect();
         return box.left >= bounds.left && box.right <= bounds.right;
@@ -48,8 +52,9 @@ test('Jobs uses each background state, opens the existing session, and labels it
   for (const [index, label] of ['Queued', 'Filling', 'Ready for review'].entries()) {
     assert.ok(result.jobs[index].text.includes(label), result.jobs[index].text);
     assert.equal(result.jobs[index].action, 'View session');
+    assert.doesNotMatch(result.jobs[index].text, /📝 Kit|Kit ready|Application kit/);
   }
-  assert.deepEqual(result.progress, {fits: true, buttonsInside: true});
+  assert.deepEqual(result.progress, {fits: true, barHeight: 8, barBelowButtons: true, buttonsInside: true});
   assert.equal(result.view, false, 'the action opens Sessions');
   assert.match(result.sessions, /Background automation/);
   assert.match(result.sessions, /Full automation/);

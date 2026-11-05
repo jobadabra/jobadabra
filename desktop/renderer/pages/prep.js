@@ -26,7 +26,7 @@ function reset(item) {
   show($('prep-open'), false);
   message('prep-message', '');
   $('prep-go').disabled = false;
-  $('prep-go').textContent = 'Build prep kit';
+  $('prep-go').textContent = 'Prepare the interview';
 }
 
 function tick() {
@@ -54,7 +54,7 @@ async function build() {
   $('prep-go').disabled = false;
   if (result.needs_description) {
     show($('prep-describe'), true);
-    $('prep-go').textContent = 'Save and build';
+    $('prep-go').textContent = 'Save and prepare';
     message('prep-message', result.text, 'info');
     $('prep-text').focus();
     return;
@@ -66,8 +66,8 @@ async function build() {
     const jobUrl = current.url || current.job_url;
     $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : 'Open the prep kit';
     show($('prep-open'), !!(current.notion_url || jobUrl));
-    $('prep-go').textContent = 'Build again';
-    toastMessage('Prep kit ready ✓', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
+    $('prep-go').textContent = 'Prepare the interview again';
+    toastMessage('Interview preparation ready', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
     loadFocus();
   }
 }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {boardColumns, columnOf, dropFor, fresh, inView, OUTCOME_STAGES, STAGES, takesDrop, VIEWS} from '../../../renderer/jobs-board-rules.js';
+import {boardColumns, columnOf, dropFor, fresh, inView, OUTCOME_STAGES, STAGES, takesDrop, stageLabel, VIEWS} from '../../../renderer/jobs-board-rules.js';
 
 const schema = JSON.parse(fs.readFileSync(new URL('../../../../config/notion_schema.json', import.meta.url), 'utf8'));
 // The Applications database: the one whose Stage select has the most options (Application Events has a Kind, not a Stage).
@@ -18,7 +18,7 @@ test('the board has a column for every Applications stage in the schema, and not
 });
 
 test('the 10 saved views of the Applications database, each a Stage set as in Notion, and the app\'s own Ready to submit (filled on the server, pages/jobs-ready.js)', () => {
-  assert.deepEqual(VIEWS.map(view => view.label), ['All applications', 'Active', 'Applying', 'Kit ready', 'Ready to submit', 'Saved', 'Closed', 'Dismissed', 'All', 'Rejected', 'This week']);
+  assert.deepEqual(VIEWS.map(view => view.label), ['All applications', 'Active', 'Applying', 'Ready to apply', 'Ready to submit', 'Saved', 'Closed', 'Dismissed', 'All', 'Rejected', 'This week']);
   const of = id => STAGES.filter(stage => inView(job(stage), id, NOW));
   assert.deepEqual(of('active'), ['Applied', 'Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer']);
   assert.deepEqual(of('all-applications'), ['Applying', 'Applied', 'Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer', 'Rejected', 'No response', 'Withdrawn']);
@@ -37,7 +37,7 @@ test('every stage has a chip that narrows to it, and a chip of one stage is name
   for (const stage of STAGES) assert.ok(narrowing.some(view => stagesOf(view).includes(stage)) || ELSEWHERE[stage], `${stage}: no chip lists it`);
   const single = VIEWS.filter(view => stagesOf(view).length === 1);
   assert.ok(single.length >= 5, 'positive control: the one-stage chips were found');
-  for (const view of single) assert.equal(view.label, stagesOf(view)[0], view.id);
+  for (const view of single) assert.equal(view.label, stageLabel(stagesOf(view)[0]), view.id);
 });
 
 test('This week is the Fresh formula: applied at most 7 days ago, whatever the stage', () => {

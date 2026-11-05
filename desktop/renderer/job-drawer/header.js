@@ -1,6 +1,7 @@
 // The drawer's fixed header (pages/job-panel.js): the score ring, the title, "company · place", the job's own status and key chips, and
 // the controls: previous / next ("3 of 38"), expand, close; "Back to Recent activity" above them when a run opened the job.
 // One header for every tab. Words: renderer/job-page-view.js headerFacts, interviewFacts. Guarded by test/unit/renderer/job-drawer.test.js.
+import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {fitRing} from '../fit-ring.js';
@@ -30,7 +31,7 @@ export function drawerHeader(job, page, {at, back, expanded, on}) {
   words.append(el('h2', '', job.title), el('p', 'muted', [job.company, job.location || page?.app?.location].filter(Boolean).join(' · ')));
   const chips = el('div', 'jd-chips');
   const stage = page?.app?.stage || job.stage;
-  if (stage) chips.append(pill(stage, 'info'));
+  if (stage) chips.append(pill(stageLabel(stage), 'info'));
   if (job.work_mode) chips.append(pill(job.work_mode, 'neutral'));
   if (notSeen(page)) chips.append(pill('Not seen lately', 'warn', {title: 'The last search did not list this posting. It may have closed.'}));
   const applied = appliedLine(job, page?.app);

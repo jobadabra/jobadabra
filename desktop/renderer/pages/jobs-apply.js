@@ -53,8 +53,9 @@ export function wireApplyDialog({startedApplying}) {
       // first-Apply dialog opens over this one (lib/apply-choice-gate.js), and the batch goes on after it.
       Object.assign(go, {disabled: true, textContent: 'Starting…'});
       go.classList.add('busy');
-      Object.assign($('apply-start-status'), {hidden: false, textContent: 'Choosing your jobs…'});
-      $('apply-progress').hidden = false;   // the wait shows as a strip along the dialog's top edge, not as a row
+      $('apply-start-banner').hidden = false;
+      $('apply-start-status').textContent = 'Choosing your jobs…';
+      $('apply-progress').hidden = false;   // the banner's progress bar stays below the action buttons
       draw();
       try {
         const result = await applyDialogStart({count: n, start: options => window.pilot.apply(options)});
@@ -71,7 +72,7 @@ export function wireApplyDialog({startedApplying}) {
         go.disabled = false;
         go.classList.remove('busy');
         $('apply-progress').hidden = true;
-        $('apply-start-status').hidden = true;
+        $('apply-start-banner').hidden = true;
       }
     });
     settings = (await window.pilot.state().catch(() => null))?.settings || settings;   // a first-Apply choice made meanwhile

@@ -6,7 +6,7 @@ import {aiWriting} from '../ai-writing.js';
 import {docButton, docCard, docCopy, letterPanel, rows} from './documents-rows.js';
 import {plainError} from '../run-warnings.js';
 
-const FROM = {kit: 'From your application kit', ai: 'Written for this job', you: 'Edited by you'};
+const FROM = {kit: 'Prepared for this application', ai: 'Written for this job', you: 'Edited by you'};
 
 export function jobLetterView(job) {
   const key = job.code || job.url;

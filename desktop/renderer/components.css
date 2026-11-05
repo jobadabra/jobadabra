@@ -208,7 +208,11 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 @keyframes ui-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 @media (prefers-reduced-motion: reduce) { .ui-indeterminate > span { animation: none; width: 100%; opacity: .6; } }
 #apply-dialog { overflow-x: clip; overflow-y: auto; }   /* the strip follows the rounded corners; a tall dialog (three cards, an error, the download panel) still scrolls */
+/* Why (2026-11-05, owner preview): progress belongs at the bottom, in a banner with a thicker bar. */
+#apply-start-banner { display: grid; grid-template-columns: auto minmax(0, 1fr); background: var(--info-soft); border-color: var(--info-line); }
 #apply-start-status { overflow-wrap: anywhere; }
+#apply-progress { grid-column: 1 / -1; position: static; height: var(--sp-2); margin: 0; border-radius: var(--r-pill); }
+#apply-message:empty { display: none; }
 #apply-dialog legend { padding: 0; color: var(--label); }   /* Jobs' Apply to jobs (pages/jobs-apply.js): the cards' heading reads like the count's label above it */
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */

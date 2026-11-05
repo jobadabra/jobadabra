@@ -11,7 +11,6 @@ import {followFilter, searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
 import {band, byStat, isStuck, fitTooltip, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
 import {shared} from './shared.js';
-import {openActivity} from './activity.js';
 import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
@@ -34,7 +33,6 @@ import {NA, rowModel} from '../job-row-model.js';
 import {companyCell, placeCell} from './jobs-row-cells.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
-import {kitLabel} from './jobs-kit-label.js';
 import {paintScoreCall} from './jobs-score-call.js';
 import {staleLabel, staleTip} from '../rescore-words.js';
 
@@ -127,11 +125,6 @@ export function renderJobs() {
     if (skills.length > 3) chips.append(tag(`+${skills.length - 3}`, {title: skills.slice(3).join(', ')}));
     // A section of the job's page (kit, rejection review): Notion's page when the store has one, else the job's page here (pages/job-panel.js).
     const openPage = (tab, event) => (job.notion_url ? window.pilot.openNotion(job.notion_url, event?.metaKey) : openJobPanel(job, tab));
-    if (job.kit) {
-      // Which inputs it was drafted from (src/ai/provenance.py): today's, earlier ones, or unknown (before they were recorded).
-      const {label, title} = kitLabel(job.kit_state);
-      chips.append(tag(label, {title: `${title} Click to open it${job.notion_url ? ' in Notion' : ''}.`, onClick: event => openPage('kit', event)}));
-    }
     if (job.tailored && job.code) chips.append(tag('📄 Tailored CV', {title: 'Your CV tailored to this job, with the changes highlighted',
       onClick: () => window.pilot.openTailoredCv(job.code)}));
     if (parts.rejection) chips.append(tag(`🔎 ${parts.rejection}`, {title: job.rejection_lesson || 'Why it was rejected',
@@ -209,7 +202,7 @@ export function renderJobs() {
             if (result.cancelled) return;
             if (result.ok) { claudeStarted.add(pageKey(job.url)); startedApplying(job); if (result.session) await refreshSessions(); renderJobs(); return; }
             // The list said there was a kit but Notion has none (removed or redrafting): Apply drafts it again.
-            if (/kit/i.test(result.error || '')) { toastMessage('Kit not found', 'Press Apply to draft it again.', jobPlace(job), 'warn'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.', jobPlace(job), 'bad');
+            if (/kit/i.test(result.error || '')) { toastMessage('Could not prepare the application', 'Press Apply to try again.', jobPlace(job), 'warn'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.', jobPlace(job), 'bad');
           }});
       }
     } else if (job.status !== 'applied' && job.url && job.code) {
@@ -218,8 +211,8 @@ export function renderJobs() {
       const state = prepareState(job);
       const busy = state === 'local' || state === 'cloud';
       const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state === 'cloud' ? 'Preparing…' : state ? 'Preparing' : 'Apply'), {
-        title: state === 'cloud' ? 'Preparing on GitHub: the list reloads when it is done' : state === 'local' ? 'Drafting the kit (usually 15–30 s), then the form opens in Chrome'
-          : 'Drafts the application kit (form answers and cover letter) first, then opens the form in Chrome; you review and submit'});
+        title: state === 'cloud' ? 'Preparing on GitHub: the list reloads when it is done' : state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
+          : 'Prepares your application and fills the form; you review and submit'});
       if (busy) { prepare.disabled = true; if (state === 'local') prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
       prepare.addEventListener('click', async () => {
         preparing.set(job.code, 'local');
@@ -242,27 +235,10 @@ export function renderJobs() {
       try { await work(); } finally { busyNotes.delete(job.url); renderJobs(); }
     };
     menu.push({icon: 'file', label: 'Open job page', run: () => openJobPanel(job),
-      title: 'Its kit, prep, reviews, record, messages, description and history, here beside the list'});
-    if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: job.kit ? 'Open kit in Notion' : 'Open in Notion', run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
-      title: job.kit ? 'Application kit: form answers, cover letter, eligibility (in Notion)' : 'This job in your Notion'});   // about Notion
+      title: 'Its application, interviews, documents, messages and history, here beside the list'});
+    if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: 'Open in Notion', run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
+      title: 'This job in your Notion'});   // about Notion
     menu.push({icon: 'external', label: isInbound(job) ? 'Open the message' : 'Open posting', run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? 'The email or chat it came from' : 'The job posting'});
-    if (job.kit && job.code) {
-      // Draft the kit again from the current Profile and standard answers (replaces it in Notion).
-      const earlier = String(job.kit_state || '').startsWith('earlier');
-      menu.push({icon: 'refresh', label: earlier ? 'Redraft kit (earlier inputs)' : 'Redraft kit',
-        title: `Draft the kit again from your current CV, Profile and standard answers (~20 s); replaces it in ${storeName()}`, run: () =>
-        background('↻ Redrafting kit…', async () => {
-          const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Redraft failed', result.error || 'Try again.', jobPlace(job), 'bad');
-        })});
-    }
-    if (!live && !job.kit && job.code && job.url && job.status !== 'applied' && !prepareState(job)) {
-      menu.push({icon: 'layers', wand: true, label: 'Prepare only', title: 'Draft the kit (about 20 s) without opening the form: read it first, then Apply', run: () =>
-        background('Preparing kit…', async () => {
-          const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Prepare failed', result.error || 'Try again.', jobPlace(job), 'bad');
-        })});
-    }
     if (job.page_id) menu.push({icon: 'chat', label: 'Add employer feedback', run: () => openFeedback({...job, job: job.title}, 'receive')});
     if (job.employer_feedback && job.page_id) menu.push({icon: 'chat', label: 'Read employer feedback', run: () => openFeedback({...job, job: job.title}, 'review')});
     // The saved review is a tag on the row; the menu says it in words too, as the tag alone did not read as clickable.
@@ -313,7 +289,7 @@ export function renderJobs() {
     if (job.status !== 'saved') menu.push({icon: 'bookmark', label: 'Save', run: setStatus('saved'), title: 'Keep this job on your list'});
     if (job.stage === 'Applying') {  // the session is over or was closed: say what happened, instead of staying Applying
       menu.push({icon: 'tick', label: 'I submitted it', run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
-      menu.push({icon: 'undo', label: 'Not submitted', title: 'Back to Kit ready', run: async () => {
+      menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
         const result = await window.pilot.unapplyJob(job.url).catch(error => ({ok: false, error: error.message}));
         if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Kit ready'});
@@ -346,7 +322,7 @@ export function renderJobs() {
         toastMessage('Deleted', result.trashed ? byStore('Its Notion pages are in the trash.', 'It is deleted.') : 'It will not come back.', {view: 'jobs'}, 'good');
         renderJobs();
       }});
-    box.append(moreButton(menu, 'More: save, dismiss, kit, posting, tailor CV'));
+    box.append(moreButton(menu, 'More: save, dismiss, posting, tailor CV'));
 
     row.append(fit, role, company, place, status, box);
     // The job's drawer (pages/job-panel.js): a click anywhere on the row outside its controls and its analysis (the score ring opens that, when there is one).

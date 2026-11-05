@@ -213,7 +213,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   USD 0.005–0.02).
   - ❓ **Asked only after the reading, only when unclear:** "Which job is this?" (several of your jobs from that
     recruiter or company) and "Did you agree to talk to the recruiter?" (your reply is ambiguous; new job or Recruiter lead only).
-- 🎤 **Interview prep kit.** Focus → Prepare → **Build prep kit**: what the interview will likely assess, likely
+- 🎤 **Interview prep kit.** Focus → Prepare → **Prepare the interview**: what the interview will likely assess, likely
   questions with what from your CV to answer with, stories to have ready, gaps and how to handle them honestly,
   questions to ask, what's still unknown to ask the recruiter, and a prep plan for the time left. It adapts to the
   call (recruiter screen or technical round) and works in what Jobadabra has learned about you: topics you
@@ -221,7 +221,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   needs the role first: without a job description it asks you for one (paste it or the posting link). Written on the
   job's Notion page (🎤 Interview prep) with Claude Sonnet 5, about USD 0.05 (`src/ai/prep.py`).
   - 🔁 **Follow-up rounds:** a kit built before a call that was reviewed since shows as "Kit from 29 Sept · your call
-    on 30 Sept was reviewed since" with **Build new prep kit** (~$0.04, only when you press it). The new kit reads
+    on 30 Sept was reviewed since" with **Prepare the interview** (~$0.04, only when you press it). The new kit reads
     that application's reviews (summary, next step, weak answers, what they said) and the recruiter's latest message;
     the earlier kit stays on the page, folded (⋯ → Open earlier kit).
 - 📧 **Gmail and Calendar** (read-only): confirmations, replies, interview invites and rejections update your

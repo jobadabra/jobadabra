@@ -34,7 +34,7 @@ export function registerKitHandlers(ctx) {
     // With Always on, background jobs run in the user's GitHub repo: Recent activity
     // shows it starting, its progress and its result (its ⏱️ Search runs row); the job's row updates from Notion.
     if (cloud()) {
-      const started = await dispatchCloud(`Application kit (${name})`, {mode: 'prepare', job: code});
+      const started = await dispatchCloud(`Prepare application (${name})`, {mode: 'prepare', job: code});
       return started.ok ? {ok: true, cloud: true} : {ok: false, error: started.error};
     }
     // Quietly: the result comes as a notification (and the row's Apply), not as log output.
@@ -43,8 +43,8 @@ export function registerKitHandlers(ctx) {
       pipeline.triggerEnv('you'));
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
     if (quiet) { if (exit === 0) track('kit_prepared', {}); return {ok: exit === 0}; }  // an Apply batch: it reports once at the end
-    if (exit !== 0) notify('Kit not prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');
-    else notify('Application kit ready ✓', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code}, 'good');
+    if (exit !== 0) notify('Application could not be prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');
+    else notify('Application prepared', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code}, 'good');
     if (exit === 0) track('kit_prepared', {});
     return {ok: exit === 0, ineligible: ineligible || ''};
   };

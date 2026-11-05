@@ -87,9 +87,9 @@ export function renderSessionPage() {
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
   const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
   again.addEventListener('click', () => busy(again, 'Restarting…', () => restartSession(item)));
-  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: ai('{AI} stops, the form tab closes, the job goes back to Kit ready')});
+  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: 'Stop applying to this job'});
   cancel.addEventListener('click', () => busy(cancel, 'Cancelling…', () => cancelSession(item)));
-  if (item.kind === 'form') cancel.title = 'The form tab closes and the job goes back to Kit ready';
+  if (item.kind === 'form') cancel.title = 'Stop applying to this job';
   $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), 'More'));
   show($('ss-log'), terminalShown(item));   // the terminal only for a Claude conversation with Claude help on, or when asked (session-steps.js)
   renderSteps(item);   // no terminal behind a form session: the form in Chrome is the whole story

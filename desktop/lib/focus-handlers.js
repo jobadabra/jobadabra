@@ -96,7 +96,7 @@ export function registerFocusHandlers(ctx) {
     if (DEMO) {
       const item = demoFocusData().items.find(one => one.kind === 'prepare' && one.page_id === pageId);
       if (item) Object.assign(item, {prep_at: new Date().toLocaleDateString('en-CA'), prep_stale: false});
-      return {ok: true, text: 'Prep kit ready (demo): nothing was written.'};
+      return {ok: true, text: 'Interview preparation ready (demo): nothing was written.'};
     }
     if (!aiReady()) return {ok: false, text: 'The prep kit needs AI: choose an AI engine: Claude Code, Codex or an API key (Settings → Connections → AI).'};
     // Its lines and result also go to logs/app.log (a failed kit left no trace before).
