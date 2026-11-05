@@ -31,9 +31,10 @@ The owner deletes the secrets afterwards by hand (never an agent), once each fam
 
 ## Progress
 
-- [ ] refill (#3111) and the lab jobs (lab #75) in review; prompt cases and review-eval (#3103) already on main
-- [ ] 1/5 this spec
-- [ ] 2/5 workflows
-- [ ] 3/5 harness
-- [ ] 4/5 action, record-sites, watch-live, review-eval, guard
+- [x] refill (#3111) and the lab jobs (lab #75) in review; prompt cases and review-eval (#3103) already on main (proof: .github/workflows/review-eval.yml @2f7179c3)
+- [x] 1/5 this spec (#3114) (proof: docs/superpowers/specs/2026-11-03-ci-no-api-keys.md @3b7d5d6d)
+- [x] 2/5 workflows (#3115) (proof: .github/workflows/e2e.yml @fff02bde)
+- [x] 3/5 harness (#3177, 7f03f5d): `E2E_ANTHROPIC_KEY` and `E2E_OPENAI_KEY` deleted on the owner's words, 4 Nov 2026; main e2e green on the broker (runs 41933264053, 41934311995) (proof: desktop/e2e/lib/engine.mjs @7f03f5d)
+- [x] 4/5 action, record-sites, watch-live, guard (#3192, 48df8f1, 5 Nov 2026): no workflow or harness code reads an Anthropic key; the class guard's table holds the three user pipelines only (proof: tests/tooling/ci/test_ci_no_anthropic.py @48df8f1)
+- [ ] proof: the first `record-sites.yml` (cron 06:00 UTC) and `watch-live.yml` (05:00 UTC) runs created after 5 Nov 00:25 UTC read green on the broker alone (past runs started ~13:49 and ~12:42 UTC); then the final key list goes to the coordinator: `ANTHROPIC_API_KEY` stays (user pipelines), `ANTHROPIC_ADMIN_KEY` stays (billing reads), `LIVE_POOL_ANTHROPIC_KEY` is read by nothing (the owner decides), never delete without his words
 - [ ] 5/5 OpenAI family turn (after the measurement)

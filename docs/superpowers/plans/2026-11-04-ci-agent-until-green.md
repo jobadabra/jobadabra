@@ -44,7 +44,7 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 - [x] 2/7 Move walls, proof, leaks, publish into `tools/fixer/` (proof: tools/fixer/walls.mjs @6e998e2)
 - [x] 3/7 Loop, Feedback and Linear sources, one-run workflow (proof: desktop/test/tooling/ci/fixer-loop.test.js @5766dddb)
 - [x] 4/7 Until-green chain: follow job, rounds, stop rules (proof: tools/fixer/driver.mjs @a42e9ee)
-- [ ] 5/7 Every fixer run writes a record
+- [x] 5/7 Every fixer run writes a record (proof: tools/fixer/record.mjs @4d34185)
 - [ ] 6/7 First until-green run on a feedback card
 - [ ] 7/7 Run on a Linear issue and the harness map evaluation
 
