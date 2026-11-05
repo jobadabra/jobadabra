@@ -46,7 +46,7 @@ def set_status(db, url, status, stores=None):
     stage, src/stores/rules.py), then in the local job cache. If the store can't be written, nothing changes."""
     row = db.execute("""SELECT jobs.id, jobs.title, jobs.url, jobs.location, jobs.posted_at, jobs.first_seen_at,
                                  companies.name company FROM jobs JOIN companies ON companies.id=jobs.company_id
-                          WHERE jobs.url=?""", (url,)).fetchone()
+                          WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", store.job_keys(url)).fetchone()
     if not row and stores and status in NOTION_STAGES:  # a job only in the store (no local copy): the store alone
         item = stores.applications.get(url) or _match(stores, url)  # a found job's ⭐ Save makes its Applications row
         if not item:
@@ -88,7 +88,7 @@ def delete_job(db, url, stores=None):
     records leave the store (Notion: its trash, restorable there for 30 days), and the local copy becomes a marker so no search brings it
     back. Only a dismissed job: anything else is still a job you might act on."""
     row = db.execute("""SELECT jobs.id, COALESCE(applications.status, 'unreviewed') status FROM jobs
-                        LEFT JOIN applications ON applications.job_id=jobs.id WHERE jobs.url=?""", (url,)).fetchone()
+                        LEFT JOIN applications ON applications.job_id=jobs.id WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", store.job_keys(url)).fetchone()
     found = stores.applications.get(url) if stores else None
     stage = (found or {}).get('stage') or ''
     if not row and not found:

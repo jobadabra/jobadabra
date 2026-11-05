@@ -45,6 +45,22 @@ class NotionListTests(unittest.TestCase):
         cache.assert_called_once_with(mock.ANY, 7, 'saved')
         self.assertTrue(rows['https://a/new']['unsynced'])
 
+    def test_one_posting_under_two_url_forms_is_one_row(self):
+        # Owner's tester, 3 Nov 2026: "the same posting shows up several times in Jobs (Valartis x3, Pictet x2)". Notion keeps one form of a link, the Mac's
+        # cache another (a slash, the host's case, tracking parameters); the list joined them by the raw string, so the cache copy was listed again as unsynced.
+        for notion_form, local_form in [('https://a/1/', 'https://a/1'), ('https://a/1', 'https://A/1'), ('https://a/1', 'https://a/1?utm_source=feed&ref=x'),
+                                        ('https://a/1?utm_campaign=c', 'https://a/1/')]:
+            with self.subTest(notion=notion_form, local=local_form):
+                local = [{'id': 7, 'url': local_form, 'title': 'SRE', 'company': 'Acme', 'application_status': 'unreviewed'}]
+                result, cache = self.run_list([notion(notion_form, stage='Saved')], local=local)
+                self.assertEqual([r['url'] for r in result['jobs']], [notion_form])
+                self.assertFalse(result['jobs'][0].get('unsynced'))
+                cache.assert_called_once_with(mock.ANY, 7, 'saved')   # the cache copy follows Notion's word, whatever its link looked like
+
+    def test_a_filtered_or_deleted_posting_stays_out_under_another_url_form(self):
+        result, _ = self.run_list([notion('https://a/german/')], blocked=[{'url': 'https://a/german?utm_source=feed'}])
+        self.assertEqual(result['jobs'], [])
+
     def test_rows_carry_the_next_interview_time_for_reminders(self):
         job = notion('https://a/iv', stage='Interview')
         job['next_interview'] = '2026-10-01T14:00:00+02:00'
