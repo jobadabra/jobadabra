@@ -113,7 +113,7 @@ concurrency:   # a PR's newer push replaces its older run and frees its runner; 
 jobs:
   desktop:
     name: desktop (Windows)
-    # fail-fast off, matrix of one: the job is named "desktop (windows-latest)", as it was in the shared matrix.
+    # fail-fast off, matrix of one: the row reads "Unit / desktop (Windows)" since 5 Nov 2026 (a8 1/4).
     strategy:
       fail-fast: false
       matrix:
