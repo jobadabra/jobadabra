@@ -539,6 +539,11 @@
    "kind": "ci"
   },
   {
+   "path": "/ops/notify",
+   "methods": ["POST"],
+   "kind": "ci"
+  },
+  {
    "path": "/api/synthetic/last",
    "methods": [
     "GET"
