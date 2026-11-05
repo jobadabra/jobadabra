@@ -46,6 +46,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
   const judgments = new Map();
+  const latest = new Map();   // session id -> the background state this controller last wrote or read (cache, stateForPoll)
   let owner = '', pending = Promise.resolve();
   const serial = work => { const value = pending.then(work); pending = value.catch(() => {}); return value; };
   onBackgroundWaitMove(() => serial(async () => {
@@ -53,7 +54,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }));
   const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
-    if (!record || !state) return;
+    if (!record || !state || state.ok === false) return;   // a store refusal is not a state: the next poll reads the store again (review of [ap] 6/7)
+    latest.set(item.id, state);
     const previous = record.background?.waitDecision, before = record.background?.state;
     const verdict = previous?.reason === 'authorized' ? previous : decision || previous;
     const testClock = process.env.JOBADABRA_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
@@ -92,6 +94,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!old || state.session === old.id) return;
     await browserOf().closeSession(old.id).catch(() => false);   // a stopped run's tab may still be open: it closes with it
     terminals.remove(old.id);
+    latest.delete(old.id);
   }
   async function enqueue(jobs, mode) {
     return serial(async () => {
@@ -128,8 +131,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
   async function stateForPoll(item) {
-    let state = await store.read(item.url).catch(() => null);
-    if (!state || state.session !== item.id) return null;
+    // Why (5 Nov 2026, [ap] 6/7, measured: 2 store subprocesses of ~80 ms per open job on every poll, 1,508 in 30 min): this controller is the state's one writer and
+    // keeps what it last wrote (cache); the store is read once per job after an app start. Every store verdict (claim, reserve…) still reads the store itself, so a job
+    // in preflight still costs its claim each poll; one filling, ready or waiting costs nothing.
+    let state = latest.get(item.id);
+    if (!state) state = await store.read(item.url).catch(() => null);
+    if (!state || state.ok === false || state.session !== item.id) return null;   // a refusal or another run's state is never kept: the next poll reads again
+    latest.set(item.id, state);
     if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
     const current = config();
     if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
@@ -142,7 +150,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const reason = HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting';
     return {via, at: now(), dueAt, state: state.state, reason};
   }
-  // Collect at most one launch, due rechecks and permanent handoffs without ever reissuing a reserved press.
+  // Collect launches (every queued job, up to MAX_BACKGROUND_SESSIONS filling at once), due rechecks and permanent handoffs without ever reissuing a reserved press.
   async function commandsForPoll(item, found, commands, via) {
     if (!found) return;
     let {state} = found;
@@ -151,25 +159,38 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (HANDOFF.has(state.state)) { commands.handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); return; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
     if (state.state === 'submitting') return;
     if (state.state === 'waiting_to_submit' && now() >= dueAt) commands.checks.push({session: item.id});
-    const claimable = state.state === 'preflight' || (state.state === 'queued' && !commands.busy);
-    if (claimable && !commands.filling && !reader.busy()) {
+    const claimable = state.state === 'preflight' || (state.state === 'queued' && commands.active < MAX_BACKGROUND_SESSIONS);
+    if (claimable && !reader.busy()) {
       const claim = await store.claim(item.url, item.id, owner);
-      if (claim.ok) { commands.filling = true; state = claim.state; commands.jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
+      if (claim.ok) {
+        if (state.state === 'queued') commands.active++;
+        commands.filling = true; state = claim.state; commands.jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode});
+      }
     }
     cache(item, state, decision);
   }
+  // One job's store failure (its Application record gone, an engine error) skips only that job this poll, and its kept state is dropped so the next poll reads the
+  // store again. Why (5 Nov 2026, review of [ap] 6/7): with every job claimed from the kept state, one bad record rejected the whole poll: no launch, hand-off or due check for the others.
+  const alone = async (item, work) => {
+    try { return await work(); } catch (error) {
+      latest.delete(item.id);
+      log('apply', 'one background application skipped this poll', {session: item.id, error: String(error?.message || error)});
+      return null;
+    }
+  };
   async function poll(givenOwner, via = 'app') {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
     const found = [];
-    for (const item of open) found.push([item, await stateForPoll(item)]);
-    // Why (#2646, 1 Nov 2026): one job at a time in the hidden browser. A job already claimed (preflight) or past a multi-step form's middle step (filling) holds
-    // every queued one, whatever the list order; states are read first so a queued job listed before it is not claimed.
-    const busy = found.some(([, each]) => each && ['preflight', 'filling'].includes(each.state.state));
-    const commands = {jobs: [], checks: [], handoffs: [], filling: false, busy};
-    for (const [item, each] of found) await commandsForPoll(item, each, commands, via);
+    for (const item of open) found.push([item, await alone(item, () => stateForPoll(item))]);
+    // Why (5 Nov 2026, owner: "We want to be able to run 10 sessions in parallel, headless, and being very performant"; plan decision 3, "all of a batch, up to 10";
+    // replaces #2646's one job at a time): every queued job fills at once, each in its own hidden window (extension/background-session.mjs). A job already claimed
+    // (preflight) or past a multi-step form's middle step (filling) counts against the limit, whatever the list order; states are read first.
+    const active = found.filter(([, each]) => each && ['preflight', 'filling'].includes(each.state.state)).length;
+    const commands = {jobs: [], checks: [], handoffs: [], filling: false, active};
+    for (const [item, each] of found) await alone(item, () => commandsForPoll(item, each, commands, via));
     const {jobs, checks, handoffs, filling} = commands;
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
@@ -304,6 +325,21 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     });
   }
   // The held tab's CDP address for the live view, only for a hidden-browser session, never another tab.
+  /**
+   * The person's Stop on one hidden-browser application (the card, ⌘K): handed to them in the store at once. -> the saved state, or null (unknown, already theirs, being sent or sent).
+   * Why (5 Nov 2026, review of [ap] 6/7): the Stop was only a mark on the session that the next poll read, and the job's own fill report cleared it first
+   * (session-flow.js reported → clearStuck), so the job went on to Ready and, in Full automation, to its press. A job being sent is left alone, as Cancel does.
+   */
+  async function stopOne(id) {
+    return serial(async () => {
+      const item = itemFor(id);
+      if (!item) return null;
+      const state = latest.get(item.id) || await store.read(item.url).catch(() => null);
+      if (!state || state.session !== item.id || state.manualOverride || ['submitting', 'receipt_confirmed'].includes(state.state)) return null;
+      const handed = await markManual(item, 'stopped');
+      return handed?.ok === false ? null : handed;
+    });
+  }
   async function page(id) { return itemFor(id) ? browserOf().pageSocket(id) : null; }
   // The page's own sending button for the app's Submit (the person's press): only while the form judge's ready stands, never after a hand-off.
   async function submitControl(id) {
@@ -324,5 +360,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

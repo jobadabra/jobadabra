@@ -80,7 +80,7 @@ async function startCommand(owner, command) {
   const launch = await owned().start(command);
   if (!launch.ok) await request({owner, session: command.session}, read ? {action: 'triage-read', unreadable: true} : {action: 'manual', reason: 'browser_session_unavailable'});
 }
-/** Poll only from the app-owned browser; the server claims one job at a time and all repeated polls reuse the same marked tab. */
+/** Poll only from the app-owned browser; the server claims every queued job up to 10 at once (each in its own window) and repeated polls reuse each job's marked tab. */
 export function pollBackgroundApply(config) {
   if (polling) return polling;
   polling = (async () => {

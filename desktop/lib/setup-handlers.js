@@ -27,6 +27,12 @@ import * as terminals from './terminals.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
 import {isDocx, setDocxCv} from './cv-docx.js';
 
+// Stop on one session: its own mark (a visible session) and, for a hidden-browser job, the hand-over to the person at once, before its next fill report can clear the mark (review of [ap] 6/7).
+const stopSession = async (storage, id) => {
+  const marked = terminals.noteStopped(id);
+  const handed = await backgroundApplyFor(storage).stopOne(id).catch(error => { appLog('apply', 'stop of one background application failed', {session: id, error: error.message}); return null; });
+  return marked || !!handed;
+};
 export function registerSetupHandlers(ctx) {
   const {DEMO, connectNotion, dialog, handleImportant, ipcMain, needsNotion, shell, storage, syncCv, trackSetup, getWindow, setNotionFrom, keepLook, renderDocx, toWindow} = ctx;
   registerNotifyHandlers({ipcMain, storage, DEMO, log: appLog});
@@ -34,7 +40,7 @@ export function registerSetupHandlers(ctx) {
   registerOfficeHandlers({ipcMain, addon: office, DEMO});
   registerBackgroundBrowserHandlers({ipcMain, addon: backgroundBrowserAddon(storage, {toWindow, toast: body => toWindow('toast', body)}), DEMO});
   registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, log: appLog, page: id => backgroundApplyFor(storage).page(id),   // a hidden-browser session's held tab, in the app
-    submitControl: id => backgroundApplyFor(storage).submitControl(id), stop: id => terminals.noteStopped(id)});
+    submitControl: id => backgroundApplyFor(storage).submitControl(id), stop: id => stopSession(storage, id)});
   handleImportant('notionConnect', 'Connecting Notion', async (_, pasted) => {   // about Notion
     const {value: token, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};
