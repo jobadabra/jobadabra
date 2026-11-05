@@ -58,7 +58,7 @@ function evidenceFile(finding) {
 const urlOf = (urls, to) => (to && urls[to]) || '';
 
 // Every open issue carries one priority:P0..P3 label (only changed ones are edited). The list itself is not written anywhere: selfheal-stats.mjs publishes it in each snapshot (rankingOf)
-// for the Top issues card of /admin/testing/self-healing.
+// for the Top issues card of /admin/testing/bug-loop.
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): the pinned "Top issues" issue (#1892) is gone.
 export function refreshRanking({gh = realGh, issues, now = Date.now()}) {
   const ranked = rankIssues(issues, now);

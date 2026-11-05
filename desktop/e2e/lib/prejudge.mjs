@@ -67,7 +67,7 @@ export function parseVerdicts(text, ids, lines = () => 1) {
 }
 export const wordOf = raw => { const {word} = parse(raw); return ['real', 'false-positive', 'harness', 'needs-human'].includes(word) ? word : 'needs-human'; };
 
-// The noise register (D1 store `noise-register`, lib/ci-state.mjs; the Judged noise card of /admin/testing/self-healing): what was judged noise before filing, so the next run drops the same finding without a judgement.
+// The noise register (D1 store `noise-register`, lib/ci-state.mjs; the Judged noise card of /admin/testing/bug-loop): what was judged noise before filing, so the next run drops the same finding without a judgement.
 // Register entries as the closed issues they would have been: a person's rejection for the loop's own matching (same page and kind, alike words), and a
 // false positive (or harness) OF ITS DETECTOR for the numbers: the noise breaker, the precision on /self-heal and the weekly self-review's lessons. Without this,
 // noise judged before filing vanished from every place that measures noise (5 Oct 2026): the breaker could never trip again.

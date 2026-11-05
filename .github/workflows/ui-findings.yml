@@ -81,7 +81,7 @@ jobs:
         id: pending
         if: vars.JOBADABRA_FIXER_VERDICTS == 'on' && env.PLANT == ''
         env:
-          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register (the Judged noise card of /admin/testing/self-healing)
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register (the Judged noise card of /admin/testing/bug-loop)
         run: |
           mkdir -p .heal
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json

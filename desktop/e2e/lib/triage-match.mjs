@@ -137,7 +137,7 @@ export function rankIssues(issues, now = Date.now()) {
 const lastBuild = issue => [issue.body, ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => comment.body)].map(commitOf).filter(Boolean).at(-1) || '';
 const lastSeen = issue => [issue.createdAt, ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => comment.createdAt)].filter(Boolean).sort().at(-1) || '';
 /**
- * The Top issues card's data, published in every selfheal snapshot (selfheal-stats.mjs) for /admin/testing/self-healing: how many are open per band and the top `limit` rows.
+ * The Top issues card's data, published in every selfheal snapshot (selfheal-stats.mjs) for /admin/testing/bug-loop: how many are open per band and the top `limit` rows.
  * Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): this was the body of the pinned "Top issues" issue (#1892); the page draws it now.
  */
 export function rankingOf(ranked, repo, now = Date.now(), limit = 12) {
