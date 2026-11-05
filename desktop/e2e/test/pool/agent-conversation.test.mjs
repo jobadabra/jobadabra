@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {conversation, explore, refusedLine} from '../../lib/explore.mjs';
-import {brokerAsk} from '../../lib/agent-ask.mjs';
+import {brokerAsk, turnFailed} from '../../lib/agent-ask.mjs';
 import {toBrokerCall} from '../../lib/broker-client.mjs';
 import {conversationLine, runBudget, CAP_REACHED} from '../../lib/agent-tier.mjs';
 import {runSession} from '../../lib/agent-run.mjs';
@@ -102,4 +102,27 @@ test('a refused call says which call of which conversation it was and how big', 
   const messages = [{role: 'user', content: 'a'.repeat(100)}, {role: 'assistant', content: 'b'.repeat(20)}, {role: 'user', content: 'c'.repeat(30)}];
   assert.equal(refusedLine({session: 'agent-g1', delta: 'c'.repeat(30), messages}, 4), '  call 5 of agent-g1 was refused (delta 30 chars, 3 turns, 150 chars in all)');
   assert.match(refusedLine({messages: [{role: 'user', content: 'x'}]}, 0), /call 1 of no conversation was refused \(full prompt, 1 turns, 1 chars/);
+});
+
+test('a Codex turn that failed or stalled is asked once more with the same body; any other refusal, and a second failure, end it', async () => {
+  const stalled = {ok: false, status: 502, detail: 'broker: codex-failed:null \n[killed after 100 s: codex did not finish]'};
+  const good = {ok: true, message: {content: [{text: '{}'}], usage: {input_tokens: 16_000, output_tokens: 20}}, ms: 5, tier: 'large', engine: 'codex', tokens: {counted: 16_020}, session: {mode: 'restarted', reason: 'gap'}};
+  const input = {system: 's', messages: [{role: 'user', content: 'u'}], schema: {}, session: 'agent-g1', delta: 'n'};
+  const sent = [], replies = [stalled, good];
+  const reply = await brokerAsk('large', {ask: async body => { sent.push(body); return replies.shift(); }})(input);
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[0], sent[1], 'the same full prompt and delta travel again');
+  assert.equal(reply.session.reason, 'gap');
+  let twice = 0;
+  await assert.rejects(brokerAsk('large', {ask: async () => { twice++; return stalled; }})(input), /^Error: 502 broker: codex-failed:null/);
+  assert.equal(twice, 2, 'asked once more, not a third time');
+  const crashed = {ok: false, status: 502, detail: 'broker: codex-failed:1 {"type":"error","message":"Selected model is at capacity"}'}, again = [crashed, good];
+  assert.equal((await brokerAsk('large', {ask: async () => again.shift()})(input)).text, '{}', 'a crash is asked again like a stall');
+  for (const refused of [{ok: false, status: 'capped', detail: 'broker: budget: week'}, {ok: false, status: 503, detail: 'broker: ran-out'}, {ok: false, status: 502, detail: 'broker: only-claude: unavailable'},
+    {ok: false, status: 503, detail: 'broker: codex-failed:1 busy'}, {ok: false, status: 500, detail: 'broker: codex-failed:1 busy'}, {ok: false, status: 502, detail: 'codex-failed:1 not the broker\'s'}]) {
+    let calls = 0;
+    await assert.rejects(brokerAsk('large', {ask: async () => { calls++; return refused; }})(input));
+    assert.equal(calls, 1, `${refused.detail} is not asked again`);
+  }
+  assert.equal(turnFailed({ok: true}), false);
 });
