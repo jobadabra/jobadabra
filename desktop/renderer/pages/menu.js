@@ -5,7 +5,7 @@ import {shared} from './shared.js';
 import {lastActivity} from './activity.js';
 import {openView} from './nav.js';
 import * as reveal from '../menu-reveal.js';
-import {STEP_MS, captureRun, cardTop, markSeen, seen, stopsFor} from '../menu-tour.js';
+import {STEP_MS, captureRun, cardSpot, markSeen, nextPresent, seen, stopsFor} from '../menu-tour.js';
 import {moreGroup} from '../more-group.js';
 
 let menu = reveal.load(window.localStorage);
@@ -73,15 +73,17 @@ function tour() {
   const onKey = event => { if (event.key === 'Escape') end(); };
   const go = () => {
     clearTimeout(timer);
-    at += 1;
+    at = nextPresent(stops, at + 1, present);
     if (at >= stops.length) return end();
-    const stop = stops[at], rect = document.querySelector(stop.target).getBoundingClientRect();
+    const stop = stops[at], target = document.querySelector(stop.target), rect = target.getBoundingClientRect();
     title.textContent = stop.title; text.textContent = stop.text; count.textContent = `${at + 1} of ${stops.length}`;
     next.textContent = at === stops.length - 1 ? 'Done' : 'Next';
-    card.style.top = `${cardTop(rect.top, rect.height, card.offsetHeight, window.innerHeight)}px`;
-    card.style.left = `${Math.round((document.querySelector(stop.target).closest('.sidebar') || document.querySelector(stop.target)).getBoundingClientRect().right + 12)}px`;   // beside the menu, not beside a narrow button inside it (Send feedback)
+    const sidebar = target.closest('.sidebar') || document.querySelector('.sidebar');
+    const spot = cardSpot({rect, sidebarRight: sidebar.getBoundingClientRect().right, cardWidth: card.offsetWidth, cardHeight: card.offsetHeight, viewport: {width: window.innerWidth, height: window.innerHeight}, above: !!stop.above});
+    card.style.top = `${spot.top}px`;
+    card.style.left = `${spot.left}px`;   // beside the menu, not beside a narrow button inside it (Send feedback)
     document.querySelectorAll('.menu-tour-lit').forEach(node => node.classList.remove('menu-tour-lit'));
-    document.querySelector(stop.target).classList.add('menu-tour-lit');
+    target.classList.add('menu-tour-lit');
     timer = setTimeout(go, STEP_MS);
   };
   next.addEventListener('click', go);

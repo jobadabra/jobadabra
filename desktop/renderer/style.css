@@ -1238,6 +1238,7 @@ main { min-width: 0; }
   font: 700 var(--fs-xs) var(--font-mono); }
 .sd-chevron { color: var(--muted); transition: transform .2s var(--ease); }
 .sessions-dock.is-closed .sd-chevron { transform: rotate(180deg); }
+.sd-empty { grid-column: 1 / -1; margin: 0; }
 .sd-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-2); }
 .sd-card { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); min-width: 0; }
 .sd-card.tone-warn { background: var(--warn-soft); border-color: var(--warn-line); }

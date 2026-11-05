@@ -11,12 +11,26 @@ export const STOPS = [
   {id: 'theme', target: '#theme-toggle', title: 'Light or dark', text: 'Switch the look of the app.'},
   {id: 'collapse', target: '#rail-toggle', title: 'Menu size', text: 'Shrink the menu to icons, or open it again.'},
   {id: 'palette', target: '#palette-hint', title: 'Search & commands', text: 'Type to find any page or command.'},   // owner, 5 Nov 2026: "and the search and commands"
+  // Why (owner, 5 Nov 2026: "we should present these 2 bars ... so that the user knows about them"): the two bars at the foot of the window; `above` puts the card over them (they run along the window's foot).
+  {id: 'sessions', target: '#sessions-dock', above: true, title: 'Application sessions', text: 'The forms the extension is filling in for you appear here, with a button to open each one.'},
+  {id: 'activity', target: '#activity', above: true, title: 'Last and next refresh', text: 'When Jobadabra last looked for jobs and when it looks next. Details opens the full history.'},
 ];
-/** The card's top edge (px) beside a stop whose box is at `top` with `height`: level with the stop, never above 8 and never so low that its `cardHeight` runs past the window's `viewportHeight` (the Send feedback stop sits at the foot of the sidebar). */
-export const cardTop = (top, height, cardHeight, viewportHeight) => Math.max(8, Math.min(Math.round(top + height / 2 - 40), viewportHeight - cardHeight - 8));
-export const STEP_MS = 3000;   // nine stops, about 27 seconds
+/** Where the card goes: {top, left} in px for a stop whose box is `rect` ({top, right, height}), the sidebar's right edge `sidebarRight`, the card's size and the window's. Beside the menu and level with the stop (the menu's own buttons),
+ *  or `above` the stop (the bars at the foot); never above 8px, never past the bottom or right edge. Why (code review of fb 6/7, 5 Nov 2026): the Send feedback stop at the foot of the sidebar ran past the window's bottom. */
+export function cardSpot({rect, sidebarRight, cardWidth, cardHeight, viewport, above = false}) {
+  const room = Math.max(8, viewport.height - cardHeight - 8), left = Math.max(8, Math.min(Math.round(sidebarRight + 12), viewport.width - cardWidth - 8));
+  const top = above ? Math.round(rect.top - cardHeight - 12) : Math.round(rect.top + rect.height / 2 - 40);
+  return {top: Math.max(8, Math.min(top, room)), left};
+}
+export const STEP_MS = 3000;   // eleven stops, about 33 seconds
 // Only the stops whose target is on screen now (More is gone once everything is unlocked; the icon rail has no More).
 export const stopsFor = present => STOPS.filter(stop => present(stop.target));
+/** The index of the first stop at or after `from` whose target is on screen now, or stops.length. Why (code review of fb 6b/7, 5 Nov 2026): stops are chosen once at the start; a person who opens the Sessions page mid-tour hides the tray, and the card then pointed at nothing. */
+export function nextPresent(stops, from, present) {
+  let at = from;
+  while (at < stops.length && !present(stops[at].target)) at += 1;
+  return at;
+}
 const KEY = 'jp.menu.tour';
 export const seen = storage => { try { return storage.getItem(KEY) === 'done'; } catch { return true; } };   // storage blocked: do not nag
 // A screenshot run (lib/e2e-hidden.js captureQuery: `?capture=1`) never shows the tour: it covered the sidebar in PR shots (owner, 17 Oct 2026).

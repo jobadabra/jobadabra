@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {PROGRESSIVE, load, looks, nextState, save, stillLocked} from '../../../renderer/menu-reveal.js';
-import {STOPS, captureRun, cardTop, markSeen, seen, stopsFor} from '../../../renderer/menu-tour.js';
+import {STOPS, captureRun, cardSpot, markSeen, nextPresent, seen, stopsFor} from '../../../renderer/menu-tour.js';
 
 const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 const empty = {revealed: [], opened: []};
@@ -91,9 +91,9 @@ test('the palette does not list the More rows as pages (they are not .nav button
   assert.doesNotMatch(read('pages/menu.js'), /className: 'nav[ '"]/);
 });
 
-test('the tour: nine stops in order, only those on screen, shown once', () => {
-  assert.deepEqual(STOPS.map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'more', 'feedback', 'theme', 'collapse', 'palette']);
-  assert.deepEqual(stopsFor(selector => !selector.includes('more')).map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'feedback', 'theme', 'collapse', 'palette']);
+test('the tour: eleven stops in order, only those on screen, shown once', () => {
+  assert.deepEqual(STOPS.map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'more', 'feedback', 'theme', 'collapse', 'palette', 'sessions', 'activity']);
+  assert.deepEqual(stopsFor(selector => !selector.includes('more')).map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'feedback', 'theme', 'collapse', 'palette', 'sessions', 'activity']);
   const store = new Map(), storage = {getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value)};
   assert.equal(seen(storage), false);
   markSeen(storage);
@@ -109,10 +109,21 @@ test('the tour never shows in a screenshot run (owner, 17 Oct 2026: it covered t
   assert.match(read('pages/menu.js'), /if \(seen\(window\.localStorage\) \|\| captureRun\(window\.location\.search\)/);
 });
 
-// Why (fb 6/7, 5 Nov 2026): the Send feedback stop is at the foot of the sidebar; a card level with it ran past the window's bottom edge.
-test('the tour card stays inside the window: level with a stop, but never off the top or the bottom', () => {
-  assert.equal(cardTop(300, 40, 120, 900), 280, 'a stop in the middle: level with it');
-  assert.equal(cardTop(2, 20, 120, 900), 8, 'a stop at the very top');
-  assert.equal(cardTop(850, 36, 130, 900), 762, 'a stop at the foot: lifted so the whole card shows (900 - 130 - 8)');
-  assert.equal(cardTop(100, 36, 2000, 900), 8, 'a window shorter than the card: top edge wins');
+// Why (fb 6/7, 5 Nov 2026): the Send feedback stop is at the foot of the sidebar, and the two bars at the foot of the window run its whole width; a card level with them ran past the window's edge.
+test('the tour card stays inside the window: beside a menu button, or above a wide bar, never off an edge', () => {
+  const window900 = {width: 1400, height: 900}, card = {cardWidth: 250, cardHeight: 120, viewport: window900, sidebarRight: 214};
+  assert.deepEqual(cardSpot({...card, rect: {top: 300, height: 40}}), {top: 280, left: 226}, 'a stop in the middle: level with it, beside the menu');
+  assert.equal(cardSpot({...card, rect: {top: 2, height: 20}}).top, 8, 'a stop at the very top');
+  assert.equal(cardSpot({...card, rect: {top: 850, height: 36}}).top, 772, 'a menu button at the foot: lifted so the whole card shows (900 - 120 - 8)');
+  assert.deepEqual(cardSpot({...card, rect: {top: 850, height: 50}, above: true}), {top: 718, left: 226}, 'a bar at the foot: the card sits above it');
+  assert.equal(cardSpot({...card, rect: {top: 100, height: 36}, cardHeight: 2000}).top, 8, 'a window shorter than the card: top edge wins');
+  assert.equal(cardSpot({...card, rect: {top: 300, height: 40}, viewport: {width: 300, height: 900}}).left, 42, 'a narrow window: the card is pulled in from the right edge (300 - 250 - 8)');
+});
+
+// Why (code review of fb 6b/7, 5 Nov 2026): a person who opens the Sessions page mid-tour hides the tray; the card must skip that stop, not point at nothing.
+test('the tour moves on past a stop whose target is no longer on screen', () => {
+  const stops = [{target: '#a'}, {target: '#b'}, {target: '#c'}];
+  assert.equal(nextPresent(stops, 0, () => true), 0);
+  assert.equal(nextPresent(stops, 1, target => target !== '#b'), 2, 'the hidden stop is skipped');
+  assert.equal(nextPresent(stops, 1, target => target === '#a'), 3, 'nothing left: the tour ends');
 });

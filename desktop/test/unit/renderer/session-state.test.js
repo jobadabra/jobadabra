@@ -403,3 +403,20 @@ test('a card\'s time-based phase moves on with the clock alone, and the window\'
   assert.match(source, /tabPhases\(sessionList, shared\.formsOpen, performance\.now\(\)\)/, 'the 2 s tick reads every card\'s phase on the clock the cards use');
   assert.doesNotMatch(source, /CHECK_MS \+ 100/, 'no one-shot timer redraws the cards once');
 });
+
+// Why (owner, 5 Nov 2026: "it should show something, even an empty state, but they should be present"): a fresh install has no sessions, and the tray still says what it is for.
+test('the sessions tray has an empty state that says what will appear there', async () => {
+  const {DOCK_EMPTY} = await import('../../../renderer/session-state.js');
+  assert.equal(DOCK_EMPTY.pill, 'none yet');
+  assert.match(DOCK_EMPTY.text, /When you apply to a job, its form shows up here/);
+});
+
+// Why (code review of fb 6b/7, 5 Nov 2026): with an empty tray the title and "View all" called openSession(undefined) and did nothing.
+test('the empty tray links open the Sessions page; with sessions they open the one on screen or the first', async () => {
+  const {dockLinkSession} = await import('../../../renderer/session-state.js');
+  assert.equal(dockLinkSession([], null), null);
+  assert.equal(dockLinkSession([], 'gone'), null, 'a remembered id of a session that is gone does not count');
+  assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], null), 'a');
+  assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], 'b'), 'b');
+  assert.doesNotMatch(fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="sessions-dock"[^>]*hidden/, 'the tray is in the page from the start, so the tour can reach it');
+});
