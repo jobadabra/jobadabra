@@ -7,6 +7,7 @@ import * as pipeline from './pipeline.js';
 import * as server from './server.js';
 import * as claudeCode from './claude-code.js';
 import {buildLogs, shotDataUrl, pageText, profileText, PROFILE_CHARS} from './feedback-bundle.js';
+import {withWarningLines} from './feedback-run-warnings.js';
 import {aboutYou} from './about-you.js';
 import {emailOf} from './notify-channel.js';
 import {logFile} from './log.js';
@@ -38,7 +39,7 @@ export function registerFeedbackHandlers({DEMO, app, ipcMain, storage, track, ge
     let shot = null;
     try { if (win && !win.isDestroyed()) shot = shotDataUrl(await win.webContents.capturePage()); } catch { /* no picture: the note still goes */ }
     const folder = logFile() ? path.dirname(logFile()) : path.join(app.getPath('userData'), 'logs');
-    const runs = pipeline.runs(storage);
+    const runs = withWarningLines(pipeline.runs(storage));
     const logs = buildLogs({folder, runs, state: supportState({app, storage, getPlan, screen: String(screen).slice(0, 60)})});
     let page = null;
     try { if (pageData && typeof pageData === 'object') page = pageText(pageData, {runs}); } catch { /* a page that cannot be written sends nothing */ }

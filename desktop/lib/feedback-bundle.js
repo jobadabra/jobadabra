@@ -61,12 +61,50 @@ function newestLog(folder, name, count) {
 
 const fmt = value => (value === undefined || value === null || value === '' ? '-' : String(value));
 
-/** One line per recent run: what kind, how it started, when, whether it worked. The result text only for a run that did not work (it says why); never a job title or company. */
+export const WARN_RUNS = 3, WARN_LINES = 5, WARN_CHARS = 160;
+const LINKED = /:\/\/|\bwww\./i;
+// The engine's own warning lines, as fixed sentences. Why (#3071, 5 Nov 2026; /code-review: a prefix-only allow-list let `Skipped job 7: Claude Code failed: <the posting's words>` through):
+// a line is never sent as it was written. Each shape below BUILDS the sentence from what it names only: a count, an error class, an HTTP status, a few fixed words; the rest of the line (an exception's
+// message can quote a posting, a title, an employer, a page or a path) is dropped. A line of no shape, with a link or with a line break is only counted: `+N other warnings not sent`.
+const FIXED_WORDS = ['Anthropic API spending limit', 'Claude Code', 'Codex', 'OpenAI', 'key was refused', 'cannot go on'];   // the engine's own limit_reason words (src/ai/cost.py)
+const facts = text => [...FIXED_WORDS.filter(word => text.includes(word)), ...[...text.matchAll(/\b(?:HTTP(?: Error)?|status|code)[ :]*(\d{3})\b/gi)].slice(0, 1).map(found => `HTTP ${found[1]}`)];
+const errorClass = text => /\b([A-Z]\w*(?:Error|Exception))\b/.exec(text)?.[1];
+const withFacts = (head, list) => (list.length ? `${head}: ${list.join(', ')}` : head);
+const COUNT = /(\d+)\s+job\(s\)\s+(left for the next check|not read by AI|not scored|not enriched|not ranked|waiting, none scored this run)/i;
+const SHAPES = [
+  [/^AI limit reached\b/i, text => { const left = COUNT.exec(text); return `${withFacts('AI limit reached', facts(text))}${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
+  [/^AI unavailable \(/i, text => { const left = COUNT.exec(text); return `AI unavailable${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
+  [/^\d+\s+job\(s\)\s+(?:waiting|left for the next check|not read by AI|not scored|not enriched|not ranked)\b/i, text => { const left = COUNT.exec(text); return left ? `${left[1]} job(s) ${left[2]}` : ''; }],
+  [/^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i, text => { const where = /^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i.exec(text); return withFacts(`run not ${where[1].toLowerCase()} ${where[2]} ${where[3]}`, [errorClass(text), ...facts(text)].filter(Boolean)); }],
+  [/^Skipped job \S+:/i, text => withFacts('Skipped a job', [errorClass(text), ...facts(text)].filter(Boolean))],
+];
+
+/** The warning lines of one run as sent: [sentences, how many lines were held back]. `run.warningLines` comes from the caller (lib/feedback-run-warnings.js). */
+function warningsOf(run) {
+  const sent = [];
+  let held = 0;
+  for (const raw of Array.isArray(run.warningLines) ? run.warningLines : []) {
+    const text = String(raw).trim();
+    if (!text) continue;
+    const shape = /[\r\n]/.test(text) || LINKED.test(text) ? null : SHAPES.find(([pattern]) => pattern.test(text));
+    const line = shape ? shape[1](text).slice(0, WARN_CHARS) : '';
+    if (!line) { held++; continue; }
+    if (!sent.includes(line)) sent.push(line);
+  }
+  return [sent, held];
+}
+
+/** One line per recent run: what kind, how it started, when, whether it worked. The result text only for a run that did not work (it says why); never a job title or company.
+ *  For the newest WARN_RUNS runs, whatever their end, the run's warning lines follow it (`   ! <line>`, at most WARN_LINES, each once and cut), then a count of those held back. */
 export function runLines(runs, count = RUN_COUNT) {
-  return (Array.isArray(runs) ? runs : []).slice(0, count).map(run => {
+  return (Array.isArray(runs) ? runs : []).slice(0, count).flatMap((run, index) => {
     const seconds = run.startedAt && run.endedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
     const state = run.interrupted ? 'interrupted' : run.ok === false ? 'failed' : run.warned ? 'warnings' : run.ok ? 'ok' : 'running';
-    return `${fmt(run.startedAt)} · ${fmt(run.kind)} · by ${fmt(run.trigger)} · ${state}${seconds != null && Number.isFinite(seconds) ? ` · ${seconds}s` : ''}${state === 'failed' || state === 'interrupted' ? ` · ${String(run.summary || run.result || '').slice(0, 160)}` : ''}`;
+    const head = `${fmt(run.startedAt)} · ${fmt(run.kind)} · by ${fmt(run.trigger)} · ${state}${seconds != null && Number.isFinite(seconds) ? ` · ${seconds}s` : ''}${state === 'failed' || state === 'interrupted' ? ` · ${String(run.summary || run.result || '').slice(0, 160)}` : ''}`;
+    if (index >= WARN_RUNS) return [head];
+    const [sent, held] = warningsOf(run);
+    return [head, ...sent.slice(0, WARN_LINES).map(line => `   ! ${line}`), ...(sent.length > WARN_LINES ? [`   ! (+${sent.length - WARN_LINES} more)`] : []),
+      ...(held ? [`   ! +${held} other warning${held === 1 ? '' : 's'} not sent: they can name a job or an employer`] : [])];
   });
 }
 
