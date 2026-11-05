@@ -75,6 +75,9 @@
 .qa-values input, .qa-values select { min-height: 36px; }
 .qa-values.is-amount { grid-template-columns: minmax(0, 1fr) 96px; }
 .qa-values .qa-saved-as { margin: 0; grid-column: 1 / -1; }
+.qa-language { display: grid; gap: var(--sp-1); }   /* a language's name over its own level chips (#3224) */
+.qa-language-name { font-weight: 600; }
+.qa-language .segmented.is-fill { grid-template-columns: repeat(7, minmax(0, 1fr)); }   /* the seven levels in one row, not 6 + 1 */
 
 
 /* A multi-part answer on a Your details line (renderer/fact-line.js): its parts sit in one wrapping row, not one under another. */

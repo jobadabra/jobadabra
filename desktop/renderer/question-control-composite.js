@@ -4,7 +4,7 @@
 // written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/unit/renderer/question-kinds-composite.test.js.
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
-import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
+import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, languageParts, partIsExact, splitDuration, splitPermit, splitRange, splitSalary, withLevel} from './question-values.js';
 import {STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
 
 const input = (type, value, ariaLabel, placeholder = '') => Object.assign(el('input', ''), {type, value, ariaLabel, placeholder});
@@ -80,7 +80,10 @@ function range(raw, onChange, label) {
 }
 
 // A level as chips (the common scale); a saved word outside it ("fluent") stays visible as written and counts as the answer until a level is picked.
-function language(raw, onChange, label) {
+function language(raw, onChange, label, format) {
+  const parts = languageParts(raw);
+  // Why (5 Nov 2026, #3224 /code-review): the review queue asks ONE language's level (format.single, value = what was written, "Fluent (business)"): plain chips, never rows; a one-part line gets rows only when its level is a known one, so free words ("English (native) and French (B1)") stay as written under "Saved as".
+  if (!format?.single && (parts.length > 1 || partIsExact(parts[0] || {}))) return languageLines(raw, parts, onChange, label);
   const level = LEVELS.find(each => each.toLowerCase() === raw.toLowerCase()) || '';
   let current = level;
   const answer = () => current || (raw && !level ? raw : '');
@@ -88,6 +91,25 @@ function language(raw, onChange, label) {
   const isOn = option => option === current;
   node.append(segmented(LEVELS, isOn, (option, group) => { current = isOn(option) ? '' : option; refresh(group, isOn); onChange(answer()); }, label));
   if (raw && !level) node.append(savedAs(raw));
+  return node;
+}
+
+// A line that names its languages ("English (native), French (A2)"): one row per language, its name beside its own level chips, so each level belongs to a
+// language the person can see (#3224); a level not changed stays as written, one picked rewrites that part only (question-values.js withLevel).
+// Why (5 Nov 2026, #3224): the single-level chips drew only A1..native for a multi-language answer, with the names left in "Saved as".
+function languageLines(raw, parts, onChange, label) {
+  let current = raw;
+  const levelOf = at => LEVELS.find(each => each.toLowerCase() === languageParts(current)[at]?.level.toLowerCase()) || '';
+  const node = composite(() => current, () => Boolean(current));
+  parts.forEach((part, at) => {
+    const isOn = option => option === levelOf(at);
+    const row = el('div', 'qa-language');
+    row.append(el('span', 'qa-language-name', part.name), segmented(LEVELS, isOn, (option, group) => {
+      if (isOn(option)) return;   // the level already shown: nothing to rewrite
+      current = withLevel(current, at, option); refresh(group, isOn); onChange(current);
+    }, `${label}: ${part.name}`));
+    node.append(row);
+  });
   return node;
 }
 
@@ -104,6 +126,6 @@ export function compositeControl(control, format, value, onChange, {ariaLabel = 
   if (control === 'duration') return duration(raw, onChange, ariaLabel);
   if (control === 'per_country') return permit(raw, onChange, ariaLabel);
   if (control === 'range') return range(raw, onChange, ariaLabel);
-  if (control === 'language') return language(raw, onChange, ariaLabel);
+  if (control === 'language') return language(raw, onChange, ariaLabel, format);
   return link(raw, onChange, ariaLabel, placeholder);
 }
