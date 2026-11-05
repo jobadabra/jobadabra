@@ -19,11 +19,18 @@ function e2eArguments(env) {
   if (env.JOBADABRA_E2E !== '1') return [];
   try { const list = JSON.parse(env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS || '[]'); return Array.isArray(list) ? list.filter(arg => typeof arg === 'string' && E2E_ARGUMENTS.test(arg)) : []; } catch { return []; }
 }
+/** The size of every hidden application window, in CSS pixels: a laptop's, so sites draw their desktop layout (the live preview fits it to the card). */
+export const HIDDEN_WINDOW = Object.freeze({width: 1440, height: 900});
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. `env` is only read for the e2e harness's host map (above). */
 export function browserArguments(profile, extension, env = process.env) {
   // Why (2026-10-28, owner + measured B1): the person sees a held page in the app's live view; headless Chromium loads the extension with no window, Dock entry or focus change.
+  // Why (5 Nov 2026, owner: "It shows the mobile viewport" · "very slow"; measured on Chrome for Testing 156): with no size every window opened at 756 × 469, so sites drew their
+  // phone layout, and only one window's page was visible: the others painted 0.2 pictures a second. The window size and --disable-backgrounding-occluded-windows fix both
+  // (1440 × 813 pages, all visible, 8.6 pictures a second). The size can only come from here: headless, chrome.windows.create caps a window at the browser's screen (800 px
+  // measured). Guards: desktop/integration/extension/hidden-browser-pages.test.mjs (width; drawing on Chrome for Testing 156), test/unit/main/background-browser.test.js (both flags).
   return [`--user-data-dir=${profile}`, '--headless=new', '--remote-debugging-port=0', '--enable-automation', '--no-startup-window', '--no-first-run', '--no-default-browser-check',
-    '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-default-apps', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, ...e2eArguments(env)];
+    '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-default-apps', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows', `--window-size=${HIDDEN_WINDOW.width},${HIDDEN_WINDOW.height}`, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, ...e2eArguments(env)];
 }
 /** Accept a debugging port only after CDP reports our exact profile argument; stale/recycled ports never authorize access. */
 export function verifiedDebugPort(text, args, profile) {

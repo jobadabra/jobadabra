@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {browserArguments, createBackgroundBrowser, verifiedDebugPort} from '../../../lib/background-browser.js';
+import {HIDDEN_WINDOW, browserArguments, createBackgroundBrowser, verifiedDebugPort} from '../../../lib/background-browser.js';
 
 test('background browser launch uses only its owned profile and starts without a visible page', () => {
   const args = browserArguments('/owned/profile', '/owned/extension');
@@ -15,6 +15,10 @@ test('background browser launch uses only its owned profile and starts without a
   // Why (2026-10-28, owner): the person sees a held page in the app's live view, never a revealed window; headless keeps it off the screen, the Dock and focus.
   assert.ok(args.includes('--headless=new'));
   assert.equal(args.some(arg => /^https?:/.test(arg)), false);
+  // Why (5 Nov 2026, owner: "It shows the mobile viewport" · "very slow"): every page at desktop size and none put to sleep; Playwright's Chromium on CI cannot show the
+  // sleeping page (only Chrome for Testing 156 did), so the flag itself is held here.
+  assert.ok(args.includes(`--window-size=${HIDDEN_WINDOW.width},${HIDDEN_WINDOW.height}`) && HIDDEN_WINDOW.width >= 1280);
+  assert.ok(args.includes('--disable-backgrounding-occluded-windows'));
 });
 
 test('the e2e harness may point the hidden browser at the test forms, nobody else: only under the e2e flag, only a host map, the test certificate and no-sandbox', () => {
