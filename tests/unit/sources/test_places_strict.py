@@ -130,6 +130,13 @@ class JobsChTownTests(unittest.TestCase):
         for reader, places in readers.items():
             self.assertEqual(sorted(places), ['Basel, Switzerland', 'Germany', 'Konstanz, Germany', 'Lyon, France'], reader)
 
+    def test_swiss_spellings_and_prefixes_still_read_as_switzerland(self):
+        for country in ('CH', 'ch ', 'Schweiz', 'Suisse', {'name': 'Switzerland'}):
+            job = {'jobLocation': [{'address': {'addressLocality': 'ZH Herrliberg', 'addressCountry': country}}]}
+            self.assertEqual(ats.posting_places(job), ['Herrliberg, Switzerland'], country)
+        self.assertEqual(ats.posting_places({'jobLocation': {'address': {'addressCountry': 'CH'}}}, 'Vevey'), ['Vevey, Switzerland'])
+        self.assertEqual(ats.posting_places({'jobLocation': {'address': {'addressCountry': 'CH'}}}), [], 'no town: the caller\'s own fallback')
+
     def test_the_board_search_asks_every_page_in_the_same_town(self):
         # The posting loop reused the name `place`: page 2 searched location=<a posting's address>, not the user's town.
         asked = []
