@@ -125,6 +125,8 @@ class CompanyForTests(unittest.TestCase):
         never a crash (the Notion path's match_for has always taken a missing row)."""
         stores = memory.open_store()
         self.assertEqual(ledger_store.company_for(stores, 'https://boards.greenhouse.io/acme-corp/jobs/1', {}), 'Acme Corp')
+        self.assertEqual(ledger_store.company_for(stores, 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', {}), 'Acme')
+        self.assertEqual(ledger_store.company_for(stores, 'https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2', {}), '')
         self.assertEqual(ledger_store.company_for(stores, 'https://x.test/1', {}), '')
         self.assertEqual(ledger_store.company_for(stores, 'https://x.test/1', {'company': 'Named'}), 'Named')
 

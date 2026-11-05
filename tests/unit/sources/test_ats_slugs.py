@@ -36,5 +36,27 @@ class SlugShapeTests(unittest.TestCase):
             self.assertTrue(describe.WORKDAY.match(f'https://acme.{cluster}.myworkdayjobs.com/en-US/Careers/job/Designer_R1'))
 
 
+class CompanyInSlugTest(unittest.TestCase):
+    """A job link with no company named: the employer its board's slug spells, and nothing when it spells none (`Acme.Wd502.Careers` is no one's name)."""
+    LINKS = {'greenhouse': ('https://boards.greenhouse.io/acme-corp/jobs/1', 'Acme Corp'), 'lever': ('https://jobs.lever.co/acme-corp/1', 'Acme Corp'),
+             'ashby': ('https://jobs.ashbyhq.com/acme-corp/1', 'Acme Corp'), 'smartrecruiters': ('https://jobs.smartrecruiters.com/acme-corp/1', 'Acme Corp'),
+             'workable': ('https://apply.workable.com/acme-corp/j/1', 'Acme Corp'), 'recruitee': ('https://acme-corp.recruitee.com/o/1', 'Acme Corp'),
+             'personio': ('https://acme-corp.jobs.personio.de/job/1', 'Acme Corp'), 'teamtailor': ('https://acme-corp.teamtailor.com/jobs/1', 'Acme Corp'),
+             'join': ('https://join.com/companies/acme-corp/1', 'Acme Corp'),
+             'workday': ('https://acme-corp.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', 'Acme Corp'),
+             'oracle': ('https://efet.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/1', ''),   # a code, not a name
+             'umantis': ('https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2', '')}
+
+    def test_every_system_a_job_link_reaches_says_its_name_or_none(self):
+        self.assertEqual(set(self.LINKS), {name for name, _ in ats.URL_PATTERNS}, 'a new system says what its slug spells')
+        for system, (url, company) in self.LINKS.items():
+            found = ats.detect(url)
+            self.assertEqual(found[0], system, url)
+            self.assertEqual(ats.company_in_slug(found), company, url)
+
+    def test_no_link_found_is_no_name(self):
+        self.assertEqual(ats.company_in_slug(None), '')
+
+
 if __name__ == '__main__':
     unittest.main()

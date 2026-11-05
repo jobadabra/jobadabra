@@ -166,8 +166,7 @@ def company_for(stores, url, meta):
     omit it), else the board's slug in the URL."""
     if meta.get('company'):
         return meta['company']
-    found = ats.detect(url)
-    return match_of(stores, url, None).get('Company') or (found[1].replace('-', ' ').title() if found else '')
+    return match_of(stores, url, None).get('Company') or ats.company_in_slug(ats.detect(url))
 
 
 def add_application(stores, url, *, applied=None, approx=False, channel=None, via=None, source='CLI', meta=None,
@@ -179,10 +178,7 @@ def add_application(stores, url, *, applied=None, approx=False, channel=None, vi
     today = today or date.today()
     applied = applied or today
     meta = dict(meta if meta is not None else ledger.page_meta(url))
-    if not meta.get('company'):
-        found_ats = ats.detect(url)
-        meta['company'] = match_of(stores, url, {}).get('Company') or (
-            found_ats[1].replace('-', ' ').title() if found_ats else '')
+    meta['company'] = company_for(stores, url, meta)
     guess_channel, guess_via = ledger.channel_for(url)
     channel, via = channel or guess_channel, via if via is not None else guess_via
     fields = {'stage': 'Applied', 'applied_on': applied.isoformat(), 'date_approximate': bool(approx), 'channel': channel}

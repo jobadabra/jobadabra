@@ -333,8 +333,7 @@ def company_for(tracker, url, meta):
     board's slug in the URL."""
     if meta.get('company'):
         return meta['company']
-    found = ats.detect(url)
-    return match_for(tracker, url).get('Company') or (found[1].replace('-', ' ').title() if found else '')
+    return match_for(tracker, url).get('Company') or ats.company_in_slug(ats.detect(url))
 
 
 def add_application(tracker, url, *, applied=None, approx=False, channel=None, via=None, source='CLI',
