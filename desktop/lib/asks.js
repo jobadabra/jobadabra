@@ -1,6 +1,6 @@
 // The ask gate: when the app may invite the person to tell us what went wrong, instead of leaving (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md). One owner of the answer; the window only draws.
-// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). The moments (MOMENTS): a failed application whose cause is ours to fix, a Find jobs press that failed (runMomentOf), a crash on the last run (fb 4/7); nothing else opens one.
-// The No list is `mayAsk`: setup not finished, another ask within 24 hours, this kind snoozed or answered lately, a kind nobody defined. Guard: test/unit/main/asks.test.js.
+// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). The moments (MOMENTS): a failed application whose cause is ours to fix, a Find jobs press that failed (runMomentOf), a crash on the last run (fb 4/7), a finished press of Find jobs with fewer than 5 open jobs in the person's places (searchMomentOf, fb 5/7); nothing else opens one.
+// The No list is `mayAsk`: setup not finished, another ask within 24 hours, this kind asked within its AT_MOST_EVERY (thin-search: a week), this kind snoozed or answered lately, a kind nobody defined. Guard: test/unit/main/asks.test.js.
 
 import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_THIN_SEARCH, ASK_WORDS} from '../renderer/ask-card-text.js';
 import {runFailure} from './run-failure.js';
@@ -14,7 +14,7 @@ const AT_MOST_EVERY = {[ASK_THIN_SEARCH]: 7 * 24 * 3600 * 1000}, THIN = 5;
 const MOMENTS = {'failed-no-form': ASK_FAILED_APPLICATION, 'failed-account': ASK_FAILED_APPLICATION, 'failed-run': ASK_FAILED_RUN, crashed: ASK_CRASHED, 'thin-search': ASK_THIN_SEARCH};
 
 /** A moment word -> the kind of ask it opens, or null. The words: an application result (lib/application-result.js: only the form not reached and the sign-in step are ours to fix; a success, or a person who walked away, opens nothing),
- *  'failed-run' (runMomentOf) and 'crashed' (the last run of the app ended in a crash). */
+ *  'failed-run' (runMomentOf), 'crashed' (the last run of the app ended in a crash) and 'thin-search' (searchMomentOf). */
 export function momentOf(word) {
   return MOMENTS[word] || null;
 }

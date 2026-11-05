@@ -1,6 +1,6 @@
 // The ask gate (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md): when the app may invite the person to tell us what went wrong, and who owns that answer.
 // Design (fb, 5 Nov 2026): lib/asks.js alone decides. States of one kind of ask: IDLE -> PENDING (a moment passed the gate) -> ANSWERED ("Tell us" pressed) or SNOOZED ("Not now", 14 days).
-// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step), a failed Find jobs press and a crash on the last run open PENDING; nothing else does. The No list below is the whole gate.
+// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step), a failed Find jobs press, a crash on the last run and a finished press with fewer than 5 open jobs in the places (once a week) open PENDING; nothing else does. The No list below is the whole gate.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_THIN_SEARCH, createAsks, mayAsk, momentOf, runMomentOf, searchMomentOf} from '../../../lib/asks.js';
