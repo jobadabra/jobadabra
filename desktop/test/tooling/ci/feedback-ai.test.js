@@ -1,4 +1,4 @@
-// tools/feedback-ai.mjs, the script of the "Send to AI" run (feedback-ai.yml): what it reads, what it redacts again, what may never be posted in public, the before/after proof and what it tells the site.
+// Shared feedback helpers used by ai-fixer.yml and feedback-ai-closed.yml: redaction, allowed paths, proof, and reporting.
 // Nothing here calls the site, GitHub or the AI broker: fetchers are fakes and the broker's answers are not needed (edit-codex.mjs has its own test).
 // Guard: safety — without it the run that reads the owner's feedback could hand a token to the AI's code, push outside fd-ai/, or start on a pull request.
 import assert from 'node:assert/strict';

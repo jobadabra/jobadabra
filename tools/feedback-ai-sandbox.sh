@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs one command inside the proof box (tools/feedback-ai.Dockerfile) and returns its exit code. The only way feedback-ai.yml runs the AI's code.
+# Runs one command inside the proof box (tools/feedback-ai.Dockerfile) and returns its exit code. The only way ai-fixer.yml runs the AI's code.
 # Why (3 Nov 2026, 7/7 Gitar review): no network (the cache service and the runner's token are unreachable), no capabilities, not root, no GitHub environment variable (only the ones named below),
 # our script copy read-only; the box's own copy of the workspace is the only thing it can write, and the job never publishes from it (`publish` starts from a fresh checkout and the scanned patch).
 # Needs: FBT (our script copy), PYDEPS (python packages installed before the patch), BOX (a COPY of the patched workspace, made by the workflow; the runner never reads or writes anything inside it:
