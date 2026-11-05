@@ -46,6 +46,7 @@ test('the changed-since window starts at the last session\'s commit, or the last
 test('a night stopped by a broker error does not count as worked, so the changed-since window stays', () => {
   assert.equal(nightWorked({stopped: 'done'}), true);
   assert.equal(nightWorked({stopped: 'api: 429 broker: budget'}), false);
+  assert.equal(nightWorked({stopped: 'stopped at the 250k token cap'}), false, 'a night stopped at the run cap ended before its later goals: it must not move the changed-since window');
   assert.equal(nightWorked(null), false);
 });
 

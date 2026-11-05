@@ -4,6 +4,7 @@
 // the night asks the broker once, in one tiny call, who answers; Codex answering = the full session, Claude answering because Codex ran out = half of it, a broker that refuses = no session and the reason in the summary.
 import fs from 'node:fs';
 import path from 'node:path';
+import {isCapStop} from './agent-tier.mjs';
 
 export const FULL = {minutes: 20, calls: 120, steps: 100};
 const HALF_FLOOR = {minutes: 5, calls: 30, steps: 30};
@@ -52,4 +53,5 @@ export function memoryCommitFiles(out, {sha, today}) {
 }
 
 /** Whether a night was worked to its end: false for a summary whose session stopped on a broker error (`api: …`), which keeps what it found but must not move the changed-since window. */
-export const nightWorked = session => Boolean(session) && !String(session.stopped || '').startsWith('api:');
+// Why (5 Nov 2026, Gitar on #3220): a night that stopped at the run's token cap ended before its later goals, exactly like a broker stop, so it keeps its notes but does not move the changed-since window or record the plan's pairs as seen; relabelling the cap stop for the report must not make it look worked.
+export const nightWorked = session => Boolean(session) && !String(session.stopped || '').startsWith('api:') && !isCapStop(session.stopped);

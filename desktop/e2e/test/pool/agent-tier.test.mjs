@@ -1,7 +1,7 @@
 // The AI user agent's acting tier and the hard token cap of one run: a night acts on the large tier, a replay on small, and every call of a run counts against 250,000 tokens and is refused before it is made when it could pass the cap.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {actorTierOf, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
+import {actorTierOf, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, isCapStop, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
 
 const answer = (tokens, tier = 'large') => ({text: '{}', usage: {input_tokens: tokens - 100, output_tokens: 100}, tier});
 const asks = (tokens, tier) => { const calls = []; const ask = async args => { calls.push(args); return answer(tokens, tier); }; ask.calls = calls; return ask; };
@@ -88,4 +88,6 @@ test('a refusal by the reader or judge earlier does not relabel a real broker fa
   assert.equal(stoppedLabel(`api: ${CAP_REACHED}`, state), 'stopped at the 250k token cap');
   assert.equal(stoppedLabel('api: 502 broker: unreachable', state), 'api: 502 broker: unreachable');
   assert.equal(stoppedLabel('goals', state), 'goals');
+  assert.equal(isCapStop(stoppedLabel(`api: ${CAP_REACHED}`, state)), true);
+  assert.equal(isCapStop('api: 502 broker: unreachable'), false);
 });

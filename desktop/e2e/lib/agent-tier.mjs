@@ -5,7 +5,7 @@
 export const RUN_CAP_TOKENS = 250_000;
 export const HARNESS_MAX_TOKENS = 20_000;   // what each call carries before the page: instructions, answer shape, goal and what is known (owner, 5 Nov 2026)
 export const JUDGE_RESERVE_TOKENS = 25_000;
-export const MAX_OUTPUT_TOKENS = 1024;   // brokerAsk's max_tokens: the most one answer can add
+export const MAX_OUTPUT_TOKENS = 1024;   // the first call's answer headroom (brokerAsk asks max_tokens 1024, but the broker does not forward it); raised by the largest answer seen
 export const CAP_REACHED = 'the run token cap was reached';   // the refusal the loops read as "stop here"; a read it refused made no call
 const IMAGE_TOKENS = 1_500;   // a screenshot costs about this, whatever its bytes: its base64 text must not be counted as words
 
@@ -42,6 +42,9 @@ export function runBudget({capTokens = RUN_CAP_TOKENS, reserve = JUDGE_RESERVE_T
 
 /** The reason a session ended, with a stop that was the cap's refusal of the actor's call named as the cap (and a real broker failure left as it is, even when an earlier reader or judge call had hit the cap). */
 export const stoppedLabel = (stopped, state) => String(stopped).startsWith('api:') && String(stopped).includes(CAP_REACHED) ? `stopped at the ${Math.round(state.capTokens / 1000)}k token cap` : stopped;
+
+/** Whether a session's stop reason is the run cap's label (see stoppedLabel). */
+export const isCapStop = stopped => /^stopped at the \d+k token cap$/.test(String(stopped));
 
 /**
  * The fixed part every actor call carries before the page and the history: the instructions, the shape of the answer and the goal with what is known. -> the largest over the goals' intros, in tokens (4 characters a token).
