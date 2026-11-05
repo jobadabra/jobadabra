@@ -68,8 +68,11 @@ export async function run(ctx) {
     console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
+    // Why (5 Nov 2026, code review of the tier input): a typo such as "Large" must not silently run the small tier.
+    const actorTier = process.env.AGENT_TIER || 'small';
+    if (!['small', 'mid', 'large'].includes(actorTier)) throw new Error(`AGENT_TIER must be small, mid or large, got "${actorTier}"`);
     try {
-      session = await runSession({act, ask: brokerAsk('small'), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: brokerAsk(actorTier), judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
     } finally { kept = await video.finish(); }   // Why (4 Nov 2026, 9/12 part 2b): a session that throws still leaves the video of what it did, and `kept` (its meta) is what the run record below reads
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);

@@ -46,7 +46,9 @@ export function observePage() {
   for (const el of document.querySelectorAll('button, a[href], [role="button"], [role="tab"], input, textarea, select, summary')) {
     if (controls.length >= 120 || !visible(el) || el.closest('nav, .sidebar')) continue;
     const kind = /^(INPUT|TEXTAREA)$/.test(el.tagName) ? 'field' : el.tagName === 'SELECT' ? 'select' : el.tagName === 'A' ? 'link' : 'button';
-    const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || el.getAttribute('name') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    // Why (5 Nov 2026, AI user agents, replay 41938139127: a checkbox inside its <label> was reported as "(no label)" and filed as a bug, wrongly): a control's name is its accessible name, the way a person and a screen reader get it: aria-label, then aria-labelledby, then the <label> that wraps it or points at it, then its own text, placeholder, name.
+    const namedBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');
+    const label = (el.getAttribute('aria-label') || namedBy.trim() || [...(el.labels || [])].map(node => node.textContent).join(' ').trim() || el.textContent || el.getAttribute('placeholder') || el.getAttribute('name') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
     el.setAttribute('data-explore', String(controls.length));
     // Why (4 Nov 2026, AI user agents, owner: "Yes, fix it now"): the badge in a control ("What we learned" + the pill "2 to check") is information, not the press; safety reads the name without the app's pills, so "check" in a count never refuses the tab (replay 41807054784: the whole Profile tab was [not allowed]).
     const named = el.cloneNode(true);

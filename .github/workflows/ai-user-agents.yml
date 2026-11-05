@@ -22,13 +22,16 @@ on:
         description: 'Replay: the commit whose APP is tested (a 7-40 character SHA, e.g. the commit before a fix); the tests and the agent come from this workflow''s commit. Empty = this commit'
         required: false
       plan:
-        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound) instead of the seeded goals'
+        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound, board) instead of the seeded goals'
         required: false
       rules_off:
         description: 'Replay: rule ids taken out of what the agent knows, comma separated (profile-1,jobs-3): the unprompted run'
         required: false
       shape:
         description: 'The known-bug data shape put in the app before the free goals: headings, languages, inbound, none, or empty = the one the seed picks'
+        required: false
+      tier:
+        description: 'The model tier that acts: small (default), mid or large (the Opus map); another word fails the run'
         required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
@@ -144,8 +147,9 @@ jobs:
           AGENT_SEED: ${{ inputs.seed }}
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_SHAPE: ${{ inputs.shape }}
+          AGENT_TIER: ${{ inputs.tier }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
-          AGENT_KIND: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '') && 'replay' || 'night' }}   # Why (4 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay
+          AGENT_KIND: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '') && 'replay' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input)
           AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
           AGENT_MEMORY_DIR: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
           AGENT_CHANGED_LOG: ${{ inputs.plan == '' && inputs.app_ref == '' && inputs.rules_off == '' && steps.prepare.outputs.changed_log || '' }}   # same replay condition as the memory: no earlier night, no "changed since"
