@@ -58,6 +58,14 @@ def mixes(db):
     return {(system, slug): _mix(json.loads(text)) for system, slug, text in db.execute('SELECT ats, slug, entry FROM feed_entries')}
 
 
+def mix_fields(kinds, counts, last):
+    """An entry's {kinds, kind_counts, mix_kept}, each only when it has one: this read's judgment, else `last` (mixes) for a part the AI could not judge. Counts of {}
+    are a judgment, none local, so they clear the old ones. mix_kept feeds the run log's count (published_line); the site keeps fixed fields."""
+    kept = {'kinds': last.get('kinds') if not kinds else None, 'kind_counts': last.get('kind_counts') if counts is None else None}
+    fields = {'kinds': kept['kinds'] or kinds, 'kind_counts': kept['kind_counts'] or counts, 'mix_kept': any(kept.values())}
+    return {name: value for name, value in fields.items() if value}
+
+
 def _restore_source(db, entry):
     """Make a published feed a known source again: build_index reads and carries only those. A row already there is left as it is, so a feed switched off stays off.
     Returns 1 when added."""

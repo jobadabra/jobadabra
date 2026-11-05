@@ -175,17 +175,9 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
                      'jobs': len(jobs), 'relevant': relevant_roles(jobs), 'checked': today, 'places': job_places(jobs),
                      'regions': contribute.regions_of([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else []))}
             entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/job-search/scouting's kind × country coverage
-            kinds, counts = scout_kind_counts.of_jobs(jobs)   # what it hires for, and per country: installs read one with jobs of their kind there
-            if jobs:   # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
-                last = judged_before.get((system, slug), {})
-                kept = {'kinds': last.get('kinds') if not kinds else None, 'kind_counts': last.get('kind_counts') if counts is None else None}   # {} counts: judged, none local
-                kinds, counts = kept['kinds'] or kinds, kept['kind_counts'] or counts
-                if any(kept.values()):
-                    entry['mix_kept'] = True   # read by published_line only: the site keeps fixed fields
-            if kinds:
-                entry['kinds'] = kinds
-            if counts:
-                entry['kind_counts'] = counts
+            # What it hires for, and per country: installs read one with jobs of their kind there.
+            # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
+            entry.update(scout_carry.mix_fields(*scout_kind_counts.of_jobs(jobs), judged_before.get((system, slug), {}) if jobs else {}))
             tags = fits(by_feed.get((system, slug), {}))
             pooled = pool_of(by_feed.get((system, slug), {}))
             if pooled:
