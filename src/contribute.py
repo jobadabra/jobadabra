@@ -142,11 +142,16 @@ def _plain(fragment):
 def regions_of(places):
     """The fixed-list regions a feed hires in, from its places in any language ('Zürich, Switzerland' -> europe); 'remote' when a place is
     only "remote" (or the feed flags it: the caller passes 'remote')."""
+    return regions_read(places)[0]
+
+
+def regions_read(places):
+    """(regions, unanswered): regions_of's ids, and the places the AI did not answer this run (the central scout keeps an earlier answer for those)."""
     from .ai import meanings
     places = [p for p in places if p]
-    found = set(meanings.labels('job-region', [p for p in places if p != 'remote'], {**REGIONS, 'remote': 'remote or anywhere, no region named'},
-                                'Where a job is, as its posting writes it. Answer its region.'))
-    return sorted(found | ({'remote'} if 'remote' in places else set()))
+    found, unanswered = meanings.labels_read('job-region', [p for p in places if p != 'remote'], {**REGIONS, 'remote': 'remote or anywhere, no region named'},
+                                             'Where a job is, as its posting writes it. Answer its region.')
+    return sorted(set(found) | ({'remote'} if 'remote' in places else set())), unanswered
 
 
 def fine_tags(search=None):
