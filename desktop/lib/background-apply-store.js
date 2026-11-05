@@ -10,6 +10,11 @@ export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
 const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'receipt_confirmed', 'submitting']);
 const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // a job still on its way to a press: a quit hands it over (interrupted)
+// The hand-offs that end a run with nothing left to settle: the person's Stop or Cancel, a quit before the press, a mode change. Applying again starts a new run.
+// Every other reason stays with the person (a bot check, an unknown or reserved press, a form taken to their own browser, where they may have submitted it).
+const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'mode_changed']);   // words-ok: our own hand-off reason ids, not page knowledge
+/** Pure: true when `state` is a hand-off that ended its run with nothing left to settle and no press reserved, so applying again starts a new run. */
+export const finishedHandoff = state => state?.state === 'needs_user_handoff' && !state.attempt && FINISHED_REASONS.has(state.reason);
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
 
 /** Build a serialized controller over Applications sections/events; failed store writes reject before any launch or submit is authorized. */
@@ -30,8 +35,10 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     return serial(async () => {
       if (!['fill', 'auto'].includes(mode)) throw new Error('Unknown background Apply mode');
       const app = await appOf(url), old = await load(app);
-      // Why (2026-10-27, owner): reapplying or changing modes must never reset a job's CAPTCHA or unknown-submit handoff.
-      if (old) return old;
+      // Why (2026-10-27, owner; 5 Nov 2026, owner's screenshot): reapplying or changing modes never resets a job's CAPTCHA or unknown-submit handoff; any other finished
+      // hand-off (Stop, Cancel, a quit before the press) starts a new run, or the job came back as "Needs you · Try again" in its old mode and never launched.
+      // A Stop after the reservation keeps no attempt on the state (it saves the state from before it), so the reservation events are read too.
+      if (old && (!finishedHandoff(old) || (await ask('events', 'list', {kind: RESERVED})).some(event => event.app_id === app.id))) return old;
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
       return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});

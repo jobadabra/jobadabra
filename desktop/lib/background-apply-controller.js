@@ -78,6 +78,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     tellAway(item, note);
     return state;
   }
+  // Why (5 Nov 2026, owner's screenshot; review of [ap] 2/7): a new run under the old record kept its Stop mark, its start time from an earlier app run and its tab's
+  // reports, so the poll handed it straight back. The finished old session leaves the list and the new run is a session of its own.
+  async function dropFinished(old, state) {
+    if (!old || state.session === old.id) return;
+    await browserOf().closeSession(old.id).catch(() => false);   // a stopped run's tab may still be open: it closes with it
+    terminals.remove(old.id);
+  }
   async function enqueue(jobs, mode) {
     return serial(async () => {
       // Why (2026-10-29, owner: "go ahead" with the switch): Full automation runs only after the person confirmed it in Settings → Apply; the window's pick is not enough.
@@ -95,10 +102,12 @@ export function createBackgroundApplyController(storage, {store = null, browser 
         // Why (2026-10-28, owner screenshot): a job the store refuses as not eligible (its stage moved on since the list was read) is skipped and said, not a thrown error that reaches the window
         // as an IPC string; the other jobs still start. Any other failure (a write, a wrong mode) stops the batch with its own words.
         let state;
-        try { state = await store.queue(job.url, old?.id || uuid().slice(0, 8), mode, chosen); } catch (error) {
+        // A new id each time: the store keeps an old run (its state and session) when that run still holds something for the person, and starts a new run under this id otherwise.
+        try { state = await store.queue(job.url, uuid().slice(0, 8), mode, chosen); } catch (error) {
           if (error?.code !== 'NOT_ELIGIBLE') return {ok: false, error: String(error?.message || error)};
           skipped++; continue;
         }
+        await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         cache(item, state); enrolled.push(item.id);
       }

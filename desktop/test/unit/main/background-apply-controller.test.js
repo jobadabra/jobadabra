@@ -413,3 +413,40 @@ test('a hand-over to the person (Stop, cut off at start) also queues the message
   const broken = build({waiting: {add: () => { throw new Error('boom'); }}});
   assert.deepEqual(await broken.sweepInterrupted(), ['s1'], 'a failing message never breaks the hand-over');
 });
+
+// Why (5 Nov 2026, owner's screenshot: a Full automation batch showed a re-applied job as "Needs you · Try again" in its old mode; review of [ap] 2/7): the new run must
+// launch at the next poll, whatever the old session carried (the person's Stop mark, a start time from an earlier app run). The real store; terminals as lib/terminals.js
+// behaves: startForm returns the open record of the same job unchanged, remove drops it.
+test('a job applied to again after Stop or an earlier app run launches at the next poll, as a new session in the new mode', async () => {
+  const {createBackgroundApplyStore} = await import('../../../lib/background-apply-store.js');
+  const url = 'https://jobs.example.test/again', NOW = Date.parse('2026-11-05T10:00:00Z');   // one fixed time: this app run started a second before it
+  for (const [name, old] of [['Stop in this run', {stuck: 'stopped', startedAt: new Date(NOW).toISOString(), reason: 'stopped'}],
+    ['an earlier app run', {startedAt: '2026-11-01T10:00:00Z', reason: 'app_closed'}]]) {
+    const app = {id: 'app', url, stage: 'Kit ready'}, sections = new Map(), records = new Map();
+    sections.set('Background Apply', JSON.stringify({version: 1, session: 'old', mode: 'fill', chosenAt: 'c0', state: 'needs_user_handoff', owner: 'o1', manualOverride: true, reason: old.reason}));
+    sections.set('📝 Application kit', '```json\n{"eligible":true,"answers":[]}\n```');
+    const call = async (_storage, entity, method, args) => {
+      if (entity === 'applications' && method === 'get') return app;
+      if (entity === 'applications' && method === 'section') return sections.get(args.name) || '';
+      if (entity === 'applications' && method === 'set_section') { sections.set(args.name, args.markdown); return null; }
+      if (entity === 'events' && method === 'list') return [];
+      throw new Error(`unexpected ${entity}.${method}`);
+    };
+    records.set('old', {id: 'old', kind: 'form', url, outcome: '', stuck: old.stuck || '', startedAt: old.startedAt, background: {mode: 'fill', state: 'needs_user_handoff', manualOverride: true}});
+    const terminals = {list: () => [...records.values()], byUrl: u => [...records.values()].filter(r => r.url === u).pop() || null, record: id => records.get(id) || null, report: () => {},
+      remove: id => records.delete(id),
+      startForm: item => [...records.values()].find(r => r.url === item.url && r.kind === 'form' && !r.outcome) || (records.set(item.id, {...item, kind: 'form', outcome: '', startedAt: new Date(NOW).toISOString()}), records.get(item.id))};
+    let n = 0;
+    const closed = [];
+    const controller = createBackgroundApplyController({}, {store: createBackgroundApplyStore({}, {call, now: () => NOW, realNow: () => NOW, uuid: () => 'attempt'}), uuid: () => `newrun0${++n}-fictional`,
+      config: () => ({mode: 'auto', chosenAt: 'c1', autoConfirmedAt: '2026-11-05T09:00:00Z', auto: {waitMin: 1}}), terminals, started: NOW - 1000, stop: () => false,
+      browser: {ready: () => true, start: async () => ({owner: 'o1'}), closeSession: async id => { closed.push(id); return true; }}, reader: {busy: () => false, take: () => null, takeEnded: () => []}, port: 1, token: () => 'fictional', notify: () => {}, log: () => {}});
+    const queued = await controller.enqueue([{url, company: 'Fictional Air'}], 'auto');
+    assert.equal(queued.ok, true, `${name}: ${queued.error || ''}`);
+    const poll = await controller.handle({action: 'poll', owner: 'o1'});
+    assert.deepEqual(poll.handoffs, [], `${name}: nothing handed back`);
+    assert.deepEqual(poll.jobs.map(job => [job.session, job.mode]), [['newrun01', 'auto']], `${name}: the new run launches in Full automation`);
+    assert.deepEqual([...records.keys()], ['newrun01'], `${name}: the finished old session left the list`);
+    assert.deepEqual(closed, ['old'], `${name}: the old run's hidden tab is closed with it`);
+  }
+});
