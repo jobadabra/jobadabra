@@ -11,7 +11,7 @@ const EXPECTATIONS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 
 test('the four tester bugs each have a plan whose rule exists in the knowledge base and whose goals never name the defect', () => {
   const expectations = readExpectations(EXPECTATIONS), ids = Object.values(expectations).flat().map(entry => entry.id);
-  assert.deepEqual(Object.keys(NAMED_PLANS), ['learned-questions', 'saved-answers', 'languages', 'inbound', 'fill-details']);
+  assert.deepEqual(Object.keys(NAMED_PLANS), ['learned-questions', 'saved-answers', 'languages', 'inbound', 'board', 'fill-details']);
   for (const [id, plan] of Object.entries(NAMED_PLANS)) {
     assert.ok(ids.includes(plan.rule), `${id}: the rule ${plan.rule} is in docs/app-expectations`);
     for (const goal of plan.goals) assert.doesNotMatch(goal.label, /bare label|never|wrong|bug|Not checked|e-?mail subject|level grid/i, `${id}: the goal must not name the defect`);
@@ -21,7 +21,7 @@ test('the four tester bugs each have a plan whose rule exists in the knowledge b
 test('a named plan is a session plan with numbered goals; an unknown id says which plans exist', () => {
   const plan = namedPlan('inbound', 20261103);
   assert.deepEqual([plan.seed, plan.persona.name, plan.goals.length, plan.goals[0].n, plan.goals[0].group], [20261103, 'named plan inbound', 1, 1, 'Jobs']);
-  assert.throws(() => namedPlan('nope', 1), /no named plan "nope": the plans are learned-questions, saved-answers, languages, inbound, fill-details/);
+  assert.throws(() => namedPlan('nope', 1), /no named plan "nope": the plans are learned-questions, saved-answers, languages, inbound, board, fill-details/);
 });
 
 test('a rule taken out is neither read by the agent nor citable; the others stay', () => {

@@ -10,6 +10,8 @@ export const NAMED_PLANS = {
   'languages': {rule: 'profile-3', data: {cv: 'manyLanguages'}, goals: [{group: 'Profile', label: 'Open What we learned and answer the question it asks about the languages you speak'}]},
   'inbound': {rule: 'jobs-3', data: {inbound: 3}, goals: [{group: 'Jobs', label: 'Open the Inbound list and read each row, then find the same job in the Jobs list and compare them'}]},
   // Why (5 Nov 2026, AI user agents FR 3/4, owner: a session told only "fill up all my details and report what you see" filed 8 real messages; replays 41935417039, 41938143953: 7 navigation goals of ~14 steps ended could-not-finish): one open task like a person's, with the data of two bugs in the app and all the steps. Its goal names no defect.
+  // Why (5 Nov 2026, AI user agents tuning, Opus read of the first 12 notes: none was the planted bug and no goal had opened the Board): the Board lists each job as a card with a chip; this goal opens it and reads the cards, naming no defect. Same data and rule as 'inbound' (jobs-3).
+  'board': {rule: 'jobs-3', data: {inbound: 3}, goals: [{group: 'Jobs', label: 'Open the Jobs Board and read each card, the chip on it and the column it sits in'}]},
   'fill-details': {rule: 'profile-1', data: {cv: 'headingLines', inbound: 3}, goals: [{group: 'Profile', label: 'Fill in all my details from my CV in the app, then go through my jobs and my inbound list as I would; if something looks off, note it'}]},
 };
 

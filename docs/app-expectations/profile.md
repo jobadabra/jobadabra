@@ -4,3 +4,4 @@
 - [profile-2] A saved answer is never its own question, its section name or a heading line of the CV ("Saved: Summary"). | source: PR #3027 | code: -
 - [profile-3] A language line names its languages with their levels, never a level grid that names no language. | source: PR #3027 | code: -
 - [profile-4] The place the data lives is called "your store" (this Mac or Notion), never "Notion" as the one database. | source: desktop/test/unit/renderer/store-words.test.js | code: -
+- [profile-5] A row opened in place under What we learned shows the pill "Editing" instead of its status or value; the pill is the row being open, not a state of the answer. | source: desktop/renderer/pages/application-answers.js | code: desktop/renderer/pages/application-answers.js
