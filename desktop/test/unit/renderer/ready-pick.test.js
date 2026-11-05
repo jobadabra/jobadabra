@@ -13,7 +13,7 @@ const page = () => {
   return body;
 };
 const picked = ['a', 'b', 'c', 'd', 'e'].map((code, i) => ({code, name: `Job ${code} · Acme`, fit: 90 - i, needsKit: i > 0, needsCv: i > 1}));
-const lines = {1: '1 job ready: nothing to prepare, no AI cost.', 3: '3 jobs: prepare 2 kits + 2 CVs with letters, about $0.20 of AI.', 5: '5 jobs: prepare 4 kits + 3 CVs, about $0.34 of AI.', 10: '5 jobs: prepare 4 kits + 3 CVs, about $0.34 of AI.'};
+const lines = {1: '1 job ready: nothing to prepare, no AI cost.', 3: '3 jobs: prepare 2 applications + 2 CVs with letters, about $0.20 of AI.', 5: '5 jobs: prepare 4 applications + 3 CVs, about $0.34 of AI.', 10: '5 jobs: prepare 4 applications + 3 CVs, about $0.34 of AI.'};
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const state = () => ({owner: true, settings: {minFit: 60, perNight: 10}, tonight: [], names: {}, site: {batch: null, jobs: []}});
 
@@ -31,7 +31,7 @@ test('Fill now asks how many: 3 by default, the chips change the list and the co
   assert.equal([...dialog.querySelectorAll('.segmented button')].map(button => button.textContent).join(' '), '1 3 5 10');
   assert.equal(dialog.querySelector('.segmented .is-active').textContent, '3', 'default 3');
   assert.match(text(), /Job c · Acme/); assert.doesNotMatch(text(), /Job d/);
-  assert.match(text(), /3 jobs: prepare 2 kits \+ 2 CVs with letters, about \$0\.20/);
+  assert.match(text(), /3 jobs: prepare 2 applications \+ 2 CVs with letters, about \$0\.20/);
   assert.equal(dialog.querySelector('#ready-pick-yes').textContent, 'Prepare and fill');
   [...dialog.querySelectorAll('.segmented button')].find(button => button.textContent === '1').click();
   assert.match(text(), /1 job ready: nothing to prepare/); assert.doesNotMatch(text(), /Job b/);
@@ -44,6 +44,6 @@ test('Fill now asks how many: 3 by default, the chips change the list and the co
   card.querySelector('#ready-run').click(); await tick();
   globalThis.document.getElementById('ready-pick').querySelector('#ready-pick-yes').click(); await tick();
   assert.deepEqual(ran, [{top: ['a', 'b', 'c']}]);
-  assert.match(card.textContent, /Preparing kits, CVs and letters/, 'the bar says what is happening while the jobs are made');
+  assert.match(card.textContent, /Preparing applications, CVs and letters/, 'the bar says what is happening while the jobs are made');
   assert.equal(card.querySelector('#ready-run').textContent, 'Filling…');
 });

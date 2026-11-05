@@ -39,7 +39,7 @@ export async function openCvChange() {
   window.pilot.strategyData().then(data => {
     if (!data?.ok || !data.scored) return;
     $('cv-impact').textContent = `Applying Profile edits marks ${data.scored} scored jobs as old scores; Re-score updates them, up to 60 at a time ` +
-      `${data.counts?.kits ? `; ${data.counts.kits} unsent kits were drafted with the old Profile` : ''}.`;
+      `${data.counts?.kits ? `; ${data.counts.kits} unsent applications were prepared with the old Profile` : ''}.`;
   }).catch(() => {});
   $('cv-dialog-name').textContent = change.name || 'your CV';
   $('cv-dialog-sub').textContent = change.previous === change.name ? 'New upload · same file name as the previous CV' : `New upload${change.previous ? ` · replaces ${change.previous}` : ''}`;
@@ -85,7 +85,7 @@ export async function openCvChange() {
     }));
     const more = $('cv-kits-more');
     show(more, kits.length > KITS_SHOWN);
-    more.textContent = showAll ? 'Show fewer' : `Show all ${kits.length} kits`;
+    more.textContent = showAll ? 'Show fewer' : `Show all ${kits.length} applications`;
   };
   $('cv-kits-more').onclick = () => { showAll = !showAll; draw(); };
   $('cv-kits-count').textContent = String(kits.length);

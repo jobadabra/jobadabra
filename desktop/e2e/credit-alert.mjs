@@ -8,7 +8,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
-import {send} from './ci-alert.mjs';
+import {delivered, send} from './ci-alert.mjs';
 
 /** The providers' own wordings of an empty balance: Anthropic "Credit balance is too low", OpenAI "insufficient_quota" / "exceeded your current quota". */
 const CREDIT_OUT = /credit balance is too low|insufficient[_ ]quota|exceeded your current quota|plans and billing/i;
@@ -32,7 +32,7 @@ export function creditMessage({provider, text = '', env = process.env}) {
 /** Sends the alert when `text` is a credit message (or the caller says the provider is capped: always = true). Returns the line to print; never throws, never prints the token. */
 export async function alertCreditOut({provider, text, always = false, env = process.env, fetcher = fetch}) {
   if (!always && !isCreditOut(text)) return 'credit-alert: not a credit message, nothing sent';
-  return send(creditMessage({provider, text, env}), env, fetcher);
+  return send(creditMessage({provider, text, env}), env, fetcher, {event: 'ai-credit'});
 }
 
 // Why (4 Nov 2026, a8 via mac-32): a dropped connection was told as "AI credit ran out · Codex refused". Money is named only on the broker's own budget reason (`budget:`), a counted neuron cap or a provider's credit words; an unreadable count says nothing about money. The other way round is not claimed either: a 503 can hide a used-up engine (fallback:unsupported), so the alert says what happened and never "not credit". The caller's verdict is about a refusal, so it is used only then.
@@ -65,8 +65,8 @@ export async function alertCappedSteps({artifacts, marker, verdict = 'AI steps a
   const credit = notes.some(saidLimit);
   const result = await send(alertHtml({icon: credit ? '🩶' : '🟠', title: credit ? CREDIT_TITLE : FAILED_TITLE, verdict: credit ? verdict : FAILED_VERDICT,
     bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [[...notes].sort((a, b) => saidLimit(b) - saidLimit(a)).slice(0, 3).join('; ')]}],
-    links: [{text: 'Open the run', url: run}]}), env, fetcher);
-  if (marker && result === 'ci-alert: sent') {
+    links: [{text: 'Open the run', url: run}]}), env, fetcher, {event: 'ai-credit'});
+  if (marker && delivered(result)) {
     fs.mkdirSync(path.dirname(marker), {recursive: true});
     fs.writeFileSync(marker, 'sent\n');
   }

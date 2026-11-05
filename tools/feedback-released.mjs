@@ -127,7 +127,7 @@ const note = (title, verdict, tag, env) => alertHtml({icon: '⚠️', title, ver
  * `wait`: ms between tries (a test passes 0).
  */
 export async function tellSite({tag, env = process.env, fetcher = fetch, wait = 5000}) {
-  const fail = async (cause, extra = '') => { const line = `feedback-released: ${cause}${extra}`; await send(note('Feedback reporters were not told', cause, tag, env), env, fetcher).catch(() => {}); return {ok: false, line}; };
+  const fail = async (cause, extra = '') => { const line = `feedback-released: ${cause}${extra}`; await send(note('Feedback reporters were not told', cause, tag, env), env, fetcher, {event: 'feedback-not-told', level: 'problem'}).catch(() => {}); return {ok: false, line}; };
   const key = env.SELFHEAL_PUBLISH_KEY;
   if (!TAG.test(String(tag))) return {ok: false, line: `feedback-released: "${tag}" is not a desktop-vX.Y.Z tag`};
   if (!key) return fail('SELFHEAL_PUBLISH_KEY is not set in this repository', ': the site refuses the call without it');
@@ -141,7 +141,7 @@ export async function tellSite({tag, env = process.env, fetcher = fetch, wait = 
     if (!answer.ok) return fail(`the site answered ${answer.status || 'nothing'} after ${answer.tries} ${answer.tries === 1 ? 'try' : 'tries'}`, answer.body?.error ? ` (${String(answer.body.error).slice(0, 120)})` : '');
     const {told = 0, waiting = 0} = answer.body || {}, failed = Array.isArray(answer.body?.failed) ? answer.body.failed : [];   // Why (6/7 review): a null or odd `failed` is no failure of ours
     const line = `feedback-released: ${tag} (stable, ${own.length} PRs since ${prev || 'no earlier stable'}${earlier.length ? `, ${earlier.length} earlier fix${earlier.length === 1 ? '' : 'es'} the tag contains` : ''}): told ${told}, still waiting ${waiting}${failed.length ? `, NOT confirmed ${failed.length}` : ''}`;
-    if (failed.length) await send(note('Some reporters were not confirmed', `${failed.length} could not be confirmed (their cards say so on /admin/feedback/inbox)`, tag, env), env, fetcher).catch(() => {});
+    if (failed.length) await send(note('Some reporters were not confirmed', `${failed.length} could not be confirmed (their cards say so on /admin/feedback/inbox)`, tag, env), env, fetcher, {event: 'feedback-not-told', level: 'problem'}).catch(() => {});
     return {ok: true, line};
   } catch (error) { return fail(`could not prepare the call: ${String(error.message || error).slice(0, 160)}`); }
 }

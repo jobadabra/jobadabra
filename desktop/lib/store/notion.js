@@ -17,7 +17,7 @@ const MISSING = {
   knowledge: 'Connect Notion first: form knowledge lives there.',
   portrait: 'Connect Notion first: your portrait lives there.',
 };
-const KNOWLEDGE_INTRO = 'What Jobadabra learned from your form fills, used by every later kit and fill. Fix or delete a line to change what it does.';
+const KNOWLEDGE_INTRO = 'What Jobadabra learned from your form fills, used by every later application and fill. Fix or delete a line to change what it does.';
 
 const plain = rich => (rich || []).map(t => t.plain_text || '').join('');
 // A Notion block → the page item every adapter gives: {id, type, text} or a table {id, type: 'table', header, rows: [{id, cells, raw}]}.

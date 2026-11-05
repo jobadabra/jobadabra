@@ -18,7 +18,7 @@ export async function refresh(storage, license, {fetcher = globalThis.fetch, now
     const response = await fetcher(`${BASE}/api/trial/status?${query}`, {headers});
     const body = await response.json().catch(() => ({}));
     if (!response.ok || !body.ok) return false;
-    storage.saveSettings({trialServer: {applied: body.used, first: body.first, pro: !!body.pro, at: new Date(now()).toISOString()}});
+    storage.saveSettings({trialServer: {applied: body.used, first: body.first, pro: !!body.pro, bonus: body.bonus, at: new Date(now()).toISOString()}});
     return true;
   } catch { return false; }
 }

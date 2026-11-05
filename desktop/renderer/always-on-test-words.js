@@ -66,12 +66,13 @@ export function shouldPropose({steps, again, proposed}) {
   return steps.find(step => step.settings && step.state === 'failed') || null;
 }
 
-/** The one line under the checks once a test ended (empty while it runs). */
+/** The one line under the checks once a test ended (empty while it runs, and empty when the failed step's own note says it). */
 export function summary(phase, steps, way = 'own') {
   if (phase === 'passed') return way === 'ours' ? 'Everything works on our servers. Your next daily run does the same.' : 'Everything works. Your next scheduled run can use it.';
   if (phase !== 'failed') return '';
   const bad = steps.find(item => item.state === 'failed');
   if (bad?.settings) return `${bad.title}: no. Set up notifications, then test again.`;
+  if (way === 'ours' && bad?.line) return '';   // Why (5 Nov 2026, hr): the failed step's row already carries the site's own note; a second "Press Test again" sentence contradicted it (a stopped or unconfirmed address is not fixed by pressing again)
   if (way === 'ours') return bad ? `${bad.title}: no. Press Test again in a few minutes. If it fails again, e-mail contact@jobadabra.top.` : 'The test ended before every step ran. Press Test again in a few minutes.';
   return bad ? `${bad.title}: no. Fix that one, then press Test again.` : 'The test ended before every check ran. Press Test again.';
 }

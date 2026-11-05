@@ -354,7 +354,7 @@ test('Rebuild from CV: changes grouped by what they trigger, contact edits ignor
   assert.equal(groups[1].linked, 'search');
   assert.deepEqual(groups[1].changes, ['~ Goals']);
   assert.equal(groups[1].cost, 'Uses AI');
-  assert.match(groups[1].impact, /Marks 120 scored jobs as old scores; Re-score updates them, up to 60 at a time; 5 unsent kits/);
+  assert.match(groups[1].impact, /Marks 120 scored jobs as old scores; Re-score updates them, up to 60 at a time; 5 unsent applications/);
   // A contact-only change isn't a Profile change for scoring.
   assert.deepEqual(rebuildGroups(current, {...draft, search: current.search, profile_markdown: '# Goals\n- SRE\n# Contact\n- Phone: 9'}), []);
   // Saving only the search criteria leaves the preferences file untouched.

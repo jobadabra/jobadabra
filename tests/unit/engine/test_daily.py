@@ -170,8 +170,8 @@ class PrepareTopMatchesTests(unittest.TestCase):
         self.assertEqual(code, 0, out.getvalue())
         self.assertEqual(seen, [([2], daily.KITS_DEFAULT)])
         self.assertIn('https://a/9', found.call_args[0][1])          # an applied job is not a match to prepare
-        self.assertEqual(logged[0]['headline'], 'Kits ready: 1')
-        self.assertIn('Kits ready: 1', out.getvalue().splitlines())   # the Actions page's result line (pipeline.js TASKS.kits)
+        self.assertEqual(logged[0]['headline'], 'Applications ready: 1')
+        self.assertIn('Applications ready: 1', out.getvalue().splitlines())   # the Actions page's result line (pipeline.js TASKS.kits)
         self.assertIn('Platform', shown[0])
 
 

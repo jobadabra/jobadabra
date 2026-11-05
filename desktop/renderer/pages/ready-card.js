@@ -63,11 +63,11 @@ export function paint(card, state, names, act) {
   const next = el('div', 'ready-summary');
   next.append(el('span', 'muted', 'Tonight'));
   const count = pill(`${tonight.length} ready`, tonight.length ? 'good' : 'warn');
-  count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : 'No job has its kit, CV and cover letter ready yet: Fill now makes them for your best matches.';
+  count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : 'No job has its application, CV and cover letter ready yet: Fill now makes them for your best matches.';
   next.append(count);
   if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${new Date(state.sent.at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
     {title: 'Sent again by itself when this list changes and before your Mac goes off.'}));
-  if (!tonight.length) next.append(el('span', 'muted', 'Fill now makes the kit, CV and letter for your best matches first.'));
+  if (!tonight.length) next.append(el('span', 'muted', 'Fill now makes the application, CV and letter for your best matches first.'));
   body.append(next);
 }
 

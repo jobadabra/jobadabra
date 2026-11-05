@@ -247,7 +247,7 @@ export async function reopenClosedTab(item, button) {
     clearAnswers(item.id);
   }
   if (result?.focused) toastMessage('Form tab found', 'The form is still open in Chrome (its address changed): showing it.', NO_PLACE.outside, 'info');
-  else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it from your kit.', NO_PLACE.outside, 'info');
+  else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it for you.', NO_PLACE.outside, 'info');
   await refreshSessions();
   renderSessionPage();
   return result;

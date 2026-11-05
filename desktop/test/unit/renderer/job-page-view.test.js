@@ -270,5 +270,5 @@ test('A date in the future is no date a job was found or posted: shown as unknow
 });
 
 test('the overview describes readiness without exposing the stored preparation stage', () => {
-  assert.equal(headerFacts({stage: 'Kit ready'}), 'Ready to apply');
+  assert.equal(headerFacts({stage: 'Kit ready'}), 'Saved');
 });

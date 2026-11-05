@@ -10,7 +10,7 @@ const step = (label, state) => ({label, state});
 // -> {steps: [{label, state: done|now|todo|bad}], percent} or null when there is nothing to follow.
 export function progressOf({phase = 'idle', batch = null, jobs = [], error = ''} = {}) {
   if (phase === 'failed') return {steps: [step(error || 'Could not start', 'bad')], percent: 0};
-  if (phase === 'preparing') return {steps: [step('Preparing kits, CVs and letters', 'now'), step('Sending', 'todo'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 5};
+  if (phase === 'preparing') return {steps: [step('Preparing applications, CVs and letters', 'now'), step('Sending', 'todo'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 5};
   if (phase === 'sending') return {steps: [step('Sending', 'now'), step('Starting the server', 'todo'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 5};
   const state = batch?.state, running = state === 'running' || (phase === 'started' && state === 'queued');
   if (!running && !(phase === 'started' && FINISHED.includes(state))) return null;

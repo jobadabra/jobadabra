@@ -9,5 +9,5 @@ import {send} from './ci-alert.mjs';
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
   const [command, arg] = process.argv.slice(2);
   if (command !== 'alert') { console.error('usage: node refill-auto.mjs alert "<what>"'); process.exit(2); }
-  console.log(await send(`⚠️ Replay refill (automatic): ${arg}\n${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`));
+  console.log(await send(`⚠️ Replay refill (automatic): ${arg}\n${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, process.env, fetch, {event: 'replay-refill'}));
 }

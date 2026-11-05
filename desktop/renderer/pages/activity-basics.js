@@ -113,7 +113,7 @@ export function warningSummary(warnings) {
   return humanError(warnings[0]) || '';
 }
 // "<task> completed with warnings": which run it is, said in the box's title.
-export const WARN_NOUN = {search: 'Job search', scout: 'Employer search', mail: 'Gmail check', tailor: 'Tailoring', visits: 'Site reading', kits: 'Kit drafting',
+export const WARN_NOUN = {search: 'Job search', scout: 'Employer search', mail: 'Gmail check', tailor: 'Tailoring', visits: 'Site reading', kits: 'Application preparation',
   weekly: 'Search analysis', insight: 'The insight', today: 'Today’s list'};
 export const runResults = new Map();  // run id -> the message a finished task produced, for Recent activity
 export const runDetails = new Map();  // a Notion run's result and log, read once (pageId -> {message, log})

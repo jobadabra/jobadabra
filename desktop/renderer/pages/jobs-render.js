@@ -185,7 +185,7 @@ export function renderJobs() {
       // ⋯ menu, for pages the extension can't reach on its own.
       // Filled on the server: the main button opens that filled form (the night's hand-off) to check and submit, not a new fill.
       const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? 'Review & submit' : opened ? 'Opened ↻' : 'Apply'), {
-        title: job.ready ? 'The server filled this form overnight: open it in Chrome, check it and press Submit yourself' : opened ? 'Opened in Chrome: click to open it there again' : 'Open in Chrome: the extension fills the form from your kit; you review and submit'});
+        title: job.ready ? 'The server filled this form overnight: open it in Chrome, check it and press Submit yourself' : opened ? 'Opened in Chrome: click to open it there again' : 'Open in Chrome: the extension fills the form for you; you review and submit'});
       fill.addEventListener('click', async () => {
         if (!job.ready) return fillInChrome(fill);
         const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
@@ -198,7 +198,7 @@ export function renderJobs() {
         menu.push({icon: 'bot', label: started ? 'Claude is applying' : 'Apply with Claude', disabled: started,
           title: started ? 'A Claude session is filling this one in its window: answer it there' :
             'For pages the extension can\'t fill alone: Claude opens the posting in Chrome, follows Apply to the employer\'s site, creates an account there ' +
-            'if it asks (password saved in your Keychain) and fills every page from your kit. You solve CAPTCHAs, tick the terms and submit.',
+            'if it asks (password saved in your Keychain) and fills every page for you. You solve CAPTCHAs, tick the terms and submit.',
           run: async () => {
             const result = await window.pilot.applyWithClaude(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
             if (result.cancelled) return;
@@ -211,18 +211,16 @@ export function renderJobs() {
       // No kit yet: Apply drafts it first (reads the form's questions, answers each, writes a cover letter), then opens
       // the form in Chrome as it does for a job with a kit. "Prepare only" is in the ⋯ menu.
       const state = prepareState(job);
-      const busy = state === 'local' || state === 'cloud';
-      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state === 'cloud' ? 'Preparing…' : state ? 'Preparing' : 'Apply'), {
-        title: state === 'cloud' ? 'Preparing on GitHub: the list reloads when it is done' : state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
+      const busy = state === 'local';
+      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state ? 'Preparing' : 'Apply'), {
+        title: state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
           : 'Prepares your application and fills the form; you review and submit'});
-      if (busy) { prepare.disabled = true; if (state === 'local') prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
+      if (busy) { prepare.disabled = true; prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
       prepare.addEventListener('click', async () => {
         preparing.set(job.code, 'local');
         renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-        // On GitHub (Always on): the row says so; the list reloads when it's done, and the form is not opened for you.
-        if (result.cloud) preparing.set(job.code, 'cloud');
-        else if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
+        if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
         else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
@@ -294,7 +292,7 @@ export function renderJobs() {
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
         const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
         if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
-        jobsChanged(job, {stage: 'Kit ready'});
+        jobsChanged(job, {stage: 'Kit ready', status: 'saved'});
         renderJobs();
       }});
     } else if (job.status !== 'applied') menu.push({icon: 'tick', label: 'Mark applied', run: setStatus('applied'), title: 'You applied to this job: track it in Applications'});

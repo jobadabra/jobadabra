@@ -66,7 +66,7 @@ export function documentsTab({job, parts}, redraw) {
   if (!job.tailored && !kitLetter && !files.length) {
     const status = el('span');
     const run = job.code ? tailorButton(job, redraw, status) : null;
-    return [stateCard({icon: 'file', title: 'Not drafted yet', text: 'Apply drafts the kit, or Tailor CV + cover letter makes a CV and a letter for this job. They show here.', actions: run ? [run] : []})];
+    return [stateCard({icon: 'file', title: 'Not drafted yet', text: 'Apply prepares your application, or Tailor CV + cover letter makes a CV and a letter for this job. They show here.', actions: run ? [run] : []})];
   }
   return [cvCard(job, files, redraw), job.tailored ? jobLetterView(job) : kitLetter ? kitLetterCard(kitLetter) : docCard('Cover letter', 'mail', 'signal', rows([['Status', [pill('Not written', 'warn'), 'Tailor CV + cover letter makes one with the CV.']]]))];
 }

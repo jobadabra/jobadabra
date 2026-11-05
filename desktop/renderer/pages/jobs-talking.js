@@ -4,6 +4,7 @@ import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {isInbound} from '../origin.js';
 import {inConversation, talkingBar} from '../jobs-view.js';
+import {nextStepOf, stageLabel} from '../jobs-board-rules.js';
 import {foldToggleWord} from '../fold-toggle.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {shared} from './shared.js';
@@ -36,10 +37,10 @@ export function renderTalking(narrowed = false) {
     const round = el('span', 'focus-round');
     round.append(icon('chat'));
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', job.title || 'Role'), pill(job.stage || 'Recruiter lead', 'info', {dot: true}));
+    top.append(el('span', 'focus-headline', job.title || 'Role'), pill(stageLabel(job.stage) || 'Recruiter lead', 'info', {dot: true}));
     const meta = el('div', 'focus-meta muted small');
     const who = [job.company, job.via && job.via !== job.company ? `via ${job.via}` : ''].filter(Boolean).join(' ');
-    [who, mixed ? (isInbound(job) ? 'Inbound' : 'Outbound') : '', job.next_step ? `Next: ${job.next_step}` : ''].filter(Boolean).forEach((part, i) => {
+    [who, mixed ? (isInbound(job) ? 'Inbound' : 'Outbound') : '', nextStepOf(job) ? `Next: ${nextStepOf(job)}` : ''].filter(Boolean).forEach((part, i) => {
       if (i) meta.append(el('span', 'sep', '·'));
       meta.append(el('span', '', part));
     });

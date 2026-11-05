@@ -57,8 +57,8 @@ export function rebuildGroups({search = {}, preferences = {}, profile = '', answ
     {id: 'filters', title: 'Filters', changes: filterChanges, impact: 'Matching jobs are hidden at once.', cost: 'No AI cost'},
     {id: 'profile', title: 'Profile (what the fit score reads)', changes: profileChanges, linked: linked ? 'search' : null,
       impact: `Marks ${scored} scored job${scored === 1 ? '' : 's'} as old scores; Re-score updates them, up to 60 at a time` +
-        (kits ? `; ${kits} unsent kit${kits === 1 ? '' : 's'} were drafted with the old Profile (redraft the ones you still want)` : '') + '.',
+        (kits ? `; ${kits} unsent application${kits === 1 ? '' : 's'} were prepared with the old Profile (prepare again the ones you still want)` : '') + '.',
       cost: scored ? 'Uses AI' : 'No AI cost'},
-    {id: 'answers', title: 'Standard answers', changes: answerChanges, impact: 'Used by the next kits and form fills. Nothing is re-scored.', cost: 'No AI cost'},
+    {id: 'answers', title: 'Standard answers', changes: answerChanges, impact: 'Used by the next applications and form fills. Nothing is re-scored.', cost: 'No AI cost'},
   ].filter(group => group.changes.length);
 }

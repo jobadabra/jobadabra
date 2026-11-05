@@ -24,7 +24,7 @@ export function chip(state) {
   const days = `${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left`;
   if (state.ended) {
     return {plan: 'Free plan', text: 'Free period over', tone: 'bad', percent: 100, left, used,
-      title: `Free plan: ${state.used} of ${state.limit} applications used and the free days are over. New applications, kits and searches are paused. ${byWhere('Tracking, Notion and export keep working.', 'Tracking and export keep working.')} A license key lifts the limit. Pro is a ${promise()}.`};
+      title: `Free plan: ${state.used} of ${state.limit} applications used and the free days are over. New applications and searches are paused. ${byWhere('Tracking, Notion and export keep working.', 'Tracking and export keep working.')} A license key lifts the limit. Pro is a ${promise()}.`};
   }
   return {plan: 'Free plan', text: `${used} of ${state.limit} applications used`, tone: left <= 5 ? 'bad' : 'info', percent, left, used,
     title: `Free plan: ${state.used} of ${state.limit} applications used · ${days}. Free until you reach ${state.limit} applications and 60 days have passed, whichever comes later; then Pro, a ${promise()} (coming soon). (Your daily goal on Focus is separate.)`};

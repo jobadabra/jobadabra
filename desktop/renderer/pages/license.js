@@ -55,7 +55,7 @@ export function showLicense(state) {
   }
   $('license-note').textContent = pro ? (!ourAi ? 'Unlimited: you use your own AI key, so nothing is counted.' : noCredit ? 'No AI credit left: top up, or add a promo code.' : 'No end date.')
     : licensed ? (state.license.until ? `Valid until ${state.license.until}.` : 'No end date.')
-    : ended ? `New applications, kits and searches are paused. ${byStore('Tracking, Notion, export and your data keep working.', 'Tracking, export and your data keep working.')}`
+    : ended ? `New applications and searches are paused. ${byStore('Tracking, Notion, export and your data keep working.', 'Tracking, export and your data keep working.')}`
       : '';   // the rule is the page's subtitle; the one line about Pro is below
   showProCard(state);   // the Pro card with the waitlist button, while Pro is off (pages/plan-waitlist.js)
   $('license-note').hidden = !$('license-note').textContent;

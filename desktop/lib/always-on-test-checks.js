@@ -42,11 +42,10 @@ export async function aiCheck(storage, {fetcher = globalThis.fetch} = {}) {
 }
 
 const MESSAGE = 'Jobadabra test: this is how Always on will tell you about new matches.';
-const DAY_MS = 24 * 3600 * 1000;
 
 /** One test message through every way the person set up (Telegram with their bot, e-mail through our site); the app's own notification and a way not set up are not tried. -> a state and a line naming each way that failed.
- *  Why (5 Nov 2026): at most one test e-mail a day (the site's digest has room for a few a day); `now` is injected for the test. */
-export async function notifyCheck(storage, {fetcher = globalThis.fetch, now = Date.now} = {}) {
+ *  Why (5 Nov 2026, hr: web #430): the site limits the test e-mail to once a day per address and says `earlier` when today's went already, so the app keeps no limit of its own. */
+export async function notifyCheck(storage, {fetcher = globalThis.fetch} = {}) {
   const ways = channel.channelsOf(storage).filter(name => name === 'email' || name === 'telegram');
   if (!ways.length) return failed('Nothing can reach you yet: no e-mail address or Telegram bot is set up.');
   const lines = [];
@@ -57,15 +56,13 @@ export async function notifyCheck(storage, {fetcher = globalThis.fetch, now = Da
   }
   if (ways.includes('email')) {
     const state = channel.installKey(storage) ? await channel.state(storage, timed(fetcher)).catch(() => null) : null;
-    const sentAt = Number(storage.settings().aonTestMailAt) || 0;
     if (!channel.installKey(storage)) lines.push('E-mail: this install has no key for our site yet. Open the app online once, then test again.');
     else if (!state?.reached) lines.push('E-mail: the website could not be reached. Test again when you are online.');
     else if (!state.confirmed) lines.push(`E-mail: ${state.email || 'your address'} is not confirmed yet, so the test e-mail would wait. Confirm it with the link in your first e-mail.`);
-    else if (now() - sentAt < DAY_MS) said = 'A test e-mail already reached you today.';   // one a day: not sent again, and said so
     else {
       const sent = await channel.sendTest(storage, {subject: 'Jobadabra test', text: MESSAGE}, timed(fetcher));
-      if (sent.ok) storage.saveSettings({aonTestMailAt: now()});
-      else lines.push(`E-mail: ${sent.error}`);
+      if (!sent.ok) lines.push(`E-mail: ${sent.error}`);
+      else if (sent.earlier) said = 'A test e-mail already reached you today.';   // the site sent none now: said, not failed
     }
   }
   return lines.length ? failed(lines.join(' ')) : ok(said);

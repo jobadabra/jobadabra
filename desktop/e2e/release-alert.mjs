@@ -59,7 +59,8 @@ export async function alertRelease({kind, tag, lanes = [], env = process.env, fe
   if (!KINDS[kind] || !tag) return 'release-alert: nothing to send (needs beta|stable and a tag)';
   // Why (1 Nov 2026, Gitar on #2923): with the soak off the offer jobs promote straight to stable, and release-stable.sh has already said "Stable"; a second "Beta" message for the same tag is wrong and a duplicate.
   if (kind === 'beta' && await isPrerelease(tag, env, fetcher) === false) return 'release-alert: not sent (already stable: the stable alert covers it)';
-  return send(releaseMessage({kind, tag, commit: await commitOf(tag, env, fetcher), lanes, env}), env, fetcher);
+  // Why (5 Nov 2026, nt 3/4c): a beta is `beta-published`, a stable `stable-promoted` in the owner's switchboard.
+  return send(releaseMessage({kind, tag, commit: await commitOf(tag, env, fetcher), lanes, env}), env, fetcher, {event: kind === 'stable' ? 'stable-promoted' : 'beta-published'});
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {

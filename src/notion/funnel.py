@@ -145,8 +145,8 @@ def summary(steps):
         lines.append('No step is clearly below its rule of thumb yet.')
     prepared, applied = steps[0], steps[1]
     if prepared['waiting'] >= max(2 * applied['reached'], MIN_DECIDED):
-        lines.append(f"Biggest lever now is volume: {prepared['waiting']} kits are drafted but not sent, against "
-                     f"{applied['reached']} applications. More applications also make the later steps measurable.")
+        lines.append(f"Biggest lever now is volume: {prepared['waiting']} applications are prepared but not sent, against "
+                     f"{applied['reached']} sent. More applications also make the later steps measurable.")
     small = [s['step'] for s in steps[1:] if s['decided'] < MIN_DECIDED and s['from']]
     if small:
         lines.append(f"Too early to judge {', '.join(small)}: fewer than {MIN_DECIDED} decided applications "
