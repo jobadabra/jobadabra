@@ -46,8 +46,8 @@ def carried(db, skipped, at):
 
 def _mix(entry):
     """{kinds, kind_counts}: this entry's valid judgment, each part None when it has none. Why (5 Nov 2026, #2915): one read before role_kinds.SINCE was judged on the
-    old kinds, so it counts as none; `checked` is the date a published entry carries (the site keeps fixed fields only)."""
-    if str(entry.get('checked') or '')[:10] < role_kinds.SINCE[:10]:
+    old kinds, so it counts as none; `checked` is the date a published entry carries (the site keeps fixed fields only), `judged` the date of a mix taken from one."""
+    if str(entry.get('judged') or entry.get('checked') or '')[:10] < role_kinds.SINCE[:10]:
         return {'kinds': None, 'kind_counts': None}
     return {'kinds': role_kinds.valid(entry.get('kinds')), 'kind_counts': role_kinds.valid_counts(entry.get('kind_counts'))}
 
@@ -76,7 +76,8 @@ def _fill_mix(db, key, stored, published):
     missing = {part: offered[part] for part in have if not have[part] and offered[part]}
     if not missing:
         return 0
-    db.execute('UPDATE feed_entries SET entry = ? WHERE ats = ? AND slug = ?', (json.dumps({**entry, **missing}, ensure_ascii=False), *key))
+    filled = {**{name: value for name, value in entry.items() if name not in have or have[name]}, **missing, 'judged': str(published['checked'])[:10]}   # a stale part goes: `judged` must not make it new
+    db.execute('UPDATE feed_entries SET entry = ? WHERE ats = ? AND slug = ?', (json.dumps(filled, ensure_ascii=False), *key))
     return 1
 
 

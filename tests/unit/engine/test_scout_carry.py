@@ -1,4 +1,6 @@
 """The central scout verifies its feeds in slices: the longest-unread first, the rest carried over, so a run always ends in time. No network."""
+import contextlib
+import io
 import json
 import sqlite3
 import tempfile
@@ -9,6 +11,9 @@ from unittest import mock
 
 from src import geo, role_kinds, scout, scout_carry, scout_kind_counts, store as job_store
 from src.ai import decide
+
+
+OLD = '2026-01-01'   # a read from before role_kinds.SINCE
 
 
 def job(title='Engineer'):
@@ -128,7 +133,7 @@ class KeptMixTest(unittest.TestCase):
         self.assertFalse(any('kinds' in f or 'kind_counts' in f for f in feeds))
 
     def test_a_kept_entry_that_is_not_a_mix_is_dropped(self):
-        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'kinds': {'made-up': 2}, 'kind_counts': {'xx': {'software': 1}}}], '2026-10-30')
+        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': '2026-10-30', 'kinds': {'made-up': 2}, 'kind_counts': {'xx': {'software': 1}}}], '2026-10-30')
         feed = next(f for f in self.read('2026-10-31', titles=False, places=False) if f['slug'] == 'co0')
         self.assertNotIn('kinds', feed)
         self.assertNotIn('kind_counts', feed)
@@ -205,20 +210,27 @@ class PublishedIndexIsTheBackupTest(unittest.TestCase):
         self.assertEqual((entry['kinds'], entry['kind_counts']), (self.NEWER, self.COUNTS), 'only the part it lacked is filled')
 
     def test_a_published_mix_from_before_the_kinds_grew_fills_nothing(self):
-        old = role_kinds.SINCE[:10].replace('-26', '-25')
         scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': '2026-11-02'}], '2026-11-02')
-        self.seed(self.feed('co0', checked=old))
+        self.seed(self.feed('co0', checked=OLD))
         self.assertNotIn('kinds', self.stored('co0'))
 
     def test_a_stored_mix_from_before_the_kinds_grew_gives_way_to_a_newer_published_one(self):
-        old = role_kinds.SINCE[:10].replace('-26', '-25')
-        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': old, 'kinds': self.NEWER}], old)
+        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': OLD, 'kinds': self.NEWER}], OLD)
         self.seed(self.feed('co0'))
         self.assertEqual(self.stored('co0')['kinds'], self.MIX)
+        self.assertEqual(scout_carry.mixes(self.db)[('lever', 'co0')]['kinds'], self.MIX, 'a re-read keeps it: its date is the published read')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.seed(self.feed('co0'))
+        self.assertNotIn('mixes', out.getvalue(), 'filled once, not again')
+
+    def test_a_stale_part_the_published_index_does_not_offer_is_not_made_new_by_the_fill(self):
+        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': OLD, 'kinds': self.NEWER, 'kind_counts': self.COUNTS}], OLD)
+        self.seed({**self.feed('co0'), 'kind_counts': None})
+        self.assertEqual(scout_carry.mixes(self.db)[('lever', 'co0')], {'kinds': self.MIX, 'kind_counts': None})
 
     def test_a_kept_mix_from_before_the_kinds_grew_is_not_kept_on_a_re_read(self):
-        old = role_kinds.SINCE[:10].replace('-26', '-25')
-        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': old, 'kinds': self.MIX}], old)
+        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'checked': OLD, 'kinds': self.MIX}], OLD)
         self.assertIsNone(scout_carry.mixes(self.db)[('lever', 'co0')]['kinds'])
 
     def test_a_published_entry_that_is_not_a_mix_fills_nothing(self):
