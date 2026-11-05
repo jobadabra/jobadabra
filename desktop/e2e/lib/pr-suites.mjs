@@ -132,7 +132,7 @@ export function deferredLines({left = [], ...evidence}) {
  * the ones before it. Why (owner, 28 Oct 2026, design #2336: "To be as journeys? … I'm fine with that. I agree"): steps picked alone went red where the app was fine
  * (#2342 "Edit target" with no target, #2350 "Up next"; 15 of 149 red runs, 14–28 Oct). After a merge (main-steps.yml) the picked steps still run.
  * By kind: pointedElse (a helper, the extension, the harness), a quote or change outside a named step, a line nobody ran → whole; else the steps the changed lines,
- * removed quotes and the suite's own file reach.
+ * removed quotes and the suite's own file reach. Guard: test/pr-suites-whole.test.mjs
  */
 export function stepLists({suites, pullRequest = false, pointedElse = [], quoting = {}, picked = {}, byLines = {}, own = {}}) {
   const steps = {};
