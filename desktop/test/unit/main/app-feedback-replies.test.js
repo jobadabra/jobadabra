@@ -142,7 +142,7 @@ test('a thanked person stopped at the wall: the fixed reply arrives and the wall
 test('a reply that is not fixed, or a fixed one already seen, does not refresh the trial answer', async () => {
   const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
   let clock = 1_000, refreshed = 0, cards = [reply({kind: 'deferred'})];
-  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: async () => Response.json({ok: true, replies: cards}), now: () => clock, onFixed: () => { refreshed++; }});
+  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: async () => Response.json({ok: true, replies: cards}), now: () => clock, onFixed: () => { refreshed++; return true; }});
   await handlers.feedbackReplies();
   assert.equal(refreshed, 0, 'a "heard" card changes no allowance');
   cards = [reply()]; clock += 6 * 3600 * 1000;
@@ -175,4 +175,48 @@ test('a refresh that hangs does not hold the card', async () => {
   const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
   registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: answers({replies: [reply()]}), now: () => 1_000, wait: 20, onFixed: () => new Promise(() => {})});
   assert.equal((await handlers.feedbackReplies()).length, 1);
+});
+
+// Why (Gitar on #3307, 5 Nov 2026): the main process alone tells the window when a fresh trial answer was saved, so the chip reads it on time, late and on the retry, and never on a guess.
+const windowSpy = () => { const sent = []; return {sent, win: {isDestroyed: () => false, webContents: {send: channel => sent.push(channel)}}}; };
+const wire = (extra, cards = [reply()]) => {
+  const handlers = {}, spy = windowSpy();
+  registerReplies({DEMO: false, app: {getVersion: () => '0.9.11'}, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, storage: store(), fetcher: answers({replies: cards}), getWindow: () => spy.win, ...extra});
+  return {handlers, ...spy};
+};
+
+test('the window is told once when a new fixed card saved a fresh trial answer, never for a "heard" card or a failed refresh', async () => {
+  const saved = wire({now: () => 1_000, onFixed: async () => true});
+  await saved.handlers.feedbackReplies();
+  assert.deepEqual(saved.sent, ['allowanceChanged']);
+  const heard = wire({now: () => 1_000, onFixed: async () => true}, [reply({kind: 'deferred'})]);
+  await heard.handlers.feedbackReplies();
+  assert.deepEqual(heard.sent, [], 'a "heard" card changes no allowance');
+  for (const onFixed of [async () => false, async () => { throw new Error('offline'); }]) {
+    const failed = wire({now: () => 1_000, onFixed});
+    assert.equal((await failed.handlers.feedbackReplies()).length, 1);
+    assert.deepEqual(failed.sent, [], 'a refresh that did not save tells nobody');
+  }
+});
+
+test('a refresh that saves after the card was drawn still tells the window, and is not asked again', async () => {
+  let release, tries = 0, clock = 1_000;
+  const late = wire({now: () => clock, wait: 10, onFixed: () => { tries++; return new Promise(resolve => { release = resolve; }); }});
+  assert.equal((await late.handlers.feedbackReplies()).length, 1, 'the card is drawn without waiting');
+  assert.deepEqual(late.sent, []);
+  release(true); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(late.sent, ['allowanceChanged'], 'the late save reaches the chip');
+  clock += 20 * 60 * 1000;
+  await late.handlers.feedbackReplies();
+  assert.equal(tries, 1, 'the retry finds the card already refreshed');
+});
+
+test('the retry that finally saves tells the window', async () => {
+  let clock = 1_000, answer = false;
+  const retry = wire({now: () => clock, onFixed: async () => answer});
+  await retry.handlers.feedbackReplies();
+  assert.deepEqual(retry.sent, []);
+  clock += 20 * 60 * 1000; answer = true;
+  await retry.handlers.feedbackReplies();
+  assert.deepEqual(retry.sent, ['allowanceChanged']);
 });

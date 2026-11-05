@@ -3,7 +3,7 @@
 // Guarded by test/unit/renderer/feedback-reply-card.test.js.
 import {el, tile} from '../components.js';
 import {$} from './core.js';
-import {cardText, newFixedRefs} from '../feedback-reply-text.js';
+import {cardText} from '../feedback-reply-text.js';
 
 const EVERY = 15 * 60 * 1000;   // Why (Gitar on #3044): the main process asks the site at most every 6 hours, or 15 minutes after a failed ask, and holds the answer; asking it this often costs nothing and lets that retry happen
 /** Draws the cards into `box`; `onClose(ref)` when the person presses "Got it". */
@@ -23,13 +23,7 @@ export function drawReplies(box, replies, onClose) {
 export async function init() {
   const box = $('feedback-replies');
   if (!box || !window.pilot?.feedbackReplies) return;
-  const seen = new Set();
-  const ask = async () => {
-    const replies = await window.pilot.feedbackReplies().catch(() => []);
-    drawReplies(box, replies, ref => window.pilot.feedbackReplyClose(ref).catch(() => {}));
-    // Why (code review, 5 Nov 2026): the main process has asked the site again before this card came (a thank-you adds free applications); the chip and the Plan page read it now, not at the next 10-minute look.
-    if (newFixedRefs(replies, seen).length) window.dispatchEvent(new Event('allowance-changed'));
-  };
+  const ask = async () => drawReplies(box, await window.pilot.feedbackReplies().catch(() => []), ref => window.pilot.feedbackReplyClose(ref).catch(() => {}));
   ask();
   setInterval(ask, EVERY);
 }
