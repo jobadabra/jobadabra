@@ -44,7 +44,7 @@ export async function askSet({ask, notes, expectations, variant, runs = RUNS}) {
   return rows;
 }
 
-const majority = verdicts => { const agrees = verdicts.filter(v => v === 'agrees').length, disagrees = verdicts.filter(v => v === 'disagrees').length; return agrees > disagrees ? 'agrees' : disagrees > agrees ? 'disagrees' : 'unknown'; };
+const majority = verdicts => { const agrees = verdicts.filter(v => v === 'agrees').length, disagrees = verdicts.filter(v => v === 'disagrees').length; return agrees * 2 > verdicts.length ? 'agrees' : disagrees * 2 > verdicts.length ? 'disagrees' : 'unknown'; };   // a strict majority of all the asks, so one vote beside wrong-shape answers is not a verdict
 
 /** Scores rows: a real note is kept when its majority agrees, a false one is dropped when its majority disagrees; also the same counts per run (the noise). */
 export function scoreRows(rows) {
