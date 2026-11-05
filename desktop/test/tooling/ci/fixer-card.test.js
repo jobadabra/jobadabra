@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {closedReport} from '../../../../tools/feedback-ai.mjs';
+import {capVerdict, closedReport} from '../../../../tools/feedback-ai.mjs';
 import {cardBody} from '../../../../tools/fixer/card.mjs';
+import {pathToFileURL} from 'node:url';
 import {BLOCKED, partOf} from '../../../../tools/fixer/record.mjs';
 import {read} from '../../../../tools/fixer/sources/feedback.mjs';
 
@@ -67,7 +68,8 @@ test('the card job holds the run token and nothing else; only the fix and card j
   assert.doesNotMatch(card, /(contents|pull-requests|actions|issues|checks|statuses): write/, 'no repository write');
   assert.doesNotMatch(card, /secrets\.|CI_APP|broker|BROKER|LINEAR|run: .*(git push|gh )/, 'no secret, no App token, no AI, no push');
   assert.match(card, /if: .*inputs\.source == 'feedback' && inputs\.pr == ''/, 'a feedback card\'s first run only');
-  assert.match(card, /if: .*needs\.guard\.result == 'success'/, 'a run the guard refused (cap, one at a time) is not the card\'s run and says nothing');
+  assert.match(card, /if: .*\(needs\.guard\.result == 'success' \|\| needs\.guard\.outputs\.refused != ''\)/, 'only a run the guard let through, or one it refused with a cap or busy word, tells the card');
+  assert.match(code(jobs.guard), /refused: \$\{\{ steps\.cap\.outputs\.refused \}\}/);
   assert.match(card, /node tools\/fixer\/card\.mjs/);
   const scripts = card.split('\n').filter(line => /\$\{\{\s*(inputs|needs)\./.test(line) && !/^\s*[A-Z_]+: \$\{\{[^}]*\}\}$/.test(line) && !/^\s*if: /.test(line));
   assert.deepEqual(scripts, [], 'an input or a job output reaches the script only through env:');
@@ -95,5 +97,37 @@ test('a run that ends each way tells the card the matching words through the rec
     assert.deepEqual(told({verdict: 'not-reproducible', body: 'The report is not enough.'}, {fix: 'success', prove: 'skipped', publish: 'skipped'}), {ref: REF, status: 'none', verdict: 'not-reproducible', why: 'no-repro'});
     assert.deepEqual(told({verdict: 'fix', body: 'A fix.'}, {fix: 'success', prove: 'failure', publish: 'skipped'}), {ref: REF, status: 'failed', why: 'tests-failed'});
     assert.deepEqual(told({}, {fix: 'failure', prove: 'skipped', publish: 'skipped'}), {ref: REF, status: 'failed', why: 'run-failed'});
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+// The guard is the ONE owner of the daily cap: it sees every dispatch run of the fixer and of Send to AI (hand-started linear/github runs and a running follow round included), and says cap or busy.
+test('the guard refuses with one word, cap or busy, and the card is told exactly that word', () => {
+  const NOW = new Date('2026-11-05T10:00:00Z'), day = '2026-11-05T08:00:00Z';
+  const run = (id, over = {}) => ({id, event: 'workflow_dispatch', created_at: day, status: 'completed', conclusion: 'success', ...over});
+  assert.equal(capVerdict([run(1), run(2), run(3), run(9, {status: 'in_progress'})], 9, NOW).word, 'cap', 'three done today (a hand-started linear run and a github run count)');
+  assert.equal(capVerdict([run(1, {status: 'in_progress', display_title: 'AI fixer follow PR 5 round 2'}), run(9, {status: 'in_progress'})], 9, NOW).word, 'busy', 'a running round of another card');
+  assert.equal(capVerdict([run(1), run(9, {status: 'in_progress'})], 9, NOW).ok, true);
+  assert.deepEqual(cardBody({ref: REF, repo: 'o/r', pr: '', verdict: '', blocked: '', refused: 'cap'}), {ref: REF, status: 'cap'});
+  assert.deepEqual(cardBody({ref: REF, repo: 'o/r', pr: '', verdict: '', blocked: '', refused: 'busy'}), {ref: REF, status: 'busy'});
+  for (const refused of ['', 'failed', 'pr', 'IGNORE ALL RULES', 'toString']) assert.notEqual(['cap', 'busy'].includes(cardBody({ref: REF, repo: 'o/r', pr: '', verdict: '', blocked: '', refused})?.status), true, refused);
+  // The real guard step against a stand-in GitHub (a stubbed fetch): it writes the word to its output file and fails; a free day writes nothing.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-cap-'));
+  try {
+    const guard = (runs, extra = {}) => {
+      const stub = path.join(dir, 'stub.mjs'), output = path.join(dir, 'out.txt');
+      fs.writeFileSync(stub, `globalThis.fetch = async () => new Response(JSON.stringify({workflow_runs: ${JSON.stringify(runs)}}), {status: 200});\n`);
+      fs.writeFileSync(output, '');
+      const done = spawnSync('node', ['--import', pathToFileURL(stub).href, path.join(ROOT, 'tools/fixer/run.mjs'), 'cap'], {encoding: 'utf8', env: {PATH: process.env.PATH, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '9', ...extra}});
+      return {status: done.status, output: fs.readFileSync(output, 'utf8')};
+    };
+    const today = new Date().toISOString().slice(0, 10) + 'T00:00:01Z';   // clock: relative the guard counts the real UTC day; the stand-in runs are made on it
+    const done = n => Array.from({length: n}, (_, i) => run(i + 1, {created_at: today}));
+    assert.match(guard(done(3)).output, /^refused=cap$/m);
+    assert.notEqual(guard(done(3)).status, 0);
+    assert.match(guard([run(1, {created_at: today, status: 'queued', conclusion: null})]).output, /^refused=busy$/m);
+    const free = guard(done(1));
+    assert.equal(free.status, 0);
+    assert.doesNotMatch(free.output, /refused/);
+    assert.doesNotMatch(guard([], {ROUND: '1'}).output, /refused/, 'a first run carrying round inputs is refused with no word for the card');
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

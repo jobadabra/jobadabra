@@ -23,8 +23,8 @@ export const DAILY_RUNS = 3;
  */
 export function capVerdict(runs, selfId, now = new Date(), daily = DAILY_RUNS) {
   const day = now.toISOString().slice(0, 10), others = (runs || []).filter(run => String(run.id) !== String(selfId) && run.event === 'workflow_dispatch' && String(run.created_at || '').slice(0, 10) === day && run.conclusion !== 'skipped');
-  if (others.some(run => run.status !== 'completed')) return {ok: false, why: 'another Send to AI run is still going (one at a time)'};
-  if (others.length + 1 > daily) return {ok: false, why: `that is more than ${daily} Send to AI runs today (UTC)`};
+  if (others.some(run => run.status !== 'completed')) return {ok: false, word: 'busy', why: 'another Send to AI run is still going (one at a time)'};
+  if (others.length + 1 > daily) return {ok: false, word: 'cap', why: `that is more than ${daily} Send to AI runs today (UTC)`};
   return {ok: true};
 }
 

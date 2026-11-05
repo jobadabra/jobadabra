@@ -53,7 +53,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     }
     // Why (4 Nov 2026, [hm] 4/7): a follow-up round is part of an item already counted; a finished round does not use the day's 3, a running one still blocks (one at a time).
     const verdict = capVerdict(runs.filter(run => !(/ round \d$/.test(run.display_title || '') && run.status === 'completed')), env.GITHUB_RUN_ID);
-    if (!verdict.ok) throw new Error(verdict.why);
+    if (!verdict.ok) { emit(env, 'refused', verdict.word); throw new Error(verdict.why); }   // the one word (cap or busy) the card job tells the site: the guard is the ONE owner of the daily cap
     console.log('cap: this run may start');
   } else if (command === 'item') {   // the guard job, source github, a first run: the ONLY read of the issue; the fix job gets the file
     if (source !== 'github' || !validRef(source, ref)) throw new Error('--source github and --ref an issue number');

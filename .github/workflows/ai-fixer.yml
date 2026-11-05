@@ -77,6 +77,7 @@ jobs:
       head: ${{ steps.round.outputs.head }}
       branch: ${{ steps.round.outputs.branch }}
       started: ${{ steps.start.outputs.at }}
+      refused: ${{ steps.cap.outputs.refused }}   # `cap` or `busy` when this run was refused by the daily cap or one-at-a-time; the card job tells the card
       failure: ${{ steps.itemfail.outputs.failure }}   # why the issue could not be read: our own line, scanned by the record job
     steps:
       - uses: actions/checkout@v5
@@ -577,10 +578,10 @@ jobs:
           github-token: ${{ github.token }}
 
   # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.
-  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed. A run the guard refused (cap, one at a time) says nothing here: it never took the brief, so the site would refuse its report (it owns no card) and the card ages out.
+  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed. A run the guard refused for the daily cap or one-at-a-time tells the card ONE word (cap or busy) and nothing else: it never took the brief, so the site only returns the card to new.
   card:
     needs: [guard, publish, record]
-    if: always() && !cancelled() && vars.AI_FIXER != 'off' && needs.guard.result == 'success' && inputs.source == 'feedback' && inputs.pr == ''
+    if: always() && !cancelled() && vars.AI_FIXER != 'off' && (needs.guard.result == 'success' || needs.guard.outputs.refused != '') && inputs.source == 'feedback' && inputs.pr == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -592,6 +593,7 @@ jobs:
       PR_NUMBER: ${{ needs.publish.outputs.number }}
       VERDICT: ${{ needs.record.outputs.verdict }}
       BLOCKED: ${{ needs.record.outputs.blocked }}
+      REFUSED: ${{ needs.guard.outputs.refused }}   # cap or busy: the guard refused this run
     steps:
       - uses: actions/checkout@v5
         with:
