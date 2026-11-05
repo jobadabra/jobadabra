@@ -247,9 +247,18 @@ jobs:
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
+          IN_PLAN: ${{ inputs.plan }}
+          IN_SHAPE: ${{ inputs.shape }}
+          IN_RULES_OFF: ${{ inputs.rules_off }}
+          IN_SCREEN: ${{ inputs.screen }}
+          IN_APP_REF: ${{ inputs.app_ref }}
         run: |
           STATE=e2e-artifacts/agent/agent-chain.json
           ENDED="$(jq -r .ended "$STATE")"
           if [ -n "$ENDED" ]; then echo "Chain $(jq -r .chain "$STATE") ended after link $(jq -r .link "$STATE"): $ENDED" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          gh workflow run ai-user-agents.yml --ref "$GITHUB_REF_NAME" -f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")"
+          # Why (5 Nov 2026, code review): every setting of link 1 goes on to the next link, or the chain would mix states (a different app, rules on, the screen reader on).
+          ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")")
+          add() { if [ -n "$2" ]; then ARGS+=(-f "$1=$2"); fi; }
+          add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF";
+          gh workflow run ai-user-agents.yml --ref "$GITHUB_REF_NAME" "${ARGS[@]}"
           echo "Chain $(jq -r .chain "$STATE"): link $(jq -r '.link + 1' "$STATE") started from this run." | tee -a "$GITHUB_STEP_SUMMARY"

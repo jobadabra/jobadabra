@@ -22,7 +22,7 @@ import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
-import {chainFor, endLink, pointerOf, previousLink, restoreLink} from '../lib/agent-chain-run.mjs';
+import {chainFor, endBeforeRun, endLink, pointerOf, previousLink, restoreLink} from '../lib/agent-chain-run.mjs';
 import {startAgentVideo} from '../lib/agent-video.mjs';
 
 export const name = 'agent';
@@ -52,7 +52,7 @@ export async function run(ctx) {
   // Why (5 Nov 2026, Gitar on #3213): the screen reader switch accepts only empty or 'off'; "Off" or "no" must not leave the reader on while the person asked for a run without it.
   const screen = process.env.AGENT_SCREEN || '';
   if (!['', 'off'].includes(screen)) throw new Error(`AGENT_SCREEN must be empty or off, got "${screen}"`);
-  const {page} = ctx;
+  let {page} = ctx;   // replaced after a chain's restore: the relaunch opens a new window and closes this one
   await ensureSetUp(ctx);
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
   const out = path.join(ctx.ARTIFACTS, 'agent-memory-out');
@@ -64,8 +64,10 @@ export async function run(ctx) {
     // Why (4 Nov 2026, AI user agents FR 3/4, owner: "All four now"): a night with free goals gets ONE known-bug data shape in the app, picked by its seed (AGENT_SHAPE pins it, 'none' turns it off), because the suite's one applicant never has the data the tester bugs needed (lib/agent-plans.mjs SHAPES). A named plan seeds its own data and no shape.
     const shapeId = shapeFor(seed, process.env.AGENT_SHAPE, process.env.AGENT_PLAN);
     // Why (5 Nov 2026, SC 2/2, owner: "chained runs"): a later link of a chain restores the app's data the last link saved instead of seeding it again, and refuses a chain of another app commit.
-    const chainDir = process.env.AGENT_CHAIN_DIR || '', prevChain = previousLink(chainDir, commitNow);
-    const restored = prevChain ? await restoreLink(ctx, chainDir, prevChain) : '';
+    const chainDir = process.env.AGENT_CHAIN_DIR || '', {prev: prevChain, ended: chainEnded} = previousLink(chainDir, commitNow);
+    if (chainEnded) return endBeforeRun({ctx, prev: prevChain, ended: chainEnded});
+    let restored = '';
+    if (prevChain) ({restored, page} = await restoreLink(ctx, chainDir, prevChain));
     const seeded = prevChain ? '' : await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed, shapeId);
     if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '', shapeId)} ms`); }   // the app reads the CV and the rows again on a fresh load
     const moves = movesFromPalette(await readPalette(page));
@@ -94,7 +96,6 @@ export async function run(ctx) {
     session.stopped = stoppedLabel(session.stopped, budget.state);
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
-    if (chainState) await endLink({ctx, state: chainState, session, restored, tokens: budget.state.total, runId: process.env.GITHUB_RUN_ID || 'local', commitNow});
     // The memory the workflow pushes to the agent-memory branch afterwards (this suite never touches git): merged notes per area, the coverage record, the plan's pairs.
     const merged = {};
     for (const [area, texts] of Object.entries(session.observations)) merged[area] = mergeNotes(notes[area] || [], texts, {today, commit: (process.env.GITHUB_SHA || '').slice(0, 7), session: `${today}-${seed}`});
@@ -107,6 +108,7 @@ export async function run(ctx) {
     // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId || (shapeId ? `shape ${shapeId}` : '')}, kept)));
     for (const shot of shotFiles(session.notes)) fs.writeFileSync(path.join(ctx.ARTIFACTS, shot.name), shot.data);
+    if (chainState) await endLink({ctx, state: chainState, session, restored, tokens: budget.state.total, runId: process.env.GITHUB_RUN_ID || 'local', commitNow});
     if (session.stopped.startsWith('api:')) throw new Error(`the agent could not finish thinking (${session.stopped}): what it found so far is kept, the rest of the night is not run`);
   }, {needs: ctx.needs, limitMs: (CAPS.maxMinutes + 5) * 60000});   // Why (3 Nov 2026): the runner's default step limit is 8 minutes; a session runs up to its own minute cap
   fs.writeFileSync(path.join(ctx.ARTIFACTS, 'seed.json'), JSON.stringify({seed, fixed: true, detail: `AI user agent: ${session ? `${session.summary.goals.length} goals, ${session.findings.length} filed` : 'did not run'}`}));

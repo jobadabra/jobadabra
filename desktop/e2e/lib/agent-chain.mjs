@@ -45,24 +45,23 @@ export function restoreSnapshot({dir, snapshot, profile}) {
 
 /** The state a chain starts with (link 0: nothing run yet): the plan is kept whole so a later link never plans again. */
 export function startChain({runId, plan, tier, commit, maxLinks}) {
-  return {chain: String(runId), link: 0, maxLinks: linksAsked(maxLinks), tier, commit, plan: {seed: plan.seed, persona: plan.persona, goals: plan.goals}, done: [], next: null, ended: '', snapshot: null, links: []};
+  return {chain: String(runId), link: 0, maxLinks: linksAsked(maxLinks), tier, commit, plan: {...plan}, done: [], next: null, ended: '', snapshot: null, links: []};
 }
 
 /** The plan the next link works: the goals not done, the first one told where the earlier runs stopped. */
 export function resumePlan(state) {
   const total = state.plan.goals.length, goals = state.plan.goals.filter(goal => !state.done.includes(goal.n));
-  if (!state.next || !goals.length) return {...state.plan, goals};
+  if (!state.next?.stepsTotal || !goals.length) return {...state.plan, goals};
   const {steps, stopped, n} = state.next, first = goals.find(goal => goal.n === n) || goals[0];
   const line = `Continue: this is goal ${first.n} of ${total}. Earlier runs already did ${state.next.stepsTotal} steps on it and the last stopped on ${stopped}. The app's data is as that run left it. Its last steps:\n${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\nPick up from there; do not repeat what was done.`;
   return {...state.plan, goals: goals.map(goal => (goal === first ? {...goal, label: `${goal.label}\n\n${line}`} : goal))};
 }
 
 /** Why a chain stops after this link, or '' when it goes on. */
-export function endReason({state, session, commitNow, doneAll}) {
+export function endReason({state, session, doneAll}) {
   if (doneAll) return 'every goal is done';
   if (state.link >= state.maxLinks) return `link ${state.maxLinks} (the last) is done`;
   if (String(session.stopped).startsWith('api:')) return `a broker failure: ${String(session.stopped).slice(0, 120)}`;
-  if (commitNow && state.commit && commitNow !== state.commit) return `the app commit changed (${state.commit} → ${commitNow})`;
   const steps = session.ends.reduce((sum, end) => sum + end.steps.length, 0);
   if (!steps && !session.notes.length) return 'this link made no progress (no step, no note)';
   if (String(session.stopped).startsWith('repeat') && !session.ends.some(goalDone) && !session.notes.length) return 'this link made no progress (it repeated itself)';
@@ -73,15 +72,15 @@ export function endReason({state, session, commitNow, doneAll}) {
  * The state after a link ran: `prev` is the state it started from (or startChain's), `session` what runSession returned, `snapshot` what packSnapshot saved, `restored` the hash it restored (or '').
  * Why (5 Nov 2026, spec "Chain states"): new → running(n) → ended; a chain never starts a 5th link; a goal's steps carry over until it is done.
  */
-export function linkEnd({prev, session, runId, commitNow, snapshot, restored = '', tokens = 0}) {
+export function linkEnd({prev, session, runId, snapshot, restored = '', tokens = 0}) {
   const state = {...prev, link: prev.link + 1, done: [...prev.done], snapshot};
   for (const end of session.ends) if (goalDone(end) && !state.done.includes(end.n)) state.done.push(end.n);
   const left = state.plan.goals.filter(goal => !state.done.includes(goal.n)), stuck = session.ends.find(end => !goalDone(end));
   const carried = stuck && prev.next?.n === stuck.n ? prev.next.stepsTotal : 0;
-  state.next = left.length ? {n: stuck?.n ?? left[0].n, stepsTotal: carried + (stuck?.steps.length || 0), steps: (stuck?.steps || []).slice(-12), stopped: stuck ? (String(stuck.stopped).startsWith('api:') ? String(session.stopped) : stuck.stopped) : 'it was not reached'} : null;
+  state.next = left.length ? {n: stuck?.n ?? left[0].n, stepsTotal: carried + (stuck?.steps.length || 0), steps: [...(prev.next?.n === stuck?.n ? prev.next.steps : []), ...(stuck?.steps || [])].slice(-12), stopped: stuck ? (String(stuck.stopped).startsWith('api:') ? String(session.stopped) : stuck.stopped) : 'it was not reached'} : null;
   const steps = session.ends.reduce((sum, end) => sum + end.steps.length, 0);
   state.links = [...prev.links, {link: state.link, run: String(runId), steps, tokens, view: session.trace.at(-1)?.view || '', saved: snapshot.sha256, restored}];
-  state.ended = endReason({state, session, commitNow, doneAll: !left.length});
+  state.ended = endReason({state, session, doneAll: !left.length});
   return state;
 }
 

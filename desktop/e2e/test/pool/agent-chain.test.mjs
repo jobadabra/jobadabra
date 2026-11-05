@@ -7,6 +7,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {linkEnd, linksAsked, MARKER, packSnapshot, pointerLine, restoreSnapshot, resumePlan, startChain} from '../../lib/agent-chain.mjs';
 import {brokerWhy} from '../../lib/explore.mjs';
+import {chainFor, pointerOf, previousLink, restoreLink} from '../../lib/agent-chain-run.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chain-test-'));
 const goals = [1, 2, 3].map(n => ({n, group: 'Jobs', label: `goal ${n}`, pair: 'p'}));
@@ -53,7 +54,7 @@ test('the number of links asked is 1 to 4: nothing readable means no chain', () 
 });
 
 test('a goal that ended on done is finished; the one that ran out is continued next link, with the steps it already did', () => {
-  const state = linkEnd({prev: start(), session: sessionOf([end(1, 'done', ['Open jobs']), end(2, 'api: cap', ['Press "Add"', 'Press "Save"'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, commitNow: 'abc1234', snapshot: snap});
+  const state = linkEnd({prev: start(), session: sessionOf([end(1, 'done', ['Open jobs']), end(2, 'api: cap', ['Press "Add"', 'Press "Save"'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, snapshot: snap});
   assert.deepEqual(state.done, [1]);
   assert.equal(state.link, 1);
   assert.equal(state.ended, '');
@@ -66,18 +67,17 @@ test('a goal that ended on done is finished; the one that ran out is continued n
 });
 
 test('the steps of a goal add up across links', () => {
-  const first = linkEnd({prev: start(), session: sessionOf([end(1, 'api: cap', ['a', 'b'])], {stopped: 'cap'}), runId: 100, commitNow: 'abc1234', snapshot: snap});
-  const second = linkEnd({prev: first, session: sessionOf([end(1, 'api: cap', ['c', 'd', 'e'])], {stopped: 'cap'}), runId: 101, commitNow: 'abc1234', snapshot: snap});
+  const first = linkEnd({prev: start(), session: sessionOf([end(1, 'api: cap', ['a', 'b'])], {stopped: 'cap'}), runId: 100, snapshot: snap});
+  const second = linkEnd({prev: first, session: sessionOf([end(1, 'api: cap', ['c', 'd', 'e'])], {stopped: 'cap'}), runId: 101, snapshot: snap});
   assert.equal(second.next.stepsTotal, 5);
   assert.deepEqual(second.links.map(link => [link.link, link.run, link.steps]), [[1, '100', 2], [2, '101', 3]]);
 });
 
-test('a chain ends, and says why: every goal done, link limit, broker failure, another app commit, no progress', () => {
-  const after = (ends, extra, prev = start()) => linkEnd({prev, session: sessionOf(ends, extra), runId: 100, commitNow: 'abc1234', snapshot: snap}).ended;
+test('a chain ends, and says why: every goal done, link limit, broker failure, no progress', () => {
+  const after = (ends, extra, prev = start()) => linkEnd({prev, session: sessionOf(ends, extra), runId: 100, snapshot: snap}).ended;
   assert.equal(after(goals.map(goal => end(goal.n, 'done', ['x']))), 'every goal is done');
   assert.match(after([end(1, 'api: cap', ['x'])], {}, {...start(), link: 2}), /^link 3 \(the last\) is done$/);
   assert.match(after([end(1, 'api: 502 broker down', ['x'])], {stopped: 'api: 502 broker down'}), /^a broker failure: api: 502 broker down/);
-  assert.match(linkEnd({prev: start(), session: sessionOf([end(1, 'steps', ['x'])]), runId: 1, commitNow: 'def5678', snapshot: snap}).ended, /^the app commit changed \(abc1234 → def5678\)$/);
   assert.match(after([end(1, 'steps', [])]), /^this link made no progress \(no step, no note\)$/);
   assert.match(after([end(1, 'repeat: "Press x" 5 times', ['x'])], {stopped: 'repeat: "Press x" 5 times'}), /^this link made no progress \(it repeated itself\)$/);
   assert.equal(after([end(1, 'steps', ['x'])]), '', 'a link that moved on goes on');
@@ -91,4 +91,45 @@ test('a finding names the snapshot to restore and the artifact it is in', () => 
 test('a broker failure label starts with the reason, not the engine\'s start events', () => {
   const error = new Error('502 broker: codex-failed:1 {"type":"thread.started","thread_id":"01a1ac05-5b58"} {"type":"turn.started"} {"type":"error","message":"Selected model is at capacity"}');
   assert.equal(brokerWhy(error), '502 broker: codex-failed:1 {"type":"error","message":"Selected model is at capacity"}');
+});
+
+test('a link of another app commit ends the chain before it runs; an ended chain is refused; no folder means no chain', () => {
+  const dir = tmp(), state = {...start(), link: 1, snapshot: snap};
+  fs.writeFileSync(path.join(dir, 'agent-chain.json'), JSON.stringify(state));
+  assert.deepEqual(previousLink('', 'abc1234'), {prev: null, ended: ''});
+  assert.equal(previousLink(dir, 'abc1234').ended, '');
+  assert.match(previousLink(dir, 'def5678').ended, /^the app commit changed \(abc1234 → def5678\): a snapshot of another build is not restored$/);
+  fs.writeFileSync(path.join(dir, 'agent-chain.json'), JSON.stringify({...state, ended: 'link 3 (the last) is done'}));
+  assert.throws(() => previousLink(dir, 'abc1234'), /had already ended \(link 3 \(the last\) is done\)/);
+});
+
+test('a chain starts only when 2 or more links are asked, and a later link works the goals left with the pointer to the snapshot before', () => {
+  const fresh = {seed: 7, persona: {name: 'P'}, newShare: 0.4, changedAreas: ['Jobs'], goals};
+  assert.equal(chainFor({prev: null, links: '', fresh, tier: 'large', commitNow: 'abc1234', runId: 100}).state, null);
+  const first = chainFor({prev: null, links: '3', fresh, tier: 'large', commitNow: 'abc1234', runId: 100});
+  assert.deepEqual([first.state.maxLinks, first.state.plan.newShare, first.state.plan.changedAreas], [3, 0.4, ['Jobs']], 'the whole plan is kept for later links');
+  assert.deepEqual(pointerOf(first.state), {chain: '100', link: 1, snapshot: '', run: ''});
+  const after = linkEnd({prev: first.state, session: sessionOf([end(1, 'done', ['x']), end(2, 'api: cap', ['y'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, snapshot: snap});
+  const second = chainFor({prev: after, links: '', fresh, tier: 'large', commitNow: 'abc1234', runId: 101});
+  assert.deepEqual(second.plan.goals.map(goal => goal.n), [2, 3]);
+  assert.deepEqual(pointerOf(after), {chain: '100', link: 2, snapshot: 'agent-chain-100-1.tar', run: '100'});
+});
+
+test('the steps of a stopped goal are kept across a link that does little, and no Continue line is told about a goal with no steps', () => {
+  const first = linkEnd({prev: start(), session: sessionOf([end(1, 'api: cap', ['a', 'b'])], {stopped: 'cap'}), runId: 100, snapshot: snap});
+  const second = linkEnd({prev: first, session: sessionOf([end(1, 'api: cap', ['c'])], {stopped: 'cap'}), runId: 101, snapshot: snap});
+  assert.deepEqual(second.next.steps, ['a', 'b', 'c']);
+  const nothing = {...start(), next: {n: 1, stepsTotal: 0, steps: [], stopped: 'it was not reached'}};
+  assert.equal(resumePlan(nothing).goals[0].label, 'goal 1', 'no steps done: the goal is told as it was');
+});
+
+test('after a restore the suite gets the new window: the relaunch closes the old one', async () => {
+  const profile = tmp(), out = tmp(), target = tmp();
+  fs.writeFileSync(path.join(profile, 'store.db'), 'rows');
+  const saved = packSnapshot({profile, dir: out, chain: '100', link: 1});
+  const oldPage = {closed: true}, newPage = {closed: false};
+  const ctx = {page: oldPage, relaunch: async (_extra, between) => { await between(target); ctx.page = newPage; }};
+  const result = await restoreLink(ctx, out, {chain: '100', link: 1, snapshot: saved});
+  assert.equal(result.page, newPage);
+  assert.equal(result.restored, saved.sha256);
 });
