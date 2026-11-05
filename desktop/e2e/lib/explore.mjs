@@ -126,7 +126,9 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
     let answer;
-    try { answer = await ask({system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; break; }   // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): 160 cut the broker's reason at "Selec"
+    const args = {system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)};
+    // Why (5 Nov 2026, run 42040707448): the reason is kept to 400 characters because 160 cut the broker's reason at "Selec". Why (5 Nov 2026, demo runs 42057090129 and 42058621304: the 5th call of a conversation got no answer in 180 s): a refused call says which call it was and how big, so the broker's side can find it.
+    try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(`  call ${turn + 1} of ${args.session || 'no conversation'} was refused (${args.delta ? `delta ${args.delta.length} chars` : 'full prompt'}, ${messages.length} turns, ${args.messages.reduce((sum, m) => sum + String(typeof m.content === 'string' ? m.content : '').length, 0)} chars in all)`); break; }   // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): 160 cut the broker's reason at "Selec"
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
