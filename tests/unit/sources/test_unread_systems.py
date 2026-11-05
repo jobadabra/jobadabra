@@ -43,12 +43,13 @@ class PartialReadTests(unittest.TestCase):
 
     def test_a_job_a_partial_reader_did_not_see_is_unknown_not_closed(self):
         for url in ('https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', 'https://acme.wd3.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1',
-                    'https://acme.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/1'):
+                    'https://acme.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/1', 'https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2',
+                    'https://join.com/companies/acme/1-designer'):
             with mock.patch.object(ats, '_board', return_value=[self.OTHER]):
                 self.assertIsNone(ats.is_live(url), url)
 
-    def test_every_reader_that_stops_early_is_a_real_reader(self):
-        self.assertLessEqual(ats.PARTIAL_READS, set(ats.FETCHERS))
+    def test_every_reader_that_stops_early_is_one_a_job_link_can_reach(self):
+        self.assertLessEqual(ats.PARTIAL_READS, {name for name, _ in ats.URL_PATTERNS})
 
     def test_a_partial_reader_still_says_a_job_it_sees_is_open(self):
         with mock.patch.object(ats, '_board', return_value=[{'id': 'Designer_R1', 'url': 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1'}]):

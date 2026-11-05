@@ -321,8 +321,8 @@ def _board(ats, slug):
     return tuple(fetch(ats, slug))
 
 
-# Why (5 Nov 2026, #2915): these stop before a big board's end (newest jobs, the user's own words, a page limit), so a job they do not show may still be open.
-PARTIAL_READS = {'workday', 'oracle', 'phenom', 'eightfold', 'jobsch'}
+# Why (5 Nov 2026, #2915): a job link reaches these, and they stop before a big board's end (newest jobs, the user's own words, 40 jobs, 20 pages), so a job they do not show may still be open.
+PARTIAL_READS = {'workday', 'oracle', 'umantis', 'join'}
 
 
 def _wanted(url):
