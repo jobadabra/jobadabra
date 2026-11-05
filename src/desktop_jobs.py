@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from . import digest, store
 from .ai import enrich, provenance, score
 from .notion.client import job_code
+from .sources.posting_text import label
 
 # Notion Applications Stage -> the app's status. With Notion connected the Stage is the only source of truth;
 # the local applications.status column is a cache refreshed from it on every list.
@@ -78,7 +79,7 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
 
     def row(job, fit, reason, status, stage, step, page, **extra):
         return {'id': job.get('id'), 'code': job_code(job['url']) if job.get('url') else '',
-                'title': job.get('title') or '', 'company': job.get('company') or '', 'location': job.get('location') or '',
+                'title': label(job.get('title')), 'company': job.get('company') or '', 'location': job.get('location') or '',
                 'work_mode': job.get('work_mode') or '', 'url': job.get('url') or '',
                 'posted_at': job.get('posted_at') or '', 'first_seen_at': job.get('first_seen_at') or '',
                 'status': status, 'fit': fit, 'reason': reason or '', 'skills': skills_of(extra.pop('technologies', '') or (facts.get(job.get('id')) or {}).get('technologies')), 'rank': digest.rank_score(job) if job.get('id') else 0,
