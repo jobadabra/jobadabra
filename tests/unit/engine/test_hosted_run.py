@@ -74,6 +74,22 @@ class HostedRun(unittest.TestCase):
         for name in ('NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY', 'JOBADABRA_TRIAL_KEY'):
             self.assertNotIn(name, env)
 
+    def test_the_search_budget_counts_from_the_run_start_not_from_after_the_setup(self):
+        # Why (5 Nov 2026, the first production test, run_8d5151c3): the setup before daily's budget (__main__: roles, places) took 372 s with no
+        # clock, the budget's 600 s then ended at 972 s, past the 14-minute kill at 840 s, so a finished search was killed and its state never saved.
+        import os
+        from src import time_budget
+        seen = {}
+        hosted_run.run(self.site, 'HR1.r.t', self.folder, search=lambda env: seen.update(env) or 1)
+        at = float(seen['JOBADABRA_SEARCH_AT'])
+        self.assertLess(abs(time.time() - at), 5)   # the run's own start
+        self.addCleanup(time_budget.start, 0)
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_AT': seen['JOBADABRA_SEARCH_AT']}), mock.patch('time.time', return_value=at + 372):
+            time_budget.start(600)
+            left = time_budget.end() - time.monotonic()
+        self.assertLess(left, 600 - 372 + 2)
+        self.assertLess(372 + left, 14 * 60)   # the run ends inside the container's limit
+
     def test_new_matches_are_only_the_ones_the_run_added_best_first(self):
         before = [{'url': 'https://a/1', 'title': 'Old', 'fit': 9}]
         after = before + [{'url': 'https://a/2', 'title': 'Two', 'company': 'C', 'fit': 5, 'reason': 'ok'}, {'url': 'https://a/3', 'title': 'Three', 'fit': 8}]

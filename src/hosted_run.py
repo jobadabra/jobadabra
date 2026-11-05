@@ -73,14 +73,18 @@ def push_state(site, token, folder):
     _call(f'{site}/api/hosted/state', token, 'PUT', buffer.getvalue())
 
 
-def environment(folder, site, token, base=None):
-    """The engine's environment for a hosted run: the SQLite store in `folder`, AI through the site with the run token, nothing else."""
+def environment(folder, site, token, base=None, started=None):
+    """The engine's environment for a hosted run: the SQLite store in `folder`, AI through the site with the run token, nothing else.
+    `started` (epoch seconds, default now): the run's start, the clock every engine step's budget counts from (src/time_budget.py SEARCH_AT)."""
     env = dict(base if base is not None else os.environ)
     for name in [key for key in env if key.startswith(('NOTION_', 'TELEGRAM_', 'ANTHROPIC_', 'OPENAI_', 'JOBADABRA_TRIAL', 'JOBADABRA_AI'))]:
         del env[name]   # a hosted run holds no other credential, whatever the image or the host sets
     env.update({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(folder / 'config'),
                 'JOBADABRA_DATA_DIR': str(folder / 'data'), 'JOBADABRA_PROFILE_FILE': str(folder / 'config' / 'profile.md'),
                 'JOBADABRA_AI_BASE_URL': f'{site}/api/ai', 'ANTHROPIC_API_KEY': token, 'JOBADABRA_TRIGGER': 'hosted'})
+    # Why (5 Nov 2026, the first production test, run_8d5151c3): without the press's time the budget started after 372 s of setup and ended
+    # past the 14-minute kill; the app gives every step its press's time the same way (desktop/lib/search-steps.js).
+    env['JOBADABRA_SEARCH_AT'] = str(started if started is not None else time.time())
     return env
 
 
@@ -102,10 +106,10 @@ def read_matches(env):
 
 def run(site, token, folder, search=None):
     """One hosted run in `folder`. -> the result body that was posted. `search` is the engine process (a test swaps it)."""
-    site = site.rstrip('/')
+    site, started = site.rstrip('/'), time.time()
     pull_state(site, token, folder)   # none yet on the first run: the stores start empty
     configured = pull_config(site, token, folder)
-    env = environment(folder, site, token)
+    env = environment(folder, site, token, started=started)
     status, matches = 'failed', []
     if configured:
         try:
