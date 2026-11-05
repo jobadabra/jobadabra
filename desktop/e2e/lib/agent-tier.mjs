@@ -10,8 +10,11 @@ export const MAX_OUTPUT_TOKENS = 1024;   // the first call's answer headroom (br
 export const CAP_REACHED = 'the run token cap was reached';   // the refusal the loops read as "stop here"; a read it refused made no call
 const IMAGE_TOKENS = 1_500;   // a screenshot costs about this, whatever its bytes: its base64 text must not be counted as words
 
-/** The acting tier of a run: what the dispatch asked for, else large for a night (kind 'night', set by the workflow) and small for anything else, so a run with no kind (a local one) never spends the large tier by default. */
-export const actorTierOf = ({requested = '', kind = ''} = {}) => requested || (kind === 'night' ? 'large' : 'small');
+/**
+ * The acting tier of a run: what the dispatch asked for, else mid for a night (kind 'night', set by the workflow) and small for anything else, so a run with no kind (a local one) never spends the mid or large tier by default.
+ * Why (5 Nov 2026, a8, owner via mac-32: "Mid until astra is explained"): the large tier is gpt-6-astra and it stalls (codex prints turn.started, then nothing for 100 s, or exits with no answer). Same plan, same hour: large stalled after 5 calls (run 42074163392); mid (gpt-6.1-sol) 44 calls and small (luna) 79 calls had 0 failures; every earlier stalled run was large. Hypothesis only for why astra stalls; a night asks for `tier=large` to test it. On the Claude engine mid is Sonnet.
+ */
+export const actorTierOf = ({requested = '', kind = ''} = {}) => requested || (kind === 'night' ? 'mid' : 'small');
 
 
 /**

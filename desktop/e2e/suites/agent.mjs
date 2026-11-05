@@ -45,7 +45,7 @@ const todaySeed = () => Number(new Date().toISOString().slice(0, 10).replace(/-/
  */
 export async function run(ctx) {
   ctx.findings = [];
-  // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts; a night with no tier acts on large under a token cap (5 Nov 2026, owner via mac-32; lib/agent-tier.mjs).
+  // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts; a night with no tier acts on mid (5 Nov 2026, owner via mac-32: large stalls; lib/agent-tier.mjs) under a token cap (5 Nov 2026, owner via mac-32; lib/agent-tier.mjs).
   const actorTier = actorTierOf({requested: process.env.AGENT_TIER, kind: process.env.AGENT_KIND});
   const engine = actorEngineOf({requested: process.env.AGENT_ENGINE, claudeOn: process.env.AGENT_CLAUDE_ON});   // '' = Codex first, as always; 'claude' = Claude alone for the actor (the second opinion is always Claude)
   if (!Object.hasOwn(MODELS, actorTier)) throw new Error(`AGENT_TIER must be ${Object.keys(MODELS).join(', ')}, got "${actorTier}"`);
