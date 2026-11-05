@@ -3,7 +3,7 @@
 //   node record.mjs part --out DIR --dest DIR     in the fix job, after the loop: DIR/loop.json + DIR/brief.json -> DEST/part.json (the reason is scanned like a pull request text)
 //   node record.mjs build --part FILE --out DIR   in the record job: the part + the run's facts (env) -> DIR/record.json
 // THIS REPOSITORY IS PUBLIC and so is the artifact: the record holds counts, action names, file names, fixed words and ONE scanned sentence (400 characters); never the item, a log or a comment. A reason that leaks is withheld and the record says so.
-// Each step also carries `s` (seconds it took), `ok` (false = the action was refused or failed: lost time), the repo `path` it read or edited (a plain file path, else '') and the tokens it wrote, so the tab can draw where the run spent its time (owner, 5 Nov 2026: "the steps he did, where he lost time, how efficient he was").
+// Each step also carries `s` (seconds it took), `ok` (false = the action was refused or failed: lost time), the repo `path` it read or edited (an existing file of the repo, else '') and the tokens it wrote, so the tab can draw where the run spent its time (owner, 5 Nov 2026: "the steps he did, where he lost time, how efficient he was").
 // Words (agreed with the admin tab): `verdict` = the loop's words (fix, fixed-already, not-reproducible, needs-human, false-positive) or `answer`, else ''; `stop` = the driver's word (STOPS in driver.mjs) or null; `round` 0 = the first run.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -12,14 +12,26 @@ import {pathToFileURL} from 'node:url';
 import {STOPS} from './driver.mjs';
 import {leaks} from './leaks.mjs';
 
+/** Why a run did not end in a fix, as ONE fixed word (the admin's "why it did not succeed"); `none` = it did (or it is READY). */
+export const BLOCKED = ['none', 'walls', 'tests-failed', 'no-repro', 'false-positive', 'fixed-already', 'needs-human', 'steps', 'time', 'rounds', 'broker', 'conflict', 'same-failure', 'round-failed', 'run-failed', 'publish-failed'];
 export const VERDICTS = ['fix', 'fixed-already', 'not-reproducible', 'needs-human', 'false-positive', 'answer'];
 // Why (5 Nov 2026, Gitar on #3194): the engine rule (engine.mjs SONNET_ENGINES) lets two engines answer, so the model is named from the engine that did; an unknown engine names none.
 export const MODELS = {claude: 'claude-sonnet-5-5', codex: 'gpt-6.1-sol'};
 const REASON_CHARS = 400, FILES = 20, ERRORS = 5;
+/** True when `file` is a file of the base commit (HEAD of the workspace, before the agent's edits): a path the model made up, or a file it created, is not one. */
+function inBase(file) { try { execFileSync('git', ['cat-file', '-e', `HEAD:${file}`], {stdio: 'ignore'}); return true; } catch { return false; } }
+/**
+ * The path of a step, or ''. Why (5 Nov 2026, Gitar on #3197): the path is the model's own text and the model reads the item, so it is published only for a step that was accepted, that looks like a plain path,
+ * that passes the leak scan and that is an existing file of the repo: a name made of the report's words is none of these.
+ */
+function safePath(turn, brief, exists) {
+  const file = turn?.path;
+  return turn?.ok !== false && typeof file === 'string' && /^[\w./-]{1,60}$/.test(file) && !file.includes('..') && !leaks(file, brief).length && exists(file) ? file : '';
+}
 const one = text => String(text || '').replace(/\s+/g, ' ').trim();
 
 /** The facts only the fix job knows. `loop` = run.mjs's loop.json, `brief` = the item (for the leak scan only), `title` = the scanned pull request title, `files` = changed file names. A reason that may not be public is withheld, and says why in words that never repeat it. */
-export function partOf({loop, brief, title = '', files = []}) {
+export function partOf({loop, brief, title = '', files = [], exists = inBase}) {
   const errors = [], verdict = VERDICTS.includes(loop.verdict) ? loop.verdict : '';
   let reason = one(verdict === 'fix' ? title : loop.body).slice(0, REASON_CHARS);
   const held = reason ? leaks(reason, brief) : [];
@@ -27,8 +39,24 @@ export function partOf({loop, brief, title = '', files = []}) {
   const stopped = String(loop.stopped || '').split(':')[0];
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
   const turns = Array.isArray(loop.steps) ? loop.steps : [], n = value => Math.max(0, Math.round(Number(value) || 0));
-  return {engine: one(loop.engine).slice(0, 60), model: MODELS[loop.engine] || '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
-    steps: turns.slice(0, 60).map((turn, i) => ({n: i + 1, action: one(turn?.action).slice(0, 20), s: Math.round(n(turn?.ms) / 100) / 10, ok: turn?.ok !== false, path: /^[\w./-]{1,60}$/.test(turn?.path) && !turn.path.includes('..') ? turn.path : '', tout: n(turn?.tout)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
+  return {walls: Number(loop.walls) > 0 ? 1 : 0, stopped: ['steps', 'time', 'api'].includes(stopped) ? stopped : '', engine: one(loop.engine).slice(0, 60), model: MODELS[loop.engine] || '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
+    steps: turns.slice(0, 60).map((turn, i) => ({n: i + 1, action: one(turn?.action).slice(0, 20), s: Math.round(n(turn?.ms) / 100) / 10, ok: turn?.ok !== false, path: safePath(turn, brief, exists), tout: n(turn?.tout)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
+}
+
+/**
+ * The one word for why a run did not end in a fix. Order: a job that failed, the driver's stop word, how the loop stopped, then the verdict (walls: the agent's edit was refused by a wall).
+ * Pure and fixed: nothing here reads text.
+ */
+export function blockedBy(part, facts) {
+  const {fix, prove, publish} = facts.results || {}, STOP_WORDS = {time: 'time', rounds: 'rounds', 'same-failure': 'same-failure', conflict: 'conflict', refused: 'broker', 'round-failed': 'round-failed'};
+  const stop = Object.hasOwn(STOP_WORDS, facts.stop) ? STOP_WORDS[facts.stop] : '';
+  if (fix === 'failure') return 'run-failed';
+  if (prove === 'failure') return 'tests-failed';
+  if (publish === 'failure') return 'publish-failed';
+  if (stop) return stop;
+  if (part?.stopped) return part.stopped === 'api' ? 'broker' : part.stopped;
+  if (part?.verdict === 'needs-human') return part.walls ? 'walls' : 'needs-human';
+  return {'not-reproducible': 'no-repro', 'false-positive': 'false-positive', 'fixed-already': 'fixed-already'}[part?.verdict] || 'none';
 }
 
 /**
@@ -41,7 +69,7 @@ export function buildRecord(part, facts) {
   const started = Date.parse(facts.started), pr = Number(facts.pr);
   return {v: 1, workflow: 'ai-fixer', started: Number.isFinite(started) ? new Date(started).toISOString().replace(/\.\d+Z$/, 'Z') : '', minutes: Number.isFinite(started) ? Math.max(0, Math.round((facts.now - started) / 6000) / 10) : 0,
     source: String(facts.source || '').slice(0, 12), ref: String(facts.ref || '').slice(0, 40), round: Math.max(0, Number(facts.round) || 0), engine: p.engine, model: p.model, turns: p.turns, calls: p.calls, tokens_in: p.tokens_in, tokens_out: p.tokens_out,
-    steps: p.steps, verdict: p.verdict, reason: p.reason, changed_files: p.changed_files, pr: Number.isInteger(pr) && pr > 0 ? pr : null, stop: Object.hasOwn(STOPS, facts.stop) ? facts.stop : null, errors: errors.slice(0, ERRORS)};
+    steps: p.steps, blocked_by: blockedBy(part, facts), verdict: p.verdict, reason: p.reason, changed_files: p.changed_files, pr: Number.isInteger(pr) && pr > 0 ? pr : null, stop: Object.hasOwn(STOPS, facts.stop) ? facts.stop : null, errors: errors.slice(0, ERRORS)};
 }
 
 const flag = (args, name) => { const at = args.indexOf(name); return at >= 0 ? args[at + 1] || '' : ''; };

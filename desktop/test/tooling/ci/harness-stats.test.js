@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import {ARTIFACT, FILE, PLAN, chain, compute, fetchRuns, layers, parsePlan, recordOf} from '../../../../tools/harness-stats.mjs';
+import {ARTIFACT, FILE, PLAN, chain, compute, fetchRuns, layers, parsePlan, phasesOf, recordOf} from '../../../../tools/harness-stats.mjs';
 
 const plan = ['# Plan', '## PRs', '- not a row', '## Progress', '- [x] 1/7 This plan and the spec amendment', '- [ ] 2/7 Move `walls` into `tools/fixer/`', '- [ ] 3/7 Loop', '- [ ] web 1/3 One agent card per row', '- [ ] web 2/3 Agent harness page', '', '## Later', '- [ ] 1/9 A checklist of something else', ''].join('\n');
 const pr = (number, title, extra = {}) => ({number, title, body: `Plan: \`${PLAN}\``, state: 'OPEN', mergedAt: null, createdAt: '2026-11-04T10:00:00Z', ...extra});
@@ -42,11 +42,13 @@ test("a record keeps GitHub's run id and url, whatever the artifact says; a non-
 });
 test('runs without a record are skipped, a record is read from record.json only, an oversize or broken one is skipped, nothing else throws', () => {
   const runs = [{id: 1, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/1'}, {id: 2, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/2'}, {id: 3, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/3'}, {id: 4, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/4'}];
-  const api = (...args) => (args[1].includes('/workflows/') ? runs : args[1].includes('/runs/1/') ? [] : [ARTIFACT]);
+  const jobs = [{name: 'guard', started_at: '2026-11-05T10:00:20Z', completed_at: '2026-11-05T10:00:50Z'}, {name: 'fix', started_at: '2026-11-05T10:01:00Z', completed_at: '2026-11-05T10:07:00Z'}];
+  const api = (...args) => (args[1].includes('/workflows/') ? runs.map(item => ({...item, run_started_at: '2026-11-05T09:59:00Z'})) : args[1].includes('/jobs') ? jobs : args[1].includes('/runs/1/') ? [] : [ARTIFACT]);
   const files = {2: JSON.stringify(record), 3: 'not json', 4: JSON.stringify({...record, reason: 'x'.repeat(70000)})};
   const download = (id, dir) => { fs.writeFileSync(`${dir}/${FILE}`, files[id]); fs.writeFileSync(`${dir}/other.txt`, 'ignored'); };
   const got = fetchRuns('jobadabra/jobadabra', now, api, download);
   assert.deepEqual(got.map(item => item.run_id), [2], 'run 1 has no artifact, 3 is not JSON, 4 is over 64 KB');
+  assert.deepEqual(got[0].phases, [{name: 'queue', s: 80}, {name: 'guard', s: 30}, {name: 'fix', s: 360}], "phases come from GitHub's job times, not from the artifact");
   assert.throws(() => fetchRuns('jobadabra/jobadabra', now, () => { throw new Error('HTTP 403 rate limit'); }, download), /403/, 'a gh failure is not "no data"');
   assert.throws(() => fetchRuns('jobadabra/jobadabra', now, api, () => { throw new Error('HTTP 502'); }), /502/, 'a failed download is not "no record"');
 });
@@ -73,4 +75,12 @@ test('the body is one card for today: plan rows, the web group, layers, sources 
   const [day] = body.days;
   assert.equal(body.kind, 'harness'); assert.equal(day.day, '2026-11-05'); assert.deepEqual(day.plan.rows.map(row => row.state), ['done', 'doing', 'next']); assert.deepEqual(day.plan.web.map(row => [row.state, row.pr]), [['done', 366], ['next', 0]]);
   assert.equal(day.runs.length, 1); assert.equal(day.sources.length, 6); assert.ok(fs.existsSync(new URL(`../../../../${PLAN}`, import.meta.url)), 'the plan file the script reads exists');
+});
+
+test('phases: the queue, then each known job in workflow order; a skipped job, a missing end or a name we do not know is left out', () => {
+  const at = minute => `2026-11-05T10:${String(minute).padStart(2, '0')}:00Z`;
+  const jobs = [{name: 'fix', started_at: at(2), completed_at: at(8)}, {name: 'guard', started_at: at(1), completed_at: at(2)}, {name: 'prove', started_at: null, completed_at: null}, {name: 'publish', started_at: at(8), completed_at: ''}, {name: 'evil <b>', started_at: at(1), completed_at: at(9)}];
+  assert.deepEqual(phasesOf(jobs, at(0)), [{name: 'queue', s: 60}, {name: 'guard', s: 60}, {name: 'fix', s: 360}]);
+  assert.deepEqual([phasesOf([], at(0)), phasesOf(null, at(0)), phasesOf(jobs, 'x')], [[], [], []]);
+  assert.equal(phasesOf([{name: 'guard', started_at: at(1), completed_at: at(2)}], at(5))[0].s, 0, 'never negative');
 });

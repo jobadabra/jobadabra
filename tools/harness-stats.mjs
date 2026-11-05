@@ -56,7 +56,7 @@ export function recordOf(parsed, run) {
   const str = (value, max) => (typeof value === 'string' ? value.slice(0, max) : ''), num = value => (Number.isFinite(value) ? value : 0), list = (value, max) => (Array.isArray(value) ? value.slice(0, max) : []);
   return {v: parsed.v === 1 ? 1 : 0, workflow: str(parsed.workflow, 20), run_id: run.id, url: run.html_url, started: str(parsed.started, 32), minutes: num(parsed.minutes), source: str(parsed.source, 12), ref: str(parsed.ref, 40), round: num(parsed.round),
     engine: str(parsed.engine, 60), model: str(parsed.model, 60), turns: num(parsed.turns), calls: num(parsed.calls), tokens_in: num(parsed.tokens_in), tokens_out: num(parsed.tokens_out), steps: list(parsed.steps, 30).map(step => ({n: num(step?.n), action: str(step?.action, 20), s: num(step?.s), ok: step?.ok !== false, path: str(step?.path, 60), tout: num(step?.tout)})),   // s = seconds, ok = not refused, tout = tokens written (5/7: where the run lost time; capped at the loop's 30 turns)
-    verdict: str(parsed.verdict, 24), reason: str(parsed.reason, 400), changed_files: list(parsed.changed_files, 20).map(file => str(file, 120)), pr: Number.isInteger(parsed.pr) ? parsed.pr : null, stop: str(parsed.stop, 20), errors: list(parsed.errors, 5).map(error => str(error, 200))};
+    blocked_by: str(parsed.blocked_by, 20), verdict: str(parsed.verdict, 24), reason: str(parsed.reason, 400), changed_files: list(parsed.changed_files, 20).map(file => str(file, 120)), pr: Number.isInteger(parsed.pr) ? parsed.pr : null, stop: str(parsed.stop, 20), errors: list(parsed.errors, 5).map(error => str(error, 200))};
 }
 
 /** All of it -> the body to PUT: {kind: 'harness', days: [today's card]}. `input` = {plan, prs, webPrs, runs: [records]} (what fetchInput collects); `fs` = {has, count}. */
@@ -71,11 +71,24 @@ const gh = (...args) => JSON.parse(execFileSync('gh', args, {encoding: 'utf8', m
 const lsCount = (dir, suffix) => { try { return readdirSync(join(ROOT, dir)).filter(name => (suffix ? name.endsWith(suffix) : statSync(join(ROOT, dir, name)).isDirectory())).length; } catch { return 0; } };
 const checkout = {has: file => existsSync(join(ROOT, file)), count: lsCount};
 
+const PHASES = ['guard', 'fix', 'prove', 'publish', 'after', 'record'];
+/**
+ * Where a run's time went, from GitHub's OWN timestamps (never the artifact, so a record cannot claim them): `queue` = the run's start until its first job started, then each known job's seconds in the order the workflow has them.
+ * `jobs` = [{name, started_at, completed_at}]. A job that never ran (skipped) or has no end is left out; every number is whole seconds, never negative.
+ */
+export function phasesOf(jobs, runStarted) {
+  const list = (Array.isArray(jobs) ? jobs : []).filter(job => job && typeof job === 'object' && PHASES.includes(job.name) && Date.parse(job.started_at) > 0 && Date.parse(job.completed_at) > 0);
+  if (!list.length || !(Date.parse(runStarted) > 0)) return [];
+  const secs = (from, to) => Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 1000));
+  const first = list.reduce((min, job) => (Date.parse(job.started_at) < Date.parse(min) ? job.started_at : min), list[0].started_at);
+  return [{name: 'queue', s: secs(runStarted, first)}, ...PHASES.map(name => list.find(job => job.name === name)).filter(Boolean).map(job => ({name: job.name, s: secs(job.started_at, job.completed_at)}))];
+}
+
 /** The record of each run of the fixer in the window that has one (the run's artifact `ai-fixer-record`). Normal and skipped: no artifact, an expired one, a file over 64 KB or not JSON. A gh failure (rate limit, 5xx, auth) is NOT "no data": it throws,
  * so the job fails and the stored card stays as it was (review, 4 Nov 2026). `run` = the gh api reader, `download(id, dir)` puts the artifact's files in dir: both injectable for the test. */
 export function fetchRuns(repo, now, run = gh, download = (id, dir) => execFileSync('gh', ['run', 'download', String(id), '--repo', repo, '--name', ARTIFACT, '--dir', dir], {stdio: 'ignore'})) {
   const since = new Date(now.getTime() - WINDOW_DAYS * 86400000).toISOString().slice(0, 10), records = [];
-  const list = run('api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?per_page=${LIST_RUNS}&created=>=${since}`, '--jq', '[.workflow_runs[] | {id, html_url}]') || [];
+  const list = run('api', `repos/${repo}/actions/workflows/${WORKFLOW}/runs?per_page=${LIST_RUNS}&created=>=${since}`, '--jq', '[.workflow_runs[] | {id, html_url, run_started_at}]') || [];
   if (list.length >= LIST_RUNS) console.error(`harness-stats: ${LIST_RUNS} runs listed, older ones are not read`);
   for (const item of list) {
     const found = run('api', `repos/${repo}/actions/runs/${item.id}/artifacts?name=${ARTIFACT}`, '--jq', `[.artifacts[] | select(.expired == false and .size_in_bytes <= ${MAX_RECORD}) | .name]`) || [];   // the size is the zip's: a bigger one is never extracted
@@ -88,7 +101,7 @@ export function fetchRuns(repo, now, run = gh, download = (id, dir) => execFileS
       let parsed;
       try { parsed = JSON.parse(readFileSync(file, 'utf8')); } catch { console.error(`harness-stats: run ${item.id} skipped: record.json is not JSON`); continue; }
       const record = recordOf(parsed, item);
-      if (record) records.push(record);
+      if (record) records.push({...record, phases: phasesOf(run('api', `repos/${repo}/actions/runs/${item.id}/jobs?per_page=30`, '--jq', '[.jobs[] | {name, started_at, completed_at}]'), item.run_started_at)});   // a gh failure throws, as above
     } finally { rmSync(dir, {recursive: true, force: true}); }
   }
   return records;
