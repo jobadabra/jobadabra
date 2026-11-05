@@ -550,34 +550,6 @@ jobs:
           path: ${{ runner.temp }}/record/record.json
           retention-days: 35   # the admin tab reads the last 30 days
 
-  # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.
-  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed.
-  card:
-    needs: [guard, publish, record]
-    if: always() && !cancelled() && vars.AI_FIXER != 'off' && inputs.source == 'feedback' && inputs.pr == ''
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      id-token: write   # the run token the site checks
-    env:
-      REF: ${{ inputs.ref }}
-      REPO: ${{ github.repository }}
-      PR_NUMBER: ${{ needs.publish.outputs.number }}
-      VERDICT: ${{ needs.record.outputs.verdict }}
-      BLOCKED: ${{ needs.record.outputs.blocked }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-          sparse-checkout: |
-            tools
-            desktop/lib
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - run: node tools/fixer/card.mjs
-
   # One alert when the broker refused the run; the note it reads holds the cause, never any item text.
   ai-skipped:
     needs: fix
@@ -603,3 +575,31 @@ jobs:
           bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           github-token: ${{ github.token }}
+
+  # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.
+  # No repo write token, no AI, no secret: only the run token the site checks (audience jobadabra-feedback). Without this report the site holds the card in "running" for an hour and then calls it failed. A run the guard refused (cap, one at a time) says nothing: it is not the card's run.
+  card:
+    needs: [guard, publish, record]
+    if: always() && !cancelled() && vars.AI_FIXER != 'off' && needs.guard.result == 'success' && inputs.source == 'feedback' && inputs.pr == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write   # the run token the site checks
+    env:
+      REF: ${{ inputs.ref }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ needs.publish.outputs.number }}
+      VERDICT: ${{ needs.record.outputs.verdict }}
+      BLOCKED: ${{ needs.record.outputs.blocked }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools
+            desktop/lib
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node tools/fixer/card.mjs
