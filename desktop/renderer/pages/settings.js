@@ -237,7 +237,6 @@ function renderKnown() {
   $('ov-cv').textContent = shared.state.settings.cvName || 'None yet';
   const chosen = kind => document.querySelector(`[data-schedule="${kind}"]`)?.selectedOptions[0]?.textContent || '';
   $('ov-search').textContent = chosen('search') || '—';
-  $('ov-kits').textContent = chosen('kits') || '—';
   $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? `On — GitHub ${shared.state.settings.cloud.repo}` : 'Off — runs while the app is open';
   if (!$('ov-contact').firstChild) $('ov-contact').replaceChildren(stateLine(false, '', true));
   if (!$('ov-backup').textContent) $('ov-backup').replaceChildren(stateLine(false, '', true));

@@ -211,18 +211,16 @@ export function renderJobs() {
       // No kit yet: Apply drafts it first (reads the form's questions, answers each, writes a cover letter), then opens
       // the form in Chrome as it does for a job with a kit. "Prepare only" is in the ⋯ menu.
       const state = prepareState(job);
-      const busy = state === 'local' || state === 'cloud';
-      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state === 'cloud' ? 'Preparing…' : state ? 'Preparing' : 'Apply'), {
-        title: state === 'cloud' ? 'Preparing on GitHub: the list reloads when it is done' : state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
+      const busy = state === 'local';
+      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state ? 'Preparing' : 'Apply'), {
+        title: state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
           : 'Prepares your application and fills the form; you review and submit'});
-      if (busy) { prepare.disabled = true; if (state === 'local') prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
+      if (busy) { prepare.disabled = true; prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
       prepare.addEventListener('click', async () => {
         preparing.set(job.code, 'local');
         renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-        // On GitHub (Always on): the row says so; the list reloads when it's done, and the form is not opened for you.
-        if (result.cloud) preparing.set(job.code, 'cloud');
-        else if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
+        if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
         else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });

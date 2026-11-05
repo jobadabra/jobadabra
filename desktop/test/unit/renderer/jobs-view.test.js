@@ -207,8 +207,8 @@ test('Jobs page: "New matches" (not "To review"), Inbound and Everything as opti
 
 test('a job being prepared stays Preparing through re-renders, until its kit shows', async () => {
   const {prepareState} = await import('../../../renderer/jobs-view.js');
-  const tracker = new Map([['ab12', 'local'], ['cd34', 'cloud'], ['ef56', 'failed']]);
-  assert.deepEqual(['ab12', 'cd34', 'ef56', 'zz99'].map(code => prepareState({code}, tracker)), ['local', 'cloud', 'failed', '']);
+  const tracker = new Map([['ab12', 'local'], ['cd34', 'local'], ['ef56', 'failed']]);
+  assert.deepEqual(['ab12', 'cd34', 'ef56', 'zz99'].map(code => prepareState({code}, tracker)), ['local', 'local', 'failed', '']);
   assert.equal(prepareState({code: 'cd34', kit: true}, tracker), '');  // the reloaded list has the kit: forgotten
   assert.equal(tracker.has('cd34'), false);
 });

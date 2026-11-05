@@ -21,4 +21,4 @@ Sketch and the owner's picks: https://claude.ai/artifact/QwtRVUWzCYDQddX1WvRKTZ
 
 ## Progress
 - [x] 1/2 The words and screens (proof: desktop/integration/app/screen-jobs-kit-internal.test.js)
-- [ ] 2/2 One press to apply: the Draft applications setting goes; with Always on, Apply prepares on this computer
+- [x] 2/2 One press to apply: the Draft applications setting goes; with Always on, Apply prepares on this computer (proof: desktop/test/unit/main/one-press-apply.test.js)

@@ -85,13 +85,6 @@ test('an Apply batch drafts the missing kits for the best jobs first, quietly, a
   assert.equal(spawned[0].length, 3 + 2);
 });
 
-test('an Apply batch does not wait for kits drafted on GitHub, and says so', async () => {
-  const jobs = [{code: 'b', url: 'https://b/2', status: 'unreviewed', fit: 85, title: 'Ops', company: 'B'}];
-  const result = await apply.start(tempStorage(), {n: 1, mode: 'chrome'}, () => ({unref() {}}), async () => ({jobs}), undefined, undefined, async () => ({ok: true, cloud: true}));
-  assert.equal(result.ok, false);
-  assert.match(result.error, /GitHub/);
-});
-
 test('missing kits are picked saved first, then by fit, open jobs only', () => {
   const jobs = [{code: 'a', url: 'u', status: 'unreviewed', fit: 90}, {code: 'b', url: 'u', status: 'saved', fit: 50}, {code: 'c', url: 'u', status: 'applied', fit: 99},
     {code: 'd', url: 'u', status: 'unreviewed', fit: 95, kit: true}];

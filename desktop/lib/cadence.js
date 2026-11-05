@@ -3,10 +3,9 @@
 // (a daylight-saving change shifts them by an hour until the next update).
 // scout is off for new installs: one central scout finds employers for everyone and the app downloads its index
 // (src/employer_index.py). Installs set up before that keep their daily scout (migrate.js → pinScoutSchedule).
-export const DEFAULTS = {search: 4, kits: 0, insights: 'daily', scout: 'off', mail: 3};
+export const DEFAULTS = {search: 4, insights: 'daily', scout: 'off', mail: 3};
 export const CHOICES = {
   search: [1, 2, 3, 4, 6, 8, 12, 24, 0],   // hours between searches; 0 = off
-  kits: [0, 1, 3, 5],                      // application kits drafted per search for the best new matches
   insights: ['daily', 'off'],              // morning insight (and the Monday weekly report)
   scout: ['daily', 'weekly', 'off'],
   mail: [1, 3, 6, 0],                       // times a day; 0 = off

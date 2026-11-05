@@ -8,6 +8,7 @@ import * as cvlib from './cv.js';
 import * as inPlace from './cv-inplace-run.js';
 import * as experience from './experience.js';
 import * as files from './files.js';
+import * as github from './github.js';
 import * as storeFiles from './store/files.js';
 import * as notionGate from './notion-gate.js';
 import {registerJobLetterHandlers} from './job-letter-handlers.js';
@@ -20,8 +21,10 @@ import {currentDocx} from './cv-docx.js';
 import {makeDocx} from './cv-docx-tailor.js';
 import {findOffice} from './office.js';
 
+const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
+
 export function registerKitHandlers(ctx) {
-  const {DEMO, allowanceBlock, app, cloud, dispatchCloud, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, track} = ctx;
+  const {DEMO, aiReady, allowanceBlock, app, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, syncJobs = github.syncDatabase, track} = ctx;
   registerReadyHandlers({ipcMain, notify, shell, storage, app, powerMonitor, prepare: {kit: (code, name) => prepareKitFor(code, name, {quiet: true}), cv: (code, name) => tailorCv(code, name, {show: false, quiet: true})}});   // Ready to send (the owner's install only): the card beside Tailor on Actions, its calls in lib/ready-handlers.js
   const {makeFor: makeJobLetter} = registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage});   // the job's own cover letter, made after its CV
   // The application kit: the form's questions (read from the ATS), an answer for each and a cover letter,
@@ -31,12 +34,11 @@ export function registerKitHandlers(ctx) {
     if (gate) return gate;
     const blocked = await allowanceBlock();
     if (blocked) return blocked;
-    // With Always on, background jobs run in the user's GitHub repo: Recent activity
-    // shows it starting, its progress and its result (its ⏱️ Search runs row); the job's row updates from Notion.
-    if (cloud()) {
-      const started = await dispatchCloud(`Prepare application (${name})`, {mode: 'prepare', job: code});
-      return started.ok ? {ok: true, cloud: true} : {ok: false, error: started.error};
-    }
+    // Why (5 Nov 2026, owner: "Confirm during the build that the computer has the AI it needs"): without this check the engine fails on a missing key and the person sees no reason.
+    if (!aiReady()) return {ok: false, error: NEEDS_AI};
+    // Why (5 Nov 2026, owner: "One press, on this computer"): Apply prepares here even with Always on, so the form opens from the same press. The AI key GitHub uses is copied from this computer.
+    // Why (5 Nov 2026, #3297 follow-up): an Always on search fills GitHub's job database; the copy here can lag up to 5 minutes, and a job missing from it is drafted with no posting text.
+    if (storage.settings().cloud?.repo) await syncJobs(storage).catch(error => log(`Cloud job list: ${error.message}`));
     // Quietly: the result comes as a notification (and the row's Apply), not as log output.
     const lines = [];
     const {code: exit} = await pipeline.run(storage, pipeline.dailyArgs(storage, {mode: 'prepare', job: code}), line => lines.push(line),
@@ -53,7 +55,7 @@ export function registerKitHandlers(ctx) {
   // checked -> PDF. A fixed-page design that overflows gets one second try with that feedback.
   const tailorCv = async (code, name = 'this job', {show = true, quiet = false} = {}) => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
+    if (!key && !ai) return {ok: false, error: NEEDS_AI};
     try {
       let cost = 0;
       if (!cvlib.baseCv(storage)) {
