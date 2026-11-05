@@ -23,7 +23,7 @@ const searchSummary = storage => (record, log) => {
   return {...(problem ? {problem} : {}), ...(fresh ? {found: summary.jobs ?? null, feeds: summary.feeds ?? null, new: summary.new ?? 0, changed: summary.changed ?? 0,
     scored: summary.score?.done ?? summary.score?.scored ?? null, usd: summary.usd ?? 0, warnings: summary.warnings || []} : {})};
 };
-// note: what this search is for beyond a refresh ("Find more employers"), shown on its row from queued to finished.
+// note: what this search is for beyond a refresh ("Search wider"), shown on its row from queued to finished.
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
   return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, {employers, signal, note}), {mode}, searchSummary(storage), {note});
 }

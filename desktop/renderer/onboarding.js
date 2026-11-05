@@ -2,7 +2,7 @@
 // Pure (no DOM): pages/focus.js draws it. A step once done stays done (settings.onboarding), and the card is gone for good once every step is.
 
 export const STEPS = [
-  {key: 'search', label: 'Find jobs', hint: 'Your first matches in under a minute; then every job site and more employers', button: 'Run'},
+  {key: 'search', label: 'Find jobs', hint: 'Your first matches in under a minute; then every job site, wider when it needs to', button: 'Run'},
   {key: 'notion', label: 'Connect Notion', hint: 'Where your applications are tracked', button: 'Connect'},
   {key: 'tailor', label: 'Tailor CV + cover letter for top matches', hint: 'A CV and a cover letter written for each of your best matches', button: 'Open'},
   {key: 'apply', label: 'Apply to your first job', hint: 'The extension fills the form; you press Submit', button: 'Apply'},
@@ -46,9 +46,9 @@ export const ENOUGH_FEEDS = 10;
 export function employersAdvice(run, {runs = [], settings = {}} = {}) {
   if (!run || run.kind !== 'search' || run.live || run.ok === false) return null;
   const scouted = !!settings.lastScoutAt || finished(runs, 'scout').length > 0;
-  if (!scouted) return {text: 'Employers haven’t been added yet. Find jobs adds employers’ own career sites, so your next search finds more jobs.'};
+  if (!scouted) return {text: 'Your search hasn’t gone wider yet. Find jobs again searches wider, so your next search finds more jobs.'};
   if (run.feeds != null && run.feeds < ENOUGH_FEEDS) {
-    return {text: `Only ${run.feeds} employer site${run.feeds === 1 ? '' : 's'} searched. Find jobs again adds more, so your next search finds more jobs.`};
+    return {text: `Only ${run.feeds} employer site${run.feeds === 1 ? '' : 's'} searched. Find jobs again searches wider, so your next search finds more jobs.`};
   }
   return null;
 }

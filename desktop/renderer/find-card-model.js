@@ -11,12 +11,12 @@ import {hasFullReport} from './searches-view.js';
 export const FIRST = /^(Finding your first jobs|First jobs:)/;
 const EMPLOYERS = /^(Checking employer|Reading employer|⏳ Reading employer|Titles:|Places:|⏳ Scoring|Scored |Added |Job Matches)/;
 const BOARDS = {label: 'Job boards', match: /^(Searching job boards|Job boards( found| first)?:|⏳ Reading job boards)/, done: /^Job boards: done\b/, beside: true};
-const MORE = /^(Growing your sources|Source scout|🔭)/;
+const MORE = /^(Searching wider|Growing your sources|Source scout|🔭)/;   // Growing your sources: the line older runs printed (kept so their logs still draw)
 const WEB = {label: 'Web search', web: true, beside: true};   // its own chip, beside the others (webSearchChip)
 const SLICE_END = /^First jobs: (\d+ scored|\d+ found, none to score)/;
 const STEPS = {
-  first: [{label: 'First jobs', match: FIRST}, WEB, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'More employers', match: MORE}],
-  usual: [WEB, BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'More employers', match: MORE}],
+  first: [{label: 'First jobs', match: FIRST}, WEB, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'Wider search', match: MORE}],
+  usual: [WEB, BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'Wider search', match: MORE}],
 };
 
 export function stepChips(log = []) {

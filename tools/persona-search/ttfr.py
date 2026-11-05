@@ -45,7 +45,7 @@ def main():
            'in_places': len(seen), 'fit70': len(fit)}
     if len(sys.argv) > 1:   # where the time went, from the press's own log lines ("[123s] ...")
         marks = {'first new job': r'New job: ', 'first jobs added': r'^Added \d+ new job', 'boards proposed': r'Job boards proposed',
-                 'titles sorted (first)': r'^Titles: .* sorted', 'first digest': r'^Digest ready', 'scout start': r'Growing your sources|^Scout: reading'}
+                 'titles sorted (first)': r'^Titles: .* sorted', 'first digest': r'^Digest ready', 'scout start': r'Searching wider|Growing your sources|^Scout: reading'}
         steps = {}
         for line in open(sys.argv[1], encoding='utf-8', errors='replace'):
             m = re.match(r'\[(\d+)s\] (.*)', line)

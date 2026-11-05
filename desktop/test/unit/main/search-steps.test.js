@@ -70,7 +70,7 @@ test('the scout keeps its share when due, gets what is left, and waits (still du
   const late = await press({lastScoutAt: before}, 'you', {discover: 60, daily: 115});
   assert.ok(!late.calls.some(c => c.step === 'scout'), 'no scout with 5 s left');
   assert.equal(late.settings.lastScoutAt, before, 'still due: the next press runs it');
-  assert.match(late.lines, /^⏱ Time is up \(2 min 55 s\) for finding more employers: it waits for the next search$/m);
+  assert.match(late.lines, /^⏱ Time is up \(2 min 55 s\) for searching wider: it waits for the next search$/m);
 });
 
 test('on the first run, a step with no time left waits for the next search and says so', async () => {
@@ -116,7 +116,7 @@ test('the engine\'s own "⏱" stop line makes the press Partial, with no hard ki
 test('the employer finder running out of time does not make a whole search Partial', async () => {
   const scoutStops = async (_storage, args, onLine) => {
     if (args[1] !== 'scout') return {code: 0, result: {}, endedByTime: false};
-    onLine('⏱ Time is up (2 min 59 s) for finding more employers: 3 employers wait for the next search');
+    onLine('⏱ Time is up (2 min 59 s) for searching wider: 3 employers wait for the next search');
     return {code: 0, result: {}, endedByTime: true};   // hard-stopped too
   };
   const done = await searchSteps(storage({lastScoutAt: stale()}), () => {}, 'run', 'you', scoutStops);

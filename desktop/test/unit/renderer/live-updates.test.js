@@ -57,17 +57,17 @@ test('Job boards shows ✓ only once the engine says the boards are read, also w
   const states = log => stepChips(log).filter(chip => !chip.label.startsWith('Web search')).map(chip => `${chip.label}:${chip.state}`).join(' ');   // its own test below
   const reading = ['Job boards: searching the web for trade and local boards (your plan)', '⏳ Reading employer job sites: 419 of 1057',
     'Job boards: a web search found Aero Board'];
-  assert.equal(states(reading), 'Job boards:active Employer sites:active More employers:pending', 'boards found mid-run are still to read');
-  assert.equal(states([...reading, 'Job boards found: Aero Board 12 job(s), 3 relevant']), 'Job boards:active Employer sites:active More employers:pending');
+  assert.equal(states(reading), 'Job boards:active Employer sites:active Wider search:pending', 'boards found mid-run are still to read');
+  assert.equal(states([...reading, 'Job boards found: Aero Board 12 job(s), 3 relevant']), 'Job boards:active Employer sites:active Wider search:pending');
   assert.equal(states(['Job boards first: reading the 2 the web search found, before the employer sites: Aero Board, Wing Jobs']).split(' Employer')[0], 'Job boards:active');
-  assert.equal(states([...reading, 'Job boards: done, 15 job(s) for your search']), 'Job boards:done Employer sites:active More employers:pending');
-  assert.equal(states(['⏳ Reading employer job sites: 1 of 9']), 'Job boards:active Employer sites:active More employers:pending',
+  assert.equal(states([...reading, 'Job boards: done, 15 job(s) for your search']), 'Job boards:done Employer sites:active Wider search:pending');
+  assert.equal(states(['⏳ Reading employer job sites: 1 of 9']), 'Job boards:active Employer sites:active Wider search:pending',
     'the boards are read beside the employer sites from the start');
-  assert.equal(states(['⏳ Reading employer job sites: 9 of 9', 'Growing your sources: finding more employers…']),
-    'Job boards:done Employer sites:done More employers:active', 'the next step after the boards closes them');
+  assert.equal(states(['⏳ Reading employer job sites: 9 of 9', 'Searching wider…']),
+    'Job boards:done Employer sites:done Wider search:active', 'the next step after the boards closes them');
   const first = ['Finding your first jobs…', 'First jobs: 9 scored in 20 s', '⏳ Reading employer job sites: 40 of 900'];
-  assert.equal(states(first), 'First jobs:done All employers:active Job boards:active More employers:pending');
-  assert.equal(states([...first, 'Job boards: done, 0 job(s) for your search']), 'First jobs:done All employers:active Job boards:done More employers:pending');
+  assert.equal(states(first), 'First jobs:done All employers:active Job boards:active Wider search:pending');
+  assert.equal(states([...first, 'Job boards: done, 0 job(s) for your search']), 'First jobs:done All employers:active Job boards:done Wider search:pending');
 });
 
 // The owner on run fe63a974c5d9 (26 Oct 2026): "is the 41/608 employers checked progress/status correct? … from the logs, it does totally
@@ -90,8 +90,8 @@ test('the web search has its own chip, with its state in words', () => {
   assert.deepEqual([off.state, off.label], ['skipped', 'Web search · off']);
   assert.match(off.note, /no AI here searches the web/);
   assert.equal(chip(['Job boards: the web search for trade and local boards did not answer (TimeoutError)'], 'Web search').state, 'failed');
-  assert.deepEqual(stepChips([]).map(c => c.label.split(' ·')[0]), ['Web search', 'Job boards', 'Employer sites', 'More employers']);
-  assert.deepEqual(stepChips(['Finding your first jobs…']).map(c => c.label.split(' ·')[0]), ['First jobs', 'Web search', 'All employers', 'Job boards', 'More employers']);
+  assert.deepEqual(stepChips([]).map(c => c.label.split(' ·')[0]), ['Web search', 'Job boards', 'Employer sites', 'Wider search']);
+  assert.deepEqual(stepChips(['Finding your first jobs…']).map(c => c.label.split(' ·')[0]), ['First jobs', 'Web search', 'All employers', 'Job boards', 'Wider search']);
 });
 
 test('the AI\'s title and place checks add up in one line each, named as the engine named the AI', () => {

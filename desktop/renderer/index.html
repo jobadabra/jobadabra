@@ -304,7 +304,7 @@
         <div><h1>Job matches</h1><p class="muted subtitle" id="jobs-stats">Loading…</p></div>
         <div class="jobs-head-right">
         <div class="head-actions">
-          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, finds more employers, removes the jobs that are gone or outside your search, and scores the new ones with AI." data-wand><i data-icon="refresh"></i><span>Find jobs</span></button>
+          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, searches wider when it needs to, removes the jobs that are gone or outside your search, and scores the new ones with AI." data-wand><i data-icon="refresh"></i><span>Find jobs</span></button>
           <button class="primary with-icon" id="apply-open"><i data-icon="send"></i><span>Apply to jobs…</span></button>
         </div>
         <button class="last-search" id="search-status" title="Open the progress and history of your searches for new jobs"><span class="dot"></span><b>No search yet</b><small></small></button>
@@ -602,7 +602,7 @@
 <div class="task-card is-large">
             <span class="task-category">DISCOVERY</span>
             <div class="task-body"><span class="task-tile"><i data-icon="search"></i></span>
-              <div class="task-words"><b>Find jobs</b><span class="muted">Reads job boards and every employer site, finds more employers, adds new jobs, removes gone ones, AI scores the new</span><span class="task-schedule muted small" data-task-schedule="search"></span></div>
+              <div class="task-words"><b>Find jobs</b><span class="muted">Reads job boards and every employer site, searches wider when it needs to, adds new jobs, removes gone ones, AI scores the new</span><span class="task-schedule muted small" data-task-schedule="search"></span></div>
               <button class="secondary action" data-command="run" data-wand><b hidden>Find jobs</b>Run</button></div>
           </div>
         </div>
@@ -1146,17 +1146,11 @@
             <h3>Schedules</h3>
             <div class="task-table">
               <div class="task-row is-head"><span>Task</span><span>Frequency</span><span>Status</span></div>
-              <label class="task-row"><span><b>More employers</b><small>Also looks for new employers on its own schedule (Find jobs does it too, at most once a day)</small></span>
-                <select data-schedule="scout">
-                  <option value="daily">Daily at 08:15</option><option value="weekly">Mondays at 08:15</option><option value="off">Off</option></select><span class="task-state" data-schedule-state="scout"></span></label>
               <label class="task-row"><span><b>Find jobs</b><small>Job boards and employer sites, AI scoring, your digest</small></span>
                 <select data-schedule="search">
                   <option value="1">Every hour</option><option value="2">Every 2 hours</option><option value="3">Every 3 hours</option>
                   <option value="4">Every 4 hours</option><option value="6">Every 6 hours</option><option value="8">Every 8 hours</option>
                   <option value="12">Twice a day</option><option value="24">Once a day (07:30)</option><option value="0">Only when I ask</option></select><span class="task-state" data-schedule-state="search"></span></label>
-              <label class="task-row"><span><b>Insights</b><small>What's working and what to change; weekly report on Mondays</small></span>
-                <select data-schedule="insights">
-                  <option value="daily">Every morning</option><option value="off">Off</option></select><span class="task-state" data-schedule-state="insights"></span></label>
               <label class="task-row"><span><b>Check Gmail &amp; Calendar</b><small>Replies, interviews, reminders; needs Google connected</small></span>
                 <select data-schedule="mail">
                   <option value="1">Once daily (08:00)</option><option value="3">3 times daily</option>
