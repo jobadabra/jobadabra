@@ -228,7 +228,7 @@ class AlertSecretsReachReleaseStable(unittest.TestCase):
     """Guard: release - without these links a by-hand gate's "store publish did not start" alert never reaches the owner.
     A called workflow sees only the secrets its caller names (owner via coordinator, 5 Nov 2026: never `secrets: inherit`). The chain: caller `secrets:` -> beta-approve.yml
     `workflow_call.secrets` -> the step's env -> release-stable.sh. Broken at any link, the "store publish did not start" alert has nothing to send with."""
-    NAMES = ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID')
+    NAMES = ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID', 'SELFHEAL_PUBLISH_KEY')   # the third: the owner's Notifications switch (coordinator, 5 Nov 2026)
 
     def test_each_caller_passes_the_two_named_secrets_and_never_inherits(self):
         for caller in ('e2e.yml', 'e2e-windows.yml'):
