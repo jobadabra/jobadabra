@@ -1,5 +1,5 @@
 name: CI · E2E weekly summary
-# The week's e2e numbers for the owner (spec rule D, 28 Oct 2026): one GitHub issue here and one Telegram message on the CI alerts bot, drawn from the snapshot
+# The week's e2e numbers for the owner (spec rule D, 28 Oct 2026): one Telegram message on the CI alerts bot (no GitHub issue since 5 Nov 2026, owner: state issues move to Admin), drawn from the snapshot
 # https://www.jobadabra.top/admin/testing/e2e draws (tools/ci-intel/jobs/e2e-weekly.mjs; e2e-intel.yml refreshes it hourly). By hand too: `gh workflow run e2e-weekly.yml`.
 # Replaces the Python report that sat here (tools/e2e_weekly.py, its own classifier; "E2E · Weekly root causes") and jobadabra-web's copy of this job, so one job writes the report.
 # Why here (2 Nov 2026, owner): it reads only the snapshot the e2e-intel job here publishes.
@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: e2e-weekly
@@ -21,7 +20,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      GH_TOKEN: ${{ github.token }}
       SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
