@@ -2,8 +2,10 @@
 // The fixture is the shape of the first real run (4 Nov 2026, run 41932545228); nothing here calls GitHub or the site.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
-import {ARTIFACT, FILE, PLAN, chain, compute, fetchRuns, layers, parsePlan, phasesOf, recordOf} from '../../../../tools/harness-stats.mjs';
+import {ARTIFACT, FILE, PLAN, SOURCES, chain, compute, fetchRuns, layers, parsePlan, phasesOf, readKeys, recordOf} from '../../../../tools/harness-stats.mjs';
 
 const plan = ['# Plan', '## PRs', '- not a row', '## Progress', '- [x] 1/7 This plan and the spec amendment', '- [ ] 2/7 Move `walls` into `tools/fixer/`', '- [ ] 3/7 Loop', '- [ ] web 1/3 One agent card per row', '- [ ] web 2/3 Agent harness page', '', '## Later', '- [ ] 1/9 A checklist of something else', ''].join('\n');
 const pr = (number, title, extra = {}) => ({number, title, body: `Plan: \`${PLAN}\``, state: 'OPEN', mergedAt: null, createdAt: '2026-11-04T10:00:00Z', ...extra});
@@ -64,12 +66,29 @@ test('the body stays under the site limit: the oldest runs go first and the plan
 });
 test('the workflow gives the site key to the store step only, never to the step that reads the artifacts, and never checks out the fixer run', () => {
   const yml = fs.readFileSync(new URL('../../../../.github/workflows/harness-stats.yml', import.meta.url), 'utf8');
-  const [head, readStep, storeStep] = yml.split(/\n      - name: /);
+  const [head, keysStep, readStep, storeStep] = yml.split(/\n      - name: /);
+  // The key-state step (5 Nov 2026) holds the five READ keys only to test "non-empty": no repo code, no node, no artifact, never the site key; the step that parses artifacts holds no secret at all.
+  assert.match(keysStep, /^Note which read keys are stored/); assert.ok(!/SELFHEAL_PUBLISH_KEY|\bnode\b|download|gh run|uses:/.test(keysStep), 'the key-state step only tests booleans');
+  assert.deepEqual([...keysStep.matchAll(/secrets\.([A-Z_]+)/g)].map(m => m[1]).sort(), ['CLOUDFLARE_READ_TOKEN', 'LINEAR_READ_KEY', 'NOTION_READ_TOKEN', 'POSTHOG_READ_KEY', 'SENTRY_READ_TOKEN']);
+  assert.ok(!/secrets\./.test(readStep) && !/secrets\./.test(head), 'the step that reads the artifacts holds no secret');
   assert.ok(!/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(head) && !/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(readStep), 'the read step has no secret'); assert.match(storeStep, /SELFHEAL_PUBLISH_KEY: \$\{\{ secrets\.SELFHEAL_PUBLISH_KEY \}\}/);
   assert.match(head, /\n    if: github\.ref == format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)\n/, 'a by-hand start on another branch never holds the site key');
   assert.match(storeStep, /case "\$code" in 200\).*400\).*exit 1/s, 'only 400 is a notice: a refused key or a server error is red');
   assert.ok(!/head_branch|head_sha|workflow_run\.(head|pull)|inputs\./.test(yml.replace(/^#.*$/gm, '')), 'nothing from the triggering run reaches a command or a checkout');
 });
+test('a source is "key set" only when the trusted step saw its secret non-empty; an unreported key claims nothing (owner, 5 Nov 2026: PostHog showed green with no key)', () => {
+  const all = new Set(SOURCES.map(source => source[1]));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hs-keys-'));
+  const file = path.join(dir, 'keys.json');
+  fs.writeFileSync(file, JSON.stringify({LINEAR_READ_KEY: true, POSTHOG_READ_KEY: false, NOTION_READ_TOKEN: 'yes', EVIL: true}));
+  const keys = readKeys(file);
+  assert.deepEqual(keys, {LINEAR_READ_KEY: true, POSTHOG_READ_KEY: false}, 'only booleans for the known secret names survive');
+  const state = layers(f => all.has(f), () => 0, keys).sources.map(source => [source.name, source.key]);
+  assert.deepEqual(state, [['Linear', 'set'], ['Sentry', ''], ['GitHub', 'set'], ['PostHog', 'missing'], ['Cloudflare', ''], ['Notion', '']]);
+  assert.deepEqual(readKeys(path.join(dir, 'nope.json')), {}, 'a missing file means "not reported", never "missing"');
+  assert.equal(layers(() => false, () => 0, keys).sources.every(source => source.key === ''), true, 'a source with no fetcher has no key state');
+});
+
 test('the body is one card for today: plan rows, the web group, layers, sources and the records', () => {
   const body = compute({plan, prs: [pr(10, '[hm] 2/7 Move walls')], webPrs: [pr(366, '[57] 1/3 One agent card per row', {state: 'MERGED', mergedAt: '2026-11-04T20:00:00Z'})], runs: [recordOf(record, run)]}, {has: () => false, count: () => 0}, now);
   const [day] = body.days;

@@ -34,8 +34,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      # Why (5 Nov 2026, owner: "why it shows that PostHog is green when you say is not connected"): the page must say which read-only keys are stored. This step holds the read keys ONLY to test
+      # whether each is non-empty and writes booleans; it runs no repo code and parses no artifact, and the step that does (below) holds none of them.
+      - name: Note which read keys are stored (booleans only)
+        env:
+          LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}
+          SENTRY_READ_TOKEN: ${{ secrets.SENTRY_READ_TOKEN }}
+          POSTHOG_READ_KEY: ${{ secrets.POSTHOG_READ_KEY }}
+          CLOUDFLARE_READ_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          NOTION_READ_TOKEN: ${{ secrets.NOTION_READ_TOKEN }}
+        run: |
+          set -eu
+          flag() { if [ -n "$2" ]; then echo "\"$1\": true"; else echo "\"$1\": false"; fi; }
+          { echo '{'; flag LINEAR_READ_KEY "$LINEAR_READ_KEY"; echo ','; flag SENTRY_READ_TOKEN "$SENTRY_READ_TOKEN"; echo ','; flag POSTHOG_READ_KEY "$POSTHOG_READ_KEY"; echo ','; flag CLOUDFLARE_READ_TOKEN "$CLOUDFLARE_READ_TOKEN"; echo ','; flag NOTION_READ_TOKEN "$NOTION_READ_TOKEN"; echo '}'; } > "$RUNNER_TEMP/keys.json"
       - name: Read the plan, the layers and the run records
-        run: node tools/harness-stats.mjs --out "$RUNNER_TEMP/harness.json"
+        run: node tools/harness-stats.mjs --keys "$RUNNER_TEMP/keys.json" --out "$RUNNER_TEMP/harness.json"
       - name: Store it for the admin page
         env:
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # Why (4 Nov 2026, owner's coordinator): no step that parses a CI artifact holds this secret
