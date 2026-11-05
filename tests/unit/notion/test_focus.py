@@ -107,6 +107,14 @@ class FocusTests(unittest.TestCase):
         self.assertEqual([i['kind'] for i in focus.build(rows, events, now=NOW)['items']][:2], ['offer', 'book'])
         self.assertEqual({i['place'] for i in focus.build(rows, events, now=NOW)['items'][:2]}, {'up_next'}, 'they cannot wait')
 
+    def test_your_focus_names_kits_to_review_only_when_a_kit_is_ready(self):
+        # #3227 / #3202: the Focus page told a new person to "review ready applications" with Prepared 0
+        none = focus.build([row('a', 'A', 'x', stage='Found')], [], target=3, now=NOW)
+        self.assertEqual(focus.summary([i for i in none['items'] if i['kind'] == 'apply']), 'Prepare kits from your best matches.')
+        self.assertEqual(none['summary'], 'Prepare kits from your best matches.')   # the page's own sentence (the old one read "Review ready applications.")
+        ready = focus.build([row('a', 'A', 'x', stage='Kit ready')], [], target=3, now=NOW)
+        self.assertEqual(focus.summary([i for i in ready['items'] if i['kind'] == 'apply']), 'Review ready applications.')
+
     def test_the_daily_target_counts_todays_applications(self):
         rows = [row('a', 'A', 'x', applied='2026-09-28'), row('b', 'B', 'y', applied='2026-09-20'), row('c', 'C', 'z', applied='2026-09-20')]
         events = [event('b', 'Applied', '2026-09-28T09:00:00+02:00')]
