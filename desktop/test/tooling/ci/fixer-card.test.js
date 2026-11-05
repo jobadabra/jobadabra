@@ -115,7 +115,7 @@ test('the guard refuses with one word, cap or busy, and the card is told exactly
   try {
     const guard = (runs, extra = {}) => {
       const stub = path.join(dir, 'stub.mjs'), output = path.join(dir, 'out.txt');
-      fs.writeFileSync(stub, `globalThis.fetch = async url => new Response(JSON.stringify({workflow_runs: url.includes('/ai-fixer.yml/') ? ${JSON.stringify(runs)} : []}), {status: 200});\n`);
+      fs.writeFileSync(stub, `globalThis.fetch = async url => new Response(JSON.stringify({workflow_runs: ${JSON.stringify(runs)}.filter((_, i) => url.includes('/ai-fixer.yml/') ? i % 2 === 0 : i % 2 === 1)}), {status: 200});\n`);
       fs.writeFileSync(output, '');
       const done = spawnSync('node', ['--import', pathToFileURL(stub).href, path.join(ROOT, 'tools/fixer/run.mjs'), 'cap'], {encoding: 'utf8', env: {PATH: process.env.PATH, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '9', ...extra}});
       return {status: done.status, output: fs.readFileSync(output, 'utf8')};

@@ -93,7 +93,7 @@ jobs:
       - name: When this run started (for its record)
         id: start
         run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-      - name: At most 1 at a time and 10 a day (a first run)
+      - name: Check one-at-a-time and daily limits (a first run)
         id: cap
         if: inputs.pr == ''
         run: node tools/fixer/run.mjs cap

@@ -1,7 +1,7 @@
 // The script behind feedback-ai.yml ("Send to AI" on a feedback card, spec docs/superpowers/specs/2026-11-03-feedback-actions-design.md in this repo, PR 7/7): one run reads ONE feedback from the site,
 // lets the Codex plan propose a fix (desktop/e2e/edit-codex.mjs), checks it, and opens a DRAFT pull request for the owner. Never merges, never pushes to main.
 //   node tools/feedback-ai.mjs brief  --ref <16 hex> --out <dir>             fetch the brief (GitHub run token, audience jobadabra-feedback), redact it again, write <dir>/prompt.md
-//   node tools/feedback-ai.mjs cap                                           the CI side of the caps (1 at a time, 10 a day): counts this workflow's runs today with a READ-only token
+//   node tools/feedback-ai.mjs cap                                           the CI side of the caps (1 at a time, daily cap): counts this workflow's runs today with a READ-only token
 //   node tools/feedback-ai.mjs gate   --bytes <n>                            file names on stdin: refuse paths a fix may never touch, more than 8 files, a patch over 60 KB
 //   node tools/feedback-ai.mjs proof  --out <dir>                            the changed test files must FAIL on a clean checkout and PASS with the change
 //   node tools/feedback-ai.mjs leaks  --out <dir> --title <file> --body <file>   scan the PR text and the diff before anything is pushed

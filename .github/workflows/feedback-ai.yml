@@ -43,7 +43,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: At most 1 at a time and 10 a day
+      - name: Check one-at-a-time and daily limits
         run: node tools/feedback-ai.mjs cap --ref "$REF"
 
   fix:
