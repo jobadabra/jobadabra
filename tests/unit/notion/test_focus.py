@@ -111,7 +111,7 @@ class FocusTests(unittest.TestCase):
         # #3227 / #3202: the Focus page told a new person to "review ready applications" with Prepared 0
         none = focus.build([row('a', 'A', 'x', stage='Found')], [], target=3, now=NOW)
         self.assertEqual(focus.summary([i for i in none['items'] if i['kind'] == 'apply']), 'Prepare kits from your best matches.')
-        self.assertNotIn('review ready applications', none['summary'])
+        self.assertEqual(none['summary'], 'Prepare kits from your best matches.')   # the page's own sentence (the old one read "Review ready applications.")
         ready = focus.build([row('a', 'A', 'x', stage='Kit ready')], [], target=3, now=NOW)
         self.assertEqual(focus.summary([i for i in ready['items'] if i['kind'] == 'apply']), 'Review ready applications.')
 
