@@ -58,6 +58,6 @@ The answer is validated as today; the first message of a goal is not special any
 - More than 4 links, or a chain across nights.
 
 ## Progress
-- [x] Spec and plan written; owner's yes (relayed by mac-32, 5 Nov 2026: "Both: summary loop + chained runs (Recommended)") (proof: this file)
+- [x] Spec and plan written; the owner chose both pieces (5 Nov 2026) (proof: none: the answer came in the chat through the coordinator and is quoted under Owner's words in this spec)
 - [ ] [ag] A. The summary loop, with the before/after table (proof: PR body table; `desktop/e2e/test/pool/agent-summary-loop.test.mjs`)
 - [ ] [ag] B. Chained runs: the snapshot, the chain state, the dispatch, the note's pointer, one deep flow over 2–4 links (proof: PR body; `desktop/e2e/test/pool/agent-chain.test.mjs`)
