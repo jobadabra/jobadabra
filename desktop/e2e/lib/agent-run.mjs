@@ -61,6 +61,7 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
     return shoot();
   };
   const made = [];
+  if (/^(api|calls|minutes)/.test(result.stopped)) return made;   // Why (Gitar on #3213): a goal that ended on the broker or a session cap makes no further call, the reader's one is on a pricier tier and can wait up to the broker's 180 s
   try {
     const observation = formatObservation(await act.observe());
     if (read.has(observation)) return made;
@@ -105,7 +106,7 @@ export async function runSession({act, ask, judgeAsk, screenAsk = null, views, p
       extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
-    if (screenAsk && !result.stopped.startsWith('api:')) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
+    if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
     results.push(goalResult(goal, result));
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);

@@ -116,15 +116,25 @@ test('the screen reader: a note is made with the picture taken after the quoted 
   const reader = async () => ({text: JSON.stringify({problems: [problem]}), usage: {input_tokens: 500, output_tokens: 50}});
   const run = async reveal => {
     const quotes = [], log = [];
-    const act = {...fakeAct(), reveal: async words => { quotes.push(words); return reveal(words); }};
+    let revealed = false;
+    const act = {...fakeAct(), reveal: async words => { quotes.push(words); revealed = true; return reveal(words); }};
     const result = await runSession({act, ask: script([done('worked'), done('worked'), done('worked')]), judgeAsk: judge('agrees'), screenAsk: reader, views: ['profile', 'jobs', 'focus'], plan, knowledgeIds: ['profile-4'], caps: {maxSteps: 30},
-      shoot: async () => 'png', log: line => log.push(line), session: {id: 'night-2', snapshot: 'abc1234'}});
+      shoot: async () => (revealed ? 'png-revealed' : 'png'), log: line => log.push(line), session: {id: 'night-2', snapshot: 'abc1234'}});
     return {result, quotes, log};
   };
   const fine = await run(async () => true);
   assert.deepEqual(fine.quotes[0], ['Phone number'], 'the picture is taken after the first quoted word was brought into view');
   assert.equal(fine.result.findings.length, 1);
+  assert.equal(fine.result.notes.find(note => note.by === 'screen').image, 'png-revealed', 'the note keeps the picture taken after the reveal, not the one taken before');
   const broken = await run(async () => { throw new Error('node detached'); });
   assert.equal(broken.result.findings.length, 1, 'the note is kept with the picture as it is');
   assert.ok(broken.log.some(line => /could not bring "Phone number" into view/.test(line)));
+});
+
+// Guard: money. A goal that ended on a session cap makes no screen-reader call: it is a mid-tier call that can wait up to the broker's 180 s (Gitar on #3213).
+test('the screen reader is not asked once a goal ended on the session\'s call cap', async () => {
+  let asked = 0;
+  const reader = async () => { asked++; return {text: JSON.stringify({problems: []}), usage: {input_tokens: 1, output_tokens: 1}}; };
+  await runSession({act: fakeAct(), ask: script([turn('go', {view: 'profile'}), turn('go', {view: 'jobs'})]), judgeAsk: judge('agrees'), screenAsk: reader, views: ['profile', 'jobs', 'focus'], plan, knowledgeIds: [], caps: {maxSteps: 30, maxCalls: 1}, session: {id: 'night-3', snapshot: 'abc1234'}});
+  assert.equal(asked, 0);
 });
