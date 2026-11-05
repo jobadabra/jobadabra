@@ -107,7 +107,7 @@ esac
 # `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: app-core/src/answer-declarations.js missing opened a PR red) now live in tests/tooling/ci/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
 case "$command" in *WORKFLOW_PATHS_OK=1*) ;; *)
   if [ -f "$repo/tests/tooling/ci/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
-    PATH_TESTS="tests.tooling.ci.test_workflow_paths tests.tooling.ci.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
+    PATH_TESTS="tests.tooling.ci.test_workflow_paths"   # every test that keeps a workflow's paths: complete (the Windows list is a copy of Linux's, checked there since 5 Nov 2026)
     # shellcheck disable=SC2086
     paths_out="$(cd "$repo" && timed "workflow paths" python3 -m unittest $PATH_TESTS 2>&1)" || block "a workflow's paths: miss a file its tests read (tests/tooling/ci/test_workflow_paths.py):
 $(echo "$paths_out" | tail -n 15)"

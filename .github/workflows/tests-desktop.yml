@@ -171,7 +171,7 @@ concurrency:   # a PR's newer push replaces its older run and frees its runners;
 jobs:
   desktop:
     name: desktop (Linux)
-    # Linux only: Windows has its own workflow (tests-desktop-windows.yml) that a PR starts only for the files with platform branches; main runs both.
+    # Linux only: Windows has its own workflow (tests-desktop-windows.yml) that a PR starts on the same files and that runs only the test files the change reaches too (owner, 5 Nov 2026); main runs both with every test.
     strategy:
       fail-fast: false
       matrix:

@@ -25,10 +25,11 @@ Script: label, Gitar, verdict and `cancel` jobs left out, since they end long af
 |---|---|---|
 | 1/2 | A PR's Windows job runs `--app-only`: no lint, no tooling tests (owner's choice, 4 Nov) | Windows job about 5.7 → 4.3 min, estimated |
 | 2/2 | A PR's `desktop (ubuntu)` runs only the files its change reaches | a small PR's Linux job near its setup time |
+| 3/3 | A PR's Windows job starts on the Linux job's files and runs only the files its change reaches (owner, 5 Nov) | 20 → 36 of 40 PRs start it; about 4.3 → 2.1 min each, estimated |
 
 - 2/2 always runs guards, class tests and tests that read source or data files. Shared config, package files, the test runner or anything the graph can't resolve runs everything. One log line says which files ran and why.
 - main keeps running everything after each merge, on both systems.
-- After a week: compare red-on-main before and after, and bring the numbers to the coordinator. Windows follows only on the owner's yes.
+- After a week: compare red-on-main before and after, and bring the numbers to the coordinator. Windows follows only on the owner's yes (given 5 Nov: 3/3).
 
 ## Would it have missed anything? (replay, 4 Nov 2026)
 The last 40 red `desktop (ubuntu)` PR runs, through `tools/affected-tests.py` with each PR's changed files:
@@ -45,4 +46,5 @@ The last 40 red `desktop (ubuntu)` PR runs, through `tools/affected-tests.py` wi
 ## Progress
 - [x] 1/2 Windows job leaves out lint and tooling tests on a PR: 5 min 44 s → 4 min 26 s (proof: .github/workflows/tests-desktop-windows.yml @08129648)
 - [x] 2/2 Linux job runs only what a change reaches (proof: tests/guards/rules/test_pr_desktop_picks.py)
+- [x] 3/3 Windows job runs only the files its change reaches, on the Linux job's triggers (owner, 5 Nov: "Yes: reached tests, every PR") (proof: tests/guards/rules/test_pr_desktop_picks.py)
 - [ ] Red-on-main compared after a week

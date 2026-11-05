@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # required checks stay (renaming it is parked in Linear).
 AREA_DIR = {'worker': 'app-core'}
 AREAS = ('python', 'worker', 'desktop')
+WINDOWS_ARGS_BUDGET = 24000   # characters of test paths on one node command line, well under Windows' 32,767
 
 
 def node_supported(version):
@@ -58,17 +59,34 @@ def desktop_test_flags(folder):
     return [w for w in words[1:] if not w.strip('\'"').startswith('test/')]
 
 
-def desktop_app_only(folder, node):
-    """The desktop area for the release pipeline and a PR's Windows job: `npm test`'s own node command on every test but the tooling ones (tools/app-tests.py), without its lint (a rule
-    about the code that CI · Tests checks on every push, not a release gate)."""
+def _app_tests():
     spec = importlib.util.spec_from_file_location('app_tests', ROOT / 'tools/app-tests.py')
     app_tests = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(app_tests)
-    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *desktop_test_flags(folder), *app_tests.desktop_glob()])]
+    return app_tests
+
+
+def desktop_app_only(folder, node, picked='all'):
+    """The desktop area for the release pipeline and a PR's Windows job, without its lint (a rule about the code that CI · Tests checks on every push, not a release gate). Everything: `npm test`'s
+    own node command on every test but the tooling ones (tools/app-tests.py). With `picked` (a PR: tools/affected-tests.py): the picked files only, the tooling tests among them too, none = no command.
+    Why (5 Nov 2026, owner: "Yes: reached tests, every PR"): a PR's Windows job ran every test file; Linux already runs what the change reaches. A tooling test a change reaches stays: #3172 changed
+    tools/fixer, its PR never ran Windows, and test/tooling/ci/fixer-loop.test.js was red on main 12 times."""
+    stage = (folder, [node, 'scripts/stage.mjs'])
+    if picked == 'all':
+        return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob()])]
+    if not picked:
+        return []
+    if sum(len(p) + 1 for p in picked) > WINDOWS_ARGS_BUDGET:
+        # Why (5 Nov 2026, Gitar on #3256): Windows' CreateProcess caps a command line at 32,767 characters (the full run uses globs for that reason, tools/app-tests.py); a long pick is every
+        # non-tooling test by glob plus the tooling tests it reached, a superset of the pick.
+        return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob(), *[p for p in picked if p.startswith('test/tooling/')]])]
+    return [stage, (folder, [node, *desktop_test_flags(folder), *picked])]
 
 
 def commands(area, fast, node, npm, picked='all', app_only=False):
     """picked: 'all' or the list of this area's test files/modules to run (everything else is left to CI)."""
+    if app_only and area == 'desktop' and picked != 'all':
+        return desktop_app_only(ROOT / 'desktop', node, picked)
     if area == 'python':
         if picked != 'all':
             return [(ROOT, [sys.executable, 'tools/py-shards.py', *picked])] if picked else []
@@ -89,15 +107,45 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
     return [(folder, [npm, 'test'])]
 
 
+def clean_install(npm, env):
+    """--clean-install: `npm ci` of each lockfile in a temporary folder; 0 when all install, else 1 (a pure move out of main)."""
+    for area in [a for a in ('desktop', 'worker') if (ROOT / AREA_DIR.get(a, a)).is_dir()]:
+        folder = ROOT / AREA_DIR.get(area, area)
+        with tempfile.TemporaryDirectory(prefix='jobadabra-check-') as scratch:
+            for name in ('package.json', 'package-lock.json'):
+                shutil.copyfile(folder / name, Path(scratch) / name)
+            print(f'check: {area} clean npm ci', flush=True)
+            result = subprocess.run([npm, 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=scratch, env=env, check=False)
+            if result.returncode:
+                print(f'check: {area} clean install failed', file=sys.stderr)
+                return 1
+    return 0
+
+
+def print_plan(args):
+    """`--plan`: print how many desktop test files this run would run (a count, or `all`) and nothing else on stdout; a workflow skips its installs when it is 0."""
+    plan = affected(args.affected_from) or {}
+    picked = plan.get('desktop', 'all')
+    if picked == 'all' and args.affected_from:   # a picker outage must not look like a chosen full run
+        reasons = plan.get('reasons') or {}
+        print(f'check: plan: every test ({reasons.get("desktop") or reasons.get("all") or "the picker gave no answer"})', file=sys.stderr)
+    # Why (5 Nov 2026, owner: "Yes: reached tests, every PR"): a PR whose change reaches no desktop test ends its Windows job green in seconds, before the install.
+    print(picked if picked == 'all' else len(picked))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--area', choices=AREAS, action='append', help='repeat to select suites; default: all')
     parser.add_argument('--app-only', action='store_true', help='python, desktop: leave out the tests of the repo\'s own tooling (tools/app-tests.py; the release pipeline\'s unit legs); other areas ignore it')
     parser.add_argument('--fast', action='store_true', help='desktop lint and focused lifecycle/contract checks (default area: desktop)')
     parser.add_argument('--affected-from', metavar='REF', help='local pushes: run only the tests this change (HEAD vs REF) can break; without it everything runs, as on CI')
+    parser.add_argument('--plan', action='store_true', help='print how many desktop test files this run would run (a number, or "all") and stop: a workflow skips its installs when it is 0')
     parser.add_argument('--clean-install', action='store_true', help='verify desktop and Worker lockfiles in temporary folders before checks')
     args = parser.parse_args(argv)
     areas = args.area or (['desktop'] if args.fast else list(AREAS))
+    if args.plan:
+        return print_plan(args)
     if sys.version_info < (3, 12):
         print('check: Python 3.12+ is required.', file=sys.stderr)
         return 2
@@ -126,17 +174,8 @@ def main(argv=None):
     except RuntimeError as error:
         print(f'check: {error}', file=sys.stderr)
         return 2
-    if args.clean_install:
-        for area in [a for a in ('desktop', 'worker') if (ROOT / AREA_DIR.get(a, a)).is_dir()]:
-            folder = ROOT / AREA_DIR.get(area, area)
-            with tempfile.TemporaryDirectory(prefix='jobadabra-check-') as scratch:
-                for name in ('package.json', 'package-lock.json'):
-                    shutil.copyfile(folder / name, Path(scratch) / name)
-                print(f'check: {area} clean npm ci', flush=True)
-                result = subprocess.run([npm, 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=scratch, env=env, check=False)
-                if result.returncode:
-                    print(f'check: {area} clean install failed', file=sys.stderr)
-                    return 1
+    if args.clean_install and clean_install(npm, env):
+        return 1
     failed = []
     plan = affected(args.affected_from)
     for area in dict.fromkeys(areas):

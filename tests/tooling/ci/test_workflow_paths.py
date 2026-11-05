@@ -176,6 +176,19 @@ class TheClass(unittest.TestCase):
         self.assertTrue(any('quality' in line for line in missing) or starts('main-steps.yml', ['src/ai/score.py'], 'push'), 'positive control')
         self.assertEqual(missing, [], 'main-steps.yml push paths: add these files its suites watch')
 
+    def test_the_windows_job_starts_on_the_files_the_linux_job_does(self):
+        # 5 Nov 2026, owner: "Yes: reached tests, every PR". Windows picks the tests its change reaches, as Linux does, so it starts on the same files; this replaces the hand-kept list
+        # (~60 files) and its test, under which #3172 (tools/fixer) never ran Windows and main's Windows went red 12 times.
+        own = {'.github/workflows/tests-desktop-windows.yml', 'tools/app-tests.py'}
+        windows = pr_paths('tests-desktop-windows.yml')
+        self.assertGreater(len(windows), 100, 'positive control: the list is read')
+        self.assertEqual([p for p in windows if p not in own], pr_paths('tests-desktop.yml'), 'copy the Linux job paths: into tests-desktop-windows.yml (same order: the last matching pattern wins)')
+        self.assertTrue(own <= set(windows))
+        self.assertTrue(starts('tests-desktop-windows.yml', ['tools/fixer/loop.mjs']))
+        text = (WORKFLOWS / 'tests-desktop-windows.yml').read_text()
+        self.assertEqual(text.count("if: steps.plan.outputs.tests != '0'"), 2, 'the install and the run both wait for the plan')
+        self.assertIn('--affected-from HEAD^1', text)
+
     def test_ship_waits_for_every_check_the_pr_started(self):
         # With one required check, a "green" that read only them would hand the owner a PR whose suites still run.
         self.assertNotIn('--required', (ROOT / 'tools/ship-pr.sh').read_text())
@@ -237,10 +250,10 @@ class TheShapes(unittest.TestCase):
 
     def test_docs_and_tools_start_python_only(self):
         self.assertEqual(self.started(['docs/ARCHITECTURE.md', 'CLAUDE.md']), {'tests-python.yml'})
-        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml'})   # desktop/test/tooling/ci/merge-baseline.test.js reads it
+        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml'})   # desktop/test/tooling/ci/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-desktop-windows.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 
@@ -250,8 +263,8 @@ class TheShapes(unittest.TestCase):
 
     def test_a_worker_change_starts_its_suite_and_the_desktop_tests_that_read_it(self):
         # identity-rule.test.js and site-routes.test.js walk all of app-core/src (26 Oct 2026, the repo-root reads)
-        self.assertEqual(self.started(['app-core/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'})   # integration.yml: the app's server imports app-core/src too (owner, 1 Nov 2026); harness.yml: the app's server imports app-core/src through desktop/shared/ (review on #2241)
-        self.assertEqual(self.started(['app-core/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'}, 'a desktop test reads it; harness.yml and integration.yml: app-core/src is staged into desktop/shared/ (#2241)')
+        self.assertEqual(self.started(['app-core/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml', 'harness.yml', 'integration.yml'})   # integration.yml: the app's server imports app-core/src too (owner, 1 Nov 2026); harness.yml: the app's server imports app-core/src through desktop/shared/ (review on #2241)
+        self.assertEqual(self.started(['app-core/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml', 'harness.yml', 'integration.yml'}, 'a desktop test reads it; harness.yml and integration.yml: app-core/src is staged into desktop/shared/ (#2241)')
 
     def test_a_workflow_change_starts_that_workflow(self):
         for name in pr_workflows():
