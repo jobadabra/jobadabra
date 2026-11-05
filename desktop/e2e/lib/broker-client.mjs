@@ -23,14 +23,14 @@ export const isWebSearch = tool => String(tool?.type || '').startsWith('web_sear
 
 const text = content => (typeof content === 'string' ? content : (content || []).filter(part => part.type !== 'image').map(part => part.text ?? '').join('\n'));
 
-/** A Messages request -> the broker's body: {tier, prompt, schema?, images?, search?: true, engine?, only?: true}. One system text, the turns in order, the pictures as base64; `engine` names this call's own first choice and `only: true` makes it the whole chain (the broker refuses `only` without an engine). */
+/** A Messages request -> the broker's body: {tier, prompt, schema?, images?, search?: true, engine?, only?: true}. One system text, the turns in order, the pictures as base64; `session`/`delta`/`endSession` keep one Codex conversation (the broker's contract, jobadabra-web #409); `engine` names this call's own first choice and `only: true` makes it the whole chain (the broker refuses `only` without an engine). */
 export function toBrokerCall(body) {
   const system = Array.isArray(body.system) ? body.system.map(block => block.text).join('\n\n') : body.system || '';
   const turns = body.messages.map(message => `${message.role === 'assistant' ? 'You' : 'User'}:\n${text(message.content)}`).join('\n\n');
   const images = body.messages.flatMap(message => (Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image')).map((part, i) => ({name: `image${i}.${String(part.source?.media_type || 'image/png').split('/')[1]}`, base64: part.source?.data}));   // numbered across all turns, so two pictures never share a name
   const schema = body.output_config?.format?.schema;
   const search = body.tools?.some(isWebSearch);
-  return {tier: tierOf(body.model), ...(search ? {search: true} : {}), ...(body.engine ? {engine: body.engine, ...(body.only ? {only: true} : {})} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
+  return {tier: tierOf(body.model), ...(search ? {search: true} : {}), ...(body.engine ? {engine: body.engine, ...(body.only ? {only: true} : {})} : {}), ...(body.session ? {session: body.session, ...(body.delta ? {delta: body.delta} : {}), ...(body.endSession ? {endSession: true} : {})} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
 }
 
 /** This run's OIDC token for the broker (the workflow needs `permissions: id-token: write`), or null outside such a job. */
