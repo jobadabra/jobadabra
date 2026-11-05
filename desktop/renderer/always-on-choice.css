@@ -11,3 +11,23 @@
 .aon-check-line { grid-column: 2 / -1; margin: 0; overflow-wrap: anywhere; }
 #aon-test-result:empty { display: none; }
 .aon-check:is([data-state="waiting"], [data-state="skipped"], [data-state="cancelled"]) .live-dot { background: var(--muted); }
+
+/* The privacy line and its button (PR 7, 5 Nov 2026): one row, the sentence then the button; the button wraps under it when the card is narrow. */
+.aon-privacy { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.aon-privacy[hidden], #aon-protect-open[hidden] { display: none; }
+.aon-privacy > p { flex: 1 1 18rem; margin: 0; }
+
+/* The popup: each measure is a title with its chip on one line and its sentence under it. A tone bar on the left says protection (green), to know (blue) or what it is not (amber). */
+.aon-protect-dialog { width: min(640px, 94vw); }
+/* The dialog is a column the window's height at most (its own max-height): a short window scrolls only the list, the title and Close stay (code review, 5 Nov 2026). */
+.aon-protect-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+.aon-protect-dialog form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.aon-protect-dialog .dialog-foot { flex: none; }
+.aon-measures { list-style: none; margin: var(--sp-4) 0 0; padding: 0; display: grid; gap: var(--sp-2); min-height: 0; overflow-y: auto; }
+.aon-measure { border-left: 3px solid var(--tone, var(--line)); padding: var(--sp-1) 0 var(--sp-1) var(--sp-3); }
+.aon-measure.tone-good { --tone: var(--good-bright); }
+.aon-measure.tone-info { --tone: var(--info); }
+.aon-measure.tone-warn { --tone: var(--warn-bright); }
+.aon-measure-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.aon-measure-head .ui-pill svg { width: 12px; height: 12px; }
+.aon-measure > p { margin: var(--sp-1) 0 0; }

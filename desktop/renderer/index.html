@@ -1891,6 +1891,17 @@
   </form>
 </dialog>
 
+<!-- How we protect your data (pages/always-on-protect.js): opened from the Always on card's link while "on our servers" is on -->
+<dialog id="aon-protect-dialog" class="save-dialog panel-dialog aon-protect-dialog" aria-labelledby="aon-protect-title">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="shield"></i></span><h2 id="aon-protect-title"></h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="dialog-lead" id="aon-protect-lead"></p>
+    <ul class="aon-measures" id="aon-protect-list"></ul>
+    <div class="dialog-foot"><button class="primary" value="default">Close</button></div>
+  </form>
+</dialog>
+
 <!-- Build a CV with the AI (pages/cv-build.js, lib/cv-build.js): a short form, the AI's draft to edit, then it becomes the main CV -->
 <dialog id="cvb-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span>
