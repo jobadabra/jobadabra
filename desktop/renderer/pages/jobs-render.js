@@ -31,6 +31,7 @@ import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
 import {companyCell, placeCell} from './jobs-row-cells.js';
+import {alsoOnTags, holdsAny, linksOf, onEveryCopy, setStatusOnCopies} from './jobs-copies.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
@@ -66,7 +67,7 @@ export function renderJobs() {
   // The counters count every application (real workload); without one, the ticked filters decide (jobs-filters.js): any of them holds the job;
   // a pasted link finds any job.
   const counted = jobsState.statFilter === 'stuck' ? shared.allJobs.filter(stuck)
-    : jobsState.statFilter?.urls ? shared.allJobs.filter(job => jobsState.statFilter.urls.has(fullKey(job.url)))
+    : jobsState.statFilter?.urls ? shared.allJobs.filter(job => holdsAny(job, jobsState.statFilter.urls, fullKey))
     : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter) : null;
   const by = $('sort-by').value;
   const rows = sorted((counted || shared.allJobs)
@@ -113,6 +114,7 @@ export function renderJobs() {
     const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
     titleLine.append(link);
+    for (const also of alsoOnTags(job)) titleLine.append(tag(also.text, {title: also.title}));   // the same posting on another site: one row (src/desktop_job_copies.py)
     role.append(titleLine);
     // Why (2026-10-30, owner; 2 Nov 2026 N/A for a job with nothing to apply to, the slot stays so every row is built alike): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
     role.append(parts.triage ? triageChip(job) : chip(NA, {tone: 'neutral', title: 'Nothing to apply to: you already applied, or it came to you'}));
@@ -154,11 +156,11 @@ export function renderJobs() {
     const menu = [];
     // Notion is the source of truth: if it can't be written, nothing changes and the user is told.
     const setStatus = next => async () => {
-      const result = await window.pilot.setStatus(job.url, next).catch(error => ({ok: false, error: error.message}));
+      const result = await setStatusOnCopies(job, next, (url, status) => window.pilot.setStatus(url, status));   // a merged row stands for every copy of its posting (pages/jobs-copies.js)
       if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
       const stage = result.stage || job.stage;   // what Notion now holds (a dismissed job in process becomes Closed)
       jobsChanged(job, {status: next, stage: next === 'applied' && stage === 'Applying' ? 'Applied' : stage});
-      if (next === 'dismissed' && jobsState.statFilter?.urls) jobsState.statFilter.urls.delete(fullKey(job.url));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
+      if (next === 'dismissed' && jobsState.statFilter?.urls) linksOf([job]).forEach(url => jobsState.statFilter.urls.delete(fullKey(url)));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
       renderJobs();
       if (next === 'dismissed') askWhy(job);   // one optional tap: why (counted with the score band only)
     };
@@ -276,7 +278,7 @@ export function renderJobs() {
       if (jobsState.benchmarkText[job.url]) menu.push({icon: 'info', label: jobsState.benchmarkText[job.url], disabled: true, title: 'From how other people\'s applications on this job board went (anonymous counts)'});
       for (const choice of choices) {
         menu.push({icon: choice.icon, label: choice.label, title: choice.title, run: async () => {
-          const result = await window.pilot.markOutcome({url: job.url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}).catch(error => ({ok: false, error: error.message}));
+          const result = await onEveryCopy(job, url => window.pilot.markOutcome({url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}));
           if (!result.ok) { toastMessage('Not saved', result.error || 'Try again.', jobPlace(job), 'bad'); return; }
           jobsChanged(job, choice.outcome !== 'reply' ? {stage: result.stage} : {});   // a reply is an event only: the stage stays where it is
           toastMessage('Saved', `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`, jobPlace(job), 'good');
@@ -290,7 +292,7 @@ export function renderJobs() {
     if (job.stage === 'Applying') {  // the session is over or was closed: say what happened, instead of staying Applying
       menu.push({icon: 'tick', label: 'I submitted it', run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
-        const result = await window.pilot.unapplyJob(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
         if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Kit ready'});
         renderJobs();
@@ -301,7 +303,7 @@ export function renderJobs() {
         // Only a bare Applied: a stage past it (a confirmation, an interview) is the employer's own evidence.
         if (!confirm(`Mark this as not submitted? It goes back to Applying and the Applied date and event are removed from ${storeName()}.\n\n`
           + 'Use this when Jobadabra marked it Applied by itself and no application was sent.')) return;
-        const result = await window.pilot.notSubmitted(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.notSubmitted(url));
         if (!result.ok) { toastMessage('Not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Applying', status: 'applied'});
         toastMessage('Back to Applying', `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`, jobPlace(job), 'good');
@@ -313,7 +315,7 @@ export function renderJobs() {
     else menu.push({icon: 'trash', label: 'Delete', danger: true, title: byStore('Remove this job: its Notion pages go to the trash, and searches will not show it again', 'Remove this job for good: searches will not show it again'),
       run: async () => {
         if (!confirm(`Delete "${job.title}" at ${job.company}?\n\n${byStore('Its Notion pages go to Notion\'s trash (restorable there for 30 days), and searches will not show it again.', 'It is removed from Jobadabra, and searches will not show it again.')}`)) return;
-        const result = await window.pilot.deleteJob(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.deleteJob(url));
         if (!result?.ok) { toastMessage('Not deleted', result?.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         const left = shared.allJobs.filter(other => other !== job);
         shared.allJobs = left;
