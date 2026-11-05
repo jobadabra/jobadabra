@@ -50,7 +50,7 @@ from .mail_lines import (  # noqa: F401 — re-exported: callers and tests use `
     EMOJI, EVENT_KIND, SHORT_KIND, _head, _label, _short, _who, ask,
 )
 from .mail_match import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`
-    ENDED, PLATFORMS, STOP, _about_tracked, _ambiguous, _by_mention, _contact_names, _event_text, _matches, _names_it,
+    ENDED, PLATFORMS, STOP, _about_tracked, _ambiguous, _by_mention, _contact_names, _event_text, _matches, _nameless, _names_it,
     _names_person, _same_person, _sender_org, person_name,
 )
 from .mail_leads import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`

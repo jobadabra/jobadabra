@@ -53,6 +53,9 @@ def move(stores, event_id, target, now=None):
     record = _new_job(stores, event, changes) if target == NEW else stores.applications.get(target)
     if record is None:
         return {'ok': False, 'text': 'That job is no longer in your list. Pick it again, or choose a new job.'}
+    if changes.get('company') and mail._nameless(record):   # Why (5 Nov 2026, #3316 review): the person placed it here, so the next email names this job and needs no question
+        stores.applications.update(record['id'], {'company': changes['company'][:200]})
+        record['company'] = changes['company'][:200]
     interview_at = event.get('interview_at') or changes.get('interview_at')
     fields = mail.advance(stores, record, event['kind'], interview_at, now)
     stores.events.update(event_id, {'app_id': record['id'], 'needs_you': False, 'changes': mail.changes_of(

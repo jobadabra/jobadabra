@@ -20,8 +20,8 @@ def _from_email(stores, apps, result, email, stats, lines, on_new=None):
     """An Applications row for the role an email names (Stage Applied; the email's own event then moves it on).
     Keyed by company + role, so a second email about it (a duplicate, the rejection after the confirmation) finds it."""
     company, role = result['company'].strip(), result['role'].strip()
-    words = lambda text: ' '.join(re.findall(r'[a-z0-9]+', text.lower()))
-    same = [r for r in apps if words(_field(r, 'company')) == words(company)
+    words = lambda text: ' '.join(re.findall(r'[^\W_]+', text.lower()))   # any script: a company with no Latin letter must not read as no company
+    same = [r for r in apps if words(company) and words(_field(r, 'company')) == words(company)
             and words(_role(r)) and (words(role) in words(_role(r)) or words(_role(r)) in words(role))]
     if same:
         return same[0]
