@@ -1,4 +1,4 @@
-name: CI · Smoke (the app starts)
+name: Smoke
 # Smoke = the app starts, its window loads and every Settings section renders: the e2e backbone's journey J0 (suites/settings.mjs, step "every Settings section renders"),
 # run alone on this commit's own source in about 3 minutes, no AI and no network (this Mac's store: E2E_STORE=sqlite, the suite is `offlineAi`).
 # Why (owner, 1 Nov 2026, test stages 3-5: "let's fix this layering testing"): a PR and a merge had no smoke at all; the app starting was first proven by the beta or the weekly
@@ -34,7 +34,7 @@ concurrency:   # a PR's newer push replaces its older run; each commit of main k
 
 jobs:
   smoke:
-    name: Smoke · the app starts
+    name: the app starts
     # Why (3 Nov 2026, 7/7 Send to AI review): this job holds secrets. A draft fix the bot opens on fd-ai/<ref> or fixer/<source>-<ref> (ai-fixer.yml, 4 Nov 2026) carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
     if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04

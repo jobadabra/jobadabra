@@ -41,7 +41,7 @@ def find_node(env=None):
 
 
 def affected(base):
-    """The tests a change can break (tools/affected-tests.py), or None: run everything. Local pushes and a PR's `desktop (ubuntu)` job; main never passes --affected-from."""
+    """The tests a change can break (tools/affected-tests.py), or None: run everything. Local pushes and a PR's `Unit / desktop (Linux)` job; main never passes --affected-from."""
     if not base:
         return None
     listed = os.environ.get('JOBADABRA_AFFECTED_FILES', '').splitlines()   # the Stop hook: the changed files incl. uncommitted ones (a commit-only diff misses them)

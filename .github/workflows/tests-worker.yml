@@ -1,4 +1,4 @@
-name: CI · Tests · worker
+name: Unit
 # On a pull request, GitHub's `paths:` below decides whether it runs (owner, 14 Oct 2026: "drop your shared pick logic, rely fully on gh workflow paths"). Not a required
 # check: a workflow `paths:` skips never reports, and a required one would block the PR (tests/tooling/ci/test_workflow_paths.py). On main, build.yml (CI · Tests) calls it on
 # every push: the backstop for a break from outside these paths.
@@ -48,6 +48,7 @@ concurrency:   # a PR's newer push replaces its older run and frees its runners;
 
 jobs:
   worker:
+    name: app-core
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

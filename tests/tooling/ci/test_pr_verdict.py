@@ -28,6 +28,12 @@ def run(name, status='completed', conclusion='success', event='pull_request', at
 
 
 class Verdict(unittest.TestCase):
+    def test_two_workflows_sharing_a_layer_name_are_both_counted(self):
+        # Owner, 5 Nov 2026: "Yes, rename + fold": four files are named "Unit"; a red Linux run must not hide behind a later green Windows one.
+        linux = dict(run('Unit', conclusion='failure', id=1), workflowDatabaseId=11)
+        windows = dict(run('Unit', at='2026-10-26T03:01:00Z', id=2), workflowDatabaseId=12)
+        self.assertEqual(pv.verdict([run('Guard', id=3), linux, windows])[0], 'failure')
+
     def test_green_when_every_pr_workflow_ended_green(self):
         state, why, *_ = pv.verdict([run('CI · Pull request'), run('CI · Tests · python', conclusion='skipped')])
         self.assertEqual(state, 'success', why)
@@ -137,13 +143,13 @@ class Workflows(unittest.TestCase):
             text = path.read_text(); trigger = text.split('\njobs:')[0]
             if re.search(r'(?m)^  pull_request:|^on:.*\bpull_request\b', trigger):
                 prs.add(re.search(r'(?m)^name:\s*(.+?)\s*$', text).group(1).strip('\'"'))
-        self.assertIn('CI · Pull request', prs, 'positive control')
+        self.assertIn('Guard', prs, 'positive control')
         self.assertNotIn('CI · Prompt cases (by-hand re-ask)', prs, 'broker checks of the prompt cases are manually dispatched, never an automatic PR workflow')
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
         self.assertEqual(prs - listed, set(), 'add it to pr-verdict.yml workflow_run.workflows')
         self.assertIn('CI · End-to-end on Mac + Linux', listed, 'a PR that changes a step starts e2e.yml (pr-e2e-steps.yml): its run is judged when it ends')
-        self.assertIn('CI · E2E steps a PR changes', listed)
+        self.assertIn('E2E', listed)
         self.assertNotIn('CI · E2E suites for a PR', listed, 'the old every-suite PR workflow is gone')
         self.assertNotIn('CI · Prompt cases (by-hand re-ask)', listed, 'a manual run must not participate in the PR verdict')
 

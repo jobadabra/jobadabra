@@ -10,6 +10,7 @@
 import {execFileSync} from 'node:child_process';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
+import {checkName} from './check-name.mjs';
 
 export const SETUP_STEP = /checkout|set ?up|install|download|fetch|cache|artifact|paths|bundle|restore|upload/i;
 export const TEST_PATH = /(^|\/)(tests?|__tests__|e2e|fixtures|recorded|docs|zoo)\/|\.(test|spec)\.|\.md$|^\.github\/|^tools\/githooks\//;
@@ -100,7 +101,7 @@ export function fetchInput(days) {
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   const trim = '.workflow_runs[] | {id, name, path, head_branch, head_sha, conclusion, created_at, run_started_at, updated_at, pull_requests: [.pull_requests[].number]}';
   const runs = gh('api', '--paginate', `repos/${repo}/actions/runs?event=pull_request&created=>=${since}&per_page=100`, '--jq', trim)
-    .split('\n').filter(Boolean).map(line => JSON.parse(line));
+    .split('\n').filter(Boolean).map(line => JSON.parse(line)).map(run => ({...run, name: checkName(run)}));
   // GitHub leaves `pull_requests` empty on most runs: the PR is found by its branch.
   const byBranch = new Map(JSON.parse(gh('pr', 'list', '--repo', repo, '--state', 'all', '--limit', '1500', '--json', 'number,headRefName')).map(pr => [pr.headRefName, pr.number]));
   for (const run of runs) if (!run.pull_requests?.length && byBranch.has(run.head_branch)) run.pull_requests = [byBranch.get(run.head_branch)];

@@ -1,4 +1,4 @@
-name: CI · Feedback to AI
+name: AI fixer
 run-name: Send to AI ${{ inputs.ref || github.event.pull_request.head.ref }}
 
 # "Send to AI" on a feedback card of the site (owner, 3 Nov 2026: "send it to a claude session (on the CI using the ai-broker), that the outcome should be a PR with the fix"). ONE run per click of the owner's;

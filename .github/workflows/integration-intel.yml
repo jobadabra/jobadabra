@@ -1,5 +1,5 @@
 name: CI · Integration intelligence
-# The integration tests' page (owner, 1 Nov 2026), https://www.jobadabra.top/admin/testing/integrations: reads the finished runs of "CI · Integration tests"
+# The integration tests' page (owner, 1 Nov 2026), https://www.jobadabra.top/admin/testing/integrations: reads the finished runs of "Integration" (integration.yml)
 # (integration.yml) and their artifacts integration-results-<layer>, builds one snapshot (tools/ci-intel/jobs/integration-intel.mjs) and PUTs it (Bearer SELFHEAL_PUBLISH_KEY).
 # Hourly; a run is read once, the site keeps one snapshot row.
 # Why here (2 Nov 2026, owner): it reads this repo's own runs and artifacts, so it runs beside integration.yml and no longer lays this repo's tree under jobadabra-web every hour (it was that repo's integration-intel.yml).

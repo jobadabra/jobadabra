@@ -1,4 +1,4 @@
-name: CI · E2E steps a PR changes
+name: E2E
 # Job: pick the suites
 # The one e2e a pull request runs: the steps it ADDS or EDITS (owner, 2 Nov 2026: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check" — "the only exception
 # when we run e2e on the PR level"). Every other PR runs no e2e (owner, 1 Nov 2026: "I'd like to avoid e2e at the PR at all / Cause they're very slow"; the journeys run after each merge,
@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   start:
-    name: Start the steps this PR changes
+    name: steps this PR changes
     # A fork has no secrets: nothing to run there.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04

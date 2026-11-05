@@ -1,4 +1,4 @@
-"""Guard: release — a PR's `desktop (ubuntu)` job runs only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
+"""Guard: release — a PR's `Unit / desktop (Linux)` job runs only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
 Why (4 Nov 2026, owner: "run only the ones that make sense"): the cases below are what that job must never lose. Replay of 40 red PR runs: spec 2026-11-04-pr-time-design.md."""
 import importlib.util
 import re
