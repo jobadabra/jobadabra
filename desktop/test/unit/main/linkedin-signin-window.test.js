@@ -287,3 +287,22 @@ test('the handler logs the popup outcome without a value, and the words for it p
   assert.match(notYet[1], /Settings → Connections → Chrome extension/);
   assert.doesNotMatch(connected[1], /Settings → Connections → Chrome extension/, 'the shortcut is named only when it is there');
 });
+
+// Independent review (5 Nov 2026): the refusal words blame a provider only for a provider's popup; a popup runs on https pages only.
+test('a LinkedIn popup (a help page) is not a provider: closing the window after it is a plain cancel', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  f.made[0].openHandler({url: 'https://www.linkedin.com/help/linkedin', disposition: 'new-window'});
+  f.made[0].emit('closed');
+  assert.deepEqual(await pending, {ok: false, reason: 'cancelled'});
+});
+
+test('a popup never navigates to another scheme, and one made after the sign-in ended is closed at once', async () => {
+  const f = fakes(), pending = createSignIn(f)();
+  const one = f.child(); f.made[0].webContents.emit('did-create-window', one, POPUP);
+  const http = {prevented: false, preventDefault() { this.prevented = true; }}, https = {prevented: false, preventDefault() { this.prevented = true; }};
+  one.webContents.emit('will-navigate', http, 'http://insecure.example/'); one.webContents.emit('will-redirect', https, 'https://accounts.standin.example/next');
+  assert.deepEqual([http.prevented, https.prevented], [true, false]);
+  f.made[0].emit('closed'); await pending;
+  const late = f.child(); f.made[0].webContents.emit('did-create-window', late, POPUP);
+  assert.equal(late.destroyed, true);
+});

@@ -5,7 +5,7 @@
 export const PARTITION = 'linkedin-signin';   // no "persist:" prefix = in memory only
 export const TIMEOUT_MS = 10 * 60 * 1000;
 export const START_URL = 'https://www.linkedin.com/login';
-const MAX_POPUPS = 3;   // open at once, parent included in none: a page cannot bury the person in windows
+const MAX_POPUPS = 3;   // popups open at once (the sign-in window itself not counted): a page cannot bury the person in windows
 // LinkedIn pages that are part of signing in. li_at can exist while one of them is still on screen, so "signed in" needs the page to have left them too.
 const SIGN_IN_PAGE = /^\/(login|uas|checkpoint|check|authwall|signup|add-phone)(\/|$)/;   // /check/add-phone is the phone interstitial
 
@@ -33,14 +33,14 @@ export function createSignIn({BrowserWindow, shell, hidden = false, timeoutMs = 
     const win = new BrowserWindow({width: 520, height: 760, title: 'Sign in to LinkedIn · Jobadabra', show: !hidden,
       webPreferences: {partition: PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false}});
     const web = win.webContents, jar = web.session;
-    let finish, popupOpened = false;
+    let finish, popupOpened = false, ended = false;   // popupOpened: a popup to a page outside LinkedIn opened (the provider's), the only kind that makes 'popup-ended' true
     const children = new Set();
     const promise = new Promise(resolve => {
       let over = false;
       const timer = setTimeout(() => finish({ok: false, reason: 'timeout'}), timeoutMs);
       finish = async answer => {
         if (over) return;
-        over = true; clearTimeout(timer);
+        over = ended = true; clearTimeout(timer);
         for (const child of children) if (!child.isDestroyed?.()) child.destroy();
         if (!answer.ok && popupOpened && (answer.reason === 'cancelled' || answer.reason === 'timeout')) answer = {ok: false, reason: 'popup-ended'};
         // Why (independent review, 3 Nov 2026): `current` is released only after the storage is cleared, so a new press cannot open a window on the same partition that this clear then wipes.
@@ -61,17 +61,22 @@ export function createSignIn({BrowserWindow, shell, hidden = false, timeoutMs = 
     // Only LinkedIn's own pages load in this window; a link (a help page, a terms page) opens in the person's browser.
     const outside = url => { if (/^https:/.test(url)) shell.openExternal(url); };
     // Why (owner, 5 Nov 2026: "Allow popup, you try once"): a provider's sign-in popup talks back to the page through window.opener, which a page opened in Chrome does not have (it stayed blank). A popup is told from
-    // a link by how it opens (Electron's 'new-window'), never by a host name; it gets the parent's limits, and a page cannot open more than MAX_POPUPS at once.
+    // a link by how it opens (Electron's 'new-window'), never by a host name; it gets the parent's webPreferences and permissions (it may go to any https page, its provider's), and a page cannot open more than MAX_POPUPS at once.
     const popupOptions = () => ({parent: win, width: 480, height: 680, show: !hidden, autoHideMenuBar: true,
       webPreferences: {partition: PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false, webviewTag: false}});
     const harden = contents => {
       contents.setWindowOpenHandler(({url, disposition}) => {
-        if (disposition === 'new-window' && (/^https:/.test(url) || url === 'about:blank') && children.size < MAX_POPUPS) { popupOpened = true; return {action: 'allow', overrideBrowserWindowOptions: popupOptions()}; }
+        if (disposition === 'new-window' && (/^https:/.test(url) || url === 'about:blank') && children.size < MAX_POPUPS) {
+          if (!onLinkedin(hostOf(url))) popupOpened = true;   // a LinkedIn help popup is not a provider's, so closing the window after it is a plain cancel
+          return {action: 'allow', overrideBrowserWindowOptions: popupOptions()};
+        }
         outside(url);
         return {action: 'deny'};
       });
       contents.on('did-create-window', child => {
-        if (win.isDestroyed()) { child.destroy(); return; }   // the sign-in ended while Electron was making it
+        if (ended || win.isDestroyed()) { child.destroy(); return; }   // the sign-in ended while Electron was making it
+        // A popup may go to any https page (its provider's), never to another scheme.
+        for (const event of ['will-navigate', 'will-redirect']) child.webContents.on(event, (e, url) => { if (!/^https:/.test(url) && url !== 'about:blank') e.preventDefault(); });
         children.add(child);
         child.on('closed', () => children.delete(child));
         harden(child.webContents);
