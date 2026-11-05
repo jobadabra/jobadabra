@@ -61,7 +61,8 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   function follow() {
     const open = pending(), n = count(), keys = tabsWith(open);
     for (const key of Object.keys(tabs)) tabButton(key)?.classList.toggle('has-drafts', keys.includes(key));
-    if (n) title.textContent = `${countText(n)}${keys.length ? ` in ${scopeText(keys.map(key => tabs[key]))}` : ''}`;
+    // Why (#3225, 5 Nov 2026, AI persona tour): the title was rewritten only `if (n)`, so for the 2.5 s "Saved ✓" hold it still read "1 unsaved change in …". The title follows the count: empty at 0.
+    title.textContent = n ? `${countText(n)}${keys.length ? ` in ${scopeText(keys.map(key => tabs[key]))}` : ''}` : '';
     node.hidden = !n && !holding;
     save.disabled = discard.disabled = busy || !n;
     if (!broken.size) { if (brokenShown) say(''); return; }
