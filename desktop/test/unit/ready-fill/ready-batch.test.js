@@ -25,7 +25,7 @@ test('the batch carries the kit, CV, letter and facts; a job without a kit or a 
   const {batch, skipped} = await buildBatch([job('a', 90), job('b', 80), job('c', 70), job('z', 60)], deps, {now: new Date(2026, 9, 17, 20, 0)});
   assert.deepEqual(batch.jobs.map(j => j.id), ['a', 'c']);
   assert.deepEqual(batch.jobs[0], {id: 'a', url: 'https://boards.example.com/a', title: 'Role a', company: 'Acme', fit: 90, kit: {answers: [{field: 'notice', answer: '2 months'}]}, letter: 'Dear Acme', cv: 'CVDATA', letterPdf: 'LETTERPDF'});
-  assert.deepEqual(skipped.map(s => [s.code, s.why]), [['b', 'no kit found'], ['z', 'no kit found']]);
+  assert.deepEqual(skipped.map(s => [s.code, s.why]), [['b', 'application not prepared'], ['z', 'application not prepared']]);
   assert.equal(batch.contact.name, 'Alex Example');
   assert.deepEqual(batch.facts, {profile: 'P'});
   assert.equal(batch.night, '2026-10-18');

@@ -20,7 +20,7 @@ export function isDataLine(line) {
 export const TASKS = {
   insight: {name: 'Insight', result: /^(Insight sent: |Insight: )/},
   weekly: {name: 'Search analysis', result: /^Weekly report sent: /},
-  kits: {name: 'Prepare top matches', result: /^Kits ready: /},
+  kits: {name: 'Prepare top matches', result: /^(?:Applications|Kits) ready: /},
   visits: {name: 'Find jobs using your browser', result: /^Read \d+ of \d+ sites?/},
   tailor: {name: 'Tailor CV + cover letter', result: /^Tailored \d+ of \d+ CV/},
   today: {name: "Today's list", result: /^(Digest ready: |No new jobs since|Sent \d+ Telegram message)/},

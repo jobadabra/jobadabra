@@ -8,7 +8,7 @@ import {after, before, test} from 'node:test';
 import {addFocusData, scenario} from '../../e2e/lib/focus-data.mjs';
 import {startEngineKit} from './engine-kit.mjs';
 
-const URL_OF = 'https://jobs.e2e.test/birch/platform';   // a job with a kit ready, not saved yet
+const URL_OF = 'https://jobs.e2e.test/birch/platform';   // a job you set aside: a prepared job already reads saved (src/desktop_jobs.py stage_status)
 let kit, handlers;
 const call = (name, ...args) => handlers.get(name)({}, ...args);
 const listed = list => (list?.jobs || []).find(job => job.url === URL_OF);
@@ -28,6 +28,7 @@ before(async () => {
 after(async () => { await kit?.close(); });
 
 test('a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree', async () => {
+  await call('setStatus', URL_OF, 'dismissed');
   const before = shown(await call('jobs', {}));
   assert.notEqual(before, 'not listed', 'positive control: the job is in the Jobs list before the Save');
   assert.ok(!/^saved\//.test(before), `positive control: the job is not saved yet (${before})`);

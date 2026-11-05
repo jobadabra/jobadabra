@@ -140,7 +140,7 @@ class KitTests(unittest.TestCase):
         self.assertIn('Answers text', system['text'])
         self.assertIn('field question_2', client.requests[0]['messages'][0]['content'])
         self.assertIn('USD 0.007', log)
-        self.assertIn('Application kit', messages[0])
+        self.assertIn('Your application', messages[0])
 
     def test_the_kit_run_links_to_the_job_it_was_for(self):
         with tempfile.TemporaryDirectory() as tmp:

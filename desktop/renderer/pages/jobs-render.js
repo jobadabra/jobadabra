@@ -185,7 +185,7 @@ export function renderJobs() {
       // ⋯ menu, for pages the extension can't reach on its own.
       // Filled on the server: the main button opens that filled form (the night's hand-off) to check and submit, not a new fill.
       const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? 'Review & submit' : opened ? 'Opened ↻' : 'Apply'), {
-        title: job.ready ? 'The server filled this form overnight: open it in Chrome, check it and press Submit yourself' : opened ? 'Opened in Chrome: click to open it there again' : 'Open in Chrome: the extension fills the form from your kit; you review and submit'});
+        title: job.ready ? 'The server filled this form overnight: open it in Chrome, check it and press Submit yourself' : opened ? 'Opened in Chrome: click to open it there again' : 'Open in Chrome: the extension fills the form for you; you review and submit'});
       fill.addEventListener('click', async () => {
         if (!job.ready) return fillInChrome(fill);
         const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
@@ -198,7 +198,7 @@ export function renderJobs() {
         menu.push({icon: 'bot', label: started ? 'Claude is applying' : 'Apply with Claude', disabled: started,
           title: started ? 'A Claude session is filling this one in its window: answer it there' :
             'For pages the extension can\'t fill alone: Claude opens the posting in Chrome, follows Apply to the employer\'s site, creates an account there ' +
-            'if it asks (password saved in your Keychain) and fills every page from your kit. You solve CAPTCHAs, tick the terms and submit.',
+            'if it asks (password saved in your Keychain) and fills every page for you. You solve CAPTCHAs, tick the terms and submit.',
           run: async () => {
             const result = await window.pilot.applyWithClaude(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
             if (result.cancelled) return;
@@ -294,7 +294,7 @@ export function renderJobs() {
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
         const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
         if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
-        jobsChanged(job, {stage: 'Kit ready'});
+        jobsChanged(job, {stage: 'Kit ready', status: 'saved'});
         renderJobs();
       }});
     } else if (job.status !== 'applied') menu.push({icon: 'tick', label: 'Mark applied', run: setStatus('applied'), title: 'You applied to this job: track it in Applications'});

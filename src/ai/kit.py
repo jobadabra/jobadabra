@@ -347,7 +347,7 @@ def auto_run(db, candidates, stores, model, max_jobs, min_score, client=None, op
 def next_step(kit):
     """The Applications row's Next step after a kit: the eligibility verdict first (the desktop app shows it)."""
     if kit.get('eligible') is False:
-        return f"⛔ Not eligible: {kit.get('eligibility_note') or 'see the kit'}"
+        return f"⛔ Not eligible: {kit.get('eligibility_note') or 'see your application'}"
     return '📝 Kit ready: review it, then Apply'
 
 
@@ -382,7 +382,7 @@ def telegram_messages(job, kit, questions, notion_url=None, limit=3800):
     """Copyable Telegram HTML messages: header, cover letter, answers (split to fit 4096 chars)."""
     title = f"<a href=\"{escape(job['url'], quote=True)}\"><b>{escape(job['title'])}</b></a> — {escape(job['company'])}"
     source = 'form questions from Greenhouse' if questions else 'no form read; likely questions'
-    header = [f"📝 <b>Application kit</b>\n{escape(source[0].upper() + source[1:])} · tap a block to copy it · nothing was sent",
+    header = [f"📝 <b>Your application</b>\n{escape(source[0].upper() + source[1:])} · tap a block to copy it · nothing was sent",
               f'<b>Job</b>\n{title}']
     if notion_url:
         header.append(f'<a href="{escape(notion_url, quote=True)}">Open in Notion</a>')

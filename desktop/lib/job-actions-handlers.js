@@ -21,10 +21,10 @@ export function registerJobActionsHandlers(ctx) {
     appLog('dispatch', 'prepare top matches', {where: cloud() ? 'github' : 'mac'});
     if (cloud()) {
       const started = await dispatchCloud('Prepare top matches', {mode: 'kits'});
-      return {text: started.ok ? 'Drafting kits for your top matches on GitHub.' : `⚠️ ${started.error}`};
+      return {text: started.ok ? 'Preparing applications for your top matches on GitHub.' : `⚠️ ${started.error}`};
     }
     pipeline.task(storage, 'kits', pipeline.dailyArgs(storage, {mode: 'kits'}), log).catch(error => log(`Prepare top matches failed: ${error.message}`));
-    return {text: 'Drafting kits for your top matches.'};
+    return {text: 'Preparing applications for your top matches.'};
   };
   // Every Telegram command, from the app (the answer also goes to Telegram when connected).
   const COMMANDS = ['check', 'employers', 'run', 'today', 'applied', 'saved', 'insight', 'weekly', 'mail', 'scout', 'status', 'add', 'help'];

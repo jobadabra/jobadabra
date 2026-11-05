@@ -1091,7 +1091,7 @@
             <div class="outline-body" id="letter-style-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-letter" data-profile-panel="letter" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">Used when a job has no usable tailored letter; each job's own letter lives in its preparation kit.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">Used when a job has no usable tailored letter; each job's own letter lives in its Documents tab.</p></div></div>
               <div class="panel-actions"><span id="letter-state"></span></div></div>
             <div id="letter-empty" hidden></div>
             <div class="letter-editor" id="letter-editor">
@@ -1366,7 +1366,7 @@
       </div>
       <div class="setting conn-panel" id="setting-notion" hidden>
         <div><h3 data-about-notion>🗂️ Notion</h3><p class="muted status-line" data-secret="NOTION_TOKEN"></p>
-          <p class="muted small" data-about-notion>Where your applications, kits and interviews are kept. Needed for Always on, Telegram and Gmail. Reconnect if Jobadabra lost access (for example after you removed it in Notion).</p></div>
+          <p class="muted small" data-about-notion>Where your applications and interviews are kept. Needed for Always on, Telegram and Gmail. Reconnect if Jobadabra lost access (for example after you removed it in Notion).</p></div>
         <ul class="ui-benefits" id="set-notion-benefits" hidden></ul>
         <div class="inline"><button class="secondary" id="set-notion-oauth">Reconnect with Notion</button></div>
         
@@ -1997,13 +1997,13 @@
         <div class="inline spaced" id="cv-base-actions" hidden><button class="secondary" id="cv-base-read">Read the new CV</button></div></div><span id="cv-base-pill"></span></li>
   </ul>
   <section class="cv-kits-card" id="cv-kits-row" hidden>
-    <div class="cv-kits-head"><b>Existing draft kits</b><span class="ui-pill tone-neutral" id="cv-kits-count"></span><span class="muted small">Optional review</span></div>
+    <div class="cv-kits-head"><b>Applications not sent yet</b><span class="ui-pill tone-neutral" id="cv-kits-count"></span><span class="muted small">Optional review</span></div>
     <p class="muted small">Created with the previous Profile. Redraft the ones you still want, after applying Profile changes.</p>
     <div id="cv-kits" class="cv-kits"></div>
     <button class="link" id="cv-kits-more" hidden></button>
   </section>
   <p class="cv-unchanged"><i data-icon="info"></i>Search preferences, match scores and applications already sent are unchanged (they keep the CV you sent).</p>
-  <div class="dialog-foot"><span class="muted small">You can review draft kits later.</span><button class="primary" id="cv-done">Done</button></div>
+  <div class="dialog-foot"><span class="muted small">You can come back to these later.</span><button class="primary" id="cv-done">Done</button></div>
 </dialog>
 
 <!-- Tune my strategy: changes the user's own outcomes support (src/tune.py), applied only when ticked (pages/tune.js) -->

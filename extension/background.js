@@ -368,7 +368,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     if (result?.held) return holdFill(tab, page, result, {decide, progress: (id, text, at) => progress(id, text, at, endsRun ? 'done' : ''), note});   // a dialog covers the form and nothing closes it: nothing was typed (dialog-after-fill.js)
     reportControls(config, tab, result?.operated, result?.trace, result?.card, result?.unknownUploads, result?.starred);
     // The kit's eligibility verdict, as a reminder (applying anyway was the user's choice).
-    if (kit.kit?.eligible === false) await note(tab.id, `⛔ Reminder from your kit: ${kit.kit.eligibility_note}`, page);
+    if (kit.kit?.eligible === false) await note(tab.id, `⛔ Reminder from your application: ${kit.kit.eligibility_note}`, page);
     // Claude could not answer the form's own questions (not answering, a limit, no key): the fill went on without them and the panel said
     // "Ready to submit" with the free-text questions empty (a friend's Ashby form, 2 Oct 2026). Say so on the page, in the log, and to the app.
     if (result?.aiError) {

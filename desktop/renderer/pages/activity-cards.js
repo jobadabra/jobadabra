@@ -96,7 +96,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
   const cvs = kits.what === 'cv';
   // Some failed: the heading says how many of how many; the jobs that failed get a row each, as their log lines name them.
   const {done = kits.jobs.length, total = kits.jobs.length, failed = []} = kits.outcome || {};
-  const noun = cvs ? 'CV' : 'kit';
+  const noun = cvs ? 'CV' : 'application';
   const head = cardHead(cvs ? 'Tailored CVs + cover letters' : 'Applications', total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
     {subtitles: [total > done ? `${plural(total - done, noun)} could not be ${cvs ? 'tailored' : 'drafted'}${failed.length ? '.' : ': the run did not record which.'}`
       : kits.subtitle]});   // partial: the line above says it, with the counts

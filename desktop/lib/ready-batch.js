@@ -32,7 +32,7 @@ export async function buildBatch(jobs, deps, {now = new Date(), readyBy = '07:30
     const found = await deps.store.findJob(job.url).catch(() => null);
     const kit = found ? await deps.store.kit(found.id).catch(() => null) : null;
     const mine = await deps.me(job.url).catch(() => null);
-    if (!kit) { skipped.push({code: job.code, why: 'no kit found'}); continue; }
+    if (!kit) { skipped.push({code: job.code, why: 'application not prepared'}); continue; }
     if (!mine?.resume?.data) { skipped.push({code: job.code, why: 'no CV file'}); continue; }
     if (!Object.keys(contact).length) contact = mine.contact || {};
     sent.push({id: job.code, url: job.url, title: job.title || '', company: job.company || '', fit: job.fit ?? null, kit: {answers: kit.answers || []}, letter: kit.cover_letter || '',

@@ -58,8 +58,10 @@ before(() => {
       await kit.until(() => document.querySelector('#feedback-dialog[open]'), 'the feedback box');
       out.feedback = document.querySelector('#feedback-context').textContent;
       document.querySelector('#feedback-dialog').close();
-      kit.press(kit.row('Apply to'), 'Browse jobs');
+      kit.press(kit.row('Apply to'), 'Apply');
       await kit.until(() => document.querySelector('.view[data-view="jobs"]:not([hidden])'), 'Jobs');
+      await kit.until(() => document.querySelector('#apply-dialog[open]'), 'the Apply box');
+      document.querySelector('#apply-dialog').close();
       await kit.open();
       // Edit target: typing, a redraw while typing, then the save (the demo takes the typed value as the saved one).
       document.querySelector('#focus-edit-target').click();

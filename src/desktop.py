@@ -23,7 +23,7 @@ from .paths import JOBS_DB
 
 # The pieces live in desktop_jobs.py, desktop_status.py and desktop_strategy.py; their names stay reachable here (src.desktop.jobs, ...),
 # and the tests patch the shared modules (digest, score, store) through this one.
-from .desktop_jobs import (GONE, blank_profile, MIN_POSTING, NO_POSTING, NOT_ELIGIBLE, NOT_YET, _deleted_urls, _fit_detail, _kit, jobs, store_posting, posting,  # noqa: F401
+from .desktop_jobs import (GONE, blank_profile, MIN_POSTING, NO_POSTING, NOT_ELIGIBLE, NOT_YET, _deleted_urls, _fit_detail, has_kit, jobs, store_posting, posting,  # noqa: F401
                            stage_status)
 from .desktop_status import NOTION_STAGES, InProcess, _mark, _matches_rows, delete_job, set_status  # noqa: F401
 from .desktop_strategy import (COMPONENTS, mark_outdated, profile_for_scores, GOAL_ROWS, _goals, _quietly, _readable, _section, _visits, calendar_jobs,  # noqa: F401
@@ -263,7 +263,7 @@ def _jobs(db, args):
         stores = open_stores()
         found = store_jobs(stores)
     current = None  # the inputs a kit would be drafted from now: to tell current kits from earlier ones
-    if found and any(_kit(job.get('stage'), job.get('next_step') or '') for job in found):
+    if found and any(has_kit(job.get('stage'), job.get('next_step') or '') for job in found):
         try:
             from .ai import kit
             # Read exactly as the kit records them (src/daily_helpers.py prepare_kit), on every store (D7): on Notion the Profile as

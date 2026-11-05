@@ -41,7 +41,7 @@ class FunnelTest(unittest.TestCase):
         self.assertIsNone(funnel.focus(few))
         self.assertIn('Too early', ' '.join(funnel.summary(few)))
         backlog = funnel.funnel([app('Applied')] * 2 + [app('Kit ready')] * 6)
-        self.assertIn('volume: 6 kits', ' '.join(funnel.summary(backlog)))
+        self.assertIn('volume: 6 applications', ' '.join(funnel.summary(backlog)))
         many = funnel.funnel([app('No response', 'Applied')] * 9 + [app('Rejected', 'Applied')])
         self.assertEqual(funnel.focus(many)['step'], '💬 Human reply')
         self.assertIn('Improve 💬 Human reply', funnel.summary(many)[0])

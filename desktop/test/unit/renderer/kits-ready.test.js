@@ -8,6 +8,12 @@ const MESSAGE = ['📝 Application kits ready', '3 drafted for your top matches 
   'Site Reliability Engineer (https://jobs.ashbyhq.com/deepjudge/d8c1)', 'DeepJudge AG',
   'Senior Site Reliability Engineer (x/f/m) (https://job-boards.greenhouse.io/doctolib/jobs/781)', 'Doctolib'].join('\n');
 
+test('the card reads the new heading, and an old stored message still parses', () => {
+  const [, ...rest] = MESSAGE.split('\n');
+  assert.equal(parseKitsReady(['📝 Applications ready', ...rest].join('\n')).jobs.length, parseKitsReady(MESSAGE).jobs.length);
+  assert.equal(parseKitsReady(['📝 Applications ready', ...rest].join('\n')).what, 'kit');
+});
+
 test('a kits message becomes its subtitle and one job per title + company', () => {
   const kits = parseKitsReady(MESSAGE);
   assert.equal(kits.subtitle, '3 drafted for your top matches · nothing sent');

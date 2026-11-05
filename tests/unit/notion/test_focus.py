@@ -83,10 +83,10 @@ class FocusTests(unittest.TestCase):
         reply = result['items'][0]
         self.assertEqual((reply['link'], reply['done']), ('https://mail.google.com/mail/u/0/#all/gm1', True))
         self.assertIn('yesterday', reply['detail'])
-        self.assertIn('1 kit ready (Grafana Labs…)', result['items'][2]['detail'])
+        self.assertIn('Your best: Grafana Labs.', result['items'][2]['detail'])
         self.assertNotIn('Zephyr AI', [c for _, c in kinds])  # answered: a Replied event came after
         self.assertEqual(result['summary'], 'Reply to recruiters first, then prepare for your interview.')
-        self.assertEqual(result['items'][2]['meta'], ['Your application is prepared automatically when you apply', '0 of 30 today'])
+        self.assertEqual(result['items'][2]['meta'], ['Your best: Grafana Labs', '0 of 30 today'])
 
     def test_a_recruiter_pitch_links_to_its_email_and_shows_the_facts(self):
         lead = row('a', '', 'Senior DevOps Engineer', stage='Recruiter lead', applied=None, Via='AG Talent',
@@ -107,19 +107,11 @@ class FocusTests(unittest.TestCase):
         self.assertEqual([i['kind'] for i in focus.build(rows, events, now=NOW)['items']][:2], ['offer', 'book'])
         self.assertEqual({i['place'] for i in focus.build(rows, events, now=NOW)['items'][:2]}, {'up_next'}, 'they cannot wait')
 
-    def test_your_focus_names_kits_to_review_only_when_a_kit_is_ready(self):
-        # #3227 / #3202: the Focus page told a new person to "review ready applications" with Prepared 0
-        none = focus.build([row('a', 'A', 'x', stage='Found')], [], target=3, now=NOW)
-        self.assertEqual(focus.summary([i for i in none['items'] if i['kind'] == 'apply']), 'Prepare kits from your best matches.')
-        self.assertEqual(none['summary'], 'Prepare kits from your best matches.')   # the page's own sentence (the old one read "Review ready applications.")
-        ready = focus.build([row('a', 'A', 'x', stage='Kit ready')], [], target=3, now=NOW)
-        self.assertEqual(focus.summary([i for i in ready['items'] if i['kind'] == 'apply']), 'Review ready applications.')
-
     def test_the_daily_target_counts_todays_applications(self):
         rows = [row('a', 'A', 'x', applied='2026-09-28'), row('b', 'B', 'y', applied='2026-09-20'), row('c', 'C', 'z', applied='2026-09-20')]
         events = [event('b', 'Applied', '2026-09-28T09:00:00+02:00')]
         result = focus.build(rows, events, target=3, now=NOW)
-        self.assertEqual({k: v for k, v in result['today'].items() if k != 'history'}, {'applied': 2, 'target': 3, 'kits_ready': 0})
+        self.assertEqual({k: v for k, v in result['today'].items() if k != 'history'}, {'applied': 2, 'target': 3})
         apply = next(i for i in result['items'] if i['kind'] == 'apply')
         self.assertEqual(apply['title'], 'Apply to 1 more job today')
         self.assertFalse(any(i['kind'] == 'apply' for i in focus.build(rows, events, target=2, now=NOW)['items']))
@@ -208,13 +200,14 @@ class FocusTests(unittest.TestCase):
         self.assertEqual(result['steps'][1]['urls'], ['https://x.test/e'])
 
     def test_reminder_only_when_worth_it(self):
-        calm = {'today': {'applied': 30, 'target': 30, 'kits_ready': 0}, 'items': []}
+        calm = {'today': {'applied': 30, 'target': 30}, 'items': []}
         self.assertEqual(focus.reminder(calm, now=NOW), '')
-        busy = {'today': {'applied': 4, 'target': 30, 'kits_ready': 6},
+        busy = {'today': {'applied': 4, 'target': 30},
                 'items': [{'kind': 'reply', 'company': 'Duvo.ai', 'priority': 1}]}
         text = focus.reminder(busy, now=NOW)
         self.assertIn('1 person waits for your answer: Duvo.ai', text)
-        self.assertIn('4/30 applications today; 6 kits ready', text)
+        self.assertIn('4/30 applications today', text)
+        self.assertNotIn('kit', text.lower())
 
 
 if __name__ == '__main__':

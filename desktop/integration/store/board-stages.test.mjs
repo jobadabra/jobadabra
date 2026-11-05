@@ -42,7 +42,7 @@ const columnOfUrl = async url => boardColumns((await pipeline.jobs(storage, 200)
 
 test('the board shows the store\'s applications in their stage columns', async () => {
   const columns = boardColumns((await pipeline.jobs(storage, 200)).jobs || []);
-  assert.equal(columns.length, 15);
+  assert.equal(columns.length, 14);
   assert.equal(columns[0].stage, 'Recruiter lead');
   assert.equal(columns.at(-1).stage, 'Dismissed');
   assert.equal(await columnOfUrl(BOARD.applied), 'Applied', 'the applied job is not in the Applied column');

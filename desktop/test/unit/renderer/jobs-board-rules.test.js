@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {boardColumns, columnOf, dropFor, fresh, inView, OUTCOME_STAGES, STAGES, takesDrop, stageLabel, VIEWS} from '../../../renderer/jobs-board-rules.js';
+import {boardColumns, columnOf, dropFor, fresh, inView, nextStepOf, OUTCOME_STAGES, STAGES, takesDrop, stageLabel, viewOf, VIEWS} from '../../../renderer/jobs-board-rules.js';
 
 const schema = JSON.parse(fs.readFileSync(new URL('../../../../config/notion_schema.json', import.meta.url), 'utf8'));
 // The Applications database: the one whose Stage select has the most options (Application Events has a Kind, not a Stage).
@@ -12,18 +12,34 @@ const stageOptions = findStage(schema.databases).sort((a, b) => b.length - a.len
 const NOW = Date.parse('2026-10-09T12:00:00Z');
 const job = (stage, extra = {}) => ({url: `https://x.test/${stage}`, title: stage, stage, ...extra});
 
-test('the board has a column for every Applications stage in the schema, and nothing else', () => {
+test('the board has a column for every Applications stage in the schema but the internal Kit ready, and nothing else', () => {
   assert.ok(stageOptions?.length, 'Stage options read from config/notion_schema.json');
-  assert.deepEqual([...STAGES].sort(), [...stageOptions].sort());
+  assert.deepEqual([...STAGES].sort(), stageOptions.filter(stage => stage !== 'Kit ready').sort());
+});
+
+test('a stored Kit ready job is Saved on every screen: its column, its label, its view, and no column or view of its own', () => {
+  const prepared = job('Kit ready');
+  assert.equal(columnOf(prepared), 'Saved');
+  assert.equal(stageLabel('Kit ready'), 'Saved');
+  assert.ok(inView(prepared, 'saved', NOW));
+  assert.equal(viewOf('kit-ready'), null);
+  assert.ok(!VIEWS.some(view => /ready to apply/i.test(view.label)));
+  const columns = boardColumns([prepared, job('Saved')]);
+  assert.ok(!columns.some(column => column.stage === 'Kit ready'));
+  assert.equal(columns.find(column => column.stage === 'Saved').jobs.length, 2);
+  assert.deepEqual(dropFor(prepared, 'Saved'), {none: true}, 'dropped on the column it is already in: nothing to ask');
+  assert.deepEqual(dropFor(prepared, 'Applied'), {call: 'setStatus', arg: 'applied'});
+  assert.equal(nextStepOf({next_step: '📝 Kit ready: review it, then Apply'}), '', 'the stored step is data, never a sentence');
+  assert.equal(nextStepOf({next_step: 'Reply to the recruiter'}), 'Reply to the recruiter');
 });
 
 test('the 10 saved views of the Applications database, each a Stage set as in Notion, and the app\'s own Ready to submit (filled on the server, pages/jobs-ready.js)', () => {
-  assert.deepEqual(VIEWS.map(view => view.label), ['All applications', 'Active', 'Applying', 'Ready to apply', 'Ready to submit', 'Saved', 'Closed', 'Dismissed', 'All', 'Rejected', 'This week']);
+  assert.deepEqual(VIEWS.map(view => view.label), ['All applications', 'Active', 'Applying', 'Ready to submit', 'Saved', 'Closed', 'Dismissed', 'All', 'Rejected', 'This week']);
   const of = id => STAGES.filter(stage => inView(job(stage), id, NOW));
   assert.deepEqual(of('active'), ['Applied', 'Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer']);
   assert.deepEqual(of('all-applications'), ['Applying', 'Applied', 'Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer', 'Rejected', 'No response', 'Withdrawn']);
   assert.deepEqual(of('rejected'), ['Rejected', 'No response', 'Withdrawn']);
-  for (const [id, stage] of [['applying', 'Applying'], ['kit-ready', 'Kit ready'], ['saved', 'Saved'], ['closed', 'Closed'], ['dismissed', 'Dismissed']]) assert.deepEqual(of(id), [stage], id);
+  for (const [id, stage] of [['applying', 'Applying'], ['saved', 'Saved'], ['closed', 'Closed'], ['dismissed', 'Dismissed']]) assert.deepEqual(of(id), [stage], id);
   assert.deepEqual(of('all'), STAGES, 'All = every Applications row');
   assert.equal(inView({url: 'u', stage: ''}, 'all', NOW), false, 'a job match without a row is in no view');
 });
@@ -36,7 +52,7 @@ test('every stage has a chip that narrows to it, and a chip of one stage is name
   const narrowing = VIEWS.filter(view => stagesOf(view).length < STAGES.length);   // "All" narrows nothing
   for (const stage of STAGES) assert.ok(narrowing.some(view => stagesOf(view).includes(stage)) || ELSEWHERE[stage], `${stage}: no chip lists it`);
   const single = VIEWS.filter(view => stagesOf(view).length === 1);
-  assert.ok(single.length >= 5, 'positive control: the one-stage chips were found');
+  assert.ok(single.length >= 4, 'positive control: the one-stage chips were found');
   for (const view of single) assert.equal(view.label, stageLabel(stagesOf(view)[0]), view.id);
 });
 
@@ -60,7 +76,7 @@ test('a drop asks the app, never writes a stage itself: setStatus for Saved/Appl
   assert.deepEqual(dropFor(job('Saved'), 'Applied'), {call: 'setStatus', arg: 'applied'});
   assert.deepEqual(dropFor(applied, 'Dismissed'), {call: 'setStatus', arg: 'dismissed'});
   for (const stage of OUTCOME_STAGES) assert.deepEqual(dropFor(applied, stage), {call: 'setStage', arg: stage}, stage);
-  for (const stage of ['Kit ready', 'Applying', 'Closed', 'Recruiter lead']) {
+  for (const stage of ['Applying', 'Closed', 'Recruiter lead']) {
     assert.match(dropFor(applied, stage).refused, /set by Jobadabra/, stage);
     assert.equal(takesDrop(stage), false, stage);
   }

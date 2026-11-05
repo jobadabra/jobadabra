@@ -15,7 +15,7 @@ export const TEXT = {
   familyHint: {claude: 'Your Claude plan or API key', openai: 'Your ChatGPT plan or API key'},   // the company's logo on each card (owner, 16 Oct 2026)
   ownAccount: 'Or use your own account',
   ownQuality: 'Better letters and interview prep; uses your own subscription or key.',   // quality, never a number (owner, 16 Oct 2026)
-  subtitle: 'Where Jobadabra\'s AI tasks run: reading jobs, fit scores, kits, reviews.',
+  subtitle: 'Where Jobadabra\'s AI tasks run: reading jobs, fit scores, applications, reviews.',
   settingsSubtitle: 'Choose where AI tasks run.',  // Settings → Connections: the two cards under it say the rest
   details: 'Installation details',                 // the Claude Code path, folded under its status line
   api: {title: 'API key', text: 'Pay as you go with your own key. You control the cost.',

@@ -17,7 +17,7 @@ export async function removeSession(item) {
     const result = await window.pilot.sessionFinish(item.id);
     if (result?.cancelled) return;
     if (!result?.ok) { toastMessage('Not removed', result?.error || `${storeName()} could not be updated. Try again.`, sessionPlace(item), 'bad'); return; }
-    jobsChanged(sessionJob(item), result.submitted ? {stage: 'Applied', status: 'applied'} : {stage: 'Kit ready'});
+    jobsChanged(sessionJob(item), result.submitted ? {stage: 'Applied', status: 'applied'} : {stage: 'Kit ready', status: 'saved'});
   } else await window.pilot.sessionRemove(item.id);
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();
@@ -34,7 +34,7 @@ export async function cancelSession(item) {
   if (result?.cancelled) return;
   if (!result?.ok) { toastMessage('Not cancelled', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
-  jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready'} : {});
+  jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready', status: 'saved'} : {});
   // Why (2026-11-05, owner): cancellation confirms only the result, without internal stages or missing-tab instructions.
   toastMessage('Application cancelled', '', NO_PLACE.done, 'info');
   if (shared.openSessionId === item.id) shared.openSessionId = null;

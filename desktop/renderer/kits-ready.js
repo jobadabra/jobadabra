@@ -1,7 +1,7 @@
 // The "Prepare top matches" message as the card's parts. src/daily.py (--mode kits) writes it as:
 //
-//   📝 Application kits ready
-//   3 drafted for your top matches · nothing sent
+//   📝 Applications ready                                      <- "Application kits ready" before 5 Nov 2026: old stored messages still parse
+//   3 prepared for your top matches · nothing sent
 //
 //   Site Reliability Engineer (https://jobs.example.com/1)     <- the job's title, its link in brackets (Notion flattens <a>)
 //   DeepJudge AG                                               <- its company
@@ -9,7 +9,7 @@
 //
 // Drawn on the insight card's shape like every other task's result, not as the Telegram text it was written as (5 Oct 2026).
 // Nothing is re-worded; a message that is not a kits list returns null, so its plain text still shows.
-const HEAD = /^\p{Extended_Pictographic}?️?\s*(Application kits|Tailored CVs(?: \+ cover letters)?) ready\s*$/u;   // a Prepare run's kits, or a Tailor CVs run's CVs: one card shape
+const HEAD = /^\p{Extended_Pictographic}?️?\s*(Applications|Application kits|Tailored CVs(?: \+ cover letters)?) ready\s*$/u;   // a Prepare run's kits, or a Tailor CVs run's CVs: one card shape
 const TITLE = /^(.*?)\s*\((https?:\/\/[^)\s]+)\)\s*$/;
 
 export function parseKitsReady(message) {

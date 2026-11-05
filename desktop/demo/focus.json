@@ -169,11 +169,11 @@
       "tone": "info",
       "headline": "Apply to your next role",
       "meta": [
-        "27 application kits ready to review",
+        "Your best: Lakeside Payments, Glacier Labs",
         "11 of 30 today"
       ],
       "title": "Apply to 19 more jobs today",
-      "detail": "11 of 30 today. 27 kits ready.",
+      "detail": "11 of 30 today. Your best: Lakeside Payments, Glacier Labs.",
       "link": "",
       "done": false,
       "page_id": "",
@@ -241,7 +241,6 @@
   "today": {
     "applied": 11,
     "target": 30,
-    "kits_ready": 27,
     "history": [
       {
         "day": "2026-09-15",

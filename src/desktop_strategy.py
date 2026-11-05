@@ -265,7 +265,7 @@ def strategy(db, tracker=None, stores=None):
                  + [f'Title: {word}' for word in unique(search.get('title_exclude_keywords'))[:6]]
                  + [f'Remote only from {region}' for region in unique(search.get('remote_excluded_regions'))[:3]],
         'components': components, 'scored': len(scored), 'previous': len(score.previous_method(db)), 'previous_locations': _previous_locations(db, stage_map), 'outdated': outdated(db, stage_map, scoring_text), 'profile_empty': profile_empty,
-        'counts': {'matches': len(scored), 'kits': stages.get('Kit ready', 0), 'sent': sent},
+        'counts': {'matches': len(scored), 'kits': stages.get('Kit ready', 0), 'saved': stages.get('Saved', 0) + stages.get('Kit ready', 0), 'sent': sent},
         'insight': insight,
     }
 

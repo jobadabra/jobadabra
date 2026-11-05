@@ -8,6 +8,7 @@ import {icon} from '../icons.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {openView} from './nav.js';
+import {setFilters} from './jobs-filter-menu.js';
 import {searchLevel} from '../goal-kinds.js';
 import {toastMessage} from './startup.js';
 import {offered, shownLists} from '../key-sources.js';
@@ -323,7 +324,7 @@ export function renderStrategy(data) {
   };
   const jobsBy = kind => () => { openView('jobs'); if (kind) document.querySelector(`[data-stat="${kind}"]`)?.click(); };
   $('strategy-glance').replaceChildren(glance('file', data.counts.matches, 'scored matches', jobsBy('total'), 'info'),
-    glance('layers', data.counts.kits, 'jobs ready to apply', jobsBy(''), 'violet'), glance('send', data.counts.sent, 'applications sent', jobsBy('applied'), 'signal'));
+    glance('layers', data.counts.saved, 'saved jobs', () => { openView('jobs'); setFilters(['saved']); }, 'violet'), glance('send', data.counts.sent, 'applications sent', jobsBy('applied'), 'signal'));
   show($('strategy-insight'), !!data.insight);
   if (data.insight) {
     $('strategy-insight-text').textContent = data.insight.action || data.insight.headline;
