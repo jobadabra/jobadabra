@@ -91,3 +91,12 @@ test('the digest cadence (daily or weekly) goes to the site with the address; an
   assert.equal((await state(s, site([{ok: true, email: 'a@b.co', cadence: 'weekly'}], []))).cadence, 'weekly');
   assert.equal((await state(storage({settings: {}}), site([{ok: false}], []))).cadence, 'daily');
 });
+
+test('waiting email forwards the frame button and leaves its heading to the frame', async () => {
+  const s = storage({settings: {notifyEmail: 'a@b.co'}, secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}}), asked = [];
+  const buttons = [{text: 'Open in Jobadabra', url: 'https://www.jobadabra.top/open?view=sessions'}];
+  assert.equal(await sendEmail(s, {subject: '1 application is waiting for you', text: 'Review <your form>.', urgent: true, buttons}, site([{ok: true}], asked)), true);
+  assert.deepEqual(asked[0].body.buttons, buttons);
+  assert.equal(asked[0].body.html, 'Review &lt;your form&gt;.');
+  assert.equal(asked[0].body.kind, 'urgent');
+});

@@ -36,7 +36,8 @@ test('one waiting application: after the short window one message goes to every 
   assert.equal(sent.telegram.length, 1);
   assert.equal(sent.email[0].subject, '1 application is waiting for you');
   assert.match(sent.email[0].text, /Role a at Acme a: Solve the check and press Submit yourself\./);
-  assert.match(sent.email[0].text, /Open Jobadabra to finish it\./);
+  assert.equal(sent.email[0].buttons[0].text, 'Open in Jobadabra');
+  assert.match(sent.telegram[0], /Open Jobadabra to finish it\./);
   assert.match(sent.telegram[0], /1 application is waiting for you/);
 });
 
@@ -175,4 +176,12 @@ test('waitedFor: under an hour, a handled application, and one with no way to as
   assert.equal(message.waitedFor().count, 1, 'job 2 has no open(): not counted');
   handled = true;
   assert.equal(message.waitedFor(), null, 'handled meanwhile');
+});
+
+test('waiting email replaces the closing instruction with the shared app button', async () => {
+  const {message, advance, sent} = world();
+  message.add(job('a'));
+  await advance(WINDOW_MS + 1);
+  assert.deepEqual(sent.email[0].buttons, [{text: 'Open in Jobadabra', url: 'https://www.jobadabra.top/open?view=sessions'}]);
+  assert.doesNotMatch(sent.email[0].text, /Open Jobadabra to finish/);
 });

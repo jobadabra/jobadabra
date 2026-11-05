@@ -1,5 +1,7 @@
 // Offline app journeys through the real preload, checked handlers, terminal persistence, launcher and renderer state.
 import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {installAppLinks} from '../../../lib/app-links.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -301,4 +303,23 @@ test('journey: a launch that failed does not block the next press', async () => 
   const press = launchOnce(async () => { launches++; return false; }, () => 0, () => 5000);
   await press(); await press();
   assert.equal(launches, 2);
+});
+
+test('an email received before startup reaches Jobs through the real preload once the window is ready', async () => {
+  const app = new EventEmitter(), ipcMain = new EventEmitter(), received = [], listeners = new Map();
+  const webContents = {}, window = {webContents, isDestroyed: () => false, isMinimized: () => false, show() {}, focus() {}};
+  app.whenReady = () => Promise.resolve();
+  let current = null, pilot;
+  installAppLinks({app, ipcMain, argv: [], getWindow: () => current,
+    createWindow: () => { throw new Error('must wait for normal startup before creating a window'); },
+    toWindow: (channel, target) => listeners.get(channel)({}, target)});
+  app.emit('open-url', {preventDefault() {}}, 'jobadabra://jobs');
+  await Promise.resolve();
+  current = window;
+  vm.runInNewContext(fs.readFileSync(path.join(here, 'preload.cjs'), 'utf8'), {
+    process: {platform: 'darwin'}, require: () => ({contextBridge: {exposeInMainWorld: (_name, api) => { pilot = api; }},
+      ipcRenderer: {on: (name, fn) => listeners.set(name, fn), send: name => ipcMain.emit(name, {sender: webContents})}}),
+  });
+  pilot.onOpenTarget(target => received.push(target));
+  assert.deepEqual(received, [{view: 'jobs'}]);
 });

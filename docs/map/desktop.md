@@ -1,7 +1,7 @@
 ---
 area: desktop
 paths: [desktop/renderer, desktop/main.js, desktop/lib, tools/design-system, docs/rules/desktop-ui.md, .claude/skills/ui-look-and-feel, .claude/skills/desktop-change]
-updated: 2026-11-03
+updated: 2026-11-05
 ---
 # Desktop app UI
 > The Electron app is one window with one module per page, built on a single design system: tokens, shared components and a rule for which control a value gets. A new screen looks like the old ones.
@@ -19,6 +19,7 @@ updated: 2026-11-03
 - Say "your store" (this Mac or Notion), never "Notion" as the one database. Settings paths written in text ("Settings → Connections → AI") are checked by a test.
 
 ## Key files
+- `desktop/lib/app-links.js`: email desktop links (`jobadabra://jobs`, `jobadabra://sessions`); queued until the preload registers its target listener.
 - `desktop/renderer/pages/`: one module per page; `app.js` runs each page's `init()`; `pages/core.js` and `shared.js` hold the helpers and shared state.
 - `desktop/renderer/components.js`, `components.css`, `tokens.css`, `gallery.js`: the building blocks and their gallery (`npm run gallery`, `npm run design-system`).
 - `desktop/lib/`: the main-process side (IPC handlers, pipeline, stores access); `desktop/main.js`, `preload.cjs`.

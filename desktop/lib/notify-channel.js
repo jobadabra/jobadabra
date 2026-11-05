@@ -72,10 +72,10 @@ export async function save(storage, {by, email, marketing, cadence}, fetcher = g
 
 // One message the app itself sends (not an engine run): by the chosen channels' e-mail form. Plain text in, never throws. It joins the digest (kind 'activity'), never a mail of its own,
 // unless `urgent` (an application waits for the person: lib/waiting-message.js): then it goes at once. -> true when the site took it.
-export async function sendEmail(storage, {subject, text, urgent = false}, fetcher = globalThis.fetch) {
+export async function sendEmail(storage, {subject, text, urgent = false, buttons}, fetcher = globalThis.fetch) {
   if (!channelsOf(storage).includes('email')) return false;
   const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return (await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${escape(subject)}</b>\n${escape(text)}`, kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
+  return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
 }
 
 // What the site says when it will not send the confirm mail again (jobadabra-web POST /api/account/email/resend, #333), in the person's words.

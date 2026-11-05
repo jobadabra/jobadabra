@@ -61,6 +61,7 @@
   "author": "Jobadabra",
   "build": {
     "appId": "app.jobpilotto.desktop",
+    "protocols": [{"name": "Jobadabra", "schemes": ["jobadabra"]}],
     "productName": "Job Pilotto",
     "directories": {
       "output": "dist"
