@@ -13,7 +13,10 @@ import {STOPS} from './driver.mjs';
 import {leaks} from './leaks.mjs';
 
 /** Why a run did not end in a fix, as ONE fixed word (the admin's "why it did not succeed"); `none` = it did (or it is READY). */
-export const BLOCKED = ['none', 'walls', 'tests-failed', 'no-repro', 'false-positive', 'fixed-already', 'needs-human', 'steps', 'time', 'rounds', 'broker', 'conflict', 'same-failure', 'round-failed', 'run-failed', 'publish-failed'];
+// Why (5 Nov 2026, Gitar on #3197): ONE owner for the words of blockedBy: the tables below, the words that come from a failed job or the loop, and nothing else; BLOCKED is built from them.
+const STOP_WORDS = {time: 'time', rounds: 'rounds', 'same-failure': 'same-failure', conflict: 'conflict', refused: 'broker', 'round-failed': 'round-failed'};
+const VERDICT_WORDS = {'needs-human': 'needs-human', 'not-reproducible': 'no-repro', 'false-positive': 'false-positive', 'fixed-already': 'fixed-already'};
+export const BLOCKED = [...new Set(['none', 'walls', 'run-failed', 'tests-failed', 'publish-failed', 'steps', 'time', 'broker', ...Object.values(STOP_WORDS), ...Object.values(VERDICT_WORDS)])];
 export const VERDICTS = ['fix', 'fixed-already', 'not-reproducible', 'needs-human', 'false-positive', 'answer'];
 // Why (5 Nov 2026, Gitar on #3194): the engine rule (engine.mjs SONNET_ENGINES) lets two engines answer, so the model is named from the engine that did; an unknown engine names none.
 export const MODELS = {claude: 'claude-sonnet-5-5', codex: 'gpt-6.1-sol'};
@@ -48,15 +51,14 @@ export function partOf({loop, brief, title = '', files = [], exists = inBase}) {
  * Pure and fixed: nothing here reads text.
  */
 export function blockedBy(part, facts) {
-  const {fix, prove, publish} = facts.results || {}, STOP_WORDS = {time: 'time', rounds: 'rounds', 'same-failure': 'same-failure', conflict: 'conflict', refused: 'broker', 'round-failed': 'round-failed'};
-  const stop = Object.hasOwn(STOP_WORDS, facts.stop) ? STOP_WORDS[facts.stop] : '';
+  const {fix, prove, publish} = facts.results || {}, stop = Object.hasOwn(STOP_WORDS, facts.stop) ? STOP_WORDS[facts.stop] : '';
   if (fix === 'failure') return 'run-failed';
   if (prove === 'failure') return 'tests-failed';
   if (publish === 'failure') return 'publish-failed';
   if (stop) return stop;
   if (part?.stopped) return part.stopped === 'api' ? 'broker' : part.stopped;
-  if (part?.verdict === 'needs-human') return part.walls ? 'walls' : 'needs-human';
-  return {'not-reproducible': 'no-repro', 'false-positive': 'false-positive', 'fixed-already': 'fixed-already'}[part?.verdict] || 'none';
+  if (part?.verdict === 'needs-human' && part.walls) return 'walls';
+  return Object.hasOwn(VERDICT_WORDS, part?.verdict) ? VERDICT_WORDS[part.verdict] : 'none';
 }
 
 /**

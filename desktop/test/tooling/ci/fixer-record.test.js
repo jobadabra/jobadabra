@@ -98,9 +98,10 @@ test('why a run did not succeed is ONE fixed word: a failed job first, then the 
   assert.equal(blockedBy(null, {results: {...ok, fix: 'failure'}}), 'run-failed');
   assert.equal(blockedBy(part({verdict: 'fix'}), {results: ok, stop: 'same-failure'}), 'same-failure');
   assert.equal(blockedBy(null, {results: ok, stop: 'toString'}), 'none', 'an inherited name is no stop word');
-  const words = ['none', 'walls', 'needs-human', 'no-repro', 'steps', 'time', 'rounds', 'broker', 'conflict', 'same-failure', 'round-failed', 'run-failed', 'tests-failed', 'publish-failed'];
-  assert.ok(words.every(word => BLOCKED.includes(word)));
-  assert.ok([blockedBy(part({verdict: 'needs-human', walls: 1}), {results: ok}), blockedBy(null, {results: {...ok, publish: 'failure'}})].every(word => BLOCKED.includes(word)), 'every answer is on the list');
+  // One list: every answer blockedBy can give is on BLOCKED, and every word on BLOCKED can be given (over every verdict, stop word, loop stop, job result and wall count).
+  const given = new Set();
+  for (const verdict of [...VERDICTS, '']) for (const stop of [...Object.keys(STOPS), '']) for (const stopped of ['', 'steps', 'time', 'api: x']) for (const walls of [0, 1]) for (const results of [ok, {...ok, fix: 'failure'}, {...ok, prove: 'failure'}, {...ok, publish: 'failure'}]) given.add(blockedBy(part({verdict, stopped, walls}), {results, stop}));
+  assert.deepEqual([...given].sort(), [...BLOCKED].sort());
   assert.equal(buildRecord(part({verdict: 'needs-human', walls: 2}), FACTS).blocked_by, 'walls');
   assert.equal(recordOf(buildRecord(part({verdict: 'needs-human', walls: 2}), FACTS), RUN).blocked_by, 'walls', 'the admin reader keeps it');
   // The loop counts a refusal by a wall (the action says so), not any refusal.
