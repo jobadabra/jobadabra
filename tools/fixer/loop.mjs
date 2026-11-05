@@ -47,16 +47,17 @@ const windowed = (first, turns) => [{role: 'user', content: first}, ...turns.fla
 /**
  * Runs one item. `ask({system, messages, schema})` -> {text, usage?, engine?} (throws when the broker refuses); `act(action)` -> {text, edited?, passed?} performs read/search/edit/run_tests (it must never throw on a bad input: it answers a refusal as text);
  * `first` is the fenced item (the first user turn). The AI's `finish` is accepted as a fix only after an edit AND a passing run_tests after the last edit.
- * -> {outcome: 'fix' | 'answer' | 'verdict' | 'stopped', title, body, verdict, stopped, steps, spent}; `stopped` is '' | 'steps' | 'time' | 'api: <why>'. Nothing here prints a result (they may quote data): `log` gets action names only.
+ * -> {outcome: 'fix' | 'answer' | 'verdict' | 'stopped', title, body, verdict, stopped, steps, spent, engine, actions}; `stopped` is '' | 'steps' | 'time' | 'api: <why>'. Nothing here prints a result (they may quote data): `log` gets action names only.
  */
 export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.now, log = () => {}, allowAnswer = false}) {
   const started = now(), turns = [], spent = {calls: 0, input: 0, output: 0};
-  let edited = false, dirty = false, final = null, stopped = '';
+  let edited = false, dirty = false, final = null, stopped = '', engine = '';
   for (let step = 1; !final && !stopped; step++) {
     if (step > caps.maxSteps) { stopped = 'steps'; break; }
     if ((now() - started) / 60000 >= caps.maxMinutes) { stopped = 'time'; break; }
     let answer;
     try { answer = await ask({system, messages: windowed(first, turns), schema: actionSchema()}); } catch (error) { stopped = `api: ${error.message}`; break; }
+    engine = answer.engine || engine;
     spent.calls++; spent.input += answer.usage?.input_tokens || 0; spent.output += answer.usage?.output_tokens || 0;
     const action = parseAction(answer.text);
     let result = {text: ''};
@@ -78,5 +79,5 @@ export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.
     log(`step ${step}: ${action.action || 'refused'}${action.error || /^(Refused|Failed)/.test(result.text) ? ' (refused)' : ''}`);
     turns.push({said: answer.text, action: action.action || 'none', result: result.text});
   }
-  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent};
+  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent, engine, actions: turns.map(turn => turn.action)};   // engine and action names feed the run record (5/7)
 }
