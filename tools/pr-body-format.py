@@ -85,7 +85,7 @@ def lay_out(text, repo=''):
         if note:   # the Why/Unblocks/Root cause/Design lines end: one callout each
             out += panels(note) + ['']
             note = []
-        if line.startswith('No screenshots:') or line.startswith('No visual:'):
+        if line.startswith(('No screenshots:', 'No visual:', 'No visible change:')):
             out.append('<sub>📷 ' + line + '</sub>')
             continue
         for start, heading in HEADINGS:
