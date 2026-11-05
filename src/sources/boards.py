@@ -131,14 +131,16 @@ def parse_jobs(source, source_url, label, roles=True):
     result=[]
     # A jobs.ch posting whose address names only the country: its town from the page's own data, as the other two jobs.ch readers do
     # (8 Oct 2026: Manor's Morges and Nyon jobs were saved as "Switzerland" here, held back from scoring, yet counted as new).
-    from .ats import jobsch_towns
-    towns=jobsch_towns(source) if 'jobs.ch' in source_url else {}
+    from .ats import jobsch_towns, posting_places as jobsch_places
+    jobsch='jobs.ch' in source_url
+    towns=jobsch_towns(source) if jobsch else {}
     for j in walk(Page(source).schemas,'JobPosting'):
         if roles and not ROLE.search(j.get('title','')): continue
-        swiss=posting_places(j)
-        if not swiss: continue
         ident=re.search(r'/detail/([0-9a-f-]{36})',str(j.get('url') or ''))
-        if swiss==['Switzerland'] and ident and towns.get(ident.group(1)): swiss=[towns[ident.group(1)]]
+        # Why (5 Nov 2026, #3242, Gitar): a jobs.ch page is read by the one jobs.ch reader the other two use (an address with no town,
+        # no country or none at all keeps the page's town); this file's own copy dropped those shapes.
+        swiss=(jobsch_places(j, towns.get(ident.group(1),'') if ident else '') or ['Switzerland']) if jobsch else posting_places(j)
+        if not swiss: continue
         expiry=j.get('validThrough')
         if expiry and str(expiry)[:10] < datetime.now(timezone.utc).date().isoformat(): continue
         org=j.get('hiringOrganization',{})

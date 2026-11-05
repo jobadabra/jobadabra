@@ -64,11 +64,13 @@ def jobsch_towns(markup):
 
 def posting_places(job, page_town=''):
     """Where a jobs.ch JobPosting is, one entry per address: "Town, Country" (the town without its canton prefix, "ZH Herrliberg"), the bare country for
-    an address abroad with no town, and the page's own town (jobsch_towns) for a Swiss address with none. [] when it names nothing: the caller's own fallback.
+    an address abroad with no town, and the page's own town (jobsch_towns) for a Swiss address with none (a posting with no jobLocation is one). [] when it
+    names nothing: the caller's own fallback.
     Why (5 Nov 2026, tester card f9e48e, #3181): both jobs.ch readers appended ", Switzerland" to every town and fell back to "Switzerland" for an
     address with no town, whatever country the address named, so a job in Germany was listed and scored as Swiss. A missing country is Swiss (the board's)."""
     from .. import country_codes
-    spots = job.get('jobLocation') or []
+    # Why (5 Nov 2026, #3242): a posting with no jobLocation is one Swiss address with no town, so it keeps the page's town (was dropped by #3215).
+    spots = job.get('jobLocation') or [{}]
     found = []
     for spot in spots if isinstance(spots, list) else [spots]:
         address = (spot.get('address') or {}) if isinstance(spot, dict) else {}
