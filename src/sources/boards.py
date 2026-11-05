@@ -17,6 +17,7 @@ import os
 from urllib.request import Request
 
 from ..paths import DATA, REPORTS, keyword_regex, load_search_config
+from . import posting_text
 from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
@@ -53,7 +54,7 @@ def swiss_places(config):
 
 
 def text(s):
-    return re.sub(r'\s+', ' ', unescape(re.sub('<[^>]+>', ' ', s))).strip()
+    return re.sub(r'\s+', ' ', unescape(posting_text.TAG.sub(' ', s))).strip()   # real tags only: "Fluency in <German>" keeps its word (#3182)
 
 
 def city(location):

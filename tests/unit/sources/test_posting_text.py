@@ -58,6 +58,21 @@ class PostingTextTests(unittest.TestCase):
         html_to_text(page)
         self.assertLess(time.monotonic() - began, 2.0)
 
+    def test_a_language_in_angle_brackets_is_not_lost_with_markup(self):
+        """Tester card f9e48e (#3182): "Fluency in <German> and English" was summarised "Fluency in and English"; the job needed German."""
+        from src.ai import page_reader
+        from src.sources import boards
+        said = 'Fluency in <German> and English'
+        for name, read in (('posting_text', html_to_text), ('ats.plain', ats.plain), ('boards.text', boards.text),
+                           ('page_reader', lambda markup: page_reader.text_for(markup, 'https://x.example/'))):
+            with self.subTest(reader=name):
+                self.assertIn(said, read(f'<p>{said}</p>'))
+        self.assertEqual(html_to_text('Fluency in &lt;German&gt; and English'), said)   # sent escaped once: still its words
+
+    def test_comparison_signs_and_unknown_angle_words_stay_but_real_tags_go(self):
+        self.assertEqual(html_to_text('Salary < 100 and > 50; please send <your CV> by mail'), 'Salary < 100 and > 50; please send <your CV> by mail')
+        self.assertEqual(html_to_text('<p>Hi <o:p></o:p><my-widget a="1">there</my-widget><!-- note --><br/>All<img src="x"></p>'), 'Hi there\nAll')
+
 
 if __name__ == '__main__':
     unittest.main()

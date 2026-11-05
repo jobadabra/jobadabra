@@ -12,7 +12,16 @@ _HEADING = re.compile(r'<\s*h[1-6]\b[^>]*>(.*?)<\s*/\s*h[1-6]\s*>', re.S | re.I)
 _BOLD_ONLY = re.compile(r'<\s*(p|div)\b[^>]*>\s*<\s*(strong|b)\b[^>]*>([^<]{1,80})<\s*/\s*\2\s*>\s*:?\s*<\s*/\s*\1\s*>', re.I)
 _ITEM = re.compile(r'<\s*li\b[^>]*>', re.I)
 _BREAK = re.compile(r'<\s*/?\s*(?:p|div|section|article|header|footer|ul|ol|table|tr|br|hr|blockquote)\b[^>]*>', re.I)
-_TAG = re.compile(r'<[^>]+>')
+# Why (5 Nov 2026, tester card f9e48e, #3182): `<[^>]+>` took any angle-bracket text for markup, so "Fluency in <German> and English" read
+# "Fluency in and English" and the posting's summary lost its required language. Only a tag that IS HTML goes: the standard's element names (a
+# fixed list from the spec, not a word list of ours), a namespaced (<o:p>) or custom (<my-tag>) element, a comment, a doctype, a declaration.
+_ELEMENTS = ('a abbr address area article aside audio b base bdi bdo big blockquote body br button canvas caption center cite code col colgroup data '
+             'datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head '
+             'header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav nobr noscript object ol optgroup '
+             'option output p param picture pre progress q rp rt ruby s samp script section select slot small source span strike strong style sub '
+             'summary sup svg table tbody td template textarea tfoot th thead time title tr track tt u ul var video wbr').split()
+TAG = re.compile(r'</?(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<!--.*?-->|<![a-z\[][^<>]*>|<\?[^<>]*>'
+                 % '|'.join(_ELEMENTS), re.I | re.S)
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
 _FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules
 _ESCAPE = re.compile(r'\\+(?=[^\w\s])')   # "\-", "\\&amp;": marks escaped once or twice
@@ -36,7 +45,7 @@ def label(value):
 
 
 def _clean(fragment):
-    return re.sub(r'\s+', ' ', _TAG.sub(' ', fragment)).strip()
+    return re.sub(r'\s+', ' ', TAG.sub(' ', fragment)).strip()
 
 
 def _is_markdown_page(text):
@@ -64,7 +73,7 @@ def html_to_text(markup, limit=LIMIT):
     text = _BOLD_ONLY.sub(lambda found: f'\n\n## {found[3].strip().rstrip(":").strip()}\n', text)
     text = _ITEM.sub('\n- ', text)
     text = _BREAK.sub('\n', text)
-    text = html.unescape(_TAG.sub(' ', text))
+    text = html.unescape(TAG.sub(' ', text))
     lines = [re.sub(r'[ \t\r\f\v ]+', ' ', line).strip() for line in text.split('\n')]
     out = []
     for line in lines:
