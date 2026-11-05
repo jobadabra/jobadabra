@@ -11,7 +11,7 @@ export const BROKER_URL = env => env.AI_BROKER_URL || env.CODEX_BROKER_URL || 'h
 /** A broker refusal's reason as one line: a failed Codex run's JSON event stream ("codex-failed:1 {"type":"thread.started",…} {"type":"error","message":"…"}") becomes its head plus the server's last "message". */
 // Why (5 Nov 2026, run 42040707448): the stream's preamble filled the 160 characters a caller kept, so the cause was cut at "Selec"; the words that say why come last.
 export function reasonOf(why) {
-  const text = String(why), said = [...text.matchAll(/"message":"((?:[^"\\]|\\.)*)"/g)].map(found => found[1]);
+  const text = String(why), said = [...text.matchAll(/"message":"((?:[^"\\]|\\.)*)"/g)].map(found => { try { return JSON.parse(`"${found[1]}"`); } catch { return found[1]; } });   // a cut-off escape keeps the raw text
   return (said.length ? `${text.split(/\s*\{"type"/)[0]} ${said.at(-1)}` : text).replace(/\s+/g, ' ').trim();
 }
 
