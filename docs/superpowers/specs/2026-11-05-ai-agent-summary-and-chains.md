@@ -28,7 +28,7 @@ The answer is validated as today; the first message of a goal is not special any
 
 **What can go wrong and is tested.** The summary must carry what the old history carried: the controls already tried (so it does not repeat them), the notes already made (so it does not file twice), a failed step's reason. Tests play a recorded 12-step goal through both loops and compare what the model is told about each of those three; a missing one fails.
 
-**Measure (in the PR body).** The same plan (`tour`, same seed, app commit, large tier) before and after, one run each: tokens per step (median, p90), steps per run, goals reached, notes made and judged real. The target is steps per run ≥ 12 with notes no fewer than before; if it is not met, the spec says so and A is not merged as a win.
+**Measure (in the PR body).** The same plan before and after, one run each (same seed, app commit and tier). The plan is `tour` (6 goals through Profile, Jobs, Focus, Actions, Strategy, Settings), which exists only on the pushed branch `ag-fill-run`, not in `NAMED_PLANS` of `desktop/e2e/lib/agent-plans.mjs` on main: SC 1/2 adds it there (with its test) before measuring: tokens per step (median, p90), steps per run, goals reached, notes made and judged real. The target is steps per run ≥ 12 with notes no fewer than before; if it is not met, the spec says so and A is not merged as a win.
 
 ## B. Chained runs
 
