@@ -52,6 +52,13 @@ test('the number of links asked is 1 to 4: nothing readable means no chain', () 
   assert.deepEqual(['', 'x', '1', '3', '4', '9', '0'].map(linksAsked), [1, 1, 1, 3, 4, 4, 1]);
 });
 
+test('a link whose only goals ended on done, with goals left, starts the next one without throwing (Gitar, #3254)', () => {
+  const state = linkEnd({prev: start(), session: sessionOf([end(1, 'done', ['Open jobs'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, snapshot: snap});
+  assert.deepEqual(state.done, [1]);
+  assert.deepEqual(state.next, {n: 2, stepsTotal: 0, steps: [], stopped: 'it was not reached'});
+  assert.equal(state.ended, '');
+});
+
 test('a goal that ended on done is finished; the one that ran out is continued next link, with the steps it already did', () => {
   const state = linkEnd({prev: start(), session: sessionOf([end(1, 'done', ['Open jobs']), end(2, 'api: cap', ['Press "Add"', 'Press "Save"'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, snapshot: snap});
   assert.deepEqual(state.done, [1]);

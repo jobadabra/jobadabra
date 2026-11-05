@@ -76,8 +76,9 @@ export function linkEnd({prev, session, runId, snapshot, restored = '', tokens =
   const state = {...prev, link: prev.link + 1, done: [...prev.done], snapshot};
   for (const end of session.ends) if (goalDone(end) && !state.done.includes(end.n)) state.done.push(end.n);
   const left = state.plan.goals.filter(goal => !state.done.includes(goal.n)), stuck = session.ends.find(end => !goalDone(end));
-  const carried = stuck && prev.next?.n === stuck.n ? prev.next.stepsTotal : 0;
-  state.next = left.length ? {n: stuck?.n ?? left[0].n, stepsTotal: carried + (stuck?.steps.length || 0), steps: [...(prev.next?.n === stuck?.n ? prev.next.steps : []), ...(stuck?.steps || [])].slice(-12), stopped: stuck ? (String(stuck.stopped).startsWith('api:') ? String(session.stopped) : stuck.stopped) : 'it was not reached'} : null;
+  const same = Boolean(stuck) && prev.next?.n === stuck.n;   // Why (5 Nov 2026, Gitar on #3254): with no stuck goal and no earlier next, undefined === undefined read prev.next.steps of null and the link threw before it wrote its state
+  const carried = same ? prev.next.stepsTotal : 0;
+  state.next = left.length ? {n: stuck?.n ?? left[0].n, stepsTotal: carried + (stuck?.steps.length || 0), steps: [...(same ? prev.next.steps : []), ...(stuck?.steps || [])].slice(-12), stopped: stuck ? (String(stuck.stopped).startsWith('api:') ? String(session.stopped) : stuck.stopped) : 'it was not reached'} : null;
   const steps = session.ends.reduce((sum, end) => sum + end.steps.length, 0);
   state.links = [...prev.links, {link: state.link, run: String(runId), steps, tokens, view: session.trace.at(-1)?.view || '', saved: snapshot.sha256, restored}];
   state.ended = endReason({state, session, doneAll: !left.length});
