@@ -24,9 +24,9 @@ export async function moveJob(job, stage) {
   if (!result?.ok) { toastMessage('Not moved', result?.error || 'Try again.', jobPlace(job), 'bad'); return; }
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
+  jobsChanged(job, {stage: landed});
   if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${stageLabel(before)}: ${stageLabel(stage)} never replaces an application stage.`, jobPlace(job), 'info');
   else toastMessage('Moved', `${job.title || 'This job'}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
-  jobsChanged(job, {stage: landed});
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 

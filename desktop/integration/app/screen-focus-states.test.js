@@ -62,7 +62,7 @@ test('a fresh account gets a helpful Focus: nothing urgent, one suggested next s
   assert.equal(result.suggested.length, 1, `exactly one suggested next step, it sees: ${result.suggested.map(item => item.headline).join(' | ') || 'nothing'}`);
   const [step] = result.suggested;
   assert.ok(step.headline.startsWith('Apply to your next role'), step.headline);
-  assert.match(step.meta, /Prepare kits from your best matches/);
+  assert.match(step.meta, /Your application is prepared automatically when you apply/);
   assert.ok(step.buttons.includes('Browse jobs'));
   assert.equal(result.page.skeleton, false, 'a skeleton is still showing');
   assert.equal(result.page.inbound, false, 'an Inbound funnel is drawn although nothing found this account');

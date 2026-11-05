@@ -14,7 +14,7 @@ test('Jobs uses each background state, opens the existing session, and labels it
     const states = ['queued', 'filling', 'ready_for_review'];
     window.__jp.sessions.splice(0, window.__jp.sessions.length, ...jobs.map((job, i) => ({
       id: 'ui-test-' + i, url: job.url, title: job.title, company: job.company,
-      status: 'done', startedAt: new Date().toISOString(),
+      status: 'done', startedAt: '2026-11-05T10:00:00.000Z',
       background: {mode: i === 2 ? 'auto' : 'fill', state: states[i]}
     })));
     for (const job of jobs) { job.kit = true; job.status = 'unreviewed'; }
