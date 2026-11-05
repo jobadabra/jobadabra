@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {BEFORE_SYSTEM, knowledgeOf, loadSet, scoreRows, tableMarkdown} from '../../lib/agent-judge-set.mjs';
+import {askSet, BEFORE_SYSTEM, knowledgeOf, loadSet, scoreRows, tableMarkdown} from '../../lib/agent-judge-set.mjs';
 import {judgePrompt, SYSTEM} from '../../lib/agent-judge.mjs';
 import {readExpectations} from '../../lib/agent-memory.mjs';
 
@@ -33,4 +33,11 @@ test('the judge prompt carries the area rules and tells the judge a missing quot
   assert.match(judgePrompt(note, knowledge), /What is known about the app:[\s\S]*jobs-3[\s\S]*Report: x/);
   assert.match(SYSTEM, /missing from the picture are NOT proof/);
   assert.doesNotMatch(BEFORE_SYSTEM, /missing from the picture|rules/);
+});
+
+// Guard: a refused broker is not a score. The judge answers "unavailable" when its call throws; the exam stops there with the reason instead of scoring it as a verdict.
+test('the exam stops on the first unavailable answer and scores nothing', async () => {
+  const notes = [{n: 1, view: 'jobs', label: 'real', title: 't', type: 'data', severity: 'low', expected: 'e', observed: 'o', why: 'w', image: 'AAAA'}];
+  const refused = async () => { throw new Error('429 broker: budget'); };
+  for (const variant of ['before', 'after']) await assert.rejects(askSet({ask: refused, notes, expectations: {}, variant, runs: 3}), /judge exam stopped at note 1 \(\w+, run 1\): the second opinion could not answer: 429 broker: budget/);
 });

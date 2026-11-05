@@ -6,9 +6,6 @@ run-name: AI judge exam · by hand
 
 on:
   workflow_dispatch:
-  push:   # TEMPORARY (5 Nov 2026): a new workflow cannot be dispatched before it is on main; this push on the PR branch runs it once, and the next commit removes this trigger
-    branches: [ag-judge-set]
-    paths: ['.github/workflows/ai-judge-set.yml']
 
 permissions:
   contents: read

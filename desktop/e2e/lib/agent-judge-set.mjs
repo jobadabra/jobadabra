@@ -35,6 +35,8 @@ export async function askSet({ask, notes, expectations, variant, runs = RUNS}) {
       const opinion = variant === 'before'
         ? await judgeNote({ask: args => ask({...args, system: BEFORE_SYSTEM, messages: [{...args.messages[0], content: args.messages[0].content.map(part => part.type === 'text' ? {...part, text: beforePrompt(note)} : part)}], schema: judgeSchema()}), note, image: note.image})
         : await judgeNote({ask, note, image: note.image, knowledge: knowledgeOf(note, expectations)});
+      // Why (5 Nov 2026, Gitar on #3240): a refused or capped broker makes the judge answer 'unavailable', and scoring that as a verdict would print a bad score that is only a refusal; the exam stops there and writes no table.
+      if (opinion.verdict === 'unavailable') throw new Error(`judge exam stopped at note ${note.n} (${variant}, run ${i + 1}): ${opinion.reason}`);
       row.verdicts.push(opinion.verdict); row.reasons.push(opinion.reason);
     }
     rows.push(row);
