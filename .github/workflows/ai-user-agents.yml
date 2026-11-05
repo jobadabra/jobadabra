@@ -33,6 +33,9 @@ on:
       tier:
         description: 'The model tier that acts: small (default), mid or large (the Opus map); another word fails the run'
         required: false
+      screen:
+        description: 'off = no screen reader after each goal (empty = on)'
+        required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
         type: boolean
@@ -46,7 +49,7 @@ permissions:
 
 # Why (3 Nov 2026, code review on 8/12): a group keeps one running and one pending run and cancels an older pending one, so replays dispatched one after another would cancel each other and a replay could cancel the pending nightly (the watchdog would then report a missing start); a replay has its own group per run.
 concurrency:
-  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '') && format('-replay-{0}', github.run_id) || '' }}
+  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '') && format('-replay-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -56,7 +59,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape or a tier measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
+      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier or the screen reader switch measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
@@ -149,6 +152,7 @@ jobs:
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_SHAPE: ${{ inputs.shape }}
           AGENT_TIER: ${{ inputs.tier }}
+          AGENT_SCREEN: ${{ inputs.screen }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
           AGENT_KIND: ${{ env.IS_REPLAY && 'replay' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input)
           AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
