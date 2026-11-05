@@ -24,6 +24,10 @@ export const knownOutdated = () => outdated;
 /** The re-score running now -> {count}, or null when none runs (the one state; <body data-rescoring> mirrors it). */
 export const rescoring = () => running;
 
+/** Whether a Find jobs search runs now (the one <body data-find-card> state, pages/jobs-find.js searchingNow, read here so this module stays light). */
+const searching = () => document.body.dataset.findCard === 'searching';
+const WAIT = ['Re-score waits', 'Jobs are being found right now: one run at a time. Press Re-score again when it ends.', {view: 'jobs'}, 'warn'];
+
 /**
  * Re-score every outdated job once: queue them (engine), then a re-score run (engine mode rescore, never a Find jobs search) scores up to 60 now; the rest stay marked Old score for the next press (its row says "Re-scoring N older scores").
  * @param {number} count how many the person saw
@@ -31,6 +35,9 @@ export const rescoring = () => running;
  */
 export async function runRescore(count, {search: startSearch, reload, toast}) {
   if (running) return;
+  // Why (5 Nov 2026, code review): the yellow bar's Re-score was greyed while a plain search ran; the Jobs row, ⌘K and Strategy have no such state, and a press queued the jobs
+  // (rescoreOutdated) before the search refused to start. One check here covers every surface that starts a re-score.
+  if (searching()) { toast(...WAIT); return; }
   running = {count};
   document.body.dataset.rescoring = '1';
   changed();
@@ -54,6 +61,7 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
 /** The Re-score dialog ("Re-score N jobs?", its cost line): the start only ever comes from its own button (or the Score-first dialog's), never from a save or a plain press. */
 export function confirmRescore(count, how) {
   if (running) return;
+  if (searching()) { how.toast(...WAIT); return; }   // asked before the dialog: nobody confirms a start that would be refused
   const dialog = $('rescore-dialog');
   $('rescore-title').textContent = `Re-score ${jobs(count)}?`;
   $('rescore-lead').textContent = dialogLead(count);

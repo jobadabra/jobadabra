@@ -1203,7 +1203,7 @@ main { min-width: 0; }
 .jobs-fold > summary::-webkit-details-marker { display: none; }
 .jobs-fold > summary::before { content: '▸'; color: var(--muted); font-size: var(--fs-xs); transition: transform .15s; }
 .jobs-fold[open] > summary::before { transform: rotate(90deg); }
-.jobs-fold > summary h2 { font-size: var(--fs-lg); margin: 0; }
+.jobs-fold > summary h2 { font-size: var(--fs-lg); margin: 0; flex: 1 1 0; min-width: 0; }   /* a long line wraps in its own column; the bullets and Show keep theirs */
 .jobs-fold > summary .muted { margin-left: auto; }
 /* Show / Hide (owner, 5 Nov 2026): the app's small secondary button (button.secondary + .small-button), drawn on a span because the summary itself is the control; hover and keyboard focus show on it. */
 .fold-toggle { font: 600 var(--fs-sm) var(--font-sans); border-radius: var(--r-md); padding: 5px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; flex: none; margin-left: var(--sp-3); }
@@ -1215,7 +1215,6 @@ main { min-width: 0; }
 .jobs-fold > summary .severity-bullets + .fold-toggle { margin-left: var(--sp-3); }
 .severity-bullets:empty { display: none; }
 .severity-bullet { margin-left: 0; }
-.jobs-fold > summary h2 { flex: 1 1 0; min-width: 0; }   /* a long line wraps in its own column; the bullets and Show keep theirs */
 .jobs-fold[open] > summary { margin-bottom: var(--sp-3); }
 .jobs-fold:not([open]) { padding-block: var(--sp-3); }  /* folded: one slim line, the job list comes up higher */
 .jobs-talking .focus-item { cursor: pointer; }

@@ -26,7 +26,7 @@ export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, re
   skills: {icon: 'file', tone: 'info', badge: 'Your CV'}};   // Insights PR 2 (#6): skills only the Experience bank has
 
 // The one severity of an entry, from its LOOK tone (owner, 5 Nov 2026: "add some bullets, for example: 1 red, 3 warnings/yellow, 4 info"): red = bad, yellow = warn, blue = info
-// (good reads as info). No caller picks a colour; the row's edge, its badge and the bar's bullets all follow this one table.
+// (good reads as info). No caller picks a colour; the row's edge, its badge and the bar's bullets all follow this one table. Only the Jobs drawers' rows are sorted by it (pages/focus-suggestions.js rowsNow); the bullets count every entry.
 export const SEVERITY = [{key: 'bad', label: 'urgent'}, {key: 'warn', label: 'warning'}, {key: 'info', label: 'info'}];
 /** An entry's severity key (bad | warn | info) from its kind's LOOK tone; an unknown kind or a good tone is info, never a guess of red. */
 export const severityOf = entry => { const tone = (LOOK[entry.kind] || {}).tone; return tone === 'bad' || tone === 'warn' ? tone : 'info'; };

@@ -118,6 +118,14 @@ export const labelOf = node => {
 };
 // A row's path, each step without its leading emoji ("💬 Telegram" → Telegram), a step equal to the one before it once (Settings → Plan, not Plan → Plan).
 const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L}+/u, '').trim()).filter((step, i, all) => step && step !== all[i - 1]);
+/** ⌘K "Re-score N": listed only while old scores wait (the Jobs bar's row, rescore-entry.js); opens the same Re-score dialog, never starts it. */
+function addOldScoresCommand(add) {
+  const count = knownOutdated().count;
+  if (!(count > 0) || rescoring()) return;
+  add('Jobs', pressLabel(count), noticeTitle(count), 're-score rescore scores stale previous strategy search settings outdated old',
+    () => import('./jobs.js').then(async jobs => confirmRescore(count, {search: jobs.startSearch, reload: jobs.loadJobs, toast: (await import('./startup.js')).toastMessage})));
+}
+
 export function paletteCommands() {
   const commands = [];
   // A row is a place (a page, card, section, Actions task) or a part of one (kind 'part': a button, a sub-heading); a part folds under its card in ⌘K
@@ -208,10 +216,7 @@ export function paletteCommands() {
     setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopActing, shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
   });
   button('jobs', 'refresh', 'find jobs scan');
-  // Listed only while old scores wait (the Jobs bar's row, rescore-entry.js); opens the same Re-score dialog, never starts it.
-  const oldScores = knownOutdated().count;
-  if (oldScores > 0 && !rescoring()) add('Jobs', pressLabel(oldScores), noticeTitle(oldScores), 're-score rescore scores stale previous strategy search settings outdated old',
-    () => import('./jobs.js').then(async jobs => confirmRescore(oldScores, {search: jobs.startSearch, reload: jobs.loadJobs, toast: (await import('./startup.js')).toastMessage})));
+  addOldScoresCommand(add);
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
   // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.
   add('Jobs', 'Fill your details', 'The details forms ask every time, one at a time', 'questions missing facts details contact name email phone notice period permit eligibility languages fill',

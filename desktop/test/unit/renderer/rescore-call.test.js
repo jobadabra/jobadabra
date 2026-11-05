@@ -104,7 +104,7 @@ test('the old score stays on the row, muted, with a short word; the palette list
   assert.match(rows, /job\.stale && job\.fit != null \? ' is-stale' : ''/);
   assert.match(rows, /old \? staleLabel : matchLabel\(job\.fit\)/);
   assert.match(read('renderer/style.css'), /body\[data-rescoring\] #find-card \{ display: none; \}/, 'one attribute, one rule: no draw order');
-  assert.match(read('renderer/pages/nav.js'), /if \(oldScores > 0 && !rescoring\(\)\) add\('Jobs', pressLabel\(oldScores\)/, 'the palette lists Re-score N only while old scores wait, and opens the dialog');
+  assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait, and opens the dialog');
   assert.match(words.scoreFirstLead(4), /Cost: not calculated/, 'no invented cost');
   assert.equal(words.scoreFirstTitle, 'Score first');
 });
@@ -138,4 +138,44 @@ test('Score first: Cancel starts nothing; "Find jobs without re-scoring" lets th
   closeWith('find');
   assert.equal(await find, null, 'null: the caller goes on to find');
   for (const why of [{reason: 'rescore', count: 4}, {employers: true}]) assert.equal(await gate.scoreFirst(why, how), null, 'only the plain press is held');
+});
+
+test('a plain Find search running: a re-score starts nothing and queues nothing, from every surface; it waits and says so (owner scenario: the old bar was greyed then)', async () => {
+  run.noteOutdated({count: 4, method: 4, places: 0});
+  queued = 4; searches.length = 0; toasts.length = 0;
+  let queuedCalls = 0;
+  const pilot = globalThis.window.pilot;
+  const real = pilot.rescoreOutdated;
+  pilot.rescoreOutdated = async () => { queuedCalls++; return {ok: true, queued: 4}; };
+  document.body.dataset.findCard = 'searching';
+  try {
+    dialog.opened = false;
+    run.confirmRescore(4, how);
+    assert.equal(dialog.opened, false, 'nobody confirms a start that would be refused');
+    await run.runRescore(4, how);   // the Score-first path and a dialog opened before the search began
+    assert.equal(queuedCalls, 0, 'no job is queued');
+    assert.deepEqual(searches, []);
+    assert.equal(run.rescoring(), null);
+    assert.equal(toasts.length, 2);
+    assert.equal(toasts[0][0], 'Re-score waits');
+  } finally {
+    delete document.body.dataset.findCard;
+    pilot.rescoreOutdated = real;
+  }
+  await run.runRescore(4, how);
+  assert.equal(searches.length, 1, 'the search ended: the same press goes through');
+});
+
+test('the Jobs bar\'s row follows the one state: present with old scores, gone while the re-score runs, back or gone after it', async () => {
+  const {rescoreEntries} = await import('../../../renderer/rescore-entry.js');
+  const rowNow = () => rescoreEntries({count: run.knownOutdated().count, running: !!run.rescoring()}).length;
+  run.noteOutdated({count: 3, method: 3, places: 0});
+  queued = 3;
+  assert.equal(rowNow(), 1, 'old scores: the row');
+  const started = run.runRescore(3, how);
+  assert.equal(rowNow(), 0, 'while it runs the re-score card says so');
+  await started;
+  assert.equal(rowNow(), 1, 'the count is read again by the Jobs reload; until then the row is back');
+  run.noteOutdated({count: 0, method: 0, places: 0});
+  assert.equal(rowNow(), 0, 'the reload says none are left: gone');
 });

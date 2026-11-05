@@ -236,6 +236,7 @@ function drawBullets(box, bullets) {
   box.replaceChildren(...bullets.map(({key, count, text}) => {
     const chip = el('span', `nav-badge severity-bullet tone-${key}`, String(count));   // tone-bad | tone-warn | tone-info: the badge's own look (style.css)
     chip.title = text;
+    chip.setAttribute('role', 'img');   // a bare span's aria-label is ignored by most screen readers
     chip.setAttribute('aria-label', text);
     return chip;
   }));
