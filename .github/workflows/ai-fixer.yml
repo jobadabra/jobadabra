@@ -190,7 +190,7 @@ jobs:
         run: |
           (cd desktop && npm ci)
           pip install --quiet --target "$PYDEPS" -r requirements.txt
-          docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+          docker build --quiet --build-arg PROOF_UID="$(id -u)" --build-arg PROOF_GID="$(id -g)" --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
       - name: Merge main into the branch (a conflict round, no AI)
         id: merge
         if: inputs.kind == 'conflict'
@@ -313,7 +313,7 @@ jobs:
       - name: Install the engine's dependencies (for its tests)
         run: pip install --quiet --target "$PYDEPS" -r requirements.txt
       - name: Build the box the AI's code runs in
-        run: docker build --quiet --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
+        run: docker build --quiet --build-arg PROOF_UID="$(id -u)" --build-arg PROOF_GID="$(id -g)" --tag fd-ai-proof --file "$FBT/tools/feedback-ai.Dockerfile" "$(mktemp -d)"
       - name: Take the pull request's branch (a round)
         if: inputs.pr != ''
         run: |

@@ -1,4 +1,4 @@
-// Guard: release — the actual proof container must reap orphan processes so lifecycle tests do not block an unrelated fix with zombie PIDs.
+// Guard: release — the real proof container must reap orphans and supply account metadata so unrelated lifecycle and Python tests can run.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,6 +9,12 @@ import {spawnSync} from 'node:child_process';
 const root = path.resolve(import.meta.dirname, '../../..');
 const names = ['e2e-runner-watch.test.js', 'kill-tree.test.js'];
 
+/** Build the real proof image for the same UID/GID the sandbox uses, before running any test code in it. */
+function buildImage(context) {
+  const build = spawnSync('docker', ['build', '--quiet', '--build-arg', `PROOF_UID=${process.getuid()}`, '--build-arg', `PROOF_GID=${process.getgid()}`, '--tag', 'fd-ai-proof', '--file', path.join(root, 'tools/feedback-ai.Dockerfile'), context], {encoding: 'utf8', timeout: 180000});
+  assert.equal(build.status, 0, `proof image: ${build.error?.message || build.stderr}`);
+}
+
 test('the proof sandbox fails on orphan PIDs without init and passes the same lifecycle tests with init', {skip: process.platform !== 'linux' && 'Linux Docker is required', timeout: 240000}, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-sandbox-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -17,8 +23,7 @@ test('the proof sandbox fails on orphan PIDs without init and passes the same li
   fs.cpSync(path.join(root, 'desktop/lib'), path.join(box, 'desktop/lib'), {recursive: true});
   fs.copyFileSync(path.join(root, 'desktop/package.json'), path.join(box, 'desktop/package.json'));
   for (const name of names) fs.copyFileSync(path.join(root, 'desktop/test/unit/main', name), path.join(box, 'desktop/test/unit/main', name));
-  const build = spawnSync('docker', ['build', '--quiet', '--tag', 'fd-ai-proof', '--file', path.join(root, 'tools/feedback-ai.Dockerfile'), path.join(dir, 'context')], {encoding: 'utf8', timeout: 180000});
-  assert.equal(build.status, 0, `proof image: ${build.error?.message || build.stderr}`);
+  buildImage(path.join(dir, 'context'));
   const sandbox = path.join(root, 'tools/feedback-ai-sandbox.sh');
   const before = path.join(dir, 'without-init.sh');
   fs.writeFileSync(before, fs.readFileSync(sandbox, 'utf8').replace('--init ', ''));
@@ -31,4 +36,17 @@ test('the proof sandbox fails on orphan PIDs without init and passes the same li
   assert.match(oldLog, /the grandchild is gone after the stop/);
   const fixed = run(sandbox);
   assert.equal(fixed.status, 0, `${fixed.error?.message || ''}\n${fixed.stdout}${fixed.stderr}`);
+});
+
+test('Python can resolve its non-root account and home after clearing the environment', {skip: process.platform !== 'linux' && 'Linux Docker is required', timeout: 240000}, t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-account-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  for (const folder of ['box', 'fbt', 'pydeps', 'context']) fs.mkdirSync(path.join(dir, folder), {recursive: true});
+  buildImage(path.join(dir, 'context'));
+  // The observed failures clear USER/HOME before getpass.getuser() or Path.home(); environment defaults alone cannot fix them.
+  const code = 'import os, getpass; from pathlib import Path; os.environ.clear(); assert os.getuid() != 0; assert getpass.getuser(); assert Path.home() == Path("/tmp")';
+  const done = spawnSync('bash', [path.join(root, 'tools/feedback-ai-sandbox.sh'), 'python3', '-c', code], {
+    encoding: 'utf8', timeout: 30000, env: {...process.env, FBT: path.join(dir, 'fbt'), PYDEPS: path.join(dir, 'pydeps'), BOX: path.join(dir, 'box')},
+  });
+  assert.equal(done.status, 0, `${done.error?.message || ''}\n${done.stdout}${done.stderr}`);
 });

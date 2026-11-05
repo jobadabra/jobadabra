@@ -7,3 +7,13 @@ COPY --from=node /usr/local/ /usr/local/
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
+ARG PROOF_UID=1001
+ARG PROOF_GID=1001
+# Why (5 Nov 2026, run 41968774717): Python resolves an account and home even after tests clear the environment; the numeric runner UID must exist in passwd.
+RUN test "$PROOF_UID" -gt 0 \
+ && (getent group "$PROOF_GID" >/dev/null || groupadd --gid "$PROOF_GID" proof) \
+ && if getent passwd "$PROOF_UID" >/dev/null; then \
+      usermod --home /tmp "$(getent passwd "$PROOF_UID" | cut -d: -f1)"; \
+    else useradd --uid "$PROOF_UID" --gid "$PROOF_GID" --home-dir /tmp --no-create-home proof; fi
+USER ${PROOF_UID}:${PROOF_GID}
+ENV HOME=/tmp
