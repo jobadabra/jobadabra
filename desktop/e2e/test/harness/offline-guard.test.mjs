@@ -1,3 +1,4 @@
+// Guard: privacy — an app under test sends a request off this computer.
 // The e2e env of an app server under test (lib/offline-guard.mjs): it says it is the end-to-end journey (no telemetry, no pool sharing), keeps its data in its own
 // folder, and the guard refuses any request that leaves this computer (fetch, http, https), naming the host; loopback is allowed.
 import assert from 'node:assert/strict';

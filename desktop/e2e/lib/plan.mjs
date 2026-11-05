@@ -41,7 +41,7 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
     const suite = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
     if (suite) { if (all.includes(suite)) chosen.add(suite); continue; }
     if (/^extension\//.test(file)) { chosen.add('apply'); chosen.add('applyflows'); continue; }   // the recorded cases are replayed by page-cases.yml, not by an e2e suite (1 Nov 2026)
-    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { continue; }   // a recorded case or its harness: page-cases.yml replays them (test/recorded-pages.test.mjs); no e2e suite
+    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { continue; }   // a recorded case or its harness: page-cases.yml replays them (desktop/integration/extension/recorded-pages.test.mjs); no e2e suite
     if (/^desktop\/e2e\/test\//.test(file) || /\.md$/.test(file)) continue;   // unit tests run on their own; docs run nothing
     if (/^desktop\/e2e\//.test(file) || file === '.github/workflows/e2e.yml') {
       chosen.add(SMOKE);

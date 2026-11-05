@@ -1,3 +1,4 @@
+// Guard: release — a crashed app's orphan keeps the profile and the next start of that profile fails.
 // A crash close ends the whole tree a launch started, not only the process Playwright holds. Guards lib/app.mjs closeApp.
 // Why (1 Nov 2026, #2717): on Windows Playwright starts Electron through a shell (shell: true), so app.process() is that shell and the real electron.exe is its child. closeApp killed the shell
 // when the app was still tearing down, the app went on as an orphan holding the profile (beta 41220959824: pid 8092, parent gone), and the next start of the same profile met it.

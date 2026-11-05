@@ -1,3 +1,4 @@
+// Guard: privacy — something personal survives a captured page's scrub.
 // Capturing a page (lib/capture-page.mjs): nothing personal survives the scrub; the person's own values are found in the app's files.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -91,7 +91,7 @@ export function pressAccountButton(named = '') {
 // What the AI is shown of the page (lib/account-judge.js): controls with their state but never their values, buttons and links, the short visible texts (messages,
 // errors) and the host names of visible frames. Injected into the page.
 export function accountSketch() {
-  const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');   // never the extension's own UI (desktop/e2e/test/own-ui-not-read.test.mjs)
+  const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');   // never the extension's own UI (desktop/integration/extension/own-ui-not-read.test.mjs)
   const clean = (value, max) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
   // A control's state is the one reading the panel and the fill use (page/read-back.js; judge-sketch.js loads it first): a menu on a real option, a picklist by its chip or labelled
   // hidden input (its own value is only typed search text), a box holding more than a calling code, an upload slot by the file it shows (the extension's own mark alone is no file).

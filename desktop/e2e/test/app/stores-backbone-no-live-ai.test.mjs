@@ -1,3 +1,4 @@
+// Guard: money — a store suite's background ask reaches a key or live AI.
 // Prove stores' declared background kinds resolve at every seam without a key or live transport.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

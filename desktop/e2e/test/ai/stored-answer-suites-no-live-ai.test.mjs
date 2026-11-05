@@ -1,3 +1,4 @@
+// Guard: money — an unknown setup ask of a stored-answer suite reaches live AI.
 // Prove each stored-answer suite below answers its setup asks from the stored table or a named refusal, and that an unknown ask never reaches live AI.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

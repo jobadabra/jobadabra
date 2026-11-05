@@ -1,3 +1,4 @@
+// Guard: safety — the Notion token reaches argv, a log, a file or the twin app.
 // The twin reads the app's own Notion token, only for the sync: in the child's env, never argv/log/file/the twin app; the stale Keychain item is not read.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

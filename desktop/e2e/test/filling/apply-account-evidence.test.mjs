@@ -1,3 +1,4 @@
+// Guard: safety — the sign-up safety check judges on another host's or an older event.
 // The sign-up safety assertion waits for its own batched events, never historical or other-host evidence.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

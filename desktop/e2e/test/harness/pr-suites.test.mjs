@@ -1,3 +1,4 @@
+// Guard: release — a PR that removes UI text a suite quotes never runs that suite.
 // The PR check that names suites quoting UI text a PR removes: strings come from removed app lines only, a lib file counts for its importing suites, a touched step is told apart.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

@@ -1,3 +1,4 @@
+// Guard: money — a suite whose AI is all stand-in quietly calls a real model.
 // A suite whose AI is all stand-in fails when a call went on to a real model (lib/no-real-ai.mjs).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

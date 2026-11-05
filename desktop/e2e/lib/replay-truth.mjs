@@ -5,7 +5,7 @@
 //  TRUTH: every field the case's AI answers name holds THAT answer, compared by the value itself on the runner (a value class is too weak: Israel and Switzerland are both countries);
 //  AGREEMENT: the panel's missing == the fill record's left (/extension/run trace) >= the page's own empty required controls; no "ready" with one left; no CV counted in with no file.
 // The applicant and the answers are the case's fake data; nothing here is sent anywhere. Used by lib/page-replay.mjs judgeCase.
-// Guards: e2e/test/replay-truth.test.mjs (pure parts), e2e/test/recorded-pages.test.mjs (every case).
+// Guards: e2e/test/replay-truth.test.mjs (pure parts), integration/extension/recorded-pages.test.mjs (every case).
 
 import fs from 'node:fs';
 import vm from 'node:vm';

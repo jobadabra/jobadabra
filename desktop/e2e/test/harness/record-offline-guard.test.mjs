@@ -1,3 +1,4 @@
+// Guard: money — a record plan launches an offline AI suite and spends AI credit.
 // Record plans reject offline AI suites by name before launching any suite or spending AI credit.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

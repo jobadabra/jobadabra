@@ -1,3 +1,4 @@
+// Guard: safety — a run that touched the owner's real Keychain passes unnoticed.
 // lib/keychain-guard.mjs: the run's proof that the owner's real Keychain was not touched (names and dates only, never a secret).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

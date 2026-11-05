@@ -1,3 +1,4 @@
+// Guard: data — two runs write the one real Notion test page at the same time.
 // lib/notion-page-lock.mjs: a machine-wide lock on the real Notion test page, taken by a run on store 'notion' only; stale when its pid is gone.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

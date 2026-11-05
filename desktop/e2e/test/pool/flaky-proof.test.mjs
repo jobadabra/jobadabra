@@ -1,3 +1,4 @@
+// Guard: release — a red is labelled flaky and closed without proof (#1897 was a product bug).
 // "Flaky" needs proof (gate G5): lib/flaky-proof.mjs and triage's closing rule. The CI job has one try (tests/tooling/ci/test_e2e_single_try.py).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

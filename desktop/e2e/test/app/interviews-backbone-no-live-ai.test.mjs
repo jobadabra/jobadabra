@@ -1,3 +1,4 @@
+// Guard: money — the interview suites send an undeclared ask to live AI.
 // Prove interview reviews and patterns use declared answers with no live key or AI transport.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

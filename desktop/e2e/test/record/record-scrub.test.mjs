@@ -1,3 +1,4 @@
+// Guard: privacy — the person's values or an e-mail address reach a published network record.
 // A network record is scrubbed on disk before it is published (lib/record-scrub.mjs; the definitions are the product's report scrub, lib/report-scrub.js): the person's own values and any e-mail
 // address leave every text body and the record's text files; a changed body gets its new hash; an unchanged one, a number, a script and a binary stay byte for byte; what the scrub cannot rewrite is
 // caught by the gate. Also: a signed-in row records its hosts and replays with a FAKE account (lib/test-accounts.mjs replayAccounts), never the Keychain.

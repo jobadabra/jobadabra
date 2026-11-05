@@ -1,3 +1,4 @@
+// Guard: money — a suite or harness file loads an Anthropic key and spends on it.
 // The rule, enforced for every suite that exists or will exist (owner, 5 Oct 2026: "no local e2e suite should ever load the Anthropic key"): test code reaches a model only through
 // lib/model.mjs, and since 3 Nov 2026 (owner: "We should not use API Keys at all anymore") no harness file under lib/ or suites/ reads E2E_ANTHROPIC_KEY at all: CI holds none. CI-only tools are listed, each with its reason.
 import assert from 'node:assert/strict';

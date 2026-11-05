@@ -1,3 +1,4 @@
+// Guard: release — a new fixed wait makes a step's verdict depend on the machine's speed.
 // Guards Rule B's declared timing debt without rewriting existing suite steps.
 // Job: wait on state
 import assert from 'node:assert/strict';

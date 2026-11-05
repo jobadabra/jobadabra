@@ -1,3 +1,4 @@
+// Guard: money — the pool on CI goes past its row and AI-dollar caps.
 // The pool on a CI runner (.github/workflows/record-sites.yml, lib/pool-ci.mjs): hard caps on rows and AI dollars, no Electron leg (never a second visit after a
 // block page), a bot wall on the runner's data-center IP shown as "blocked (CI IP)" and never a failure, and a red job only for a harness error or the tripwire.
 import assert from 'node:assert/strict';

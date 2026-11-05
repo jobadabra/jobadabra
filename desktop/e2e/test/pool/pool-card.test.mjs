@@ -1,3 +1,4 @@
+// Guard: privacy — the fill card sends more than fixed words and counts.
 // The pool's fill card (lib/pool-card.mjs): only fixed words and counts, built by the user's own fillCard/causeOf, and sent under the same guard as the applying report.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

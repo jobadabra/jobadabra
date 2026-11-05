@@ -1,3 +1,4 @@
+// Guard: money — wander's asks reach a live key or AI.
 // Prove wander's stored answers parse without moving facts or reaching a live key or AI.
 import {loadAppModule} from '../../lib/app-module.mjs';
 import assert from 'node:assert/strict';

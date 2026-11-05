@@ -1,3 +1,4 @@
+// Guard: safety — the Sentry fixer reads or writes files outside its allowed list.
 // The Sentry fixer's Codex call (tools/sentry-fixer/codex-fix.mjs): it reads only the stack's allowed files, asks with no tools, and writes only what the rules allow.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

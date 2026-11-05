@@ -1,3 +1,4 @@
+// Guard: money — a stored-answer miss goes on to a live model or a non-local upstream.
 // Stored question answers precede every transport and hash cache, with localhost-only upstreams.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

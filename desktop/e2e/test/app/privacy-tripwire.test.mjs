@@ -1,3 +1,4 @@
+// Guard: privacy — the owner's own values typed into a fake applicant's form pass unnoticed.
 // The privacy tripwire (lib/privacy-tripwire.mjs; owner's rule: tests never touch the owner's real data; 11 Oct 2026: the plan's claude -p carries the signed-in
 // account, and a held fill on a real site typed the owner's first name, guessed from the account e-mail, into the fake applicant's form). After every held fill of a
 // live run, what the page holds in its fields is compared with the owner's own values (his app's profile and answers, the Claude account e-mail and the name words in

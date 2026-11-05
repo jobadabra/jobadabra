@@ -39,4 +39,4 @@ Moved from SKILL.md sections 0a and 1 (15 Oct 2026); the live-confirm steps are 
    (`REAL_EXTENSION_DIR=<old extension/>`); one that passes there is only a guard. **Which layer proves what:** a hand-stubbed AI answer in a recorded page proves the extension handles a CORRECT answer, never that the model gives it
    (that is `ladder-score` and the live pool). A shape that fails once (a moody site) is run twice before it counts.
 6. **Offline, no app run, seconds:** `cd desktop && node scripts/stage.mjs` once per fresh worktree (builds `shared/`), then `npm run ladder-score -- --offline --only <fixture>` (what the stored AI answer says) and
-   `cd e2e && JP_REPLAY=1 REPLAY_ONLY=<case> node --test test/recorded-pages.test.mjs` (the real extension on a recorded page). The shared e2e page is a queue (the coordinator, `coordinator.txt`): read the offline result and the newest logs first.
+   `cd e2e && JP_REPLAY=1 REPLAY_ONLY=<case> node --test ../integration/extension/recorded-pages.test.mjs` (the real extension on a recorded page). The shared e2e page is a queue (the coordinator, `coordinator.txt`): read the offline result and the newest logs first.

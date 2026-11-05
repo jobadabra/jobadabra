@@ -1,3 +1,4 @@
+// Guard: money — e2e runs keep paying for the judge and the screenshot review past the weekly budget.
 // The e2e daily AI budget (owner, 7 Oct 2026: "$30 a week"): over it, a run skips the paid judge and the screenshot review; an unreadable figure never blocks.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

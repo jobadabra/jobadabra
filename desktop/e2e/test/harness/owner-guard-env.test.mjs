@@ -1,3 +1,4 @@
+// Guard: privacy — an app the harness starts runs without the tripwire's list of the owner's values.
 // The harness hands the tripwire's list to every app it starts (lib/owner-guard-env.mjs): one list, before a keystroke and after. Guard for the harness side.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

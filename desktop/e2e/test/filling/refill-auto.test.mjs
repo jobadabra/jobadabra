@@ -1,3 +1,4 @@
+// Guard: money — the automatic refill spends past $0.50 a run or on rows it cannot turn green.
 // The automatic refill's caps (owner, 17 Oct 2026: $0.50 a run, only rows a refill can turn green; the $5 a month cap went on 3 Nov 2026 with the API key). Guards lib/refill.mjs pickRefill worseOnly, the PR gate's dispatch step.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,3 +1,4 @@
+// Guard: privacy — the verify report sends more than its fixed fields.
 // verify-report.mjs: the plan's answers and the row jobs' verdicts go in one PUT with fixed fields only; no key or no rows sends nothing. Pure: a fake fetch.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

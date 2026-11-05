@@ -1,3 +1,4 @@
+// Guard: release — an e2e step a PR adds or edits does not run on that PR.
 // The PR check runs only the e2e steps a diff adds or edits (owner, 2 Nov 2026: "A PR adding a new e2e or modifying the e2e.. should have it as a PR CI check" — "the only exception when we run e2e on the PR level").
 // Fixture diffs: a new step, an edited step, a lib-only change, a comment-only change, no e2e change at all; plus the Mac, shared-lib and outside-a-step cases.
 import assert from 'node:assert/strict';

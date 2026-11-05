@@ -1,3 +1,4 @@
+// Guard: privacy — a row's case folder with personal data, or too big, is written.
 // lib/row-case-gates.mjs: the privacy and size gates a row's case folder passes BEFORE it is written (npm run row-to-case); the privacy test of the recorded folder uses the same function.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

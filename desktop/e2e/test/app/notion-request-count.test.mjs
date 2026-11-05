@@ -1,3 +1,4 @@
+// Guard: privacy — request counts keep ids, query values or applicant data.
 // Request counts describe HTTP traffic without retaining ids, query values or applicant data.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

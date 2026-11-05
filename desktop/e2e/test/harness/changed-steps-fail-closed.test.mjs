@@ -1,3 +1,4 @@
+// Guard: release — an unreadable diff reads as "no step changed" and a step reaches main without ever running.
 // The PR check must fail closed: when the picker cannot read the diff, pr-e2e-steps.yml's Plan step goes red; it must never read as "no step changed" (Gitar on #2980: that is how a step
 // reaches main without ever running, #2954/#2963). The other modes keep their soft fallback ("nothing reported", exit 0).
 import assert from 'node:assert/strict';

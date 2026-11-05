@@ -1,4 +1,5 @@
 /* global chrome */
+// Guard: safety — the refused-site read opens a site outside incognito, with the browser's cookies.
 // The real-tab step with the REAL extension in a real Chromium (owner, 20 Oct 2026: it reads with no cookies or logins): a cookie sits in the browser for the fixture site,
 // and the extension may open the site only in an incognito window. A fresh test Chromium does not allow the extension in incognito (a profile cannot be flipped from a test),
 // so the proof here is the refusal side: the guard opens nothing, and the fixture server sees no request at all, so no Cookie header can have reached it.

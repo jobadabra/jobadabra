@@ -1,3 +1,4 @@
+// Guard: safety — the offline app creates a site password item instead of reading an existing one.
 // The offline app answers a sign-in page from an item that exists and never makes one (lib/offline-site-password.mjs). Pure: a fake storage and fake Keychain reads.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

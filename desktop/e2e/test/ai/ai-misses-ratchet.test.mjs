@@ -1,3 +1,4 @@
+// Guard: money — a stored-answer suite's live AI misses grow past its committed ceiling unnoticed.
 // Keeps stored-answer suites at their committed AI miss ceiling, using only temporary artifacts.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

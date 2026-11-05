@@ -1,3 +1,4 @@
+// Guard: money — an unknown applyflows question reaches a cache or a model.
 // Applyflows fixture questions are explicit; unknown questions fail before any cache or model.
 import {loadAppModule} from '../../lib/app-module.mjs';
 import assert from 'node:assert/strict';

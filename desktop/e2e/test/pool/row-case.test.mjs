@@ -1,3 +1,4 @@
+// Guard: privacy — a pool row's capture becomes a case folder without the second scrub.
 // lib/row-case.mjs: a pool row's capture becomes a case folder (npm run row-to-case): scrubbed again, shrunk, its model answers and presses scrubbed, its baseline taken from the live run, and refused
 // (nothing written) when a privacy or size gate fails. The browser step is injected here (its own test: row-case-shrink.test.mjs).
 import assert from 'node:assert/strict';

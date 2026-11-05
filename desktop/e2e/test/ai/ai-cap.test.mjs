@@ -1,3 +1,4 @@
+// Guard: money — CI's Workers AI spends past its $1 day cap.
 // The day's $1 cap on CI's Workers AI (lib/ai-cap.mjs): over it a live Free AI ask is refused and named grey; under it, unreadable or not Free AI, nothing changes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
