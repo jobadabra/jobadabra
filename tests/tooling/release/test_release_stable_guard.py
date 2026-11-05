@@ -366,6 +366,14 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertIn(f'force_tag={TAG}', done.stderr)
         self.assertEqual(self.calls, '', 'nothing is started for a tag given by hand')
 
+    def test_a_failed_promotion_tells_the_owner_through_the_switchboard_sender(self):
+        # Owner, 5 Nov 2026: "I didn't get any notification. I should have": a promotion that failed was silent; one last step alerts (event release-failed, never a hold).
+        text = (SCRIPT.parents[1] / '.github/workflows/canary-promote.yml').read_text()
+        step = text[text.index('- name: Tell the owner on Telegram that the promotion to stable failed'):]
+        step = step[:step.index('- name: Label the releases')]
+        for needle in ('if: failure()', 'continue-on-error: true', 'node desktop/e2e/release-failed-alert.mjs stable', 'SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}'):
+            self.assertIn(needle, step)
+
     def test_a_dry_run_by_hand_still_only_prints_here(self):
         done = self.promote(self.ASSETS, extra={'GITHUB_ACTIONS': '', 'DRY_RUN': '1', 'E2E_ALREADY_GREEN': '1'})
         self.assertEqual(done.returncode, 0, done.stderr)

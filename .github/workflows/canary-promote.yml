@@ -135,6 +135,20 @@ jobs:
                 --body $'It will be dropped at 7 days. Why it waits is in the latest run of the "Release · Promote to stable" workflow.\n\nOptions: wait; promote it by hand with force_tag and force_reason (hot path); or drop it.'
             fi
           fi
+      # Why (5 Nov 2026, owner: "I didn't get any notification. I should have"; nt 3/4): a promotion to stable that failed (the decision, the hot path, the latest-beta path) said nothing; release-stable.sh alerts only on success or a refused store start.
+      # One alert through the switchboard (event release-failed), the old CI-alerts bot when it cannot deliver. Never a hold: a failed alert does not fail the run.
+      - name: Tell the owner on Telegram that the promotion to stable failed
+        if: failure()
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          FORCE_TAG: ${{ inputs.force_tag }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        run: |
+          tag="${FORCE_TAG:-$(python3 tools/canary_promote.py --candidate 2>/dev/null || true)}"
+          node desktop/e2e/release-failed-alert.mjs stable "${tag:-unknown}" --step "Promote to stable"
       - name: Label the releases (STABLE / BETA / Build / Previous stable)
         if: always()
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"

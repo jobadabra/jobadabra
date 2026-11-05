@@ -187,6 +187,11 @@ class DesktopWorkflowTest(unittest.TestCase):
         # Owner, 1 Nov 2026: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released": the last job alerts once when a lane released.
         self.assertIn('node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"', job('prune'))
         self.assertIn("if: always() && (needs.release-mac-offer.result == 'success' || needs.release-windows-offer.result == 'success')", job('prune'))
+        # Owner, 5 Nov 2026: "I didn't get any notification. I should have" (beta 0.9.12): the other half, a beta that reached NO lane (build failed, gate red or skipped) tells the owner too, from the last job, never a hold.
+        self.assertIn('node desktop/e2e/release-failed-alert.mjs beta "$VERSION" --needs "$NEEDS" --gate "$GATE"', job('prune'))
+        self.assertIn('NEEDS: ${{ toJSON(needs) }}', job('prune'))
+        self.assertIn("if: ${{ !cancelled() && needs.changes.outputs.released == 'true' }}", job('prune'))
+        self.assertIn('SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}', job('prune'))
         self.assertIn('LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}', job('prune'))
         # Owner, 1 Nov 2026, on beta 13's red: a pick runs its own pipeline (a tag at the green commit); GitHub refuses a token without the workflows permission a tag on a commit whose workflows differ from
         # main's, so the tag and the release use the CI App's token (Workflows: write), with the run's own token as the fallback.
