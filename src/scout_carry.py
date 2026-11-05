@@ -78,8 +78,9 @@ def mixes(db):
 def answer_fields(read, last):
     """An entry's place answers: read = {field: (ids, unanswered texts)} from this read, last = mixes() for this feed. A field with a text the AI did not answer
     keeps its last ids too (it can't tell which place they came from, so a place gone keeps its country until every place is answered again); a field all answered
-    is this read's, an answer of none empties it. Also `answers` {kept, new, dropped: [fields]} for the run log (answers_line); the site keeps fixed fields: not published."""
-    out, marks = {}, {'kept': [], 'new': [], 'dropped': []}
+    is this read's, an answer of none empties it. Also `answers` {kept, new, dropped: [fields]} for the run log (answers_line), and none: [fields] answered empty, which
+    seed() never refills (dropped is only the first such read). The site keeps fixed fields: not published."""
+    out, marks = {}, {'kept': [], 'new': [], 'dropped': [], 'none': []}
     for name, (ids, unanswered) in read.items():
         before = list(last.get(name) or [])
         value = sorted(set(ids) | set(before)) if unanswered else list(ids)
@@ -90,6 +91,8 @@ def answer_fields(read, last):
             marks['new'].append(name)
         elif before and not value:
             marks['dropped'].append(name)
+        if not value and not unanswered:
+            marks['none'].append(name)
     return {**out, 'answers': {mark: names for mark, names in marks.items() if names}}
 
 
@@ -137,7 +140,7 @@ def _fill_mix(db, key, stored, published):
 def _fill_answers(db, key, stored, published):
     """Give a stored entry the place answers it lacks from the published entry; one it has, or one its last read answered none, is never replaced. Returns 1 when filled."""
     entry = json.loads(stored)
-    none = (entry.get('answers') or {}).get('dropped') or []
+    none = (entry.get('answers') or {}).get('none') or []
     missing = {name: published[name] for name in ANSWER_FIELDS if name not in none and not entry.get(name) and isinstance(published.get(name), list) and published[name]}
     if not missing:
         return 0

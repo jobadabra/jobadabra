@@ -74,6 +74,7 @@ class AnswersKeptTest(unittest.TestCase):
     def test_the_published_index_never_undoes_an_answer_of_none(self):
         self.read('2026-11-04', 'yes')
         self.read('2026-11-05', 'none')   # stored empty, and not published yet (a stopped run)
+        self.read('2026-11-06', 'none')   # and again: already empty before this read (Gitar on #3324)
         published = [{'company': f'Co {i}', 'ats': 'lever', 'slug': f'co{i}', 'checked': '2026-11-04', **FIELDS} for i in range(5)]
         scout_carry.seed(self.db, 'https://index.example/api/index', 'key', get=lambda request: {'feeds': published})
         stored = [json.loads(r[0]) for r in self.db.execute('SELECT entry FROM feed_entries')]
