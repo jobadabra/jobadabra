@@ -78,15 +78,15 @@ export function compute(input, fs, now = new Date(), maxBody = MAX_BODY) {
   return body;
 }
 
-/** The path of a step as a map page: 'index' for docs/map/index.md, 'hub' for any other docs/map/*.md, else ''. Only a read or a search of such a path counts, never a word in a reason. */
+/** The path of a step as a map page: 'index' for docs/map/index.md, 'hub' for any other docs/map/*.md, else ''. Only a `read` counts, never a word in a reason. Why (5 Nov 2026, Gitar on #3253): a `search` step records no path (the recorder keeps a file path only, and a search takes a folder), so counting it would never fire. */
 export function mapPage(step) {
-  if (!step || (step.action !== 'read' && step.action !== 'search')) return '';
+  if (!step || step.action !== 'read') return '';
   const found = /(?:^|\/)docs\/map\/([^/]+)\.md$/.exec(String(step.path || ''));
   return found ? (found[1] === 'index' ? 'index' : 'hub') : '';
 }
 
 /**
- * The second card -> {kind: 'harness-fixer', days: [today]} from the run records (all of them, before the harness card trims its list): per map page how many runs read it (`tools`), and per group (a run "used the map" when any step read or searched a docs/map/ page)
+ * The second card -> {kind: 'harness-fixer', days: [today]} from the run records (all of them, before the harness card trims its list): per map page how many runs read it (`tools`), and per group (a run "used the map" when any step read a docs/map/ page)
  * the count, the AVERAGE turns, calls and minutes (1 decimal) and how many stopped 'ready'. An empty group is all zeros (the site shows "No data yet" for n=0). Numbers only: no path, reason or file name of a record is copied.
  */
 export function fixerStats(runs, now = new Date()) {

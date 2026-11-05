@@ -11,7 +11,7 @@ Session hm, 5 Nov 2026. Sketch: https://claude.ai/artifact/PnCF7m1cZ3eesN1CGxTYT
 ## The data
 Upload kind `harness-fixer`, sent by the daily harness-stats workflow next to the `harness` card, to the same route:
 `{kind:'harness-fixer', days:[{day, runs, tools:[{id:'map-index'|'map-hub', runs}], help:{with_map:{n, turns, calls, minutes, ready}, without_map:{...}}}]}`
-- A run "used the map" when a `read` or `search` step of its record has a path under `docs/map/` (`index.md` = index, any other = hub).
+- A run "used the map" when a `read` step of its record has a path under `docs/map/` (`index.md` = index, any other = hub). A `search` step records no path (it takes a folder), so a search of the map is not counted: it needs the fixer to record the folder, not built.
 - turns, calls, minutes are averages over the group, 1 decimal; `ready` = runs that stopped `ready`; an empty group is zeros.
 - The context pack (`tools/context/pack.mjs`) is not used by the fixer yet: not counted.
 - The step that parses the artifacts holds no secret; the step that stores both cards holds the site key.

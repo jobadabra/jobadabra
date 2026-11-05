@@ -105,13 +105,13 @@ test('phases: the queue, then each known job in workflow order; a skipped job, a
   assert.equal(phasesOf([{name: 'guard', started_at: at(1), completed_at: at(2)}], at(5))[0].s, 0, 'never negative');
 });
 
-test('fixer card: a run used the map only when a read or search step names a docs/map/ page; averages, ready and the tools count come out right', () => {
+test('fixer card: a run used the map only when a read step names a docs/map/ page; averages, ready and the tools count come out right', () => {
   const step = (action, file) => ({n: 1, action, path: file});
   const rec = (steps, extra = {}) => recordOf({...record, steps, ...extra}, run);
-  const runs = [rec([step('read', 'docs/map/index.md'), step('read', 'docs/map/ci.md')], {turns: 4, calls: 6, minutes: 3, stop: 'ready'}), rec([step('search', 'docs/map/ci.md')], {turns: 2, calls: 3, minutes: 1.5, stop: 'ready'}),
+  const runs = [rec([step('read', 'docs/map/index.md'), step('read', 'docs/map/ci.md')], {turns: 4, calls: 6, minutes: 3, stop: 'ready'}), rec([step('read', 'docs/map/ci.md')], {turns: 2, calls: 3, minutes: 1.5, stop: 'ready'}),
     rec([step('edit', 'docs/map/index.md'), step('read', 'src/a.py'), step('read', 'docs/map/index.md.bak'), step('read', 'docs/mapx/index.md')], {turns: 6, calls: 9, minutes: 7, stop: 'cap', reason: 'I read docs/map/index.md'})];
   const [day] = fixerStats(runs, now).days;
-  assert.deepEqual([mapPage(step('read', 'docs/map/index.md')), mapPage(step('search', './x/docs/map/ci.md')), mapPage(step('edit', 'docs/map/index.md')), mapPage(step('read', 'docs/map/index.md.bak')), mapPage(null)], ['index', 'hub', '', '', '']);
+  assert.deepEqual([mapPage(step('read', 'docs/map/index.md')), mapPage(step('read', './x/docs/map/ci.md')), mapPage(step('search', 'docs/map/ci.md')), mapPage(step('edit', 'docs/map/index.md')), mapPage(step('read', 'docs/map/index.md.bak')), mapPage(null)], ['index', 'hub', '', '', '', '']);
   assert.deepEqual(day, {day: '2026-11-05', runs: 3, tools: [{id: 'map-index', runs: 1}, {id: 'map-hub', runs: 2}], help: {with_map: {n: 2, turns: 3, calls: 4.5, minutes: 2.3, ready: 2}, without_map: {n: 1, turns: 6, calls: 9, minutes: 7, ready: 0}}});
   assert.equal(fixerStats(runs, now).kind, 'harness-fixer');
 });
