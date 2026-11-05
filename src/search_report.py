@@ -34,6 +34,11 @@ def timings(db, since, wanted):
     return {'in_places': len(seen), 'scored': len(scored), 'fit70': len(fit), 'first_s': at(seen, 1), 'tenth_s': at(seen, 10), 'first_fit70_s': at(fit, 1)}
 
 
+def open_in_places(db, wanted):
+    """How many open jobs the user has in their places right now (`wanted(location, title)`), whenever each was first seen. fb 5/7: `timings` counts only the jobs first seen in this run, so a repeat press reads 0."""
+    return sum(1 for title, location in db.execute("SELECT title, location FROM jobs WHERE state = 'open'") if wanted(location or '', title))
+
+
 def family(search):
     """The role family of the search: the commonest known kind among its role words (src/role_kinds.py), else 'other'."""
     from . import role_kinds
@@ -69,8 +74,11 @@ def build(since, db, search, wanted):
     return {'family': family(search), 'country': country, 'city': city, **timings(db, since, wanted), **reads(since)}
 
 
-def main(argv=None):
+def main(argv=None, opener=None):
     argv = sys.argv[1:] if argv is None else argv
+    if '--open-count' in argv:   # fb 5/7: only that count, read-only; the full report below also takes the extension's read counters, which a second call would steal
+        print(json.dumps({'open_in_places': opener() if opener else _count_in_store()}))
+        return 0
     since = argv[argv.index('--since') + 1] if '--since' in argv else ''
     if not since:
         print('Give the time the search started (--since, an ISO time).', file=sys.stderr)
@@ -80,6 +88,20 @@ def main(argv=None):
     db = sqlite3.connect(jobs_db())
     print(json.dumps(build(since, db, load_search_config(), lambda location, title: feeds.wanted_location({'location': location, 'title': title}))))
     return 0
+
+
+def _count_in_store():
+    """The count from the job cache, opened read-only: a missing or unreadable cache is None (unknown), never an error and never a new empty file. Why (code review of fb 5/7, 5 Nov 2026): connect() made an empty jobs.sqlite and the failure counted as a failed run."""
+    from .paths import jobs_db
+    from .sources import feeds
+    path = jobs_db()
+    if not path.exists():
+        return None
+    try:
+        db = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+        return open_in_places(db, lambda location, title: feeds.wanted_location({'location': location, 'title': title}))
+    except sqlite3.Error:
+        return None
 
 
 if __name__ == '__main__':

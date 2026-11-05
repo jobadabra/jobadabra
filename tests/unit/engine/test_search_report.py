@@ -23,6 +23,37 @@ def jobs_db(rows):
     return db
 
 
+class OpenInPlacesTests(unittest.TestCase):
+    """fb 5/7 (5 Nov 2026): the card "Were you expecting more jobs?" needs how many open jobs the person has in their places NOW, not how many were first seen in this run (a repeat press reads 0 new)."""
+
+    def test_counts_every_open_job_in_places_whenever_it_was_first_seen_and_never_the_closed_or_elsewhere(self):
+        db = jobs_db([('Zurich', '2026-09-01T09:00:00Z', None, 0), ('Zurich', '2026-10-18T10:00:05Z', None, 0), ('Mars', '2026-10-18T10:00:06Z', None, 0)])
+        db.execute("INSERT INTO jobs VALUES (9, 'Closed', 'Zurich', '2026-10-01T00:00:00Z', 'closed')")
+        self.assertEqual(search_report.open_in_places(db, lambda location, title: location == 'Zurich'), 2)
+
+    def test_the_flag_prints_only_that_count_and_leaves_the_report_readers_alone(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        out = io.StringIO()
+        with mock.patch.object(search_report, 'reads', side_effect=AssertionError('reads() consumes the extension counters')), redirect_stdout(out):
+            self.assertEqual(search_report.main(['--open-count'], opener=lambda: 3), 0)
+        self.assertEqual(json.loads(out.getvalue()), {'open_in_places': 3})
+
+    def test_a_missing_or_empty_cache_is_unknown_not_an_error_and_makes_no_file(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as folder:
+            gone = Path(folder) / 'jobs.sqlite'
+            with mock.patch('src.paths.jobs_db', return_value=gone):
+                self.assertIsNone(search_report._count_in_store())
+            self.assertFalse(gone.exists(), 'a read creates no empty cache')
+            sqlite3.connect(gone).close()   # exists but has no jobs table
+            with mock.patch('src.paths.jobs_db', return_value=gone):
+                self.assertIsNone(search_report._count_in_store())
+
+
 class SearchReportTests(unittest.TestCase):
     def test_seconds_run_from_the_start_and_only_jobs_in_places_count(self):
         rows = [('Zurich', f'2026-10-18T10:00:{5 + i:02d}Z', f'2026-10-18T10:00:{20 + i:02d}Z', 80 if i == 3 else 40) for i in range(12)]

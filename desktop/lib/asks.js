@@ -1,18 +1,20 @@
 // The ask gate: when the app may invite the person to tell us what went wrong, instead of leaving (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md). One owner of the answer; the window only draws.
-// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). The moments (MOMENTS): a failed application whose cause is ours to fix, a Find jobs press that failed (runMomentOf), a crash on the last run (fb 4/7); nothing else opens one.
-// The No list is `mayAsk`: setup not finished, another ask within 24 hours, this kind snoozed or answered lately, a kind nobody defined. Guard: test/unit/main/asks.test.js.
+// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). The moments (MOMENTS): a failed application whose cause is ours to fix, a Find jobs press that failed (runMomentOf), a crash on the last run (fb 4/7), a finished press of Find jobs with fewer than 5 open jobs in the person's places (searchMomentOf, fb 5/7); nothing else opens one.
+// The No list is `mayAsk`: setup not finished, another ask within 24 hours, this kind asked within its AT_MOST_EVERY (thin-search: a week), this kind snoozed or answered lately, a kind nobody defined. Guard: test/unit/main/asks.test.js.
 
-import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_WORDS} from '../renderer/ask-card-text.js';
+import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_THIN_SEARCH, ASK_WORDS} from '../renderer/ask-card-text.js';
 import {runFailure} from './run-failure.js';
 
-export {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN};
+export {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_THIN_SEARCH};
 const QUIET = {later: 14 * 24 * 3600 * 1000, tell: 30 * 24 * 3600 * 1000}, ONE_A_DAY = 24 * 3600 * 1000;
 const KINDS = Object.keys(ASK_WORDS);
+// Why (spec 2026-11-05, step 5/7): a thin search is asked at most once a week; the 5 is a guess from 2 testers' searches, to be measured on real installs for two weeks and then tuned.
+const AT_MOST_EVERY = {[ASK_THIN_SEARCH]: 7 * 24 * 3600 * 1000}, THIN = 5;
 
-const MOMENTS = {'failed-no-form': ASK_FAILED_APPLICATION, 'failed-account': ASK_FAILED_APPLICATION, 'failed-run': ASK_FAILED_RUN, crashed: ASK_CRASHED};
+const MOMENTS = {'failed-no-form': ASK_FAILED_APPLICATION, 'failed-account': ASK_FAILED_APPLICATION, 'failed-run': ASK_FAILED_RUN, crashed: ASK_CRASHED, 'thin-search': ASK_THIN_SEARCH};
 
 /** A moment word -> the kind of ask it opens, or null. The words: an application result (lib/application-result.js: only the form not reached and the sign-in step are ours to fix; a success, or a person who walked away, opens nothing),
- *  'failed-run' (runMomentOf) and 'crashed' (the last run of the app ended in a crash). */
+ *  'failed-run' (runMomentOf), 'crashed' (the last run of the app ended in a crash) and 'thin-search' (searchMomentOf). */
 export function momentOf(word) {
   return MOMENTS[word] || null;
 }
@@ -29,8 +31,16 @@ export function mayAsk(settings, kind, now) {
   if (!KINDS.includes(kind) || !settings?.setupDone) return false;
   const mine = settings.asks || {};
   if (now - (mine.lastAt || -Infinity) < ONE_A_DAY) return false;
+  if (now - (mine.openedAt?.[kind] || -Infinity) < (AT_MOST_EVERY[kind] || 0)) return false;
   if (now - (mine.snoozedAt?.[kind] || -Infinity) < QUIET.later) return false;
   return !(now - (mine.answeredAt?.[kind] || -Infinity) < QUIET.tell);
+}
+
+/** A finished Find jobs run ({ok, stopped, trigger, endedByTime}, lib/search-report.js) and the number of open jobs the person has in their places (null when unknown) -> 'thin-search' when the person pressed it, it finished, and fewer than 5 jobs
+ *  are in their places; else ''. An unknown number is never a verdict. */
+export function searchMomentOf(info, openInPlaces) {
+  const pressed = ['you', 'first'].includes(info?.trigger) && info.ok === true && !info.stopped && !info.endedByTime;   // Why (code review of fb 5/7, 5 Nov 2026): a press cut at its 3 minutes ends with code 0, but it did not finish looking; few jobs then says nothing
+  return pressed && Number.isInteger(openInPlaces) && openInPlaces >= 0 && openInPlaces < THIN ? 'thin-search' : '';
 }
 
 /** The asks of one app run over `storage` (`demo`: the look-around app asks nothing): `moment(result)` opens an ask when the gate says yes and tells the window (`askMoment`); `pending()` is the open kind or null (kept until answered, so a reloaded window still gets it);
@@ -47,8 +57,13 @@ export function createAsks({storage, getWindow = null, now = Date.now, demo = fa
       if (demo || !kind || open || !mayAsk(storage.settings(), kind, now())) return;
       open = kind;
       remember(kind, 'lastAt');
+      remember(kind, 'openedAt');
       const win = getWindow?.();
       if (win && !win.isDestroyed()) win.webContents.send('askMoment');
+    },
+    /** After a finished run: counts the open jobs in the person's places with `count()` (async, may return null) and opens the thin-search ask when the verdict says so. Never throws. */
+    async search(info, count) {
+      try { this.moment(searchMomentOf(info, await count())); } catch { /* an invitation is never worth a failed search */ }
     },
     pending: () => open,
     answer(kind, how) {

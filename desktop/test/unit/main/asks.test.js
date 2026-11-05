@@ -1,9 +1,9 @@
 // The ask gate (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md): when the app may invite the person to tell us what went wrong, and who owns that answer.
 // Design (fb, 5 Nov 2026): lib/asks.js alone decides. States of one kind of ask: IDLE -> PENDING (a moment passed the gate) -> ANSWERED ("Tell us" pressed) or SNOOZED ("Not now", 14 days).
-// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step), a failed Find jobs press and a crash on the last run open PENDING; nothing else does. The No list below is the whole gate.
+// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step), a failed Find jobs press, a crash on the last run and a finished press with fewer than 5 open jobs in the places (once a week) open PENDING; nothing else does. The No list below is the whole gate.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, createAsks, mayAsk, momentOf, runMomentOf} from '../../../lib/asks.js';
+import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_THIN_SEARCH, createAsks, mayAsk, momentOf, runMomentOf, searchMomentOf} from '../../../lib/asks.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -148,4 +148,40 @@ test('the next start takes the mark once', () => {
   fs.writeFileSync(storage.path('crashed.mark'), '1');
   assert.equal(takeCrashMark(storage), true);
   assert.equal(takeCrashMark(storage), false, 'once');
+});
+
+// Why (fb 5/7, 5 Nov 2026): "Were you expecting more jobs?" is for a person who pressed Find jobs, it finished, and few open jobs are in their places; an unknown count is never a verdict.
+test('only a finished press of Find jobs with fewer than 5 open jobs in the places is a thin-search moment', () => {
+  const done = {ok: true, stopped: false, trigger: 'you'};
+  assert.equal(searchMomentOf(done, 2), 'thin-search');
+  assert.equal(searchMomentOf({...done, trigger: 'first'}, 0), 'thin-search');
+  for (const [info, count, why] of [[done, 5, 'enough jobs'], [done, 40, 'plenty'], [done, null, 'count unknown'], [done, undefined, 'count unknown'], [done, -1, 'nonsense count'], [done, 2.5, 'nonsense count'],
+    [{...done, trigger: 'schedule'}, 1, 'scheduled run'], [{...done, trigger: 'telegram'}, 1, 'not pressed in the app'], [{...done, ok: false}, 1, 'failed run'], [{...done, stopped: true}, 1, 'stopped'], [{...done, endedByTime: true}, 1, 'cut at its 3 minutes: it did not finish looking'], [undefined, 1, 'no info']])
+    assert.equal(searchMomentOf(info, count), '', why);
+  assert.equal(momentOf('thin-search'), ASK_THIN_SEARCH);
+});
+
+test('a thin search is asked at most once a week, even after "Not now" was never pressed', async () => {
+  let now = NOW; const mine = store(), win = spy();
+  const asks = createAsks({storage: mine, getWindow: win.getWindow, now: () => now}), count = async () => 1;
+  await asks.search({ok: true, stopped: false, trigger: 'you'}, count);
+  assert.equal(asks.pending(), ASK_THIN_SEARCH);
+  asks.answer(ASK_THIN_SEARCH, 'later');
+  now += 2 * DAY;
+  await asks.search({ok: true, stopped: false, trigger: 'you'}, count);
+  assert.equal(asks.pending(), null, 'snoozed 14 days');
+  const again = store(settings({asks: {lastAt: NOW, openedAt: {[ASK_THIN_SEARCH]: NOW}}}));
+  const later = createAsks({storage: again, getWindow: win.getWindow, now: () => NOW + 3 * DAY});
+  await later.search({ok: true, stopped: false, trigger: 'you'}, count);
+  assert.equal(later.pending(), null, 'asked 3 days ago');
+  const week = createAsks({storage: again, getWindow: win.getWindow, now: () => NOW + 8 * DAY});
+  await week.search({ok: true, stopped: false, trigger: 'you'}, count);
+  assert.equal(week.pending(), ASK_THIN_SEARCH, 'a week later it may ask again');
+});
+
+test('a count that throws or is unknown never fails the search or opens an ask', async () => {
+  const asks = createAsks({storage: store(), getWindow: spy().getWindow, now: () => NOW}), info = {ok: true, stopped: false, trigger: 'you'};
+  await asks.search(info, async () => { throw new Error('engine gone'); });
+  await asks.search(info, async () => null);
+  assert.equal(asks.pending(), null);
 });
