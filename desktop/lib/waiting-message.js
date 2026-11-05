@@ -38,8 +38,9 @@ export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, m
       if (!mail && !bot) { log('apply', 'waiting application not sent: no e-mail or Telegram works', {count: items.length}); return; }
       const subject = words(items.length);
       const lines = items.map(item => `${[item.title, item.company].filter(Boolean).join(' at ') || 'An application'}: ${item.note}`);
-      const text = `${lines.join('\n')}\n\nOpen Jobadabra to finish it.`;
-      const done = await Promise.all([mail && sendEmail({subject, text}), bot && sendTelegram(`${subject}\n${text}`)].map(sent => Promise.resolve(sent).catch(() => false)));
+      const text = lines.join('\n');
+      const buttons = [{text: 'Open in Jobadabra', url: 'https://www.jobadabra.top/open?view=sessions'}];
+      const done = await Promise.all([mail && sendEmail({subject, text, buttons}), bot && sendTelegram(`${subject}\n${text}\n\nOpen Jobadabra to finish it.`)].map(sent => Promise.resolve(sent).catch(() => false)));
       if (done.some(Boolean)) storage.saveSettings({waitingMessageAt: new Date(now()).toISOString()});
       log('apply', 'waiting application message', {count: items.length, email: !!done[0], telegram: !!done[1]});
     } finally { sending = false; arm(); }   // an application that came while this one was sending

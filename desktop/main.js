@@ -20,6 +20,7 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import * as apply from './lib/apply.js';
 import {createRestarter} from './lib/restart.js';
+import {installAppLinks} from './lib/app-links.js';
 import {claimInstance, startWhenReady, installQuitHandling} from './lib/lifecycle.js';
 import * as critical from './lib/critical.js';
 import * as pageRender from './lib/page-render.js';
@@ -343,7 +344,7 @@ process.on('exit', code => appLog('window', `process exit ${code}`));
 const firstCopy = claimInstance({app, getWindow: () => window, createWindow,   // Why (3 Nov 2026, #3060, Windows tester): a second copy quits at once; the first brings its window forward (lifecycle.js). It used to stop on a blocking box first.
   onSecondCopy: () => appLog('window', 'a second copy was started: it quits, this window is brought forward'),
 });
-
+if (firstCopy) installAppLinks({app, ipcMain, getWindow: () => window, createWindow, toWindow});
 // Apply with Claude sessions run without asking before each action (--permission-mode bypassPermissions), so the
 // user agrees once, knowing what that means; the answer is kept in settings.
 // Apply with Claude for one job: the job row's button, the page's "Take over" and an account page the extension reached.

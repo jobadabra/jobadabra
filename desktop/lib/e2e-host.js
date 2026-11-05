@@ -20,6 +20,7 @@ export const DOORS = [
   ['clipboard', 'writeText', () => undefined],
   ['clipboard', 'readImage', () => ({isEmpty: () => true, toPNG: () => Buffer.alloc(0)})],   // the owner's clipboard is never read: an empty image
   ['app', 'setLoginItemSettings', () => undefined],
+  ['app', 'setAsDefaultProtocolClient', () => true],
 ];
 
 /**
