@@ -2,6 +2,7 @@
 // every store (the data on this Mac too). Pure: the drawer's nine tabs, and each tab's parts as text (never HTML). Drawn by
 // pages/job-panel.js and job-drawer/; guarded by test/unit/renderer/job-page-view.test.js. The sections are the engine's own headings (src/ai/kit.py KIT_HEADING,
 // prep.py HEADING, rejection.py HEADING, notion/ledger_record.py RECORD_HEADING, inbox_notion.py DESCRIPTION_HEADING, opportunity.py HEADING).
+import {stageLabel} from './jobs-board-rules.js';
 import {shortDay} from './date.js';
 export const SECTIONS = {
   kit: '📝 Application kit', prep: '🎤 Interview prep', review: '🔎 Why it was rejected', record: '🗂 Application record',
@@ -353,14 +354,14 @@ export function pageParts({sections = {}, kit = null, events = [], files = [], m
 
 // What was actually sent, from the application's frozen record (its JSON, src/notion/ledger_record.py build_fields): {facts, note, answers, letter}
 // or null when nothing was captured. It never changes when the kit or the CV are edited afterwards: the record is written once at submission.
-const HOW = {Form: 'Answers read from the form just before Submit.', 'Kit draft': 'Answers are the kit drafts; edits made in the form before Submit are unknown.',
+const HOW = {Form: 'Answers read from the form just before Submit.', 'Kit draft': 'Answers were prepared for this application; edits made in the form before Submit are unknown.',
   None: 'No answers were captured.'};
 export function submittedOf(sections = {}, app = null) {
   const record = jsonOf(sections[SECTIONS.record]);
   if (!record || !(record.recorded_at || record.job || record.answers)) return null;   // an empty or foreign JSON is not a snapshot
   const site = record.job?.ats ? record.job.ats.charAt(0).toUpperCase() + record.job.ats.slice(1) : '';
   const facts = [['Recorded', day(record.recorded_at)], ['Site', site], ['Channel', app?.channel],
-    ['Via', app?.via], ['CV version', record.cv], ['Kit variant', record.variant], ['Agent', record.run?.agent]].filter(([, value]) => value);
+    ['Via', app?.via], ['CV version', record.cv], ['Application version', record.variant], ['Agent', record.run?.agent]].filter(([, value]) => value);
   const answers = (Array.isArray(record.answers) ? record.answers : []).filter(item => item?.question)
     .map(item => ({question: String(item.question), answer: String(item.answer ?? ''), edited: item.draft != null && item.draft !== item.answer}));
   return {facts, note: HOW[record.answers_captured] || '', answers, letter: String(record.cover_letter || '').trim(),
@@ -382,7 +383,7 @@ export function appliedLine(job = {}, app = null) {
 
 // "Applied 1 Oct 2026 · Zurich · 🎯 82" (the mockup's line under the title).
 export function headerFacts(job = {}, app = null) {
-  const stage = app?.stage || job.stage || '';
+  const stage = stageLabel(app?.stage || job.stage || '');
   const applied = app?.applied_on || job.applied_on;
   return [applied ? `${stage === 'Applied' || !stage ? 'Applied' : stage} · applied ${day(applied)}` : stage,
     job.location || app?.location, job.fit != null ? `🎯 ${job.fit}` : ''].filter(Boolean).join(' · ');

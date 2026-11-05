@@ -1,6 +1,7 @@
 // Where an email belongs, in your words: Focus → "Is this about …?" (an email the Gmail check wasn't sure about).
 // One dialog: pick the job, a new job, or "not about a job"; src/ai/reassign.py attaches the email (Notion stays the
 // one copy).
+import {stageLabel} from '../jobs-board-rules.js';
 import {shared} from './shared.js';
 import {$, message} from './core.js';
 import {loadFocus, holdItem, releaseItem} from './focus.js';
@@ -12,7 +13,7 @@ import {el} from '../components.js';
 import {storeName} from '../store-words.js';
 
 const option = (value, text) => Object.assign(document.createElement('option'), {value, textContent: text});
-const labelOf = job => `${job.company || job.via || '—'} · ${job.title}${job.stage ? ` (${job.stage})` : ''}`;
+const labelOf = job => `${job.company || job.via || '—'} · ${job.title}${job.stage ? ` (${stageLabel(job.stage)})` : ''}`;
 
 // The job picker holds only the jobs you track; "a new job" and "not about a job" are their own choices.
 function targets(current = '', suggested = '') {
