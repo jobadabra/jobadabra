@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import {STOPS} from '../../../../tools/fixer/driver.mjs';
-import {MODEL, VERDICTS, buildRecord, partOf} from '../../../../tools/fixer/record.mjs';
+import {SONNET_ENGINES} from '../../../../tools/fixer/engine.mjs';
+import {MODELS, VERDICTS, buildRecord, partOf} from '../../../../tools/fixer/record.mjs';
 import {recordOf} from '../../../../tools/harness-stats.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../..');
@@ -22,7 +23,10 @@ test('the record is what the admin tab reads: every field survives its reader, i
   // The reader keeps every field as written; it adds GitHub's own run id and url and reads a null stop as ''.
   assert.deepEqual({...read, run_id: undefined, url: undefined}, {...record, stop: record.stop ?? '', run_id: undefined, url: undefined});
   assert.deepEqual([read.run_id, read.url], [77, RUN.html_url]);
-  assert.deepEqual([record.v, record.workflow, record.minutes, record.model, record.verdict, record.stop, record.pr], [1, 'ai-fixer', 30, MODEL, 'needs-human', null, null]);
+  assert.deepEqual([record.v, record.workflow, record.minutes, record.model, record.verdict, record.stop, record.pr], [1, 'ai-fixer', 30, 'claude-sonnet-5-5', 'needs-human', null, null]);
+  // The model follows the engine that answered (the broker may answer from Codex); an engine we do not know names no model.
+  assert.deepEqual(Object.keys(MODELS).sort(), [...SONNET_ENGINES].sort(), 'every engine the loop accepts has a model name');
+  assert.deepEqual(['codex', 'claude', 'qwen', ''].map(engine => partOf({loop: {...LOOP, engine}, brief: BRIEF}).model), ['gpt-6.1-sol', 'claude-sonnet-5-5', '', '']);
   assert.deepEqual(record.steps, [{n: 1, action: 'read'}, {n: 2, action: 'search'}, {n: 3, action: 'finish'}]);
   assert.ok(JSON.stringify(record).length < 4000, 'a few KB at most');
   // The words: the loop's verdicts and the driver's stop words; anything else is dropped, never passed on.

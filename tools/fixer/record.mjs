@@ -12,7 +12,8 @@ import {STOPS} from './driver.mjs';
 import {leaks} from './leaks.mjs';
 
 export const VERDICTS = ['fix', 'fixed-already', 'not-reproducible', 'needs-human', 'false-positive', 'answer'];
-export const MODEL = 'claude-sonnet-5-5';   // the engine rule (engine.mjs) lets no smaller model answer
+// Why (5 Nov 2026, Gitar on #3194): the engine rule (engine.mjs SONNET_ENGINES) lets two engines answer, so the model is named from the engine that did; an unknown engine names none.
+export const MODELS = {claude: 'claude-sonnet-5-5', codex: 'gpt-6.1-sol'};
 const REASON_CHARS = 400, FILES = 20, ERRORS = 5;
 const one = text => String(text || '').replace(/\s+/g, ' ').trim();
 
@@ -25,7 +26,7 @@ export function partOf({loop, brief, title = '', files = []}) {
   const stopped = String(loop.stopped || '').split(':')[0];
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
   const actions = Array.isArray(loop.actions) ? loop.actions : [];
-  return {engine: one(loop.engine).slice(0, 60), model: loop.engine ? MODEL : '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
+  return {engine: one(loop.engine).slice(0, 60), model: MODELS[loop.engine] || '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
     steps: actions.slice(0, 60).map((action, i) => ({n: i + 1, action: one(action).slice(0, 20)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
 }
 
