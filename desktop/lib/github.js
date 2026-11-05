@@ -229,11 +229,12 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   // 'api' is the workflows' default, so it is only set for OpenAI (and removed otherwise, so a switch back to Claude takes effect).
   const engine = ai.alwaysOnEngine(settings, ai.keysOf(storage));
   if (engine === 'openai') variables.JOBADABRA_AI_ENGINE = engine; else removed.push('JOBADABRA_AI_ENGINE');
+  // Why (5 Nov 2026, owner): "Preparing the kit separately… brings no value": a kit is made only by Apply, so a repo that had automatic drafts on loses them here.
+  removed.push('JOBADABRA_AUTO_KIT_MAX');
   if (secrets[ai.ENGINES[engine].key]) {
     for (const [name, stage] of Object.entries(MODEL_VARIABLES)) variables[name] = MODELS[stage];
-    const {insights, kits} = cadence(settings);
+    const {insights} = cadence(settings);
     if (insights === 'off') { delete variables.JOBADABRA_INSIGHT_MODEL; removed.push('JOBADABRA_INSIGHT_MODEL'); }
-    if (kits > 0) variables.JOBADABRA_AUTO_KIT_MAX = String(kits); else removed.push('JOBADABRA_AUTO_KIT_MAX');
   }
   // "Help the pool grow" (opt-in): Always-on runs follow the same choice.
   // Why (2 Nov 2026, owner: no old-name support anywhere): the repo's variables carry the engine's own JOBADABRA_* names, the same the workflows read as vars.*; the old names a repo made before keeps are left unread (owner chose "leave them").

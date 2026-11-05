@@ -52,23 +52,22 @@ export function pickUntailored(jobs, n) {
 }
 
 // Draft the missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
-// Returns how many are ready now, or {cloud: true} when they are drafted on GitHub and cannot be waited for here.
+// Returns how many are ready now, and the first reason a kit was refused ('' when none gave one).
 export async function draftMissing(jobs, shortfall, prepare, report = () => {}) {
-  let done = 0;
+  let done = 0, why = '';
   const missing = pickMissing(jobs, shortfall);
   for (const [index, job] of missing.entries()) {
     report(`Preparing application ${index + 1} of ${missing.length}: ${job.title} · ${job.company} (about 20 s each)…`);
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(() => ({ok: false}));
-    if (result.cloud) return {cloud: true, done};
     if (result.ok) done++;
+    else why ||= result.error || '';
   }
-  return {done};
+  return {done, why};
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
 const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
 const nothingStarted = jobs => (jobs.some(startable) ? NO_KITS : NO_JOBS);
-const ON_GITHUB = 'Your applications are being prepared on GitHub (Always on). Press Apply again in a few minutes.';
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -270,14 +269,14 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
     const ready = claudeReady(storage);
     if (!ready.ok) return ready;
     let urls = await next(storage, n);
-    let drafted = 0;
+    let drafted = 0, why = '';
     if (urls.length < n && prepare) {
       const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report);
-      if (result.cloud) return {ok: false, error: ON_GITHUB};
       drafted = result.done;
+      why = result.why;
       if (drafted) urls = await next(storage, n);
     }
-    if (!urls.length) return {ok: false, error: nothingStarted((await list(storage)).jobs)};
+    if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs)};
     const here = launch === session.launch && await inApp(storage);
     (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
     n = urls.length;
@@ -288,14 +287,14 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
   }
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n);
-  let drafted = 0;
+  let drafted = 0, why = '';
   if (chosen.length < n && prepare) {
     const result = await draftMissing(jobs, n - chosen.length, prepare, report);
-    if (result.cloud) return {ok: false, error: ON_GITHUB};
     drafted = result.done;
+    why = result.why;
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
   }
-  if (!chosen.length) return {ok: false, error: nothingStarted(jobs)};
+  if (!chosen.length) return {ok: false, error: why || nothingStarted(jobs)};
   // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
   if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.

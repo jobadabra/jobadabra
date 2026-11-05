@@ -32,9 +32,8 @@ export function dailyArgs(storage, inputs = {}) {
   // budget: the seconds a Find jobs press gives this run (lib/search-steps.js: one deadline for the press), with or without AI.
   if (inputs.budget) args.push('--budget', String(inputs.budget));
   else if (ai && (AI_MODES.includes(mode) || mode === 'rescore')) args.push('--budget', String(SEARCH_BUDGET_S));
-  const {insights, kits} = cadence(storage.settings());
+  const {insights} = cadence(storage.settings());
   if (ai && mode === 'scheduled' && insights !== 'off') args.push('--insight');
-  if (ai && kits > 0 && AI_MODES.includes(mode)) args.push('--auto-kit-max', String(kits));
   return args;
 }
 // Notion just connected after a time of trying: one run that spends no AI (every cap at 0), so the Job Matches sync

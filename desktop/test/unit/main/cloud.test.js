@@ -126,7 +126,7 @@ test('with the cloud on: no local timer, and buttons start runs in the repo', as
   assert.match(telegramEnv(storage).status(), /even with your computer off/);
 });
 
-test('the schedule and job choices reach the repo: crons, kits on, insights off', async () => {
+test('the schedule and job choices reach the repo: crons, insights off, and automatic drafts removed even if once on', async () => {
   const storage = userStorage();
   storage.saveSettings({schedule: {search: 2, kits: 3, insights: 'off', scout: 'off', mail: 1}});
   const gh = await fakeGitHub();
@@ -135,7 +135,8 @@ test('the schedule and job choices reach the repo: crons, kits on, insights off'
   assert.match(file('daily.yml'), /- cron: '\d+ [\d,]+ \* \* \*'/);
   assert.equal(file('daily.yml').match(/- cron: '\d+ ([\d,]+)/)[1].split(',').length, 12);  // every 2 hours
   assert.doesNotMatch(file('scout.yml'), /schedule:/);
-  assert.ok(gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOBADABRA_AUTO_KIT_MAX' && c.data.value === '3'));
+  assert.ok(!gh.calls.some(c => c.method === 'POST' && c.data?.name === 'JOBADABRA_AUTO_KIT_MAX'));
+  assert.ok(gh.calls.some(c => c.method === 'DELETE' && c.route.endsWith('/actions/variables/JOBADABRA_AUTO_KIT_MAX')));
   assert.ok(gh.calls.some(c => c.method === 'DELETE' && c.route.endsWith('/actions/variables/JOBADABRA_INSIGHT_MODEL')));
 });
 

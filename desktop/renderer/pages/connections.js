@@ -27,7 +27,7 @@ const wayOut = (label, run) => { const button = document.createElement('button')
 
 
 // ---------- how often each job runs ----------
-const SCHEDULE_DEFAULTS = {search: 4, kits: 0, insights: 'daily', scout: 'daily', mail: 3};
+const SCHEDULE_DEFAULTS = {search: 4, insights: 'daily', scout: 'daily', mail: 3};
 export function showSchedule() {
   const schedule = {...SCHEDULE_DEFAULTS, ...(shared.state.settings.schedule || {})};
   document.querySelectorAll('[data-schedule]').forEach(select => { select.value = String(schedule[select.dataset.schedule]); });
@@ -49,7 +49,6 @@ export function showScheduleState(next = shared.nextRuns || {}) {
   };
   const state = {
     search: value('search') === '0' ? ['Off'] : ['On', where, when(next.search)],
-    kits: value('kits') === '0' ? ['On demand'] : ['On', 'after each search'],
     scout: value('scout') === 'off' ? ['Off'] : ['On', where, when(next.scout)],
     insights: value('insights') === 'off' ? ['Off'] : ['On', 'every morning'],
     mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', where, when(next.mail)],
