@@ -2,7 +2,8 @@
 // Job: report health
 // Why (3 Nov 2026, AI user agents 6/12; owner asked for an agent that clicks around the app like a tester and interprets what it sees as it goes): the session is pure given its inputs (act is the page, ask the acting model, judgeAsk the second opinion),
 // so a scripted model plays a whole night in a unit test; the suite (suites/agent.mjs) only wires the real app and the broker. Nothing here reaches a network, a clock or the owner's data.
-import {explore, stepWords} from './explore.mjs';
+import {explore, formatObservation, stepWords} from './explore.mjs';
+import {readScreen} from './agent-screen.mjs';
 import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
@@ -50,13 +51,13 @@ export const goalIntro = (goal, knowledge) => `Your goal (${goal.group}): ${goal
 
 /**
  * Runs a whole session. `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
- * shared out between the goals (at least 6 steps each); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
+ * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
+export async function runSession({act, ask, judgeAsk, screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
-  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [];
+  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set();
   let stoppedByBroker = '';
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
@@ -66,6 +67,16 @@ export async function runSession({act, ask, judgeAsk, views, plan, knowledge = '
       extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
+    if (screenAsk && !result.stopped.startsWith('api:')) {   // Why (4 Nov 2026, FR 3/4): the screen the goal ended on is read once by a call that is not busy with the goal; the same words on a later goal are not read again
+      const observation = formatObservation(await act.observe());
+      if (!read.has(observation)) {
+        read.add(observation);
+        const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : ''});
+        spent.calls++; spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
+        for (const note of seen.notes) mine.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shoot() : '', by: 'screen'});
+        log(`  goal ${goal.n}: the screen reader ${seen.failed ? `gave no answer (${seen.failed})` : `noted ${seen.notes.length}${seen.refused.length ? `, refused ${seen.refused.length} (${seen.refused[0]})` : ''}`}`);
+      }
+    }
     notes.push(...mine);
     results.push(goalResult(goal, result));
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
