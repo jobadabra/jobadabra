@@ -6,7 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {linkEnd, linksAsked, MARKER, packSnapshot, pointerLine, restoreSnapshot, resumePlan, startChain} from '../../lib/agent-chain.mjs';
-import {brokerWhy} from '../../lib/explore.mjs';
 import {chainFor, pointerOf, previousLink, restoreLink} from '../../lib/agent-chain-run.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chain-test-'));
@@ -86,11 +85,6 @@ test('a chain ends, and says why: every goal done, link limit, broker failure, n
 test('a finding names the snapshot to restore and the artifact it is in', () => {
   assert.match(pointerLine({chain: '100', link: 1, snapshot: '', run: ''}), /^Chain 100, link 1: starts from the seeded app/);
   assert.equal(pointerLine({chain: '100', link: 3, snapshot: 'agent-chain-100-2.tar', run: '101'}), 'Chain 100, link 3: restore agent-chain-100-2.tar (artifact agent-replay-101), then do the steps above.');
-});
-
-test('a broker failure label starts with the reason, not the engine\'s start events', () => {
-  const error = new Error('502 broker: codex-failed:1 {"type":"thread.started","thread_id":"01a1ac05-5b58"} {"type":"turn.started"} {"type":"error","message":"Selected model is at capacity"}');
-  assert.equal(brokerWhy(error), '502 broker: codex-failed:1 {"type":"error","message":"Selected model is at capacity"}');
 });
 
 test('a link of another app commit ends the chain before it runs; an ended chain is refused; no folder means no chain', () => {

@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier or the screen reader switch measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
+      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch, an engine or a chain link measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
@@ -252,6 +252,7 @@ jobs:
           IN_RULES_OFF: ${{ inputs.rules_off }}
           IN_SCREEN: ${{ inputs.screen }}
           IN_APP_REF: ${{ inputs.app_ref }}
+          IN_ENGINE: ${{ inputs.engine }}
         run: |
           STATE=e2e-artifacts/agent/agent-chain.json
           ENDED="$(jq -r .ended "$STATE")"
@@ -259,6 +260,6 @@ jobs:
           # Why (5 Nov 2026, code review): every setting of link 1 goes on to the next link, or the chain would mix states (a different app, rules on, the screen reader on).
           ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")")
           add() { if [ -n "$2" ]; then ARGS+=(-f "$1=$2"); fi; }
-          add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF";
+          add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF"; add engine "$IN_ENGINE";
           gh workflow run ai-user-agents.yml --ref "$GITHUB_REF_NAME" "${ARGS[@]}"
           echo "Chain $(jq -r .chain "$STATE"): link $(jq -r '.link + 1' "$STATE") started from this run." | tee -a "$GITHUB_STEP_SUMMARY"
