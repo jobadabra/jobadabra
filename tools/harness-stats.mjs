@@ -3,7 +3,8 @@
 // the context layers and sources as FILE FACTS plus one yes/no per source: is its read-only key stored (booleans from one workflow step, never a value; neither fact proves a live read), and the last 30 days of run records the fixer writes (artifact `ai-fixer-record`, file `record.json`, schema v1).
 // Reads data, runs nothing from it: a record is parsed as JSON (64 KB at most, only that one file); its run_id and url are replaced by GitHub's own for that run, so a record cannot point at another run. The site clamps and escapes every field.
 // A run with no record is normal (a run before the record existed has none) and is left out: nothing is invented for it. Report only, never blocks anything. No AI, $0.
-//   node tools/harness-stats.mjs [--out harness.json] [--plan docs/superpowers/plans/2026-11-04-ci-agent-until-green.md] [--keys keys.json] [--now 2026-11-05T04:41:00Z]
+// A second card from the same records (owner, 5 Nov 2026: "how much time each tools/harness is being used. How efficient it is", CI harness only): kind `harness-fixer`, did the fixer read the map (docs/map/) and how did those runs fare against the ones that did not. Counts and averages only, no text.
+//   node tools/harness-stats.mjs [--out harness.json] [--fixer-out harness-fixer.json] [--plan docs/superpowers/plans/2026-11-04-ci-agent-until-green.md] [--keys keys.json] [--now 2026-11-05T04:41:00Z]
 // Needs gh with GH_TOKEN. Fed by .github/workflows/harness-stats.yml (daily, and when "CI · AI fixer" completes). Test: desktop/test/tooling/ci/harness-stats.test.js.
 import {execFileSync} from 'node:child_process';
 import {existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
@@ -77,6 +78,26 @@ export function compute(input, fs, now = new Date(), maxBody = MAX_BODY) {
   return body;
 }
 
+/** The path of a step as a map page: 'index' for docs/map/index.md, 'hub' for any other docs/map/*.md, else ''. Only a `read` counts, never a word in a reason. Why (5 Nov 2026, Gitar on #3253): a `search` step records no path (the recorder keeps a file path only, and a search takes a folder), so counting it would never fire. */
+export function mapPage(step) {
+  if (!step || step.action !== 'read') return '';
+  const found = /(?:^|\/)docs\/map\/([^/]+)\.md$/.exec(String(step.path || ''));
+  return found ? (found[1] === 'index' ? 'index' : 'hub') : '';
+}
+
+/**
+ * The second card -> {kind: 'harness-fixer', days: [today]} from the run records (all of them, before the harness card trims its list): per map page how many runs read it (`tools`), and per group (a run "used the map" when any step read a docs/map/ page)
+ * the count, the AVERAGE turns, calls and minutes (1 decimal) and how many stopped 'ready'. An empty group is all zeros (the site shows "No data yet" for n=0). Numbers only: no path, reason or file name of a record is copied.
+ */
+export function fixerStats(runs, now = new Date()) {
+  const list = Array.isArray(runs) ? runs : [], round = value => Math.round(value * 10) / 10;
+  const group = records => ({n: records.length, turns: records.length ? round(records.reduce((sum, r) => sum + r.turns, 0) / records.length) : 0, calls: records.length ? round(records.reduce((sum, r) => sum + r.calls, 0) / records.length) : 0,
+    minutes: records.length ? round(records.reduce((sum, r) => sum + r.minutes, 0) / records.length) : 0, ready: records.filter(r => r.stop === 'ready').length});
+  const pages = list.map(record => new Set((record.steps || []).map(mapPage).filter(Boolean)));
+  const usedMap = list.filter((_, i) => pages[i].size), noMap = list.filter((_, i) => !pages[i].size);
+  return {kind: 'harness-fixer', days: [{day: now.toISOString().slice(0, 10), runs: list.length, tools: ['index', 'hub'].map(page => ({id: `map-${page}`, runs: pages.filter(set => set.has(page)).length})), help: {with_map: group(usedMap), without_map: group(noMap)}}]};
+}
+
 const gh = (...args) => JSON.parse(execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 << 20}) || 'null');
 const lsCount = (dir, suffix) => { try { return readdirSync(join(ROOT, dir)).filter(name => (suffix ? name.endsWith(suffix) : statSync(join(ROOT, dir, name)).isDirectory())).length; } catch { return 0; } };
 const checkout = {has: file => existsSync(join(ROOT, file)), count: lsCount};
@@ -132,8 +153,9 @@ export function readKeys(file) {
 
 function main(argv) {
   const arg = name => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : ''), now = arg('--now') ? new Date(arg('--now')) : new Date();
-  const body = compute(fetchInput(arg('--plan') || PLAN, now, arg('--keys')), checkout, now);
+  const input = fetchInput(arg('--plan') || PLAN, now, arg('--keys')), body = compute(input, checkout, now), fixer = fixerStats(input.runs, now);
   if (arg('--out')) writeFileSync(arg('--out'), JSON.stringify(body)); else console.log(JSON.stringify(body, null, 1));
+  if (arg('--fixer-out')) writeFileSync(arg('--fixer-out'), JSON.stringify(fixer));
   console.error(`harness-stats: ${body.days[0].runs.length} run record(s), ${body.days[0].plan.rows.length} plan rows`);
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2));

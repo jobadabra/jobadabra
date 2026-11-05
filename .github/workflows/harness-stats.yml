@@ -48,7 +48,7 @@ jobs:
           flag() { if [ -n "$2" ]; then echo "\"$1\": true"; else echo "\"$1\": false"; fi; }
           { echo '{'; flag LINEAR_READ_KEY "$LINEAR_READ_KEY"; echo ','; flag SENTRY_READ_TOKEN "$SENTRY_READ_TOKEN"; echo ','; flag POSTHOG_READ_KEY "$POSTHOG_READ_KEY"; echo ','; flag CLOUDFLARE_READ_TOKEN "$CLOUDFLARE_READ_TOKEN"; echo ','; flag NOTION_READ_TOKEN "$NOTION_READ_TOKEN"; echo '}'; } > "$RUNNER_TEMP/keys.json"
       - name: Read the plan, the layers and the run records
-        run: node tools/harness-stats.mjs --keys "$RUNNER_TEMP/keys.json" --out "$RUNNER_TEMP/harness.json"
+        run: node tools/harness-stats.mjs --keys "$RUNNER_TEMP/keys.json" --out "$RUNNER_TEMP/harness.json" --fixer-out "$RUNNER_TEMP/harness-fixer.json"
       - name: Store it for the admin page
         env:
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # Why (4 Nov 2026, owner's coordinator): no step that parses a CI artifact holds this secret
@@ -57,7 +57,13 @@ jobs:
             echo "::notice::Nothing stored (no key, or no harness numbers)."
             exit 0
           fi
-          # Why (4 Nov 2026, owner's coordinator): the site answers 400 for kind "harness" until its page is merged and deployed; a notice, not a red run (a report, like the other stats uploads).
-          code=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/harness.json" "https://www.jobadabra.top/agent-coding/data" || echo 000)
-          # 400 = the site has no page for this kind yet (not deployed): a notice. A rejected key (401/403/404), a 5xx or no answer is a real failure: red, so the numbers do not go stale unseen.
-          case "$code" in 200) echo "Stored." ;; 400) echo "::notice::The site answered 400 for the harness numbers: its page may not be deployed yet." ;; *) echo "::error::The site did not store the harness numbers (HTTP $code)."; exit 1 ;; esac
+          # Why (4 Nov 2026, owner's coordinator): the site answers 400 for the kinds "harness" and "harness-fixer" until their page is merged and deployed; a notice, not a red run (a report, like the other stats uploads).
+          # Why (5 Nov 2026, owner: CI harness usage stats): the same loop stores the second card (kind "harness-fixer": did the fixer read the map, how did those runs fare); one failed card does not hide the other's answer.
+          failed=0
+          for file in harness harness-fixer; do
+            [ -s "$RUNNER_TEMP/$file.json" ] || { echo "::notice::No $file numbers to store."; continue; }
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/$file.json" "https://www.jobadabra.top/agent-coding/data" || echo 000)
+            # 400 = the site has no page for this kind yet (not deployed): a notice. A rejected key (401/403/404), a 5xx or no answer is a real failure: red, so the numbers do not go stale unseen.
+            case "$code" in 200) echo "Stored $file." ;; 400) echo "::notice::The site answered 400 for the $file numbers: its page may not be deployed yet." ;; *) echo "::error::The site did not store the $file numbers (HTTP $code)."; failed=1 ;; esac
+          done
+          exit "$failed"
