@@ -18,6 +18,7 @@ from src.sources import board_web, careers, feeds, found_boards, late_reads, rea
 TABLE = 'CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))'
 CUT = 0.6   # seconds from the test's start
 HANG = 4    # a site that answers only after this long: the old code waited for it
+HANG_GUARD = 30   # a read that never ends fails the test instead of hanging it; not a measure of speed
 _READER = careers.READER
 
 
@@ -91,16 +92,19 @@ class NoReadHoldsTheRun(unittest.TestCase):
         for name, (read, expected) in READERS.items():
             with self.subTest(name):
                 (paths.DATA / late_reads.FILE).unlink(missing_ok=True)   # each reader its own run: no page kept from the one before (late_reads)
-                hang, threads = threading.Event(), threading.active_count()
+                hang, before = threading.Event(), set(threading.enumerate())
                 time_budget.start(180)
                 began = time.monotonic()
                 with redirect_stdout(io.StringIO()):
                     got = read(hang)
                 took = time.monotonic() - began
                 hang.set()
-                end = time.monotonic() + 5
-                while threading.active_count() > threads and time.monotonic() < end:   # the left read ends and keeps its page before the next reader
-                    time.sleep(0.02)
+                # Why (5 Nov 2026, #3263's red): the left read ends and keeps its page (late_reads) before the next reader clears the file. Waiting
+                # for the thread count to fall back to a baseline let an earlier reader's straggler stand in for it under CI load, so b3's page landed
+                # in the next reader's run. Each thread this read started is joined by identity; the limit is only a hang guard.
+                for thread in set(threading.enumerate()) - before:
+                    thread.join(HANG_GUARD)
+                    self.assertFalse(thread.is_alive(), f'{name}: a read still runs {HANG_GUARD} s after its site answered')
                 self.assertLess(took, CUT + 1.5, f'{name}: waited {took:.1f} s for a site that hangs (the old code waited for it)')
                 self.assertTrue(expected(got), f'{name}: {got}')
 
