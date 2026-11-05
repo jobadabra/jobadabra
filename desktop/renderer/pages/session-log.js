@@ -262,6 +262,7 @@ export async function init() {
       return;
     }
     if (event === 'open') { openSession(payload.id); return; }
+    if (event === 'journal') { if (!document.querySelector('.view[data-view="sessions"]').hidden) refreshSessions(); return; }   // a live-log step (lib/session-journal.js): only the Sessions page shows it
     if (event === 'update' && (payload?.kind === 'form' || payload?.inChrome)) nudgeMissingDetails();   // a form is being filled: details it will ask for
     refreshSessions().then(() => { if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs(); });
   });
