@@ -13,6 +13,7 @@ const IS_NOTION = /^(notion(-[a-z]+)?\.js|store\/notion(-[a-z]+)?\.js)$/;
 const NOTION_IMPORT = /^import [^\n]*from '\.\/notion(-(read|write|core|workspace|oauth|pace))?\.js';[^\n]*$/gm;
 // Each importer, and why it may call Notion directly (one line at its import: "// Notion-only: <why>").
 const NOTION_ONLY = {
+  'always-on-test-checks.js': "Always on's Test: one read of the token's own user",
   'files.js': 'CV uploads, only when Notion is the store', 'goals.js': "a goal's row on the Notion Profile",
   'migrate.js': "this Mac's data into a Notion that is the store", 'run-history.js': 'copyLocal into a connected Notion',
   'schema.js': 'workspace repair', 'server-env.js': "the extension's Notion calls when Notion is the store",

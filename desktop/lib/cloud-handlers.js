@@ -39,19 +39,14 @@ export function registerCloudHandlers(ctx) {
         ...(error.needsChoice ? {needsChoice: true, repos: error.repos} : {})};
     }
   });
-  // Always on's Test button (renderer/pages/always-on-test.js): start the engine's `test` run in the person's own repo, then read it back as one state per check
-  // (lib/always-on-test.js). Never the real GitHub in demo mode.
-  ipcMain.handle('cloudTestStart', async () => {
-    if (DEMO) return {ok: true, since: Date.now(), repo: 'alexmorgan/jobadabra-personal-always-on'};
-    return aonTest.startTest(storage).catch(error => ({ok: false, error: error.message}));
-  });
-  ipcMain.handle('cloudTestRead', async (_, since = 0, after = 0, runId = 0) => {
+  // Always on's Test button on your own GitHub (renderer/pages/always-on-test.js): every link looked at from the app in about 5 s (lib/always-on-test.js); no run is started in the person's repository.
+  // The demo answers with fixed steps and never reaches GitHub, Notion, an AI provider or a bot.
+  ipcMain.handle('cloudTestCheck', async () => {
     if (DEMO) {
-      const ticks = Math.floor((Date.now() - since) / 1500);   // three checks, one every 1.5 s
-      const steps = aonTest.stepStates(null, null).map((item, index) => ({...item, state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
-      return {found: true, verdict: steps.every(item => item.state === 'ok') ? 'passed' : 'running', steps, url: ''};
+      await new Promise(done => setTimeout(done, 1500));
+      return {ok: true, verdict: 'passed', steps: aonTest.STEPS.map(({id, title, settings}) => ({id, title, state: 'ok', line: '', ...(settings ? {settings: true} : {})}))};
     }
-    return aonTest.readTest(storage, {since, after, runId}).catch(error => ({found: false, verdict: 'running', steps: [], url: '', error: error.message}));   // no steps: the ticks already shown stay
+    return aonTest.checkAll(storage).catch(error => ({ok: false, error: error.message}));
   });
   const turnCloudOff = async () => {
     if (storage.settings().telegramCloud) await telegramCloud.turnOff(storage);  // its buttons start runs there

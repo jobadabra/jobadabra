@@ -1,7 +1,7 @@
 // Always on's Test button, every sentence a person can meet (renderer/always-on-test-words.js): why it is off, what it does, one chip per state, what a failed or stopped test says.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {advance, searchLine, searchWatch, shouldPropose, proposeLead, NOTIFY_CHECK, NOTIFY_SETUP, NOTIFY_LEAD_PROPOSE, NEVER_LISTED, TOO_LONG, TOO_LONG_OURS, lead, list, pillFor, buttonFor, chipFor, summary, startFailed, OURS_FOR, FOR} from '../../../renderer/always-on-test-words.js';
+import {advance, searchLine, searchWatch, shouldPropose, proposeLead, NOTIFY_CHECK, NOTIFY_SETUP, NOTIFY_LEAD_PROPOSE, TOO_LONG_OURS, lead, list, pillFor, buttonFor, chipFor, summary, startFailed, OURS_FOR, FOR} from '../../../renderer/always-on-test-words.js';
 
 test('the line names what is still missing, or says what the test does and does not do', () => {
   assert.equal(list(['Notion']), 'Notion');
@@ -9,7 +9,7 @@ test('the line names what is still missing, or says what the test does and does 
   assert.equal(list(['Notion', 'an API key', 'GitHub']), 'Notion, an API key and GitHub');
   assert.match(lead(['an API key', 'GitHub']), /Set up an API key and GitHub above first/);
   assert.equal(lead([]), FOR);
-  assert.match(FOR, /searches and sends nothing/);
+  assert.match(FOR, /starts nothing on GitHub/);
 });
 
 test('our servers say what one press does, whatever is missing above (their test needs none of the three)', () => {
@@ -25,12 +25,12 @@ test('our servers name the failed step and where to write, and never send a pers
   assert.match(summary('failed', steps, 'ours'), /^The search finished: no\. Press Test again in a few minutes/);
   assert.match(summary('failed', [], 'ours'), /ended before every step ran/);
   for (const text of [summary('passed', steps, 'ours'), summary('failed', steps, 'ours'), summary('failed', [], 'ours'), TOO_LONG_OURS, OURS_FOR]) assert.doesNotMatch(text, /GitHub|Actions/, text);
-  assert.match(summary('passed', steps), /All three work/);   // the own-accounts sentence is unchanged
+  assert.match(summary('passed', steps), /^Everything works\. Your next scheduled run/);
 });
 
 test('every phase has a pill or none, and the button follows it', () => {
   assert.equal(pillFor('idle'), null);
-  assert.deepEqual(['starting', 'running', 'passed', 'failed', 'cancelled'].map(phase => pillFor(phase)[0]), ['Starting', 'Testing', 'Passed', 'Failed', 'Stopped']);
+  assert.deepEqual(['starting', 'running', 'passed', 'failed'].map(phase => pillFor(phase)[0]), ['Starting', 'Testing', 'Passed', 'Failed']);
   assert.deepEqual(buttonFor('idle'), {text: 'Test Always on', busy: false});
   assert.deepEqual(buttonFor('failed'), {text: 'Test again', busy: false});
   assert.equal(buttonFor('running').busy, true);
@@ -38,17 +38,17 @@ test('every phase has a pill or none, and the button follows it', () => {
 });
 
 test('every check state has a word, never colour alone', () => {
-  for (const state of ['waiting', 'running', 'ok', 'failed', 'skipped', 'cancelled']) assert.ok(chipFor(state).text.length > 2, state);
+  for (const state of ['waiting', 'running', 'ok', 'failed', 'skipped']) assert.ok(chipFor(state).text.length > 2, state);
   assert.equal(chipFor('ok').text, 'Works');
   assert.equal(chipFor('nonsense').text, 'Waiting');
 });
 
-test('the summary names the failed check, and a run that ended early says to open it', () => {
+test('the summary names the failed check; a check that ended early says to press again', () => {
   const steps = [{state: 'ok', title: 'A'}, {state: 'failed', title: 'Your AI key answers'}];
   assert.match(summary('failed', steps), /Your AI key answers: no\. Fix that one/);
-  assert.match(summary('failed', [{state: 'ok', title: 'A'}]), /Open the run/);
-  assert.match(summary('passed', steps), /All three work/);
-  assert.match(summary('cancelled', []), /second press/);
+  assert.match(summary('failed', [{state: 'ok', title: 'A'}]), /ended before every check ran\. Press Test again/);
+  assert.match(summary('passed', steps), /^Everything works/);
+  assert.doesNotMatch(summary('failed', [{state: 'ok', title: 'A'}]), /Open the run|GitHub's time limit/);
   assert.equal(summary('running', steps), '');
 });
 
@@ -58,33 +58,14 @@ test('a refused start is one short line', () => {
   assert.ok(startFailed('x'.repeat(500)).length < 260);
 });
 
-test('every wait ends in a verdict: a run never listed fails after 90 s, a running one after 6 min, so the button always comes back', () => {
-  const none = {found: false}, running = {found: true, verdict: 'running'};
-  assert.deepEqual(advance({phase: 'starting', read: none, elapsedMs: 5000}), {phase: 'starting', message: '', again: true});
-  assert.match(advance({phase: 'starting', read: none, elapsedMs: 40000}).message, /not listed the test run yet/);
-  assert.deepEqual(advance({phase: 'starting', read: none, elapsedMs: 91000}), {phase: 'failed', message: NEVER_LISTED, again: false});
-  assert.deepEqual(advance({phase: 'running', read: running, elapsedMs: 60000}), {phase: 'running', message: '', again: true});
-  assert.deepEqual(advance({phase: 'running', read: running, elapsedMs: 361000}), {phase: 'failed', message: TOO_LONG, again: false});
-});
-
-test('a finished run is final and clears an earlier "not listed yet" line', () => {
-  for (const verdict of ['passed', 'failed', 'cancelled']) assert.deepEqual(advance({phase: 'running', read: {found: true, verdict}, elapsedMs: 500000}).again, false, verdict);
-  assert.equal(advance({phase: 'starting', read: {found: true, verdict: 'running'}, elapsedMs: 40000}).message, '');
-});
-
-test('a failed read, or a read after the run was seen, never says "never listed": it keeps polling to the 6-minute limit', () => {
-  const blip = {found: false, error: 'GitHub 502'};
-  assert.deepEqual(advance({phase: 'running', read: blip, elapsedMs: 120000, seen: true}), {phase: 'running', message: '', again: true});
-  assert.deepEqual(advance({phase: 'starting', read: blip, elapsedMs: 120000}), {phase: 'starting', message: '', again: true});
-  assert.deepEqual(advance({phase: 'running', read: {found: false}, elapsedMs: 120000, seen: true}).again, true);
-  assert.deepEqual(advance({phase: 'running', read: blip, elapsedMs: 361000, seen: true}), {phase: 'failed', message: TOO_LONG, again: false});
-});
-
-test('our servers know the run from the press: a read that finds nothing keeps polling, and the limit says "press again"', () => {
-  assert.deepEqual(advance({phase: 'running', read: {found: false}, elapsedMs: 100 * 1000, seen: true, way: 'ours'}), {phase: 'running', message: '', again: true});
-  const late = advance({phase: 'running', read: {found: true, verdict: 'running'}, elapsedMs: 7 * 60 * 1000, seen: true, way: 'ours'});
-  assert.deepEqual(late, {phase: 'failed', message: TOO_LONG_OURS, again: false});
-  assert.deepEqual(advance({phase: 'running', read: {found: true, verdict: 'passed'}, elapsedMs: 1000, seen: true, way: 'ours'}), {phase: 'passed', message: '', again: false});
+test('every wait ends in a verdict on our servers: a read that finds nothing keeps polling, a stuck verdict says "press again", a final one is final', () => {
+  const running = {found: true, verdict: 'running'}, steps = {...running, search: {state: 'running'}};
+  assert.deepEqual(advance({phase: 'starting', read: {found: false}, elapsedMs: 5000}), {phase: 'starting', message: '', again: true});
+  assert.deepEqual(advance({phase: 'running', read: {found: false, error: 'down'}, elapsedMs: 100_000}), {phase: 'running', message: '', again: true});
+  assert.deepEqual(advance({phase: 'running', read: {found: false, error: 'down'}, elapsedMs: 361_000}), {phase: 'failed', message: TOO_LONG_OURS, again: false});
+  assert.deepEqual(advance({phase: 'running', read: running, elapsedMs: 7 * 60 * 1000}), {phase: 'failed', message: TOO_LONG_OURS, again: false});
+  assert.equal(advance({phase: 'running', read: steps, elapsedMs: 61_000}).again, false, 'with a search in the answer the verdict is about the steps: a minute is stuck');
+  for (const verdict of ['passed', 'failed']) assert.equal(advance({phase: 'running', read: {found: true, verdict}, elapsedMs: 500_000}).again, false, verdict);
 });
 
 test('a start that fails with no reason names the right party for each way', () => {
@@ -107,11 +88,11 @@ test('the first search is one line apart from the verdict: running with the wait
 
 test('our servers: a search still running never makes the test "too long"; a verdict stuck for a minute does', () => {
   const stuck = {found: true, verdict: 'running', search: {state: 'running', found: 0, note: ''}};
-  assert.deepEqual(advance({phase: 'running', read: stuck, elapsedMs: 20_000, seen: true, way: 'ours'}), {phase: 'running', message: '', again: true});
-  assert.equal(advance({phase: 'running', read: stuck, elapsedMs: 61_000, seen: true, way: 'ours'}).message, TOO_LONG_OURS);
-  assert.equal(advance({phase: 'running', read: {found: true, verdict: 'passed', search: {state: 'running'}}, elapsedMs: 15 * 60_000, seen: true, way: 'ours'}).phase, 'passed');
+  assert.deepEqual(advance({phase: 'running', read: stuck, elapsedMs: 20_000}), {phase: 'running', message: '', again: true});
+  assert.equal(advance({phase: 'running', read: stuck, elapsedMs: 61_000}).message, TOO_LONG_OURS);
+  assert.equal(advance({phase: 'running', read: {found: true, verdict: 'passed', search: {state: 'running'}}, elapsedMs: 15 * 60_000}).phase, 'passed');
   const older = {found: true, verdict: 'running'};   // a site without `search`: its verdict waits for the search, as before
-  assert.equal(advance({phase: 'running', read: older, elapsedMs: 120_000, seen: true, way: 'ours'}).again, true);
+  assert.equal(advance({phase: 'running', read: older, elapsedMs: 120_000}).again, true);
 });
 
 test('a failed step that depends on the person\'s notification settings says to check them, with one link word', () => {

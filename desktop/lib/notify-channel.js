@@ -41,7 +41,7 @@ async function call(storage, method, path, body, fetcher) {
   try {
     const response = await fetcher(`${BASE}${path}`, {method, signal: limit.signal, headers: {'x-api-key': key, ...(body ? {'content-type': 'application/json'} : {})}, ...(body ? {body: JSON.stringify(body)} : {})});
     const answer = await response.json().catch(() => ({}));
-    return answer.ok ? answer : {ok: false, error: WORDS[answer.error] || answer.error || 'The website did not accept it.'};
+    return answer.ok ? answer : {ok: false, error: WORDS[answer.error] || answer.error || 'The website did not accept it.', ...(answer.reason ? {reason: answer.reason} : {})};
   } catch { return {ok: false, error: 'The website could not be reached. Try again when you are online.'}; } finally { clearTimeout(timer); }
 }
 
@@ -76,6 +76,14 @@ export async function sendEmail(storage, {subject, text, urgent = false, buttons
   if (!channelsOf(storage).includes('email')) return false;
   const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
+}
+
+const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switched off on our side for now.', rate: 'Too many e-mails today. Try again tomorrow.', suppressed: 'Your address bounced or marked us as spam. Check it in Settings → Notifications.', unsubscribed: 'You stopped our e-mails. Turn them back on in Settings → Notifications.', empty: 'Nothing to send.'};
+
+/** One test e-mail, at once (not held for the digest): Always on's Test on your own GitHub. -> {ok} or {ok: false, error: words}. */
+export async function sendTest(storage, {subject, text}, fetcher = globalThis.fetch) {
+  const done = await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${subject}</b>\n${text}`, kind: 'test'}, fetcher);
+  return done.ok ? {ok: true} : {ok: false, error: TEST_WHY[done.reason] || done.error || 'The e-mail could not be sent just now. Try again in a minute.'};
 }
 
 // What the site says when it will not send the confirm mail again (jobadabra-web POST /api/account/email/resend, #333), in the person's words.
