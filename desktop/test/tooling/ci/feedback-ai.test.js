@@ -1,4 +1,4 @@
-// tools/feedback-ai.mjs, the script of the "Send to AI" run (feedback-ai.yml): what it reads, what it redacts again, what may never be posted in public, the before/after proof and what it tells the site.
+// Shared feedback helpers used by ai-fixer.yml and feedback-ai-closed.yml: redaction, allowed paths, proof, and reporting.
 // Nothing here calls the site, GitHub or the AI broker: fetchers are fakes and the broker's answers are not needed (edit-codex.mjs has its own test).
 // Guard: safety — without it the run that reads the owner's feedback could hand a token to the AI's code, push outside fd-ai/, or start on a pull request.
 import assert from 'node:assert/strict';
@@ -8,7 +8,6 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {AUDIENCE, MAX_FILES, MAX_PATCH_BYTES, addedLines, assertionFailed, capVerdict, changeText, closedReport, copied, fetchBrief, gateChange, leaks, newFence, prText, promptFor, proof, redactBrief, report, reportBlock, runTests, siteToken} from '../../../../tools/feedback-ai.mjs';
-import {applyEdits} from '../../../e2e/edit-codex.mjs';
 
 const ENV = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://token.example/req?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'req-token', FEEDBACK_AI_URL: 'https://site.example'};
 const json = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
@@ -205,97 +204,16 @@ test('scenario: the leak scan stops a pull request text or a new file that copie
   assert.doesNotMatch(copiedFile.out, /salary field/, 'the refusal names the kind, never the text');
 });
 
-// The workflow's trust split (mac-07 on #3086). The AI's edits are applied as DATA by edit-codex.mjs; the only job that RUNS the AI's code (`prove`) holds no token of any kind, and the only job that can push (`publish`) never runs it.
 const uncommented = file => fs.readFileSync(file, 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
-const WORKFLOW = uncommented(path.resolve(import.meta.dirname, '../../../../.github/workflows/feedback-ai.yml'));
 const CLOSED = uncommented(path.resolve(import.meta.dirname, '../../../../.github/workflows/feedback-ai-closed.yml'));
-const job = (name, text = WORKFLOW) => {
+const job = (name, text) => {
   const from = text.indexOf(`\n  ${name}:\n`);
   assert.ok(from >= 0, `job ${name}`);
   const rest = text.slice(from + 1), next = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/);
   return next < 0 ? rest : rest.slice(0, next + 1);
 };
 
-test('the workflow, by trust: the AI\'s code runs only in `prove`, which holds no token; `fix` and the reporting jobs run only our code; only `publish` pushes, as a draft, to fd-ai/, and nothing merges', () => {
-  const guard = job('guard'), fix = job('fix'), prove = job('prove'), publish = job('publish'), failed = job('report-failure'), closed = job('closed', CLOSED);
-  // prove: runs the AI's new test and the suites. Read-only permission, no secret, no GitHub token, no run token (id-token is not granted at all).
-  assert.match(prove, /permissions:\n      contents: read\n/);
-  assert.doesNotMatch(prove, /id-token|contents: write|pull-requests: write|actions: write|secrets\.|github\.token|GH_TOKEN|PR_TOKEN|x-access-token|ACTIONS_ID_TOKEN|CI_APP/, 'nothing to steal where the AI\'s code runs');
-  assert.match(prove, /npm test/);
-  assert.match(prove, /persist-credentials: false/);
-  // The AI's code never runs on the runner (3 Nov 2026, Gitar: the runner's cache token is readable from process memory): every command that runs it goes through the sandbox script, and the installs happen before the patch.
-  const runLines = prove.split('\n').filter(line => /npm test|npm run lint|unittest|feedback-ai\.mjs proof|node --test/.test(line));
-  assert.ok(runLines.length >= 3, 'the proof, the desktop suite and the Python suite');
-  for (const line of runLines) assert.match(line, /feedback-ai-sandbox\.sh/, `runs in the box: ${line.trim()}`);
-  assert.ok(prove.indexOf('npm ci') < prove.indexOf('git apply .fb/change.patch') && prove.indexOf('pip install') < prove.indexOf('git apply .fb/change.patch'), 'dependencies are installed before the patch exists');
-  assert.ok(prove.indexOf('docker build') < prove.indexOf('git apply .fb/change.patch'), 'the box is built from main\'s Dockerfile, before the patch');
-  const sandbox = fs.readFileSync(path.resolve(import.meta.dirname, '../../../../tools/feedback-ai-sandbox.sh'), 'utf8').split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
-  // The runner never touches what the box can write (Gitar: a symlink in the shared workspace, or a .git/config the AI edits, would run on the runner): the box mounts its own copy, made after the patch, and logs go to $RUNNER_TEMP.
-  assert.match(sandbox, /-v "\$BOX":\/w/);
-  assert.doesNotMatch(sandbox, /\$PWD|\$GITHUB_WORKSPACE/, 'the real workspace is never mounted');
-  const copy = prove.indexOf('cp -a "$GITHUB_WORKSPACE" "$RUNNER_TEMP/box"');
-  assert.ok(copy > prove.indexOf('git apply .fb/change.patch') && copy < prove.indexOf('bash "$FBT/tools/feedback-ai-sandbox.sh"'), 'the copy is made after the patch and before the first run in the box');
-  for (const line of runLines) {
-    const targets = [...line.replace(/'[^']*'/g, '').replace(/2>&1/g, '').matchAll(/(?<!>)>{1,2} *(\S+)/g)].map(match => match[1]);
-    for (const target of targets) assert.match(target, /^"\$(RUNNER_TEMP\/|GITHUB_OUTPUT")/, `a log from the box goes to "$RUNNER_TEMP", never into the workspace: ${line.trim()}`);
-  }
-  assert.match(sandbox, /--network none/);
-  assert.match(sandbox, /--cap-drop ALL/);
-  assert.match(sandbox, /--security-opt no-new-privileges/);
-  assert.match(sandbox, /--user "\$\(id -u\):\$\(id -g\)"/, 'not root');
-  assert.match(sandbox, /-v "\$FBT":\/fbt:ro/, 'our script copy is read-only');
-  assert.doesNotMatch(sandbox, /--privileged|--network (host|bridge)|docker\.sock|--env-file|GITHUB_|ACTIONS_|RUNNER_|GH_TOKEN/, 'no host network, socket, runner or GitHub environment in the box');
-  for (const [name, text] of [['fix', fix], ['guard', guard], ['report-failure', failed], ['closed', closed], ['publish', publish]]) assert.doesNotMatch(text, /npm test|npm ci|unittest|pip install|npm run lint|node --test/, `${name} never runs the AI's code`);
-  // fix: no write token or secret; our script runs from a copy made before the AI step, and after the AI step only the copy (or desktop/e2e, which the AI may not edit) runs.
-  assert.match(fix, /needs: guard/);
-  assert.match(fix, /contents: read/);
-  assert.doesNotMatch(fix, /contents: write|pull-requests: write|secrets\.|github\.token|GH_TOKEN|PR_TOKEN|x-access-token/);
-  assert.match(fix, /persist-credentials: false/);
-  assert.ok(fix.indexOf('cp --parents tools/feedback-ai.mjs desktop/lib/feedback-bundle.js') >= 0 && fix.indexOf('cp --parents') < fix.indexOf('edit-codex.mjs'), 'the copy is made before the AI step');
-  assert.doesNotMatch(fix, /node tools\/feedback-ai\.mjs/, 'only the copy runs');
-  assert.match(fix, /--prompt \.fb\/prompt\.md/);
-  assert.match(fix, /--data \.fb\/report\.md/);
-  assert.match(fix, /feedback-ai\.mjs" gate/);
-  assert.match(fix, /feedback-ai\.mjs" leaks/);
-  // guard: read-only token, counts the day's runs.
-  assert.doesNotMatch(guard, /contents: write|pull-requests: write|secrets\./);
-  assert.match(guard, /actions: read/);
-  assert.match(guard, /feedback-ai\.mjs cap/);
-  // publish: the only job with a write token; it copies our script before the patch, tells the site without the write tokens, validates the handle, and opens a draft on its own branch.
-  assert.match(publish, /contents: write/);
-  assert.match(publish, /needs: \[fix, prove\]/);
-  assert.match(publish, /needs\.prove\.result == 'success'/);
-  assert.match(publish, /persist-credentials: false/);
-  assert.ok(publish.indexOf('cp --parents') >= 0 && publish.indexOf('cp --parents') < publish.indexOf('git apply .fb/change.patch'), 'the copy is taken before the patch is applied');
-  assert.match(publish, /tell\(\) \{ env -u GH_TOKEN -u PR_TOKEN node "\$FBT\/tools\/feedback-ai\.mjs" report/);
-  assert.doesNotMatch(publish, /node tools\/feedback-ai\.mjs/, 'only the copy runs');
-  assert.match(publish, /--draft/);
-  assert.match(publish, /branch="fd-ai\/\$REF"/);
-  assert.match(publish, /\[\[ "\$REF" =~ \^\[0-9a-f\]\{16\}\$ \]\]/, 'the handle is validated before it becomes a branch name');
-  assert.match(publish, /feedback-ai\.mjs" gate/);
-  assert.match(publish, /check-change\.mjs/);
-  assert.doesNotMatch(WORKFLOW, /pr merge|pr ready|--admin|--auto/, 'never merges, never marks ready');
-  assert.doesNotMatch(WORKFLOW, /git push[^\n]*\bmain\b|HEAD:main|refs\/heads\/main/, 'never pushes to main');
-  assert.equal([...WORKFLOW.matchAll(/git push/g)].length, 1, 'one push, in publish');
-  assert.ok(publish.includes('git push') && !fix.includes('git push') && !prove.includes('git push'));
-  // Only publish may hold a write permission.
-  for (const [name, text] of [['guard', guard], ['fix', fix], ['prove', prove], ['report-failure', failed], ['closed', closed], ['ai-skipped', job('ai-skipped')]]) assert.doesNotMatch(text, /contents: write|pull-requests: write/, name);
-  // report-failure: a fresh checkout and no write token; the one value an AI test could influence (prove's `why` output) goes in through an env var, never into the script text.
-  assert.doesNotMatch(failed, /contents: write|pull-requests: write|secrets\.|github\.token/);
-  assert.match(failed, /WHY: \$\{\{ needs\.prove\.outputs\.why \}\}/);
-  assert.doesNotMatch(failed.slice(failed.indexOf('steps:')), /\$\{\{ needs/);
-  // The patch artifact is the one `fix` scanned (its hash is a job output no later job can write); prove saves no cache after the AI's code ran; the failure reason is from a fixed list.
-  assert.match(fix, /sha: \$\{\{ steps\.check\.outputs\.sha \}\}/);
-  assert.match(publish, /PATCH_SHA: \$\{\{ needs\.fix\.outputs\.sha \}\}/);
-  assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the hash is checked before the patch is applied');
-  assert.doesNotMatch(prove, /cache:/);
-  assert.match(failed, /case "\$WHY" in/);
-});
-
-test('a pull request\'s close is told to the site from its own file, so a close draws 1 row and the click\'s 6 jobs never start on a pull request', () => {
-  // Why (5 Nov 2026, owner: "Yes, rename + fold"): the close lived in feedback-ai.yml, so every pull request's close drew its 6 click-only jobs as skipped rows.
-  assert.doesNotMatch(WORKFLOW, /pull_request/, 'feedback-ai.yml starts only on the site\'s click');
-  assert.match(WORKFLOW, /^on:\n  workflow_dispatch:\n/m);
+test('a pull request\'s close is told to the site from its own file', () => {
   assert.match(CLOSED, /^on:\n  pull_request_target:\n    types: \[closed\]\n\npermissions: \{\}\n/m, 'only a close, with no permission by default');
   assert.equal([...CLOSED.slice(CLOSED.indexOf('\njobs:')).matchAll(/^  [^\s#][^:\n]*:/gm)].length, 1, 'one job, one row');
   const closed = job('closed', CLOSED);
@@ -326,22 +244,6 @@ test('our scripts that hold a token import nothing the AI may edit (src/, tests/
   // check-change.mjs and edit-codex.mjs run from the checkout (desktop/e2e is not editable by the AI) and must not load an editable folder either.
   const editable = /^(?:src|tests|desktop\/(?:renderer|lib|test))\//;
   for (const entry of ['desktop/e2e/check-change.mjs', 'desktop/e2e/edit-codex.mjs']) assert.deepEqual(imports(entry).filter(file => editable.test(file)), [], entry);
-});
-
-test('scenario: a hostile report steers the AI to widen the paths it edits (workflows, tools, a path with "..", a test in a sub-folder): the workflow\'s own --allow rule refuses every one, writes nothing, and still lets the real fix through', () => {
-  const allow = new RegExp(/--allow '([^']+)'/.exec(job('fix'))[1]), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-allow-'));
-  fs.mkdirSync(path.join(dir, 'desktop/lib'), {recursive: true}); fs.writeFileSync(path.join(dir, 'desktop/lib/add.js'), 'export const add = (a, b) => a - b;\n');
-  const hostile = ['.github/workflows/tests.yml', 'tools/ship.sh', 'CLAUDE.md', 'desktop/package.json', 'desktop/lib/../../tools/x.js', 'desktop/test/sub/x.test.js', 'desktop/e2e/lib/x.mjs', 'tests/conftest.py', 'src/../.github/x.yml', '/etc/cron.d/x'];
-  for (const file of hostile) {
-    const result = applyEdits({edits: [{path: 'desktop/lib/add.js', find: 'a - b', replace: 'a + b'}, {path: file, find: '', replace: 'x\n'}], allow, cwd: dir});
-    assert.equal(result.ok, false, file);
-    assert.match(result.problems.join(), /outside the folders/, file);
-    assert.match(fs.readFileSync(path.join(dir, 'desktop/lib/add.js'), 'utf8'), /a - b/, `all or none: nothing was written (${file})`);
-    assert.equal(fs.existsSync(path.join(dir, file)), false, file);
-  }
-  const good = applyEdits({edits: [{path: 'desktop/lib/add.js', find: 'a - b', replace: 'a + b'}, {path: 'desktop/test/add.test.js', find: '', replace: 'x\n'}, {path: 'tests/test_add.py', find: '', replace: 'x\n'}], allow, cwd: dir});
-  assert.equal(good.ok, true);
-  assert.match(fs.readFileSync(path.join(dir, 'desktop/lib/add.js'), 'utf8'), /a \+ b/);
 });
 
 test('the pull request text may not carry what GitHub acts on (an @mention, an issue number, a link); phone numbers with separators and Windows home folders in any case are leaks too', () => {

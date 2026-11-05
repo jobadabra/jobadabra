@@ -24,7 +24,7 @@ CLASSIFIED = {
     'CI · AI fixer': 'ignored: started by hand (workflow_dispatch) for one item; never runs on a push to main',
     'CI · Agent harness stats': 'ignored: report (the numbers of the admin page Agent harness); a red run blocks nothing',
     'CI · AI fixer follow': 'ignored: started by the AI fixer\'s own jobs (workflow_dispatch) to watch one draft PR; never runs on a push to main',
-    'AI fixer': 'ignored: started by the site on the owner\'s click, or when an fd-ai/ pull request closes; never runs on a push to main',
+    'AI fixer': 'ignored: feedback-ai-closed.yml reports closed fixer pull requests; never runs on a push to main',
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     # Why (1 Nov 2026, owner via a8: "Nightly report"): the clock-moved time-bomb report is report only, called by night pass 1, never a push or PR check.
     'CI · Clock moved (nightly, report only)': 'ignored: nightly report of tests that fail with the clock moved; called by night pass 1, never counted for main',

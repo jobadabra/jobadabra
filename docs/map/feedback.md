@@ -1,7 +1,7 @@
 ---
 area: feedback
-paths: [tools/feedback-ai.mjs, tools/fixer, tools/feedback-ai-sandbox.sh, tools/feedback-released.mjs, tools/sentry-fixer, tools/fixer-brief.mjs, tools/ci-agents.json, desktop/e2e/edit-codex.mjs, desktop/e2e/lib/severity.mjs, desktop/e2e/lib/triage-findings.mjs, desktop/lib/app-feedback.js, .github/workflows/feedback-ai.yml, .github/workflows/sentry-fix.yml, .github/workflows/ui-fix.yml, .github/workflows/ui-findings.yml]
-updated: 2026-11-04
+paths: [tools/feedback-ai.mjs, tools/fixer, tools/feedback-ai-sandbox.sh, tools/feedback-released.mjs, tools/sentry-fixer, tools/fixer-brief.mjs, tools/ci-agents.json, desktop/e2e/edit-codex.mjs, desktop/e2e/lib/severity.mjs, desktop/e2e/lib/triage-findings.mjs, desktop/lib/app-feedback.js, .github/workflows/sentry-fix.yml, .github/workflows/ui-fix.yml, .github/workflows/ui-findings.yml]
+updated: 2026-11-05
 ---
 # Feedback and fixers
 > People's feedback, Sentry crashes and the UI Finder's findings reach AI fixers that open DRAFT pull requests; the owner merges. One shared fixer core with an agent loop is being built.
@@ -16,7 +16,7 @@ updated: 2026-11-04
 - Every AI step here runs through the broker on the owner's plan, never an API key ([ai hub](ai.md)).
 
 ## Key files
-- `tools/feedback-ai.mjs`: the command line of the "Send to AI" run (`feedback-ai.yml`); the code it uses lives in `tools/fixer/`: `walls.mjs` (denied paths, caps), `proof.mjs`, `leaks.mjs`, `publish.mjs`.
+- `tools/feedback-ai.mjs`: shared feedback helpers used by `ai-fixer.yml` and `feedback-ai-closed.yml`; the code it uses lives in `tools/fixer/`: `walls.mjs` (denied paths, caps), `proof.mjs`, `leaks.mjs`, `publish.mjs`.
 - `tools/sentry-fixer/`: `pick.mjs` chooses the issue, `codex-fix.mjs` asks for the edit, `lib.mjs` holds the decisions.
 - `desktop/e2e/edit-codex.mjs`: the quick edit (two broker calls, no tools) that the Finder's self-review and the UI fixer use.
 - `desktop/e2e/lib/triage-findings.mjs`, `severity.mjs`: how Finder findings are judged and graded.

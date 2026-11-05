@@ -2,7 +2,7 @@ name: CI · AI fixer
 run-name: AI fixer ${{ inputs.source }} ${{ inputs.ref }}${{ inputs.round && format(' round {0}', inputs.round) || '' }}
 
 # ONE run of the AI fixer for ONE item: a feedback card (source feedback, ref = its 16-character handle) or a Linear issue (source linear, ref = JOB-123), up to a DRAFT pull request (owner, 4 Nov 2026: "Spin an CI agent to
-# fix a specific feedback and let's see how it performs"; plan 2026-11-04-ci-agent-until-green.md, PR 3/6; the follow-up of that PR is 4/6). Started by hand (workflow_dispatch); at most 10 a day and 1 at a time, counted over this workflow AND feedback-ai.yml (Send to AI still counts only its own runs until it moves onto the core).
+# fix a specific feedback and let's see how it performs"; plan 2026-11-04-ci-agent-until-green.md, PR 3/6; the follow-up of that PR is 4/6). Started by hand (workflow_dispatch); at most 10 a day and 1 at a time, counted over this workflow.
 # An agent LOOP (tools/fixer/loop.mjs) asks the AI broker (Sonnet level only, tools/fixer/engine.mjs) for ONE JSON action per turn; our code performs it (tools/fixer/actions.mjs): read, search, edit behind the walls, and run the named
 # tests in the no-network box. The AI never gets a shell or a token. It never merges, never pushes to main. A repository variable AI_FIXER = off pauses it.
 # THIS REPOSITORY IS PUBLIC: the branch, the pull request, the run log and the artifacts are public. The log carries action names and counts only; the pull request text and the diff are scanned for e-mails, secrets, home folders and
