@@ -8,7 +8,7 @@ from .. import tgcard
 from ..notion.ledger import REPLY
 from ..stores import rules
 from . import opportunity
-from .mail_lines import _head, _who
+from .mail_lines import _head, _job_name
 from .mail_match import PLATFORMS, _matches, _same_person, _sender_org, person_name
 from .mail_read import _field, _role
 
@@ -128,9 +128,9 @@ def new_lead(stores, client, model, email, apps, stats, on_new=None):
         'title': opportunity.title(lead), 'company': lead.get('company') or '', 'location': lead.get('location') or '',
         'work_mode': lead.get('work_mode') or '', 'description': text[:8000]}, row) if on_new else None
     if stats is not None:
-        # Why (5 Nov 2026, #3187): the job is named as every other update names it ("Who — Role", mail_lines._short) and as this email's own
-        # line does, so the desktop card joins them into one row; opportunity.label() ("Role — Client via Agency") drew a second card.
-        stats.setdefault('updates', []).append(f"🤝 Recruiter lead · {_who(row)} — {_role(row)[:70]}"[:140])
+        # Why (5 Nov 2026, #3187): named as every other line of the check names it (mail_lines._job_name), so the desktop card joins it to
+        # this email's row; opportunity.label() ("Role — Client via Agency") drew a second card. Telegram below keeps the full label.
+        stats.setdefault('updates', []).append(f"🤝 Recruiter lead · {_job_name(row)}"[:140])
     page = stores.link(row['id'])  # a store without pages (this Mac) has no link: the card shows none
     link = (f"<a href=\"{escape(page, quote=True)}\">In Notion</a>" if page else '')
     return [tgcard.block(f"New recruiter lead · {escape(opportunity.label(lead))}",

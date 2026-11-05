@@ -9,6 +9,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src.ai import mail
+from src.notion import cron_report
 from src.notion import ledger
 from src.sources import google as google_api
 from tests import zone
@@ -254,11 +255,6 @@ class MailMatchTests(MailCase):
         self.assertIn('Zeta', sent[0])
         self.assertIn('Which job is this for?', sent[0])
 
-
-if __name__ == '__main__':
-    unittest.main()
-
-
 class OneJobNameTests(MailCase):
     """#3187 (5 Nov 2026): a recruiter's pitch drew two cards on the Gmail check result, a "Recruiter lead" update and an email row with
     no change, because the two lines named the job differently ("Charge Nurse — clinic (client) via Thornbeck" and "Thornbeck"). The
@@ -269,7 +265,7 @@ class OneJobNameTests(MailCase):
         mail.run(tracker, google, client=FakeClient(results), days=2, send=lambda *_: None, now=NOW, state_path=self.state, stats=stats)
         return stats
 
-    def lead_path(self, kind, lead):
+    def lead_path(self, kind, lead, agency='Thornbeck Recruiting'):
         tracker = FakeTracker([app('p1', 'Scale AI', 'SRE')])
         pitch = email('r1', 'Charge Nurse opportunity', sender='Ann Lee <ann@thornbeck.test>', body='A private clinic is hiring a Charge Nurse.')
 
@@ -278,7 +274,7 @@ class OneJobNameTests(MailCase):
             tracker.apps.append(row)
             return rec(tracker_, row), ''
         with mock.patch('src.ai.opportunity.extract', return_value=lead), mock.patch('src.ai.opportunity.track', track):
-            return self.run_with_stats(tracker, FakeGoogle([pitch]), [[result(0, -1, kind, company='Thornbeck Recruiting')]])
+            return self.run_with_stats(tracker, FakeGoogle([pitch]), [[result(0, -1, kind, company=agency)]])
 
     def test_a_recruiter_pitch_names_one_job_in_its_email_line_and_its_update(self):
         stats = self.lead_path('Recruiter outreach', {'is_opportunity': True, 'title': 'Charge Nurse', 'company': '', 'client': 'private clinic',
@@ -287,3 +283,18 @@ class OneJobNameTests(MailCase):
         [read] = stats['emails']
         self.assertEqual(update.split(' · ', 1)[1], read['label'])
         self.assertEqual(read['label'], 'Thornbeck Recruiting — Charge Nurse')
+        # The run page's line, as the desktop card reads it (desktop/test/unit/renderer/mail-report.test.js plays it).
+        [(_, line)] = cron_report.email_lines({'emails': stats['emails']})
+        self.assertIn('— [tracked a new job] · Thornbeck Recruiting — Charge Nurse · changed new lead', line)
+
+    def test_a_name_with_an_ampersand_is_the_same_in_both_lines(self):
+        # Code review of #3187: the email line escaped HTML ("R&amp;D") while the update did not; the card then drew two rows again.
+        stats = self.lead_path('Recruiter outreach', {'is_opportunity': True, 'title': 'Lab Lead', 'company': '', 'client': '',
+                                                      'recruiter_company': 'R&D Talent', 'in_house': False}, agency='R&D Talent')
+        [update] = stats['updates']
+        [read] = stats['emails']
+        self.assertEqual((update.split(' · ', 1)[1], read['label']), ('R&D Talent — Lab Lead', 'R&D Talent — Lab Lead'))
+
+
+if __name__ == '__main__':
+    unittest.main()
