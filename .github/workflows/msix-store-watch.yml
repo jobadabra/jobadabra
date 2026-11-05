@@ -101,6 +101,7 @@ jobs:
           REASON: ${{ needs.check.outputs.reason }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node tools/msix-store-watch.mjs tell
 
   # Why (5 Nov 2026, Gitar on #3196): the Worker and the watchdog do not page for this hourly start, so a check that fails (an expired Partner Center secret, an unreadable status) tells the owner itself,
@@ -124,6 +125,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node tools/msix-store-watch.mjs broken
 
   clear:

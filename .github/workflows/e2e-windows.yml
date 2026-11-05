@@ -603,6 +603,10 @@ jobs:
       platform: windows
       tag: ${{ inputs.tag }}
       sha: ${{ inputs.sha }}
+    secrets:
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
 
   # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
   ai-credit-health:
@@ -620,9 +624,11 @@ jobs:
         GH_TOKEN
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
       GH_TOKEN: ${{ github.token }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5

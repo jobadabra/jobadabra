@@ -84,6 +84,7 @@ jobs:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
           BUILDLOG_TELEGRAM_TOKEN: ${{ secrets.BUILDLOG_TELEGRAM_TOKEN }}   # only the once-a-week "cap reached" note
           BUILDLOG_TELEGRAM_CHAT: ${{ secrets.BUILDLOG_TELEGRAM_CHAT }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node desktop/e2e/discovery-pick.mjs discovery-out discovery-states 2>&1 | tee discovery-out.log
       - name: The picked rows
         uses: actions/upload-artifact@v6
@@ -244,6 +245,7 @@ jobs:
         env:
           BUILDLOG_TELEGRAM_TOKEN: ${{ secrets.BUILDLOG_TELEGRAM_TOKEN }}   # the Build Log bot; missing: the message is skipped with a line
           BUILDLOG_TELEGRAM_CHAT: ${{ secrets.BUILDLOG_TELEGRAM_CHAT }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
           mkdir -p discovery-states discovery-out
           node desktop/e2e/discovery-report.mjs "$RECORD_REPORTS" record-sites-out/discovery/picked.json discovery-out discovery-states

@@ -1,6 +1,7 @@
 // node watch-report.mjs <smoke reports dir> <picked.json> <out dir> <states dir> [journey log]: after the watch's live recording and its journey check, the verdict per row against the row's
 // last live run (lib/watch-list.mjs), ONE Telegram message only when a flow got worse (none on the first run), this run's state file (<out dir>/watch.json: spend, each row's last measured state)
 // and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/watch-cli.test.mjs.
+// Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -31,7 +32,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
   const lines = [`watch: ${judged.measured.length} measured, ${judged.held.length} held, ${judged.worse.length} worse, $${usd.toFixed(2)} spent (month $${money.spent.toFixed(2)} of $${MONTH_CAP_USD.toFixed(2)})`,
     ...picked.rows.map(shape => `watch: ${shape}: ${judged.held.includes(shape) ? 'held' : `${verdictWord(judged.rows[shape]?.verdict)}${judged.rows[shape]?.journey === 'failed' ? ', journey failed' : ''}`}${judged.worse.find(item => item.shape === shape) ? ` — WORSE: ${judged.worse.find(item => item.shape === shape).why}` : ''}`)];
   console.log(lines.join('\n'));
-  try { console.log(`watch: ${await send(text, {env})}`); } catch (error) { console.log(`watch: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
+  try { console.log(`watch: ${await send(text, {env, event: 'record-sites'})}`); } catch (error) { console.log(`watch: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main());

@@ -178,7 +178,7 @@ jobs:
           echo "::notice title=Nightly skipped::$message"
           echo "No build tonight: $what. Nothing is built or tested; the next beta re-checks the red suites first."
           echo "red=true" >> "$GITHUB_OUTPUT"
-          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'nightly-skipped'}))"
       # Something to build: the release both lanes add their files to, here so each lane starts straight from this job (owner, 7 Oct 2026: "Anything new should
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5
@@ -1341,11 +1341,13 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start (job level: the artifact scan lists it)
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
     steps:
@@ -1457,11 +1459,13 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
     steps:
@@ -1624,11 +1628,13 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
     steps:
@@ -1740,6 +1746,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           TAG: desktop-v${{ needs.changes.outputs.version }}
           LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}
         run: node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"
@@ -1772,6 +1779,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir credit-artifacts || echo "::notice::No suite artifacts available for the AI credit alert"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
