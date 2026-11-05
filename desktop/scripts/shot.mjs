@@ -13,7 +13,7 @@
 //   --no-picture       only the --eval result, no screenshot
 //   --output <file>    a recorded terminal output to show as the session's log (e.g. a real session's)
 //   --width <px>       the window's width, to check a narrow layout (default 1280; the window's minimum is lib/main-window.js MIN_WIDTH)
-//   --out <file.png>   where the picture goes (default: $TMPDIR/jobadabra-shot.png)
+//   --out <file.png>   where the picture goes (default: a new $TMPDIR/jp-shot-out-*/jobadabra-shot.png per run; its path is printed)
 //   --search <json>    written as config/search.json (a state the demo lacks: the strategy's lists)
 //   --theme <light|dark>  the app's theme; the demo's default is dark. The one way: the app's own JOBADABRA_THEME (lib/main-window.js applyTheme), which this option sets and an exported
 //                      JOBADABRA_THEME also does. A data-theme attribute set by --js does nothing: the CSS follows Electron's theme source.
@@ -63,7 +63,10 @@ if (option('search')) {
   fs.mkdirSync(path.join(data, 'config'), {recursive: true});
   fs.writeFileSync(path.join(data, 'config', 'search.json'), option('search'));
 }
-const out = path.resolve(option('out') || path.join(os.tmpdir(), 'jobadabra-shot.png'));
+// Why (5 Nov 2026, #3017): without --out every run shared $TMPDIR/jobadabra-shot.png(.json), and node --test runs the 5 test files that call this at once: a starting run deleted another's
+// result ("no --eval result", status 0, on CI three times) or a run read another's answer. Each run now has its own folder unless --out names one.
+const own = option('out') ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'jp-shot-out-'));
+const out = path.resolve(option('out') || path.join(own, 'jobadabra-shot.png'));
 fs.rmSync(`${out}.json`, {force: true});
 // Why (30 Oct 2026; names renamed 1 Nov 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
 const env = {...process.env, JOBADABRA_DEMO: '1', JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_USER_DATA: data, JOBADABRA_SMOKE: out, JOBADABRA_SMOKE_JS: script(steps.join('\n'))};
@@ -87,3 +90,4 @@ if (!flag('no-picture')) {
 const noResult = () => `no --eval result: the app ended with status ${run.status}, signal ${run.signal}, error ${run.error?.code || 'none'} after ${seconds} s; stderr tail: ${(run.stderr || '').trim().split('\n').slice(-6).join(' | ')}`;
 if (option('eval')) console.log(fs.existsSync(`${out}.json`) ? fs.readFileSync(`${out}.json`, 'utf8') : noResult());
 else if (fs.existsSync(`${out}.json`)) for (const line of cutReport(JSON.parse(fs.readFileSync(`${out}.json`, 'utf8')))) console.log(line);
+if (own && flag('no-picture')) fs.rmSync(own, {recursive: true, force: true});   // nothing left to open: the answer is printed
