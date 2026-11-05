@@ -167,3 +167,10 @@ test('while a batch starts the dialog shows its strip and no spinner row: the st
   assert.match(read('renderer/index.html'), /id="apply-progress"[^>]*hidden/);
   assert.doesNotMatch(read('renderer/pages/jobs-apply.js'), /'waiting'/);
 });
+
+
+test('drafting progress has its own wrapping status; it never becomes the primary button label', () => {
+  assert.match(read('renderer/index.html'), /id="apply-start-status"[^>]*role="status"/);
+  assert.match(read('renderer/pages/jobs-apply.js'), /onApplyProgress[^\n]*apply-start-status/);
+  assert.doesNotMatch(read('renderer/pages/jobs-apply.js'), /onApplyProgress[^\n]*apply-go/);
+});

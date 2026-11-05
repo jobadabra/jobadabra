@@ -84,3 +84,11 @@ test('every place that words a hidden-browser job tells backgroundStatus whether
   for (const file of files) assert.match(fs.readFileSync(path.join(renderer, file), 'utf8'), /backgroundStatus\(item, \{linkOff:/, `${file} words the job with the connection`);
   assert.match(fs.readFileSync(path.join(renderer, 'pages/session-live.js'), 'utf8'), /liveCard\([^)]*linkOff:/, 'the live card is told too');
 });
+
+test('automation labels use the session mode, including legacy visible-browser sessions', async () => {
+  const {sessionAutomationLabel} = await import('../../../renderer/background-status.js');
+  assert.equal(sessionAutomationLabel({kind: 'form'}), 'Standard automation');
+  assert.equal(sessionAutomationLabel({background: {mode: 'fill'}}), 'Background automation');
+  assert.equal(sessionAutomationLabel({background: {mode: 'auto'}}), 'Full automation');
+  assert.equal(sessionAutomationLabel({background: {state: 'queued'}}), 'Background automation');
+});

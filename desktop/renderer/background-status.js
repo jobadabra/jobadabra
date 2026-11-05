@@ -1,5 +1,13 @@
 // A hidden-browser session's status words (sessions list, dock, nav badge, and the card's pill) from its own background state, not from a Chrome tab it never had. Guard: test/unit/renderer/background-status.test.js.
 
+import {MODES} from './apply-settings-model.js';
+
+/** The automation mode saved on this session, independent of later settings changes. */
+export function sessionAutomationLabel(item) {
+  const mode = item?.background?.mode || (item?.background ? 'fill' : 'check');
+  return MODES.find(entry => entry.id === mode)?.title || 'Background automation';
+}
+
 const WORDS = {
   queued: ['Queued', 'neutral'], preflight: ['Filling', 'info'], filling: ['Filling', 'info'], ready_for_review: ['Ready for review', 'warn'],
   needs_user_handoff: ['Needs you', 'warn'], manual_submit_required: ['Needs you', 'warn'], waiting_to_submit: ['Submitting soon', 'info'], submitting: ['Submitting…', 'info'],

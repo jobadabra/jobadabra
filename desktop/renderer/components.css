@@ -208,6 +208,7 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 @keyframes ui-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 @media (prefers-reduced-motion: reduce) { .ui-indeterminate > span { animation: none; width: 100%; opacity: .6; } }
 #apply-dialog { overflow-x: clip; overflow-y: auto; }   /* the strip follows the rounded corners; a tall dialog (three cards, an error, the download panel) still scrolls */
+#apply-start-status { overflow-wrap: anywhere; }
 #apply-dialog legend { padding: 0; color: var(--label); }   /* Jobs' Apply to jobs (pages/jobs-apply.js): the cards' heading reads like the count's label above it */
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */

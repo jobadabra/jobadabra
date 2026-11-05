@@ -42,8 +42,8 @@ export function wireApplyDialog({startedApplying}) {
     $('apply-dialog').showModal();
   });
   $('apply-n').addEventListener('input', draw);
-  // "Drafting kit 2 of 3…" while the batch drafts what is missing: on the button, beside the strip (no row of its own).
-  window.pilot.onApplyProgress(text => { if (gate.isStarting()) $('apply-go').textContent = text; });
+  // Long job titles wrap in the status line; the action buttons keep their short labels.
+  window.pilot.onApplyProgress(text => { if (gate.isStarting()) $('apply-start-status').textContent = text; });
   $('apply-go').addEventListener('click', async event => {
     event.preventDefault();
     if (!$('apply-n').reportValidity()) return;   // 1–10 whole jobs (the field's own min/max/step), said by the field itself
@@ -53,6 +53,7 @@ export function wireApplyDialog({startedApplying}) {
       // first-Apply dialog opens over this one (lib/apply-choice-gate.js), and the batch goes on after it.
       Object.assign(go, {disabled: true, textContent: 'Starting…'});
       go.classList.add('busy');
+      Object.assign($('apply-start-status'), {hidden: false, textContent: 'Choosing your jobs…'});
       $('apply-progress').hidden = false;   // the wait shows as a strip along the dialog's top edge, not as a row
       draw();
       try {
@@ -70,6 +71,7 @@ export function wireApplyDialog({startedApplying}) {
         go.disabled = false;
         go.classList.remove('busy');
         $('apply-progress').hidden = true;
+        $('apply-start-status').hidden = true;
       }
     });
     settings = (await window.pilot.state().catch(() => null))?.settings || settings;   // a first-Apply choice made meanwhile
