@@ -3,7 +3,7 @@ import {badgeLabel} from '../badge-label.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
 import {backgroundStatus} from '../background-status.js';
-import {DOCK_EMPTY, applyingBadge, dockCounts, dockOrder, firstLine, isLive, isSubmitted, sessionDuration, tickSessionClocks, sessionReview, sessionState, sessionUrgency, sessionsFoot} from '../session-state.js';
+import {applyingBadge, dockEmptyView, dockCounts, dockOrder, firstLine, isLive, isSubmitted, sessionDuration, tickSessionClocks, sessionReview, sessionState, sessionUrgency, sessionsFoot} from '../session-state.js';
 import {shared} from './shared.js';
 import {resumeOffered} from '../claude-help.js';
 import {hasSessionCache, rememberSessions, rememberedSessions} from '../sessions-cache.js';
@@ -92,11 +92,12 @@ export function renderDock() {
   // Not on the sessions page itself (it lists them all): the tray would only repeat what's on screen.
   const onSessionsPage = !document.querySelector('.view[data-view="sessions"]')?.hidden;
   show($('sessions-dock'), !onSessionsPage);   // always present, so a new person knows it exists (an empty state until the first session)
-  if (!sessionList.length) {
-    $('sd-summary').replaceChildren(pill(DOCK_EMPTY.pill, 'neutral'));
+  const empty = dockEmptyView(sessionList, shared.dockOpen);
+  if (empty) {
+    $('sd-summary').replaceChildren(pill(empty.pill, 'neutral'));
     $('sd-toggle').setAttribute('aria-expanded', shared.dockOpen);
-    $('sessions-dock').classList.toggle('is-closed', !shared.dockOpen);
-    $('sd-cards').replaceChildren(el('p', 'muted sd-empty', DOCK_EMPTY.text));
+    $('sessions-dock').classList.toggle('is-closed', empty.closed);
+    $('sd-cards').replaceChildren(el('p', 'muted sd-empty', empty.text));
     return;
   }
   const {active: running, waiting} = dockCounts(sessionList, closedForm);

@@ -404,11 +404,12 @@ test('a card\'s time-based phase moves on with the clock alone, and the window\'
   assert.doesNotMatch(source, /CHECK_MS \+ 100/, 'no one-shot timer redraws the cards once');
 });
 
-// Why (owner, 5 Nov 2026: "it should show something, even an empty state, but they should be present"): a fresh install has no sessions, and the tray still says what it is for.
-test('the sessions tray has an empty state that says what will appear there', async () => {
-  const {DOCK_EMPTY} = await import('../../../renderer/session-state.js');
-  assert.equal(DOCK_EMPTY.pill, 'none yet');
-  assert.match(DOCK_EMPTY.text, /When you apply to a job, its form shows up here/);
+// Why (owner, 5 Nov 2026: "it should show something, even an empty state, but they should be present"; Gitar on #3321): a fresh install has no sessions, and the tray still says what it is for.
+test('with no sessions the tray shows "none yet" and says what will appear; with sessions it draws them', async () => {
+  const {dockEmptyView} = await import('../../../renderer/session-state.js');
+  assert.deepEqual(dockEmptyView([], false), {pill: 'none yet', text: 'No application sessions yet. When you apply to a job, its form shows up here.', closed: true}, 'collapsed by default: only the pill');
+  assert.equal(dockEmptyView([], true).closed, false, 'the person opened it: the sentence shows');
+  assert.equal(dockEmptyView([{id: 'a'}], false), null, 'sessions: the tray draws them, not the empty state');
 });
 
 // Why (code review of fb 6b/7, 5 Nov 2026): with an empty tray the title and "View all" called openSession(undefined) and did nothing.
