@@ -9,7 +9,7 @@ import {$} from './core.js';
 import {shared} from './shared.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
-import {createLiveOpener} from '../live-opener.js';
+import {START, step, streaming} from '../live-view-state.js';
 import {createLagMeter, createPictureSink, stageState} from '../live-frames.js';
 import {plainError} from '../run-warnings.js';
 
@@ -37,20 +37,20 @@ function viewFor(item) {
   const expand = el('button', 'secondary live-zoom with-icon', icon('maximize'));
   expand.ariaLabel = 'Expand';
   expand.onclick = () => { root.classList.toggle('is-expanded'); expand.replaceChildren(icon(root.classList.contains('is-expanded') ? 'collapse' : 'maximize')); };
-  strip.append(liveDot('live'), el('b', '', 'Live'), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand);
+  const hide = Object.assign(el('button', 'secondary live-zoom', 'Hide'), {ariaLabel: 'Hide the live page', onclick: () => dispatch(mine, {type: 'hide'})});
+  strip.append(liveDot('live'), el('b', '', 'Live'), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand, hide);
   const root = el('div', 'live-view');
   root.append(strip, stage);
-  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, empty, w: 0, h: 0, facts: null, zoom: 100, item, error: '', shown: false};
+  // state: what the view is doing (renderer/live-view-state.js, its one owner); checked: the card kind whose page was last asked about (livePage); drawn: the stage last drawn.
+  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, empty, expand, w: 0, h: 0, facts: null, zoom: 100, item, state: START, checked: '', drawn: ''};
   const mine = view;
-  // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
-  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = plainError(mine.facts?.address || mine.error); drawStage(mine); });
   const lag = createLagMeter();
   let reported = Date.now();
   // Pictures reach the image only through the sink: the newest, once per display refresh (renderer/live-frames.js).
   mine.pictures = createPictureSink(img, requestAnimationFrame, message => {
-    if (view !== mine) return;
+    if (view !== mine || !streaming(mine.state)) return;   // a picture still in flight after Hide is not shown
     if (message.w && message.h) { mine.w = message.w; mine.h = message.h; }
-    if (!mine.shown) { mine.shown = true; drawStage(mine); }   // the first painted picture ends the placeholder
+    if (mine.state.kind === 'opening') dispatch(mine, {type: 'picture'});   // the first painted picture ends the placeholder
     lag.record(message.at);
     if (Date.now() - reported > 10000) { reported = Date.now(); window.pilot.uiLog('live view: picture age at paint (ms) and pictures a second', lag.take()).catch(() => {}); }   // the app log has the numbers when it feels slow
   });
@@ -58,15 +58,46 @@ function viewFor(item) {
   drawStage(view);
   return view;
 }
-// The stage is the picture once one is painted; before that, what is going on or why the page cannot be shown (stageState); never a broken image.
+// The stage for the view's state (stageState): the picture, or a note saying what is going on; never a broken image. Drawn again only when it changes, so a press is not lost to a redraw.
 function drawStage(v) {
-  const state = stageState({shown: v.shown, error: v.error});
+  const state = stageState({kind: v.state.kind, note: v.state.note, input: !!v.card?.input});
+  v.address.textContent = plainError(v.facts?.address || '');
+  const key = JSON.stringify(state);
+  if (key === v.drawn) return;
+  v.drawn = key;
   v.root.classList.toggle('is-empty', state.kind !== 'picture');
+  v.root.dataset.stage = state.kind;
   if (state.kind === 'picture') { v.empty.replaceChildren(); return; }
-  const lead = state.kind === 'waiting' ? el('span', 'spinner') : icon('alert');
-  const parts = [lead, el('b', 'live-empty-title', state.title), el('p', 'muted small', state.text)];
-  if (state.retry) parts.push(button('Try again', 'secondary', () => { v.error = ''; drawStage(v); v.opener.ensure(); }));
+  const lead = state.kind === 'waiting' ? el('span', 'spinner') : icon(state.kind === 'off' ? 'eye' : 'alert');
+  const words = el('div', 'live-empty-words');
+  words.append(el('b', 'live-empty-title', state.title), el('p', 'muted small', state.text));
+  const parts = [lead, words];
+  if (state.action) parts.push(button(state.action, 'secondary', () => dispatch(v, {type: 'watch'}), 'eye'));
   v.empty.replaceChildren(...parts);
+}
+// Every change of the view's state goes through here (renderer/live-view-state.js step); its effect is main's open (liveOpen, tagged with the ask's number) or close.
+// The view of another session was already closed when this one was built (viewFor), so one streams at a time.
+function dispatch(v, event) {
+  const {state, effect} = step(v.state, event);
+  v.state = state;
+  if (effect === 'open') {
+    const ask = state.ask;
+    Promise.resolve().then(() => window.pilot.liveOpen(v.id)).then(result => result || {ok: false}, error => ({ok: false, error: plainError(String(error?.message || error))}))
+      .then(result => { if (view === v) dispatch(v, {type: 'answer', ask, ok: !!result.ok, closed: !!result.closed, error: result.error || '', filling: v.card?.kind === 'filling'}); });
+  }
+  if (effect === 'close') { window.pilot.liveClose(v.id); v.pictures.clear(); }
+  if (!streaming(state) && v.root.classList.contains('is-expanded')) { v.root.classList.remove('is-expanded'); v.expand.replaceChildren(icon('maximize')); }   // Expand's Collapse lives in the Live strip, hidden now
+  v.root.classList.toggle('is-watching', streaming(state));
+  drawStage(v);
+}
+// Whether the hidden page exists, asked once per card kind (review, ready, a check…), never per redraw (lib/live-view-handlers.js livePage). A filling job is not asked:
+// its page may open a moment after the card is drawn, and a new fill may bring back a page that was closed.
+function checkPage(v, kind) {
+  if (v.checked === kind) return;
+  v.checked = kind;
+  if (kind === 'filling') { dispatch(v, {type: 'filling'}); return; }
+  window.pilot.livePage(v.id).then(result => { if (view === v) dispatch(v, {type: 'page', open: result ? result.open : null, error: result?.error || '', filling: v.card?.kind === 'filling'}); },
+    error => window.pilot.uiLog('live view: the page check failed', {error: String(error?.message || error)}).catch(() => {}));   // Watch live is still offered; its own answer says why
 }
 function setZoom(step) {
   if (!view) return;
@@ -113,14 +144,16 @@ function showAsk(v, message) {
 // One event from main for the open view: a picture, the page's facts, or an ask.
 export function liveEvent({session, message} = {}) {
   if (!view || session !== view.id || !message) return;
+  if ((message.kind === 'first' || message.kind === 'frame') && !streaming(view.state)) return;
   if (message.kind === 'first') view.pictures.first(message);
   else if (message.kind === 'frame') view.pictures.frame(message);
   else if (message.kind === 'needs') {
     view.facts = message;
     renderLive(view.item, view.on);   // Submit turns on, a count changes: the actions follow the page
   } else if (message.kind === 'closed') {
-    view.opener.reset();
-    renderLive(view.item, view.on);   // asks again
+    view.checked = '';   // the next draw asks main whether the page is still there
+    dispatch(view, {type: 'dropped'});
+    renderLive(view.item, view.on);
   } else if (message.kind === 'select' || message.kind === 'file') showAsk(view, message);
 }
 /** Close the open live view (another session shown, or none): the stream stops in main. */
@@ -150,8 +183,8 @@ function drawCard(item) {
   $('ss-form-state').replaceChildren();
   v.root.dataset.frame = card.frame;
   v.root.classList.toggle('is-filling', card.kind === 'filling');
-  v.address.textContent = plainError(v.facts?.address || v.error);
-  if (card.live) v.opener.ensure();   // a queued job has no page yet: nothing to ask main for
+  if (card.live) checkPage(v, card.kind);   // a queued job has no page yet: nothing to ask main for
+  drawStage(v);
   v.filling.hidden = !card.filling;
   v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,

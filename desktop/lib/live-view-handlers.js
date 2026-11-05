@@ -17,12 +17,14 @@ export async function readHandoff(address, openCdp = openCdpSession) {
   try { return await (await liveModule()).handoffOf(cdp); } finally { await cdp.detach().catch(() => {}); }
 }
 
+// Why (5 Nov 2026, owner: the preview is "sometimes broken (\"Try again\")"; spec 2026-11-05-applying-redesign, decision 4): a page that is gone never comes back by asking again, so the card says why and points to the way out.
+const CLOSED = 'This application\'s form is no longer open in Jobadabra\'s browser: it was stopped, cancelled or the app restarted. Open in my browser opens the job in your own browser.';
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const PRESS_FAILED = {covered: 'Something on the page covers its Submit button. Close it in the live page, then press Submit again.',
   not_found: 'The page\'s Submit button is not where it was. Use the page\'s own button in the live view.'};
 
 /**
- * Register liveOpen(session), liveInput(session, message), liveClose(session), liveSubmit(session) and liveStop(session). page(session) -> the held tab's loopback CDP address
+ * Register livePage(session) -> {open, error?}, liveOpen(session) -> {ok, closed?, error?}, liveInput(session, message), liveClose(session), liveSubmit(session) and liveStop(session). page(session) -> the held tab's loopback CDP address
  * or null; submitControl(session) -> the page's own sending button the form judge named while its ready stands, else ''; stop(session) marks that one stopped.
  * Invariants: one view per session; input reaches only the session it names; a file is answered only from the person's CV or the app's own Open dialog;
  * Submit presses only the judge's button, only after a fresh read of the page finds no required field empty (the person's press: never retried).
@@ -42,15 +44,24 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
     const picked = await dialog.showOpenDialog(getWindow(), {properties: ['openFile'], filters: [{name: CV_FILES.label, extensions: CV_FILES.extensions}]});
     return picked.canceled ? null : picked.filePaths[0] || null;
   };
+  // Whether the session's hidden page is open, without opening its picture: the card offers "Watch live" only then (spec 2026-11-05-applying-redesign, decision 4).
+  // A browser that does not answer (busy, its 2 s read ran out) is "cannot tell" (open: null), never "closed" (review of [ap] 7/7): only a browser that lists no such tab says closed.
+  ipcMain.handle('livePage', async (_, session) => {
+    if (DEMO) return {open: false, error: 'The demo app has no hidden browser.'};
+    const address = await page(String(session || '')).catch(() => undefined);
+    return address === undefined ? {open: null} : address ? {open: true} : {open: false, error: CLOSED};
+  });
   ipcMain.handle('liveOpen', async (_, session) => {
     const id = String(session || '');
+    log('apply', 'live view asked', {session: id});   // each ask is the person's Watch live (or a watched page coming back): the app log says when a picture streamed
     if (DEMO) return {ok: false, error: 'The demo app has no hidden browser.'};
     const mine = Symbol('live');
     tokens.set(id, mine); retire(id);
     const dropped = {ok: false, error: 'The live page was closed before it opened.'};
-    const address = await page(id).catch(() => null);
+    const address = await page(id).catch(() => undefined);
     if (stale(id, mine)) return dropped;
-    if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
+    if (address === undefined) return {ok: false, error: 'Jobadabra\'s browser did not answer. Press Watch live to ask again, or use Open in my browser.'};
+    if (!address) return {ok: false, closed: true, error: CLOSED};
     const cdp = await openCdp(address);
     if (stale(id, mine)) { await cdp.detach().catch(() => {}); return dropped; }
     const frames = openFrameTargets(address, openCdp);   // iframes in their own process, read for the page's facts
@@ -67,7 +78,7 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
       ended(); frames.close();
       await cdp.detach().catch(() => {});
       log('apply', 'the live page could not be opened', {session: id});
-      return {ok: false, error: 'The live page could not be opened. Try again, or use Open in my browser.'};
+      return {ok: false, error: 'The live page could not be opened. Press Watch live to ask again, or use Open in my browser.'};
     }
     if (stale(id, mine)) { ended(); frames.close(); await cdp.detach().catch(() => {}); return dropped; }
     return {ok: true};

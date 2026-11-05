@@ -55,6 +55,8 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
   });
 }
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+// No hidden browser runs in this profile: it never started (no port file) or it died and left its port file (the port refuses).
+const notRunning = error => error?.code === 'ENOENT' || error?.cause?.code === 'ECONNREFUSED';
 
 /** Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js). */
 export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
@@ -130,8 +132,11 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return result.result?.value === true;
   }
   // The held tab of one application session, by the ONE rule that says which tab is a session's (lib/session-tab.js): its loopback CDP address, or null.
+  // Why (5 Nov 2026, review of [ap] 7/7): after a restart no hidden browser runs, so the live view must say "closed", not "cannot tell" for ever; only a browser
+  // that does not answer in time (or is not ours) still throws.
   async function pageSocket(session) {
-    const live = await connect();
+    const live = await connect().catch(error => { if (notRunning(error)) return null; throw error; });
+    if (!live) return null;
     const pages = (await get(live.port, '/json/list')).filter(target => target.type === 'page');
     return tabOfSession(String(session || ''), pages)?.webSocketDebuggerUrl || null;
   }

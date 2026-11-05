@@ -85,5 +85,5 @@ UI PRs (3, 4, 5, 7) each get a light + dark, wide + narrow side-by-side and the 
 - [x] 3/7 Cancel all applications (#3255): one question, every unfinished application ends, a job being sent is left alone. (proof: desktop/test/unit/main/session-cancel-all.test.js @0c65354e)
 - [x] 4/7 Mode at a glance (#3257): one chip on the list and the header; a handed-over Full automation job says "you submit now". (proof: desktop/test/unit/renderer/background-status.test.js @bfbf8450)
 - [x] 5/7 Live step log (#3261): a hidden form's card says each step with its time, its first line the mode in Jobadabra's browser. (proof: desktop/test/unit/main/session-journal-run.test.js @f8e25144)
-- [ ] 6/7 10 at once, measured
+- [x] 6/7 10 at once (#3273): the poll claims every queued job while fewer than 10 fill and reads the store once per job; the fill itself measured on 10 recorded forms through the extension, 13.4 s → 7–9 s per application, ~2 GB at 10 (not a batch time through the controller); Stop on one hands it over at once. (proof: desktop/test/unit/main/background-apply-stop-one.test.js @f19e3183)
 - [ ] 7/7 Preview on request

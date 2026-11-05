@@ -254,21 +254,22 @@ export async function proveBackground(ctx, {form, seed, until}) {
     const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
     if (process.env.E2E_KEEP_HIDDEN === '1') for (const seconds of [6, 20]) setTimeout(() => describeHidden(ctx.profile).then(text => console.log(`  [${seconds}s after Start] ${text}`)), seconds * 1000);   // local debugging only: the hidden browser's state early, not only at the failure
     if (started?.ok === false) throw new Error(`the app refused to start Background automation: ${started.error}`);
-    // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet;
-    // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
+    // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet.
+    // Owner, 5 Nov 2026 (the preview "should not show by default, only on request"; yes to this step pressing it): nothing streams until Watch live, and nothing asks again by
+    // itself (renderer/live-view-state.js): the step presses Watch live once the hidden page is open, as a person would after "The page is not open yet".
     await until('the application never got a session', async () => !!(await sessionOf(page, form.url)), 60000);
     // The way e2e/suites/apply.mjs opens a session (proven on CI): the dock card, expanding the collapsed dock first; the Sessions page when the dock does not show this one.
     await openSessionCard(page, form);
-    const shown = await page.evaluate(async () => {
-      for (let waited = 0; waited < 40000; waited += 250) {
-        const img = document.querySelector('.live-img');
-        if (img?.complete && img.naturalWidth > 0) return {ok: true, w: img.naturalWidth};
-        await new Promise(done => setTimeout(done, 250));
-      }
-      const img = document.querySelector('.live-img');
-      return {ok: false, img: !!img, srcChars: String(img?.getAttribute('src') || '').length, address: document.querySelector('.live-url')?.textContent || ''};
-    });
-    if (!shown.ok) throw new Error(`the live view shows no picture of the hidden page: ${JSON.stringify(shown)}`);
+    const picture = () => page.evaluate(() => { const img = document.querySelector('.live-img'); return img?.complete && img.naturalWidth > 0 && !!img.closest('.live-view.is-watching'); });
+    const asked = () => appLogLines(ctx.profile).filter(line => line.includes('live view asked')).length;   // lib/live-view-handlers.js logs each liveOpen
+    if (asked() !== 0) throw new Error(`the live picture was asked for before Watch live was pressed (${asked()} asks in the app log)`);
+    const watched = await sessionOf(page, form.url);
+    const pageOpen = () => page.evaluate(session => window.pilot.livePage(session).then(answer => answer.open === true), watched);
+    const {value: open, error: openError} = await waitForStage(pageOpen, Boolean, {what: 'the hidden page open before Watch live', label: ms => `the hidden page was open ${ms} ms after the session card showed`});
+    if (!open) throw new Error(`the hidden page never opened, so Watch live had nothing to show | ${openError ? `last read failed: ${openError} | ` : ''}${await describeHidden(ctx.profile)}`);
+    await page.getByRole('button', {name: 'Watch live'}).click();
+    const {value: shown, error} = await waitForStage(picture, Boolean, {what: 'the live picture after Watch live', label: ms => `the live picture painted ${ms} ms after Watch live`});
+    if (!shown) throw new Error(`the live view shows no picture of the hidden page after Watch live | ${error ? `last read failed: ${error} | ` : ''}stage: ${await page.evaluate(() => document.querySelector('.live-view')?.dataset.stage || 'none')} | ${await describeHidden(ctx.profile)}`);
     await until('the hidden form never reached Ready to review', async () => (await backgroundStateOf(page, form.url)) === 'ready_for_review', 120000)
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(page, form.url) || 'none'}`); });
     if (forms.posts.length !== posted) throw new Error('the form was posted before the person pressed Submit');

@@ -56,6 +56,6 @@ test('Jobs uses each background state, opens the existing session, and labels it
   }
   assert.deepEqual(result.progress, {fits: true, barHeight: 8, barBelowButtons: true, buttonsInside: true});
   assert.equal(result.view, false, 'the action opens Sessions');
-  assert.match(result.sessions, /Background automation/);
+  assert.match(result.sessions, /Background · you submit/);   // the mode chip ([ap] 4/7, #3257)
   assert.match(result.sessions, /Full automation/);
 });
