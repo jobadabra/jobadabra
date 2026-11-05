@@ -21,4 +21,5 @@ Upload kind `harness-fixer`, sent by the daily harness-stats workflow next to th
 - [ ] 2/2 jobadabra: the daily harness upload also sends `harness-fixer` (proof: desktop/test/tooling/ci/harness-stats.test.js)
 
 ## Parked (Notion Backlog, not a PR)
+Where parks go (owner, 5 Nov 2026, global rules "Work tracking": "Notion Backlog = parked ideas only"): the Notion Backlog database, no longer Linear JOB issues.
 - The local scan of this Mac's Claude sessions (`harness-local`: how often the map, codemap and the context pack are really called) — owner, 5 Nov 2026: CI harness only for now.
