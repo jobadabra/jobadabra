@@ -1,8 +1,9 @@
+// Guard: data — without it a night that no quality job scored twice loses its prompt-case replay on /admin (jobadabra-web#259).
 // The e2e collector's night reader (tools/ci-intel/jobs/e2e-intel.mjs): a night's prompt-case replay is read on its own, so a run that no quality job scored twice still sends it
 // (jobadabra-web#259: the replay rode inside the quality night, and those nights lost it). Played offline with fake job logs. Site half: jobadabra-web#424 (`promptNights`).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {liveNights, nightFromJobs, promptNightFromJobs, readNight} from '../../../../tools/ci-intel/jobs/e2e-intel.mjs';
+import {liveNights, nightFromJobs, storedNights, promptNightFromJobs, readNight} from '../../../../tools/ci-intel/jobs/e2e-intel.mjs';
 
 const SCORES = ['2026-11-04T21:10:00.1Z   scores: 3001=95 3002=85', '2026-11-04T21:11:00.1Z   second scores: 3001=92 3002=75', '2026-11-04T21:12:00.1Z   judged 18 score texts: 16 grounded, 18 useful, 2 with invented facts',
   '2026-11-04T21:13:00.1Z quality: 63/63 facts exact, ranking ok, 0 invented facts, scores stable within ±25'].join('\n');
@@ -37,6 +38,8 @@ test('no replay job, or a replay job that printed nothing, sends no replay; the 
 
 test('a run is stored once the site lists it as a quality night or as a replay: a replay-only run is not read again every hour', () => {
   const now = new Date('2026-11-05T09:00:00Z'), listed = [101, 102, 103].map(id => ({databaseId: id, displayTitle: 'Night burn-in 1/5', conclusion: 'success', createdAt: '2026-11-04T21:00:00Z'}));
-  assert.deepEqual(liveNights(listed, new Set([101, 102]), now).map(item => item.databaseId), [103], 'a replay-only run (102) is in the stored set with the quality night (101)');
-  assert.deepEqual(liveNights(listed, new Set([101]), now).map(item => item.databaseId), [102, 103], 'without the replay ids it would be read and sent again');
+  const site = {quality: [101], prompts: [101, 102]};   // the shape of the site's GET ?v= answer
+  assert.deepEqual(liveNights(listed, storedNights(site), now).map(item => item.databaseId), [103], 'a replay-only run (102) is stored with the quality night (101)');
+  assert.deepEqual(liveNights(listed, storedNights({quality: site.quality}), now).map(item => item.databaseId), [102, 103], 'an answer without replay ids would read and send 102 again');
+  assert.deepEqual([...storedNights({})], [], 'an older site that sends no `prompts` key still works');
 });

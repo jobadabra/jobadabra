@@ -39,10 +39,12 @@ async function readLogs(runs, jobsOf = redJobs) {
 
 // The night's live quality run -> its counts (tools/ci-intel/lib/e2e-quality.mjs) and the same run's prompt-case replay. A night is a scheduled run that holds a live quality job, found by that job and not by
 // its title's pass number or its hour, so a re-plan of the night cannot silently empty the card (a8, 1 Nov 2026: "pick the night by its job"). Only runs of the last two days are looked at (a run
-// without a live quality job is never stored, so it is read again each hour until it ages out): the other titles of e2e.yml (after merge, beta, bisect, PR) never hold one.
+// with neither a live quality job nor a prompt-case replay is never stored, so it is read again each hour until it ages out): the other titles of e2e.yml (after merge, beta, bisect, PR) never hold one.
 // Why (1 Nov 2026, found by reading git history, not yet by the D1 row): the filter was "E2E check" runs started 21-22 UTC, and the live run now rides "Night burn-in 1/5" (afe3595, 21:00 UTC);
 // before that, 341cf97 (29 Oct) split quality into an exact `quality` job and the live `qualityai` job, which `/^quality\b/` does not match. listed: gh run list rows; stored: run ids the site has.
 const NIGHT_DAYS = 2;
+/** The run ids the site already holds a night for: a quality night or a replay (its GET answer's `quality` and `prompts`). A replay-only run counts, so it is not read again every hour. */
+export const storedNights = ({quality = [], prompts = []} = {}) => new Set([...quality, ...prompts]);
 export const liveNights = (listed, stored, now = new Date()) => listed.filter(run => /^(E2E check|Night burn-in \d\/\d)/.test(run.displayTitle || '') && ['success', 'failure'].includes(run.conclusion)
   && new Date(run.createdAt).getTime() >= now.getTime() - NIGHT_DAYS * 86400000 && !stored.has(run.databaseId));
 
@@ -191,7 +193,7 @@ async function main() {
   if (key) ({have, pending, reds = [], quality = [], prompts = [], suiteNights = [], betaRuns: betaStored = []} = await (await fetch(`${base}?v=${RULES_VERSION}`, {headers: {Authorization: `Bearer ${key}`}})).json());
   const settled = new Set(have), waiting = new Set(pending);
   // A run is stored once it has a quality night or a replay (the site lists both): a replay-only night is not read again every hour.
-  const {nights, promptNights} = await readNights(liveNights(listed.filter(run => run.workflow === 'e2e.yml'), new Set([...quality, ...prompts])).slice(0, 40));
+  const {nights, promptNights} = await readNights(liveNights(listed.filter(run => run.workflow === 'e2e.yml'), storedNights({quality, prompts})).slice(0, 40));
   const namedCommits = await readNamedCommits(since);
   const todo = runsToRead(listed, settled, waiting, MAX_RUNS, namedToRedo(namedCommits, reds));   // a trailer that names a run reads it again, once
   const lanes = await readLanes();
