@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {ARTIFACT, FILE, PLAN, SOURCES, chain, compute, fetchRuns, layers, parsePlan, phasesOf, readKeys, recordOf} from '../../../../tools/harness-stats.mjs';
+import {ARTIFACT, FILE, PLAN, SOURCES, chain, compute, fetchRuns, fixerStats, layers, mapPage, parsePlan, phasesOf, readKeys, recordOf} from '../../../../tools/harness-stats.mjs';
 
 const plan = ['# Plan', '## PRs', '- not a row', '## Progress', '- [x] 1/7 This plan and the spec amendment', '- [ ] 2/7 Move `walls` into `tools/fixer/`', '- [ ] 3/7 Loop', '- [ ] web 1/3 One agent card per row', '- [ ] web 2/3 Agent harness page', '', '## Later', '- [ ] 1/9 A checklist of something else', ''].join('\n');
 const pr = (number, title, extra = {}) => ({number, title, body: `Plan: \`${PLAN}\``, state: 'OPEN', mergedAt: null, createdAt: '2026-11-04T10:00:00Z', ...extra});
@@ -73,7 +73,8 @@ test('the workflow gives the site key to the store step only, never to the step 
   assert.ok(!/secrets\./.test(readStep) && !/secrets\./.test(head), 'the step that reads the artifacts holds no secret');
   assert.ok(!/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(head) && !/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(readStep), 'the read step has no secret'); assert.match(storeStep, /SELFHEAL_PUBLISH_KEY: \$\{\{ secrets\.SELFHEAL_PUBLISH_KEY \}\}/);
   assert.match(head, /\n    if: github\.ref == format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)\n/, 'a by-hand start on another branch never holds the site key');
-  assert.match(storeStep, /case "\$code" in 200\).*400\).*exit 1/s, 'only 400 is a notice: a refused key or a server error is red');
+  assert.match(storeStep, /case "\$code" in 200\).*400\).*failed=1.*exit "\$failed"/s, 'only 400 is a notice: a refused key or a server error is red, for each of the two cards'); assert.match(storeStep, /for file in harness harness-fixer; do/, 'both cards are stored by the one step that holds the key');
+  assert.match(readStep, /--out "\$RUNNER_TEMP\/harness\.json" --fixer-out "\$RUNNER_TEMP\/harness-fixer\.json"/, 'the read step writes both files');
   assert.ok(!/head_branch|head_sha|workflow_run\.(head|pull)|inputs\./.test(yml.replace(/^#.*$/gm, '')), 'nothing from the triggering run reaches a command or a checkout');
 });
 test('a source is "key set" only when the trusted step saw its secret non-empty; an unreported key claims nothing (owner, 5 Nov 2026: PostHog showed green with no key)', () => {
@@ -102,4 +103,23 @@ test('phases: the queue, then each known job in workflow order; a skipped job, a
   assert.deepEqual(phasesOf(jobs, at(0)), [{name: 'queue', s: 60}, {name: 'guard', s: 60}, {name: 'fix', s: 360}]);
   assert.deepEqual([phasesOf([], at(0)), phasesOf(null, at(0)), phasesOf(jobs, 'x')], [[], [], []]);
   assert.equal(phasesOf([{name: 'guard', started_at: at(1), completed_at: at(2)}], at(5))[0].s, 0, 'never negative');
+});
+
+test('fixer card: a run used the map only when a read or search step names a docs/map/ page; averages, ready and the tools count come out right', () => {
+  const step = (action, file) => ({n: 1, action, path: file});
+  const rec = (steps, extra = {}) => recordOf({...record, steps, ...extra}, run);
+  const runs = [rec([step('read', 'docs/map/index.md'), step('read', 'docs/map/ci.md')], {turns: 4, calls: 6, minutes: 3, stop: 'ready'}), rec([step('search', 'docs/map/ci.md')], {turns: 2, calls: 3, minutes: 1.5, stop: 'ready'}),
+    rec([step('edit', 'docs/map/index.md'), step('read', 'src/a.py'), step('read', 'docs/map/index.md.bak'), step('read', 'docs/mapx/index.md')], {turns: 6, calls: 9, minutes: 7, stop: 'cap', reason: 'I read docs/map/index.md'})];
+  const [day] = fixerStats(runs, now).days;
+  assert.deepEqual([mapPage(step('read', 'docs/map/index.md')), mapPage(step('search', './x/docs/map/ci.md')), mapPage(step('edit', 'docs/map/index.md')), mapPage(step('read', 'docs/map/index.md.bak')), mapPage(null)], ['index', 'hub', '', '', '']);
+  assert.deepEqual(day, {day: '2026-11-05', runs: 3, tools: [{id: 'map-index', runs: 1}, {id: 'map-hub', runs: 2}], help: {with_map: {n: 2, turns: 3, calls: 4.5, minutes: 2.3, ready: 2}, without_map: {n: 1, turns: 6, calls: 9, minutes: 7, ready: 0}}});
+  assert.equal(fixerStats(runs, now).kind, 'harness-fixer');
+});
+test('fixer card: no runs gives zeros (the site says "No data yet"), and nothing but numbers and the fixed ids leaves the script', () => {
+  assert.deepEqual(fixerStats([], now).days[0].help, {with_map: {n: 0, turns: 0, calls: 0, minutes: 0, ready: 0}, without_map: {n: 0, turns: 0, calls: 0, minutes: 0, ready: 0}}); assert.equal(fixerStats(null, now).days[0].runs, 0);
+  const secret = 'sk-live-SECRET-REASON https://evil.example/x', out = fixerStats([recordOf({...record, reason: secret, errors: [secret], changed_files: [secret], steps: [{n: 1, action: 'read', path: 'docs/map/index.md'}]}, run)], now);
+  assert.ok(!JSON.stringify(out).includes('SECRET') && !JSON.stringify(out).includes('evil') && !JSON.stringify(out).includes('docs/map'), 'no reason, error, file name or path is copied');
+  const leaves = [];
+  (function walk(value, key) { if (value && typeof value === 'object') Object.entries(value).forEach(([k, v]) => walk(v, k)); else leaves.push([key, value]); })(out);
+  assert.ok(leaves.every(([key, value]) => (typeof value === 'number' && Number.isFinite(value)) || ['kind', 'day', 'id'].includes(key)), 'every leaf is a finite number, or the kind, the day, a tool id');
 });
