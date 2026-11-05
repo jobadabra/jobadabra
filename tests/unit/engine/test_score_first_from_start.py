@@ -28,8 +28,8 @@ class ScoreFirstFromTheStart(unittest.TestCase):
         from src import run_counts
         run_counts.reset()   # Why (#2218): an earlier test in the shard that scored https://x.test/1 left it scored, so nothing "waited"
         self.addCleanup(run_counts.reset)
-        run_counts.matched([{'url': 'https://x.test/1'}])   # a job to score: the floor's titles wait (without one, one batch: test_first_press_order.py)
-        self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring its share (stop 140 s, SCORING 45 s)")
+        run_counts.matched([{'url': f'https://x.test/{n}'} for n in range(20)])   # jobs that need the time: the floor's titles wait (with room, one batch: test_first_press_order.py)
+        self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring what it needs (stop 140 s, SCORING 45 s)")
 
     def test_nothing_to_score_plans_no_score_first(self):
         for kwargs in ({'score_max': 0}, {'profile': None}, {'budget': 0}):

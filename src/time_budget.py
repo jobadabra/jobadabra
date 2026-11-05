@@ -108,18 +108,28 @@ def local_titles(wanted):
     if ended():
         return 0
     with _lock:
-        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while no job this
-            # search matched waits for a score, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
+        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while the jobs this search
+            # matched keep the time their scores need, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
             # "No time left" for its 10 titles, 0 of 12 postings listed; a benchmark first press left 28 local titles unsorted at 80 s of 135
-            # with its one match scored)
+            # with its one match scored).
+            # Why (5 Nov 2026, #2918, Copenhagen): any waiting job stopped the floor, so one job held back the titles of 200 EURES rows at 82 s of 135: 0 of them
+            # listed, and the press ended 30 s early. Scoring keeps the time it needs (_scoring_has_room), not all of it.
             from . import run_counts
-            if run_counts.waiting():
+            waiting = run_counts.waiting()
+            if waiting and not _scoring_has_room(waiting):
                 return 0
             n = max(0, min(wanted, FEED, LOCAL_TITLES - _local[0]))
         else:
             n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
         _local[0] += n
         return n
+
+
+def _scoring_has_room(waiting, now=None):
+    """True when `waiting` jobs still get their scores before scoring stops after one more round of title calls, at this computer's paces (_paces)."""
+    paces = _paces()
+    need = waiting * max(0.5, paces['score']) + max(0.5, paces['title_rounds'])
+    return DEADLINE - reserve('score') - (now if now is not None else time.monotonic()) >= need
 
 
 def _scorings(now=None):

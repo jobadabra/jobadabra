@@ -69,16 +69,27 @@ class LocalFirstTest(unittest.TestCase):
         title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
         self.assertEqual(client.asked, [])
 
-    def test_in_scorings_share_local_titles_wait_once_the_search_has_a_job_to_score(self):
+    def test_in_scorings_share_local_titles_wait_while_the_waiting_jobs_need_the_time(self):
         # 26 Oct 2026, a proof on a copy of the owner's data: floor title calls held the board read to 136 s; the search scored 3 jobs
         from src import run_counts
         run_counts.reset()   # Why (#2331, as #2218 in test_score_first_from_start): an earlier test in the process that scored https://x.test/1 left it scored, so nothing "waited"
+        self.addCleanup(run_counts.reset)
+        run_counts.matched([{'url': f'https://x.test/{n}'} for n in range(20)])
+        time_budget.start(180, now=time.monotonic() - 125)
+        client = Client()
+        title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
+        self.assertEqual(client.asked, [])
+
+    def test_in_scorings_share_one_waiting_job_leaves_the_local_titles_their_turn(self):
+        # 5 Nov 2026, #2918, Copenhagen: one job waiting held back every title of 200 EURES rows, and the press ended 30 s early with 0 of them listed
+        from src import run_counts
+        run_counts.reset()
         self.addCleanup(run_counts.reset)
         run_counts.matched([{'url': 'https://x.test/1'}])
         time_budget.start(180, now=time.monotonic() - 125)
         client = Client()
         title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
-        self.assertEqual(client.asked, [])
+        self.assertEqual(client.asked, ['java developer', 'data engineer'])
 
     def test_in_scorings_share_one_batch_is_sorted_while_the_search_matched_nothing(self):
         # 27 Oct 2026, the quality suite on Free AI: "No time left" for its 10 titles, so its FLOOR scores had no job (tests/unit/sources/test_first_press_order.py)
