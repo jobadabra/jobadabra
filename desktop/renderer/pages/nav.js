@@ -15,7 +15,7 @@ import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, pr
 import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {stopShown} from '../session-state.js';
-import {confirmRescore, knownOutdated, rescoring} from './rescore-run.js';
+import {knownOutdated, rescoring} from './rescore-run.js';
 import {noticeTitle, pressLabel} from '../rescore-words.js';
 import {showRunsTab} from './runs-tab.js';
 import {showCvChanged} from './cv-change.js';
@@ -118,12 +118,13 @@ export const labelOf = node => {
 };
 // A row's path, each step without its leading emoji ("💬 Telegram" → Telegram), a step equal to the one before it once (Settings → Plan, not Plan → Plan).
 const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L}+/u, '').trim()).filter((step, i, all) => step && step !== all[i - 1]);
-/** ⌘K "Re-score N": listed only while old scores wait (the Jobs bar's row, rescore-entry.js); opens the same Re-score dialog, never starts it. */
+/** ⌘K "Re-score N": listed only while old scores wait (the Jobs bar's row, rescore-entry.js); asks for the same Re-score dialog, never starts it.
+ * Why (5 Nov 2026, arch-check no-circular): an event, not an import of jobs.js / startup.js, which import this page; pages/focus-suggestions.js answers it with the row's own handler. */
 function addOldScoresCommand(add) {
   const count = knownOutdated().count;
   if (!(count > 0) || rescoring()) return;
   add('Jobs', pressLabel(count), noticeTitle(count), 're-score rescore scores stale previous strategy search settings outdated old',
-    () => import('./jobs.js').then(async jobs => confirmRescore(count, {search: jobs.startSearch, reload: jobs.loadJobs, toast: (await import('./startup.js')).toastMessage})));
+    () => document.dispatchEvent(new Event('rescore-ask')));
 }
 
 export function paletteCommands() {

@@ -274,6 +274,7 @@ export function initSuggestions() {
     redraw();
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
+  document.addEventListener('rescore-ask', () => RUN.rescore({count: knownOutdated().count}));   // ⌘K's Re-score N (pages/nav.js): the same dialog as the row's button
   document.addEventListener('rescore-state', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // old scores read, or a re-score started or ended (pages/rescore-run.js)
   window.addEventListener('experience-changed', () => { loadBank(); });
   window.addEventListener('linkedin-changed', () => { if (lastArgs) redraw(); });

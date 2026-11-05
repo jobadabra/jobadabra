@@ -104,7 +104,9 @@ test('the old score stays on the row, muted, with a short word; the palette list
   assert.match(rows, /job\.stale && job\.fit != null \? ' is-stale' : ''/);
   assert.match(rows, /old \? staleLabel : matchLabel\(job\.fit\)/);
   assert.match(read('renderer/style.css'), /body\[data-rescoring\] #find-card \{ display: none; \}/, 'one attribute, one rule: no draw order');
-  assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait, and opens the dialog');
+  assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait');
+  assert.match(read('renderer/pages/nav.js'), /dispatchEvent\(new Event\('rescore-ask'\)\)/, 'by an event: nav.js imports neither jobs.js nor startup.js (no-circular)');
+  assert.match(read('renderer/pages/focus-suggestions.js'), /addEventListener\('rescore-ask', \(\) => RUN\.rescore\(/, 'and the Jobs bar opens the dialog');
   assert.match(words.scoreFirstLead(4), /Cost: not calculated/, 'no invented cost');
   assert.equal(words.scoreFirstTitle, 'Score first');
 });
