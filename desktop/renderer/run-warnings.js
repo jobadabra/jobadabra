@@ -121,6 +121,12 @@ export function plainWarning(raw) {
 }
 // Only for a line nothing else reworded (an HTTP status or the AI provider's error have their own sentences).
 const rawException = raw => { const m = RAW_EXCEPTION.exec(raw); return m && !PROVIDER.test(raw) ? `${m[1].replace(/^./, c => c.toUpperCase())} (an internal error; details in the technical log).` : null; };
+// The head lines of grouped warnings: the jobs left unscored, with what stopped them. A real limit in the same run keeps the count, and the stop is then its own line.
+function leftUnscored(total, stop, limit) {
+  const stopSaid = stop && `${stop}. ${STOP_HELP}`;
+  const why = stop && !limit ? stopSaid : 'the Anthropic API spending limit was reached';
+  return [...(total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
+}
 export function groupWarnings(warnings) {
   const limit = warnings.some(text => LIMIT.test(String(text)));
   const stop = warnings.map(stopCause).find(Boolean);
@@ -141,10 +147,7 @@ export function groupWarnings(warnings) {
     if (clean === raw.replace(/^\w*Error:\s*/, '') && rawException(raw)) { add(rawException(raw), null); continue; }
     add(head && head.length < 60 && !PROVIDER.test(head) && clean !== raw && !clean.startsWith(head) ? `${head}: ${clean}` : clean, null);
   }
-  const total = [...counts].reduce((sum, count) => sum + count, 0);
-  const spent = 'the Anthropic API spending limit was reached', stopSaid = stop && `${stop}. ${STOP_HELP}`;
-  const why = stop && !limit ? stopSaid : spent;   // a real limit in the same run keeps the count; the stop is then its own line
-  const out = [...(total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
+  const out = leftUnscored([...counts].reduce((sum, count) => sum + count, 0), stop, limit);
   for (const label of order) {
     const ids = groups.get(label) || [];
     if (!ids.length) { if (!out.includes(label)) out.push(label); continue; }
