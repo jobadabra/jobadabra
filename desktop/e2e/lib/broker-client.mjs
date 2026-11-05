@@ -33,6 +33,12 @@ export async function runToken(env = process.env, fetchImpl = fetch) {
   return (await answer.json()).value || null;
 }
 
+/**
+ * The job label the broker counts this call under: takes env, returns {'x-jobadabra-job': <GITHUB_JOB>} inside an Actions job, {} elsewhere.
+ * Why (5 Nov 2026, owner: "what job and how many tokens did it use? In the AI admin cost"): display only. The broker keeps a label of [a-z0-9-] (1-40 characters) and ignores any other; lane, caps and the workflow come from the signed run token alone.
+ */
+export const jobHeader = env => (env.GITHUB_JOB ? {'x-jobadabra-job': env.GITHUB_JOB} : {});
+
 /** One line for the engine that answered, e.g. "AI: claude / claude-haiku-5-5 (codex ran-out)"; '' when the answer says nothing (an older broker sends no engine). */
 export function aiLine(answer) {
   const {engine, model, fellBack = []} = answer || {};
@@ -70,7 +76,7 @@ export async function askBroker(body, {env = process.env, fetchImpl = fetch, now
   if (!token) return {ok: false, status: 'no-token', detail: 'no GitHub OIDC token here (the job needs permissions: id-token: write; a fork run has none)'};
   const started = now();
   const ask = async () => {
-    const reply = await fetchImpl(`${BROKER_URL(env)}/call`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toBrokerCall(body)), signal: AbortSignal.timeout(180000)}).catch(error => error);
+    const reply = await fetchImpl(`${BROKER_URL(env)}/call`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', ...jobHeader(env)}, body: JSON.stringify(toBrokerCall(body)), signal: AbortSignal.timeout(180000)}).catch(error => error);
     return reply instanceof Error ? {answer: reply} : {answer: reply, data: await reply.json().catch(error => (reply.ok ? error : {}))};
   };
   let {answer, data} = await ask();
