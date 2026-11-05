@@ -130,6 +130,20 @@ class JobsChTownTests(unittest.TestCase):
         for reader, places in readers.items():
             self.assertEqual(sorted(places), ['Basel, Switzerland', 'Germany', 'Konstanz, Germany', 'Lyon, France'], reader)
 
+    def test_a_posting_with_no_address_keeps_the_page_town_in_every_jobsch_reader(self):
+        # #3242 (code review of #3215): a posting with no jobLocation at all lost the town the page names and was listed as "Switzerland".
+        page = jobsch_page(self.ID, 'Zurich')
+        page = page.replace(', "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "CH"}}', '')
+        self.assertNotIn('jobLocation', page)
+        search = {'locations': {'top_tier': ['zurich'], 'country_wide': [], 'abroad': []}, 'jobs_board_search_queries': ['magasin'],
+                  'board_discovery_keywords': ['magasin'], 'role_keywords': ['magasin']}
+        with mock.patch.object(ats, '_get', lambda url: page.encode()):
+            readers = {'ats.jobsch': [j['location'] for j in ats.jobsch('4259-fnac-suisse-sa')],
+                       'aggregators.jobsch': sorted({j['location'] for j in aggregators.jobsch(search, get=lambda url: page)})}
+        for reader, places in readers.items():
+            self.assertEqual(places, ['Zurich, Switzerland'], reader)
+        self.assertEqual(ats.posting_places({}), [], 'no address and no page town: the caller\'s own fallback')
+
     def test_swiss_spellings_and_prefixes_still_read_as_switzerland(self):
         for country in ('CH', 'ch ', 'Schweiz', 'Suisse', {'name': 'Switzerland'}):
             job = {'jobLocation': [{'address': {'addressLocality': 'ZH Herrliberg', 'addressCountry': country}}]}
