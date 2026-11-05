@@ -11,7 +11,7 @@ import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
 import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
-import {actorTierOf, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
+import {actorEngineOf, actorTierOf, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
@@ -46,6 +46,7 @@ export async function run(ctx) {
   ctx.findings = [];
   // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts; a night with no tier acts on large under a token cap (5 Nov 2026, owner via mac-32; lib/agent-tier.mjs).
   const actorTier = actorTierOf({requested: process.env.AGENT_TIER, kind: process.env.AGENT_KIND});
+  const engine = actorEngineOf({requested: process.env.AGENT_ENGINE, claudeOn: process.env.AGENT_CLAUDE_ON});   // '' = Codex first, as always; 'claude' = Claude alone for the actor (the second opinion is always Claude)
   if (!Object.hasOwn(MODELS, actorTier)) throw new Error(`AGENT_TIER must be ${Object.keys(MODELS).join(', ')}, got "${actorTier}"`);
   // Why (5 Nov 2026, Gitar on #3213): the screen reader switch accepts only empty or 'off'; "Off" or "no" must not leave the reader on while the person asked for a run without it.
   const screen = process.env.AGENT_SCREEN || '';
@@ -81,7 +82,7 @@ export async function run(ctx) {
     let kept = null;
     const budget = runBudget();
     try {
-      session = await runSession({act, ask: budget.actor(brokerAsk(actorTier)), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: budget.actor(brokerAsk(actorTier, {only: engine})), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
@@ -94,8 +95,8 @@ export async function run(ctx) {
     for (const [file, text] of Object.entries(memoryFiles({...notes, ...merged}))) { fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true}); fs.writeFileSync(path.join(out, file), text); }
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, plan), null, 1));
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state}, null, 2));
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n`);
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
     // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-run.json'), JSON.stringify(runRecord(session, {run: process.env.GITHUB_RUN_ID || 'local', at: new Date(started).toISOString(), kind: process.env.AGENT_KIND || 'night', commit: (process.env.GITHUB_SHA || '').slice(0, 7), plan: planId || (shapeId ? `shape ${shapeId}` : '')}, kept)));

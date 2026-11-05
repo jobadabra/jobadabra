@@ -9,6 +9,7 @@ import {execFileSync} from 'node:child_process';
 import {askBroker} from './lib/broker-client.mjs';
 import {MODELS} from './lib/agent-ask.mjs';
 import {BRANCH, pushMemory} from './lib/agent-memory.mjs';
+import {actorEngineOf} from './lib/agent-tier.mjs';
 import {capsFor, changedLogArgs, engineState, lastSessionCommit, memoryCommitFiles, nightWorked} from './lib/agent-nightly.mjs';
 
 const TEMP = process.env.RUNNER_TEMP || os.tmpdir();
@@ -27,7 +28,8 @@ function checkoutMemory() {
 }
 
 async function prepare() {
-  const answer = await askBroker({model: MODELS.small, max_tokens: 16, messages: [{role: 'user', content: 'Reply with the word ok.'}]});
+  const engine = actorEngineOf({requested: process.env.AGENT_ENGINE, claudeOn: process.env.AGENT_CLAUDE_ON});   // a night on Claude alone checks that Claude answers, not Codex
+  const answer = await askBroker({model: MODELS.small, max_tokens: 16, messages: [{role: 'user', content: 'Reply with the word ok.'}], ...(engine ? {engine, only: true} : {})});
   const caps = capsFor(engineState(answer), {minutes: process.env.AI_USER_AGENT_MINUTES, calls: process.env.AI_USER_AGENT_CALLS, steps: process.env.AI_USER_AGENT_STEPS}, answer.ok === false ? `${answer.status}: ${answer.detail}` : '');
   for (const [key, value] of Object.entries(caps)) output(key, value);
   if (caps.skip) return;

@@ -1,7 +1,7 @@
 // The AI user agent's acting tier and the hard token cap of one run: a night acts on the large tier, a replay on small, and every call of a run counts against 250,000 tokens and is refused before it is made when it could pass the cap.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {actorTierOf, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, isCapStop, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
+import {actorEngineOf, actorTierOf, engineLine, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, isCapStop, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
 
 const answer = (tokens, tier = 'large') => ({text: '{}', usage: {input_tokens: tokens - 100, output_tokens: 100}, tier});
 const asks = (tokens, tier) => { const calls = []; const ask = async args => { calls.push(args); return answer(tokens, tier); }; ask.calls = calls; return ask; };
@@ -90,4 +90,18 @@ test('a refusal by the reader or judge earlier does not relabel a real broker fa
   assert.equal(stoppedLabel('goals', state), 'goals');
   assert.equal(isCapStop(stoppedLabel(`api: ${CAP_REACHED}`, state)), true);
   assert.equal(isCapStop('api: 502 broker: unreachable'), false);
+});
+
+test('a night is on Claude only when a dispatch asks, or when the one-night variable names today; anything else fails the run', () => {
+  assert.equal(actorEngineOf({today: '2026-11-06'}), '');
+  assert.equal(actorEngineOf({claudeOn: '2026-11-06', today: '2026-11-06'}), 'claude');
+  assert.equal(actorEngineOf({claudeOn: '2026-11-06', today: '2026-11-07'}), '', 'the night after goes back to the broker\'s order with nothing to switch off');
+  assert.equal(actorEngineOf({requested: 'claude', today: '2026-11-07'}), 'claude');
+  assert.throws(() => actorEngineOf({requested: 'Codex'}), /AGENT_ENGINE must be empty or claude, got "Codex"/);
+});
+
+test('the report line says the engine, that it is not comparable, steps and tokens per call; a Codex night has none', () => {
+  assert.equal(engineLine({engine: 'claude', steps: 40, actorTokens: 224000}), 'Engine: claude, not comparable with Codex nights: 40 steps, 5.6k tokens per actor call.');
+  assert.equal(engineLine({engine: '', steps: 14, actorTokens: 224000}), '');
+  assert.match(engineLine({engine: 'claude', steps: 0, actorTokens: 0}), /0 steps, 0k tokens/);
 });

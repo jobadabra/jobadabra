@@ -36,6 +36,9 @@ on:
       screen:
         description: 'off = no screen reader after each goal (empty = on)'
         required: false
+      engine:
+        description: 'claude = the acting calls go to Claude alone, not Codex first (empty = the broker order). The repository variable AI_USER_AGENT_CLAUDE_ON = a UTC date does the same for that one night'
+        required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
         type: boolean
@@ -49,7 +52,7 @@ permissions:
 
 # Why (3 Nov 2026, code review on 8/12): a group keeps one running and one pending run and cancels an older pending one, so replays dispatched one after another would cancel each other and a replay could cancel the pending nightly (the watchdog would then report a missing start); a replay has its own group per run.
 concurrency:
-  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '') && format('-replay-{0}', github.run_id) || '' }}
+  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.engine != '') && format('-replay-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -59,7 +62,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier or the screen reader switch measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
+      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch or an engine measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
@@ -67,6 +70,8 @@ jobs:
       AI_USER_AGENT_MINUTES: ${{ vars.AI_USER_AGENT_MINUTES }}
       AI_USER_AGENT_CALLS: ${{ vars.AI_USER_AGENT_CALLS }}
       AI_USER_AGENT_STEPS: ${{ vars.AI_USER_AGENT_STEPS }}
+      AGENT_ENGINE: ${{ inputs.engine }}   # Why (5 Nov 2026, owner: "Try Claude on one night"): both the ping (prepare) and the actor (the session) read the same two values, tests/tooling/ci covers the names
+      AGENT_CLAUDE_ON: ${{ vars.AI_USER_AGENT_CLAUDE_ON }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5

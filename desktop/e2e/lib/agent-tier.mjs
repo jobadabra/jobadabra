@@ -13,6 +13,17 @@ const IMAGE_TOKENS = 1_500;   // a screenshot costs about this, whatever its byt
 /** The acting tier of a run: what the dispatch asked for, else large for a night (kind 'night', set by the workflow) and small for anything else, so a run with no kind (a local one) never spends the large tier by default. */
 export const actorTierOf = ({requested = '', kind = ''} = {}) => requested || (kind === 'night' ? 'large' : 'small');
 
+
+/**
+ * The engine that answers the actor's calls: '' = the broker's own order (Codex first), 'claude' = Claude alone. A dispatch can ask for it (`requested`), and the repository variable AI_USER_AGENT_CLAUDE_ON (a UTC date) turns it on for the night of that date only, so the night after is Codex again with nothing to switch off.
+ * Why (5 Nov 2026, owner: "Try Claude on one night (Recommended)"; the Codex engine carries ~12k tokens of its own context in every ~16k call, Claude's ~0.4k): one night on Claude, same goals and same cap, to compare steps per run and notes. Any other word fails the run.
+ */
+export function actorEngineOf({requested = '', claudeOn = '', today = new Date().toISOString().slice(0, 10)} = {}) {
+  const asked = String(requested || '').trim() || (String(claudeOn || '').trim() === today ? 'claude' : '');
+  if (!['', 'claude'].includes(asked)) throw new Error(`AGENT_ENGINE must be empty or claude, got "${asked}"`);
+  return asked;
+}
+
 const partTokens = part => part?.type === 'image' ? IMAGE_TOKENS : Math.ceil(String(part?.text ?? part ?? '').length / 4);
 /** What a request costs going in: its words at 4 characters a token plus a flat price per picture. */
 const requestTokens = args => Math.ceil((String(args?.system ?? '').length + JSON.stringify(args?.schema ?? '').length) / 4)
@@ -61,6 +72,11 @@ export function harnessTokens({system, schema, intros}, max = HARNESS_MAX_TOKENS
 const k = tokens => `${Math.round(tokens / 1000).toLocaleString('en-US')}k`;
 
 /** The tokens line of the run report: the total against the cap and each part's share, or that the run stopped at the cap; then the actor's tier. */
+/** The report line of a night on one engine ('' for the broker's own order): the numbers the owner compares, and that they are not comparable with a Codex night. */
+export function engineLine({engine, steps, actorTokens}) {
+  return engine ? `Engine: ${engine}, not comparable with Codex nights: ${steps} steps, ${steps ? Math.round(actorTokens / steps / 100) / 10 : 0}k tokens per actor call.` : '';
+}
+
 export function tokensLine(state, tier) {
   const {actor, reader, judge} = state.used, parts = `actor ${k(actor)}, screen reader ${k(reader)}, second opinion ${k(judge)}`;
   const head = state.stoppedAtCap ? `Stopped at the ${k(state.capTokens)} cap: ${k(state.total)} / ${k(state.capTokens)} tokens; the notes made so far are kept` : `Tokens: ${k(state.total)} / ${k(state.capTokens)}`;
