@@ -44,25 +44,36 @@ def carried(db, skipped, at):
     return out
 
 
+def _judged(entry):
+    """The date of this entry's mix: `judged` when the mix is older than the read (kept, or taken from the published index), else its read."""
+    return str(entry.get('judged') or entry.get('checked') or '')[:10]
+
+
 def _mix(entry):
     """{kinds, kind_counts}: this entry's valid judgment, each part None when it has none. Why (5 Nov 2026, #2915): one read before role_kinds.SINCE was judged on the
-    old kinds, so it counts as none; `checked` is the date a published entry carries (the site keeps fixed fields only), `judged` the date of a mix taken from one."""
-    if str(entry.get('judged') or entry.get('checked') or '')[:10] < role_kinds.SINCE[:10]:
+    old kinds, so it counts as none; `checked` is the only date a published entry carries (the site keeps fixed fields)."""
+    if _judged(entry) < role_kinds.SINCE[:10]:
         return {'kinds': None, 'kind_counts': None}
     return {'kinds': role_kinds.valid(entry.get('kinds')), 'kind_counts': role_kinds.valid_counts(entry.get('kind_counts'))}
 
 
 def mixes(db):
-    """{(ats, slug): {kinds, kind_counts}}: each kept entry's last valid judgment. A re-read the AI could not judge keeps these."""
+    """{(ats, slug): {kinds, kind_counts, judged}}: each kept entry's last valid judgment and its date. A re-read the AI could not judge keeps these."""
     ensure(db)
-    return {(system, slug): _mix(json.loads(text)) for system, slug, text in db.execute('SELECT ats, slug, entry FROM feed_entries')}
+    out = {}
+    for system, slug, text in db.execute('SELECT ats, slug, entry FROM feed_entries'):
+        entry = json.loads(text)
+        out[(system, slug)] = {**_mix(entry), 'judged': _judged(entry)}
+    return out
 
 
 def mix_fields(kinds, counts, last):
-    """An entry's {kinds, kind_counts, mix_kept}, each only when it has one: this read's judgment, else `last` (mixes) for a part the AI could not judge. Counts of {}
-    are a judgment, none local, so they clear the old ones. mix_kept feeds the run log's count (published_line); the site keeps fixed fields."""
+    """An entry's {kinds, kind_counts, mix_kept, judged}, each only when it has one: this read's judgment, else `last` (mixes) for a part the AI could not judge. Counts
+    of {} are a judgment, none local, so they clear the old ones. mix_kept feeds the run log's count (published_line); judged keeps a kept mix dated by its judgment,
+    not by today's read, so a later role_kinds.SINCE still drops it. The site keeps fixed fields: neither is published."""
     kept = {'kinds': last.get('kinds') if not kinds else None, 'kind_counts': last.get('kind_counts') if counts is None else None}
     fields = {'kinds': kept['kinds'] or kinds, 'kind_counts': kept['kind_counts'] or counts, 'mix_kept': any(kept.values())}
+    fields['judged'] = last.get('judged') if fields['mix_kept'] else None
     return {name: value for name, value in fields.items() if value}
 
 

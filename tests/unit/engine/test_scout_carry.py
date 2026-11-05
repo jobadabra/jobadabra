@@ -111,6 +111,19 @@ class KeptMixTest(unittest.TestCase):
         self.assertIn('Kind counts by country on 47 of 47 feeds (47 kept from an earlier run, not judged today)', scout.published_line(47, [], feeds))
         self.assertNotIn('kept', scout.published_line(47, [], self.read('2026-11-01')), 'judged again: nothing kept')
 
+    def test_a_kept_mix_stays_dated_by_its_judgment_so_a_later_since_still_drops_it(self):
+        self.read('2026-10-30')
+        self.read('2026-10-31', titles=False, places=False)
+        feeds = self.read('2026-11-01', titles=False, places=False)
+        self.assertEqual({f['judged'] for f in feeds}, {'2026-10-30'}, 'two kept runs on: the date of the judgment, not of the read')
+        with mock.patch.object(role_kinds, 'SINCE', '2026-10-31T00:00:00+00:00'):
+            self.assertEqual(scout_carry.mixes(self.db)[('lever', 'co0')]['kinds'], None)
+
+    def test_a_fresh_judgment_carries_no_old_date(self):
+        self.read('2026-10-30')
+        self.read('2026-10-31', titles=False, places=False)
+        self.assertFalse(any('judged' in f or 'mix_kept' in f for f in self.read('2026-11-01')))
+
     def test_a_fresh_judgment_replaces_the_kept_one(self):
         self.read('2026-10-30')
         with mock.patch.object(scout_kind_counts, 'of_jobs', lambda jobs: ({'sales': 1.0}, {'de': {'sales': 1}})):
