@@ -29,4 +29,16 @@ def slug_ok(system, slug):
     return True
 
 
+NAMELESS = {'oracle', 'umantis'}   # Why (5 Nov 2026, #2915): their slugs hold a tenant code or an account number, and an empty company beats an invented one
+
+
+def company_in_slug(found):
+    """The employer a board's slug spells, from ats.detect's (ats, slug): a job link's last resort when nothing names the company; '' when it spells none.
+    A Workday slug is `tenant.wdN.Site`: only the tenant is a name."""
+    if not found or found[0] in NAMELESS:
+        return ''
+    system, slug = found
+    return (slug.split('.', 1)[0] if system == 'workday' else slug).replace('-', ' ').title()
+
+
 from . import ats  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)

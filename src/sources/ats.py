@@ -224,7 +224,7 @@ from .ats_sites import (WORKDAY_PAGES, WORKDAY_ALL_PAGES, WORKDAY_MAX_TERMS, WOR
 from .ats_oracle import (ORACLE_ALL_PAGE, ORACLE_ALL_PAGES, ORACLE_TERM_PAGE, split_oracle, oracle_base, oracle)  # noqa: E402,F401
 from .ats_phenom import (PHENOM_PAGE, PHENOM_ALL_PAGES, PHENOM_TERM_PAGES, phenom_site, phenom)  # noqa: E402,F401
 from .ats_eightfold import (EIGHTFOLD_STEP, EIGHTFOLD_ALL_PAGES, EIGHTFOLD_TERM_PAGES, eightfold_site, eightfold)  # noqa: E402,F401
-from .ats_slugs import slug_ok  # noqa: E402,F401
+from .ats_slugs import company_in_slug, slug_ok  # noqa: E402,F401
 from .ats_jobsch import (JOBSCH_PAGES, JOBSCH_COMPANY, jobsch_company, _postings, _unescape, jobsch_towns, posting_places, jobsch_find, jobsch)  # noqa: E402,F401
 
 
@@ -264,7 +264,7 @@ URL_PATTERNS = [
     # Oracle Recruiting Cloud: tenant, region and site number, written `tenant.region.SITE` (src/sources/ats_oracle.py)
     ('oracle', r'([\w-]+)\.fa\.([a-z0-9]{2,8})\.oraclecloud\.com/hcmUI/CandidateExperience/(?:[a-z]{2}(?:[-_][A-Za-z]{2})?/)?sites/([\w-]+)'),
 ]
-IGNORED_SLUGS = {'embed', 'j', 'api', 'v1', 'jobs', 'careers', 'www', 'o', 'career', 'app', 'support', 'help', 'blog', 'static', 'tt', 'assets', 'scripts', 'cdn'}
+IGNORED_SLUGS = {'embed', 'j', 'api', 'v1', 'jobs', 'careers', 'www', 'o', 'career', 'app', 'support', 'help', 'blog', 'static', 'tt', 'assets', 'scripts', 'cdn', 'oneclick-ui'}
 
 
 def detect(url):
