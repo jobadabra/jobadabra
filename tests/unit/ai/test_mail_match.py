@@ -13,6 +13,7 @@ from src.notion import cron_report
 from src.notion import ledger
 from src.sources import google as google_api
 from tests import zone
+from tests.mail_fakes import record_of
 from tests.mail_fakes import NOW, FakeClient, FakeGoogle, FakeTracker, MailCase, app, content, email, rec, result, text
 
 setUpModule, tearDownModule = zone.pinned()
@@ -152,8 +153,9 @@ class MailMatchTests(MailCase):
                 mock.patch('src.ai.opportunity.track', lambda *a, **k: (app('new', '', 'SRE', stage='Screening', via='Huxley'), '')):
             self.run_mail(tracker, FakeGoogle([invite]), [[result(0, 0, 'Interview scheduled', company='Huxley')]])
         self.assertNotIn('p1', [page for page, _ in tracker.updates])
-        self.assertTrue(mail._names_it(ag, email('r', 'Re: DevOps Engineer', sender='agillard@agtalent.co.uk')))
-        self.assertTrue(mail._names_it(ag, email('r', 'Hi', sender='x@other.io', body='Arjun Gillard, AG Talent')))
+        self.assertTrue(mail._names_it(record_of(ag), email('r', 'Re: DevOps Engineer', sender='agillard@agtalent.co.uk')))
+        self.assertTrue(mail._names_it(record_of(ag), email('r', 'Hi', sender='x@other.io', body='Arjun Gillard, AG Talent')))
+        self.assertFalse(mail._names_it(record_of(ag), invite))
 
     def test_one_recruiter_by_email_and_on_linkedin_is_one_job_at_the_invitations_time(self):
         # 29 Sep 2026: Huxley's Teams invite and Jayantie's LinkedIn InMail about the same call made two jobs, and the

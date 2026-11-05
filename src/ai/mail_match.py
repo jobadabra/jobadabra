@@ -65,12 +65,24 @@ def _names_person(row, text):
     return False
 
 
+def _nameless(row):
+    """True when a job has no company, agency or contact: nothing in an email can say it is about this job's employer."""
+    return not any(_field(row, name).strip() for name in ('company', 'via', 'contact'))
+
+
+def _quotes_link(row, email):
+    """True if the email quotes this job's own link, whole. Why (5 Nov 2026, #3316 review): a sender's site is no proof, as a board or job system looks
+    like an employer's own site and serves many jobs; the person's answer in Focus names the job instead."""
+    link = _field(row, 'url').strip().rstrip('/')
+    text = f"{email.get('subject', '')} {email.get('body', '')[:6000]}"
+    return bool(link) and bool(re.search(rf'{re.escape(link)}(?![\w-])', text, re.I))
+
+
 def _names_it(row, email):
     """True if the email names the application: its company, agency, contact (name or email), or comes from the
-    domain of one of its contacts. A job with nothing to name (no company, agency or contact) can't be checked."""
-    names = [n for n in (_field(row, 'company'), _field(row, 'via'), _field(row, 'contact')) if n.strip()]
-    if not names:
-        return True
+    domain of one of its contacts. A job with nothing to name is told by its link, never by its role."""
+    if _nameless(row):   # Why (5 Nov 2026, #3316): a shared role put a rejection on the wrong job, and names a slug can't spell now leave more jobs here
+        return _quotes_link(row, email)
     text = f"{email.get('from', '')} {email.get('subject', '')} {email.get('body', '')[:6000]}"
     if _matches(row, text):
         return True

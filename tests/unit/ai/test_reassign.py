@@ -40,11 +40,11 @@ from tests.mail_fakes import FakeTracker  # noqa: E402
 HUX = {'url': 'https://x.test/hux', 'title': 'Principal SRE', 'company': '', 'via': 'Huxley'}
 
 
-def asked(stores, kind='Interview scheduled', interview_at='2026-09-30T08:30:00+02:00'):
+def asked(stores, kind='Interview scheduled', interview_at='2026-09-30T08:30:00+02:00', read=None):
     """A question the Gmail check left: an email event on no job (Needs you), with the job it would pick."""
     return stores.events.add('', kind, '2026-09-29T14:35:00+02:00', source='Gmail', source_id='h1', needs_you=True,
                              interview_at=interview_at, suggested_job=HUX['url'], note='Teams call (email: "Connect Igor / Jaya - SRE")',
-                             changes={'fields': {}, 'from': 'Jaya <jaya@huxley.test>', 'subject': 'Connect Igor / Jaya - SRE'})
+                             changes={'fields': {}, 'from': 'Jaya <jaya@huxley.test>', 'subject': 'Connect Igor / Jaya - SRE', **(read or {})})
 
 
 class MoveTests(unittest.TestCase):
@@ -62,6 +62,19 @@ class MoveTests(unittest.TestCase):
         self.assertEqual((event['app_id'], bool(event['needs_you'])), (hux['id'], False))
         self.assertEqual((event['changes']['from'], event['changes']['subject']), ('Jaya <jaya@huxley.test>', 'Connect Igor / Jaya - SRE'))
         self.assertIn('Next interview', event['changes']['fields'])
+
+    def test_placing_an_email_names_a_job_that_had_no_name_so_the_next_one_attaches_alone(self):
+        stores = memory.open_store()
+        nameless = {'url': 'https://x.test/n', 'title': 'Principal SRE', 'company': '', 'via': ''}
+        stores.applications.set_stage(nameless, 'Applied')
+        reassign.move(stores, asked(stores, read={'company': 'Beta Corp'})['id'], nameless['url'], now=NOW)
+        self.assertEqual(stores.applications.get(nameless['url'])['company'], 'Beta Corp')
+
+    def test_a_job_that_has_a_name_keeps_it_when_an_email_is_placed_on_it(self):
+        stores = memory.open_store()
+        stores.applications.set_stage(HUX, 'Screening')
+        reassign.move(stores, asked(stores, read={'company': 'Beta Corp'})['id'], HUX['url'], now=NOW)
+        self.assertEqual(stores.applications.get(HUX['url'])['company'], '')   # Huxley is an agency: its email's reading is not the employer
 
     def test_a_job_no_longer_there_or_an_answered_email_is_said(self):
         stores = memory.open_store()

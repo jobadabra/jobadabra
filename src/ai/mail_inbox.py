@@ -11,7 +11,7 @@ from . import cost, mail_triage
 from .mail_config import OUTREACH, TZ
 from .mail_leads import TRACKABLE, _from_email, interview_lead, new_lead
 from .mail_lines import _head, _job_name, _label, _short, _who, ask
-from .mail_match import ENDED, _about_tracked, _ambiguous, _by_mention, _names_it, _names_person, _sender_org
+from .mail_match import ENDED, _about_tracked, _ambiguous, _by_mention, _nameless, _names_it, _names_person, _sender_org
 from .mail_read import _field, _unread_invitation, _when, classify, extra_query, query, verified_feedback
 from .mail_record import changes_readable, gmail_link, record
 
@@ -113,7 +113,8 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             same = [r for r in apps if _names_person(r, f"{email['from']} {email['subject']} {email['body'][:4000]}")]
             if len(same) == 1:
                 row = same[0]
-        if not row and result.get('kind') == 'Interview scheduled' and not _about_tracked(
+        # Why (5 Nov 2026, #3316): a nameless job the AI picked may be this very interview, so it is asked below, never tracked as a second job
+        if not row and result.get('kind') == 'Interview scheduled' and not (guess and _nameless(guess)) and not _about_tracked(
                 apps, f"{result['company']} {email['from']} {email['subject']} {email['body'][:1500]}"):
             # An interview for a job not tracked yet (often via an agency, the employer unnamed): track it from the
             # email and let Focus ask for the missing details, rather than drop it or name the job after the agency.

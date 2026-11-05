@@ -44,6 +44,60 @@ class ShapeTests(unittest.TestCase):
     def kinds(self, tracker):
         return [row['Kind']['select']['name'] for row in tracker.created if 'Kind' in row]
 
+    def nameless(self, link):
+        """A tracked job that names no company, agency or contact: only its role and link can be read."""
+        row = app('p1', '', 'Site Reliability Engineer')
+        row['properties']['Job URL']['url'] = link
+        return row
+
+    def verdict(self, kind='Rejected', company='Beta Corp'):
+        return [{**result(0, 0, kind, 'Not moving forward', company=company), 'role': 'Site Reliability Engineer'}]
+
+    def assert_only_asked(self, tracker):
+        self.assertEqual(len(tracker.created), 1, 'one question, no twin job and no new lead')
+        self.assertTrue(tracker.created[0].get('Needs you', {}).get('checkbox'))
+        self.assertEqual([update for _, update in tracker.updates if 'Stage' in update], [])
+
+    def test_a_rejection_that_shares_only_the_role_with_a_nameless_job_is_asked_about(self):
+        mails = [email('m1', 'Your application for Site Reliability Engineer', sender='hr@beta.test', body='We will not move forward.')]
+        tracker, _ = self.check([self.nameless('https://careers.acme.test/jobs/1')], mails, self.verdict())
+        self.assert_only_asked(tracker)
+
+    def test_an_interview_that_shares_only_the_role_with_a_nameless_job_is_asked_about(self):
+        mails = [email('m1', 'Interview for Site Reliability Engineer', sender='hr@beta.test', body='Can we talk on Monday?')]
+        tracker, _ = self.check([self.nameless('https://careers.acme.test/jobs/1')], mails, self.verdict('Interview scheduled'))
+        self.assert_only_asked(tracker)
+
+    def test_mail_from_a_job_system_says_nothing_about_a_nameless_job_on_that_system(self):
+        # one system serves every employer: its address is not this job's employer
+        mails = [email('m1', 'Your application', sender='no-reply@umantis.com', body='We will not move forward.')]
+        tracker, _ = self.check([self.nameless('https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2')], mails, self.verdict())
+        self.assert_only_asked(tracker)
+
+    def test_a_site_a_nameless_job_is_on_proves_nothing_either(self):
+        # a board or a job system our list doesn't know looks like an employer's own site, and two jobs can share one
+        mails = [email('m1', 'Your application', sender='hr@acme.test', body='We will not move forward.')]
+        tracker, _ = self.check([self.nameless('https://careers.acme.test/jobs/1')], mails, self.verdict())
+        self.assert_only_asked(tracker)
+
+    def test_a_company_with_no_latin_letters_or_no_letters_is_not_a_nameless_job_by_role(self):
+        # words() read 'Яндекс' as '', which equals a job with no company: the role alone then attached it
+        for company in ('Яндекс', '-'):
+            with self.subTest(company=company):
+                self.state.unlink(missing_ok=True)
+                mails = [email('m1', 'Your application', sender='hr@beta.test', body='We will not move forward.')]
+                tracker, _ = self.check([self.nameless('https://careers.acme.test/jobs/1')], mails, self.verdict(company=company))
+                self.assert_only_asked(tracker)
+
+    def test_real_mail_still_reaches_a_nameless_job_that_it_quotes_whole(self):
+        link = 'https://careers.acme.test/jobs/1'
+        for quoted, moves in ((link, ['Rejected']), (f'{link}/apply', ['Rejected']), (f'{link}2', [])):
+            with self.subTest(quoted=quoted):
+                self.state.unlink(missing_ok=True)
+                mails = [email('m1', 'Your application', sender='hr@beta.test', body=f'About your application: {quoted}')]
+                tracker, _ = self.check([self.nameless(link)], mails, self.verdict())
+                self.assertEqual([update['Stage']['select']['name'] for _, update in tracker.updates if 'Stage' in update], moves)
+
     def test_an_ats_thank_you_is_a_confirmation_and_moves_the_stage_once(self):
         apps = [app('p1', 'Acme Labs', 'Senior Site Reliability Engineer', stage='Applied')]
         mails = [email('m1', 'Thank you for applying to Acme Labs', sender=ATS, body='We received your application for Senior Site Reliability Engineer.')]
