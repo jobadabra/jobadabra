@@ -62,7 +62,7 @@ export function rankNotes(notes, cap = MAX_FILED) {
 export function toFinding(note, {steps = [], session = {}} = {}) {
   const trail = steps.slice(-12).map((step, i) => `${i + 1}. ${step}`).join('\n');
   return {view: note.view, severity: note.severity, kind: note.kind, title: note.title, source: 'ai-user-agent',
-    detail: `${note.observed}${trail ? `\n\nSteps before it:\n${trail}` : ''}`, impact: note.why, expected: note.expected,
+    detail: `${note.observed}${trail ? `\n\nSteps before it:\n${trail}` : ''}${session.chain ? `\n\n${session.chain}` : ''}`, impact: note.why, expected: note.expected,
     agent: {type: note.type, persona: session.persona || '', seed: session.seed ?? '', snapshot: session.snapshot || '', judge: note.judge || 'unknown', judgeReason: note.judgeReason || '', proved: !!note.proved, cites: note.cites || ''}};
 }
 

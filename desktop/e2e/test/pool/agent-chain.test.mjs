@@ -1,0 +1,94 @@
+// A chain hands a run's data and summary to the next run: the snapshot restores byte for byte, a foreign folder is refused, the state says when and why a chain ends (SC 2/2).
+// Guard: money — without the end rules a chain keeps starting 250k-token runs that make no progress, and a snapshot that does not restore makes every later link a false run.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {test} from 'node:test';
+import {linkEnd, linksAsked, MARKER, packSnapshot, pointerLine, restoreSnapshot, resumePlan, startChain} from '../../lib/agent-chain.mjs';
+import {brokerWhy} from '../../lib/explore.mjs';
+
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chain-test-'));
+const goals = [1, 2, 3].map(n => ({n, group: 'Jobs', label: `goal ${n}`, pair: 'p'}));
+const plan = {seed: 7, persona: {name: 'P'}, goals};
+const start = (extra = {}) => startChain({runId: 100, plan, tier: 'large', commit: 'abc1234', maxLinks: 3, ...extra});
+const end = (n, stopped, steps = []) => ({n, stopped, steps});
+const sessionOf = (ends, extra = {}) => ({ends, notes: [], trace: [{view: 'jobs'}], stopped: 'goals', ...extra});
+const snap = {file: 'agent-chain-100-1.tar', sha256: 'a'.repeat(64), bytes: 10};
+
+test('a snapshot restores the data folder byte for byte, leaves the caches out, and its hash is the one saved', () => {
+  const profile = tmp(), out = tmp(), target = tmp();
+  fs.writeFileSync(path.join(profile, 'store.db'), 'rows');
+  fs.mkdirSync(path.join(profile, 'Cache')); fs.writeFileSync(path.join(profile, 'Cache', 'big'), 'cache');
+  const saved = packSnapshot({profile, dir: out, chain: '100', link: 1});
+  fs.writeFileSync(path.join(target, 'stale.txt'), 'left over');
+  const restored = restoreSnapshot({dir: out, snapshot: saved, profile: target});
+  assert.equal(restored, saved.sha256, 'the restored hash is the saved hash');
+  assert.equal(fs.readFileSync(path.join(target, 'store.db'), 'utf8'), 'rows');
+  assert.equal(fs.existsSync(path.join(target, 'Cache')), false, 'caches are not carried');
+  assert.equal(fs.existsSync(path.join(target, 'stale.txt')), false, 'the profile is emptied first');
+  assert.ok(fs.existsSync(path.join(target, MARKER)));
+});
+
+test('a snapshot with another hash, or without the suite marker, is refused before the profile is touched', () => {
+  const out = tmp(), target = tmp(), foreign = tmp();
+  fs.writeFileSync(path.join(foreign, 'x.txt'), 'x');
+  fs.writeFileSync(path.join(target, 'keep.txt'), 'mine');
+  const tar = path.join(out, 'agent-chain-1-1.tar');
+  fs.writeFileSync(path.join(out, 'agent-chain-9-1.tar'), 'not a tar');
+  assert.throws(() => restoreSnapshot({dir: out, snapshot: {file: 'agent-chain-9-1.tar', sha256: 'b'.repeat(64)}, profile: target}), /is not the one the chain saved/);
+  require_tar(foreign, tar);
+  const hash = packLikeHash(tar);
+  assert.throws(() => restoreSnapshot({dir: out, snapshot: {file: path.basename(tar), sha256: hash}, profile: target}), /has no agent-chain-marker\.json/);
+  assert.equal(fs.readFileSync(path.join(target, 'keep.txt'), 'utf8'), 'mine');
+});
+
+import {execFileSync} from 'node:child_process';
+import crypto from 'node:crypto';
+function require_tar(dir, file) { execFileSync('tar', ['-cf', file, '-C', dir, '.']); }
+function packLikeHash(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
+
+test('the number of links asked is 1 to 4: nothing readable means no chain', () => {
+  assert.deepEqual(['', 'x', '1', '3', '4', '9', '0'].map(linksAsked), [1, 1, 1, 3, 4, 4, 1]);
+});
+
+test('a goal that ended on done is finished; the one that ran out is continued next link, with the steps it already did', () => {
+  const state = linkEnd({prev: start(), session: sessionOf([end(1, 'done', ['Open jobs']), end(2, 'api: cap', ['Press "Add"', 'Press "Save"'])], {stopped: 'stopped at the 250k token cap'}), runId: 100, commitNow: 'abc1234', snapshot: snap});
+  assert.deepEqual(state.done, [1]);
+  assert.equal(state.link, 1);
+  assert.equal(state.ended, '');
+  assert.deepEqual(state.next, {n: 2, stepsTotal: 2, steps: ['Press "Add"', 'Press "Save"'], stopped: 'stopped at the 250k token cap'});
+  const next = resumePlan(state);
+  assert.deepEqual(next.goals.map(goal => goal.n), [2, 3], 'finished goals are not run again');
+  assert.match(next.goals[0].label, /^goal 2\n\nContinue: this is goal 2 of 3\. Earlier runs already did 2 steps on it and the last stopped on stopped at the 250k token cap\./);
+  assert.match(next.goals[0].label, /1\. Press "Add"\n2\. Press "Save"/);
+  assert.equal(next.goals[1].label, 'goal 3');
+});
+
+test('the steps of a goal add up across links', () => {
+  const first = linkEnd({prev: start(), session: sessionOf([end(1, 'api: cap', ['a', 'b'])], {stopped: 'cap'}), runId: 100, commitNow: 'abc1234', snapshot: snap});
+  const second = linkEnd({prev: first, session: sessionOf([end(1, 'api: cap', ['c', 'd', 'e'])], {stopped: 'cap'}), runId: 101, commitNow: 'abc1234', snapshot: snap});
+  assert.equal(second.next.stepsTotal, 5);
+  assert.deepEqual(second.links.map(link => [link.link, link.run, link.steps]), [[1, '100', 2], [2, '101', 3]]);
+});
+
+test('a chain ends, and says why: every goal done, link limit, broker failure, another app commit, no progress', () => {
+  const after = (ends, extra, prev = start()) => linkEnd({prev, session: sessionOf(ends, extra), runId: 100, commitNow: 'abc1234', snapshot: snap}).ended;
+  assert.equal(after(goals.map(goal => end(goal.n, 'done', ['x']))), 'every goal is done');
+  assert.match(after([end(1, 'api: cap', ['x'])], {}, {...start(), link: 2}), /^link 3 \(the last\) is done$/);
+  assert.match(after([end(1, 'api: 502 broker down', ['x'])], {stopped: 'api: 502 broker down'}), /^a broker failure: api: 502 broker down/);
+  assert.match(linkEnd({prev: start(), session: sessionOf([end(1, 'steps', ['x'])]), runId: 1, commitNow: 'def5678', snapshot: snap}).ended, /^the app commit changed \(abc1234 → def5678\)$/);
+  assert.match(after([end(1, 'steps', [])]), /^this link made no progress \(no step, no note\)$/);
+  assert.match(after([end(1, 'repeat: "Press x" 5 times', ['x'])], {stopped: 'repeat: "Press x" 5 times'}), /^this link made no progress \(it repeated itself\)$/);
+  assert.equal(after([end(1, 'steps', ['x'])]), '', 'a link that moved on goes on');
+});
+
+test('a finding names the snapshot to restore and the artifact it is in', () => {
+  assert.match(pointerLine({chain: '100', link: 1, snapshot: '', run: ''}), /^Chain 100, link 1: starts from the seeded app/);
+  assert.equal(pointerLine({chain: '100', link: 3, snapshot: 'agent-chain-100-2.tar', run: '101'}), 'Chain 100, link 3: restore agent-chain-100-2.tar (artifact agent-replay-101), then do the steps above.');
+});
+
+test('a broker failure label starts with the reason, not the engine\'s start events', () => {
+  const error = new Error('502 broker: codex-failed:1 {"type":"thread.started","thread_id":"01a1ac05-5b58"} {"type":"turn.started"} {"type":"error","message":"Selected model is at capacity"}');
+  assert.equal(brokerWhy(error), '502 broker: codex-failed:1 {"type":"error","message":"Selected model is at capacity"}');
+});

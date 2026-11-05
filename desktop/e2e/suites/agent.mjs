@@ -22,6 +22,7 @@ import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
+import {chainFor, endLink, pointerOf, previousLink, restoreLink} from '../lib/agent-chain-run.mjs';
 import {startAgentVideo} from '../lib/agent-video.mjs';
 
 export const name = 'agent';
@@ -56,13 +57,16 @@ export async function run(ctx) {
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
   const out = path.join(ctx.ARTIFACTS, 'agent-memory-out');
   const seed = Number(process.env.AGENT_SEED) || todaySeed();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10), commitNow = (process.env.GITHUB_SHA || '').slice(0, 7);
 
   let session = null;
   await ctx.run(`the AI user agent works its goals (seed ${seed}, at most ${CAPS.maxMinutes} min, ${CAPS.maxCalls} broker calls, ${CAPS.maxSteps} steps)`, async () => {
     // Why (4 Nov 2026, AI user agents FR 3/4, owner: "All four now"): a night with free goals gets ONE known-bug data shape in the app, picked by its seed (AGENT_SHAPE pins it, 'none' turns it off), because the suite's one applicant never has the data the tester bugs needed (lib/agent-plans.mjs SHAPES). A named plan seeds its own data and no shape.
     const shapeId = shapeFor(seed, process.env.AGENT_SHAPE, process.env.AGENT_PLAN);
-    const seeded = await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed, shapeId);
+    // Why (5 Nov 2026, SC 2/2, owner: "chained runs"): a later link of a chain restores the app's data the last link saved instead of seeding it again, and refuses a chain of another app commit.
+    const chainDir = process.env.AGENT_CHAIN_DIR || '', prevChain = previousLink(chainDir, commitNow);
+    const restored = prevChain ? await restoreLink(ctx, chainDir, prevChain) : '';
+    const seeded = prevChain ? '' : await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed, shapeId);
     if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '', shapeId)} ms`); }   // the app reads the CV and the rows again on a fresh load
     const moves = movesFromPalette(await readPalette(page));
     const coverage = memoryDir && fs.existsSync(path.join(memoryDir, 'coverage.json')) ? JSON.parse(fs.readFileSync(path.join(memoryDir, 'coverage.json'), 'utf8')) : [];
@@ -70,7 +74,8 @@ export async function run(ctx) {
     // Why (3 Nov 2026, AI user agents 8/12): a replay run (AGENT_PLAN: one named plan of the proof, lib/agent-plans.mjs) is a measurement of one app state, so what changed since the last night does not steer it; AGENT_RULES_OFF takes rules out of what the agent knows (the unprompted run).
     const planId = process.env.AGENT_PLAN || '';
     const changed = changedSince(planId ? '' : changedLog);
-    const plan = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas});
+    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas});
+    const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
     const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
@@ -83,12 +88,13 @@ export async function run(ctx) {
     const budget = runBudget();
     try {
       session = await runSession({act, ask: budget.actor(brokerAsk(actorTier, {only: engine})), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
-        caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
+        caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, chain: pointerOf(chainState)}});
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
     session.stopped = stoppedLabel(session.stopped, budget.state);
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
+    if (chainState) await endLink({ctx, state: chainState, session, restored, tokens: budget.state.total, runId: process.env.GITHUB_RUN_ID || 'local', commitNow});
     // The memory the workflow pushes to the agent-memory branch afterwards (this suite never touches git): merged notes per area, the coverage record, the plan's pairs.
     const merged = {};
     for (const [area, texts] of Object.entries(session.observations)) merged[area] = mergeNotes(notes[area] || [], texts, {today, commit: (process.env.GITHUB_SHA || '').slice(0, 7), session: `${today}-${seed}`});
