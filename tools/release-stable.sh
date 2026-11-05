@@ -132,8 +132,9 @@ if [ "${#failed[@]}" -gt 0 ]; then
   message="⚠️ $tag is stable, but the publish to the $names did not start. Start it by hand:"
   for command in "${by_hand[@]}"; do message+=$'\n'"$command"; done
   message+=$'\n'"Run: ${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
+  # Why (5 Nov 2026, Gitar on #3298): a store publish that did not start is a failure: it goes out as release-failed at level problem, not as the stable announcement, which the owner may switch off or set to problems-only and would then never hear this.
   # The one alert path the other CI checks use (desktop/e2e/ci-alert.mjs; CI_ALERTS_TELEGRAM_BOT_TOKEN and _CHAT_ID from the calling step); an alert that cannot go out never hides the failure.
-  MESSAGE="$message" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'stable-promoted'}))" || echo "(alert not sent)" >&2
+  MESSAGE="$message" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'release-failed', level: 'problem'}))" || echo "(alert not sent)" >&2
   echo "$tag is stable, but the $names publish did not start: this run ends red (exit 4) so it is seen. Start it by hand, as above." >&2
   exit 4
 fi

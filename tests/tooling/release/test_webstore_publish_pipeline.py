@@ -19,6 +19,14 @@ class StorePublishOnStable(unittest.TestCase):
             with self.subTest(flow=flow):
                 self.assertGreater(script.index(f' {flow} "'), promote, 'started (start_store) after the release is stable')
 
+    def test_a_store_publish_that_did_not_start_alerts_as_a_failure_not_as_the_stable_announcement(self):
+        # Gitar on #3298: under 'stable-promoted' without a level, an owner who switched announcements off or set problems-only never heard it.
+        script = (ROOT / 'tools' / 'release-stable.sh').read_text()
+        failure = next(line for line in script.splitlines() if 'ci-alert.mjs' in line and 'did not start' not in line and 'MESSAGE=' in line)
+        self.assertIn("event: 'release-failed'", failure)
+        self.assertIn("level: 'problem'", failure)
+        self.assertNotIn('stable-promoted', failure)
+
     def test_no_switch_sits_between_the_promotion_and_the_store_starts(self):
         # 31 Oct 2026, owner: "We should have this always, even if we go on the hot path". SKIP_E2E, E2E_NO_START, E2E_ALREADY_GREEN and FRESH_E2E only decide the end-to-end gate,
         # which is before the promotion; only DRY_RUN may end the script early, and it does so before the promotion too (tests/tooling/release/test_release_stable_guard.py plays every route).
