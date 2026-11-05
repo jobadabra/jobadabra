@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 // Twelve jobs with fits the popup must order: more than the 10 it takes, every one with a distinct fit.
 const FITS = [96, 93, 90, 88, 86, 84, 82, 80, 78, 76, 74, 72];
@@ -17,6 +18,9 @@ export const CHIP_VALUE = '.role > .chip-tag .chip-value';
 const sessionsFile = ctx => path.join(ctx.profile, 'sessions.json');
 /** The saved sessions file as text ('' when none): a step compares it before and after to prove nothing started. */
 export const sessionsNow = ctx => { try { return fs.readFileSync(sessionsFile(ctx), 'utf8'); } catch { return ''; } };
+
+/** The chip word on each of these jobs' rows, in order; '' for a job with no row on screen. */
+const chipsOf = (page, addresses) => page.evaluate(({addresses, selector}) => addresses.map(url => [...document.querySelectorAll('.job-row')].find(row => row.dataset.url === url)?.querySelector(selector)?.textContent.trim() || ''), {addresses, selector: CHIP_VALUE});
 
 /** Opens Jobs with the fictional jobs listed (the list is read again from the store, never the page's older copy). */
 async function openJobs(ctx) {
@@ -47,8 +51,11 @@ export async function runTriageSteps(ctx) {
       if (!/Nothing was checked/i.test(told)) throw new Error(`with no form read yet the toast should say nothing was checked, it says "${told}"`);
       if (await page.locator('#triage-progress:visible').count()) throw new Error('the progress bar is still showing after the run');
       await page.click('#triage-close').catch(() => {});
-      const chips = await page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
-      if (!chips.length) throw new Error('no job row shows a triage chip (.role > .chip-tag, renderer/pages/jobs-render.js)');
+      // Why (5 Nov 2026, #3297, runs 42083640105 and 42085539750): a Saved job is no row of the default New matches view, so this step read other jobs' chips until prepared jobs left that view too. A pasted link finds a job whatever its status.
+      await page.fill('#filter-text', JOBS[0].url.replace(/\/\d+$/, ''));
+      const {value: chips} = await pollUntil(() => chipsOf(page, urls), shown => shown.every(Boolean), {capMs: stepTimeLeft(), what: 'all twelve fixture jobs showing a triage chip'});
+      await page.fill('#filter-text', '');   // the next steps see the whole list
+      if (!chips.every(Boolean)) throw new Error(`not all twelve fixture jobs show a triage chip (.role > .chip-tag, renderer/pages/jobs-render.js): ${JSON.stringify(chips)}`);
       const odd = chips.filter(text => text !== 'Not checked');
       if (odd.length) throw new Error(`${odd.length} chip(s) guessed a mode without a read: ${[...new Set(odd)].join(', ')}`);
       if (sessionsNow(ctx) !== before) throw new Error('checking jobs started or changed a session; nothing may open, fill or send before the form read exists');
