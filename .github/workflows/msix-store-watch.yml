@@ -102,3 +102,44 @@ jobs:
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: node tools/msix-store-watch.mjs tell
+
+  # Why (5 Nov 2026, Gitar on #3196): the Worker and the watchdog do not page for this hourly start, so a check that fails (an expired Partner Center secret, an unreadable status) tells the owner itself,
+  # once per broken streak (claim tag msstore-watch-broken); the first green check clears it. A hand look_only run never alerts. Guard: tests/tooling/release/test_webstore_publish_pipeline.py
+  alert:
+    name: Tell the owner the Store watcher is failing
+    needs: [pending, check, tell]
+    if: ${{ failure() && !inputs.look_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write   # the streak's claim tag
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - name: One message per broken streak
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: node tools/msix-store-watch.mjs broken
+
+  clear:
+    name: A green check ends the broken streak
+    needs: [pending, check, tell]
+    if: ${{ success() && !inputs.look_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/msix-store-watch.mjs recovered

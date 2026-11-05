@@ -197,6 +197,15 @@ class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
         self.assertIn('!inputs.look_only', tell.split('steps:')[0], 'the read-only look never messages, claims or starts anything')
         self.assertIn("verdict == 'unknown'", self.WATCH, 'a status that cannot be read is a red run, not silence')
 
+    def test_a_failing_watch_tells_the_owner_once_per_streak_and_a_green_check_ends_it(self):
+        alert = self.WATCH[self.WATCH.index('\n  alert:'):self.WATCH.index('\n  clear:')]
+        self.assertIn('failure()', alert)
+        self.assertIn('!inputs.look_only', alert)
+        self.assertEqual(set(re.search(r'needs: \[([^\]]+)\]', alert).group(1).replace(' ', '').split(',')), {'pending', 'check', 'tell'}, 'a failure in any job reaches it')
+        self.assertIn('msix-store-watch.mjs broken', alert)
+        self.assertIn('msix-store-watch.mjs recovered', self.WATCH[self.WATCH.index('\n  clear:'):])
+        self.assertRegex(self.SUBMIT, r'for kind in announced followed submitted', 'a re-submit of a version is pending again: all its state tags go')
+
     def test_the_verdict_message_uses_the_one_alert_path_and_the_hourly_start_is_the_workers(self):
         self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}', self.WATCH)
         self.assertIn("from '../desktop/e2e/ci-alert.mjs'", (ROOT / 'tools' / 'msix-store-watch.mjs').read_text())

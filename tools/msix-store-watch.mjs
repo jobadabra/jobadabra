@@ -3,6 +3,7 @@
 //   node tools/msix-store-watch.mjs pending                     -> version=<newest submitted, not yet announced | ''> on $GITHUB_OUTPUT
 //   node tools/msix-store-watch.mjs decide <status.txt> <get.txt> -> verdict=live|failed|waiting|unknown, reason=<one line> on $GITHUB_OUTPUT
 //   node tools/msix-store-watch.mjs tell                        (env VERSION, VERDICT, REASON, GH_TOKEN, GITHUB_REPOSITORY, CI_ALERTS_TELEGRAM_*)
+//   node tools/msix-store-watch.mjs broken | recovered          (a failed check tells the owner once per broken streak; a green check ends the streak)
 // State is git tags (owner, 2 Nov 2026): msstore-submitted-X.Y.Z (written by msix-store.yml after a good publish), msstore-announced-X.Y.Z (the verdict message went out),
 // msstore-autosent-X.Y.Z (the watcher started that version's submit), msstore-followed-X.Y.Z (X's message AND the newest-stable step are both done: X is no longer pending). A claim is created
 // before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run never repeats a message or a submit; a failed send or dispatch releases its claim and X stays
@@ -77,6 +78,8 @@ export function github(env = process.env, fetcher = fetch) {
       return true;
     },
     async release(name) { await ok(await call(`git/refs/tags/${name}`, {method: 'DELETE'}), `release ${name}`); },
+    /** Releases a claim that may not exist: 404 is fine. */
+    async releaseIfHeld(name) { const answer = await call(`git/refs/tags/${name}`, {method: 'DELETE'}); if (answer.status !== 404) await ok(answer, `release ${name}`); },
     /** Newest stable desktop release version, '' when none. */
     async stables() {
       const releases = await (await ok(await call('releases?per_page=50'), 'list releases')).json();
@@ -143,6 +146,27 @@ export async function tell(env, deps = {}) {
   return out;
 }
 
+const BROKEN = 'msstore-watch-broken';
+
+/**
+ * A check that failed (sign-in, status unreadable, a send or dispatch error): one Telegram message per broken streak, claimed by the tag `msstore-watch-broken` until a green check clears it.
+ * Why (5 Nov 2026, Gitar on #3196): the hourly start is exempt from the Worker's and watchdog's pages, so without this a broken Partner Center sign-in would fail 24 times a day in silence.
+ */
+export async function broken(env, deps = {}) {
+  const gh = deps.gh || github(env), sender = deps.sender || send;
+  if (!await gh.claim(BROKEN)) return ['already told: the Store watcher is still failing'];
+  const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
+  try { await tellOwner(`⚠️ The Microsoft Store watcher is failing, so no "accepted" message will come until it is fixed.\nRun: ${run}\nIt tells you once; it is quiet again after a green check.`, env, sender); }
+  catch (error) { await gh.release(BROKEN); throw new Error(`the watcher-broken message did not reach Telegram (${error.message}); it is tried again next hour`); }
+  return ['told the owner: the Store watcher is failing'];
+}
+
+/** A green check ends the broken streak, so the next failure tells again. */
+export async function recovered(env, deps = {}) {
+  await (deps.gh || github(env)).releaseIfHeld(BROKEN);
+  return ['broken streak cleared'];
+}
+
 const write = (key, value) => { const line = `${key}=${String(value).replace(/\s+/g, ' ')}`; console.log(line); if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${line}\n`); };
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
@@ -155,5 +179,8 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   } else if (command === 'tell') {
     try { for (const line of await tell(process.env)) console.log(line); }
     catch (error) { console.error(error.message); process.exit(1); }
-  } else { console.error('usage: msix-store-watch.mjs pending | decide <status.txt> <get.txt> | tell'); process.exit(2); }
+  } else if (command === 'broken' || command === 'recovered') {
+    try { for (const line of await (command === 'broken' ? broken : recovered)(process.env)) console.log(line); }
+    catch (error) { console.error(error.message); process.exit(1); }
+  } else { console.error('usage: msix-store-watch.mjs pending | decide <status.txt> <get.txt> | tell | broken | recovered'); process.exit(2); }
 }

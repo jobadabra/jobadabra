@@ -2,7 +2,7 @@
 // Owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest". GitHub tags, the stable list, msstore's text and Telegram are fakes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {compareVersions, decide, github, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
+import {broken, compareVersions, decide, github, recovered, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
 
 // What `msstore submission status` printed in runs 41463009597 (Pending) and 41642087630 (Last Published), ANSI colours kept.
 const PENDING = 'Retrieving submission status\nFound \x1b[38;5;2mPending Submission\x1b[0m.\nSubmission Status = \x1b[38;5;2mCertification\x1b[0m\n';
@@ -119,4 +119,20 @@ test('only "already exists" means a held claim: a refused tag creation is an err
   assert.equal(await github(env, answer(422, 'Reference already exists')).claim('msstore-announced-1.0.0'), false);
   assert.equal(await github(env, answer(201, '')).claim('msstore-announced-1.0.0'), true);
   await assert.rejects(github(env, answer(422, 'Repository rule violations found: creations being restricted')).claim('msstore-announced-1.0.0'), /GitHub 422/);
+});
+
+test('a failing check tells the owner once per broken streak; a green check ends the streak; a refused send is retried', async () => {
+  const w = world();
+  w.gh.releaseIfHeld = async name => { w.tags.delete(name); };
+  const env = w.env('live');
+  await broken(env, w);
+  await broken(env, w);   // the next hour, still broken
+  assert.equal(w.messages.length, 1, 'once per streak');
+  assert.match(w.messages[0], /Store watcher is failing/);
+  await recovered(env, w);
+  await broken(env, w);
+  assert.equal(w.messages.length, 2, 'a new streak tells again');
+  const down = world({down: true});
+  await assert.rejects(broken(down.env('live'), down), /did not reach Telegram/);
+  assert.ok(!down.tags.has('msstore-watch-broken'), 'claim released so the next hour retries');
 });

@@ -149,7 +149,7 @@ jobs:
           msstore publish "$msix" --appId 9NW1JJ7Z90MP --verbose
       # Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days and no job waits that long, so this tag is the
       # hand-over: msix-store-watch.yml (started hourly by the Worker) reads Partner Center for each submitted version nobody was told about, and sends the one message (tools/msix-store-watch.mjs).
-      # A re-submit of the same version drops its old "announced" tag first, so its own verdict is told again.
+      # A re-submit of the same version drops its old announced/followed tags first, so its own verdict is told again.
       - if: steps.connected.outputs.ready == 'true' && steps.inflight.outputs.busy != 'true'
         name: Hand the submitted version to the watcher
         env:
@@ -157,8 +157,7 @@ jobs:
           VERSION: ${{ needs.msix.outputs.version }}
         run: |
           api="repos/$GITHUB_REPOSITORY/git/refs"
-          gh api -X DELETE "$api/tags/msstore-announced-$VERSION" 2>/dev/null || true
-          gh api -X DELETE "$api/tags/msstore-submitted-$VERSION" 2>/dev/null || true
+          for kind in announced followed submitted; do gh api -X DELETE "$api/tags/msstore-$kind-$VERSION" 2>/dev/null || true; done   # "followed" too, or a re-submit is never pending again (Gitar, #3196)
           gh api "$api" -f ref="refs/tags/msstore-submitted-$VERSION" -f sha="$GITHUB_SHA" --silent
 
   # Why (2 Nov 2026, owner: "I didn't get a telegram notification about that failure" … "so it was silent to me"): run 41463002482 (0.8.86) failed after it started, and only a
