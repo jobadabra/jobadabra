@@ -42,7 +42,7 @@ export const activityKit = base => {
     shown, text, rows,
     openRuns: async () => {
       await base.go('actions');
-      $('[data-actions-tab="runs"]').click();
+      (await base.until(() => $('[data-actions-tab="runs"]'), 'the Runs tab')).click();
       await base.until(() => !$('#actions-runs')?.hidden && $('#actions-runs #activity-recent'), 'the run list');
       for (let i = 0; i < 10 && shown('#activity-all'); i++) $('#activity-all').click();
       await base.until(() => !shown('#activity-all'), 'every run to be listed');
@@ -50,7 +50,8 @@ export const activityKit = base => {
     /** Opens the state at `index` and waits until it is the run drawn (its row current, its status in words). */
     select: async index => {
       if (shown('#activity-back')) $('#activity-back').click();
-      rows()[index].click();
+      // Why (5 Nov 2026, flaky on #3273: "Cannot read properties of undefined (reading 'click')" on unchanged app code): the list redraws after it is complete, so the row is taken when it exists.
+      (await base.until(() => rows()[index], `state ${index} in the run list`)).click();
       await base.until(() => rows()[index]?.classList.contains('current'), `state ${index} to be the current run`);
       await base.until(() => text('#activity-status').trim(), `state ${index} to show its status`);
     },
