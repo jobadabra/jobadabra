@@ -98,10 +98,10 @@ export const conversation = (session, messages, turn, maxSteps) => {
 };
 
 /**
- * What the broker said about one call beyond its totals: input, output, the cached part of the input and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
+ * What the broker said about one call beyond its totals: input, output, the cached part of the input (Codex's cache, Claude's cache reads), what was written to Claude's cache and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
  * Why (5 Nov 2026, owner via mac-32: "report per call: input / cached / uncached / output"): whether an engine's own caching discounts the repeated part cannot be read from the sum.
  */
-export const callDetail = answer => ({input: answer.usage?.input_tokens || 0, output: answer.usage?.output_tokens || 0, cached: answer.tokens?.cached ?? null, counted: answer.tokens?.counted ?? null,
+export const callDetail = answer => ({input: answer.usage?.input_tokens || 0, output: answer.usage?.output_tokens || 0, cached: answer.tokens?.cached ?? null, cacheWritten: answer.tokens?.cacheWritten ?? null, counted: answer.tokens?.counted ?? null,
   ...(answer.session?.mode ? {mode: answer.session.mode, ...(answer.session.reason ? {reason: answer.session.reason} : {})} : {})});
 
 function spend(spent, answer) {

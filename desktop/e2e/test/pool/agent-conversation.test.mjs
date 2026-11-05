@@ -91,9 +91,9 @@ test('the broker client hands back the tokens and the session mode it was told',
 test('a session names each goal\'s conversation, and the trace row keeps what the broker said of the call', async () => {
   const plan = planSession({seed: 7, moves: [{group: 'Profile', label: 'Edit your phone number'}, {group: 'Jobs', label: 'Open a job'}], count: 2});
   const sessions = [];
-  const done = {...answer('done', {verdict: 'worked', summary: 'ok'}), tokens: {input: 16_000, output: 5, cached: 0, counted: 16_005}, session: {mode: 'opened'}};
+  const done = {...answer('done', {verdict: 'worked', summary: 'ok'}), tokens: {input: 16_000, output: 5, cached: 0, cacheWritten: 900, counted: 16_005}, session: {mode: 'opened'}};
   const act = {observe: async () => page(1), click: async () => {}, type: async () => {}, press: async () => {}, go: async () => {}};
   const result = await runSession({act, ask: async args => { sessions.push(args.session); return done; }, judgeAsk: async () => ({text: '{}', usage: {}, tier: 'mid'}), views: ['profile'], plan, knowledgeIds: [], caps: {maxSteps: 5}});
   assert.deepEqual(sessions, ['agent-g1', 'agent-g2'], 'one conversation per goal');
-  assert.deepEqual([result.trace[0].cached, result.trace[0].counted, result.trace[0].mode], [0, 16_005, 'opened']);
+  assert.deepEqual([result.trace[0].cached, result.trace[0].cacheWritten, result.trace[0].counted, result.trace[0].mode], [0, 900, 16_005, 'opened']);
 });
