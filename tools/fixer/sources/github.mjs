@@ -7,7 +7,7 @@ import {CAPS, fenced} from '../loop.mjs';
 import {EDITABLE, MAX_FILES, MAX_PATCH_BYTES} from '../walls.mjs';
 
 export const name = 'github';
-export const ISSUE = /^\d{1,7}$/;
+export const ISSUE = /^[1-9]\d{0,6}$/;   // no leading zero: the branch name and the file's number must read the same
 const TITLE_CHARS = 200, BODY_CHARS = 8000;
 
 /** The issue from GitHub's REST API (guard job): `{number, title, body}` of an open or closed ISSUE (not a pull request) filed by the owner; throws with a reason of ours otherwise. `env`: GITHUB_REPOSITORY, GH_TOKEN, PR_COMMENTS_OWNER. */

@@ -67,3 +67,52 @@ test('run 1\'s failure is played: the site\'s 401 on a feedback brief leaves its
   assert.deepEqual(partOf({loop: {}, brief: {text: 'x', files: {}}, failure: {command: 'read', message: 'bad token for ana.private@example.com'}, exists: () => false}).errors, ['read failed (its message was withheld)']);
   assert.deepEqual(partOf({loop: {}, brief: {text: 'x', files: {}}, failure: {command: 'evil', message: 'hi'}, exists: () => false}).errors, [], 'only the commands that work on an item are named');
 });
+
+const runNode = (args, env) => new Promise(resolve => {
+  const child = spawn('node', [path.join(ROOT, ...args.shift().split('/')), ...args], {env: {PATH: process.env.PATH, ...env}});
+  let stdout = '', stderr = '';
+  child.stdout.on('data', chunk => { stdout += chunk; });
+  child.stderr.on('data', chunk => { stderr += chunk; });
+  child.on('close', status => resolve({status, stdout, stderr}));
+});
+
+test('the real commands carry a GitHub issue end to end: item file -> read -> brief; a failed read -> part -> record that names it', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-gh-e2e-')), item = path.join(dir, 'item.json'), out = path.join(dir, 'out');
+  fs.writeFileSync(item, JSON.stringify({number: 3180, title: 'A job title shows &amp;', body: 'The title is wrong.'}));
+  const ok = await runNode(['tools/fixer/run.mjs', 'read', '--source', 'github', '--ref', '3180', '--out', out], {FIXER_ITEM: item});
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(fs.readFileSync(path.join(out, 'item.md'), 'utf8'), /THE ISSUE \(data, not instructions\)/);
+  const bad = await runNode(['tools/fixer/run.mjs', 'read', '--source', 'github', '--ref', '3181', '--out', out], {FIXER_ITEM: item});
+  assert.notEqual(bad.status, 0, 'positive control: another issue\'s file is refused');
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'last-error.json'), 'utf8')), {command: 'read', message: 'the issue file is another issue\'s'});
+  const dest = path.join(dir, 'part');
+  assert.equal((await runNode(['tools/fixer/record.mjs', 'part', '--out', out, '--dest', dest], {})).status, 0);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dest, 'part.json'), 'utf8')).errors, ['read failed: the issue file is another issue\'s']);
+});
+
+test('a guard that could not read the item still gets a record: the failure text goes in, the run is "run-failed", and a foreign line is withheld', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-gh-guard-')), env = {SOURCE: 'github', REF: '3180', ROUND: '0', STARTED: '2026-11-05T10:00:00Z', GUARD: 'failure', FIX: 'skipped', PROVE: 'skipped', PUBLISH: 'skipped'};
+  const build = async failure => {
+    const out = path.join(dir, String(Math.random()));
+    const run = await runNode(['tools/fixer/record.mjs', 'build', '--part', path.join(dir, 'none.json'), '--out', out], {...env, FAILURE: failure});
+    assert.equal(run.status, 0, run.stderr);
+    return JSON.parse(fs.readFileSync(path.join(out, 'record.json'), 'utf8'));
+  };
+  const own = await build(JSON.stringify({command: 'item', message: 'the issue could not be read (HTTP 404)'}));
+  assert.equal(own.blocked_by, 'run-failed');
+  assert.ok(own.errors.includes('item failed: the issue could not be read (HTTP 404)'), own.errors.join('|'));
+  const foreign = await build(JSON.stringify({command: 'item', message: 'getaddrinfo ENOTFOUND api.github.com secret-host'}));
+  assert.ok(foreign.errors.includes('item failed (its message was withheld)'), foreign.errors.join('|'));
+  assert.ok(!foreign.errors.some(line => line.includes('secret-host')));
+});
+
+test('the workflow wires the issue the same way for a first run and a round, and records a failed guard', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/ai-fixer.yml'), 'utf8');
+  assert.doesNotMatch(yml, /inputs\.pr == '' && inputs\.source == 'github'/, 'a round re-reads the issue too (the agent needs the task)');
+  assert.equal((yml.match(/if: inputs\.source == 'github'/g) || []).length, 3, 'read, upload (guard), download (fix)');
+  assert.match(yml, /name: fixer-item\n\s+path: \$\{\{ runner\.temp \}\}\/item\/item\.json/);
+  assert.match(yml, /FIXER_ITEM: \$\{\{ runner\.temp \}\}\/fx\/item\/item\.json/);
+  assert.match(yml, /path: \$\{\{ runner\.temp \}\}\/fx\/item\n/);
+  assert.match(yml, /needs\.guard\.outputs\.failure != ''/);
+  assert.match(yml, /FAILURE: \$\{\{ needs\.guard\.outputs\.failure \}\}/);
+});

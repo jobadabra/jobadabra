@@ -20,6 +20,8 @@ export const BLOCKED = [...new Set(['none', 'walls', 'run-failed', 'tests-failed
 export const VERDICTS = ['fix', 'fixed-already', 'not-reproducible', 'needs-human', 'false-positive', 'answer'];
 // Why (5 Nov 2026, Gitar on #3194): the engine rule (engine.mjs SONNET_ENGINES) lets two engines answer, so the model is named from the engine that did; an unknown engine names none.
 export const MODELS = {claude: 'claude-sonnet-5-5', codex: 'gpt-6.1-sol'};
+/** The failure sentences of our own code (feedback-ai.mjs, sources/github.mjs) that may be written to the public record; the HTTP status and one lowercase word of the site's are the only outside parts. */
+const OWN_FAILURES = [/^the site refused the brief(?: \(HTTP \d{3}(?:: [a-z ]{1,40})?\))?$/, /^the issue could not be read \(HTTP \d{3}\)$/, /^only an issue the owner filed is taken$/, /^that number is a pull request, not an issue$/, /^the issue file is (?:missing \(the guard job writes it\)|another issue's)$/, /^no GitHub run token here \(the job needs permissions: id-token: write\)$/, /^GitHub gave no run token$/];
 const REASON_CHARS = 400, FILES = 20, ERRORS = 5;
 /** True when `file` is a file of the base commit (HEAD of the workspace, before the agent's edits): a path the model made up, or a file it created, is not one. */
 function inBase(file) { try { execFileSync('git', ['cat-file', '-e', `HEAD:${file}`], {stdio: 'ignore'}); return true; } catch { return false; } }
@@ -42,7 +44,8 @@ export function partOf({loop, brief, title = '', files = [], exists = inBase, fa
   // The step that failed and OUR error line (run.mjs noteFailure), scanned like the reason: the site's or the issue source's words, never the item's, but the scan decides.
   if (failure && ['item', 'read', 'loop'].includes(failure.command) && failure.message) {
     const line = one(failure.message).slice(0, 160);
-    errors.push(leaks(line, brief).length ? `${failure.command} failed (its message was withheld)` : `${failure.command} failed: ${line}`);
+    // Why (5 Nov 2026, review): when a read fails there is no brief to compare against, and the site's or the tracker's words are not ours: only our own sentences are written; anything else is withheld.
+    errors.push(OWN_FAILURES.some(own => own.test(line)) && !leaks(line, brief).length ? `${failure.command} failed: ${line}` : `${failure.command} failed (its message was withheld)`);
   }
   const stopped = String(loop.stopped || '').split(':')[0];
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
@@ -56,8 +59,8 @@ export function partOf({loop, brief, title = '', files = [], exists = inBase, fa
  * Pure and fixed: nothing here reads text.
  */
 export function blockedBy(part, facts) {
-  const {fix, prove, publish} = facts.results || {}, stop = Object.hasOwn(STOP_WORDS, facts.stop) ? STOP_WORDS[facts.stop] : '';
-  if (fix === 'failure') return 'run-failed';
+  const {guard, fix, prove, publish} = facts.results || {}, stop = Object.hasOwn(STOP_WORDS, facts.stop) ? STOP_WORDS[facts.stop] : '';
+  if (guard === 'failure' || fix === 'failure') return 'run-failed';
   if (prove === 'failure') return 'tests-failed';
   if (publish === 'failure') return 'publish-failed';
   if (stop) return stop;
@@ -97,7 +100,12 @@ async function main(argv = process.argv.slice(2), env = process.env, now = Date.
     const out = flag(args, '--out'), partText = read(flag(args, '--part'));
     let part = null;
     try { part = partText ? JSON.parse(partText) : null; } catch { part = null; }
-    const record = buildRecord(part, {source: env.SOURCE, ref: env.REF, round: env.ROUND, started: env.STARTED, now, pr: env.PR, stop: env.STOP, results: {fix: env.FIX, prove: env.PROVE, publish: env.PUBLISH}});
+    if (!part && env.FAILURE) {   // the guard job could not read the item: its one line, from the guard's output
+      let failure = null;
+      try { failure = JSON.parse(env.FAILURE); } catch { failure = null; }
+      part = partOf({loop: {}, brief: {text: '', files: {}}, failure, exists: () => false});
+    }
+    const record = buildRecord(part, {source: env.SOURCE, ref: env.REF, round: env.ROUND, started: env.STARTED, now, pr: env.PR, stop: env.STOP, results: {guard: env.GUARD, fix: env.FIX, prove: env.PROVE, publish: env.PUBLISH}});
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'record.json'), JSON.stringify(record));
     console.log(`record: ${record.verdict || 'no verdict'}, ${record.steps.length} step(s), ${record.minutes} min`);   // words and counts only
