@@ -45,6 +45,7 @@ export function createActs({cwd, allow, boxRun}) {
     return {text: cut(fs.readFileSync(at.full, 'utf8').split('\n').slice(start - 1, end).map((line, i) => `${start + i}: ${line.slice(0, 300)}`).join('\n') || '(nothing in that range)')};
   }
 
+  // Why (5 Nov 2026, main's Windows tests red): the agent names files with '/' (edit and read take no other form), so a search shows them the same way on every OS, not with the OS separator.
   function search({pattern, folder}) {
     const needle = String(pattern || '').toLowerCase(), at = resolve(cwd, folder || '.');
     if (needle.length < 2) return {text: 'Refused: search for at least 2 characters of literal text. Try again with a longer word or name from the code.', refusal: 'short-pattern'};
@@ -57,7 +58,7 @@ export function createActs({cwd, allow, boxRun}) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(full);
         else if (entry.isFile() && fs.statSync(full).size < 1e6) {
-          fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => { if (hits.length < MATCHES && line.toLowerCase().includes(needle)) hits.push(`${path.relative(cwd, full)}:${i + 1}: ${line.trim().slice(0, 200)}`); });
+          fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => { if (hits.length < MATCHES && line.toLowerCase().includes(needle)) hits.push(`${path.relative(cwd, full).split(path.sep).join('/')}:${i + 1}: ${line.trim().slice(0, 200)}`); });
         }
       }
     };
