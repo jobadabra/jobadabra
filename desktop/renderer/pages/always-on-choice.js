@@ -18,9 +18,9 @@ const nowRunning = () => running({hostedOn: !!shared.hosted?.on, cloudRepo: shar
 const canRun = () => shared.hosted?.canRun !== false || shared.hosted?.available === false;   // available:false is the demo, which pretends
 const isOpen = () => shared.hosted?.open !== false && canRun();
 // The way that runs now stays pickable whatever open/canRun say (#3158).
-const oursReachable = () => oursPickable({open: shared.hosted?.open !== false, canRun: canRun(), now: nowRunning()});
+const oursReachable = () => oursPickable({open: isOpen(), now: nowRunning()});
 
-/** Show one way: its card under the choice, the other hidden. A way that is not open yet cannot be picked. */
+/** Show one way: its card under the choice, the other hidden. A way that is not open yet cannot be picked, unless it is what runs now (#3158: it is where Always on is turned off). */
 export function pick(way) {
   if (way === 'ours' && !oursReachable()) way = 'own';
   picked = way;
