@@ -9,6 +9,7 @@ import os
 import urllib.parse
 import urllib.request
 
+from .sources.ats import USER_AGENT
 from .stores.rules import EMPLOYER_STAGES
 
 APPLIED_OR_LATER = {'Applied', *EMPLOYER_STAGES}
@@ -31,7 +32,7 @@ def status(applied, urlopen=urllib.request.urlopen, env=None, claim=False):
     query = {'applied': applied, 'first': env.get('JOBADABRA_FIRST_RUN', '')}
     if claim:
         query['claim'] = 1   # asks to send the pause line: the website says yes once a day per install
-    headers = {'x-api-key': key}
+    headers = {'x-api-key': key, 'User-Agent': USER_AGENT}   # Why (5 Nov 2026, hr 6/6 try 5): Cloudflare answers urllib's own agent with 403 1010 before our Worker sees the call
     if env.get('JOBADABRA_LICENSE_KEY'):
         headers['x-jp-license'] = env['JOBADABRA_LICENSE_KEY']
     base = env.get('JOBADABRA_SITE_URL', SITE).rstrip('/')

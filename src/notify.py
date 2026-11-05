@@ -15,6 +15,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from .sources.ats import USER_AGENT
+
 SITE = 'https://www.jobadabra.top'
 MAX_HTML = 18000   # the site keeps 20000 characters
 SEPARATOR = '\n\n———\n\n'
@@ -103,7 +105,7 @@ def _post(items, urlopen=None, env=None, kind='matches'):
     html = SEPARATOR.join(item[0] for item in items)[:MAX_HTML]
     buttons = [b for item in items for b in _buttons(item[1])][:6]
     body = json.dumps({'subject': _subject(items), 'html': html, 'buttons': buttons, **({'kind': 'activity'} if kind == 'activity' else {})}).encode()
-    request = urllib.request.Request(f'{base}/api/notify/email', data=body, method='POST', headers={'x-api-key': key, 'content-type': 'application/json'})
+    request = urllib.request.Request(f'{base}/api/notify/email', data=body, method='POST', headers={'x-api-key': key, 'content-type': 'application/json', 'User-Agent': USER_AGENT})   # Why (5 Nov 2026, hr 6/6 try 5): Cloudflare answers urllib's own agent with 403 1010 before our Worker sees the call
     try:
         with urlopen(request, timeout=20) as response:
             answer = json.load(response)

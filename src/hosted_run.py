@@ -17,6 +17,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from .sources.ats import USER_AGENT
+
 SEARCH_ARGS = ['--mode', 'scheduled', '--enrich-max', '100', '--score-max', '60', '--auto-kit-max', '0', '--budget', '600']
 MAX_MATCHES = 200
 DEFAULT_CONFIG = Path(__file__).resolve().parents[1] / 'config'
@@ -35,7 +37,7 @@ BUILD = build_of(Path(__file__).resolve().parent)
 
 
 def _call(url, token, method='GET', data=None):
-    request = urllib.request.Request(url, data=data, method=method, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+    request = urllib.request.Request(url, data=data, method=method, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT})   # Why (5 Nov 2026, hr 6/6 try 5): Cloudflare answers urllib's own agent with 403 1010 before our Worker sees the call
     with urllib.request.urlopen(request, timeout=120) as reply:
         return reply.read()
 
