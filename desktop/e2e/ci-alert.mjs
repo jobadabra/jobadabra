@@ -263,6 +263,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     const seen = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
     const causes = failure && placeOf(process.env, new Date()).e2e ? await flakyCauses(seen, process.env.GITHUB_RUN_ID) : seen;
     const recovered = red && previousId ? await failedJobs(previousId).catch(() => []) : [];
-    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status, jobs)}));
+    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status)}));
   }
 }

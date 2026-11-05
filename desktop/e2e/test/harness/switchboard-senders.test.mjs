@@ -23,11 +23,9 @@ test('every workflow that calls ci-alert.mjs and has a registry alert maps to it
   assert.deepEqual([eventOfWorkflow(at('site-replays.yml')), eventOfWorkflow({})], ['', '']);
 });
 
-test('state and level: a failure is red with its failed jobs (the same jobs = the same state) and a problem; a recovery is green and an all-clear', () => {
-  const a = stateOf('failure', [{name: 'suite-b'}, {name: 'suite-a'}]), b = stateOf('failure', [{name: 'suite-a'}, {name: 'suite-b'}, {name: 'suite-a'}]);
-  assert.deepEqual([a.state === b.state, a.level, stateOf('failure', [{name: 'suite-c'}]).state === a.state], [true, 'problem', false]);
-  assert.deepEqual(stateOf('success'), {state: 'green', level: 'ok'});
-  assert.ok(a.state.length <= 60);
+test('level: a failure is a problem, a recovery an all-clear; and NO state is sent, so a later identical red is never held as "same state" behind a green that was never recorded', () => {
+  assert.deepEqual([stateOf('failure', [{name: 'suite-a'}]), stateOf('success')], [{level: 'problem'}, {level: 'ok'}]);
+  assert.ok(!('state' in stateOf('failure')));
 });
 
 test('delivered(): sent and held are done; a refusal or "not sent" is not', () => {
