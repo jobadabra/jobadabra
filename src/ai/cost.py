@@ -3,6 +3,9 @@
 USD per million tokens: (input, output, cache read); a cache write costs 1.25x input.
 Anthropic first-party rates, checked 2026-09-26; OpenAI rates below. An unpriced model counts as 0.
 """
+import sys
+import threading
+
 PRICES = {
     'claude-opus-5-5': (4.00, 20.00, 0.20),  # interview reviews and insights (checked 2026-09-30)
     'claude-sonnet-5-5': (2.00, 10.00, 0.20),  # the model the app runs (checked 2026-10-02)
@@ -67,12 +70,17 @@ def add(stats, model, usage):
 # The AI that helps find sources (page reader, link chooser, alert emails, scout ideas) runs inside other steps; its cost is gathered here and
 # logged as the run's "sources" stage, so it counts in the run's AI cost and the monthly budget like every other step.
 SIDE = {}
+TOPICS = {}   # Why (5 Nov 2026, #2915): {topic: calls} of SIDE's calls; 40 calls a run were spent and no log said on what
+TOPICS_LOCK = threading.Lock()
 
 
-def side(model, usage):
-    """Count one source-finding call (no-op without usage: a test's fake model)."""
+def side(model, usage, topic=''):
+    """Count one source-finding call under its topic, by default the calling module's name (no-op without usage: a test's fake model)."""
     if usage is not None and hasattr(usage, 'input_tokens'):
         add(SIDE, model, usage)
+        name = topic or sys._getframe(1).f_globals.get('__name__', '').rsplit('.', 1)[-1]
+        with TOPICS_LOCK:
+            TOPICS[name] = TOPICS.get(name, 0) + 1
         from .. import read_methods
         read_methods.ai(usd(model, usage))   # the source being read, if any (src/read_methods.py)
         SIDE['done'] = SIDE.get('done', 0) + 1

@@ -175,6 +175,9 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
                      'regions': contribute.regions_of([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else []))}
             entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/job-search/scouting's kind × country coverage
             kinds, counts = scout_kind_counts.of_jobs(jobs)   # what it hires for, and per country: installs read one with jobs of their kind there
+            if jobs:   # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
+                last = judged_before.get((system, slug), {})
+                kinds, counts = kinds or last.get('kinds'), counts or last.get('kind_counts')
             if kinds:
                 entry['kinds'] = kinds
             if counts:
@@ -193,6 +196,7 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             return {'company': meta['company'], 'ats': system, 'slug': slug, 'error': f'{type(error).__name__}: {error}'}
 
     items = scout_carry.order(db, list(known.items())) if carry else list(known.items())
+    judged_before = scout_carry.mixes(db) if carry else {}
     pool = ThreadPoolExecutor(max_workers=workers)
     try:
         futures = [(item, pool.submit(check, item)) for item in items]

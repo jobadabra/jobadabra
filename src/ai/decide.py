@@ -264,7 +264,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             try:
                 response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
                                                   messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
-                cost.side(MODEL, response.usage)
+                cost.side(MODEL, response.usage, topic)
                 if response.stop_reason != 'end_turn':
                     raise RuntimeError(f'stopped with {response.stop_reason}')
                 results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []

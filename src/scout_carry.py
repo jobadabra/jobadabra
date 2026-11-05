@@ -6,6 +6,8 @@ import json
 import urllib.request
 from datetime import datetime, timedelta
 
+from . import role_kinds
+
 CARRY_DAYS = 7   # a feed not verified for this long leaves the index until it answers again
 
 
@@ -39,6 +41,16 @@ def carried(db, skipped, at):
         row = db.execute('SELECT entry, verified_at FROM feed_entries WHERE ats = ? AND slug = ?', key).fetchone()
         if row and row[1] >= cutoff:
             out.append(json.loads(row[0]))
+    return out
+
+
+def mixes(db):
+    """{(ats, slug): {kinds, kind_counts}}: each kept entry's last valid judgment, each part None when it has none. A re-read the AI could not judge keeps these."""
+    ensure(db)
+    out = {}
+    for system, slug, text in db.execute('SELECT ats, slug, entry FROM feed_entries'):
+        entry = json.loads(text)
+        out[(system, slug)] = {'kinds': role_kinds.valid(entry.get('kinds')), 'kind_counts': role_kinds.valid_counts(entry.get('kind_counts'))}
     return out
 
 

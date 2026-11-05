@@ -3,8 +3,9 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from src import scout, scout_carry, store as job_store
+from src import geo, role_kinds, scout, scout_carry, scout_kind_counts, store as job_store
 
 
 def job(title='Engineer'):
@@ -44,6 +45,66 @@ class CarryTest(unittest.TestCase):
     def test_without_carry_nothing_is_kept(self):
         scout.build_index(self.db, self.starter[:3], lambda s, slug: job(), today='2026-10-20')
         self.assertEqual(self.db.execute("SELECT name FROM sqlite_master WHERE name = 'feed_entries'").fetchall(), [])
+
+
+class KeptMixTest(unittest.TestCase):
+    """A feed re-read with no AI answer keeps the mix it had (31 Oct 2026: the index went from 47 counted feeds to 0 between two runs with 0 calls)."""
+    MIX, COUNTS = {'software': 1.0}, {'ch': {'software': 1}}
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.db = job_store.connect(Path(tmp.name) / 'j.sqlite').__enter__()
+        self.db.executescript(scout.TABLES)
+        self.starter = [{'company': f'Co {i}', 'ats': 'lever', 'slug': f'co{i}'} for i in range(47)]   # fictional
+
+    def read(self, today, titles=True, places=True, fetch=lambda s, slug: job()):
+        """One run: `titles`/`places` False is a run whose AI answered none of them."""
+        with mock.patch.object(role_kinds, 'judged', lambda texts, topic='role-kind': {t: 'software' for t in texts} if titles else {}), \
+                mock.patch.object(geo, 'resolve', lambda strings, **_: {'zurich': {'kind': 'city', 'cc': 'CH'}} if places else {}), \
+                mock.patch('src.ai.engine.ready', lambda *a, **k: False):
+            return scout.build_index(self.db, self.starter, fetch, today=today, carry=True)[0]
+
+    def test_a_run_with_no_calls_keeps_every_feeds_mix(self):
+        self.assertEqual(sum(1 for f in self.read('2026-10-30') if f.get('kind_counts')), 47)
+        feeds = self.read('2026-10-31', titles=False, places=False)
+        self.assertEqual(sum(1 for f in feeds if f.get('kind_counts') == self.COUNTS and f.get('kinds') == self.MIX), 47)
+        self.assertEqual({f['checked'] for f in feeds}, {'2026-10-31'})   # read today: only the judgment is old
+        feeds = self.read('2026-11-01', titles=False, places=False)
+        self.assertEqual(sum(1 for f in feeds if f.get('kinds') == self.MIX), 47, 'and the run after it')
+
+    def test_a_fresh_judgment_replaces_the_kept_one(self):
+        self.read('2026-10-30')
+        with mock.patch.object(scout_kind_counts, 'of_jobs', lambda jobs: ({'sales': 1.0}, {'de': {'sales': 1}})):
+            feeds = self.read('2026-10-31')
+        self.assertEqual((feeds[0]['kinds'], feeds[0]['kind_counts']), ({'sales': 1.0}, {'de': {'sales': 1}}))
+
+    def test_titles_judged_with_places_not_keeps_only_the_counts(self):
+        self.read('2026-10-30')
+        with mock.patch.object(scout_kind_counts, 'of_jobs', lambda jobs: ({'sales': 1.0}, None)):
+            feed = self.read('2026-10-31')[0]
+        self.assertEqual((feed['kinds'], feed['kind_counts']), ({'sales': 1.0}, self.COUNTS))
+
+    def test_a_feed_never_judged_still_has_no_mix(self):
+        feeds = self.read('2026-10-30', titles=False, places=False)   # the 26 Oct rule: no mix, not read
+        self.assertFalse(any('kinds' in f or 'kind_counts' in f for f in feeds))
+
+    def test_a_feed_with_no_jobs_now_keeps_no_mix(self):
+        self.read('2026-10-30')
+        feeds = self.read('2026-10-31', titles=False, places=False, fetch=lambda s, slug: [])
+        self.assertFalse(any('kinds' in f or 'kind_counts' in f for f in feeds))
+
+    def test_a_kept_entry_that_is_not_a_mix_is_dropped(self):
+        scout_carry.keep(self.db, [{'ats': 'lever', 'slug': 'co0', 'kinds': {'made-up': 2}, 'kind_counts': {'xx': {'software': 1}}}], '2026-10-30')
+        feed = next(f for f in self.read('2026-10-31', titles=False, places=False) if f['slug'] == 'co0')
+        self.assertNotIn('kinds', feed)
+        self.assertNotIn('kind_counts', feed)
+
+    def test_a_lost_cache_keeps_the_mix_the_published_index_had(self):
+        published = {'feeds': [{'ats': 'lever', 'slug': 'co0', 'checked': '2026-10-30', 'kinds': self.MIX, 'kind_counts': self.COUNTS}]}
+        scout_carry.seed(self.db, 'https://index.example/api/index', 'key', get=lambda request: published)
+        feed = next(f for f in self.read('2026-10-31', titles=False, places=False) if f['slug'] == 'co0')
+        self.assertEqual((feed['kinds'], feed['kind_counts']), (self.MIX, self.COUNTS))
 
 
 class BoundedWaitTest(unittest.TestCase):

@@ -5,8 +5,9 @@ machine's cache, then what 3+ installs' own AIs shared through the meanings pack
 "using any user's machine/installation ... but also using the central scout"). A job not judged on both is left out, never guessed; remote and
 unknown places count nowhere (local jobs only). A big employer is judged on a sample of SAMPLE jobs and its counts scaled to all of them
 (owner, 26 Oct 2026: "Higher cap + sample"; judging half of thousands of titles left 2,508 of 2,517 employers uncounted). Tests: tests/unit/ai/test_kind_counts.py."""
-import random
+import hashlib
 import threading
+from collections import Counter
 
 from . import geo, pool_tags, role_kinds
 from .ai import decide
@@ -31,11 +32,18 @@ def places(locations):
 
 
 def sample(jobs):
-    """Up to SAMPLE of these jobs, drawn at random but the same each run for the same count (kept answers are reused; even steps would
-    see only one kind of a list that alternates), in list order; every job of a smaller employer."""
+    """Up to SAMPLE of these jobs, in list order: those whose own hash ranks first, so a list that alternates is seen whole (even steps would see one
+    kind of it); every job of a smaller employer."""
     if len(jobs) <= SAMPLE:
         return jobs
-    return [jobs[i] for i in sorted(random.Random(len(jobs)).sample(range(len(jobs)), SAMPLE))]
+    # Why (5 Nov 2026, #2915): seeded on the job count, one job leaving a 500-job employer swapped 56 of its 60 sampled jobs, so kept answers missed; a job's own rank keeps the others.
+    seen = Counter()
+
+    def rank(index):
+        name = str(jobs[index].get('id') or jobs[index].get('url') or jobs[index].get('title'))
+        seen[name] += 1
+        return hashlib.sha256(f'{name} {seen[name]}'.encode()).digest()
+    return [jobs[i] for i in sorted(sorted(range(len(jobs)), key=rank)[:SAMPLE])]
 
 
 def of_jobs(jobs):
