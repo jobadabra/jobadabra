@@ -57,6 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: HOT PATH (by hand with force_tag)
+        id: hot
         if: github.event_name == 'workflow_dispatch' && inputs.force_tag != ''
         env:
           FORCE_TAG: ${{ inputs.force_tag }}
@@ -70,6 +71,7 @@ jobs:
           SKIP_E2E=1 tools/release-stable.sh "$FORCE_TAG"
           echo "HOT PATH: $FORCE_TAG is stable (soak skipped: $FORCE_REASON)"
       - name: The latest beta to stable (by hand with promote_latest_beta)
+        id: latest
         if: github.event_name == 'workflow_dispatch' && inputs.force_tag == '' && inputs.promote_latest_beta
         env:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}   # Why (Gitar on #3003): "Only print the decision" (on by default) holds here too; release-stable.sh stops before promoting
@@ -79,6 +81,7 @@ jobs:
           tag=$(python3 tools/e2e_gate.py latest-beta "$REPO")
           [ -n "$tag" ] || { echo "::error title=No beta to promote::No pre-release newer than stable is approved on both Mac and Windows."; exit 1; }
           echo "The latest beta: $tag"
+          echo "PROMOTE_TAG=$tag" >> "$GITHUB_ENV"   # the failure alert names this one, not the canary candidate
           tools/release-stable.sh "$tag"
       - name: End-to-end top-up on the candidate
         if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.force_tag != '' || inputs.promote_latest_beta)) }}
@@ -98,6 +101,7 @@ jobs:
           if [ "${recent:-0}" = 0 ]; then gh workflow run e2e.yml -R "$REPO" --ref main -f soak=true -f target_ref="$tag"; echo "Top-up end-to-end run started on $tag."
           else echo "$tag had an end-to-end run in the last 7 hours: no top-up."; fi
       - name: Decide (and promote when switched on)
+        id: decide
         if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.force_tag != '' || inputs.promote_latest_beta)) }}
         env:
           JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOBADABRA_TELEMETRY_KEY }}
@@ -135,6 +139,20 @@ jobs:
                 --body $'It will be dropped at 7 days. Why it waits is in the latest run of the "Release · Promote to stable" workflow.\n\nOptions: wait; promote it by hand with force_tag and force_reason (hot path); or drop it.'
             fi
           fi
+      # Why (5 Nov 2026, owner: "I didn't get any notification. I should have"; nt 3/4): a promotion to stable that failed (the decision, the hot path, the latest-beta path) said nothing; release-stable.sh alerts only on success or a refused store start.
+      # One alert through the switchboard (event release-failed), the old CI-alerts bot when it cannot deliver. Never a hold: a failed alert does not fail the run.
+      - name: Tell the owner on Telegram that the promotion to stable failed
+        if: ${{ failure() && (steps.hot.outcome == 'failure' || steps.latest.outcome == 'failure' || steps.decide.outcome == 'failure') }}   # a failed top-up or housekeeping step promoted nothing: no alert
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          FORCE_TAG: ${{ inputs.force_tag }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        run: |
+          tag="${FORCE_TAG:-${PROMOTE_TAG:-$(python3 tools/canary_promote.py --candidate 2>/dev/null || true)}}"
+          node desktop/e2e/release-failed-alert.mjs stable "${tag:-unknown}" --step "Promote to stable"
       - name: Label the releases (STABLE / BETA / Build / Previous stable)
         if: always()
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"

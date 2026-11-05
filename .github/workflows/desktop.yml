@@ -1670,6 +1670,7 @@ jobs:
         GH_TOKEN
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
+        SELFHEAL_PUBLISH_KEY
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1742,6 +1743,21 @@ jobs:
           TAG: desktop-v${{ needs.changes.outputs.version }}
           LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}
         run: node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"
+      # Why (5 Nov 2026, owner: "I didn't get any notification. I should have"; beta 0.9.12, run 42056409953; nt 3/4): the step above speaks only when a lane was OFFERED, so a beta whose build or E2E gate failed in every lane
+      # (9 of the last 28) and every beta started by hand that failed were silent. This one is the other half: no lane offered, not cancelled -> one alert naming the version, the lane, the step and the run.
+      # Through the switchboard (Admin → Operations → Notifications, event release-failed), the old CI-alerts bot when it cannot deliver. Never a hold: a failed alert does not fail the run.
+      - name: Tell the owner on Telegram that a beta did not ship
+        if: ${{ !cancelled() && needs.changes.outputs.released == 'true' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          VERSION: ${{ needs.changes.outputs.version }}
+          GATE: ${{ needs.changes.outputs.gate }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        run: node desktop/e2e/release-failed-alert.mjs beta "$VERSION"   # NEEDS and GATE come from the environment
       - uses: actions/setup-node@v5
         if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/beta-pick-'))
         continue-on-error: true
@@ -1770,6 +1786,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: python3 tools/scan-e2e-artifacts.py
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'

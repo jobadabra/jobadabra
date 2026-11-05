@@ -10,6 +10,7 @@ import {TIMEOUT_FAILURE} from './lib/triage-match.mjs';
 import {aiFailureCauses} from './lib/ai-miss-cause.mjs';
 import {ghIo, verdictsForCauses} from './lib/flaky-evidence.mjs';
 import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
+import {reportFallback, viaSwitchboard} from './lib/switchboard.mjs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
 // Invariant: a non-backbone suite result cannot cause an owner failure or recovery alert.
@@ -230,13 +231,19 @@ function footer(since, where, jobs) {
 }
 
 // text: a message from messageOf (or a plain string) -> the line to print.
-export async function send(message, env = process.env, fetcher = fetch) {
+// With `event` (an id of shared/notify-registry.js in jobadabra-web) the alert goes through the owner's switchboard first (Admin → Operations → Notifications: on/off, when, which bot);
+// a switchboard that cannot deliver (down, no key, 400/503) leaves the old CI-alerts bot to send it, and tells the switchboard so ("sent without switchboard").
+// Why (5 Nov 2026, owner, nt 3/4): an alert must still arrive while the Engineering bot is not connected, so the old path is the fallback, never removed first.
+export async function send(message, env = process.env, fetcher = fetch, {event = '', state, level} = {}) {
   if (!message) return 'ci-alert: nothing to send';
-  if (!env.CI_ALERTS_TELEGRAM_BOT_TOKEN || !env.CI_ALERTS_TELEGRAM_CHAT_ID) return 'ci-alert: not sent (CI_ALERTS_TELEGRAM_BOT_TOKEN or CI_ALERTS_TELEGRAM_CHAT_ID not set)';
   const payload = typeof message === 'string' ? {text: message, disable_web_page_preview: true} : message;
+  const board = event ? await viaSwitchboard({event, text: payload.text, html: payload.parse_mode === 'HTML', state, level}, env, fetcher) : null;
+  if (board) return board;
+  if (!env.CI_ALERTS_TELEGRAM_BOT_TOKEN || !env.CI_ALERTS_TELEGRAM_CHAT_ID) return 'ci-alert: not sent (CI_ALERTS_TELEGRAM_BOT_TOKEN or CI_ALERTS_TELEGRAM_CHAT_ID not set)';
   try {
     const answer = await fetcher(`https://api.telegram.org/bot${env.CI_ALERTS_TELEGRAM_BOT_TOKEN}/sendMessage`, {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chat_id: env.CI_ALERTS_TELEGRAM_CHAT_ID, ...payload}), signal: AbortSignal.timeout(15000)});
+    if (answer.ok && event) await reportFallback(event, env, fetcher);
     return answer.ok ? 'ci-alert: sent' : `ci-alert: not sent (Telegram ${answer.status})`;
   } catch (error) { return `ci-alert: not sent (${String(error?.name || 'error')})`; }   // never the error text: it can carry the URL with the token
 }
