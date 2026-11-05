@@ -56,7 +56,7 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 - [x] 4/7 Until-green chain: follow job, rounds, stop rules (proof: tools/fixer/driver.mjs @a42e9ee)
 - [x] 5/7 Every fixer run writes a record (proof: tools/fixer/record.mjs @4d34185)
 - [ ] 6/7 First until-green run on a GitHub issue (run 1: site 401; run 2, issue #3180: needs-human after one refused search, 4 broker calls)
-- [ ] 6b/7 A refused action the agent can recover from does not end the run
+- [x] 6b/7 A refused action the agent can recover from does not end the run (proof: none: jobadabra #3211, merged 55d440b)
 - [x] 6c/7 A red proof names its failing tests (proof: none: jobadabra #3233, merged 2618e19)
 - [ ] 7/7 Run on a Linear issue and the harness map evaluation
 
