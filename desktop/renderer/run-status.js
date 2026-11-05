@@ -52,8 +52,9 @@ const LIMIT_KINDS = [
 export function aiLimitHead(run, name = 'The run') {
   if (!run || run.live || run.waiting || (run.ok && !run.off)) return null;
   const lines = [run.problem, run.result, ...(run.log || []), ...(run.report || [])].filter(Boolean).map(String);
-  const stop = lines.find(stopCause);
-  const hit = stop || lines.find(line => isSpendingLimit(line)) || lines.find(line => AI_BUSY.test(line));
+  const limit = lines.find(line => isSpendingLimit(line));
+  const stop = limit ? '' : lines.find(stopCause);   // Why (#3322, Gitar): a real limit's own page is the fix; the stop stays a warning line of its own
+  const hit = stop || limit || lines.find(line => AI_BUSY.test(line));
   if (!hit) return null;
   const what = AI_STOPPED_WHAT[run.kind] || 'The run';
   const title = `${name} couldn’t finish`;

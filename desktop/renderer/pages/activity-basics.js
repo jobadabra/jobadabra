@@ -88,7 +88,7 @@ export function warningSummary(warnings) {
   // The Anthropic account's spending limit: jobs were left unscored. Said plainly, with what to do.
   const limited = limitedJobs(warnings);
   if (limited && warnings.some(text => /Claude Code/.test(text))) {  // the user's own Claude Code: its plan's usage window
-    return `Your Claude usage window is exhausted, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
+    return `Your Claude plan's usage window is exhausted, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
       + 'The next check scores them once your plan\'s limit resets; Settings → Connections → AI shows Claude Code\'s status.';
   }
   if (limited) {

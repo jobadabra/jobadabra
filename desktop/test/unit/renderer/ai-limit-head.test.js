@@ -22,6 +22,13 @@ test('a stop that is no limit heads the run with what stopped it and the way to 
     fix: {label: 'Open AI settings', view: 'settings'}});
 });
 
+test('a real limit beside a stop heads the run with the limit and its own page (#3322)', () => {
+  const head = aiLimitHead({ok: false, kind: 'search', log: ['AI stopped: Claude Code is not signed in, 3 job(s) left for the next check',
+    'anthropic.BadRequestError: Your credit balance is too low to access the Anthropic API.']}, 'Find jobs');
+  assert.equal(head.summary, 'API credits are exhausted. Scoring could not complete.');
+  assert.deepEqual(head.fix, {label: 'Manage API billing', url: 'https://console.anthropic.com/settings/billing'});
+});
+
 test('each limit its own words and page: credits, a plan (with its reset time only when said), a rate limit, the unknown', () => {
   const credits = aiLimitHead({ok: false, kind: 'search', log: ['anthropic.BadRequestError: Your credit balance is too low to access the Anthropic API.']}, 'Jobs check');
   assert.equal(credits.summary, 'API credits are exhausted. Scoring could not complete.');
