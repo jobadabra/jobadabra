@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {cardText} from '../../../renderer/feedback-reply-text.js';
+import {cardText, newFixedRefs} from '../../../renderer/feedback-reply-text.js';
 
 const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const fixed = {ref: 'a1b2c3d4e5f60718', on: '2026-10-28', excerpt: 'The CV upload hangs', kind: 'fixed', message: 'Fixed in 0.9.12. Thank you.', arrival: 'It arrives in 0.9.12.'};
@@ -37,4 +37,14 @@ test('the window asks the main process at least as often as the main process ret
   const poll = minutes('renderer/pages/feedback-reply.js', 'EVERY'), retry = minutes('lib/app-feedback-replies.js', 'RETRY');
   assert.ok(poll > 0 && retry > 0, 'both intervals are found');
   assert.ok(poll <= retry, `window polls every ${poll} min, retry is ${retry} min`);
+});
+
+// Why (code review, 5 Nov 2026): a fixed card can carry free applications; the first sight of one makes the chip and the Plan page read the allowance again, never a "heard" card and never the same card twice.
+test('a new fixed card tells the allowance chip to look again, once', () => {
+  const seen = new Set();
+  assert.deepEqual(newFixedRefs([{ref: 'a', kind: 'deferred'}], seen), [], 'a "heard" card changes no allowance');
+  assert.deepEqual(newFixedRefs([{ref: 'a', kind: 'fixed'}, {ref: 'b', kind: 'fixed'}], seen), ['a', 'b']);
+  assert.deepEqual(newFixedRefs([{ref: 'a', kind: 'fixed'}], seen), [], 'the same card at the next look is not new');
+  assert.match(read('renderer/pages/feedback-reply.js'), /dispatchEvent\(new Event\('allowance-changed'\)\)/);
+  assert.match(read('renderer/pages/license.js'), /addEventListener\('allowance-changed'/);
 });

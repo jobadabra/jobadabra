@@ -72,6 +72,7 @@ export async function init() {
   // The count moves as applications are sent: look again now and then, and when the window comes back to the front.
   setInterval(() => refresh().catch(() => {}), 10 * 60 * 1000);
   window.addEventListener('focus', () => refresh().catch(() => {}));
+  window.addEventListener('allowance-changed', () => refresh().catch(() => {}));   // a fixed reply that may carry free applications was just drawn (pages/feedback-reply.js)
   document.querySelector('[data-settings-go="license"]').addEventListener('click', refresh);
   $('license-remove').addEventListener('click', async () => { message('license-message', ''); showLicense(await window.pilot.licenseRemove()); });
   // The allowance ended and something new was started: say so once, kindly, and point to the Plan page.

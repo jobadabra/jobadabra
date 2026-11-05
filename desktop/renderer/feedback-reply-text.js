@@ -4,6 +4,13 @@ const SHORT = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short'
 // The owner's line often names the version already ("Fixed in 0.9.12."): the arrival line then adds nothing.
 const sameVersion = reply => { const version = String(reply.arrival || '').match(/\d+\.\d+\.\d+/)?.[0]; return !!version && String(reply.message || '').includes(version); };
 
+/** The refs of fixed cards in `replies` that `seen` (a Set) does not hold yet; adds them to it. A fixed card can carry free applications, so the first sight of one is when the allowance chip must be read again. */
+export function newFixedRefs(replies, seen) {
+  const fresh = replies.filter(reply => reply.kind === 'fixed' && !seen.has(reply.ref)).map(reply => reply.ref);
+  for (const ref of fresh) seen.add(ref);
+  return fresh;
+}
+
 /** One reply ({on, excerpt, kind, message, arrival}) -> {title, said, answer, tone}. */
 export function cardText(reply) {
   const day = reply.on ? SHORT.format(new Date(`${reply.on}T12:00:00`)) : '';

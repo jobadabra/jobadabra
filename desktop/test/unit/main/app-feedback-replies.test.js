@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {arrival, closeReply, fetchReplies, registerReplies} from '../../../lib/app-feedback-replies.js';
+import {create} from '../../../lib/license.js';
+import {refresh} from '../../../lib/trial-server.js';
 
 const KEY = 'JPF1.install-0001-abcd.tok';
 const store = (secrets = {JOBADABRA_TRIAL_KEY: KEY}) => { const mine = {telemetryId: 'install-0001-abcd'}; return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch), secret: name => secrets[name] || ''}; };
@@ -116,4 +118,61 @@ test('a close that could not be posted survives an app restart: the card stays h
   assert.deepEqual(await second.handlers.feedbackReplies(), [], 'the closed card is not drawn again after the restart');
   assert.deepEqual(posted, ['a1b2c3d4e5f60718'], 'and the close is told to the website now');
   assert.deepEqual(st.settings().feedbackRepliesClosed, [], 'once the website took it nothing is kept');
+});
+
+// Why (fb 2/7 follow-up, 5 Nov 2026, coordinator: "someone we thanked, told the problem is fixed and stopped at the wall would see no gift for up to 6 hours"): the trial answer is refreshed when a new fixed reply arrives,
+// not only at start and every 6 hours, so the card that says "we added 5 free applications" and the wall agree at once.
+test('a thanked person stopped at the wall: the fixed reply arrives and the wall has already moved to 25', async () => {
+  const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'}, now = Date.parse('2026-11-05T12:00:00Z');
+  const st = store(); st.settings().firstRunAt = '2026-07-01T00:00:00.000Z';
+  const license = create(st, {appliedNow: () => 22, now: () => now});
+  assert.equal(license.state().ended, true, 'before the reply: 22 of 20 after 60 days is the wall');
+  let trialAsks = 0;
+  const fetcher = async url => {
+    if (/trial\/status/.test(url)) { trialAsks++; return Response.json({ok: true, used: 22, first: '2026-07-01T00:00:00.000Z', pro: false, bonus: 5, limit: 25}); }
+    return Response.json({ok: true, replies: [reply({message: 'Fixed in 0.9.12. We also added 5 more free applications to say thank you.'})]});
+  };
+  registerReplies({DEMO: false, app, ipcMain, storage: st, fetcher, now: () => now, onFixed: () => refresh(st, license, {fetcher, now: () => now})});
+  assert.equal((await handlers.feedbackReplies()).length, 1);
+  assert.deepEqual([license.state().ended, license.state().limit], [false, 25]);
+  await handlers.feedbackReplies();
+  assert.equal(trialAsks, 1, 'asked once for this card, not at every call');
+});
+
+test('a reply that is not fixed, or a fixed one already seen, does not refresh the trial answer', async () => {
+  const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
+  let clock = 1_000, refreshed = 0, cards = [reply({kind: 'deferred'})];
+  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: async () => Response.json({ok: true, replies: cards}), now: () => clock, onFixed: () => { refreshed++; }});
+  await handlers.feedbackReplies();
+  assert.equal(refreshed, 0, 'a "heard" card changes no allowance');
+  cards = [reply()]; clock += 6 * 3600 * 1000;
+  await handlers.feedbackReplies();
+  clock += 6 * 3600 * 1000;
+  await handlers.feedbackReplies();
+  assert.equal(refreshed, 1, 'a fixed card refreshes once, the same card at the next ask does not');
+});
+
+test('a refresh that fails never hides the card', async () => {
+  const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
+  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: answers({replies: [reply()]}), now: () => 1_000, onFixed: async () => { throw new Error('offline'); }});
+  assert.equal((await handlers.feedbackReplies()).length, 1);
+});
+
+test('a refresh that says it did not save is tried again at the next ask (15 minutes), with the same card', async () => {
+  const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
+  let clock = 1_000, tries = 0, answer = false;
+  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: answers({replies: [reply()]}), now: () => clock, onFixed: async () => { tries++; return answer; }});
+  assert.equal((await handlers.feedbackReplies()).length, 1, 'the card shows even when the refresh did not save');
+  clock += 20 * 60 * 1000; answer = true;
+  await handlers.feedbackReplies();
+  assert.equal(tries, 2, 'asked again after the 15-minute retry, and it saved');
+  clock += 20 * 60 * 1000;
+  await handlers.feedbackReplies();
+  assert.equal(tries, 2, 'saved once: not again for the same card');
+});
+
+test('a refresh that hangs does not hold the card', async () => {
+  const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, app = {getVersion: () => '0.9.11'};
+  registerReplies({DEMO: false, app, ipcMain, storage: store(), fetcher: answers({replies: [reply()]}), now: () => 1_000, wait: 20, onFixed: () => new Promise(() => {})});
+  assert.equal((await handlers.feedbackReplies()).length, 1);
 });

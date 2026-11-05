@@ -44,10 +44,11 @@ export async function closeReply(storage, ref, {fetcher = globalThis.fetch, base
   } catch { return false; }
 }
 
-/** IPC: `feedbackReplies()` -> the cards to show now; `feedbackReplyClose(ref)` closes one. Asks the website at the first call and every 6 hours after an answer (15 minutes after none);
+/** IPC: `feedbackReplies()` -> the cards to show now; `feedbackReplyClose(ref)` closes one. Asks the website at the first call and every 6 hours after an answer (15 minutes after none); `onFixed` runs once for each new fixed card, before the cards are returned;
  *  a card the person closed is never drawn again here, and its post is retried at each ask until the website took it. Demo mode has none. */
-export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Date.now}) {
+export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Date.now, onFixed = null, wait = 4000}) {
   let cards = [], asked = -Infinity, retryAt = 0;
+  const seenFixed = new Set();   // fixed cards that already triggered onFixed in this run
   const closed = new Map((storage.settings().feedbackRepliesClosed || []).map(ref => [ref, false]));   // ref -> true once the website took the close
   // Why (Gitar on #3044): a close that could not be posted must survive a restart, or the card returns after "Got it". Only the refs not yet taken are kept.
   const keep = () => storage.saveSettings({feedbackRepliesClosed: [...closed].filter(([, taken]) => !taken).map(([ref]) => ref).slice(-50)});
@@ -57,7 +58,20 @@ export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Dat
       for (const [ref, posted] of closed) if (!posted) closed.set(ref, await closeReply(storage, ref, {fetcher}));
       keep();
       const got = await fetchReplies(storage, {version: app.getVersion(), fetcher});
-      if (got === null) retryAt = now() + RETRY; else { cards = got; asked = now(); }
+      if (got === null) retryAt = now() + RETRY; else {
+        cards = got; asked = now();
+        // Why (fb 2/7 follow-up, 5 Nov 2026, coordinator): a fixed reply may say it added free applications; the trial answer is asked again before the card is drawn, so the wall and the card agree (a failure leaves the card as it is).
+        const fresh = got.filter(card => card.kind === 'fixed' && !seenFixed.has(card.ref));
+        for (const card of fresh) seenFixed.add(card.ref);
+        if (fresh.length && onFixed) {
+          // Why (code review of this change, 5 Nov 2026): the card waits for the refresh at most `wait` ms (a hung call must not hold it), and a refresh that says it did not save (false) or ran late is tried again at the next ask, in 15 minutes, with the same card.
+          const late = Symbol('late');
+          let timer;
+          const done = await Promise.race([Promise.resolve().then(onFixed), new Promise(resolve => { timer = setTimeout(() => resolve(late), wait); })]).catch(() => false);
+          clearTimeout(timer);
+          if (done === false || done === late) { for (const card of fresh) seenFixed.delete(card.ref); asked = -Infinity; retryAt = now() + RETRY; }
+        }
+      }
     }
     return cards.filter(card => !closed.has(card.ref));
   });

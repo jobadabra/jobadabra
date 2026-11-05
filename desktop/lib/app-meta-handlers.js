@@ -8,6 +8,7 @@ import * as pipeline from './pipeline.js';
 import * as poolShare from './pool-share.js';
 import * as setupFunnel from './setup-funnel.js';
 import * as sharedLog from './shared-log.js';
+import * as trialServer from './trial-server.js';
 import * as updater from './updater.js';
 import {registerBuildHandlers} from './build-handlers.js';
 import {registerFeedbackHandlers} from './feedback-handlers.js';
@@ -96,6 +97,6 @@ export function registerAppMetaHandlers(ctx) {
   });
   // Send feedback… (lib/feedback-handlers.js → lib/app-feedback.js): to the owner, through the website, with the window's screenshot and the redacted logs when the person keeps them on. Demo mode sends nothing.
   registerFeedbackHandlers({DEMO, app, ipcMain, storage, track, getWindow: ctx.getWindow, getPlan});
-  registerReplies({DEMO, app, ipcMain, storage});   // the owner's answer to a feedback this install sent, shown as a card (lib/app-feedback-replies.js)
+  registerReplies({DEMO, app, ipcMain, storage, onFixed: () => trialServer.refresh(storage, getLicense())   /* true when the answer was saved */});   // the owner's answer to a feedback this install sent, shown as a card (lib/app-feedback-replies.js)
   registerDesktopAi({DEMO, app, ipcMain, shell, storage, getWindow: ctx.getWindow, getPlan});   // the read tools of the Claude desktop app's helper (lib/desktop-ai-server.js)
 }
