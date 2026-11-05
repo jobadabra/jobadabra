@@ -101,7 +101,7 @@ async function readNights(runs) {
 const ESCAPE = /^Escaped-e2e:[ \t]*([^\r\n]*)$/im;
 
 /** Parse an escape trailer without I/O; absent or malformed records return null. */
-// Guard: desktop/test/tooling/ci/ci-intel-e2e-intel-collector.test.js.
+// Guard: desktop/test/ci-intel-e2e-intel-collector.test.js.
 export function escapeOf(message) {
   const value = ESCAPE.exec(String(message))?.[1].trim() || '';
   const parts = /^(.+?)[ \t]+—[ \t]+(\S.*)$/.exec(value);
