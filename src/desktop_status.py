@@ -4,7 +4,6 @@ delete_job() with the Notion pages first (it moves to the store with Job Matches
 Guarded by tests/unit/stores/test_desktop.py and tests/unit/stores/test_import_url.py.
 """
 from . import store
-from .notion.dedupe import normalize_url
 from .desktop_jobs import stage_status
 from .stores import base, rules
 
@@ -42,18 +41,12 @@ def _match(stores, url):
     return next((match for match in stores.matches.list() if base.url_key(match['url']) == key), None)
 
 
-def _job_keys(url):
-    """The cached job's lookup for a link: its identity key (normalize_url, as store.upsert_job writes it), the raw key, the raw link.
-    Why (fq, 5 Nov 2026, review of the Jobs-list fix): the list shows Notion's form of a link, the cache may hold another; a raw `jobs.url=?` missed it."""
-    return (f'url:{normalize_url(url)}', f'url:{url}', url)
-
-
 def set_status(db, url, status, stores=None):
     """Record the status as the job's stage in the store (the truth; Saved/Dismissed never overwrite a real application
     stage, src/stores/rules.py), then in the local job cache. If the store can't be written, nothing changes."""
     row = db.execute("""SELECT jobs.id, jobs.title, jobs.url, jobs.location, jobs.posted_at, jobs.first_seen_at,
                                  companies.name company FROM jobs JOIN companies ON companies.id=jobs.company_id
-                          WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", _job_keys(url)).fetchone()
+                          WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", store.job_keys(url)).fetchone()
     if not row and stores and status in NOTION_STAGES:  # a job only in the store (no local copy): the store alone
         item = stores.applications.get(url) or _match(stores, url)  # a found job's ⭐ Save makes its Applications row
         if not item:
@@ -95,7 +88,7 @@ def delete_job(db, url, stores=None):
     records leave the store (Notion: its trash, restorable there for 30 days), and the local copy becomes a marker so no search brings it
     back. Only a dismissed job: anything else is still a job you might act on."""
     row = db.execute("""SELECT jobs.id, COALESCE(applications.status, 'unreviewed') status FROM jobs
-                        LEFT JOIN applications ON applications.job_id=jobs.id WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", _job_keys(url)).fetchone()
+                        LEFT JOIN applications ON applications.job_id=jobs.id WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", store.job_keys(url)).fetchone()
     found = stores.applications.get(url) if stores else None
     stage = (found or {}).get('stage') or ''
     if not row and not found:

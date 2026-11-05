@@ -215,10 +215,16 @@ def upsert_job(db, item, source_name, source_url='', source_kind='job board', no
     return job_id, status
 
 
+def job_keys(url):
+    """The cached job's lookup for a link: its identity key (as upsert_job writes it), the raw key, the raw link. The one place that knows the key format:
+    use it as `WHERE canonical_key IN (?, ?) OR url=?`. Why (fq, 5 Nov 2026, Gitar): three callers each spelled it, and a missed one brings back the duplicate row."""
+    return (f'url:{normalize_url(url)}', f'url:{url}', url)
+
+
 def track_applied(db, url, meta, now=None):
     """A job applied to outside Jobadabra (/add, the app's Applied elsewhere), in the jobs list as Applied.
     A job a search already found keeps its crawled details; only its status changes. Returns the job id."""
-    row = db.execute("SELECT id FROM jobs WHERE canonical_key IN (?, ?) OR url=?", (f'url:{normalize_url(url)}', f'url:{url}', url)).fetchone()
+    row = db.execute("SELECT id FROM jobs WHERE canonical_key IN (?, ?) OR url=?", job_keys(url)).fetchone()
     if row:
         job_id = row['id']
     else:
