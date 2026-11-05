@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 WORKDAY_PAGES = 2       # 20 jobs a page per search term: Workday sites list thousands, so each of the user's terms is searched
 WORKDAY_ALL_PAGES = 10  # and the newest 200 with no term, for every search: what an employer hires for, not only what one user asks
 WORKDAY_MAX_TERMS = 6
+WORKDAY_CLUSTER = r'wd\d+'   # Why (5 Nov 2026, #2915): one shape for the slug, the link and the page reader; clusters run to three digits (wd502)
 
 
 def workday_terms(search=None):
@@ -34,7 +35,7 @@ def workday_terms(search=None):
 
 def _split_workday(slug):
     tenant, cluster, site = slug.split('.', 2)
-    if not re.fullmatch(r'wd\d+', cluster) or not re.fullmatch(r'[\w-]+', tenant) or not re.fullmatch(r'[\w-]+', site):
+    if not re.fullmatch(WORKDAY_CLUSTER, cluster) or not re.fullmatch(r'[\w-]+', tenant) or not re.fullmatch(r'[\w-]+', site):
         raise ValueError('not a Workday slug')
     return tenant, cluster, site
 
