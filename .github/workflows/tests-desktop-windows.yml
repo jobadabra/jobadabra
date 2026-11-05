@@ -11,6 +11,7 @@ on:
       - 'desktop/integration/app/ai-plan-install.test.js'
       - 'desktop/integration/app/ai-plan-states.test.js'
       - 'desktop/integration/app/desktop-ai.test.js'
+      - 'desktop/integration/app/fixer-sandbox.test.js'   # its Linux-only Docker check has an explicit platform branch
       - 'desktop/integration/results-reporter.mjs'   # separators of a test file's path (desktop/test/integration-results-reporter.test.js)
       - 'desktop/lib/ai/codex-cli.js'
       - 'desktop/lib/analytics.js'
