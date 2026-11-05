@@ -45,6 +45,9 @@ export async function run(ctx) {
   // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts.
   const actorTier = process.env.AGENT_TIER || 'small';
   if (!Object.hasOwn(MODELS, actorTier)) throw new Error(`AGENT_TIER must be ${Object.keys(MODELS).join(', ')}, got "${actorTier}"`);
+  // Why (5 Nov 2026, Gitar on #3213): the screen reader switch accepts only empty or 'off'; "Off" or "no" must not leave the reader on while the person asked for a run without it.
+  const screen = process.env.AGENT_SCREEN || '';
+  if (!['', 'off'].includes(screen)) throw new Error(`AGENT_SCREEN must be empty or off, got "${screen}"`);
   const {page} = ctx;
   await ensureSetUp(ctx);
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
@@ -72,7 +75,7 @@ export async function run(ctx) {
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
     try {
-      session = await runSession({act, ask: brokerAsk(actorTier), judgeAsk: brokerAsk('mid', {only: 'claude'}), screenAsk: process.env.AGENT_SCREEN === 'off' ? null : brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: brokerAsk(actorTier), judgeAsk: brokerAsk('mid', {only: 'claude'}), screenAsk: screen === 'off' ? null : brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
     } finally { kept = await video.finish(); }   // Why (4 Nov 2026, 9/12 part 2b): a session that throws still leaves the video of what it did, and `kept` (its meta) is what the run record below reads
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
