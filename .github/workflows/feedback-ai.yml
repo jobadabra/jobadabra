@@ -2,7 +2,7 @@ name: AI fixer
 run-name: Send to AI ${{ inputs.ref }}
 
 # "Send to AI" on a feedback card of the site (owner, 3 Nov 2026: "send it to a claude session (on the CI using the ai-broker), that the outcome should be a PR with the fix"). ONE run per click of the owner's;
-# the site starts it (workflow_dispatch, input `ref` only, with the timers' token), at most 3 a day and 1 at a time. The run reads that one report from the site with GitHub's own run token (audience
+# the site starts it (workflow_dispatch, input `ref` only, with the timers' token), at most 10 a day and 1 at a time. The run reads that one report from the site with GitHub's own run token (audience
 # jobadabra-feedback; no secret), lets the Codex plan propose a fix (desktop/e2e/edit-codex.mjs, two broker calls, no tools), checks it and opens a DRAFT pull request for the owner. It never merges and never
 # pushes to main. The UI Fixer (ui-fix.yml, scheduled, many findings) stays OFF (owner, 25 Oct 2026); this runs only on a click.
 # THIS REPOSITORY IS PUBLIC: the branch, the pull request, the run log and the artifacts are public. tools/feedback-ai.mjs never prints the report, redacts it a second time before the AI reads it,
@@ -22,7 +22,7 @@ on:
 permissions: {}
 
 jobs:
-  # The CI side of the caps (the site enforces 1 at a time and 3 a day too; mac-07 on #3086: not only there). A READ-only token counts this workflow's runs of the UTC day; no AI, no write.
+  # The CI side of the caps (the site enforces 1 at a time and 10 a day too; mac-07 on #3086: not only there). A READ-only token counts this workflow's runs of the UTC day; no AI, no write.
   guard:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: At most 1 at a time and 3 a day
+      - name: At most 1 at a time and 10 a day
         run: node tools/feedback-ai.mjs cap --ref "$REF"
 
   fix:

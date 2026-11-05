@@ -16,10 +16,11 @@ export function gateChange(files, bytes) {
 }
 
 /** How many Send to AI runs may start per UTC day. */
-export const DAILY_RUNS = 3;
+// Why (5 Nov 2026, owner): raise the daily limit to 10 after the fourth attempt was refused in run 41955735940.
+export const DAILY_RUNS = 10;
 /**
  * The CI side of the caps (the site enforces them too; mac-07 on #3086: not only there). `runs` = this workflow's workflow_dispatch runs created today (GitHub's list); `selfId` = this run.
- * -> {ok: true} | {ok: false, why}: refused when another run has not finished (queued, waiting or running: two clicks at once refuse each other, the safe side), or when this would be the 4th of the UTC day.
+ * -> {ok: true} | {ok: false, why}: refused when another run has not finished (queued, waiting or running: two clicks at once refuse each other, the safe side), or when this would be the 11th of the UTC day.
  */
 export function capVerdict(runs, selfId, now = new Date(), daily = DAILY_RUNS) {
   const day = now.toISOString().slice(0, 10), others = (runs || []).filter(run => String(run.id) !== String(selfId) && run.event === 'workflow_dispatch' && String(run.created_at || '').slice(0, 10) === day && run.conclusion !== 'skipped');

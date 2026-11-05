@@ -33,7 +33,7 @@ source.read(ref) ──► brief ──► [agent loop ≤ 30 steps] ──► w
 **Why a loop and not one more case in the quick edit:** the quick edit picks 6 files blind and cannot run a test, so a wrong guess is a dead run. The loop can open the file it needs next and see a test fail, at a cost of about 20 to 50 calls instead of 1 or 2.
 
 ## Limits
-One run at a time (`concurrency`), 3 a day (the feedback cap, shared), step cap about 30, a token cap per run read from the broker tally, scheduled lane (behind the 70% reserve), draft PRs only. A broker refusal ends the run with its reason and one alert, as every CI AI job (`lib/ai-cap.mjs`). The AI user agent's pause switch pattern: a repository variable (`AI_FIXER = off`).
+One run at a time (`concurrency`), 10 attempts a UTC day (the feedback cap, shared; owner approved raising it from 3 on 5 Nov 2026 after run 41955735940), step cap about 30, a token cap per run read from the broker tally, scheduled lane (behind the 70% reserve), draft PRs only. A broker refusal ends the run with its reason and one alert, as every CI AI job (`lib/ai-cap.mjs`). The AI user agent's pause switch pattern: a repository variable (`AI_FIXER = off`).
 
 ## Sources
 | Source | `read` | `report` | Secret |

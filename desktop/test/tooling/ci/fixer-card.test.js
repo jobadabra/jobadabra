@@ -104,7 +104,7 @@ test('a run that ends each way tells the card the matching words through the rec
 test('the guard refuses with one word, cap or busy, and the card is told exactly that word', () => {
   const NOW = new Date('2026-11-05T10:00:00Z'), day = '2026-11-05T08:00:00Z';
   const run = (id, over = {}) => ({id, event: 'workflow_dispatch', created_at: day, status: 'completed', conclusion: 'success', ...over});
-  assert.equal(capVerdict([run(1), run(2), run(3), run(9, {status: 'in_progress'})], 9, NOW).word, 'cap', 'three done today (a hand-started linear run and a github run count)');
+  assert.equal(capVerdict([...Array.from({length: 10}, (_, i) => run(i + 20)), run(9, {status: 'in_progress'})], 9, NOW).word, 'cap', 'ten done today (hand-started linear and github runs count)');
   assert.equal(capVerdict([run(1, {status: 'in_progress', display_title: 'AI fixer follow PR 5 round 2'}), run(9, {status: 'in_progress'})], 9, NOW).word, 'busy', 'a running round of another card');
   assert.equal(capVerdict([run(1), run(9, {status: 'in_progress'})], 9, NOW).ok, true);
   assert.deepEqual(cardBody({ref: REF, repo: 'o/r', pr: '', verdict: '', blocked: '', refused: 'cap'}), {ref: REF, status: 'cap'});
@@ -115,17 +115,18 @@ test('the guard refuses with one word, cap or busy, and the card is told exactly
   try {
     const guard = (runs, extra = {}) => {
       const stub = path.join(dir, 'stub.mjs'), output = path.join(dir, 'out.txt');
-      fs.writeFileSync(stub, `globalThis.fetch = async () => new Response(JSON.stringify({workflow_runs: ${JSON.stringify(runs)}}), {status: 200});\n`);
+      fs.writeFileSync(stub, `globalThis.fetch = async url => new Response(JSON.stringify({workflow_runs: url.includes('/ai-fixer.yml/') ? ${JSON.stringify(runs)} : []}), {status: 200});\n`);
       fs.writeFileSync(output, '');
       const done = spawnSync('node', ['--import', pathToFileURL(stub).href, path.join(ROOT, 'tools/fixer/run.mjs'), 'cap'], {encoding: 'utf8', env: {PATH: process.env.PATH, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '9', ...extra}});
       return {status: done.status, output: fs.readFileSync(output, 'utf8')};
     };
     const today = new Date().toISOString().slice(0, 10) + 'T00:00:01Z';   // clock: relative the guard counts the real UTC day; the stand-in runs are made on it
-    const done = n => Array.from({length: n}, (_, i) => run(i + 1, {created_at: today}));
-    assert.match(guard(done(3)).output, /^refused=cap$/m);
-    assert.notEqual(guard(done(3)).status, 0);
+    const done = n => Array.from({length: n}, (_, i) => run(i + 20, {created_at: today}));
+    assert.match(guard(done(10)).output, /^refused=cap$/m);
+    assert.notEqual(guard(done(10)).status, 0);
     assert.match(guard([run(1, {created_at: today, status: 'queued', conclusion: null})]).output, /^refused=busy$/m);
-    const free = guard(done(1));
+    assert.equal(guard(done(9)).status, 0, 'the tenth attempt is allowed across the two workflow lists');
+    const free = guard(done(3));
     assert.equal(free.status, 0);
     assert.doesNotMatch(free.output, /refused/);
     assert.doesNotMatch(guard([], {ROUND: '1'}).output, /refused/, 'a first run carrying round inputs is refused with no word for the card');
