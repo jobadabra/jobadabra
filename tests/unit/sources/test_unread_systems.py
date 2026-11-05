@@ -1,6 +1,7 @@
 """Job systems a careers page names that cannot be read (5 Oct 2026: Ringier's Umantis page gave 0 jobs, Tamedia's Teamtailor feed is on its own domain, and both looked like
 "this employer has no jobs"): the Teamtailor custom-domain feed, and the scout saying out loud what it could not read."""
 import io
+import re
 import sqlite3
 import sys
 import unittest
@@ -23,7 +24,40 @@ class TeamtailorOwnDomainTests(unittest.TestCase):
         with mock.patch.object(ats, '_get', lambda url: asked.append(url) or RSS), mock.patch.object(careers, '_public', return_value=True):
             self.assertEqual(ats.teamtailor('acme')[0]['title'], 'Fotograf:in')
             self.assertEqual(ats.teamtailor('jobs.example.ch')[0]['location'], 'Zurich, Switzerland')
-        self.assertEqual(asked, ['https://acme.teamtailor.com/jobs.rss', 'https://jobs.example.ch/jobs.rss'])
+        self.assertEqual(asked, [f'https://acme.teamtailor.com/jobs.rss?per_page={ats.TEAMTAILOR_PAGE}', f'https://jobs.example.ch/jobs.rss?per_page={ats.TEAMTAILOR_PAGE}'])
+
+    def test_a_board_over_the_default_page_is_read_whole(self):
+        def board(url):
+            asked = re.search(r'per_page=(\d+)', url)
+            size = min(459, int(asked.group(1)) if asked else 100)   # the feed answers what it is asked for, 100 by default
+            items = ''.join(f'<item><guid>{n}</guid><title>Job {n}</title><link>https://jobs.example.ch/jobs/{n}</link></item>' for n in range(size))
+            return f'<rss><channel>{items}</channel></rss>'.encode()
+        with mock.patch.object(ats, '_get', board):
+            self.assertEqual(len(ats.teamtailor('acme')), 459)
+            with mock.patch.object(ats, 'TEAMTAILOR_PAGE', 200):
+                self.assertEqual(len(ats.teamtailor('acme')), 200)   # the size asked for is what comes back: the page must be over the board
+
+
+class PartialReadTests(unittest.TestCase):
+    OTHER = {'id': 'R2', 'url': 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Other_R2'}
+
+    def test_a_job_a_partial_reader_did_not_see_is_unknown_not_closed(self):
+        for url in ('https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1', 'https://acme.wd3.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1',
+                    'https://acme.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/1', 'https://recruitingapp-1234.umantis.com/Vacancies/1/Description/2',
+                    'https://join.com/companies/acme/1-designer'):
+            with mock.patch.object(ats, '_board', return_value=[self.OTHER]):
+                self.assertIsNone(ats.is_live(url), url)
+
+    def test_every_reader_that_stops_early_is_one_a_job_link_can_reach(self):
+        self.assertLessEqual(ats.PARTIAL_READS, {name for name, _ in ats.URL_PATTERNS})
+
+    def test_a_partial_reader_still_says_a_job_it_sees_is_open(self):
+        with mock.patch.object(ats, '_board', return_value=[{'id': 'Designer_R1', 'url': 'https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1'}]):
+            self.assertTrue(ats.is_live('https://acme.wd502.myworkdayjobs.com/en-US/Careers/job/Zurich/Designer_R1'))
+
+    def test_a_whole_board_that_does_not_list_a_job_still_closes_it(self):
+        with mock.patch.object(ats, '_board', return_value=[{'id': '2', 'url': 'https://acme.teamtailor.com/jobs/2-other'}]):
+            self.assertIs(ats.is_live('https://acme.teamtailor.com/jobs/1-designer'), False)
 
     def test_an_address_that_is_not_public_or_not_a_plain_host_is_refused(self):
         with mock.patch.object(ats, '_get', side_effect=AssertionError('asked')):

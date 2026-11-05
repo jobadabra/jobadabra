@@ -23,6 +23,8 @@ from .ats_conditional import HEAD, Unchanged, conditional, conditional_state, fi
 USER_AGENT = f'Jobadabra/0.1 (personal job search; contact via GitHub {PUBLIC_REPO})'
 TIMEOUT = 20
 DESCRIPTION_LIMIT = 12000
+# Why (5 Nov 2026, #2915): the feed answers 100 jobs unless told otherwise and `page=2` repeats them, so a big board's other jobs were never seen (one board: 100 of 459). A board over this size is cut silently.
+TEAMTAILOR_PAGE = 1000
 
 
 def _fixture(folder, url):
@@ -179,7 +181,7 @@ def teamtailor(slug):
         url = f'https://{slug}/jobs.rss'
     else:
         url = f'https://{slug}.teamtailor.com/jobs.rss'
-    root = ET.fromstring(_get(url))
+    root = ET.fromstring(_get(f'{url}?per_page={TEAMTAILOR_PAGE}'))
     ns = {'tt': 'https://teamtailor.com/locations'}
     jobs = []
     for item in root.iter('item'):
@@ -217,7 +219,7 @@ def join(slug):
 
 
 # The feeds below live in their own files (pure move); they read `_get`/`_json`/`_job`/`plain` above, so they are imported here, after those.
-from .ats_sites import (WORKDAY_PAGES, WORKDAY_ALL_PAGES, WORKDAY_MAX_TERMS, workday_terms, _split_workday, workday, successfactors,  # noqa: E402,F401
+from .ats_sites import (WORKDAY_PAGES, WORKDAY_ALL_PAGES, WORKDAY_MAX_TERMS, WORKDAY_CLUSTER, workday_terms, _split_workday, workday, successfactors,  # noqa: E402,F401
                         umantis, careers, MAX_ROLES, MAX_PLACES, _strategy_terms, search_roles, search_places, amazon, netflix)
 from .ats_oracle import (ORACLE_ALL_PAGE, ORACLE_ALL_PAGES, ORACLE_TERM_PAGE, split_oracle, oracle_base, oracle)  # noqa: E402,F401
 from .ats_phenom import (PHENOM_PAGE, PHENOM_ALL_PAGES, PHENOM_TERM_PAGES, phenom_site, phenom)  # noqa: E402,F401
@@ -258,7 +260,7 @@ URL_PATTERNS = [
     ('teamtailor', r'([\w-]+)\.teamtailor\.com'),
     ('join', r'join\.com/companies/([\w-]+)'),
     ('umantis', r'(recruitingapp-\d{2,6})\.umantis\.com'),
-    ('workday', r'([\w-]+)\.(wd\d{1,2})\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)'),
+    ('workday', rf'([\w-]+)\.({WORKDAY_CLUSTER})\.myworkdayjobs\.com/(?:[a-z]{{2}}-[A-Z]{{2}}/)?([\w-]+)'),
     # Oracle Recruiting Cloud: tenant, region and site number, written `tenant.region.SITE` (src/sources/ats_oracle.py)
     ('oracle', r'([\w-]+)\.fa\.([a-z0-9]{2,8})\.oraclecloud\.com/hcmUI/CandidateExperience/(?:[a-z]{2}(?:[-_][A-Za-z]{2})?/)?sites/([\w-]+)'),
 ]
@@ -319,6 +321,10 @@ def _board(ats, slug):
     return tuple(fetch(ats, slug))
 
 
+# Why (5 Nov 2026, #2915): a job link reaches these, and they stop before a big board's end (newest jobs, the user's own words, 40 jobs, 20 pages), so a job they do not show may still be open.
+PARTIAL_READS = {'workday', 'oracle', 'umantis', 'join'}
+
+
 def _wanted(url):
     """The job id a board URL points at. A Greenhouse embed puts it in token or gh_jid; other links use the
     last path segment, which is also how a crawled row's URL is matched."""
@@ -370,7 +376,7 @@ def _own_domain_board(url, company):
 
 def is_live(url, company=''):
     """True if the posting is still on its job board, False if the board no longer lists it,
-    None when we can't tell (unsupported board, or the board didn't answer). A Greenhouse posting on the
+    None when we can't tell (unsupported board, the board didn't answer, or a board read only in part that did not show it). A Greenhouse posting on the
     employer's own site is checked on that employer's board when `company` is given."""
     found = detect(url)
     wanted = _wanted(url) if found else None
@@ -386,7 +392,9 @@ def is_live(url, company=''):
         return None
     if not jobs:
         return None  # an empty board is more likely an outage than every job closing at once
-    return any(_same_job(job, wanted) for job in jobs)
+    if any(_same_job(job, wanted) for job in jobs):
+        return True
+    return None if found[0] in PARTIAL_READS else False
 
 
 def probe(ats, slug):
