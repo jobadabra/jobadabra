@@ -147,7 +147,7 @@ test('the words: "3 of 5" and Show all, the Jobs bar folded and open, a row\'s p
   assert.equal(countWords(3, 5), '3 of 5');
   assert.equal(countWords(2, 2), '2');
   assert.deepEqual(jobsBarWords(1, false), {title: '1 suggestion for your search', detail: 'Show'});
-  assert.deepEqual(jobsBarWords(3, true), {title: 'Suggestions for your search', detail: ''});
+  assert.deepEqual(jobsBarWords(3, true), {title: 'Suggestions for your search', detail: 'Hide'});
   const parts = entryParts({...entry('tune'), evidence: ['a', 'b']});
   assert.deepEqual([parts.icon, parts.badge, parts.meta, parts.evidence], ['sliders', 'Tune', ['From', 'What it says'], 'a\nb']);
   assert.deepEqual(entryParts({...entry('week'), source: 'Your week'}).meta, ['What it says'], 'the badge already says where it comes from');

@@ -1,5 +1,6 @@
 // The Jobs page's derived bits, kept free of the DOM so the tests can check them.
 import {isInbound} from './origin.js';
+import {foldToggleWord} from './fold-toggle.js';
 import {READY_LABEL} from './pages/ready-rows.js';
 
 // Skills, tools, licences or topics under a role: what the AI read from the posting (src/ai/enrich.py `technologies`, in the posting's language), for any trade.
@@ -93,8 +94,8 @@ export const inConversation = jobs => jobs.filter(job => isInbound(job) ? !OVER.
 export const talkingStartsOpen = stored => stored === '1';
 export function talkingBar(talking, open) {
   const found = talking.filter(isInbound).length;
-  return open ? {title: 'In conversation', detail: `${talking.length} active · ${found} inbound · ${talking.length - found} outbound`}
-    : {title: `${talking.length} in conversation`, detail: ''};
+  return open ? {title: 'In conversation', detail: `${talking.length} active · ${found} inbound · ${talking.length - found} outbound`, toggle: foldToggleWord(true)}
+    : {title: `${talking.length} in conversation`, detail: '', toggle: foldToggleWord(false)};
 }
 // A job's status pill: its own status, except that an application shows where it stands in Notion (its Stage),
 // e.g. Rejected rather than Applied.

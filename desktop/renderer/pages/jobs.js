@@ -20,7 +20,7 @@ import {openJobPanel} from './job-panel.js';
 import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
 import {wireScoreCall} from './jobs-score-call.js';
 import {scoreFirst} from './score-first.js';
-import {confirmRescore, noteOutdated} from './rescore-run.js';
+import {noteOutdated} from './rescore-run.js';
 import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
 import {paintJobsSuggestionsFirst} from './focus-suggestions.js';
 export {renderJobs} from './jobs-render.js';
@@ -383,7 +383,7 @@ export async function init() {
   paintFindCardFirst();
 
   wireProfileEmpty();
-  wireScoreCall({rescore: count => confirmRescore(count, {search: startSearch, reload: loadJobs, toast: toastMessage}), find: () => $('refresh').click()});
+  wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying});
   wireTriage({read: job => window.pilot.triageRead({url: job.url}), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});

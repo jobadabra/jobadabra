@@ -4,7 +4,9 @@
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {SHOWN, barView, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
+import {SHOWN, barView, bySeverity, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
+import {rescoreEntries} from '../rescore-entry.js';
+import {confirmRescore, knownOutdated, rescoring} from './rescore-run.js';
 import {drawerRows, foldedLine, questionEntries, withQuestions} from '../question-entries.js';
 import {skillEntries} from '../skill-entries.js';
 import {jobsState} from './jobs-state.js';
@@ -13,7 +15,7 @@ import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
 import {focusItems, loadFocus, openLink, prepAction} from './focus.js';
 import {openJobPanel} from './job-panel.js';
-import {showJobsIn, startSearch} from './jobs.js';
+import {loadJobs, showJobsIn, startSearch} from './jobs.js';
 import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {openView} from './nav.js';
 import {loadReports} from './reports.js';
@@ -86,6 +88,7 @@ export const RUN = {
   open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
   retry_questions: () => loadQuestions({force: true}).catch(() => {}),
+  rescore: action => confirmRescore(action.count, {search: startSearch, reload: loadJobs, toast: toastMessage}),   // the Re-score dialog; the start is only its own button
   copy_desktop_ai: () => pressDesktopAi(),   // the Claude or ChatGPT desktop app answers the questions (pages/desktop-ai.js)
 };
 
@@ -169,7 +172,8 @@ const shownPool = () => pool.filter(entry => !held.has(entry.key));
 let bank = null;
 const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; redraw(); }).catch(() => {});
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
-const rowsNow = () => drawerRows([...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys});
+// Most severe first (suggestions.js SEVERITY): Cover letter, then the old scores, the details, what we learned.
+const rowsNow = () => bySeverity(drawerRows([...rescoreEntries({count: knownOutdated().count, running: rescoring()}), ...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys}));
 const FIELD_HINT = 'We e-mail you a link to confirm it. Nothing is sent until you press it.';   // Why (2 Nov 2026): not Always on's hint "We send the daily matches here": this card promises no matches
 let notifyContext = {state: null};
 const notifyDraft = {};
@@ -227,19 +231,32 @@ function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden:
 // The folded line: the drawers' rows by name, the blocking one first, then how many search suggestions (question-entries.js foldedLine).
 const barLine = entries => foldedLine(entries.filter(entry => 'blocking' in entry), entries.filter(entry => !('blocking' in entry)).length);
 
+/** The bar's bullets, one per severity that has entries: the sidebar's count badge (a filled circle with the number inside) in the severity's colour; the word is the tooltip and the aria-label ("1 urgent", "3 warnings", "4 info"). */
+function drawBullets(box, bullets) {
+  box.replaceChildren(...bullets.map(({key, count, text}) => {
+    const chip = el('span', `nav-badge severity-bullet tone-${key}`, String(count));   // tone-bad | tone-warn | tone-info: the badge's own look (style.css)
+    chip.title = text;
+    chip.setAttribute('aria-label', text);
+    return chip;
+  }));
+}
+
 /** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; the rule is suggestions.js barView. */
 let focusAsked = false, focusUnavailable = false;
 export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
   if (!bar) return;
-  const entries = jobsEntries(withRows());
-  const view = barView({focusRead: Boolean(lastArgs), unavailable: focusUnavailable, kept: keptBlock('jobs-suggestions'), entries, open: bar.open, line: barLine(entries)});
+  const all = jobsEntries(withRows());
+  // Why (5 Nov 2026): the old-scores row needs no Focus read (no Not now), so a Focus that cannot be read must not hide the one place that offers the re-score.
+  const entries = !lastArgs && focusUnavailable ? all.filter(entry => entry.kind === 'rescore') : all;
+  const view = barView({focusRead: Boolean(lastArgs) || (focusUnavailable && entries.length > 0), unavailable: focusUnavailable, kept: keptBlock('jobs-suggestions'), entries, open: bar.open, line: barLine(entries)});
   show(bar, view.shown);
   $('jobs-suggestions-title').textContent = view.title;
   $('jobs-suggestions-count').textContent = view.detail;
+  drawBullets($('jobs-suggestions-bullets'), view.bullets);
   if (view.rows) {
     $('jobs-suggestions-list').replaceChildren(...entries.map(entryRow));
-    keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries)});
+    keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries), bullets: view.bullets});
   }
   // Why (#2382): Focus is read only when its view opens (nav.js), so the bar asks once; if it cannot be read (gated store, failure) the kept bar goes.
   if (!lastArgs && !focusAsked) { focusAsked = true; loadFocus().finally(() => { if (!lastArgs) { focusUnavailable = true; renderJobsSuggestions(); } }); }
@@ -256,6 +273,7 @@ export function initSuggestions() {
     redraw();
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
+  document.addEventListener('rescore-state', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // old scores read, or a re-score started or ended (pages/rescore-run.js)
   window.addEventListener('experience-changed', () => { loadBank(); });
   window.addEventListener('linkedin-changed', () => { if (lastArgs) redraw(); });
   window.addEventListener('gmail-changed', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });
