@@ -110,6 +110,8 @@ async function main(argv = process.argv.slice(2), env = process.env, now = Date.
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'record.json'), JSON.stringify(record));
     console.log(`record: ${record.verdict || 'no verdict'}, ${record.steps.length} step(s), ${record.minutes} min`);   // words and counts only
+    // The two words the card job tells the site (tools/fixer/card.mjs); both are validated words, never text.
+    if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, `verdict=${record.verdict}\nblocked=${record.blocked_by}\n`);
   } else throw new Error('usage: record.mjs part|build (see the header)');
 }
 

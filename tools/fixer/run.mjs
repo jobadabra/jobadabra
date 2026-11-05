@@ -53,7 +53,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     }
     // Why (4 Nov 2026, [hm] 4/7): a follow-up round is part of an item already counted; a finished round does not use the day's 3, a running one still blocks (one at a time).
     const verdict = capVerdict(runs.filter(run => !(/ round \d$/.test(run.display_title || '') && run.status === 'completed')), env.GITHUB_RUN_ID);
-    if (!verdict.ok) throw new Error(verdict.why);
+    if (!verdict.ok) { emit(env, 'refused', verdict.word); throw new Error(verdict.why); }   // the one word (cap or busy) the card job tells the site: the guard is the ONE owner of the daily cap
     console.log('cap: this run may start');
   } else if (command === 'item') {   // the guard job, source github, a first run: the ONLY read of the issue; the fix job gets the file
     if (source !== 'github' || !validRef(source, ref)) throw new Error('--source github and --ref an issue number');
@@ -62,7 +62,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     console.log('issue read: one file for the fix job');   // never the text
   } else if (command === 'read') {
     if (!SOURCES[source] || !validRef(source, ref)) throw new Error('--source must be feedback, linear or github and --ref its handle (16 hex characters, JOB-123, or an issue number)');
-    const task = await SOURCES[source].read(ref, {env}), fence = newFence();
+    const roundFile = flag(args, '--round'), task = await SOURCES[source].read(ref, {env, round: Boolean(roundFile)}), fence = newFence();
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'brief.json'), JSON.stringify(task.brief));   // for the leak scan only
     const round = flag(args, '--round') ? cleanRound(JSON.parse(fs.readFileSync(flag(args, '--round'), 'utf8')), {pr: env.PR}) : null;   // a follow-up round: the event, as fenced data (other people's comments are not in it)

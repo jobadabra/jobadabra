@@ -80,12 +80,16 @@ export async function report(body, env = process.env, fetcher = fetch) {
   if (!answer.ok) throw new Error(`the site did not take the report (HTTP ${answer.status}: ${(await answer.json().catch(() => ({}))).error || 'no reason'})`);
 }
 
-/** What the pull_request_target job tells the site: only for a PR whose head is fd-ai/<ref> of THIS repository; `merged` only when GitHub says merged. -> {ref, status, pr} or null. */
+/** The two branches a card's draft PR can be on, and the label that workflow gives it: feedback-ai.yml's fd-ai/<ref> (fd-ai) and the AI fixer's fixer/feedback-<ref> (ai-fixer). */
+const CARD_BRANCHES = [['fd-ai/', 'fd-ai'], ['fixer/feedback-', 'ai-fixer']];
+
+/** What the pull_request_target job tells the site: only for a PR whose head is fd-ai/<ref> or fixer/feedback-<ref> of THIS repository, opened by a bot with that workflow's label; `merged` only when GitHub says merged. -> {ref, status, pr} or null. */
 export function closedReport(event, repository) {
   const pr = event?.pull_request, head = pr?.head;
-  // Why (7/7 review, 3 Nov 2026): any person with write access could push a branch named fd-ai/<ref>; only the pull request this workflow opened (a bot's, with its label) counts.
-  if (!pr || head?.repo?.full_name !== repository || !String(head?.ref || '').startsWith('fd-ai/') || pr.user?.type !== 'Bot' || !(pr.labels || []).some(label => label.name === 'fd-ai')) return null;
-  const ref = head.ref.slice('fd-ai/'.length);
+  // Why (7/7 review, 3 Nov 2026; both branches 5 Nov 2026): any person with write access could push a branch named fd-ai/<ref> or fixer/feedback-<ref>; only the pull request that workflow opened (a bot's, with ITS label) counts.
+  const kind = CARD_BRANCHES.find(([prefix]) => String(head?.ref || '').startsWith(prefix));   // Why (5 Nov 2026, owner: "Button starts the new agent"): the fixer's draft PR is on fixer/feedback-<ref>, so its merge or close reaches the card too
+  if (!pr || head?.repo?.full_name !== repository || !kind || pr.user?.type !== 'Bot' || !(pr.labels || []).some(label => label.name === kind[1])) return null;
+  const ref = head.ref.slice(kind[0].length);
   return REF.test(ref) && /^https:\/\/github\.com\//.test(pr.html_url || '') ? {ref, status: pr.merged === true ? 'merged' : 'closed', pr: pr.html_url} : null;
 }
 
