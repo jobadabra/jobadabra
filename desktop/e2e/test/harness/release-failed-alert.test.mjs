@@ -59,6 +59,13 @@ test('fail-open: the site down, no key, or an event the site does not know all s
   }
 });
 
+test('a 200 that is not the switchboard\'s JSON (a proxy page) is not a hold: the old bot sends it (Gitar on #3293)', async () => {
+  const calls = [];
+  const fetcher = async (url, init = {}) => { calls.push(String(url)); return String(url).includes('/ops/notify') ? new Response('<html>maintenance</html>', {status: 200}) : new Response('{"ok":true}', {status: 200}); };
+  await alertReleaseFailed({kind: 'beta', version: '0.9.12', needs: OWNERS_RUN, env: RUN, fetcher});
+  assert.equal(calls.filter(url => url.includes('api.telegram.org')).length, 1);
+});
+
 test('no alert when a lane WAS offered (the release alert says which lane missed) or when nothing failed', async () => {
   for (const needs of [{...OWNERS_RUN, windows: ok, 'test-windows': ok, 'release-windows': ok, 'release-windows-offer': ok},
     {changes: ok, build: ok, windows: ok, 'test-mac': ok, 'test-windows': ok, 'release-mac': ok, 'release-windows': ok, 'release-mac-offer': ok, 'release-windows-offer': ok}]) {

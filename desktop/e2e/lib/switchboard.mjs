@@ -13,8 +13,10 @@ export async function viaSwitchboard({event, text, html = false, state, level}, 
   try {
     const answer = await post({event, text, html, ...(state === undefined ? {} : {state}), ...(level === undefined ? {} : {level})}, env, fetcher);
     if (answer.status !== 200) return null;
-    const body = await answer.json().catch(() => ({}));
-    return body.sent ? 'ci-alert: sent (switchboard)' : `ci-alert: held by the owner's switch (${String(body.why || 'held').slice(0, 40)})`;
+    const body = await answer.json().catch(() => null);   // Why (5 Nov 2026, Gitar on #3293): a 200 that is not the switchboard's JSON (a proxy or maintenance page) is not the owner's switch holding the alert: the old bot sends it
+    if (body?.sent === true) return 'ci-alert: sent (switchboard)';
+    if (body?.sent === false && body.why) return `ci-alert: held by the owner's switch (${String(body.why).slice(0, 40)})`;
+    return null;
   } catch { return null; }
 }
 
