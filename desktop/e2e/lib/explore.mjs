@@ -104,7 +104,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
   let seen = await act.observe(), stopped = 'steps';
   const messages = [{role: 'user', content: `${first ? `${first}\n\n` : ''}Start. You have at most ${maxSteps} steps.\n\n${formatObservation(seen)}`}];
   let final = null;
-  const tries = new Map(), keys = [], dids = [];
+  const watch = loopWatch();
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
@@ -115,19 +115,15 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
-    const again = repeated(tries, row, was);
-    if (again === REPEAT_NUDGE) turned.reply += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
-    keys.push(row.did && !row.failed ? `${row.did}\n${was}` : `#${turn}`); dids.push(row.did);   // a step that did nothing (failed, a note) is its own key: it breaks a cycle
-    const loop = cycling(keys);
-    if (loop?.done && loop.rounds === CYCLE_NUDGE) turned.reply += `\n\nNote: you are going back and forth between ${named(dids, loop.length)} ${loop.rounds} times and nothing new came of it. Do not go round again: if they do nothing new, that is a finding to note; otherwise try another route or end the goal.`;
+    const repeat = watch(row, was, turn);
+    turned.reply += repeat.note;
     // Older page views are dropped from the conversation: the latest one is what matters, and the prompt stays short.
     for (const message of messages) if (message.role === 'user' && message.content.length > 400 && message !== messages[0]) message.content = '(an earlier page view, omitted)';
     messages.push({role: 'user', content: turned.reply});
     trace.push(row);
     log(`  step ${turn + 1}: ${row.action} (${spent.calls} calls, ${spent.input + spent.output} tokens)`);
     if (turned.finished) { stopped = 'done'; final = input; break; }
-    if (again >= REPEAT_STOP) { stopped = `repeat: "${row.did}" ${again} times on the same page`; break; }
-    if (loop?.done && loop.rounds >= CYCLE_STOP) { stopped = `repeat: going back and forth between ${named(dids, loop.length)} ${loop.rounds} times`; break; }
+    if (repeat.stop) { stopped = repeat.stop; break; }
   }
   return {steps, bugs, trace, spent, stopped, final};
 }
@@ -158,6 +154,21 @@ const named = (dids, length) => {
   const names = [...new Set(dids.slice(-length))].map(did => `"${did}"`);
   return names.length === 1 ? `${names[0]} and its undo (the page flips back each time)` : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;   // one action whose page view alternates: a switch pressed on and off
 };
+
+/** One goal's loop watch: call it after every step with (row, the page view the step was done on, turn); it returns {note, stop}: a nudge to add to the reply ('' or one), and the stop reason ('' while the goal may go on). */
+function loopWatch() {
+  const tries = new Map(), keys = [], dids = [];
+  return (row, was, turn) => {
+    let note = '';
+    const again = repeated(tries, row, was);
+    if (again === REPEAT_NUDGE) note += `\n\nNote: you have done "${row.did}" ${again} times on this same page and nothing new came of it. Do not repeat it: if a control does nothing, that is a finding to note; otherwise try another route or end the goal.`;
+    keys.push(row.did && !row.failed ? `${row.did}\n${was}` : `#${turn}`); dids.push(row.did);   // a step that did nothing (failed, a note) is its own key: it breaks a cycle
+    const loop = cycling(keys), closed = loop?.done ? loop.rounds : 0;
+    if (closed === CYCLE_NUDGE) note += `\n\nNote: you are going back and forth between ${named(dids, loop.length)} ${loop.rounds} times and nothing new came of it. Do not go round again: if they do nothing new, that is a finding to note; otherwise try another route or end the goal.`;
+    if (again >= REPEAT_STOP) return {note, stop: `repeat: "${row.did}" ${again} times on the same page`};
+    return {note, stop: closed >= CYCLE_STOP ? `repeat: going back and forth between ${named(dids, loop.length)} ${loop.rounds} times` : ''};
+  };
+}
 
 /** How many times this action has now been done on this same page view (an action that failed or was refused, and a note, is not counted). */
 function repeated(tries, row, view) {
