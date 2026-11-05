@@ -60,6 +60,8 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 - [x] 6c/7 A red proof names its failing tests (proof: none: jobadabra #3233, merged 2618e19)
 - [ ] 7/7 Run on a Linear issue and the harness map evaluation
 
+Rows numbered with a letter (6b, 6c, web 5/5a, 5/5b) are sub-steps the Agent harness page does not read (its `parsePlan` takes plain digits only; parked, 5 Nov 2026), so the page shows the numbered chain.
+
 Admin group (private repo `jobadabra-web`, numbered apart):
 - [x] web 1/3 One agent card per row on /admin/ai/agents (proof: none: jobadabra-web #366, merged b29cabc)
 - [x] web 2/3 The tab "Agent harness" with a card per run (proof: none: jobadabra-web #367, merged a5f9c3c)
