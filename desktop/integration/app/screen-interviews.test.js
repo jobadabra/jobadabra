@@ -132,6 +132,8 @@ test('Record stays off until everyone has agreed, and says why', live, () => {
   assert.equal(off, true, 'Record is enabled before the consent box is ticked');
   assert.match(title, /everyone on the call agreed/i, `the disabled Record button gives no reason: title "${title}"`);
   assert.match(box, /Recording consent required/, 'the consent notice is not on the page');
+  // Why (5 Nov 2026, #3203): the box clears after each recording, and the notice once ended in a fragment.
+  assert.match(box, /consent\. Tick the box again for each recording\./, `the notice is not two whole sentences: "${box}"`);
 });
 
 test('the one-time setup banner shows its step and percent, then goes away when transcribing starts; a draft\'s own line is drawn only for its own id', live, () => {
