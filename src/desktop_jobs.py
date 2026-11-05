@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import digest, store
 from .ai import enrich, provenance, score
+from .desktop_job_copies import merge_copies
 from .notion.client import job_code
 from .stores.base import url_key
 from .sources.posting_text import label
@@ -147,6 +148,7 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
             rows.append(row(job, fit.get('score') if fit else None, (fit.get('summary') or fit.get('reason')) if fit else '',
                             job.get('application_status') or 'unreviewed', stage, step, page, fit_detail=_fit_detail(fit),
                             place_unclear=not fit and _place_unclear(job)))
+    rows = merge_copies(rows)   # one row per posting listed under several links; the stored rows stay as they are
     rows.sort(key=lambda r: (r['fit'] is not None, r['fit'] or 0, r['rank']), reverse=True)
     # Every application stays in the list, however low its fit, so the app's application counters are complete.
     kept = rows[:limit] + [r for r in rows[limit:] if r['status'] == 'applied']

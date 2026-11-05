@@ -31,6 +31,7 @@ import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
 import {companyCell, placeCell} from './jobs-row-cells.js';
+import {alsoOnTags, setStatusOnCopies} from './jobs-copies.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
@@ -113,6 +114,7 @@ export function renderJobs() {
     const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
     titleLine.append(link);
+    for (const also of alsoOnTags(job)) titleLine.append(tag(also.text, {title: also.title}));   // the same posting on another site: one row (src/desktop_job_copies.py)
     role.append(titleLine);
     // Why (2026-10-30, owner; 2 Nov 2026 N/A for a job with nothing to apply to, the slot stays so every row is built alike): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
     role.append(parts.triage ? triageChip(job) : chip(NA, {tone: 'neutral', title: 'Nothing to apply to: you already applied, or it came to you'}));
@@ -154,7 +156,7 @@ export function renderJobs() {
     const menu = [];
     // Notion is the source of truth: if it can't be written, nothing changes and the user is told.
     const setStatus = next => async () => {
-      const result = await window.pilot.setStatus(job.url, next).catch(error => ({ok: false, error: error.message}));
+      const result = await setStatusOnCopies(job, next, (url, status) => window.pilot.setStatus(url, status));   // a merged row stands for every copy of its posting (pages/jobs-copies.js)
       if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
       const stage = result.stage || job.stage;   // what Notion now holds (a dismissed job in process becomes Closed)
       jobsChanged(job, {status: next, stage: next === 'applied' && stage === 'Applying' ? 'Applied' : stage});
