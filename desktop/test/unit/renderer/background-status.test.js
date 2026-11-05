@@ -25,7 +25,7 @@ test('a queued job waits for its turn: no live picture, no Filling, Stop only; o
   assert.deepEqual([queued.kind, queued.title, queued.pill, queued.live], ['waiting', 'Waiting for its turn', ['Queued', 'neutral'], false]);
   assert.match(queued.note, /up to 10 applications at once/);
   for (const state of ['preflight', 'filling']) assert.deepEqual([liveCard({state}, null).kind, liveCard({state}, null).live], ['filling', true], state);
-  for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(liveCard({state}, null).live, true, `${state} shows the page`);
+  for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(liveCard({state}, null).live, true, `${state} may be watched (Watch live)`);
 });
 
 test('the dock counts a filling hidden-browser job as active, a queued one as waiting its turn, and never calls one "closed" for lacking a Chrome tab', async () => {

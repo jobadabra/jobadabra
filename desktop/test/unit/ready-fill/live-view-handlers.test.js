@@ -19,6 +19,22 @@ function setup({page = async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/pag
   return {root, handles, sent, attached, closed, opened, call: (name, ...args) => handles.get(name)(null, ...args)};
 }
 
+// Owner, 5 Nov 2026: the preview "should not show by default, only on request"; the card asks only whether the page exists, which opens no picture.
+test('livePage says whether the hidden page is open without attaching anything; the demo app has none', async () => {
+  const s = setup();
+  assert.deepEqual(await s.call('livePage', 's1'), {open: true});
+  const gone = await s.call('livePage', 'other');
+  assert.equal(gone.open, false);
+  assert.match(gone.error, /stopped, cancelled or the app restarted/);
+  assert.deepEqual([s.opened, s.attached], [[], []], 'no CDP session, no picture');
+  assert.equal((await setup({DEMO: true}).call('livePage', 's1')).open, false);
+  const busy = setup({page: async () => { throw new Error('the browser did not answer'); }});
+  assert.deepEqual(await busy.call('livePage', 's1'), {open: null}, 'a browser that does not answer cannot tell: never "closed" for a page that may exist');
+  const tried = await busy.call('liveOpen', 's1');
+  assert.deepEqual([tried.ok, !!tried.closed], [false, false]);
+  assert.match(tried.error, /did not answer.*Watch live/);
+});
+
 test('opening a session attaches its held tab; its events reach the window tagged with the session; input reaches only it', async () => {
   const s = setup();
   assert.deepEqual(await s.call('liveOpen', 's1'), {ok: true});
@@ -35,7 +51,10 @@ test('opening a session attaches its held tab; its events reach the window tagge
 });
 
 test('a session with no held tab, or the demo app, opens nothing', async () => {
-  assert.equal((await setup().call('liveOpen', 'other')).ok, false);
+  const gone = await setup().call('liveOpen', 'other');
+  assert.deepEqual([gone.ok, gone.closed], [false, true], 'a page that is gone is said as closed: the card offers no way to ask again');
+  assert.match(gone.error, /no longer open in Jobadabra's browser.*Open in my browser/);
+  assert.ok(!/try again/i.test(gone.error));
   const demo = setup({DEMO: true});
   assert.equal((await demo.call('liveOpen', 's1')).ok, false);
   assert.equal(demo.attached.length, 0);

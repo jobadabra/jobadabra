@@ -48,13 +48,16 @@ export function createLagMeter(now = Date.now) {
 }
 
 /**
- * What the live stage shows right now: the picture, an "opening" note, or why the page is not available. {kind: picture|waiting|unavailable, title, text, retry}.
- * `shown`: a picture has been painted (set only by the picture sink); `error`: main's last refusal to open the page ('' when none).
- * Why (2026-10-28, owner screenshot: a broken image icon with its alt text where the live page should be): the image exists before any picture does, so the stage decides what to draw;
- * a picture already on screen is never covered (a later refusal only means the next ask failed).
+ * What the live stage shows for the view's state (renderer/live-view-state.js). {kind: picture|off|closed|waiting, title, text, action: 'Watch live'|''}.
+ * `kind`: hidden|opening|showing|closed; `note`: why the last ask failed or why the page is closed; `input`: the card takes clicks and keys.
+ * Why (2026-10-28, owner screenshot: a broken image icon with its alt text where the live page should be): the image exists before any picture does, so the stage decides what to draw.
+ * Why (5 Nov 2026, owner: the preview "should not show by default, only on request", and "Try again" for ever; spec 2026-11-05-applying-redesign, decision 4): nothing streams until
+ * Watch live; a closed page says why with nothing to press (asking never brings it back); a failed open of a page that exists offers Watch live again.
  */
-export function stageState({shown = false, error = ''} = {}) {
-  if (shown) return {kind: 'picture'};
-  if (error) return {kind: 'unavailable', title: 'The live page is not available right now', text: error, retry: true};
-  return {kind: 'waiting', title: 'Opening the page…', text: 'The picture appears as soon as the page answers.', retry: false};
+export function stageState({kind = 'hidden', note = '', input = false} = {}) {
+  if (kind === 'showing') return {kind: 'picture'};
+  if (kind === 'closed') return {kind: 'closed', title: 'The page is closed', text: note, action: ''};
+  if (kind === 'opening') return {kind: 'waiting', title: 'Opening the page…', text: 'The picture appears as soon as the page answers.', action: ''};
+  const lead = input ? 'It is open in Jobadabra\'s browser: show it to review it, click and type in it.' : 'The form fills in Jobadabra\'s hidden browser.';
+  return {kind: 'off', title: 'The page is hidden', text: note || `${lead} The picture shows only when you ask, so your Mac stays fast.`, action: 'Watch live'};
 }

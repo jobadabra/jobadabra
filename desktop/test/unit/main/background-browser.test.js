@@ -70,3 +70,16 @@ test('the owned browser is never disguised: no user-agent, fingerprint, stealth 
   }
   assert.ok(browserArguments('/p', '/e').includes('--enable-automation'), 'it says what it is');
 });
+
+test('after a restart no hidden browser runs: pageSocket says "no such page" (null), and only a browser that does not answer in time stays "cannot tell" (a throw) ([ap] 7/7 review)', async () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-bb-')), profile = path.join(folder, 'background-browser', 'profile');
+  const storage = {path: name => path.join(folder, name)};
+  const command = async () => ({arguments: [`--user-data-dir=${profile}`]});
+  const refused = async () => { throw Object.assign(new TypeError('fetch failed'), {cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:4242'), {code: 'ECONNREFUSED'})}); };
+  const slow = async () => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); };
+  assert.equal(await createBackgroundBrowser(storage, {find: () => '/x', fetchImpl: refused, command}).pageSocket('s1'), null, 'no port file: the browser never ran in this profile');
+  fs.mkdirSync(profile, {recursive: true});
+  fs.writeFileSync(path.join(profile, 'DevToolsActivePort'), '4242\n/devtools/browser/x');
+  assert.equal(await createBackgroundBrowser(storage, {find: () => '/x', fetchImpl: refused, command}).pageSocket('s1'), null, 'a port file left by a browser that died with the app');
+  await assert.rejects(createBackgroundBrowser(storage, {find: () => '/x', fetchImpl: slow, command}).pageSocket('s1'), /timeout/, 'a busy browser is not a closed page');
+});
