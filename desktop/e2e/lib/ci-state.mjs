@@ -30,7 +30,8 @@ function request(method, key, body = null, {auth = true, run = spawnSync} = {}) 
 /** {ok, value}: ok is false when the site was unreachable or refused (a writer that would replace the whole body must stop then); value is null when nothing was stored yet. */
 export function tryRead(key, options = {}) {
   const got = request('GET', key, null, {auth: key !== 'red-main', ...options});
-  if (!got.ok) { console.log(`${got.status === 0 && /not set/.test(got.why) ? '' : '::warning::'}ci-state ${key} not read (${got.why})`); return {ok: false, value: null}; }
+  // Planners pipe stdout into GITHUB_OUTPUT: diagnostics must never become output records.
+  if (!got.ok) { console.error(`${got.status === 0 && /not set/.test(got.why) ? '' : '::warning::'}ci-state ${key} not read (${got.why})`); return {ok: false, value: null}; }
   try { return {ok: true, value: JSON.parse(got.text)}; } catch { return {ok: false, value: null}; }
 }
 
@@ -43,14 +44,14 @@ export function readState(key, fallback = null, options = {}) {
 /** Replaces the body under `key`; true when the site took it. */
 export function putState(key, value, options = {}) {
   const got = request('PUT', key, value, options);
-  if (!got.ok) console.log(`::warning::ci-state ${key} not written (${got.why})`);
+  if (!got.ok) console.error(`::warning::ci-state ${key} not written (${got.why})`);
   return got.ok;
 }
 
 /** Appends entries to the noise register (the site dedupes by id and keeps the newest 300); true when the site took them. */
 export function appendNoise(entries, options = {}) {
   const got = request('POST', 'noise-register', {entries}, options);
-  if (!got.ok) console.log(`::warning::ci-state noise-register not appended (${got.why})`);
+  if (!got.ok) console.error(`::warning::ci-state noise-register not appended (${got.why})`);
   return got.ok;
 }
 

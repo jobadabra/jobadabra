@@ -7,6 +7,24 @@ import {appendNoise, putState, readState, tryRead} from '../../lib/ci-state.mjs'
 import {rankingOf} from '../../lib/triage-match.mjs';
 
 const KEY = 'k-secret-123';
+
+// Guard: release — an unavailable Admin store must not corrupt the e2e plan's GITHUB_OUTPUT and prevent release checks from running.
+test('store diagnostics stay on stderr when a planner pipes stdout to GITHUB_OUTPUT', t => {
+  const stdout = [], stderr = [];
+  t.mock.method(console, 'log', (...args) => stdout.push(args.join(' ')));
+  t.mock.method(console, 'error', (...args) => stderr.push(args.join(' ')));
+  process.env.SELFHEAL_PUBLISH_KEY = KEY;
+  const options = {run: fakeCurl({status: 56}).run};
+  assert.deepEqual(readState('noise-register', {entries: []}, options), {entries: []});
+  assert.equal(putState('verdict-audit', {}, options), false);
+  assert.equal(appendNoise([], options), false);
+  delete process.env.SELFHEAL_PUBLISH_KEY;
+  assert.equal(tryRead('noise-register').ok, false);
+  assert.deepEqual(stdout, [], 'stdout is reserved for the planner’s key=value outputs');
+  assert.equal(stderr.length, 4);
+  assert.match(stderr[0], /::warning::ci-state noise-register not read \(curl exit 56\)/);
+  assert.ok(stderr.every(line => !line.includes(KEY)), 'no secret in diagnostics');
+});
 // A curl stand-in that records what it was given, and answers like the site.
 function fakeCurl(answer) {
   const seen = [];

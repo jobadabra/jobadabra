@@ -6,6 +6,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
+import {showFilter} from './jobs-filter.mjs';
+import {stepWait} from './wait-on-state.mjs';
 
 // Twelve jobs with fits the popup must order: more than the 10 it takes, every one with a distinct fit.
 const FITS = [96, 93, 90, 88, 86, 84, 82, 80, 78, 76, 74, 72];
@@ -38,6 +40,9 @@ export async function runTriageSteps(ctx) {
       await removeJobsByUrl(ctx, urls);
       for (const job of JOBS) await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: null, fit: job.fit, stage: 'Saved', nextStep: ''});
       await openJobs(ctx);
+      // These fixtures are Saved jobs; the default New matches filter excludes them.
+      await showFilter(page, 'saved');
+      await stepWait('the twelve Saved triage rows to render', timeout => page.waitForFunction(urls => urls.every(url => [...document.querySelectorAll('article.job-row')].some(row => row.dataset.url === url)), urls, {timeout}));
       const before = sessionsNow(ctx);
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
