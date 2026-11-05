@@ -34,6 +34,22 @@ class PrDesktopPicks(unittest.TestCase):
     def test_a_test_that_runs_a_tool_as_a_process_is_picked(self):
         self.assertIn('test/unit/main/rename-guard.test.js', self.picked)   # the one test missed in the replay: red on 2 PRs, 3 Nov 2026
 
+    def test_a_test_that_drives_a_script_is_picked_by_what_the_script_reaches(self):
+        # 5 Nov 2026, #3257 changed desktop/renderer/*.js and style.css; apply-ui-state.test.js (spawns scripts/shot.mjs, which starts the app) was never picked and went red on main.
+        users = subprocess.run(['git', 'grep', '-l', 'scripts/shot.mjs', '--', 'desktop/test/unit'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+        shot_users = [f for f in users if 'spawnSync' in (ROOT / f).read_text(encoding='utf-8')]   # shot-theme.test.js only reads the script's text: a renderer change cannot break it
+        self.assertGreater(len(shot_users), 5, 'positive control: the tests that run shot.mjs are found')
+        for changed in ('desktop/renderer/background-status.js', 'desktop/renderer/pages/session-log.js', 'desktop/renderer/style.css'):
+            picked = self.picker.select([changed])['desktop']
+            self.assertEqual([f for f in shot_users if f.removeprefix('desktop/') not in picked], [], changed)
+        self.assertIn('test/unit/renderer/apply-ui-state.test.js', self.picker.select(['desktop/lib/main-window.js'])['desktop'])   # the app's own code too
+        self.assertNotIn('test/unit/renderer/apply-ui-state.test.js', self.picker.select(['desktop/e2e/lib/extension.mjs'])['desktop'])   # a harness file is not the app
+
+    def test_a_module_the_script_imports_picks_the_tests_that_run_the_script(self):
+        # The same class without the app: shot.mjs imports cut-fields.mjs and shot-mark.mjs; the tests that spawn shot.mjs reach them only through the spawn.
+        for changed in ('desktop/scripts/cut-fields.mjs', 'desktop/scripts/shot-mark.mjs'):
+            self.assertIn('test/unit/renderer/rail-badges.test.js', self.picker.select([changed])['desktop'], changed)
+
     def test_every_file_outside_desktop_that_starts_the_job_picks_tests(self):
         # Gitar on PR time 2/2: a PR changing only such a file started the job and ran no test at all.
         graph = self.picker.js_graph()
