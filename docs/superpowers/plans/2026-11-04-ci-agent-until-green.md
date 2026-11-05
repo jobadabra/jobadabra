@@ -34,6 +34,7 @@ Session hm, 4 Nov 2026. Spec: `docs/superpowers/specs/2026-11-03-ai-fixer-core-d
 |---|---|---|
 | web 4/5 | The site also trusts `ai-fixer.yml` for a card's brief and its pr / none / failed report (`jobadabra-web`) | The first card run of the agent can read its card |
 | web 5/5a | The fixer reports back to the card in fixed words; its draft PR's merge or close reaches the card; a round does not re-read the brief (this repo) | The owner's card shows what the agent did instead of hanging an hour |
+| web 5/5b | The site returns a card to `new` with the cap message when the fixer's guard refused its run (`cap` / `busy`, from an unbound run only; `jobadabra-web`) | A busy day does not leave a card in "AI running" for an hour |
 | web 5/5 | "Send to AI" starts `ai-fixer.yml` instead of `feedback-ai.yml` (`jobadabra-web`; not before 5/5a is merged and READY) | The owner's click runs the new agent |
 
 ## Order and dependencies
@@ -61,6 +62,7 @@ Admin group (private repo `jobadabra-web`, numbered apart):
 - [x] web 1/3 One agent card per row on /admin/ai/agents (proof: none: jobadabra-web #366, merged b29cabc)
 - [x] web 2/3 The tab "Agent harness" with a card per run (proof: none: jobadabra-web #367, merged a5f9c3c)
 - [x] web 3/3 Upload of the records and the plan progress to the site (proof: tools/harness-stats.mjs @ca38e8e4)
-- [ ] web 4/5 The site also trusts ai-fixer.yml for a card (jobadabra-web, PR open)
+- [x] web 4/5 The site also trusts ai-fixer.yml for a card (proof: none: jobadabra-web #388, merged 700fb1b)
 - [ ] web 5/5a The fixer reports back to the card (this repo)
-- [ ] web 5/5 The button starts ai-fixer.yml (jobadabra-web; after 5/5a)
+- [ ] web 5/5b The site accepts cap / busy from the guard's run (jobadabra-web)
+- [ ] web 5/5 The button starts ai-fixer.yml (jobadabra-web; held until 5/5a and 5/5b are merged)
