@@ -1,7 +1,6 @@
 // Self-healing triage, part 3: matching a finding to an open issue, sightings, regressions, ranking and priorities, the scorecard, and which issue is ready for a fixer.
 // Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
 // Job: report health
-import {afterEpoch} from './stats-epoch.mjs';
 import {LABEL, NEEDS_HUMAN, FALSE_POSITIVE, CONFIRMED, NOT_SEEN, SIGHTINGS_NEEDED, LOGIC_KINDS, FIX_KINDS, allowedPath, labelFor} from './triage-findings.mjs';
 import {foundText, similar} from './triage-issues.mjs';
 import {resolutionOf} from './resolution.mjs';
@@ -137,57 +136,19 @@ export function rankIssues(issues, now = Date.now()) {
 
 const lastBuild = issue => [issue.body, ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => comment.body)].map(commitOf).filter(Boolean).at(-1) || '';
 const lastSeen = issue => [issue.createdAt, ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => comment.createdAt)].filter(Boolean).sort().at(-1) || '';
-// Each detector's record over the last 30 days, from the issues themselves: how many it filed, how many were false positives (wontfix-auto), how many were real
-// (confirmed, or closed as completed), how many are still open. With the recall plants (recall.json), this is how "better" is measured, not guessed.
-const SOURCE_NAMES = {'ai-review': 'AI screenshot review', 'interaction-probe': 'Interaction probe', 'layout-check': 'Layout and DOM checks', 'suite-failure': 'Failed test steps', 'code-review': 'AI code review', explorer: 'AI explorer', 'ai-user-agent': 'AI user agent'};
-export function scorecard(issues, now = Date.now(), days = 30) {
-  const rows = {};
-  for (const issue of issues || []) {
-    if (issue.createdAt && now - Date.parse(issue.createdAt) > days * 86400000) continue;
-    if (!afterEpoch(issue)) continue;
-    const labels = (issue.labels || []).map(item => item.name || item);
-    const source = (labels.find(name => name.startsWith('source:')) || '').slice(7);
-    if (!source) continue;
-    const row = (rows[source] ??= {filed: 0, falsePositive: 0, real: 0, open: 0});
-    row.filed++;
-    if (labels.includes(FALSE_POSITIVE)) row.falsePositive++;
-    else if (labels.includes(CONFIRMED) || (issue.state === 'CLOSED' && issue.stateReason === 'COMPLETED' && !labels.includes(NOT_SEEN))) row.real++;
-    if (issue.state === 'OPEN') row.open++;
-  }
-  return Object.entries(rows).sort((a, b) => b[1].filed - a[1].filed).map(([source, row]) => ({source: SOURCE_NAMES[source] || source, ...row}));
-}
-export const scorecardLines = rows => (rows.length ? ['', '**Detectors, last 30 days**', '', '| Detector | Filed | False positives | Real | Open |', '|---|---|---|---|---|',
-  ...rows.map(row => `| ${row.source} | ${row.filed} | ${row.falsePositive}${row.filed ? ` (${Math.round(100 * row.falsePositive / row.filed)}%)` : ''} | ${row.real} | ${row.open} |`),
-  '', '<sub>Real = confirmed by a person or the verdict pass, or closed as fixed. Closed as "not seen" counts as neither. Recall (known bugs planted into the page, caught or not) is in each interactions run\'s summary.</sub>'] : []);
-// The fixer and the verdict pass over the same 30 days: pull requests opened, merged, closed unmerged, still open; verdicts real and false. With the detectors'
-// scorecard this says whether the loop works on its own (4 Oct 2026). `prs`: [{state, createdAt}] of the label auto-ui-fix.
-export function fixerCard(prs, issues, now = Date.now(), days = 30) {
-  const recent = date => !date || now - Date.parse(date) <= days * 86400000;
-  const pr = {opened: 0, merged: 0, closed: 0, open: 0};
-  for (const item of prs || []) { if (!recent(item.createdAt)) continue; pr.opened++; pr[item.state === 'MERGED' ? 'merged' : item.state === 'CLOSED' ? 'closed' : 'open']++; }
-  let real = 0, falsePositive = 0;
-  for (const issue of issues || []) for (const comment of issue.comments || []) {
-    if (!recent(comment.createdAt)) continue;
-    if (/^(?:<!-- ui-loop-verdict:real -->|Judged real by the UI loop's verdict pass)/.test(comment.body || '')) real++;
-    if (/^(?:<!-- ui-loop-verdict:false-positive -->|Closed by the UI loop as a false positive)/.test(comment.body || '')) falsePositive++;
-  }
-  return {pr, verdicts: {real, falsePositive}};
-}
-export const fixerLines = card => (card ? ['', `**Fixer and verdicts, last 30 days:** ${card.pr.opened} pull request(s) opened, ${card.pr.merged} merged, ${card.pr.closed} closed unmerged, ${card.pr.open} open · verdict pass: ${card.verdicts.real} real, ${card.verdicts.falsePositive} false positive(s).`] : []);
-export function rankingBody(ranked, now = Date.now(), limit = 12, card = [], fixer = null) {
-  const rows = ranked.slice(0, limit).map(({issue, priority, score: points}, index) => {
-    const at = lastSeen(issue), days = at ? Math.floor((now - Date.parse(at)) / 86400000) : null;
-    const age = days === null ? '' : days <= 0 ? 'today' : `${days} d ago${days >= 7 ? ' ⚠️' : ''}`;
-    const platform = (issue.labels || []).some(item => (item.name || item) === 'platform:windows') ? 'Windows' : 'Mac';
-    const clean = (issue.labels || []).some(item => (item.name || item) === NOT_SEEN) ? ' · clean last run' : '';
-    const person = (issue.labels || []).some(item => (item.name || item) === NEEDS_HUMAN) ? '🙋 needs a person · ' : '';
-    return `| ${index + 1} | **${priority}** | ${person}#${issue.number} ${String(issue.title || '').replace(/^\[auto-ui\] /, '').replace(/\|/g, '/').slice(0, 80)} | ${platform} | ${points} | ${[lastBuild(issue) ? `\`${lastBuild(issue)}\`` : '?', age].filter(Boolean).join(' · ')}${clean} |`;
+/**
+ * The Top issues card's data, published in every selfheal snapshot (selfheal-stats.mjs) for /admin/testing/self-healing: how many are open per band and the top `limit` rows.
+ * Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): this was the body of the pinned "Top issues" issue (#1892); the page draws it now.
+ */
+export function rankingOf(ranked, repo, now = Date.now(), limit = 12) {
+  const has = (issue, name) => (issue.labels || []).some(item => (item.name || item) === name);
+  const rows = ranked.slice(0, limit).map(({issue, priority, score: points}) => {
+    const at = lastSeen(issue);
+    return {number: issue.number, title: String(issue.title || '').replace(/^\[auto-ui\] /, '').slice(0, 100), priority, platform: has(issue, 'platform:windows') ? 'Windows' : 'Mac', score: points,
+      needsPerson: has(issue, NEEDS_HUMAN), clean: has(issue, NOT_SEEN), build: lastBuild(issue), days: at ? Math.max(0, Math.floor((now - Date.parse(at)) / 86400000)) : null,
+      url: `https://github.com/${repo}/issues/${issue.number}`};
   });
-  const counts = PRIORITIES.map(band => `${band}: ${ranked.filter(item => item.priority === band).length}`).join(' · ');
-  return ['**The open findings, most important first.** Re-ranked after every run.', '', `${counts} · ${ranked.length} open`, '',
-    '| # | Priority | Finding | Platform | Score | Last build seen on |', '|---|---|---|---|---|---|', ...(rows.length ? rows : ['| | | nothing open | | | |']),
-    '', '**P0** would keep a build from beta or stable · **P1** seen again and again, or high and confirmed · **P2** worth a look · **P3** seen once, or already clean in the latest run. Score = severity × sightings this week (× 2 when a person confirmed it). Within a priority: a wrong result before a dead control before a missing spinner (a crashed test step counts least), the critical path (apply, strategy, activity, setup) first, Mac before Windows. ⚠️ = not seen for 7 days or more. A finding closes after two clean runs of its page, or one when a commit says it fixes it.',
-    ...scorecardLines(card), ...fixerLines(fixer), '', '<sub>Written by `desktop/e2e/triage.mjs`. Do not edit by hand.</sub>'].join('\n');
+  return {open: ranked.length, counts: Object.fromEntries(PRIORITIES.map(band => [band, ranked.filter(item => item.priority === band).length])), rows};
 }
 
 // Why an open issue is not ready for a fix ('' = ready): the fixer's rules, in the order they are checked. One place, so the pick and its summary agree.

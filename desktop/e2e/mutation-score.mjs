@@ -1,9 +1,9 @@
 // Scores a mutation run (mutation.yml): node mutation-score.mjs <runs.json> <out.json>. Prints the summary table, writes the result (kept as an artifact for
+// Job: report health
 // /self-heal), and files one issue per mutant that SURVIVED (a serious code bug no suite caught: a detector gap), or comments "still missed" on its open one.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {issueActions, issueBody, issueTitle, score, summary} from './lib/mutation.mjs';
-import {SCORECARD_LABEL} from './lib/finder-scorecard.mjs';
 
 const [runsFile, outFile] = process.argv.slice(2);
 const mutants = JSON.parse(fs.readFileSync(new URL('./mutants.json', import.meta.url), 'utf8'));
@@ -22,7 +22,4 @@ if (process.env.GH_TOKEN) {
   for (const row of actions.create) {
     gh(['issue', 'create', '--label', 'detector-miss', '--title', issueTitle(row.id), '--body', issueBody(row, run)]);
   }
-  // The catch rate reaches the Finder's review (owner, 27 Oct 2026): the table goes on the pinned scorecard issue, beside the triage scorecards.
-  const [card] = JSON.parse(gh(['issue', 'list', '--label', SCORECARD_LABEL, '--state', 'open', '--limit', '1', '--json', 'number']));
-  if (card) gh(['issue', 'comment', String(card.number), '--body', `${text}\n\n${run}`]);
 }

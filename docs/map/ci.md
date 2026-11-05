@@ -33,7 +33,7 @@ updated: 2026-11-03
 ## Ask the sources
 ask: github actions runs workflow=pr-verdict status=failure
 ask: github prs state=open
-ask: github issues label=red-main state=open
+Red main list (public): GET https://www.jobadabra.top/ci-state/red-main (the Red main list)
 
 ## Lessons
 - Timers go in the Worker's scheduler (`app-core/src/scheduler.js`), not GitHub cron: scheduled GitHub runs came hours late or not at all.

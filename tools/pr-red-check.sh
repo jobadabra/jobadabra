@@ -88,10 +88,11 @@ lookup() {
   cached_read "$dir/$key.look" lookup_read "$branch" "$wt"
 }
 
-# A red-main issue identifies the breaking branch; its cached lookup follows the same deadline as PR reads.
+# The Red main list (jobadabra-web /ci-state/red-main, public read; the Red main tab) names the breaking branch of each red suite; its cached lookup follows the same deadline as PR reads.
+# Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): the breaking PR used to be read from the body of a `red-main` issue. A site that cannot be reached
+# leaves the cache as it was (pipefail): nothing is said, and nothing is ever said to be green.
 red_main_read() {
-  pr_issues "$(pr_repo "$cwd")" red-main | jq -r '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
-    | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"'
+  curl -fsS --max-time 8 -A jobadabra-hook "${CI_STATE_URL:-https://www.jobadabra.top}/ci-state/red-main" | jq -r '.reds[]? | select(.pr != null) | "\(.pr.branch)\t\(.suite)\t\(.pr.number)"'
 }
 red_main() { cached_read "$dir/red-main.look" red_main_read; }
 
@@ -160,9 +161,9 @@ done
 reds_main=""; [ "$seen" = " " ] || reds_main="$(red_main)"   # on main only: nothing to look up
 if [ -n "$reds_main" ]; then
   for b in $seen; do
-    while IFS=$'\t' read -r issue br suite prn; do
+    while IFS=$'\t' read -r br suite prn; do
       [ "$br" = "$b" ] || continue
-      messages="${messages}Main's e2e suite ${suite} went red with your PR #${prn} (issue #${issue}): fix it now (skill fix-failing-e2e, push through tools/ship.sh --background); the issue closes when main's next check passes ${suite}
+      messages="${messages}Main's e2e suite ${suite} went red with your PR #${prn} (Red main tab, https://www.jobadabra.top/admin/testing/red-main): fix it now (skill fix-failing-e2e, push through tools/ship.sh --background); the entry clears when main's next check passes ${suite}
 "
     done <<<"$reds_main"
   done

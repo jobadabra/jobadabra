@@ -4,7 +4,10 @@
 // The site keeps one snapshot per day (D1 selfheal_snapshots), so the page shows a trend, not only today.
 import {loopQuality} from './lib/loop-quality.mjs';
 import {readTracker} from './lib/bug-tracker.mjs';
-import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
+import {asIssues} from './lib/prejudge.mjs';
+import {readState, tryRead} from './lib/ci-state.mjs';
+import {rankIssues, rankingOf} from './lib/triage-match.mjs';
+import {scorecard} from './lib/finder-scorecard.mjs';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,11 +29,23 @@ function learnedCount() {
   try { return signaturesFromBody(JSON.parse(gh(['issue', 'list', '--label', SIGNATURE_LABEL, '--state', 'open', '--limit', '1', '--json', 'body']))[0]?.body).length; } catch { return 0; }
 }
 
+/** The noise register as closed false-positive issues. An unreadable register stops the snapshot: the judged noise would be missing and the day's precision flattering. */
+function judgedNoise() {
+  const register = tryRead('noise-register');
+  if (!register.ok) throw new Error('the noise register was not read: no snapshot this time');
+  return asIssues(Array.isArray(register.value?.entries) ? register.value.entries : []);
+}
+
+/** The weekly verdict audits (newest first) from the Verdict audit store; [] when none or unreadable (the verdicts tile then says "no audit ticked yet"). */
+function storedAudits() {
+  const stored = readState('verdict-audit', {audits: []});
+  return Array.isArray(stored?.audits) ? stored.audits : [];
+}
+
 export async function collect({days = 30} = {}) {
-  const filed = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '1000', '--json', 'number,title,state,stateReason,labels,comments,createdAt,url']));
+  const filed = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '1000', '--json', 'number,title,body,state,stateReason,labels,comments,createdAt,url']));
   // Plus what was judged noise before filing (the noise register): still a false positive of its detector, or precision would look better than it is.
-  let judged = [];
-  try { judged = asIssues(registerEntries(JSON.parse(gh(REGISTER_LIST))[0]?.body)); } catch { judged = []; }
+  const judged = judgedNoise();
   const issues = [...filed, ...judged];
   const prs = JSON.parse(gh(['pr', 'list', '--label', 'auto-ui-fix', '--state', 'all', '--limit', '200', '--json', 'state,createdAt,comments']))
     .map(pr => ({state: pr.state, createdAt: pr.createdAt, closingNote: (pr.comments || []).at(-1)?.body || ''}));
@@ -72,8 +87,8 @@ export async function collect({days = 30} = {}) {
     }
   } catch { /* no recall this time */ }
   // How well the loop does (lib/loop-quality.mjs): the audits, the latest mutation test, and the Bug Tracker's escapes.
-  let audits = [], mutation = null, tracker = null, trackerWhy = '';
-  try { audits = JSON.parse(gh(['issue', 'list', '--label', 'verdict-audit', '--state', 'all', '--limit', '8', '--json', 'body,createdAt'])).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); } catch { audits = []; }
+  const audits = storedAudits();
+  let mutation = null, tracker = null, trackerWhy = '';
   try {
     const [latest] = JSON.parse(gh(['api', `repos/${repo()}/actions/artifacts?name=mutation-result&per_page=1`, '--jq', '[.artifacts[] | select(.expired | not) | {id}]']));
     if (latest) {
@@ -96,7 +111,8 @@ export async function collect({days = 30} = {}) {
   let budgetIssues = [];
   try { budgetIssues = JSON.parse(gh(['issue', 'list', '--label', BUDGET_LABEL, '--state', 'open', '--json', 'number,state,createdAt,body,comments'])); } catch { budgetIssues = []; }
   const built = build({issues, prs, costs, recall, runs: summaries.length ? totalRuns(summaries) : null, breaker: breakerState(issues), signatures: learnedCount()});
-  return {changes: collectChanges(), ...built, budget: budgetState(budgetIssues, built.totals.unjudged), quality: loopQuality({issues, audits, mutation, tracker, trackerWhy, judgeExam})};
+  // The Top issues and the Finder scorecard ride in the snapshot for their cards on /admin/testing/self-healing (they were the pinned issues #1892 and #341).
+  return {changes: collectChanges(), ...built, ranking: rankingOf(rankIssues(filed), repo()), scorecard: scorecard(issues), budget: budgetState(budgetIssues, built.totals.unjudged), quality: loopQuality({issues, audits, mutation, tracker, trackerWhy, judgeExam})};
 }
 
 

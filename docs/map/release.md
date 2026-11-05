@@ -31,7 +31,7 @@ updated: 2026-11-03
 ## Ask the sources
 ask: github releases limit=5
 ask: github runs workflow=desktop status=failure
-ask: github issues label=red-main state=open
+Red main list (public): GET https://www.jobadabra.top/ci-state/red-main (the Red main list)
 ask: sentry issues is:unresolved release=latest
 
 ## Lessons

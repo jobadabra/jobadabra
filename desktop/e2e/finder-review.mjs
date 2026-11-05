@@ -1,17 +1,18 @@
 // Writes the week's facts for the Finder's weekly self-review (finder-review.yml) to .finder-review/facts.md: node finder-review.mjs [out-dir]. Needs gh.
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {weekFacts} from './lib/finder-review.mjs';
 import {missedLessons, readTracker} from './lib/bug-tracker.mjs';
-import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
+import {noiseEntries} from './lib/ci-state.mjs';
+import {asIssues} from './lib/prejudge.mjs';
 
 const out = process.argv[2] || '.finder-review';
 const issues = JSON.parse(execFileSync('gh', ['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '400', '--json', 'number,title,state,stateReason,labels,comments,createdAt,closedAt'],
   {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024}));
 // What the verdict pass judged noise BEFORE filing is the week's false positives too: the lessons this review learns from (lib/prejudge.mjs asIssues).
-let judged = [];
-try { judged = asIssues(registerEntries(JSON.parse(execFileSync('gh', REGISTER_LIST, {encoding: 'utf8'}))[0]?.body)); } catch { judged = []; }
+const judged = asIssues(noiseEntries());
 // The bugs the Finder missed, as the local sessions logged them (lib/bug-tracker.mjs): what the weekly review must turn into checks first.
 const {tracker} = await readTracker();
 const missed = tracker ? missedLessons(tracker) : '';

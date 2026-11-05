@@ -43,5 +43,6 @@ Not a PR, after 4/4 merged: close #274 #341 #1892 #2097 #2736 #2817 each with a 
 - [x] Inventory sent to mac-32 (5 Nov 2026) (proof: none: a message to the coordinator, the inventory table above is its content)
 - [x] Sketch published and sent (5 Nov 2026) (proof: none: Claude Artifact https://claude.ai/artifact/QGFj7sciUKrWWK1o9t4m9T)
 - [x] Owner's yes, quoted by mac-32 (5 Nov 2026) (proof: none: the owner's message "Go ahead", then "In 4 PRs, max. At most 5 PRs.")
-- [ ] 1/4 web #419 · [ ] 2/4 public #3263 · [ ] 3/4 web Admin pieces · [ ] 4/4 public switch
+- [x] 1/4 web #419 · [x] 2/4 public #3263 · [x] 3/4 web #423 Admin pieces (merged 5 Nov 2026) (proof: none: merged PRs, their checks were green)
+- [ ] 4/4 public switch (this PR)
 - [ ] All six issues closed with their page linked; #72 #73 #1658 unpinned

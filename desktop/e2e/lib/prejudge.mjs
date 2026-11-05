@@ -11,8 +11,6 @@ import {matchLearned} from './signatures.mjs';
 // 10 covers the most a recent run raised (run 41314669803: 3 + 7 cut). Still one session per run, on the Codex plan since 9efe1ea (no price per finding).
 export const PREJUDGE_MAX = 10;
 export const NOISE_WORDS = ['false-positive', 'harness'];
-export const REGISTER_LABEL = 'noise-register';
-export const REGISTER_KEEP = 300;
 
 // Which new findings are worth a judgement: every one, a failed step too. Until 6 Oct 2026 a plain failed step was "the suite's own judgement" and filed as it was; 14 of the
 // 25 filed were the test's mistake (a fault that never fired, a read before Notion listed a new page, a look while the page was still loading), each read and closed by hand,
@@ -69,20 +67,10 @@ export function parseVerdicts(text, ids, lines = () => 1) {
 }
 export const wordOf = raw => { const {word} = parse(raw); return ['real', 'false-positive', 'harness', 'needs-human'].includes(word) ? word : 'needs-human'; };
 
-// The noise register: one pinned issue whose body keeps what was judged noise before filing, as JSON, so the next run drops the same finding without a judgement.
-const BLOCK = /```json\n([\s\S]*?)\n```/;
-export function registerEntries(body) { try { const list = JSON.parse(BLOCK.exec(String(body || ''))?.[1] || '[]'); return Array.isArray(list) ? list : []; } catch { return []; } }
-export function registerBody(entries) {
-  const kept = entries.slice(-REGISTER_KEEP);
-  const rows = kept.slice(-15).reverse().map(item => `| ${item.date} | ${item.view} | ${String(item.title).replace(/\|/g, '/').slice(0, 70)} | ${item.word} | ${String(item.why).replace(/\|/g, '/').replace(/\n/g, ' ').slice(0, 140)} |`);
-  return ['**Findings judged noise BEFORE an issue was opened** (the verdict pass, `lib/prejudge.mjs`). The next runs drop the same finding without a judgement. To file one after all, delete its entry below.', '',
-    `${kept.length} remembered · the latest ${rows.length}:`, '', '| Date | Page | Finding | Verdict | Why |', '|---|---|---|---|---|', ...rows, '',
-    '<details><summary>The register (read by the loop: keep it valid JSON)</summary>', '', '```json', JSON.stringify(kept, null, 0), '```', '', '</details>'].join('\n');
-}
+// The noise register (D1 store `noise-register`, lib/ci-state.mjs; the Judged noise card of /admin/testing/self-healing): what was judged noise before filing, so the next run drops the same finding without a judgement.
 // Register entries as the closed issues they would have been: a person's rejection for the loop's own matching (same page and kind, alike words), and a
 // false positive (or harness) OF ITS DETECTOR for the numbers: the noise breaker, the precision on /self-heal and the weekly self-review's lessons. Without this,
 // noise judged before filing vanished from every place that measures noise (5 Oct 2026): the breaker could never trip again.
-export const REGISTER_LIST = ['issue', 'list', '--label', REGISTER_LABEL, '--state', 'open', '--limit', '1', '--json', 'body'];
 export const asIssues = entries => entries.map(item => {
   const at = `${item.date || '1970-01-01'}T12:00:00Z`, word = item.word === 'harness' ? 'harness' : 'false-positive';
   return {number: 0, prejudged: true, state: 'CLOSED', stateReason: 'NOT_PLANNED', createdAt: at, closedAt: at, title: `[auto-ui] ${item.view}: ${item.title}`,

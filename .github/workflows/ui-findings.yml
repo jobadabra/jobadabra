@@ -80,6 +80,8 @@ jobs:
       - name: New findings to judge before filing
         id: pending
         if: vars.JOBADABRA_FIXER_VERDICTS == 'on' && env.PLANT == ''
+        env:
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register (the Judged noise card of /admin/testing/self-healing)
         run: |
           mkdir -p .heal
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json
@@ -101,6 +103,8 @@ jobs:
         if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0' && steps.judge.outputs.skipped != 'true'
         run: node desktop/e2e/prejudge.mjs --parse .heal/verdicts.md --pending .heal/pending.json --out .heal/verdicts.json || true
       - name: File the findings
+        env:
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise register: read, and appended with this run's noise
         run: |
           mkdir -p .heal
           # Which code was tested: an issue about a finding already fixed on main must be recognisable at a glance.

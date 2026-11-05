@@ -95,7 +95,9 @@ while :; do
 done
 if [ "${st#completed }" = success ]; then
   echo "Re-check green: main's e2e is green again."
-  GITHUB_REPOSITORY="$repo" python3 "$here/e2e_bisect.py" after-run "$id" || true   # closes the red-main issues of the suites green again (gate G2b)
+  # Drops the suites green again from the Red main list (gate G2b). Writing it needs the CI key (SELFHEAL_PUBLISH_KEY): on this Mac there is none, and the next scheduled main check clears them.
+  if [ -n "${SELFHEAL_PUBLISH_KEY:-}" ]; then GITHUB_REPOSITORY="$repo" python3 "$here/e2e_bisect.py" after-run "$id" || echo "Red main list not updated (the call failed); the next scheduled main check clears the green suites."
+  else echo "Red main list not updated here (no CI key); the next scheduled main check clears the green suites."; fi
   exit 0
 fi
 echo "Re-check ${st#completed }: main is still red (${url})."

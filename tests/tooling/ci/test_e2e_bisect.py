@@ -1,5 +1,4 @@
-"""A red main suite gets an owner (tools/e2e_bisect.py, gate G2b, 26 Oct 2026): bisect to the first red commit, one red-main issue per suite, closed when green again."""
-import re
+"""A red main suite gets an owner (tools/e2e_bisect.py, gate G2b, 26 Oct 2026): bisect to the first red commit, one entry per suite in the red-main list (the Red main tab), dropped when green again."""
 import json
 import tempfile
 import sys
@@ -39,21 +38,20 @@ class Bisect(unittest.TestCase):
         self.assertEqual((lo, hi), (0, 11))
 
 
-class IssueContract(unittest.TestCase):
-    def test_the_body_names_the_pr_and_branch_the_way_the_session_hook_reads_it(self):
-        body = b.issue_body('cardstates', 'f' * 40, 'https://run', found=COMMITS[5], pr={'number': 1914, 'branch': 'compact-run-banner', 'title': '[5c] Show each run'},
-                            good=COMMITS[0], tested=[(COMMITS[5], 'failure'), (COMMITS[2], 'success')])
-        # tools/pr-red-check.sh: capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")
-        match = re.search(r'Breaking PR: #([0-9]+) \(branch `([^`]+)`\)', body)
-        self.assertEqual(match.groups(), ('1914', 'compact-run-banner'))
-        self.assertIn('Breaking PR: #(?<pr>[0-9]+) \\\\(branch `(?<br>[^`]+)`\\\\)', (ROOT / 'tools/pr-red-check.sh').read_text())
-        self.assertIn('green at 0000000', body)
-        self.assertEqual(b.issue_title('cardstates'), 'Red main: cardstates')
+class RedRecord(unittest.TestCase):
+    def test_the_entry_names_the_pr_and_branch_the_way_the_session_hook_reads_it(self):
+        red = b.red_record('cardstates', 'f' * 40, 'https://run', found=COMMITS[5], pr={'number': 1914, 'branch': 'compact-run-banner', 'title': '[5c] Show each run'},
+                           good=COMMITS[0], tested=[(COMMITS[5], 'failure'), (COMMITS[2], 'success')], status='found')
+        # tools/pr-red-check.sh reads .pr.number and .pr.branch of every entry that has a pr; the Red main tab (jobadabra-web admin/red-main-page.js) the rest.
+        self.assertEqual((red['pr']['number'], red['pr']['branch'], red['status']), (1914, 'compact-run-banner', 'found'))
+        self.assertIn('.pr.branch', (ROOT / 'tools/pr-red-check.sh').read_text())
+        self.assertEqual(red['tested'], [[COMMITS[5], 'failure'], [COMMITS[2], 'success']])
+        self.assertEqual(red['good'], COMMITS[0])
 
     def test_no_pr_found_lists_the_range(self):
-        body = b.issue_body('settings', 'f' * 40, 'u', candidates=COMMITS[3:5])
-        self.assertNotRegex(body, r'Breaking PR: #\d')
-        self.assertIn('0300000', body)
+        red = b.red_record('settings', 'f' * 40, 'u', candidates=COMMITS[3:5], status='not-found')
+        self.assertIsNone(red['pr'])
+        self.assertEqual(red['candidates'], COMMITS[3:5])
 
 
 class AfterRun(unittest.TestCase):
@@ -66,10 +64,12 @@ class AfterRun(unittest.TestCase):
         registry.start()
         self.addCleanup(registry.stop)
         self.calls = []
-        self.saved = (b.gh, b.gh_json, b.open_issues, b.jobs_of)
-        b.gh = lambda *args, check=True: self.calls.append(args) or ('https://github.com/o/r/issues/123' if args[:2] == ('issue', 'create') else '')
+        self.saved = (b.gh, b.gh_json, b.load, b.save, b.jobs_of)
+        b.gh = lambda *args, check=True: self.calls.append(args) or ''
         b.gh_json = lambda *args: {'html_url': 'https://run/9', 'head_sha': 'a' * 40}
-        b.open_issues = lambda: [{'number': 70, 'title': 'Red main: cardstates'}, {'number': 71, 'title': 'Red main: settings'}]
+        self.stored = [b.red_record('cardstates', 'c' * 40, 'u', status='found'), b.red_record('settings', 's' * 40, 'u', status='found')]
+        b.load = lambda: [dict(red) for red in self.stored]
+        b.save = lambda reds: setattr(self, 'stored', reds)
         self.saved += (b.log_of,)
         self.logs = {2: '✗ the icon rail: a marker covers the icon', 3: '✗ recorded: the panel says "Filled 3"', 4: '', 5: CREDIT}
         b.log_of = lambda job_id: self.logs.get(job_id, '')
@@ -78,34 +78,38 @@ class AfterRun(unittest.TestCase):
                                  {'id': 4, 'name': 'Telegram alert', 'conclusion': 'failure'}, {'id': 7, 'name': 'jobs', 'conclusion': 'skipped'}]
 
     def tearDown(self):
-        b.gh, b.gh_json, b.open_issues, b.jobs_of, b.log_of = self.saved
+        b.gh, b.gh_json, b.load, b.save, b.jobs_of, b.log_of = self.saved
 
     def started(self):
         return [next(a for a in c if a.startswith('suite=')) for c in self.calls if c[:2] == ('workflow', 'run')]
 
-    def test_tolerant_red_never_starts_bisect_or_opens_issue(self):
+    def suites(self):
+        return sorted(red['suite'] for red in self.stored)
+
+    def test_tolerant_red_never_starts_bisect_or_adds_an_entry(self):
         b.jobs_of = lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'qualityai-standin')]
         b.after_run('9')
         self.assertEqual(self.calls, [], 'tolerant reds never create red-main work')
+        self.assertEqual(self.suites(), ['cardstates', 'settings'])
 
-    def test_tolerant_green_closes_its_existing_red_main_issue(self):
-        b.open_issues = lambda: [{'number': 72, 'title': 'Red main: quality'}]
+    def test_tolerant_green_drops_its_existing_red_main_entry(self):
+        self.stored.append(b.red_record('quality', 'q' * 40, 'u', status='found'))
         b.jobs_of = lambda rid: [{'name': 'quality-1of2-standin · burn-in 2/5', 'conclusion': 'success'}]
         b.after_run('9')
-        self.assertEqual([c[2] for c in self.calls if c[:2] == ('issue', 'close')], ['72'])
+        self.assertEqual(self.suites(), ['cardstates', 'settings'])
         self.assertEqual(self.started(), [])
 
-    def test_explicit_bisect_of_tolerant_suite_opens_no_issue(self):
+    def test_explicit_bisect_of_tolerant_suite_adds_no_entry(self):
         with patch.object(b, 'last_green', return_value=None):
             b.run_bisect('quality', 'a' * 40, 'https://run/9')
         self.assertEqual(self.calls, [], 'even an already queued bisect must respect the current lane')
 
-    def test_closes_green_again_and_bisects_one_new_red(self):
+    def test_drops_green_again_and_bisects_one_new_red(self):
         b.after_run('9')
-        closes = [c for c in self.calls if c[:2] == ('issue', 'close')]
-        self.assertEqual([c[2] for c in closes], ['70'], 'cardstates passed: its issue closes; settings stays open')
+        self.assertEqual(self.suites(), ['interactions', 'settings'], 'cardstates passed: its entry goes; settings stays; the new red is bisecting')
+        self.assertEqual({red['suite']: red['status'] for red in self.stored}['interactions'], 'bisecting')
         # 26 Oct 2026: 10 red suites started 10 bisects at once and filled the job queue. One per main check; the next check starts the next.
-        self.assertEqual(self.started(), ['suite=interactions'], 'settings already has an issue; the alert job is no suite; one bisect per run')
+        self.assertEqual(self.started(), ['suite=interactions'], 'settings already has an entry; the alert job is no suite; one bisect per run')
 
     def test_an_environment_red_is_never_bisected(self):
         # 26 Oct 2026: the dead Claude key turned every suite red; bisecting it finds no PR and only fills the queue.
@@ -117,6 +121,46 @@ class AfterRun(unittest.TestCase):
         b.after_run('9')
         self.assertEqual(self.started(), [], 'every red is the environment: no bisect')
 
+    def test_a_bisecting_entry_whose_workflow_died_is_started_again_but_a_fresh_one_is_not(self):
+        b.jobs_of = lambda rid: [{'id': 6, 'name': 'settings', 'conclusion': 'failure'}]
+        self.stored[1].update(status='bisecting', bisectAt=b.now_iso())
+        b.after_run('9')
+        self.assertEqual(self.started(), [], 'a bisect that began a moment ago is still running')
+        self.stored[1]['bisectAt'] = '2026-01-01T00:00:00Z'
+        b.after_run('9')
+        self.assertEqual(self.started(), ['suite=settings'])
+
+    def test_the_entry_is_written_before_the_bisect_is_dispatched(self):
+        def refuse(reds):
+            raise OSError('site refused the write')
+        b.save = refuse
+        with self.assertRaises(OSError):
+            b.after_run('9')
+        self.assertEqual(self.started(), [], 'a bisect no entry knows about would be started again by the next check')
+
+    def test_a_restarted_bisect_keeps_the_time_the_suite_first_went_red(self):
+        b.jobs_of = lambda rid: [{'id': 6, 'name': 'settings', 'conclusion': 'failure'}]
+        self.stored[1].update(status='bisecting', bisectAt='2026-01-01T00:00:00Z', sinceAt='2026-01-01T00:00:00Z', since='s' * 40)
+        b.after_run('9')
+        entry = next(red for red in self.stored if red['suite'] == 'settings')
+        self.assertEqual((entry['sinceAt'], entry['since']), ('2026-01-01T00:00:00Z', 's' * 40))
+        self.assertGreater(entry['bisectAt'], '2026-01-02')
+
+    def test_a_bisect_that_never_reported_and_is_now_red_on_the_environment_leaves_the_list(self):
+        self.logs[6] = CREDIT
+        b.jobs_of = lambda rid: [{'id': 6, 'name': 'settings', 'conclusion': 'failure'}]
+        self.stored[1].update(status='bisecting', bisectAt='2026-01-01T00:00:00Z')
+        b.after_run('9')
+        self.assertEqual(self.suites(), ['cardstates'])
+
+    def test_a_site_that_cannot_be_read_stops_the_check_and_writes_nothing(self):
+        def down():
+            raise OSError('site down')
+        b.load = down
+        b.save = lambda reds: self.fail('a failed read must never become a write')
+        with self.assertRaises(OSError):
+            b.after_run('9')
+
 
 class AfterMerge(AfterRun):
     """Completed after-merge runs go to the revert job; the old alert must never ask for fix-forward."""
@@ -125,7 +169,7 @@ class AfterMerge(AfterRun):
         self.saved_pr = (b.pr_of, b.report)
         self.reports = []
         b.pr_of = lambda sha: {'number': 2057, 'branch': 'ci-steps', 'title': 'Run only the steps'} if sha == 'a' * 40 else None
-        b.report = lambda suite, body, pr: self.reports.append((suite, body, pr))
+        b.report = lambda red: self.reports.append(red)
 
     def tearDown(self):
         b.pr_of, b.report = self.saved_pr
@@ -134,7 +178,7 @@ class AfterMerge(AfterRun):
     def test_after_merge_requests_no_fix_forward_or_bisect_and_closes_nothing(self):
         b.after_merge('9')
         self.assertEqual(self.started(), [], 'no bisect: the merge is the only commit in range')
-        self.assertEqual([c for c in self.calls if c[:2] == ('issue', 'close')], [], 'cardstates green on a few steps: its issue stays open')
+        self.assertEqual(self.suites(), ['cardstates', 'settings'], 'cardstates green on a few steps: its entry stays')
         self.assertEqual(self.reports, [], 'completed-run revert evidence owns after-merge reds; no fix-forward comment')
 
     def test_an_environment_red_is_not_filed(self):
