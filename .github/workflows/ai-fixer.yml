@@ -19,9 +19,9 @@ on:
         description: 'Where the item comes from'
         required: true
         type: choice
-        options: [feedback, linear]
+        options: [feedback, linear, github]
       ref:
-        description: "The item: a feedback's 16-character handle, or a Linear issue such as JOB-123"
+        description: "The item: a feedback's 16-character handle, a Linear issue such as JOB-123, or a GitHub issue number of this repository (filed by the owner)"
         required: true
       pr:
         description: 'Set by ai-fixer-follow.yml only: a follow-up round on this draft pull request'
@@ -108,6 +108,16 @@ jobs:
           name: fixer-event
           path: ${{ runner.temp }}/event/round.json
           retention-days: 3
+      # A GitHub issue is read HERE, with this job's read-only token, and passed on as one file: the fix job (the AI) holds no token.
+      - name: Read the GitHub issue (a first run, source github)
+        if: inputs.pr == '' && inputs.source == 'github'
+        run: node tools/fixer/run.mjs item --source github --ref "$REF" --out "$RUNNER_TEMP/item"
+      - uses: actions/upload-artifact@v6
+        if: inputs.pr == '' && inputs.source == 'github'
+        with:
+          name: fixer-item
+          path: ${{ runner.temp }}/item/item.json
+          retention-days: 3
 
   fix:
     needs: guard
@@ -160,6 +170,11 @@ jobs:
         with:
           name: fixer-event
           path: ${{ runner.temp }}/fx/in
+      - uses: actions/download-artifact@v7   # source github: the issue, read by the guard job
+        if: inputs.pr == '' && inputs.source == 'github'
+        with:
+          name: fixer-item
+          path: ${{ runner.temp }}/fx/item
       # The box's dependencies come from main's own files BEFORE the loop edits anything, so an edit cannot change what is installed.
       - name: Install the app's and the engine's dependencies, build the box
         if: inputs.kind != 'conflict'
@@ -177,6 +192,7 @@ jobs:
         if: inputs.kind != 'conflict'
         env:
           LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}   # a read-only key, in this one step only
+          FIXER_ITEM: ${{ runner.temp }}/fx/item/item.json   # source github: the guard job's file
         run: node "$FBT/tools/fixer/run.mjs" read --source "$SOURCE" --ref "$REF" --out "$OUT" ${PR:+--round "$OUT/in/round.json"}
       - name: The agent loop (Sonnet level, up to 30 turns and 25 minutes)
         id: loop
@@ -377,7 +393,7 @@ jobs:
         run: |
           set -euo pipefail
           stop() { echo "::error::$1"; exit 1; }
-          [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6})$ ]] || stop "not a handle this fixer takes"
+          [[ "$SOURCE-$REF" =~ ^(feedback-[0-9a-f]{16}|linear-JOB-[0-9]{1,6}|github-[0-9]{1,7})$ ]] || stop "not a handle this fixer takes"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if [ -n "$PR" ]; then

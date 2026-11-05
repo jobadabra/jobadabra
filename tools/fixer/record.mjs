@@ -34,11 +34,16 @@ function safePath(turn, brief, exists) {
 const one = text => String(text || '').replace(/\s+/g, ' ').trim();
 
 /** The facts only the fix job knows. `loop` = run.mjs's loop.json, `brief` = the item (for the leak scan only), `title` = the scanned pull request title, `files` = changed file names. A reason that may not be public is withheld, and says why in words that never repeat it. */
-export function partOf({loop, brief, title = '', files = [], exists = inBase}) {
+export function partOf({loop, brief, title = '', files = [], exists = inBase, failure = null}) {
   const errors = [], verdict = VERDICTS.includes(loop.verdict) ? loop.verdict : '';
   let reason = one(verdict === 'fix' ? title : loop.body).slice(0, REASON_CHARS);
   const held = reason ? leaks(reason, brief) : [];
   if (held.length) { errors.push(`the reason was withheld: it held ${held.join(', ')}`); reason = ''; }
+  // The step that failed and OUR error line (run.mjs noteFailure), scanned like the reason: the site's or the issue source's words, never the item's, but the scan decides.
+  if (failure && ['item', 'read', 'loop'].includes(failure.command) && failure.message) {
+    const line = one(failure.message).slice(0, 160);
+    errors.push(leaks(line, brief).length ? `${failure.command} failed (its message was withheld)` : `${failure.command} failed: ${line}`);
+  }
   const stopped = String(loop.stopped || '').split(':')[0];
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
   const turns = Array.isArray(loop.steps) ? loop.steps : [], n = value => Math.max(0, Math.round(Number(value) || 0));
@@ -84,7 +89,9 @@ async function main(argv = process.argv.slice(2), env = process.env, now = Date.
     // The files are the checked patch's own (the check step wrote DIR/change.patch), the same list the walls judged.
     const files = loop.verdict === 'fix' && fs.existsSync(path.join(out, 'change.patch')) ? execFileSync('git', ['apply', '--numstat', path.join(out, 'change.patch')], {encoding: 'utf8'}).split('\n').map(line => line.split('\t')[2]).filter(Boolean) : [];
     fs.mkdirSync(dest, {recursive: true});
-    fs.writeFileSync(path.join(dest, 'part.json'), JSON.stringify(partOf({loop, brief: JSON.parse(read(path.join(out, 'brief.json')) || '{"text":""}'), title: loop.verdict === 'fix' ? read(path.join(out, 'pr-body.md')).split('\n')[0] : '', files})));
+    let failure = null;
+    try { failure = JSON.parse(read(path.join(out, 'last-error.json')) || 'null'); } catch { failure = null; }
+    fs.writeFileSync(path.join(dest, 'part.json'), JSON.stringify(partOf({failure, loop, brief: JSON.parse(read(path.join(out, 'brief.json')) || '{"text":""}'), title: loop.verdict === 'fix' ? read(path.join(out, 'pr-body.md')).split('\n')[0] : '', files})));
     console.log('record part: written');
   } else if (command === 'build') {
     const out = flag(args, '--out'), partText = read(flag(args, '--part'));

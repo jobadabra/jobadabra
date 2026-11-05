@@ -164,7 +164,7 @@ test('the workflow, by trust: only publish writes (a draft on fixer/, never a me
   assert.match(publish, /needs\.prove\.result == 'success'/);
   assert.match(publish, /--draft/);
   assert.match(publish, /branch="fixer\/\$SOURCE-\$REF"/);
-  assert.match(publish, /\^\(feedback-\[0-9a-f\]\{16\}\|linear-JOB-\[0-9\]\{1,6\}\)\$/, 'the handle is validated before it becomes a branch name');
+  assert.match(publish, /\^\(feedback-\[0-9a-f\]\{16\}\|linear-JOB-\[0-9\]\{1,6\}\|github-\[0-9\]\{1,7\}\)\$/, 'the handle is validated before it becomes a branch name');
   assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the scanned hash is checked before the patch is applied');
   assert.doesNotMatch(WORKFLOW, /pr merge|pr ready|--admin|--auto|git push[^\n]*\bmain\b|HEAD:main/, 'never merges, never marks ready, never pushes to main');
   assert.equal([...WORKFLOW.matchAll(/git push/g)].length, 2, 'the first run\'s branch and a follow-up round\'s push (fixer-driver.test.js holds the round\'s walls)');
