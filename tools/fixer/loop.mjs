@@ -10,7 +10,7 @@ export const CAPS = {maxSteps: 30, maxMinutes: 25};
  * Why (5 Nov 2026, run 41946389132, owner: "Fix the loop, then a second run"): the prompt said every refusal is final, and the agent ended needs-human after ONE refused search; only a wall is final.
  */
 export const WALL_WORDS = ['wall-path', 'wall-folder', 'wall-limit'];
-export const REFUSAL_WORDS = [...WALL_WORDS, 'short-pattern', 'not-a-folder', 'no-such-file', 'not-unique', 'file-exists', 'bad-tests', 'no-such-test', 'not-json', 'bad-action', 'no-edit', 'tests-not-run', 'no-title', 'bad-verdict', 'failed'];
+export const REFUSAL_WORDS = [...WALL_WORDS, 'bad-path', 'short-pattern', 'not-a-folder', 'no-such-file', 'not-unique', 'file-exists', 'bad-tests', 'no-such-test', 'not-json', 'bad-action', 'no-edit', 'tests-not-run', 'no-title', 'bad-verdict', 'failed'];
 const KEEP = 10;   // the last turns sent in full; older ones shrink to the action's name (a 30-turn prompt would carry 100 KB of file text)
 
 /** The one answer shape of a turn: every field is required (a strict structured answer); the ones an action does not use are "" (files: []). */
@@ -83,7 +83,7 @@ export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.
       if (result.edited) edited = dirty = true;
       if (result.passed === true) dirty = false;
     }
-    if (result.wall) walls++;
+    if (result.wall || WALL_WORDS.includes(result.refusal)) walls++;   // one owner of "a wall refused it": the record's `walls` and a step's wall word cannot disagree
     const refused = Boolean(action.error) || /^(Refused|Failed)/.test(result.text), refusal = refused && REFUSAL_WORDS.includes(result.refusal) ? result.refusal : refused ? 'failed' : '';   // a word off the list is none: the record never carries a text
     log(`step ${step}: ${action.action || 'refused'}${refused ? ' (refused)' : ''}`);
     turns.push({said: answer.text, action: action.action || 'none', result: result.text, ms: now() - turnStart, refused, refusal, path: typeof action.path === 'string' ? action.path : '', tout: answer.usage?.output_tokens || 0});

@@ -208,6 +208,14 @@ test('only a wall ends a run\'s attempts: run 41946389132 (a refused search, the
   assert.equal(result.steps, 6, 'one refusal did not end the run');
   assert.deepEqual(result.timeline.map(step => step.refusal), ['', 'short-pattern', '', 'not-unique', 'wall-folder', '']);
   assert.equal(result.walls, 1, 'only the wall counts as a wall');
+  // A path written wrongly is a slip to try again (review of 6b); a way out of the repository is a wall, and counts as one.
+  for (const [input, word] of [[{action: 'read', path: ''}, 'bad-path'], [{action: 'read', path: '/home/runner/work/x/src/a.py'}, 'bad-path'], [{action: 'search', pattern: 'title', folder: '/src'}, 'bad-path'], [{action: 'read', path: '../x'}, 'wall-path'], [{action: 'read', path: '.git/config'}, 'wall-path']]) {
+    const out = await act(input);
+    assert.equal(out.refusal, word, JSON.stringify(input));
+    assert.equal(/^Refused \(wall\)/.test(out.text), word === 'wall-path', JSON.stringify(input));
+  }
+  const probe = await runLoop({ask: script([{action: 'edit', path: '.git/config', old: 'a', new: 'b'}, {action: 'finish', verdict: 'needs-human', body: 'wall'}]), act, system: 'S', first: 'item'});
+  assert.deepEqual([probe.walls, probe.timeline[0].refusal], [1, 'wall-path'], 'the record says walls when a wall-path refused the edit');
   const system = systemFor('F');
   assert.doesNotMatch(system, /is final: do not try to get around a wall/, 'the prompt no longer calls every refusal final');
   assert.match(system, /"Refused \(wall\)" is final/);
