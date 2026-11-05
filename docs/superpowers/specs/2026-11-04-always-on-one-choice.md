@@ -11,13 +11,15 @@ Owner, 4 Nov 2026: "The user should choose between these 2 options. Either going
 
   | Measure | What the popup says | Where it is true |
   |---|---|---|
-  | Encrypted at rest | Your profile, search settings, CV and the search's saved state are stored encrypted, with a key per account | `api/hosted-state.js` (AES-GCM; key from `HOSTED_KEK` + the account id; R2) |
+  | Encrypted at rest | Your profile, search settings, CV and the search's saved state are stored encrypted, with a key per account | `jobadabra-web/api/hosted-state.js` (AES-GCM; key from `HOSTED_KEK` + the account id; R2) |
   | Encrypted in transit | App to site and container to site use HTTPS only | www.jobadabra.top; runner to container stays inside Cloudflare's network |
-  | Kept apart | Each account has its own container and a fresh temporary folder per run, deleted after; results are saved under the run's own account, never one the container names | `getContainer(env.RUNNER, account)`; `shared/hosted.js` `result` |
-  | No standing secret | The container holds only a run token: one run, 30 minutes, one result post | `shared/hosted.js` `runToken`, `RUN_TOKEN_MINUTES` |
-  | Delete everything | Turn off deletes your files, schedule, runs and found jobs, and shows a receipt; Export gives you a copy | `api/hosted-state.js` `wipe`, `GET /api/hosted/export` |
+  | Kept apart | Each account has its own container and a fresh temporary folder per run, deleted after; results are saved under the run's own account, never one the container names | `getContainer(env.RUNNER, account)` in `jobadabra-web/workers/hosted-runner/worker.js`; `jobadabra-web/shared/hosted.js` `result` |
+  | No standing secret | The container holds only a run token: one run, 30 minutes, one result post | `jobadabra-web/shared/hosted.js` `runToken`, `RUN_TOKEN_MINUTES` |
+  | Delete everything | Turn off deletes your files, schedule, runs and found jobs, and shows a receipt; Export gives you a copy | `jobadabra-web/api/hosted-state.js` `wipe`, `GET /api/hosted/export` |
   | The AI reads your data | The search's AI reads your profile and the job pages to score them (Free AI: our key, not yours) | the search run |
   | **What it is not** | Not end-to-end encrypted: our server decrypts your profile to run the search for you, the price of "we run it". "Your own accounts" keeps everything in your Mac and your accounts | stated plainly, never hidden |
+
+  (Paths starting `jobadabra-web/` are in the site repo (jobadabra-web), not this one.)
 
   Open points for the owner when PR 7 is sketched: whether the popup also names the found-jobs table (title, company, link, fit line: Cloudflare's disk encryption, no key of ours), and whether it links to the privacy policy.
 
