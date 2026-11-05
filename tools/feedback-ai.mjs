@@ -6,7 +6,7 @@
 //   node tools/feedback-ai.mjs proof  --out <dir>                            the changed test files must FAIL on a clean checkout and PASS with the change
 //   node tools/feedback-ai.mjs leaks  --out <dir> --title <file> --body <file>   scan the PR text and the diff before anything is pushed
 //   node tools/feedback-ai.mjs report --ref R --status pr|none|failed [--pr URL] [--verdict word] [--why text]   tell the site how the run ended (the card moves)
-//   node tools/feedback-ai.mjs closed                                         pull_request_target job: tell the site the PR (head fd-ai/<ref>) was merged or closed (GITHUB_EVENT_PATH)
+//   node tools/feedback-ai.mjs closed                                         feedback-ai-closed.yml: tell the site the PR (head fd-ai/<ref>) was merged or closed (GITHUB_EVENT_PATH)
 // Why (3 Nov 2026, owner: "send it to a claude session (on the CI using the ai-broker), that the outcome should be a PR with the fix"): the repo is PUBLIC, so the branch, PR text, run log and artifacts are
 // public. The brief is a file that is never printed or uploaded; the PR text is the AI's own root cause and invented fixtures, scanned for e-mails, secrets, home-folder names and passages copied from the
 // report or its files before it is posted; a hit stops the run and nothing is pushed. The second redaction pass is HERE, not in the Worker (it has no node: modules). Guard: desktop/test/tooling/ci/feedback-ai.test.js.
