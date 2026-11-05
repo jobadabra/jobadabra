@@ -108,6 +108,7 @@ function languageLines(raw, parts, onChange, label) {
       if (isOn(option)) return;   // the level already shown: nothing to rewrite
       current = withLevel(current, at, option); refresh(group, isOn); onChange(current);
     }, `${label}: ${part.name}`));
+    if (!partIsExact(part)) row.append(savedAs(part.raw));   // Why (5 Nov 2026, #3285 Gitar): a level outside the scale ("German (fluent)") shows no chip, so what was written stays visible
     node.append(row);
   });
   return node;

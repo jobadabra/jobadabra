@@ -52,3 +52,13 @@ test('pressing the level already shown rewrites nothing', () => {
   assert.deepEqual(seen, []);
   assert.equal(node.value, 'English (native), French (A2)');
 });
+
+test('a part whose level is not on the scale shows what was written, and stays as written until a level is pressed (Gitar, #3285)', () => {
+  const seen = [], node = draw('English (native), German (fluent)', seen);
+  const rows = node.querySelectorAll('.qa-language');
+  assert.match(rows[1].textContent, /German \(fluent\)/);
+  assert.equal(rows[0].querySelectorAll('.qa-saved-as').length, 0, 'an exact part shows no extra line');
+  assert.equal(node.value, 'English (native), German (fluent)');
+  press(rows[1], 'C1');
+  assert.equal(seen.at(-1), 'English (native); German: C1');
+});
