@@ -13,7 +13,7 @@
 //   --no-picture       only the --eval result, no screenshot
 //   --output <file>    a recorded terminal output to show as the session's log (e.g. a real session's)
 //   --width <px>       the window's width, to check a narrow layout (default 1280; the window's minimum is lib/main-window.js MIN_WIDTH)
-//   --out <file.png>   where the picture goes (default: $TMPDIR/jobadabra-shot.png)
+//   --out <file.png>   where the picture goes (default: a new $TMPDIR/jp-shot-out-*/jobadabra-shot.png per run; its path is printed)
 //   --search <json>    written as config/search.json (a state the demo lacks: the strategy's lists)
 //   --theme <light|dark>  the app's theme; the demo's default is dark. The one way: the app's own JOBADABRA_THEME (lib/main-window.js applyTheme), which this option sets and an exported
 //                      JOBADABRA_THEME also does. A data-theme attribute set by --js does nothing: the CSS follows Electron's theme source.
