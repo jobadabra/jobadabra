@@ -18,7 +18,7 @@ Upload kind `harness-fixer`, sent by the daily harness-stats workflow next to th
 
 ## Progress
 - [x] 1/2 web page: the kind `harness-fixer` accepted, cleaned and drawn on /admin/ai/harness (jobadabra-web) (proof: none: jobadabra-web #411, merged 49173ea; its tests are in that repo)
-- [x] 2/2 jobadabra: the daily harness upload also sends `harness-fixer` (proof: desktop/test/tooling/ci/harness-stats.test.js; #3253 merged 99364cf)
+- [x] 2/2 jobadabra: the daily harness upload also sends `harness-fixer` (proof: desktop/test/tooling/ci/harness-stats.test.js @99364cf)
 
 ## Parked (Notion Backlog, not a PR)
 Where parks go (owner, 5 Nov 2026, global rules "Work tracking": "Notion Backlog = parked ideas only"): the Notion Backlog database, no longer Linear JOB issues.
