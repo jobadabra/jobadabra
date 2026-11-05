@@ -44,20 +44,41 @@ export async function closeReply(storage, ref, {fetcher = globalThis.fetch, base
   } catch { return false; }
 }
 
-/** IPC: `feedbackReplies()` -> the cards to show now; `feedbackReplyClose(ref)` closes one. Asks the website at the first call and every 6 hours after an answer (15 minutes after none);
+/** IPC: `feedbackReplies()` -> the cards to show now; `feedbackReplyClose(ref)` closes one. Asks the website at the first call and every 6 hours after an answer (15 minutes after none); `onFixed` (the trial refresh) runs for each new fixed card before the cards are returned and, when it saved, the window is told `allowanceChanged`;
  *  a card the person closed is never drawn again here, and its post is retried at each ask until the website took it. Demo mode has none. */
-export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Date.now}) {
+export function registerReplies({DEMO, app, ipcMain, storage, fetcher, now = Date.now, onFixed = null, wait = 4000, getWindow = null}) {
   let cards = [], asked = -Infinity, retryAt = 0;
+  const seenFixed = new Set();   // fixed cards that already triggered onFixed in this run
   const closed = new Map((storage.settings().feedbackRepliesClosed || []).map(ref => [ref, false]));   // ref -> true once the website took the close
   // Why (Gitar on #3044): a close that could not be posted must survive a restart, or the card returns after "Got it". Only the refs not yet taken are kept.
   const keep = () => storage.saveSettings({feedbackRepliesClosed: [...closed].filter(([, taken]) => !taken).map(([ref]) => ref).slice(-50)});
+  // Design (fb 2/7 follow-up, 5 Nov 2026; Gitar and the clean-code rule on #3307): this module alone knows when the trial answer was refreshed, so it alone tells the window (`allowanceChanged`), on time, late or on the retry.
+  // States: a fixed card is NEW until a refresh saved for it; SEEN after. A refresh that did not save, threw or ran past `wait` leaves it NEW (tried again at the next ask, 15 minutes), and the card is drawn either way.
+  // Why (fb 2/7 follow-up, 5 Nov 2026, coordinator): a thanked person at the wall would see no gift for up to 6 hours; the card waits for the refresh at most `wait` ms (a hung call must not hold it).
+  const refreshAllowance = async refs => {
+    const saved = Promise.resolve().then(onFixed).then(ok => {
+      if (ok !== true) return false;
+      for (const ref of refs) seenFixed.add(ref);
+      const win = getWindow?.();
+      if (win && !win.isDestroyed()) win.webContents.send('allowanceChanged');
+      return true;
+    }, () => false);
+    let timer;
+    const done = await Promise.race([saved, new Promise(resolve => { timer = setTimeout(() => resolve(false), wait); })]);
+    clearTimeout(timer);
+    return done;
+  };
   ipcMain.handle('feedbackReplies', async () => {
     if (DEMO) return [];
     if (now() - asked >= EVERY && now() >= retryAt) {
       for (const [ref, posted] of closed) if (!posted) closed.set(ref, await closeReply(storage, ref, {fetcher}));
       keep();
       const got = await fetchReplies(storage, {version: app.getVersion(), fetcher});
-      if (got === null) retryAt = now() + RETRY; else { cards = got; asked = now(); }
+      if (got === null) retryAt = now() + RETRY; else {
+        cards = got; asked = now();
+        const fresh = got.filter(card => card.kind === 'fixed' && !seenFixed.has(card.ref)).map(card => card.ref);
+        if (fresh.length && onFixed && !(await refreshAllowance(fresh))) { asked = -Infinity; retryAt = now() + RETRY; }
+      }
     }
     return cards.filter(card => !closed.has(card.ref));
   });

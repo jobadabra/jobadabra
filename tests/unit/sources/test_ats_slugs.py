@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from src.sources import ats  # noqa: E402
+from src.sources import ats, describe  # noqa: E402
 
 GOOD = {'oracle': 'acme.us2.CX_1', 'workday': 'acme.wd3.Careers', 'successfactors': 'careers.acme.com', 'phenom': 'careers.acme.com',
         'eightfold': 'jobs.acme.com', 'umantis': 'recruitingapp-1234', 'greenhouse': 'acme', 'jobsch': '27602-manor-ag'}
@@ -27,6 +27,13 @@ class SlugShapeTests(unittest.TestCase):
         for system in ats.FETCHERS:
             self.assertFalse(ats.slug_ok(system, ''))
             self.assertFalse(ats.slug_ok(system, None))
+
+    def test_a_workday_cluster_of_any_length_is_one_board(self):
+        for cluster in ('wd3', 'wd12', 'wd103', 'wd502'):
+            slug = f'acme.{cluster}.Careers'
+            self.assertEqual(ats.detect(f'https://acme.{cluster}.myworkdayjobs.com/en-US/Careers/job/Designer_R1'), ('workday', slug))
+            self.assertTrue(ats.slug_ok('workday', slug))
+            self.assertTrue(describe.WORKDAY.match(f'https://acme.{cluster}.myworkdayjobs.com/en-US/Careers/job/Designer_R1'))
 
 
 if __name__ == '__main__':
