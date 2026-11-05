@@ -1251,6 +1251,9 @@ main { min-width: 0; }
 /* The session page: sessions on the left; the job, Claude's question, the live terminal and the message box */
 .ss-title h1 { margin: 0; }
 .ss-title-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+#ss-status { display: inline-flex; align-items: center; gap: var(--sp-2); }   /* the state pill and the mode chip */
+.mode-pill > .icon { width: 12px; height: 12px; flex: none; }
+.ss-row-words > .mode-pill { max-width: 100%; white-space: normal; }   /* the list column is narrow: a long chip wraps inside the row, never past it */
 .ss-subtitle { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-1); font-size: var(--fs-base); }
 .ss-empty { display: grid; justify-items: center; text-align: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4); }
 .ss-empty-glyph { display: grid; place-items: center; width: 44px; height: 44px;

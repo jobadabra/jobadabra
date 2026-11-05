@@ -85,10 +85,28 @@ test('every place that words a hidden-browser job tells backgroundStatus whether
   assert.match(fs.readFileSync(path.join(renderer, 'pages/session-live.js'), 'utf8'), /liveCard\([^)]*linkOff:/, 'the live card is told too');
 });
 
-test('automation labels use the session mode, including legacy visible-browser sessions', async () => {
-  const {sessionAutomationLabel} = await import('../../../renderer/background-status.js');
-  assert.equal(sessionAutomationLabel({kind: 'form'}), 'Standard automation');
-  assert.equal(sessionAutomationLabel({background: {mode: 'fill'}}), 'Background automation');
-  assert.equal(sessionAutomationLabel({background: {mode: 'auto'}}), 'Full automation');
-  assert.equal(sessionAutomationLabel({background: {state: 'queued'}}), 'Background automation');
+test('each session shows its own mode at a glance: where it runs and who submits, in its Settings icon (owner, 5 Nov 2026)', async () => {
+  const {sessionModeChip} = await import('../../../renderer/background-status.js');
+  const {ICON_NAMES} = await import('../../../renderer/icons.js');
+  const cases = [[{kind: 'form'}, 'In Chrome · you submit', 'eye'], [{background: {mode: 'fill'}}, 'Background · you submit', 'layers'],
+    [{background: {mode: 'auto'}}, 'Full automation · sends by itself', 'zap'], [{background: {state: 'queued'}}, 'Background · you submit', 'layers'],
+    [{kind: 'claude'}, 'In Chrome · you submit', 'eye'], [{}, 'In Chrome · you submit', 'eye']];
+  for (const [item, text, glyph] of cases) {
+    const chip = sessionModeChip(item);
+    assert.equal(chip.text, text, JSON.stringify(item));
+    assert.equal(chip.glyph, glyph);
+    assert.ok(ICON_NAMES.includes(chip.glyph), `${glyph} is an icon the app has`);
+  }
+  assert.match(sessionModeChip({background: {mode: 'auto'}}).title, /^Full automation: Fills and submits/, 'hover: the Settings name and what it does');
+  // Review of [ap] 4/7: a bot check, Stop, a mode change or a quit hands a Full automation job to the person; the store keeps mode 'auto', and the chip must not say it sends by itself.
+  for (const state of ['needs_user_handoff', 'manual_submit_required']) {
+    const chip = sessionModeChip({background: {mode: 'auto', state}});
+    assert.equal(chip.text, 'Full automation · you submit now', state);
+    assert.equal(chip.glyph, 'zap');
+  }
+  for (const [id, title] of [['fill', /^Background automation: /], ['check', /^Standard automation: /]]) {
+    const item = id === 'check' ? {kind: 'form'} : {background: {mode: id}};
+    assert.match(sessionModeChip(item).title, title, `${id}: hover says its Settings name`);
+  }
+  assert.notEqual(sessionModeChip({background: {mode: 'auto'}}).tone, sessionModeChip({background: {mode: 'fill'}}).tone, 'the mode that sends by itself looks different');
 });
