@@ -5,7 +5,7 @@ run-name: Microsoft Store review check
 # Why (owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest"): certification takes hours to days, so no job waits for
 # it (GitHub's 6 h cap); the Worker starts this check hourly (app-core/src/scheduler.js, minute 20) because GitHub's own cron barely fires. Ubuntu looks for a submitted version nobody was told about;
 # only then does a Windows job read Partner Center (msstore keeps its secret in the OS keyring, as in msix-store.yml). Nothing is submitted here: a newer stable is started as msix-store.yml, the one submit path.
-# State: tags msstore-submitted-X.Y.Z / msstore-announced-X.Y.Z / msstore-autosent-X.Y.Z (the owner's rule: state in tags, not branches).
+# State: tags msstore-submitted- / -announced- / -autosent- / -followed-X.Y.Z (the owner's rule: state in tags, not branches).
 on:
   workflow_dispatch:
     inputs:
@@ -96,6 +96,7 @@ jobs:
       - name: One message, then the newest stable's submit
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.pending.outputs.version }}   # the version the status was read for, never re-picked in the script
           VERDICT: ${{ needs.check.outputs.verdict }}
           REASON: ${{ needs.check.outputs.reason }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}

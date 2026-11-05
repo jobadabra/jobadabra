@@ -2,7 +2,7 @@
 // Owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest". GitHub tags, the stable list, msstore's text and Telegram are fakes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {compareVersions, decide, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
+import {compareVersions, decide, github, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
 
 // What `msstore submission status` printed in runs 41463009597 (Pending) and 41642087630 (Last Published), ANSI colours kept.
 const PENDING = 'Retrieving submission status\nFound \x1b[38;5;2mPending Submission\x1b[0m.\nSubmission Status = \x1b[38;5;2mCertification\x1b[0m\n';
@@ -24,18 +24,19 @@ test('a refusal carries Microsoft\'s reason in words, and says so plainly when t
 });
 
 // A fake repo: its tags, its stable releases, the dispatches made, and Telegram (`down` = it refuses).
-function world({submitted = ['0.8.86'], announced = [], autosent = [], stables = ['0.8.86', '0.9.6', '0.9.4'], down = false, dispatchFails = false} = {}) {
-  const tags = new Set([...submitted.map(v => `msstore-submitted-${v}`), ...announced.map(v => `msstore-announced-${v}`), ...autosent.map(v => `msstore-autosent-${v}`)]);
+function world({submitted = ['0.8.86'], announced = [], followed = [], autosent = [], stables = ['0.8.86', '0.9.6', '0.9.4'], down = false, dispatchFails = false} = {}) {
+  const tags = new Set([...submitted.map(v => `msstore-submitted-${v}`), ...announced.map(v => `msstore-announced-${v}`), ...followed.map(v => `msstore-followed-${v}`), ...autosent.map(v => `msstore-autosent-${v}`)]);
   const dispatched = [], messages = [];
   const gh = {
+    fails: {dispatch: dispatchFails},
     tags: async prefix => [...tags].filter(t => t.startsWith(prefix)).map(t => t.slice(prefix.length)),
     claim: async name => { if (tags.has(name)) return false; tags.add(name); return true; },
     release: async name => { tags.delete(name); },
-    stables: async () => stables.sort(compareVersions).pop() || '',
-    dispatch: async tag => { if (dispatchFails) throw new Error('GitHub 500'); dispatched.push(tag); },
+    stables: async () => [...stables].sort(compareVersions).pop() || '',
+    dispatch: async tag => { if (gh.fails.dispatch) throw new Error('GitHub 500'); dispatched.push(tag); },
   };
   const sender = async text => { if (down) return 'ci-alert: not sent (Telegram 502)'; messages.push(text); return 'ci-alert: sent'; };
-  return {gh, sender, tags, dispatched, messages, env: verdict => ({VERDICT: verdict, REASON: 'bad capability', GITHUB_REPOSITORY: 'jobadabra/jobadabra', GITHUB_RUN_ID: '9'})};
+  return {gh, sender, tags, dispatched, messages, env: (verdict, version = '0.8.86') => ({VERSION: version, VERDICT: verdict, REASON: 'bad capability', GITHUB_REPOSITORY: 'jobadabra/jobadabra', GITHUB_RUN_ID: '9'})};
 }
 
 test('accepted: one "live" message, then the newest stable is started once; a second hour changes nothing', async () => {
@@ -63,8 +64,11 @@ test('refused: the owner hears the reason; the refused version is not sent again
 
 test('a version already submitted or already sent on by the watcher is not started again', async () => {
   const w = world({submitted: ['0.8.86', '0.9.6']});
-  await tell(w.env('live'), w);   // 0.9.6 is pending too: it is the newest pending, announced; nothing newer exists
+  await tell(w.env('live', '0.9.6'), w);   // 0.9.6 is the version the status was read for; nothing newer exists
   assert.deepEqual(w.dispatched, []);
+  assert.match(w.messages[0], /0\.8\.86 left Microsoft's review before I could read its verdict/, 'the older pending version is not announced with a verdict it did not get');
+  assert.match(w.messages[1], /0\.9\.6 is live/);
+  assert.ok(w.tags.has('msstore-followed-0.8.86') && w.tags.has('msstore-followed-0.9.6'));
   const claimed = world({autosent: ['0.9.6']});
   await tell(claimed.env('live'), claimed);
   assert.deepEqual(claimed.dispatched, [], 'the claim tag holds a restart off');
@@ -87,4 +91,32 @@ test('still in review or nothing pending: no message and no submit', async () =>
   await tell(none.env('live'), none);
   assert.deepEqual([none.messages, none.dispatched], [[], []]);
   assert.match(messageOf('failed', {version: '0.8.86', reason: 'x', repo: 'o/r', run: 'u'}), /gh workflow run msix-store\.yml -R o\/r --ref main -f tag=desktop-v0\.8\.86/);
+});
+
+test('a failed dispatch is retried next hour without repeating the message', async () => {
+  const w = world({dispatchFails: true});
+  await assert.rejects(tell(w.env('live'), w), /stays pending/);
+  assert.equal(w.messages.length, 1, 'the verdict went out once');
+  assert.ok(!w.tags.has('msstore-followed-0.8.86'), 'still pending, so the next hourly run comes back to it');
+  w.gh.fails.dispatch = false;
+  await tell(w.env('live'), w);
+  assert.equal(w.messages.length, 2, 'only the "sending 0.9.6" note was added, not a second verdict');
+  assert.deepEqual(w.dispatched, ['desktop-v0.9.6']);
+  assert.ok(w.tags.has('msstore-followed-0.8.86'));
+});
+
+test('the verdict is for the version the status was read for: a version that is not pending, or a newer one submitted since, is not announced as it', async () => {
+  const w = world({submitted: ['0.9.4', '0.9.5']});
+  await tell(w.env('live', '0.9.4'), w);   // 0.9.5 was submitted while the Windows job read 0.9.4's status
+  assert.match(w.messages[0], /0\.9\.4 is live/);
+  assert.ok(!w.tags.has('msstore-announced-0.9.5') && !w.tags.has('msstore-followed-0.9.5'), '0.9.5 stays pending for its own look');
+  assert.deepEqual(await tell(w.env('live', '0.9.7'), w), ['nothing to tell: 0.9.7 is not pending']);
+});
+
+test('only "already exists" means a held claim: a refused tag creation is an error, not a silent skip', async () => {
+  const answer = (status, message) => async () => ({ok: status < 400, status, json: async () => ({message})});
+  const env = {GITHUB_REPOSITORY: 'o/r', GITHUB_SHA: 'abc', GH_TOKEN: 't'};
+  assert.equal(await github(env, answer(422, 'Reference already exists')).claim('msstore-announced-1.0.0'), false);
+  assert.equal(await github(env, answer(201, '')).claim('msstore-announced-1.0.0'), true);
+  await assert.rejects(github(env, answer(422, 'Repository rule violations found: creations being restricted')).claim('msstore-announced-1.0.0'), /GitHub 422/);
 });

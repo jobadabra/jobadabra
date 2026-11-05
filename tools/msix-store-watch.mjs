@@ -4,8 +4,9 @@
 //   node tools/msix-store-watch.mjs decide <status.txt> <get.txt> -> verdict=live|failed|waiting|unknown, reason=<one line> on $GITHUB_OUTPUT
 //   node tools/msix-store-watch.mjs tell                        (env VERSION, VERDICT, REASON, GH_TOKEN, GITHUB_REPOSITORY, CI_ALERTS_TELEGRAM_*)
 // State is git tags (owner, 2 Nov 2026): msstore-submitted-X.Y.Z (written by msix-store.yml after a good publish), msstore-announced-X.Y.Z (the verdict message went out),
-// msstore-autosent-X.Y.Z (the watcher started that version's submit). A claim is created before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run
-// never repeats a message or a submit; a failed Telegram send releases its claim so the next hour retries it.
+// msstore-autosent-X.Y.Z (the watcher started that version's submit), msstore-followed-X.Y.Z (X's message AND the newest-stable step are both done: X is no longer pending). A claim is created
+// before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run never repeats a message or a submit; a failed send or dispatch releases its claim and X stays
+// pending, so the next hour retries just the part that failed. A runner that dies between a claim and its send loses that message (at most once); the 5-minute job cap and 15 s Telegram timeout make it rare.
 // Invariants: a refused version is never sent again by this tool; only a version newer than the finished one is auto-sent; nothing here submits anything itself, it starts msix-store.yml.
 import fs from 'node:fs';
 import {send} from '../desktop/e2e/ci-alert.mjs';
@@ -70,11 +71,12 @@ export function github(env = process.env, fetcher = fetch) {
     /** true when this call created the tag, false when it already existed (someone else holds the claim). */
     async claim(name) {
       const answer = await call('git/refs', {method: 'POST', body: JSON.stringify({ref: `refs/tags/${name}`, sha: env.GITHUB_SHA})});
-      if (answer.status === 422) return false;
+      // Why (5 Nov 2026, code review): a 422 also answers a tag ruleset that forbids creating tags; that is not a held claim and must be seen, not read as "someone else sent it".
+      if (answer.status === 422 && /already exists/i.test(String((await answer.json().catch(() => ({}))).message))) return false;
       await ok(answer, `claim ${name}`);
       return true;
     },
-    async release(name) { await call(`git/refs/tags/${name}`, {method: 'DELETE'}); },
+    async release(name) { await ok(await call(`git/refs/tags/${name}`, {method: 'DELETE'}), `release ${name}`); },
     /** Newest stable desktop release version, '' when none. */
     async stables() {
       const releases = await (await ok(await call('releases?per_page=50'), 'list releases')).json();
@@ -85,10 +87,10 @@ export function github(env = process.env, fetcher = fetch) {
   };
 }
 
-/** Submitted versions with no verdict message yet, newest last. */
+/** Submitted versions not yet followed up (message and newest-stable step both done), newest last. */
 export async function pendingVersions(gh) {
-  const [submitted, announced] = await Promise.all([gh.tags('msstore-submitted-'), gh.tags('msstore-announced-')]);
-  return submitted.filter(v => !announced.includes(v)).sort(compareVersions);
+  const [submitted, followed] = await Promise.all([gh.tags('msstore-submitted-'), gh.tags('msstore-followed-')]);
+  return submitted.filter(v => !followed.includes(v)).sort(compareVersions);
 }
 
 /** Sends `text`; a send that did not reach Telegram throws. */
@@ -97,31 +99,47 @@ async function tellOwner(text, env, sender) {
   if (result !== SENT) throw new Error(result);
 }
 
+/** One message under its claim: claimed, sent; a send that fails releases the claim and throws, so the next hour retries it. */
+async function announce(gh, version, text, env, sender, what) {
+  if (!await gh.claim(`msstore-announced-${version}`)) return false;
+  try { await tellOwner(text, env, sender); }
+  catch (error) {
+    await gh.release(`msstore-announced-${version}`);
+    throw new Error(`the ${what} message for ${version} did not reach Telegram (${error.message}); it is tried again next hour`);
+  }
+  return true;
+}
+
 /**
- * The verdict for the newest pending version: one message, then (live, or a refusal of an older version than the newest stable) the newest stable's submit is started once.
+ * The verdict for `env.VERSION` (the version the status read was made for, from the pending job; never re-picked here): one message, then (live, or a refusal of an older version than the
+ * newest stable) the newest stable's submit is started once. Older versions still pending were finished before a newer one could be submitted: they get one honest note, no verdict.
+ * Each part has its own claim; the version leaves "pending" only when both parts are done, so a failed dispatch is retried next hour without repeating the message.
  * Returns the lines to print. `deps` = {gh, sender} for tests.
  */
 export async function tell(env, deps = {}) {
   const gh = deps.gh || github(env), sender = deps.sender || send, out = [];
-  const {VERDICT: verdict, REASON: reason = ''} = env;
+  const {VERDICT: verdict, REASON: reason = '', VERSION: version} = env;
   if (verdict !== 'live' && verdict !== 'failed') return ['nothing to tell: still in review'];
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
-  const pending = await pendingVersions(gh), version = pending.pop();
-  if (!version) return ['nothing to tell: no pending version'];
-  for (const older of pending) await gh.claim(`msstore-announced-${older}`);   // a superseded submission: never announced on its own
-  if (await gh.claim(`msstore-announced-${version}`)) {
-    try { await tellOwner(messageOf(verdict === 'live' ? 'live' : 'failed', {version, reason, run, repo: env.GITHUB_REPOSITORY}), env, sender); }
-    catch (error) { await gh.release(`msstore-announced-${version}`); throw new Error(`the ${verdict} message for ${version} did not reach Telegram (${error.message}); it is tried again next hour`); }
-    out.push(`told the owner: ${version} ${verdict}`);
-  } else out.push(`${version} was already announced`);
+  const pending = await pendingVersions(gh);
+  if (!version || !pending.includes(version)) return [`nothing to tell: ${version || 'no version'} is not pending`];
+  const older = pending.filter(v => compareVersions(v, version) < 0);
+  for (const old of older) {
+    if (await announce(gh, old, `ℹ️ Jobadabra ${old} left Microsoft's review before I could read its verdict (${version} was submitted after it). Check Partner Center if you need to know whether it was accepted.`, env, sender, 'review-ended')) out.push(`told the owner: ${old} left review, verdict not read`);
+  }
+  if (await announce(gh, version, messageOf(verdict === 'live' ? 'live' : 'failed', {version, reason, run, repo: env.GITHUB_REPOSITORY}), env, sender, verdict)) out.push(`told the owner: ${version} ${verdict}`);
+  else out.push(`${version} was already announced`);
   const newest = await gh.stables();
   const submitted = await gh.tags('msstore-submitted-');
-  if (!newest || compareVersions(newest, version) <= 0 || submitted.includes(newest)) return [...out, `no newer stable to send (newest ${newest || 'none'})`];
-  if (!await gh.claim(`msstore-autosent-${newest}`)) return [...out, `${newest} was already sent on by the watcher`];
-  try { await gh.dispatch(`desktop-v${newest}`); }
-  catch (error) { await gh.release(`msstore-autosent-${newest}`); throw new Error(`could not start the Store submit of ${newest}: ${error.message}; tried again next hour`); }
-  out.push(`started the Store submit of ${newest}`);
-  await tellOwner(messageOf('autosent', {version, next: newest, run}), env, sender).catch(error => out.push(`the "sending ${newest}" note did not reach Telegram: ${error.message}`));
+  if (!newest || compareVersions(newest, version) <= 0 || submitted.includes(newest)) out.push(`no newer stable to send (newest ${newest || 'none'})`);
+  else if (!await gh.claim(`msstore-autosent-${newest}`)) out.push(`${newest} was already sent on by the watcher`);
+  else {
+    try { await gh.dispatch(`desktop-v${newest}`); }
+    catch (error) { await gh.release(`msstore-autosent-${newest}`); throw new Error(`could not start the Store submit of ${newest}: ${error.message}; ${version} stays pending and it is tried again next hour`); }
+    out.push(`started the Store submit of ${newest}`);
+    await tellOwner(messageOf('autosent', {version, next: newest, run}), env, sender).catch(error => out.push(`the "sending ${newest}" note did not reach Telegram: ${error.message}`));
+  }
+  for (const done of [...older, version]) await gh.claim(`msstore-followed-${done}`);
   return out;
 }
 
