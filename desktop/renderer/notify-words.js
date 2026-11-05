@@ -1,11 +1,12 @@
 // What the window says about "Tell me by" (Settings → Notifications, the Actions header, Connections): why a switch does nothing (no address, no bot, our sender
 // switched off, the person unsubscribed), and whether Telegram is still required. Pure (no DOM), so test/unit/renderer/notify-choice.test.js runs it in Node.
 
+import {LINE} from './email-consent-words.js';
 const NAMES = {email: 'Email', telegram: 'Telegram'};
 
 // The notes under the Email and Telegram switches and the card's message line. `error` is the last save's refusal: it stays until the next save (it was wiped by the refresh).
 export function notes(state, error = '') {
-  const email = !state.email ? 'New matches, reminders and answers in your inbox. Add your address below.'
+  const email = !state.email ? `${LINE} Add your address below, then switch it on.`
     : state.sending === false ? `To ${state.email}. Email is not switched on on our side yet: your choice is kept and mail starts when it is.`
       : state.serviceOff ? `You stopped these emails with the link in one of them. Turn them on again with "Email settings" at the bottom of any of our emails.`
         : state.confirmed ? `To ${state.email} (confirmed).`

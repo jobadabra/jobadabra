@@ -9,10 +9,10 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../r
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const steps = [...html.matchAll(/<div class="step" data-step="(\w+)">([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)];
 
-test('every checkbox inside a setup step sits in the standard .switch, never a bare switch-row', () => {
+// Why (5 Nov 2026, #3282): .switch-row may be used here: it is the shared flex row now (components.css), no longer the Settings-only grid this test banned on 21 Oct 2026.
+test('every checkbox inside a setup step sits in the standard .switch', () => {
   assert.ok(steps.length >= 4, 'found the setup steps');
   for (const [, name, body] of steps) {
-    assert.doesNotMatch(body, /class="[^"]*switch-row/, `${name}: a bare switch-row grid is drawn for Settings, not steps`);
     for (const box of body.matchAll(/<input type="checkbox"[^>]*>/g)) {
       const before = body.slice(Math.max(0, box.index - 40), box.index);
       assert.match(before, /class="switch">\s*$/, `${name}: ${box[0]} is not wrapped in <span class="switch">`);

@@ -10,3 +10,12 @@
 .cv-file .icon { color: var(--signal); flex: none; }
 .cv-drop .cv-kinds { display: inline-flex; align-items: center; gap: var(--sp-1); margin: 0; }
 .cv-drop .cv-kinds .icon { width: 14px; height: 14px; }
+
+/* The e-mail consent under the CV card (pages/cv-email-consent.js; owner, 5 Nov 2026: the first try inside the card was "Too crowded"): Settings → Notifications' own switch row,
+   outside the card at its width, left-aligned, so the card keeps its rest and the choice reads as a choice, not fine print. */
+.cv-consent { align-items: flex-start; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.cv-consent[hidden] { display: none; }
+label.cv-consent { margin: var(--sp-3) 0 0; font-size: inherit; color: inherit; font-weight: 400; }   /* the row built in JS (Always on) is itself the label */
+.cv-consent label, .cv-consent-title { margin: 0; font-size: inherit; color: var(--ink); font-weight: 600; line-height: 1.4; padding-top: 2px; cursor: pointer; }   /* the global label's 12 px top margin put the title under the switch's line; 2 px centres its first line on the 24 px switch */
+.cv-consent #cv-email-address { font-weight: 600; color: var(--ink-2); overflow-wrap: anywhere; }
+.cv-consent .message:empty { display: none; }

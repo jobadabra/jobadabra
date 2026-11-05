@@ -92,6 +92,7 @@ on:
       - 'desktop/renderer/answers-model.js'
       - 'desktop/renderer/apply-settings-model.js'
       - 'desktop/renderer/countries.js'
+      - 'desktop/renderer/email-consent-words.js'
       - 'desktop/renderer/errors.js'
       - 'desktop/renderer/find-card-model.js'
       - 'desktop/renderer/fragment-words.js'

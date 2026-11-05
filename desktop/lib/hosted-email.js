@@ -3,6 +3,7 @@
 // choice moves Always on with it while it is on (never turns it on by itself: that stores the profile on our servers, the person's own press). Guard: test/unit/main/hosted-email.test.js.
 import * as channel from './notify-channel.js';
 import * as hosted from './hosted-search.js';
+import {consented} from './email-consent.js';
 
 export const NO_ADDRESS = 'Add your e-mail in Settings → Notifications first: the matches go there.';
 const newsOf = storage => storage.settings().notifyMarketing !== false;
@@ -10,7 +11,7 @@ const newsOf = storage => storage.settings().notifyMarketing !== false;
 // -> {ok, error?, warning?}
 export async function turnOnShared(storage, given = {}, {fetcher, turnOn = hosted.turnOn, save = channel.save} = {}) {
   const typed = String(given.email || '').trim();
-  const email = typed || channel.emailOf(storage);
+  const email = typed || (consented(storage) ? channel.emailOf(storage) : '');   // a withdrawn consent leaves no address to use: the person adds one in Notifications
   if (!email) return {ok: false, error: NO_ADDRESS};
   const marketing = typeof given.marketing === 'boolean' ? given.marketing : newsOf(storage);
   const done = await turnOn(storage, {email, marketing}, fetcher ? {fetcher} : {});

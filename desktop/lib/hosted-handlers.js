@@ -3,6 +3,7 @@
 import * as hosted from './hosted-search.js';
 import * as pipeline from './pipeline.js';
 import {emailOf} from './notify-channel.js';
+import {consented} from './email-consent.js';
 import {turnOnShared} from './hosted-email.js';
 import {createMoments} from './always-on-moments.js';
 import {isTwin} from './twin.js';
@@ -23,7 +24,7 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
   ipcMain.handle('hostedMomentShown', async (_, name) => { if (!DEMO && name === 'missed') moments.shown(name); return {ok: true}; });
   ipcMain.handle('hostedState', async () => {
     const [open, schedule] = await Promise.all([DEMO ? true : hosted.isOpen(storage), !DEMO && hosted.state(storage).on ? hosted.schedule(storage) : null]);   // together: one slow answer does not wait for the other
-    return {...hosted.state(storage), canRun: !DEMO && hosted.canRun(storage), shared: DEMO ? 'alex@example.com' : emailOf(storage), available: !DEMO, open, schedule};
+    return {...hosted.state(storage), canRun: !DEMO && hosted.canRun(storage), shared: DEMO ? 'alex@example.com' : consented(storage) ? emailOf(storage) : '', available: !DEMO, open, schedule};
   });
   ipcMain.handle('hostedOn', async (_, given) => {
     if (DEMO) return {ok: true};

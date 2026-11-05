@@ -7,6 +7,7 @@ import {notes} from '../notify-words.js';
 import {openSetting} from './settings.js';
 import {forgetEmailState} from './setup-email-card.js';
 import {plainError} from '../run-warnings.js';
+import {addressToSave} from '../email-consent-choice.js';
 
 const BOXES = {email: 'notify-email', app: 'notify-app', telegram: 'notify-telegram'};
 let busy = false;
@@ -17,7 +18,12 @@ export async function showNotify(error = '') {
   if (!state) return;
   if (shared.state) Object.assign(shared.state, {notifyBy: state.by, settings: {...shared.state.settings, notifyBy: state.chosen}});   // Connections and the Actions header follow the choice at once
   for (const [name, id] of Object.entries(BOXES)) $(id).checked = state.by.includes(name);
+  // Why (5 Nov 2026, co review): the CV's address is only offered, as the placeholder; as the field's value every auto-save of another switch sent it to our site without consent.
+  // Switching e-mail on with the field empty uses it (bindNotify): that switch is the consent (lib/email-consent.js).
   $('notify-address').value = state.email || '';
+  const offered = state.email ? '' : (await window.pilot.emailConsentView().catch(() => null))?.address || '';
+  $('notify-address').placeholder = offered || 'you@example.com';
+  $('notify-address').dataset.offered = offered;
   $('notify-marketing').checked = state.marketing;
   $('notify-cadence').value = state.cadence || 'daily';
   $('notify-telegram').disabled = !state.telegram;
@@ -36,7 +42,8 @@ export function bindNotify({savedToast, updateRepo}) {
     let error = '';
     try {
       const by = Object.entries(BOXES).filter(([, id]) => $(id).checked).map(([name]) => name);
-      const result = await window.pilot.notifySave({by, email: $('notify-address').value, marketing: $('notify-marketing').checked, cadence: $('notify-cadence').value});
+      const email = addressToSave({typed: $('notify-address').value, offered: $('notify-address').dataset.offered || '', by});
+      const result = await window.pilot.notifySave({by, email, marketing: $('notify-marketing').checked, cadence: $('notify-cadence').value});
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
       window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
