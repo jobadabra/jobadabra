@@ -9,7 +9,7 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {followFilter, searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {band, byStat, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
+import {band, byStat, isStuck, fitTooltip, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
 import {$, show} from './core.js';
@@ -99,10 +99,10 @@ export function renderJobs() {
     ringRow.append(ring, caret);
     const scoring = job.fit == null && searchingNow() && !job.place_unclear;   // found by the search that is running: its score comes next
     const old = !!job.stale && job.fit != null;
-    fit.append(ringRow, el('span', 'fit-label', scoring ? 'Scoring…' : old ? staleLabel : matchLabel(job.fit)));
+    fit.append(ringRow);
+    if (old && parts.fit) fit.append(el('span', 'fit-label', staleLabel));   // only a stale score has words under its ring (style.css .is-stale .fit-label); the tooltip says the rest
     if (!parts.fit) {   // an applied, rejected or inbound job with no score: the same ring, saying N/A, never "Not scored" (job-row-model.js)
       ring.replaceChildren(el('span', '', NA));
-      fit.querySelector('.fit-label').textContent = '';
     }
     fit.title = !parts.fit ? 'No fit score: nothing to apply to here' : scoring ? 'Being scored now: the fit appears in a moment' : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? 'Click to see why' : '')}`;
     const live = sessionFor(job.url);

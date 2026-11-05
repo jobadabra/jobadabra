@@ -102,7 +102,7 @@ test('every Find jobs press goes through the one gate: startSearch asks Score fi
 test('the old score stays on the row, muted, with a short word; the palette lists the action', () => {
   const rows = read('renderer/pages/jobs-render.js');
   assert.match(rows, /job\.stale && job\.fit != null \? ' is-stale' : ''/);
-  assert.match(rows, /old \? staleLabel : matchLabel\(job\.fit\)/);
+  assert.match(rows, /if \(old && parts\.fit\) fit\.append\(el\('span', 'fit-label', staleLabel\)\)/);
   assert.match(read('renderer/style.css'), /body\[data-rescoring\] #find-card \{ display: none; \}/, 'one attribute, one rule: no draw order');
   assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait');
   assert.match(read('renderer/pages/nav.js'), /dispatchEvent\(new Event\('rescore-ask'\)\)/, 'by an event: nav.js imports neither jobs.js nor startup.js (no-circular)');
