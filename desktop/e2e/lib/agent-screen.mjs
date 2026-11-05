@@ -14,11 +14,12 @@ Report only what you can quote from the screen: at most ${MAX_PROBLEMS} problems
 Before you report a contradiction, check that both sides name the same thing: a count that leaves out one kind of item (inbound jobs, the person's own edits) and a count of everything differ by design, and the rules under "What is known about the app" say so. A state shown because the person opened or pressed something (an open row marked Editing, a filter just switched off) is not a contradiction. A control named in the list of controls has a name: report an unnamed control only when the list shows no label for it. Quote the two sides you compare; when you cannot quote both from this screen, report nothing.
 Never report taste, wording that is fine, a guess about the app's insides, or anything not on this screen. Answer with the JSON asked for.`;
 
-/** The strict answer: a list of at most two problems, each in the shape of an agent note (empty = the screen holds together). */
-export const screenSchema = () => {
+// Why-changed (5 Nov 2026, replays 41944858938 and 41944862753): the reader wrote the view as "Jobs", validateNote wants the screen id "jobs", so every problem it found on the Board was refused (0 notes, 2 refused) and the proof run measured nothing; the schema now offers the screens as an enum.
+/** The strict answer: a list of at most two problems, each in the shape of an agent note (empty = the screen holds together); `views` (the screens of the app) makes the view field a choice. */
+export const screenSchema = (views = null) => {
   const text = {type: 'string'};
   const problem = {type: 'object', additionalProperties: false, required: ['type', 'kind', 'severity', 'view', 'title', 'expected', 'observed', 'why'],
-    properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), view: text, title: text, expected: text, observed: text, why: text}};
+    properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), view: views?.length ? choice(views) : text, title: text, expected: text, observed: text, why: text}};
   return {type: 'object', additionalProperties: false, required: ['problems'], properties: {problems: {type: 'array', maxItems: MAX_PROBLEMS, items: problem}}};
 };
 
@@ -30,7 +31,7 @@ export async function readScreen({ask, observation, goal, knowledge = '', knowle
   const started = now(), prompt = `Goal the person was working on: ${goal.label} (${goal.group})\n\nWhat is known about the app:\n${knowledge || '(nothing recorded yet)'}\n\nThe screen:\n${observation}`;
   let answer;
   try {
-    answer = await ask({system: SCREEN_SYSTEM, messages: [{role: 'user', content: image ? [{type: 'image', source: {type: 'base64', media_type: 'image/png', data: image}}, {type: 'text', text: prompt}] : prompt}], schema: screenSchema()});
+    answer = await ask({system: SCREEN_SYSTEM, messages: [{role: 'user', content: image ? [{type: 'image', source: {type: 'base64', media_type: 'image/png', data: image}}, {type: 'text', text: prompt}] : prompt}], schema: screenSchema(views)});
   } catch (error) {
     return {notes: [], refused: [], failed: String(error?.message || error).slice(0, 120), ms: now() - started};
   }
@@ -42,7 +43,7 @@ export async function readScreen({ask, observation, goal, knowledge = '', knowle
   const notes = [], refused = [];
   for (const problem of data.problems.slice(0, MAX_PROBLEMS)) {
     const checked = validateNote(problem, {knowledgeIds, views});
-    if (checked.ok) notes.push(checked.note); else refused.push(checked.why);
+    if (checked.ok) notes.push(checked.note); else refused.push(`${checked.why}: ${String(problem?.title || '').slice(0, 80)}`);
   }
   return {notes, refused, ...spent};
 }
