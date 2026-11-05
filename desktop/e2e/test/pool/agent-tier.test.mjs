@@ -1,4 +1,4 @@
-// The AI user agent's acting tier and the hard token cap of one run: a night acts on the large tier, a replay on small, and every call of a run counts against 250,000 tokens and is refused before it is made when it could pass the cap.
+// The AI user agent's acting tier and the hard token cap of one run: a night acts on the mid tier (the large tier stalls, 5 Nov 2026), a replay on small, and every call of a run counts against 250,000 tokens and is refused before it is made when it could pass the cap.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {actorEngineOf, actorTierOf, engineLine, CAP_REACHED, harnessTokens, HARNESS_MAX_TOKENS, isCapStop, RUN_CAP_TOKENS, runBudget, stoppedLabel, tokensLine} from '../../lib/agent-tier.mjs';
@@ -9,8 +9,8 @@ const small = {system: 's', messages: [{role: 'user', content: 'hello'}]};
 // A request as big as the input the fake answer reports (4 characters a token), so the pre-call worst case and the real usage agree as they do in life.
 const sized = tokens => ({system: 's', messages: [{role: 'user', content: 'y'.repeat((tokens - 100) * 4)}]});
 
-test('a night acts on the large tier, a replay or a run with no kind on small, and what a dispatch asked for wins', () => {
-  assert.deepEqual([actorTierOf({kind: 'night'}), actorTierOf({kind: 'replay'}), actorTierOf({requested: 'mid', kind: 'night'}), actorTierOf({requested: 'large', kind: 'replay'}), actorTierOf()], ['large', 'small', 'mid', 'large', 'small']);
+test('a night acts on the mid tier, a replay or a run with no kind on small, and what a dispatch asked for wins', () => {
+  assert.deepEqual([actorTierOf({kind: 'night'}), actorTierOf({kind: 'replay'}), actorTierOf({requested: 'mid', kind: 'night'}), actorTierOf({requested: 'large', kind: 'replay'}), actorTierOf()], ['mid', 'small', 'mid', 'large', 'small']);
 });
 
 // Guard: money. One run never spends more than 250,000 tokens (owner, 5 Nov 2026: "we can start with 250k tokens then. Assuming the initial context/harness would be max 20k"): every call of the run (actor, reader, judge, input plus output) counts, and a call whose worst case would pass the cap is refused before it is made.
