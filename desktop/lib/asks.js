@@ -1,16 +1,27 @@
 // The ask gate: when the app may invite the person to tell us what went wrong, instead of leaving (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md). One owner of the answer; the window only draws.
-// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). Only a failed application whose cause is ours to fix is a moment here.
+// Design (fb, 5 Nov 2026): a kind of ask is IDLE, PENDING (a moment passed the gate), ANSWERED ("Tell us" pressed, quiet 30 days) or SNOOZED ("Not now", quiet 14 days). The moments (MOMENTS): a failed application whose cause is ours to fix, a Find jobs press that failed (runMomentOf), a crash on the last run (fb 4/7); nothing else opens one.
 // The No list is `mayAsk`: setup not finished, another ask within 24 hours, this kind snoozed or answered lately, a kind nobody defined. Guard: test/unit/main/asks.test.js.
 
-import {ASK_FAILED_APPLICATION, ASK_WORDS} from '../renderer/ask-card-text.js';
+import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, ASK_WORDS} from '../renderer/ask-card-text.js';
+import {runFailure} from './run-failure.js';
 
-export {ASK_FAILED_APPLICATION};
+export {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN};
 const QUIET = {later: 14 * 24 * 3600 * 1000, tell: 30 * 24 * 3600 * 1000}, ONE_A_DAY = 24 * 3600 * 1000;
 const KINDS = Object.keys(ASK_WORDS);
 
-/** An application result word (lib/application-result.js) -> the kind of ask it opens, or null. Only the form not reached and the sign-in step are ours to fix; a success, or a person who walked away, opens nothing. */
-export function momentOf(result) {
-  return result === 'failed-no-form' || result === 'failed-account' ? ASK_FAILED_APPLICATION : null;
+const MOMENTS = {'failed-no-form': ASK_FAILED_APPLICATION, 'failed-account': ASK_FAILED_APPLICATION, 'failed-run': ASK_FAILED_RUN, crashed: ASK_CRASHED};
+
+/** A moment word -> the kind of ask it opens, or null. The words: an application result (lib/application-result.js: only the form not reached and the sign-in step are ours to fix; a success, or a person who walked away, opens nothing),
+ *  'failed-run' (runMomentOf) and 'crashed' (the last run of the app ended in a crash). */
+export function momentOf(word) {
+  return MOMENTS[word] || null;
+}
+
+/** A finished engine run ({args, code, timedOut, stopped, tail, errorKind}, lib/pipeline-run.js) -> 'failed-run' when the person pressed Find jobs and it failed (the same verdict as the technical report, runFailure: never a Stop, a quit or a
+ *  scheduled run), else ''. A run that ended with 0 is never a failure here, even with warnings. */
+export function runMomentOf(info) {
+  const args = info.args || [], mode = args.includes('--mode') ? args[args.indexOf('--mode') + 1] : '';
+  return args[0] === 'src' && ['daily', 'check'].includes(args[1]) && mode === 'run' && info.code !== 0 && runFailure(info) ? 'failed-run' : '';
 }
 
 /** May `kind` be asked at `now` (ms)? `settings` is the app's settings. Pure: the whole No list. */

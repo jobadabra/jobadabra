@@ -5,10 +5,12 @@ import {ASK_WORDS, answerAsk} from '../../../renderer/ask-card-text.js';
 
 const bridge = () => { const calls = []; return {calls, pilot: {asksAnswer: async (...args) => { calls.push(args); }}, openFeedback: () => calls.push(['open'])}; };
 
-test('the failed-application ask says it is read and answered within a day, and does not beg', () => {
-  const words = ASK_WORDS['failed-application'];
-  assert.match(words.body, /write back within a day/);
-  assert.doesNotMatch(`${words.title} ${words.body}`, /please|sorry to bother|rate|review us/i);
+test('every ask says it is read and answered within a day, and does not beg', () => {
+  assert.deepEqual(Object.keys(ASK_WORDS).sort(), ['crashed', 'failed-application', 'failed-run']);
+  for (const [kind, words] of Object.entries(ASK_WORDS)) {
+    assert.match(words.body, /write back within a day/, kind);
+    assert.doesNotMatch(`${words.title} ${words.body}`, /please|sorry to bother|rate|review us/i, kind);
+  }
 });
 
 test('"Tell us" records the answer and opens Send feedback; "Not now" only records it', () => {

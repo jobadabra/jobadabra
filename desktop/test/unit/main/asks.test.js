@@ -1,9 +1,13 @@
 // The ask gate (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md): when the app may invite the person to tell us what went wrong, and who owns that answer.
 // Design (fb, 5 Nov 2026): lib/asks.js alone decides. States of one kind of ask: IDLE -> PENDING (a moment passed the gate) -> ANSWERED ("Tell us" pressed) or SNOOZED ("Not now", 14 days).
-// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step) opens PENDING; nothing else does. The No list below is the whole gate.
+// The verdicts that move them: a failed application whose cause is ours to fix (the form not reached, the sign-in step), a failed Find jobs press and a crash on the last run open PENDING; nothing else does. The No list below is the whole gate.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ASK_FAILED_APPLICATION, createAsks, mayAsk, momentOf} from '../../../lib/asks.js';
+import {ASK_CRASHED, ASK_FAILED_APPLICATION, ASK_FAILED_RUN, createAsks, mayAsk, momentOf, runMomentOf} from '../../../lib/asks.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {createCrashMark, takeCrashMark} from '../../../lib/crash-monitors.js';
 import {ASK_WORDS} from '../../../renderer/ask-card-text.js';
 import {resultOf} from '../../../lib/application-result.js';
 
@@ -104,4 +108,44 @@ test('the look-around (demo) app asks nothing and writes nothing', () => {
 test('every kind the card has words for may be asked, and nothing else', () => {
   for (const kind of Object.keys(ASK_WORDS)) assert.equal(mayAsk(settings(), kind, NOW), true, kind);
   assert.equal(mayAsk(settings(), 'no-words-for-this', NOW), false);
+});
+
+// Why (fb 4/7, 5 Nov 2026): Find jobs failing, and the app crashing last time, are moments like a failed application; a Stop, a scheduled run or a run that ended with 0 never is.
+test('only Find jobs pressed by the person and failed is a failed-run moment', () => {
+  const run = (over = {}) => ({args: ['src', 'daily', '--mode', 'run'], code: 1, timedOut: '', stopped: false, tail: ['Traceback: boom'], errorKind: '', ...over});
+  const table = [
+    [run(), ASK_FAILED_RUN], [run({args: ['src', 'check', '--mode', 'run']}), ASK_FAILED_RUN], [run({code: null, timedOut: 'no output for 15 minutes'}), ASK_FAILED_RUN],
+    [run({code: 0}), ''], [run({stopped: true}), ''], [run({code: null}), ''], [run({args: ['src', 'daily', '--mode', 'scheduled']}), ''],
+    [run({args: ['src', 'ai', 'cv']}), ''], [run({args: []}), '']];
+  for (const [info, want] of table) assert.equal(runMomentOf(info), want, JSON.stringify(info));
+});
+
+test('the moment words open the kinds the card has words for', () => {
+  assert.deepEqual(['failed-run', 'crashed'].map(momentOf), [ASK_FAILED_RUN, ASK_CRASHED]);
+  const asks = createAsks({storage: store(), getWindow: spy().getWindow, now: () => NOW});
+  asks.moment('crashed');
+  assert.equal(asks.pending(), ASK_CRASHED);
+  asks.moment('failed-run');
+  assert.equal(asks.pending(), ASK_CRASHED, 'one ask at a time, one a day');
+});
+
+test('an uncaught error that Electron survives leaves no mark; one the process dies of leaves exactly one', () => {
+  const written = [], storage = {path: name => `/profile/${name}`};
+  const mark = () => createCrashMark({getStorage: () => storage, write: (file, text) => written.push([file, text])});
+  const survived = mark(); survived.sawUncaught(); survived.exit(0);
+  assert.deepEqual(written, [], 'the error dialog was dismissed and the app quit normally');
+  const quitOnly = mark(); quitOnly.exit(1);
+  assert.deepEqual(written, [], 'a non-zero exit without an uncaught error (an installer, a kill) is not a crash we mark');
+  const died = mark(); died.sawUncaught(); died.exit(1);
+  assert.deepEqual(written.map(([file]) => file), ['/profile/crashed.mark']);
+  assert.doesNotThrow(() => createCrashMark({getStorage: () => storage, write: () => { throw new Error('read-only'); }}).exit(1));
+  assert.doesNotThrow(() => createCrashMark({getStorage: () => null}).exit(1), 'before the storage exists there is nowhere to write');
+});
+
+test('the next start takes the mark once', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'crash-mark-')), storage = {path: name => path.join(dir, name)};
+  assert.equal(takeCrashMark(storage), false);
+  fs.writeFileSync(storage.path('crashed.mark'), '1');
+  assert.equal(takeCrashMark(storage), true);
+  assert.equal(takeCrashMark(storage), false, 'once');
 });
