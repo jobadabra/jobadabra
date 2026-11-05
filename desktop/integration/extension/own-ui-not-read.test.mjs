@@ -10,6 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {builderSource, candidatesOfPage, functionSource, loadReader} from '../../e2e/ladder-capture.mjs';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
+import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -50,14 +51,21 @@ const READERS = [
   ['popup in the way (popup-page.js findPopup)', page => page.evaluate(withArgs(functionSource('popup-page.js', 'export function findPopup'), [{list: true}]))],
 ];
 
-test('no reader shows the AI, or picks, the extension\'s own UI; the page\'s own content is still read', async () => {
+// A hang names its stage and closes the browser (lib/test-clock.mjs; Gitar on #3241). The test takes about 0.5 s on a Mac: the 30 s cap is a hang guard only.
+const TEST_MS = 30000, TEST_CAP = {timeout: TEST_MS + CLOSE_MS + 5000};
+
+test('no reader shows the AI, or picks, the extension\'s own UI; the page\'s own content is still read', TEST_CAP, clocked(TEST_MS, async () => {
+  at('starting Chromium');
   const browser = await chromium.launch();
+  onHang(() => browser.close());
   try {
     const page = await browser.newPage({viewport: {width: 1280, height: 900}});
     await page.route('**/*', route => route.fulfill({status: 200, contentType: 'text/html', body: PAGE}));
+    at('opening the fixture page');
     await page.goto('https://jobs.example.com/o/sre');
     const failures = [];
     for (const [name, read] of READERS) {
+      at(`reading with ${name}`);
       const text = JSON.stringify(await read(page));
       if (OURS.test(text)) failures.push(`${name}: ${text.match(OURS)[0]}`);
     }
@@ -65,9 +73,10 @@ test('no reader shows the AI, or picks, the extension\'s own UI; the page\'s own
     // A positive control: the readers still see the page itself.
     assert.match(JSON.stringify(await READERS[0][1](page)), /Apply now/);
     assert.match(JSON.stringify(await READERS[2][1](page)), /Apply now/);
+    at('reading the page itself (positive control)');
     assert.match(JSON.stringify(await READERS[5][1](page)), /Reject all/);
   } finally { await browser.close(); }
-});
+}));
 
 test('every extension script that walks open shadow roots is in READERS (a new walker must leave out the panel too)', () => {
   const dir = path.join(root, 'extension'), walkers = [];
