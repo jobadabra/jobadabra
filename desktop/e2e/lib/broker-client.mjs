@@ -74,7 +74,7 @@ export function failureOf(error) {
  * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model, engine?, fellBack?, ms} (ms is container Codex execution, excluding its later rate-limit lookup) or {ok: false, status, detail}.
  * status 'capped' = the broker's BUDGET said no (a reason starting `budget:`, 429 or 503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer (the detail names the cause and how long the call was open; it says nothing about credit).
  * Any other refusal keeps its HTTP status and its reason (a lost login `login-lost`, a fallback that cannot answer `fallback:*`, `only-codex: unavailable`): a failure the job shows red, never a grey skip.
- * Invariant: a 5xx with no `why` of the broker's is asked once more after RETRY_AFTER_MS; one with a reason is never asked again.
+ * Invariant: a 5xx with no `why` of the broker's is asked once more after RETRY_AFTER_MS; a 502 `codex-failed:` on a conversation call (a Codex turn that crashed or stalled; the broker restarts the conversation from the full prompt, which the body carries) is asked once more at once; any other reason is never asked again. At most two HTTP calls, never both rules.
  */
 export async function askBroker(body, {env = process.env, fetchImpl = fetch, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))} = {}) {
   const token = await runToken(env, fetchImpl).catch(error => error);
@@ -90,6 +90,8 @@ export async function askBroker(body, {env = process.env, fetchImpl = fetch, now
   // Why (4 Nov 2026, owner via mac-32): TREATS A SYMPTOM. While a deploy swaps the broker's container the platform answers 5xx for a few seconds with no reason of the broker's (6 calls in 24 s on 4 Nov); one more try
   // after 30 s rides it out. The cause, calls cut off by the swap, is JOB-274. A refusal that gave a reason (`why`) is a decision, not a swap: never asked again.
   if (!(answer instanceof Error) && answer.status >= 500 && !data?.why) { await sleep(RETRY_AFTER_MS); ({answer, data} = await ask()); }
+  // Why (5 Nov 2026, a8 via mac-32; Gitar on #3272 put it here, the one owner of retries): TREATS A SYMPTOM. Why Codex stalls (3 in ~14 calls) is open with a8; this is the recovery the broker contract plans, so one stall is a `restarted` row and not a dead chain; a second failure is the caller's as before.
+  else if (body.session && !(answer instanceof Error) && answer.status === 502 && /^codex-failed:/.test(String(data?.why || ''))) ({answer, data} = await ask());
   if (answer instanceof Error) return {ok: false, status: 'unreachable', detail: `no answer from the broker: ${failureOf(answer)} after ${Math.round((now() - started) / 1000)} s`};
   // Why (4 Nov 2026, review): a connection lost after the headers left an empty 200 that read as an answer with no text.
   if (data instanceof Error) return {ok: false, status: 'unreachable', detail: `the broker's answer was cut off: ${failureOf(data)} after ${Math.round((now() - started) / 1000)} s`};

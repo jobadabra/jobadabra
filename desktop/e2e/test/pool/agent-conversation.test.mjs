@@ -103,3 +103,36 @@ test('a refused call says which call of which conversation it was and how big', 
   assert.equal(refusedLine({session: 'agent-g1', delta: 'c'.repeat(30), messages}, 4), '  call 5 of agent-g1 was refused (delta 30 chars, 3 turns, 150 chars in all)');
   assert.match(refusedLine({messages: [{role: 'user', content: 'x'}]}, 0), /call 1 of no conversation was refused \(full prompt, 1 turns, 1 chars/);
 });
+
+test('a conversation turn that crashed or stalled is asked once more at once with the same body; every other refusal, and a second failure, end it', async () => {
+  const env = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://gh.example/token?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'rt', CODEX_BROKER_URL: 'https://broker.example'};
+  const good = {reply: '{}', tier: 'large', model: 'm', engine: 'codex', ms: 3, tokens: {input: 16_000, output: 20, cached: 0, counted: 16_020}, session: {mode: 'restarted', reason: 'gap'}};
+  const stall = {status: 502, why: 'codex-failed:null \n[killed after 100 s: codex did not finish]'}, crash = {status: 502, why: 'codex-failed:1 {"type":"error"}'};
+  const asking = async (replies, body = {model: 'claude-opus-5-5', messages: [{role: 'user', content: 'hi'}], session: 'agent-g1', delta: 'n'}) => {
+    const sent = [], slept = [];
+    const fetchImpl = async (url, init) => {
+      if (String(url).startsWith('https://gh.example')) return new Response(JSON.stringify({value: 'jwt'}));
+      sent.push(init.body);
+      const next = replies.shift();
+      return new Response(JSON.stringify(next.status ? {why: next.why} : next), {status: next.status || 200});
+    };
+    return {answer: await askBroker(body, {env, fetchImpl, sleep: async ms => { slept.push(ms); }}), sent, slept};
+  };
+  const stalled = await asking([stall, good]);
+  assert.equal(stalled.answer.ok, true);
+  assert.equal(stalled.sent.length, 2);
+  assert.equal(stalled.sent[0], stalled.sent[1], 'the same full prompt and delta travel again');
+  assert.deepEqual(stalled.slept, [], 'at once, no 30 s wait');
+  assert.equal((await asking([crash, good])).answer.session.reason, 'gap', 'a crash is asked again like a stall');
+  const twice = await asking([stall, stall, good]);
+  assert.deepEqual([twice.answer.ok, twice.sent.length], [false, 2], 'asked once more, not a third time');
+  for (const refused of [{status: 503, why: 'budget: week'}, {status: 503, why: 'ran-out'}, {status: 502, why: 'only-claude: unavailable'}, {status: 503, why: 'codex-failed:1 busy'}, {status: 500, why: 'codex-failed:1 busy'}]) {
+    const once = await asking([refused, good]);
+    assert.deepEqual([once.answer.ok, once.sent.length], [false, 1], `${refused.why} is not asked again`);
+  }
+  const plain = await asking([stall, good], {model: 'claude-opus-5-5', messages: [{role: 'user', content: 'hi'}]});
+  assert.deepEqual([plain.answer.ok, plain.sent.length], [false, 1], 'a call that is not in a conversation is the caller\'s');
+  const noWhy = await asking([{status: 502, why: ''}, stall, good]);
+  assert.equal(noWhy.sent.length, 2, 'the 5xx with no reason keeps its own 30 s retry, and the two rules never stack');
+  assert.deepEqual(noWhy.slept, [30000]);
+});
