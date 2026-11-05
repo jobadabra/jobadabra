@@ -176,6 +176,34 @@ class StorePublishFailureReachesTheOwner(unittest.TestCase):
                     self.assertIn(f'{secret}: ${{{{ secrets.{secret} }}}}', alert)
 
 
+class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
+    """Owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram". Certification takes hours to days and no job waits that long: the submit job
+    leaves a tag, and an hourly check (started by the Worker) tells the owner and sends the newest stable on. Behaviour: desktop/test/tooling/release/msix-store-watch.test.js."""
+    SUBMIT = (WORKFLOWS / 'msix-store.yml').read_text()
+    WATCH = (WORKFLOWS / 'msix-store-watch.yml').read_text()
+
+    def test_a_good_publish_hands_its_version_to_the_watcher_as_a_tag(self):
+        submit = self.SUBMIT[self.SUBMIT.index('\n  submit:'):self.SUBMIT.index('\n  # Why (2 Nov 2026')]
+        publish, mark = submit.index('msstore publish "$msix"'), submit.index('msstore-submitted-$VERSION')
+        self.assertLess(publish, mark, 'the tag is written after the publish, so a refused publish never leaves one')
+        self.assertIn("steps.inflight.outputs.busy != 'true'", submit[publish:], 'a skipped submit (one already in review) leaves no tag')
+        self.assertIn('contents: write', submit)
+
+    def test_the_watch_reads_partner_center_only_when_a_version_waits_and_never_submits(self):
+        self.assertIn('needs.pending.outputs.version', self.WATCH.split('\n  check:')[1].split('steps:')[0], 'the Windows job runs only for a pending version')
+        self.assertNotIn('msstore publish', self.WATCH, 'the watch never submits; a newer stable is started as msix-store.yml')
+        self.assertRegex(self.WATCH.split('\n  check:')[1], r'runs-on: windows-', 'msstore keeps its secret in the OS keyring')
+        tell = self.WATCH[self.WATCH.index('\n  tell:'):]
+        self.assertIn('!inputs.look_only', tell.split('steps:')[0], 'the read-only look never messages, claims or starts anything')
+        self.assertIn("verdict == 'unknown'", self.WATCH, 'a status that cannot be read is a red run, not silence')
+
+    def test_the_verdict_message_uses_the_one_alert_path_and_the_hourly_start_is_the_workers(self):
+        self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}', self.WATCH)
+        self.assertIn("from '../desktop/e2e/ci-alert.mjs'", (ROOT / 'tools' / 'msix-store-watch.mjs').read_text())
+        self.assertIn("workflow: 'msix-store-watch.yml'", (ROOT / 'app-core' / 'src' / 'scheduler.js').read_text(), 'GitHub cron barely fires; the Worker starts it')
+        self.assertNotRegex(self.WATCH, r'(?m)^\s+schedule:', 'no GitHub cron: it would double the Worker\'s start')
+
+
 class PromotionByHandRunsInGitHub(unittest.TestCase):
     """Owner, 2 Nov 2026: "It can be in this workflow" … "we just promote the latest beta". 0.8.86 was promoted from a Mac with no Telegram secrets."""
     FLOW = (WORKFLOWS / 'canary-promote.yml').read_text()

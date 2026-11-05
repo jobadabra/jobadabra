@@ -24,6 +24,7 @@ export const AGENT_SLOT = '04:40';
 // The night's Search check (search-personas.yml), UTC HH:MM. Why (4 Nov 2026, owner: "Night run, off PRs"): it rides the ten-minute trigger too, at the broker's quietest hour: 0 and 2 calls in the 00 hour of the last two nights.
 // Six presses in a row took about 33-44 min (a press's job: median 5.4, max 7.2), so it ends before the 01:30 pass; the night's other AI, the scout at about 02:30 and AGENT_SLOT, comes later.
 export const SEARCH_SLOT = '00:00';
+export const STORE_WATCH_MINUTE = 20;
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 /** The night pass due at this moment as "n/5", or '' when none. */
 export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
@@ -44,6 +45,9 @@ export function jobsFor(cron, now = new Date()) {
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
     if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
     if (hhmm(now) === SEARCH_SLOT) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true'}});
+    // Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days, so an hourly look (minute 20) tells him within the hour;
+    // it rides this trigger (no 4th trigger can be registered) and costs one Ubuntu minute unless a submitted version waits (msix-store-watch.yml).
+    if (now.getUTCMinutes() === STORE_WATCH_MINUTE) jobs.push({workflow: 'msix-store-watch.yml'});
     return jobs;
   }
   if (cron === '40 */3 * * *') return [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}];

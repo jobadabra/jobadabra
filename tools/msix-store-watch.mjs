@@ -1,0 +1,141 @@
+// Tells the owner on Telegram when Microsoft finishes reviewing a Store submission, and sends the newest stable on at once (owner, 5 Nov 2026: "when Microsoft accepts a new release version,
+// I'd like to get a message on telegram"; then "Auto-send newest": Store users catch up with no new release). Used by .github/workflows/msix-store-watch.yml; no AI, no new secret.
+//   node tools/msix-store-watch.mjs pending                     -> version=<newest submitted, not yet announced | ''> on $GITHUB_OUTPUT
+//   node tools/msix-store-watch.mjs decide <status.txt> <get.txt> -> verdict=live|failed|waiting|unknown, reason=<one line> on $GITHUB_OUTPUT
+//   node tools/msix-store-watch.mjs tell                        (env VERSION, VERDICT, REASON, GH_TOKEN, GITHUB_REPOSITORY, CI_ALERTS_TELEGRAM_*)
+// State is git tags (owner, 2 Nov 2026): msstore-submitted-X.Y.Z (written by msix-store.yml after a good publish), msstore-announced-X.Y.Z (the verdict message went out),
+// msstore-autosent-X.Y.Z (the watcher started that version's submit). A claim is created before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run
+// never repeats a message or a submit; a failed Telegram send releases its claim so the next hour retries it.
+// Invariants: a refused version is never sent again by this tool; only a version newer than the finished one is auto-sent; nothing here submits anything itself, it starts msix-store.yml.
+import fs from 'node:fs';
+import {send} from '../desktop/e2e/ci-alert.mjs';
+
+const APP_ID = '9NW1JJ7Z90MP';
+const STORE_PAGE = `https://apps.microsoft.com/detail/${APP_ID}`;
+const SENT = 'ci-alert: sent';
+const ansi = text => String(text || '').replace(/\x1b\[[0-9;]*m/g, '');
+
+/** Semver compare of "X.Y.Z" strings: negative, 0 or positive. */
+export const compareVersions = (a, b) => {
+  const [x, y] = [a, b].map(v => v.split('.').map(Number));
+  return (x[0] - y[0]) || (x[1] - y[1]) || (x[2] - y[2]);
+};
+
+/**
+ * What `msstore submission status` says -> {verdict, status}. "Submission Status = <State>": Published (with no pending submission, "Last Published Submission") is live;
+ * a state ending in Failed, or Canceled, is a refusal; any other state is still in review; no such line (sign-in error, API error) is unknown.
+ */
+export function decide(statusText) {
+  const status = /Submission Status\s*[=-]\s*(\w+)/.exec(ansi(statusText))?.[1] || '';
+  if (!status) return {verdict: 'unknown', status};
+  if (status === 'Published') return {verdict: 'live', status};
+  if (/Failed$|^Cancel/.test(status)) return {verdict: 'failed', status};
+  return {verdict: 'waiting', status};
+}
+
+/**
+ * The refusal's reason in words from `msstore submission get` (JSON of the submission): its statusDetails errors, one line. Anything else: the status name and where to look.
+ * Never throws; the text is clipped so a Telegram message stays short.
+ */
+export function reasonOf(getText, status = '') {
+  const text = ansi(getText), start = text.indexOf('{'), end = text.lastIndexOf('}');
+  try {
+    const details = JSON.parse(text.slice(start, end + 1)).statusDetails || {};
+    const errors = [...(details.errors || []), ...(details.certificationReports || []).filter(r => r.reportUrl).map(r => ({details: `report ${r.reportUrl}`}))]
+      .map(item => [item.code, item.details].filter(Boolean).join(': ')).filter(Boolean);
+    if (errors.length) return errors.join(' · ').replace(/\s+/g, ' ').slice(0, 600);
+  } catch { /* not JSON: fall through */ }
+  return `Microsoft gave no reason in the API (status ${status || 'unknown'}); read it in Partner Center`;
+}
+
+/** The Telegram text: `kind` live | failed | autosent. */
+export function messageOf(kind, {version, reason = '', run = '', repo = '', next = ''}) {
+  if (kind === 'live') return `✅ Jobadabra ${version} is live in the Microsoft Store.\n${STORE_PAGE}`;
+  if (kind === 'failed') {
+    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself. Once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
+  }
+  return `📦 Sending Jobadabra ${next} to the Microsoft Store now (the newest stable, after ${version}). Microsoft's review takes hours; I will write again when it is accepted.\nRun: ${run}`;
+}
+
+/** The GitHub API calls this tool makes, over `fetcher`: {tags(prefix), claim(name), release(name), stables(), dispatch(tag)}. */
+export function github(env = process.env, fetcher = fetch) {
+  const base = `${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}`;
+  const call = (path, init = {}) => fetcher(`${base}/${path}`, {...init, headers: {Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', ...(init.body ? {'Content-Type': 'application/json'} : {})}, signal: AbortSignal.timeout(20000)});
+  const ok = async (answer, what) => { if (!answer.ok) throw new Error(`${what}: GitHub ${answer.status}`); return answer; };
+  return {
+    async tags(prefix) {
+      const answer = await ok(await call(`git/matching-refs/tags/${prefix}`), `list ${prefix}`);
+      return (await answer.json()).map(ref => ref.ref.slice(`refs/tags/${prefix}`.length)).filter(v => /^\d+\.\d+\.\d+$/.test(v));
+    },
+    /** true when this call created the tag, false when it already existed (someone else holds the claim). */
+    async claim(name) {
+      const answer = await call('git/refs', {method: 'POST', body: JSON.stringify({ref: `refs/tags/${name}`, sha: env.GITHUB_SHA})});
+      if (answer.status === 422) return false;
+      await ok(answer, `claim ${name}`);
+      return true;
+    },
+    async release(name) { await call(`git/refs/tags/${name}`, {method: 'DELETE'}); },
+    /** Newest stable desktop release version, '' when none. */
+    async stables() {
+      const releases = await (await ok(await call('releases?per_page=50'), 'list releases')).json();
+      const found = releases.filter(r => !r.prerelease && !r.draft).map(r => /^desktop-v(\d+\.\d+\.\d+)$/.exec(r.tag_name)?.[1]).filter(Boolean);
+      return found.sort(compareVersions).pop() || '';
+    },
+    async dispatch(tag) { await ok(await call('actions/workflows/msix-store.yml/dispatches', {method: 'POST', body: JSON.stringify({ref: 'main', inputs: {tag}})}), 'start msix-store.yml'); },
+  };
+}
+
+/** Submitted versions with no verdict message yet, newest last. */
+export async function pendingVersions(gh) {
+  const [submitted, announced] = await Promise.all([gh.tags('msstore-submitted-'), gh.tags('msstore-announced-')]);
+  return submitted.filter(v => !announced.includes(v)).sort(compareVersions);
+}
+
+/** Sends `text`; a send that did not reach Telegram throws. */
+async function tellOwner(text, env, sender) {
+  const result = await sender(text, env);
+  if (result !== SENT) throw new Error(result);
+}
+
+/**
+ * The verdict for the newest pending version: one message, then (live, or a refusal of an older version than the newest stable) the newest stable's submit is started once.
+ * Returns the lines to print. `deps` = {gh, sender} for tests.
+ */
+export async function tell(env, deps = {}) {
+  const gh = deps.gh || github(env), sender = deps.sender || send, out = [];
+  const {VERDICT: verdict, REASON: reason = ''} = env;
+  if (verdict !== 'live' && verdict !== 'failed') return ['nothing to tell: still in review'];
+  const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
+  const pending = await pendingVersions(gh), version = pending.pop();
+  if (!version) return ['nothing to tell: no pending version'];
+  for (const older of pending) await gh.claim(`msstore-announced-${older}`);   // a superseded submission: never announced on its own
+  if (await gh.claim(`msstore-announced-${version}`)) {
+    try { await tellOwner(messageOf(verdict === 'live' ? 'live' : 'failed', {version, reason, run, repo: env.GITHUB_REPOSITORY}), env, sender); }
+    catch (error) { await gh.release(`msstore-announced-${version}`); throw new Error(`the ${verdict} message for ${version} did not reach Telegram (${error.message}); it is tried again next hour`); }
+    out.push(`told the owner: ${version} ${verdict}`);
+  } else out.push(`${version} was already announced`);
+  const newest = await gh.stables();
+  const submitted = await gh.tags('msstore-submitted-');
+  if (!newest || compareVersions(newest, version) <= 0 || submitted.includes(newest)) return [...out, `no newer stable to send (newest ${newest || 'none'})`];
+  if (!await gh.claim(`msstore-autosent-${newest}`)) return [...out, `${newest} was already sent on by the watcher`];
+  try { await gh.dispatch(`desktop-v${newest}`); }
+  catch (error) { await gh.release(`msstore-autosent-${newest}`); throw new Error(`could not start the Store submit of ${newest}: ${error.message}; tried again next hour`); }
+  out.push(`started the Store submit of ${newest}`);
+  await tellOwner(messageOf('autosent', {version, next: newest, run}), env, sender).catch(error => out.push(`the "sending ${newest}" note did not reach Telegram: ${error.message}`));
+  return out;
+}
+
+const write = (key, value) => { const line = `${key}=${String(value).replace(/\s+/g, ' ')}`; console.log(line); if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${line}\n`); };
+
+if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+  const [command, statusFile, getFile] = process.argv.slice(2);
+  if (command === 'pending') write('version', (await pendingVersions(github())).pop() || '');
+  else if (command === 'decide') {
+    const {verdict, status} = decide(fs.readFileSync(statusFile, 'utf8'));
+    write('verdict', verdict);
+    write('reason', verdict === 'failed' ? reasonOf(getFile && fs.existsSync(getFile) ? fs.readFileSync(getFile, 'utf8') : '', status) : '');
+  } else if (command === 'tell') {
+    try { for (const line of await tell(process.env)) console.log(line); }
+    catch (error) { console.error(error.message); process.exit(1); }
+  } else { console.error('usage: msix-store-watch.mjs pending | decide <status.txt> <get.txt> | tell'); process.exit(2); }
+}

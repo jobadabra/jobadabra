@@ -37,6 +37,16 @@ test('the ten-minute cron starts the PR verdict sweep on every tick without disp
   }
 });
 
+test('the Store review check starts once an hour, at minute 20 of the ten-minute trigger, and at no other tick', () => {
+  const day = new Date(Date.UTC(2026, 10, 5));
+  const starts = [];
+  for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
+    const now = new Date(day.getTime() + minutes * 60000);
+    if (jobsFor('*/10 * * * *', now).some(job => job.workflow === 'msix-store-watch.yml')) starts.push(now.toISOString().slice(11, 16));
+  }
+  assert.deepEqual(starts, Array.from({length: 24}, (_, hour) => `${String(hour).padStart(2, '0')}:20`));
+});
+
 test('the night burn-in starts five full e2e passes at five different UTC times, on the ten-minute trigger, and nothing at any other tick', () => {
   assert.deepEqual(NIGHT_SLOTS, ['21:00', '23:30', '01:30', '03:30', '05:30']);
   const day = new Date(Date.UTC(2026, 9, 31));
