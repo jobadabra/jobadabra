@@ -26,7 +26,7 @@ PLANNED = 180   # the app's budget, which the seconds below are planned for (par
 RESERVE = {'titles': 70, 'enrich': 40, 'score': 0}   # seconds kept for the AI steps that come after this one
 FACTS = 25   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
 TAIL = 15    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
-SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts no call: scoring keeps them (26 Oct 2026, a proof
+SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
 #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
 SCORE_FIRST = False
 # Every stage that reads or calls the AI after the budget starts (tests/unit/sources/test_three_minutes.py loops over them; a new one goes here and there).
@@ -37,7 +37,7 @@ FLOOR = 3     # the first jobs of a search are scored whatever the clock says (o
 _scored = [0]  # scores started in this search (may_score)
 LOCAL_TITLES = 300  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
 _local = [0]
-FEED = 30   # local titles a call still sorts in scoring's share while no matched job waits for a score: one batch feeds scoring (local_titles)
+FEED = 30   # local titles a call still sorts in scoring's share while the jobs waiting for a score keep their time: one batch feeds scoring (local_titles)
 _lock = threading.Lock()
 
 
@@ -108,18 +108,33 @@ def local_titles(wanted):
     if ended():
         return 0
     with _lock:
-        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while no job this
-            # search matched waits for a score, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
+        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while the jobs this search
+            # matched keep the time their scores need, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
             # "No time left" for its 10 titles, 0 of 12 postings listed; a benchmark first press left 28 local titles unsorted at 80 s of 135
-            # with its one match scored)
-            from . import run_counts
-            if run_counts.waiting():
+            # with its one match scored).
+            if not title_room():
                 return 0
             n = max(0, min(wanted, FEED, LOCAL_TITLES - _local[0]))
         else:
             n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
         _local[0] += n
         return n
+
+
+def title_room(now=None):
+    """False when one more round of title calls would cost the jobs waiting for a score their time, at this computer's paces (_paces); True before scoring's share.
+    Asked by each title call as it starts, so several rounds side by side overrun by one round at most.
+    Why (5 Nov 2026, #2918, Copenhagen): any waiting job stopped the floor, so one job held back the titles of 200 EURES rows at 82 s of 135: 0 of them listed, and the press
+    ended 30 s early. Scoring keeps the time it needs, not all of its share."""
+    if not _scorings(now):
+        return True
+    from . import run_counts
+    waiting = run_counts.waiting()
+    if not waiting:
+        return True
+    paces = _paces()
+    need = waiting * max(0.5, paces['score']) + max(0.5, paces['title_rounds'])
+    return DEADLINE - reserve('score') - (now if now is not None else time.monotonic()) >= need
 
 
 def _scorings(now=None):

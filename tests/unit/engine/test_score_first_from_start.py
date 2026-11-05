@@ -1,5 +1,6 @@
 """A timed search that scores plans for scoring's real stop from its first second (26 Oct 2026, a proof on a copy of the owner's data:
 score_first was switched on only when scoring began, so the title floor ran to 120 s and scoring had 3 s left: 3 jobs scored)."""
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -14,6 +15,11 @@ SEARCH = Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py'
 class ScoreFirstFromTheStart(unittest.TestCase):
     def setUp(self):
         self.addCleanup(time_budget.start, 0)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        patch = mock.patch('src.paths.DATA', Path(folder.name))   # its paces: the default ones, not a stray step_pace.json
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def plan(self, score_max=60, profile=lambda: 'SRE in Zurich', budget=180):
         time_budget.start(budget)
@@ -28,8 +34,8 @@ class ScoreFirstFromTheStart(unittest.TestCase):
         from src import run_counts
         run_counts.reset()   # Why (#2218): an earlier test in the shard that scored https://x.test/1 left it scored, so nothing "waited"
         self.addCleanup(run_counts.reset)
-        run_counts.matched([{'url': 'https://x.test/1'}])   # a job to score: the floor's titles wait (without one, one batch: test_first_press_order.py)
-        self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring its share (stop 140 s, SCORING 45 s)")
+        run_counts.matched([{'url': f'https://x.test/{n}'} for n in range(20)])   # jobs that need the time: the floor's titles wait (with room, one batch: test_first_press_order.py)
+        self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring what it needs (stop 140 s, SCORING 45 s)")
 
     def test_nothing_to_score_plans_no_score_first(self):
         for kwargs in ({'score_max': 0}, {'profile': None}, {'budget': 0}):

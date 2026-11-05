@@ -29,7 +29,7 @@ def _add(kind, keys):
 
 
 def waiting():
-    """Jobs this search matched and has not scored yet (src/time_budget.py local_titles: while any waits, the title floor leaves scoring its share)."""
+    """Jobs this search matched and has not scored yet (src/time_budget.py local_titles: the title floor leaves them the time their scores need)."""
     with _lock:
         return len(_sets['matches'] - _sets['scored'])
 

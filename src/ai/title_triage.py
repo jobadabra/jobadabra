@@ -75,7 +75,7 @@ def _second_look(client, ask, decided, search, words, local=False, sure=frozense
     for start in range(0, len(doubted), BATCH):
         batch = doubted[start:start + BATCH]
         try:
-            if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced or budget.local_titles(len(batch)) >= len(batch))):   # as the sort's own exemption
+            if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced and budget.title_room() or budget.local_titles(len(batch)) >= len(batch))):   # as the sort's own exemption
                 raise TimeoutError('the refresh\'s time is up')
             listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
             response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': RECHECK_SYSTEM}],
@@ -124,7 +124,7 @@ def decide(titles, search, client=None, local=False):
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them
 
     def one(batch):
-        if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced or budget.local_titles(len(batch)) >= len(batch))):
+        if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced and budget.title_room() or budget.local_titles(len(batch)) >= len(batch))):
             with lock:
                 late[0] += len(batch)
             return

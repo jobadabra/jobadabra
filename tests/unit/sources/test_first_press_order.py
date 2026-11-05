@@ -3,10 +3,13 @@ jobs where the 20 Oct round found 49-1,459; the run waited up to 45 s for its we
 were asked at 80 s, past the read cut of 67 s; and the quality suite on Free AI: "No time left" for its 10 titles in scoring's share, 0 of
 12 postings listed, so the "always 3" scores had no job)."""
 import io
+import json
+import tempfile
 import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from src import run_counts, time_budget
 from src.sources import careers
@@ -44,15 +47,65 @@ class TheTitlesThatFeedScoringAreSorted(unittest.TestCase):
         self.assertEqual(time_budget.local_titles(10), 10)
         self.assertEqual(time_budget.local_titles(100), time_budget.FEED, 'one batch, not the whole floor')
 
-    def test_none_while_a_matched_job_waits_for_its_score_then_one_batch_again(self):
+    def test_none_while_matched_jobs_need_the_time_then_one_batch_again(self):
+        jobs = [{'url': f'https://x.test/{n}'} for n in range(100)]
         with redirect_stdout(io.StringIO()):
-            run_counts.matched([{'url': 'https://x.test/1'}])
-            self.assertEqual(time_budget.local_titles(10), 0, 'scoring keeps its share for the job that waits (b8cfac4)')
-            run_counts.scored({'url': 'https://x.test/1'}, 40)
+            run_counts.matched(jobs)
+            self.assertEqual(time_budget.local_titles(10), 0, 'scoring keeps its share for the jobs that wait (b8cfac4)')
+            for job in jobs:
+                run_counts.scored(job, 40)
         self.assertEqual(time_budget.local_titles(10), 10, 'scored: the share is idle, the next titles feed it')
 
     def test_none_at_the_runs_end(self):
         time_budget.start(BUDGET, now=time.monotonic() - BUDGET)
+        self.assertEqual(time_budget.local_titles(10), 0)
+
+
+class ScoringKeepsTheTimeItNeeds(unittest.TestCase):
+    """Copenhagen, 5 Nov 2026 (#2918): 200 EURES rows reached the titles at 82 s of 135 with one job waiting for a score; none was sorted and the press ended at 105 s."""
+    def setUp(self):
+        run_counts.reset()
+        self.addCleanup(run_counts.reset)
+        self.addCleanup(time_budget.score_first, False)
+        self.addCleanup(time_budget.start, 0)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.data = Path(folder.name)
+        patch = mock.patch('src.paths.DATA', self.data)   # its paces: the default ones, not a stray step_pace.json
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.press(82)
+
+    def press(self, at):
+        """A 135 s press that scores (scoring stops 30 s before its end), `at` seconds in."""
+        time_budget.start(135, now=time.monotonic() - at)
+        time_budget.score_first()
+        self.assertTrue(time_budget._scorings() and not time_budget.ended())
+
+    def waiting(self, jobs):
+        run_counts.matched([{'url': f'https://x.test/{n}'} for n in range(jobs)])
+
+    def test_one_waiting_job_does_not_hold_back_the_local_titles(self):
+        self.waiting(1)
+        self.assertEqual(time_budget.local_titles(100), time_budget.FEED, 'its score takes seconds, and 23 s are left: the titles go on, a batch a call')
+
+    def test_jobs_that_need_the_time_left_keep_it(self):
+        self.waiting(20)   # b8cfac4's case: the floor's title calls took the time and a search scored only its first 3
+        self.assertEqual(time_budget.local_titles(10), 0)
+
+    def test_the_last_seconds_before_scorings_stop_stay_scorings(self):
+        self.waiting(1)
+        self.press(100)
+        self.assertEqual(time_budget.local_titles(10), 0, 'one round of title calls would leave its score no time')
+
+    def test_this_computers_own_slow_pace_counts(self):
+        (self.data / 'step_pace.json').write_text(json.dumps({'score': 30.0}))
+        self.waiting(1)
+        self.assertEqual(time_budget.local_titles(10), 0, 'a score this slow needs the time left')
+
+    def test_the_runs_end_still_wins(self):
+        self.waiting(1)
+        time_budget.start(135, now=time.monotonic() - 135)
         self.assertEqual(time_budget.local_titles(10), 0)
 
 
