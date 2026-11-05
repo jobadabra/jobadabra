@@ -41,6 +41,7 @@ export function model(mine = {}, schedule = null, now = new Date(), shared = '',
 }
 function view(mine, schedule, now, shared, mail) {
   const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;
+  // Why (5 Nov 2026, owner: "What should a not-yet-turned-on servers card say?" -> "Off"): a green On for a service that is not running told a screen-reader user it was on. Same for 'ready' below.
   if (!email && (skipped || !mine.on)) return {state: 'needs-email', pill: ['Off', 'neutral'], line: 'Add your e-mail in Notifications to get the matches. Then turn it on here.', asksEmail: true, button: 'email', off: false, download: false};
   if (skipped) return {state: 'off', pill: ['Off', 'neutral'], line: `Turn it on to get new matches every morning at ${email}, even when your Mac is off.`, asksEmail: false, button: 'on', off: false, download: false};
   if (!mine.on) return {state: 'ready', pill: ['Off', 'neutral'], line: `Searches start as soon as you turn it on. Matches go to ${email}.`, asksEmail: false, button: 'on', off: false, download: false};

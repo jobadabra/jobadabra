@@ -9,7 +9,7 @@ const tomorrow7 = new Date(2026, 9, 18, 7, 0).toISOString();
 
 test('a trial install that did not turn it on shows OFF (grey, the word the GitHub row uses); without an e-mail it sends you to Notifications to add one (#1711: one shared e-mail)', () => {
   const fresh = model({}, null, now);
-  assert.deepEqual([fresh.state, fresh.pill, fresh.asksEmail, fresh.button], ['needs-email', ['Off', 'neutral'], true, 'email']);   // Why (5 Nov 2026, owner: "What should a not-yet-turned-on servers card say?" -> "Off"): a green On for a service that is not running told a screen-reader user it was on
+  assert.deepEqual([fresh.state, fresh.pill, fresh.asksEmail, fresh.button], ['needs-email', ['Off', 'neutral'], true, 'email']);   // the Why is on the line in hosted-words.js
   assert.match(fresh.line, /Add your e-mail in Notifications/);
   assert.equal(fresh.off, false);
   const ready = model({}, null, now, 'n@example.com');   // the Notifications address is the one it uses: no second field
