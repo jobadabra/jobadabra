@@ -1,4 +1,4 @@
-"""One Jobs row per posting when the same job is listed under several links (two boards, or a repost on one board).
+"""One Jobs row per posting when the same job is listed on several job sites (look-alikes on one site stay separate: see _same_posting).
 
 Owner, 5 Nov 2026 ("Yes + marks every copy"; a tester: "the same posting shows up several times in Jobs"). The stored rows are never touched: only the list
 merges, and the row says which other sites list it ("Also on jobup.ch") and carries every copy's link so a status change reaches them all.

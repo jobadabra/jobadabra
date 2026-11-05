@@ -31,7 +31,7 @@ import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
 import {companyCell, placeCell} from './jobs-row-cells.js';
-import {alsoOnTags, onEveryCopy, setStatusOnCopies} from './jobs-copies.js';
+import {alsoOnTags, holdsAny, linksOf, onEveryCopy, setStatusOnCopies} from './jobs-copies.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
@@ -67,7 +67,7 @@ export function renderJobs() {
   // The counters count every application (real workload); without one, the ticked filters decide (jobs-filters.js): any of them holds the job;
   // a pasted link finds any job.
   const counted = jobsState.statFilter === 'stuck' ? shared.allJobs.filter(stuck)
-    : jobsState.statFilter?.urls ? shared.allJobs.filter(job => jobsState.statFilter.urls.has(fullKey(job.url)))
+    : jobsState.statFilter?.urls ? shared.allJobs.filter(job => holdsAny(job, jobsState.statFilter.urls, fullKey))
     : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter) : null;
   const by = $('sort-by').value;
   const rows = sorted((counted || shared.allJobs)
@@ -160,7 +160,7 @@ export function renderJobs() {
       if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
       const stage = result.stage || job.stage;   // what Notion now holds (a dismissed job in process becomes Closed)
       jobsChanged(job, {status: next, stage: next === 'applied' && stage === 'Applying' ? 'Applied' : stage});
-      if (next === 'dismissed' && jobsState.statFilter?.urls) jobsState.statFilter.urls.delete(fullKey(job.url));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
+      if (next === 'dismissed' && jobsState.statFilter?.urls) linksOf([job]).forEach(url => jobsState.statFilter.urls.delete(fullKey(url)));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
       renderJobs();
       if (next === 'dismissed') askWhy(job);   // one optional tap: why (counted with the score band only)
     };

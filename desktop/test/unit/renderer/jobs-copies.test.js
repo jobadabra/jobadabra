@@ -1,7 +1,7 @@
 // A merged Jobs row stands for every copy of its posting: a status change reaches them all, the row's own first (owner, 5 Nov 2026: "marks every copy").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {alsoOnTags, linksOf, onEveryCopy, setStatusOnCopies} from '../../../renderer/pages/jobs-copies.js';
+import {alsoOnTags, countPostings, holdsAny, linksOf, onEveryCopy, setStatusOnCopies} from '../../../renderer/pages/jobs-copies.js';
 
 const job = {url: 'https://www.jobup.ch/b', copies: ['https://www.jobup.ch/b', 'https://www.jobs.ch/a', 'https://example.org/c'], also_on: ['jobs.ch', 'example.org']};
 
@@ -43,4 +43,17 @@ test('a row that is not merged changes its one link; its tags are empty', async 
   assert.deepEqual(calls, ['https://a/1']);
   assert.deepEqual(alsoOnTags({url: 'https://a/1'}), []);
   assert.deepEqual(alsoOnTags(job).map(tag => tag.text), ['Also on jobs.ch', 'Also on example.org']);
+});
+
+const key = url => url.toLowerCase();
+test('a merged row is held by any of its links, so a counter and the rows it opens agree', () => {
+  const keys = new Set(['https://www.jobs.ch/a']);   // a run found the copy that is not the row's own link
+  assert.equal(holdsAny(job, keys, key), true);
+  assert.equal(holdsAny({url: 'https://x/1'}, keys, key), false);
+});
+
+test('a run card counts postings, not links: both copies of one posting are one', () => {
+  const rows = [job, {url: 'https://x/1'}];
+  assert.deepEqual(countPostings(['https://www.jobs.ch/a', 'https://www.jobup.ch/b', 'https://x/1', 'https://new/9'], rows, key), {postings: 3, inJobs: 2});
+  assert.deepEqual(countPostings(['https://a/1', 'https://a/2'], [], key), {postings: 2, inJobs: 2});   // no list yet: nothing to subtract
 });

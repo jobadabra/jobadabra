@@ -7,7 +7,7 @@ import {byFit, runItems, runNewCount} from '../run-cards.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {fullKey, showJobsIn} from './jobs.js';
-import {linksOf} from './jobs-copies.js';
+import {countPostings} from './jobs-copies.js';
 import {openView} from './nav.js';
 import {hhmm} from './activity-basics.js';
 import {lastActivity, renderActivity} from './activity-render.js';
@@ -92,9 +92,9 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // there, and the button must not promise it (owner, 30 Sep: 9 on the card, 8 on the page).
     const label = `${heading}${run?.startedAt ? ` · ${hhmm(Date.parse(run.startedAt))}` : ''}`;
     const urls = items.map(item => item.url).filter(Boolean);   // nothing new: Jobs as it is, not a filter of older jobs
-    const known = new Set(linksOf(shared.allJobs).map(fullKey));   // a merged row stands for every link it holds
-    const here = urls.length && known.size ? urls.filter(url => known.has(fullKey(url))).length : urls.length;
-    const total = items.length;
+    // Counted in postings, as the page counts rows: a merged row stands for every link it holds, so two links of one posting are one (pages/jobs-copies.js).
+    const {postings, inJobs: here} = countPostings(urls, shared.allJobs, fullKey);
+    const total = items.length - (urls.length - postings);
     if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? 'Nothing new since the last check. Jobs found before are in Jobs.'
       : fresh ? 'They are in Jobs.' : 'This run found nothing new to show. Your saved jobs are in Jobs.'));
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
