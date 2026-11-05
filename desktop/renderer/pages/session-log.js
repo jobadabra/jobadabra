@@ -1,6 +1,7 @@
 // Session page: opening a session and its log.
 import {ai} from '../ai-name.js';
 import {el, moreButton, pill} from '../components.js';
+import {icon} from '../icons.js';
 import {resumeOffered} from '../claude-help.js';
 import {latestStep, readSessionMessage} from '../session-message.js';
 import {passWheel, wheelLines} from '../wheel.js';
@@ -10,7 +11,7 @@ import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {cancellable, isSubmitted, stopShown, tabAddress} from '../session-state.js';
-import {backgroundStatus, sessionAutomationLabel} from '../background-status.js';
+import {backgroundStatus, sessionModeChip} from '../background-status.js';
 import {checkingTab, tabLost, tabStatus, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
 import {sessionPanels} from '../sessions-cache.js';
@@ -45,6 +46,9 @@ function clearHeader() {
 }
 // A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
 const stateOf = item => backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
+// A session's mode at a glance (background-status.js sessionModeChip): the list row and the header show the same chip.
+const modeChip = item => { const {glyph, text, tone, title} = sessionModeChip(item), node = pill(text, tone, {title}); node.classList.add('mode-pill'); node.prepend(icon(glyph)); return node; };
+
 export function renderSessionPage() {
   // The session shown is the open one; after a reload (⌘R) the one open before it, else the first. It becomes the
   // open session, so the log, replies and buttons act on the session you see (with none set, the log stayed empty).
@@ -74,7 +78,7 @@ export function renderSessionPage() {
     top.append(el('b', '', sessionCompany(entry)), el('span', 'muted small', clockTime(entry.startedAt)));
     const role = el('span', 'small ss-row-role', sessionTitle(entry));
     role.title = sessionTitle(entry);  // one line in the list; the whole title on hover
-    words.append(top, role, el('span', 'muted small', sessionAutomationLabel(entry)), pill(label, tone, {dot: true}));
+    words.append(top, role, modeChip(entry), pill(label, tone, {dot: true}));
     li.append(sessionLogo(entry), words);
     li.addEventListener('click', () => openSession(entry.id));
     return li;
@@ -82,8 +86,8 @@ export function renderSessionPage() {
   if (!item) { clearHeader(); return; }
   const [label, tone] = stateOf(item);
   $('ss-title').textContent = sessionCompany(item);
-  $('ss-role').textContent = `${sessionTitle(item)} · ${sessionAutomationLabel(item)}`;
-  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}));
+  $('ss-role').textContent = sessionTitle(item);
+  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}), modeChip(item));
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
   const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
   again.addEventListener('click', () => busy(again, 'Restarting…', () => restartSession(item)));
