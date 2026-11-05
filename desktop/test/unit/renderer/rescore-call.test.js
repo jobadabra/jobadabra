@@ -28,23 +28,22 @@ const words = await import('../../../renderer/rescore-words.js');
 const toasts = [];
 const how = {search: why => { searches.push(why); return Promise.resolve({ok: true}); }, reload: async () => {}, toast: (...args) => toasts.push(args)};
 
-test('the call says the Strategy notice\'s sentence with the same count, and offers Re-score N', () => {
+test('old scores are not this callout\'s any more: with a count it says only "not scored yet" (the row is the Jobs bar\'s, rescore-entry.js)', () => {
   run.noteOutdated({count: 12, method: 4, places: 9});
   paintScoreCall(0, false);
-  assert.equal(call.hidden, false);
-  assert.equal(call.dataset.kind, 'stale');
-  assert.ok(text.textContent.startsWith(words.noticeTitle(12)), 'the same function as Strategy\'s notice');
-  assert.equal(go.textContent, 'Re-score 12');
-  assert.equal(go.className, 'primary', 'a solid button, the one primary');
+  assert.equal(call.hidden, true, 'nothing unscored: no callout, however many old scores wait');
+  paintScoreCall(7, false);
+  assert.match(text.textContent, /^7 jobs are not scored yet/);
+  assert.match(read('renderer/index.html'), /id="jobs-unscored-go"[^>]*>Check now</, 'the button\'s words are the page\'s own');
+  assert.doesNotMatch(text.textContent, /previous search settings/, 'the notice\'s sentence lives in the Jobs bar row now');
+  assert.equal(call.dataset.kind, undefined);
 });
 
-test('no scores from the previous strategy: the callout is the old "not scored yet" one, unchanged', () => {
+test('no scores from the previous strategy: the callout is the "not scored yet" one, unchanged', () => {
   run.noteOutdated({count: 0, method: 0, places: 0});
   paintScoreCall(7, false);
-  assert.equal(call.dataset.kind, 'unscored');
   assert.equal(call.hidden, false);
   assert.match(text.textContent, /^7 jobs are not scored yet/);
-  assert.equal(go.textContent, 'Check now');
   paintScoreCall(7, true);
   assert.equal(call.hidden, true, 'while the search runs they are being scored');
 });
@@ -81,12 +80,12 @@ test('one re-score at a time, and a refused one ends cleanly', async () => {
   assert.equal(document.body.dataset.rescoring, undefined);
 });
 
-test('the call\'s Re-score opens the cost dialog, never starts by itself; the dialog\'s own button is the start', () => {
+test('the row\'s Re-score opens the cost dialog, never starts by itself; the dialog\'s own button is the start', () => {
   run.confirmRescore(5, how);
   assert.equal(dialog.opened, true);
   assert.equal(globalThis.document.getElementById('rescore-go').textContent, 'Re-score 5');
-  const jobs = read('renderer/pages/jobs.js');
-  assert.match(jobs, /rescore: count => confirmRescore\(count, /);
+  assert.match(read('renderer/pages/focus-suggestions.js'), /rescore: action => confirmRescore\(action\.count, /, 'the Jobs bar row runs the dialog');
+  assert.doesNotMatch(read('renderer/pages/jobs.js'), /confirmRescore/, 'the callout no longer starts one');
   assert.equal((read('renderer/pages/rescore-run.js').match(/window\.pilot\.rescoreOutdated\(\)/g) || []).length, 1, 'one start in the app');
 });
 
@@ -105,7 +104,9 @@ test('the old score stays on the row, muted, with a short word; the palette list
   assert.match(rows, /job\.stale && job\.fit != null \? ' is-stale' : ''/);
   assert.match(rows, /old \? staleLabel : matchLabel\(job\.fit\)/);
   assert.match(read('renderer/style.css'), /body\[data-rescoring\] #find-card \{ display: none; \}/, 'one attribute, one rule: no draw order');
-  assert.match(read('renderer/pages/nav.js'), /button\('jobs', 'jobs-unscored-go'/);
+  assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait');
+  assert.match(read('renderer/pages/nav.js'), /dispatchEvent\(new Event\('rescore-ask'\)\)/, 'by an event: nav.js imports neither jobs.js nor startup.js (no-circular)');
+  assert.match(read('renderer/pages/focus-suggestions.js'), /addEventListener\('rescore-ask', \(\) => RUN\.rescore\(/, 'and the Jobs bar opens the dialog');
   assert.match(words.scoreFirstLead(4), /Cost: not calculated/, 'no invented cost');
   assert.equal(words.scoreFirstTitle, 'Score first');
 });
@@ -141,11 +142,42 @@ test('Score first: Cancel starts nothing; "Find jobs without re-scoring" lets th
   for (const why of [{reason: 'rescore', count: 4}, {employers: true}]) assert.equal(await gate.scoreFirst(why, how), null, 'only the plain press is held');
 });
 
-test('a plain Find search running: the stale call stays but waits (one run at a time)', () => {
+test('a plain Find search running: a re-score starts nothing and queues nothing, from every surface; it waits and says so (owner scenario: the old bar was greyed then)', async () => {
   run.noteOutdated({count: 4, method: 4, places: 0});
-  paintScoreCall(0, true);
-  assert.equal(call.hidden, false);
-  assert.equal(go.disabled, true);
-  paintScoreCall(0, false);
-  assert.equal(go.disabled, false);
+  queued = 4; searches.length = 0; toasts.length = 0;
+  let queuedCalls = 0;
+  const pilot = globalThis.window.pilot;
+  const real = pilot.rescoreOutdated;
+  pilot.rescoreOutdated = async () => { queuedCalls++; return {ok: true, queued: 4}; };
+  document.body.dataset.findCard = 'searching';
+  try {
+    dialog.opened = false;
+    run.confirmRescore(4, how);
+    assert.equal(dialog.opened, false, 'nobody confirms a start that would be refused');
+    await run.runRescore(4, how);   // the Score-first path and a dialog opened before the search began
+    assert.equal(queuedCalls, 0, 'no job is queued');
+    assert.deepEqual(searches, []);
+    assert.equal(run.rescoring(), null);
+    assert.equal(toasts.length, 2);
+    assert.equal(toasts[0][0], 'Re-score waits');
+  } finally {
+    delete document.body.dataset.findCard;
+    pilot.rescoreOutdated = real;
+  }
+  await run.runRescore(4, how);
+  assert.equal(searches.length, 1, 'the search ended: the same press goes through');
+});
+
+test('the Jobs bar\'s row follows the one state: present with old scores, gone while the re-score runs, back or gone after it', async () => {
+  const {rescoreEntries} = await import('../../../renderer/rescore-entry.js');
+  const rowNow = () => rescoreEntries({count: run.knownOutdated().count, running: !!run.rescoring()}).length;
+  run.noteOutdated({count: 3, method: 3, places: 0});
+  queued = 3;
+  assert.equal(rowNow(), 1, 'old scores: the row');
+  const started = run.runRescore(3, how);
+  assert.equal(rowNow(), 0, 'while it runs the re-score card says so');
+  await started;
+  assert.equal(rowNow(), 1, 'the count is read again by the Jobs reload; until then the row is back');
+  run.noteOutdated({count: 0, method: 0, places: 0});
+  assert.equal(rowNow(), 0, 'the reload says none are left: gone');
 });
