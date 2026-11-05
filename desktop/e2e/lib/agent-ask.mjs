@@ -16,5 +16,5 @@ export const MODELS = {small: 'claude-haiku-5-5', mid: 'claude-sonnet-5-5', larg
 export const brokerAsk = (tier = 'small', {only = '', ask: call = askBroker} = {}) => async ({system, messages, schema}) => {
   const answer = await call({model: MODELS[tier] || MODELS.small, max_tokens: 1024, system, messages, output_config: {format: {type: 'json_schema', schema}}, ...(only ? {engine: only, only: true} : {})});
   if (!answer.ok) { if (answer.status === 'capped' && !only) noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
-  return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine};
+  return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine, tokens: answer.tokens, session: answer.session};
 };

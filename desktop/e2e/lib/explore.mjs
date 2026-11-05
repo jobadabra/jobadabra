@@ -87,6 +87,13 @@ export function parseAction(text, actions = ACTIONS) {
 }
 
 /** What one broker call used, added to the session's tally (per tier, so a small-vs-mid run compares). `answer`: {usage, ms, tier}. */
+/**
+ * What the broker said about one call beyond its totals: input, output, the cached part of the input and what the meter counted (null when the engine gives none), and the conversation's mode and reason.
+ * Why (5 Nov 2026, owner via mac-32: "report per call: input / cached / uncached / output"): whether an engine's own caching discounts the repeated part cannot be read from the sum.
+ */
+export const callDetail = answer => ({input: answer.usage?.input_tokens || 0, output: answer.usage?.output_tokens || 0, cached: answer.tokens?.cached ?? null, counted: answer.tokens?.counted ?? null,
+  ...(answer.session?.mode ? {mode: answer.session.mode, ...(answer.session.reason ? {reason: answer.session.reason} : {})} : {})});
+
 function spend(spent, answer) {
   const tier = answer.tier || 'unknown', row = spent.tiers[tier] ||= {calls: 0, input: 0, output: 0, ms: 0};
   const input = answer.usage?.input_tokens || 0, output = answer.usage?.output_tokens || 0, ms = Number.isFinite(answer.ms) ? answer.ms : 0;
@@ -112,7 +119,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     try { answer = await ask({system, messages, schema: actionSchema(views, extend)}); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; break; }   // Why (5 Nov 2026, run 42040707448): 160 cut the broker's reason at "Selec"
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0)};
+    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     const repeat = watch(row, was, turn);

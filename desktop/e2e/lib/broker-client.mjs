@@ -97,5 +97,5 @@ export async function askBroker(body, {env = process.env, fetchImpl = fetch, now
   if ((answer.status === 429 || answer.status === 503) && /^budget:/.test(String(data.why || ''))) return {ok: false, status: 'capped', detail: `broker: ${data.why}`};
   if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${reasonOf(data.why || data.error || answer.status)}`};
   told(data);
-  return {ok: true, tier: data.tier, model: data.model, ...(data.engine ? {engine: data.engine} : {}), ...(data.fellBack?.length ? {fellBack: data.fellBack} : {}), ms: Number.isFinite(data.ms) ? data.ms : null, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
+  return {ok: true, tier: data.tier, model: data.model, ...(data.engine ? {engine: data.engine} : {}), ...(data.fellBack?.length ? {fellBack: data.fellBack} : {}), ...(data.tokens ? {tokens: data.tokens} : {}), ...(data.session ? {session: data.session} : {}), ms: Number.isFinite(data.ms) ? data.ms : null, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
 }
