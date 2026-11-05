@@ -204,6 +204,9 @@ class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
         self.assertEqual(set(re.search(r'needs: \[([^\]]+)\]', alert).group(1).replace(' ', '').split(',')), {'pending', 'check', 'tell'}, 'a failure in any job reaches it')
         self.assertIn('msix-store-watch.mjs broken', alert)
         self.assertIn('msix-store-watch.mjs recovered', self.WATCH[self.WATCH.index('\n  clear:'):])
+        clear = self.WATCH[self.WATCH.index('\n  clear:'):]
+        self.assertNotIn('success()', clear.split('steps:')[0].split('# Why')[-1].split('if:')[1], 'success() is false when check/tell were skipped (most hours): the streak would never end')
+        self.assertIn('!failure()', clear)
         self.assertRegex(self.SUBMIT, r'for kind in announced followed submitted', 'a re-submit of a version is pending again: all its state tags go')
 
     def test_the_verdict_message_uses_the_one_alert_path_and_the_hourly_start_is_the_workers(self):

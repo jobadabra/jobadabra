@@ -104,7 +104,7 @@ jobs:
         run: node tools/msix-store-watch.mjs tell
 
   # Why (5 Nov 2026, Gitar on #3196): the Worker and the watchdog do not page for this hourly start, so a check that fails (an expired Partner Center secret, an unreadable status) tells the owner itself,
-  # once per broken streak (claim tag msstore-watch-broken); the first green check clears it. A hand look_only run never alerts. Guard: tests/tooling/release/test_webstore_publish_pipeline.py
+  # once per broken streak (claim tag msstore-watch-broken); the first hour without a failure clears it. A hand look_only run never alerts. Guard: tests/tooling/release/test_webstore_publish_pipeline.py
   alert:
     name: Tell the owner the Store watcher is failing
     needs: [pending, check, tell]
@@ -129,7 +129,8 @@ jobs:
   clear:
     name: A green check ends the broken streak
     needs: [pending, check, tell]
-    if: ${{ success() && !inputs.look_only }}
+    # Why (5 Nov 2026, Gitar on #3196): success() is false when a needed job was skipped, and most hours skip check and tell; !failure() lets a skipped job count as a green check.
+    if: ${{ !failure() && !cancelled() && !inputs.look_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
