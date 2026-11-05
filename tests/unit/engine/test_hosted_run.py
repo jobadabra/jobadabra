@@ -182,6 +182,38 @@ class HostedRun(unittest.TestCase):
         self.assertIn('name resolution', body['error'])
         self.assertNotIn('HR1.', body['error'])   # the run token is the only credential: never in an answer
         self.assertLessEqual(len(body['error']), 300)
+        self.assertEqual(len(body['build']), 12)   # the crash answer names the code that crashed
+        server.shutdown(); server.server_close()
+
+    def test_the_build_is_a_hash_of_every_python_file_of_the_engine_not_of_one_file(self):
+        # Why (5 Nov 2026, review of the stamp): run() calls into src.*; a stamp of hosted_run.py alone would not change when only another module did.
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'sources').mkdir()
+            (root / 'hosted_run.py').write_text('a = 1\n'); (root / 'sources' / 'feeds.py').write_text('b = 1\n')
+            first = hosted_run.build_of(root)
+            self.assertEqual(first, hosted_run.build_of(root))   # stable
+            (root / 'sources' / 'feeds.py').write_text('b = 2\n')
+            self.assertNotEqual(first, hosted_run.build_of(root))   # a change in another module moves it
+            (root / 'sources' / 'feeds.py').write_text('b = 1\n'); (root / 'new.py').write_text('')
+            self.assertNotEqual(first, hosted_run.build_of(root))   # so does a new file
+            self.assertEqual(len(first), 12)
+
+    def test_get_root_says_which_code_is_running_and_since_when(self):
+        # Why (5 Nov 2026, hr 6/6 try 4): the new image was on the instance by digest, yet the 500 had the OLD body; nothing said which code answered. An old process shows an old `started` or no `build` at all.
+        import urllib.request
+        from http.server import HTTPServer
+        with mock.patch('http.server.ThreadingHTTPServer', lambda addr, handler: HTTPServer(('127.0.0.1', 0), handler)), \
+                mock.patch.object(HTTPServer, 'serve_forever', lambda server: setattr(self, 'handler', server.RequestHandlerClass)):
+            hosted_run.serve()
+        server = HTTPServer(('127.0.0.1', 0), self.handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        with urllib.request.urlopen(f'http://127.0.0.1:{server.server_port}/') as reply:
+            body = json.loads(reply.read())
+        self.assertTrue(body['ok'])
+        self.assertEqual(body['build'], hosted_run.BUILD)
+        self.assertRegex(body['build'], r'^[0-9a-f]{12}$')
+        self.assertRegex(body['started'], r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$')
         server.shutdown(); server.server_close()
 
 
