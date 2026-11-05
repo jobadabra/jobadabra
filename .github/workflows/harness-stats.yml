@@ -1,6 +1,6 @@
 name: CI · Agent harness stats
 # The numbers behind https://www.jobadabra.top/admin/ai/harness (tab "Agent harness", owner, 4 Nov 2026: "details about each run. What happened. Some logs, some achievements, errors"):
-# the CI fixer's plan rows, the context layers and sources (file facts), and the run record of each "CI · AI fixer" run of the last 30 days (tools/harness-stats.mjs). Report only: it never blocks anything. No AI, $0.
+# the CI fixer's plan rows, the context layers and sources (file facts, plus whether each read key is stored: booleans from one step, never a value), and the run record of each "CI · AI fixer" run of the last 30 days (tools/harness-stats.mjs). Report only: it never blocks anything. No AI, $0.
 # Daily (after agent-coding-stats.yml's 04:41) and when an AI fixer run completes, so a run shows on the page within minutes. A run that wrote no record is normal and skipped; the site answers 400 for this kind until
 # its page is deployed: that is a notice here, never a red run (a refused key or a server error is red). The workflow reads artifacts as data: it checks out the default branch (never the fixer run's branch) and runs only that branch's script:
 # schedule and workflow_run always run on it, and the job's `if:` refuses a by-hand start on any other branch (Gitar on #3188), because that run would hold the site key.
@@ -34,8 +34,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      # Why (5 Nov 2026, owner: "why it shows that PostHog is green when you say is not connected"): the page must say which read-only keys are stored. This step holds the read keys ONLY to test
+      # whether each is non-empty and writes booleans; it runs no repo code and parses no artifact, and the step that does (below) holds none of them.
+      - name: Note which read keys are stored (booleans only)
+        env:
+          LINEAR_READ_KEY: ${{ secrets.LINEAR_READ_KEY }}
+          SENTRY_READ_TOKEN: ${{ secrets.SENTRY_READ_TOKEN }}
+          POSTHOG_READ_KEY: ${{ secrets.POSTHOG_READ_KEY }}
+          CLOUDFLARE_READ_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          NOTION_READ_TOKEN: ${{ secrets.NOTION_READ_TOKEN }}
+        run: |
+          set -eu
+          flag() { if [ -n "$2" ]; then echo "\"$1\": true"; else echo "\"$1\": false"; fi; }
+          { echo '{'; flag LINEAR_READ_KEY "$LINEAR_READ_KEY"; echo ','; flag SENTRY_READ_TOKEN "$SENTRY_READ_TOKEN"; echo ','; flag POSTHOG_READ_KEY "$POSTHOG_READ_KEY"; echo ','; flag CLOUDFLARE_READ_TOKEN "$CLOUDFLARE_READ_TOKEN"; echo ','; flag NOTION_READ_TOKEN "$NOTION_READ_TOKEN"; echo '}'; } > "$RUNNER_TEMP/keys.json"
       - name: Read the plan, the layers and the run records
-        run: node tools/harness-stats.mjs --out "$RUNNER_TEMP/harness.json"
+        run: node tools/harness-stats.mjs --keys "$RUNNER_TEMP/keys.json" --out "$RUNNER_TEMP/harness.json"
       - name: Store it for the admin page
         env:
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # Why (4 Nov 2026, owner's coordinator): no step that parses a CI artifact holds this secret
