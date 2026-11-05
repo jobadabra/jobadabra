@@ -4,7 +4,8 @@ import {MODES} from './apply-settings-model.js';
 
 // Why (5 Nov 2026, owner: "we need to have a distinguish about what session and mode does it have? Are they fully automated? are they manually triggered"; the
 // sketch's chips, owner's yes): each session says at a glance where it runs and who presses Submit, in its Settings mode's own icon (MODES). [words, tone]
-const MODE_CHIPS = {auto: ['Full automation · sends by itself', 'violet'], fill: ['Background · you submit', 'info'], check: ['In Chrome · you submit', 'neutral']};
+// Why (5 Nov 2026, owner, of the Sessions list: "2 yellow chips. Looks bad"): the words fit one line of the list, and the status chip beside this one owns "Needs you".
+const MODE_CHIPS = {auto: ['Full auto · sends itself', 'violet'], fill: ['Background · you submit', 'info'], check: ['In Chrome · you submit', 'neutral']};
 // Why (5 Nov 2026, review of [ap] 4/7): a bot check, Stop, a mode change or a quit hands a Full automation job to the person and the store keeps mode 'auto'
 // (lib/background-apply-store.js manual()), so its chip said "sends by itself" beside "Needs you".
 const HANDED = new Set(['needs_user_handoff', 'manual_submit_required']);
@@ -17,7 +18,7 @@ const sessionMode = item => item?.background?.mode || (item?.background ? 'fill'
 export function sessionModeChip(item) {
   const id = sessionMode(item);
   const mode = MODES.find(entry => entry.id === id) || MODES.find(entry => entry.id === 'fill'), [text, tone] = MODE_CHIPS[mode.id];
-  if (mode.id === 'auto' && HANDED.has(item?.background?.state)) return {glyph: mode.icon, text: 'Full automation · you submit now', tone: 'warn', title: 'Full automation handed this one to you: review and submit it yourself.'};
+  if (mode.id === 'auto' && HANDED.has(item?.background?.state)) return {glyph: mode.icon, text: 'Full auto · you submit', tone, title: 'Full automation handed this one to you: review and submit it yourself.'};
   return {glyph: mode.icon, text, tone, title: `${mode.title}: ${mode.text}`};
 }
 
