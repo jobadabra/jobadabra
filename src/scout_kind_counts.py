@@ -53,7 +53,8 @@ def of_jobs(jobs):
 
 
 def kind_counts(jobs):
-    """{country id: {kind: jobs}} of these jobs (from a sample, scaled to all), or None until enough of the sample is judged (role_kinds.mix's rule)."""
+    """{country id: {kind: jobs}} of these jobs (from a sample, scaled to all), {} when they are judged and none is in a country we count, or None until
+    enough of the sample is judged (role_kinds.mix's rule)."""
     jobs = [job for job in jobs if str(job.get('title') or '').strip()]
     total, jobs = len(jobs), sample(jobs)
     kinds = role_kinds.judged([job['title'] for job in jobs], 'job-title-kind')
@@ -72,4 +73,4 @@ def kind_counts(jobs):
     if not judged or judged < min(role_kinds.MIN_TITLES, len(jobs)) or judged < role_kinds.MIN_JUDGED * len(jobs):
         return None
     scale = total / len(jobs)
-    return {country: {kind: max(1, round(n * scale)) for kind, n in by_kind.items()} for country, by_kind in counts.items()} or None
+    return {country: {kind: max(1, round(n * scale)) for kind, n in by_kind.items()} for country, by_kind in counts.items()}

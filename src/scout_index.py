@@ -117,10 +117,11 @@ def published_line(count, failed, feeds_out):
     the log said only "N did not answer"). Carried feeds are in `feeds_out` too, so a fully broken system with carry shows at 50%."""
     by_system = Counter(f['ats'] for f in failed)
     listed = Counter(f['ats'] for f in feeds_out)
+    kept = sum(1 for f in feeds_out if f.get('kind_counts') and f.get('mix_kept'))   # Why (5 Nov 2026, #2915): a run with no AI answers must not read like a healthy one
     lines = [f'Published {count} feeds to the employer index ({len(failed)} did not answer'
              + (': ' + ', '.join(f'{system} {n}' for system, n in by_system.most_common()) if failed else '') + ')',
              # installs read only counted employers: 26 Oct 2026, 9 of 2,517 had counts and no line said so (src/scout_kind_counts.py)
-             f"Kind counts by country on {sum(1 for f in feeds_out if f.get('kind_counts'))} of {len(feeds_out)} feeds"]
+             f"Kind counts by country on {sum(1 for f in feeds_out if f.get('kind_counts'))} of {len(feeds_out)} feeds" + (f' ({kept} kept from an earlier run, not judged today)' if kept else '')]
     for system, n in by_system.most_common():
         kind, same = Counter(re.sub(r'\d+', 'N', str(f.get('error') or ''))[:80] for f in failed if f['ats'] == system).most_common(1)[0]
         if same >= BROKEN_MIN and same >= BROKEN_SHARE * (n + listed[system]):
@@ -177,7 +178,10 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             kinds, counts = scout_kind_counts.of_jobs(jobs)   # what it hires for, and per country: installs read one with jobs of their kind there
             if jobs:   # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
                 last = judged_before.get((system, slug), {})
-                kinds, counts = kinds or last.get('kinds'), counts or last.get('kind_counts')
+                kept = {'kinds': last.get('kinds') if not kinds else None, 'kind_counts': last.get('kind_counts') if counts is None else None}   # {} counts: judged, none local
+                kinds, counts = kept['kinds'] or kinds, kept['kind_counts'] or counts
+                if any(kept.values()):
+                    entry['mix_kept'] = True   # read by published_line only: the site keeps fixed fields
             if kinds:
                 entry['kinds'] = kinds
             if counts:

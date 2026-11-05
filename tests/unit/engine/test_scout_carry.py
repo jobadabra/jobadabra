@@ -1,5 +1,6 @@
 """The central scout verifies its feeds in slices: the longest-unread first, the rest carried over, so a run always ends in time. No network."""
 import json
+import sqlite3
 import tempfile
 import time
 import unittest
@@ -7,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import geo, role_kinds, scout, scout_carry, scout_kind_counts, store as job_store
+from src.ai import decide
 
 
 def job(title='Engineer'):
@@ -73,6 +75,36 @@ class KeptMixTest(unittest.TestCase):
         self.assertEqual({f['checked'] for f in feeds}, {'2026-10-31'})   # read today: only the judgment is old
         feeds = self.read('2026-11-01', titles=False, places=False)
         self.assertEqual(sum(1 for f in feeds if f.get('kinds') == self.MIX), 47, 'and the run after it')
+
+    def test_titles_kept_but_places_lost_keeps_the_counts_through_the_real_decide_and_geo(self):
+        """The measured cause: `data/geo.json` was never cached, so a run with kept title answers and no calls knew no place and dropped every count."""
+        folder = Path(self.db.execute('PRAGMA database_list').fetchone()[2]).parent
+        store = folder / 'geo.json'
+        store.write_text(json.dumps({'zurich': {'kind': 'city', 'cc': 'CH', 'lat': 47.4, 'lon': 8.5, 'r': 20}}))
+        titles = sqlite3.connect(folder / 'jobs.sqlite')
+        self.addCleanup(titles.close)
+        decide.remember('job-title-kind', {'engineer': 'software'}, role_kinds.KINDS, db=decide._table(titles))
+        with mock.patch.object(geo, 'STORE', store), mock.patch('src.paths.JOBS_DB', folder / 'jobs.sqlite'), mock.patch('src.ai.meanings_pack.first', return_value=None), \
+                mock.patch('src.ai.engine.ready', lambda *a, **k: False):
+            run = lambda today: scout.build_index(self.db, self.starter, lambda s, slug: job(), today=today, carry=True)[0]
+            self.assertEqual(sum(1 for f in run('2026-10-30') if f.get('kind_counts') == self.COUNTS), 47)
+            store.unlink()   # the next run starts without the place answers
+            feeds = run('2026-10-31')
+        self.assertEqual(sum(1 for f in feeds if f.get('kind_counts') == self.COUNTS), 47)
+
+    def test_all_judged_and_none_local_clears_the_counts_instead_of_keeping_them(self):
+        self.read('2026-10-30')
+        with mock.patch.object(role_kinds, 'judged', lambda texts, topic='role-kind': {t: 'software' for t in texts}), \
+                mock.patch.object(geo, 'resolve', lambda strings, **_: {'zurich': {'kind': 'remote'}}), mock.patch('src.ai.engine.ready', lambda *a, **k: False):
+            feed = scout.build_index(self.db, self.starter, lambda s, slug: job(), today='2026-10-31', carry=True)[0][0]
+        self.assertNotIn('kind_counts', feed, 'a real answer: this employer has no jobs here now')
+        self.assertEqual(feed['kinds'], self.MIX)
+
+    def test_the_run_log_tells_kept_counts_from_judged_ones(self):
+        self.read('2026-10-30')
+        feeds = self.read('2026-10-31', titles=False, places=False)
+        self.assertIn('Kind counts by country on 47 of 47 feeds (47 kept from an earlier run, not judged today)', scout.published_line(47, [], feeds))
+        self.assertNotIn('kept', scout.published_line(47, [], self.read('2026-11-01')), 'judged again: nothing kept')
 
     def test_a_fresh_judgment_replaces_the_kept_one(self):
         self.read('2026-10-30')
