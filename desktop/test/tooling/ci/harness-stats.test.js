@@ -68,7 +68,7 @@ test('the workflow gives the site key to the store step only, never to the step 
   const yml = fs.readFileSync(new URL('../../../../.github/workflows/harness-stats.yml', import.meta.url), 'utf8');
   const [head, keysStep, readStep, storeStep] = yml.split(/\n      - name: /);
   // The key-state step (5 Nov 2026) holds the five READ keys only to test "non-empty": no repo code, no node, no artifact, never the site key; the step that parses artifacts holds no secret at all.
-  assert.match(keysStep, /^Note which read keys are stored/); assert.ok(!/SELFHEAL_PUBLISH_KEY|\bnode\b|download|gh run|uses:/.test(keysStep), 'the key-state step only tests booleans');
+  assert.match(keysStep, /^Note which read keys are stored/); assert.ok(!/SELFHEAL_PUBLISH_KEY|\bnode\b|download|gh run|uses:|set -x|curl|\$GITHUB_(ENV|OUTPUT|STEP_SUMMARY)/.test(keysStep), 'the key-state step only tests booleans: no trace, no network, no env or output file');
   assert.deepEqual([...keysStep.matchAll(/secrets\.([A-Z_]+)/g)].map(m => m[1]).sort(), ['CLOUDFLARE_READ_TOKEN', 'LINEAR_READ_KEY', 'NOTION_READ_TOKEN', 'POSTHOG_READ_KEY', 'SENTRY_READ_TOKEN']);
   assert.ok(!/secrets\./.test(readStep) && !/secrets\./.test(head), 'the step that reads the artifacts holds no secret');
   assert.ok(!/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(head) && !/SELFHEAL_PUBLISH_KEY: \$\{\{/.test(readStep), 'the read step has no secret'); assert.match(storeStep, /SELFHEAL_PUBLISH_KEY: \$\{\{ secrets\.SELFHEAL_PUBLISH_KEY \}\}/);
