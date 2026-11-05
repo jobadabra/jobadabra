@@ -3,6 +3,7 @@
 //   node record.mjs part --out DIR --dest DIR     in the fix job, after the loop: DIR/loop.json + DIR/brief.json -> DEST/part.json (the reason is scanned like a pull request text)
 //   node record.mjs build --part FILE --out DIR   in the record job: the part + the run's facts (env) -> DIR/record.json
 // THIS REPOSITORY IS PUBLIC and so is the artifact: the record holds counts, action names, file names, fixed words and ONE scanned sentence (400 characters); never the item, a log or a comment. A reason that leaks is withheld and the record says so.
+// Each step also carries `s` (seconds it took), `ok` (false = the action was refused or failed: lost time), the repo `path` it read or edited (a plain file path, else '') and the tokens it wrote, so the tab can draw where the run spent its time (owner, 5 Nov 2026: "the steps he did, where he lost time, how efficient he was").
 // Words (agreed with the admin tab): `verdict` = the loop's words (fix, fixed-already, not-reproducible, needs-human, false-positive) or `answer`, else ''; `stop` = the driver's word (STOPS in driver.mjs) or null; `round` 0 = the first run.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -25,9 +26,9 @@ export function partOf({loop, brief, title = '', files = []}) {
   if (held.length) { errors.push(`the reason was withheld: it held ${held.join(', ')}`); reason = ''; }
   const stopped = String(loop.stopped || '').split(':')[0];
   if (stopped) errors.push(`the loop stopped: ${stopped === 'api' ? 'the broker refused or no Sonnet-level engine answered' : stopped}`);
-  const actions = Array.isArray(loop.actions) ? loop.actions : [];
+  const turns = Array.isArray(loop.steps) ? loop.steps : [], n = value => Math.max(0, Math.round(Number(value) || 0));
   return {engine: one(loop.engine).slice(0, 60), model: MODELS[loop.engine] || '', turns: Number(loop.turns) || 0, calls: Number(loop.calls) || 0, tokens_in: Number(loop.tokens_in) || 0, tokens_out: Number(loop.tokens_out) || 0,
-    steps: actions.slice(0, 60).map((action, i) => ({n: i + 1, action: one(action).slice(0, 20)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
+    steps: turns.slice(0, 60).map((turn, i) => ({n: i + 1, action: one(turn?.action).slice(0, 20), s: Math.round(n(turn?.ms) / 100) / 10, ok: turn?.ok !== false, path: /^[\w./-]{1,60}$/.test(turn?.path) && !turn.path.includes('..') ? turn.path : '', tout: n(turn?.tout)})), verdict, reason, changed_files: verdict === 'fix' ? files.slice(0, FILES) : [], errors};
 }
 
 /**

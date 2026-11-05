@@ -66,8 +66,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   } else if (command === 'loop') {
     const meta = JSON.parse(fs.readFileSync(path.join(out, 'meta.json'), 'utf8')), acts = createActs({cwd: '.', allow: new RegExp(meta.allowedPaths), boxRun: files => boxRun(files, env)});
     const result = await runLoop({ask: sonnetAsk(), act: acts.act, system: fs.readFileSync(path.join(out, 'system.md'), 'utf8'), first: fs.readFileSync(path.join(out, 'item.md'), 'utf8'), caps: meta.caps, log: console.log, allowAnswer: meta.round});
-    // Why (5 Nov 2026, [hm] 5/7): the facts of the run for its record; `body` is the agent's own words (item-derived), so this file stays in the fix job and record.mjs scans it before anything leaves.
-    fs.writeFileSync(path.join(out, 'loop.json'), JSON.stringify({verdict: result.verdict, body: result.body, stopped: result.stopped, engine: result.engine, turns: result.steps, calls: result.spent.calls, tokens_in: result.spent.input, tokens_out: result.spent.output, actions: result.actions}));
+    // Why (5 Nov 2026, [hm] 5/7): the facts of the run for its record: per step the action, seconds, refused or not and its file path, never a prompt or an answer; `body` is the agent's own words (item-derived), so this file stays in the fix job and record.mjs scans it before anything leaves.
+    fs.writeFileSync(path.join(out, 'loop.json'), JSON.stringify({verdict: result.verdict, body: result.body, stopped: result.stopped, engine: result.engine, turns: result.steps, calls: result.spent.calls, tokens_in: result.spent.input, tokens_out: result.spent.output, steps: result.timeline}));
     console.log(`loop: ${result.outcome}${result.stopped ? ` (${result.stopped})` : ''} after ${result.steps} turn(s), ${result.spent.calls} broker call(s), ${result.spent.input}+${result.spent.output} tokens`);
     if (result.outcome === 'fix') fs.writeFileSync(path.join(out, 'pr-body.md'), `${result.title}\n\n${result.body}\n`);
     else if (result.outcome === 'answer') { discard(); fs.writeFileSync(path.join(out, 'reply.md'), `${result.body}\n`); }   // a reply on the PR, no change pushed

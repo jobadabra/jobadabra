@@ -38,7 +38,7 @@ test("a record keeps GitHub's run id and url, whatever the artifact says; a non-
   for (const bad of [null, 'text', 7, [record]]) assert.equal(recordOf(bad, run), null);
   const deep = JSON.parse(`{"v":1,"extra":${'['.repeat(20000)}${']'.repeat(20000)},"reason":"${'r'.repeat(5000)}","errors":["a",{"x":1}],"steps":[{"n":1,"action":"read","z":2}],"pr":"7"}`);
   const bounded = recordOf(deep, run);
-  assert.ok(!('extra' in bounded) && JSON.stringify(bounded).length < 2000, 'unknown keys and nesting never leave the script'); assert.equal(bounded.reason.length, 400); assert.equal(bounded.pr, null); assert.deepEqual(bounded.steps, [{n: 1, action: 'read'}]);
+  assert.ok(!('extra' in bounded) && JSON.stringify(bounded).length < 2000, 'unknown keys and nesting never leave the script'); assert.equal(bounded.reason.length, 400); assert.equal(bounded.pr, null); assert.deepEqual(bounded.steps, [{n: 1, action: 'read', s: 0, ok: true, path: '', tout: 0}], 'a step is a copy of its known fields: seconds, refused or not, tokens written (5/7)');
 });
 test('runs without a record are skipped, a record is read from record.json only, an oversize or broken one is skipped, nothing else throws', () => {
   const runs = [{id: 1, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/1'}, {id: 2, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/2'}, {id: 3, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/3'}, {id: 4, html_url: 'https://github.com/jobadabra/jobadabra/actions/runs/4'}];
@@ -51,8 +51,12 @@ test('runs without a record are skipped, a record is read from record.json only,
   assert.throws(() => fetchRuns('jobadabra/jobadabra', now, api, () => { throw new Error('HTTP 502'); }), /502/, 'a failed download is not "no record"');
 });
 test('the body stays under the site limit: the oldest runs go first and the plan always arrives', () => {
-  const big = Array.from({length: 60}, (_, i) => recordOf({...record, reason: 'r'.repeat(400), errors: Array(5).fill('e'.repeat(200)), changed_files: Array(20).fill('f'.repeat(120)), steps: Array(60).fill({n: 1, action: 'edit'})}, {id: 100 + i, html_url: `https://github.com/jobadabra/jobadabra/actions/runs/${100 + i}`}));
-  assert.equal(compute({plan, runs: big}, {has: () => false, count: () => 0}, now).days[0].runs.length, 60, 'the worst 60 records fit the real limit');
+  const big = Array.from({length: 60}, (_, i) => recordOf({...record, reason: 'r'.repeat(400), errors: Array(5).fill('e'.repeat(200)), changed_files: Array(20).fill('f'.repeat(120)), steps: Array(30).fill({n: 1, action: 'edit', s: 99.9, ok: false, path: 'p'.repeat(60), tout: 12345})}, {id: 100 + i, html_url: `https://github.com/jobadabra/jobadabra/actions/runs/${100 + i}`}));
+  // Why (5 Nov 2026, [hm] 5/7 steps; owner: "high level details/steps/paths"): a step now carries seconds, a path and tokens, so 60 records at EVERY maximum (30 steps with 60-character paths) no longer all fit: the oldest go first, at least 40 stay.
+  // A real run (12 steps, ordinary paths, a short reason) is a few KB: all 60 of those fit the real limit.
+  assert.ok(compute({plan, runs: big}, {has: () => false, count: () => 0}, now).days[0].runs.length >= 40, 'the worst records: the newest 40 at least fit the real limit');
+  const usual = Array.from({length: 60}, (_, i) => recordOf({...record, reason: 'r'.repeat(150), errors: ['e'.repeat(80)], changed_files: ['src/a.py', 'tests/a.py'], steps: Array(12).fill({n: 1, action: 'edit', s: 4.2, ok: true, path: 'desktop/renderer/a.js', tout: 300})}, {id: 500 + i, html_url: `https://github.com/jobadabra/jobadabra/actions/runs/${500 + i}`}));
+  assert.equal(compute({plan, runs: usual}, {has: () => false, count: () => 0}, now).days[0].runs.length, 60, 'ordinary records: all 60 fit');
   const body = compute({plan, runs: big}, {has: () => false, count: () => 0}, now, 100000);
   assert.ok(JSON.stringify(body).length <= 100000); assert.ok(body.days[0].runs.length < 60 && body.days[0].runs.length > 5); assert.equal(body.days[0].runs[0].run_id, 100, 'the newest stay'); assert.equal(body.days[0].plan.rows.length, 3);
 });
