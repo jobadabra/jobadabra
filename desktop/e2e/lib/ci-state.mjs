@@ -1,4 +1,5 @@
 // The CI's small stores on the Admin site (jobadabra-web admin/ci-state.js): the noise register, the verdict audit and the red-main list, read and written over HTTPS.
+// Job: report health
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): these were pinned GitHub issues whose bodies the loops
 // read back; now one copy lives behind /ci-state/<key>, shown on /admin/testing/self-healing and /admin/testing/red-main. Spec: docs/superpowers/specs/2026-11-05-state-issues-to-admin-design.md.
 // Sync (curl) so triage() and the one-shot jobs keep their shape. The key goes to curl in a 0600 config file, never argv. A read that fails gives `fallback` and a warning; a write that fails returns false.
@@ -7,6 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+/** The Admin site's base URL (CI_STATE_URL overrides it in tests). */
 export const BASE = () => process.env.CI_STATE_URL || 'https://www.jobadabra.top';
 
 function request(method, key, body = null, {auth = true, run = spawnSync} = {}) {

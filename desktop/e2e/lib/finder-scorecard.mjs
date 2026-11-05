@@ -1,4 +1,5 @@
 // The Finder's scorecard for the triage-github-open-issues skill (.claude/skills/triage-github-open-issues): per detector, how many findings were real, false (and why), and how often the filed severity
+// Job: report health
 // was wrong; published in each selfheal snapshot (selfheal-stats.mjs) for the Finder scorecard card of /admin/testing/self-healing, which shows the change since the previous snapshot. Builds on lib/selfheal-stats.mjs (the same classify(), so /admin/operations/self-healing and this agree). Pure.
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): the scorecard was a comment per triage on the pinned issue #341; the page is its home now.
 import {detectorOf, summarize} from './selfheal-stats.mjs';

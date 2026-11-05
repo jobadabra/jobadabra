@@ -1,4 +1,5 @@
 // Scores a mutation run (mutation.yml): node mutation-score.mjs <runs.json> <out.json>. Prints the summary table, writes the result (kept as an artifact for
+// Job: report health
 // /self-heal), and files one issue per mutant that SURVIVED (a serious code bug no suite caught: a detector gap), or comments "still missed" on its open one.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

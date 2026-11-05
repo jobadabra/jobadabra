@@ -1,4 +1,5 @@
 // Opens this week's verdict audit (lib/verdict-audit.mjs) on the Verdict audit card of /admin/testing/self-healing and closes last week's with its score. No AI. Run by finder-review.yml.
+// Job: report health
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): the audit was a pinned GitHub issue with checkboxes (#2736); it is the D1 store `verdict-audit` now (lib/ci-state.mjs).
 import {execFileSync} from 'node:child_process';
 import {readState, tryRead, putState} from './lib/ci-state.mjs';

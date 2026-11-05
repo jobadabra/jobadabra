@@ -58,6 +58,7 @@ def bisect(commits, test):
 
 
 def now_iso():
+    """The current UTC time as the list stores it (2026-11-05T12:00:00Z)."""
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
@@ -70,6 +71,7 @@ def load():
 
 
 def save(reds):
+    """PUTs the whole red list to the site with SELFHEAL_PUBLISH_KEY; raises (nothing is written) when the key is missing or the site refuses."""
     key = os.environ.get('SELFHEAL_PUBLISH_KEY')
     if not key:
         raise RuntimeError('SELFHEAL_PUBLISH_KEY is not set: the red-main list was not written')

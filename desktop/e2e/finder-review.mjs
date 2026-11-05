@@ -1,4 +1,5 @@
 // Writes the week's facts for the Finder's weekly self-review (finder-review.yml) to .finder-review/facts.md: node finder-review.mjs [out-dir]. Needs gh.
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
