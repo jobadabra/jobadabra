@@ -69,10 +69,19 @@ export function makeOpenShim() {
   return {bin, spool, script};
 }
 
-/** Whether an app started with `env` opens pages into the stand-in's spool: the shim's `open` is first on PATH (and the Windows opener is set on Windows). */
+/**
+ * Whether an app started with `env` opens pages into the stand-in's spool: the first PATH folder IS the shim's bin (the `bin` next to the spool makeOpenShim made)
+ * and its `open` is the shim (and the Windows opener is set on Windows).
+ * Why (#3028, 5 Nov 2026): it only asked that the first folder held a file named `open`; under cmux the PATH starts with cmux's own bin, which has one, so a run
+ * without the shim passed and a test page could reach the owner's Chrome.
+ */
 export function opensIntoSpool(env, platform = process.platform) {
-  const first = String(env.PATH || '').split(path.delimiter)[0];
-  if (!env.JOBADABRA_E2E_OPEN_DIR || !fs.existsSync(path.join(first, 'open'))) return false;
+  const first = String(env.PATH || '').split(path.delimiter)[0], spool = env.JOBADABRA_E2E_OPEN_DIR;
+  if (!first || !spool) return false;
+  const real = folder => { try { return fs.realpathSync(folder); } catch { return ''; /* Why (#3028): a folder that is not there is not the shim's */ } };
+  const bin = real(path.join(path.dirname(path.resolve(spool)), 'bin'));
+  if (!bin || real(first) !== bin) return false;
+  try { if (!fs.readFileSync(path.join(bin, 'open'), 'utf8').includes('JOBADABRA_E2E_OPEN_DIR')) return false; } catch { return false; /* Why (#3028): no `open` file there */ }
   return platform !== 'win32' || Boolean(env.JOBADABRA_E2E_OPENER);
 }
 
