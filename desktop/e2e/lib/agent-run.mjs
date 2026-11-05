@@ -50,6 +50,44 @@ function goalResult(goal, result) {
 export const goalIntro = (goal, knowledge) => `Your goal (${goal.group}): ${goal.label}\n\nWhat is known about the app:\n${knowledge || '(nothing recorded yet)'}`;
 
 /**
+ * The screen the goal ended on, read once by a call that is not busy with the goal (lib/agent-screen.mjs); the same words on a later goal are not read again (`read` keeps them). -> the screen notes, each with the picture taken after the element it quotes was brought into view.
+ * Adds its call to `spent`. A read or a scroll that fails is logged and the session goes on with the notes it has.
+ */
+async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}) {
+  // Why (4 Nov 2026, FR 3/4): the screen the goal ended on is read once by a call that is not busy with the goal; the same words on a later goal are not read again
+  // Why (5 Nov 2026, large Board run 41947380208, owner via mac-32): the judge disagreed with a true note because the cards were scrolled out of its screenshot and it read the Gmail toast instead; a screen note's picture is taken with the element it quotes in view. Actor notes keep their picture: the pressed control's box is drawn on it.
+  const shootNote = async note => {
+    try { await act.reveal?.(quotedWords(note.observed)); } catch (error) { log(`  could not bring "${quotedWords(note.observed)[0] || ''}" into view for the picture: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a node that changed under the scroll must not cost the notes of every goal; the note keeps the picture as it is
+    return shoot();
+  };
+  const made = [];
+  try {
+    const observation = formatObservation(await act.observe());
+    if (read.has(observation)) return made;
+    read.add(observation);
+    const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : ''});
+    spent.calls++; spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
+    for (const note of seen.notes) made.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shootNote(note) : '', by: 'screen'});
+    log(`  goal ${goal.n}: the screen reader ${seen.failed ? `gave no answer (${seen.failed})` : `noted ${seen.notes.length}${seen.refused.length ? `, refused ${seen.refused.length} (${seen.refused[0]})` : ''}`}`);
+  } catch (error) { log(`  goal ${goal.n}: the screen reader failed, the session goes on: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a page that changed under the read must not lose the notes of the goals already done
+  return made;
+}
+
+/** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
+async function judgeNotes({notes, judgeAsk, spent}) {
+  // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
+  let judgeDown = '';
+  for (const note of notes) {
+    const skipped = Boolean(judgeDown);
+    const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
+    if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
+    Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason});
+    if (!skipped) spent.calls++;   // a note that was not asked made no call (Gitar, #3094)
+    spent.input += opinion.usage?.input_tokens || 0; spent.output += opinion.usage?.output_tokens || 0; spent.ms += opinion.ms || 0;
+  }
+}
+
+/**
  * Runs a whole session. `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
@@ -67,38 +105,13 @@ export async function runSession({act, ask, judgeAsk, screenAsk = null, views, p
       extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
-    // Why (5 Nov 2026, large Board run 41947380208, owner via mac-32): the judge disagreed with a true note because the cards were scrolled out of its screenshot and it read the Gmail toast instead; a screen note's picture is taken with the element it quotes in view. Actor notes keep their picture: the pressed control's box is drawn on it.
-    const shootNote = async note => {
-      try { await act.reveal?.(quotedWords(note.observed)); } catch (error) { log(`  could not bring "${quotedWords(note.observed)[0] || ''}" into view for the picture: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a node that changed under the scroll must not cost the notes of every goal; the note keeps the picture as it is
-      return shoot();
-    };
-    if (screenAsk && !result.stopped.startsWith('api:')) {   // Why (4 Nov 2026, FR 3/4): the screen the goal ended on is read once by a call that is not busy with the goal; the same words on a later goal are not read again
-      try {
-        const observation = formatObservation(await act.observe());
-        if (!read.has(observation)) {
-          read.add(observation);
-          const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : ''});
-          spent.calls++; spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
-          for (const note of seen.notes) mine.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shootNote(note) : '', by: 'screen'});
-          log(`  goal ${goal.n}: the screen reader ${seen.failed ? `gave no answer (${seen.failed})` : `noted ${seen.notes.length}${seen.refused.length ? `, refused ${seen.refused.length} (${seen.refused[0]})` : ''}`}`);
-        }
-      } catch (error) { log(`  goal ${goal.n}: the screen reader failed, the session goes on: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a page that changed under the read must not lose the notes of the goals already done
-    }
+    if (screenAsk && !result.stopped.startsWith('api:')) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
     results.push(goalResult(goal, result));
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stoppedByBroker = result.stopped; break; }
   }
-  // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
-  let judgeDown = '';
-  for (const note of notes) {
-    const skipped = Boolean(judgeDown);
-    const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
-    if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
-    Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason});
-    if (!skipped) spent.calls++;   // a note that was not asked made no call (Gitar, #3094)
-    spent.input += opinion.usage?.input_tokens || 0; spent.output += opinion.usage?.output_tokens || 0; spent.ms += opinion.ms || 0;
-  }
+  await judgeNotes({notes, judgeAsk, spent});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || ''}}));
