@@ -2,6 +2,7 @@
 Spec private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §1-2. The run token is the only credential: it asks the Worker for the state (GET /api/hosted/state), is the AI key
 (x-api-key on /api/ai), and posts the one result (POST /api/hosted/result). No Notion, Gmail, Telegram or user key is ever here. Guard: tests/unit/engine/test_hosted_run.py.
 """
+import hashlib
 import io
 import json
 import os
@@ -11,6 +12,7 @@ import sys
 import tarfile
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -18,6 +20,18 @@ from pathlib import Path
 SEARCH_ARGS = ['--mode', 'scheduled', '--enrich-max', '100', '--score-max', '60', '--auto-kit-max', '0', '--budget', '600']
 MAX_MATCHES = 200
 DEFAULT_CONFIG = Path(__file__).resolve().parents[1] / 'config'
+
+
+def build_of(root):
+    """-> 12 hex: a hash of every .py file under `root` (path and bytes), so it moves when any engine module does, with nothing to bump by hand."""
+    digest = hashlib.sha256()
+    for file in sorted(Path(root).rglob('*.py')):
+        digest.update(str(file.relative_to(root)).encode() + b'\0' + file.read_bytes() + b'\0')
+    return digest.hexdigest()[:12]
+
+
+# Why (5 Nov 2026, hr 6/6 try 4): the instance's image digest was the new one, yet the 500 had the old body. The Worker logs this on every run, so the code that answered is named.
+BUILD = build_of(Path(__file__).resolve().parent)
 
 
 def _call(url, token, method='GET', data=None):
@@ -115,9 +129,10 @@ def run(site, token, folder, search=None):
 
 def serve(port=8080):
     """The container's mode (`--serve`): the Worker starts the container and POSTs /run {site, token}; the reply comes when the run is done, so the Worker's
-    Queue consumer can wait for it (Cloudflare Containers are driven by requests, as tools/hosted-probe). One run at a time; GET / answers ok for the start check."""
+    Queue consumer can wait for it (Cloudflare Containers are driven by requests, as tools/hosted-probe). One run at a time; GET / answers ok plus the build hash and start time for the start check."""
     import http.server
     lock = threading.Lock()
+    started = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())   # an instance that survived a deploy shows an old time here
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -128,7 +143,7 @@ def serve(port=8080):
             self.send_response(code); self.send_header('Content-Type', 'application/json'); self.end_headers(); self.wfile.write(data)
 
         def do_GET(self):
-            self.reply(200, {'ok': True})
+            self.reply(200, {'ok': True, 'build': BUILD, 'started': started})
 
         def do_POST(self):
             try:
@@ -147,7 +162,7 @@ def serve(port=8080):
             except Exception as error:   # the Worker sees a failed run; the run token expires by itself
                 reason = f'{type(error).__name__}: {error}'.replace(token, '[run token]')[:300]   # the run token is the only credential: never in an answer
                 print(f'hosted run crashed: {reason}', file=sys.stderr)
-                self.reply(500, {'ok': False, 'error': reason})   # Why (5 Nov 2026, hr 6/6 try 3): the Worker saw only "500"; the reason was in a stderr nobody reads
+                self.reply(500, {'ok': False, 'error': reason, 'build': BUILD})   # Why (5 Nov 2026, hr 6/6 try 3 and 4): the Worker saw only "500"; the reason was in a stderr nobody reads. `build` names the code that crashed (try 4: the new image answered with the old body)
             finally:
                 lock.release()
 
