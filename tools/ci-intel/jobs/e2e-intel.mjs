@@ -2,7 +2,7 @@
 // Publishes every finished e2e run of the last 30 days (beta, nightly, main after a merge, scheduled, soak, canary, PR, the daily harness tests) and the cause of
 // each red suite to /admin/testing/e2e (e2e-intel.yml, hourly). The pure part (kinds, reds, causes) is tools/ci-intel/jobs/e2e-intel-rows.mjs; this file reads GitHub, asks the AI
 // and publishes. A run is read once; a red whose cause is "open" or "unknown" is read again until its fix lands. Log text is searched for the failure line only:
-// the line (a test step's own words, no personal data) is stored, the log never is. Guard: desktop/test/ci-intel-e2e-intel-collector.test.js.
+// the line (a test step's own words, no personal data) is stored, the log never is. Guard: desktop/test/tooling/ci/ci-intel-e2e-intel-collector.test.js.
 //   node tools/ci-intel/jobs/e2e-intel.mjs [--dry [--out rows.json]]    needs gh with GH_TOKEN; publishing needs SELFHEAL_PUBLISH_KEY (optional E2E_INTEL_URL)
 //   AI for the reds no fact names: E2E_CAUSE_CF_TOKEN + E2E_CAUSE_CF_ACCOUNT (its own Workers AI token, never production's); without them those reds stay "unknown".
 import {execFile, execFileSync} from 'node:child_process';
@@ -39,10 +39,12 @@ async function readLogs(runs, jobsOf = redJobs) {
 
 // The night's live quality run -> its counts (tools/ci-intel/lib/e2e-quality.mjs) and the same run's prompt-case replay. A night is a scheduled run that holds a live quality job, found by that job and not by
 // its title's pass number or its hour, so a re-plan of the night cannot silently empty the card (a8, 1 Nov 2026: "pick the night by its job"). Only runs of the last two days are looked at (a run
-// without a live quality job is never stored, so it is read again each hour until it ages out): the other titles of e2e.yml (after merge, beta, bisect, PR) never hold one.
+// with neither a live quality job nor a prompt-case replay is never stored, so it is read again each hour until it ages out): the other titles of e2e.yml (after merge, beta, bisect, PR) never hold one.
 // Why (1 Nov 2026, found by reading git history, not yet by the D1 row): the filter was "E2E check" runs started 21-22 UTC, and the live run now rides "Night burn-in 1/5" (afe3595, 21:00 UTC);
 // before that, 341cf97 (29 Oct) split quality into an exact `quality` job and the live `qualityai` job, which `/^quality\b/` does not match. listed: gh run list rows; stored: run ids the site has.
 const NIGHT_DAYS = 2;
+/** The run ids the site already holds a night for: a quality night or a replay (its GET answer's `quality` and `prompts`). A replay-only run counts, so it is not read again every hour. */
+export const storedNights = ({quality = [], prompts = []} = {}) => new Set([...quality, ...prompts]);
 export const liveNights = (listed, stored, now = new Date()) => listed.filter(run => /^(E2E check|Night burn-in \d\/\d)/.test(run.displayTitle || '') && ['success', 'failure'].includes(run.conclusion)
   && new Date(run.createdAt).getTime() >= now.getTime() - NIGHT_DAYS * 86400000 && !stored.has(run.databaseId));
 
@@ -61,19 +63,41 @@ export async function nightFromJobs(jobs, logOf) {
   return {...night, promptCases: prompt ? promptCasesOf(await logOf(prompt.id)) : null};
 }
 
+/**
+ * One run's jobs -> the counts its "Prompt cases" job printed, or null (no such job, or it printed nothing). Read on its own: a night that no quality job scored twice has no quality night
+ * (nightFromJobs is null) but still has this replay. Why (jobadabra-web#259): the replay used to be sent only inside the quality night, so the site lost it on those nights.
+ * @param {{id: number, name: string}[]} jobs the run's jobs
+ * @param {(id: number) => Promise<string>} logOf a job's log text
+ */
+export async function promptNightFromJobs(jobs, logOf) {
+  const prompt = jobs.find(job => /prompt cases/i.test(job.name));
+  return prompt ? promptCasesOf(await logOf(prompt.id)) : null;
+}
+
+/**
+ * One run's jobs -> {night, promptNight}: the quality night when a quality job scored twice (else null), and the run's replay beside it as `promptNights` row data (else null), each independent of
+ * the other. The replay is read once: from the quality night when there is one.
+ */
+export async function readNight(run, jobs, logOf) {
+  const night = await nightFromJobs(jobs, logOf);
+  const promptCases = night ? night.promptCases : await promptNightFromJobs(jobs, logOf);
+  return {night: night ? {runId: run.databaseId, day: run.createdAt.slice(0, 10), ...night} : null, promptNight: promptCases ? {runId: run.databaseId, day: run.createdAt.slice(0, 10), promptCases} : null};
+}
+
 async function readNights(runs) {
-  const nights = [];
+  const nights = [], promptNights = [];
   const logOf = async id => (await execAsync('gh', ['api', '--allow-escape-sequences', `repos/${repo}/actions/jobs/${id}/logs`], {maxBuffer: 1 << 28})).stdout;
   for (let at = 0; at < runs.length; at += 8) {
     await Promise.all(runs.slice(at, at + 8).map(async run => {
       try {
         const jobs = JSON.parse((await execAsync('gh', ['api', `repos/${repo}/actions/runs/${run.databaseId}/jobs?per_page=100`], {maxBuffer: 1 << 28})).stdout).jobs || [];
-        const night = await nightFromJobs(jobs, logOf);
-        if (night) nights.push({runId: run.databaseId, day: run.createdAt.slice(0, 10), ...night});
+        const {night, promptNight} = await readNight(run, jobs, logOf);
+        if (night) nights.push(night);
+        if (promptNight) promptNights.push(promptNight);
       } catch { /* a run whose log cannot be read is read again next hour */ }
     }));
   }
-  return nights;
+  return {nights, promptNights};
 }
 
 const ESCAPE = /^Escaped-e2e:[ \t]*([^\r\n]*)$/im;
@@ -165,15 +189,16 @@ async function main() {
     .map(run => ({...run, workflow, kind: kindOf(run, workflow)})))
     .filter(run => run.kind && ['success', 'failure', 'cancelled'].includes(run.conclusion)).map(run => ({...run, pr: run.kind === 'pr' ? prOf[run.headBranch] || null : null}))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  let have = [], pending = [], reds = [], quality = [], suiteNights = [], betaStored = [];
-  if (key) ({have, pending, reds = [], quality = [], suiteNights = [], betaRuns: betaStored = []} = await (await fetch(`${base}?v=${RULES_VERSION}`, {headers: {Authorization: `Bearer ${key}`}})).json());
+  let have = [], pending = [], reds = [], quality = [], prompts = [], suiteNights = [], betaStored = [];
+  if (key) ({have, pending, reds = [], quality = [], prompts = [], suiteNights = [], betaRuns: betaStored = []} = await (await fetch(`${base}?v=${RULES_VERSION}`, {headers: {Authorization: `Bearer ${key}`}})).json());
   const settled = new Set(have), waiting = new Set(pending);
-  const nights = await readNights(liveNights(listed.filter(run => run.workflow === 'e2e.yml'), new Set(quality)).slice(0, 40));
+  // A run is stored once it has a quality night or a replay (the site lists both): a replay-only night is not read again every hour.
+  const {nights, promptNights} = await readNights(liveNights(listed.filter(run => run.workflow === 'e2e.yml'), storedNights({quality, prompts})).slice(0, 40));
   const namedCommits = await readNamedCommits(since);
   const todo = runsToRead(listed, settled, waiting, MAX_RUNS, namedToRedo(namedCommits, reds));   // a trailer that names a run reads it again, once
   const lanes = await readLanes();
   const work = readWork(new Date(Date.now() - 35 * 86400000).toISOString().slice(0, 10));
-  console.log(`${listed.length} finished e2e runs in 30 days, ${settled.size} stored, ${todo.length} to read; ${nights.length} new live quality night(s); ${work.work.length / WORK_IDS.length} days of commits`);
+  console.log(`${listed.length} finished e2e runs in 30 days, ${settled.size} stored, ${todo.length} to read; ${nights.length} new live quality night(s), ${promptNights.length} prompt-case replay(s); ${work.work.length / WORK_IDS.length} days of commits`);
   // A fix is looked for in the later runs of the same line (main, or the PR's branch): read the jobs from the oldest run to read onwards (at most 400 runs).
   const fixes = todo.length ? listed.slice(listed.findIndex(run => run.databaseId === todo[0].databaseId)).slice(0, 400) : [];
   // Backfill already-settled nights too: old snapshots have no suite greens. These are existing jobs, not new suite runs or AI calls.
@@ -187,14 +212,14 @@ async function main() {
   // Why (1 Nov 2026, mac-07 for the owner): the nights not stored yet also give their interactions job's log, green or red, for its rates (tools/ci-intel/lib/e2e-rates.mjs); a stored night is not read again.
   const logs = new Map([...await readLogs(needed.filter(run => wanted.has(run.databaseId)).reverse()), ...await readLogs(history, rateJobs)]);
   const rows = await rowsOf(needed, {logOf: id => (logs.has(id) ? logs.get(id) : null), ...deps, namedCommits});
-  const send = {runs: rows.runs.filter(row => wanted.has(row.runId)), fails: rows.fails.filter(row => wanted.has(row.runId)), quality: nights, work: work.work, workFiles: work.files, escapes: work.escapes, lanes, suiteNights: rows.suiteNights, betaRuns: betas.map(run => betaRunRow(run)).filter(Boolean)};
+  const send = {runs: rows.runs.filter(row => wanted.has(row.runId)), fails: rows.fails.filter(row => wanted.has(row.runId)), quality: nights, promptNights, work: work.work, workFiles: work.files, escapes: work.escapes, lanes, suiteNights: rows.suiteNights, betaRuns: betas.map(run => betaRunRow(run)).filter(Boolean)};
   console.log(JSON.stringify(Object.fromEntries(CAUSES.map(cause => [cause.id, send.fails.filter(fail => fail.cause === cause.id).length]))));
   console.log(`AI: ${aiCalls} call(s), ${aiNeurons} tokens on ${MODEL}${process.env.E2E_CAUSE_CF_TOKEN ? '' : ' (no E2E_CAUSE_CF_TOKEN: reds no fact names stay unknown)'}`);
   const out = process.argv.indexOf('--out');
   if (out > 0) writeFileSync(process.argv[out + 1], JSON.stringify(send));
   if (dry) return;
   const response = await fetch(base, {method: 'PUT', headers: {Authorization: `Bearer ${key}`, 'Content-Type': 'application/json'}, body: JSON.stringify({rules: RULES_VERSION, ...send})});
-  console.log(`published ${send.runs.length} runs, ${send.fails.length} reds, ${nights.length} quality nights: HTTP ${response.status} ${await response.text()}`);
+  console.log(`published ${send.runs.length} runs, ${send.fails.length} reds, ${nights.length} quality nights, ${promptNights.length} replays: HTTP ${response.status} ${await response.text()}`);
   if (!response.ok) process.exitCode = 1;
 }
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) await main();
