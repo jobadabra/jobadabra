@@ -1,5 +1,6 @@
 """A timed search that scores plans for scoring's real stop from its first second (26 Oct 2026, a proof on a copy of the owner's data:
 score_first was switched on only when scoring began, so the title floor ran to 120 s and scoring had 3 s left: 3 jobs scored)."""
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -14,6 +15,11 @@ SEARCH = Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py'
 class ScoreFirstFromTheStart(unittest.TestCase):
     def setUp(self):
         self.addCleanup(time_budget.start, 0)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        patch = mock.patch('src.paths.DATA', Path(folder.name))   # its paces: the default ones, not a stray step_pace.json
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def plan(self, score_max=60, profile=lambda: 'SRE in Zurich', budget=180):
         time_budget.start(budget)
