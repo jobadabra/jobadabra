@@ -6,6 +6,8 @@ import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {beforeOpen} from './open-hooks.js';
 import {setWay} from './always-on-test.js';
+import {openProtect} from './always-on-protect.js';
+import {NOTE as PRIVACY, LINK as PRIVACY_LINK} from '../always-on-protect-words.js';
 import {NAME, LEAD, choices, pill as statePill, running, startWay, notice} from '../always-on-choice-words.js';
 
 const CARDS = {ours: 'setting-hosted', own: 'setting-cloud'};
@@ -31,7 +33,11 @@ export function mountChoice() {
   head.append(icon('refresh'), el('h3', '', NAME), state);
   const group = el('div'); group.id = 'aon-choices';
   const note = el('p', 'muted small'); note.id = 'aon-choice-note';
-  card.append(head, el('p', 'muted panel-lead', LEAD), group, note);
+  // The privacy line shows while "on our servers" is the picked way; its button only while that way is running (owner, 5 Nov 2026: the popup opens "when the user activates this option").
+  const privacy = el('div', 'aon-privacy'), line = el('p', 'muted small', PRIVACY), more = el('button', 'secondary with-icon', icon('shield'));
+  privacy.id = 'aon-privacy'; more.id = 'aon-protect-open'; more.type = 'button'; more.append(PRIVACY_LINK); more.addEventListener('click', openProtect);
+  privacy.append(line, more);
+  card.append(head, el('p', 'muted panel-lead', LEAD), group, note, privacy);
   $('setting-cloud').before(card);
   beforeOpen.cloud = () => pick('own');
   beforeOpen.hosted = () => pick('ours');
@@ -49,6 +55,8 @@ export function draw() {
   $('aon-choices').replaceChildren(choiceCards(choices({open: shared.hosted?.open !== false, canRun: canRun()}), {selected: picked, onPick: pick, label: NAME}));
   $('aon-choice-note').textContent = notice({now, picked});
   show($('aon-choice-note'), !!notice({now, picked}));
+  show($('aon-privacy'), picked === 'ours');
+  show($('aon-protect-open'), now === 'ours' || now === 'both');   // hostedSearch.on: the way that runs on our servers
   const alt = $('aon-key-alt');
   if (alt) alt.hidden = alt.dataset.need !== '1' || !isOpen();   // "no key? use our servers" only while our servers can take it
   for (const [way, id] of Object.entries(CARDS)) {
