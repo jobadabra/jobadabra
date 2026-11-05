@@ -79,7 +79,7 @@ For each issue, oldest high-severity first:
 - A real one you cannot fix in this session: leave it `confirmed` with a comment saying what is missing; never close it.
 
 ## 3. Score the Finder: consult everything collected
-1. **The scorecard:** the Finder scorecard card on `/admin/testing/self-healing` (published in each snapshot by `selfheal-stats.mjs`; nothing to run or post). Per detector: filed / real / false / open, precision,
+1. **The scorecard:** the Finder scorecard card on `/admin/testing/bug-loop` (published in each snapshot by `selfheal-stats.mjs`; nothing to run or post). Per detector: filed / real / false / open, precision,
    the false-positive causes (`resolution:` labels), how often a judge changed the filed severity, the change since the previous snapshot. The Top issues, Judged noise and Verdict audit cards sit beside it.
 2. **The /self-heal page** (all the loop's collected data), read as the owner:
    `curl -sL -H "Authorization: Bearer $(security find-generic-password -s jobadabra.site.api_key -w)" https://www.jobadabra.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
@@ -131,7 +131,7 @@ session's verdict files, commits and the scorecard, never from memory.
    - bugs it missed (escapes: found by a person, not the Finder; planted bugs not caught);
    - data on /self-heal that was wrong or missing.
 5. **What we changed this session:** product fixes (sha → issue) and Finder/stats fixes (sha → which gap it closes).
-6. **Finder scorecard:** precision now, its change since the last scorecard, and the link to the scorecard comment.
+6. **Finder scorecard:** precision now, its change since the last scorecard, and the link to the Finder scorecard card on `/admin/testing/bug-loop`.
 7. **Proposed next improvements**, ranked by expected gain (each: the change, the issues it would have caught or not filed, its test).
    Built only once the owner says yes.
 8. **Not done, and why:** a person's issue left for the owner, a fix too big for the session, anything skipped.

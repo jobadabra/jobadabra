@@ -1,7 +1,7 @@
 name: CI · Top issues list
 
 # The priority:Pn labels were set only after an e2e run, so they ranked issues that had been closed since (3 Oct 2026: four of twelve rows).
-# Now they are also set when an issue of the UI loop is opened, closed, reopened or relabelled (the Top issues card of /admin/testing/self-healing is published with the 3-hourly snapshot since 5 Nov 2026). Events made with the workflow's own token start no workflow,
+# Now they are also set when an issue of the UI loop is opened, closed, reopened or relabelled (the Top issues card of /admin/testing/bug-loop is published with the 3-hourly snapshot since 5 Nov 2026). Events made with the workflow's own token start no workflow,
 # so the ranking's own label and body edits never loop back here.
 on:
   issues:

@@ -111,7 +111,7 @@ jobs:
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file .finder-review/laid-out.md)
           { echo "## Finder self-review: PR opened"; echo "$url"; }
 
-  # The verdict pass's measured accuracy: five random verdicts of the week on the Verdict audit card (/admin/testing/self-healing) to tick right or wrong; last week's audit is closed with its score. No AI.
+  # The verdict pass's measured accuracy: five random verdicts of the week on the Verdict audit card (/admin/testing/bug-loop) to tick right or wrong; last week's audit is closed with its score. No AI.
   audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 5

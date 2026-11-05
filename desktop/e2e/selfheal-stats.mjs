@@ -111,7 +111,7 @@ export async function collect({days = 30} = {}) {
   let budgetIssues = [];
   try { budgetIssues = JSON.parse(gh(['issue', 'list', '--label', BUDGET_LABEL, '--state', 'open', '--json', 'number,state,createdAt,body,comments'])); } catch { budgetIssues = []; }
   const built = build({issues, prs, costs, recall, runs: summaries.length ? totalRuns(summaries) : null, breaker: breakerState(issues), signatures: learnedCount()});
-  // The Top issues and the Finder scorecard ride in the snapshot for their cards on /admin/testing/self-healing (they were the pinned issues #1892 and #341).
+  // The Top issues and the Finder scorecard ride in the snapshot for their cards on /admin/testing/bug-loop (they were the pinned issues #1892 and #341).
   return {changes: collectChanges(), ...built, ranking: rankingOf(rankIssues(filed), repo()), scorecard: scorecard(issues), budget: budgetState(budgetIssues, built.totals.unjudged), quality: loopQuality({issues, audits, mutation, tracker, trackerWhy, judgeExam})};
 }
 
