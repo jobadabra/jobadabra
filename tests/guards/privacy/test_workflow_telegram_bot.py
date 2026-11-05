@@ -23,7 +23,7 @@ class TelegramBotTest(unittest.TestCase):
                 self.assertIsNone(PRODUCT_BOT.search(text), f'{path.name} posts through the product bot: use secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN / CI_ALERTS_TELEGRAM_CHAT_ID')
         self.assertIn('pr-check-scorecard.yml', internal)
         self.assertIn('release-guard.yml', internal)
-        self.assertIn('feedback-ai.yml', internal)
+        self.assertIn('ai-fixer.yml', internal)
 
 
 if __name__ == '__main__':

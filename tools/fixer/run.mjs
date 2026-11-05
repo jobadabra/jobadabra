@@ -1,5 +1,5 @@
 // The command line of ai-fixer.yml: one run of the fixer for ONE item (a feedback card or a Linear issue), up to a patch for a DRAFT pull request (4 Nov 2026, [hm] 3/6; spec 2026-11-03-ai-fixer-core-design.md).
-//   node run.mjs cap                                   the CI side of the caps (1 at a time, daily cap, shared with feedback-ai.yml): counts both workflows' runs today with a READ-only token
+//   node run.mjs cap                                   the CI side of the caps (1 at a time, daily cap): counts this workflow's runs today with a READ-only token
 //   node run.mjs item --source github --ref N --out DIR  the guard job's read of a GitHub issue (a read-only token): DIR/item.json, which the fix job reads without any token
 //   node run.mjs read --source S --ref R --out DIR     read the item (never printed), write DIR/brief.json, system.md, item.md, meta.json
 //   node run.mjs loop --out DIR                        the agent loop on the workspace (cwd); writes DIR/pr-body.md ("title", blank, body) or DIR/verdict.md; a run without a fix leaves no edit behind
@@ -46,7 +46,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     if (['ROUND', 'KIND', 'DEADLINE', 'FOLLOW_RUN', 'LAST_KEY'].some(name => env[name])) throw new Error('a first run takes no round inputs');
     emit(env, 'deadline', new Date(Date.now() + LIMITS.seconds * 1000).toISOString().replace(/\.\d+Z$/, 'Z'));   // the hour starts at the first run and is passed on unchanged
     const day = new Date().toISOString().slice(0, 10), runs = [];
-    for (const file of ['ai-fixer.yml', 'feedback-ai.yml']) {   // the daily cap is shared with Send to AI
+    for (const file of ['ai-fixer.yml']) {
       const answer = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${file}/runs?event=workflow_dispatch&created=%3E%3D${day}&per_page=100`, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(20000)});
       if (!answer.ok) throw new Error(`could not count today's runs (HTTP ${answer.status})`);   // fails closed
       runs.push(...(await answer.json()).workflow_runs);

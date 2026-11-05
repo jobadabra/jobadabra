@@ -186,12 +186,9 @@ test('the script that holds the tokens imports only files the fix job\'s snapsho
   assert.ok([...seen].every(file => !/^(?:src|tests|desktop\/(?:renderer|test))\//.test(file)) && !seen.has('desktop/lib/add.js'));
 });
 
-test('the loop\'s editable paths and Send to AI\'s own --allow list give the same verdict on every path class (one list in two files must not drift)', () => {
-  const theirs = new RegExp(/--allow '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, '.github/workflows/feedback-ai.yml'), 'utf8'))[1]), ours = new RegExp(EDITABLE);
-  const paths = ['src/a.py', 'desktop/renderer/a.js', 'desktop/lib/a.js', 'desktop/test/a.test.js', 'desktop/test/unit/main/a.test.js', 'desktop/test/guards/rules/a.test.js', 'desktop/test/tooling/ci/a.test.js', 'desktop/test/unit/main/deep/a.test.js',
-    'tests/test_a.py', 'tests/unit/ai/test_a.py', 'tests/guards/rules/test_a.py', 'tests/tooling/ci/test_a.py', 'tests/conftest.py', 'tools/a.mjs', '.github/workflows/a.yml', 'desktop/e2e/lib/a.mjs', 'desktop/package.json', 'CLAUDE.md'];
-  for (const file of paths) assert.equal(ours.test(file), theirs.test(file), file);
-  for (const file of ['desktop/test/unit/main/a.test.js', 'tests/unit/ai/test_a.py']) assert.ok(ours.test(file) && TESTS.test(file), `${file}: what the loop may write, the proof and run_tests accept`);
+test('editable test paths are accepted by the proof and test runner', () => {
+  const editable = new RegExp(EDITABLE);
+  for (const file of ['desktop/test/unit/main/a.test.js', 'tests/unit/ai/test_a.py']) assert.ok(editable.test(file) && TESTS.test(file), `${file}: what the loop may write, the proof and run_tests accept`);
 });
 
 test('only a wall ends a run\'s attempts: run 41946389132 (a refused search, then "needs-human") is played, the agent is told how to recover, and every refusal is one fixed word in the record', async () => {
