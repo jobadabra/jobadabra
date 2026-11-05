@@ -1,5 +1,6 @@
 // Desktop email links open a fixed view after the renderer is ready, on cold and warm launches.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {EventEmitter} from 'node:events';
 import {test} from 'node:test';
 import {installAppLinks} from '../../../lib/app-links.js';
@@ -38,4 +39,9 @@ test('external links cannot execute commands or navigate to arbitrary pages', as
   const w = world(); await Promise.resolve(); w.ready();
   for (const url of ['https://jobs', 'jobadabra://settings', 'jobadabra://jobs/other', 'jobadabra://jobs?run=1', 'jobadabra://user@jobs']) w.app.emit('open-url', {preventDefault() {}}, url);
   assert.deepEqual(w.sent, []);
+});
+
+test('packaged Mac and Windows installers register the same scheme the handler accepts', () => {
+  const {build} = JSON.parse(fs.readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(build.protocols, [{name: 'Jobadabra', schemes: ['jobadabra']}]);
 });
