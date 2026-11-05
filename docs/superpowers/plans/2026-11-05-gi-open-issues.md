@@ -4,8 +4,8 @@ Owner, 5 Nov 2026: "start another session (opus) to process all the github issue
 parked, left open with a reason) through `desktop/e2e/apply-verdict.sh`; each real bug still present on main gets one PR, `Fixes #n`.
 
 ## Progress
-- [x] 1/4 A jobs.ch posting with no address keeps its page's town (#3242, #3262 merged)
-- [x] 2/4 dropped: #3109 item 1 is not a bug (the PC slept; the search started a minute after waking, its log of 3 Nov 2026)
+- [x] 1/4 A jobs.ch posting with no address keeps its page's town (#3242, #3262 merged) (proof: tests/unit/sources/test_places_strict.py @79d55d1)
+- [x] 2/4 dropped: #3109 item 1 is not a bug (proof: none: the tester's log of 3 Nov 2026 shows the PC slept and the search started a minute after waking)
 - [ ] 3/4 A Gmail check draws one card per email (#3187; this PR)
 - [ ] 4/4 The Interviews recording-consent notice is one clear sentence (#3203)
 
