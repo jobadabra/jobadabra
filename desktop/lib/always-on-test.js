@@ -78,13 +78,13 @@ export function checkAll(storage, options = {}) {
   return inflight;
 }
 
-async function run(storage, {fetcher = globalThis.fetch, now, deadline = DEADLINE_MS} = {}) {
+async function run(storage, {fetcher = globalThis.fetch, deadline = DEADLINE_MS} = {}) {
   const guard = (work, said) => within(work.catch(() => failed(said)), said, deadline), quick = timed(fetcher);
   const [chain, notion, aiKey, notify] = await Promise.all([
     within(repositoryChain(storage, {fetcher: quick}).catch(() => ({repo: failed('GitHub did not answer. Test again in a minute.'), keys: skipped(NOT_CHECKED), schedule: skipped(NOT_CHECKED)})), 'GitHub did not answer.', deadline).then(done => (done.repo ? done : {repo: done, keys: skipped(NOT_CHECKED), schedule: skipped(NOT_CHECKED)})),
     guard(notionCheck(storage, {fetcher}), 'Notion did not answer.'),   // about Notion
     guard(aiCheck(storage, {fetcher}), 'The AI key could not be checked.'),
-    guard(notifyCheck(storage, {fetcher, now}), 'The test message could not be sent.'),
+    guard(notifyCheck(storage, {fetcher}), 'The test message could not be sent.'),
   ]);
   const by = {...chain, notion, ai: aiKey, notify};
   const steps = STEPS.map(({id, title, settings}) => ({id, title, ...by[id], ...(settings ? {settings: true} : {})}));

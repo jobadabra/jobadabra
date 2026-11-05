@@ -22,7 +22,9 @@ test('our servers say what one press does, whatever is missing above (their test
 test('our servers name the failed step and where to write, and never send a person to GitHub', () => {
   const steps = [{title: 'The search started', state: 'ok'}, {title: 'The search finished', state: 'failed'}];
   assert.match(summary('passed', steps, 'ours'), /Everything works on our servers/);
-  assert.match(summary('failed', steps, 'ours'), /^The search finished: no\. Press Test again in a few minutes/);
+  assert.match(summary('failed', steps, 'ours'), /^The search finished: no\. Press Test again in a few minutes/);   // a step with no note of its own keeps the generic line
+  const noted = [{title: 'A test e-mail was sent to you', state: 'failed', line: 'Confirm your address first: use Resend in Settings → Notifications.'}];
+  assert.equal(summary('failed', noted, 'ours'), '', 'a failed step that carries its own note shows that note only (the row), never a second sentence that contradicts it');
   assert.match(summary('failed', [], 'ours'), /ended before every step ran/);
   for (const text of [summary('passed', steps, 'ours'), summary('failed', steps, 'ours'), summary('failed', [], 'ours'), TOO_LONG_OURS, OURS_FOR]) assert.doesNotMatch(text, /GitHub|Actions/, text);
   assert.match(summary('passed', steps), /^Everything works\. Your next scheduled run/);

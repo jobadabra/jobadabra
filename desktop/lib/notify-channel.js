@@ -102,12 +102,13 @@ export async function sendEmail(storage, {subject, text, urgent = false, buttons
   return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
 }
 
-const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switched off on our side for now.', rate: 'Too many e-mails today. Try again tomorrow.', suppressed: 'Your address bounced or marked us as spam. Check it in Settings → Notifications.', unsubscribed: 'You stopped our e-mails. Turn them back on in Settings → Notifications.', empty: 'Nothing to send.'};
+const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switched off on our side for now.', rate: 'Too many e-mails today. Try again tomorrow.', suppressed: 'Your address bounced or marked us as spam. Check it in Settings → Notifications.', unsubscribed: 'You stopped our e-mails. Turn them back on in Settings → Notifications.', empty: 'Nothing to send.', unconfirmed_stopped: 'Confirm your address first: press "Send the confirm link again" in Settings → Notifications.'};
 
-/** One test e-mail, at once (not held for the digest): Always on's Test on your own GitHub. -> {ok} or {ok: false, error: words}. */
+/** One test e-mail, at once (not held for the digest): Always on's Test on your own GitHub. The site limits it to once a day per address and answers `earlier: true` when today's went already.
+ *  -> {ok, earlier} or {ok: false, error: words}. */
 export async function sendTest(storage, {subject, text}, fetcher = globalThis.fetch) {
   const done = await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${subject}</b>\n${text}`, kind: 'test'}, fetcher);
-  return done.ok ? {ok: true} : {ok: false, error: TEST_WHY[done.reason] || done.error || 'The e-mail could not be sent just now. Try again in a minute.'};
+  return done.ok ? {ok: true, earlier: done.earlier === true} : {ok: false, error: TEST_WHY[done.reason] || done.error || 'The e-mail could not be sent just now. Try again in a minute.'};
 }
 
 // What the site says when it will not send the confirm mail again (jobadabra-web POST /api/account/email/resend, #333), in the person's words.

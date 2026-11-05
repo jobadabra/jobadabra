@@ -36,7 +36,7 @@ const states = result => Object.fromEntries(result.steps.map(step => [step.id, s
 
 test('everything works: six steps all ok, and the check only ever READS from GitHub (no run, no write)', async () => {
   const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]);
-  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), {fetcher: net.fetcher, now: () => 1_000_000_000});
+  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), {fetcher: net.fetcher});
   assert.equal(result.verdict, 'passed', JSON.stringify(result.steps.filter(step => step.state !== 'ok')));
   assert.deepEqual(result.steps.map(step => step.id), STEPS.map(step => step.id));
   assert.ok(result.steps.every(step => step.state === 'ok' && step.line === ''), JSON.stringify(result.steps));
@@ -48,7 +48,7 @@ test('everything works: six steps all ok, and the check only ever READS from Git
 
 test('no secret value ever leaves the app in a result, a line or a message (names only)', async () => {
   const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]);
-  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}}), {fetcher: net.fetcher, now: () => 1});
+  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}}), {fetcher: net.fetcher});
   const text = JSON.stringify(result) + net.calls.filter(call => call.method !== 'GET').map(call => call.body).join('');
   for (const value of Object.values(TOKENS)) assert.ok(!text.includes(value), `${value} leaked`);
 });
@@ -79,7 +79,7 @@ test('a link that never answers ends as a failed step within the deadline, and a
   assert.equal(result.verdict, 'failed');
   assert.ok(result.steps.every(step => step.state !== 'ok'));
   const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]), mail = storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}});
-  const [first, second] = await Promise.all([checkAll(mail, {fetcher: net.fetcher, now: () => 9e12}), checkAll(mail, {fetcher: net.fetcher, now: () => 9e12})]);
+  const [first, second] = await Promise.all([checkAll(mail, {fetcher: net.fetcher}), checkAll(mail, {fetcher: net.fetcher})]);
   assert.equal(first, second, 'the same run');
   assert.equal(net.calls.filter(call => /notify\/email/.test(call.url)).length, 1);
 });
@@ -115,7 +115,7 @@ test('the AI key: the person\'s own key is asked a models list; Free AI is refus
   assert.match((await aiCheck(storage({secrets: {}}), {fetcher: free.fetcher})).line, /no AI key/i);
 });
 
-test('the notification step: nothing set up fails with the pop-up mark; Telegram is tried with the bot; an unconfirmed address is not mailed; one test e-mail a day', async () => {
+test('the notification step: nothing set up fails with the pop-up mark; Telegram is tried with the bot; an unconfirmed address is not mailed; the site decides how many test e-mails a day', async () => {
   assert.match((await notifyCheck(storage(), {fetcher: internet([]).fetcher})).line, /Nothing can reach you/);
   const keyless = await notifyCheck(storage({secrets: {}, settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}}), {fetcher: internet([]).fetcher});
   assert.match(keyless.line, /no key for our site yet/);   // said, never "the website could not be reached"
@@ -126,11 +126,15 @@ test('the notification step: nothing set up fails with the pop-up mark; Telegram
   const held = await notifyCheck(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), {fetcher: unconfirmed.fetcher});
   assert.deepEqual([held.state, /not confirmed/.test(held.line), unconfirmed.calls.some(call => /notify\/email/.test(call.url))], ['failed', true, false]);
   const mail = storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), site = internet(SITE);
-  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000})).state, 'ok');
-  assert.equal(site.calls.filter(call => /notify\/email/.test(call.url)).length, 1);
-  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000 + 3600_000})).state, 'ok');
-  assert.equal(site.calls.filter(call => /notify\/email/.test(call.url)).length, 1, 'the second press within a day sends no second e-mail');
-  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000 + 3600_000})).line, 'A test e-mail already reached you today.');
+  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher})).state, 'ok');
+  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher})).line, '', 'the app keeps no limit of its own: every press asks the site, which limits the test e-mail to once a day per address');
+  assert.equal(site.calls.filter(call => /notify\/email/.test(call.url)).length, 2);
+  assert.equal(mail.settings().aonTestMailAt, undefined);
+  const earlier = internet([SITE[0], [/\/api\/notify\/email$/, reply({ok: true, earlier: true})]]);
+  assert.equal((await notifyCheck(mail, {fetcher: earlier.fetcher})).line, 'A test e-mail already reached you today.', 'the site says it went earlier today: said, state stays ok');
+  const stopped = internet([SITE[0], [/\/api\/notify\/email$/, reply({ok: false, reason: 'unconfirmed_stopped'}, 409)]]);
+  const refused = await notifyCheck(mail, {fetcher: stopped.fetcher});
+  assert.deepEqual([refused.state, /Send the confirm link again/.test(refused.line)], ['failed', true]);
 });
 
 test('a link that throws is a failed step, never a missing one', async () => {
