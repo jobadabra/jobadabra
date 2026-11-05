@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {PROGRESSIVE, load, looks, nextState, save, stillLocked} from '../../../renderer/menu-reveal.js';
-import {STOPS, captureRun, markSeen, seen, stopsFor} from '../../../renderer/menu-tour.js';
+import {STOPS, captureRun, cardTop, markSeen, seen, stopsFor} from '../../../renderer/menu-tour.js';
 
 const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 const empty = {revealed: [], opened: []};
@@ -91,9 +91,9 @@ test('the palette does not list the More rows as pages (they are not .nav button
   assert.doesNotMatch(read('pages/menu.js'), /className: 'nav[ '"]/);
 });
 
-test('the tour: five stops in order, only those on screen, shown once', () => {
-  assert.deepEqual(STOPS.map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'more']);
-  assert.deepEqual(stopsFor(selector => !selector.includes('more')).map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions']);
+test('the tour: nine stops in order, only those on screen, shown once', () => {
+  assert.deepEqual(STOPS.map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'more', 'feedback', 'theme', 'collapse', 'palette']);
+  assert.deepEqual(stopsFor(selector => !selector.includes('more')).map(stop => stop.id), ['focus', 'jobs', 'applying', 'actions', 'feedback', 'theme', 'collapse', 'palette']);
   const store = new Map(), storage = {getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value)};
   assert.equal(seen(storage), false);
   markSeen(storage);
@@ -107,4 +107,12 @@ test('the tour never shows in a screenshot run (owner, 17 Oct 2026: it covered t
   assert.equal(captureRun(''), false);
   assert.equal(captureRun(undefined), false);
   assert.match(read('pages/menu.js'), /if \(seen\(window\.localStorage\) \|\| captureRun\(window\.location\.search\)/);
+});
+
+// Why (fb 6/7, 5 Nov 2026): the Send feedback stop is at the foot of the sidebar; a card level with it ran past the window's bottom edge.
+test('the tour card stays inside the window: level with a stop, but never off the top or the bottom', () => {
+  assert.equal(cardTop(300, 40, 120, 900), 280, 'a stop in the middle: level with it');
+  assert.equal(cardTop(2, 20, 120, 900), 8, 'a stop at the very top');
+  assert.equal(cardTop(850, 36, 130, 900), 762, 'a stop at the foot: lifted so the whole card shows (900 - 130 - 8)');
+  assert.equal(cardTop(100, 36, 2000, 900), 8, 'a window shorter than the card: top edge wins');
 });

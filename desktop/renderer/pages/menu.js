@@ -5,7 +5,7 @@ import {shared} from './shared.js';
 import {lastActivity} from './activity.js';
 import {openView} from './nav.js';
 import * as reveal from '../menu-reveal.js';
-import {STEP_MS, captureRun, markSeen, seen, stopsFor} from '../menu-tour.js';
+import {STEP_MS, captureRun, cardTop, markSeen, seen, stopsFor} from '../menu-tour.js';
 import {moreGroup} from '../more-group.js';
 
 let menu = reveal.load(window.localStorage);
@@ -54,7 +54,7 @@ export function refreshMenu(opened = null) {
   drawMore();
 }
 
-// The tour: a small card by each stop, five stops, moving on by itself every few seconds; Skip (or Esc) ends it, and it is never shown again.
+// The tour: a small card by each stop (menu-tour.js STOPS), moving on by itself every few seconds; Skip (or Esc) ends it, and it is never shown again.
 function tour() {
   if (seen(window.localStorage) || captureRun(window.location.search) || $('app').hidden) return;
   const present = selector => { const node = document.querySelector(selector); return !!node && !node.closest('[hidden]') && node.offsetParent !== null; };
@@ -78,8 +78,8 @@ function tour() {
     const stop = stops[at], rect = document.querySelector(stop.target).getBoundingClientRect();
     title.textContent = stop.title; text.textContent = stop.text; count.textContent = `${at + 1} of ${stops.length}`;
     next.textContent = at === stops.length - 1 ? 'Done' : 'Next';
-    card.style.top = `${Math.max(8, Math.round(rect.top + rect.height / 2 - 40))}px`;
-    card.style.left = `${Math.round(rect.right + 12)}px`;
+    card.style.top = `${cardTop(rect.top, rect.height, card.offsetHeight, window.innerHeight)}px`;
+    card.style.left = `${Math.round((document.querySelector(stop.target).closest('.sidebar') || document.querySelector(stop.target)).getBoundingClientRect().right + 12)}px`;   // beside the menu, not beside a narrow button inside it (Send feedback)
     document.querySelectorAll('.menu-tour-lit').forEach(node => node.classList.remove('menu-tour-lit'));
     document.querySelector(stop.target).classList.add('menu-tour-lit');
     timer = setTimeout(go, STEP_MS);
