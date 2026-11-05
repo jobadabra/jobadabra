@@ -45,4 +45,4 @@ Not a PR, after 4/4 merged: close #274 #341 #1892 #2097 #2736 #2817 each with a 
 - [x] Owner's yes, quoted by mac-32 (5 Nov 2026) (proof: none: the owner's message "Go ahead", then "In 4 PRs, max. At most 5 PRs.")
 - [x] 1/4 web #419 · [x] 2/4 public #3263 · [x] 3/4 web #423 Admin pieces (merged 5 Nov 2026) (proof: none: merged PRs, their checks were green)
 - [x] 4/4 public switch (#3279, merged 5 Nov 2026) (proof: desktop/e2e/lib/ci-state.mjs @2637cb4)
-- [x] All six issues closed with their page linked; #72 #73 #1658 unpinned (5 Nov 2026; #2817 closed as stale: its focusdismiss suite was deleted on 1 Nov) (proof: none: GitHub issue states, not a file: #341 #1892 #2736 #2817 closed and the pins removed on 5 Nov 2026)
+- [x] All six issues closed; #72 #73 #1658 unpinned (5 Nov 2026; #2097 closed after its writer went in 2/4 #3263; #2817 closed as stale, no page link: its focusdismiss suite was deleted on 1 Nov) (proof: none: GitHub issue states, not a file: #274 #341 #1892 #2097 #2736 #2817 closed and the pins removed on 5 Nov 2026)
