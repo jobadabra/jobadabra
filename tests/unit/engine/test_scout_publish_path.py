@@ -1,6 +1,8 @@
 """The central scout's publish path end to end with every network piece replaced (seconds, no CI run): the checks, the board pass, the publish.
 Why: 24 Oct 2026 the board pass was merged without ever running its path; CI showed it silently skipped (the checks used all the time) and a first fix
 used a name before its import. This drives scout.main's --publish-index branch, so both would have failed here. Skill: check-central-scout-locally."""
+import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -10,6 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import scout, scout_boards, scout_core, scout_overrun, trial
+from src.ai import cost
 
 
 class PublishPathTest(unittest.TestCase):
@@ -42,6 +45,15 @@ class PublishPathTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--batch', '1', '--publish-index', '--db', str(Path(tmp) / 'jobs.sqlite')]):
             scout.main()
         return seen
+
+    def test_the_calls_by_topic_are_in_the_log_even_when_a_stuck_check_ends_the_process(self):
+        """Why (#2915): a stuck check leaves through os._exit, which skips atexit; decide's own line never reached a central run's log."""
+        out, at_the_leave = io.StringIO(), []
+        leave = mock.patch.object(scout_overrun, 'leave_if_stuck', lambda: at_the_leave.append(out.getvalue()))
+        with mock.patch.dict(cost.TOPICS, {'geo': 3}, clear=True), leave, contextlib.redirect_stdout(out):
+            self.run_main(lambda db, **kwargs: [])
+        self.assertEqual(len(at_the_leave), 1, 'the run reached the leave')
+        self.assertIn('AI calls by topic: geo 3', at_the_leave[0])
 
     def test_the_run_reaches_the_publish_and_gives_the_board_pass_its_time(self):
         calls = []

@@ -162,6 +162,9 @@ def report_ai_cost(side):
     reports it to the owner's /ai-cost page). Always written when asked, even $0: a job that spent nothing must still show up."""
     usd, calls = float(side.get('usd') or 0), int(side.get('done') or 0)
     print(ai_cost_line('scout run', usd, int(side.get('api_calls') or 0), int(side.get('cli_calls') or 0), calls))
+    from .ai import cost
+    if cost.TOPICS:   # Why (5 Nov 2026, #2915): here, not at exit: leave_if_stuck's os._exit skips atexit, so decide's own line never reached a central run's log
+        print('AI calls by topic: ' + ', '.join(f'{topic} {n}' for topic, n in sorted(cost.TOPICS.items(), key=lambda item: (-item[1], item[0]))))
     target = os.getenv('JOBADABRA_AI_COST_FILE')
     if target:
         Path(target).write_text(json.dumps({'usd': round(usd, 6), 'calls': calls}))

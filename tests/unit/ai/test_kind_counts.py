@@ -83,6 +83,13 @@ class CentralCapAndSampleTest(Fixtures):
         self.assertTrue(asked and max(asked) <= scout_kind_counts.SAMPLE, f'titles sent to the AI: {asked}')
         self.assertEqual(len(scout_kind_counts.sample(jobs[:7])), 7, 'a small employer: every job')
 
+    def test_a_job_leaving_a_big_employer_keeps_the_sample_so_kept_answers_still_hit(self):
+        for size in (100, 500, 2000):
+            jobs = [{'id': str(n), 'title': f'Role {n}', 'location': 'Zurich'} for n in range(size)]
+            before = {job['id'] for job in scout_kind_counts.sample(jobs)}
+            after = {job['id'] for job in scout_kind_counts.sample(jobs[1:])}
+            self.assertGreaterEqual(len(before & after), scout_kind_counts.SAMPLE - 1, f'{size} jobs: only the job that left may change')
+
     def test_the_run_log_says_how_many_employers_have_counts(self):
         from src.scout_index import published_line
         line = published_line(2, [], [{'ats': 'lever', 'kind_counts': {'ch': {'software': 3}}}, {'ats': 'lever'}])
