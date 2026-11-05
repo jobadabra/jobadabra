@@ -1,6 +1,6 @@
 // Strategy, the "What you're targeting" lists edited in the app: which lists, cleaning the edits, applying them, editLists.
 // Re-exported by strategy.js. Guarded by desktop/test/unit/renderer/strategy-edit-loading.test.js and strategy-targets.test.js.
-import {ADD_ROLES_ATTEMPTS, escapeRegex, publishSearchSettings} from './strategy-settings.js';
+import {ADD_ROLES_ATTEMPTS, escapeRegex, saveSettings} from './strategy-settings.js';
 import {editTitles, titlesOf} from './target-roles.js';
 
 // The Strategy page's "What you're targeting", edited in the app (owner, 7 Oct 2026: "Edit preferences" opened the Profile page, where
@@ -84,22 +84,14 @@ export async function editLists(storage, asked, {run, ensurePage, writePage, wai
   for (let attempt = 0; attempt < ADD_ROLES_ATTEMPTS; attempt++) {
     if (attempt) await wait(2000 * attempt);
     await run(storage, ['src.notion.search_settings', 'sync']);
-    const before = Object.fromEntries(Object.values(FILES).map(file => [file, storage.readText(file)]));
     const files = readFiles(storage);
     if (edited(files, edits)) return {changed: Object.keys(edits)};
     const next = applyEdits(files, edits);
-    for (const [name, file] of Object.entries(FILES)) {
-      if (JSON.stringify(next[name]) !== JSON.stringify(files[name])) storage.writeText(file, JSON.stringify(next[name], null, 2) + '\n');
-    }
-    // A role in another field redraws the words drawn from the old one (board words, stack, Google Jobs searches: src/field_redraft.py).
+    const changed = Object.fromEntries(Object.keys(FILES).filter(name => JSON.stringify(next[name]) !== JSON.stringify(files[name])).map(name => [name, next[name]]));
+    await saveSettings(storage, changed, {run, ensurePage, writePage});   // Notion first, then this Mac; refused: nothing changed
+    // A role in another field redraws the words drawn from the old one (board words, stack, Google Jobs searches: src/field_redraft.py), on the page first and then the copy.
     if (edits.roles) await run(storage, ['src.field_redraft', 'apply']).catch(() => null);
-    try {
-      await publishSearchSettings(storage, {run, ensurePage, writePage});
-      if (edited(readFiles(storage), edits)) return {changed: Object.keys(edits)};
-    } catch (error) {
-      for (const [file, text] of Object.entries(before)) if (text != null && storage.readText(file) !== text) storage.writeText(file, text);
-      throw error;
-    }
+    if (edited(readFiles(storage), edits)) return {changed: Object.keys(edits)};
   }
   throw new Error('A search changed your settings while they were being saved. Try again.');
 }

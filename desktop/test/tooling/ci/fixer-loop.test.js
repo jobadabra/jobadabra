@@ -160,14 +160,14 @@ test('the workflow, by trust: only publish writes (a draft on fixer/, never a me
   assert.ok(fix.indexOf('cp --parents') < fix.indexOf('run.mjs" loop'), 'our scripts are copied before the AI step');
   assert.doesNotMatch(fix, /node tools\//, 'only the snapshot runs after the checkout');
   assert.match(publish, /contents: write/);
-  assert.match(publish, /needs: \[fix, prove\]/);
+  assert.match(publish, /needs: \[guard, fix, prove\]/);
   assert.match(publish, /needs\.prove\.result == 'success'/);
   assert.match(publish, /--draft/);
   assert.match(publish, /branch="fixer\/\$SOURCE-\$REF"/);
   assert.match(publish, /\^\(feedback-\[0-9a-f\]\{16\}\|linear-JOB-\[0-9\]\{1,6\}\)\$/, 'the handle is validated before it becomes a branch name');
   assert.ok(publish.indexOf('"$PATCH_SHA"') >= 0 && publish.indexOf('"$PATCH_SHA"') < publish.indexOf('git apply .fb/change.patch'), 'the scanned hash is checked before the patch is applied');
   assert.doesNotMatch(WORKFLOW, /pr merge|pr ready|--admin|--auto|git push[^\n]*\bmain\b|HEAD:main/, 'never merges, never marks ready, never pushes to main');
-  assert.equal([...WORKFLOW.matchAll(/git push/g)].length, 1);
+  assert.equal([...WORKFLOW.matchAll(/git push/g)].length, 2, 'the first run\'s branch and a follow-up round\'s push (fixer-driver.test.js holds the round\'s walls)');
   assert.ok(publish.includes('git push') && !fix.includes('git push') && !prove.includes('git push'));
   for (const [name, text] of [['guard', guard], ['fix', fix], ['prove', prove], ['ai-skipped', job('ai-skipped')]]) assert.doesNotMatch(text, /contents: write|pull-requests: write/, name);
 });

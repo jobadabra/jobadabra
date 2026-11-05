@@ -148,16 +148,15 @@ class CiFreeAiTests(unittest.TestCase):
         self.assertIn('::add-mask::', action, 'the throwaway key is masked in the log')
         self.assertIn('rm -rf "$GITHUB_WORKSPACE/.free-ai-site"', action, 'nothing private stays in the workspace')
 
-    def test_the_screenshot_review_runs_on_claude_by_batch_with_its_lessons(self):
-        """The review (desktop/e2e/review-ui.mjs) runs once per lane after the suites, on Claude Sonnet by batch (owner, 26 Oct 2026: "cut the costs in half,
-        but close to the same quality as Claude"; Free AI's best setup saw 71-79% of Claude's bugs and Workers AI bills past 10,000 neurons a day), and reads the
-        by-design lessons from the closed issues."""
+    def test_the_screenshot_review_runs_once_per_lane_through_the_broker_with_its_lessons(self):
+        """The review (desktop/e2e/review-ui.mjs) runs once per lane after the suites, through the AI broker (owner, 3 Nov 2026: "Everything should be around the ai-broker";
+        no API key, no batch), and reads the by-design lessons from the closed issues."""
         review = (ROOT / '.github' / 'actions' / 'e2e-review' / 'action.yml').read_text()
-        for needed in ('E2E_REVIEW_ENGINE: claude', "E2E_REVIEW_BATCH_MIN: '1'", 'GITHUB_TOKEN: ${{ inputs.github-token }}'):
-            self.assertIn(needed, review)
+        self.assertIn('GITHUB_TOKEN: ${{ inputs.github-token }}', review)
+        self.assertNotIn('anthropic-key', review)
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for name, text in jobs(path.read_text()).items():
-                self.assertNotIn('node review-ui.mjs', text, f'{path.name} {name}: the review runs only in .github/actions/e2e-review, after the suites (all pages in one batch)')
+                self.assertNotIn('node review-ui.mjs', text, f'{path.name} {name}: the review runs only in .github/actions/e2e-review, after the suites')
 
     def test_no_job_loads_a_local_action_from_another_commit(self):
         """A job that checks out the commit under test (a bisect, a soak, a gate tag) must load its local actions from the workflow's own commit.

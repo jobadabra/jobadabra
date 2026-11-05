@@ -113,10 +113,7 @@ export function registerStrategyDraftHandlers(ctx) {
         await notion.snapshotStrategy(token, ids, when);
         step('snapshot', {finished: true});
       }
-      // ⚙️ Search settings is the source of truth: read it first, so edits made there since the last search are not overwritten by the cached copy.
-      if (ids.NOTION_SEARCH_SETTINGS_PAGE) await pipeline.run(storage, ['src.notion.search_settings', 'sync']);
-      strategy.save(storage, accepted());
-      step('local', {finished: true});
+      step('local', {finished: true});   // the search settings are saved at the 'search' step, Notion first, then this Mac (lib/strategy-settings.js saveSettings)
       const report = page => (done, total) => step(page, {done, total});
       // Contact details are a section of the Profile page: what's there stays, the CV's non-empty values win.
       const known = await contactDetails.read(storage).catch(() => ({}));
@@ -130,7 +127,11 @@ export function registerStrategyDraftHandlers(ctx) {
       step('answers', {finished: true});
       strategy.dropLocalCopies(storage);  // Notion has them now
       step('search');
-      if (take('search') || take('filters')) await strategy.publishSearchSettings(storage, {run: pipeline.run, ensurePage: notion.ensurePage, writePage: notion.writePage});
+      if (take('search') || take('filters')) {
+        // ⚙️ Search settings is the source of truth: read it just before saving, so edits made there since the last search are not overwritten by the cached copy.
+        if (ids.NOTION_SEARCH_SETTINGS_PAGE) await pipeline.run(storage, ['src.notion.search_settings', 'sync']);
+        await strategy.saveSettings(storage, strategy.settingsAfter(storage, accepted()), {run: pipeline.run, ensurePage: notion.ensurePage, writePage: notion.writePage});
+      }
       step('search', {finished: true});
       { const before = storage.settings(); storage.saveSettings({setupDone: true}); trackSetup({setupDone: true}, before); }
       syncCv();  // the CV to the Profile page (Notion keeps every version)

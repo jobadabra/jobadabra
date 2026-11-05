@@ -15,6 +15,8 @@ import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, pr
 import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {stopShown} from '../session-state.js';
+import {knownOutdated, rescoring} from './rescore-run.js';
+import {noticeTitle, pressLabel} from '../rescore-words.js';
 import {showRunsTab} from './runs-tab.js';
 import {showCvChanged} from './cv-change.js';
 import {loadFocus} from './focus.js';
@@ -116,6 +118,15 @@ export const labelOf = node => {
 };
 // A row's path, each step without its leading emoji ("💬 Telegram" → Telegram), a step equal to the one before it once (Settings → Plan, not Plan → Plan).
 const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L}+/u, '').trim()).filter((step, i, all) => step && step !== all[i - 1]);
+/** ⌘K "Re-score N": listed only while old scores wait (the Jobs bar's row, rescore-entry.js); asks for the same Re-score dialog, never starts it.
+ * Why (5 Nov 2026, arch-check no-circular): an event, not an import of jobs.js / startup.js, which import this page; pages/focus-suggestions.js answers it with the row's own handler. */
+function addOldScoresCommand(add) {
+  const count = knownOutdated().count;
+  if (!(count > 0) || rescoring()) return;
+  add('Jobs', pressLabel(count), noticeTitle(count), 're-score rescore scores stale previous strategy search settings outdated old',
+    () => document.dispatchEvent(new Event('rescore-ask')));
+}
+
 export function paletteCommands() {
   const commands = [];
   // A row is a place (a page, card, section, Actions task) or a part of one (kind 'part': a button, a sub-heading); a part folds under its card in ⌘K
@@ -206,7 +217,7 @@ export function paletteCommands() {
     setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopActing, shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
   });
   button('jobs', 'refresh', 'find jobs scan');
-  button('jobs', 'jobs-unscored-go', 're-score rescore scores stale previous strategy search settings outdated');   // shown only while scores wait (pages/jobs-score-call.js)
+  addOldScoresCommand(add);
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
   // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.
   add('Jobs', 'Fill your details', 'The details forms ask every time, one at a time', 'questions missing facts details contact name email phone notice period permit eligibility languages fill',

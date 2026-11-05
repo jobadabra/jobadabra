@@ -266,6 +266,6 @@ test('In conversation starts folded as one line; a saved open choice unfolds it'
   assert.equal(talkingStartsOpen('0'), false);
   assert.equal(talkingStartsOpen('1'), true);
   const talking = [{stage: 'Screening', source: 'Job Pilotto app'}, {stage: 'Recruiter lead', source: 'Gmail'}];
-  assert.deepEqual(talkingBar(talking, false), {title: '2 in conversation', detail: ''});
-  assert.deepEqual(talkingBar(talking, true), {title: 'In conversation', detail: '2 active · 1 inbound · 1 outbound'});
+  assert.deepEqual(talkingBar(talking, false), {title: '2 in conversation', detail: '', toggle: 'Show'});
+  assert.deepEqual(talkingBar(talking, true), {title: 'In conversation', detail: '2 active · 1 inbound · 1 outbound', toggle: 'Hide'});
 });

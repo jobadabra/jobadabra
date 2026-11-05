@@ -13,7 +13,7 @@ export const focusKit = base => {
     meta: li.querySelector('.focus-meta')?.textContent.trim() || '', kind: li.dataset.suggestion || '',
     buttons: [...li.querySelectorAll('.focus-actions > button:not(.ui-more)')].map(button => button.textContent.trim()), hasMore: !!li.querySelector('.focus-actions .ui-more')}));
   // The window's own rows (cover letter, Fill your details, What we learned, the LinkedIn offer) lead Suggestions and are not the engine's (renderer/question-entries.js).
-  const DRAWERS = ['linkedin', 'letter', 'details', 'learned', 'questions-error', 'skills'];   // 'skills': the Experience bank row (focus-suggestions.js experienceGet), the demo candidate has one
+  const DRAWERS = ['linkedin', 'letter', 'rescore', 'details', 'learned', 'questions-error', 'skills'];   // 'skills': the Experience bank row (focus-suggestions.js experienceGet), the demo candidate has one
   const numbers = () => {
     const steps = list => [...document.querySelectorAll(`${list} .funnel-step`)].map(li => ({name: li.querySelector('.funnel-name')?.textContent.trim(),
       count: li.querySelector('.funnel-count')?.textContent.trim(), share: li.querySelector('.muted.small')?.textContent.trim()}));

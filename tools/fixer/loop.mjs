@@ -9,7 +9,7 @@ const KEEP = 10;   // the last turns sent in full; older ones shrink to the acti
 
 /** The one answer shape of a turn: every field is required (a strict structured answer); the ones an action does not use are "" (files: []). */
 export function actionSchema() {
-  const text = {type: 'string'}, properties = {action: {type: 'string', enum: ACTIONS}, path: text, range: text, pattern: text, folder: text, old: text, new: text, files: {type: 'array', items: text}, verdict: {type: 'string', enum: ['', 'fix', ...VERDICTS]}, title: text, body: text};
+  const text = {type: 'string'}, properties = {action: {type: 'string', enum: ACTIONS}, path: text, range: text, pattern: text, folder: text, old: text, new: text, files: {type: 'array', items: text}, verdict: {type: 'string', enum: ['', 'fix', 'answer', ...VERDICTS]}, title: text, body: text};
   return {type: 'object', additionalProperties: false, required: Object.keys(properties), properties};
 }
 
@@ -47,16 +47,17 @@ const windowed = (first, turns) => [{role: 'user', content: first}, ...turns.fla
 /**
  * Runs one item. `ask({system, messages, schema})` -> {text, usage?, engine?} (throws when the broker refuses); `act(action)` -> {text, edited?, passed?} performs read/search/edit/run_tests (it must never throw on a bad input: it answers a refusal as text);
  * `first` is the fenced item (the first user turn). The AI's `finish` is accepted as a fix only after an edit AND a passing run_tests after the last edit.
- * -> {outcome: 'fix' | 'verdict' | 'stopped', title, body, verdict, stopped, steps, spent}; `stopped` is '' | 'steps' | 'time' | 'api: <why>'. Nothing here prints a result (they may quote data): `log` gets action names only.
+ * -> {outcome: 'fix' | 'answer' | 'verdict' | 'stopped', title, body, verdict, stopped, steps, spent, engine, actions}; `stopped` is '' | 'steps' | 'time' | 'api: <why>'. Nothing here prints a result (they may quote data): `log` gets action names only.
  */
-export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.now, log = () => {}}) {
+export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.now, log = () => {}, allowAnswer = false}) {
   const started = now(), turns = [], spent = {calls: 0, input: 0, output: 0};
-  let edited = false, dirty = false, final = null, stopped = '';
+  let edited = false, dirty = false, final = null, stopped = '', engine = '';
   for (let step = 1; !final && !stopped; step++) {
     if (step > caps.maxSteps) { stopped = 'steps'; break; }
     if ((now() - started) / 60000 >= caps.maxMinutes) { stopped = 'time'; break; }
     let answer;
     try { answer = await ask({system, messages: windowed(first, turns), schema: actionSchema()}); } catch (error) { stopped = `api: ${error.message}`; break; }
+    engine = answer.engine || engine;
     spent.calls++; spent.input += answer.usage?.input_tokens || 0; spent.output += answer.usage?.output_tokens || 0;
     const action = parseAction(answer.text);
     let result = {text: ''};
@@ -67,7 +68,8 @@ export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.
         else if (dirty) result = {text: 'Refused: run the changed tests after your last edit and see them pass first.'};
         else if (!action.title.trim() || !action.body.trim()) result = {text: 'Refused: a fix needs a title and a body.'};
         else final = {outcome: 'fix', title: action.title.trim(), body: action.body.trim(), verdict: 'fix'};
-      } else if (VERDICTS.includes(action.verdict)) final = {outcome: 'verdict', title: '', body: String(action.body || '').trim(), verdict: action.verdict};
+      } else if (action.verdict === 'answer' && allowAnswer && action.body.trim()) final = {outcome: 'answer', title: '', body: action.body.trim(), verdict: 'answer'};   // a follow-up round replies without a change (4 Nov 2026, [hm] 4/7)
+      else if (VERDICTS.includes(action.verdict)) final = {outcome: 'verdict', title: '', body: String(action.body || '').trim(), verdict: action.verdict};
       else result = {text: `Refused: verdict must be fix or one of ${VERDICTS.join(', ')}.`};
     } else {
       try { result = await act(action); } catch (error) { result = {text: `Failed: ${String(error.message).slice(0, 200)}`}; }
@@ -77,5 +79,5 @@ export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.
     log(`step ${step}: ${action.action || 'refused'}${action.error || /^(Refused|Failed)/.test(result.text) ? ' (refused)' : ''}`);
     turns.push({said: answer.text, action: action.action || 'none', result: result.text});
   }
-  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent};
+  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent, engine, actions: turns.map(turn => turn.action)};   // engine and action names feed the run record (5/7)
 }

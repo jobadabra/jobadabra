@@ -7,7 +7,6 @@ import {test} from 'node:test';
 
 const E2E = path.resolve(path.resolve(import.meta.dirname, '..'), '..');
 const CI_ONLY = new Set([
-  'review-ui.mjs',          // the AI screenshot review: CI only (README)
   'review-eval.mjs',        // scores a screenshot reviewer on the judged issues: CI only, by hand (.github/workflows/review-eval.yml)
   'ai-cost-report.mjs',     // reads what Anthropic billed (admin key), spends nothing
   'lib/ai-proxy.mjs',       // the stand-in for the API: it forwards only when a key is behind it
@@ -28,8 +27,7 @@ test('no suite or helper posts to the Anthropic API itself', () => {
 test('nothing in lib/ or suites/ names E2E_ANTHROPIC_KEY or the Keychain item', () => {
   const offenders = sources.filter(file => /E2E_ANTHROPIC_KEY|e2e\.anthropic_key/.test(code(file))
     && !/^(skip\.mjs|lib\/skip\.mjs)$/.test(file));
-  // Why (3 Nov 2026, owner: "We should not use API Keys at all anymore"): the allow list that held the CI tooling (plan-run, triage, the Finder's files) and the wizard's label is empty; review-ui.mjs, the one CI tool
-  // left, is listed in CI_ONLY above until the review action moves (plan 4/5, docs/superpowers/specs/2026-11-03-ci-no-api-keys.md). A new name here is a key coming back.
+  // Why (3 Nov 2026, owner: "We should not use API Keys at all anymore"): the allow list that held the CI tooling (plan-run, triage, the Finder's files, review-ui.mjs) and the wizard's label is empty. A new name here is a key coming back.
   assert.deepEqual(offenders, [], `CI holds no Anthropic key; do not name E2E_ANTHROPIC_KEY in: ${offenders.join(', ')}`);
 });
 

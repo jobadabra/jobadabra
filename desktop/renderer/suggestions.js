@@ -2,6 +2,8 @@
 // can check them. Entries come from the engine's pool (src/suggestions.py); pages/focus-suggestions.js draws them and runs their buttons.
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 
+import {foldToggleWord} from './fold-toggle.js';
+
 export const SHOWN = 3;                              // Focus shows the 3 first, then "Show all N" (spec)
 export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "only the search- and applying-related ones")
 // Every actions[].do the engine writes (src/suggestions.py, src/suggestions_search.py), each run by pages/focus-suggestions.js RUN.
@@ -20,7 +22,21 @@ export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, re
   // The Jobs drawers' rows (PR 1c): the colours of the cards they replace (cover letter and Fill your details amber, What we learned blue)
   letter: {icon: 'file', tone: 'bad', badge: 'High priority'}, details: {icon: 'user', tone: 'warn', badge: 'Details'}, learned: {icon: 'bulb', tone: 'info', badge: 'Learned'}, 'desktop-ai': {icon: 'sparkle', tone: 'info', badge: 'Your AI app'},
   'questions-error': {icon: 'alert', tone: 'bad', badge: 'Not loaded'},
+  rescore: {icon: 'refresh', tone: 'warn', badge: 'Old scores'},   // the Jobs list's scores from the previous search settings (renderer/rescore-entry.js; was the yellow bar above the list)
   skills: {icon: 'file', tone: 'info', badge: 'Your CV'}};   // Insights PR 2 (#6): skills only the Experience bank has
+
+// The one severity of an entry, from its LOOK tone (owner, 5 Nov 2026: "add some bullets, for example: 1 red, 3 warnings/yellow, 4 info"): red = bad, yellow = warn, blue = info
+// (good reads as info). No caller picks a colour; the row's edge, its badge and the bar's bullets all follow this one table. Only the Jobs drawers' rows are sorted by it (pages/focus-suggestions.js rowsNow); the bullets count every entry.
+export const SEVERITY = [{key: 'bad', label: 'urgent'}, {key: 'warn', label: 'warning'}, {key: 'info', label: 'info'}];
+/** An entry's severity key (bad | warn | info) from its kind's LOOK tone; an unknown kind or a good tone is info, never a guess of red. */
+export const severityOf = entry => { const tone = (LOOK[entry.kind] || {}).tone; return tone === 'bad' || tone === 'warn' ? tone : 'info'; };
+/** The entries with the most severe first (stable inside a severity), so the bar and its bullets read top-down. */
+export const bySeverity = entries => [...entries].sort((a, b) => SEVERITY.findIndex(s => s.key === severityOf(a)) - SEVERITY.findIndex(s => s.key === severityOf(b)));
+/** The bar's bullets: [{key, count, text}] for each severity that has entries, most severe first ("1 urgent", "3 warnings", "4 info"). */
+export const severityCounts = entries => SEVERITY.map(({key, label}) => {
+  const count = entries.filter(entry => severityOf(entry) === key).length;
+  return {key, count, text: `${count} ${label}${count !== 1 && key === 'warn' ? 's' : ''}`};
+}).filter(item => item.count > 0);
 
 /** Up next: the Focus items that can't wait (src/suggestions.place; null = left out). An item read before places existed (a saved Focus) stays there. */
 export const upNext = items => (items || []).filter(item => ('place' in item ? item.place : 'up_next') === 'up_next');
@@ -40,8 +56,8 @@ export const jobsEntries = entries => (entries || []).filter(entry => entry.also
  * Why (#2382, owner 28 Oct 2026: "I clicked on it. It vanished"): the toggle used to redraw from entries that were empty until Focus was read, so the kept bar was hidden.
  */
 export function barView({focusRead, unavailable = false, kept = null, entries = [], open = false, line = ''}) {
-  if (!focusRead) return {shown: Boolean(kept?.shown) && !unavailable, rows: false, ...jobsBarWords(Number(kept?.count) || 0, open, kept?.line || '')};
-  return {shown: entries.length > 0, rows: true, ...jobsBarWords(entries.length, open, line)};
+  if (!focusRead) return {shown: Boolean(kept?.shown) && !unavailable, rows: false, bullets: kept?.bullets || [], ...jobsBarWords(Number(kept?.count) || 0, open, kept?.line || '')};
+  return {shown: entries.length > 0, rows: true, bullets: severityCounts(entries), ...jobsBarWords(entries.length, open, line)};
 }
 
 /** A home screen's own entries (Strategy's Tune row). */
@@ -52,7 +68,7 @@ export const countWords = (shown, total) => (shown < total ? `${shown} of ${tota
 
 /** The Jobs bar's line, folded ("2 suggestions for your search", or `line` when the drawers' rows are in it: foldedLine) and open. */
 export const jobsBarWords = (count, open, line = '') => ({title: open ? 'Suggestions for your search' : line || `${count} suggestion${count === 1 ? '' : 's'} for your search`,
-  detail: open ? '' : 'Show'});
+  detail: foldToggleWord(open)});
 
 /** A row's parts: its look, its meta line (where it comes from unless the badge says it, what it says), and the evidence behind it for the hover. */
 export function entryParts(entry) {

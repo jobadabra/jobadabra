@@ -1,5 +1,5 @@
 /* global document */
-// Jobs, layer 2: after a strategy change the old scores stay, marked, with one very visible call to re-score, and a Find jobs press asks "Score first" (owner, 2 Nov 2026: "there should be the old scored"
+// Jobs, layer 2: after a strategy change the old scores stay, marked, with one call to re-score (a row of the Jobs bar since 5 Nov 2026: "let's move this into this card"), and a Find jobs press asks "Score first" (owner, 2 Nov 2026: "there should be the old scored"
 // · "a very visible call to action" · "pressing 'Find jobs' should open a dialog saying: Score first"). The app's window on the engine's own read shape (`stale` on rows and `outdated` on the payload,
 // src/desktop_strategy.py mark_outdated, played with a real engine in integration/store/stale-scores-stay.test.mjs); the demo's jobs.json carries it here. No Notion, no AI. In demo mode the engine's
 // re-score is blocked (lib/demo.js), so what runs after the person's "Find jobs without re-scoring" is the demo search, which is what the press must reach.
@@ -22,7 +22,14 @@ const rescoreKit = base => {
   const press = label => [...dialog().querySelectorAll('button')].find(button => button.textContent.trim().startsWith(label)).click();
   return {
     openJobs: async () => { await base.until(() => document.querySelector('.nav[data-view=jobs]:not([hidden])'), 'the menu'); await base.go('jobs'); await base.until(() => !/Loading/.test(document.getElementById('jobs-stats').textContent), 'the jobs list'); },
-    call: () => ({shown: !call().hidden, kind: call().dataset.kind, text: call().innerText, button: document.getElementById('jobs-unscored-go').textContent.trim()}),
+    call: () => ({shown: !call().hidden, text: call().innerText}),
+    // The old-scores row of the Jobs bar: its sentence, its button, the folded line and the bullets (renderer/rescore-entry.js).
+    row: async () => base.until(() => {
+      const li = document.querySelector('#jobs-suggestions-list [data-suggestion="rescore"]');
+      return li && {text: li.textContent.trim(), button: li.querySelector('button')?.textContent.trim(), line: document.getElementById('jobs-suggestions-title').textContent,
+        bullets: [...document.querySelectorAll('#jobs-suggestions-bullets .severity-bullet')].map(chip => chip.getAttribute('aria-label')), toggle: document.getElementById('jobs-suggestions-count').textContent};
+    }, 'the old-scores row in the Jobs bar'),
+    rowGone: () => !document.querySelector('#jobs-suggestions-list [data-suggestion="rescore"]'),
     rows: () => [...document.querySelectorAll('#jobs-body .job-row .fit-cell')].map(cell => ({stale: cell.classList.contains('is-stale'), ring: cell.querySelector('.fit-ring')?.textContent.trim(), label: cell.querySelector('.fit-label')?.textContent.trim()})),
     pressFind: () => document.getElementById('refresh').click(),
     dialogOpen: async () => base.until(() => dialog().open && {title: document.getElementById('score-first-title').textContent, lead: document.getElementById('score-first-lead').textContent,
@@ -38,7 +45,7 @@ before(() => {
   if (needsElectron.skip) return;
   stale = probeWindow({files: {'jobs.json': staleJobs}, use: [rescoreKit], timeout: 240000, script: async kit => {
     await kit.openJobs();
-    const out = {call: kit.call(), rows: kit.rows(), severe: kit.severe('jobs')};
+    const out = {call: kit.call(), row: await kit.row(), rows: kit.rows(), severe: kit.severe('jobs')};
     const before = kit.searchState();
     kit.pressFind();
     out.dialog = await kit.dialogOpen();
@@ -59,6 +66,7 @@ before(() => {
     kit.pressFind();
     out.afterPress = await kit.searchStarted();
     out.dialogShown = document.getElementById('score-first-dialog').open;
+    out.rowGone = kit.rowGone();
     return out;
   }}).result;
 });
@@ -71,11 +79,13 @@ test('after a strategy change every fit stays on its row, muted and marked "Old 
   assert.deepEqual(stale.severe, [], 'the call or the marks break the Jobs layout');
 });
 
-test('Jobs carries one very visible call: the Strategy notice\'s sentence, the same count, a solid Re-score button', live, () => {
-  assert.equal(stale.call.shown, true);
-  assert.equal(stale.call.kind, 'stale');
-  assert.match(stale.call.text, /^2 jobs were scored using previous search settings\./);
-  assert.equal(stale.call.button, 'Re-score 2');
+test('Jobs carries one call, a row of the Jobs bar: the Strategy notice\'s sentence, the same count, a Re-score button, a yellow bullet; the yellow bar above the list is gone', live, () => {
+  assert.match(stale.row.text, /^2 jobs were scored using previous search settings\./);
+  assert.equal(stale.row.button, 'Re-score 2');
+  assert.match(stale.row.line, /2 old scores/, 'the folded line names it');
+  assert.ok(stale.row.bullets.some(label => /warning/.test(label)), 'the yellow bullet counts it');
+  assert.equal(stale.row.toggle, 'Show');
+  assert.doesNotMatch(stale.call.text, /previous search settings/, 'no second notice above the list');
 });
 
 test('Find jobs with scores from the previous strategy asks "Score first" and starts nothing; Cancel starts nothing; "without re-scoring" finds', live, () => {
@@ -88,7 +98,7 @@ test('Find jobs with scores from the previous strategy asks "Score first" and st
 });
 
 test('nothing outdated: no call, and Find jobs finds at once with no dialog (the first run is never held)', live, () => {
-  assert.equal(fresh.call.kind === 'stale' && fresh.call.shown, false);
+  assert.equal(fresh.rowGone, true, 'no old-scores row when nothing is outdated');
   assert.ok(['searching', 'done'].includes(fresh.afterPress));
   assert.equal(fresh.dialogShown, false);
 });

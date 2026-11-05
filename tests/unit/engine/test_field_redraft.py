@@ -99,6 +99,32 @@ class EveryRunTest(unittest.TestCase):
                 self.assertEqual(len(published), 1)
                 self.assertFalse(field_redraft.refresh(asker=lambda *a: 1 / 0, profile='', publish=published.append))   # stamped: not asked again
 
+    def test_the_page_is_written_before_the_copy_and_a_refused_page_leaves_both_as_they_were(self):
+        # Notion first, then the copy (3 Nov 2026, owner): a pull between the copy and the page would bring the old words back over the redraft.
+        import tempfile
+        from pathlib import Path
+        from src.notion import search_settings
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(search_settings, 'CONFIG', Path(folder)), \
+                mock.patch.object(field_redraft, 'STAMP', Path(folder) / 'stamp.json'), mock.patch.object(field_redraft, 'DATA', Path(folder)), \
+                mock.patch.object(field_redraft.role_kinds, 'kinds_of', lambda words, **k: {w: KINDS.get(w, 'other') for w in words}):
+            (Path(folder) / 'search.json').write_text(json.dumps(self.OLD))
+            self.assertFalse(field_redraft.refresh(asker=lambda *a: ANSWER, profile='', publish=lambda files: None))
+            search_settings.apply({('search', ('target_roles',)): ['first officer', 'pilot']}, search_settings.load_cached())
+            on_disk = {name: (Path(folder) / f'{name}.json').read_text() for name in ('search',)}
+            stamp = (Path(folder) / 'stamp.json').read_text()
+            seen = []
+            def refused(files):
+                seen.append({name: (Path(folder) / f'{name}.json').read_text() for name in ('search',)})
+                raise RuntimeError('Notion refused')
+            with self.assertRaises(RuntimeError):
+                field_redraft.refresh(asker=lambda *a: ANSWER, profile='', publish=refused)
+            self.assertEqual(seen, [on_disk], 'the copy was already redrafted when the page was written')
+            self.assertEqual({name: (Path(folder) / f'{name}.json').read_text() for name in ('search',)}, on_disk, 'a refused page changed the copy')
+            self.assertEqual((Path(folder) / 'stamp.json').read_text(), stamp, 'a refused page moved the stamp: the next run would not redraft')
+            published = []
+            self.assertTrue(field_redraft.refresh(asker=lambda *a: ANSWER, profile='', publish=published.append))
+            self.assertEqual(published[0]['search']['board_discovery_keywords'], search_settings.load_cached()['search']['board_discovery_keywords'])
+
     def test_every_jobs_check_runs_it_before_the_search(self):
         text = (Path(__file__).resolve().parents[3] / 'src' / '__main__.py').read_text()
         self.assertLess(text.index('search_settings.sync_quietly()'), text.index('field_redraft.refresh_quietly()'))

@@ -4,6 +4,7 @@ import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {isInbound} from '../origin.js';
 import {inConversation, talkingBar} from '../jobs-view.js';
+import {foldToggleWord} from '../fold-toggle.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
@@ -20,6 +21,7 @@ export function renderTalkingBar() {
   const bar = talkingBar(inConversation(shared.allJobs), $('jobs-talking').open);
   $('jobs-talking-title').textContent = bar.title;
   $('jobs-talking-count').textContent = bar.detail;
+  $('jobs-talking-toggle').textContent = bar.toggle;
 }
 export function renderTalking(narrowed = false) {
   if (!jobsState.lastJobsData && !jobsState.jobsRead) return;   // the list is not read yet: the first paint stays (paintTalkingFirst)
@@ -60,6 +62,7 @@ export function paintTalkingFirst() {
   if (!kept?.shown) return;
   $('jobs-talking-title').textContent = kept.title || 'In conversation';
   $('jobs-talking-count').textContent = kept.detail || '';
+  $('jobs-talking-toggle').textContent = foldToggleWord($('jobs-talking').open);
   $('jobs-talking-list').replaceChildren(...Array.from({length: Math.min(Number(kept.rows) || 0, 20)}, () => {
     const li = el('li', 'focus-item is-loading'), body = el('div', 'focus-body');
     body.append(el('span', 'skeleton w-60 tall'), el('span', 'skeleton w-40'));

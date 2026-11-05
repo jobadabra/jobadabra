@@ -3,8 +3,7 @@
 
 A workflow may not use claude-code-action, pass an Anthropic key (ANTHROPIC_API_KEY, anthropic_api_key, any secret with ANTHROPIC in its name) or name `anthropic` at all, comments aside.
 The ALLOWED table below is what is not moved, per file and per word. It may only shrink: a word that is no longer in its file fails the test until its entry is deleted,
-and a new word anywhere fails it at once. Two categories are left: the user pipelines (the user's own key in the user's own repo, not a CI call of ours) and the e2e lane (the harness engine under test, owned by the e2e lane;
-its entries go when that lane's harness engine leaves the key; spec 2026-10-28-ci-on-codex-subscription-design.md)."""
+and a new word anywhere fails it at once. One category is left: the user pipelines (the user's own key in the user's own repo, not a CI call of ours)."""
 import re
 import unittest
 from pathlib import Path
@@ -20,12 +19,8 @@ USER_PIPELINES = {
     '.github/workflows/scout.yml': {'ANTHROPIC_API_KEY', 'secrets.ANTHROPIC_API_KEY'},
 }
 
-# Owned by the e2e / pool lane (the harness engine under test, the live pool, the PR prompt cases, the cost report): not part of the move above, still listed so the class cannot grow.
-E2E_LANE = {
-    '.github/actions/e2e-review/action.yml': {'Anthropic', 'E2E_ANTHROPIC_KEY', 'anthropic-key', 'inputs.anthropic-key', 'secrets.E2E_ANTHROPIC_KEY'},
-    '.github/workflows/record-sites.yml': {'E2E_ANTHROPIC_KEY', 'LIVE_POOL_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY', 'secrets.LIVE_POOL_ANTHROPIC_KEY'},
-    '.github/workflows/watch-live.yml': {'E2E_ANTHROPIC_KEY', 'LIVE_POOL_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY', 'secrets.LIVE_POOL_ANTHROPIC_KEY'},
-}
+# The e2e lane's entries (the review action, record-sites, watch-live) went on 5 Nov 2026 (plan "CI and e2e take no AI API keys", 4/5; owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): the table holds the user pipelines only.
+E2E_LANE = {}
 ALLOWED = {**USER_PIPELINES, **E2E_LANE}
 
 # Allowed by name anywhere, not on the shrinking list (coordinator, 31 Oct 2026): the Admin key only READS what Anthropic billed (daily.yml here; ai-cost-billed.yml moved to jobadabra-web, rs 6a/6); it makes no model call and spends nothing.
