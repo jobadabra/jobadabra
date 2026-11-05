@@ -18,7 +18,7 @@ export function countdownLabel(dueAt, now) {
 function waitingCard(background, linkOff) {
   const base = {kind: 'waiting', live: false, meta: '· in Jobadabra\'s browser, hidden', frame: '', input: false, filling: '', submit: null, marks: false};
   if (linkOff) return {...base, title: 'Jobadabra can\'t hear its browser', pill: backgroundStatus({background}, {linkOff}), tone: 'warn', note: linkOffLine(linkOff, 'Jobadabra\'s hidden browser')};
-  return {...base, title: 'Waiting for its turn', pill: backgroundStatus({background}), tone: 'neutral', note: 'Jobadabra fills one application at a time. This one starts when the one before it is done.'};
+  return {...base, title: 'Waiting for its turn', pill: backgroundStatus({background}), tone: 'neutral', note: 'Jobadabra fills up to 10 applications at once. This one starts as soon as one of them is done.'};
 }
 
 /**
@@ -28,7 +28,7 @@ function waitingCard(background, linkOff) {
  */
 export function liveCard(background = {}, facts = null, {note = '', at = clock, now = Date.now, linkOff = null} = {}) {
   const left = facts ? facts.left.length : null, filled = at(background.readyAt);
-  // Why (2026-10-28, owner screenshot: Air France, queued behind GLOCK, drew "Filling" and a broken picture): one job fills at a time; a queued one has no page yet, so no picture is asked for (waitingCard: live false).
+  // Why (2026-10-28, owner screenshot: Air France, queued behind GLOCK, drew "Filling" and a broken picture): a queued job has no page yet, so no picture is asked for (waitingCard: live false).
   // Why (30 Oct 2026, owner's demo: cards stuck with no reason): with the app's connection closed (`formsOpen.linkOff`) the hidden browser's extension is never told to start, so a queued job waits on the connection, not on the job before it.
   if (background.state === 'queued') return waitingCard(background, linkOff);
   // Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule): Full automation waits before it presses Submit; the person sees the clock and can Stop. Stop keeps the filled form for them (a hand-off), it never discards it.

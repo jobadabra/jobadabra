@@ -23,7 +23,7 @@ test('each background state has its own words and tone; a session that is not a 
 test('a queued job waits for its turn: no live picture, no Filling, Stop only; only the job that is filling gets the live view', () => {
   const queued = liveCard({state: 'queued'}, null);
   assert.deepEqual([queued.kind, queued.title, queued.pill, queued.live], ['waiting', 'Waiting for its turn', ['Queued', 'neutral'], false]);
-  assert.match(queued.note, /one application at a time/);
+  assert.match(queued.note, /up to 10 applications at once/);
   for (const state of ['preflight', 'filling']) assert.deepEqual([liveCard({state}, null).kind, liveCard({state}, null).live], ['filling', true], state);
   for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(liveCard({state}, null).live, true, `${state} shows the page`);
 });
@@ -69,7 +69,7 @@ test('with the connection off a queued job says so in its pill and card; no othe
   assert.deepEqual([card.kind, card.live, card.title, card.pill, card.tone], ['waiting', false, 'Jobadabra can\'t hear its browser', ['Connection off', 'warn'], 'warn']);
   assert.match(card.note, /port 47111/);
   assert.doesNotMatch(card.note, /Chrome/, 'a hidden browser is not the person\'s Chrome');
-  assert.doesNotMatch(card.note, /one application at a time/, 'the queue is not the reason');
+  assert.doesNotMatch(card.note, /up to 10 applications at once/, 'the queue is not the reason');
   const states = ['preflight', 'filling', 'ready_for_review', 'needs_user_handoff', 'manual_submit_required', 'waiting_to_submit', 'submitting', 'receipt_confirmed', ''];
   for (const state of states) {
     assert.deepEqual(backgroundStatus({background: {state}}, {linkOff: true}), backgroundStatus({background: {state}}), `${state}: a running job keeps its own words`);

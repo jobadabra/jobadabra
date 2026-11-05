@@ -64,7 +64,7 @@
    "steps": [
     {"suite": "apply", "step": "Full automation presses Submit once on its own, and a Stop in the wait presses nothing"},
     {"suite": "apply", "step": "Full automation hands a bot check to the person: the card says so with Submit off, and nothing is pressed or sent"},
-    {"suite": "apply", "step": "Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one"},
+    {"suite": "apply", "step": "Full automation presses each of several queued jobs once, together, in queue order"},
     {"suite": "apply", "step": "Full automation asks once in Settings → Apply: Not now keeps the old mode and saves no confirmation, Turn on Full automation saves it"},
     {"suite": "apply", "step": "Full automation saved without its confirmation: the app refuses to start, and nothing is filled or sent"},
     {"suite": "apply", "step": "the app quits in Full automation's wait: after it starts again the job is handed to you, and nothing is pressed when the wait runs out"},
@@ -550,7 +550,7 @@
   {"suite": "apply", "step": "a Workday-shaped form: answers fill fields known only by opaque ids and aria labels, the list-button question is left for you by name, Submit untouched"},
   {"suite": "apply", "step": "a multi-step form: step 1 is filled, step 2 only once you reach it, the consent is left to you, Submit untouched"},
   {"suite": "apply", "step": "Background automation hands a bot check to the person: the card says so with Submit off, and nothing is sent"},
-  {"suite": "apply", "step": "Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one"},
+  {"suite": "apply", "step": "Background automation fills several queued jobs together, in queue order, and a Stop on one while they fill hands only that one to you; nothing is sent"},
   {"suite": "apply", "step": "a real posting, watched live: the page kinds, stages and fills as they happen (nothing is pressed on the page)"},
   {"suite": "apply", "step": "the app quits while Background automation holds a filled form: after it starts again the job is handed to you, and nothing is posted"},
   {"suite": "apply", "step": "a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome; nothing is submitted"},

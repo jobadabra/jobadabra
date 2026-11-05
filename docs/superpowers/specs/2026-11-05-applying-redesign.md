@@ -81,9 +81,9 @@ UI PRs (3, 4, 5, 7) each get a light + dark, wide + narrow side-by-side and the 
 - [x] Causes measured (probe and the 5 Nov log, above). (proof: none: scratch probe, numbers in the table)
 - [x] Owner's yes on the sketch and the 4 decisions (5 Nov 2026, quoted above). (proof: none: owner decision)
 - [x] 1/7 Desktop-size hidden pages, all live: 1440 × 813 pages, every one visible and drawing; without the flag the first page stops at frame 53 (positive control on Chrome for Testing 156). (proof: desktop/integration/extension/hidden-browser-pages.test.mjs)
-- [ ] 2/7 A new run starts fresh; picture only when the page exists
-- [ ] 3/7 Cancel all applications
-- [ ] 4/7 Mode at a glance
-- [ ] 5/7 Live step log
+- [x] 2/7 A new run starts fresh (#3251): a re-applied job after Stop, Cancel or a quit launches as a new session in the new mode; "picture only when the page exists" moves to 7/7. (proof: desktop/test/unit/main/background-apply-controller.test.js)
+- [x] 3/7 Cancel all applications (#3255): one question, every unfinished application ends, a job being sent is left alone. (proof: desktop/test/unit/main/session-cancel-all.test.js @0c65354e)
+- [x] 4/7 Mode at a glance (#3257): one chip on the list and the header; a handed-over Full automation job says "you submit now". (proof: desktop/test/unit/renderer/background-status.test.js @bfbf8450)
+- [x] 5/7 Live step log (#3261): a hidden form's card says each step with its time, its first line the mode in Jobadabra's browser. (proof: desktop/test/unit/main/session-journal-run.test.js @f8e25144)
 - [ ] 6/7 10 at once, measured
 - [ ] 7/7 Preview on request

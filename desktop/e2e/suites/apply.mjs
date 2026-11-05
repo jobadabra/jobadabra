@@ -59,7 +59,7 @@ export const stepSeconds = {'a multi-step form': 16.2,
   'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
   'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
   'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
-  'Full automation presses each queued job': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
+  'Full automation presses each of several queued jobs': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
 export const hangCaps = hangCapsFor('apply');
 // Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
 // Two measured halves carry ~650 s each before setup; applyflows uses three slices, without increasing any budget.
@@ -317,8 +317,8 @@ export async function runApply(ctx, parts) {
     await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)});
   }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
 
-  // Several jobs queued at once (owner, 30 Oct 2026, the second apply-mode coverage gap): one fills at a time, in queue order; a Stop on a queued job skips only that one. Four details-only submitters, each at its own address.
+  // Several jobs queued at once (owner, 30 Oct 2026, the second apply-mode coverage gap; 5 Nov 2026: "run 10 sessions in parallel", the two steps' new words agreed the same day): they fill together, in queue order; in Background a Stop on one while they fill hands only that one over. Four details-only submitters, each at its own address.
   const queueJobs = mode => [1, 2, 3, 4].map(n => autoFormOf(FORMS.submitter, `?queue=${mode}${n}`));
-  await ctx.run('Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
-  await ctx.run('Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Background automation fills several queued jobs together, in queue order, and a Stop on one while they fill hands only that one to you; nothing is sent', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', stop: true, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Full automation presses each of several queued jobs once, together, in queue order', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
 }

@@ -1,4 +1,5 @@
-// Journey (#2646): Background queues two jobs; the first is a multi-step form, and the second waits until the first leaves its middle step. Real store and controller.
+// Journey: Background queues two jobs, the first a multi-step form; both fill at once and the multi-step one goes on to its last step (owner, 5 Nov 2026: "We want to be
+// able to run 10 sessions in parallel, headless"; replaces #2646's one at a time). Real store and controller.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundApplyStore} from '../lib/background-apply-store.js';
@@ -37,15 +38,16 @@ function rig() {
   return {apps: [...apps.values()], controller, poll, report};
 }
 
-test('journey: Background fills a multi-step form to the end before it starts the next queued job (#2646)', async () => {
+test('journey: Background fills two queued jobs at once; the multi-step one goes on past its middle step while the other is filled', async () => {
   const {apps, controller, poll, report} = rig();
   const queued = await controller.enqueue(apps, 'fill');
   assert.deepEqual(queued.sessions, ['session1', 'session2']);
-  assert.deepEqual(await poll(), ['session1'], 'the first job starts alone');
+  assert.deepEqual(await poll(), ['session1', 'session2'], 'both jobs start together');
   const middle = await report('session1', 'middle', 'step 1 of 2');
-  assert.equal(middle.continue, true, 'the form passed its middle step and goes on filling');
-  assert.deepEqual(await poll(), [], 'while the first form is still filling, the second job waits');
+  assert.equal(middle.continue, true, 'the multi-step form passed its middle step and goes on filling');
+  const other = await report('session2', 'final', 'the only step');
+  assert.equal(other.review, true, 'the second form is filled meanwhile and waits for the person');
+  assert.deepEqual(await poll(), [], 'nothing launches twice');
   const done = await report('session1', 'final', 'step 2 of 2');
-  assert.equal(done.review, true, 'the first form is filled and waits for the person');
-  assert.deepEqual(await poll(), ['session2'], 'then the second job starts');
+  assert.equal(done.review, true, 'the multi-step form is filled to its end');
 });

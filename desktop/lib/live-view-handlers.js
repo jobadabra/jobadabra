@@ -74,8 +74,8 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
   });
   ipcMain.handle('liveInput', (_, session, message) => { views.get(String(session || ''))?.input(message); return true; });
   ipcMain.handle('liveClose', (_, session) => { close(String(session || '')); return true; });
-  // Stop while the hidden fill runs: this application only; the controller hands it to the person at its next look (lib/background-apply-controller.js poll).
-  ipcMain.handle('liveStop', (_, session) => (DEMO ? {ok: false, error: 'The demo app has no hidden browser.'} : {ok: !!stop(String(session || ''))}));
+  // Stop while the hidden fill runs: this application only; the controller hands it to the person at once (lib/background-apply-controller.js stopOne).
+  ipcMain.handle('liveStop', async (_, session) => (DEMO ? {ok: false, error: 'The demo app has no hidden browser.'} : {ok: !!(await stop(String(session || '')))}));
   ipcMain.handle('liveSubmit', async (_, session) => {
     const id = String(session || '');
     if (DEMO) return {ok: false, error: 'The demo app has no hidden browser.'};

@@ -362,30 +362,62 @@ test('a clock wake leaves queued triage reads and ended-page closes for the exte
   assert.deepEqual([taken, ended], [1, 1]);
 });
 
-// #2646 (1 Nov 2026): one job at a time in the hidden browser. A multi-step form saves 'filling' at its middle step; the poll must still count it as busy,
-// in either list order, or a second form launches into the same hidden browser. Once the first job leaves filling, the queue moves.
-test('a job still filling (or claimed) holds the queue in either list order; the next starts once it leaves filling', async () => {
-  const pollWith = async (states, order) => {
-    const claimed = [];
-    const controller = createBackgroundApplyController({}, {
-      store: {read: async url => states[url.split('/').pop()],
-        claim: async (url, session) => { const state = states[session]; claimed.push(session); return state.state === 'queued' ? {ok: true, state: {...state, state: 'preflight', owner: 'o1'}} : {ok: state.owner === 'o1', state}; }},
-      browser: {start: async () => ({owner: 'o1'})},
-      terminals: {list: () => order.map(id => ({id, url: `https://jobs.example.test/${id}`, background: {}, outcome: ''})), record: () => null, report: () => {}},
-      config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
-    const polled = await controller.handle({action: 'poll', owner: 'o1'});
-    return {launched: polled.jobs.map(job => job.session), claimed};
-  };
-  const job = (session, state, owner = 'o1') => ({session, mode: 'auto', chosenAt: 'c1', state, owner});
+// Owner, 5 Nov 2026: "We want to be able to run 10 sessions in parallel, headless, and being very performant" (plan decision 3: all of a batch, up to 10; replaces #2646's one at a time).
+// A multi-step form saves 'filling' at its middle step; it still counts against the limit, in either list order.
+const pollRig = (states, order) => {
+  const claimed = [], reads = [];
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async url => { reads.push(url); return states[url.split('/').pop()]; },
+      claim: async (url, session) => { const state = states[session]; claimed.push(session); return state.state === 'queued' ? {ok: true, state: {...state, state: 'preflight', owner: 'o1'}} : {ok: state.owner === 'o1', state}; },
+      handoff: async (_url, session, _owner, reason) => ({...states[session], state: 'needs_user_handoff', manualOverride: true, reason})},
+    browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => order.map(id => ({id, url: `https://jobs.example.test/${id}`, background: {}, outcome: ''})), record: id => ({id, background: {}}), report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const poll = async () => (await controller.handle({action: 'poll', owner: 'o1'}));
+  return {controller, poll, claimed, reads};
+};
+const job = (session, state, owner = 'o1') => ({session, mode: 'auto', chosenAt: 'c1', state, owner});
+
+test('every queued job of a batch fills at once, up to 10; one still filling (a multi-step form\'s middle step) counts against the limit in either list order', async () => {
+  const ten = Object.fromEntries(Array.from({length: 10}, (_, i) => [`j${i}`, job(`j${i}`, 'queued', '')]));
+  const batch = pollRig(ten, Object.keys(ten));
+  assert.deepEqual((await batch.poll()).jobs.map(each => each.session), Object.keys(ten), 'ten queued jobs launch in one poll');
   for (const order of [['a', 'b'], ['b', 'a']]) {
-    const filling = await pollWith({a: job('a', 'filling'), b: job('b', 'queued', '')}, order);
-    assert.deepEqual(filling.launched, [], `a form at its middle step holds the next job (order ${order})`);
-    assert.ok(!filling.claimed.includes('b'), `the queued job is not claimed while one fills (order ${order})`);
-    const preflight = await pollWith({a: job('a', 'preflight'), b: job('b', 'queued', '')}, order);
-    assert.deepEqual(preflight.launched, ['a'], `only the claimed job is (re)issued (order ${order})`);
+    const {poll} = pollRig({a: job('a', 'filling'), b: job('b', 'queued', '')}, order);
+    assert.deepEqual((await poll()).jobs.map(each => each.session), ['b'], `a form at its middle step does not hold the next job (order ${order})`);
   }
-  const moved = await pollWith({a: job('a', 'waiting_to_submit'), b: job('b', 'queued', '')}, ['a', 'b']);
-  assert.deepEqual(moved.launched, ['b'], 'once the first job left filling, the next starts');
+  const full = Object.fromEntries([...Array.from({length: 10}, (_, i) => [`f${i}`, job(`f${i}`, 'filling')]), ['late', job('late', 'queued', '')]]);
+  const {poll, claimed} = pollRig(full, Object.keys(full));
+  assert.deepEqual((await poll()).jobs, [], 'ten filling: the eleventh waits');
+  assert.ok(!claimed.includes('late'));
+});
+
+test('the poll reads the store once per job after a start, then uses what the controller last wrote (measured: 2 store subprocesses per job per poll before)', async () => {
+  const states = {a: job('a', 'queued', ''), b: job('b', 'filling')};
+  const {poll, reads} = pollRig(states, ['a', 'b']);
+  await poll();
+  assert.equal(reads.length, 2, 'the first poll reads each job once');
+  await poll();
+  await poll();
+  assert.equal(reads.length, 2, 'later polls read nothing: the controller is the state\'s one writer');
+});
+
+test('Stop reaches every job filling at once: each is handed to the person', async () => {
+  const states = Object.fromEntries(Array.from({length: 4}, (_, i) => [`s${i}`, job(`s${i}`, i % 2 ? 'filling' : 'queued', i % 2 ? 'o1' : '')]));
+  let stopped = false;
+  const handed = [];
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async url => states[url.split('/').pop()], claim: async (_url, session) => ({ok: true, state: {...states[session], state: 'preflight', owner: 'o1'}}),
+      handoff: async (_url, session, _owner, reason) => { handed.push([session, reason]); return {...states[session], state: 'needs_user_handoff', manualOverride: true, reason}; }},
+    browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => Object.keys(states).map(id => ({id, url: `https://jobs.example.test/${id}`, background: {}, outcome: ''})), record: id => ({id, background: {}}), report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => stopped, log: () => {}});
+  assert.deepEqual((await controller.handle({action: 'poll', owner: 'o1'})).jobs.map(each => each.session), ['s0', 's2'], 'the two queued launch beside the two filling');
+  stopped = true;
+  const after = await controller.handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(handed.map(([session, reason]) => `${session}:${reason}`).sort(), ['s0:stopped', 's1:stopped', 's2:stopped', 's3:stopped']);
+  assert.equal(after.jobs.length, 0, 'nothing launches after Stop');
+  assert.equal(after.handoffs.length, 4, 'the extension is told about each');
 });
 
 // Owner, 2 Nov 2026 ("the app sends one e-mail/Telegram message when an application is stuck waiting for you"): both hand-over sites tell the waiting message; it never breaks the hand-over.

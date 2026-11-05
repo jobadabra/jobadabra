@@ -10,6 +10,7 @@ import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {addKitJob, removeJobsByUrl, stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
 import {OWNED_WORKER} from './own-worker.mjs';
+import {waitForStage} from './wait-on-state.mjs';
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
 /**
@@ -333,20 +334,32 @@ async function recordOf(ctx, url) {
 }
 
 /**
- * Returns the first pair of stored queue records in preflight/filling at one poll, or null; only those states occupy a filling slot.
- * Why (30 Oct 2026, beta 41121393681): readyAt is re-stamped on a changed page (background-apply-store.js:64), so later ready reports cannot prove overlap.
+ * The stored launch and ready times of the jobs that ran (`times`: [{job, held}], queue order): each has both, they launched in queue order, and every one launched
+ * before the first was ready (they filled together). Throws naming what the app stored.
  */
-export function fillingPair(records) {
-  const filling = records.filter(record => record?.state === 'preflight' || record?.state === 'filling');
-  return filling.length > 1 ? filling.slice(0, 2) : null;
+export function checkTogether(times) {
+  for (const {job, held} of times) if (!held?.launchedAt || !held.readyAt) throw new Error(`the app recorded no launch and ready time for ${job.url}: ${JSON.stringify(held)}`);
+  times.forEach(({held}, at) => {
+    if (at && held.launchedAt < times[at - 1].held.launchedAt) throw new Error(`job ${at + 1} of the queue launched before job ${at}`);
+  });
+  const lastLaunch = Math.max(...times.map(({held}) => held.launchedAt)), firstReady = Math.min(...times.map(({held}) => held.readyAt));
+  if (lastLaunch > firstReady) throw new Error(`the jobs did not fill together: one was ready before the last launched ${JSON.stringify(times.map(({held}) => ({session: held.session, launchedAt: held.launchedAt, readyAt: held.readyAt})))}`);
+}
+
+/** Background sent nothing; Full automation pressed once per job that ran (`sent`: the posts the form endpoint saw during the step). */
+export function checkSent(mode, sent, ran) {
+  if (mode === 'fill' && sent) throw new Error(`Background automation sent ${sent} application(s) before the person pressed Submit`);
+  if (mode === 'auto' && sent !== ran) throw new Error(`Full automation should press once per job that ran (${ran}), the endpoint saw ${sent}`);
 }
 
 /**
- * The proof of several jobs queued at once in a hidden-browser mode (`mode` 'fill' = Background, 'auto' = Full automation, no wait): Start queues `jobs` (forms, distinct addresses); the person stops the second while
- * it is still queued. Every wait polls all stored states for two jobs filling at once. After the run: the stopped job was never launched and went to the person with reason `stopped`; the others launched in
- * queue order; Background sent nothing, Full automation pressed once per job that ran. `seed(job)` adds each job, `until(what, check, ms)` is the suite's state wait.
+ * The proof of several jobs queued at once in a hidden-browser mode (`mode` 'fill' = Background, 'auto' = Full automation, no wait). Start queues `jobs` (forms, distinct addresses) and
+ * every one fills together (owner, 5 Nov 2026: "We want to be able to run 10 sessions in parallel, headless"; replaces one at a time): each launched before any was ready, in queue order.
+ * Background (`stop`): the person stops the second job while they fill; only that one is handed to them as `stopped`, the others reach Ready to review, and nothing is sent.
+ * Full automation: each job is pressed once and becomes Applied. `seed(job)` adds each job.
+ * Why "launched before any was ready" holds on any machine: enqueue, each poll and each ready report run one at a time in the controller (`serial`), so one poll claims the whole batch.
  */
-export async function proveQueue(ctx, {jobs, mode, seed, until}) {
+export async function proveQueue(ctx, {jobs, mode, seed, stop = false}) {
   const unlinked = linkRuntime(ctx.profile);
   if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
   await ctx.relaunch();   // Why (30 Oct 2026, #2596): a second proof in one app run never got a browser to poll; each proof starts the app fresh
@@ -361,33 +374,29 @@ export async function proveQueue(ctx, {jobs, mode, seed, until}) {
     const ids = await Promise.all(jobs.map(job => sessionOf(page, job.url)));
     if (ids.some(id => !id) || started.sessions?.length !== jobs.length) throw new Error(`Start did not queue all ${jobs.length} jobs: ${JSON.stringify({sessions: started.sessions, ids})}`);
     const queued = started.sessions.map(id => jobs[ids.indexOf(id)]);   // the app's own queue order
-    const stopped = queued[1], ran = queued.filter(job => job !== stopped);
-    await page.evaluate(session => window.pilot.liveStop(session), ids[jobs.indexOf(stopped)]);
-    let overlap = null;
-    const waitForQueue = async (what, check, ms) => {
-      await until(what, async () => {
-        const records = await Promise.all(queued.map(job => recordOf(ctx, job.url)));
-        overlap ||= fillingPair(records);
-        return overlap || await check(records);   // settle the wait on a violation; report it outside the wait's retry handling
-      }, ms);
-      if (overlap) throw new Error(`two jobs filled at once: ${JSON.stringify(overlap.map(({session, state}) => ({session, state})))}`);
-    };
+    const stopped = stop ? queued[1] : null, ran = queued.filter(job => job !== stopped);
+    const statesNow = () => Promise.all(queued.map(item => recordOf(ctx, item.url).then(held => held?.state)));
     const done = async (job, records) => mode === 'fill' ? records[queued.indexOf(job)]?.state === 'ready_for_review' : (await stageOf(ctx, job.url)) === 'Applied';
-    await waitForQueue('the stopped job never went to the person', records => HANDOFF.test(records[queued.indexOf(stopped)]?.state || ''), 60000);
-    for (const job of ran) {
-      await waitForQueue(`a queued job never ${mode === 'fill' ? 'reached Ready to review' : 'was pressed and became Applied'}: ${job.url}`, records => done(job, records), 120000)
-        .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | states: ${JSON.stringify(await Promise.all(queued.map(item => recordOf(ctx, item.url).then(held => held?.state))))}`); });
+    const records = () => Promise.all(queued.map(job => recordOf(ctx, job.url)));
+    // Each wait is on the stored states under the step's measured hang cap (lib/wait-on-state.mjs waitForStage); a run-out names the wait and every job's state.
+    const reach = async (what, check) => {
+      const {value, error} = await waitForStage(check, Boolean, {what, label: ms => `${what.replace(/ never .*/, '')} reached its state ${ms} ms after the wait started`});
+      if (value !== true) throw new Error(`${what} | ${error ? `last read failed: ${error} | ` : ''}${await describeHidden(ctx.profile)} | states: ${JSON.stringify(await statesNow())}`);
+    };
+    if (stopped) {
+      // The Stop lands on a job that has launched (stored launchedAt), so it is a Stop during the fill; it hands the job over at once (controller stopOne), whatever its fill reports next.
+      await reach('the second job never launched', async () => !!(await records())[queued.indexOf(stopped)]?.launchedAt);
+      const asked = await page.evaluate(session => window.pilot.liveStop(session), ids[jobs.indexOf(stopped)]);
+      if (!asked?.ok) throw new Error(`Stop on the second job was refused: ${JSON.stringify(asked)}`);
+      await reach('the stopped job never went to the person', async () => HANDOFF.test((await records())[queued.indexOf(stopped)]?.state || ''));
     }
-    const gone = await recordOf(ctx, stopped.url);
-    if (gone?.reason !== 'stopped' || gone.launchedAt) throw new Error(`the stopped queued job should be handed over as "stopped" and never launched, the app recorded ${JSON.stringify({reason: gone?.reason, launchedAt: gone?.launchedAt})}`);
-    const times = await Promise.all(ran.map(async job => ({job, held: await recordOf(ctx, job.url)})));
-    for (const {job, held} of times) if (!held?.launchedAt || !held.readyAt) throw new Error(`the app recorded no launch and ready time for ${job.url}: ${JSON.stringify(held)}`);
-    times.forEach(({held}, at) => {
-      if (at && held.launchedAt < times[at - 1].held.launchedAt) throw new Error(`job ${at + 1} of the queue launched before job ${at}`);
-    });
-    const sent = forms.posts.length - posted;
-    if (mode === 'fill' && sent) throw new Error(`Background automation sent ${sent} application(s) before the person pressed Submit`);
-    if (mode === 'auto' && sent !== ran.length) throw new Error(`Full automation should press once per job that ran (${ran.length}), the endpoint saw ${sent}`);
+    for (const job of ran) await reach(`a queued job never ${mode === 'fill' ? 'reached Ready to review' : 'was pressed and became Applied'}: ${job.url}`, async () => done(job, await records()));
+    if (stopped) {
+      const gone = await recordOf(ctx, stopped.url);
+      if (gone?.reason !== 'stopped') throw new Error(`the stopped job should be handed over as "stopped", the app recorded ${JSON.stringify({state: gone?.state, reason: gone?.reason})}`);
+    }
+    checkTogether(await Promise.all(ran.map(async job => ({job, held: await recordOf(ctx, job.url)}))));
+    checkSent(mode, forms.posts.length - posted, ran.length);
   } finally {
     // Why (30 Oct 2026, #2596): Start takes the first eligible job and the suite's steps assume none is left; the person ends each job with "Skip this role".
     for (const job of jobs) await skipJob(page, job);
