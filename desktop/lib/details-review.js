@@ -66,7 +66,7 @@ function checks(line, {home, format}) {
   const parts = format.kind === 'language' ? languageParts(line.value) : [];
   if (parts.length < 2 && !parts.some(part => part.level)) return [item('check', base, {question: `${line.label}: make it exact`, format, value: line.value, details: {where, fact: line.label}})];
   const done = parts.filter(partIsExact).map(part => part.raw).join(' · ');
-  return parts.flatMap((part, index) => (partIsExact(part) ? [] : [item('check', {...base, part: index, was: part.raw}, {question: part.level ? `${part.name}: you wrote “${part.level}”. Which level?` : `${part.name}: which level?`, format, value: part.level,
+  return parts.flatMap((part, index) => (partIsExact(part) ? [] : [item('check', {...base, part: index, was: part.raw}, {question: part.level ? `${part.name}: you wrote “${part.level}”. Which level?` : `${part.name}: which level?`, format: {...format, single: true}, value: part.level,
     details: {where, fact: line.label, part: index, ...(done ? {line: `Already exact: ${done}`} : {})}})]));
 }
 // Why (3 Nov 2026, owner): a heading read as an answer is no question and never kept: a line that names nothing, whose value is its own label ("Summary: Summary"), or is
