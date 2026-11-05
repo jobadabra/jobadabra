@@ -8,6 +8,7 @@ import {CAP_REACHED} from './agent-tier.mjs';
 import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
+import {pointerLine} from './agent-chain.mjs';
 
 const MIN_STEPS_PER_GOAL = 6;
 const choice = values => ({type: 'string', enum: ['', ...values]});
@@ -99,7 +100,7 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
 export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
-  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set();
+  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [];
   let stoppedByBroker = '';
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
@@ -112,14 +113,15 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
     results.push(goalResult(goal, result));
+    ends.push({n: goal.n, stopped: result.stopped, steps: result.steps.map(stepWords)});   // Why (5 Nov 2026, SC 2/2): a chain hands on the goals that did not end on done, and the steps of the one that stopped
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stoppedByBroker = result.stopped; break; }
   }
   await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
-  const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || ''}}));
+  const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
   const observations = {};
   for (const row of summary.goals) if (row.verdict !== 'worked') (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
-  return {summary, findings, observations, trace, spent, notes, stopped: stoppedByBroker || 'goals'};
+  return {summary, findings, observations, trace, spent, notes, ends, stopped: stoppedByBroker || 'goals'};
 }

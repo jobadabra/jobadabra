@@ -22,7 +22,7 @@ on:
         description: 'Replay: the commit whose APP is tested (a 7-40 character SHA, e.g. the commit before a fix); the tests and the agent come from this workflow''s commit. Empty = this commit'
         required: false
       plan:
-        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound, board) instead of the seeded goals'
+        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound, board, tour) instead of the seeded goals'
         required: false
       rules_off:
         description: 'Replay: rule ids taken out of what the agent knows, comma separated (profile-1,jobs-3): the unprompted run'
@@ -39,6 +39,12 @@ on:
       engine:
         description: 'claude = the acting calls go to Claude alone, not Codex first (empty = the broker order). A dispatch is a replay (no memory, small tier unless tier=large is also set); the repository variable AI_USER_AGENT_CLAUDE_ON = a UTC date puts the scheduled night on Claude, on the large tier, for that one night'
         required: false
+      chain_links:
+        description: 'Chain: run the plan over up to this many runs (2-4), each capped at 250k tokens, the next restoring the data the last one left; empty = one run'
+        required: false
+      chain_from:
+        description: 'Set by a chain itself: the run id of the link before this one (its artifact holds the snapshot and the summary)'
+        required: false
       video:
         description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
         type: boolean
@@ -47,12 +53,12 @@ on:
 permissions:
   contents: write   # the agent-memory branch (the notes of the nights)
   issues: read
-  actions: read
+  actions: write   # the chain starts its next link (workflow_dispatch) when it goes on
   id-token: write   # GitHub's per-run token the AI broker checks (desktop/e2e/lib/broker-client.mjs)
 
 # Why (3 Nov 2026, code review on 8/12): a group keeps one running and one pending run and cancels an older pending one, so replays dispatched one after another would cancel each other and a replay could cancel the pending nightly (the watchdog would then report a missing start); a replay has its own group per run.
 concurrency:
-  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.engine != '') && format('-replay-{0}', github.run_id) || '' }}
+  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && format('-replay-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -62,7 +68,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch or an engine measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
+      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch, an engine or a chain link measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
@@ -142,6 +148,18 @@ jobs:
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
+      # Why (5 Nov 2026, SC 2/2, owner: "chained runs"): link n+1 starts from the artifact of link n (its snapshot of the app's data and its summary); the run id is digits only.
+      - name: The previous link's snapshot and summary (a chained run only)
+        if: inputs.chain_from != ''
+        timeout-minutes: 5
+        env:
+          FROM: ${{ inputs.chain_from }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$FROM" =~ ^[0-9]+$ ]] || { echo "chain_from must be a run id, got: $FROM"; exit 1; }
+          gh run download "$FROM" -R "$GITHUB_REPOSITORY" -n "agent-replay-$FROM" -D "$RUNNER_TEMP/chain-prev"
+          echo "AGENT_CHAIN_DIR=$RUNNER_TEMP/chain-prev/agent-chain-out" >> "$GITHUB_ENV"
       - name: Who answers, how big tonight's session is, what the agent remembers and what changed since
         id: prepare
         timeout-minutes: 10
@@ -158,6 +176,7 @@ jobs:
           AGENT_SHAPE: ${{ inputs.shape }}
           AGENT_TIER: ${{ inputs.tier }}
           AGENT_SCREEN: ${{ inputs.screen }}
+          AGENT_CHAIN_LINKS: ${{ inputs.chain_links }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
           AGENT_KIND: ${{ env.IS_REPLAY && 'replay' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input)
           AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
@@ -222,3 +241,25 @@ jobs:
           path: e2e-artifacts/agent
           if-no-files-found: ignore
           retention-days: 14   # Why (4 Nov 2026, owner: video storage): the video is the big file; 14 days is the Lab's fill videos' keep time
+      # Why (5 Nov 2026, SC 2/2): the next link starts only after this run's artifact (with the snapshot) is uploaded; a chain that has ended says why in the summary and starts nothing.
+      - name: Continue the chain (the next run, from this run's snapshot)
+        if: success() && hashFiles('e2e-artifacts/agent/agent-chain.json') != ''
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IN_PLAN: ${{ inputs.plan }}
+          IN_SHAPE: ${{ inputs.shape }}
+          IN_RULES_OFF: ${{ inputs.rules_off }}
+          IN_SCREEN: ${{ inputs.screen }}
+          IN_APP_REF: ${{ inputs.app_ref }}
+          IN_ENGINE: ${{ inputs.engine }}
+        run: |
+          STATE=e2e-artifacts/agent/agent-chain.json
+          ENDED="$(jq -r .ended "$STATE")"
+          if [ -n "$ENDED" ]; then echo "Chain $(jq -r .chain "$STATE") ended after link $(jq -r .link "$STATE"): $ENDED" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          # Why (5 Nov 2026, code review): every setting of link 1 goes on to the next link, or the chain would mix states (a different app, rules on, the screen reader on).
+          ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")")
+          add() { if [ -n "$2" ]; then ARGS+=(-f "$1=$2"); fi; }
+          add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF"; add engine "$IN_ENGINE";
+          gh workflow run ai-user-agents.yml --ref "$GITHUB_REF_NAME" "${ARGS[@]}"
+          echo "Chain $(jq -r .chain "$STATE"): link $(jq -r '.link + 1' "$STATE") started from this run." | tee -a "$GITHUB_STEP_SUMMARY"

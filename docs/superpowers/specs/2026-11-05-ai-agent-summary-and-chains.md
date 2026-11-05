@@ -1,6 +1,6 @@
 # AI user agent: a summary loop, then runs chained into deep flows
 
-> **Verdict:** one run is capped at 250,000 tokens (owner, 5 Nov 2026), and today a call costs a median 34.5k, so a run gets about **6 steps**, too few to reach a deep flow. Two changes, in this order. **A: the summary loop** (each call sends the fixed part, the current screen and a short summary of the steps so far, nothing else): about 15–17k a call, **13–15 steps** a run. **B: chained runs** (a run ends with a summary and a snapshot of the app's data; the next run restores both and goes on, each with its own 250k cap): a flow that needs 40 steps is reached over **at most 4 runs**. Report only, never a gate. Parent spec: [2026-11-03-ai-user-agents-design.md](2026-11-03-ai-user-agents-design.md) (B is the "snapshot saved and restored" of its 11/12, cut down to chains).
+> **Verdict:** one run is capped at 250,000 tokens (owner, 5 Nov 2026) and a large-tier call costs **15.0–17.5k tokens from its first step to its last**, so a run gets about **13 steps** (210k for the actor, 40k kept for the second opinion). That is too few for a flow of 40 steps. **A, the summary loop, is dropped**: it would save ~3–5% a call (the history adds ~0.1k a step), measured 5 Nov 2026, owner: "Drop A, build B, measure the floor". **B, chained runs** (a run ends with a summary and a snapshot of the app's data; the next restores both and goes on, each with its own 250k cap) reaches a flow over **at most 4 runs**. The ~11k floor per call is the engine's, measured by `ca`. Report only, never a gate. Parent spec: [2026-11-03-ai-user-agents-design.md](2026-11-03-ai-user-agents-design.md) (B is the "snapshot saved and restored" of its 11/12, cut down to chains).
 
 **Owner's words (5 Nov 2026):** "we can start with 250k tokens then. Assuming the initial context/harness would be max 20k"; chosen: "Both: summary loop + chained runs (Recommended)"; earlier: "It doesn't need to stop on the first bug. It needs to advance as much as possible through the app, through the flows. And note/report all the bugs it found."
 
@@ -9,26 +9,14 @@
 | What | Number | Source |
 |---|---|---|
 | Fixed part of a call (instructions + answer shape + goal + knowledge) | ~1.5k tokens, limit 20k, checked at start | `harnessTokens`, `lib/agent-tier.mjs` |
-| First call (fixed part + first page view) | 14.2–15k in 5 of 6 recorded runs; one 115.7k | `agent-trace.jsonl` of runs t1a, t1b, t2b, q2, t3, p41944866482 |
-| An actor call over 193 steps | median 34.5k, p10 14.9k, p90 61.7k | same traces |
-| Steps that fit 225k (250k less the judge's 25k reserve) | ~6 | 225k / 34.5k |
+| An actor call, large tier, first to last step of a goal | 15.0–17.5k (goal 1: 15,293 → 16,377 over 14 steps; goal 5: 15,025 → 16,416 over 10) | run 41952722418 (87 calls), night 41969305445 (11 calls), 42040707448 (7 calls) |
+| Input vs output per call | ~15.1k in, ~0.1k out | `agent-session.json` cost of 41952722418: 1,552,708 in, 10,612 out, 103 calls |
+| Steps that fit the actor's 210k (250k less the judge's 40k reserve) | ~13 | 210k / 16.5k |
 
-The conversation keeps the first message (with the first page view) for the whole goal and adds the current page view and every earlier answer and reply, which is why a call is 2–3× its floor. (A hypothesis from the sizes until PR A's table shows the split.)
+**What the first draft of this spec got wrong:** it took a 34.5k median over 193 earlier calls and blamed a growing history. Today's large-tier calls show the history is ~0.1k a step (older page views are already dropped), and the cost is a floor of ~15k a call that no summary removes. A summary loop was built and tested (worktree `ag-summary-loop`, not shipped) and not opened as a PR: no outcome.
 
-## A. The summary loop
-
-**Behaviour.** `explore()` (`lib/explore.mjs`) stops growing a conversation. Every call sends one user message:
-1. the fixed part: the goal and what is known (`goalIntro`), unchanged;
-2. **Steps so far**: one short line per step, written by code from the step record (`row.did`, the page it was on, whether it failed and why, the note it made by title), never by an AI call: `3. Press "Add job" (Jobs) → a form opened`. The last 12 steps in full; older ones as one line per page ("Jobs: 9 steps, 2 notes");
-3. **The screen now**: the current page view, as today.
-
-The answer is validated as today; the first message of a goal is not special any more. A goal starts with an empty summary.
-
-**States and who owns them.** The summary is one list owned by the loop (`trace` rows are its only source); nothing else writes it. A step is added when its turn ends, with the verdict of that turn (done, failed, refused, note made). The repeat nudge (`REPEAT_NUDGE`, FR 2/4) reads the same rows.
-
-**What can go wrong and is tested.** The summary must carry what the old history carried: the controls already tried (so it does not repeat them), the notes already made (so it does not file twice), a failed step's reason. Tests play a recorded 12-step goal through both loops and compare what the model is told about each of those three; a missing one fails.
-
-**Measure (in the PR body).** The same plan before and after, one run each (same seed, app commit and tier). The plan is `tour` (6 goals through Profile, Jobs, Focus, Actions, Strategy, Settings), which exists only on the pushed branch `ag-fill-run`, not in `NAMED_PLANS` of `desktop/e2e/lib/agent-plans.mjs` on main: SC 1/2 adds it there (with its test) before measuring: tokens per step (median, p90), steps per run, goals reached, notes made and judged real. The target is steps per run ≥ 12 with notes no fewer than before; if it is not met, the spec says so and A is not merged as a win.
+## A. The summary loop — dropped (measured 5 Nov 2026)
+Each call would send the goal, the current screen and a short code-written summary instead of the conversation. Measured, it saves ~3–5% a call (see Why), about half a step in a 250k run. Not built into the product. The code and its tests stay in the worktree `ag-summary-loop` if the floor ever drops and the history becomes the cost.
 
 ## B. Chained runs
 
@@ -59,5 +47,5 @@ The answer is validated as today; the first message of a goal is not special any
 
 ## Progress
 - [x] Spec and plan written; the owner chose both pieces (5 Nov 2026) (proof: none: the answer came in the chat through the coordinator and is quoted under Owner's words in this spec)
-- [ ] [ag] A. The summary loop, with the before/after table (proof: PR body table; `desktop/e2e/test/pool/agent-summary-loop.test.mjs`)
-- [ ] [ag] B. Chained runs: the snapshot, the chain state, the dispatch, the note's pointer, one deep flow over 2–4 links (proof: PR body; `desktop/e2e/test/pool/agent-chain.test.mjs`)
+- [x] [ag] A. The summary loop: dropped, the history is ~0.1k a step (proof: none: owner decision 5 Nov 2026 "Drop A, build B, measure the floor"; the numbers are in Why above)
+- [x] [ag] B. Chained runs: the snapshot, the chain state, the dispatch, the note's pointer; CI runs 42047462968 then 42048553562 chained two links; one deep flow over 2–4 links is not shown (the agent looped on goal 1, a Codex 502 ended link 2) (proof: desktop/e2e/test/pool/agent-chain.test.mjs)
