@@ -6,6 +6,7 @@ import tarfile
 import urllib.error
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -52,6 +53,8 @@ def tar_of(files):
 
 class HostedRun(unittest.TestCase):
     def setUp(self):
+        import signal
+        self.addCleanup(signal.signal, signal.SIGTERM, signal.getsignal(signal.SIGTERM))   # serve() installs a real handler (review of #hr-12)
         FakeWorker.state, FakeWorker.posted, FakeWorker.seen_auth = None, [], []
         FakeWorker.config = {'search': {'role_keywords': ['sre']}, 'profile': 'P', 'cv': 'C'}
         self.server = http.server.HTTPServer(('127.0.0.1', 0), FakeWorker)
@@ -191,12 +194,13 @@ class HostedRun(unittest.TestCase):
             root = Path(folder)
             (root / 'sources').mkdir()
             (root / 'hosted_run.py').write_text('a = 1\n'); (root / 'sources' / 'feeds.py').write_text('b = 1\n')
-            first = hosted_run.build_of(root)
-            self.assertEqual(first, hosted_run.build_of(root))   # stable
+            from src.build_stamp import build_of
+            first = build_of(root)
+            self.assertEqual(first, build_of(root))   # stable
             (root / 'sources' / 'feeds.py').write_text('b = 2\n')
-            self.assertNotEqual(first, hosted_run.build_of(root))   # a change in another module moves it
+            self.assertNotEqual(first, build_of(root))   # a change in another module moves it
             (root / 'sources' / 'feeds.py').write_text('b = 1\n'); (root / 'new.py').write_text('')
-            self.assertNotEqual(first, hosted_run.build_of(root))   # so does a new file
+            self.assertNotEqual(first, build_of(root))   # so does a new file
             self.assertEqual(len(first), 12)
 
     def test_get_root_says_which_code_is_running_and_since_when(self):
@@ -214,7 +218,100 @@ class HostedRun(unittest.TestCase):
         self.assertEqual(body['build'], hosted_run.BUILD)
         self.assertRegex(body['build'], r'^[0-9a-f]{12}$')
         self.assertRegex(body['started'], r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$')
+        self.assertIs(body['busy'], False)   # the runner never restarts a container that is busy with a run (review of the stamp check)
         server.shutdown(); server.server_close()
+
+    def test_a_stop_signal_ends_the_server_so_a_deploy_replaces_it(self):
+        # Why (5 Nov 2026, hr 6/6 try 6): the server is PID 1 in the container; Linux does not deliver a default SIGTERM to PID 1, so ten
+        # "signalling container to stop" over 20 min were ignored and the 01:33 process kept answering with old code after the v5 rollout.
+        import signal
+        from http.server import HTTPServer
+        real_forever, handlers, ended = HTTPServer.serve_forever, {}, []
+
+        def forever(server, *args, **kwargs):
+            handlers[signal.SIGTERM](signal.SIGTERM, None)   # Cloudflare's stop arrives while the server runs
+            real_forever(server, poll_interval=0.05)
+            ended.append(True)
+
+        with mock.patch('signal.signal', side_effect=lambda sig, handler: handlers.__setitem__(sig, handler)), \
+                mock.patch('http.server.ThreadingHTTPServer', lambda addr, handler: HTTPServer(('127.0.0.1', 0), handler)), \
+                mock.patch.object(HTTPServer, 'serve_forever', autospec=True, side_effect=forever):
+            hosted_run.serve()
+        self.assertEqual(ended, [True])   # serve() returned: the process exits and the next start runs the new image
+
+    def test_the_deploy_computes_the_same_stamp_as_the_container_without_loading_the_engine(self):
+        # Why (5 Nov 2026, hr 6/6 try 6, owner: "Each run checks"): the deploy passes the expected stamp to the runner; it runs this file as a plain
+        # script (src/__init__ loads .env and registers an exit hook), so it must print exactly what the container's GET / says.
+        import subprocess, sys
+        root = Path(hosted_run.__file__).resolve().parent
+        printed = subprocess.run([sys.executable, '-P', str(root / 'build_stamp.py'), str(root)], capture_output=True, text=True, check=True, cwd=root.parent).stdout.strip()
+        self.assertEqual(printed, hosted_run.BUILD)
+
+    def test_a_stop_during_a_run_lets_the_run_finish_and_answer_before_the_process_ends(self):
+        # Why (5 Nov 2026, review of the SIGTERM fix): handler threads are daemons, so ending serve_forever mid-run cut a search (up to 14 min) after its
+        # AI was already paid; a rollout's stop must let it post its result. No run in progress: serve() returns at once.
+        import signal, urllib.request
+        from http.server import ThreadingHTTPServer
+        handlers, servers, started, release, answers, returned = {}, [], threading.Event(), threading.Event(), [], threading.Event()
+
+        def slow_run(site, token, folder):
+            started.set(); release.wait(10)
+            return {'status': 'ok', 'matches': [1]}
+
+        def make(addr, handler):
+            servers.append(ThreadingHTTPServer(('127.0.0.1', 0), handler)); return servers[0]
+
+        def post():
+            request = urllib.request.Request(f'http://127.0.0.1:{servers[0].server_port}/run', data=json.dumps({'site': 'https://s.test', 'token': 'HR1.r.t'}).encode(), method='POST')
+            with urllib.request.urlopen(request, timeout=10) as reply:
+                answers.append(json.loads(reply.read()))
+
+        with mock.patch.object(hosted_run, 'run', side_effect=slow_run), mock.patch('signal.signal', side_effect=lambda sig, h: handlers.__setitem__(sig, h)), \
+                mock.patch('http.server.ThreadingHTTPServer', make):
+            serving = threading.Thread(target=lambda: (hosted_run.serve(), returned.set()), daemon=True)
+            serving.start()
+            while not servers or signal.SIGTERM not in handlers:
+                time.sleep(0.01)
+            client = threading.Thread(target=post, daemon=True); client.start()
+            self.assertTrue(started.wait(5))
+            handlers[signal.SIGTERM](signal.SIGTERM, None)   # Cloudflare's stop arrives mid-run
+            self.assertFalse(returned.wait(0.5))             # the process does not end under the run
+            release.set()
+            self.assertTrue(returned.wait(5))
+            client.join(5)
+        self.assertEqual(answers, [{'ok': True, 'status': 'ok', 'matches': 1}])   # the run finished and answered the Worker
+
+    def test_a_stop_before_an_accepted_call_reaches_its_run_still_answers_that_call(self):
+        # Why (5 Nov 2026, Gitar on jobadabra#3222): the drain waited on the run lock, so a POST accepted but still reading its body was not seen:
+        # the process ended under it and the Worker got a dropped connection. Every accepted call is answered before the process ends.
+        import signal, socket
+        from http.server import ThreadingHTTPServer
+        handlers, servers, accepted, returned = {}, [], threading.Event(), threading.Event()
+
+        class Watched(ThreadingHTTPServer):
+            def process_request(self, request, client_address):
+                super().process_request(request, client_address); accepted.set()
+
+        def make(addr, handler):
+            servers.append(Watched(('127.0.0.1', 0), handler)); return servers[0]
+
+        body = json.dumps({'site': 'https://s.test', 'token': 'HR1.r.t'}).encode()
+        with mock.patch.object(hosted_run, 'run', return_value={'status': 'ok', 'matches': [1, 2]}), \
+                mock.patch('signal.signal', side_effect=lambda sig, h: handlers.__setitem__(sig, h)), mock.patch('http.server.ThreadingHTTPServer', make):
+            serving = threading.Thread(target=lambda: (hosted_run.serve(), returned.set()), daemon=True)
+            serving.start()
+            while not servers or signal.SIGTERM not in handlers:
+                time.sleep(0.01)
+            with socket.create_connection(('127.0.0.1', servers[0].server_port), timeout=10) as call:
+                call.sendall(b'POST /run HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n' % len(body))
+                self.assertTrue(accepted.wait(5))
+                handlers[signal.SIGTERM](signal.SIGTERM, None)   # the stop arrives while the call still reads its body
+                self.assertFalse(returned.wait(0.5))
+                call.sendall(body)
+                answer = b''.join(iter(lambda: call.recv(4096), b''))
+            self.assertTrue(returned.wait(5))
+        self.assertIn(b'200 OK', answer.split(b'\r\n')[0])
+        self.assertEqual(json.loads(answer.split(b'\r\n\r\n', 1)[1]), {'ok': True, 'status': 'ok', 'matches': 2})
 
 
 if __name__ == '__main__':
