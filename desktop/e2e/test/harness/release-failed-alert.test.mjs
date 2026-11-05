@@ -3,7 +3,7 @@
 // switchboard first (Admin → Operations → Notifications), the old CI-alerts bot when the switchboard cannot deliver. Fake fetch only: never the real Telegram or site.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {alertReleaseFailed, failedLanes} from '../../release-failed-alert.mjs';
+import {alertReleaseFailed, failedLanes, gateOf} from '../../release-failed-alert.mjs';
 import {send} from '../../ci-alert.mjs';
 
 const RUN = {GITHUB_REPOSITORY: 'o/jobadabra', GITHUB_SERVER_URL: 'https://github.com', GITHUB_RUN_ID: '42056409953', SELFHEAL_PUBLISH_KEY: 'key-1',
@@ -59,14 +59,39 @@ test('fail-open: the site down, no key, or an event the site does not know all s
   }
 });
 
-test('no alert when a lane WAS offered (the release alert says which lane missed), when the run was cancelled, or when nothing failed', async () => {
+test('no alert when a lane WAS offered (the release alert says which lane missed) or when nothing failed', async () => {
   for (const needs of [{...OWNERS_RUN, windows: ok, 'test-windows': ok, 'release-windows': ok, 'release-windows-offer': ok},
-    {...OWNERS_RUN, build: {result: 'cancelled'}, windows: {result: 'cancelled'}, 'test-windows': skipped},
     {changes: ok, build: ok, windows: ok, 'test-mac': ok, 'test-windows': ok, 'release-mac': ok, 'release-windows': ok, 'release-mac-offer': ok, 'release-windows-offer': ok}]) {
     const n = net();
     assert.match(await alertReleaseFailed({kind: 'beta', version: '0.9.12', needs, env: RUN, fetcher: n.fetcher}), /nothing to tell/);
     assert.equal(n.calls.length, 0);
   }
+});
+
+// Code review of 3/4b: a "Build only" run leaves `gate` EMPTY (its plan step is skipped); every test and release job is skipped by design, and a healthy one must not alert.
+const BUILD_ONLY = {changes: ok, build: ok, windows: ok, 'test-mac': skipped, 'test-windows': skipped, 'release-mac': skipped, 'release-windows': skipped, 'release-mac-offer': skipped, 'release-windows-offer': skipped};
+test('a healthy build-only run (gate empty) says nothing; a build-only run whose build failed says "Build failed" and nothing about a gate', async () => {
+  assert.deepEqual([gateOf(''), gateOf(undefined), gateOf('false'), gateOf('true')], [false, false, false, true]);
+  const healthy = net();
+  assert.match(await alertReleaseFailed({kind: 'beta', version: '0.9.13', needs: BUILD_ONLY, gate: gateOf(''), env: RUN, fetcher: healthy.fetcher}), /nothing to tell/);
+  assert.equal(healthy.calls.length, 0);
+  const broken = net();
+  await alertReleaseFailed({kind: 'beta', version: '0.9.13', needs: {...BUILD_ONLY, build: failure}, gate: gateOf(''), env: RUN, fetcher: broken.fetcher});
+  const text = broken.site()[0].body.text;
+  assert.ok(text.includes('Build failed') && text.includes('Mac') && !text.includes('E2E gate') && !text.includes('Windows'), text);
+});
+
+test('a job that timed out (it reads "cancelled") is told, not silent: a hung build must reach the owner; a cancelled RUN never gets here (the workflow step is !cancelled())', async () => {
+  const n = net();
+  await alertReleaseFailed({kind: 'beta', version: '0.9.12', needs: {...OWNERS_RUN, build: {result: 'cancelled'}}, env: RUN, fetcher: n.fetcher});
+  assert.match(n.site()[0].body.text, /Build was cancelled/);
+});
+
+test('a stable promotion that failed names the step it was given', async () => {
+  const n = net();
+  await alertReleaseFailed({kind: 'stable', version: '0.9.12', lanes: [{lane: 'Stable', step: 'Promote to stable', result: 'failure'}], env: RUN, fetcher: n.fetcher});
+  const text = n.site()[0].body.text;
+  assert.ok(text.includes('Stable 0.9.12 did not ship') && text.includes('Promote to stable failed'), text);
 });
 
 test('a failing alert never fails the release: a throwing network gives a line, not an error', async () => {

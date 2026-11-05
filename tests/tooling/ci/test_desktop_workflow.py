@@ -188,7 +188,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"', job('prune'))
         self.assertIn("if: always() && (needs.release-mac-offer.result == 'success' || needs.release-windows-offer.result == 'success')", job('prune'))
         # Owner, 5 Nov 2026: "I didn't get any notification. I should have" (beta 0.9.12): the other half, a beta that reached NO lane (build failed, gate red or skipped) tells the owner too, from the last job, never a hold.
-        self.assertIn('node desktop/e2e/release-failed-alert.mjs beta "$VERSION" --needs "$NEEDS" --gate "$GATE"', job('prune'))
+        self.assertIn('node desktop/e2e/release-failed-alert.mjs beta "$VERSION"', job('prune'))
         self.assertIn('NEEDS: ${{ toJSON(needs) }}', job('prune'))
         self.assertIn("if: ${{ !cancelled() && needs.changes.outputs.released == 'true' }}", job('prune'))
         self.assertIn('SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}', job('prune'))

@@ -1,5 +1,5 @@
 // Tells the owner on Telegram when a release ends WITHOUT reaching testers or stable: a build failed, the E2E gate went red or did not run, a lane check failed, or a promotion to stable failed.
-//   node release-failed-alert.mjs beta <version> --needs '<toJSON(needs)>' [--gate true|false]     (the beta's last job; GITHUB_REPOSITORY, GITHUB_SERVER_URL, GITHUB_RUN_ID, SELFHEAL_PUBLISH_KEY, CI_ALERTS_TELEGRAM_* from the runner)
+//   node release-failed-alert.mjs beta <version> [--gate true]     (the beta's last job; NEEDS = toJSON(needs) in the environment, not argv: it can be large; GITHUB_REPOSITORY, GITHUB_SERVER_URL, GITHUB_RUN_ID, SELFHEAL_PUBLISH_KEY, CI_ALERTS_TELEGRAM_* from the runner)
 //   node release-failed-alert.mjs stable <version> --step "Promote to stable"                       (a promotion or store step that failed)
 // Why (5 Nov 2026, owner: "I didn't get any notification. I should have"; beta 0.9.12, run 42056409953): release-alert.mjs only speaks when a lane was OFFERED, so a build that failed in both lanes was silent
 // (9 of the last 28 betas failed; a beta started by hand had no alert path at all). This is the other half: the same sender (ci-alert.mjs send, switchboard event `release-failed`, old CI-alerts bot as fallback).
@@ -27,6 +27,9 @@ export function failedLanes(needs, {gate = true} = {}) {
   return out;
 }
 
+/** Only the word `true` means the run had an E2E gate: a build-only run leaves the output EMPTY (its plan step is skipped), and empty must not read as gated (code review of 3/4b). */
+export const gateOf = value => String(value ?? '').trim() === 'true';
+
 const said = result => (result === 'failure' ? 'failed' : result === 'cancelled' ? 'was cancelled' : 'did not run');
 
 /** The Telegram message: what did not ship, where each lane stopped, the run. */
@@ -42,9 +45,9 @@ export function failedMessage({kind, version, lanes, env = process.env}) {
 export async function alertReleaseFailed({kind = 'beta', version, needs = {}, lanes = null, gate = true, env = process.env, fetcher = fetch}) {
   try {
     const stopped = lanes || failedLanes(needs, {gate});
-    const cancelled = Object.values(needs).some(job => job?.result === 'cancelled') || stopped.some(lane => lane.result === 'cancelled');
     const offered = !lanes && LANES.some(({stages}) => resultOf(needs, stages.at(-1)[0]) === 'success');
-    if (!version || !stopped.length || cancelled || offered) return 'release-failed-alert: nothing to tell (a lane was offered, the run was cancelled, or nothing failed)';
+    // A cancelled RUN never gets here (the workflow step is `!cancelled()`); a job that timed out may read `cancelled` and is told as "was cancelled" (code review of 3/4b: a hang must not be silent).
+    if (!version || !stopped.length || offered) return 'release-failed-alert: nothing to tell (a lane was offered, or nothing failed)';
     return await send(failedMessage({kind, version, lanes: stopped, env}), env, fetcher, {event: EVENT});
   } catch (error) { return `release-failed-alert: not sent (${String(error?.name || 'error')})`; }
 }
@@ -52,8 +55,8 @@ export async function alertReleaseFailed({kind = 'beta', version, needs = {}, la
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
   const [kind, version, ...rest] = process.argv.slice(2);
   const flag = name => { const at = rest.indexOf(name); return at >= 0 ? rest[at + 1] : undefined; };
-  const needs = flag('--needs') ? JSON.parse(flag('--needs')) : {};
+  const needs = JSON.parse(flag('--needs') || process.env.NEEDS || '{}');
   const step = flag('--step');
-  console.log(await alertReleaseFailed({kind, version: String(version || '').replace(/^desktop-v/, ''), needs, gate: flag('--gate') !== 'false',
+  console.log(await alertReleaseFailed({kind, version: String(version || '').replace(/^desktop-v/, ''), needs, gate: gateOf(flag('--gate') ?? process.env.GATE),
     lanes: step ? [{lane: 'Stable', step, result: 'failure'}] : null}));
 }

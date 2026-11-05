@@ -371,7 +371,7 @@ class PromoteGuardTests(unittest.TestCase):
         text = (SCRIPT.parents[1] / '.github/workflows/canary-promote.yml').read_text()
         step = text[text.index('- name: Tell the owner on Telegram that the promotion to stable failed'):]
         step = step[:step.index('- name: Label the releases')]
-        for needle in ('if: failure()', 'continue-on-error: true', 'node desktop/e2e/release-failed-alert.mjs stable', 'SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}'):
+        for needle in ("steps.hot.outcome == 'failure'", "steps.decide.outcome == 'failure'", 'PROMOTE_TAG', 'continue-on-error: true', 'node desktop/e2e/release-failed-alert.mjs stable', 'SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}'):
             self.assertIn(needle, step)
 
     def test_a_dry_run_by_hand_still_only_prints_here(self):
