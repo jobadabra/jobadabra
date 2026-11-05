@@ -5,6 +5,7 @@ import path from 'node:path';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {buildLogs, profileText, PROFILE_CHARS} from './feedback-bundle.js';
+import {withWarningLines} from './feedback-run-warnings.js';
 import {LONG_LINE, TOOLS} from './desktop-ai-tools.js';
 import {supportState} from './feedback-handlers.js';
 import {aboutYou} from './about-you.js';
@@ -50,7 +51,7 @@ export function desktopAiSources({app, storage, getWindow, getPlan, profileOf = 
     profile: async () => profileText(await profileOf(storage), {lineChars: LONG_LINE}).text,
     support: async () => {
       const folder = logFile() ? path.dirname(logFile()) : path.join(app.getPath('userData'), 'logs');
-      return buildLogs({folder, runs: pipeline.runs(storage), state: supportState({app, storage, getPlan, screen: 'desktop AI'})}).text;
+      return buildLogs({folder, runs: withWarningLines(pipeline.runs(storage)), state: supportState({app, storage, getPlan, screen: 'desktop AI'})}).text;
     },
   };
 }

@@ -129,3 +129,72 @@ test('the Profile snapshot keeps its parts, loses e-mail addresses and secrets, 
   assert.ok(!out.text.includes(FAKE.email) && !out.text.includes(FAKE.anthropic));
   assert.ok(profileText({parts: {cv: Array.from({length: 100}, (_, i) => `a line of the CV, number ${i}`)}}, {max: 1000}).cut);
 });
+
+// #3071: a run that ends ok or with warnings still shows its warning lines, as fixed sentences: a count, an error class, an HTTP status, a few fixed words. Never the tail of a line.
+const warnRun = (warningLines, extra = {}) => ({startedAt: '2026-11-04T02:06:00Z', endedAt: '2026-11-04T02:09:00Z', kind: 'search', trigger: 'you', ok: true, summary: 'Tracked Senior Engineer at Acme Corp', warningLines, ...extra});
+const sentOf = (warningLines, extra) => runLines([warnRun(warningLines, extra)]).slice(1);
+
+test('a run that ended ok shows the tester\'s warnings as fixed sentences', () => {
+  const lines = runLines([warnRun([
+    'AI limit reached: Claude Code (your Claude plan) cannot go on (status 429), 266 job(s) left for the next check',
+    '266 job(s) waiting, none scored this run',
+    'cronjob run not logged to Notion: HTTPError: HTTP Error 400',
+    'Skipped job 4711: BadRequestError: usage limit',
+  ], {warned: true})]).join('\n');
+  assert.match(lines, /· warnings · 180s/);
+  assert.match(lines, /! AI limit reached: Claude Code, cannot go on, HTTP 429, 266 job\(s\) left for the next check/);
+  assert.match(lines, /! 266 job\(s\) waiting, none scored this run/);
+  assert.match(lines, /! run not logged to Notion: HTTPError, HTTP 400/);
+  assert.match(lines, /! Skipped a job: BadRequestError/);
+  assert.ok(!lines.includes('4711') && !lines.includes('Senior Engineer'), 'a job id and the summary of a run that worked stay home');
+});
+
+test('a job title or an employer in a warning is not sent: not in a line of no known shape, and not in the tail of a known one', () => {
+  const named = [
+    'web search for Acme Corp did not answer: TimeoutError',
+    'AI stages skipped for https://boards.greenhouse.io/acme/jobs/1: KeyError',
+    'Acme Corp 9: description not fetched: HTTPError',
+    'Skipped job 7: CliError: Claude Code failed: Senior Engineer at Acme Corp, Zurich: the posting says',
+    'AI unavailable (timeout scoring Acme Corp), 3 job(s) left for the next check',
+    'cronjob run not logged to Notion: HTTPError: Could not find page "Acme Corp offer"',
+    'AI limit reached: Claude Code said "Senior Engineer at Acme Corp", 4 job(s) not scored',
+    'AI limit reached: x\nAcme Corp: description not fetched',
+    'run not opened in the run history: OSError: /Volumes/Anna Fake Data/jobs.db',
+  ];
+  const text = sentOf(named).join('\n');
+  for (const name of ['Acme', 'Senior Engineer', 'greenhouse', 'Zurich', 'posting', 'Anna Fake', 'jobs.db', 'timeout']) assert.ok(!text.includes(name), `${name} must not leave`);
+  assert.match(text, /! Skipped a job: CliError/);
+  assert.match(text, /! AI unavailable, 3 job\(s\) left for the next check/);
+  assert.match(text, /! run not logged to Notion: HTTPError$/m);
+  assert.match(text, /! AI limit reached: Claude Code, 4 job\(s\) not scored/);
+  assert.match(text, /\+4 other warnings not sent/, 'the web search, the link, the "<company> <id>" line and the line with a break are only counted');
+});
+
+test('warning lines: the newest 3 runs only, 5 per run, once each; the text still passes redact()', () => {
+  const many = Array.from({length: 9}, (_, i) => `${i + 1} job(s) not scored`);
+  const lines = runLines([warnRun(many), warnRun(['AI limit reached', 'AI limit reached']), warnRun(['AI limit reached: Codex']), warnRun(['AI limit reached: OpenAI']), warnRun(['AI limit reached: OpenAI'])]);
+  const marked = lines.filter(line => /^ {3}!/.test(line));
+  assert.equal(marked.filter(line => /job\(s\) not scored/.test(line)).length, 5);
+  assert.ok(marked.includes('   ! (+4 more)'));
+  assert.equal(marked.filter(line => line === '   ! AI limit reached').length, 1, 'a repeated line once');
+  assert.ok(!lines.join('\n').includes('OpenAI'), 'the fourth and fifth run send no warning lines');
+  const text = buildLogs({folder: path.join(os.tmpdir(), 'no-such-feedback-folder'), runs: [warnRun([`AI limit reached: ${FAKE.anthropic} ${FAKE.email}`])], home: HOME}).text;
+  assert.ok(!text.includes(FAKE.anthropic) && !text.includes(FAKE.email));
+});
+
+test('a run without warning lines reads as before, and a failed run keeps its summary', () => {
+  assert.deepEqual(runLines([warnRun([])]), ['2026-11-04T02:06:00Z · search · by you · ok · 180s']);
+  assert.match(runLines([warnRun(['AI limit reached'], {ok: false, summary: 'Notion said 401'})]).join('\n'), /failed · 180s · Notion said 401\n {3}! AI limit reached/);
+});
+
+test('the lines come from the run record the app holds: its log and report, read by the Activity page\'s own reader, for the newest 3 runs', async () => {
+  const {withWarningLines} = await import('../../../lib/feedback-run-warnings.js');
+  const log = ['Found 12 jobs', 'Warning: cronjob run not logged to Notion: HTTPError: HTTP Error 400', 'AI limit reached: Claude Code (your Claude plan) cannot go on, 266 job(s) left for the next check', 'Enriched 1 of 1 job(s); 0 failed'];
+  const record = {startedAt: '2026-11-04T02:06:00Z', endedAt: '2026-11-04T02:09:00Z', kind: 'search', trigger: 'you', ok: true, log};
+  const read = withWarningLines([record, record, record, record]);
+  assert.equal(read.length, 4);
+  assert.ok(read[2].warningLines && !read[3].warningLines, 'only the runs the bundle describes with warnings are read');
+  const text = runLines(read.slice(0, 1)).join('\n');
+  assert.match(text, /ok · 180s\n {3}! run not logged to Notion: HTTPError, HTTP 400\n {3}! AI limit reached: Claude Code, cannot go on, 266 job\(s\) left/);
+  assert.ok(!text.includes('Found 12 jobs') && !text.includes('Enriched'), 'only warnings, not the log');
+});
