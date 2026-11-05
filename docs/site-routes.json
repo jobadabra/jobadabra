@@ -67,6 +67,10 @@
    "kind": "app"
   },
   {
+   "path": "/api/hosted/test",
+   "kind": "app"
+  },
+  {
    "path": "/api/index",
    "kind": "app"
   },

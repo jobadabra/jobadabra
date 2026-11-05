@@ -105,6 +105,21 @@ export async function exportTo(storage, file, options = {}) {
   return {ok: true, file};
 }
 
+// Test on our servers (owner, 4 Nov 2026: "the test button should be both for easiest (our servers) and for Advanced"; 5 Nov: "One real run"): one real run now, the site's POST /api/hosted/test,
+// then its steps read back in the shape the Test row already draws (renderer/pages/always-on-test.js). -> {ok, run} or {ok: false, error}.
+export const testStart = (storage, options = {}) => call(storage, '/api/hosted/test', {method: 'POST', ...options});
+
+/** The run's steps from the site, as the Test row reads them: {found, verdict: running | passed | failed, steps: [{id, title, state, line}], runId, url}. A failed read keeps the ticks already shown. */
+export async function testRead(storage, runId, options = {}) {
+  const got = await call(storage, `/api/hosted/test${runId ? `?run=${encodeURIComponent(runId)}` : ''}`, options);
+  if (!got.ok) return {found: false, verdict: 'running', steps: [], url: '', error: got.error};
+  const run = got.run;
+  if (!run) return {found: false, verdict: 'running', steps: [], url: ''};
+  const steps = (run.steps || []).map(step => ({id: step.key, title: step.label, state: step.state, line: step.state === 'failed' || step.state === 'skipped' ? step.note || '' : step.note && step.key === 'found' ? `${step.note} new` : ''}));
+  const verdict = run.status === 'running' ? 'running' : run.status === 'ok' && steps.every(step => step.state !== 'failed') ? 'passed' : 'failed';
+  return {found: true, verdict, steps, url: '', runId: run.id};
+}
+
 // Pull what arrived while this Mac was off into its own store (the engine adds the rows: src/hosted_run.py --merge). -> {ok, added}
 export async function pullInbox(storage, runEngine, options = {}) {
   if (!state(storage).on) return {ok: true, added: 0};

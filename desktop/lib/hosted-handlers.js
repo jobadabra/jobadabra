@@ -34,6 +34,15 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
   ipcMain.handle('hostedOff', async () => (DEMO ? {ok: true} : hosted.turnOff(storage)));
   ipcMain.handle('hostedDelete', async () => (DEMO ? {ok: true} : hosted.deleteData(storage)));   // at any time, also while off (owner, 27 Oct 2026)
   ipcMain.handle('hostedPush', async () => (DEMO || !hosted.state(storage).on ? {ok: true} : hosted.pushConfig(storage)));
+  // The Test row on our servers' card (renderer/pages/always-on-test.js): one real run, then its steps. The demo ticks through the same steps without touching the site.
+  ipcMain.handle('hostedTestStart', async () => (DEMO ? {ok: true, run: 'demo', since: Date.now()} : hosted.testStart(storage).then(done => ({...done, since: Date.now()}))));
+  ipcMain.handle('hostedTestRead', async (_, runId = '', since = 0) => {
+    if (!DEMO) return hosted.testRead(storage, runId).catch(error => ({found: false, verdict: 'running', steps: [], url: '', error: error.message}));
+    const ticks = Math.floor((Date.now() - since) / 1500);   // six steps, one every 1.5 s
+    const titles = ['Always on is on for you', 'Your profile is held on our servers', 'The search started', 'The search finished', 'New jobs found', 'The e-mail was sent'];
+    const steps = titles.map((title, index) => ({id: String(index), title, line: '', state: ticks > index + 1 ? 'ok' : ticks === index + 1 ? 'running' : 'waiting'}));
+    return {found: true, verdict: steps.every(step => step.state === 'ok') ? 'passed' : 'running', steps, url: '', runId: 'demo'};
+  });
   ipcMain.handle('hostedExport', async () => {
     if (DEMO) return {ok: true};
     const win = getWindow();

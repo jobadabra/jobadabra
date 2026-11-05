@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {wizardFixture} from '../../setup-step-fixture.js';
-import {canRun, config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../../../lib/hosted-search.js';
+import {canRun, config, exportTo, pullInbox, pushConfig, state, testRead, testStart, turnOff, turnOn} from '../../../lib/hosted-search.js';
 import {strictSetSecret} from '../../strict-set-secret.js';
 
 const FREE = 'JPF1.install-0001.tok';
@@ -97,4 +97,27 @@ test('an install can run Always on only with the in-house key; an own API key al
   assert.equal(canRun(store()), true);
   assert.equal(canRun({...store(), secret: name => (name === 'ANTHROPIC_API_KEY' ? 'sk-ant-own' : '')}), false);
   assert.equal(canRun({...store(), secret: () => ''}), false);
+});
+
+test('the Test on our servers starts one run and reads the site\'s steps in the shape the Test row draws', async () => {
+  const st = store(), steps = [{key: 'on', label: 'Always on is on for you', state: 'ok'}, {key: 'found', label: 'New jobs found', state: 'ok', note: '4'}, {key: 'mail', label: 'The e-mail was sent', state: 'running'}];
+  const s = site({'POST /api/hosted/test': {ok: true, run: 'run_1'}, 'GET /api/hosted/test': {ok: true, run: {id: 'run_1', status: 'running', found: 4, steps}}});
+  assert.deepEqual(await testStart(st, {fetcher: s.fetcher}), {ok: true, run: 'run_1'});
+  const read = await testRead(st, 'run_1', {fetcher: s.fetcher});
+  assert.deepEqual([read.found, read.verdict, read.runId], [true, 'running', 'run_1']);
+  assert.deepEqual(read.steps.map(step => [step.id, step.title, step.state, step.line]), [['on', 'Always on is on for you', 'ok', ''], ['found', 'New jobs found', 'ok', '4 new'], ['mail', 'The e-mail was sent', 'running', '']]);
+  assert.ok(s.calls.every(c => c.key_header === FREE));
+});
+
+test('the Test on our servers: a finished run passes, a failed step or status fails with the site\'s note, a refusal says why', async () => {
+  const st = store(), done = status => site({'GET /api/hosted/test': {ok: true, run: {id: 'r', status, steps: [{key: 'finished', label: 'The search finished', state: status === 'ok' ? 'ok' : 'failed', note: 'the search stopped'}]}}});
+  assert.equal((await testRead(st, 'r', {fetcher: done('ok').fetcher})).verdict, 'passed');
+  const failed = await testRead(st, 'r', {fetcher: done('failed').fetcher});
+  assert.deepEqual([failed.verdict, failed.steps[0].line], ['failed', 'the search stopped']);
+  const skipped = site({'GET /api/hosted/test': {ok: true, run: {id: 'r', status: 'ok', steps: [{key: 'found', label: 'New jobs found', state: 'failed'}]}}});
+  assert.equal((await testRead(st, 'r', {fetcher: skipped.fetcher})).verdict, 'failed');   // an ok run with a failed step is still a failed test
+  const refused = site({'POST /api/hosted/test': {status: 429, error: 'Wait 10 minutes between tests.'}});
+  assert.deepEqual(await testStart(st, {fetcher: refused.fetcher}), {ok: false, status: 429, error: 'Wait 10 minutes between tests.'});
+  const offline = await testRead(st, 'r', {fetcher: async () => { throw new Error('down'); }});
+  assert.deepEqual([offline.found, offline.verdict], [false, 'running']);   // a failed read keeps polling; the row's limit ends it
 });
