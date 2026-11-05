@@ -74,8 +74,6 @@ jobs:
       MAX_ROWS: '12'
       MAX_USD: ${{ needs.pick.outputs.max_usd }}   # twice the expected spend, never above what the month's $25 has left
       ONLY: ${{ needs.pick.outputs.only }}
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}               # the Tests key: the fallback while the live-pool key is not set
-      LIVE_POOL_ANTHROPIC_KEY: ${{ secrets.LIVE_POOL_ANTHROPIC_KEY }}   # the existing live-pool key pays (owner, 17 Oct 2026)
       JP_TEST_ACCOUNTS: ${{ secrets.POOL_TEST_ACCOUNTS }}               # {"<host>": {"email", "password"}}: test accounts only (lib/test-accounts.mjs); a row without one is held
       JP_NO_REPORT: '1'
       JP_APPLICANT: thin

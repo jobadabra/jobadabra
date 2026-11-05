@@ -1,0 +1,73 @@
+name: AI fixer round end
+description: >-
+  The end of a follow-up round of the AI fixer (PR 4/7): posts the agent's reply if it answered without a change, clears the Gitar "working" label, then either starts the next follow job or posts the ONE stop comment.
+# Trusted code only (main's tools/, no AI, no App token). The caller needs a checkout with tools/ and desktop/lib, Node 22, and `pull-requests: write` + `actions: write`.
+# Why (4 Nov 2026, coordinator): a dispatch that fails fails the job (red) and tries the stop comment, so a dead chain is visible. Guard: desktop/test/tooling/ci/fixer-driver.test.js.
+inputs:
+  github-token: {description: 'github.token', required: true}
+  pr: {description: 'The fixer pull request number', required: true}
+  round: {description: 'This round', required: true}
+  deadline: {description: 'The absolute end of the hour', required: true}
+  kind: {description: 'red, comment or conflict', required: true}
+  last-key: {description: 'The event key of this round', required: false, default: ''}
+  go: {description: "The fix job's go output", required: false, default: ''}
+  fix: {description: "The fix job's result", required: true}
+  prove: {description: "The prove job's result", required: true}
+  publish: {description: "The publish job's result", required: true}
+runs:
+  using: composite
+  steps:
+    - name: What became of the round
+      id: end
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ inputs.pr }}
+        KIND: ${{ inputs.kind }}
+        GO: ${{ inputs.go }}
+        FIX: ${{ inputs.fix }}
+        PROVE: ${{ inputs.prove }}
+        PUBLISH: ${{ inputs.publish }}
+      run: |
+        set -euo pipefail
+        reason=""
+        if [ "$FIX" != success ]; then reason=$([ "$KIND" = conflict ] && echo conflict || echo round-failed)
+        elif [ "$GO" = none ] || [ -z "$GO" ]; then reason=no-change
+        elif [ "$GO" = answer ]; then
+          { cat "$RUNNER_TEMP/reply/body.md"; printf '\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n'; } > "$RUNNER_TEMP/reply.md"
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/reply.md"
+        elif [ "$PROVE" != success ] || [ "$PUBLISH" != success ]; then reason=round-failed
+        fi
+        echo "reason=$reason" >> "$GITHUB_OUTPUT"
+        # A new commit clears the "working" label; a reply or a stop leaves it, and READY would wait for it forever.
+        gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label "Working on PR comments" || true
+    - name: Stop, with the reason
+      if: steps.end.outputs.reason != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ inputs.pr }}
+        ROUND: ${{ inputs.round }}
+        REASON: ${{ steps.end.outputs.reason }}
+      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$((ROUND + 1))" --reason "$REASON"   # the comment counts rounds done: the next round number minus one
+    - name: Start the next follow job
+      if: steps.end.outputs.reason == ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ inputs.pr }}
+        ROUND: ${{ inputs.round }}
+        DEADLINE: ${{ inputs.deadline }}
+        LAST_KEY: ${{ inputs.last-key }}
+      run: |
+        set -euo pipefail
+        [[ "$ROUND" =~ ^[1-6]$ ]] || { echo "::error::bad round"; exit 1; }
+        gh workflow run ai-fixer-follow.yml --repo "$GITHUB_REPOSITORY" --ref main -f pr="$PR" -f round="$((ROUND + 1))" -f deadline="$DEADLINE" -f last_key="$LAST_KEY"
+    - name: The chain could not go on (the dispatch failed)
+      if: failure() && steps.end.outputs.reason == ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ inputs.pr }}
+        ROUND: ${{ inputs.round }}
+      run: node tools/fixer/follow.mjs stop --pr "$PR" --round "$((ROUND + 1))" --reason dispatch

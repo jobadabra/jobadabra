@@ -52,11 +52,16 @@ const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLin
 const deps = {run: exec, ensurePage: notion.ensurePage, writePage: notion.writePage};
 const settingsPage = () => storage.settings().notionIds.NOTION_SEARCH_SETTINGS_PAGE;
 const sections = () => pageSections(fake.token, settingsPage());
-// The window's saveStrategy on a Notion store (lib/strategy-draft-handlers.js): the page is read first, the accepted parts are saved, the page is written again.
+// A pull of the page into this Mac's copy, as a search or the window's Focus makes it (src/__main__.py, src.focus). A crashed pull would pass for the wrong reason: its exit code is asserted.
+const pull = async when => {
+  const done = await exec(storage, ['src.notion.search_settings', 'sync']);
+  assert.equal(done.code, 0, `the pull ${when} failed: ${done.stdout}`);
+  return done;
+};
+// The window's saveStrategy on a Notion store (lib/strategy-draft-handlers.js): the page is read first, then the accepted parts are saved, Notion first, then this Mac.
 const saveInApp = async (search, preferences) => {
-  await exec(storage, ['src.notion.search_settings', 'sync']);
-  strategy.save(storage, {search, preferences});
-  await strategy.publishSearchSettings(storage, deps);
+  await pull('before the save');
+  await strategy.saveSettings(storage, strategy.settingsAfter(storage, {search, preferences}), deps);
 };
 const addPosting = (...args) => addPostingTo(feeds, ...args);
 const check = checker(searchSteps, storage, exec);
@@ -143,6 +148,51 @@ test('a fresh install reconnecting to the same Notion page keeps the real settin
   // The new profile has no settings yet: its first crawl takes the page, so the real settings are what the engine uses.
   await exec(again.storage, ['src.notion.search_settings', 'sync']);
   assert.ok(has(read('search.json', again.profile).role_keywords, GIRAFFE), 'the reconnected install did not take the page\'s roles');
+});
+
+test('a place saved in the app survives a pull of the page that lands while it is being saved (the owner\'s "−lugano")', async () => {
+  // Main e2e run 41537996714: the copy was written first, a pull started by the window read the page without the place and applied it over the copy, and the page was then
+  // rendered from that copy. One pull lands just before the page is rendered, one right after the page is written.
+  const order = [], real = notion.writePage;
+  const watched = {run: async (s, args, ...rest) => { if (args[1] === 'render') { await pull('before the render'); order.push('pull before the render'); } return exec(s, args, ...rest); },
+    ensurePage: deps.ensurePage, writePage: async (...args) => { const written = await real(...args); order.push('page written'); await pull('after the page write'); order.push('pull after the page write'); return written; }};
+  const search = read('search.json');
+  await pull('before the save');
+  await strategy.saveSettings(storage, strategy.settingsAfter(storage, {search: {...search, locations: {...search.locations, top_tier: [...search.locations.top_tier, 'chiasso']}}}), watched);
+  assert.deepEqual(order, ['pull before the render', 'page written', 'pull after the page write'], 'positive control: the pulls ran around the page write');
+  assert.ok(has(read('search.json').locations.top_tier, 'chiasso'), `the saved place was lost from the copy (best places: ${read('search.json').locations.top_tier.join(', ')})`);
+  assert.ok(has((await sections())['Best places'], 'chiasso'), 'the saved place is not on the Notion page');
+  await pull('at the end');
+  assert.ok(has(read('search.json').locations.top_tier, 'chiasso'), 'a later pull took the saved place out of the copy');
+});
+
+test('the window\'s Save writes the Notion pages first and this Mac\'s copy last, and a place in the accepted draft reaches both', async () => {
+  // lib/strategy-draft-handlers.js saveStrategy, run for real (only ipcMain is a map): the search settings are saved at its 'search' step, after the Profile and answers pages.
+  const handlers = new Map(), seen = [];
+  const here = () => has(read('search.json').locations.top_tier, 'locarno');
+  (await import('../../lib/strategy-draft-handlers.js')).registerStrategyDraftHandlers({DEMO: false, here: profile, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, storage, syncCv() {},
+    toWindow: (channel, progress) => { if (channel === 'saveProgress') seen.push(`${progress.step}${progress.finished ? ' done' : ''}: copy ${here() ? 'has' : 'lacks'} locarno`); }, trackSetup() {}});
+  const draft = applicantDraft(), search = read('search.json');
+  draft.search = {...search, locations: {...search.locations, top_tier: [...search.locations.top_tier, 'locarno']}};
+  assert.ok(!here(), 'positive control: the copy lacks the new place before the Save');
+  const result = await handlers.get('saveStrategy')({}, draft, ['search']);
+  assert.equal(result.ok, true, `the Save failed: ${result.error}`);
+  assert.ok(seen.length >= 2 && seen.every(line => /lacks/.test(line) || /^search done/.test(line)), `the copy had the place before the page was written: ${seen.join(' | ')}`);
+  assert.ok(here(), 'the copy lacks the place after the Save');
+  assert.ok(has((await sections())['Best places'], 'locarno'), 'the Notion page lacks the place after the Save');
+});
+
+test('a page write the stand-in refuses leaves the copy and the page as they were, and says so', async () => {
+  const copy = () => ({search: fs.readFileSync(path.join(profile, 'config', 'search.json'), 'utf8'), preferences: fs.readFileSync(path.join(profile, 'config', 'preferences.json'), 'utf8')});
+  const copyBefore = copy(), pageBefore = await sections();
+  const refused = {...deps, writePage: (_, page, text, ...rest) => notion.writePage('a-token-the-stand-in-does-not-know', page, text, ...rest)};   // the stand-in answers 401 to any other token
+  const search = read('search.json');
+  await assert.rejects(strategy.saveSettings(storage, {search: {...search, locations: {...search.locations, abroad: [...search.locations.abroad, 'como']}}}, refused),
+    error => error.copyUnchanged === true && /\S/.test(error.message), 'a refused page write must throw with copyUnchanged = true');
+  assert.deepEqual(copy(), copyBefore, 'the copy changed although the page write was refused');
+  assert.deepEqual(await sections(), pageBefore, 'the page changed although its write was refused');
+  await pull('after the refusal');
+  assert.deepEqual(copy(), copyBefore, 'a pull after the refusal changed the copy');
 });
 
 test('the Notion stand-in knew every request', async () => {

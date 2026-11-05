@@ -9,13 +9,13 @@ function setup({writeFails = false} = {}) {
   const calls = [];
   const storage = {readText: name => files[name] || '', writeText: (name, text) => { files[name] = text; calls.push(['write', name]); },
     secret: name => (name === 'NOTION_TOKEN' ? 'tok' : ''), settings: () => ({notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_SEARCH_SETTINGS_PAGE: 'settings'}}), saveSettings() {}};
-  const deps = {wait: async () => {}, run: async (_, args) => { calls.push(['run', args.slice(-1)[0]]); return {code: 0, stdout: '## Roles to look for\n- x\n'}; }, ensurePage: async () => 'settings',
+  const deps = {wait: async () => {}, run: async (_, args) => { calls.push(['run', args[1]]); return {code: 0, stdout: '## Roles to look for\n- x\n'}; }, ensurePage: async () => 'settings',
     writePage: async (token, page) => { calls.push(['publish', page]); if (writeFails) throw new Error('Notion said no'); }};
   return {files, calls, storage, deps};
 }
 const search = files => JSON.parse(files['config/search.json']);
 
-test('a place moves from Best places to Anywhere in, a role is added: read first, then written and published', async () => {
+test('a place moves from Best places to Anywhere in, a role is added: read first, then the page, then the copy', async () => {
   const t = setup();
   const result = await editLists(t.storage, {places: {remove: ['switzerland']}, country: {add: ['Switzerland']}, roles: {add: ['Verkäufer']}}, t.deps);
   assert.deepEqual(result.changed.sort(), ['country', 'places', 'roles']);
@@ -25,8 +25,7 @@ test('a place moves from Best places to Anywhere in, a role is added: read first
   assert.deepEqual(now.target_roles.map(role => role.title), ['/vendeu(r|se)/', 'store manager', 'Verkäufer']);   // one list; role_keywords and the searches follow it
   assert.deepEqual(now.role_keywords, ['vendeu(r|se)', 'store manager', 'verkäufer']);
   assert.deepEqual(now.title_exclude_keywords, ['stage']);          // other lists untouched
-  assert.deepEqual(t.calls.slice(0, 2), [['run', 'sync'], ['write', 'config/search.json']]);
-  assert.ok(t.calls.some(call => call[0] === 'publish'));
+  assert.deepEqual(t.calls.slice(0, 4).map(call => call.join(':')), ['run:sync', 'run:render', 'publish:settings', 'write:config/search.json']);   // Notion first, then this Mac (owner, 3 Nov 2026)
 });
 
 test('Notion refusing leaves the cached settings as they were', async () => {
@@ -76,12 +75,12 @@ test("a save drops the engine's copy of the settings page, so the next search re
   assert.equal(fs.existsSync(copy), false);
 });
 
-test('a roles edit asks the engine to redraft the words drawn from the old field, after the write and before the publish; other edits do not', async () => {
+test('a roles edit asks the engine to redraft the words drawn from the old field, after the page and the copy are written; other edits do not', async () => {
   const t = setup();
   await editLists(t.storage, {roles: {add: ['Pilot']}}, t.deps);
   const steps = t.calls.map(call => call.join(':'));
-  assert.ok(steps.indexOf('write:config/search.json') < steps.indexOf('run:apply'), steps.join(' '));
-  assert.ok(steps.indexOf('run:apply') < steps.findIndex(step => step.startsWith('publish')), steps.join(' '));
+  assert.ok(steps.findIndex(step => step.startsWith('publish')) < steps.indexOf('write:config/search.json'), 'Notion first: ' + steps.join(' '));
+  assert.ok(steps.indexOf('write:config/search.json') < steps.indexOf('run:apply'), 'the redraft reads the roles just saved: ' + steps.join(' '));
   const other = setup();
   await editLists(other.storage, {places: {add: ['Zurich']}}, other.deps);
   assert.ok(!other.calls.some(call => call[1] === 'apply'));
