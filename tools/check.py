@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # required checks stay (renaming it is parked in Linear).
 AREA_DIR = {'worker': 'app-core'}
 AREAS = ('python', 'worker', 'desktop')
+WINDOWS_ARGS_BUDGET = 24000   # characters of test paths on one node command line, well under Windows' 32,767
 
 
 def node_supported(version):
@@ -70,9 +71,16 @@ def desktop_app_only(folder, node, picked='all'):
     own node command on every test but the tooling ones (tools/app-tests.py). With `picked` (a PR: tools/affected-tests.py): the picked files only, the tooling tests among them too, none = no command.
     Why (5 Nov 2026, owner: "Yes: reached tests, every PR"): a PR's Windows job ran every test file; Linux already runs what the change reaches. A tooling test a change reaches stays: #3172 changed
     tools/fixer, its PR never ran Windows, and test/tooling/ci/fixer-loop.test.js was red on main 12 times."""
-    if picked != 'all':
-        return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *desktop_test_flags(folder), *picked])] if picked else []
-    return [(folder, [node, 'scripts/stage.mjs']), (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob()])]
+    stage = (folder, [node, 'scripts/stage.mjs'])
+    if picked == 'all':
+        return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob()])]
+    if not picked:
+        return []
+    if sum(len(p) + 1 for p in picked) > WINDOWS_ARGS_BUDGET:
+        # Why (5 Nov 2026, Gitar on #3256): Windows' CreateProcess caps a command line at 32,767 characters (the full run uses globs for that reason, tools/app-tests.py); a long pick is every
+        # non-tooling test by glob plus the tooling tests it reached, a superset of the pick.
+        return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob(), *[p for p in picked if p.startswith('test/tooling/')]])]
+    return [stage, (folder, [node, *desktop_test_flags(folder), *picked])]
 
 
 def commands(area, fast, node, npm, picked='all', app_only=False):

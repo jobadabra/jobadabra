@@ -70,6 +70,14 @@ class PrDesktopPicks(unittest.TestCase):
             self.assertNotIn(['npm', 'run', 'lint'], plan, changed)   # lint runs on Linux on the PR and on main
         self.assertEqual(self.check.commands('desktop', False, 'node', 'npm', [], app_only=True), [])   # a change that reaches no test runs nothing on Windows (the job ends before its install)
 
+    def test_a_long_windows_pick_stays_under_the_command_line_limit(self):
+        # Gitar on #3256: a pick of ~800 files is ~33,000 characters, over Windows' 32,767; it becomes the glob plus the tooling tests it reached.
+        picked = [f'test/unit/main/a-long-test-file-name-{n:04d}.test.js' for n in range(700)] + ['test/tooling/ci/fixer-loop.test.js']
+        command = self.check.commands('desktop', False, 'node', 'npm', picked, app_only=True)[-1][1]
+        self.assertLess(sum(len(arg) + 1 for arg in command), 32000)
+        self.assertEqual(command[-1], 'test/tooling/ci/fixer-loop.test.js')
+        self.assertTrue(any('**' in arg for arg in command), 'the non-tooling tests come by glob')
+
     def test_the_windows_plan_counts_what_a_change_reaches(self):
         # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file is all.
         import contextlib, io, os
