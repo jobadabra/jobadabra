@@ -139,7 +139,7 @@ test('Submitted: what was sent, from the frozen record; an edit from the draft i
   assert.equal(sent.letter, 'Dear team');
   assert.equal(sent.note, 'Answers read from the form just before Submit.');
   assert.equal(sent.when, shortDay('2026-10-01'));
-  assert.deepEqual(sent.facts.map(([label]) => label), ['Recorded', 'Site', 'Channel', 'CV version', 'Kit variant', 'Agent']);
+  assert.deepEqual(sent.facts.map(([label]) => label), ['Recorded', 'Site', 'Channel', 'CV version', 'Application version', 'Agent']);
   assert.equal(sent.facts.find(([label]) => label === 'Site')[1], 'Greenhouse');
   assert.equal(submittedOf({}), null, 'no record: nothing was captured');
   assert.equal(submittedOf({[SECTIONS.record]: 'only words'}), null);
@@ -267,4 +267,8 @@ test('A date in the future is no date a job was found or posted: shown as unknow
   assert.deepEqual(postingFacts({first_seen_at: future}, {first_seen_at: future, posted_at: future}, 'text').filter(fact => ['posted', 'found'].includes(fact.key)).map(fact => fact.value), ['Not stated', 'Not stated']);
   assert.equal(timelineOf([], {first_seen_at: future}, null, {}).length, 0, 'no "Job discovered" in the year 2099');
   assert.equal(foundLine({first_seen_at: new Date(Date.now() + 3600 * 1000).toISOString()}, null), shortDay(new Date(Date.now() + 3600 * 1000).toISOString()) ? `First found ${shortDay(new Date(Date.now() + 3600 * 1000).toISOString())}` : '', 'a clock an hour off is still a date');
+});
+
+test('the overview describes readiness without exposing the stored preparation stage', () => {
+  assert.equal(headerFacts({stage: 'Kit ready'}), 'Ready to apply');
 });

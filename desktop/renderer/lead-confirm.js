@@ -1,3 +1,4 @@
+import {stageLabel} from './jobs-board-rules.js';
 import {aiName} from './ai-name.js';
 import {where} from './store-name.js';
 // Log job activity, step 2 (the confirmation): nothing reaches Notion until you've confirmed what Claude couldn't
@@ -155,7 +156,7 @@ export const targetOf = (auto, value = '') => (auto ? '' : String(value || ''));
 // "Which job is this?" choices: the likely ones first (same recruiter or company), a new job, then your other jobs.
 // candidates: [{url, label, stage}] from the engine; tracked: the Jobs list ({url, company, via, title, stage}).
 export function jobChoices(candidates = [], tracked = []) {
-  const text = job => `${job.label}${job.stage ? ` (${job.stage})` : ''}`;
+  const text = job => `${job.label}${job.stage ? ` (${stageLabel(job.stage)})` : ''}`;
   const likely = candidates.map(job => ({value: job.url, text: text(job)}));
   const seen = new Set(candidates.map(job => job.url));
   const others = tracked.filter(job => job.stage && !['Dismissed', 'Closed'].includes(job.stage) && !seen.has(job.url))
@@ -188,7 +189,7 @@ export function carry(state = {}, next = {}) {
 // The bold line and the muted line under it: what was read and what saving will do.
 export function found(proposal = {}) {
   const meta = proposal.new ? `New job: added to ${where()} when you save`
-    : `Already tracked${proposal.stage ? ` (${proposal.stage})` : ''}: updated when you save`;
+    : `Already tracked${proposal.stage ? ` (${stageLabel(proposal.stage)})` : ''}: updated when you save`;
   return {title: proposal.label || 'The job', meta};
 }
 

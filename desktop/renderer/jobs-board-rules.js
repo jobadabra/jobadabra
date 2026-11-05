@@ -9,6 +9,8 @@ export const STAGES = ['Recruiter lead', 'Saved', 'Kit ready', 'Applying', 'Appl
 // A column's pill tone, like the list's status pills (jobs-view.js statusPill).
 const TONE = {'Recruiter lead': 'signal', Saved: 'signal', 'Kit ready': 'warn', Applying: 'info', Applied: 'good', Offer: 'good',
   Rejected: 'bad', 'No response': 'neutral', Withdrawn: 'neutral', Closed: 'neutral', Dismissed: 'neutral'};
+/** User-facing stage words; stored preparation states remain internal. */
+export const stageLabel = stage => stage === 'Kit ready' ? 'Ready to apply' : stage;
 export const stageTone = stage => TONE[stage] || 'info';
 
 // The view filters, as Stage sets (the database's "Stage is A or B…" groups).
@@ -34,7 +36,7 @@ export const VIEWS = [
   // Named by its stage, as every row's pill and the stuck banner say it (Notion's view is "In progress"; owner, 12 Oct 2026: "I don't have a way to
   // filter for Applying" beside a chip that did it under another word). A chip of one stage carries that stage's name (test/unit/renderer/jobs-board-rules.test.js).
   {id: 'applying', label: 'Applying', title: 'A form under way, its session open or not', test: among(['Applying'])},
-  {id: 'kit-ready', label: 'Kit ready', title: 'A kit is drafted: ready to apply', test: among(['Kit ready'])},
+  {id: 'kit-ready', label: 'Ready to apply', title: 'Jobs you can apply to', test: among(['Kit ready'])},
   {id: 'ready-to-submit', label: READY_LABEL, title: 'Filled on the server: open the form, check it and press Submit yourself', test: job => !!job.ready && job.status !== 'applied'},
   {id: 'saved', label: 'Saved', title: 'Jobs you saved for later', test: among(['Saved'])},
   {id: 'closed', label: 'Closed', title: 'Postings that closed before you applied', test: among(['Closed'])},
@@ -59,12 +61,12 @@ export function boardColumns(jobs) {
 // Dismissed never replace a real stage; the ledger logs an outcome as an event). Stages the app sets itself take no drop.
 const STATUS = {Saved: 'saved', Applied: 'applied', Dismissed: 'dismissed'};
 export const OUTCOME_STAGES = ['Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer', 'Rejected', 'No response', 'Withdrawn'];
-const SET_BY_APP = {'Kit ready': 'drafting a kit', Applying: 'starting an application', Closed: 'the search, when a posting closes',
+const SET_BY_APP = {'Kit ready': 'preparing an application', Applying: 'starting an application', Closed: 'the search, when a posting closes',
   'Recruiter lead': 'logging a recruiter\'s message'};
 export function dropFor(job, stage) {
   if (!job || job.stage === stage) return {none: true};
   if (STATUS[stage]) return {call: 'setStatus', arg: STATUS[stage]};
   if (OUTCOME_STAGES.includes(stage)) return {call: 'setStage', arg: stage};
-  return {refused: `${stage} is set by Jobadabra (${SET_BY_APP[stage] || 'the app'}), not by moving a card.`};
+  return {refused: `${stageLabel(stage)} is set by Jobadabra (${SET_BY_APP[stage] || 'the app'}), not by moving a card.`};
 }
 export const takesDrop = stage => !!STATUS[stage] || OUTCOME_STAGES.includes(stage);

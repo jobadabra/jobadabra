@@ -931,7 +931,7 @@
             <article class="summary-card">
               <div class="summary-head"><i data-icon="clock"></i><h3>Automation</h3></div>
               <p class="muted">Your job search schedule and automation settings.</p>
-              <dl class="summary-rows"><dt>Find jobs</dt><dd id="ov-search"></dd><dt>Application kits</dt><dd id="ov-kits"></dd>
+              <dl class="summary-rows"><dt>Find jobs</dt><dd id="ov-search"></dd><dt>Application preparation</dt><dd id="ov-kits"></dd>
                 <dt>Always on: your GitHub</dt><dd id="ov-cloud"></dd></dl>
               <button class="arrow-link" data-settings-go="automation">Manage automation</button>
             </article>
@@ -1148,7 +1148,7 @@
                   <option value="1">Every hour</option><option value="2">Every 2 hours</option><option value="3">Every 3 hours</option>
                   <option value="4">Every 4 hours</option><option value="6">Every 6 hours</option><option value="8">Every 8 hours</option>
                   <option value="12">Twice a day</option><option value="24">Once a day (07:30)</option><option value="0">Only when I ask</option></select><span class="task-state" data-schedule-state="search"></span></label>
-              <label class="task-row"><span><b>Draft application kits</b><small>Cover letter and form answers for the best new matches; uses your AI key</small></span>
+              <label class="task-row"><span><b>Draft applications</b><small>Cover letter and form answers for the best new matches; uses your AI key</small></span>
                 <select data-schedule="kits">
                   <option value="0">On demand</option><option value="1">Best new match, each search</option>
                   <option value="3">3 best new matches, each search</option><option value="5">5 best new matches, each search</option></select><span class="task-state" data-schedule-state="kits"></span></label>
@@ -1214,7 +1214,7 @@
                 <div class="inline" id="cloud-choose" hidden><select id="cloud-repo"></select><button class="secondary" id="cloud-use">Use this repository</button></div>
                 <details class="troubleshoot" id="cloud-howto"><summary>How it works</summary>
                   <p class="muted small">Jobadabra sets up a <b>private</b> repository in your free GitHub account that does its work on the schedule
-                    above (searches, application kits, insights, new sources, mail) and tells you by email or Telegram (Settings → Notifications) and keeps results in <span data-about-notion>Notion</span>, even when this Mac is asleep or off. Jobadabra gets access to that one repository only, nothing else on your GitHub.
+                    above (searches, applications, insights, new sources, mail) and tells you by email or Telegram (Settings → Notifications) and keeps results in <span data-about-notion>Notion</span>, even when this Mac is asleep or off. Jobadabra gets access to that one repository only, nothing else on your GitHub.
                     Your keys are stored there as encrypted secrets.</p>
                 </details>
               </div>
@@ -2396,7 +2396,7 @@
     <div class="dialog-foot">
       <button class="ghost" value="cancel" formnovalidate>Close</button>
       <button id="prep-open" type="button" class="secondary" hidden>Open in Notion</button>
-      <button id="prep-go" class="primary" value="default" data-wand>Build prep kit</button>
+      <button id="prep-go" class="primary" value="default" data-wand>Prepare the interview</button>
     </div>
   </form>
 </dialog>
@@ -2578,7 +2578,6 @@
 </dialog>
 <dialog id="apply-dialog">
   <form method="dialog" id="apply-form">
-    <div class="ui-indeterminate" id="apply-progress" role="progressbar" aria-label="Starting to apply" hidden><span></span></div>
     <h2>Apply to jobs</h2>
     <p class="muted">Takes your best open matches (saved ones first).</p>
     <label class="inline-field" for="apply-n">How many jobs <input id="apply-n" type="number" min="1" max="10" step="1" required value="3"></label>
@@ -2586,6 +2585,11 @@
     <p class="message" id="apply-message" role="status"></p>
     <div id="apply-browser" data-browser-progress="quiet" hidden></div>
     <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Apply to 3 jobs</button></div>
+    <div class="alert tone-info" id="apply-start-banner" hidden>
+      <i data-icon="layers"></i>
+      <div><strong>Preparing your applications</strong><p id="apply-start-status" role="status"></p></div>
+      <div class="ui-indeterminate" id="apply-progress" role="progressbar" aria-label="Starting to apply" hidden><span></span></div>
+    </div>
   </form>
 </dialog>
 <script src="app.js" type="module"></script>

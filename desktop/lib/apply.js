@@ -57,7 +57,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}) 
   let done = 0;
   const missing = pickMissing(jobs, shortfall);
   for (const [index, job] of missing.entries()) {
-    report(`Drafting kit ${index + 1} of ${missing.length}: ${job.title} · ${job.company} (about 20 s each)…`);
+    report(`Preparing application ${index + 1} of ${missing.length}: ${job.title} · ${job.company} (about 20 s each)…`);
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(() => ({ok: false}));
     if (result.cloud) return {cloud: true, done};
     if (result.ok) done++;
@@ -65,8 +65,8 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}) 
   return {done};
 }
 
-const NO_KITS = 'No job has an application kit yet, and none could be drafted. Press Apply on one job to see why.';
-const ON_GITHUB = 'Kits are being drafted on GitHub (Always on). Press Apply again in a few minutes, when the jobs show 📝 Kit.';
+const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
+const ON_GITHUB = 'Your applications are being prepared on GitHub (Always on). Press Apply again in a few minutes.';
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -212,7 +212,7 @@ export function claudeReady(storage, binary = claudeBinary, platform = process.p
 export async function hasKit(storage, url, run = pipeline.run) {
   const lines = [];
   const {code} = await run(storage, ['src.ai.apply_batch', '--has-kit', url], line => lines.push(line));
-  return code === 0 ? {ok: true} : {ok: false, error: `No application kit for this job yet: draft it first with ⋯ → Prepare only. ${lines.slice(-1)[0] || ''}`.trim()};
+  return code === 0 ? {ok: true} : {ok: false, error: 'Could not prepare this application. Press Apply to try again.'};
 }
 
 // The N best jobs with a kit that aren't started yet (Kit ready, or Saved with a kit), from Notion.

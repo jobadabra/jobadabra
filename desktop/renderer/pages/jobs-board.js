@@ -2,7 +2,7 @@
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
 // dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
 import {el, moreButton, pill} from '../components.js';
-import {boardColumns, dropFor, STAGES, takesDrop} from '../jobs-board-rules.js';
+import {boardColumns, dropFor, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
 import {matchLabel} from '../jobs-view.js';
 import {rowModel} from '../job-row-model.js';
 import {$} from './core.js';
@@ -24,9 +24,9 @@ export async function moveJob(job, stage) {
   if (!result?.ok) { toastMessage('Not moved', result?.error || 'Try again.', jobPlace(job), 'bad'); return; }
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
-  if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${before}: ${stage} never replaces an application stage.`, jobPlace(job), 'info');
-  else toastMessage('Moved', `${job.title || 'This job'}: ${landed}.`, jobPlace(job), 'good');
   jobsChanged(job, {stage: landed});
+  if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${stageLabel(before)}: ${stageLabel(stage)} never replaces an application stage.`, jobPlace(job), 'info');
+  else toastMessage('Moved', `${job.title || 'This job'}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 
@@ -36,10 +36,10 @@ function card(job) {
   const body = el('div', 'focus-body'), parts = rowModel(job);
   body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
-  if (job.next_step) body.append(el('div', 'muted small', `Next: ${job.next_step}`));
+  if (job.next_step && !/kit ready/i.test(job.next_step)) body.append(el('div', 'muted small', `Next: ${job.next_step}`));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== job.stage && takesDrop(stage))
-    .map(stage => ({label: stage, run: () => moveJob(job, stage)}));
+    .map(stage => ({label: stageLabel(stage), run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: 'Move to', disabled: true}, ...moves], 'Move to another stage'));
   item.addEventListener('dragstart', event => { dragged = job; event.dataTransfer.setData('text/plain', job.url || ''); item.classList.add('is-dragging'); });
   item.addEventListener('dragend', () => { dragged = null; item.classList.remove('is-dragging'); });
@@ -56,7 +56,7 @@ export function renderBoard(jobs) {
     const box = el('section', `board-column${column.jobs.length ? '' : ' is-empty'}`);
     box.dataset.stage = column.stage;
     const head = el('header', 'board-column-head');
-    head.append(pill(column.stage, column.tone, {dot: true}), el('span', 'muted small', String(column.jobs.length)));
+    head.append(pill(stageLabel(column.stage), column.tone, {dot: true}), el('span', 'muted small', String(column.jobs.length)));
     const list = el('ol', 'focus-list board-cards');
     list.append(...column.jobs.map(card));
     box.append(head, list);
@@ -64,7 +64,7 @@ export function renderBoard(jobs) {
       box.addEventListener('dragover', event => { if (dragged && dragged.stage !== column.stage) { event.preventDefault(); box.classList.add('is-over'); } });
       box.addEventListener('dragleave', () => box.classList.remove('is-over'));
       box.addEventListener('drop', event => { event.preventDefault(); box.classList.remove('is-over'); if (dragged) moveJob(dragged, column.stage); });
-    } else box.title = `${column.stage} is set by Jobadabra, not by moving a card`;
+    } else box.title = `${stageLabel(column.stage)} is set by Jobadabra, not by moving a card`;
     return box;
   }));
   if (!jobs.length) board.prepend(el('p', 'empty board-empty', 'No applications here yet. Save, apply to or log a job and it shows on the board.'));

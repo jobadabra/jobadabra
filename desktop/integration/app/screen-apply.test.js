@@ -117,10 +117,10 @@ test('Apply on a saved job without a kit prepares first, and when the kit cannot
   assert.deepEqual(called, ['prepareKit'], 'the press must draft the kit once and open no form (applyOne)');
 });
 
-test('a scored job without a kit shows the Apply button, never Prepare, and "Prepare only" in its ⋯ menu', live, () => {
+test('a scored job without a kit offers Apply and keeps preparation out of its menu', live, () => {
   const {rows: shown, kitless, buttons, items} = rows.result;
   assert.equal(shown, 12);
   assert.ok(kitless > 0, 'no kitless job in the list to check');
   assert.deepEqual(buttons.filter(button => button.label !== 'Apply' || !/state-apply/.test(button.cls) || button.prepare), [], 'a job without a kit does not show a plain Apply button');
-  assert.ok(items.some(text => /Prepare only/.test(text)), `the ⋯ menu of a job without a kit has no "Prepare only" (it lists: ${items.join(' | ')})`);
+  assert.equal(items.some(text => /Prepare only|Redraft kit/.test(text)), false, 'preparation is automatic, not a separate menu action');
 });

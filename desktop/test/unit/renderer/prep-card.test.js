@@ -7,9 +7,9 @@ import {ai} from '../../../renderer/ai-name.js';
 const TODAY = '2026-09-30';
 const item = extra => ({kind: 'prepare', meta: ['Principal SRE', '…'], page_id: 'h1', notion_url: 'https://notion.so/h1', ...extra});
 
-test('a kit from an earlier call: "Build new prep kit" first, the earlier kit only in the ⋯ menu, and why', () => {
+test('a kit from an earlier call: "Prepare the interview" first, the earlier kit only in the ⋯ menu, and why', () => {
   const card = prepCard(item({prep_at: '2026-09-29', prep_stale: true, prep_why: 'reviewed', prep_since: '2026-09-30'}), TODAY);
-  assert.equal(card.primary.label, 'Build new prep kit');
+  assert.equal(card.primary.label, 'Prepare the interview');
   assert.equal(card.primary.run, 'build');
   assert.equal(card.primary.title, ai(COST_HINT));  // what it does is said before you press it, naming the chosen AI
   assert.match(card.primary.title, /^Claude Sonnet builds it/);
@@ -33,11 +33,11 @@ test('a current kit: "Open prep kit", rebuilding stays in the ⋯ menu', () => {
   assert.equal(card.primary.label, 'Open prep kit');
   assert.equal(card.primary.run, 'open');
   assert.equal(card.meta[1], '✓ prep kit ready · built today');
-  assert.deepEqual(card.more.map(m => [m.label, m.run]), [['Build the prep kit again', 'build']]);
+  assert.deepEqual(card.more.map(m => [m.label, m.run]), [['Prepare the interview again', 'build']]);
 });
 
 test('no kit yet builds one; a build in progress joins it', () => {
-  assert.equal(prepCard(item({}), TODAY).primary.label, 'Build prep kit');
+  assert.equal(prepCard(item({}), TODAY).primary.label, 'Prepare the interview');
   assert.deepEqual(prepCard(item({}), TODAY).meta, ['Principal SRE', '…']);
   const busy = prepCard(item({building: true, prep_at: '2026-09-29', prep_stale: true}), TODAY);
   assert.equal(busy.primary.label, 'Building…');

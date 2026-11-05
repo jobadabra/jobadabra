@@ -34,7 +34,7 @@ test('a search, waiting tasks and sessions together: one line each, then the thr
 test('removing a session whose job is still Applying asks whether it was submitted, both answers explained', () => {
   const dialog = submitted('N26');
   assert.equal(dialog.message, 'Did you submit the application to N26?');
-  assert.match(dialog.detail, /Yes: it is marked Applied\.\nNo: it goes back to Kit ready/);   // on every store
+  assert.match(dialog.detail, /Yes: it is marked Applied\.\nNo: nothing is submitted/);   // on every store
   assert.deepEqual(dialog.buttons, ['Yes, I submitted it', 'No, not submitted', 'Cancel']);
 });
 
@@ -42,7 +42,7 @@ test('removing a session whose job is still Applying asks whether it was submitt
 test('cancel: asked once, says the form tab closes (what was filled is lost) and the job goes back to Kit ready', () => {
   const dialog = cancel('Canonical');
   assert.equal(dialog.message, 'Cancel the Canonical application?');
-  assert.match(dialog.detail, /the form tab closes in Chrome \(what was filled there is lost\), and the job goes back to Kit ready/);
+  assert.match(dialog.detail, /Applying stops\. Nothing is submitted/);
   assert.deepEqual(dialog.buttons, ['Cancel application', 'Keep it']);
 });
 

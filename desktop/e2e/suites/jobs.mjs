@@ -81,7 +81,7 @@ export async function run(ctx) {
       await ctx.data('matches', 'list', {})]);   // the store: only this run's fixture jobs, emptied at the start (Notion) or a fresh profile (this Mac's store)
     if (problems.length) throw new Error(problems.slice(0, 5).join('; '));
   }, {needs: ctx.needs, data: true});
-  // One Apply button (5 Oct 2026): a scored job without a kit shows Apply, and Prepare only in its ⋯ menu: integration/app/screen-apply.test.js (moved 1 Nov 2026).
+  // One Apply button (5 Oct 2026): a scored job without a kit shows Apply, with preparation kept automatic: integration/app/screen-apply.test.js (moved 1 Nov 2026).
   // Find new employers (probes the seed company, lists it) and a slow Jobs check ending cleanly: desktop/integration/store/jobs-run.test.mjs (moved 1 Nov 2026, R2).
   // Layout of Focus, Jobs and Actions: suites/interactions.mjs (night-report) takes their Finder shots; integration/app/screen-focus*.test.js and screen-activity.test.js check them on PRs (moved 1 Nov 2026, 6/6a-2).
 }

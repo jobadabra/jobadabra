@@ -18,14 +18,14 @@ test('no renderer file gates a Claude surface with claudeHelp() alone', () => {
   for (const file of files) assert.doesNotMatch(code(file).replace(/\/\/.*$/gm, ''), /(?<![\w.])claudeHelp\(\)/, `${file} calls claudeHelp(): ask resumeOffered() (claude-help.js)`);
 });
 
-// Every surface, where it lives, and the gate it asks (the screen, the Jobs list, Activity, the session page, Settings; the palette and tray read the same functions).
+// View session on Jobs opens any existing application; the terminal inside remains gated below.
+// Every Claude surface, where it lives, and the gate it asks (the screen, the Jobs list, Activity, the session page, Settings; the palette and tray read the same functions).
 const SURFACES = [
   ['Read with Claude, per site (Activity)', 'pages/activity-visits.js', /const claude = resumeOffered\(\)/],
   ['Read the stopped sites with Claude (Activity)', 'pages/activity-visits.js', /stopped\.length > 1 && resumeOffered\(\)/],
   ['Read with Claude on a finished run (Activity)', 'pages/activity-basics.js', /site\.url && resumeOffered\(\)/],
   ['The Claude terminal on the session page', 'pages/session-steps.js', /terminalShown = item => \(resumeOffered\(\)/],
   ['The session steps instead of the terminal', 'pages/session-steps.js', /const steps = !\(resumeOffered\(\)/],
-  ['A Claude session\'s Continue / View session on Jobs', 'pages/jobs-render.js', /jobsState\.claudeReady && resumeOffered\(\) \? sessionFor/],
   ['Apply with Claude in the ⋯ menu on Jobs', 'pages/jobs-render.js', /if \(jobsState\.claudeReady && resumeOffered\(\)\)/],
   ['Resume Claude (session menu)', 'pages/sessions.js', /resumeOffered\(\)\) menu\.push\(\{label: '▶ Resume Claude'/],
   ['Tell Claude / Change with Claude (Needs your attention)', 'pages/session-needs.js', /claude: resumeOffered\(\)/],

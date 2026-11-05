@@ -10,7 +10,7 @@ import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {extensionActing, isSubmitted, stopShown, tabAddress} from '../session-state.js';
-import {backgroundStatus} from '../background-status.js';
+import {backgroundStatus, sessionAutomationLabel} from '../background-status.js';
 import {checkingTab, tabLost, tabStatus, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
 import {sessionPanels} from '../sessions-cache.js';
@@ -74,7 +74,7 @@ export function renderSessionPage() {
     top.append(el('b', '', sessionCompany(entry)), el('span', 'muted small', clockTime(entry.startedAt)));
     const role = el('span', 'small ss-row-role', sessionTitle(entry));
     role.title = sessionTitle(entry);  // one line in the list; the whole title on hover
-    words.append(top, role, pill(label, tone, {dot: true}));
+    words.append(top, role, el('span', 'muted small', sessionAutomationLabel(entry)), pill(label, tone, {dot: true}));
     li.append(sessionLogo(entry), words);
     li.addEventListener('click', () => openSession(entry.id));
     return li;
@@ -82,14 +82,14 @@ export function renderSessionPage() {
   if (!item) { clearHeader(); return; }
   const [label, tone] = stateOf(item);
   $('ss-title').textContent = sessionCompany(item);
-  $('ss-role').textContent = sessionTitle(item);
+  $('ss-role').textContent = `${sessionTitle(item)} · ${sessionAutomationLabel(item)}`;
   $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}));
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
   const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
   again.addEventListener('click', () => busy(again, 'Restarting…', () => restartSession(item)));
-  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: ai('{AI} stops, the form tab closes, the job goes back to Kit ready')});
+  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: 'Stop applying to this job'});
   cancel.addEventListener('click', () => busy(cancel, 'Cancelling…', () => cancelSession(item)));
-  if (item.kind === 'form') cancel.title = 'The form tab closes and the job goes back to Kit ready';
+  if (item.kind === 'form') cancel.title = 'Stop applying to this job';
   $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), 'More'));
   show($('ss-log'), terminalShown(item));   // the terminal only for a Claude conversation with Claude help on, or when asked (session-steps.js)
   renderSteps(item);   // no terminal behind a form session: the form in Chrome is the whole story

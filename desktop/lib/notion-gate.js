@@ -12,12 +12,12 @@ export const OFF_MAC = new Set(['cloud', 'telegramCloud']);
 
 // Completes "Connect Notion …": what the user asked for that needs Notion.
 export const REASONS = {
-  save: 'to save this job', dismiss: "to hide jobs you don't want", prepare: 'to draft an application kit',
+  save: 'to save this job', dismiss: "to hide jobs you don't want", prepare: 'to draft an application',
   apply: 'to apply and keep the record', applied: 'to track an application', add: 'to add a job',
   lead: 'to track a recruiter lead', log: 'to log this message', interviews: 'to keep interview transcripts',
   focus: 'to see what to do next', cloud: 'for Always on', telegram: 'for Telegram buttons',
   gmail: 'for Gmail checks', profile: 'to edit your details and answers',
-  tune: 'to tune your strategy from your results', kits: 'to draft application kits',
+  tune: 'to tune your strategy from your results', kits: 'to draft applications',
   tailor: 'to tailor CVs for your top matches', telegramCloud: 'for Telegram buttons while your Mac is off',
   move: 'to move your data there',
   employers: 'to keep your list of employers',

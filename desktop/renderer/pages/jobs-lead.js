@@ -1,4 +1,5 @@
 // Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
+import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill, tile} from '../components.js';
 import * as confirmStep from '../lead-confirm.js';
 import {shared} from './shared.js';
@@ -226,7 +227,7 @@ function leadTargets() {
   const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
   const group = document.createElement('optgroup');
   group.label = 'Your applications';
-  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${job.stage})`)));
+  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageLabel(job.stage)})`)));
   $('lead-target').replaceChildren(option('', 'Choose the job…'),
     option('new', 'Not in my list yet: add it from these details'), ...(tracked.length ? [group] : []));
 }

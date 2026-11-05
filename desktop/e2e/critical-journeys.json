@@ -386,7 +386,7 @@
     {"integration": "desktop/integration/app/screen-apply.test.js", "test": "the session page says it too: \"Before you submit\" counts the knockout question that is still the person's, and says which CV goes in"},
     {"integration": "desktop/integration/app/screen-apply.test.js", "test": "a silent Chrome in Background automation: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome"},
     {"integration": "desktop/integration/app/screen-apply.test.js", "test": "Apply on a saved job without a kit prepares first, and when the kit cannot be drafted says Retry apply and opens nothing"},
-    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "a scored job without a kit shows the Apply button, never Prepare, and \"Prepare only\" in its ⋯ menu"},
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "a scored job without a kit offers Apply and keeps preparation out of its menu"},
     {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "every combination of the reader's flags reaches a chip, and every chip is reachable by a verdict (the pure half of the old step)"},
     {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "before any Check every job says Not checked; after one Check each row shows the chip and the reason of its own read"},
     {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "a Check reads only: the app is asked for no apply, no kit and no reopen (the demo logs every blocked action)"},

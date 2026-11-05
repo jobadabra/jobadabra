@@ -304,3 +304,8 @@ test('no call time is asked, or sent, for a kind that has no call coming (a reje
   const engine = readFileSync(new URL('../../../../src/ai/inbox_fields.py', import.meta.url), 'utf8').match(/^NO_CALL = \((.*)\)$/m)[1];
   assert.deepEqual(engine.split(',').map(x => x.trim()).sort(), ['APPLIED', "'Confirmation received'", "'Rejected'", 'mail.employer_feedback.RECEIVED'].sort());
 });
+
+test('job picker labels hide the stored preparation stage', () => {
+  const groups = lead.jobChoices([{url: 'https://example.test/job', label: 'Example · SRE', stage: 'Kit ready'}]);
+  assert.equal(groups[0].options[0].text, 'Example · SRE (Ready to apply)');
+});
