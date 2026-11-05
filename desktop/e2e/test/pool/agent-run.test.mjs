@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../../lib/agent-run.mjs';
 import {actionSchema, actionsOf, explore, parseAction} from '../../lib/explore.mjs';
 import {planSession} from '../../lib/agent-plan.mjs';
+import {CAP_REACHED} from '../../lib/agent-tier.mjs';
 
 const seen = {view: 'profile', text: 'Profile\nPhone: Phone number', overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false, cls: '', href: '', type: ''}]};
 const BLANK = {control: -1, text: '', key: '', view: '', title: '', kind: '', severity: '', what: '', check_type: '', check_text: '', check_control: '', summary: '', type: '', expected: '', observed: '', why: '', verdict: ''};
@@ -137,4 +138,13 @@ test('the screen reader is not asked once a goal ended on the session\'s call ca
   const reader = async () => { asked++; return {text: JSON.stringify({problems: []}), usage: {input_tokens: 1, output_tokens: 1}}; };
   await runSession({act: fakeAct(), ask: script([turn('go', {view: 'profile'}), turn('go', {view: 'jobs'})]), judgeAsk: judge('agrees'), screenAsk: reader, views: ['profile', 'jobs', 'focus'], plan, knowledgeIds: [], caps: {maxSteps: 30, maxCalls: 1}, session: {id: 'night-3', snapshot: 'abc1234'}});
   assert.equal(asked, 0);
+});
+
+// Guard: money. At the night's token cap the screen reader refuses its call (lib/agent-tier.mjs); the session goes on with the notes it has and that refused read is not counted as a call.
+test('a screen reader refused by the night cap leaves the session whole and costs no call', async () => {
+  const run = screenAsk => runSession({act: fakeAct(), ask: script([done('worked'), done('worked'), done('worked')]), judgeAsk: judge('agrees'), screenAsk, views: ['profile', 'jobs', 'focus'], plan, knowledgeIds: [], caps: {maxSteps: 30}, log: () => {}, session: {id: 'night-4', snapshot: 'abc1234'}});
+  const refused = await run(async () => { throw new Error(CAP_REACHED); });
+  const none = await run(null);
+  assert.deepEqual(refused.summary.goals.map(goal => goal.verdict), ['worked', 'worked', 'worked']);
+  assert.equal(refused.spent.calls, none.spent.calls, 'a refused read is not a call');
 });
