@@ -11,7 +11,7 @@
 # that met the limit left labels wrong in silence (#2516). Edits start nothing; a new Gitar comment does (about 12 an hour): after a push with an unchanged verdict
 # Gitar posts a new comment and submits no review (9 of the last 60 PRs, #2516 at 00:13).
 # Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs; their gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
-name: CI · PR labels
+name: PR
 # Why (30 Oct 2026, run names): the value stays quoted, or the ' #' in it starts a YAML comment and cuts the number off; a push to main and a Gitar check have no number, so they get their own words (4 and 5 Nov 2026).
 run-name: "${{ github.event_name == 'push' && 'PR labels after a push to main' || github.event_name == 'check_run' && 'PR labels after a Gitar check' || format('PR labels on #{0}', github.event.pull_request.number || github.event.issue.number) }}"
 
@@ -41,7 +41,7 @@ concurrency:
 
 jobs:
   labels:
-    name: PR labels
+    name: labels
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'pull_request_target' ||

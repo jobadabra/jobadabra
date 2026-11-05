@@ -1,4 +1,4 @@
-name: CI · Tests · desktop
+name: Unit
 # On a pull request, GitHub's `paths:` below decides whether it runs, and tools/affected-tests.py which test files (owner, 4 Nov 2026: "run only the ones that make sense", ending 14 Oct's "rely fully on gh workflow paths"). Not a required
 # check: a workflow `paths:` skips never reports, and a required one would block the PR (tests/tooling/ci/test_workflow_paths.py). On main, build.yml (CI · Tests) calls it on
 # every push: the backstop for a break from outside these paths.
@@ -170,6 +170,7 @@ concurrency:   # a PR's newer push replaces its older run and frees its runners;
 
 jobs:
   desktop:
+    name: desktop (Linux)
     # Linux only: Windows has its own workflow (tests-desktop-windows.yml) that a PR starts only for the files with platform branches; main runs both.
     strategy:
       fail-fast: false

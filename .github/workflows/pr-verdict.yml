@@ -16,19 +16,27 @@ on:
   workflow_run:
     types: [completed]
     workflows:
-      - 'CI · Pull request'
-      - 'CI · E2E steps a PR changes'
+      # The PR checks by layer (owner, 5 Nov 2026: "Yes, rename + fold"): a name is the layer, so several files share one.
+      - 'Guard'
+      - 'Unit'
+      - 'Integration'
+      - 'Smoke'
+      - 'E2E'
+      - 'Tooling'
       - 'CI · End-to-end on Mac + Linux'
       - 'CI · Control tests (measure, not required)'
-      - 'CI · E2E tooling tests'
-      - 'CI · Integration tests'
-      - 'CI · Smoke (the app starts)'
       - 'CI · Hosted Always on cost probe (one-off)'
       - 'Proof · Codex subscription broker'
       - 'Extension · Chrome Web Store publish'
       - 'Proof · LibreOffice add-on on Mac and Windows'
-      - 'CI · Integration · Page cases (all cases, real extension, Linux)'
       - 'CI · Ready to send image'
+      # Why (5 Nov 2026, a8): a PR opened before the rename runs these old names until it merges main. TODO(AI): drop these 10 lines once no open PR runs them (12 Nov 2026).
+      - 'CI · Pull request'
+      - 'CI · E2E steps a PR changes'
+      - 'CI · E2E tooling tests'
+      - 'CI · Integration tests'
+      - 'CI · Smoke (the app starts)'
+      - 'CI · Integration · Page cases (all cases, real extension, Linux)'
       - 'CI · Tests · desktop (Windows)'
       - 'CI · Tests · desktop'
       - 'CI · Tests · python'

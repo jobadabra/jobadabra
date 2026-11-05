@@ -43,7 +43,7 @@ class RequiredChecksTest(unittest.TestCase):
         verdict = re.search(r"^CONTEXT = '(.+)'$", (ROOT / 'tools' / 'pr-verdict.py').read_text(), re.M).group(1)   # the status pr-verdict.yml writes (26 Oct 2026)
         names, checks = job_names() + [re.compile('^' + re.escape(verdict) + '$')], required()
         self.assertGreaterEqual(len(checks), 1, 'positive control: the list is read (one since 15 Oct 2026: the one job that starts on every PR)')
-        self.assertTrue(any(name.match('desktop (ubuntu-24.04)') for name in names), 'positive control: a matrix job name is matched')
+        self.assertTrue(any(name.match('page cases 2/3') for name in names), 'positive control: a matrix job name is matched')
         self.assertEqual([check for check in checks if not any(name.match(check) for name in names)], [],
                          'a required check nothing reports blocks every PR: rename it in templates/org-repo/ruleset.json too, then run tools/pr-settings.sh --apply')
 

@@ -57,12 +57,14 @@ def _at(text):
 
 
 def counted(runs):
-    """Newest per workflow; PR e2e runs keep each workflow/title's newest attempt."""
+    """Newest per workflow (its id: names repeat); PR e2e runs keep each workflow/title's newest attempt."""
     mine = [r for r in runs if r.get('event') == 'pull_request' or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
     newest = {}
     for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0, r.get('attempt') or 0)):
-        # Why (31 Oct 2026, owner: "Fix: count each run"): keep each E2E title's red; ordinary PR title edits replace the older gate.
-        key = (r['workflowName'], r['displayTitle']) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) else r['workflowName']
+        # Why (31 Oct 2026, owner: "Fix: count each run"): keep each E2E title's red per workflow; ordinary PR title edits replace that workflow's older gate.
+        # A workflow is its id, not its name, since 5 Nov 2026 (owner: "Yes, rename + fold"): a name is a layer several files share ("Unit"); a run without an id keeps its name.
+        workflow = r.get('workflowDatabaseId') or r['workflowName']
+        key = (workflow, r['displayTitle']) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) else workflow
         newest[key] = r
     return list(newest.values())
 
@@ -240,7 +242,7 @@ def ended_run(run, ended):
 def list_runs(repo, sha):
     """List a head's runs once; both planner and writer apply counted() to this same list."""
     return json.loads(gh('run', 'list', '-R', repo, '--commit', sha, '-L', '100', '--json',
-                        'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
+                        'databaseId,workflowDatabaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
 
 
 def read(repo, sha):

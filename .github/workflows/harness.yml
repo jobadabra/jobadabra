@@ -1,4 +1,4 @@
-name: CI · E2E tooling tests
+name: Tooling
 # Every test of the e2e tooling, the harness (desktop/e2e/test/*/*.test.mjs, `npm test`) on each pull request that changes what one reaches; harness-daily.yml runs the same command nightly on main.
 # Why (owner, 30 Oct 2026, option C "run all on every PR"): a PR ran only a "pr" set plus the files its changes reached (test-sets.json, a picker), so tests outside them went red unseen
 # (harness-daily red 28-30 Oct: 1, 3, then 6 tests, one a PR-workflow AI guard), and every new test edited the one shared list (8 PRs conflicting on it, 30 Oct). The folder was slimmed on 3 Nov 2026 and is one job again (see the job's Why).
@@ -78,8 +78,8 @@ concurrency:   # a PR's newer push replaces its older run; each commit of main k
 
 jobs:
   harness:
-    # Why (owner, 4 Nov 2026: "now, since the harness tests got slimmed, can we combine into 1 or 2", reversing 1 Nov's "let's just split"): 13 runs measured, tests 41 s (max 46 s) and setup 43 s, so 3 rows bought about 20 s.
-    name: E2E tooling tests
+    # Why (owner, 4 Nov 2026: "now, since the harness tests got slimmed, can we combine into 1 or 2", reversing 1 Nov's "let's just split"): one row, "Tooling / e2e harness" since 5 Nov 2026 (owner: "Yes, rename + fold"). 13 runs measured, tests 41 s (max 46 s) and setup 43 s, so 3 rows bought about 20 s.
+    name: e2e harness
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

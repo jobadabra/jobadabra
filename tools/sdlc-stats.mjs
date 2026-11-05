@@ -9,6 +9,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {areaOf, classifyFix, fetchMerges, isFixPr, kindOfFile} from './agent-coding-stats.mjs';
 import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
+import {checkName} from './check-name.mjs';
 
 const run = (command, args) => execFileSync(command, args, {encoding: 'utf8', maxBuffer: 256 * 1024 * 1024});
 const gh = path => JSON.parse(run('gh', ['api', path]));
@@ -95,7 +96,7 @@ export function fetchRuns({repo, days, now, event, filter = '', lowWater = 300})
     for (let page = 1; ; page++) {
       if (calls++ % 25 === 0 && Number(run('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining']).trim()) < lowWater) { console.error('sdlc-stats: rate limit low, stopping with what is read'); return runs; }
       const list = gh(`repos/${repo}/actions/runs?event=${event}${filter}&created=${range}&per_page=100&page=${page}`).workflow_runs || [];
-      for (const item of list) runs.push({name: item.name, event: item.event, branch: item.head_branch, head_sha: item.head_sha, conclusion: item.conclusion, created_at: item.created_at, run_started_at: item.run_started_at, updated_at: item.updated_at});
+      for (const item of list) runs.push({name: checkName(item), event: item.event, branch: item.head_branch, head_sha: item.head_sha, conclusion: item.conclusion, created_at: item.created_at, run_started_at: item.run_started_at, updated_at: item.updated_at});
       if (list.length < 100) break;
     }
   }

@@ -1,4 +1,4 @@
-"""Which tests a change can break: the local push check and a PR's `desktop (ubuntu)` job run only these; main runs everything. For every other PR job GitHub's `paths:` decides (tests/tooling/ci/test_workflow_paths.py).
+"""Which tests a change can break: the local push check and a PR's `Unit / desktop (Linux)` job run only these; main runs everything. For every other PR job GitHub's `paths:` decides (tests/tooling/ci/test_workflow_paths.py).
 
   python3 tools/affected-tests.py --base origin/main            (JSON on stdout: per area a list of test files, or "all")
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js

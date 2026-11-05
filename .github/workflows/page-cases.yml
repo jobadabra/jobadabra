@@ -1,5 +1,6 @@
-name: CI · Integration · Page cases (all cases, real extension, Linux)
+name: Integration
 # Job: serve stored answers
+# Its rows read "Integration / page cases n/3": all recorded cases, the real extension, Linux (owner, 5 Nov 2026: "This one is too long. Let's make it shorter").
 # The net under the local push gate (owner, 11 Oct 2026, "CI heavy, local light"): every push to main replays ALL recorded cases (desktop/e2e/recorded) with the real extension,
 # offline, sharded across the matrix, 4 tabs at a time in one browser per job (desktop/e2e/lib/replay-browser.mjs). The local pre-push replays only the cases a change can affect.
 # A failing case fails the run; the push hook then treats main as red (tools/pre-push-check.sh, AGENTS.md "Red main"). No AI, no network: the pages and answers come from the cases.
@@ -153,7 +154,7 @@ env:
 
 jobs:
   replay:
-    name: page cases ${{ matrix.shard }}
+    name: page cases ${{ matrix.shard }}/3
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -221,7 +222,7 @@ jobs:
   # /admin/form-filling/lab's Fixed-site replays show CI on main only (12 Oct 2026: local runs of work-in-progress branches showed main as broken): every shard's results, ONE PUT
   # with the build's sha (desktop/e2e/replays-report.mjs). Also when a case failed (that is the point). On a PR it is a dry run: it proves the step, sends nothing.
   report:
-    name: page cases to /admin/form-filling/lab
+    name: page cases report
     needs: replay
     # Why (3 Nov 2026, 7/7 Send to AI review): this job holds REPLAYS_PUBLISH_KEY and runs the checked-out tree's script. A draft fix the bot opens on fd-ai/<ref> or fixer/<source>-<ref> (ai-fixer.yml, 4 Nov 2026) carries AI-written code steered by a stranger's report; its checks wait until a person pushes (tests/tooling/ci/test_workflow_ai_secret_jobs.py lists every such job).
     if: always() && needs.replay.result != 'cancelled' && !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]'))

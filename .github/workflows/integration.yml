@@ -1,4 +1,4 @@
-name: CI · Integration tests
+name: Integration
 # Job: report health
 # The integration layer as its own visible check (owner, 1 Nov 2026, exact option "Yes, own workflow, 3 jobs (Recommended)"): "extension", "app (ubuntu-24.04)", "app (windows-latest)" and "store",
 # so each check name says its layer. A pull request starts it by `paths:` below (each layer's reach: desktop/integration/<layer>/** and what its tests import; desktop/test/integration-workflow-paths.test.js
@@ -100,7 +100,7 @@ jobs:
           retention-days: 35
 
   app:
-    name: app (${{ matrix.os }})
+    name: app (${{ matrix.os == 'windows-latest' && 'Windows' || 'Linux' }})
     strategy:
       fail-fast: false
       matrix:
