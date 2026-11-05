@@ -28,6 +28,34 @@ test('a run\'s warnings: real problems only, never a "0 failed" report line', ()
   ]), ['Scored 3 of 5 job(s); 2 failed', 'Notion 429 on Job Matches sync', 'Job Matches sync skipped', 'Notion failed to answer']);
 });
 
+test('a stop that is no limit is said as what it is, never as a spending limit (#3059)', async () => {
+  const {groupWarnings, isSpendingLimit, limitedJobs, runWarnings} = await import('../../../renderer/run-warnings.js');
+  const lines = ['AI stopped: Claude Code is not signed in, 266 job(s) left for the next check', '266 job(s) not scored: Claude Code is not signed in'];
+  assert.deepEqual(runWarnings(lines.slice(0, 1)), lines.slice(0, 1));
+  assert.deepEqual(groupWarnings(lines), ['266 jobs left unscored: Claude Code is not signed in. Settings → Connections → AI shows what to do']);
+  assert.equal(limitedJobs(lines), 0);
+  assert.equal(isSpendingLimit(lines[0]), false);
+  assert.deepEqual(groupWarnings(['AI stopped: Codex did not answer']), ['Codex did not answer. Settings → Connections → AI shows what to do']);
+  assert.deepEqual(groupWarnings(['AI stopped: Anthropic API key was refused (HTTP 401, model m), 3 job(s) left for the next check']),
+    ['3 jobs left unscored: Anthropic API key was refused. Settings → Connections → AI shows what to do']);
+});
+
+test("Notion's own reason reaches the person, and nothing of a job or a token does (#3059)", async () => {
+  const {groupWarnings} = await import('../../../renderer/run-warnings.js');
+  const saved = reason => groupWarnings([`Warning: cronjob run not logged to Notion: HTTPError: HTTP Error 400: ${reason}`])[0].replace("The run's result could not be saved to Notion: ", '');
+  const plain = 'the service answered with an error (HTTP 400)';
+  assert.equal(saved('Run id is not a property that exists.'), 'Run id is not a property that exists (HTTP 400)');
+  assert.equal(saved('body.properties.Result.rich_text[0].text.content.length should be ≤ `2000`, instead was `2345`.'),
+    'body.properties.Result.rich_text[0].text.content.length should be ≤ 2000 (HTTP 400)');
+  assert.equal(saved('Result should be a string, instead was "Senior Engineer at Acme".'), 'Result should be a string (HTTP 400)');
+  for (const unsafe of ['Invalid select option: "Senior Engineer at Acme"', "Can't use 'Acme Corp' here", 'See https://notion.test/x', 'Sent by jo@acme.test',
+    'Could not find page with ID: 1234abcd-12ab-34cd-56ef-1234567890ab', 'Token ntn_abcdefghijklmnopqrstuvwxyz0123 is invalid', 'x'.repeat(130)]) {
+    assert.equal(saved(unsafe), plain, unsafe);
+  }
+  assert.equal(saved(''), plain);
+  assert.match(groupWarnings(['cronjob run not logged to Notion: HTTPError: HTTP Error 429: Slow down'])[0], /busy right now \(HTTP 429\)/);
+});
+
 test('the same API error on many jobs reads as one line, and the spend limit counts every job it left', async () => {
   const {groupWarnings, limitedJobs} = await import('../../../renderer/run-warnings.js');
   const limit = id => `Skipped job ${id}: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You wil`;

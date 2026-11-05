@@ -15,6 +15,13 @@ test('an API spend limit the user set: its words and the limits page', () => {
     fix: {label: 'Manage API limits', url: 'https://console.anthropic.com/settings/limits'}});
 });
 
+test('a stop that is no limit heads the run with what stopped it and the way to the AI settings (#3059)', () => {
+  const head = aiLimitHead({ok: false, kind: 'search', billing: 'Claude subscription', log: ['AI stopped: Claude Code is not signed in, 266 job(s) left for the next check']}, 'Find jobs');
+  assert.deepEqual(head, {problem: 'AI stopped: Claude Code is not signed in, 266 job(s) left for the next check', title: 'Find jobs couldn’t finish',
+    summary: 'Claude Code is not signed in. Scoring could not complete.', hint: 'Settings → Connections → AI shows what to do; then run it again.',
+    fix: {label: 'Open AI settings', view: 'settings'}});
+});
+
 test('each limit its own words and page: credits, a plan (with its reset time only when said), a rate limit, the unknown', () => {
   const credits = aiLimitHead({ok: false, kind: 'search', log: ['anthropic.BadRequestError: Your credit balance is too low to access the Anthropic API.']}, 'Jobs check');
   assert.equal(credits.summary, 'API credits are exhausted. Scoring could not complete.');

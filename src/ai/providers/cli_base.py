@@ -31,7 +31,12 @@ class CliError(AiError):
 
 class CliLimitError(CliError, AiLimit):
     """The user's plan limit is reached, or the CLI can't run (not signed in, not installed). Like the API's spend limit
-    (cost.limit_reached): every other call would fail too, so the run stops and says why."""
+    (cost.limit_reached): every other call would fail too, so the run stops and says why.
+    `stopped`: the cause in a few words when it is no limit ("Claude Code is not signed in"); every line a run writes reads it from here (cost.stop_line)."""
+
+    def __init__(self, text, final=False, stopped=''):
+        super().__init__(text, final=final)
+        self.stopped = stopped
 
 
 def write_files(request, folder):
@@ -93,9 +98,9 @@ class CliAdapter(Adapter):
     # ----- shared -----
     def call(self, args, prompt, folder):
         if not self.binary:
-            raise CliLimitError(self.missing_text, final=True)
+            raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed')
         if self._timeouts >= TIMEOUTS_BEFORE_STOP:  # it already failed to answer: nothing waits again in this run
-            raise CliLimitError(self.not_answering_text.format(seconds=self.timeout))
+            raise CliLimitError(self.not_answering_text.format(seconds=self.timeout), stopped=f'{self.tool} did not answer')
         wait = max(self.timeout, FILES_TIMEOUT_S) if self.reads_files(args) and not os.getenv(self.timeout_env) else self.timeout
         asked = time.monotonic()
         with self._slots:
@@ -105,10 +110,10 @@ class CliAdapter(Adapter):
             except subprocess.TimeoutExpired:
                 self._timeouts += 1
                 if self._timeouts >= TIMEOUTS_BEFORE_STOP:
-                    raise CliLimitError(self.not_answering_text.format(seconds=wait)) from None
+                    raise CliLimitError(self.not_answering_text.format(seconds=wait), stopped=f'{self.tool} did not answer') from None
                 raise CliError(f'{self.tool} did not answer within {wait} s') from None
             except OSError as error:
-                raise CliLimitError(self.missing_text, final=True) from error
+                raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed') from error
         self._timeouts = 0
         return self.parse(out, args, began - asked, time.monotonic() - began)
 

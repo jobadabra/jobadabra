@@ -6,7 +6,7 @@ Guarded by tests/unit/notion/test_warning_lines.py and desktop/test/unit/rendere
 """
 import re
 
-WARNING = re.compile(r'^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached', re.I)
+WARNING = re.compile(r'^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached|^AI stopped', re.I)
 ZERO = re.compile(r'\b0 (?:failed|skipped)\b', re.I)
 CAP = 180
 
