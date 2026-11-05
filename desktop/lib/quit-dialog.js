@@ -16,6 +16,14 @@ export function cancel(company) {
   };
 }
 
+// "Cancel all applications" (owner, 5 Nov 2026: in place of the header's Stop): which ones go, asked once.
+export function cancelAll(sessions, label = session => session.company || 'An application') {
+  return {
+    message: `Cancel ${sessions.length === 1 ? 'this application' : `all ${sessions.length} applications`}?`,
+    detail: `${sessionLines(sessions, label).join('\n')}\n\nApplying stops and their forms close. Nothing is submitted.`,
+    buttons: ['Cancel all applications', 'Keep them'],
+  };
+}
 
 // The words of the "you're quitting while something works" dialogs (native macOS/Windows dialogs: a title, a few
 // lines, buttons). Short, one line per thing that would stop, and what happens to it.

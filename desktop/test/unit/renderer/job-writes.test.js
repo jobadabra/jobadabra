@@ -102,8 +102,8 @@ test('a failed read paints nothing and lets the next write read again', async ()
 
 // The class. Every IPC whose main handler writes a job's stage (an engine stage write), read from main's own code: a new one fails here until it
 // is listed, and then until the window answers it with jobsChanged.
-const ENGINE_STAGE_WRITE = /pipeline\.(setStatus|unapply|notSubmitted|markOutcome)\(/;
-const STAGE_WRITES = ['setStatus', 'setStage', 'unapplyJob', 'notSubmitted', 'markOutcome', 'sessionCancel', 'sessionSkip', 'sessionFinish'];
+const ENGINE_STAGE_WRITE = /pipeline\.(setStatus|unapply|notSubmitted|markOutcome)\(|cancelOne\(/;   // cancelOne: lib/session-handlers.js's one cancel path, which unapplies
+const STAGE_WRITES = ['setStatus', 'setStage', 'unapplyJob', 'notSubmitted', 'markOutcome', 'sessionCancel', 'sessionsCancelAll', 'sessionSkip', 'sessionFinish'];
 const LIB = fs.readdirSync(new URL('../../../lib/', import.meta.url)).filter(name => name.endsWith('.js')).map(name => `lib/${name}`);
 test('every IPC handler that writes a job\'s stage is in the list the window is checked against', () => {
   const found = new Set();

@@ -24,29 +24,54 @@ import {boardName} from './control-events.js';
 import {stopLiveForms} from './stop-all.js';
 import {demoPath} from './demo.js';
 import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
+import {beingSent, cancellable} from '../renderer/session-state.js';
 const REOPEN_MS = 15 * 1000;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
   closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage), keepHandoff = keepForJob}) {
   const reopenedAt = new Map();   // session id -> when Reopen last opened its form: a second press inside REOPEN_MS opens nothing
   const checkedSessions = sessionIpc(ipcMain, appLog);
-  checkedSessions.handle('sessionCancel', async (_, id) => {
-    const old = terminals.get(String(id));
-    if (!old) return {ok: false, error: 'This session is no longer in the list.'};
-    const {message, detail, buttons} = quitDialog.cancel(old.company);
-    const {response} = await dialog.showMessageBox(getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined,
-      {type: 'none', icon: nativeImage.createFromPath(path.join(here, 'assets', 'icon.png')), buttons, defaultId: 1, cancelId: 1, message, detail});
-    if (response !== 0) return {ok: false, cancelled: true};
+  // Store writes one at a time: each is its own engine process, and Cancel all closes many tabs at once (SQLite locks, Notion's rate limit).
+  let storeTail = Promise.resolve();
+  const storeTurn = work => { const result = storeTail.then(work); storeTail = result.catch(() => {}); return result; };
+  // One application cancelled, the person already asked: its fill stops, its tab (Chrome's or the hidden browser's) closes, the job goes back to Kit ready, the session leaves.
+  // Read again here: while the question was open it may have been submitted, or started sending (session-state.js cancellable); then it is left alone ({ok: true, skipped}).
+  async function cancelOne(id) {
+    const old = terminals.get(id);
+    if (!old || !cancellable([old]).length) return {ok: true, skipped: true};
     const started = Date.now();
     terminals.stop(old.id);
     review.queueClose(old.id);
     const closed = old.background ? (await background().cancel(old.id)).closed : await closeSessionTab({review, closeTab}, old);
-    const reset = DEMO ? {ok: true} : await pipeline.unapply(storage, old.url).catch(error => ({ok: false, error: error.message}));
+    const reset = DEMO ? {ok: true} : await storeTurn(() => pipeline.unapply(storage, old.url)).catch(error => ({ok: false, error: error.message}));
     if (!reset.ok) return {ok: false, error: `Notion: ${reset.error || 'not updated'}. The session stays; try again.`, closed};
     appLog('sessions', 'cancelled by the user: job back to Kit ready, session removed', {id: old.id, closed: !!closed, ms: Date.now() - started});
     terminals.setOutcome(old.id, 'cancelled');
     terminals.remove(old.id);
     return {ok: true, closed};
+  }
+  const ask = async ({message, detail, buttons}) => (await dialog.showMessageBox(getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined,
+    {type: 'none', icon: nativeImage.createFromPath(path.join(here, 'assets', 'icon.png')), buttons, defaultId: 1, cancelId: 1, message, detail})).response === 0;
+  checkedSessions.handle('sessionCancel', async (_, id) => {
+    const old = terminals.get(String(id));
+    if (!old) return {ok: false, error: 'This session is no longer in the list.'};
+    if (beingSent(old)) return {ok: false, error: `${old.company || 'This application'} is being sent right now. Its reply from the site settles it; wait a moment.`};
+    if (!await ask(quitDialog.cancel(old.company))) return {ok: false, cancelled: true};
+    return cancelOne(old.id);
+  });
+  // Why (5 Nov 2026, owner: "remove the "Stop extension" button. And we should add another button isntead which woudl be … "Cancel all applications""): every
+  // application not finished yet (filling, queued, waiting on the person, ready) is cancelled the one way Cancel application does it, after one question. The Stop
+  // switch is not pressed: closing each tab ends its work, and a Stop would hold the next batch for STOP_ASK_MS (lib/server-hooks.js). Stop stays in ⌘K and ⋯.
+  checkedSessions.handle('sessionsCancelAll', async () => {
+    const open = cancellable(terminals.list());
+    if (!open.length) return {ok: true, count: 0};
+    if (!await ask(quitDialog.cancelAll(open))) return {ok: false, cancelled: true};
+    // All at once: a tab that does not answer costs its own wait, not every later one's (review of [ap] 3/7). A throw is that application's failure only.
+    const results = await Promise.all(open.map(old => cancelOne(old.id).catch(error => ({ok: false, error: String(error?.message || error)}))));
+    const failed = open.filter((_, i) => !results[i].ok).map(old => old.company || old.id);
+    const count = results.filter(result => result.ok && !result.skipped).length;
+    appLog('sessions', 'Cancel all applications', {asked: open.length, cancelled: count, failed: failed.length});
+    return failed.length ? {ok: false, count, error: `Not cancelled: ${failed.join(', ')}. Try again.`} : {ok: true, count};
   });
   // Skip this role: give up on the job. Claude stops, the form tab closes, the job is Dismissed in Notion (hidden from the
   // list, as Dismiss in its menu), the session goes. No question: the button says it.
