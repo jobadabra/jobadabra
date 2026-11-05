@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {judgeNote, judgePrompt, judgeSchema} from './agent-judge.mjs';
-import {knowledgeFor} from './agent-knowledge.mjs';
+import {areaOfView, knowledgeFor} from './agent-knowledge.mjs';
 
 export const RUNS = 3;
 
@@ -21,7 +21,7 @@ export function loadSet(dir) {
 }
 
 /** The area's rules as the actor gets them: the note's screen, first letter capital (the expectation files are Jobs, Focus, Settings...). Rules only, never the field notes, so a note's own label cannot leak into its judgement. */
-export const knowledgeOf = (note, expectations) => { const area = note.view.replace(/^./, first => first.toUpperCase()); return knowledgeFor([area], {expectations}); };
+export const knowledgeOf = (note, expectations) => knowledgeFor([areaOfView(note.view)], {expectations});
 
 /**
  * Asks one judge variant ('before' | 'after') about every note, `runs` times each. `ask` is the broker call on the mid tier (Claude alone). -> [{n, label, verdicts: ['agrees', ...], reasons: [...]}]

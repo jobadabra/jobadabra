@@ -92,6 +92,9 @@ export function mergeNotes(existing, observed, {today, commit = '', session = ''
   return [...byKey.values()].filter(note => !(age(note) > keepDays));
 }
 
+/** The expectation area of a note's screen (view `jobs` -> `Jobs`): the one mapping the agent's second opinion and its exam share (Gitar on #3240). */
+export const areaOfView = view => String(view).replace(/^./, first => first.toUpperCase());
+
 /**
  * The knowledge text for a session's areas: each area's rules first (a stale one says why), then its notes, capped at `maxTokens` (the oldest notes go first, rules never).
  * `expectations`: {area: [entry]}, `notes`: {area: [note]}.
