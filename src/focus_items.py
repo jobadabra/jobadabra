@@ -183,6 +183,8 @@ def summary(items):
     order = []
     for item in items:
         phrase = None if item.get('after_interview') else phrases.get(item['kind'])
+        if item['kind'] == 'apply' and not item.get('kits'):
+            phrase = 'prepare kits from your best matches'  # Why (5 Nov 2026, #3227 #3202): the item's own text says so; "review ready applications" is true only with a kit
         if phrase and phrase not in order:
             order.append(phrase)
     if not order:
