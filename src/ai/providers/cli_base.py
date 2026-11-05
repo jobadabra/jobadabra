@@ -31,12 +31,7 @@ class CliError(AiError):
 
 class CliLimitError(CliError, AiLimit):
     """The user's plan limit is reached, or the CLI can't run (not signed in, not installed). Like the API's spend limit
-    (cost.limit_reached): every other call would fail too, so the run stops and says why.
-    `stopped`: the cause in a few words when it is no limit ("Claude Code is not signed in"); every line a run writes reads it from here (cost.stop_line)."""
-
-    def __init__(self, text, final=False, stopped=''):
-        super().__init__(text, final=final)
-        self.stopped = stopped
+    (cost.limit_reached): every other call would fail too, so the run stops and says why."""
 
 
 def write_files(request, folder):

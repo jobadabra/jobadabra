@@ -1,5 +1,3 @@
-import contextlib
-import io
 import json
 import tempfile
 from datetime import datetime, timezone
@@ -11,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src import daily, digest
 from src import store as job_store
 from src.ai import score
-from src.ai.providers import claude_code
 
 
 def waiting_count(db, jobs, profile):
@@ -413,24 +410,6 @@ class KitProvenanceTests(unittest.TestCase):
 
 
 class SpendLimitTests(unittest.TestCase):
-    def test_a_signed_out_engine_stops_scoring_and_the_run_says_so_not_limit(self):
-        # #3059: the log said "AI limit reached" and the run "limit reached (or it is signed out)", so the person could not tell
-        class SignedOut(FakeClient):
-            def create(self, **params):
-                self.requests.append(params)
-                raise claude_code.classify('not logged in')
-        out = io.StringIO()
-        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(out):
-            with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
-                seed_jobs(db, 8)
-                candidates, _ = digest.eligible_jobs(db)
-                client, stats = SignedOut(), {}
-                score.run(db, candidates, 'Profile', 'm', 10, client=client, workers=1, stats=stats)
-        self.assertLess(len(client.requests), 8)
-        self.assertRegex(out.getvalue(), r'(?m)^AI stopped: Claude Code is not signed in, \d+ job\(s\) left for the next check$')
-        self.assertNotIn('AI limit reached', out.getvalue())
-        self.assertEqual(daily.left_out(stats, 'scored'), ['8 job(s) not scored: Claude Code is not signed in'])
-
     def test_the_spend_limit_stops_scoring_and_the_run_says_what_was_left_out(self):
         # 29 Sep 2026: every remaining job was still sent and failed the same way (23 raw errors), and the run was "OK".
         class Limited(FakeClient):

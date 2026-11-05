@@ -54,7 +54,7 @@ def error_of(error):
     apart from a model the key may not use."""
     text, name, status = str(error), type(error).__name__, getattr(error, 'status_code', None)
     if status in (401, 403):
-        return _with(AiLimit(f'{KEY_TEXT} (OpenAI said: {status} {code_of(error) or name})', final=True), status, error)
+        return _with(AiLimit(f'{KEY_TEXT} (OpenAI said: {status} {code_of(error) or name})', final=True, stopped='OpenAI API key was refused'), status, error)
     if status == 429 and ('insufficient_quota' in text or code_of(error) == 'insufficient_quota'):
         return _with(AiLimit(f'{LIMIT_TEXT} (OpenAI said: {status} {code_of(error) or name})', final=True), status, error)
     if name in UNREACHABLE or status == 429 or (status or 0) >= 500:

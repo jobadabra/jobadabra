@@ -35,6 +35,10 @@ test('a stop that is no limit is said as what it is, never as a spending limit (
   assert.deepEqual(groupWarnings(lines), ['266 jobs left unscored: Claude Code is not signed in. Settings → Connections → AI shows what to do']);
   assert.equal(limitedJobs(lines), 0);
   assert.equal(isSpendingLimit(lines[0]), false);
+  // a real limit in the same run stays said: the count is the limit's, the stop its own line (review, 5 Nov 2026)
+  assert.deepEqual(groupWarnings(['AI limit reached: Anthropic API spending limit, 5 job(s) left for the next check', 'AI stopped: Codex did not answer, 3 job(s) left for the next check']),
+    ['8 jobs left unscored: the Anthropic API spending limit was reached', 'Codex did not answer. Settings → Connections → AI shows what to do']);
+  assert.deepEqual(groupWarnings(['Warning: AI stopped: Codex is not installed']), ['Codex is not installed. Settings → Connections → AI shows what to do'], 'a report line keeps its prefix (cron_report)');
   assert.deepEqual(groupWarnings(['AI stopped: Codex did not answer']), ['Codex did not answer. Settings → Connections → AI shows what to do']);
   assert.deepEqual(groupWarnings(['AI stopped: Anthropic API key was refused (HTTP 401, model m), 3 job(s) left for the next check']),
     ['3 jobs left unscored: Anthropic API key was refused. Settings → Connections → AI shows what to do']);
@@ -47,9 +51,13 @@ test("Notion's own reason reaches the person, and nothing of a job or a token do
   assert.equal(saved('Run id is not a property that exists.'), 'Run id is not a property that exists (HTTP 400)');
   assert.equal(saved('body.properties.Result.rich_text[0].text.content.length should be ≤ `2000`, instead was `2345`.'),
     'body.properties.Result.rich_text[0].text.content.length should be ≤ 2000 (HTTP 400)');
-  assert.equal(saved('Result should be a string, instead was "Senior Engineer at Acme".'), 'Result should be a string (HTTP 400)');
+  assert.equal(saved('body failed validation: body.properties.Result.rich_text[0].text.content should be a string, instead was "Senior Engineer at Acme".'),
+    'body failed validation: body.properties.Result.rich_text[0].text.content should be a string (HTTP 400)');
+  assert.equal(saved('Stage is expected to be select.'), 'Stage is expected to be select (HTTP 400)');
+  // Only Notion's known shapes are shown: a list of what to refuse let an unquoted value through (review, 5 Nov 2026).
   for (const unsafe of ['Invalid select option: "Senior Engineer at Acme"', "Can't use 'Acme Corp' here", 'See https://notion.test/x', 'Sent by jo@acme.test',
-    'Could not find page with ID: 1234abcd-12ab-34cd-56ef-1234567890ab', 'Token ntn_abcdefghijklmnopqrstuvwxyz0123 is invalid', 'x'.repeat(130)]) {
+    'Could not find page with ID: 1234abcd-12ab-34cd-56ef-1234567890ab', 'Token ntn_abcdefghijklmnopqrstuvwxyz0123 is invalid', 'x'.repeat(130),
+    'Invalid select option, commas not allowed: Senior Engineer, Acme Corp', 'Jean Dupont at Acme is on this page', 'Bad Request', 'Not Found']) {
     assert.equal(saved(unsafe), plain, unsafe);
   }
   assert.equal(saved(''), plain);

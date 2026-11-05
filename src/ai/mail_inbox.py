@@ -36,7 +36,8 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
         if not cost.limit_reached(error):
             raise
         limited, results = True, without_ai(apps, emails)
-        print('Mail check: the Anthropic API spend limit is reached. Only calendar invitations from a tracked job\'s '
+        why = cost.stopped(error) or ('the AI limit is reached' if cost.cli_limit(error) else 'the Anthropic API spend limit is reached')
+        print(f'Mail check: {why}. Only calendar invitations from a tracked job\'s '
               'contact were read; the other emails stay unread for the next check.', file=sys.stderr)
     lines = []
     trail = []  # one record per email read: what it was, what the check concluded, and what it did — for the run's page
@@ -175,5 +176,5 @@ def without_ai(apps, emails):
             results[i] = {'relevant': True, 'application': jobs[0] if one else -1,
                           'company': _who(apps[jobs[0]]) if one else _sender_org(email['from']), 'role': '',
                           'kind': 'Interview scheduled', 'interview_at': email['invite_at'],
-                          'summary': 'Calendar invitation (read without AI: spend limit reached)', 'feedback': ''}
+                          'summary': 'Calendar invitation (read without AI)', 'feedback': ''}
     return results

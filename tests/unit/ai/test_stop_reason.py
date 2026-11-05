@@ -1,13 +1,19 @@
 """A stopped run says what stopped it: "limit" only for a limit, and the cause lives on the error so every line agrees (#3059).
 Why: a Windows tester read "AI limit reached" and "266 job(s) waiting, none scored" for a Claude Code that may only have been signed out."""
+import contextlib
+import io
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-from src import daily_helpers
-from src.ai import cost, interview_insights
-from src.ai.providers import claude_code, codex_cli, contract
+from src import daily, daily_helpers, digest, store as job_store
+from src.ai import cost, decide, interview_insights, mail, providers, score
+from src.ai.providers import claude_code, codex_cli, contract, openai_api
 from src.ai.providers.cli_base import CliError, CliLimitError
+from tests import mail_fakes
+from tests.unit.ai.test_score import FakeClient, seed_jobs
 
 ENGINES = ((claude_code, claude_code.ClaudeCode, 'Claude Code'), (codex_cli, codex_cli.Codex, 'Codex'))
 
@@ -55,6 +61,51 @@ class StopReasonTest(unittest.TestCase):
         error.ai_status = 401
         self.assertTrue(cost.stop_line(error).startswith('AI stopped: '))
         self.assertIn('key was refused', cost.stop_line(error))
+        self.assertEqual(contract.reason(error), 'the AI key was refused')
+
+    def test_an_openai_key_refused_with_403_is_no_limit_either(self):
+        class Refused(Exception):
+            status_code = 403
+        self.assertEqual(cost.stop_line(openai_api.error_of(Refused('forbidden'))), 'AI stopped: OpenAI API key was refused')
+
+    def test_the_first_warning_of_a_signed_out_run_says_so(self):
+        # feeds, places and triage warn with contract.reason before scoring starts
+        self.assertEqual(contract.reason(claude_code.classify('not logged in')), 'Claude Code is not signed in')
+        self.assertEqual(contract.reason(claude_code.classify('usage limit reached')), 'the AI limit was reached')
+
+    def test_items_the_ai_left_waiting_name_the_cause(self):
+        self.addCleanup(decide.STOPPED.update, why='', key=False, cause='')
+        self.addCleanup(decide.WAITING.update, n=0)
+        decide.WAITING['n'] = 12
+        decide._stop(claude_code.classify('not logged in'))
+        self.assertEqual(decide.items_waiting(), 'Claude Code is not signed in: 12 items wait for the next run (Settings → Connections → AI shows what to do)')
+
+    def test_a_gmail_check_of_a_signed_out_engine_never_blames_the_spend_limit(self):
+        err = io.StringIO()
+        tracker = mail_fakes.FakeTracker([mail_fakes.app('p1', 'Acme', 'SRE')])
+        google = mail_fakes.FakeGoogle([mail_fakes.email('m1', 'Your application')])
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stderr(err), mock.patch('src.ai.mail_inbox.classify', side_effect=claude_code.classify('not logged in')), \
+                mock.patch('src.ai.mail_calendar.interview_stats', lambda s: {}):
+            mail.run(tracker, google, client=mail_fakes.FakeClient([[]]), days=2, send=[].append, calendar=False, now=mail_fakes.NOW, state_path=Path(tmp) / 'state.json', stats={})
+        self.assertIn('Mail check: Claude Code is not signed in.', err.getvalue())
+        self.assertNotIn('spend limit', err.getvalue())
+
+    def test_a_signed_out_engine_stops_scoring_and_the_run_says_so_not_limit(self):
+        class SignedOut(FakeClient):
+            def create(self, **params):
+                self.requests.append(params)
+                raise claude_code.classify('not logged in')
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(out):
+            with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
+                seed_jobs(db, 8)
+                candidates, _ = digest.eligible_jobs(db)
+                client, stats = SignedOut(), {}
+                score.run(db, candidates, 'Profile', 'm', 10, client=client, workers=1, stats=stats)
+        self.assertLess(len(client.requests), 8)
+        self.assertRegex(out.getvalue(), r'(?m)^AI stopped: Claude Code is not signed in, \d+ job\(s\) left for the next check$')
+        self.assertNotIn('AI limit reached', out.getvalue())
+        self.assertEqual(daily.left_out(stats, 'scored'), ['8 job(s) not scored: Claude Code is not signed in'])
 
     def test_the_paused_insights_line_names_the_cause(self):
         error = claude_code.classify('not logged in')
@@ -62,11 +113,16 @@ class StopReasonTest(unittest.TestCase):
             self.assertEqual(interview_insights.after_review({}, None, None), 'Interview insights: paused, Claude Code is not signed in')
 
     def test_a_switched_engine_starts_clean(self):
-        """Hypothesis 1 of #3059: no. A stop is held only by the adapter of that run: nothing is stored, and the next engine has its own count."""
-        stopped = claude_code.ClaudeCode(binary='/bin/cli', run=never_answers, timeout=1)
-        self.assertEqual(cost.stopped(stop_of(stopped)), 'Claude Code did not answer')
-        self.assertEqual(codex_cli.Codex(binary='/bin/cli')._timeouts, 0)
-        self.assertEqual(claude_code.ClaudeCode(binary='/bin/cli')._timeouts, 0)
+        """Hypothesis 1 of #3059: no. The real build, one engine stopped, then the switch: a stop lives on that adapter, and build keeps no adapter between calls."""
+        first = providers.build({'JOBADABRA_AI_ENGINE': 'cli'})
+        first.binary, first.run, first.timeout = '/bin/cli', never_answers, 1
+        self.assertEqual(cost.stopped(stop_of(first)), 'Claude Code did not answer')
+        switched = providers.build({'JOBADABRA_AI_ENGINE': 'codex'})
+        self.assertIsInstance(switched, codex_cli.Codex)
+        self.assertEqual(switched._timeouts, 0)
+        back = providers.build({'JOBADABRA_AI_ENGINE': 'cli'})
+        self.assertIsNot(back, first)
+        self.assertEqual(back._timeouts, 0)
 
 
 if __name__ == '__main__':

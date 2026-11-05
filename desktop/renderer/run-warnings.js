@@ -24,7 +24,8 @@ export const runWarningLines = run => runWarnings([
 const LIMIT = /usage limits?|credit balance|AI limit reached|spending limit|spend limit|no credit left/i;   // the last two: OpenAI's (src/ai/providers/openai_api.py)
 export const isSpendingLimit = text => LIMIT.test(String(text || ''));
 // What stopped an AI step when it is no limit (cost.stop_line): signed out, not installed, not answering, a refused key. Why (5 Nov 2026, #3059): each read as a limit.
-const STOPPED = /^AI stopped: (.+?)(?: \(|, \d+ job\(s\)|$)/i;
+const STOPPED = /^(?:Warning:\s*)?AI stopped: (.+?)(?: \(|, \d+ job\(s\)|$)/i;
+/** The cause in a stop line ("AI stopped: Claude Code is not signed in, 3 job(s) left…" -> "Claude Code is not signed in"); '' for any other line. */
 export const stopCause = line => STOPPED.exec(String(line).trim())?.[1] || '';
 export const STOP_HELP = 'Settings → Connections → AI shows what to do';
 const SKIPPED =/^Skipped job (\S+): (.*)$/;
@@ -95,15 +96,16 @@ const RAW_EXCEPTION = /^(.{3,80}?):\s*(?:[\w.]+\.)?\w+(?:Error|Exception)\b.*$/;
 // The run's own row in the run history (opened at the start, its result saved at the end), said by the engine without the store's name
 // ("run not opened in the run history", Notion's "cronjob run not logged to Notion"): the person is told which store and what was not saved (#342).
 const RUN_ROW = /^(?:cronjob )?run not (opened|logged) (?:in|to) (?:the run history|Notion):\s*(.*)$/i;   // about Notion: the engine's own wording
-// Notion's own reason behind a plain "HTTP 400". Why (5 Nov 2026, #3059): it says what was refused, but it can quote what was sent, so anything that may be a value
-// (a quote, a link, an address, an id or a token) is not shown; its fixed words before "instead was" are.
+// Notion's own reason behind a plain "HTTP 400". Why (5 Nov 2026, #3059): it says what was refused, but it can quote what was sent, so only its known shapes are shown, the words
+// before "instead was": they hold a column or a request path, ours, never a job's value. A list of what to refuse let an unquoted value through (review), as a prefix did in #3071.
 const NOTION_SAID = /\bHTTP Error (\d{3}): (.+)$/;
-const MAY_BE_A_VALUE = /["“”'‘’`<]|https?:|@|[0-9a-f]{8}-?[0-9a-f]{4}|[\w-]{24,}|^Bad Request$/i;
+const NOTION_SHAPES = [/^[\w .-]{1,40} is not a property that exists$/, /^[\w .-]{1,40} is expected to be [\w ]{1,30}$/,
+  /^(?:body failed validation: )?body\.[\w.[\]]{1,80} should (?:not )?be[\w ≤≥<>=.-]{0,40}$/];
 function notionReason(text) {
   const [, code, said = ''] = NOTION_SAID.exec(text) || [];
   const reason = said.split(/,?\s+instead was\b/i)[0].replace(/`(\d+)`/g, '$1').replace(/[.\s]+$/, '');
   const plain = code && httpSentence(code) === `the service answered with an error (HTTP ${code})`;   // a busy or refused service keeps its sentence: it says what to do
-  return plain && reason && reason.length <= 120 && !MAY_BE_A_VALUE.test(reason) ? `${reason} (HTTP ${code})` : '';
+  return plain && NOTION_SHAPES.some(shape => shape.test(reason)) ? `${reason} (HTTP ${code})` : '';
 }
 function runRowWarning(raw) {
   const m = RUN_ROW.exec(raw);
@@ -140,8 +142,9 @@ export function groupWarnings(warnings) {
     add(head && head.length < 60 && !PROVIDER.test(head) && clean !== raw && !clean.startsWith(head) ? `${head}: ${clean}` : clean, null);
   }
   const total = [...counts].reduce((sum, count) => sum + count, 0);
-  const why = stop ? `${stop}. ${STOP_HELP}` : 'the Anthropic API spending limit was reached';
-  const out = total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : stop ? [why] : [];
+  const spent = 'the Anthropic API spending limit was reached', stopSaid = stop && `${stop}. ${STOP_HELP}`;
+  const why = stop && !limit ? stopSaid : spent;   // a real limit in the same run keeps the count; the stop is then its own line
+  const out = [...(total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
   for (const label of order) {
     const ids = groups.get(label) || [];
     if (!ids.length) { if (!out.includes(label)) out.push(label); continue; }

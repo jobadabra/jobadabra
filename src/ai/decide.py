@@ -37,7 +37,7 @@ _own = {}   # model calls per topic that has its own allowance (decide(allowance
 SCOPE = {'name': None, 'n': 0}   # own_allowance(): the calls inside count against this, not the run's cap
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
-STOPPED = {'why': '', 'key': False}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
+STOPPED = {'why': '', 'key': False, 'cause': ''}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
 WAITING = {'n': 0, 'said': False, 'calls': {}}   # items left unknown this run; model calls per topic
 
 
@@ -55,6 +55,7 @@ def _stop(error):
     """Ends the AI's asks for this run; remembers a refused key so the end-of-run line blames the key, not a limit (Sentry APP-42/43/44)."""
     STOPPED['why'] = f'{error_facts(error)} {error}'
     STOPPED['key'] = cost.refused_key(error)
+    STOPPED['cause'] = cost.stopped(error)
 
 
 def items_waiting():
@@ -67,6 +68,8 @@ def items_waiting():
         return f"Today's Free AI limit is reached: {n} items wait for tomorrow (or add your own key in Settings → Connections → AI)"
     if why and STOPPED['key']:
         return f'The AI key was refused: {n} items wait until you check it in Settings → Connections → AI'
+    if why and STOPPED['cause']:
+        return f"{STOPPED['cause']}: {n} items wait for the next run (Settings → Connections → AI shows what to do)"
     if why:
         return f'The AI limit is reached: {n} items wait for the next run (or add your own key in Settings → Connections → AI)'
     return f'The AI could not judge {n} items this time; they wait for the next run'
