@@ -54,7 +54,7 @@ def swiss_places(config):
 
 
 def text(s):
-    return re.sub(r'\s+', ' ', unescape(posting_text.TAG.sub(' ', s))).strip()   # real tags only: "Fluency in <German>" keeps its word (#3182)
+    return re.sub(r'\s+', ' ', unescape(posting_text.strip_tags(s))).strip()   # real tags only: "Fluency in <German>" keeps its word (#3182)
 
 
 def city(location):

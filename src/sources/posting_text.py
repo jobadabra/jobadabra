@@ -25,7 +25,7 @@ _ELEMENTS = ('a abbr address area article aside audio b base bdi bdo big blockqu
              'acronym applet basefont bgsound blink dir image keygen listing marquee menuitem multicol noembed noframes noindex plaintext rb rtc '
              'spacer xml xmp g path rect circle ellipse line polyline polygon defs use symbol text tspan lineargradient radialgradient stop clippath '
              'mask pattern foreignobject desc math mi mo mn ms mrow msup msub mfrac msqrt mtext mtable mtr mtd').split()
-TAG = re.compile(r'<\s*/?\s*(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<!--(?:(?!-->).){0,5000}-->|<![a-z\[][^<>]*>|<\?[^<>]*>'
+TAG = re.compile(r'<\s*/?\s*(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<![a-z\[][^<>]*>|<\?[^<>]*>'
                  % '|'.join(_ELEMENTS), re.I | re.S)
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
 _FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules
@@ -40,6 +40,23 @@ _HASHES = re.compile(r'(?m)^(#{1,6})[ \t]+(?=\S)|(?<=\s)#{2,6}[ \t]+(?=\S)')
 _ENTITY = re.compile(r'&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);')
 
 
+
+def strip_tags(text, replacement=' '):
+    """The text without its HTML markup: comments, then real tags (TAG). Comments are cut with str.find, one pass: a regex over many unclosed
+    "<!--" was quadratic (5 Nov 2026: 20000 of them took 3.8 s on CI)."""
+    out, at = [], 0
+    while True:
+        start = text.find('<!--', at)
+        end = text.find('-->', start + 4) if start >= 0 else -1
+        if end < 0:
+            out.append(text[at:])
+            break
+        out.append(text[at:start])
+        out.append(replacement)
+        at = end + 3
+    return TAG.sub(replacement, ''.join(out))
+
+
 def label(value):
     """A job's title, employer or place as plain text: HTML entities decoded (twice, as a feed may escape twice) and whitespace tidied. Only entities that
     end in ';' count, so "Smith &not Sons" keeps its words (html.unescape would turn that into a "¬")."""
@@ -50,7 +67,7 @@ def label(value):
 
 
 def _clean(fragment):
-    return re.sub(r'\s+', ' ', TAG.sub(' ', fragment)).strip()
+    return re.sub(r'\s+', ' ', strip_tags(fragment)).strip()
 
 
 def _is_markdown_page(text):
@@ -78,7 +95,7 @@ def html_to_text(markup, limit=LIMIT):
     text = _BOLD_ONLY.sub(lambda found: f'\n\n## {found[3].strip().rstrip(":").strip()}\n', text)
     text = _ITEM.sub('\n- ', text)
     text = _BREAK.sub('\n', text)
-    text = html.unescape(TAG.sub(' ', text))
+    text = html.unescape(strip_tags(text))
     lines = [re.sub(r'[ \t\r\f\v ]+', ' ', line).strip() for line in text.split('\n')]
     out = []
     for line in lines:
