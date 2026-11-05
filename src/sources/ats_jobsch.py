@@ -62,6 +62,28 @@ def jobsch_towns(markup):
     return towns
 
 
+def posting_places(job, page_town=''):
+    """Where a jobs.ch JobPosting is, one entry per address: "Town, Country" (the town without its canton prefix, "ZH Herrliberg"), the bare country for
+    an address abroad with no town, and the page's own town (jobsch_towns) for a Swiss address with none. [] when it names nothing: the caller's own fallback.
+    Why (5 Nov 2026, tester card f9e48e, #3181): both jobs.ch readers appended ", Switzerland" to every town and fell back to "Switzerland" for an
+    address with no town, whatever country the address named, so a job in Germany was listed and scored as Swiss. A missing country is Swiss (the board's)."""
+    from .. import country_codes
+    spots = job.get('jobLocation') or []
+    found = []
+    for spot in spots if isinstance(spots, list) else [spots]:
+        address = (spot.get('address') or {}) if isinstance(spot, dict) else {}
+        country = address.get('addressCountry') or 'CH'
+        country = country_codes.name(country.get('name', '') if isinstance(country, dict) else country) or 'Switzerland'
+        country = 'Switzerland' if country.lower() in ('ch', 'schweiz', 'suisse', 'svizzera') else country
+        town = re.sub(r'^[A-Z]{2} ', '', str(address.get('addressLocality') or address.get('addressRegion') or '').strip())
+        if not town and country == 'Switzerland':
+            town = page_town
+        entry = f'{town}, {country}' if town else country if country != 'Switzerland' else ''
+        if entry and entry not in found:
+            found.append(entry)
+    return found
+
+
 def jobsch_find(name, key, get=None):
     """An employer on jobs.ch by name: {'slug', 'site'} (its company page id, and the job site that page links, or ''), or None. Only a
     listing whose employer has the same name key (`key`, the scout's: "Manor" and "Manor AG" are one) counts, never a similar name."""
@@ -93,13 +115,9 @@ def jobsch(slug):
             if jobsch_company((job.get('hiringOrganization') or {}).get('sameAs')).split('-')[0] != company or job.get('url') in seen:
                 continue
             seen.add(job.get('url'))
-            places = job.get('jobLocation') or []
-            places = places if isinstance(places, list) else [places]
-            where = ', '.join(dict.fromkeys(str((p.get('address') or {}).get('addressLocality') or (p.get('address') or {}).get('addressRegion') or '')
-                                            for p in places if isinstance(p, dict)))
             ident = re.search(r'detail/([0-9a-f-]{36})', str(job.get('url') or ''))
-            where = where or (towns.get(ident.group(1), '') if ident else '')
-            out.append(_job(ident.group(1) if ident else job.get('url'), job.get('title'), (where + ', Switzerland').strip(', '),
+            where = ', '.join(posting_places(job, towns.get(ident.group(1), '') if ident else '')) or 'Switzerland'
+            out.append(_job(ident.group(1) if ident else job.get('url'), job.get('title'), where,
                             job.get('url'), str(job.get('datePosted') or '')[:10]))
         if len(postings) < 20:
             break
