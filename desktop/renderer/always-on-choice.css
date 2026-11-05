@@ -9,7 +9,9 @@
 .aon-checks[hidden] { display: none; }
 .aon-check { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--sp-3); align-items: center; }
 .aon-check-line { grid-column: 2 / -1; margin: 0; overflow-wrap: anywhere; }
-#aon-test-result:empty { display: none; }
+.aon-check-link { grid-column: 2 / -1; justify-self: start; }
+#aon-test-result:empty, #aon-test-search:empty { display: none; }
+.aon-test-search { display: flex; align-items: center; gap: var(--sp-2); margin: 0; }
 .aon-check:is([data-state="waiting"], [data-state="skipped"], [data-state="cancelled"]) .live-dot { background: var(--muted); }
 
 /* The privacy line and its button (PR 7, 5 Nov 2026): one row, the sentence then the button; the button wraps under it when the card is narrow. */
@@ -31,3 +33,7 @@
 .aon-measure-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .aon-measure-head .ui-pill svg { width: 12px; height: 12px; }
 .aon-measure > p { margin: var(--sp-1) 0 0; }
+
+/* The Settings → Notifications card borrowed by the Test pop-up: no box inside the dialog's own box (owner, 5 Nov 2026). */
+.aon-notify-dialog .setting.panel { border: 0; box-shadow: none; background: none; padding: 0; margin: 0; }
+.aon-notify-dialog .panel-lead { display: none; }

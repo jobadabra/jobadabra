@@ -131,3 +131,18 @@ test('a lasting refusal while reading ends the test with its reason; a blip or a
   const nokey = await testRead({...store(), secret: () => ''}, 'r', {fetcher: answer(200, '')});
   assert.deepEqual([nokey.found, nokey.verdict], [true, 'failed']);   // the key was removed mid-test: nothing to wait for
 });
+
+test('the Test on our servers reads the first search apart from the verdict: running, done with a count, failed with the site\'s note, absent on an older site', async () => {
+  const st = store(), answer = search => site({'GET /api/hosted/test': {ok: true, run: {id: 'r', status: 'ok', steps: [{key: 'on', label: 'Always on is on for you', state: 'ok'}], search}}}).fetcher;
+  const running = await testRead(st, 'r', {fetcher: answer({status: 'running', found: null, steps: [{key: 'finished', state: 'running'}]})});
+  assert.deepEqual([running.verdict, running.search], ['passed', {state: 'running', found: 0, note: ''}]);   // the verdict does not wait for the search
+  assert.deepEqual((await testRead(st, 'r', {fetcher: answer({status: 'ok', found: 3, steps: []})})).search, {state: 'ok', found: 3, note: ''});
+  assert.deepEqual((await testRead(st, 'r', {fetcher: answer({status: 'failed', found: null, steps: [{key: 'finished', state: 'failed', note: 'It did not report back.'}]})})).search, {state: 'failed', found: 0, note: 'It did not report back.'});
+  assert.equal((await testRead(st, 'r', {fetcher: answer(undefined)})).search, null);
+});
+
+test('the Test on our servers keeps the site\'s "check your notification settings" mark on a step', async () => {
+  const st = store(), s = site({'GET /api/hosted/test': {ok: true, run: {id: 'r', status: 'failed', steps: [{key: 'ai', label: 'The AI answers', state: 'ok'}, {key: 'mail', label: 'A test e-mail was sent to you', state: 'failed', note: 'No e-mail address is set.', settings: true}]}}});
+  const read = await testRead(st, 'r', {fetcher: s.fetcher});
+  assert.deepEqual(read.steps.map(step => [step.id, step.settings, step.line]), [['ai', false, ''], ['mail', true, 'No e-mail address is set.']]);
+});
