@@ -201,7 +201,7 @@ A full suite is 3-17 minutes; the step that failed is usually under one. Two ses
 Owner, 1 Nov 2026: "We should remove that rule. It was when we're not using PRs. Now, since we use PRs, main can be red." Main takes pull requests only, so the PR's own
 required checks ("All checks passed") guard it: the pre-push hook and `tools/ship.sh` never wait on or refuse a push because main's build is red (a flake already re-run green stopped
 three landings on 12 Oct 2026, and a red main stopped #2883 on 1 Nov 2026).
-- A red **e2e suite** on main still has an owner (gate G2b, `docs/rules/change-loop.md`): it is bisected to its breaking PR (`e2e-bisect.yml`) and named in a `red-main` issue and on that PR. A red `build.yml`, `page-cases.yml` or Windows run on main has no automatic owner now that the push block is gone: whoever sees it red first says so to the coordinator (owner decision, 1 Nov 2026; a filer for them is a new gate, which waits for the burn-in).
+- A red **e2e suite** on main still has an owner (gate G2b, `docs/rules/change-loop.md`): it is bisected to its breaking PR (`e2e-bisect.yml`) and named in the Red main list (/admin/testing/red-main) and on that PR. A red `build.yml`, `page-cases.yml` or Windows run on main has no automatic owner now that the push block is gone: whoever sees it red first says so to the coordinator (owner decision, 1 Nov 2026; a filer for them is a new gate, which waits for the burn-in).
 - `tools/revert-red.sh <sha>` and `tools/ship.sh --fix` remain as optional tools for a revert or a fix you want landed ahead of the queue. They are not required before a push.
 - `tools/ship-red.sh` (the landing wait) remains in the direct mode only (a non-GitHub origin, or `gh` not answering); a pull request never waits.
 

@@ -153,6 +153,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RED_MAIN_WAIT_S: '2700'   # the re-check takes 10-15 min; the lock `desktop-release` is held meanwhile
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the gate's green re-check drops the green suites from the Red main list (tools/e2e_bisect.py after-run)
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |
@@ -308,6 +309,7 @@ jobs:
           GATE_UNIT: '1'   # Why (1 Nov 2026, owner): the desktop unit tests are one more leg of each lane's Test matrix (lib/unit-leg.mjs), not a step of Build; e2e.yml never sets this
           GATE_KIND: ${{ inputs.nightly && 'nightly' || 'beta' }}   # a beta by hand runs quality only when what it watches changed
           OVER: ${{ steps.spend.outputs.over }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise breaker reads the noise register
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           npm ci || npm install

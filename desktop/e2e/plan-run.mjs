@@ -11,7 +11,8 @@ import {ensureStaged} from './lib/ensure-staged.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {NIGHT_REPORT, tolerantMatrixFlag, autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, suitePartsFor, waitingFindings} from './lib/plan.mjs';
 import {nightRef, nightSuites, NIGHT_TITLE} from './lib/night-pass.mjs';
-import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
+import {noiseEntries} from './lib/ci-state.mjs';
+import {asIssues} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 import {STORES, WHY} from './lib/pick-why.mjs';
 import {UNIT_SUITE, withUnitLeg} from './lib/unit-leg.mjs';
@@ -127,7 +128,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     try {
       const issues = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '300', '--json', 'number,state,stateReason,labels,comments,createdAt']));
       // Noise judged before filing never became an issue: it still counts against the review (lib/prejudge.mjs asIssues).
-      const judged = asIssues(registerEntries(JSON.parse(gh(REGISTER_LIST))[0]?.body));
+      const judged = asIssues(noiseEntries());
       const noise = noiseTripped([...issues, ...judged]);
       // While tripped, a scheduled run (and night pass 1: its findings are never filed, so it cannot add noise) still reviews (a probe, 9 Oct 2026): a paused review finds nothing real, so it could never earn its way back.
       if (noise.tripped && (event === 'schedule' || night)) why = `${why ? `${why} · ` : ''}AI review on as a probe: ${noise.noise} of the last ${noise.judged} judged review issues were noise (the noise breaker, lib/plan.mjs)`;

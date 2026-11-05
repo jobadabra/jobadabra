@@ -36,7 +36,7 @@ breaker had paused the AI screenshot review, the detector that found 21 of 29 re
 
 ## 0. Before starting (one line each to the owner)
 - **Scope:** `gh issue list --state open -L 200 --json number,title,labels,createdAt`. Say how many, by kind.
-- **Leave alone:** the loop's own state issues: `noise-register`, `harness-signatures`, `top-issues`, `verdict-audit`, `finder-scorecard`,
+- **Leave alone:** the loop's own state issues: `harness-signatures` and `ai-budget` (the noise register, top issues, verdict audit, scorecard and red-main list are Admin pages since 5 Nov 2026),
   `release-channels`, and any issue with an open fixer PR (`gh pr list --search "<number>"`, branches `auto-fix/`, `sentry-fix/`).
 - **Peers:** `ListAgents`; tell the other sessions you are triaging and which issues you take (someone may be fixing one).
 - **Tier:** each fix picks its own tier (AGENTS.md "Change tiers"); judging and closing is not a code change.
@@ -79,9 +79,8 @@ For each issue, oldest high-severity first:
 - A real one you cannot fix in this session: leave it `confirmed` with a comment saying what is missing; never close it.
 
 ## 3. Score the Finder: consult everything collected
-1. **The scorecard:** `node desktop/e2e/finder-scorecard.mjs --post` (repo root, ~5 s). Per detector: filed / real / false / open, precision,
-   the false-positive causes (`resolution:` labels), how often a judge changed the filed severity, the change since the last scorecard
-   (posted on the pinned `finder-scorecard` issue). It counts like `/admin/operations/self-healing` (same `classify()`, noise register included).
+1. **The scorecard:** the Finder scorecard card on `/admin/testing/self-healing` (published in each snapshot by `selfheal-stats.mjs`; nothing to run or post). Per detector: filed / real / false / open, precision,
+   the false-positive causes (`resolution:` labels), how often a judge changed the filed severity, the change since the previous snapshot. The Top issues, Judged noise and Verdict audit cards sit beside it.
 2. **The /self-heal page** (all the loop's collected data), read as the owner:
    `curl -sL -H "Authorization: Bearer $(security find-generic-password -s jobadabra.site.api_key -w)" https://www.jobadabra.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
    then strip the tags. Read every section, not only the totals:

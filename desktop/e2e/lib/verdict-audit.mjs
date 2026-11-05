@@ -1,8 +1,8 @@
 // The verdict pass's measured accuracy (5 Oct 2026): "every verdict I checked was right" is not a number. Each week, five random verdicts of the last 7 days (on issues,
-// and the ones that kept a finding from being filed) go into one issue with a right / wrong box each; the owner ticks them, and the next audit reports the score. Pure.
+// and the ones that kept a finding from being filed) go into the Verdict audit card of /admin/testing/self-healing (D1 ci_state `verdict-audit`) with a 👍 / 👎 each; the owner ticks them, and the next audit
+// reports the score. Pure. Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin"): the audit was a GitHub issue with checkboxes (#2736).
 import {MARK, whyOf} from './verdict-comment.mjs';
 
-export const AUDIT_LABEL = 'verdict-audit';
 export const AUDIT_SIZE = 5;
 
 // -> [{key, word, what, why, where}] judged in the window; `pick` is the random source (tests pass a fixed one).
@@ -18,17 +18,8 @@ export function sampleVerdicts({issues = [], register = [], now = Date.now(), da
   return out;
 }
 
-export function auditBody(items, last = null) {
-  return [`**Was the verdict right?** Tick one box per verdict. Five random verdicts of the last 7 days; the next audit reads your ticks and reports the accuracy.`,
-    ...(last ? ['', `📏 **Last audit:** ${last.right} of ${last.right + last.wrong} right${last.right + last.wrong < last.size ? ` (${last.size - last.right - last.wrong} not ticked)` : ''}.`] : []), '',
-    ...items.flatMap((item, i) => [`### ${i + 1}. \`${item.word}\` · ${item.what.slice(0, 90)} (${item.where})`, `> ${item.why.replace(/\n/g, ' ')}`, '',
-      `- [ ] 👍 right <!-- audit:${item.key}:right -->`, `- [ ] 👎 wrong <!-- audit:${item.key}:wrong -->`, '']),
-    '<sub>Written by `desktop/e2e/verdict-audit.mjs` every Saturday. Tick the boxes; do not edit the rest.</sub>'].join('\n');
-}
-
-// The owner's ticks: -> {right, wrong, size}.
-export function auditScore(body) {
-  const text = String(body || '');
-  const ticked = kind => (text.match(new RegExp(`- \\[[xX]\\] [^\\n]*<!-- audit:[^:]+:${kind} -->`, 'g')) || []).length;
-  return {right: ticked('right'), wrong: ticked('wrong'), size: (text.match(/<!-- audit:[^:]+:right -->/g) || []).length};
+/** The owner's ticks on one stored audit -> {right, wrong, size}. */
+export function auditScore(audit) {
+  const items = Array.isArray(audit?.items) ? audit.items : [];
+  return {right: items.filter(item => item?.tick === 'right').length, wrong: items.filter(item => item?.tick === 'wrong').length, size: items.length};
 }

@@ -201,6 +201,7 @@ jobs:
           GATE_TAG: ${{ inputs.gate_tag }}
           NIGHT_PASS: ${{ inputs.night_pass }}
           OVER: ${{ steps.spend.outputs.over }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the noise breaker reads the noise register; empty on a pull request run, which never reviews
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: node plan-run.mjs | { if [ "$OVER" = true ] || [ -n "$PR_SUITES" ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"   # a pull request: no AI screenshot review
       # Why (29 Oct 2026, owner): only selected AI suites need preflight; offline settings must run with missing or revoked AI secrets.
@@ -958,7 +959,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: write   # start e2e-bisect.yml for a new red suite (tools/e2e_bisect.py)
-      issues: write    # the red-main issues
       checks: read     # the failed steps' annotations the alert quotes (ci-alert.mjs stepCauses; review on #2249)
     steps:
       - uses: actions/checkout@v5
@@ -990,13 +990,14 @@ jobs:
           if [ "$RESULT" = failure ] || { [ "$RESULT" = cancelled ] && [ -z "$AFTER_MERGE" ]; }; then   # after a merge, a newer merge cancels the waiting job: not a red
             node ci-alert.mjs failure   # the alert's own link opens the failed job (owner's short shape, 30 Oct 2026)
           elif [ -z "$AFTER_MERGE" ]; then node ci-alert.mjs success; fi   # a few green steps after a merge never say main is green again
-      # A red on main gets an owner (gate G2b, owner's yes 26 Oct 2026): each red suite with no open `red-main` issue is bisected to its breaking PR (e2e-bisect.yml),
-      # and the issue of a suite this run passed is closed. Not for a release gate (it tests a release, and its reds are the beta's).
+      # A red on main gets an owner (gate G2b, owner's yes 26 Oct 2026): each red suite with no Red main entry (/admin/testing/red-main) is bisected to its breaking PR (e2e-bisect.yml),
+      # and the entry of a suite this run passed is dropped. Not for a release gate (it tests a release, and its reds are the beta's).
       - name: Own the red (bisect new reds, close the ones green again)
         if: ${{ !inputs.gate_tag }}
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}   # the Red main list (/admin/testing/red-main)
           AFTER_MERGE: ${{ inputs.after_merge }}
         run: if [ -n "$AFTER_MERGE" ]; then python3 tools/e2e_bisect.py after-merge "$GITHUB_RUN_ID"; else python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"; fi   # after a merge: silent here; e2e-revert.yml owns the retry and revert
       - if: always()

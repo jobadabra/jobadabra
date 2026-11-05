@@ -6,11 +6,12 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {pickCandidates, fixerCard, scorecard, appVersionAt, versionLabel, CONFIRMED, FALSE_POSITIVE, NEEDS_HUMAN, recentSightings, score, LABEL, NOT_SEEN, closedByFixComment, probeCleared, namesIssue, firstBuildSha, testedSha, SEEN_AGAIN, SIGHTINGS_NEEDED, sightings, PRIORITIES, priorityLabel, rankIssues, rankingBody, issueBody, issueTitle, labelFor, labelsFor, LIMIT_TESTED, NO_CREDIT, capAfterNoise, isFresh, droppedTable, macTwin, matchExisting, normalize, notSeenComment, closedComment, suiteOfIssue, toClose, suppressedBy, pickCandidate, readinessSummary, screenshotOf, seenAgainComment} from './lib/triage.mjs';
+import {pickCandidates, appVersionAt, versionLabel, CONFIRMED, FALSE_POSITIVE, NEEDS_HUMAN, recentSightings, score, LABEL, NOT_SEEN, closedByFixComment, probeCleared, namesIssue, firstBuildSha, testedSha, SEEN_AGAIN, SIGHTINGS_NEEDED, sightings, PRIORITIES, priorityLabel, rankIssues, issueBody, issueTitle, labelFor, labelsFor, LIMIT_TESTED, NO_CREDIT, capAfterNoise, isFresh, droppedTable, macTwin, matchExisting, normalize, notSeenComment, closedComment, suiteOfIssue, toClose, suppressedBy, pickCandidate, readinessSummary, screenshotOf, seenAgainComment} from './lib/triage.mjs';
 import {FLAKY, REGRESSION, fixedBefore, flakyOn, regressionComment} from './lib/triage.mjs';
 import {INTERMITTENT, labelRerun} from './lib/flaky-proof.mjs';
 import {foundText} from './lib/triage-issues.mjs';
-import {asIssues, entryOf, NOISE_WORDS, pendingOf, REGISTER_LABEL, registerBody, registerEntries, signatureVerdict, wordOf} from './lib/prejudge.mjs';
+import {asIssues, entryOf, NOISE_WORDS, pendingOf, signatureVerdict, wordOf} from './lib/prejudge.mjs';
+import {appendNoise, noiseEntries} from './lib/ci-state.mjs';
 import {POSSIBLE_DUPLICATE, sameCauseComment, sameCauseLinks} from './lib/same-cause.mjs';
 import {setResolution} from './lib/resolution.mjs';
 import {contextLine, stepAgeLine} from './lib/run-context.mjs';
@@ -56,9 +57,10 @@ function evidenceFile(finding) {
 }
 const urlOf = (urls, to) => (to && urls[to]) || '';
 
-export const RANKING_TITLE = '🔥 Top issues (ranked automatically)';
-// Every open issue carries one priority:P0..P3 label (only changed ones are edited), and one pinned issue lists the top of the list, rewritten when it differs.
-export function refreshRanking({gh = realGh, issues, repo = '', now = Date.now()}) {
+// Every open issue carries one priority:P0..P3 label (only changed ones are edited). The list itself is not written anywhere: selfheal-stats.mjs publishes it in each snapshot (rankingOf)
+// for the Top issues card of /admin/testing/self-healing.
+// Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): the pinned "Top issues" issue (#1892) is gone.
+export function refreshRanking({gh = realGh, issues, now = Date.now()}) {
   const ranked = rankIssues(issues, now);
   for (const band of PRIORITIES) gh(['label', 'create', priorityLabel(band), '--force', '--color', {P0: 'B60205', P1: 'D93F0B', P2: 'FBCA04', P3: 'C5DEF5'}[band], '--description', 'Ranked automatically by the UI loop']);
   for (const {issue, priority} of ranked) {
@@ -68,24 +70,12 @@ export function refreshRanking({gh = realGh, issues, repo = '', now = Date.now()
     for (const old of have.filter(name => name !== priorityLabel(priority))) args.push('--remove-label', old);
     gh(args);
   }
-  let prs = [];
-  try { prs = JSON.parse(gh(['pr', 'list', '--label', 'auto-ui-fix', '--state', 'all', '--limit', '100', '--json', 'state,createdAt'])); } catch { /* no numbers this time */ }
-  const body = rankingBody(ranked, now, 12, scorecard(issues, now), fixerCard(Array.isArray(prs) ? prs : [], issues, now));
-  const found = JSON.parse(gh(['issue', 'list', '--label', 'top-issues', '--state', 'open', '--json', 'number,body,id']));
-  if (found[0]) { if (found[0].body !== body) gh(['issue', 'edit', String(found[0].number), '--title', RANKING_TITLE, '--body', body]); return {ranked, number: found[0].number}; }
-  gh(['label', 'create', 'top-issues', '--force', '--color', 'B60205', '--description', 'The pinned ranked list of open findings']);
-  const url = gh(['issue', 'create', '--title', RANKING_TITLE, '--body', body, '--label', 'top-issues']).trim();
-  try {   // pinned (GitHub allows three); already pinned or no room is not worth failing the loop for
-    const number = url.split('/').pop();
-    const id = JSON.parse(gh(['issue', 'view', number, '--json', 'id'])).id;
-    gh(['api', 'graphql', '-f', `query=mutation { pinIssue(input: {issueId: "${id}"}) { issue { id } } }`]);
-  } catch { /* not pinned */ }
-  return {ranked, number: url.split('/').pop()};
+  return {ranked};
 }
 
 // -> {filed, again, gone, candidate}. `gh` and `publish` (the screenshot upload: files -> {to: url}) are injected so the rules can be tested without GitHub.
 // `pendingOnly`: plan, then return the new findings to judge before filing (lib/prejudge.mjs), with no write to GitHub. `verdicts`: {id: raw verdict} from that judgement.
-export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, repo = process.env.REPO || process.env.GITHUB_REPOSITORY || '', build = '', platform = 'mac', pendingOnly = false, verdicts = null, incomplete = [], today = new Date().toISOString().slice(0, 10)}) {
+export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, repo = process.env.REPO || process.env.GITHUB_REPOSITORY || '', build = '', platform = 'mac', pendingOnly = false, verdicts = null, incomplete = [], noise = {read: noiseEntries, append: appendNoise}, today = new Date().toISOString().slice(0, 10)}) {
   const found = filesNamed(artifacts);   // every suite's folder (e2e-artifacts/e2e-artifacts-<suite>/…), or one flat folder
   const withDir = (file, items) => items.map(item => ({...item, _dir: path.dirname(file)}));
   // A suite's failed steps: only the first is a finding (the later ones are its consequences), and none when the AI had no credit (not a product problem).
@@ -156,9 +146,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   // 1. decide what each finding is: new, a repeat of an open issue (even when the AI worded it differently), or already told in this run.
   // A Windows finding the Mac already told becomes a comment on that issue ("also seen on Windows"), or nothing when the Mac one was rejected: not a second issue.
   // What was judged noise before filing in earlier runs (the pinned noise register): dropped like a person's rejection, with no new judgement.
-  let register = null;
-  try { register = JSON.parse(gh(['issue', 'list', '--label', REGISTER_LABEL, '--state', 'open', '--limit', '1', '--json', 'number,body']))[0] || null; } catch { register = null; }
-  const remembered = registerEntries(register?.body);
+  const remembered = noise.read();
   const rejected = [...issues, ...asIssues(remembered)];
   const planAll = findings.map(finding => { const existing = matchExisting(finding, issues); return {finding, existing, twin: !existing && platform !== 'mac' ? macTwin(finding, everything) : null}; })
     .filter(({finding, existing, twin}) => existing || twin || !suppressedBy(finding, rejected));   // a closed false positive (or one judged noise before filing) stays closed
@@ -305,13 +293,8 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   if (links.length) gh(['label', 'create', POSSIBLE_DUPLICATE, '--force', '--color', 'CFD3D7', '--description', 'Probably the same cause as another issue filed by the same run']);
   for (const {later, earlier} of links) { gh(['issue', 'edit', String(later), '--add-label', POSSIBLE_DUPLICATE]); gh(['issue', 'comment', String(later), '--body', sameCauseComment(earlier, runUrl)]); }
   out.sameCause = links;
-  // The register remembers this run's noise (one pinned issue, created on first use).
-  if (noiseNow.length) {
-    const entries = [...remembered, ...noiseNow.map(({finding}) => entryOf(finding, verdictFor(finding), today))];
-    gh(['label', 'create', REGISTER_LABEL, '--force', '--color', 'CCCCCC', '--description', 'The pinned list of findings judged noise before filing']);
-    if (register) gh(['issue', 'edit', String(register.number), '--body', registerBody(entries)]);
-    else gh(['issue', 'create', '--title', '🧹 Judged noise before filing (kept automatically)', '--label', REGISTER_LABEL, '--body', registerBody(entries)]);
-  }
+  // The register remembers this run's noise: appended to the Judged noise card's store (the site keeps the newest 300 and drops a repeated id).
+  if (noiseNow.length) noise.append(noiseNow.map(({finding}) => entryOf(finding, verdictFor(finding), today)));
   // A commit that says "Fixes #N", between the build the issue was first seen on and this one: the fix is known, so one clean run closes it (otherwise two, as before).
   const fixOf = issue => {
     const from = firstBuildSha(issue), to = testedSha(build);
@@ -359,7 +342,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   for (const number of createdNow.filter(number => !issues.some(issue => issue.number === number))) {
     try { issues.push(JSON.parse(gh(['issue', 'view', String(number), '--json', 'number,state,stateReason,labels,body,comments,title,createdAt']))); } catch { /* the next run ranks it */ }
   }
-  refreshRanking({gh, issues, repo});
+  refreshRanking({gh, issues});
   // Test mistakes the loop teaches itself: a text that closed as a harness mistake three times is dropped from now on; one a real fix closed is unlearned (lib/signatures.mjs).
   const taught = learnSignatures(everything, learned);
   out.learned = {added: taught.added.map(item => item.id), revoked: taught.revoked, total: taught.all.length};
@@ -453,7 +436,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   // Only the pinned list: rebuilt when an issue is opened, closed or relabelled (ui-ranking.yml), not just after an e2e run.
   if (args.includes('--rank-only')) {
     const issues = JSON.parse(realGh(['issue', 'list', '--label', LABEL, '--state', 'all', '--limit', '300', '--json', 'number,state,stateReason,labels,body,comments,title,createdAt']));
-    const {ranked} = refreshRanking({issues, repo: process.env.REPO || process.env.GITHUB_REPOSITORY || ''});
+    const {ranked} = refreshRanking({issues});
     console.log(`Ranking rebuilt: ${ranked.length} open.`);
     process.exit(0);
   }
