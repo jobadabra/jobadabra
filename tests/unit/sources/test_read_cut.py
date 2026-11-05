@@ -88,25 +88,60 @@ class NoReadHoldsTheRun(unittest.TestCase):
             self.addCleanup(patch.stop)
         self.addCleanup(time_budget.start, 0)
 
+    def read_alone(self, name, read, hang=None):
+        """One reader as its own run, then every thread it started joined, so its left read has kept its page (late_reads) before the next
+        reader starts. -> (what it read, seconds it took).
+        Why (5 Nov 2026, #3265): waiting for the thread count to fall back to a baseline let an earlier reader's straggler stand in for this
+        read's thread under CI load, so b3's page landed in the next reader's run. Threads are joined by identity; the limit is a hang guard."""
+        (paths.DATA / late_reads.FILE).unlink(missing_ok=True)   # each reader its own run: no page kept from the one before
+        hang, before = hang or threading.Event(), set(threading.enumerate())
+        time_budget.start(180)
+        began = time.monotonic()
+        with redirect_stdout(io.StringIO()):
+            got = read(hang)
+        took = time.monotonic() - began
+        hang.set()
+        for thread in set(threading.enumerate()) - before:
+            thread.join(HANG_GUARD)
+            self.assertFalse(thread.is_alive(), f'{name}: a read still runs {HANG_GUARD} s after its site answered')
+        return got, took
+
     def test_every_reader_leaves_a_hanging_site_at_the_cut(self):
         for name, (read, expected) in READERS.items():
             with self.subTest(name):
-                (paths.DATA / late_reads.FILE).unlink(missing_ok=True)   # each reader its own run: no page kept from the one before (late_reads)
-                hang, before = threading.Event(), set(threading.enumerate())
-                time_budget.start(180)
-                began = time.monotonic()
-                with redirect_stdout(io.StringIO()):
-                    got = read(hang)
-                took = time.monotonic() - began
-                hang.set()
-                # Why (5 Nov 2026, #3263's red): the left read ends and keeps its page (late_reads) before the next reader clears the file. Waiting
-                # for the thread count to fall back to a baseline let an earlier reader's straggler stand in for it under CI load, so b3's page landed
-                # in the next reader's run. Each thread this read started is joined by identity; the limit is only a hang guard.
-                for thread in set(threading.enumerate()) - before:
-                    thread.join(HANG_GUARD)
-                    self.assertFalse(thread.is_alive(), f'{name}: a read still runs {HANG_GUARD} s after its site answered')
+                got, took = self.read_alone(name, read)
                 self.assertLess(took, CUT + 1.5, f'{name}: waited {took:.1f} s for a site that hangs (the old code waited for it)')
                 self.assertTrue(expected(got), f'{name}: {got}')
+
+    def test_a_straggler_from_before_never_stands_in_for_this_reads_own_thread(self):
+        # #3265, the flake forced (Gitar on #3268): a thread alive when 'job boards' starts ends when its sites answer, as the reader before's
+        # straggler did on CI; b3's left read keeps its page only once the next reader has begun, before it takes (events, no sleeps). A wait
+        # on the thread count stops early here and the next reader lists b3.test; the join by identity does not.
+        next_began, kept, real_keep, real_take = threading.Event(), threading.Event(), late_reads.keep, late_reads.take
+
+        def late_keep(kind, key, *args, **kwargs):
+            if key == 'b3.test' and not kept.is_set():
+                next_began.wait(1)   # the gate's limit: with the join, nothing sets it and the keep goes ahead after 1 s
+                real_keep(kind, key, *args, **kwargs)
+                return kept.set()
+            return real_keep(kind, key, *args, **kwargs)
+
+        def take_after_keep(kind, key, *args, **kwargs):
+            if key == 'b3.test' and late_keeping.is_set():
+                next_began.set()
+                kept.wait(1)
+            return real_take(kind, key, *args, **kwargs)
+        late_keeping = threading.Event()
+        hang = threading.Event()
+        straggler = threading.Thread(target=hang.wait, args=(HANG_GUARD,), daemon=True)
+        straggler.start()
+        with mock.patch.object(late_reads, 'keep', side_effect=lambda *a, **k: (late_keeping.set(), late_keep(*a, **k))[1]), \
+                mock.patch.object(late_reads, 'take', side_effect=take_after_keep):
+            self.read_alone('job boards', job_boards, hang)
+            got, _ = self.read_alone("the web search's boards", lambda h: job_boards(h, web=False))
+        self.assertTrue(kept.is_set(), 'the left b3 read never kept its page: the case did not run')
+        self.assertNotIn('b3.test', got)
+        self.assertEqual(len(got), 5, got)
 
     def test_without_a_budget_every_site_is_waited_for(self):
         time_budget.start(0)
