@@ -5,6 +5,12 @@ import {VERDICTS} from '../feedback-ai.mjs';
 export const ACTIONS = ['read', 'search', 'edit', 'run_tests', 'finish'];
 /** The caps of one run. Why (4 Nov 2026, owner: "a max timeout of 1h"; spec "Limits"): 30 steps, and 25 minutes for the one-shot (the follow-up rounds of 4/6 have the hour). */
 export const CAPS = {maxSteps: 30, maxMinutes: 25};
+/**
+ * Every refusal as ONE fixed word (the run record's step `refusal`, the admin's "why it lost time"); never the refusal's text, which may quote the item. WALLS are final (the agent may not get around them); the others say what to change and cost one turn.
+ * Why (5 Nov 2026, run 41946389132, owner: "Fix the loop, then a second run"): the prompt said every refusal is final, and the agent ended needs-human after ONE refused search; only a wall is final.
+ */
+export const WALL_WORDS = ['wall-path', 'wall-folder', 'wall-limit'];
+export const REFUSAL_WORDS = [...WALL_WORDS, 'short-pattern', 'not-a-folder', 'no-such-file', 'not-unique', 'file-exists', 'bad-tests', 'no-such-test', 'not-json', 'bad-action', 'no-edit', 'tests-not-run', 'no-title', 'bad-verdict', 'failed'];
 const KEEP = 10;   // the last turns sent in full; older ones shrink to the action's name (a 30-turn prompt would carry 100 KB of file text)
 
 /** The one answer shape of a turn: every field is required (a strict structured answer); the ones an action does not use are "" (files: []). */
@@ -27,7 +33,7 @@ export function systemFor(fence, {what = 'a reported bug', caps = CAPS} = {}) {
     '- edit: path, old (text that occurs EXACTLY ONCE in the file; "" creates a new file), new.',
     '- run_tests: files (at most 4 test files; they run in a box with no network and answer PASSED or FAILED with the output).',
     `- finish: verdict "fix" with title (at most 40 characters) and body (root cause, failing test, fix, in a few short bullets); or, when you changed nothing, one of ${VERDICTS.join(', ')} with a one-line why in body.`,
-    'A refused action comes back as a result and is final: do not try to get around a wall.',
+    'A refused action comes back as a result. "Refused (wall)" is final: a path or a limit the walls forbid; do not try to get around it. Any other "Refused" says what to change: change it and try again (it costs one of your turns).',
     'Rules:',
     '1. Find the root cause. A patch that hides the symptom (a retry, a longer timeout, a swallowed error, a special case) is not a fix.',
     '2. Edit only src/, desktop/renderer/, desktop/lib/ and their tests: a NEW test (desktop/test/unit/<scope>/<name>.test.js or tests/unit/<scope>/test_<name>.py; <scope> is the folder of the neighbouring tests of the code you fix: look at one first) that FAILS before your fix and PASSES after it. No test, no change. At most 8 files and a small patch. Run your test after your last edit and see it pass before you finish with "fix".',
@@ -62,25 +68,25 @@ export async function runLoop({ask, act, system, first, caps = CAPS, now = Date.
     spent.calls++; spent.input += answer.usage?.input_tokens || 0; spent.output += answer.usage?.output_tokens || 0;
     const action = parseAction(answer.text);
     let result = {text: ''};
-    if (action.error) result = {text: `Refused: ${action.error}.`};
+    if (action.error) result = {text: `Refused: ${action.error}. Try again with one JSON action.`, refusal: /^action must/.test(action.error) ? 'bad-action' : 'not-json'};
     else if (action.action === 'finish') {
       if (action.verdict === 'fix') {
-        if (!edited) result = {text: 'Refused: you have not changed anything. Edit, or finish with a verdict word.'};
-        else if (dirty) result = {text: 'Refused: run the changed tests after your last edit and see them pass first.'};
-        else if (!action.title.trim() || !action.body.trim()) result = {text: 'Refused: a fix needs a title and a body.'};
+        if (!edited) result = {text: 'Refused: you have not changed anything. Edit, or finish with a verdict word.', refusal: 'no-edit'};
+        else if (dirty) result = {text: 'Refused: run the changed tests after your last edit and see them pass first.', refusal: 'tests-not-run'};
+        else if (!action.title.trim() || !action.body.trim()) result = {text: 'Refused: a fix needs a title and a body.', refusal: 'no-title'};
         else final = {outcome: 'fix', title: action.title.trim(), body: action.body.trim(), verdict: 'fix'};
       } else if (action.verdict === 'answer' && allowAnswer && action.body.trim()) final = {outcome: 'answer', title: '', body: action.body.trim(), verdict: 'answer'};   // a follow-up round replies without a change (4 Nov 2026, [hm] 4/7)
       else if (VERDICTS.includes(action.verdict)) final = {outcome: 'verdict', title: '', body: String(action.body || '').trim(), verdict: action.verdict};
-      else result = {text: `Refused: verdict must be fix or one of ${VERDICTS.join(', ')}.`};
+      else result = {text: `Refused: verdict must be fix or one of ${VERDICTS.join(', ')}.`, refusal: 'bad-verdict'};
     } else {
-      try { result = await act(action); } catch (error) { result = {text: `Failed: ${String(error.message).slice(0, 200)}`}; }
+      try { result = await act(action); } catch (error) { result = {text: `Failed: ${String(error.message).slice(0, 200)}`, refusal: 'failed'}; }
       if (result.edited) edited = dirty = true;
       if (result.passed === true) dirty = false;
     }
     if (result.wall) walls++;
-    const refused = Boolean(action.error) || /^(Refused|Failed)/.test(result.text);
+    const refused = Boolean(action.error) || /^(Refused|Failed)/.test(result.text), refusal = refused && REFUSAL_WORDS.includes(result.refusal) ? result.refusal : refused ? 'failed' : '';   // a word off the list is none: the record never carries a text
     log(`step ${step}: ${action.action || 'refused'}${refused ? ' (refused)' : ''}`);
-    turns.push({said: answer.text, action: action.action || 'none', result: result.text, ms: now() - turnStart, refused, path: typeof action.path === 'string' ? action.path : '', tout: answer.usage?.output_tokens || 0});
+    turns.push({said: answer.text, action: action.action || 'none', result: result.text, ms: now() - turnStart, refused, refusal, path: typeof action.path === 'string' ? action.path : '', tout: answer.usage?.output_tokens || 0});
   }
-  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent, engine, walls, timeline: turns.map(turn => ({action: turn.action, ms: turn.ms, ok: !turn.refused, path: turn.path, tout: turn.tout}))};   // the run record (5/7): per turn, what it did, how long it took, whether it was refused, the tokens it wrote (the run's total input is in `spent`)
+  return {outcome: 'stopped', title: '', body: '', verdict: '', ...final, stopped, steps: turns.length, spent, engine, walls, timeline: turns.map(turn => ({action: turn.action, ms: turn.ms, ok: !turn.refused, refusal: turn.refusal, path: turn.path, tout: turn.tout}))};   // the run record (5/7): per turn, what it did, how long it took, whether it was refused, the tokens it wrote (the run's total input is in `spent`)
 }
