@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from .. import budget_tape
 from . import cost, decide, engine, page_words
-from ..sources import ats, careers
+from ..sources import ats, careers, posting_text
 from .models import SMALL_MODEL
 
 MODEL = SMALL_MODEL
@@ -72,7 +72,7 @@ def wanted_text():
 def text_for(markup, base):
     """The page as the model sees it: plain text, then "text -> address" for every link on the page."""
     body = re.sub(r'<(script|style|noscript|svg)\b.*?</\1>', ' ', markup, flags=re.S | re.I)
-    plain = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', body)).strip()
+    plain = re.sub(r'\s+', ' ', posting_text.strip_tags(body)).strip()
     lines = [f'{text[:90]} -> {url[:160]}' for url, text in careers.links(body, base) if text][:MAX_LINKS]
     return plain[:MAX_TEXT // 2] + '\n\nLinks:\n' + '\n'.join(lines)[:MAX_TEXT // 2]
 
