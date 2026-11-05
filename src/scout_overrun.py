@@ -63,8 +63,8 @@ def disarm():
     _stop.set()
 
 
-def leave_if_stuck(grace_s=LEAVE_GRACE_S):
-    """Everything is saved and published: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every
+def leave_if_stuck(grace_s=LEAVE_GRACE_S, code=0):
+    """The run is over: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every
     non-daemon thread before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s.
     Daemon threads never hold the exit and are not counted, nor threads alive before the run began (arm); a pool shut with wait=False keeps
     its idle workers alive a moment, and those end by themselves (26 Oct 2026: all three counted as stuck checks, other tests' leftover threads
@@ -80,7 +80,14 @@ def leave_if_stuck(grace_s=LEAVE_GRACE_S):
         print(f'scout: {len(stuck)} check thread(s) still running after the run; leaving without them', flush=True)
         sys.stdout.flush()
         sys.stderr.flush()
-        os._exit(0)
+        os._exit(code)
+
+
+def stop_run(message, grace_s=LEAVE_GRACE_S):
+    """Ends a run as failed, so the job goes red and its failure step tells the owner. A stuck check can neither hold that exit nor turn it into a 0."""
+    print(message, flush=True)
+    leave_if_stuck(grace_s, code=1)
+    raise SystemExit(1)
 
 
 @contextlib.contextmanager

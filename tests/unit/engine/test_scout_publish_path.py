@@ -11,14 +11,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import scout, scout_boards, scout_core, scout_overrun, trial
+from src import scout, scout_boards, scout_carry, scout_core, scout_overrun, trial
 from src.ai import cost
 
 
 class PublishPathTest(unittest.TestCase):
-    def run_main(self, board_run):
+    def run_main(self, board_run, seed=lambda *a, **k: 0):
         feed = {'company': 'Acme', 'ats': 'greenhouse', 'slug': 'acme', 'countries': ['ch'], 'jobs': 3}
-        seen = {}
+        seen = self.seen = {}
 
         def build_index(db, sources, **kwargs):
             seen['check_deadline'] = kwargs['deadline']
@@ -29,7 +29,7 @@ class PublishPathTest(unittest.TestCase):
                    mock.patch.object(scout, 'run', lambda *a, **k: ({}, [])), mock.patch.object(scout, 'telegram_summary', lambda *a, **k: 'summary'),
                    mock.patch.object(scout, 'fetch_contributions', lambda *a, **k: ([], {})),
                    mock.patch.object(scout.employer_index, 'fresh_nofeed', lambda dead: {}),
-                   mock.patch.object(scout, 'build_index', build_index),
+                   mock.patch.object(scout, 'build_index', build_index), mock.patch.object(scout_carry, 'seed', seed),
                    mock.patch.object(scout, 'market_coverage', lambda *a, **k: []),
                    mock.patch.object(scout, 'central_stats', lambda *a, **k: {'market': []}),
                    mock.patch.object(scout, 'fetch_boards', lambda *a, **k: []), mock.patch.object(scout, 'board_stats', lambda *a, **k: []),
@@ -45,6 +45,13 @@ class PublishPathTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--batch', '1', '--publish-index', '--db', str(Path(tmp) / 'jobs.sqlite')]):
             scout.main()
         return seen
+
+    def test_an_empty_cache_and_an_unread_index_publish_nothing(self):
+        """#2915: the real seed on an empty store, its index out of reach (127.0.0.1:1): no feed is checked and nothing goes up."""
+        with self.assertRaises(SystemExit) as stopped, contextlib.redirect_stdout(io.StringIO()):
+            self.run_main(lambda db, **kwargs: self.fail('the board pass ran'), seed=scout_carry.seed)
+        self.assertTrue(stopped.exception.code, 'the job must end red, so the owner is told')
+        self.assertEqual(self.seen, {}, 'neither the checks nor the publish ran')
 
     def test_the_calls_by_topic_are_in_the_log_even_when_a_stuck_check_ends_the_process(self):
         """Why (#2915): a stuck check leaves through os._exit, which skips atexit; decide's own line never reached a central run's log."""
