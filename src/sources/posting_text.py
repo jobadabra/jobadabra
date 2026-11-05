@@ -12,7 +12,21 @@ _HEADING = re.compile(r'<\s*h[1-6]\b[^>]*>(.*?)<\s*/\s*h[1-6]\s*>', re.S | re.I)
 _BOLD_ONLY = re.compile(r'<\s*(p|div)\b[^>]*>\s*<\s*(strong|b)\b[^>]*>([^<]{1,80})<\s*/\s*\2\s*>\s*:?\s*<\s*/\s*\1\s*>', re.I)
 _ITEM = re.compile(r'<\s*li\b[^>]*>', re.I)
 _BREAK = re.compile(r'<\s*/?\s*(?:p|div|section|article|header|footer|ul|ol|table|tr|br|hr|blockquote)\b[^>]*>', re.I)
-_TAG = re.compile(r'<[^>]+>')
+# Why (5 Nov 2026, tester card f9e48e, #3182): `<[^>]+>` took any angle-bracket text for markup, so "Fluency in <German> and English" read
+# "Fluency in and English" and the posting's summary lost its required language. Only a tag that IS HTML goes: the standard's element names (a
+# fixed list from the spec, not a word list of ours), a namespaced (<o:p>) or custom (<my-tag>) element, a comment, a doctype, a declaration.
+# Known limit: a placeholder that spells a real element ("Permis <B>", "<address>") is still taken for that tag.
+_ELEMENTS = ('a abbr address area article aside audio b base bdi bdo big blockquote body br button canvas caption center cite code col colgroup data '
+             'datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head '
+             'header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav nobr noscript object ol optgroup '
+             'option output p param picture pre progress q rp rt ruby s samp script section select slot small source span strike strong style sub '
+             'summary sup svg table tbody td template textarea tfoot th thead time title tr track tt u ul var video wbr '
+             # legacy and Word markup an ATS still sends, SVG and MathML children (the standards' names)
+             'acronym applet basefont bgsound blink dir image keygen listing marquee menuitem multicol noembed noframes noindex plaintext rb rtc '
+             'spacer xml xmp g path rect circle ellipse line polyline polygon defs use symbol text tspan lineargradient radialgradient stop clippath '
+             'mask pattern foreignobject desc math mi mo mn ms mrow msup msub mfrac msqrt mtext mtable mtr mtd').split()
+TAG = re.compile(r'</?(?:(?:%s)|[a-z][\w.]*:[\w.:-]+|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w:-])[^<>]*>|<![a-z\[][^<>]*>|<\?[^<>]*>'
+                 % '|'.join(_ELEMENTS), re.I | re.S)
 # A posting some portals send as a converted web page, in markdown: front matter, backslash-escaped marks, links, bold, "===" underlines, "#" headings.
 _FRONT_MATTER = re.compile(r'\A\s*---(?=[\w-]+:).{0,800}?---', re.S)   # "---base:meta-keywords: … title: X---": key: value pairs between two rules
 _ESCAPE = re.compile(r'\\+(?=[^\w\s])')   # "\-", "\\&amp;": marks escaped once or twice
@@ -26,6 +40,23 @@ _HASHES = re.compile(r'(?m)^(#{1,6})[ \t]+(?=\S)|(?<=\s)#{2,6}[ \t]+(?=\S)')
 _ENTITY = re.compile(r'&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);')
 
 
+
+def strip_tags(text, replacement=' '):
+    """The text without its HTML markup: comments, then real tags (TAG). Comments are cut with str.find, one pass: a regex over many unclosed
+    "<!--" was quadratic (5 Nov 2026: 20000 of them took 3.8 s on CI)."""
+    out, at = [], 0
+    while True:
+        start = text.find('<!--', at)
+        end = text.find('-->', start + 4) if start >= 0 else -1
+        if end < 0:
+            out.append(text[at:])
+            break
+        out.append(text[at:start])
+        out.append(replacement)
+        at = end + 3
+    return TAG.sub(replacement, ''.join(out))
+
+
 def label(value):
     """A job's title, employer or place as plain text: HTML entities decoded (twice, as a feed may escape twice) and whitespace tidied. Only entities that
     end in ';' count, so "Smith &not Sons" keeps its words (html.unescape would turn that into a "¬")."""
@@ -36,7 +67,7 @@ def label(value):
 
 
 def _clean(fragment):
-    return re.sub(r'\s+', ' ', _TAG.sub(' ', fragment)).strip()
+    return re.sub(r'\s+', ' ', strip_tags(fragment)).strip()
 
 
 def _is_markdown_page(text):
@@ -64,7 +95,7 @@ def html_to_text(markup, limit=LIMIT):
     text = _BOLD_ONLY.sub(lambda found: f'\n\n## {found[3].strip().rstrip(":").strip()}\n', text)
     text = _ITEM.sub('\n- ', text)
     text = _BREAK.sub('\n', text)
-    text = html.unescape(_TAG.sub(' ', text))
+    text = html.unescape(strip_tags(text))
     lines = [re.sub(r'[ \t\r\f\v ]+', ' ', line).strip() for line in text.split('\n')]
     out = []
     for line in lines:

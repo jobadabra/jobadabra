@@ -58,6 +58,36 @@ class PostingTextTests(unittest.TestCase):
         html_to_text(page)
         self.assertLess(time.monotonic() - began, 2.0)
 
+    def test_a_language_in_angle_brackets_is_not_lost_with_markup(self):
+        """Tester card f9e48e (#3182): "Fluency in <German> and English" was summarised "Fluency in and English"; the job needed German."""
+        from src.ai import page_reader
+        from src.sources import boards
+        said = 'Fluency in <German> and English'
+        for name, read in (('posting_text', html_to_text), ('ats.plain', ats.plain), ('boards.text', boards.text),
+                           ('page_reader', lambda markup: page_reader.text_for(markup, 'https://x.example/'))):
+            with self.subTest(reader=name):
+                self.assertIn(said, read(f'<p>{said}</p>'))
+        self.assertEqual(html_to_text('Fluency in &lt;German&gt; and English'), said)   # sent escaped once: still its words
+
+    def test_comparison_signs_and_unknown_angle_words_stay_but_real_tags_go(self):
+        self.assertEqual(html_to_text('Salary < 100 and > 50; please send <your CV> by mail'), 'Salary < 100 and > 50; please send <your CV> by mail')
+        self.assertEqual(html_to_text('<p>Hi <o:p></o:p><my-widget a="1">there</my-widget><!-- note --><br/>All<img src="x"></p>'), 'Hi there\nAll')
+
+    def test_legacy_word_svg_and_uppercase_markup_still_goes(self):
+        for markup in ('<BR>t', '<FONT size=2>t</FONT>', '<xml><w:WordDocument></w:WordDocument></xml>t', '<marquee>t</marquee>', '<dir><li>t</li></dir>',
+                       '<svg viewBox="0 0 1 1"><path d="M0 0"/><g><circle r="1"/></g><use href="#a"/></svg>t', '<math><mi>t</mi></math>'):
+            with self.subTest(markup=markup):
+                self.assertEqual(html_to_text(markup).replace('- ', '').strip(), 't')
+
+    def test_a_space_after_the_angle_bracket_is_text_not_a_tag(self):
+        said = 'We need < a dozen people and > 5 years of experience'
+        self.assertEqual(html_to_text(said), said)
+
+    def test_many_unclosed_comment_openers_are_read_in_linear_time(self):
+        began = time.monotonic()
+        html_to_text('<!--' * 20000)
+        self.assertLess(time.monotonic() - began, 2.0)
+
 
 if __name__ == '__main__':
     unittest.main()
