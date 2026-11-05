@@ -183,6 +183,12 @@
           <button class="secondary cv-way" id="cv-build" type="button" data-wand title="Answer a few questions and the AI writes your CV"><i data-icon="sparkle"></i><span>Build one with AI</span></button>
         </div>
       </div>
+      <div class="switch-row cv-consent" id="cv-email" hidden>
+        <span class="switch"><input type="checkbox" id="cv-email-consent" aria-describedby="cv-email-note"><span></span></span>
+        <span><label for="cv-email-consent" id="cv-email-wording"></label>
+          <span class="muted small" id="cv-email-note">To <b id="cv-email-address"></b>. <span id="cv-email-rest"></span></span>
+          <span class="message" id="cv-email-message" role="status"></span></span>
+      </div>
       <div class="actions">
         <button class="ghost" data-back>Back</button>
         <button class="primary" id="cv-next" disabled>Continue</button>

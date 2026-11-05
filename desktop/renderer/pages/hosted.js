@@ -6,6 +6,7 @@ import {shared} from './shared.js';
 import {openSetting} from './settings.js';
 import {NAME, STORED, SUBTITLE, model} from '../hosted-words.js';
 import {draw as drawChoice, mountChoice} from './always-on-choice.js';
+import {askConsentOnce} from './hosted-email-ask.js';
 
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
 
@@ -36,7 +37,10 @@ export function mountCard() {
     refresh();
   };
   const toNotify = () => { openSetting('notify'); setTimeout(() => $('notify-address')?.focus(), 120); };
-  $('hosted-turn-on').addEventListener('click', () => (shared.hosted && !hostedAddress(shared.hosted) ? toNotify() : turnOn()));
+  $('hosted-turn-on').addEventListener('click', async () => {
+    if (await askConsentOnce(card, refresh)) return;   // the e-mail line, once (pages/hosted-email-ask.js)
+    if (shared.hosted && !hostedAddress(shared.hosted)) toNotify(); else turnOn();
+  });
   $('hosted-change-email').addEventListener('click', toNotify);
   $('hosted-resume').addEventListener('click', turnOn);
   $('hosted-turn-off').addEventListener('click', async () => { const done = await window.pilot.hostedOff(); message('hosted-set-message', done.ok ? 'Always on is off. Everything we held is deleted.' : done.error || 'Could not turn it off just now.', done.ok ? 'ok' : 'bad'); refresh(); });

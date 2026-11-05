@@ -4,6 +4,9 @@ import * as channel from './notify-channel.js';
 import {followNotify} from './hosted-email.js';
 import {createNotifyMoments} from './notify-moments.js';
 import {waitingMessageFor} from './waiting-message.js';
+import * as consent from './email-consent.js';
+import {cvAddress, view as consentView} from './email-from-cv.js';
+import {LINE, FAILED} from '../renderer/email-consent-words.js';
 
 const MOMENTS = ['day3', 'day10', 'stopped', 'waited', 'lost', 'match', 'reply', 'recruiter'];
 
@@ -28,9 +31,25 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     log('notify', result.ok ? 'confirm mail sent again' : 'confirm mail not sent again', {code: result.code || ''});
     return result;
   });
+  // The e-mail consent line (lib/email-consent.js): the CV's address and where it is still asked; giving it saves the CV's address through the one way to the site (channel.save), which stores the consent.
+  ipcMain.handle('emailConsentView', async () => DEMO ? {address: 'alex.example@example.com', consented: false, wording: LINE, askCv: true, askAlwaysOn: true} : consentView(storage));
+  ipcMain.handle('emailConsentAsked', async (_, place) => { if (!DEMO) consent.asked(storage, place); });
+  ipcMain.handle('emailConsentGive', async (_, {where, given} = {}) => {
+    if (DEMO) return {ok: true};
+    const address = await cvAddress(storage);
+    if (!address || !consent.PLACES.includes(where)) return {ok: false, error: FAILED};
+    const result = await save({by: [...new Set([...channel.channelsOf(storage), 'email'])], email: address, marketing: false, consentVia: where, consentGiven: consent.GIVEN.includes(given) ? given : 'switched'});
+    return result.ok ? {ok: true} : {ok: false, error: FAILED, why: result.error || ''};
+  });
+  async function save(choice) {
+    const result = await channel.save(storage, choice);
+    log('notify', result.ok ? 'saved' : 'not saved', {by: (choice.by || []).join(','), email: !!choice.email, error: result.error || '', consent: choice.consentVia || ''});
+    if (result.ok) await followNotify(storage).catch(error => log('notify', 'Always on did not follow the new address', {error: error.message}));
+    return result;
+  }
   ipcMain.handle('notifySave', async (_, choice) => {
     if (DEMO) return {ok: true};
-    const result = await channel.save(storage, choice || {});
+    const result = await channel.save(storage, {...(choice || {}), consentVia: undefined, consentGiven: undefined});
     log('notify', result.ok ? 'saved' : 'not saved', {by: (choice?.by || []).join(','), email: !!choice?.email, error: result.error || ''});
     if (result.ok) {   // Always on, when on, follows a changed address or news choice (#1711: one shared e-mail)
       const moved = await followNotify(storage).catch(error => ({ok: false, error: error.message}));

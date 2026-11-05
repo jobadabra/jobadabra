@@ -1,6 +1,6 @@
 /* The shared magic effect for a card (data-magic, magic.js): a soft light and a lit edge under the cursor, a sparkle trail and burst, slow idle twinkles.
    Whole card is one button: .magic-go's ::after covers it. Everything stops with reduced motion. Guard: test/unit/renderer/welcome-magic.test.js. */
-.magic { position: relative; isolation: isolate; overflow: hidden; display: grid; justify-items: center; gap: var(--sp-3); text-align: center;
+.magic { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: var(--sp-3); text-align: center;
   width: 100%; max-width: 56rem; margin: 0 auto; padding: calc(var(--sp-6) * 2) var(--sp-6); border: 1px solid var(--signal-line); border-radius: var(--r-lg);
   background: linear-gradient(160deg, color-mix(in srgb, var(--signal) 9%, var(--surface)), var(--surface) 60%);
   transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
@@ -69,7 +69,8 @@
 @media (prefers-reduced-motion: reduce) { .is-zap { animation: none; } }
 
 /* The CV step's three ways in (pages/cv-build.js): Choose your CV in the middle and a little bigger, the other two on its sides, quieter; they sit above the card-wide button. */
-.cv-ways { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: var(--sp-3); }
+/* Why (5 Nov 2026, co): `nowrap` made the row's min-content the whole row, which widened .magic's one grid column past the card at the narrowest window (640 px: Build one with AI cut 13 px off). */
+.cv-ways { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-3); }
 .cv-ways .magic-go { margin-top: 0; padding: var(--sp-3) calc(var(--sp-6) * 1.4); }
 .cv-way { position: relative; z-index: 4; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); border-radius: var(--r-pill); }
 .cvb-job { margin-top: var(--sp-3); }

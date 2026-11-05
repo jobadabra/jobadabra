@@ -9,6 +9,7 @@ import {panelClosed, panelOpened, remembered} from './nav.js';
 import {toastMessage} from './startup.js';
 import {renderDraft, showDraftIntro} from './strategy-review.js';
 import {goStep} from './wizard.js';
+import {showCvEmail} from './cv-email-consent.js';
 import {CV_FILES} from '../cv-files.js';
 import {KIND, kindOf, capital, outcome, refreshGmailConnection} from './activity-basics.js';
 import {lastActivity, renderActivity} from './activity-render.js';
@@ -71,6 +72,7 @@ export function refreshCv() {
   $('cv-choose-label').textContent = cvName ? 'Replace CV…' : `Choose your CV (${kinds})…`;
   $('cv-kinds').textContent = `· ${kinds}`;
   $('cv-next').disabled = !shared.state.hasCv;
+  if (cvName) showCvEmail(undefined, toastMessage); else show($('cv-email'), false);   // the CV's address and the e-mail line (pages/cv-email-consent.js)
 }
 
 // The wizard asks nothing but an optional note (strategy step, before building): the AI proposes the goals from the CV, the review corrects them.
