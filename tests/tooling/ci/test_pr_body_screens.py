@@ -44,6 +44,9 @@ class ScreensRule(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn('No visible change', result.stderr)
 
+    def test_a_changed_stylesheet_cannot_say_no_visible_change(self):
+        self.assertEqual(self.check(['admin/admin.css'], 'No visible change: a colour is tidied.').returncode, 2)
+
     def test_a_page_change_without_either_is_refused(self):
         self.assertEqual(self.check(['web/public/index.html'], '').returncode, 2)
 
