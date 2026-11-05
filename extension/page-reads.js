@@ -1,6 +1,6 @@
 // What the flow reads off a page, as two closed scripts run in the tab (moved out of fill-flow.js, 13 Oct 2026, a pure move): pageShape (the counts of fields, files, frames and the document's status)
 // and pageSketchOf (the page's sketch for the AI that decides its kind: headings, controls, buttons, frames). Both are closed scripts: desktop/e2e/ladder-capture.mjs runs pageSketchOf's body on its own.
-// Guards: desktop/test/unit/extension/named-controls.test.js, desktop/e2e/test/own-ui-not-read.test.mjs, desktop/e2e/test/ladder-capture-frames.test.mjs.
+// Guards: desktop/test/unit/extension/named-controls.test.js, the recorded case desktop/e2e/recorded/own-panel-not-in-sketch-1.
 export function pageShape(tabId) {
   return chrome.scripting.executeScript({target: {tabId}, func: () => {
     const shown = el => el.getClientRects().length > 0 && el.type !== 'hidden';
@@ -35,7 +35,7 @@ export const labelReaderIn = tabId => chrome.scripting.executeScript({target: {t
 export function pageSketchOf(tabId) {
   return chrome.scripting.executeScript({target: {tabId}, func: () => {   // a closed script: desktop/e2e/ladder-capture.mjs runs its body on its own (no arguments)
     // Never the extension's own UI (the panel's shadow root, the step box, the note, the Submit guard: ids jobadabra-*, jobadabra-*): what the AI is shown is the page,
-    // not our panel's state at that moment (speed-5x, 11 Oct 2026: "Tailor my CV", "77 left required fields" in the sketch). Guard: desktop/e2e/test/own-ui-not-read.test.mjs.
+    // not our panel's state at that moment (speed-5x, 11 Oct 2026: "Tailor my CV", "77 left required fields" in the sketch). Guard: the recorded case desktop/e2e/recorded/own-panel-not-in-sketch-1.
     const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');
     const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
     const labelOf = el => text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || '';

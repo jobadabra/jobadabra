@@ -3,7 +3,7 @@
 // window.__jobadabraClaude). Owns: the three choices ("Let Claude finish this page" / "I'll do it myself" / "Always let Claude finish when I'm stuck"), the consent line on
 // the first press, the visible 5 s countdown with Cancel for "always", and "Tell me what's needed" when Claude is not ready. It never clicks or types in the page: a press
 // asks the app (panelTakeOver), which starts Claude's session; Claude never presses Submit. Guards: desktop/test/unit/extension/panel-claude.test.js (the choices as a pure function),
-// the real-extension check (desktop/e2e/test/real-extension.test.mjs).
+// the real-extension check (desktop/integration/extension/real-extension.test.mjs).
 (() => {
   if (window.__jobadabraClaude) return;
   const COUNT = 5;   // seconds the person sees before "always" starts Claude
