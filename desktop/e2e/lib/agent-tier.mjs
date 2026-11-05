@@ -4,7 +4,8 @@
 // The run's loop reads a refusal as the end: the actor's turn ends the session with `stopped at the cap`, the reader notes nothing, a note left unjudged is held, never filed. What is measured: a Board-style run is 40-80k tokens; a full seeded session on the small tier was 1.3-1.9M (5 Nov 2026), so a full night stops at this cap after its first goals.
 export const RUN_CAP_TOKENS = 250_000;
 export const HARNESS_MAX_TOKENS = 20_000;   // what each call carries before the page: instructions, answer shape, goal and what is known (owner, 5 Nov 2026)
-export const JUDGE_RESERVE_TOKENS = 25_000;
+export const JUDGE_RESERVE_TOKENS = 40_000;   // Why (5 Nov 2026, code review on #3240): a judge call now carries the area's rules (sent whole, about 0.3k today) and notes trimmed so the text fits 1k, beside its picture and report, about 5k worst case; 40k keeps room for 8 notes
+
 export const MAX_OUTPUT_TOKENS = 1024;   // the first call's answer headroom (brokerAsk asks max_tokens 1024, but the broker does not forward it); raised by the largest answer seen
 export const CAP_REACHED = 'the run token cap was reached';   // the refusal the loops read as "stop here"; a read it refused made no call
 const IMAGE_TOKENS = 1_500;   // a screenshot costs about this, whatever its bytes: its base64 text must not be counted as words

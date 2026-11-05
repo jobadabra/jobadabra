@@ -77,13 +77,13 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
 }
 
 /** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
-async function judgeNotes({notes, judgeAsk, spent}) {
+async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
   // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
   // Why (5 Nov 2026, code review on the 250k cap): when the run's cap leaves room for fewer judge calls than there are notes, the ones refused are held, so the serious notes are asked first and the low ones (never filed) last.
   let judgeDown = '';
   for (const note of [...notes].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
     const skipped = Boolean(judgeDown);
-    const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || ''});
+    const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || '', knowledge: knowledgeOf(note)});
     if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
     Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason});
     if (!skipped) spent.calls++;   // a note that was not asked made no call (Gitar, #3094)
@@ -92,11 +92,11 @@ async function judgeNotes({notes, judgeAsk, spent}) {
 }
 
 /**
- * Runs a whole session. `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
+ * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
+export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set();
@@ -115,7 +115,7 @@ export async function runSession({act, ask, judgeAsk, screenAsk = null, views, p
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stoppedByBroker = result.stopped; break; }
   }
-  await judgeNotes({notes, judgeAsk, spent});
+  await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || ''}}));

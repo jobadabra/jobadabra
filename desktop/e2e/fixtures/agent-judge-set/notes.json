@@ -1,0 +1,192 @@
+{
+ "source": "tour run 41952722418 (5 Nov 2026), app b6014b04, fictional test account; labels settled from each screenshot and the code (5 Nov 2026)",
+ "notes": [
+  {
+   "n": 1,
+   "view": "jobs",
+   "type": "data",
+   "kind": "wrong-result",
+   "severity": "high",
+   "title": "Applied tile includes an inbound job",
+   "expected": "jobs-5: The Applied tile excludes inbound jobs from its count.",
+   "observed": "The Applied tile shows 1 while Total matches is 0, and the conversation strip shows an inbound Registered nurse (team lead) job marked Applied.",
+   "why": "The tile misrepresents how many job matches have been applied to.",
+   "label": "real",
+   "cause": "jobs-5: the Applied tile counted an inbound job (the planted shape of the tour app b6014b04)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows Applied = 1 while Total matches = 0 and 0 jobs listed, with 3 inbound jobs in conversation, so the Applied count plausibly includes an inbound job, contradicting the expected exclusion and misleading the user."
+   }
+  },
+  {
+   "n": 2,
+   "view": "jobs",
+   "type": "data",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Jobs marked Applied/Interviewing also say Not checked",
+   "expected": "general UX: a job's status and its check state should not contradict each other",
+   "observed": "The rows 'Registered nurse (team lead)' and 'Registered nurse' show 'Not checked' next to the status 'Applied', and 'Senior Registered nurse' shows 'Not checked' next to 'Interviewing'.",
+   "why": "A person cannot tell whether the application was really verified, so the status looks unreliable.",
+   "label": "real",
+   "cause": "jobs-3: an applied job shown as Not checked on the Inbound list (the planted bug of PR #3026)",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "The screenshot shows only one visible row (Senior Registered nurse, Interviewing, Not checked), and \"Not checked\" plausibly refers to the job-posting check, which is separate from the user's application status, so the two aren't contradicto"
+   }
+  },
+  {
+   "n": 3,
+   "view": "focus",
+   "type": "ui",
+   "kind": "wrong-result",
+   "severity": "medium",
+   "title": "Language question shows levels without language names",
+   "expected": "profile-3 A language line names its languages with their levels, never a level grid that names no language.",
+   "observed": "The language question offers A1, A2, B1, B2, C1, C2 and native without showing any language names.",
+   "why": "I cannot tell which language a proficiency selection applies to.",
+   "label": "real",
+   "cause": "profile-3 / issue #3224: the language answer shows levels with no language names",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows the answer area as a bare grid of A1–C2 and native with no language names, and the language names only appear in the small \"Saved as\" text, so a user can't tell which language a level applies to."
+   }
+  },
+  {
+   "n": 4,
+   "view": "focus",
+   "type": "data",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Focus line says to review ready applications, but none exist",
+   "expected": "general UX: the recommended next step must agree with the rest of the screen's state",
+   "observed": "The screen says \"Your focus\" is \"Review ready applications.\", while Up next says \"0 actions\" and \"Nothing waits for you right now.\", and the funnel shows \"Prepared 0\".",
+   "why": "The person is told to review applications that do not exist, so the guidance on what to do next is misleading.",
+   "label": "real",
+   "cause": "src/focus_items.py:181 says review ready applications although 0 kits are ready",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "The screenshot is covered by a \"Fill your details\" panel and shows no \"Your focus: Review ready applications\" line or \"Prepared 0\" funnel, so the reported contradiction can't be seen on this screen; the visible \"Nothing waits for you right "
+   }
+  },
+  {
+   "n": 5,
+   "view": "actions",
+   "type": "ux",
+   "kind": "text",
+   "severity": "medium",
+   "title": "Unavailable feature shows internal test explanation",
+   "expected": "general UX: An unavailable task should explain the user-facing cause and how to proceed.",
+   "observed": "Ready to send displays “Not in the end-to-end journey: it never reaches our server” beneath disabled fill controls.",
+   "why": "This internal explanation does not help the person understand how to make form filling available.",
+   "label": "false",
+   "cause": "by design: the Ready to send reason in a test run only (fixtures/judge-exam/e1789)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows \"Not in the end-to-end journey: it never reaches our server\" beside disabled Fill buttons, which is internal test-harness wording that gives the user no cause or next step."
+   }
+  },
+  {
+   "n": 6,
+   "view": "strategy",
+   "type": "ux",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Saved strategy still claims an unsaved change",
+   "expected": "general UX: After saving, the change indicator should agree with the saved status.",
+   "observed": "Minimum salary shows CHF 140,000 and the page says “Saved ✓”, but it also says “1 unsaved change in Your strategy” while Save and Discard are disabled.",
+   "why": "I cannot tell whether my salary change is safely saved or still needs action.",
+   "label": "real",
+   "cause": "issue #3225: save-bar.js:63 keeps 1 unsaved change beside Saved ✓ for 2.5 s",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "The screenshot shows no \"Saved ✓\" text, no \"1 unsaved change in Your strategy\" message, and no Save or Discard buttons. The only visible indicators are a \"Your search changed\" banner and a suggestion count, so the reported contradiction can"
+   }
+  },
+  {
+   "n": 7,
+   "view": "strategy",
+   "type": "data",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Work mode shows all options, not a choice",
+   "expected": "general UX: a setting shows the person's chosen value, not the list of every option",
+   "observed": "Work mode reads \"On-site, hybrid or remote\" while Remote work reads \"Jobs that allow working from Switzerland\", so the two lines do not clearly say what was chosen.",
+   "why": "The person cannot tell whether a work mode was set, so they cannot check that a change took.",
+   "label": "false",
+   "cause": "wording taste: two different settings, not one choice shown twice",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "\"On-site, hybrid or remote\" is a plausible chosen value (the user accepts any work mode), the screenshot doesn't show a Remote work line to compare, and the claim that the user can't tell whether a mode was set is weak."
+   }
+  },
+  {
+   "n": 8,
+   "view": "settings",
+   "type": "ux",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Automation label claims an off setting is always on",
+   "expected": "settings-3: The label names the setting without claiming it is on; the value states whether it is on or off.",
+   "observed": "The Automation card labels a row “Always on: your GitHub” while its value says “Off — runs while the app is open.”",
+   "why": "The contradictory label and value make it unclear whether GitHub automation is enabled.",
+   "label": "false",
+   "cause": "settings-3: a setting label and its value; Off is the value",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows the Automation card row labelled \"Always on: your GitHub\" with the value \"Off — runs while the app is open\", so the label says always on while the value says off, which is a real contradiction that makes the setting's s"
+   }
+  },
+  {
+   "n": 9,
+   "view": "settings",
+   "type": "ui",
+   "kind": "consistency",
+   "severity": "high",
+   "title": "Server automation shows On before activation",
+   "expected": "general UX: Automation status must consistently indicate whether it is active.",
+   "observed": "“Always on: on our servers” shows “On” but also says “Add your e-mail in Notifications to get the matches. Then turn it on here” and offers “Add your e-mail.”",
+   "why": "I cannot tell whether searches will run while my Mac is off.",
+   "label": "real",
+   "cause": "hosted card showed On before activation at b6014b04 (fixed on main 5 Nov 2026)",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "The screenshot shows \"While app is open\" selected, and the schedule statuses read \"On · this Mac, while open\", so nothing shows server automation as \"On\" alongside an add-email prompt; the reported contradiction isn't visible on this screen"
+   }
+  },
+  {
+   "n": 10,
+   "view": "settings",
+   "type": "ui",
+   "kind": "consistency",
+   "severity": "high",
+   "title": "AI connection and API key statuses disagree",
+   "expected": "general UX: Connection status and credential status must agree about whether an API key is configured.",
+   "observed": "The AI service says “Connected · Anthropic API key,” while the execution engine's API key value says “Not set.”",
+   "why": "I cannot tell whether AI is ready to use or requires a key.",
+   "label": "real",
+   "cause": "Connected · Anthropic API key beside API key Not set at b6014b04 (fixed by #3035)",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "The screenshot shows the API key as \"Not set\" with an empty input, but it does not show any \"Connected · Anthropic API key\" status, so the claimed contradiction cannot be seen on this screen, and the visible \"Not set\" is consistent with the"
+   }
+  },
+  {
+   "n": 11,
+   "view": "settings",
+   "type": "ux",
+   "kind": "functionality",
+   "severity": "medium",
+   "title": "View backups leaves the overview unchanged",
+   "expected": "general UX: Clicking “View backups” should open the backup details.",
+   "observed": "After clicking “View backups,” Settings still shows the Overview cards, with no backup details opened.",
+   "why": "I cannot inspect backups through the card's action.",
+   "label": "false",
+   "cause": "View backups opens the backup folder in the system file manager (system-handlers.js:66)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "A \"View backups\" button on the Data & backup card on Overview should plausibly open backup details (e.g., navigate to the Data & backup section), and the report says the page stays on the Overview cards with nothing opened, which would make"
+   }
+  }
+ ]
+}

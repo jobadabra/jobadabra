@@ -21,15 +21,15 @@ test('the run is one meter: the actor stops first, the reader with it, the judge
   assert.equal(RUN_CAP_TOKENS, 250_000);
   let acted = 0;
   for (;;) { try { await act(sized(15_000)); acted++; } catch (error) { assert.match(error.message, new RegExp(CAP_REACHED)); break; } }
-  assert.equal(acted, 14, '14 x 15k = 210k; a 15th could pass the 225k the actor may use (250k less the judge reserve) with its worst case');
+  assert.equal(acted, 13, '13 x 15k = 195k; a 14th could pass the 210k the actor may use (250k less the judge reserve) with its worst case');
   await assert.rejects(read(sized(20_000)), /run token cap was reached/);
   assert.equal(reading.calls.length, 0, 'the reader was not asked after the cap');
   let judged = 0;
   for (;;) { try { await judge(sized(4_000)); judged++; } catch (error) { assert.match(error.message, new RegExp(CAP_REACHED)); break; } }
-  assert.equal(judged, 9, 'the judge used the reserve (210k + 9 x 4k = 246k)');
+  assert.equal(judged, 13, 'the judge used the reserve (195k + 13 x 4k = 247k)');
   assert.ok(budget.state.total <= RUN_CAP_TOKENS, `the total ${budget.state.total} never passes the cap`);
   assert.equal(budget.state.stoppedAtCap, true);
-  assert.equal(actor.calls.length, 14);
+  assert.equal(actor.calls.length, 13);
 });
 
 test('a screenshot is a flat price, not its bytes: a request with a big picture is not refused for its base64', async () => {

@@ -65,6 +65,17 @@ test('notes are judged high first, then medium, then low', async () => {
   assert.deepEqual(order, ['High', 'Medium', 'Low']);
 });
 
+test('the second opinion is given the rules of the note\'s area, and nothing when no rules are passed', async () => {
+  const run = async judgeKnowledge => {
+    const prompts = [];
+    const judgeAsk = async ({messages}) => { prompts.push(JSON.stringify(messages.at(-1).content)); return {text: JSON.stringify({verdict: 'agrees', reason: 'ok'}), usage: {}, tier: 'mid', engine: 'codex'}; };
+    await runSession({act: fakeAct(), ask: script([turn('note', NOTE), done('bug')]), judgeAsk, views: ['profile'], plan: {...plan, goals: [plan.goals[0]]}, knowledgeIds: ['profile-4'], judgeKnowledge});
+    return prompts[0];
+  };
+  assert.match(await run(note => `- ${note.view}-rule a saved answer is shown as typed`), /profile-rule a saved answer is shown as typed/);
+  assert.doesNotMatch(await run(undefined), /saved answer is shown as typed/);
+});
+
 test('a second opinion that gets no answer holds the notes, asks once not once per note, and the summary names what was held', async () => {
   const ask = script([turn('note', NOTE), turn('note', {...NOTE, title: 'Phone shown twice', observed: 'The phone number is listed twice.'}), done('bug', 'Two problems.')]);
   let asked = 0;

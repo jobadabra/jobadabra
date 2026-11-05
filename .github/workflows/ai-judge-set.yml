@@ -1,0 +1,37 @@
+name: CI · AI judge exam
+
+# The AI user agent's judge exam (owner, 5 Nov 2026: "Judge first"): the 11 recorded notes of one real tour run (desktop/e2e/fixtures/agent-judge-set), each with a settled label, judged three times by the old judge and three times by the current one through the AI broker, scored as "real notes kept" and "false notes dropped".
+# Report only, by hand: it gates nothing and no schedule starts it. About 66 short calls on the Claude mid tier, one at a time.
+run-name: AI judge exam · by hand
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # GitHub's per-run token the AI broker checks (desktop/e2e/lib/broker-client.mjs)
+
+concurrency:
+  group: ai-judge-set
+  cancel-in-progress: false
+
+jobs:
+  exam:
+    name: Judge exam
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: 22
+      - name: Judge the recorded notes, before and after
+        run: node desktop/e2e/agent-judge-set.mjs judge-set-out 2>&1 | tee judge-set.log
+      - uses: actions/upload-artifact@v6
+        if: always() && hashFiles('judge-set-out/judge-set.json') != ''
+        with:
+          name: judge-set
+          path: judge-set-out
+          retention-days: 30
