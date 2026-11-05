@@ -48,4 +48,4 @@ Each call would send the goal, the current screen and a short code-written summa
 ## Progress
 - [x] Spec and plan written; the owner chose both pieces (5 Nov 2026) (proof: none: the answer came in the chat through the coordinator and is quoted under Owner's words in this spec)
 - [x] [ag] A. The summary loop: dropped, the history is ~0.1k a step (proof: none: owner decision 5 Nov 2026 "Drop A, build B, measure the floor"; the numbers are in Why above)
-- [ ] [ag] B. Chained runs: the snapshot, the chain state, the dispatch, the note's pointer, one deep flow over 2–4 links (proof: PR body; `desktop/e2e/test/pool/agent-chain.test.mjs`)
+- [x] [ag] B. Chained runs: the snapshot, the chain state, the dispatch, the note's pointer (proof: `desktop/e2e/test/pool/agent-chain.test.mjs`; CI runs 42047462968 → 42048553562). Not proven: one deep flow over 2–4 links: the agent looped on goal 1 and a Codex 502 ended link 2 (PR body)
