@@ -3,6 +3,7 @@
 // passes in the services they share. A FLOW FILE (docs/flows/applying.md). Guards: the server, review, credentials and visits tests in desktop/test and
 // the matrix (npm run flows).
 import {availableLetter} from './letter-availability.js';
+import {createAsks} from './asks.js';
 import {takeoverOffered, claudeAutoStart} from './claude-ready.js';
 import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 import {noteReport, observe, pageKeyOf} from './ladder/rung5-takeover-teach.js';
@@ -128,6 +129,10 @@ export function registerExtServerHandlers(ctx) {
     appLog('recipes', `sent to the site: ${what}`, {cards: sent?.cards?.length || 0, proposalUses: sent?.proposalUses?.length || 0, samples: sent?.samples?.length || 0, outcomes: sent?.outcomes?.length || 0});
   }});
   setRecipeReporter(recipeReporter);   // main.js keeps it: the other handler groups reach it through a getter
+  // The ask gate (lib/asks.js): a failed application is a moment to invite the person to tell us, never from a test run.
+  const asks = createAsks({storage, getWindow, demo: DEMO});
+  ipcMain.handle('asksPending', () => asks.pending());
+  ipcMain.handle('asksAnswer', (_, kind, how) => asks.answer(String(kind), String(how)));
   // How an application ended (submitted clean / assisted / by Claude, or failed and where): one fixed word per finished application, by board. Never from a test run.
   terminals.onOutcome(session => {
     if (testRun()) return;
@@ -139,6 +144,7 @@ export function registerExtServerHandlers(ctx) {
     const board = controlEvents.boardName(host);
     recipeReporter.flow(board, result);
     appLog('sessions', `application ended: ${result}`, {board, id: session.id});
+    asks.moment(result);   // last: a failing settings write must not skip the counts above
   });
   server.setProposalReporter(items => recipeReporter.proposal(items));
   server.setAnswerReporter(trace => { if (!testRun()) recipeReporter.answer(trace); });   // per-AI-family answer metrics, never from a test run
