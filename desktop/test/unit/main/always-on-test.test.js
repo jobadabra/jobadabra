@@ -1,161 +1,142 @@
-// Always on's Test button, the app's side (lib/always-on-test.js): one state per check from the test run's steps, the engine's own words for a failed one,
-// a run started in the person's repository only, and an older repo brought up to date once. All with fake GitHub answers: no network, no real run.
+// Always on's Test on your own GitHub, the app's side (lib/always-on-test.js, lib/always-on-test-checks.js): every link is looked at directly, at once, with fake answers: no network, no run started in the
+// person's repository, no secret value read or returned, Free AI never counts, one test e-mail a day.
+// Guard: privacy — the test lists secret NAMES and never a value, and sends only the fixed test sentence; money — an AI check never uses Free AI and costs nothing (a models list).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import {STEPS, readTest, startTest, stepStates, verdictOf} from '../../../lib/always-on-test.js';
+import {STEPS, checkAll} from '../../../lib/always-on-test.js';
+import {aiCheck, notifyCheck, notionCheck} from '../../../lib/always-on-test-checks.js';
 
-const step = (name, status, conclusion = null) => ({name, status, conclusion});
-const jobWith = (...steps) => ({id: 7, name: 'engine / test', status: 'in_progress', html_url: 'https://github.com/me/r/actions/runs/5/job/7', steps});
-const idle = {listRuns: async () => [], wait: async () => {}};   // no network, no real pause
-const storage = (repo = 'me/r', token = 'ghu_x') => ({settings: () => ({cloud: repo ? {repo} : null}), secret: name => (name === 'GITHUB_TOKEN' ? token : '')});
-
-test('before the job exists every check waits', () => {
-  assert.deepEqual(stepStates(null, null).map(item => item.state), ['waiting', 'waiting', 'waiting']);
-  assert.deepEqual(stepStates(null, null).map(item => item.id), STEPS.map(item => item.id));
-});
-
-test('each check follows its own step: ok, running, waiting', () => {
-  const states = stepStates(jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'in_progress')), null);
-  assert.deepEqual(states.map(item => item.state), ['ok', 'running', 'waiting']);
-  assert.equal(verdictOf(states, jobWith(), {status: 'in_progress'}), 'running');
-});
-
-test('a failed check carries the engine\'s sentence, or says it could not, and the later ones still count', () => {
-  const job = jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'completed', 'success'), step('Check · AI key', 'completed', 'failure'));
-  const said = stepStates(job, {steps: {ai: {ok: false, line: 'Your AI key was refused (401). Paste a working key in the app, then press Test again.'}}});
-  assert.match(said[2].line, /refused \(401\)/);
-  assert.equal(said[2].state, 'failed');
-  assert.match(stepStates(job, null)[2].line, /failed before it could say why/);
-  assert.equal(stepStates(job, null)[0].line, '', 'a passing check has no failure line');
-});
-
-test('the verdict: passed only when every check is ok; cancelled is not failed; a run that ended with a check never started is failed', () => {
-  const ok = stepStates(jobWith(...STEPS.map(item => step(item.step, 'completed', 'success'))), null);
-  assert.equal(verdictOf(ok, jobWith(), {status: 'completed', conclusion: 'success'}), 'passed');
-  assert.equal(verdictOf(ok, jobWith(), {status: 'completed', conclusion: 'cancelled'}), 'cancelled');
-  const never = stepStates(jobWith(step('Check · GitHub run', 'completed', 'success')), null);
-  assert.equal(verdictOf(never, jobWith(), {status: 'completed', conclusion: 'failure'}), 'failed');
-});
-
-test('a test starts only in the person\'s own connected repository, as mode test', async () => {
-  const sent = [];
-  const dispatch = async (inputs, workflow, why) => { sent.push({inputs, workflow, why}); return {ok: true}; };
-  assert.equal((await startTest(storage(''), {dispatch, ...idle})).ok, false);
-  assert.equal((await startTest(storage('me/r', ''), {dispatch, ...idle})).ok, false);
-  assert.deepEqual(sent, [], 'nothing is sent while GitHub is not connected');
-  const started = await startTest(storage(), {dispatch, now: () => 1_000_000, listRuns: async () => [{id: 40}, {id: 38}], wait: idle.wait});
-  assert.equal(started.ok, true);
-  assert.equal(started.after, 40, 'the newest run listed before the press: only a higher id is this press\'s');
-  assert.equal(started.since, 985_000, 'looks 15 s back: GitHub stamps the run with its own clock');
-  assert.deepEqual(sent, [{inputs: {mode: 'test'}, workflow: 'daily.yml', why: 'always-on test button'}]);
-});
-
-test('an older repo that does not list the test mode is updated once, then asked again', async () => {
-  const calls = [];
-  const dispatch = async () => { calls.push('dispatch'); return calls.filter(item => item === 'dispatch').length === 1 ? {ok: false, error: "Provided value 'test' for input 'mode' not in the list of allowed values"} : {ok: true}; };
-  const update = async () => { calls.push('update'); return []; };
-  assert.equal((await startTest(storage(), {dispatch, update, ...idle})).ok, true);
-  assert.deepEqual(calls, ['dispatch', 'update', 'dispatch']);
-});
-
-test('any other refusal is reported and the repo is left alone', async () => {
-  const calls = [];
-  const result = await startTest(storage(), {dispatch: async () => ({ok: false, error: 'Resource not accessible by integration'}), update: async () => { calls.push('update'); }, ...idle});
-  assert.equal(result.ok, false);
-  assert.match(result.error, /not accessible/);
-  assert.deepEqual(calls, []);
-});
-
-function fakeGitHub({runs, jobs, artifacts = [], file = null}) {
-  const asked = [];
-  const json = value => ({ok: true, status: 200, json: async () => value});
-  const fetcher = async url => {
-    const route = url.replace('https://api.github.com', '');
-    asked.push(route);
-    if (route.includes('/workflows/daily.yml/runs')) return json({workflow_runs: runs});
-    if (route.endsWith('/jobs?per_page=20')) return json({jobs});
-    if (route.endsWith('/artifacts')) return json({artifacts});
-    if (route === 'https://download/result') return {ok: true, arrayBuffer: async () => new ArrayBuffer(4)};
-    throw new Error(route);
-  };
-  const unzip = async (_zip, folder) => { if (file) fs.writeFileSync(path.join(folder, 'selftest.json'), JSON.stringify(file)); };
-  return {fetcher, unzip, asked};
+const TOKENS = {GITHUB_TOKEN: 'ghu_SECRET', NOTION_TOKEN: 'ntn_SECRET', ANTHROPIC_API_KEY: 'sk-ant-SECRET', TELEGRAM_BOT_TOKEN: '1:SECRETBOT', JOBADABRA_TRIAL_KEY: 'JPT1.handle.SECRETMAC'};   // the trial key is what our site knows this install by
+function storage({secrets = {GITHUB_TOKEN: TOKENS.GITHUB_TOKEN, NOTION_TOKEN: TOKENS.NOTION_TOKEN, ANTHROPIC_API_KEY: TOKENS.ANTHROPIC_API_KEY, JOBADABRA_TRIAL_KEY: TOKENS.JOBADABRA_TRIAL_KEY}, settings = {}} = {}) {
+  const kept = {cloud: {repo: 'me/jobadabra-personal-always-on'}, notifyBy: ['app'], ...settings};
+  return {secret: name => secrets[name] || '', settings: () => kept, saveSettings: patch => Object.assign(kept, patch)};
 }
-const run = (extra = {}) => ({id: 5, html_url: 'https://github.com/me/r/actions/runs/5', status: 'in_progress', conclusion: null, created_at: '2026-11-04T13:00:10Z', display_title: 'test', ...extra});
-
-test('before GitHub lists the run it is still running, and nothing else is asked', async () => {
-  const gh = fakeGitHub({runs: []});
-  const read = await readTest(storage(), {since: Date.parse('2026-11-04T13:00:00Z'), fetcher: gh.fetcher});
-  assert.deepEqual([read.found, read.verdict], [false, 'running']);
-  assert.equal(gh.asked.length, 1);
-});
-
-test('a running test is read from the job\'s steps and the result file is not asked for yet', async () => {
-  const gh = fakeGitHub({runs: [run()], jobs: [{id: 3, name: 'engine / run', status: 'completed', conclusion: 'skipped', steps: []},
-    jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'in_progress'))]});
-  const read = await readTest(storage(), {since: 0, fetcher: gh.fetcher});
-  assert.deepEqual(read.steps.map(item => item.state), ['ok', 'running', 'waiting']);
-  assert.equal(read.verdict, 'running');
-  assert.match(read.url, /job\/7$/);
-  assert.ok(!gh.asked.some(route => route.endsWith('/artifacts')));
-});
-
-test('a finished failed test says which check failed and why, from the result file', async () => {
-  const job = {...jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'completed', 'success'), step('Check · AI key', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
-  const file = {steps: {ai: {ok: false, line: 'Your AI key was refused (401). Paste a working key in the app, then press Test again.'}}};
-  const gh = fakeGitHub({runs: [run({status: 'completed', conclusion: 'failure'})], jobs: [job], artifacts: [{name: 'jobadabra-selftest', expired: false, archive_download_url: 'https://download/result'}], file});
-  const read = await readTest(storage(), {since: 0, fetcher: gh.fetcher, unzip: gh.unzip});
-  assert.equal(read.verdict, 'failed');
-  assert.match(read.steps[2].line, /refused \(401\)/);
-});
-
-test('a missing result file is not a crash: the failed check says to open the run', async () => {
-  const job = {...jobWith(step('Check · GitHub run', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
-  const gh = fakeGitHub({runs: [run({status: 'completed', conclusion: 'failure'})], jobs: [job], artifacts: []});
-  const read = await readTest(storage(), {since: 0, fetcher: gh.fetcher});
-  assert.equal(read.verdict, 'failed');
-  assert.match(read.steps[0].line, /Open the run/);
-});
-
-test('another dispatch in the same minute is not the test', async () => {
-  const gh = fakeGitHub({runs: [run({id: 6, display_title: 'scheduled'})], jobs: []});
-  assert.equal((await readTest(storage(), {since: 0, fetcher: gh.fetcher})).found, false);
-});
-
-test('a 422 that is not the mode list leaves the repo\'s files alone', async () => {
+const reply = (body, status = 200) => ({ok: status < 400, status, json: async () => body, headers: {get: () => null}});
+// One fake internet: routes are [pattern, answer]; every call is recorded; an unlisted URL fails the test (nothing else may be reached).
+function internet(routes) {
   const calls = [];
-  const result = await startTest(storage(), {dispatch: async () => ({ok: false, error: 'HTTP 422: Workflow does not have workflow_dispatch trigger'}), update: async () => { calls.push('update'); }, ...idle});
-  assert.equal(result.ok, false);
-  assert.deepEqual(calls, []);
+  const fetcher = async (url, options = {}) => {
+    calls.push({url: String(url), method: options.method || 'GET', body: options.body || ''});
+    const hit = routes.find(([pattern]) => pattern.test(String(url)));
+    assert.ok(hit, `unexpected call: ${options.method || 'GET'} ${url}`);
+    const answer = typeof hit[1] === 'function' ? hit[1](url, options) : hit[1];
+    return answer instanceof Error ? Promise.reject(answer) : answer;
+  };
+  return {fetcher, calls};
+}
+const GITHUB = [
+  [/\/repos\/me\/jobadabra-personal-always-on$/, reply({full_name: 'me/jobadabra-personal-always-on', private: true})],
+  [/\/actions\/secrets\?/, reply({secrets: [{name: 'ANTHROPIC_API_KEY'}, {name: 'NOTION_TOKEN'}]})],
+  [/\/actions\/workflows\/daily\.yml$/, reply({state: 'active'})],
+];
+const NOTION = [[/api\.notion\.com\/v1\/users\/me/, reply({id: 'u'})]];
+const AI = [[/api\.anthropic\.com\/v1\/models/, reply({data: []})]];
+const SITE = [[/\/api\/account\/email$/, reply({ok: true, email: 'a@b.co', confirmed: true})], [/\/api\/notify\/email$/, reply({ok: true})]];
+const states = result => Object.fromEntries(result.steps.map(step => [step.id, step.state]));
+
+test('everything works: six steps all ok, and the check only ever READS from GitHub (no run, no write)', async () => {
+  const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]);
+  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), {fetcher: net.fetcher, now: () => 1_000_000_000});
+  assert.equal(result.verdict, 'passed', JSON.stringify(result.steps.filter(step => step.state !== 'ok')));
+  assert.deepEqual(result.steps.map(step => step.id), STEPS.map(step => step.id));
+  assert.ok(result.steps.every(step => step.state === 'ok' && step.line === ''), JSON.stringify(result.steps));
+  const github = net.calls.filter(call => /api\.github\.com/.test(call.url));
+  assert.ok(github.length >= 3 && github.every(call => call.method === 'GET'), 'GitHub is only read');
+  assert.ok(!net.calls.some(call => /dispatches|\/runs/.test(call.url)), 'no workflow run is started or listed');
+  assert.equal(result.steps.find(step => step.id === 'notify').settings, true);
 });
 
-test('a run at or below the id seen before the press is the previous test, not this one', async () => {
-  const gh = fakeGitHub({runs: [run({id: 40, status: 'completed', conclusion: 'success'})], jobs: []});
-  assert.equal((await readTest(storage(), {since: 0, after: 40, fetcher: gh.fetcher})).found, false);
-  const newer = fakeGitHub({runs: [run({id: 40, status: 'completed', conclusion: 'success'}), run({id: 41})], jobs: [jobWith(step('Check · GitHub run', 'in_progress'))]});
-  const read = await readTest(storage(), {since: 0, after: 40, fetcher: newer.fetcher});
-  assert.deepEqual([read.found, read.runId], [true, 41]);
+test('no secret value ever leaves the app in a result, a line or a message (names only)', async () => {
+  const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]);
+  const result = await checkAll(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}}), {fetcher: net.fetcher, now: () => 1});
+  const text = JSON.stringify(result) + net.calls.filter(call => call.method !== 'GET').map(call => call.body).join('');
+  for (const value of Object.values(TOKENS)) assert.ok(!text.includes(value), `${value} leaked`);
 });
 
-test('once a run was found a later read stays on it, even when a newer test run appears', async () => {
-  const gh = fakeGitHub({runs: [run({id: 41}), run({id: 42})], jobs: [jobWith(step('Check · GitHub run', 'in_progress'))]});
-  assert.equal((await readTest(storage(), {since: 0, after: 40, runId: 41, fetcher: gh.fetcher})).runId, 41);
+test('the repository is not visible to the app (not there, or Jobadabra not installed on it): that step fails in plain words and the two that need it are not checked; a public one is refused', async () => {
+  const none = [[/\/repos\/me\/jobadabra-personal-always-on$/, reply({message: 'Not Found'}, 404)]];
+  const result = await checkAll(storage(), {fetcher: internet([...none, ...NOTION, ...AI]).fetcher});
+  assert.deepEqual([states(result).repo, states(result).keys, states(result).schedule], ['failed', 'skipped', 'skipped']);
+  assert.match(result.steps[0].line, /cannot see me\/jobadabra-personal-always-on.*installed on it/);
+  const open = [[/\/repos\/me\/jobadabra-personal-always-on$/, reply({private: false})]];
+  assert.match((await checkAll(storage(), {fetcher: internet([...open, ...NOTION, ...AI]).fetcher})).steps[0].line, /is public/);
 });
 
-test('the test job ending before the run list says so still reads the result file (the two lists are read a moment apart)', async () => {
-  const job = {...jobWith(step('Check · GitHub run', 'completed', 'success'), step('Check · Notion', 'completed', 'success'), step('Check · AI key', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
-  const file = {steps: {ai: {ok: false, line: 'Your AI key was refused (401). Paste a working key in the app, then press Test again.'}}};
-  const gh = fakeGitHub({runs: [run({status: 'in_progress'})], jobs: [job], artifacts: [{name: 'jobadabra-selftest', expired: false, archive_download_url: 'https://download/result'}], file});
-  const read = await readTest(storage(), {since: 0, fetcher: gh.fetcher, unzip: gh.unzip, wait: async () => {}});
-  assert.match(read.steps[2].line, /refused \(401\)/);
-  assert.equal(read.verdict, 'failed');
+test('a Free AI person is not told to press Update for a key that never goes to GitHub; the AI step says why; the e-mail key name is required only when e-mail is a way', async () => {
+  const net = internet([...GITHUB.map(([pattern, answer]) => (/secrets/.test(pattern) ? [pattern, reply({secrets: [{name: 'NOTION_TOKEN'}]})] : [pattern, answer])), ...NOTION]);
+  const free = await checkAll(storage({secrets: {...TOKENS, ANTHROPIC_API_KEY: 'JPF1.abc.def'}}), {fetcher: net.fetcher});
+  assert.deepEqual([states(free).keys, states(free).ai], ['ok', 'failed']);
+  assert.match(free.steps.find(step => step.id === 'ai').line, /Free AI does not run on your own GitHub/);
+  const mailing = storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, ANTHROPIC_API_KEY: '', JOBADABRA_REPO_TRIAL_KEY: 'JPT1.h.m'}});
+  const lacking = await checkAll(mailing, {fetcher: internet([...GITHUB.map(([pattern, answer]) => (/secrets/.test(pattern) ? [pattern, reply({secrets: [{name: 'NOTION_TOKEN'}]})] : [pattern, answer])), ...NOTION, ...SITE]).fetcher});
+  assert.match(lacking.steps.find(step => step.id === 'keys').line, /lacks JOBADABRA_TRIAL_KEY/);
 });
 
-test('a failed check whose result file is not listed yet is asked for once more before it is shown without words', async () => {
-  const job = {...jobWith(step('Check · GitHub run', 'completed', 'failure')), status: 'completed', conclusion: 'failure'};
-  const gh = fakeGitHub({runs: [run({status: 'completed', conclusion: 'failure'})], jobs: [job], artifacts: []});
-  await readTest(storage(), {since: 0, fetcher: gh.fetcher, wait: async () => {}});
-  assert.equal(gh.asked.filter(route => route.endsWith('/artifacts')).length, 2);
+test('a link that never answers ends as a failed step within the deadline, and a press during a Test gets that Test\'s answer (one message, one e-mail)', async () => {
+  const hang = () => new Promise(() => {});
+  const result = await checkAll(storage(), {fetcher: hang, deadline: 30});
+  assert.equal(result.steps.length, STEPS.length);
+  assert.equal(result.verdict, 'failed');
+  assert.ok(result.steps.every(step => step.state !== 'ok'));
+  const net = internet([...GITHUB, ...NOTION, ...AI, ...SITE]), mail = storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}});
+  const [first, second] = await Promise.all([checkAll(mail, {fetcher: net.fetcher, now: () => 9e12}), checkAll(mail, {fetcher: net.fetcher, now: () => 9e12})]);
+  assert.equal(first, second, 'the same run');
+  assert.equal(net.calls.filter(call => /notify\/email/.test(call.url)).length, 1);
+});
+
+test('a missing key is named, a disabled or absent daily workflow says what to press', async () => {
+  const lacking = GITHUB.map(([pattern, answer]) => (/secrets/.test(pattern) ? [pattern, reply({secrets: [{name: 'NOTION_TOKEN'}]})] : /daily/.test(pattern) ? [pattern, reply({state: 'disabled_manually'})] : [pattern, answer]));
+  const result = await checkAll(storage(), {fetcher: internet([...lacking, ...NOTION, ...AI]).fetcher});
+  assert.equal(states(result).keys, 'failed');
+  assert.match(result.steps.find(step => step.id === 'keys').line, /lacks ANTHROPIC_API_KEY/);
+  assert.match(result.steps.find(step => step.id === 'schedule').line, /switched off/);
+  const gone = GITHUB.map(([pattern, answer]) => (/daily/.test(pattern) ? [pattern, reply({message: 'Not Found'}, 404)] : [pattern, answer]));
+  assert.match((await checkAll(storage(), {fetcher: internet([...gone, ...NOTION, ...AI]).fetcher})).steps.find(step => step.id === 'schedule').line, /not in your repository/);
+});
+
+test('Notion: answers, refused token, no token', async () => {
+  assert.equal((await notionCheck(storage(), {fetcher: internet(NOTION).fetcher})).state, 'ok');
+  const refused = await notionCheck(storage(), {fetcher: internet([[/notion/, reply({message: 'bad'}, 401)]]).fetcher});
+  assert.deepEqual([refused.state, /refused your token \(401\)/.test(refused.line)], ['failed', true]);
+  assert.match((await notionCheck(storage({secrets: {}}), {fetcher: internet([]).fetcher})).line, /not connected/);
+});
+
+test('the AI key: the person\'s own key is asked a models list; Free AI is refused WITHOUT any call; a refused key says so', async () => {
+  const net = internet(AI);
+  assert.equal((await aiCheck(storage(), {fetcher: net.fetcher})).state, 'ok');
+  assert.equal(net.calls[0].method, 'GET', 'a list of models: it costs nothing');
+  const free = internet([]);
+  const refusedFree = await aiCheck(storage({secrets: {ANTHROPIC_API_KEY: 'JPF1.abc.def'}}), {fetcher: free.fetcher});
+  assert.deepEqual([refusedFree.state, free.calls.length], ['failed', 0]);
+  assert.match(refusedFree.line, /Free AI does not run on your own GitHub/);
+  assert.match((await aiCheck(storage(), {fetcher: internet([[/anthropic/, reply({}, 401)]]).fetcher})).line, /refused the key \(401\)/);
+  assert.match((await aiCheck(storage(), {fetcher: internet([[/anthropic/, reply({}, 403)]]).fetcher})).line, /answered 403: the key may be restricted/);   // a restricted key is not called refused
+  assert.doesNotMatch((await aiCheck(storage(), {fetcher: internet([[/anthropic/, reply({}, 503)]]).fetcher})).line, /Check the key/);   // a provider outage is not the key's fault
+  assert.match((await aiCheck(storage({secrets: {}}), {fetcher: free.fetcher})).line, /no AI key/i);
+});
+
+test('the notification step: nothing set up fails with the pop-up mark; Telegram is tried with the bot; an unconfirmed address is not mailed; one test e-mail a day', async () => {
+  assert.match((await notifyCheck(storage(), {fetcher: internet([]).fetcher})).line, /Nothing can reach you/);
+  const keyless = await notifyCheck(storage({secrets: {}, settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}}), {fetcher: internet([]).fetcher});
+  assert.match(keyless.line, /no key for our site yet/);   // said, never "the website could not be reached"
+  const bot = internet([[/api\.telegram\.org\/bot1:SECRETBOT\/sendMessage/, reply({ok: true, result: {}})]]);
+  assert.equal((await notifyCheck(storage({secrets: TOKENS, settings: {notifyBy: ['telegram'], telegramChatId: 7}}), {fetcher: bot.fetcher})).state, 'ok');
+  assert.match(bot.calls[0].body, /"chat_id":7/);
+  const unconfirmed = internet([[/\/api\/account\/email$/, reply({ok: true, email: 'a@b.co', confirmed: false})]]);
+  const held = await notifyCheck(storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), {fetcher: unconfirmed.fetcher});
+  assert.deepEqual([held.state, /not confirmed/.test(held.line), unconfirmed.calls.some(call => /notify\/email/.test(call.url))], ['failed', true, false]);
+  const mail = storage({settings: {notifyBy: ['email'], notifyEmail: 'a@b.co'}, secrets: {...TOKENS, TELEGRAM_BOT_TOKEN: ''}}), site = internet(SITE);
+  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000})).state, 'ok');
+  assert.equal(site.calls.filter(call => /notify\/email/.test(call.url)).length, 1);
+  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000 + 3600_000})).state, 'ok');
+  assert.equal(site.calls.filter(call => /notify\/email/.test(call.url)).length, 1, 'the second press within a day sends no second e-mail');
+  assert.equal((await notifyCheck(mail, {fetcher: site.fetcher, now: () => 5_000_000_000 + 3600_000})).line, 'A test e-mail already reached you today.');
+});
+
+test('a link that throws is a failed step, never a missing one', async () => {
+  const net = internet([[/api\.github\.com/, new Error('offline')], ...NOTION, ...AI]);
+  const result = await checkAll(storage(), {fetcher: net.fetcher});
+  assert.equal(result.steps.length, STEPS.length);
+  assert.equal(states(result).repo, 'failed');
+  assert.equal(result.verdict, 'failed');
 });
