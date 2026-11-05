@@ -591,6 +591,7 @@ jobs:
         with:
           bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          switchboard-key: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           github-token: ${{ github.token }}
 
   # What became of the card's run, told to the site in fixed words (tools/fixer/card.mjs; web 5/5a, 5 Nov 2026, owner: "Button starts the new agent"). Only a feedback card's FIRST run; a round does not touch the card.

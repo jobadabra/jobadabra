@@ -159,3 +159,19 @@ test('a Telegram alert still in flight is awaited before the process exits', asy
     assert.equal(done, true, 'flush waits for it');
   } finally { globalThis.fetch = real; }
 });
+
+test('an AI-fixer Telegram line goes to the owner\'s switchboard first and to the CI-alerts bot only when the switchboard cannot deliver', async () => {
+  const real = globalThis.fetch, calls = [];
+  let site = {status: 200, body: {ok: true, sent: true}};
+  globalThis.fetch = async (url, init = {}) => { calls.push(String(url)); return String(url).includes('/ops/notify') ? new Response(JSON.stringify(site.body), {status: site.status}) : new Response('{"ok":true}', {status: 200}); };
+  const env = {RUNNER_TEMP: fs.mkdtempSync(path.join(os.tmpdir(), 'tg-')), CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c', SELFHEAL_PUBLISH_KEY: 'k'};
+  try {
+    let io = realIo({pr: '7', repo: 'o/r', env, deadline: ''});
+    io.telegram('AI fixer: ready'); await io.flush();
+    assert.deepEqual(calls.map(url => url.includes('/ops/notify')), [true], 'delivered by the switchboard: the old bot stays quiet');
+    calls.length = 0; site = {status: 503, body: {ok: false}};
+    io = realIo({pr: '7', repo: 'o/r', env, deadline: ''});
+    io.telegram('AI fixer: ready'); await io.flush();
+    assert.ok(calls.some(url => url.includes('api.telegram.org/bott/')), 'the switchboard could not deliver: the old bot sends it');
+  } finally { globalThis.fetch = real; }
+});

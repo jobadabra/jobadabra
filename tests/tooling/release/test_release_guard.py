@@ -70,6 +70,46 @@ class OnlyDesktopReleasesTests(unittest.TestCase):
         self.assertIn('pr-assets-x', told[0])
         self.assertFalse([c for c in calls if 'delete' in c])
 
+    def test_tell_goes_through_the_switchboard_first_and_the_old_bot_only_when_it_cannot_deliver(self):
+        import io
+        import os
+        import urllib.error
+        seen = []
+        def site(kind):
+            def urlopen(request, data=None, timeout=None):
+                url = request if isinstance(request, str) else request.full_url
+                seen.append((url, getattr(request, 'headers', {}), json.loads(request.data) if getattr(request, 'data', None) and 'ops/notify' in url else None))
+                if 'ops/notify' in url and kind == 'down':
+                    raise OSError('down')
+                if 'ops/notify' in url and kind == '503':
+                    raise urllib.error.HTTPError(url, 503, 'channel-not-connected', {}, io.BytesIO(b'{"ok":false}'))
+                class Reply:
+                    status = 200
+                    def __enter__(self): return self
+                    def __exit__(self, *a): return False
+                    def read(self):
+                        if 'api.telegram.org' in url: return b'{"ok":true}'
+                        return {'sent': b'{"ok":true,"sent":true}', 'held': b'{"ok":true,"sent":false,"why":"off"}', 'list': b'[1]', 'text': b'"x"', 'html': b'<html>maintenance</html>'}[kind]
+                return Reply()
+            return urlopen
+        real, saved = guard.urllib.request.urlopen, dict(os.environ)
+        try:
+            os.environ.update({'SELFHEAL_PUBLISH_KEY': 'k', 'TELEGRAM_BOT_TOKEN': 't', 'TELEGRAM_CHAT_ID': 'c'})
+            for kind, old_bot in (('sent', False), ('held', False), ('down', True), ('503', True), ('list', True), ('text', True), ('html', True)):
+                seen.clear()
+                guard.urllib.request.urlopen = site(kind)
+                guard._tell('Latest is wrong')   # must never raise
+                with self.subTest(switchboard=kind):
+                    self.assertEqual(any('api.telegram.org' in url for url, *_ in seen), old_bot)
+                    posts = [body for url, _, body in seen if body]
+                    self.assertEqual(posts[0]['event'], 'release-guard')
+                    self.assertEqual(posts[0].get('level'), 'problem')
+                    self.assertEqual([p.get('fallback') for p in posts[1:]], [True] if old_bot else [], 'the fallback is reported once, after the old bot sent')
+            self.assertEqual({k.lower(): v for k, v in seen[0][1].items()}.get('user-agent'), 'jobadabra-ci')
+        finally:
+            guard.urllib.request.urlopen = real
+            os.environ.clear(); os.environ.update(saved)
+
     def test_the_labeller_never_edits_a_non_desktop_release(self):
         calls = []
         def fake(*a):

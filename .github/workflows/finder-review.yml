@@ -57,6 +57,7 @@ jobs:
           name: ai-capped-finder-review   # present only when the broker refused
           path: ${{ runner.temp }}/ai-capped/ai-capped.json
           if-no-files-found: ignore
+      # Why (5 Nov 2026, code review of nt 3/4e): no switchboard-key here. The step above applies Codex's edits to desktop/e2e/lib/*.mjs in this same job, and this step then runs credit-alert.mjs and the lib files it imports; with the site's key in its env, an injected edit could read it. This alert keeps the CI-alerts bot until it moves to a job with a clean checkout.
       - name: Tell the owner once if the broker refused
         if: always() && !cancelled()
         continue-on-error: true

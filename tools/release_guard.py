@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Only a desktop-v* release can be Latest (stable): re-point GitHub's "Latest" when something else holds it, and alert on Telegram.
 
-    python3 tools/release_guard.py            # repair Latest, tell Telegram (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)
+    python3 tools/release_guard.py            # repair Latest, tell the owner (the switchboard, then TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)
     python3 tools/release_guard.py --dry-run  # print the plan only
 
 Why (17 Oct 2026): a PR-screenshot release was created as a normal release, GitHub made it Latest, and for ~1h20m the website's Download link and the
 updater's releases/latest pointed at screenshots. The pick of "stable" is now always among desktop-v* tags (`is_desktop`), never isLatest alone.
 Run hourly by release-guard.yml. Guarded by tests/tooling/release/test_release_guard.py.
 """
+import http.client
 import json
 import os
 import re
@@ -54,12 +55,34 @@ def _gh(*args):
     return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
 
 
+SITE = os.environ.get('JOBADABRA_SITE', 'https://www.jobadabra.top')
+
+
+def _post_switchboard(body):
+    """POST to the owner's switchboard (jobadabra-web /ops/notify) -> its JSON answer, or None when it cannot be reached or answers anything but a clear 200."""
+    key = os.environ.get('SELFHEAL_PUBLISH_KEY')
+    if not key:
+        return None
+    request = urllib.request.Request(f'{SITE}/ops/notify', json.dumps(body).encode(), {'Content-Type': 'application/json', 'Authorization': f'Bearer {key}', 'User-Agent': 'jobadabra-ci'})   # a named client: the default Python-urllib one is what Cloudflare rules like to block
+    try:
+        with urllib.request.urlopen(request, timeout=10) as answer:
+            parsed = json.loads(answer.read()) if answer.status == 200 else None
+            return parsed if isinstance(parsed, dict) else None   # a 200 that is a list or a string is a proxy page, not the switchboard
+    except (OSError, ValueError, http.client.HTTPException):   # Why (5 Nov 2026, nt 3/4e): fail-open. Any trouble reaching the switchboard means the old bot below sends the alert; this never raises.
+        return None
+
+
 def _tell(text):
-    token, chat = os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_CHAT_ID')
+    """Tells the owner: the switchboard first (event release-guard: the owner's on/off, "when" and bot), the CI-alerts bot when it cannot deliver; always prints it."""
     print(text)
+    answer = _post_switchboard({'event': 'release-guard', 'text': text, 'level': 'problem'})
+    if answer and (answer.get('sent') is True or (answer.get('sent') is False and answer.get('why'))):
+        return   # sent, or held on purpose by the owner's switch: done
+    token, chat = os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_CHAT_ID')
     if token and chat:
         data = urllib.parse.urlencode({'chat_id': chat, 'text': text}).encode()
         urllib.request.urlopen(f'https://api.telegram.org/bot{token}/sendMessage', data, timeout=20).read()
+        _post_switchboard({'event': 'release-guard', 'fallback': True})   # Admin shows "sent without switchboard"
 
 
 def main(argv):
