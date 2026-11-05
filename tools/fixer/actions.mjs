@@ -63,14 +63,14 @@ export function createActs({cwd, allow, boxRun}) {
   function edit({path: rel, old, new: next}) {
     const at = resolve(cwd, rel);
     if (at.why) return {text: `Refused: ${at.why}.`};
-    if (!allow.test(at.name)) return {text: 'Refused: outside the folders a fix may touch (src/, desktop/renderer/, desktop/lib/ and their tests).'};
+    if (!allow.test(at.name)) return {text: 'Refused: outside the folders a fix may touch (src/, desktop/renderer/, desktop/lib/ and their tests).', wall: true};   // `wall`: the run record's "blocked by the walls" (5/7)
     const stat = lstat(at.full), before = old === '' ? null : stat?.isFile() ? fs.readFileSync(at.full, 'utf8') : null;
     if (stat && !stat.isFile()) return {text: 'Refused: that is a link or a folder.'};
     if (old === '' ? stat : before === null) return {text: old === '' ? 'Refused: the file exists already; an edit needs the old text.' : 'Refused: no such file.'};
     const count = old === '' ? 1 : before.split(old).length - 1;
     if (count !== 1) return {text: `Refused: the old text occurs ${count} times, not once.`};
     const why = gateChange([...new Set([...files, at.name])], bytes + Buffer.byteLength(old) + Buffer.byteLength(next));
-    if (why) return {text: `Refused: ${why}.`};   // the wall's answer is final; the edit is never shrunk or repaired
+    if (why) return {text: `Refused: ${why}.`, wall: true};   // the wall's answer is final; the edit is never shrunk or repaired
     fs.mkdirSync(path.dirname(at.full), {recursive: true});
     fs.writeFileSync(at.full, old === '' ? next : before.replace(old, () => next));
     files.add(at.name); bytes += Buffer.byteLength(old) + Buffer.byteLength(next);
