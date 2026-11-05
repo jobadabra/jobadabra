@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 from .notion import origin as origin_rule
 
-# Which copy is the row: a decision you made (applied, dismissed, saved) wins over an unread one, then the better fit.
+# The strength of a decision on a copy (see _best).
 STATUS_RANK = {'applied': 4, 'dismissed': 3, 'saved': 2}
 
 
@@ -20,7 +20,10 @@ def _plain(text):
 
 
 def _site(url):
-    host = (urlsplit(url or '').hostname or '').lower()
+    try:
+        host = (urlsplit(url or '').hostname or '').lower()
+    except ValueError:   # a crawled link like "http://[bad/1": no site, so its group is never merged
+        return ''
     return host[4:] if host.startswith('www.') else host
 
 
@@ -36,9 +39,17 @@ def _key(row):
 def _same_posting(copies):
     """True when these rows with one (company, title, place) are one posting listed on different sites. Two rows on the SAME site stay two: a retailer's
     four "Vendeur, Lausanne" openings look alike and are four jobs, and telling a repost from a second opening is a judgment about the posting text (the AI's, not
-    a rule here). Two applications are never merged: the counters and the history of each stay whole."""
+    a rule here). Copies that each hold a stage DO merge: marking a merged row Applied writes the stage on every copy (pages/jobs-copies.js), and the row must stay one."""
     sites = [_site(row.get('url')) for row in copies]
-    return '' not in sites and len(set(sites)) == len(sites) and sum(1 for row in copies if row.get('stage')) <= 1
+    return '' not in sites and len(set(sites)) == len(sites)
+
+
+def _best(row):
+    """Which copy is the row: the one holding a decision or a prepared kit (a stage, or applied / saved / dismissed) before any unread one, whatever its fit
+    (its kit and Notion page are the row's); then the stronger decision, then the better fit."""
+    fit = row.get('fit')
+    decided = bool(row.get('stage')) or STATUS_RANK.get(row.get('status'), 0) > 0
+    return (decided, STATUS_RANK.get(row.get('status'), 0), fit if isinstance(fit, (int, float)) else -1, row.get('rank') or 0)
 
 
 def merge_copies(rows):
@@ -56,7 +67,7 @@ def merge_copies(rows):
         if len(copies) == 1 or not _same_posting(copies):
             merged.extend(copies)
             continue
-        best = max(copies, key=lambda row: (STATUS_RANK.get(row.get('status'), 0), row.get('fit') if row.get('fit') is not None else -1, row.get('rank') or 0))
+        best = max(copies, key=_best)
         others = [row for row in copies if row is not best]
         merged.append({**best, 'copies': [best['url'], *(row['url'] for row in others)], 'also_on': sorted(_site(row['url']) for row in others)})
     return merged

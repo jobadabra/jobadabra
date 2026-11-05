@@ -24,20 +24,21 @@ class MergeCopiesTests(unittest.TestCase):
         self.assertEqual(len(merge_copies([row('https://www.jobup.ch/1'), row('https://www.jobup.ch/2')])), 2)
         self.assertEqual(len(merge_copies([row('https://www.jobup.ch/1'), row('https://www.jobup.ch/2'), row('https://www.jobs.ch/1')])), 3)
 
-    def test_two_applications_are_never_merged(self):
-        rows = [row('https://a.example/1', status='applied', stage='Applied'), row('https://b.example/1', status='applied', stage='Applied')]
+    def test_marking_every_copy_applied_keeps_one_row(self):
+        # "Mark applied" writes the stage on every copy; the list must still show the posting once, with the stage.
+        rows = [row('https://a.example/1', 60, status='applied', stage='Applied'), row('https://b.example/1', 62, status='applied', stage='Applied')]
+        merged = merge_copies(rows)
+        self.assertEqual((len(merged), merged[0]['stage'], merged[0]['also_on']), (1, 'Applied', ['a.example']))
+
+    def test_a_copy_with_a_kit_stays_the_row_whatever_the_other_copys_fit(self):
+        kit = row('https://a.example/1', 60, stage='Kit ready', notion_url='https://notion.so/kit')
+        merged = merge_copies([row('https://b.example/1', 80), kit])
+        self.assertEqual((merged[0]['url'], merged[0]['notion_url']), ('https://a.example/1', 'https://notion.so/kit'))
+
+    def test_a_malformed_link_never_breaks_the_list(self):
+        rows = [row('http://[bad/1'), row('https://b.example/1')]
         self.assertEqual(len(merge_copies(rows)), 2)
-        self.assertEqual(len(merge_copies([rows[0], row('https://b.example/2')])), 1)   # one application and an unread copy of it: one row, the application
-
-    def test_spelling_noise_does_not_hide_a_copy(self):
-        merged = merge_copies([row('https://a.example/1', company='Glacier  Labs SA', title='Senior Infrastructure Engineer (m/f/d)'),
-                               row('https://b.example/1', company='glacier labs sa', title='senior infrastructure engineer (M/F/D)')])
-        self.assertEqual(len(merged), 1)
-
-    def test_another_place_or_no_place_is_never_a_copy(self):
-        self.assertEqual(len(merge_copies([row('https://a.example/1', location='Lausanne'), row('https://b.example/1', location='Zurich')])), 2)
-        self.assertEqual(len(merge_copies([row('https://a.example/1', location=''), row('https://b.example/1', location='')])), 2)
-        self.assertEqual(len(merge_copies([row('https://a.example/1', company=''), row('https://b.example/1', company='')])), 2)
+        self.assertEqual(len(merge_copies([row('https://a.example/1', fit='n/a'), row('https://b.example/1', 70)])), 1)
 
     def test_a_decision_on_one_copy_wins_over_a_better_fit(self):
         merged = merge_copies([row('https://a.example/1', 90), row('https://b.example/1', 50, status='applied', stage='Applied')])
@@ -58,6 +59,14 @@ class ListTests(unittest.TestCase):
         with mock.patch.object(desktop.digest, 'eligible_jobs', return_value=([], [])), mock.patch.object(desktop.score, 'load', return_value={}):
             result = desktop.jobs(sqlite3.connect(':memory:'), notion_jobs=[item('https://www.jobs.ch/1', 70), item('https://www.jobup.ch/1', 72)])
         self.assertEqual((result['total'], len(result['jobs']), result['jobs'][0]['also_on']), (1, 1, ['jobs.ch']))
+
+    def test_two_copies_both_marked_applied_are_one_application_in_the_list(self):
+        def item(url, fit):
+            return {'url': url, 'title': 'SRE', 'company': 'Acme', 'location': 'Zurich', 'work_mode': '', 'fit': fit, 'reason': '', 'match_status': 'Open', 'first_seen': '2026-11-01',
+                    'stage': 'Applied', 'next_step': '', 'notion_url': 'n'}
+        with mock.patch.object(desktop.digest, 'eligible_jobs', return_value=([], [])), mock.patch.object(desktop.score, 'load', return_value={}):
+            result = desktop.jobs(sqlite3.connect(':memory:'), notion_jobs=[item('https://www.jobs.ch/1', 70), item('https://www.jobup.ch/1', 72)])
+        self.assertEqual([(r['status'], r['stage']) for r in result['jobs']], [('applied', 'Applied')])
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 // A merged Jobs row stands for every copy of its posting: a status change reaches them all, the row's own first (owner, 5 Nov 2026: "marks every copy").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {alsoOnTags, setStatusOnCopies} from '../../../renderer/pages/jobs-copies.js';
+import {alsoOnTags, linksOf, onEveryCopy, setStatusOnCopies} from '../../../renderer/pages/jobs-copies.js';
 
 const job = {url: 'https://www.jobup.ch/b', copies: ['https://www.jobup.ch/b', 'https://www.jobs.ch/a', 'https://example.org/c'], also_on: ['jobs.ch', 'example.org']};
 
@@ -12,11 +12,24 @@ test('Mark applied on a merged row marks every copy, its own link first, and ans
   assert.equal(result.stage, 'stage of https://www.jobup.ch/b');
 });
 
-test('a refusal stops the rest and is the answer the row shows', async () => {
+test('a refusal on the first link stops the rest and is the answer the row shows', async () => {
   const calls = [];
-  const result = await setStatusOnCopies(job, 'applied', async (url) => { calls.push(url); return url.includes('jobs.ch') ? {ok: false, error: 'Notion is down'} : {ok: true}; });
-  assert.deepEqual(calls, ['https://www.jobup.ch/b', 'https://www.jobs.ch/a']);
+  const result = await setStatusOnCopies(job, 'applied', async (url) => { calls.push(url); return {ok: false, error: 'Notion is down'}; });
+  assert.deepEqual(calls, ['https://www.jobup.ch/b']);
   assert.deepEqual(result, {ok: false, error: 'Notion is down'});
+});
+
+test('a refusal after some links changed says so, never "not changed"', async () => {
+  const result = await onEveryCopy(job, async (url) => (url.includes('jobs.ch') ? {ok: false, error: 'Notion is down'} : {ok: true}));
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Changed on 1 of 3 links, then: Notion is down/);
+});
+
+test('Delete, Not submitted and outcomes go through the same every-copy call', async () => {
+  const seen = [];
+  await onEveryCopy(job, async (url) => { seen.push(url); return {ok: true}; });
+  assert.deepEqual(seen, job.copies);
+  assert.deepEqual(linksOf([job, {url: 'https://a/1'}]), [...job.copies, 'https://a/1']);
 });
 
 test('a failing call is a refusal, never a thrown error', async () => {

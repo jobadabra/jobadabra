@@ -31,7 +31,7 @@ import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
 import {companyCell, placeCell} from './jobs-row-cells.js';
-import {alsoOnTags, setStatusOnCopies} from './jobs-copies.js';
+import {alsoOnTags, onEveryCopy, setStatusOnCopies} from './jobs-copies.js';
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
@@ -278,7 +278,7 @@ export function renderJobs() {
       if (jobsState.benchmarkText[job.url]) menu.push({icon: 'info', label: jobsState.benchmarkText[job.url], disabled: true, title: 'From how other people\'s applications on this job board went (anonymous counts)'});
       for (const choice of choices) {
         menu.push({icon: choice.icon, label: choice.label, title: choice.title, run: async () => {
-          const result = await window.pilot.markOutcome({url: job.url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}).catch(error => ({ok: false, error: error.message}));
+          const result = await onEveryCopy(job, url => window.pilot.markOutcome({url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}));
           if (!result.ok) { toastMessage('Not saved', result.error || 'Try again.', jobPlace(job), 'bad'); return; }
           jobsChanged(job, choice.outcome !== 'reply' ? {stage: result.stage} : {});   // a reply is an event only: the stage stays where it is
           toastMessage('Saved', `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`, jobPlace(job), 'good');
@@ -292,7 +292,7 @@ export function renderJobs() {
     if (job.stage === 'Applying') {  // the session is over or was closed: say what happened, instead of staying Applying
       menu.push({icon: 'tick', label: 'I submitted it', run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
-        const result = await window.pilot.unapplyJob(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
         if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Kit ready'});
         renderJobs();
@@ -303,7 +303,7 @@ export function renderJobs() {
         // Only a bare Applied: a stage past it (a confirmation, an interview) is the employer's own evidence.
         if (!confirm(`Mark this as not submitted? It goes back to Applying and the Applied date and event are removed from ${storeName()}.\n\n`
           + 'Use this when Jobadabra marked it Applied by itself and no application was sent.')) return;
-        const result = await window.pilot.notSubmitted(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.notSubmitted(url));
         if (!result.ok) { toastMessage('Not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Applying', status: 'applied'});
         toastMessage('Back to Applying', `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`, jobPlace(job), 'good');
@@ -315,7 +315,7 @@ export function renderJobs() {
     else menu.push({icon: 'trash', label: 'Delete', danger: true, title: byStore('Remove this job: its Notion pages go to the trash, and searches will not show it again', 'Remove this job for good: searches will not show it again'),
       run: async () => {
         if (!confirm(`Delete "${job.title}" at ${job.company}?\n\n${byStore('Its Notion pages go to Notion\'s trash (restorable there for 30 days), and searches will not show it again.', 'It is removed from Jobadabra, and searches will not show it again.')}`)) return;
-        const result = await window.pilot.deleteJob(job.url).catch(error => ({ok: false, error: error.message}));
+        const result = await onEveryCopy(job, url => window.pilot.deleteJob(url));
         if (!result?.ok) { toastMessage('Not deleted', result?.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
         const left = shared.allJobs.filter(other => other !== job);
         shared.allJobs = left;
