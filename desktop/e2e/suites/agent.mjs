@@ -46,6 +46,9 @@ export async function run(ctx) {
   // Why (5 Nov 2026, code review of the tier input; Gitar on #3212): a typo such as "Large" must not silently run the small tier, and it fails before the app is seeded or the video starts; a night with no tier acts on large under a token cap (5 Nov 2026, owner via mac-32; lib/agent-tier.mjs).
   const actorTier = actorTierOf({requested: process.env.AGENT_TIER, kind: process.env.AGENT_KIND});
   if (!Object.hasOwn(MODELS, actorTier)) throw new Error(`AGENT_TIER must be ${Object.keys(MODELS).join(', ')}, got "${actorTier}"`);
+  // Why (5 Nov 2026, Gitar on #3213): the screen reader switch accepts only empty or 'off'; "Off" or "no" must not leave the reader on while the person asked for a run without it.
+  const screen = process.env.AGENT_SCREEN || '';
+  if (!['', 'off'].includes(screen)) throw new Error(`AGENT_SCREEN must be empty or off, got "${screen}"`);
   const {page} = ctx;
   await ensureSetUp(ctx);
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
@@ -74,7 +77,7 @@ export async function run(ctx) {
     let kept = null;
     const acting = cappedAsk({primary: brokerAsk(actorTier), fallback: brokerAsk('small'), tier: actorTier});
     try {
-      session = await runSession({act, ask: acting.ask, judgeAsk: brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: acting.ask, judgeAsk: brokerAsk('mid', {only: 'claude'}), screenAsk: screen === 'off' ? null : brokerAsk('mid', {only: 'claude'}), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: (process.env.GITHUB_SHA || '').slice(0, 7)}});
     } finally { kept = await video.finish(); console.log(`  ${tierLine(acting.state)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
