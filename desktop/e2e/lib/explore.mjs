@@ -42,9 +42,11 @@ check_type and check_text or check_control) or done (summary). Fields the action
 export function observePage() {
   for (const old of document.querySelectorAll('[data-explore]')) old.removeAttribute('data-explore');
   const visible = el => { const box = el.getBoundingClientRect(); const style = getComputedStyle(el); return box.width > 2 && box.height > 2 && style.visibility !== 'hidden' && style.display !== 'none' && !el.closest('[hidden]'); };
+  // Why (5 Nov 2026, #3126, owner: "Yes, small fix"): a control inside a closed <details> is not on the page for a person (the browser keeps it out of reach), but its box is still measured; the agent clicked one and filed a false alarm. The fold's own heading (its first <summary>) and what sits in it (the Technical log's Copy button) stay listed.
+  const folded = el => { for (let fold = el.closest('details'); fold; fold = fold.parentElement?.closest('details')) { if (!fold.open && !(el.closest('summary') && fold.querySelector(':scope > summary') === el.closest('summary'))) return true; } return false; };
   const controls = [];
   for (const el of document.querySelectorAll('button, a[href], [role="button"], [role="tab"], input, textarea, select, summary')) {
-    if (controls.length >= 120 || !visible(el) || el.closest('nav, .sidebar')) continue;
+    if (controls.length >= 120 || !visible(el) || folded(el) || el.closest('nav, .sidebar')) continue;
     const kind = /^(INPUT|TEXTAREA)$/.test(el.tagName) ? 'field' : el.tagName === 'SELECT' ? 'select' : el.tagName === 'A' ? 'link' : 'button';
     // Why (5 Nov 2026, AI user agents, replay 41938139127: a checkbox inside its <label> was reported as "(no label)" and filed as a bug, wrongly): a control's name is its accessible name, the way a person and a screen reader get it: aria-label, then aria-labelledby, then the <label> that wraps it or points at it, then its own text, placeholder, name.
     const namedBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');
