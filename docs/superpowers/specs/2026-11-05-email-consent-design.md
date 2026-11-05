@@ -1,12 +1,13 @@
 # E-mail consent: one switch under the CV card, on by default
 
-Status: owner decided 5 Nov 2026 — "when a user installs the app.. at some point we popup him (or he can deliberately go to Settings -> Notifications) and set up his email.. But let's exctract it from the CV and prefill it and use it... But still, I think we shouldn't start sending him email right away. We shuold still get the user constent."; "The form filling I don't think should be a step/trigger. We just take it is in CV and we put into the form. Just as we do we with first/last name and othe details, which doesn't need to be confirmed."; pick "Line in the CV step (Recommended)"; on the redesign "A: switch row under the card (Recommended)"; then "Let it be on by default". Short name `co`. Part 1 of 2 (app); part 2 (the site keeps the same record) is optional.
+Status: owner decided 5 Nov 2026 — "when a user installs the app.. at some point we popup him (or he can deliberately go to Settings -> Notifications) and set up his email.. But let's exctract it from the CV and prefill it and use it... But still, I think we shouldn't start sending him email right away. We shuold still get the user constent."; "The form filling I don't think should be a step/trigger. We just take it is in CV and we put into the form. Just as we do we with first/last name and othe details, which doesn't need to be confirmed."; pick "Line in the CV step (Recommended)"; on the redesign "A: switch row under the card (Recommended)"; then "Let it be on by default"; on the reviewer's EU note, "Keep on, service mails only (Recommended)". Short name `co`. Part 1 of 2 (app); part 2 (the site keeps the same record) is optional.
 
 ## Verdict
 
 - 🟢 In the CV step, under the CV card: **one switch, ON by default** when the CV has an address (owner, 5 Nov 2026: "Let it be on by default"); Continue with it on is the consent, off sends nothing. Its words: "E-mail me when an application needs me or a strong match comes in. We only write when something needs you. Stop any time." No pop-up, no new step, no extra click.
 - 🟢 The CV e-mail **fills forms with no confirmation** (like first/last name, already so: `lib/contact-from-cv.js`). Consent gates **only** what the product sends.
 - 🟢 Turned off → asked **once more** when the person turns on Always on; never again after that.
+- 🟢 The switch covers **service mails only**: mail about the person's own applications and matches (owner, 5 Nov 2026: "Keep on, service mails only (Recommended)"). Marketing needs its own separate choice that starts unticked.
 - 🟢 Consent is stored with **date + the exact wording shown**. The first mail is the welcome with its stop link; nothing is held back for a click in the app.
 - 🟢 Settings → Notifications shows the same choice: **one stored value, one owner** (`lib/email-consent.js`).
 
@@ -18,7 +19,7 @@ Status: owner decided 5 Nov 2026 — "when a user installs the app.. at some poi
 | What the PUT does | creates the account, sends the **welcome mail** (confirm button, footer with the one-click stop link), pings the owner on Telegram | unchanged: it now runs only after a consent |
 | The CV's address | read at upload into `cv/cv.json` `links` (a `mailto:` href, `lib/cv.js`); Your details from the CV fills `contact.email` at setup | **only read**; never sent to the site, never put in `notifyEmail` before consent |
 | Consent | none stored: typing an address in Settings was the whole act | `settings.emailConsent` |
-| Product news | opt-out, on by default once an account exists | unchanged (not this task); an account now exists only after a consent |
+| Product news | counted as on once an account exists, unless switched off (`notifyMarketing !== false`, and the site's read) | **off until the person ticks the separate box** in Settings → Notifications (`wantsNews`); every account the app creates sends `marketing: false` unless ticked |
 
 ## States and their one owner
 

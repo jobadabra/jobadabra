@@ -6,13 +6,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {LINE} from '../../../renderer/email-consent-words.js';
+import {FAILED, LINE} from '../../../renderer/email-consent-words.js';
 import {asked, clear, consentOf, consented, record, shouldAsk} from '../../../lib/email-consent.js';
 import {cvAddress, view} from '../../../lib/email-from-cv.js';
 import {addressToSave, atContinue, startsOn} from '../../../renderer/email-consent-choice.js';
 import {registerNotifyHandlers} from '../../../lib/notify-handlers.js';
 import {NO_ADDRESS, turnOnShared} from '../../../lib/hosted-email.js';
-import {channelsOf, notifyEnv, save, sendEmail} from '../../../lib/notify-channel.js';
+import {channelsOf, notifyEnv, save, sendEmail, wantsNews} from '../../../lib/notify-channel.js';
 
 const storage = ({settings = {}, links = [], secrets = {JOBADABRA_TRIAL_KEY: 'JPF1.install-0001.tok'}} = {}) => {
   const kept = {...settings}, root = fs.mkdtempSync(path.join(os.tmpdir(), 'consent-'));
@@ -103,6 +103,32 @@ test('a Settings save that leaves e-mail off withdraws nothing: only turning it 
   const on = storage({settings: {emailConsent: given, notifyEmail: 'alex.example@example.com', notifyBy: ['email', 'app']}});
   await save(on, {by: ['app']}, site());
   assert.equal(on.settings().emailConsent, null, 'turned off: withdrawn');
+});
+
+// Why (5 Nov 2026, #3282): the press went on after a failed save, and turning on wrote over the line that said so.
+test('Always on: a consent that could not be saved stops the press, so its message stays on screen', async () => {
+  const nodes = {'hosted-email-ask': {hidden: false}, 'hosted-email-consent': {checked: true}, 'hosted-set-message': {}};
+  const keep = {document: globalThis.document, window: globalThis.window, Node: globalThis.Node};
+  globalThis.Node = class {};
+  globalThis.document = {getElementById: id => nodes[id] || null, addEventListener() {}, body: {append() {}}, createElement: () => ({style: {}, setAttribute() {}, append() {}, addEventListener() {}})};   // components.js makes its menu at load
+  globalThis.window = {pilot: {state: async () => ({}), emailConsentAsked: async () => ({}), emailConsentGive: async () => ({ok: false})}};
+  try {
+    let read = 0;
+    const {askConsentOnce} = await import('../../../renderer/pages/hosted-email-ask.js');
+    assert.equal(await askConsentOnce({}, async () => { read += 1; }), true, 'the press stops');
+    assert.equal(read, 1, 'the card read its state before the message was written');
+    assert.equal(nodes['hosted-set-message'].textContent, FAILED);
+  } finally { Object.assign(globalThis, keep); }
+});
+
+// Why (5 Nov 2026, owner): "Keep on, service mails only": any marketing needs a separate unticked choice, so no path turns the news on without that tick.
+test('product news stay off until the person ticks them, whichever way e-mail was turned on', async () => {
+  const turned = [], kept = storage({settings: {notifyEmail: 'alex.example@example.com'}});
+  await turnOnShared(kept, {}, {turnOn: async (_, given) => { turned.push(given); return {ok: true}; }});
+  assert.equal(turned[0].marketing, false, 'Always on with no choice stored');
+  assert.equal(wantsNews(kept), false);
+  kept.saveSettings({notifyMarketing: true});
+  assert.equal(wantsNews(kept), true, 'the tick is the only way on');
 });
 
 test('turned off before Continue: nothing reaches the site or a mailbox, and the step counts as asked', async () => {

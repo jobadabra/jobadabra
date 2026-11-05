@@ -21,7 +21,7 @@ function build(card, address) {
   return block;
 }
 
-/** The Turn on press. -> true when the switch was shown now (the press stops here), false when the press goes on (nothing to ask, or the shown switch was just answered). */
+/** The Turn on press. -> true when the press stops here (the switch was just shown, or its answer could not be saved), false when the press goes on (nothing to ask, or the shown switch was just answered). */
 export async function askConsentOnce(card, then) {
   if (busy) return true;
   busy = true;
@@ -37,8 +37,8 @@ async function press(card, then) {
     await window.pilot.emailConsentAsked('alwaysOn');
     if (answer.give) {
       const done = await window.pilot.emailConsentGive({where: 'alwaysOn', given: answer.give.given}).catch(() => ({ok: false}));
-      if (!done.ok) message('hosted-set-message', done.error || FAILED, 'bad');   // the card's own line (no toast: startup.js would close an import cycle through wizard and hosted)
       await then();   // the card reads the address it now has
+      if (!done.ok) { message('hosted-set-message', done.error || FAILED, 'bad'); return true; }   // the card's own line (a toast would close an import cycle); the press stops, or turning on would write over it
     }
     return false;
   }

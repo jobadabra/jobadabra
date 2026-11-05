@@ -20,6 +20,10 @@ export function channelsOf(storage) {
   return wanted.filter(name => (name === 'email' ? !!emailOf(storage) && consent.consented(storage) : name === 'telegram' ? telegramReady(storage) : true));
 }
 
+// Why (5 Nov 2026, owner): "Keep on, service mails only": product news need their own tick, so a person who never chose has none. The one place this default lives.
+/** True when the person ticked product news in Settings → Notifications. */
+export const wantsNews = storage => storage.settings().notifyMarketing === true;
+
 // A run is asked to deliver (--send) when it has somewhere to deliver to besides the app's own window.
 export const deliveryReady = storage => channelsOf(storage).some(name => name === 'email' || name === 'telegram');
 
@@ -53,7 +57,7 @@ export async function state(storage, fetcher = globalThis.fetch) {
   const settings = storage.settings(), site = await call(storage, 'GET', '/api/account/email', null, fetcher);
   if (site.ok && site.email && site.email !== settings.notifyEmail) storage.saveSettings({notifyEmail: site.email});
   return {by: channelsOf(storage), chosen: Array.isArray(settings.notifyBy) ? settings.notifyBy : null, telegram: telegramReady(storage), email: site.ok ? site.email || '' : emailOf(storage),
-    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, unconfirmedStopped: !!site.unconfirmedStopped, emailAt: String(settings.notifyEmailAt || ''), cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', marketing: site.ok ? !!site.marketing : settings.notifyMarketing !== false, reached: !!site.ok,
+    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, unconfirmedStopped: !!site.unconfirmedStopped, emailAt: String(settings.notifyEmailAt || ''), cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', marketing: site.ok ? !!site.marketing : wantsNews(storage), reached: !!site.ok,
     automation: settings.apply?.mode === 'auto' && !!settings.apply?.autoConfirmedAt};   // Full automation on and confirmed (the pop-up "nothing can reach you", notify-moments)
 }
 

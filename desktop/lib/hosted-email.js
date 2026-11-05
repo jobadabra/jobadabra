@@ -6,23 +6,22 @@ import * as hosted from './hosted-search.js';
 import {consented} from './email-consent.js';
 
 export const NO_ADDRESS = 'Add your e-mail in Settings → Notifications first: the matches go there.';
-const newsOf = storage => storage.settings().notifyMarketing !== false;
 
 // -> {ok, error?, warning?}
 export async function turnOnShared(storage, given = {}, {fetcher, turnOn = hosted.turnOn, save = channel.save} = {}) {
   const typed = String(given.email || '').trim();
   const email = typed || (consented(storage) ? channel.emailOf(storage) : '');   // a withdrawn consent leaves no address to use: the person adds one in Notifications
   if (!email) return {ok: false, error: NO_ADDRESS};
-  const marketing = typeof given.marketing === 'boolean' ? given.marketing : newsOf(storage);
+  const marketing = typeof given.marketing === 'boolean' ? given.marketing : channel.wantsNews(storage);
   const done = await turnOn(storage, {email, marketing}, fetcher ? {fetcher} : {});
-  if (!done.ok || !typed || (typed.toLowerCase() === channel.emailOf(storage) && marketing === newsOf(storage))) return done;
+  if (!done.ok || !typed || (typed.toLowerCase() === channel.emailOf(storage) && marketing === channel.wantsNews(storage))) return done;
   const kept = await save(storage, {email: typed, marketing}, fetcher);
   return kept.ok ? done : {...done, warning: 'On, but Notifications still shows your old address: save it there again.'};
 }
 
 // After Notifications saved. -> {ok, moved}
 export async function followNotify(storage, {fetcher, turnOn = hosted.turnOn} = {}) {
-  const now = hosted.state(storage), email = channel.emailOf(storage), marketing = newsOf(storage);
+  const now = hosted.state(storage), email = channel.emailOf(storage), marketing = channel.wantsNews(storage);
   if (!now.on || !email || (email === String(now.email || '').toLowerCase() && marketing === !!now.marketing)) return {ok: true, moved: false};
   const done = await turnOn(storage, {email, marketing}, fetcher ? {fetcher} : {});
   return {...done, moved: !!done.ok};

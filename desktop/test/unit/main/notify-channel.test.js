@@ -68,7 +68,7 @@ test('the window state shows the site\'s address and confirmation, and the kept 
   const online = await state(s, site([{ok: true, email: 'kept@b.co', confirmed: true, marketing: false}]));
   assert.deepEqual([online.email, online.confirmed, online.marketing, online.reached], ['kept@b.co', true, false, true]);
   const offline = await state(s, site([new Error('offline')]));
-  assert.deepEqual([offline.email, offline.reached, offline.marketing], ['kept@b.co', false, true]);
+  assert.deepEqual([offline.email, offline.reached, offline.marketing], ['kept@b.co', false, false]);
 });
 
 test('an e-mail the app sends itself needs e-mail chosen, and never throws', async () => {
