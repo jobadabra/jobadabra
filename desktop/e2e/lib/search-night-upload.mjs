@@ -9,9 +9,17 @@ import fs from 'node:fs';
 export const SEARCH_NIGHT_SITE = 'https://www.jobadabra.top/search-check/night';
 export const MAX_BYTES = 65536;   // the Worker's cap (admin/search-night.js MAX_BYTES): a bigger verdict is named here, not sent to a 413
 
+// Why this run sends nothing, or '' when it may. In this order: a local run, a branch other than main, no key, no run id.
+function refusal(env, run) {
+  if (!env.CI) return 'a local run: nothing leaves the Mac';
+  if (env.GITHUB_REF_NAME !== 'main') return `branch ${env.GITHUB_REF_NAME || '(none)'}: only a run on main is a night`;
+  if (!env.REPLAYS_PUBLISH_KEY) return 'no REPLAYS_PUBLISH_KEY in this run';
+  return /^\d{6,15}$/.test(String(run || '')) ? '' : 'no run id';
+}
+
 /** Upload the verdict file `file` as GitHub run `run`, filed under the UTC night of `now`. -> one line for the job's log. */
 export async function uploadSearchNight(file, run, {env = process.env, fetcher = fetch, now = new Date()} = {}) {
-  const why = !env.CI ? 'a local run: nothing leaves the Mac' : env.GITHUB_REF_NAME !== 'main' ? `branch ${env.GITHUB_REF_NAME || '(none)'}: only a run on main is a night` : !env.REPLAYS_PUBLISH_KEY ? 'no REPLAYS_PUBLISH_KEY in this run' : !/^\d{6,15}$/.test(String(run || '')) ? 'no run id' : '';
+  const why = refusal(env, run);
   if (why) return `search night: not sent (${why})`;
   if (!file || !fs.existsSync(file)) return 'search night: nothing to send (no verdict.json)';
   const body = fs.readFileSync(file);
