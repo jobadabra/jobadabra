@@ -12,7 +12,7 @@ const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'recei
 const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // a job still on its way to a press: a quit hands it over (interrupted)
 // The hand-offs that end a run with nothing left to settle: the person's Stop or Cancel, a quit before the press, a mode change. Applying again starts a new run.
 // Every other reason stays with the person (a bot check, an unknown or reserved press, a form taken to their own browser, where they may have submitted it).
-const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'mode_changed']);   // words-ok: our own hand-off reason ids, not page knowledge
+const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'app_updated', 'mode_changed']);   // words-ok: our own hand-off reason ids, not page knowledge
 /** Pure: true when `state` is a hand-off that ended its run with nothing left to settle and no press reserved, so applying again starts a new run. */
 export const finishedHandoff = state => state?.state === 'needs_user_handoff' && !state.attempt && FINISHED_REASONS.has(state.reason);
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
@@ -31,6 +31,16 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     typeof proof.submitControl === 'string' && proof.submitControl.trim() && typeof proof.signature === 'string' && !!proof.signature;
 
   async function read(url) { return load(await appOf(url)); }
+  // Whether the run the store holds for this job ended without an answer (Stop, Cancel, a quit or an update before the press) and starts afresh when the person applies again, in ANY mode.
+  // Why (7 Nov 2026, owner's HYPE session): only the hidden-browser path asked; Apply in Chrome reopened a tab into the ended run's session, so one card showed two truths. One rule, asked by both.
+  // A Stop after the reservation keeps no attempt on the state (it saves the state from before it), so the reservation events are read too.
+  async function endedRun(app, old) {
+    return !!old && finishedHandoff(old) && !(await ask('events', 'list', {kind: RESERVED})).some(event => event.app_id === app.id);
+  }
+  /** -> whether the run held for this job's address ended without an answer, so a new application starts afresh (never a CAPTCHA or an unknown-submit hand-off, which stay with the person). */
+  async function ended(url) {
+    return serial(async () => { const app = await appOf(url); return endedRun(app, await load(app)); });
+  }
   async function queue(url, session, mode, config) {
     return serial(async () => {
       if (!['fill', 'auto'].includes(mode)) throw new Error('Unknown background Apply mode');
@@ -38,7 +48,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       // Why (2026-10-27, owner; 5 Nov 2026, owner's screenshot): reapplying or changing modes never resets a job's CAPTCHA or unknown-submit handoff; any other finished
       // hand-off (Stop, Cancel, a quit before the press) starts a new run, or the job came back as "Needs you · Try again" in its old mode and never launched.
       // A Stop after the reservation keeps no attempt on the state (it saves the state from before it), so the reservation events are read too.
-      if (old && (!finishedHandoff(old) || (await ask('events', 'list', {kind: RESERVED})).some(event => event.app_id === app.id))) return old;
+      if (old && !(await endedRun(app, old))) return old;
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
       return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});
@@ -118,15 +128,15 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
    * A press the app's quit cut off: the job is still `submitting` with no receipt, and the hidden browser that pressed it died with the app, so nothing will ever read the site's reply.
    * Hands it to the person as `submission_outcome_unknown` ("check whether it went through") whichever browser owned it; the attempt stays used, so it is never reserved again.
    * `afterMs` (default 0): only a press older than that is handed over, for a reply that never came with the app still open (the extension closed); a younger press may still be answered.
-   * `quit`: the job was held by an earlier run of the app; any state before the press (queued, filling, ready for review, waiting) is handed over too, as `app_closed`.
+   * `quit`: the job was held by an earlier run of the app; any state before the press (queued, filling, ready for review, waiting) is handed over too, as `app_closed`, or `app_updated` when `updated` (this start is the first of a new version).
    * Why (30 Oct 2026, owner: "A quit is a Stop"): #2598's restart step saw Full automation press 80 s after a restart on the wait the quit cut off, through the reused hidden browser.
    * Returns the saved state, or null when this session's job is not mid-press or not old enough (another session's record is never touched).
    */
-  async function interrupted(url, session, {afterMs = 0, quit = false} = {}) {
+  async function interrupted(url, session, {afterMs = 0, quit = false, updated = false} = {}) {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
       if (!state || state.session !== session) return null;
-      if (quit && !state.manualOverride && BEFORE_PRESS.has(state.state)) return manual(app, state, 'app_closed');   // words-ok: our own hand-off reason id, not page knowledge
+      if (quit && !state.manualOverride && BEFORE_PRESS.has(state.state)) return manual(app, state, updated ? 'app_updated' : 'app_closed');   // Why (7 Nov 2026, owner: his update restarted the app, he closed nothing): an update restart says so   // words-ok: our own hand-off reason id, not page knowledge
       if (state.state !== 'submitting' || state.receiptAt) return null;
       if (afterMs && now() - (state.submittedAt || 0) < afterMs) return null;
       return manual(app, state, 'submission_outcome_unknown');
@@ -139,5 +149,5 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       return save(app, {...state, state: 'receipt_confirmed', humanSubmittedAt: pressedAt, receiptAt: realNow()});
     });
   }
-  return {queue, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, read};
+  return {queue, ended, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, read};
 }

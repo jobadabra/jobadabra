@@ -5,5 +5,5 @@ import {test} from 'node:test';
 
 test('start-up hands interrupted presses to the person once the store is settled', () => {
   const source = fs.readFileSync(new URL('../../../lib/background-handlers.js', import.meta.url), 'utf8');
-  assert.match(source, /moves\.catch\(\(\) => \{\}\)\.then\(\(\) => backgroundApplyFor\(storage\)\.sweepInterrupted\(\)\)/, 'the sweep runs after the start-up moves, even when a move failed');
+  assert.match(source, /moves\.catch\(\(\) => \{\}\)\.then\(\(\) => backgroundApplyFor\(storage\)\.sweepInterrupted\(undefined, \{updated: !!updatedAtStart\}\)\)/, 'the sweep runs after the start-up moves, even when a move failed');
 });

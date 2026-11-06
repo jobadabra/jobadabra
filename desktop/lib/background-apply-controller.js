@@ -18,7 +18,8 @@ const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
 const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.',
-  app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.',
+  app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 /**
@@ -95,6 +96,20 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     await browserOf().closeSession(old.id).catch(() => false);   // a stopped run's tab may still be open: it closes with it
     terminals.remove(old.id);
     latest.delete(old.id);
+  }
+  /**
+   * The person pressed Apply (in Chrome) on a job whose hidden-browser run ended without an answer: that run's session leaves the list and its tab closes, so the press starts a session of its own.
+   * Why (7 Nov 2026, owner's HYPE session): the Chrome path reused the ended run's session, which drew the old run's "in Jobadabra's browser" card under the new Chrome tab. Same rule as enqueue (store.ended).
+   * -> whether a session was released; false when none is held or the run still holds something for the person.
+   */
+  async function releaseEnded(url) {
+    const old = terminals.byUrl(url);
+    if (!old?.background || old.outcome || !(await store.ended(url))) return false;
+    await browserOf().closeSession(old.id).catch(() => false);
+    terminals.remove(old.id);
+    latest.delete(old.id);
+    log('apply', 'an ended background run left the list: the job starts afresh', {session: old.id});
+    return true;
   }
   async function enqueue(jobs, mode) {
     return serial(async () => {
@@ -237,10 +252,11 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
    * "Submission attempted" for ever. Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
    * Why (30 Oct 2026, owner: "A quit is a Stop"): a job before its press was continued after a restart, and Full automation pressed on the wait the quit cut off (#2598).
+   * `updated`: this start is the first of a new version, so the quit was the update's restart: the card says so (`app_updated`), not "closed".
    * Returns the session ids it handed over.
    */
-  async function sweepInterrupted(startedBefore = started) {
-    return handOverAll(entry => heldBefore(entry, startedBefore), {quit: true});
+  async function sweepInterrupted(startedBefore = started, {updated = false} = {}) {
+    return handOverAll(entry => heldBefore(entry, startedBefore), {quit: true, ...(updated ? {updated} : {})});
   }
   /**
    * While the app runs: a press with no receipt `afterMs` after it was sent is handed to the person too, because a reply that never arrives (the extension closed, the tab gone) has no other reader.
@@ -360,5 +376,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  return {enqueue, releaseEnded, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

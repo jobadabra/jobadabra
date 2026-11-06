@@ -21,6 +21,7 @@ import {log as appLog} from './log.js';
 import {expectTab} from './tab-expect.js';
 import * as review from './review.js';
 import {openFormTab} from './form-tab.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 
 export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.js
 
@@ -120,8 +121,9 @@ export function openOne(url, {session = '', open = spawn, log = appLog, reuse = 
 // The Apply button: the form tab, and a form session for it in the Applying page (the job goes to Applying in Notion, like an
 // Apply with Claude session). The session shows what is left in the form from the extension's reports and moves to Applied
 // when the extension sees the submit. Pressing Apply on a job that already has an open form session reopens only the tab.
-export async function applyOne(storage, url, details = {}, {open = spawn, term = terminals, run = pipeline.run, id = () => crypto.randomUUID().slice(0, 8), focus = openFormTab} = {}) {
+export async function applyOne(storage, url, details = {}, {open = spawn, term = terminals, run = pipeline.run, id = () => crypto.randomUUID().slice(0, 8), focus = openFormTab, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   if (!/^https?:\/\//.test(url || '')) return {ok: false, error: 'This job has no link to open.'};
+  await release(url.split('#')[0]).catch(() => false);   // an earlier hidden-browser run that ended without an answer leaves the list first: this press is a session of its own (7 Nov 2026, owner's HYPE session)
   const fresh = !term.list().some(s => s.url === url.split('#')[0] && s.kind === 'form' && !s.outcome);
   // The session first (an open one on this job is reused), then its tab, which carries the session's id.
   const session = term.startForm({id: id(), url: url.split('#')[0], title: details?.title || '', company: details?.company || '',
