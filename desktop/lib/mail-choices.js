@@ -7,7 +7,7 @@ import {call, channelsOf, installKey, wantsNews} from './notify-channel.js';
 import {rowLine} from '../renderer/email-consent-words.js';
 import * as hosted from './hosted-search.js';
 
-/** Why (6 Nov 2026, coordinator, spec §Order): a mail held on our server for the digest carries no row, so a switch shown before "Mac mail is not stored" (spec PR 5) would be a promise the digest breaks.
+/** Why (6 Nov 2026, coordinator, spec §Order): a mail held on our server for the digest carries no row, so a switch shown before "app mail is not stored" (spec PR 5) would be a promise the digest breaks.
  *  The switches stay dark for people until PR 5 has shipped; its follow-up flips this one line. Demo mode and tests always show them. */
 export const MAIL_SWITCHES_SHOWN = false;
 
@@ -64,6 +64,9 @@ export function mailOff(storage, shown = MAIL_SWITCHES_SHOWN) {
   const mode = modeOf(storage);
   return (storage.settings().mailRows || []).filter(row => ROWS.includes(row.id) && !viewOf(row, mode, true).on).map(row => row.id);
 }
+
+/** The engine's env for the rows that are off: {JOBADABRA_MAIL_OFF: 'a,b'}, or {} when none (always {} while the switches are dark). */
+export const mailOffEnv = (storage, shown = MAIL_SWITCHES_SHOWN) => { const off = mailOff(storage, shown); return off.length ? {JOBADABRA_MAIL_OFF: off.join(',')} : {}; };
 
 /** True when the app may send this row's mail: the person has it on (or never chose and the default is on). */
 export const allowed = (storage, row, shown = MAIL_SWITCHES_SHOWN) => !mailOff(storage, shown).includes(row);

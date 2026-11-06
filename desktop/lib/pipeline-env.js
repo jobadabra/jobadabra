@@ -18,7 +18,7 @@ const LOCAL_TEXTS = {JOBADABRA_PROFILE_FILE: TEXT_FILES.profile, JOBADABRA_ANSWE
 import {ROOT} from './root.js';
 import {isolatedFile} from './keychain.js';
 import {notifyEnv} from './notify-channel.js';
-import {mailOff} from './mail-choices.js';
+import {mailOffEnv} from './mail-choices.js';
 import {CONFIG_FILES, cleanConfigFiles, copyWithoutNotes} from './config-text.js';
 
 export const REPO = ROOT;
@@ -143,8 +143,7 @@ export function pipelineEnv(storage, parent = process.env) {
   Object.assign(env, poolShare.variables(storage) || {});  // "Help the pool grow": only when the user turned it on
   if (settings.telegramChatId) env.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
   Object.assign(env, notifyEnv(storage));   // how the person wants to be told (Settings → Notifications): src/notify.py
-  const off = mailOff(storage);
-  if (off.length) env.JOBADABRA_MAIL_OFF = off.join(',');   // the rows the person switched off: the engine sends none of them (src/notify.py mail_off)
+  Object.assign(env, mailOffEnv(storage));   // the rows the person switched off: the engine sends none of them (src/notify.py mail_off)
   for (const [key, value] of Object.entries(settings.notionIds || {})) if (value) env[key] = value;
   return env;
 }

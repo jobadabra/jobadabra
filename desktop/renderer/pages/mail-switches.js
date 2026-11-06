@@ -2,7 +2,6 @@
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden while the main process says the switches are dark (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
 import {$} from './core.js';
-import {openSetting} from './settings.js';
 import {el} from '../components.js';
 import {plainError} from '../run-warnings.js';
 import {createMailState} from '../mail-switch-state.js';
@@ -38,35 +37,41 @@ export function switchRow(row, where, note = '', press = () => {}) {
   return wrap;
 }
 
-function draw() {
-  const state = mail.state();
-  const dark = !state?.ok || state.hidden;
+// Notifications' card: every row, where they come from once under the title, and the read's own words when it failed.
+function drawCard(state, shown) {
   const panel = $('setting-mail');
   if (panel) panel.hidden = !!state?.hidden || !state || (state.ok && !state.rows.length);   // a read that failed stays visible with its words; a person with no rows yet has nothing to show
   const list = $('mail-rows');
-  if (list) {
-    if (state?.ok && !state.hidden) {
-      list.replaceChildren(...state.rows.map(row => switchRow(row, state.mode === 'always' && FROM_MAC.includes(row.id) ? state.macWhere : '', mail.note(row.id), mail.press)));   // where they come from is said once, under the card's title; a mail the Mac writes says so when the card says Always on
-      $('mail-pitch').hidden = state.mode !== 'mac';
-    } else { list.replaceChildren(); $('mail-pitch').hidden = true; }
-    $('mail-where').textContent = state?.ok && !state.hidden ? state.where : '';
-    $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : '');
-  }
+  if (!list) return;
+  list.replaceChildren(...(shown ? state.rows.map(row => switchRow(row, state.mode === 'always' && FROM_MAC.includes(row.id) ? state.macWhere : '', mail.note(row.id), mail.press)) : []));   // a mail the Mac writes says so when the card says Always on
+  $('mail-pitch').hidden = !shown || state.mode !== 'mac';
+  $('mail-where').textContent = shown ? state.where : '';
+  $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : '');
+}
+
+// The rows beside an automation (`data-mail-slot`), the Apply card's one "where" line, and the cards of slots that have none to show.
+function drawSlots(state, shown) {
   for (const slot of document.querySelectorAll('[data-mail-slot]')) {
-    const row = !dark && state.rows.find(entry => entry.id === slot.dataset.mailSlot);
+    const row = shown && state.rows.find(entry => entry.id === slot.dataset.mailSlot);
     slot.hidden = !row;
     slot.replaceChildren(...(row ? [switchRow(row, slot.closest('[data-mail-group]') ? '' : state.where, mail.note(row.id), mail.press)] : []));   // a card of several rows says where once, in its lead; a row under one automation says it itself
   }
   const applyWhere = $('apply-mail-where');
-  if (applyWhere) applyWhere.textContent = !dark ? state.macWhere || state.where : '';   // applying runs on the Mac in every mode
-  for (const group of document.querySelectorAll('[data-mail-group]')) group.hidden = ![...group.querySelectorAll('[data-mail-slot]')].some(slot => !slot.hidden);   // a card of slots with none to show is not drawn
+  if (applyWhere) applyWhere.textContent = shown ? state.macWhere || state.where : '';   // applying runs on the Mac in every mode
+  for (const group of document.querySelectorAll('[data-mail-group]')) group.hidden = ![...group.querySelectorAll('[data-mail-slot]')].some(slot => !slot.hidden);
+}
+
+function draw() {
+  const state = mail.state(), shown = !!state?.ok && !state.hidden;
+  drawCard(state, shown);
+  drawSlots(state, shown);
 }
 
 /** Reads the person's choices and draws them in every place. Safe to call often (Settings opening, a save in Notifications, Always on changing). */
 export const showMailSwitches = () => mail.read();
 
-/** Wires the Notifications card's "Turn on" (opens Always on's setting) and re-reads the choices when the notify state changes elsewhere. Takes nothing, returns nothing; the data comes from showMailSwitches. */
-export function bindMailSwitches() {
+/** Wires the Notifications card's "Turn on" and re-reads the choices when the notify state changes elsewhere. `openSetting`: the caller's opener (settings.js), passed in so this page never imports Settings (an import cycle through connections.js). Returns nothing. */
+export function bindMailSwitches(openSetting) {
   $('mail-turn-on')?.addEventListener('click', () => openSetting('cloud'));
   window.addEventListener('notify-changed', () => showMailSwitches());   // notify-refresh reaches showNotify, which reads the rows again
 }

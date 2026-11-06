@@ -60,6 +60,6 @@ export function bindNotify({savedToast, updateRepo}) {
     const sent = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
     $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || 'Try again in a minute.');
   });
-  bindMailSwitches();
+  bindMailSwitches(openSetting);
   window.addEventListener('notify-refresh', () => showNotify());   // the Test pop-up borrows this card and asks it to read the state again
 }
