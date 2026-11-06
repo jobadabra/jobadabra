@@ -13,8 +13,7 @@
      "шофьор",
      "камионен шофьор"
     ],
-    "nuts2": "BG41",
-    "serp": "Sofia,Sofia-Capital,Bulgaria"
+    "nuts2": "BG41"
    }
   },
   {
@@ -29,8 +28,7 @@
      "specialist resurse umane",
      "HR"
     ],
-    "nuts2": "RO11",
-    "serp": "Cluj-Napoca,Cluj County,Romania"
+    "nuts2": "RO11"
    }
   },
   {
@@ -45,8 +43,7 @@
      "charpentier",
      "menuisier"
     ],
-    "nuts2": "BE10",
-    "serp": "Brussels,Brussels,Belgium"
+    "nuts2": "BE10"
    }
   },
   {
@@ -61,8 +58,7 @@
      "Lagerist",
      "Lagermitarbeiter"
     ],
-    "nuts2": "CH04",
-    "serp": "Zurich,Zurich,Switzerland"
+    "nuts2": "CH04"
    }
   },
   {
@@ -77,8 +73,7 @@
      "kucharz",
      "cook"
     ],
-    "nuts2": "PL21",
-    "serp": "Krakow,Lesser Poland Voivodeship,Poland"
+    "nuts2": "PL21"
    }
   },
   {
@@ -93,8 +88,7 @@
      "digitalni marketing",
      "marketing menadžer"
     ],
-    "nuts2": "HR05",
-    "serp": "Zagreb,City of Zagreb,Croatia"
+    "nuts2": "HR05"
    }
   },
   {
@@ -109,8 +103,7 @@
      "registered nurse",
      "staff nurse"
     ],
-    "nuts2": "IE06",
-    "serp": "Dublin,County Dublin,Ireland"
+    "nuts2": "IE06"
    }
   },
   {
@@ -124,8 +117,7 @@
     "words": [
      "Schweißer"
     ],
-    "nuts2": "DED5",
-    "serp": "Leipzig,Saxony,Germany"
+    "nuts2": "DED5"
    }
   },
   {
@@ -139,8 +131,7 @@
     "words": [
      "électricien"
     ],
-    "nuts2": "FRK2",
-    "serp": "Lyon,Auvergne-Rhone-Alpes,France"
+    "nuts2": "FRK2"
    }
   },
   {
@@ -155,8 +146,7 @@
      "software engineer",
      "softwareontwikkelaar"
     ],
-    "nuts2": "NL32",
-    "serp": "Amsterdam,North Holland,Netherlands"
+    "nuts2": "NL32"
    }
   },
   {
@@ -170,8 +160,7 @@
     "words": [
      "analista de dados"
     ],
-    "nuts2": "PT17",
-    "serp": "Lisbon,Lisbon,Lisbon,Portugal"
+    "nuts2": "PT17"
    }
   },
   {
@@ -185,8 +174,7 @@
     "words": [
      "contabile"
     ],
-    "nuts2": "ITC4",
-    "serp": "Milan,Lombardy,Italy"
+    "nuts2": "ITC4"
    }
   },
   {
@@ -200,8 +188,7 @@
     "words": [
      "učitel"
     ],
-    "nuts2": "CZ01",
-    "serp": "Prague,Prague,Czechia"
+    "nuts2": "CZ01"
    }
   },
   {
@@ -215,8 +202,7 @@
     "words": [
      "bilmekaniker"
     ],
-    "nuts2": "SE23",
-    "serp": "Gothenburg,Vastra Gotaland County,Sweden"
+    "nuts2": "SE23"
    }
   },
   {
@@ -230,8 +216,7 @@
     "words": [
      "értékesítő"
     ],
-    "nuts2": "HU11",
-    "serp": "Budapest,Budapest,Hungary"
+    "nuts2": "HU11"
    }
   },
   {
@@ -245,8 +230,7 @@
     "words": [
      "Apotheker"
     ],
-    "nuts2": "AT13",
-    "serp": "Vienna,Vienna,Austria"
+    "nuts2": "AT13"
    }
   },
   {
@@ -260,8 +244,7 @@
     "words": [
      "recepcionista"
     ],
-    "nuts2": "ES52",
-    "serp": "Valencia,Valencian Community,Spain"
+    "nuts2": "ES52"
    }
   },
   {
@@ -275,10 +258,9 @@
     "words": [
      "civilingeniør"
     ],
-    "nuts2": "DK01",
-    "serp": "Copenhagen,Capital Region of Denmark,Denmark"
+    "nuts2": "DK01"
    }
   }
  ],
- "_reference": "Per persona, for the weekly reference (tools/persona-search/reference.py, 6 Nov 2026): `words` = the role in the place's own language (EURES and Google Jobs match words, not our English title), `nuts2` = the city's NUTS 2021 region (checked against Eurostat's table), `serp` = SerpApi's canonical location name (serpapi.com/locations.json)."
+ "_reference": "Per persona, for the weekly reference (tools/persona-search/reference.py, 6 Nov 2026): `words` = the role in the place's own language (EURES matches words, not our English title), `nuts2` = the city's NUTS 2021 region (checked against Eurostat's table)."
 }
