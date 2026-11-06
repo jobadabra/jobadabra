@@ -6,6 +6,7 @@ import {signInWait} from '../sign-in-wait.js';
 import {shared} from './shared.js';
 import {$, message, osText, show} from './core.js';
 import {pill} from '../components.js';
+import {scheduleWith} from '../schedule-line.js';
 import {saveDailyTarget} from './focus.js';
 import {loadSettings} from './profile.js';
 import {noteCheck, openSetting, refreshServices, renderOverview, showRunMode} from './settings.js';
@@ -27,7 +28,7 @@ const wayOut = (label, run) => { const button = document.createElement('button')
 
 
 // ---------- how often each job runs ----------
-const SCHEDULE_DEFAULTS = {search: 4, insights: 'daily', scout: 'daily', mail: 3};
+const SCHEDULE_DEFAULTS = {search: 4, mail: 3};   // what the two rows show before a choice is saved (lib/cadence.js DEFAULTS)
 export function showSchedule() {
   const schedule = {...SCHEDULE_DEFAULTS, ...(shared.state.settings.schedule || {})};
   document.querySelectorAll('[data-schedule]').forEach(select => { select.value = String(schedule[select.dataset.schedule]); });
@@ -49,8 +50,6 @@ export function showScheduleState(next = shared.nextRuns || {}) {
   };
   const state = {
     search: value('search') === '0' ? ['Off'] : ['On', where, when(next.search)],
-    scout: value('scout') === 'off' ? ['Off'] : ['On', where, when(next.scout)],
-    insights: value('insights') === 'off' ? ['Off'] : ['On', 'every morning'],
     mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', where, when(next.mail)],
   };
   document.querySelectorAll('[data-schedule-state]').forEach(node => {
@@ -86,8 +85,7 @@ function updateRepo() {
   }, REPO_DELAY);
 }
 async function saveSchedule(select) {
-  const schedule = {...SCHEDULE_DEFAULTS, ...(shared.state.settings.schedule || {})};
-  schedule[select.dataset.schedule] = /^\d+$/.test(select.value) ? Number(select.value) : select.value;
+  const schedule = scheduleWith(shared.state.settings.schedule, select.dataset.schedule, /^\d+$/.test(select.value) ? Number(select.value) : select.value);
   await window.pilot.saveSettings({schedule});
   shared.state = await window.pilot.state();
   const task = select.closest('.task-row')?.querySelector('b')?.textContent || 'Schedule';

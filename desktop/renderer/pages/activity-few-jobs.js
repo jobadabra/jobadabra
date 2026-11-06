@@ -102,11 +102,11 @@ export function withFewJobsHelp(runId) {
     const parts = [];
     // One plain action in place of the employer numbers and schedule (owner, 24 Oct 2026); those live in Reports.
     if (groups?.employers) {
-      const further = el('button', 'secondary item-action', 'Look further');
+      const further = el('button', 'secondary item-action', 'Search wider');
       further.type = 'button';
       further.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
       adviceEvent('shown', 'employer', 'few-jobs');
-      const coverage = card('file', 'Find more employers', 'Searches for employers with jobs for you', further);
+      const coverage = card('file', 'Wider search', 'Looks beyond your current sources for jobs that fit you', further);
       parts.push(coverage);
     }
     const broaden = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);

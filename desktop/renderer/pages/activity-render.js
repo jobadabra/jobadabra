@@ -96,11 +96,11 @@ export function renderActivity(fresh) {
   showQueuedBanner(data);
   lastActivity = data;
   // Settings → Automation shows the same next times beside each schedule.
-  shared.nextRuns = {search: data.nextSearchAt, mail: data.nextMailAt, scout: data.nextScoutAt};
+  shared.nextRuns = {search: data.nextSearchAt, mail: data.nextMailAt};
   showScheduleState(shared.nextRuns);
   window.dispatchEvent(new Event('activity-updated'));   // Focus → Get started ticks the steps a finished run completed
   showAwaitedResult(data.runs);
-  const {running, runs, nextSearchAt, nextMailAt, nextScoutAt} = data;
+  const {running, runs, nextSearchAt, nextMailAt} = data;
   if (!running) shared.idleSeen = true;
   else shared.logLines = seeded(running.log, shared.logLines);   // the app's copy wins when the window lost lines (reopened, ⌘R)
   const last = runs[0];
@@ -197,12 +197,12 @@ export function renderActivity(fresh) {
   // How often: from Settings → How often (GitHub does it when Always on is on).
   const cloud = !!shared.state?.settings?.cloud?.repo;
   // A card per scheduled task: what, which day, and the time in large type (or why there's none).
-  const plan = {search: 4, mail: 3, scout: 'daily', ...(shared.state?.settings?.schedule || {})};
+  const plan = {search: 4, mail: 3, ...(shared.state?.settings?.schedule || {})};
   // No time: "Off" only when Settings → Automation says so; else the app just doesn't know it yet (it was started
   // before an update: a restart fixes it), so it names where it runs.
   const unknown = cloud ? 'On GitHub' : 'On this Mac';
-  const items = [['Find jobs', 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : 'Off'],
-    ...(cloud ? [['Employers', 'building', nextScoutAt, plan.scout !== 'off' ? unknown : 'Off']] : [])];
+  // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js).
+  const items = [['Find jobs', 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : 'Off']];
   const soonest = Math.min(...items.map(([, , at]) => at || Infinity));
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it
   $('activity-schedule').replaceChildren(...items.map(([name, kind, at, none]) => {

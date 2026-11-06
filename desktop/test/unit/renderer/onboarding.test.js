@@ -48,7 +48,7 @@ test('Hide keeps it hidden; a step done is remembered at once', () => {
 test('a search suggests Find jobs again when none ever ran or too few employer sites were read', async () => {
   const {employersAdvice, ENOUGH_FEEDS} = await import('../../../renderer/onboarding.js');
   const search = (extra = {}) => ({kind: 'search', id: 5, endedAt: 6, ok: true, ...extra});
-  assert.match(employersAdvice(search({feeds: 192})).text, /haven’t been added yet/);                                  // never: whatever the count
+  assert.match(employersAdvice(search({feeds: 192})).text, /hasn’t gone wider yet/);                                  // never: whatever the count
   assert.match(employersAdvice(search({feeds: 1}), {runs: [run('scout', 1)]}).text, /^Only 1 employer site searched/);
   assert.equal(employersAdvice(search({feeds: ENOUGH_FEEDS}), {settings: {lastScoutAt: '2026-10-06T20:00:00Z'}}), null);
   assert.equal(employersAdvice(search(), {runs: [run('scout', 1)]}), null);                                        // count unknown: no claim

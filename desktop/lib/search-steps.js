@@ -10,7 +10,7 @@ const SCOUT_COOLDOWN_MS = 24 * 3600 * 1000;   // a press of Find jobs grows the 
 // The employer finder is part of Find jobs: on the first run, and on a press when none ran in the last day. A schedule that has its own scout
 // (Settings → How often) keeps it separate.
 export function scoutDue(settings, trigger, now = Date.now(), force = false) {
-  if (force) return true;   // "Find more employers" from the few-jobs help or the next-step advice
+  if (force) return true;   // "Search wider" from the few-jobs help or the next-step advice (its old name was about employers, until 5 Nov 2026)
   if (trigger === 'schedule' || settings.cloud?.repo) return false;
   if (trigger === 'first' || !settings.lastScoutAt) return true;
   return now - Date.parse(settings.lastScoutAt) >= SCOUT_COOLDOWN_MS;
@@ -74,11 +74,11 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     onLine('Checking employer career pages' + (ai ? ', then reading and scoring new jobs…' : '…'));
     ({code, result} = await step(dailyArgs(storage, {mode, budget}), 'the search'));
   }
-  if (scout && left() < STEP_MIN_S) timeUp('finding more employers', false);   // still due: the next press runs it
+  if (scout && left() < STEP_MIN_S) timeUp('searching wider', false);   // still due: the next press runs it
   else if (scout) {
-    onLine('Growing your sources: finding more employers…');
+    onLine('Searching wider…');
     storage.saveSettings({lastScoutAt: new Date().toISOString()});
-    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'finding more employers', false);
+    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'searching wider', false);
   }
   return {code, result, endedByTime};
 }

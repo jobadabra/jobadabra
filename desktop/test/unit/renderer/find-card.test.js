@@ -25,8 +25,8 @@ test('a running search shows its steps, last lines in words and the counts; the 
 test('the steps move on: first jobs, then every employer, the job boards beside them, then more employers', () => {
   const at = line => stepChips(['Finding your first jobs…', line]).map(c => c.state).join(',');
   assert.equal(at('Job boards: searching the web for trade and local boards (your plan)'), 'active,active,pending,active,pending', 'the web search and the boards start');
-  assert.equal(at('Growing your sources: finding more employers…'), 'done,skipped,done,done,active', 'a web search the run never spoke of: not run');
-  assert.equal(stepChips(['Searching job boards…', 'Checking employer career pages…']).map(c => c.label).join('|'), 'Web search|Job boards|Employer sites|More employers');
+  assert.equal(at('Searching wider…'), 'done,skipped,done,done,active', 'a web search the run never spoke of: not run');
+  assert.equal(stepChips(['Searching job boards…', 'Checking employer career pages…']).map(c => c.label).join('|'), 'Web search|Job boards|Employer sites|Wider search');
 });
 
 test('a search that ended here is done, or failed with its reason; a failure on an empty list stays', () => {

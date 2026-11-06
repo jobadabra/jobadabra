@@ -23,7 +23,7 @@ export const SCRIPT = [
   [300, 'Run counts: looked=135769 matches=31 scored=14 good=4'],
   [1500, 'Searching job boards…'],
   [1800, 'Run counts: looked=135769 matches=31 scored=24 good=6'],
-  [1500, 'Growing your sources: finding more employers…'],
+  [1500, 'Searching wider…'],
   [1500, 'Run counts: looked=135769 matches=31 scored=31 good=7'],
 ];
 
