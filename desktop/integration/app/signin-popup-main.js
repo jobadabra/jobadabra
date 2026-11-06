@@ -25,6 +25,9 @@ const seen = {requests: [], opener: null};
 const created = new Set();   // every window the app made, the popup too (BrowserWindow.getAllWindows() did not list them all)
 const open = () => [...created].filter(win => !win.isDestroyed());
 app.on('browser-window-created', (_, win) => created.add(win));
+// Why (6 Nov 2026, #3345 app (Linux) run 42192378854, flaky): Electron quits by itself when the last window closes; this probe waits for exactly that moment (every window closed) and then
+// writes its answer, so under load the process exited (0) before the write and the test saw "the probe wrote no answer". It quits only at the end, below (app.quit()).
+app.on('window-all-closed', () => {});
 let ses;
 const serve = () => ses.protocol.handle('https', async request => {
   const url = new URL(request.url);
