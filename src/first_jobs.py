@@ -215,9 +215,11 @@ def _others(pool):
             # Why (#3339, 6 Nov 2026, night run 42152934954, p10 Amsterdam): the jobs were placed BEFORE they were handed over, and on a slow AI one placing call took 61 s, so 200
             # vacancies read at 52 s reached the hub at 115 s, past every title and score clock. Placing only orders by distance (geo keeps the answer): it never holds the jobs back.
             # Same worker thread, no new one: the press's stop is unchanged (`placed` asks nothing once time_budget.ended(); src/run_exit.py bounds the thread).
-            placed(jobs)
+            with slots.priority(slots.NORMAL):   # not FIRST: the location calls must not queue ahead of the title batches the hub sorts meanwhile (slots order by level first)
+                placed(jobs)
             return jobs
-    pool.submit(slots.carry(read_eures))
+    reading = pool.submit(slots.carry(read_eures))
+    reading.add_done_callback(lambda done: None if handed.done() else handed.set_exception(done.exception() or RuntimeError('EURES read ended without jobs')))   # a failure before the read: the hub sees it
     return {'EURES': handed}
 
 
@@ -258,7 +260,7 @@ class _Readers:
 
     def __init__(self, hub, futures, feed_db, imports, hand, say):
         self.hub, self.pending, self.feed_db, self.imports, self.say, self.shown = hub, dict(futures), feed_db, imports, say, {}
-        self.hand = hand
+        self.hand, self.draining = hand, False
         for name, future in futures.items():   # the hub is woken, in whatever it waits for, to take a reader that has read
             future.add_done_callback(lambda _done, name=name: hub.post(lambda: self._joined(name)))
 
@@ -288,8 +290,14 @@ class _Readers:
 
     def take_ready(self):
         """Sort and import every reader that has read and is waiting for the hub, without waiting for one that is still reading."""
-        while self.hub.run_next(0):
-            pass
+        if self.draining:   # a sort this runs may score and come back here: one level only, never one frame set per queued landing
+            return
+        self.draining = True
+        try:
+            while self.hub.run_next(0):
+                pass
+        finally:
+            self.draining = False
 
     def settle(self, scoring):
         """Score what is read, the nearest first; with nothing left to score and a reader still reading, wait for the next one (never past the press's end)."""

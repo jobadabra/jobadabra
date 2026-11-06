@@ -106,7 +106,7 @@ class TheHandOverDoesNotWaitForPlacing(unittest.TestCase):
         def place(locations, share=False):
             placing.set()
             placed_for.extend(locations)
-            release.wait(WAIT)   # a slow AI: the placing ends only when the test lets it
+            release.wait(3 * WAIT)   # a slow AI: the placing ends only when the test lets it (a hang guard well past the wait below, so main's order times that wait out)
         pool = ThreadPoolExecutor(max_workers=2)
         try:
             with mock.patch.object(eures, 'early', return_value=object()), mock.patch.object(eures, 'read', return_value=jobs), mock.patch('src.paths.load_search_config', return_value={}), \
@@ -150,6 +150,24 @@ class TheHandOverDoesNotWaitForPlacing(unittest.TestCase):
         self.addCleanup(lambda: setattr(time_budget, 'DEADLINE', None))
         with mock.patch.object(geo, 'resolve', side_effect=AssertionError('no AI call past the deadline')):
             first_jobs.placed([vacancy('Teacher', PORTAL, 2)])
+
+
+    def test_taking_ready_readers_never_nests_one_level_per_queued_landing(self):
+        """Review of #3339: a taken reader's sort may score and come back to take_ready; with many landings queued that was one set of frames per landing."""
+        from src.ai import title_queue
+        hub = title_queue.Hub()
+        readers = first_jobs._Readers(hub, {}, None, None, lambda items: None, lambda line: None)
+        depth, deepest = [0], [0]
+
+        def landing():
+            depth[0] += 1
+            deepest[0] = max(deepest[0], depth[0])
+            readers.take_ready()   # what a landing's score step does first
+            depth[0] -= 1
+        for _ in range(50):
+            hub.post(landing)
+        readers.take_ready()
+        self.assertEqual(deepest[0], 1, 'every queued landing ran at one level')
 
 
 if __name__ == '__main__':

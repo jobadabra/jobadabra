@@ -35,6 +35,6 @@ def finish(code):
         return code
     print(f"⏱ {len(left)} site read(s) still open at the run's time: the next search reads those sites", file=sys.stderr, flush=True)
     from .ai import decide
-    decide.say_waiting()   # os._exit skips atexit, where decide's own line is said (src/scout.py says its calls the same way)
+    decide.say_waiting()   # os._exit skips atexit, where decide's own line is said (src/scout.py prints its `AI calls by topic` before the stop for the same reason)
     sys.stdout.flush()
     os._exit(code if isinstance(code, int) else 1)
