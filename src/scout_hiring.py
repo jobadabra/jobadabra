@@ -15,10 +15,12 @@ PER_RUN = 1
 PRIORITY = 91      # as the role search's boards: a post for the role is a strong sign
 CURSOR = 'hiring_cursor'
 TABLE = 'CREATE TABLE IF NOT EXISTS scout_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
-SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['employers'], 'properties': {'employers': {
+SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['employers', 'portals'], 'properties': {'employers': {
     'type': 'array', 'maxItems': 10, 'items': {'type': 'object', 'additionalProperties': False, 'required': ['name', 'website'],
                                                'properties': {'name': {'type': 'string'}, 'website': {'type': 'string'}}}},
     'portals': {'type': 'array', 'maxItems': 6, 'items': {'type': 'string'}}}}   # the local job portals' addresses the results came from
+# Why (6 Nov 2026): `required` lists every property; the Codex CLI behind the broker refuses a schema that leaves one out (400), which lost 3 of 40 asks.
+# An answer with no portal is [] (the system text says "none when you found none"), read as such by board_candidates.
 SYSTEM = """Find employers (not job boards, staffing agencies or recruiters) with an open job for a role in a place. Search the web in the \
 country's language and in English; answer up to 10 employers you saw hiring for it in the results: the employer's name and its own website \
 (home page), best first. Also answer, in 'portals', up to 6 addresses of the local job portals or job boards that carried those posts. \
