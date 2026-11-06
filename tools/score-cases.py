@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -16,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ['JOBADABRA_AI_ENGINE'] = 'cli'   # the person's own Claude Code: the eval never reaches an API account
 os.environ['ANTHROPIC_API_KEY'] = ''
+os.environ['JOBADABRA_CONFIG_DIR'] = str(ROOT / 'tests' / 'fixtures' / 'config')   # the fictional SRE in Zurich, never the person's settings or places
+os.environ['JOBADABRA_DATA_DIR'] = tempfile.mkdtemp(prefix='jobadabra-score-cases-')   # a throwaway store: the replay never reads or writes the app's data
 
 from src.ai import engine, score, score_search  # noqa: E402
 
