@@ -45,6 +45,7 @@ def eures_post(body):
 
 
 def serp_get(url, params):
+    """One SerpApi GET (url + query string from `params`) -> the parsed JSON; raises on a network or HTTP failure (the caller treats that as \"Google not read\")."""
     from urllib.parse import urlencode
     return _json(urllib.request.Request(f'{url}?{urlencode(params)}', headers={'User-Agent': 'jobadabra-reference'}))
 
@@ -162,6 +163,7 @@ def run(env=None, post=eures_post, get=serp_get, asker=gate_judge.ask, state=Non
 
 
 def iso_week(now):
+    """The ISO week of a datetime as \"YYYY-Www\", the label the Admin store (jobadabra-web admin/search-reference.js isoWeek) keys the reference by."""
     year, week, _ = now.isocalendar()
     return f'{year}-W{week:02d}'
 
