@@ -1,14 +1,82 @@
 """Checks the screens of a PR description (owner, 17 Oct 2026, on #1290: "Just screens, it's not clear. Let it follow ALWAYS the columns Before/After. And explain what changed.
 Basically: where to look."). Every image sits in a table `| What changed | Before | After |`, one row per change: a caption of a few words (what changed, where to look),
 the before image, the after image. A new screen has no before: "—" there, and the caption says why. Reads the body on stdin; exit 1 naming each gap.
-Used by tools/pr-body.sh (at ship time) and tools/pr-body-check.py (in CI, so a body edited on GitHub is checked too). Guard: tests/test_pr_body.py."""
+Every image URL must also load (HTTP 200): `unloaded()` below. Used by tools/pr-body.sh (at ship time) and tools/pr-body-check.py (in CI, so a body edited on GitHub is checked too).
+Guard: tests/tooling/ci/test_pr_images.py."""
 import re
 import sys
+import http.client
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 IMAGE = re.compile(r'!\[[^\]]*\]\([^)]+\)|<img\b[^>]*>', re.I)
 HEADER = re.compile(r'^\|\s*What changed\s*\|\s*Before\s*\|\s*After\s*\|\s*$', re.I)
 ROW_FIX = 'every image sits in a row of | What changed | Before | After |, e.g. | The Availability card says "Start date" under the dropdown | ![before](url) | ![after](url) |'
 NO_SIDE = {'', '—', '-', '–'}
+
+
+URL = re.compile(r'!\[[^\]]*\]\(\s*<?([^)\s>]+)|<img\b[^>]*?\bsrc\s*=\s*["\']?([^"\'\s>]+)', re.I)
+URL_FIX = 'copy the URL tools/pr-assets.mjs printed for this image (it reads back the tag it really published under), never retype the tag'
+TRIES, TIMEOUT = 3, 10
+
+
+def image_urls(body):
+    """The http(s) URLs of the body's images, once each, in order of appearance."""
+    urls = [a or b for a, b in URL.findall(body)]
+    return list(dict.fromkeys(url for url in urls if re.match(r'https?://', url, re.I)))
+
+
+def http_status(url):
+    """The final HTTP status of a GET (redirects followed), or None when nothing answered (offline, DNS, timeout, 408/429/5xx after the retries, a URL that cannot be sent): "could not check", never "broken"."""
+    url = urllib.parse.quote(url, safe="%/:?&=#+~@!$'*,;[]()-._")   # a non-ASCII character in the path is sent encoded, not a crash
+    for attempt in range(TRIES):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'jobadabra-pr-images'}), timeout=TIMEOUT) as answer:
+                return answer.status
+        except urllib.error.HTTPError as error:
+            if error.code == 429:   # never retried (the project's 429 rule); not a missing image either: could not check
+                return None
+            if error.code < 500 and error.code != 408:
+                return error.code
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
+            pass
+        if attempt < TRIES - 1:
+            time.sleep(1 + attempt)
+    return None
+
+
+def repo_is_public(url, status=http_status):
+    """False only when the repo of a github.com image URL answers 404 to an anonymous API call (private: its images are 404 to us too). True for any other host, a github.com path that
+    is not owner/repo (user-attachments/assets/<id> uploads), a public repo, and any other or no answer (rate limit, network): then the image's own 404 stands.
+    Asked only after a 404, so a good body costs no extra call. Measured 6 Nov 2026: jobadabra, jobadabra-web and jobadabra-lab are all public."""
+    match = re.match(r'https://github\.com/([^/]+)/([^/]+)/', url)
+    if not match or match.group(1) in ('user-attachments', 'assets', 'orgs', 'settings'):
+        return True
+    return status(f'https://api.github.com/repos/{match.group(1)}/{match.group(2)}') != 404
+
+
+def unloaded(body, status=http_status):
+    """(broken, unchecked): the image URLs that answered something other than 200, and those nothing answered for.
+    Why (6 Nov 2026, owner: "some PRs have broken screenshots in the before/after", "actually many of the PRs shows screenshots broken"; chose "Yes, add it now"): three PRs in one week shipped
+    404 images because the URL was typed by hand: jobadabra#3321 (a tag equal to its branch name: the URL resolves to the branch), jobadabra-web#450 (v2 shots published under
+    pr-assets-hr-28-2, body typed pr-assets-hr-28) and jobadabra-web#420 (real tag pr-assets-em-footer-3, typed pr-assets-em-footer). Nothing checked that an image loads, only where it sits."""
+    urls = image_urls(body)
+    with ThreadPoolExecutor(max_workers=max(1, min(8, len(urls)))) as pool:
+        answers = list(zip(urls, pool.map(status, urls)))
+    broken = [(url, code) for url, code in answers if code is not None and code != 200]
+    private = [url for url, code in broken if code == 404 and not repo_is_public(url, status)]   # a private repo's image is 404 to us: not provably broken
+    return [(url, code) for url, code in broken if url not in private], [url for url, code in answers if code is None] + private
+
+
+def image_report(body, status=http_status):
+    """(errors, notes) for the URL check: a broken image is an error naming its URL; an unreachable one only a note (a network blip must not fail a PR)."""
+    broken, unchecked = unloaded(body, status)
+    errors = [f'the image {url} answers HTTP {code}, so it shows broken in the PR: {URL_FIX}' for url, code in broken]
+    notes = [f'could not check {url} (no answer from the network, or a repo it cannot read anonymously): not reported as broken' for url in unchecked]
+    return errors, notes
 
 
 def cells(line):
@@ -51,7 +119,12 @@ def problems(body):
 
 
 if __name__ == '__main__':
-    gaps = problems(sys.stdin.read())
+    text = sys.stdin.read()
+    gaps = problems(text)
+    if not gaps:   # a layout gap is fixed first; the URLs are fetched only for a body that is laid out
+        gaps, notes = image_report(text)
+        for note in notes:
+            print('pr-screens: ' + note, file=sys.stderr)
     if gaps:
         print('pr-screens: ' + '; '.join(gaps), file=sys.stderr)
         sys.exit(1)

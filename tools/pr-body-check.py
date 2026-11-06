@@ -1,6 +1,6 @@
 """Checks that a PR description is laid out by tools/pr-body-format.py (owner, 16 Oct 2026: "this PR description missed our rules: didn't add separators,
 didn't use headings"). #1043's body was replaced with `gh pr edit --body-file` on a raw summary, which skips the formatter that tools/ship.sh runs.
-Reads the body on stdin; exit 1 naming what is missing. Run by the step "PR description laid out" of .github/workflows/pr-gate.yml on every opened, pushed or edited PR. Guard: tests/test_pr_body.py."""
+Reads the body on stdin; exit 1 naming what is missing. Run by the step "PR description laid out" of .github/workflows/pr-gate.yml on every opened, pushed or edited PR. Guard: tests/tooling/ci/test_pr_images.py."""
 import importlib.util
 import os
 import re
@@ -9,7 +9,8 @@ import sys
 FIX = 'lay it out with tools/pr-body.sh <base> --body=<summary> (ship.sh does it), never a raw `gh pr edit --body-file`'
 
 
-def missing(body):
+def missing(body, images=False):
+    """The layout gaps of a PR body, as sentences. images=True also fetches every image URL (tools/pr-screens.py: a non-200 answer is a gap, no answer only a stderr note)."""
     lines = [line for line in body.replace('\r\n', '\n').split('\n')]
     first = next((line for line in lines if line.strip()), '')
     out = []
@@ -23,6 +24,11 @@ def missing(body):
     screens = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(screens)
     out += screens.problems(body)   # every image in a | What changed | Before | After | row (tools/pr-screens.py)
+    if images:
+        errors, notes = screens.image_report(body)   # every image URL answers 200; an unreachable one is only a note
+        out += errors
+        for note in notes:
+            print('pr-description: ' + note, file=sys.stderr)
     return out
 
 
@@ -58,7 +64,7 @@ def plan_gap(title, body):
 
 if __name__ == '__main__':
     text = sys.stdin.read()
-    gaps = missing(text)
+    gaps = missing(text, images=True)
     gap = title_gap(os.environ.get('PR_TITLE', '').strip()) or plan_gap(os.environ.get('PR_TITLE', '').strip(), text)
     if gap:
         print('pr-title: ' + gap, file=sys.stderr)
