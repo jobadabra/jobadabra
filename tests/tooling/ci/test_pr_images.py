@@ -75,6 +75,24 @@ class ImageUrlsLoad(unittest.TestCase):
         finally:
             screens.urllib.request.urlopen, screens.time.sleep = original, sleep
 
+    def test_rate_limit_and_odd_urls_are_could_not_check_never_a_crash(self):
+        original, sleep = screens.urllib.request.urlopen, screens.time.sleep
+
+        def limited(request, timeout=0):
+            raise screens.urllib.error.HTTPError(request.full_url, 429, 'Too Many Requests', {}, None)
+        screens.time.sleep = lambda _: None
+        try:
+            screens.urllib.request.urlopen = limited
+            self.assertIsNone(screens.http_status('https://x/y.png'))
+            screens.urllib.request.urlopen = lambda request, timeout=0: (_ for _ in ()).throw(screens.http.client.InvalidURL('bad'))
+            self.assertIsNone(screens.http_status('https://x/a\x00b.png'))
+            seen = []
+            screens.urllib.request.urlopen = lambda request, timeout=0: (seen.append(request.full_url), (_ for _ in ()).throw(OSError('x')))[1]
+            screens.http_status('https://x/é.png')
+            self.assertEqual(seen[0], 'https://x/%C3%A9.png')
+        finally:
+            screens.urllib.request.urlopen, screens.time.sleep = original, sleep
+
     def test_urls_come_from_markdown_and_img_tags_once(self):
         text = '![a](https://h/a.png) ![b](<https://h/b.png>) <img alt="c" src="https://h/c.png"> ![a](https://h/a.png) ![local](shot.png)'
         self.assertEqual(screens.image_urls(text), ['https://h/a.png', 'https://h/b.png', 'https://h/c.png'])

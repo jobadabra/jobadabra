@@ -5,8 +5,10 @@ Every image URL must also load (HTTP 200): `unloaded()` below. Used by tools/pr-
 Guard: tests/tooling/ci/test_pr_images.py."""
 import re
 import sys
+import http.client
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -28,15 +30,16 @@ def image_urls(body):
 
 
 def http_status(url):
-    """The final HTTP status of a GET (redirects followed), or None when nothing answered (offline, DNS, timeout, 5xx after the retries): "could not check", never "broken"."""
+    """The final HTTP status of a GET (redirects followed), or None when nothing answered (offline, DNS, timeout, 408/429/5xx after the retries, a URL that cannot be sent): "could not check", never "broken"."""
+    url = urllib.parse.quote(url, safe="%/:?&=#+~@!$'*,;[]()-._")   # a non-ASCII character in the path is sent encoded, not a crash
     for attempt in range(TRIES):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'jobadabra-pr-images'}), timeout=TIMEOUT) as answer:
                 return answer.status
         except urllib.error.HTTPError as error:
-            if error.code < 500:
+            if error.code < 500 and error.code not in (408, 429):   # rate limiting is not a missing image
                 return error.code
-        except (urllib.error.URLError, OSError):
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
             pass
         if attempt < TRIES - 1:
             time.sleep(1 + attempt)

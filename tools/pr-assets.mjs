@@ -9,8 +9,8 @@ import {fileURLToPath} from 'node:url';
 import {publishFiles} from '../desktop/e2e/lib/evidence.mjs';
 import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 
-// The image URL a PR body uses, for a public or a private repo.
-export const imageUrl = (repo, tag, file) => `https://github.com/${repo}/raw/${tag}/${file.split('/').map(encodeURIComponent).join('/')}`;
+// The image URL a PR body uses, for a public or a private repo. Parentheses are encoded: an unescaped ')' ends a markdown image URL early (review, 6 Nov 2026).
+export const imageUrl = (repo, tag, file) => `https://github.com/${repo}/raw/${tag}/${file.split('/').map(part => encodeURIComponent(part).replace(/[()]/g, c => c === '(' ? '%28' : '%29')).join('/')}`;
 
 // A tag with a branch's name is the #3321 trap. Why (6 Nov 2026, owner: "some PRs have broken screenshots in the before/after"; jobadabra#3321): github.com/<repo>/raw/<name>/<file> resolves a branch
 // before a tag, so the images 404 for as long as the branch lives. Returns the refusal text, or null when no branch has that name.
