@@ -1,7 +1,8 @@
 """Every response schema lists every property as required, at every level (the Codex CLI behind the broker refuses one that does not).
 Why (6 Nov 2026): the who-is-hiring search listed `employers` as required but also declared `portals`; Codex answered 400 "'schema.required' is
 required to include every key in properties. Missing 'portals'" and 3 of 40 central-scout AI calls were lost. An answer that may be empty is an
-empty list or "" in the schema, never an absent key. Covers the schemas written as module-level constants and every schema literal in src/."""
+empty list or "" in the schema, never an absent key. Interim guard: the broker path forwards schemas without `strict()` (desktop/e2e/lib/broker-client.mjs:31, parked in the
+Notion Backlog); once the relay converts them, optional keys are allowed again and this file can go. Covers the schemas written as module-level constants and every schema literal in src/."""
 import ast
 import importlib
 import json
