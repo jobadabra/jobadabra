@@ -122,6 +122,7 @@ def published_line(count, failed, feeds_out):
              + (': ' + ', '.join(f'{system} {n}' for system, n in by_system.most_common()) if failed else '') + ')',
              # installs read only counted employers: 26 Oct 2026, 9 of 2,517 had counts and no line said so (src/scout_kind_counts.py)
              f"Kind counts by country on {sum(1 for f in feeds_out if f.get('kind_counts'))} of {len(feeds_out)} feeds" + (f' ({kept} kept from an earlier run, not judged today)' if kept else '')]
+    lines.append(scout_carry.answers_line(feeds_out))
     for system, n in by_system.most_common():
         kind, same = Counter(re.sub(r'\d+', 'N', str(f.get('error') or ''))[:80] for f in failed if f['ats'] == system).most_common(1)[0]
         if same >= BROKEN_MIN and same >= BROKEN_SHARE * (n + listed[system]):
@@ -173,8 +174,12 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             kind = 'board' if (system, slug.lower()) in board_keys else 'employer'   # a job board of many companies is not an employer
             entry = {'company': clean_name(meta['company']) or meta['company'], 'ats': system, 'slug': slug, 'kind': kind, 'tier': meta['tier'], 'quality': score,
                      'jobs': len(jobs), 'relevant': relevant_roles(jobs), 'checked': today, 'places': job_places(jobs),
-                     'regions': contribute.regions_of([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else []))}
-            entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/job-search/scouting's kind × country coverage
+                     }
+            # Where its jobs are, as fixed ids (regions; countries for /admin/job-search/scouting's kind × country coverage): a place the AI did not answer keeps its last
+            # answer. Why (6 Nov 2026, owner: "coverage is still empty"): a capped or cache-less re-read rebuilt 3,614 entries without their countries.
+            entry.update(scout_carry.answer_fields({
+                'regions': contribute.regions_read([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else [])),
+                'countries': pool_tags.countries_read(entry['places'])}, judged_before.get((system, slug), {}) if jobs else {}))
             # What it hires for, and per country: installs read one with jobs of their kind there.
             # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
             entry.update(scout_carry.mix_fields(*scout_kind_counts.of_jobs(jobs), judged_before.get((system, slug), {}) if jobs else {}))

@@ -40,9 +40,15 @@ def job_events(events, text_of):
 def labels(topic, texts, choices, task):
     """The fixed-list ids these texts name (choices: id -> name): every id the meanings pack gives a text, else the model's one; 'none'
     left out. Without AI: what the pack knows (the old lists), so nothing a Swiss or English user had is lost."""
+    return labels_read(topic, texts, choices, task)[0]
+
+
+def labels_read(topic, texts, choices, task):
+    """(ids, unanswered): labels' ids, and the texts nothing answered this run (the AI busy, capped or failed, and no pack id). Why (6 Nov 2026): a caller that
+    keeps an earlier answer must tell "not answered" from "answered none"; labels() alone made a capped run look like none."""
     texts = [str(t).strip() for t in texts if str(t or '').strip()]
     if not texts:
-        return []
+        return [], []
     from . import meanings_pack
     late = meanings_pack.ai_first(topic)   # a kind of work: the keyword patterns only without AI (decide.py), the site's learned wordings first
     known = {t: meanings_pack.every(topic, t, patterns=not late) for t in texts}   # every id the pack gives a text (the old lists + what the site learned)
@@ -51,4 +57,5 @@ def labels(topic, texts, choices, task):
     found = (decide.decide(topic, {t.lower(): t for t in rest}, (*choices, 'none'), f'{task} Ids: {named}; none = none of these.', floor=False) or {}) if rest else {}
     if late and rest and not engine.ready():   # no AI at all: every id the old lists give ('many'), as before
         known.update({t: meanings_pack.every(topic, t) for t in rest if t.lower() not in found})
-    return sorted({a for answers in known.values() for a in answers if a in choices} | {a for a in found.values() if a != 'none'})
+    ids = sorted({a for answers in known.values() for a in answers if a in choices} | {a for a in found.values() if a != 'none'})
+    return ids, [t for t in rest if t.lower() not in found and not known.get(t)]
