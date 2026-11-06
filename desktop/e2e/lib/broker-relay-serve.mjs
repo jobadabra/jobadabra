@@ -9,6 +9,7 @@
 // Why (31 Oct 2026, harness tests on #2715): the counter is named refused, not the word a planted-fault guard looks for (test/planted.test.mjs); this relay serves real refusals, not planted ones.
 // Job: report health
 import http from 'node:http';
+import {tally} from './ai-failure-words.mjs';
 import {answerViaBroker} from './broker-relay.mjs';
 
 // Why (31 Oct 2026, Gitar on #2715): the Anthropic SDK retries 429 and 5xx twice by default (it reads retry-after-ms first); `x-should-retry: false` is the header it checks before anything else. Without it every refused call
@@ -21,15 +22,15 @@ const json = (res, status, type, message) => {
 
 /**
  * Takes {cap: calls this relay may send to the broker (0 = no cap), answer: (body, {env}) -> {status, contentType, body} (default lib/broker-relay.mjs), env}.
- * Returns {url, stats: {calls, ok, refused, capHit, latched, reasons[]}, close()}. `calls` counts requests that reached the broker; `capHit` those refused past the cap; `latched` is the broker's reason once it said "capped".
+ * Returns {url, stats: {calls, ok, refused, capHit, latched, reasons[], causes: {key: {icon, label, count}}}, close()}. `calls` counts requests that reached the broker; `capHit` those refused past the cap; `latched` is the broker's reason once it said "capped".
  */
 export async function startRelay({cap = 0, answer = answerViaBroker, env = process.env} = {}) {
-  const stats = {calls: 0, ok: 0, refused: 0, capHit: 0, latched: '', reasons: []};
+  const stats = {calls: 0, ok: 0, refused: 0, capHit: 0, latched: '', reasons: [], causes: {}};
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     if (req.method !== 'POST' || !/^\/v1\/messages(\?|$)/.test(req.url)) return json(res, 404, 'not_found_error', `the Codex relay answers POST /v1/messages only, not ${req.method} ${req.url}`);
-    if (stats.latched) { stats.refused++; return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
+    if (stats.latched) { stats.refused++; tally(stats.causes, stats.latched); return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
     if (cap && stats.calls >= cap) { stats.capHit++; return json(res, 429, 'rate_limit_error', `AI limit reached: this run's cap of ${cap} calls is used (items wait for the next run)`); }
     stats.calls++;
     let answered;
@@ -45,6 +46,7 @@ export async function startRelay({cap = 0, answer = answerViaBroker, env = proce
     try { message = JSON.parse(answered.body.toString('utf8')).error?.message || ''; } catch { /* a body that is not JSON has no message */ }
     message = message || `HTTP ${answered.status}`;
     if (stats.reasons.length < 5) stats.reasons.push(message);
+    tally(stats.causes, message);   // one real count per refused call, by plain cause (lib/ai-failure-words.mjs)
     if (/^ai-capped:/.test(message)) { stats.latched = message.replace(/^ai-capped:\s*/, ''); return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
     res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length, 'x-should-retry': 'false'});
     res.end(answered.body);
