@@ -80,9 +80,9 @@ def judge(n, pool, asker=ask):
 
 def main(argv):
     n, jobs_path, out = argv[:3]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder, before the paid judge call, so a bad path fails at once (6 Nov 2026, run 42191804037)
     pool = json.loads(Path(jobs_path).read_text(encoding='utf-8'))
     verdict = judge(n, pool)
-    Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder (6 Nov 2026, run 42191804037)
     Path(out).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
     local = sum(1 for r in verdict['rows'] if r['role'] == 'yes' and r['place'] == 'yes')
     print(f"p{n}: judge cost ${verdict['usd']:.3f}; judged {verdict['judged_jobs']} distinct jobs, {local} right role and place")

@@ -157,8 +157,14 @@ class TheCommandLine(unittest.TestCase):
         self.assertEqual(json.loads((folder / 'jobs.json').read_text()), [])
         jobs = folder.parent / 'in.json'
         jobs.write_text('[]')
-        with mock.patch.object(gate_judge, 'judge', return_value={'rows': [], 'usd': 0, 'judged_jobs': 0}):
+        seen = []
+
+        def fake_judge(n, pool):
+            seen.append((folder.parent / 'other').is_dir())   # the paid call: the folder must already be there
+            return {'rows': [], 'usd': 0, 'judged_jobs': 0}
+        with mock.patch.object(gate_judge, 'judge', fake_judge):
             gate_judge.main(['1', str(jobs), str(folder.parent / 'other' / 'judged.json')])
+        self.assertEqual(seen, [True], 'a bad output path must fail before the paid judge call, not after it')
         self.assertTrue((folder.parent / 'other' / 'judged.json').exists())
 
     def test_the_workflow_makes_out_after_the_checkout_that_would_wipe_it(self):
