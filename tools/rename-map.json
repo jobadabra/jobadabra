@@ -48,6 +48,13 @@
  ],
  "rules": [
   {
+   "id": "keep-lab-old-signing-item",
+   "match": "job-pilotto",
+   "paths": "^lab/tools/license\\.py$",
+   "keep": "tools/license.py init refuses the license signing key's old Keychain item (OLD_SIGNING_ITEM); it must spell it to detect it",
+   "expires": "never"
+  },
+  {
    "id": "keep-recorded-why",
    "match": ".",
    "paths": "^desktop/e2e/recorded/[^/]+/case\\.json$",
