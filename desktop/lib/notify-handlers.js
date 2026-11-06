@@ -9,7 +9,7 @@ import * as mail from './mail-choices.js';
 import {cvAddress, view as consentView} from './email-from-cv.js';
 import {LINE, FAILED} from '../renderer/email-consent-words.js';
 
-// Demo mode's rows: the real views over the built-in rows, never the website. JOBADABRA_DEMO_MAIL picks the state a preview shows: `off` = switches dark (today's screen), `suggested` = e-mail not on yet (all off, with the Suggested tag), else e-mail on.
+// Demo mode's rows: the real views over the built-in rows, never the website. JOBADABRA_DEMO_MAIL picks the state a preview shows: `off` = switches hidden, `suggested` = e-mail not on yet (all off, with the Suggested tag), else e-mail on.
 // Fictional rows for demo mode only (the real ones come from the website, never a copy in the app).
 const DEMO_ROWS = [
   {id: 'app-matches', name: 'New matches', when: 'a search finds new jobs', suggested: {mac: 'digest', always: 'digest'}}, {id: 'app-needs-you', name: 'An application needs you', when: 'an application waits', suggested: {mac: 'no', always: 'mail'}},
@@ -47,7 +47,7 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     log('notify', result.ok ? 'confirm mail sent again' : 'confirm mail not sent again', {code: result.code || ''});
     return result;
   });
-  // The person's switch per e-mail (lib/mail-choices.js): both screens (Notifications, Automation) read and write the one value the website keeps. `hidden` while the switches are dark (MAIL_SWITCHES_SHOWN).
+  // The person's switch per e-mail (lib/mail-choices.js): both screens (Notifications, Automation) read and write the one value the website keeps. `hidden` only if MAIL_SWITCHES_SHOWN is turned off.
   // Demo mode shows fictional rows and never reaches our site.
   ipcMain.handle('mailChoices', async () => {
     if (DEMO) return demoRows(storage);

@@ -176,13 +176,13 @@ test('Continue with the switch left on: the CV address goes to the site once, wi
   assert.equal(kept.settings().emailConsent.where, 'cv');
 });
 
-test('Continue with the switch left on: it means "e-mail me app notifications" and stores that sentence; while the switches are dark no row is written (the person cannot see them, and a row stored off would stop its mail)', async () => {
+test('Continue with the switch left on: it means "e-mail me app notifications", stores that sentence, and turns on the suggested rows of the mode (Mac only: the digest of matches; the weekly row was chosen off)', async () => {
   const kept = storage({links: CV}), calls = [], call = handlersOn(kept), before = globalThis.fetch;
   const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-needs-you', suggested: {mac: 'no', always: 'mail'}, choice: ''}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: 'off'}];
   globalThis.fetch = async (url, init) => { calls.push({url: String(url), method: init?.method || 'GET', body: init?.body ? JSON.parse(init.body) : null}); return {json: async () => (String(url).endsWith('/api/mail/choices') && !init?.body ? {ok: true, rows} : {ok: true})}; };
   try { assert.deepEqual(await call('emailConsentGive', {where: 'cv', given: 'default'}), {ok: true}); } finally { globalThis.fetch = before; }
   assert.equal(kept.settings().emailConsent.wording, CV_LINE);
-  assert.deepEqual(calls.filter(item => item.url.endsWith('/api/mail/choices')), [], 'dark: the rows are written by the CV step only once the switches are shown (mail-choices.test.js: "the CV step writes every row")');
+  assert.deepEqual(calls.filter(item => item.url.endsWith('/api/mail/choices') && item.method === 'POST').map(item => item.body).sort((x, y) => x.mail.localeCompare(y.mail)), [{mail: 'app-matches', on: true}, {mail: 'app-needs-you', on: false}], 'the mode\'s suggested rows on and the other unchosen row stored off; the one the person chose is left alone');
 });
 
 test('Continue with the switch turned off: nothing reaches the site, and a withdrawn consent is never offered again', async () => {

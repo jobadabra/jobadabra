@@ -1,6 +1,6 @@
 // The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
-// A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden while the main process says the switches are dark (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
+// A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
 import {$} from './core.js';
 import {el} from '../components.js';
 import {plainError} from '../run-warnings.js';

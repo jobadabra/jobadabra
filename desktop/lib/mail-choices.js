@@ -7,9 +7,9 @@ import {call, channelsOf, installKey, wantsNews} from './notify-channel.js';
 import {rowLine} from '../renderer/email-consent-words.js';
 import * as hosted from './hosted-search.js';
 
-/** Why (6 Nov 2026, coordinator, spec §Order): a mail held on our server for the digest carries no row, so a switch shown before "app mail is not stored" (spec PR 5) would be a promise the digest breaks.
- *  The switches stay dark for people until PR 5 has shipped; its follow-up flips this one line. Demo mode and tests always show them. */
-export const MAIL_SWITCHES_SHOWN = false;
+/** Why (6 Nov 2026, coordinator): the switches were held back until the site stored the row on a mail it holds for the digest and answered the rows for a person with no address (jobadabra-web #463, migration 0139,
+ *  deployed). They are shown now; this stays the one line that hides the screens and keeps the engine's off-list and the automatic writes inert. */
+export const MAIL_SWITCHES_SHOWN = true;
 
 export const ROWS = ['app-matches', 'app-needs-you', 'app-applied', 'app-weekly', 'app-stopped', 'app-nothing'];
 const WHERE = {
@@ -37,7 +37,7 @@ export function viewOf(row, mode, emailingNow = true) {
 const mirror = (storage, rows) => storage.saveSettings({mailRows: rows.map(({id, choice, suggested}) => ({id, choice: choice || '', suggested}))});
 
 /** Reads the rows from the website: -> {ok, mode, where, rows: [view]} or {ok: false, error}. Keeps the mirror the engine's env reads. Never throws.
- *  Until the website answers the rows for a person with no address (6 Nov 2026, coordinator: its next site PR), that person gets no rows. */
+ *  The website answers the rows for a person with no address too (web #463); a `no_address` refusal from an older answer still shows no rows. */
 export async function read(storage, fetcher = globalThis.fetch) {
   const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
   const none = !answer.ok && answer.reason === 'no_address';
@@ -58,7 +58,7 @@ export async function set(storage, row, on, fetcher = globalThis.fetch) {
   return {ok: true};
 }
 
-/** The rows that are off for the person now (their choice, else the suggested default of the current mode): what the engine's env and the app's own senders honour. Empty while the switches are dark
+/** The rows that are off for the person now (their choice, else the suggested default of the current mode): what the engine's env and the app's own senders honour. Empty while the switches are hidden
  *  or the rows were never read (then today's behaviour holds, and the website still holds a row the person turned off). */
 export function mailOff(storage, shown = MAIL_SWITCHES_SHOWN) {
   if (!shown) return [];
@@ -66,7 +66,7 @@ export function mailOff(storage, shown = MAIL_SWITCHES_SHOWN) {
   return (storage.settings().mailRows || []).filter(row => ROWS.includes(row.id) && !viewOf(row, mode, true).on).map(row => row.id);
 }
 
-/** The engine's env for the rows that are off: {JOBADABRA_MAIL_OFF: 'a,b'}, or {} when none (always {} while the switches are dark). */
+/** The engine's env for the rows that are off: {JOBADABRA_MAIL_OFF: 'a,b'}, or {} when none (always {} while the switches are hidden). */
 export const mailOffEnv = (storage, shown = MAIL_SWITCHES_SHOWN) => { const off = mailOff(storage, shown); return off.length ? {JOBADABRA_MAIL_OFF: off.join(',')} : {}; };
 
 /** True when the app may send this row's mail: the person has it on (or never chose and the default is on). */
@@ -112,7 +112,7 @@ export const choose = (storage, row, on, options = {}) => queued(async () => {
 
 /**
  * Always on was just turned on (owner, 6 Nov 2026: "all the automation notifications should turn to on, by default"): every row Always on shows turns on in one go through the same write as a press, except a row the person
- * turned off themselves (`mailRowsPressed`: "Only the person"). A row the app wrote off earlier (the first turn-on of a Mac-only person) is not theirs and turns on. Nothing while the switches are dark, for a person with no address, or
+ * turned off themselves (`mailRowsPressed`: "Only the person"). A row the app wrote off earlier (the first turn-on of a Mac-only person) is not theirs and turns on. Nothing while the switches are hidden, for a person with no address, or
  * with no install key. A refusal keeps its words in `settings.mailNote` (the Notifications card shows them) and the screen follows what the site holds. -> {ok, written: [ids]} or {ok: false, error, written}. Never throws.
  */
 export const alwaysOnTurnedOn = (storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) => queued(() => alwaysOnNow(storage, fetcher, shown));
@@ -164,8 +164,8 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
   return done.ok ? {ok: true, addressSaved} : done;
 }
 
-/** The CV step's switch left on: the mode's suggested rows turn on and every other row is stored off (writeUnchosen). While the switches are dark nothing is written: the person cannot see the rows, and a row
- *  stored off would stop its mail on the site (settle() writes them when the switches arrive). -> {ok, turned: [ids]} or {ok: false, error}. */
+/** The CV step's switch left on: the mode's suggested rows turn on and every other row is stored off (writeUnchosen). While the switches are hidden nothing is written: the person cannot see the rows, and a row
+ *  stored off would stop its mail on the site. -> {ok, turned: [ids]} or {ok: false, error}. */
 export async function turnOnSuggested(storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) {
   if (!shown) return {ok: true, turned: []};
   const done = await writeUnchosen(storage, likelyOn, fetcher);

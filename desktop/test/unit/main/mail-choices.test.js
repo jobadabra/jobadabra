@@ -1,5 +1,5 @@
 // The person's switch per e-mail (lib/mail-choices.js, hr 4/8): a press stores the choice with the app's own JPF1 key, a refused save leaves the switch where it was and says so, a row never chosen
-// shows the suggested default of the mode and a chosen one is never reset by a mode change, the engine's env is told only the rows that are off (and nothing while the switches are dark).
+// shows the suggested default of the mode and a chosen one is never reset by a mode change, the engine's env is told only the rows that are off (and nothing while the screens are hidden by the gate).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {MAIL_SWITCHES_SHOWN, allowed, alwaysOnTurnedOn, choose, mailOff, modeOf, read, set, settle, turnOn, turnOnSuggested} from '../../../lib/mail-choices.js';
@@ -17,11 +17,13 @@ const ROWS = [
 ];
 const site = (answers, asked = []) => async (url, init) => { asked.push({url, method: init?.method, key: init?.headers['x-api-key'], body: init?.body ? JSON.parse(init.body) : null}); const answer = answers.shift(); if (answer instanceof Error) throw answer; return {json: async () => answer}; };
 
-test('the switches are dark for people until the held-mail change has shipped, and the engine is told nothing meanwhile', () => {
-  assert.equal(MAIL_SWITCHES_SHOWN, false);
-  const dark = storage({settings: {mailRows: ROWS}});
-  assert.deepEqual(mailOff(dark), []);
-  assert.equal(allowed(dark, 'app-matches'), true);
+test('the switches are shown (the site holds the row on a held mail, web #463): the engine is told the rows that are off; hiding the gate tells it nothing', () => {
+  assert.equal(MAIL_SWITCHES_SHOWN, true);
+  const person = storage({settings: {mailRows: [{id: 'app-matches', choice: 'off', suggested: {mac: 'digest', always: 'digest'}}]}});
+  assert.deepEqual(mailOff(person), ['app-matches']);
+  assert.equal(allowed(person, 'app-matches'), false);
+  assert.deepEqual(mailOff(person, false), [], 'gate hidden: nothing is honoured');
+  assert.equal(allowed(person, 'app-matches', false), true);
 });
 
 test('a read shows each row as the person chose it, else as their mode suggests, and leaves out rows hidden in that mode', async () => {
@@ -123,10 +125,10 @@ test('the CV step writes every row the mode shows: the suggested ones on, the re
 test('someone who already has e-mail on gets the same writes once, only with the switches shown, never twice, and never without e-mail', async () => {
   const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-needs-you', suggested: {mac: 'no', always: 'mail'}, choice: ''}];
   const asked = [], person = storage({settings: ON});
-  assert.equal(await settle(person, site([{ok: true, rows}], asked)), false, 'dark: nothing is written');
+  assert.equal(await settle(person, site([{ok: true, rows}], asked), false), false, 'hidden gate: nothing is written');
   assert.deepEqual(asked, []);
   assert.equal(await settle(storage(), site([{ok: true, rows}], asked), true), false, 'e-mail not on: nothing to write');
-  assert.equal(await settle(person, site([{ok: true, rows}, {ok: true}, {ok: true}], asked), true), true);
+  assert.equal(await settle(person, site([{ok: true, rows}, {ok: true}, {ok: true}], asked)), true);
   assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => call.body), [{mail: 'app-matches', on: true}, {mail: 'app-needs-you', on: false}]);
   assert.ok(person.settings().mailRowsSettled);
   const before = asked.length;
@@ -137,9 +139,9 @@ test('someone who already has e-mail on gets the same writes once, only with the
   assert.equal(failing.settings().mailRowsSettled, undefined, 'a failure leaves it for the next start');
 });
 
-test('dark: the CV step writes no row at all, so no mail stops on the site for a hidden switch', async () => {
+test('hidden gate: the CV step writes no row at all, so no mail stops on the site for a switch nobody can see', async () => {
   const asked = [];
-  assert.deepEqual(await turnOnSuggested(storage({settings: ON}), site([{ok: true, rows: ROWS}], asked)), {ok: true, turned: []});
+  assert.deepEqual(await turnOnSuggested(storage({settings: ON}), site([{ok: true, rows: ROWS}], asked), false), {ok: true, turned: []});
   assert.deepEqual(asked, []);
 });
 
@@ -207,7 +209,7 @@ test('Always on: a first row press with e-mail off turns every other unchosen ro
   }
 });
 
-test('a refusal while turning Always on keeps its words, lets the screen follow the site, and nothing is written while dark or without an address', async () => {
+test('a refusal while turning Always on keeps its words, lets the screen follow the site, and nothing is written while hidden or without an address', async () => {
   const person = storage({settings: ON}), asked = [];
   const refused = await alwaysOnTurnedOn(person, site([{ok: true, rows: AO_ROWS}, {ok: false, reason: 'not_saved'}, {ok: true}], asked), true);
   assert.equal(refused.ok, false);
@@ -218,9 +220,9 @@ test('a refusal while turning Always on keeps its words, lets the screen follow 
   assert.equal((await set(person, 'app-weekly', false, site([{ok: true}]))).ok, true);
   assert.equal(person.settings().mailNote, '', 'a saved press clears an older refusal\'s words');
   const calls = [];
-  assert.deepEqual(await alwaysOnTurnedOn(storage({settings: ON}), site([{ok: true, rows: AO_ROWS}], calls)), {ok: true, written: []}, 'dark');
+  assert.deepEqual(await alwaysOnTurnedOn(storage({settings: ON}), site([{ok: true, rows: AO_ROWS}], calls), false), {ok: true, written: []}, 'hidden gate');
   assert.deepEqual(await alwaysOnTurnedOn(storage({settings: ON}), site([{ok: false, reason: 'no_address'}], calls), true), {ok: true, written: []}, 'no address on the site');
-  assert.deepEqual(calls.length, 1, 'dark reached nothing; the no-address read was the only call');
+  assert.deepEqual(calls.length, 1, 'the hidden gate reached nothing; the no-address read was the only call');
 });
 
 test('Always on writing in the background and a press off made meanwhile: the person\'s off is the last word, and the row stays off', async () => {
