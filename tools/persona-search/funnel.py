@@ -20,6 +20,10 @@ BOARD = re.compile(r'^Job boards found: (.+?) ([\d,]+) job\(s\), ([\d,]+) releva
 BOARD_WEB = re.compile(r'^Job boards: (?:a web search found (.+)|the web search for trade and local boards did not answer)')
 SCOUT_WEB = re.compile(r'^Scout: employers with no job site found are looked up with a web search')
 COUNTS = re.compile(r'^Run counts: looked=(\d+) matches=(\d+) scored=(\d+) good=(\d+)')
+EURES = re.compile(r'^EURES: (?:([\d,]+) vacanc|still reading when its time ended, keeping the ([\d,]+) read)')
+TITLES = re.compile(r'^Titles: .+? sorted ([\d,]+) new title\(s\) in your places')
+TITLE_BATCH = 30   # src/ai/title_triage.py BATCH: one AI call per up to 30 titles
+AI_DECIDE = re.compile(r'^AI decide calls: (.+)$')
 NO_BOARD = 'no trade or local board'
 
 
@@ -27,10 +31,25 @@ def number(text):
     return int(str(text).replace(',', ''))
 
 
+def step_count(part, out):
+    """Tally one log line of the per-step counters into `out` (eu_jobs, titles_asked, ai_calls); True when the line was one of them."""
+    if m := EURES.match(part):
+        out['eu_jobs'] = number(m[1] or m[2])   # what OUR EURES read listed in the user's places (src/sources/eures.py), not what EURES holds
+    elif m := TITLES.match(part):
+        # Why (6 Nov 2026, Gitar on #3353): the "asking ... in N batch(es)" line is the plan, printed before any batch runs; the closing "sorted N" line counts what was answered, so a press cut by its time reads fewer.
+        out['titles_asked'] = (out['titles_asked'] or 0) + number(m[1])
+        out['ai_calls'] = (out['ai_calls'] or 0) + -(-number(m[1]) // TITLE_BATCH)
+    elif m := AI_DECIDE.match(part):
+        out['ai_calls'] = (out['ai_calls'] or 0) + sum(int(item.rsplit(' ', 1)[-1]) for item in m[1].split(', ') if item.rsplit(' ', 1)[-1].isdigit())
+    else:
+        return False
+    return True
+
+
 def funnel(lines):
     """{employers_picked, employers_in_places, employer_sites_read, boards_read, board_jobs, board_relevant, web_searches, web_found,
-    scout_web, looked, matches, scored, good} from a press's log lines; the CLI adds kinds (the role kinds the employers were picked by)."""
-    out = dict.fromkeys(('employers_picked', 'employers_in_places', 'employer_sites_read', 'looked', 'matches', 'scored', 'good'))
+    scout_web, looked, matches, scored, good, eu_jobs, titles_asked, ai_calls} from a press's log lines; the CLI adds kinds (the role kinds the employers were picked by)."""
+    out = dict.fromkeys(('employers_picked', 'employers_in_places', 'employer_sites_read', 'looked', 'matches', 'scored', 'good', 'eu_jobs', 'titles_asked', 'ai_calls'))
     boards, web, found = {}, 0, 0
     scout_web = False
     # Why (2 Nov 2026, run 41376694937, mac-07: "everything is 0"): p2-p4 started their web search and still found 0 because the time budget ended before
@@ -65,11 +84,21 @@ def funnel(lines):
                 found += 0 if not m[1] or m[1] == NO_BOARD else len(m[1].split(', '))
             elif SCOUT_WEB.match(part):
                 scout_web = True
+            elif step_count(part, out):
+                pass
             elif m := COUNTS.match(part):
                 out['looked'], out['matches'], out['scored'], out['good'] = map(int, m.groups())
     return {**out, 'boards_read': len(boards), 'board_jobs': sum(jobs for jobs, _ in boards.values()),
             'board_relevant': sum(relevant for _, relevant in boards.values()), 'web_searches': web, 'web_found': found, 'scout_web': scout_web,
             **where, 'web_search_skipped': web_skipped, 'time_up': time_up}
+
+
+def step_counters(press):
+    """The press's per-step counters for the Night search tab (owner, 6 Nov 2026: "go ahead. Fix the search"; report only): {eu: EU portal jobs OUR read listed, sites: employer sites read, titles: titles asked,
+    ai: AI calls, firstS: seconds to the first job in the user's places}, from the funnel (funnel.py, the press's own log lines). A press that ran and logged no such line read none of it: 0, never unknown;
+    no job in its places is None ("none"), not 0 s. Why: a step that silently stopped (the Toulouse shape, 6 Nov) must read as a fall against the candidate's own nights, not as a gap."""
+    funnel, ttfr = press.get('funnel') or {}, press.get('ttfr') or {}
+    return {'eu': funnel.get('eu_jobs') or 0, 'sites': funnel.get('employer_sites_read') or 0, 'titles': funnel.get('titles_asked') or 0, 'ai': funnel.get('ai_calls') or 0, 'firstS': ttfr.get('first_in_places_s')}
 
 
 def kinds():
