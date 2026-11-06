@@ -12,6 +12,7 @@ That check reads the title alone and keeps what could fit, so it lifted "Spécia
 flight-controls engineer into his digest (04:21 run, 26 Oct 2026; owner: "Yes, fix both"): a lift also needs the AI's yes to one fixed
 question on the title and the posting's first lines (_role_check), and jobs tied at a score rank by the AI's own fit (own_fit;
 tests/unit/ai/test_score_role_check.py).
+A licence, certification or rating the posting requires the applicant to hold already, which the profile does not show, caps the fit at 49 (7 Nov 2026; cases: tests/fixtures/score-cases.json).
 The AI judges all of it; no word lists. Tests: tests/unit/ai/test_score_career_change.py."""
 
 SEARCH_ROLE_FIT = 70   # the title check's yes on a career change: the searched role, with the CV's gap (tier B: shown, under a strong A)
@@ -20,7 +21,10 @@ PART = {
     'type': 'object', 'additionalProperties': False, 'required': ['fit', 'career_change', 'cv_gap'],
     'properties': {
         'fit': {'type': 'integer', 'description': "0-100: how well the posting's role matches the roles the person searches for (their search, "
-                                                  'given below the profile), whatever their profile shows; the same bands as the overall score'},
+                                                  'given below the profile), whatever their experience; the same bands as the overall score. '
+                                                  'A licence, certification or rating the posting requires the applicant to hold already (earned by '
+                                                  'training or experience the profile does not show, not one the employer trains for, nor a health '
+                                                  'check or clearance done at entry) is a core gap: at most 49, however well the role matches the search'},
         'career_change': {'type': 'boolean', 'description': "The searched roles are another field of work than the profile's experience "
                                                             '(a person changing careers); false when the profile is in the same field'},
         'cv_gap': {'type': 'string', 'description': 'One line, at most 90 characters: what the profile lacks for this role (a licence, hours, '
@@ -28,9 +32,13 @@ PART = {
     },
 }
 
+# Why (7 Nov 2026, owner: "Change the prompt (Recommended)"): `requires the applicant to hold already` — a Cessna captain job (type rating, licence, 1,500 hours) scored 85 for
+# a person with none of them while its card said Not eligible; search.fit ignored a licence the profile lacks. tools/score-cases.py (3 runs): 95/85/55 before, 45/45/40 after.
 RULE = """
 - search: the person's search (their roles) is given after the profile. search.fit rates the posting's role against those roles alone, \
-in the same bands, whatever the profile shows. search.career_change is true when the searched roles are another field than the profile's \
+in the same bands, whatever the profile shows, except that a licence, certification or rating the posting requires the applicant to hold already, \
+which the profile does not show the person holds, caps it at 49 (a role the person cannot take up). Training the employer gives, and a health check \
+or clearance done at entry, are not such a requirement. search.career_change is true when the searched roles are another field than the profile's \
 experience. Then also name in search.cv_gap what the profile lacks for this role, and write reason about the fit to the search."""
 
 

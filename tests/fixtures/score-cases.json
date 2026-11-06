@@ -1,0 +1,80 @@
+{
+ "_": "The fit score's fixed case set (src/ai/score.py SYSTEM, score_bands.py, score_search.py), replayed by tools/score-cases.py on the person's Claude plan ($0). Fictional people and postings only. Expect: score_max / score_min bound the final score (after the search part), fit_max bounds the AI's own fit to the search, gap says the cv_gap line must be filled. Added 7 Nov 2026 (owner: a Cessna Citation captain job, licence required, scored 85 while the card said Not eligible).",
+ "profile": "golden",
+ "cases": [
+  {
+   "id": "cessna-licence-required",
+   "why": "Owner's case, 7 Nov 2026: a captain / first officer job that needs a type rating, a commercial licence and flight hours, for a person with none of them, scored 85 'Strong match' while the card said Not eligible: No aviation experience or licences.",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "Captain / First Officer, Cessna Citation C525",
+    "company": "Example Charter AG",
+    "location": "Zurich, Switzerland",
+    "description": "We fly a Cessna Citation C525 (CJ1) on private charter flights across Europe. Captain: valid EASA ATPL or CPL/IR, C525 type rating, at least 1,500 flight hours, 500 on jets, class 1 medical. First Officer: valid EASA CPL/IR with multi-engine rating, C525 type rating, at least 500 flight hours. Base Zurich, roster of 12 days on and 8 off, salary by experience. Send your licence copies, logbook summary and medical certificate with your CV."
+   },
+   "expect": {
+    "score_max": 49,
+    "fit_max": 49,
+    "gap": true
+   }
+  },
+  {
+   "id": "cadet-no-licence-needed",
+   "why": "The over-correction trap: a cadet scheme that trains a person from zero is within reach of a person with no licence, so it keeps its high search fit.",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "First Officer Cadet Programme (no experience required)",
+    "company": "Example Regional Airline",
+    "location": "Zurich, Switzerland",
+    "description": "Become an airline first officer without any flying experience. We select candidates from any background, pay for the whole training (private licence to CPL/IR and the A320 type rating) and employ you on completion. You need: age 18 to 35, class 1 medical, fluent English, good maths, a degree or equivalent work experience. Training starts every March in Zurich."
+   },
+   "expect": {
+    "score_min": 50
+   }
+  },
+  {
+   "id": "sre-strong-fit",
+   "why": "Baseline: golden 3001, a matching job in the person's own field stays high.",
+   "search": [
+    "Senior Site Reliability Engineer"
+   ],
+   "golden": "3001",
+   "expect": {
+    "score_min": 70
+   }
+  },
+  {
+   "id": "german-c1-cap",
+   "why": "Golden 3005 (#2205): a language the profile shows unmet stays capped at 49.",
+   "search": [
+    "Senior Site Reliability Engineer"
+   ],
+   "golden": "3005",
+   "expect": {
+    "score_max": 49
+   }
+  },
+  {
+   "id": "missing-tool-is-a-gap",
+   "why": "The over-correction trap: a tool the profile does not mention is a gap of its own, not a disqualifier.",
+   "search": [
+    "Senior Site Reliability Engineer"
+   ],
+   "job": {
+    "title": "Senior Site Reliability Engineer",
+    "company": "Example Cloud AG",
+    "location": "Zurich, Switzerland",
+    "description": "Own the reliability of a Kubernetes platform on AWS: SLOs, incident response, observability with Datadog. We write our infrastructure in Pulumi (TypeScript) and expect you to work in it daily. Senior role, hybrid in Zurich, English working language. 7+ years of experience running production systems."
+   },
+   "expect": {
+    "score_min": 55
+   }
+  }
+ ]
+}
