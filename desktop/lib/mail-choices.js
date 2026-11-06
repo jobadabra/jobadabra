@@ -36,7 +36,11 @@ export function viewOf(row, mode, emailingNow = true) {
   return {id: row.id, name: row.name, when: row.when, choice: row.choice || '', shown: suggested !== 'hidden', on: emailingNow && (row.choice ? row.choice === 'on' : suggested !== 'no'), suggested: !emailingNow && likely, where: WHERE[mode]};
 }
 
-const mirror = (storage, rows) => storage.saveSettings({mailRows: rows.map(({id, choice, suggested}) => ({id, choice: choice || '', suggested}))});
+// Why (#3344, review): a row the site no longer holds 'off' is not an off the app wrote; its entry leaves the list on every read (a row absent from the answer keeps its entry). It narrows the window, it cannot close it: a person's later off looks like the app's.
+const mirror = (storage, rows) => {
+  const appOff = storage.settings().mailRowsAppOff || [], still = appOff.filter(id => { const row = rows.find(entry => entry.id === id); return !row || row.choice === 'off'; });
+  storage.saveSettings({mailRows: rows.map(({id, choice, suggested}) => ({id, choice: choice || '', suggested})), ...(still.length === appOff.length ? {} : {mailRowsAppOff: still})});
+};
 
 /** Reads the rows from the website: -> {ok, mode, where, rows: [view], news: [{id, name, when, on}]} or {ok: false, error}. Keeps the mirror the engine's env reads. Never throws.
  *  The website answers the rows for a person with no address too (web #463); a `no_address` refusal from an older answer still shows no rows. */
@@ -89,7 +93,9 @@ async function writeUnchosen(storage, wantOn, fetcher, except = '') {
   const mode = modeOf(storage), rows = Array.isArray(answer.rows) ? answer.rows : [];
   mirror(storage, rows);
   const todo = rows.filter(row => !row.choice && row.id !== except && ROWS.includes(row.id) && row.suggested?.[mode] !== 'hidden');
-  const done = await writeRows(storage, todo.map(row => [row.id, wantOn(row, mode)]), fetcher);
+  const pairs = todo.map(row => [row.id, wantOn(row, mode)]), done = await writeRows(storage, pairs, fetcher);
+  const wroteOff = pairs.filter(([id, on]) => !on && done.written.includes(id)).map(([id]) => id);   // Why (#3344): the site cannot tell these 'off' from the person's; this install remembers it wrote them
+  if (wroteOff.length) storage.saveSettings({mailRowsAppOff: [...new Set([...(storage.settings().mailRowsAppOff || []), ...wroteOff])]});
   if (done.ok) storage.saveSettings({mailRowsSettled: new Date().toISOString()});
   return done;
 }
@@ -110,13 +116,16 @@ export const choose = (storage, row, on, options = {}) => queued(async () => {
   if (!done.ok || NEWS.includes(row)) return done;   // a news mail is not an app row: nothing of it is kept beside the person's own rows
   const kept = new Set(storage.settings().mailRowsPressed || []);
   if (on) kept.delete(row); else kept.add(row);
-  storage.saveSettings({mailRowsPressed: [...kept]});
+  storage.saveSettings({mailRowsPressed: [...kept], mailRowsAppOff: (storage.settings().mailRowsAppOff || []).filter(id => id !== row)});   // a press makes the row the person's, whoever wrote it off before
   return done;
 });
 
 /**
  * Always on was just turned on (owner, 6 Nov 2026: "all the automation notifications should turn to on, by default"): every row Always on shows turns on in one go through the same write as a press, except a row the person
- * turned off themselves (`mailRowsPressed`: "Only the person"). A row the app wrote off earlier (the first turn-on of a Mac-only person) is not theirs and turns on. Nothing while the switches are hidden, for a person with no address, or
+ * turned off themselves (`mailRowsPressed`: "Only the person"). Design (#3344, 6 Nov 2026): a row has one of four states, kept by one owner each: never chosen (the site holds '' ), on, off by the person (the site holds 'off'; this install's `mailRowsPressed` if
+ * they pressed it here) and off by the app (the site holds the same 'off'; this install's `mailRowsAppOff` lists the rows IT wrote off: writeUnchosen). Always on writes a row on only when the site holds no choice or this install wrote the 'off' itself; an 'off' this
+ * install did not write is the person's (turned off on another install) and is never overwritten. A press (choose) makes a row the person's. Limits: the list is only this install's memory, so an app-written 'off' from another install or from before
+ * #3344 stays off (the safe direction; one press turns it on), and a person's later off of a row this install wrote off cannot be told from the app's until the next read shows the site no longer holds it; the root, who wrote an 'off', is the site's to keep. Nothing while the switches are hidden, for a person with no address, or
  * with no install key. A refusal keeps its words in `settings.mailNote` (the Notifications card shows them) and the screen follows what the site holds. -> {ok, written: [ids]} or {ok: false, error, written}. Never throws.
  */
 export const alwaysOnTurnedOn = (storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) => queued(() => alwaysOnNow(storage, fetcher, shown));
@@ -126,10 +135,12 @@ async function alwaysOnNow(storage, fetcher, shown) {
     if (!shown || !/^JPF1\./.test(installKey(storage))) return {ok: true, written: []};
     const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
     if (!answer.ok) return answer.reason === 'no_address' ? {ok: true, written: []} : {ok: false, error: answer.error || WORDS[answer.reason] || 'The website could not be reached.', written: []};
-    const rows = Array.isArray(answer.rows) ? answer.rows : [], pressed = storage.settings().mailRowsPressed || [];
+    const rows = Array.isArray(answer.rows) ? answer.rows : [], pressed = storage.settings().mailRowsPressed || [], appOff = storage.settings().mailRowsAppOff || [];
     mirror(storage, rows);
-    const todo = rows.filter(row => ROWS.includes(row.id) && row.suggested?.always !== 'hidden' && row.choice !== 'on' && !pressed.includes(row.id));
+    // Why (#3344, 6 Nov 2026): the site holds one 'off' for the person's press and for the app's own write; only this install knows which it wrote, so any other 'off' is the person's, turned off on another install.
+    const todo = rows.filter(row => ROWS.includes(row.id) && row.suggested?.always !== 'hidden' && row.choice !== 'on' && !pressed.includes(row.id) && (!row.choice || appOff.includes(row.id)));
     const done = await writeRows(storage, todo.map(row => [row.id, true]), fetcher);
+    storage.saveSettings({mailRowsAppOff: (storage.settings().mailRowsAppOff || []).filter(id => !done.written.includes(id))});   // written on: no longer an off the app holds; read again, another path may have added rows while the writes ran
     storage.saveSettings({mailNote: done.ok ? '' : `Not every e-mail could be turned on just now: ${done.error || WORDS.not_saved}`});
     return done;
   } catch { return {ok: false, error: WORDS.not_saved, written: []}; }

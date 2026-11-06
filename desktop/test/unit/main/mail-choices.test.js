@@ -182,12 +182,65 @@ const AO_ROWS = [
   {id: 'app-nothing', suggested: {mac: 'hidden', always: 'hidden'}, choice: ''},           // shown in no mode
 ];
 
-test('Always on turned on: every row turns on in one go, the ones the app wrote off too, except a row the person pressed off themselves', async () => {
-  const asked = [], person = storage({settings: {...ON, mailRowsPressed: ['app-weekly']}});
+test('Always on turned on: every row turns on in one go, the ones this install wrote off too, except a row the person pressed off themselves', async () => {
+  const asked = [], person = storage({settings: {...ON, mailRowsPressed: ['app-weekly'], mailRowsAppOff: ['app-needs-you']}});   // the app of THIS install wrote app-needs-you off (writeUnchosen); nobody pressed app-weekly here
   const done = await alwaysOnTurnedOn(person, site([{ok: true, rows: AO_ROWS}, {ok: true}, {ok: true}], asked), true);
   assert.deepEqual(done, {ok: true, written: ['app-matches', 'app-needs-you']});
   assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => call.body), [{mail: 'app-matches', on: true}, {mail: 'app-needs-you', on: true}], 'the pressed-off row, the one already on and the hidden one are not written');
   assert.equal(person.settings().mailNote, '');
+});
+
+// #3344 (HIGH, 6 Nov 2026): the site stores one "off" for the person's press and for an off the app wrote (the first turn-on of a Mac-only person), and only this install knows which was which.
+test('Always on never turns on a row the site holds off that this install did not write off: the person turned it off on another install (#3344)', async () => {
+  const asked = [], person = storage({settings: ON});   // a second install: nothing pressed here, nothing written off here
+  const done = await alwaysOnTurnedOn(person, site([{ok: true, rows: AO_ROWS}, {ok: true}], asked), true);
+  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => call.body), [{mail: 'app-matches', on: true}], 'only the row nobody chose is written: both off rows stay the person\'s');
+  assert.deepEqual(done, {ok: true, written: ['app-matches']});
+});
+
+test('the app\'s own offs are the only ones Always on turns on: a Mac-only first turn-on, then Always on on the same install, turns the rows it wrote off on; another install leaves them off', async () => {
+  const stored = new Map(), applied = [];
+  const fetcher = async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    if (body) { stored.set(body.mail, body.on ? 'on' : 'off'); applied.push([body.mail, body.on]); }
+    return {json: async () => (body ? {ok: true} : {ok: true, rows: ROWS.map(row => ({...row, choice: stored.get(row.id) || ''}))})};
+  };
+  const mac = storage({settings: {notifyBy: ['app']}});
+  await turnOn(mac, 'app-matches', {address: 'a@b.co', save: async choice => { mac.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher});
+  assert.equal(stored.get('app-needs-you'), 'off', 'positive control: the first turn-on of a Mac-only person stored the other row off');
+  assert.deepEqual(mac.settings().mailRowsAppOff, ['app-needs-you'], 'this install remembers it wrote that off');
+  const other = storage({settings: ON});
+  assert.deepEqual((await alwaysOnTurnedOn(other, fetcher, true)).written, ['app-stopped'], 'a second install writes only the row nobody chose; it cannot tell the other off from the person\'s, so that stays off');
+  assert.equal(stored.get('app-needs-you'), 'off');
+  assert.deepEqual((await alwaysOnTurnedOn(mac, fetcher, true)).written, ['app-needs-you'], 'the install that wrote it off turns it on (the hr plan\'s first turn-on)');
+  assert.equal(stored.get('app-needs-you'), 'on');
+  assert.deepEqual(mac.settings().mailRowsAppOff, [], 'a row written on is no longer one the app holds off');
+});
+
+test('a row the site no longer holds off leaves the list of offs the app wrote, on every read of the rows', async () => {
+  const person = storage({settings: {...ON, mailRowsAppOff: ['app-needs-you', 'app-weekly', 'app-stopped']}});
+  const rows = [{id: 'app-needs-you', suggested: {mac: 'no', always: 'mail'}, choice: 'on'}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: 'off'}, {id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}];
+  await read(person, site([{ok: true, rows}]));
+  assert.deepEqual(person.settings().mailRowsAppOff, ['app-weekly', 'app-stopped'], 'turned on elsewhere: gone; still off: kept; not in the answer: kept (nothing is known about it)');
+});
+
+test('a write of offs by another path while Always on writes is not lost (the list is read again when Always on saves)', async () => {
+  const person = storage({settings: {...ON, mailRowsAppOff: ['app-needs-you']}});
+  const fetcher = async (url, init) => {
+    if (init?.body && !person.settings().mailRowsAppOff.includes('app-stopped')) person.saveSettings({mailRowsAppOff: [...person.settings().mailRowsAppOff, 'app-stopped']});   // e.g. the CV step wrote a row off meanwhile
+    return {json: async () => (init?.body ? {ok: true} : {ok: true, rows: AO_ROWS})};
+  };
+  await alwaysOnTurnedOn(person, fetcher, true);
+  assert.deepEqual(person.settings().mailRowsAppOff.sort(), ['app-stopped'], 'app-needs-you was written on and leaves; the row added meanwhile stays');
+});
+
+test('a press on a row the app wrote off makes it the person\'s: Always on no longer touches it', async () => {
+  const person = storage({settings: {...ON, mailRowsAppOff: ['app-needs-you']}});
+  await choose(person, 'app-needs-you', false, {fetcher: site([{ok: true}])});
+  assert.deepEqual(person.settings().mailRowsAppOff, []);
+  const asked = [];
+  await alwaysOnTurnedOn(person, site([{ok: true, rows: AO_ROWS}, {ok: true}], asked), true);
+  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => call.body.mail), ['app-matches']);
 });
 
 test('a press is remembered: off adds the row to the pressed list, on takes it out, a refused press changes nothing', async () => {
@@ -210,7 +263,7 @@ test('Always on: a first row press with e-mail off turns every other unchosen ro
 });
 
 test('a refusal while turning Always on keeps its words, lets the screen follow the site, and nothing is written while hidden or without an address', async () => {
-  const person = storage({settings: ON}), asked = [];
+  const person = storage({settings: {...ON, mailRowsAppOff: ['app-needs-you']}}), asked = [];
   const refused = await alwaysOnTurnedOn(person, site([{ok: true, rows: AO_ROWS}, {ok: false, reason: 'not_saved'}, {ok: true}], asked), true);
   assert.equal(refused.ok, false);
   assert.deepEqual(refused.written, ['app-needs-you'], 'what landed is kept; the next read shows the truth');
