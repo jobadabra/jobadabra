@@ -10,6 +10,7 @@ FIX = 'lay it out with tools/pr-body.sh <base> --body=<summary> (ship.sh does it
 
 
 def missing(body, images=False):
+    """The layout gaps of a PR body, as sentences. images=True also fetches every image URL (tools/pr-screens.py: a non-200 answer is a gap, no answer only a stderr note)."""
     lines = [line for line in body.replace('\r\n', '\n').split('\n')]
     first = next((line for line in lines if line.strip()), '')
     out = []
