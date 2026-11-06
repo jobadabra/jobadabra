@@ -7,6 +7,7 @@
 // Job: report health
 import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
+import {causeList} from './lib/ai-failure-words.mjs';
 import {noteSkipped} from './lib/broker-job.mjs';
 import {startRelay} from './lib/broker-relay-serve.mjs';
 
@@ -18,16 +19,19 @@ export function childEnv(env, url, cap) {
 }
 
 /**
- * Takes the relay's stats and the job name; returns {line, why}: one plain line for the log, and the reason when any call failed ('' when none did).
+ * Takes the relay's stats and the job name; returns {line, why, summary}: one plain line for the log, the reason when any call failed ('' when none did), and the real counts
+ * the alert is built from ({calls, ok, failed, causes: [{key, icon, label, count}]}; the raw reasons stay in `why` for the log only).
  * A cap reached by design (capHit) is said but is not a failure.
  */
 export function outcomeOf(stats, job) {
   const line = `broker relay (${job}): ${stats.calls} calls reached the broker, ${stats.ok} answered, ${stats.refused} failed or refused${stats.capHit ? `, ${stats.capHit} past the run's cap (those items wait for the next run)` : ''}`;
-  if (!stats.refused) return {line, why: ''};
+  // calls = every call the job made that was answered or refused (ok + failed): a call refused after the broker latched never reached it, so stats.calls alone would read "11 of 2".
+  const summary = {calls: stats.ok + stats.refused, ok: stats.ok, failed: stats.refused, causes: causeList(stats.causes)};
+  if (!stats.refused) return {line, why: '', summary};
   const first = stats.latched || stats.reasons[0] || 'unknown';
   const effect = 'their items stay unjudged until a run gets an answer';
-  // Why (4 Nov 2026, a8 via mac-32): one dropped connection in 40 calls read like the whole run being refused; the count says what happened.
-  return {line, why: stats.latched ? `${stats.refused} AI calls were refused (${first}); ${effect}` : `${stats.refused} of ${stats.calls} AI calls failed (${first}); ${effect}`};
+  // Why (4 Nov 2026, a8 via mac-32; 6 Nov 2026, owner): one dropped connection in 40 calls read like the whole run being refused; the count says what happened, and `summary` carries the real per-cause counts the alert's bar and rows come from.
+  return {line, summary, why: stats.latched ? `${stats.refused} AI calls were refused (${first}); ${effect}` : `${stats.refused} of ${stats.calls} AI calls failed (${first}); ${effect}`};
 }
 
 /** Runs `argv` behind a relay; resolves to the command's exit code. Takes {job, cap, argv, env, dir}. */
@@ -39,9 +43,9 @@ export async function runBehindRelay({job, cap = 0, argv, env = process.env, dir
     child.on('exit', (status, signal) => resolve(status ?? (signal ? 128 : 1)));
   });
   await relay.close();
-  const {line, why} = outcomeOf(relay.stats, job);
+  const {line, why, summary} = outcomeOf(relay.stats, job);
   console.log(line);
-  if (why) noteSkipped({job, why: `AI skipped/failed: ${why}`, env, ...(dir ? {dir} : {})});
+  if (why) noteSkipped({job, why: `AI skipped/failed: ${why}`, summary, env, ...(dir ? {dir} : {})});
   return code;
 }
 
