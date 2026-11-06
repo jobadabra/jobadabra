@@ -40,48 +40,36 @@ export async function alertCreditOut({provider, text, always = false, env = proc
 const saidLimit = text => /budget:|\d+ of \d+ neurons/i.test(text) || isCreditOut(text);
 const CREDIT_TITLE = 'AI credit ran out', FAILED_TITLE = 'AI calls failed';
 
-// The jobs' real call counts (ai-capped.json `summary`, written by the relay run): [{job, summary}], one per note; a note without one makes the failed alert show no numbers.
-function capSummaries(folder) {
+// Reads the cap files and the runner's aiCapped results in ONE walk: [{note, job, summary}], one per note. `summary` is the relay run's real call counts (ai-capped.json `summary`), null for a note
+// from another producer (the failed alert then shows no numbers). Unrelated failed values keep their ordinary verdict.
+function capEntries(folder) {
   let entries;
   try { entries = fs.readdirSync(folder, {withFileTypes: true}); } catch { return []; }
   return entries.flatMap(entry => {
     const file = path.join(folder, entry.name);
-    if (entry.isDirectory()) return capSummaries(file);
+    if (entry.isDirectory()) return capEntries(file);
     if (!['ai-capped.json', 'steps.json'].includes(entry.name)) return [];
     try {
       const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (entry.name === 'steps.json') return (data.results || []).filter(step => step.aiCapped).map(() => ({job: '', summary: null}));
-      return [{job: String(data.job || ''), summary: data.summary && Number.isFinite(data.summary.calls) && Array.isArray(data.summary.causes) ? data.summary : null}];
-    } catch { return []; }
-  });
-}
-
-// Read cap files and the runner's aiCapped results; unrelated failed values keep their ordinary verdict.
-function capNotes(folder) {
-  let entries;
-  try { entries = fs.readdirSync(folder, {withFileTypes: true}); } catch { return []; }
-  return entries.flatMap(entry => {
-    const file = path.join(folder, entry.name);
-    if (entry.isDirectory()) return capNotes(file);
-    if (!['ai-capped.json', 'steps.json'].includes(entry.name)) return [];
-    try {
-      const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (entry.name === 'ai-capped.json') return [`${path.basename(folder)}: ${data.why || `${data.neurons ?? 'unreadable'} of ${data.cap ?? 'unknown'} neurons; ${data.skipped || 0} skipped step(s)`}`];
-      return (data.results || []).filter(step => step.aiCapped).map(step => `${path.basename(folder)}: ${step.note || step.name}`);
+      if (entry.name === 'ai-capped.json') {
+        const summary = data.summary && Number.isFinite(data.summary.calls) && Array.isArray(data.summary.causes) ? data.summary : null;
+        return [{note: `${path.basename(folder)}: ${data.why || `${data.neurons ?? 'unreadable'} of ${data.cap ?? 'unknown'} neurons; ${data.skipped || 0} skipped step(s)`}`, job: String(data.job || ''), summary}];
+      }
+      return (data.results || []).filter(step => step.aiCapped).map(step => ({note: `${path.basename(folder)}: ${step.note || step.name}`, job: '', summary: null}));
     } catch { return []; }
   });
 }
 
 /** Aggregate capped suites into one existing-channel alert; a persisted run marker suppresses fresh-runner duplicates. Never holds a release. */
 export async function alertCappedSteps({artifacts, marker, verdict = 'AI steps are grey; the beta is not held', env = process.env, fetcher = fetch, log = console.log}) {
-  const notes = [...new Set(capNotes(artifacts))];
+  const found = capEntries(artifacts), notes = [...new Set(found.map(one => one.note))];
   if (!notes.length) return 'credit-alert: no capped AI steps';
   for (const note of notes) log(`::warning title=${saidLimit(note) ? CREDIT_TITLE : FAILED_TITLE}::${note.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
   if (marker && fs.existsSync(marker)) return 'credit-alert: this run already alerted';
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
   const credit = notes.some(saidLimit);
   // Why (6 Nov 2026, owner: "this is not very readable"): a failed (not credit) alert is told in plain causes with the relay's real counts, never the broker's raw words (those stay in the log lines above).
-  const found = capSummaries(artifacts), counted = found.length && found.every(one => one.summary) ? found.map(one => one.summary) : null;
+  const counted = found.length && found.every(one => one.summary) ? found.map(one => one.summary) : null;
   const message = credit ? alertHtml({icon: '🩶', title: CREDIT_TITLE, verdict,
     bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [[...notes].sort((a, b) => saidLimit(b) - saidLimit(a)).slice(0, 3).join('; ')]}],
     links: [{text: 'Open the run', url: run}]})

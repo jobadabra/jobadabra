@@ -126,6 +126,17 @@ test('calls refused after the broker latched are counted in the total and under 
   assert.equal(done.summary.causes[0].count, 11);
 });
 
+test('a note from an ai-capped-<job> artifact folder is told by its real cause: the word "capped" in a folder name or an old status is never money', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), sent = [], print = console.log;
+  console.log = () => {};
+  try { noteSkipped({job: 'fixer', why: 'broker: login-lost', dir: path.join(root, 'ai-capped-fixer'), env: {}}); } finally { console.log = print; }
+  await alertCappedSteps({artifacts: root, verdict: REFUSED, env, log: () => {}, fetcher: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
+  fs.rmSync(root, {recursive: true, force: true});
+  assert.ok(sent[0].includes('🔑 The AI service did not accept our login'), sent[0]);
+  assert.doesNotMatch(sent[0], /allowance|ran out|credit/i);
+  assert.equal(causeOf('capped fallback:reply-refused').key, 'failed');
+});
+
 test('a status code is a status only where it is written as one, never digits inside other words', () => {
   assert.equal(causeOf('no answer from the broker: fetch failed after 401 s').key, 'connection');
   for (const [reason, key] of [['HTTP 429 too many requests', 'rate'], ['broker: 401', 'login'], ['HTTP 400', 'request'], ['took 400 ms', 'failed'], ['HTTP 502', 'failed']]) assert.equal(causeOf(reason).key, key, reason);
