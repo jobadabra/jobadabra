@@ -46,8 +46,8 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       if (!['fill', 'auto'].includes(mode)) throw new Error('Unknown background Apply mode');
       const app = await appOf(url), old = await load(app);
       // Why (2026-10-27, owner; 5 Nov 2026, owner's screenshot): reapplying or changing modes never resets a job's CAPTCHA or unknown-submit handoff; any other finished
-      // hand-off (Stop, Cancel, a quit before the press) starts a new run, or the job came back as "Needs you · Try again" in its old mode and never launched.
-      // A Stop after the reservation keeps no attempt on the state (it saves the state from before it), so the reservation events are read too.
+      // hand-off (Stop, Cancel, a quit or update before the press) starts a new run, or the job came back as "Needs you · Try again" in its old mode and never launched.
+      // The test itself is `endedRun` above, shared with Apply in Chrome (7 Nov 2026), so both modes treat an ended run the same way.
       if (old && !(await endedRun(app, old))) return old;
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
