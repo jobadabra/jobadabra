@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {readAfterNextStep} from '../../extension/next-step-read.js';
 import {pressInPage} from '../../extension/next-step.js';
 
-const URL1 = 'https://www.xing.com/jobs/custom-apply/captain-c525-146641869?#jobpilotto';
+const URL1 = 'https://www.xing.com/jobs/custom-apply/captain-c525-146641869?#jobadabra';
 const parts = (over = {}) => {
   const calls = [];
   return {calls, still: async () => ({still: true, ms: 600}), getTab: async () => ({id: 5, url: URL1}), signature: async () => 'step 2', read: async tab => calls.push(['read', tab.url]), log: text => calls.push(['log', text]), ...over};
