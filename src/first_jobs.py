@@ -262,7 +262,7 @@ class _Readers:
         with batch_scope.seen_by(name), title_queue.handing_to(handed):
             jobs = self._take(name, future, shown)
         if self.imports.add({'jobs': jobs}):
-            self.say(f'First jobs: {self.imports.count} found on the job boards')   # Why (#2928, Gitar): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js); another wording left these jobs hidden; #2918, 6 Nov 2026: said from the hub's join of a reader, N counts every job imported so far
+            self.say(f'First jobs: {self.imports.count} found on the job boards')   # Why (#2928, Gitar; #2918): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js), another wording left these jobs hidden; N counts every job imported so far, said from the hub's join of a reader
         self.hand([])
 
     def settle(self, scoring):
