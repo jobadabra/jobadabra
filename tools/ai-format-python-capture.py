@@ -5,7 +5,6 @@ Only selected original definitions execute; imports resolve to explicit offline 
 The Node generator verifies source hashes and consumes these snapshots in-process.
 """
 import ast
-import contextlib
 import builtins
 import copy
 import hashlib
@@ -275,11 +274,7 @@ def capture_engine(prompts=False):
          'src/places.py', 'answer = json.loads(next(block.text')
 
     engine.PARALLEL = 1
-    slots = NS(carry=lambda function: function, priority=lambda level: contextlib.nullcontext(), NORMAL=1)
-    def serve(batches, ask, land, parallel):   # Why (#2918, 6 Nov 2026): the title queue's own threads are not captured; each batch is asked in turn and landed
-        for _, titles in batches:
-            land(titles, ask(titles))
-    queue = NS(serve=serve)
+    slots = NS(carry=lambda function: function, priority=lambda level: __import__('contextlib').nullcontext(), NORMAL=1)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None),
                    keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}))
@@ -307,8 +302,8 @@ def capture_engine(prompts=False):
     with tempfile.TemporaryDirectory(prefix='.ai-format-') as temporary:
         temporary = Path(temporary)
         scope = NS(view=lambda *a: {}, active=lambda: False)
-        bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time, title_queue=queue,
-                        LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'))
+        bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time,
+                        title_queue=NS(serve=lambda batches, ask, land, parallel: [land(titles, ask(titles)) for _, titles in batches]), LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'))
         place_search = {'locations': {'top_tier': ['zurich'], 'country_wide': ['switzerland']}, 'remote_jobs': ['yes']}
         place_names = ['MODEL', 'BATCH', 'VERSION', 'SCHEMA', 'SYSTEM', 'VISA_SCHEMA', 'VISA_SYSTEM',
                        'places_words', '_key', 'norm', '_load', 'known', '_keep', 'decide']
