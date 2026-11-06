@@ -101,21 +101,23 @@ async function writeRows(storage, pairs, fetcher) {
  * The person pressed a switch: off stores it, on is also the first turn-on of e-mail when it is not on yet (turnOn). A saved press is remembered in `settings.mailRowsPressed` (the rows the person turned OFF themselves):
  * it is how a later automatic write tells their off from one the app wrote (Always on turning everything on keeps these off). -> {ok, addressSaved?} or {ok: false, error: words}.
  */
-export async function choose(storage, row, on, options = {}) {
-  const done = on ? await turnOn(storage, row, options) : await set(storage, row, on, options.fetcher);
+export const choose = (storage, row, on, options = {}) => queued(async () => {
+  const done = on ? await turnOnNow(storage, row, options) : await set(storage, row, on, options.fetcher);
   if (!done.ok) return done;
   const kept = new Set(storage.settings().mailRowsPressed || []);
   if (on) kept.delete(row); else kept.add(row);
   storage.saveSettings({mailRowsPressed: [...kept]});
   return done;
-}
+});
 
 /**
  * Always on was just turned on (owner, 6 Nov 2026: "all the automation notifications should turn to on, by default"): every row Always on shows turns on in one go through the same write as a press, except a row the person
  * turned off themselves (`mailRowsPressed`: "Only the person"). A row the app wrote off earlier (the first turn-on of a Mac-only person) is not theirs and turns on. Nothing while the switches are dark, for a person with no address, or
  * with no install key. A refusal keeps its words in `settings.mailNote` (the Notifications card shows them) and the screen follows what the site holds. -> {ok, written: [ids]} or {ok: false, error, written}. Never throws.
  */
-export async function alwaysOnTurnedOn(storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) {
+export const alwaysOnTurnedOn = (storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) => queued(() => alwaysOnNow(storage, fetcher, shown));
+
+async function alwaysOnNow(storage, fetcher, shown) {
   try {
     if (!shown || !/^JPF1\./.test(installKey(storage))) return {ok: true, written: []};
     const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
@@ -134,13 +136,15 @@ export async function alwaysOnTurnedOn(storage, fetcher = globalThis.fetch, show
  * (`save` = the handler's saver, which also moves Always on) and the consent stores this row's own line; every other row the person never chose is stored off (on in Always on), then this row on. -> {ok, addressSaved?} or
  * {ok: false, error: words}: a refusal anywhere puts the switch back. Owner, 6 Nov 2026: "When they turn a mail on" is when the address reaches our server.
  */
-export function turnOn(storage, row, options = {}) {
-  // Why (6 Nov 2026, Gitar on #3335): two first presses on different rows both saw "e-mail not on", both wrote the unchosen rows, and each stored the other's row off after it had been turned on. One press at a time: the second sees e-mail on and writes only its own row.
-  const run = turning.then(() => turnOnNow(storage, row, options));
+export const turnOn = (storage, row, options = {}) => queued(() => turnOnNow(storage, row, options));
+
+// Why (6 Nov 2026, Gitar on #3335): two first presses on different rows both saw "e-mail not on", both wrote the unchosen rows, and each stored the other's row off after it had been turned on; and Always on's write, running in the background, could land its "on" after a press's "off". Every writer (a press, the first turn-on, Always on turning everything on) runs one at a time, in order: a later one reads what the earlier one left.
+let turning = Promise.resolve();
+function queued(job) {
+  const run = turning.then(job);
   turning = run.catch(() => {});
   return run;
 }
-let turning = Promise.resolve();
 
 async function turnOnNow(storage, row, {address = '', name = '', save, fetcher = globalThis.fetch} = {}) {
   let addressSaved = false;

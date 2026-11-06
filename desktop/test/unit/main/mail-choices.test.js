@@ -222,3 +222,21 @@ test('a refusal while turning Always on keeps its words, lets the screen follow 
   assert.deepEqual(await alwaysOnTurnedOn(storage({settings: ON}), site([{ok: false, reason: 'no_address'}], calls), true), {ok: true, written: []}, 'no address on the site');
   assert.deepEqual(calls.length, 1, 'dark reached nothing; the no-address read was the only call');
 });
+
+test('Always on writing in the background and a press off made meanwhile: the person\'s off is the last word, and the row stays off', async () => {
+  const person = storage({settings: ON}), stored = new Map();
+  const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}];
+  // A site that applies a write the moment it arrives but answers the person's off slowly (30 ms): the app has not yet noted the press when Always on's write goes out.
+  const fetcher = async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    const snapshot = rows.map(row => ({...row, choice: stored.get(row.id) || ''}));
+    if (body) stored.set(body.mail, body.on ? 'on' : 'off');
+    await new Promise(resolve => setTimeout(resolve, !body ? 2 : body.on ? 1 : 30));
+    return {json: async () => (body ? {ok: true} : {ok: true, rows: snapshot})};
+  };
+  const background = alwaysOnTurnedOn(person, fetcher, true);
+  const press = choose(person, 'app-matches', false, {fetcher});
+  await Promise.all([background, press]);
+  assert.equal(stored.get('app-matches'), 'off', 'the press waited for the background write, so its off landed last');
+  assert.deepEqual(person.settings().mailRowsPressed, ['app-matches']);
+});
