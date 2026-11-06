@@ -7,12 +7,13 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from src import time_budget
-from src.sources import feeds, read_budget
+from src.sources import feed_scan, feeds, read_budget
 
 TABLE = 'CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))'
 
@@ -36,8 +37,14 @@ class Base(unittest.TestCase):
         self.addCleanup(time_budget.start, 0)
 
     def scan(self, sources, slow_from=60):
-        read, db = [], sqlite3.connect(':memory:')
+        read, db, self.handed = [], sqlite3.connect(':memory:'), []
         db.execute(TABLE)
+        handed = self.handed
+
+        class Recording(ThreadPoolExecutor):   # the order the sites are handed to the pool: what the code guarantees (the threads' own start order is the OS's)
+            def submit(self, fn, *args, **kwargs):
+                handed.append(int(args[0]['slug'][1:]))
+                return super().submit(fn, *args, **kwargs)
 
         def fetcher(source):   # the first sites answer fast, the long tail slowly (the pilot run's 1,123 sites)
             n = int(source['slug'][1:])
@@ -47,7 +54,8 @@ class Base(unittest.TestCase):
         out = io.StringIO()
         began = time.monotonic()
         with redirect_stdout(out):
-            report = feeds.scan(sources, db, fetcher=fetcher, details={})
+            with mock.patch.object(feed_scan, 'ThreadPoolExecutor', Recording):
+                report = feeds.scan(sources, db, fetcher=fetcher, details={})
         return report, read, time.monotonic() - began, out.getvalue()
 
 
@@ -103,8 +111,10 @@ class RankedFirst(Base):
         with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
                 mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
             _, read, _, log = self.scan(given, slow_from=50)
-        self.assertLessEqual({7, 3, 9}, set(read[:feeds.FETCH_WORKERS]), 'the proven best in the first wave (its threads start in any order: '
-                             '2 started before 9 on #2187)')
+        # Why (#3342, 6 Nov 2026): this asserted the order the first wave's threads START fetching (`read`); on a loaded runner site 3 started after 10 ('2 started
+        # before 9 on #2187' was the same). The code guarantees the order it hands the sites to the pool, so that is what is asserted.
+        self.assertEqual(self.handed[:3], [7, 3, 9], 'the proven best are handed to the pool first, in the ranking\'s order')
+        self.assertLessEqual({7, 3, 9}, set(read), 'and all three were read')
         self.assertNotIn(0, read)
         self.assertNotIn(1, read)
         self.assertIn('2 left out', log)
