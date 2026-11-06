@@ -329,7 +329,7 @@ class _Readers:
             return _board_jobs(future, self.feed_db, self.say, shown)
         from .paths import load_search_config
         from .sources import aggregators
-        try:   # its read and places were done in its own thread (_others): this sorts, takes and matches them
+        try:   # its read was done in its own thread (_others) and handed over before its places are placed (they order later batches once geo has them): this sorts, takes and matches them
             return aggregators.scan(self.feed_db, load_search_config(), readers=[(name, lambda search: future.result())], early=True, shown=shown)['jobs']
         except Exception as error:  # noqa: BLE001 — the free-API stage reads it
             self.say(f'Warning: {name} not taken in the first jobs: {type(error).__name__}: {error}')
