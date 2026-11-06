@@ -4,7 +4,17 @@ import sqlite3
 import unittest
 from unittest import mock
 
-from src.sources import aggregators, feeds
+from src.sources import aggregators, careers
+
+_READER = careers.READER
+
+
+def setUpModule():   # no page read reaches a real model from this file (tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 JOB = {'company': 'A', 'id': '1', 'title': 'Engineer', 'url': 'https://x/1', 'date_posted': '', 'description': '', 'location': 'Town', 'remote': False, 'salary': ''}
 
