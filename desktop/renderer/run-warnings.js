@@ -100,7 +100,7 @@ const RUN_ROW = /^(?:cronjob )?run not (opened|logged) (?:in|to) (?:the run hist
 function runRowWarning(raw) {
   const m = RUN_ROW.exec(raw);
   if (!m) return null;
-  const reason = notionReason(m[2]) || humanError(m[2]);
+  const reason = notionReason(m[2], {strict: false}) || humanError(m[2]);
   return `${m[1].toLowerCase() === 'opened' ? "The run's row could not be opened in" : "The run's result could not be saved to"} ${where()}${reason ? `: ${reason}` : ''}`;
 }
 export function plainWarning(raw) {

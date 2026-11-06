@@ -165,7 +165,7 @@ test("a Notion 400 in the bundle carries Notion's own reason, only in its known 
   // A reason that can quote what was sent, or a busy/refused service, stays the bare status (the same function as the Activity page: renderer/notion-reason.js).
   assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 400: Invalid select option: "Senior Engineer at Acme"'), '   ! run not logged to Notion: HTTPError, HTTP 400');
   // Free text after "should be" is not sent: only a type, defined, empty or a number bound.
-  for (const tail of ['sk_live_abc1234567 - -', 'Senior Engineer at Acme', '12345678901234567890', 'a string for jo@acme.test'])
+  for (const tail of ['a valid uuid', 'sk_live_abc1234567 - -', 'Senior Engineer at Acme', '12345678901234567890', 'a string for jo@acme.test'])
     assert.equal(sent(`cronjob run not logged to Notion: HTTPError: HTTP Error 400: body.properties.Result.rich_text should be ${tail}.`), '   ! run not logged to Notion: HTTPError, HTTP 400', tail);
   assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 400: body.properties.Result.rich_text should be a string, instead was "x".'),
     '   ! run not logged to Notion: HTTPError, body.properties.Result.rich_text should be a string (HTTP 400)');
