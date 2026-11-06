@@ -8,7 +8,7 @@ import json
 import os
 from html import escape
 from pathlib import Path
-from . import import_url, store, telegram
+from . import features, import_url, store, telegram
 from .app_source import APP_SOURCE
 from .ai import added, cost, inbox, insights, interview_insights, interviews, kit
 from .notion import client as notion, cron_runs, ledger
@@ -332,6 +332,13 @@ def _close_unreviewed(stores, run, args, reason, headline):
 
 
 def insight_mode(args, stores=None):
+    """--mode insight: one insight now (forced: Telegram /insight), or with --if-due only when it is due (once a day after 04:00 UTC, Mondays the weekly
+    report), the same rule a scheduled search's --insight follows. Why ([sc] 3/4, 6 Nov 2026): with our servers running the search the Mac no longer
+    runs its own, so the app asks for the day's insight itself and the engine's own once-a-day rule keeps it to one."""
+    if args.mode == 'insight' and args.if_due and features.disabled('insights'):
+        # Why (6 Nov 2026, review): the automatic ask obeys JOBADABRA_DISABLE=insights as a scheduled search's --insight does (apply_switches); a person's own Telegram /insight still forces one.
+        print('Insight: switched off')
+        return 0
     stores = _run_store(stores, f'--mode {args.mode} requires NOTION_TOKEN')
     sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup)) if args.send else telegram.to_app
     with store.connect(args.db) as db:
@@ -340,7 +347,7 @@ def insight_mode(args, stores=None):
         run['insight'] = {}
         try:
             run['headline'] = make(db, stores, send=sender, stats=run['insight'],
-                                   **({'force': True} if args.mode == 'insight' else {})) or \
+                                   **({'force': True} if args.mode == 'insight' and not args.if_due else {})) or \
                 ('No new insight: nothing worth saying today' if args.mode == 'insight' else 'Weekly report: nothing to report')
             run['subject'] = insights.category_of(run['headline']) if args.mode == 'insight' else ''
             print(run['headline'])

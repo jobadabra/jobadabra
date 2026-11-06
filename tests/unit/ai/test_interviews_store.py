@@ -87,7 +87,7 @@ class SqliteCommandTests(OnThisMac):
     def test_the_insight_command_runs_without_notion(self):
         from types import SimpleNamespace
         from src import daily_modes
-        args = SimpleNamespace(mode='insight', send=False, db=str(self.folder / 'jobs.sqlite'))
+        args = SimpleNamespace(mode='insight', send=False, if_due=False, db=str(self.folder / 'jobs.sqlite'))
         with mock.patch.object(daily_modes.insights, 'run', return_value='Insight: not due') as run, \
                 mock.patch.object(daily_modes, 'log_ai_run'), \
                 mock.patch('sys.stdout', io.StringIO()):

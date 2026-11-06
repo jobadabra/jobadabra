@@ -13,6 +13,7 @@ import * as telegram from './telegram.js';
 import {osText} from '../renderer/os.js';
 import {useBotApi} from './waiting-message.js';
 import {cloudNextAt, nextAt, nextMailAt} from './schedule.js';
+import {serversNextAt} from './one-place.js';
 import {log as appLog} from './log.js';
 import {runState} from './run-state.js';
 import {runTone, toneOf} from '../renderer/toast-tone.js';
@@ -63,7 +64,7 @@ export function createAppNotify(ctx) {
     const settings = getStorage().settings();
     const cloud = cloudNextAt(settings);  // Always on: GitHub's schedule (the Mac's own is off then)
     return {runs, running: pipeline.running() || cloudStop(live), queued: pipeline.queued(), lastSearchAt: settings.lastSearchAt || null,
-      nextSearchAt: nextAt(settings) ?? cloud.search, nextMailAt: nextMailAt(settings) ?? cloud.mail, nextScoutAt: cloud.scout,
+      nextSearchAt: serversNextAt() ?? nextAt(settings) ?? cloud.search, nextMailAt: nextMailAt(settings) ?? cloud.mail, nextScoutAt: cloud.scout,
       cloud: !!settings.cloud?.repo, historyLoaded: !!runState.notionRuns,  // false until the run history was read from Notion
       busy: critical.labels()};  // the app's own work under way (the start-up move into Notion…): its engine steps take the run lock too
   }

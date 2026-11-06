@@ -18,6 +18,7 @@ import {backgroundApplyFor, watchStalled} from './background-apply-controller.js
 import {e2eMs} from './e2e-timing.js';
 import {log as appLog} from './log.js';
 import {resumeDelay, scheduleResume} from './resume-queue.js';
+import {serversRunSearch} from './one-place.js';
 import {startSchedule} from './schedule.js';
 import {askInstalledTwice} from './two-installs-notice.js';
 import {watchOrphans} from './orphans.js';
@@ -166,7 +167,8 @@ export function registerBackgroundHandlers(ctx) {
       search: () => pipeline.refresh(storage, log, 'scheduled', 'schedule'),
       mail: () => (notionGate.tracking(storage) ? pipeline.checkMail(storage, log, 'schedule') : skipUntilNotion('mail')),
       scout: () => pipeline.scout(storage, log, 'schedule'),
-    }, powerMonitor, {soon: () => notify('Searching for new jobs in 1 minute', 'Your scheduled search for new jobs is about to run.', {activity: true}, 'info')});
+      insight: () => pipeline.insight(storage, log, 'schedule'),
+    }, powerMonitor, {covered: () => serversRunSearch(storage), soon: () => notify('Searching for new jobs in 1 minute', 'Your scheduled search for new jobs is about to run.', {activity: true}, 'info')});
     setInterval(announceRuns, 5000);
     scheduleResume(pipeline, storage, {cloud: !!storage.settings().cloud?.repo, begin: resumeQueue, delayMs: resumeDelay()});  // after the schedule's own catch-up check has queued what's due; the queue is read now, not then
   }

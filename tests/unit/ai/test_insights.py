@@ -238,6 +238,16 @@ class RunTests(unittest.TestCase):
         self.assertEqual(insights.run(None, sent, now=NOW, client=client), 'Insight: not due')
         self.assertEqual(client.calls, [])
 
+    def test_two_unforced_triggers_in_one_day_cost_one_insight(self):
+        # [sc] 3/4 (Nov 2026): with our servers running the search the Mac asks for the day's insight by itself (daily --mode insight --if-due), and a Mac that still
+        # searches asks through its scheduled run (--insight): both are this unforced call, so the day's second ask is "not due" and spends nothing.
+        stores, client = memory_store(), FakeClient()
+        with patched():
+            first = insights.run(None, stores, now=NOW, client=client, send=lambda t, k: None)
+            second = insights.run(None, stores, now=NOW, client=client, send=lambda t, k: None)
+        self.assertIn('Insight sent', first)
+        self.assertEqual((second, len(client.calls)), ('Insight: not due', 1))
+
     def test_force_and_skip(self):
         stores, sent = memory_store(), []
         with patched():

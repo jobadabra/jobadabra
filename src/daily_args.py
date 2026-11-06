@@ -70,4 +70,7 @@ def build_parser(description):
                         help='log this run to Notion ⏰ Search runs even without --send (the desktop app always does)')
     parser.add_argument('--insight', action='store_true',
                         help="scheduled mode: send the day's insight if it's due (insight mode always sends one)")
+    parser.add_argument('--if-due', action='store_true',
+                        help="insight mode: send the day's insight (the Monday weekly report) only if it's due, like a scheduled search's --insight; "
+                             "without it insight mode always makes one")
     return parser
