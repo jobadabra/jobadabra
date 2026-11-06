@@ -25,7 +25,7 @@ MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured 
 # itself: no guessed number.
 QUALITY_MIN_RUNS = 10
 QUALITY_SPREADS = 2
-# Why (1 Nov 2026, #2901): main's last runs judged 0 jobs on all six personas then (the press ran out of its 180 s before reading one), so "average minus two spreads" fell to -1.6..-6.3 and no total could be below it:
+# Why (1 Nov 2026, #2901): main's last runs judged 0 jobs on all six personas (the press ran out of its 180 s before reading one), so "average minus two spreads" fell to -1.6..-6.3 and no total could be below it:
 # a search that finds nothing stayed green. A floor below one right job is no floor; a run whose judges saw no job at all measured nothing (see _nothing).
 QUALITY_FLOOR_MIN = 1
 # Why (2 Nov 2026, owner: "Ship speed fix, fix the gate"; #2928): the floor of 1 above was red on a total of 0 although main's own last three totals were 7, 5 and 0:
@@ -294,10 +294,18 @@ def row_verdict(row):
     return '⚪', f'scored {read}, none right role and place' if read else 'no right job', 'none-right'
 
 
-def _nothing(run):
-    """True when every persona's judge saw 0 jobs (explicit found == 0): this run measured nothing, so it is no main history. It is the judge's count, never the press's
+LEGACY_PERSONAS = 6   # Why (6 Nov 2026, /code-review of 4/5): main's runs before the 18 have exactly personas 1-6; their zeros must still read "measured nothing"
+
+
+def _size(run):
+    """How many personas a stored run was made for: 6 for a run before 6 Nov 2026 (exactly personas 1-6), else all of PERSONAS."""
+    return LEGACY_PERSONAS if len(PERSONAS) > LEGACY_PERSONAS and set(run) == set(range(1, LEGACY_PERSONAS + 1)) else len(PERSONAS)
+
+
+def _nothing(run, size=None):
+    """True when every persona's judge saw 0 jobs (explicit found == 0): this run measured nothing, so it is no main history. `size` = the personas that run had (_size for main's runs). It is the judge's count, never the press's
     `scored`: a press cut before scoring can leave jobs the judge still graded, and that run is a measurement (Gitar on #2974)."""
-    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
+    rows = [run.get(n) for n in range(1, (size or len(PERSONAS)) + 1)]
     return all(r is not None and not r.get('error') and not r.get('not_measured') and type(r.get('found')) is int and r['found'] == 0 for r in rows)   # the count alone: a fault in a zero run does not make it measured
 
 
@@ -354,7 +362,7 @@ def compare(pr, main_runs):
     rows = []
     for n in range(1, len(PERSONAS) + 1):
         row = pr.get(n)
-        _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run)])   # a run that measured nothing shows no zeros
+        _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run, _size(run))])   # a run that measured nothing shows no zeros
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),

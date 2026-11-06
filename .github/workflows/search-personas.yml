@@ -1,5 +1,5 @@
 name: CI · Search check (18 personas)
-# Once a night, alone on the broker: eighteen fictional job seekers press Find jobs once on fresh installs, one after the other (about 4 minutes each, so about 75 minutes in all); a press over 180 s reads red. A report: it blocks nothing.
+# Once a night, alone on the broker: eighteen fictional job seekers press Find jobs once on fresh installs, one after the other (about 4.5 minutes each: the six took 26-29 minutes on 5-6 Nov, so about 80-85 minutes in all); a press over 180 s reads red. A report: it blocks nothing.
 # Why (4 Nov 2026, owner: "still doesn't work. We tried to fix it 10+ times", chose "Night run, off PRs"; reverses 27 Oct's check on every search PR, #2285): none of the last 15 PR results found a job (8 not measured,
 # 5 found 0, 2 red) because the result follows the broker's load, so it could not judge a PR. A search PR relies on its unit and integration tests. The coordinator reads each night; two not measured or a drop goes to the owner.
 # Quality is shown per persona and pooled; it reads red only after 10 measured complete runs on main, below their mean minus twice the sample standard deviation

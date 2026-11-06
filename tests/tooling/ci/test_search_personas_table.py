@@ -50,5 +50,25 @@ class TheEighteenPersonas(unittest.TestCase):
                 self.assertEqual(json.loads((out / 'draw' / 'draw.json').read_text())['family'], gate.PERSONAS[n - 1]['family'])
 
 
+class RunsFromBeforeTheEighteen(unittest.TestCase):
+    """A run on main from before 6 Nov 2026 has personas 1-6 only. Its zeros still read "measured nothing" (not shown as main's history), and it is no history for the pooled total."""
+
+    @staticmethod
+    def old_run(found, local=0):
+        return {n: {'persona': n, 'local': local, 'found': found, 'seconds': 150, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription'} for n in range(1, 7)}
+
+    def test_an_all_zero_six_persona_run_shows_no_zeros_in_the_main_column(self):
+        now = {n: {'persona': n, 'local': 1, 'found': 2, 'seconds': 150, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription'} for n in range(1, 19)}
+        verdict = gate.compare(now, [self.old_run(0)])
+        self.assertEqual([r['main'] for r in verdict['rows'][:6]], [[]] * 6)
+
+    def test_a_measured_six_persona_run_still_shows_its_numbers_for_personas_1_to_6_only(self):
+        now = {n: {'persona': n, 'local': 1, 'found': 2, 'seconds': 150, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription'} for n in range(1, 19)}
+        verdict = gate.compare(now, [self.old_run(5, local=3)])
+        self.assertEqual([r['main'] for r in verdict['rows'][:6]], [[3]] * 6)
+        self.assertEqual([r['main'] for r in verdict['rows'][6:]], [[]] * 12)
+        self.assertIsNone(gate._total(self.old_run(5, local=3)), 'six personas are no history for the pooled total of 18')
+
+
 if __name__ == '__main__':
     unittest.main()
