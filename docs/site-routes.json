@@ -81,6 +81,11 @@
    "kind": "app"
   },
   {
+   "path": "/api/scout-memory",
+   "kind": "ci",
+   "methods": ["GET", "PUT"]
+  },
+  {
    "path": "/api/coverage",
    "kind": "page",
    "methods": [
