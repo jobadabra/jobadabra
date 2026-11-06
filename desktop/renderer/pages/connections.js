@@ -6,7 +6,7 @@ import {signInWait} from '../sign-in-wait.js';
 import {shared} from './shared.js';
 import {$, message, osText, show} from './core.js';
 import {pill} from '../components.js';
-import {scheduleWith} from '../schedule-line.js';
+import {hostedRuns, nextWord, scheduleWith, searchNextAt, whereRuns} from '../schedule-line.js';
 import {saveDailyTarget} from './focus.js';
 import {loadSettings} from './profile.js';
 import {noteCheck, openSetting, refreshServices, renderOverview, showRunMode} from './settings.js';
@@ -37,26 +37,21 @@ export function showSchedule() {
 // Each task's state beside its frequency: On (where it runs, when next), Off, On demand, or what it's missing.
 export function showScheduleState(next = shared.nextRuns || {}) {
   const value = kind => document.querySelector(`[data-schedule="${kind}"]`)?.value;
-  const where = shared.state?.settings?.cloud?.repo ? 'GitHub' : 'this Mac, while open';
+  const hostedOn = hostedRuns(shared.hosted);
+  const place = kind => whereRuns(kind, {hostedOn, cloudRepo: shared.state?.settings?.cloud?.repo || ''});
+  const searchAt = searchNextAt({hostedOn, hostedAt: shared.hosted?.schedule?.next_run_at, appAt: next.search});
   let google = null;
   try { google = JSON.parse(localStorage.getItem('serviceChecks') || 'null')?.google?.connected ?? null; } catch {}
-  const when = at => {
-    if (!at) return '';
-    const date = new Date(at), today = new Date();
-    const day = date.toDateString() === today.toDateString() ? 'Today'
-      : date.toDateString() === new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toDateString() ? 'Tomorrow'
-        : date.toLocaleDateString([], {weekday: 'short'});
-    return `${day} ${date.toTimeString().slice(0, 5)}`;
-  };
+  const when = at => nextWord(at);
   const state = {
-    search: value('search') === '0' ? ['Off'] : ['On', where, when(next.search)],
-    mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', where, when(next.mail)],
+    search: value('search') === '0' ? ['Off'] : ['On', [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
+    mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
   };
   document.querySelectorAll('[data-schedule-state]').forEach(node => {
-    const [label, place, at, tone] = state[node.dataset.scheduleState] || ['Off'];
+    const [label, where, at, tone] = state[node.dataset.scheduleState] || ['Off'];
     node.className = `task-state${tone === 'warn' ? ' is-warn' : label === 'On' ? ' is-on' : ''}`;
-    const detail = [place, at].filter(Boolean).join(' · ');
-    node.replaceChildren(label, ...(detail ? [Object.assign(document.createElement('small'), {textContent: ` · ${detail}`})] : []));
+    const detail = [where, at].filter(Boolean).join(' · ');
+    node.replaceChildren(label, ...(detail ? [Object.assign(document.createElement('small'), {textContent: detail})] : []));
   });
 }
 // Automation: the schedules, the daily target and reminders are saved together with Save changes (enabled once
@@ -125,6 +120,7 @@ export function showCloud() {
   $('auto-search').disabled = !!cloud?.repo;
   showTelegramCloud();
   drawChoice();
+  showScheduleState();   // Why (5 Nov 2026, review): the place and time under Find jobs follow GitHub being turned on or off
 }
 // What Always on needs before GitHub can run anything: Notion, the person's own API key and GitHub, three sibling rows that each say what is missing and carry their own button
 // (owner, 4 Nov 2026: "Notion should not be inside Github. They should be siblings. Both of them are needed"). A friend once pressed "Turn on", read a path in plain text and did not know what to do.

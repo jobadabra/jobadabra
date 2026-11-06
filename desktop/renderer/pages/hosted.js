@@ -6,6 +6,7 @@ import {shared} from './shared.js';
 import {openSetting} from './settings.js';
 import {NAME, STORED, SUBTITLE, model} from '../hosted-words.js';
 import {draw as drawChoice, mountChoice} from './always-on-choice.js';
+import {showScheduleState} from './connections.js';
 import {askConsentOnce} from './hosted-email-ask.js';
 
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
@@ -71,6 +72,7 @@ export async function refresh() {
   const [now, mail] = await Promise.all([window.pilot.hostedState(), window.pilot.notifyState().catch(() => null)]);
   shared.hosted = now;
   drawChoice();
+  showScheduleState();   // Why (5 Nov 2026, review): Schedules names the place and time from this state, which arrives after its first draw
   if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared, mail), hostedAddress(now));
 }
 
