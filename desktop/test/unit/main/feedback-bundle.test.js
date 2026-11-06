@@ -157,6 +157,21 @@ test('a run that ended ok shows the tester\'s warnings as fixed sentences', () =
   assert.ok(!lines.includes('4711') && !lines.includes('Senior Engineer'), 'a job id and the summary of a run that worked stay home');
 });
 
+test("a Notion 400 in the bundle carries Notion's own reason, only in its known shapes (#3059)", () => {
+  const sent = line => sentOf([line])[0];
+  assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 400: Run id is not a property that exists.'),
+    '   ! run not logged to Notion: HTTPError, Run id is not a property that exists (HTTP 400)');
+  assert.equal(sent('Skipped job 7: HTTPError: HTTP Error 400: Stage is expected to be select.'), '   ! Skipped a job: HTTPError, HTTP 400');   // as on the Activity page: only the run-history line says Notion's reason
+  // A reason that can quote what was sent, or a busy/refused service, stays the bare status (the same function as the Activity page: renderer/notion-reason.js).
+  assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 400: Invalid select option: "Senior Engineer at Acme"'), '   ! run not logged to Notion: HTTPError, HTTP 400');
+  // Free text after "should be" is not sent: only a type, defined, empty or a number bound.
+  for (const tail of ['sk_live_abc1234567 - -', 'Senior Engineer at Acme', '12345678901234567890', 'a string for jo@acme.test'])
+    assert.equal(sent(`cronjob run not logged to Notion: HTTPError: HTTP Error 400: body.properties.Result.rich_text should be ${tail}.`), '   ! run not logged to Notion: HTTPError, HTTP 400', tail);
+  assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 400: body.properties.Result.rich_text should be a string, instead was "x".'),
+    '   ! run not logged to Notion: HTTPError, body.properties.Result.rich_text should be a string (HTTP 400)');
+  assert.equal(sent('cronjob run not logged to Notion: HTTPError: HTTP Error 429: Slow down'), '   ! run not logged to Notion: HTTPError, HTTP 429');
+});
+
 test('a job title or an employer in a warning is not sent: not in a line of no known shape, and not in the tail of a known one', () => {
   const named = [
     'web search for Acme Corp did not answer: TimeoutError',

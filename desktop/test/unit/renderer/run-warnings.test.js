@@ -61,6 +61,9 @@ test("Notion's own reason reaches the person, and nothing of a job or a token do
     assert.equal(saved(unsafe), plain, unsafe);
   }
   assert.equal(saved(''), plain);
+  // One class: the status that keeps Notion's reason is exactly the one httpSentence tells nothing more about (renderer/notion-reason.js isPlainStatus).
+  const {httpSentence} = await import('../../../renderer/run-warnings.js'), {isPlainStatus} = await import('../../../renderer/notion-reason.js');
+  for (let code = 400; code < 600; code++) assert.equal(isPlainStatus(code), httpSentence(code) === `the service answered with an error (HTTP ${code})`, String(code));
   assert.match(groupWarnings(['cronjob run not logged to Notion: HTTPError: HTTP Error 429: Slow down'])[0], /busy right now \(HTTP 429\)/);
 });
 
