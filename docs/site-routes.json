@@ -305,6 +305,13 @@
    "kind": "ci"
   },
   {
+   "path": "/search-check/reference",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/applying/fidelity",
    "methods": [
     "PUT"
