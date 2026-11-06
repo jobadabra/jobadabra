@@ -1,4 +1,5 @@
-"""The night Search check's 18 fictional candidates (owner, 6 Nov 2026: "6 personas is too narrow and could not tell the full story"): the table, the draw data it reads and the
+"""Guard: release — a persona with no press reads "p13: no result" in the night Search check and a press with no persona fails gate.py cv, so the Admin night would be wrong for weeks before anyone saw it.
+The night Search check's 18 fictional candidates (owner, 6 Nov 2026: "6 personas is too narrow and could not tell the full story"): the table, the draw data it reads and the
 workflow's matrix must agree, or a persona has no press (the compare job reads "p13: no result") or a press has no persona (gate.py cv fails on an unknown family or city).
 Each persona is a different role family in a different city, so a night tells 18 stories and none is counted twice."""
 import json
