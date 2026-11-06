@@ -80,6 +80,12 @@ export function applyingBadge(items, urgency) {
   return {count: items.length || '', tone};
 }
 // The menu foot's line for local sessions (#1676): "session" words only; "Applying" and "Ready to submit" are the Jobs list's server rule (pages/ready-rows.js).
+/** What the sessions tray says before any session exists (owner, 5 Nov 2026: "it should show something, even an empty state, but they should be present, so that the user knows about them"). */
+export const DOCK_EMPTY = {pill: 'none yet', text: 'No application sessions yet. When you apply to a job, its form shows up here.'};
+/** What the tray shows: with no sessions, the 'none yet' pill and the explanation, closed or open by the person's own toggle; null when there are sessions (the tray draws them). Why (Gitar on #3321, 5 Nov 2026): the empty state is decided here, where a test can play it, not inside the DOM code. */
+export const dockEmptyView = (sessions, dockOpen) => sessions.length ? null : {pill: DOCK_EMPTY.pill, text: DOCK_EMPTY.text, closed: !dockOpen};
+/** Which session the tray's title and "View all" open: the one on screen or the first; null with no sessions (then they open the Sessions page, which has its own empty state). Why (code review of fb 6b/7, 5 Nov 2026): with an empty tray both links did nothing. */
+export const dockLinkSession = (sessions, openId) => sessions.length ? (openId || sessions[0].id) : null;
 export function sessionsFoot(needs, working, ready, all) {
   const plural = count => `${count} session${count === 1 ? '' : 's'}`;
   const [text, tone] = needs ? [`${plural(needs)} need${needs === 1 ? 's' : ''} you`, 'warn']

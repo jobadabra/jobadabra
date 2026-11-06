@@ -353,7 +353,7 @@ def after_review(stats=None, client=None, stores=None):
         if cost.limit_reached(error):
             from . import providers
             return ('Interview insights: paused, the AI key was refused (Settings → Connections → AI)' if cost.refused_key(error)
-                    else f'Interview insights: paused, {providers.spec().limit}' if cost.cli_limit(error)
+                    else f'Interview insights: paused, {cost.stopped(error) or providers.spec().limit}' if cost.cli_limit(error)
                     else 'Interview insights: paused, the Anthropic spend limit is reached')
         return f'Interview insights skipped: {type(error).__name__}: {error}'
 

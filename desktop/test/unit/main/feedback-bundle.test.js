@@ -134,6 +134,14 @@ test('the Profile snapshot keeps its parts, loses e-mail addresses and secrets, 
 const warnRun = (warningLines, extra = {}) => ({startedAt: '2026-11-04T02:06:00Z', endedAt: '2026-11-04T02:09:00Z', kind: 'search', trigger: 'you', ok: true, summary: 'Tracked Senior Engineer at Acme Corp', warningLines, ...extra});
 const sentOf = (warningLines, extra) => runLines([warnRun(warningLines, extra)]).slice(1);
 
+test('a stop that is no limit is sent as fixed words, and nothing else of its line (#3059)', () => {
+  const lines = runLines([warnRun(['AI stopped: Claude Code is not signed in, 266 job(s) left for the next check',
+    'AI stopped: Codex did not answer about "Senior Engineer at Acme Corp"'], {warned: true})]).join('\n');
+  assert.match(lines, /! AI stopped: Claude Code, not signed in, 266 job\(s\) left for the next check/);
+  assert.match(lines, /! AI stopped: Codex, did not answer/);
+  assert.doesNotMatch(lines, /Acme/);
+});
+
 test('a run that ended ok shows the tester\'s warnings as fixed sentences', () => {
   const lines = runLines([warnRun([
     'AI limit reached: Claude Code (your Claude plan) cannot go on (status 429), 266 job(s) left for the next check',

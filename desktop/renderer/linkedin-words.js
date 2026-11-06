@@ -35,16 +35,24 @@ export function notOpened(answer) {
   return [title, answer?.note ? `${body} ${answer.note}` : body, NO_PLACE.itself, 'warn'];
 }
 
-// How the sign-in window ended without a session (lib/linkedin-signin-window.js reasons; 'not-kept' = the Keychain or the sign-in itself was refused, its own sentence comes with it).
+// How the sign-in window ended without a session (lib/linkedin-signin-window.js reasons; 'not-kept' = the Keychain or the sign-in itself was refused, its own sentence comes with it;
+// 'popup-ended' = a provider's popup (Google, Apple) had opened and the window ended with no sign-in: the app cannot read that page, so the words only say it may not allow sign-in here).
 const SIGN_IN_ENDED = {
   cancelled: ['LinkedIn jobs is still off', 'The sign-in window was closed before you finished. Press Sign in to LinkedIn to try again.', 'info'],
   timeout: ['LinkedIn jobs is still off', 'The sign-in window waited 10 minutes and was closed. Press Sign in to LinkedIn to try again.', 'info'],
   'load-failed': ['LinkedIn did not load', 'The sign-in page did not open. Check your internet connection and press Sign in to LinkedIn again.', 'warn'],
   'no-keychain': ['LinkedIn jobs is not available here yet', 'Jobadabra keeps your LinkedIn sign-in in the system keychain, and this computer has no store for it yet. Nothing was opened.', 'info'],
   'not-kept': ['LinkedIn jobs stayed off', 'You signed in, but Jobadabra could not keep the sign-in.', 'warn'],
+  'popup-ended': ['LinkedIn jobs is still off', 'Google or Apple may not allow sign-in in this window.', 'info'],
 };
-/** The toast's arguments for a sign-in window that ended with no session: `answer` = {ok: false, reason, error?}; an unknown reason reads as closed. */
-export function signInEnded(answer) {
+// Why (owner, 5 Nov 2026: "Allow popup, you try once"; "if Google refuses, the window says so plainly and points to signing in with Chrome"): the way out is the Chrome sign-in shortcut, or connecting the extension first.
+const CHROME_WAY = {
+  connected: 'Sign in with Chrome instead: open the LinkedIn sign-in again and press Use my Chrome sign-in.',
+  missing: 'Sign in with Chrome instead: connect the Chrome extension in Settings → Connections → Chrome extension, then press Use my Chrome sign-in.',
+};
+/** The toast's arguments for a sign-in window that ended with no session: `answer` = {ok: false, reason, error?}; an unknown reason reads as closed. `view.extension` = the Chrome extension is connected (pages/linkedin-consent.js). */
+export function signInEnded(answer, view = {}) {
   const [title, body, tone] = SIGN_IN_ENDED[answer?.reason] || SIGN_IN_ENDED.cancelled;
+  if (answer?.reason === 'popup-ended') return [title, `${body} ${view.extension ? CHROME_WAY.connected : CHROME_WAY.missing}`, NO_PLACE.itself, tone];
   return [title, answer?.reason === 'not-kept' && answer.error ? answer.error : body, NO_PLACE.itself, tone];
 }

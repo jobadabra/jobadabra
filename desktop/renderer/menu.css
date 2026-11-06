@@ -29,7 +29,7 @@
 .menu-tour { position: fixed; z-index: 60; width: 250px; display: grid; gap: var(--sp-2); padding: var(--sp-4); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-lg); }
 .menu-tour-row { display: flex; align-items: center; gap: var(--sp-3); }
 .menu-tour-row small { margin-right: auto; color: var(--ink-2); }
-.sidebar .menu-tour-lit { outline: 2px solid var(--amber); outline-offset: -2px; }
+.menu-tour-lit { outline: 2px solid var(--amber); outline-offset: -2px; }
 #setting-text-size .segmented { width: fit-content; }
 /* A short window in the icon rail (under 880 css px tall: below it the full list no longer fits: a small window at a large text size, or the site hero's phone take at 528 px) left the page list
    117 px between the brand and the bottom buttons: two pages, the third sliced (owner, 25 Oct 2026: "the sidebar menu collapsed is broken"). The list

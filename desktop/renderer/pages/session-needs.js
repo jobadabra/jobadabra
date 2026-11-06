@@ -3,7 +3,7 @@ import {el, pill} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {renderSteps} from './session-steps.js';
 import {replyOf, splitLabel, unbold} from '../session-message.js';
-import {checkingTabs, chromeSilent, chromeWaiting, pageLine, silentPill, tabClosed, tabNotFound, stepShown} from '../session-state.js';
+import {checkingTabs, chromeSilent, chromeWaiting, dockLinkSession, pageLine, silentPill, tabClosed, tabNotFound, stepShown} from '../session-state.js';
 import {icon} from '../icons.js';
 import {sameQuestion} from '../labels.js';
 import {answerOptions} from '../answer-options.js'; import {clearAnswers, queue, sendAnswer} from './need-send.js'; import {choiceButtons, choiceChips} from './need-choice.js'; import {proposalFor, proposedRow} from './need-proposal.js'; import {markKnockout} from './need-knockout.js';
@@ -59,6 +59,12 @@ function rowWords(need) {
   return {title: unbold(title), desc: unbold(desc)};   // Claude's **bold** marks are not words to show (8 Oct 2026)
 }
 // A title keeps to one line (the row is a summary): the whole question on hover.
+/** The tray's title and "View all": the session on screen, or the Sessions page when there is none. */
+function openDockLink() {
+  const id = dockLinkSession(sessionList, shared.openSessionId);
+  if (id) openSession(id); else openView('sessions');
+}
+
 export function titleLine(text) {
   const node = el('b', 'ss-need-title', text);
   node.title = text;
@@ -437,11 +443,11 @@ export async function init() {
   });
   document.querySelector('.sd-head').addEventListener('click', event => {
     if (event.target.closest('#sd-all')) return;
-    if (event.target.closest('.sd-link')) { openSession(shared.openSessionId || sessionList[0]?.id); return; }
+    if (event.target.closest('.sd-link')) { openDockLink(); return; }
     shared.dockOpen = !shared.dockOpen;
     renderDock();
   });
-  $('sd-all').addEventListener('click', event => { event.preventDefault(); openSession(shared.openSessionId || sessionList[0]?.id); });
+  $('sd-all').addEventListener('click', event => { event.preventDefault(); openDockLink(); });
   $('ss-new').addEventListener('click', () => openView('jobs'));
   $('ss-empty-jobs').addEventListener('click', () => openView('jobs'));  // the empty state's one action
 }

@@ -1,5 +1,5 @@
 // How a run ended, in one word and a tone: the Actions page and Recent activity both use this, so they cannot disagree.
-import {AI_BUSY, isSpendingLimit, runWarningLines} from './run-warnings.js';
+import {AI_BUSY, isSpendingLimit, runWarningLines, STOP_HELP, stopCause} from './run-warnings.js';
 
 // A finished run that worked but said something (its row's Status, or a warning line in its log or report).
 // A run that made only part of what it set out to (Tailor CVs: "3 of 5 tailored · 2 failed"): its card says which; its pill says With warnings.
@@ -52,10 +52,13 @@ const LIMIT_KINDS = [
 export function aiLimitHead(run, name = 'The run') {
   if (!run || run.live || run.waiting || (run.ok && !run.off)) return null;
   const lines = [run.problem, run.result, ...(run.log || []), ...(run.report || [])].filter(Boolean).map(String);
-  const hit = lines.find(line => isSpendingLimit(line)) || lines.find(line => AI_BUSY.test(line));
+  const limit = lines.find(line => isSpendingLimit(line));
+  const stop = limit ? '' : lines.find(stopCause);   // Why (#3322, Gitar): a real limit's own page is the fix; the stop stays a warning line of its own
+  const hit = stop || limit || lines.find(line => AI_BUSY.test(line));
   if (!hit) return null;
   const what = AI_STOPPED_WHAT[run.kind] || 'The run';
   const title = `${name} couldn’t finish`;
+  if (stop) return {problem: stop, title, summary: `${stopCause(stop)}. ${what} could not complete.`, hint: `${STOP_HELP}; then run it again.`, fix: {label: 'Open AI settings', view: 'settings'}};
   if (!isSpendingLimit(hit)) return {problem: hit, title, summary: `Too many requests to the AI provider. ${what} could not complete.`, hint: 'Try again shortly: wait a few minutes, then run it again.', fix: null};
   const kind = LIMIT_KINDS.find(one => one.test(hit, run));
   if (kind) return {problem: hit, title, summary: `${kind.why} ${what} could not complete.`, hint: typeof kind.hint === 'function' ? kind.hint(hit) : kind.hint, fix: kind.fix};

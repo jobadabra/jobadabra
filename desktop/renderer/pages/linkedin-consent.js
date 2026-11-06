@@ -44,7 +44,7 @@ async function signInHere() {
   signingIn = false;
   await refreshLinkedin().catch(() => {});
   if (answer?.ok) toast('LinkedIn jobs is on', 'Every Find jobs now also reads your LinkedIn job searches, in the background.', NO_PLACE.itself, 'good');
-  else toast(...signInEnded(answer));
+  else toast(...signInEnded(answer, view));
 }
 
 // The shortcut while the Chrome extension is connected: its own page in Chrome copies the sign-in Chrome already has.

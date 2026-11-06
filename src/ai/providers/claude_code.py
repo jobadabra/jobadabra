@@ -98,7 +98,7 @@ def alias(model):
 def classify(text):
     """A Claude Code failure as the error to raise."""
     if SIGNED_OUT.search(text or ''):
-        return CliLimitError(SIGNED_OUT_TEXT)
+        return CliLimitError(SIGNED_OUT_TEXT, stopped='Claude Code is not signed in')
     if LIMIT.search(text or ''):
         return CliLimitError(LIMIT_TEXT)
     return CliError(f'Claude Code failed: {(text or "no output").strip()[:300]}')

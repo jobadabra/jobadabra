@@ -66,13 +66,13 @@ const LINKED = /:\/\/|\bwww\./i;
 // The engine's own warning lines, as fixed sentences. Why (#3071, 5 Nov 2026; /code-review: a prefix-only allow-list let `Skipped job 7: Claude Code failed: <the posting's words>` through):
 // a line is never sent as it was written. Each shape below BUILDS the sentence from what it names only: a count, an error class, an HTTP status, a few fixed words; the rest of the line (an exception's
 // message can quote a posting, a title, an employer, a page or a path) is dropped. A line of no shape, with a link or with a line break is only counted: `+N other warnings not sent`.
-const FIXED_WORDS = ['Anthropic API spending limit', 'Claude Code', 'Codex', 'OpenAI', 'key was refused', 'cannot go on'];   // the engine's own limit_reason words (src/ai/cost.py)
+const FIXED_WORDS = ['Anthropic API spending limit', 'Claude Code', 'Codex', 'OpenAI', 'key was refused', 'cannot go on', 'not signed in', 'not installed', 'did not answer'];   // the engine's own limit_reason and stopped words (src/ai/cost.py, src/ai/providers/cli_base.py)
 const facts = text => [...FIXED_WORDS.filter(word => text.includes(word)), ...[...text.matchAll(/\b(?:HTTP(?: Error)?|status|code)[ :]*(\d{3})\b/gi)].slice(0, 1).map(found => `HTTP ${found[1]}`)];
 const errorClass = text => /\b([A-Z]\w*(?:Error|Exception))\b/.exec(text)?.[1];
 const withFacts = (head, list) => (list.length ? `${head}: ${list.join(', ')}` : head);
 const COUNT = /(\d+)\s+job\(s\)\s+(left for the next check|not read by AI|not scored|not enriched|not ranked|waiting, none scored this run)/i;
 const SHAPES = [
-  [/^AI limit reached\b/i, text => { const left = COUNT.exec(text); return `${withFacts('AI limit reached', facts(text))}${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
+  [/^AI (?:limit reached|stopped)\b/i, text => { const left = COUNT.exec(text); return `${withFacts(/^AI stopped/i.test(text) ? 'AI stopped' : 'AI limit reached', facts(text))}${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
   [/^AI unavailable \(/i, text => { const left = COUNT.exec(text); return `AI unavailable${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
   [/^\d+\s+job\(s\)\s+(?:waiting|left for the next check|not read by AI|not scored|not enriched|not ranked)\b/i, text => { const left = COUNT.exec(text); return left ? `${left[1]} job(s) ${left[2]}` : ''; }],
   [/^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i, text => { const where = /^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i.exec(text); return withFacts(`run not ${where[1].toLowerCase()} ${where[2]} ${where[3]}`, [errorClass(text), ...facts(text)].filter(Boolean)); }],
