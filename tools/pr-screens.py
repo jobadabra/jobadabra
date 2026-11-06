@@ -37,13 +37,22 @@ def http_status(url):
             with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'jobadabra-pr-images'}), timeout=TIMEOUT) as answer:
                 return answer.status
         except urllib.error.HTTPError as error:
-            if error.code < 500 and error.code not in (408, 429):   # rate limiting is not a missing image
+            if error.code == 429:   # never retried (the project's 429 rule); not a missing image either: could not check
+                return None
+            if error.code < 500 and error.code != 408:
                 return error.code
         except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
             pass
         if attempt < TRIES - 1:
             time.sleep(1 + attempt)
     return None
+
+
+def repo_is_public(url, status=http_status):
+    """False when the repo of a github.com image URL cannot be read anonymously (private: an anonymous GET of its images answers 404 too); True for any other host or a public repo.
+    Asked only after a 404, so a good body costs no extra call. Measured 6 Nov 2026: jobadabra, jobadabra-web and jobadabra-lab are all public."""
+    match = re.match(r'https://github\.com/([^/]+/[^/]+)/', url)
+    return not match or status(f'https://api.github.com/repos/{match.group(1)}') == 200
 
 
 def unloaded(body, status=http_status):
@@ -54,14 +63,16 @@ def unloaded(body, status=http_status):
     urls = image_urls(body)
     with ThreadPoolExecutor(max_workers=max(1, min(8, len(urls)))) as pool:
         answers = list(zip(urls, pool.map(status, urls)))
-    return [(url, code) for url, code in answers if code is not None and code != 200], [url for url, code in answers if code is None]
+    broken = [(url, code) for url, code in answers if code is not None and code != 200]
+    private = [url for url, code in broken if code == 404 and not repo_is_public(url, status)]   # a private repo's image is 404 to us: not provably broken
+    return [(url, code) for url, code in broken if url not in private], [url for url, code in answers if code is None] + private
 
 
 def image_report(body, status=http_status):
     """(errors, notes) for the URL check: a broken image is an error naming its URL; an unreachable one only a note (a network blip must not fail a PR)."""
     broken, unchecked = unloaded(body, status)
     errors = [f'the image {url} answers HTTP {code}, so it shows broken in the PR: {URL_FIX}' for url, code in broken]
-    notes = [f'could not check {url} (no answer from the network): not reported as broken' for url in unchecked]
+    notes = [f'could not check {url} (no answer from the network, or a repo it cannot read anonymously): not reported as broken' for url in unchecked]
     return errors, notes
 
 

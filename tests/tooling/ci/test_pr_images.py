@@ -82,8 +82,10 @@ class ImageUrlsLoad(unittest.TestCase):
             raise screens.urllib.error.HTTPError(request.full_url, 429, 'Too Many Requests', {}, None)
         screens.time.sleep = lambda _: None
         try:
-            screens.urllib.request.urlopen = limited
+            calls = []
+            screens.urllib.request.urlopen = lambda request, timeout=0: (calls.append(1), limited(request))[1]
             self.assertIsNone(screens.http_status('https://x/y.png'))
+            self.assertEqual(len(calls), 1)   # a 429 is never retried
             screens.urllib.request.urlopen = lambda request, timeout=0: (_ for _ in ()).throw(screens.http.client.InvalidURL('bad'))
             self.assertIsNone(screens.http_status('https://x/a\x00b.png'))
             seen = []
@@ -92,6 +94,14 @@ class ImageUrlsLoad(unittest.TestCase):
             self.assertEqual(seen[0], 'https://x/%C3%A9.png')
         finally:
             screens.urllib.request.urlopen, screens.time.sleep = original, sleep
+
+    def test_a_404_in_a_repo_we_cannot_read_is_could_not_check(self):
+        url = BASE + 'private-repo/raw/pr-assets-x/a.png'
+        table = {url: 404, 'https://api.github.com/repos/jobadabra/private-repo': 404}
+        self.assertEqual(screens.image_report(body(url), answers(table))[0], [])
+        self.assertIn(url, screens.image_report(body(url), answers(table))[1][0])
+        table['https://api.github.com/repos/jobadabra/private-repo'] = 200   # a public repo: the 404 stands
+        self.assertEqual(len(screens.image_report(body(url), answers(table))[0]), 1)
 
     def test_urls_come_from_markdown_and_img_tags_once(self):
         text = '![a](https://h/a.png) ![b](<https://h/b.png>) <img alt="c" src="https://h/c.png"> ![a](https://h/a.png) ![local](shot.png)'
