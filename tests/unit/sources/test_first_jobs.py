@@ -55,7 +55,7 @@ class RunTests(unittest.TestCase):
         with mock.patch.object(first_jobs.store, 'import_watch_report', return_value=['new'] * found), \
                 mock.patch.object(first_jobs.score, 'queue', return_value=jobs), mock.patch.object(first_jobs, 'to_score', return_value=jobs):
             count = first_jobs.run(mock.MagicMock(), mock.MagicMock(), [feed('A')], profile='p', hidden=frozenset(), sync=lambda: synced.append(1), say=said.append,
-                                   scan=lambda sources, feed_db: report, scorer=fake_score, boards=lambda *a: [], fits=lambda db: dict(given))
+                                   scan=lambda sources, feed_db, **kw: report, scorer=fake_score, boards=lambda *a: [], fits=lambda db: dict(given))
         return count, calls, synced, said
 
     def test_scoring_goes_on_three_at_a_time_until_a_job_fits_70(self):
@@ -90,7 +90,7 @@ class RunTests(unittest.TestCase):
                 mock.patch.object(first_jobs.score, 'queue', return_value=[]), mock.patch.object(first_jobs, 'to_score', return_value=[]):
             scorer = mock.Mock()
             self.assertEqual(first_jobs.run(mock.MagicMock(), mock.MagicMock(), [feed('A')], profile='p', hidden=frozenset(), sync=lambda: None, say=lambda _: None,
-                                            scan=lambda sources, feed_db: {'jobs': [], 'sources': []}, scorer=scorer, boards=lambda *a: []), 0)
+                                            scan=lambda sources, feed_db, **kw: {'jobs': [], 'sources': []}, scorer=scorer, boards=lambda *a: []), 0)
             scorer.assert_not_called()
 
 
@@ -114,7 +114,7 @@ class ScenarioTests(unittest.TestCase):
             def scorer(db_, candidates, profile, model, max_jobs, **kw):
                 return real_score.run(db_, candidates, profile, model, max_jobs, client=ModelClient({'m': lambda title: 70}), **kw)
             scored = first_jobs.run(db, None, [feed('Example')], profile='Profile v1', hidden=frozenset(), sync=sync, say=lambda _: None,
-                                    scan=lambda sources, feed_db: report, scorer=scorer, model='m', boards=lambda *a: [])
+                                    scan=lambda sources, feed_db, **kw: report, scorer=scorer, model='m', boards=lambda *a: [])
             self.assertEqual(scored, 3)
             self.assertEqual(seen[0], (1, 5), 'at the first save: 1 scored, all 5 found are listed (the others say Scoring…)')
             self.assertEqual(len(seen), 3)
@@ -132,7 +132,7 @@ class FirstRunCountTests(unittest.TestCase):
                                 'description': 'Kubernetes.'} for i in range(4)], 'sources': []}
             so_far = jobs_so_far.SoFar(db, say=lambda _: None)
             first_jobs.run(db, None, [feed('Example')], profile='p', hidden=frozenset(), sync=lambda: None, say=lambda _: None,
-                           scan=lambda sources, feed_db: {**report, 'jobs': list(report['jobs'])}, scorer=lambda *a, **k: None, model='m',
+                           scan=lambda sources, feed_db, **kw: {**report, 'jobs': list(report['jobs'])}, scorer=lambda *a, **k: None, model='m',
                            boards=lambda *a: [], import_jobs=lambda slice_report: so_far.add(slice_report['jobs'], 'employer sites'))
             final = so_far.statuses(report, job_store.import_watch_report(db, report))   # the full crawl, as daily_search does
             self.assertEqual(final, ['new'] * 4)

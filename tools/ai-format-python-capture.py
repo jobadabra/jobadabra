@@ -274,7 +274,7 @@ def capture_engine(prompts=False):
          'src/places.py', 'answer = json.loads(next(block.text')
 
     engine.PARALLEL = 1
-    slots = NS(carry=lambda function: function)
+    slots = NS(carry=lambda function: function, priority=lambda level: __import__('contextlib').nullcontext(), NORMAL=1)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None),
                    keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}))
@@ -303,7 +303,7 @@ def capture_engine(prompts=False):
         temporary = Path(temporary)
         scope = NS(view=lambda *a: {}, active=lambda: False)
         bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time,
-                        LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'))
+                        title_queue=NS(serve=lambda batches, ask, land, parallel: [land(titles, ask(titles)) for _, titles in batches]), LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'))
         place_search = {'locations': {'top_tier': ['zurich'], 'country_wide': ['switzerland']}, 'remote_jobs': ['yes']}
         place_names = ['MODEL', 'BATCH', 'VERSION', 'SCHEMA', 'SYSTEM', 'VISA_SCHEMA', 'VISA_SYSTEM',
                        'places_words', '_key', 'norm', '_load', 'known', '_keep', 'decide']
@@ -351,7 +351,7 @@ def capture_engine(prompts=False):
         title.decide(titles, title_search, client=client)
         keep('app.title', client, {'subrequest': 'sort', 'titles': titles, 'search': title_search}, 'src/ai/title_triage.py',
              'response = client.messages.create(model=MODEL, max_tokens=1500, system=',
-             'src/ai/title_triage.py', 'fit = {int(n) for n in json.loads', action='title_triage',
+             'src/ai/title_triage.py', 'return {int(n) for n in json.loads', action='title_triage',
              source_after='def decide(titles', validator_after='def decide(titles')
         if prompts:
             # Why (JOB-44, 30 Oct 2026, owner): one family stamp covers every fixed instruction variant, not just the manifest's first request.

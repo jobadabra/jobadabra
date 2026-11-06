@@ -14,7 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import store
-from .ai import score, slots
+from .ai import score, slots, title_queue
 from .sources import ats, feeds
 
 SLICE = 15     # feeds read first
@@ -126,9 +126,10 @@ def _proposed(board_ideas, search):
     return [board for board in board_ideas.ideas(search) if board.get('host') not in refused]
 
 
-def aggregators_kept(feed_db, name, jobs):
+def aggregators_kept(feed_db, name, jobs, shown=None):
+    """A reader's jobs in your roles and places (aggregators.kept); `shown` {url: item} are the jobs already handed to scoring as their batches landed."""
     from .sources import aggregators
-    return aggregators.kept(feed_db, name, jobs)
+    return aggregators.kept(feed_db, name, jobs, shown=shown)
 
 
 def scored_fits(db):
@@ -141,74 +142,209 @@ def scored_fits(db):
 
 
 def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, scorer=None, model=None, size=SLICE, first=FIRST_JOBS, boards=None,
-        fits=None, import_jobs=None):
-    """Read `size` feeds and, at the same time, the first boards (boards(say) -> their jobs as read), import what matches, score `first` jobs at a time (best first) with a sync after every score,
-    until one fits FIT+ or MAX_FIRST are scored. -> how many were scored. A failure here never blocks the search: the full run that follows
-    does everything the slice did."""
+        fits=None, import_jobs=None, others=None):
+    """Read `size` feeds while the first boards (boards(say) -> their jobs as read) and the other readers started with the search (others: {name: future},
+    default EURES's early read) read too; import what matches and score `first` jobs at a time (the nearest read so far, any source), a sync after every score,
+    until one fits FIT+ or MAX_FIRST are scored. -> how many were scored. A failure here never blocks the search: the full run that follows does everything the
+    slice did.
+    Why (#2918, owner 5 Nov 2026: "One clear order first"; 6 Nov 2026: "Score from the nearest batches as they land"): every reader's titles are sorted in one
+    queue, nearest place first (src/ai/title_queue.py), and the jobs of each batch that fits reach scoring as it lands, from any reader, so the first job waits
+    for one batch, not for a reader's whole sort, and a Toulouse press scores the jobs near Toulouse instead of 6 in Paris while EURES's rows wait.
+    Threads: this one is the hub (it owns the job store); the other readers only read, then it sorts and imports what they read, in `join`."""
     started = time.monotonic()
+    from .sources import aggregators
+    aggregators.TAKEN.clear()   # this press's own takings only
     scan, scorer, model, fits = scan or feeds.scan, scorer or score.run, model or score.DEFAULT_MODEL, fits or scored_fits
+    imports = _Imports(import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
     chosen = pick(sources, size)
     say(f'First jobs: reading {len(chosen)} of {len(sources)} employer sites first')
     from .ai import batch_scope
+    scoring = _Scoring(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST)
 
     def read_boards():   # side by side with the employer sites: each batches its own jobs, so a tape replays in any finishing order
-        # Why (#first-press-slots, owner, 27 Oct 2026: "local boards first"): the local boards' reads and titles take Claude's slots first
+        # Why (#first-press-slots, owner, 27 Oct 2026: "local boards first"): the local boards' reads take Claude's slots first
         with batch_scope.reader('boards'), slots.priority(slots.FIRST):
-            return (boards or board_jobs)(say)
-    with batch_scope.concurrent(), ThreadPoolExecutor(max_workers=1) as pool:
-        reading = pool.submit(slots.carry(read_boards))   # the boards' pages meanwhile; matched below, in the thread that owns the job cache
-        with batch_scope.reader('employer sites'):
-            report = scan(chosen, feed_db)
-        # Why (#2913, 2 Nov 2026): the employer sites' jobs are imported and scored while the boards are still being proposed or read; the boards
-        # join when they finish (a slow proposal on a shared AI took 73 s, and the first job waited for it). Boards already done join the first import.
-        late = None if reading.done() else reading
-        if late is None:
-            report['jobs'] = [*(report.get('jobs') or []), *_board_jobs(reading, feed_db, say)]
-        (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))(report)   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
-        say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
-        found = len(report.get('jobs') or [])
-        done, strong, queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST)
-        if late is not None:
-            joined = _board_jobs(late, feed_db, say)
-            if joined:
-                found += len(joined)
-                (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))({'jobs': joined})
-                say(f'First jobs: {len(joined)} found on the job boards')   # Why (#2928, Gitar): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js); another wording left these jobs hidden
-                if not strong and done < MAX_FIRST:   # Gitar #2928: with little from the employer sites the boards' jobs are the slice's first scores
-                    more, strong, more_queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST - done)
-                    done, queued = done + more, queued + more_queued
-    if not queued:
-        say(f'First jobs: {found} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the boards joined
+            return placed((boards or board_jobs)(say))
+
+    def hand(items):   # a batch of titles landed: its jobs in your places are imported and scored now
+        if imports.add({'jobs': items}):
+            say(f'First jobs: {imports.count} found')   # the app reads the list again on this line
+        scoring.step()
+    pool = ThreadPoolExecutor(max_workers=2)
+    try:
+        with title_queue.hub() as hub, batch_scope.concurrent():
+            readers = _Readers(hub, {'boards': pool.submit(slots.carry(read_boards)), **(_others(pool) if others is None else others)}, feed_db, imports, hand, say)
+            with batch_scope.reader('employer sites'):
+                report = scan(chosen, feed_db, on_sorted=hand)
+            imports.add(report)
+            say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
+            readers.settle(scoring)
+            readers.finish()   # the boards' pages are the full search's: waited for; EURES still reading is the free-API stage's
+    finally:
+        pool.shutdown(wait=False)   # Why (#2918, Gitar): a reader still reading is not waited for here; its own clock ends it
+    if not scoring.queued:
+        say(f'First jobs: {imports.count} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the readers joined
         return 0
-    said = f', one fits {FIT}+' if strong else ''
-    say(f'First jobs: {done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
-    return done
+    said = f', one fits {FIT}+' if scoring.strong else ''
+    say(f'First jobs: {scoring.done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
+    return scoring.done
 
 
-def _board_jobs(reading, feed_db, say):
+def _others(pool):
+    """The readers started with the search that join the slice besides the boards: EURES's early read (src/sources/eures.py start_early), when there is one, taken in
+    `pool` the moment it has read, its locations placed on the map; the hub sorts its titles with every other reader's, in the one queue (`_Readers.join`)."""
+    from .paths import load_search_config
+    from .sources import eures
+    search = load_search_config()
+    if eures.early(search) is None:
+        return {}
+
+    def read_eures():   # EURES reads the person's nearest area first
+        from .ai import batch_scope
+        with batch_scope.reader('EURES'), slots.priority(slots.FIRST):
+            return placed(eures.read(search, keep=True))
+    return {'EURES': pool.submit(slots.carry(read_eures))}
+
+
+def placed(jobs):
+    """`jobs`, their locations placed on the map once (src/geo.py: a location seen before is not asked again), so the queue and time_budget.best_first can order
+    them by distance to the best places. Not asked once the press's AI time is over; a failed or refused call leaves them unplaced: they keep the usual order."""
+    from . import geo, time_budget
+    if jobs and not time_budget.ended():
+        try:
+            geo.resolve([job.get('location') for job in jobs if job.get('location')], share=True)
+        except Exception as error:  # noqa: BLE001 — unplaced: they keep today's order, nothing guessed
+            print(f'Places: job locations not placed on the map ({type(error).__name__}); they keep the usual order', flush=True)
+    return jobs
+
+
+class _Imports:
+    """The jobs imported so far, each once (a job handed early and then met again in its reader's whole result is not imported or counted twice)."""
+
+    def __init__(self, add):
+        self.add_to, self.keys = add, set()
+
+    @property
+    def count(self):
+        return len(self.keys)
+
+    def add(self, report):
+        """Import the jobs of `report` not imported yet -> how many were."""
+        fresh = [job for job in report.get('jobs') or [] if (job.get('url') or job.get('id')) not in self.keys]
+        self.keys.update(job.get('url') or job.get('id') for job in fresh)
+        if fresh:
+            self.add_to({**report, 'jobs': fresh})
+        return len(fresh)
+
+
+class _Readers:
+    """The slice's readers besides the employer sites, each a future of its jobs as read. When one has read, the hub (the thread that owns the store) sorts its
+    titles in the one queue and imports what fits as each batch lands (`join`)."""
+
+    def __init__(self, hub, futures, feed_db, imports, hand, say):
+        self.hub, self.pending, self.feed_db, self.imports, self.say, self.shown = hub, dict(futures), feed_db, imports, say, {}
+        self.hand = hand
+        for name, future in futures.items():   # the hub is woken, in whatever it waits for, to take a reader that has read
+            future.add_done_callback(lambda _done, name=name: hub.post(lambda: self._joined(name)))
+
+    def _joined(self, name):
+        try:
+            self.join(name)
+        except Exception as error:  # noqa: BLE001 — a reader that fails here is the full search's, and the sort that runs this message must go on
+            self.say(f'Warning: {name} not taken in the first jobs: {type(error).__name__}: {error}')
+
+    def join(self, name):
+        """Sort and import one reader's jobs, in the hub thread, as that reader saw its world (src/ai/batch_scope.py)."""
+        from .ai import batch_scope
+        future = self.pending.pop(name, None)
+        if future is None:
+            return
+        shown = self.shown.setdefault(name, {})
+        label = 'Job boards found' if name == 'boards' else name
+
+        def handed(jobs):   # the jobs of a batch of this reader's titles the AI says fit
+            from .sources import aggregators
+            self.hand(aggregators.early_items(self.feed_db, label, jobs, shown))
+        with batch_scope.seen_by(name), title_queue.handing_to(handed):
+            jobs = self._take(name, future, shown)
+        if self.imports.add({'jobs': jobs}):
+            self.say(f'First jobs: {self.imports.count} found on the job boards')   # Why (#2928, Gitar; #2918): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js), another wording left these jobs hidden; N counts every job imported so far, said from the hub's join of a reader
+        self.hand([])
+
+    def settle(self, scoring):
+        """Score what is read, the nearest first; with nothing left to score and a reader still reading, wait for the next one (never past the press's end)."""
+        from .sources import read_budget
+        while True:
+            while scoring.step():
+                pass
+            if scoring.over() or not self.pending:
+                return
+            left = read_budget.seconds_left(read_budget.cut_at())   # Why (#2918, Gitar): never past the read cut; the full crawl and a reader still reading go on from there
+            if not self.hub.run_next(left):
+                return
+
+    def finish(self):
+        """The boards (the full search's pages) are waited for and join, and so is any reader that has read; one still reading is left to the free-API stage, which
+        takes the same early read (eures.read keep): the full crawl never waits for it (#2918, Gitar)."""
+        for name in list(self.pending):
+            if name != 'boards' and not self.pending[name].done():
+                continue
+            try:
+                self.pending[name].result()
+            except Exception:  # noqa: BLE001 — joined below as a failed read
+                pass
+            self.join(name)
+
+    def _take(self, name, future, shown):
+        """One reader's jobs (report shape): the boards' through their matching, EURES through the free-API stage's own taking (aggregators.scan)."""
+        if name == 'boards':
+            return _board_jobs(future, self.feed_db, self.say, shown)
+        from .paths import load_search_config
+        from .sources import aggregators
+        try:   # its read and places were done in its own thread (_others): this sorts, takes and matches them
+            return aggregators.scan(self.feed_db, load_search_config(), readers=[(name, lambda search: future.result())], early=True, shown=shown)['jobs']
+        except Exception as error:  # noqa: BLE001 — the free-API stage reads it
+            self.say(f'Warning: {name} not taken in the first jobs: {type(error).__name__}: {error}')
+            return []
+
+
+def _board_jobs(reading, feed_db, say, shown=None):
     """The jobs (report shape) of the boards read, [] when that read failed (the full search reads every board)."""
     try:
         found = reading.result()
-        return aggregators_kept(feed_db, 'Job boards found', found) if found else []
+        return aggregators_kept(feed_db, 'Job boards found', found, shown) if found else []
     except Exception as error:  # noqa: BLE001 — the full search reads every board
         say(f'Warning: first job boards not read: {type(error).__name__}: {error}')
         return []
 
 
-def _score_first(db, hidden, profile, scorer, model, first, fits, sync, limit):
-    """Score the best-ranked jobs `first` at a time, a sync after each, until one fits FIT+ or `limit` are scored -> (how many were scored, whether one fits, how many were queued)."""
-    from . import time_budget
-    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile, scope='new'))][:limit]
-    if not order:
-        return 0, False, 0
-    done, tried, strong = 0, 0, False
-    while tried < len(order) and not strong:
-        ids = set(order[tried:tried + first])
-        tried += len(ids)
+class _Scoring:
+    """The slice's scores: the nearest jobs read so far, `first` at a time, a sync after each, until one fits FIT+ or `limit` are scored."""
+
+    def __init__(self, db, hidden, profile, scorer, model, first, fits, sync, limit):
+        self.args, self.first, self.fits, self.sync, self.limit = (db, hidden, profile, scorer, model), first, fits, sync, limit
+        self.done, self.tried, self.queued, self.strong, self.stopped = 0, set(), set(), False, False
+
+    def over(self):
+        return self.strong or self.stopped or len(self.tried) >= self.limit
+
+    def step(self):
+        """Score the next batch of the nearest jobs not scored yet (time_budget.best_first), whatever they are so far -> True when a batch was scored."""
+        from . import time_budget
+        db, hidden, profile, scorer, model = self.args
+        if self.over():
+            return False
+        order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile, scope='new')) if str(job['id']) not in self.tried]
+        if not order:
+            return False
+        ids = order[:min(self.first, self.limit - len(self.tried))]
+        self.queued.update(map(str, order[:self.limit - len(self.tried)]))
+        self.tried.update(map(str, ids))
         stats = {}
-        scorer(db, to_score(db, hidden), profile, model, first, workers=first, stats=stats, on_scored=sync, every=1, only_ids=ids)
+        scorer(db, to_score(db, hidden), profile, model, self.first, workers=self.first, stats=stats, on_scored=self.sync, every=1, only_ids=set(ids))
         if not stats.get('done'):   # a paused Profile, a spent limit or the time: the next batch would score nothing either
-            break
-        done += stats['done']
-        strong = any(fit >= FIT for job_id, fit in fits(db).items() if job_id in {str(i) for i in ids})
-    return done, strong, len(order)
+            self.stopped = True
+            return False
+        self.done += stats['done']
+        self.strong = any(fit >= FIT for job_id, fit in self.fits(db).items() if str(job_id) in {str(i) for i in ids})
+        return True

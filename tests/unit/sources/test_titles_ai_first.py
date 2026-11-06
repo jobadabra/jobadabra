@@ -51,7 +51,7 @@ class TitlesAiFirstTest(unittest.TestCase):
 
     def test_the_ai_sort_is_asked_about_role_word_and_excluded_word_titles_too(self):
         asked = []
-        decide = lambda titles, search, local=False: asked.extend(titles) or {}
+        decide = lambda titles, search, local=False, **kw: asked.extend(titles) or {}
         jobs = [{'title': t, 'location': 'Paris'} for t in ('Pilot A320', 'Captain B737', 'Cabin Crew')]
         with mock.patch.object(feeds, 'wanted_location', return_value=True), mock.patch.object(feeds, 'in_my_place', return_value=True), \
                 mock.patch('src.ai.engine.ready', lambda *a, **k: True), mock.patch.object(title_triage, 'decide', decide):

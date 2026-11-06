@@ -56,7 +56,7 @@ class FirstJobsOnNotionTests(unittest.TestCase):
             def scorer(db_, candidates, profile, model, max_jobs, **kw):
                 return real_score.run(db_, candidates, profile, model, max_jobs, client=ModelClient({'m': lambda title: 70}), **kw)
             first_jobs.run(db, None, [{'company': 'Example', 'ats': 'greenhouse', 'slug': 'example'}], profile='Profile v1', hidden=frozenset(),
-                           sync=sync, say=lambda _: None, scan=lambda sources, feed_db: report, scorer=scorer, model='m')
+                           sync=sync, say=lambda _: None, scan=lambda sources, feed_db, **kw: report, scorer=scorer, model='m')
         before, after = seen[0], seen[1]
         self.assertEqual(before[1].count((True, True)), 1, 'the first scored job is listed before Notion has it, marked as not synced yet')
         self.assertEqual(len(before[1]), 5, 'all five found jobs are listed (the others say Scoring…)')

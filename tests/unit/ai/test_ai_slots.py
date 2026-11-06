@@ -123,7 +123,9 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         self.assertEqual(missing, [], "wrap the pool's function in slots.carry(...), or list it in NO_CARRY with why it never needs the level")
         self.assertEqual(sorted(set(NO_CARRY) - set(found)), [], 'a NO_CARRY entry whose pool is gone')
 
-    def test_a_board_reads_title_calls_keep_first_in_triages_pool(self):
+    def test_every_readers_title_calls_ask_at_normal_whatever_level_the_reader_has(self):
+        """Owner, 5 Nov 2026 ("One clear order first"): no source's title calls queue ahead of another's. A board read's page reads keep FIRST (src/first_jobs.py);
+        its titles are asked by the one queue's workers at NORMAL (src/ai/title_queue.py), ordered by distance, not by who asks."""
         import json
         import tempfile
         from types import SimpleNamespace
@@ -139,7 +141,7 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         with mock.patch.object(title_triage, 'STORE', Path(tempfile.mkdtemp()) / 't.json'), slots.priority(slots.FIRST):
             title_triage.decide(['Lagerist', 'Staplerfahrer'], {'role_keywords': ['warehouse']}, client)
         self.assertTrue(levels, 'positive control: the AI was asked')
-        self.assertEqual(set(levels), {slots.FIRST}, "each batch, in triage's own pool thread, asks at the board read's level")
+        self.assertEqual(set(levels), {slots.NORMAL}, "each batch is asked by the queue's worker, at one level for every reader")
 
 if __name__ == '__main__':
     unittest.main()

@@ -183,7 +183,7 @@ class FirstSliceTests(Fixture):
                 mock.patch.object(first_jobs.store, 'import_watch_report', lambda db, report: imported.extend(report['jobs']) or []), \
                 mock.patch.object(first_jobs.score, 'queue', return_value=[]), mock.patch.object(first_jobs, 'to_score', return_value=[]):
             first_jobs.run(self.db, feed_db, [], profile='p', hidden=frozenset(), sync=lambda: None, say=said.append,
-                           scan=lambda sources, db: {'jobs': [], 'sources': []}, scorer=mock.Mock())
+                           scan=lambda sources, db, **kw: {'jobs': [], 'sources': []}, scorer=mock.Mock())
             self.assertEqual(sorted(j['url'] for j in imported), ['https://b1.example/job/ControllerAmsterdam1', 'https://b2.example/job/ControllerAmsterdam2'])
             self.assertTrue(any('Board 1, Board 2' in line for line in said), said)
             full = found_boards.read(SEARCH, [board(1), board(2), board(3)])
@@ -201,7 +201,7 @@ class FirstSliceTests(Fixture):
         with mock.patch.object(board_ideas, 'proven', return_value=[]), mock.patch.object(board_ideas, 'ideas', return_value=proposed), \
                 mock.patch.object(board_ideas, 'load', return_value=data), \
                 mock.patch.object(found_boards, 'read', lambda search, boards, early=False, **_: read.append((boards, early)) or []), \
-                mock.patch.object(first_jobs, 'aggregators_kept', lambda feed_db, name, jobs: jobs):
+                mock.patch.object(first_jobs, 'aggregators_kept', lambda feed_db, name, jobs, shown=None: jobs):
             first_jobs.proven_boards(None, said.append, SEARCH)
         self.assertEqual([([b['host'] for b in boards], early) for boards, early in read], [(['b2.example', 'b3.example'], True)])
         self.assertTrue(any('Board 2, Board 3' in line for line in said), said)
@@ -216,7 +216,7 @@ class FirstSliceTests(Fixture):
             self.assertTrue(sites_reading.wait(5), 'the employer sites were not read meanwhile')
             return []
 
-        def scan(sources, db):
+        def scan(sources, db, **kw):
             sites_reading.set()
             self.assertTrue(boards_reading.wait(5), 'the boards were not read meanwhile')
             return {'jobs': [], 'sources': []}

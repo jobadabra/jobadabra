@@ -285,12 +285,19 @@ def start_early(search):
     return future
 
 
-def read(search):
+def early(search):
+    """The read started with this search (start_early), still to be taken; None without one. The first-jobs slice joins it once it has read (src/first_jobs.py)."""
+    from . import aggregators
+    return _early.get(aggregators.search_key(search))
+
+
+def read(search, keep=False):
     """The free-API stage's reader: the read started with the search when there is one (waited for until the run's stop time), else a read now.
-    Prints what it found, so a press log shows whether EURES gave jobs."""
+    Prints what it found, so a press log shows whether EURES gave jobs. keep: the first-jobs slice's look (src/first_jobs.py): the early read stays for the
+    free-API stage when the slice ends before it has read (#2918, Gitar)."""
     from concurrent.futures import TimeoutError as Late
     from . import aggregators
-    future = _early.pop(aggregators.search_key(search), None)
+    future = (_early.get if keep else _early.pop)(aggregators.search_key(search), None)
     if future is None:
         jobs = eures(search)
     else:

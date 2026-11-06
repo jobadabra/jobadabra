@@ -83,3 +83,20 @@ def seen_by(name):
         yield
     finally:
         _local.views = before
+
+
+def current():
+    """The calling thread's reader views (None outside a reader): what `using` puts back in another thread or a nested call."""
+    return getattr(_local, 'views', None)
+
+
+@contextlib.contextmanager
+def using(views):
+    """Calls in this thread see `views` (from current()) for the block, then what they saw before: a landed batch of title answers is handled as the reader
+    that asked it saw the world, even when another reader's work runs in the same thread meanwhile (src/ai/title_queue.py)."""
+    before = getattr(_local, 'views', None)
+    _local.views = views
+    try:
+        yield
+    finally:
+        _local.views = before
