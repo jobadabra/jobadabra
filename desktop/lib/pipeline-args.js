@@ -14,9 +14,11 @@ export {deliveryReady, telegramReady};
 // The inputs passed to the engine as they are, in this order (the cloud workflow runs the same flags).
 const PASSED_INPUTS = [['target', '--target'], ['jobTitle', '--job-title'], ['jobCompany', '--job-company'], ['jobText', '--job-text'], ['page', '--page'], ['seed', '--seed'],
   ['file', '--file'], ['note', '--note'], ['origin', '--origin'], ['interview', '--interview']];
+/** Whether an AI engine is set up on this Mac (a key or a signed-in CLI): what lets a run use AI steps. */
+export const aiReadyOf = storage => claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
 export function dailyArgs(storage, inputs = {}) {
   const mode = inputs.mode || 'scheduled';
-  const ai = claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
+  const ai = aiReadyOf(storage);
   const telegram = deliveryReady(storage);
   // --log-run: every run from the app gets a row in Notion ⏰ Search runs (Notion is where the details live).
   const args = ['src', 'daily', '--mode', mode, ...(telegram ? ['--send'] : []), '--log-run'];
@@ -36,6 +38,8 @@ export function dailyArgs(storage, inputs = {}) {
   if (ai && mode === 'scheduled' && insights !== 'off') args.push('--insight');
   return args;
 }
+/** The day's insight when it is due (never a forced one): what the app asks while our servers run the search (lib/one-place.js), same rule as a scheduled search's --insight. */
+export const insightArgs = storage => [...dailyArgs(storage, {mode: 'insight'}), '--if-due'];
 // Notion just connected after a time of trying: one run that spends no AI (every cap at 0), so the Job Matches sync
 // (src/notion/matches.py, hash-keyed over every scored job in the cache) puts what was scored before Notion there.
 // `--mode today` is the no-AI path that reaches that sync; it also reads the feeds, which is free.

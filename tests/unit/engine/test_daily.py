@@ -141,6 +141,34 @@ class InsightLimitTests(unittest.TestCase):
         self.assertTrue(any(line.startswith('AI limit reached') for line in out.getvalue().splitlines()))
 
 
+class InsightIfDueTests(unittest.TestCase):
+    def _run(self, *flags):
+        import contextlib
+        import io
+        from unittest import mock
+        asked = []
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(daily.notion.Tracker, 'from_env', return_value=object()), \
+                mock.patch.object(daily.insights, 'run', side_effect=lambda *a, **k: asked.append(k.get('force', False)) or 'Insight: not due'), \
+                mock.patch.dict(daily.run_log._auto, {}), mock.patch.dict(daily.run_log._open, {}), \
+                mock.patch.object(daily.run_log, 'log_run', return_value='https://notion.so/row'), mock.patch.object(daily.telegram, 'to_app'), \
+                mock.patch.object(sys, 'argv', ['daily', '--mode', 'insight', '--log-run', *flags, '--db', str(Path(tmp) / 'jobs.sqlite')]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(daily.main(), 0)
+        return asked
+
+    def test_if_due_asks_the_unforced_insight_and_plain_insight_still_forces(self):
+        # [sc] 3/4: the Mac's own once-a-day ask must obey the engine's "once a day, after 04:00 UTC, none yet" rule; Telegram's /insight keeps forcing one.
+        self.assertEqual(self._run('--if-due'), [False])
+        self.assertEqual(self._run(), [True])
+
+    def test_the_operators_insights_switch_stops_the_automatic_ask_but_not_a_persons_own(self):
+        # Review of [sc] 3/4: JOBADABRA_DISABLE=insights turns a scheduled search's insight off; the app's own once-a-day ask must obey it too (AI money).
+        from unittest import mock
+        with mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': 'insights'}):
+            self.assertEqual(self._run('--if-due'), [])
+            self.assertEqual(self._run(), [True])
+
+
 class PrepareTopMatchesTests(unittest.TestCase):
     def test_kits_mode_drafts_for_the_best_matches_without_a_kit_and_logs_a_run(self):
         # The Actions page's "Prepare top matches": no crawl, the stored scores; a job already at Kit ready is left out.

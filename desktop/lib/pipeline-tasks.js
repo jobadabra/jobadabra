@@ -5,7 +5,7 @@
 import {engineOf, familyOfEngine} from './ai/names.js';
 import {deliveryProblem, mailProblem as mailProblemFrom} from './run-result.js';
 
-import {dailyArgs, mailArgs, SCOUT_BUDGET_S, SEARCH_BUDGET_S, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
+import {aiReadyOf, dailyArgs, insightArgs, mailArgs, SCOUT_BUDGET_S, SEARCH_BUDGET_S, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
 import {appMessage, failedLine, taskSummary} from './pipeline-lines.js';
 import {tracked} from './pipeline-queue.js';
 import {run} from './pipeline-run.js';
@@ -77,6 +77,12 @@ export function scout(storage, onLine, trigger = 'you', batch = null, {paste = '
   storage.saveSettings({lastScoutAt: new Date().toISOString()});
   return task(storage, 'scout', ['src', 'scout', ...send, '--log-run', ...(batch ? ['--batch', String(batch)] : []), ...(paste ? ['--paste-file', paste] : []),
     '--budget', String(SCOUT_BUDGET_S)], onLine, trigger, paste ? {note: 'Companies from a page you pasted'} : {});
+}
+// The day's insight when it is due, asked by the schedule while our servers run the search (lib/one-place.js); its time marks the ask so it is made once per UTC day (lib/schedule.js insightDue).
+export function insight(storage, onLine, trigger = 'schedule') {
+  if (!aiReadyOf(storage)) return Promise.resolve({ok: true, skipped: true});   // no AI set up: nothing to ask (a scheduled search's --insight has the same gate); asked again next tick
+  storage.saveSettings({lastInsightAt: new Date().toISOString()});
+  return task(storage, 'insight', insightArgs(storage), onLine, trigger);
 }
 // A tracked task whose work is the app's own code, not an engine command (Tailor CVs): the same banner, live log, history row and result line. Not resumed after a restart.
 // Stop (owner, 7 Oct 2026: "I miss a Stop button"): doWork gets an AbortSignal and ends at its next step; the engine commands it runs are ended as for any task.

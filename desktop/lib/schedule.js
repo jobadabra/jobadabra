@@ -1,4 +1,4 @@
-// Searches, Gmail checks and new-employer finds on the chosen schedule (Settings → How often) while the app is open, and catches up after the Mac wakes from sleep.
+// Searches, Gmail checks, the day's insight and new-employer finds on the chosen schedule (Settings → How often) while the app is open, and catches up after the Mac wakes from sleep.
 import {cadence, MAIL_HOURS} from './cadence.js';
 
 export const EVERY_HOURS = 4;  // default; the user picks it in Settings → How often
@@ -40,6 +40,17 @@ export function nextMailAt(settings, now = Date.now()) {
 }
 export const mailDue = (settings, now = Date.now()) => { const next = nextMailAt(settings, now); return next != null && now >= next; };
 
+// The day's insight, asked by the app itself while our servers run the search (that search's own --insight rides on a Mac search that no longer runs then).
+// Once per UTC day, from 04:00 UTC like the engine's own rule (src/ai/insights.py SEND_HOUR_UTC; the engine is the second lock: one a day whoever asks).
+// lastInsightAt marks the ask, as lastMailAt does for Gmail: a failed ask waits for the next UTC day. Not when GitHub runs the search (its run carries the insight).
+export const INSIGHT_HOUR_UTC = 4;
+/** Whether the app should ask for today's insight now: setup done, no GitHub repo, Reports not 'off', 04:00 UTC passed and not asked yet this UTC day (settings.lastInsightAt). Pure. */
+export function insightDue(settings, now = Date.now()) {
+  if (!settings.setupDone || settings.cloud?.repo || cadence(settings).insights === 'off') return false;
+  if (new Date(now).getUTCHours() < INSIGHT_HOUR_UTC) return false;
+  return !settings.lastInsightAt || new Date(settings.lastInsightAt).toISOString().slice(0, 10) !== new Date(now).toISOString().slice(0, 10);
+}
+
 // The next "Find new employers" (the scout: new job feeds for the crawl, no AI): daily or weekly after the last one
 // (Settings → How often), on this Mac unless Always on runs it on GitHub. The first one after the first search.
 const SCOUT_EVERY = {daily: 24, weekly: 7 * 24};
@@ -53,19 +64,22 @@ export const scoutDue = (settings, now = Date.now()) => { const next = nextScout
 
 // Every 10 minutes (and after waking): a due search, announced by soon() a minute before it starts;
 // otherwise a due Gmail check (quick, so no announcement; the app notifies when it finds something).
-export function startSchedule(storage, {search, mail = async () => {}, scout = async () => {}}, powerMonitor,
-  {soon = () => {}, headsUp = HEADS_UP_MS, firstCheck = 30 * 1000} = {}) {
+// covered(): true while our servers run the search (lib/one-place.js): then this Mac does not search and does not announce one, and asks for the day's insight instead.
+export function startSchedule(storage, {search, mail = async () => {}, scout = async () => {}, insight = async () => {}}, powerMonitor,
+  {soon = () => {}, headsUp = HEADS_UP_MS, firstCheck = 30 * 1000, covered = async () => false, clock = Date.now} = {}) {
   let busy = false;
   const check = async () => {
     if (busy) return;
     busy = true;
     try {
-      if (due(storage.settings())) {
+      const servers = (due(storage.settings()) || insightDue(storage.settings(), clock())) && await covered();
+      if (due(storage.settings()) && !servers) {
         soon();
         await new Promise(resolve => setTimeout(resolve, headsUp));
         if (due(storage.settings())) await search();  // skipped if the user searched meanwhile or switched it off
       }
       if (mailDue(storage.settings())) await mail();
+      if (servers && insightDue(storage.settings(), clock())) await insight();
       if (scoutDue(storage.settings())) await scout();
     } finally { busy = false; }
   };
