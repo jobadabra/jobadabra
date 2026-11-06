@@ -2,7 +2,7 @@
 // shows the suggested default of the mode and a chosen one is never reset by a mode change, the engine's env is told only the rows that are off (and nothing while the screens are hidden by the gate).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {MAIL_SWITCHES_SHOWN, allowed, alwaysOnTurnedOn, choose, mailOff, modeOf, read, set, settle, turnOn, turnOnSuggested} from '../../../lib/mail-choices.js';
+import {MAIL_SWITCHES_SHOWN, allowed, alwaysOnTurnedOn, choose, emailing, mailOff, modeOf, read, set, settle, turnOn, turnOnSuggested} from '../../../lib/mail-choices.js';
 
 const KEY = 'JPF1.install-0001.tok';
 const ON = {notifyBy: ['email', 'app'], notifyEmail: 'a@b.co', emailConsent: {at: '2026-11-05T10:00:00.000Z', wording: 'x', where: 'cv'}};   // e-mail is on: an address and the person's yes
@@ -272,20 +272,18 @@ test('a refused news press says why and the screen follows the site; an id that 
   assert.equal(asked.length, 1);
 });
 
-test('the first news press with e-mail off is the first turn-on: the address goes to the site with no news answer, the other rows start off, then the news mail is stored on', async () => {
-  const asked = [], person = storage({settings: {notifyBy: ['app']}}), sent = [];
-  const done = await choose(person, 'releases', true, {address: 'a@b.co', name: "What's new", save: async choice => { sent.push(choice); person.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher: site([{ok: true, rows: ROWS}, {ok: true}, {ok: true}, {ok: true}], asked)});
-  assert.deepEqual(done, {ok: true, addressSaved: true});
-  assert.equal('marketing' in sent[0], false, 'the address goes alone');
-  assert.equal(sent[0].consentWording, "E-mail me: What's new.");
-  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]), [['app-matches', false], ['app-needs-you', false], ['releases', true]]);
+test('the first news press with e-mail off sends only the address and the news answer: no Email channel, no consent, no app row, in either mode', async () => {
+  for (const settings of [{notifyBy: ['app']}, {notifyBy: ['app'], cloud: {repo: 'me/j'}}]) {
+    const asked = [], person = storage({settings});
+    const done = await choose(person, 'releases', true, {address: 'a@b.co', name: "What's new", save: async () => assert.fail('the app\'s e-mail saver is not used for news'), fetcher: site([{ok: true}, {ok: true}], asked)});
+    assert.deepEqual(done, {ok: true, addressSaved: true});
+    assert.deepEqual(asked.map(call => [call.method, call.url.replace('https://www.jobadabra.top', ''), call.body]), [['PUT', '/api/account/email', {email: 'a@b.co'}], ['POST', '/api/mail/choices', {mail: 'releases', on: true}]]);
+    assert.deepEqual(person.settings().notifyBy, ['app'], 'e-mail stays off for the app\'s own mails');
+    assert.equal(person.settings().emailConsent, undefined, 'no app-mail consent is recorded');
+    assert.equal(emailing(person), false);
+  }
+  const refused = storage({settings: {notifyBy: ['app']}}), calls = [];
+  assert.equal((await choose(refused, 'tips', true, {address: 'a@b.co', fetcher: site([{ok: false, error: 'taken'}], calls)})).ok, false);
+  assert.equal(calls.length, 1, 'a refused address stores no news answer');
   assert.deepEqual((await choose(storage({settings: {notifyBy: ['app']}}), 'tips', true, {fetcher: site([])})), {ok: false, error: 'Add your e-mail address in Settings → Notifications first, then turn it on.'}, 'no address anywhere: no call, the switch goes back');
-});
-
-test('a first news press with Always on running turns no app mail on: the other rows are stored off, only the news mail is on', async () => {
-  const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: ''}], asked = [];
-  const person = storage({settings: {notifyBy: ['app'], cloud: {repo: 'me/j'}}});
-  const done = await choose(person, 'tips', true, {address: 'a@b.co', save: async choice => { person.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher: site([{ok: true, rows}, {ok: true}, {ok: true}, {ok: true}], asked)});
-  assert.equal(done.ok, true);
-  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]).sort(), [['app-matches', false], ['app-weekly', false], ['tips', true]]);
 });

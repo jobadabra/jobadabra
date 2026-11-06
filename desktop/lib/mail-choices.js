@@ -150,15 +150,33 @@ function queued(job) {
   return run;
 }
 
+/**
+ * A news mail turned ON: the mail is ours, not one of the app's rows, so the press sends the address to our site (the site needs one to keep the answer) and nothing else: it never adds `email` to the person's channels, never
+ * records the app-mail consent and never writes an app row, so no digest or nudge starts because someone asked for "What's new". Why (6 Nov 2026, Gitar on #3343): through the app rows' first turn-on it did all three.
+ * With e-mail already on the site has the address. -> {ok, addressSaved?} or {ok: false, error: words}.
+ */
+async function newsOn(storage, row, address, fetcher) {
+  let addressSaved = false;
+  if (!emailing(storage)) {
+    if (!address) return {ok: false, error: WORDS.need_address};
+    const sent = await call(storage, 'PUT', '/api/account/email', {email: address}, fetcher);
+    if (!sent.ok) return {ok: false, error: sent.error || WORDS[sent.reason] || WORDS.not_saved};
+    addressSaved = true;
+  }
+  const done = await set(storage, row, true, fetcher);
+  return done.ok ? {ok: true, addressSaved} : done;
+}
+
 async function turnOnNow(storage, row, {address = '', name = '', save, fetcher = globalThis.fetch} = {}) {
+  if (NEWS.includes(row)) return newsOn(storage, row, address, fetcher);
   let addressSaved = false;
   if (!emailing(storage)) {
     if (!address) return {ok: false, error: WORDS.need_address};
     const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
     if (!saved.ok) return {ok: false, error: saved.error || WORDS.not_saved};
     addressSaved = true;
-    // Why (6 Nov 2026, owner; review): without Always on the other rows start off; with it everything starts on, except after a press on a news mail, which turns no app mail on in any mode (the person asked for one mail from us).
-    const others = await writeUnchosen(storage, (_, mode) => mode === 'always' && !NEWS.includes(row), fetcher, row);
+    // Why (6 Nov 2026, owner): without Always on the other rows start off; with it everything starts on.
+    const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);
     if (!others.ok) {   // Why (6 Nov 2026, review): a press that fails must leave nothing half-done: e-mail goes back off (and its consent is withdrawn), so a retry starts the whole block again
       await save({by: channelsOf(storage).filter(name => name !== 'email')}).catch(() => {});
       return {ok: false, error: others.error || WORDS.not_saved};
