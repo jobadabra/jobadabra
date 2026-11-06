@@ -5,6 +5,7 @@ import * as pipeline from './pipeline.js';
 import {emailOf} from './notify-channel.js';
 import {consented} from './email-consent.js';
 import {turnOnShared} from './hosted-email.js';
+import * as mail from './mail-choices.js';
 import {createMoments} from './always-on-moments.js';
 import {isTwin} from './twin.js';
 
@@ -28,7 +29,9 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
   });
   ipcMain.handle('hostedOn', async (_, given) => {
     if (DEMO) return {ok: true};
+    const was = mail.modeOf(storage);
     const done = await turnOnShared(storage, given || {});   // the Notifications address (#1711); one typed in the setup step becomes it
+    if (done.ok && was !== 'always') mail.alwaysOnTurnedOn(storage).catch(() => {});   // every mail switch turns on (lib/mail-choices.js); never holds the setup up
     if (done.ok) hosted.pullInbox(storage, engine).then(pulled => { if (pulled.added) toWindow('hostedArrived', pulled); }).catch(() => {});
     return done;
   });

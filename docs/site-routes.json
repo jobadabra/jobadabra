@@ -120,6 +120,10 @@
    "kind": "retired"
   },
   {
+   "path": "/api/mail/choices",
+   "kind": "app"
+  },
+  {
    "path": "/api/notify/email",
    "kind": "app"
   },

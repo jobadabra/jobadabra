@@ -340,7 +340,8 @@ def insight_mode(args, stores=None):
         print('Insight: switched off')
         return 0
     stores = _run_store(stores, f'--mode {args.mode} requires NOTION_TOKEN')
-    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup)) if args.send else telegram.to_app
+    kind = 'weekly' if args.mode == 'weekly' else 'activity'   # the weekly report is its own mail under the person's "Weekly summary" switch (src/notify.py ROW_OF)
+    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup, kind=kind)) if args.send else telegram.to_app
     with store.connect(args.db) as db:
         make = insights.run if args.mode == 'insight' else insights.weekly
         run = new_cron_run(args.mode)

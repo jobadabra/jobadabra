@@ -10,6 +10,7 @@ import {cleanSecret} from './secrets.js';
 import {osText} from '../renderer/os.js';
 import {log as appLog} from './log.js';
 import {registerHostedHandlers} from './hosted-handlers.js';
+import * as mail from './mail-choices.js';
 
 export function registerCloudHandlers(ctx) {
   const {DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, powerMonitor, restartTelegram, shell, storage, toWindow, getWindow} = ctx;
@@ -31,7 +32,9 @@ export function registerCloudHandlers(ctx) {
         storage.setSecret('GITHUB_TOKEN', token);
       }
       await aiFree.ensureTrialKey(storage);   // the install's key for the free trial's status, sent with the secrets (src/trial.py)
+      const was = mail.modeOf(storage);
       const result = await github.connect(storage, token, {repo: chosen, onStep: text => toWindow('cloudStep', {text})});
+      if (was !== 'always') mail.alwaysOnTurnedOn(storage).catch(() => {});   // every mail switch turns on (lib/mail-choices.js); never holds the setup up
       return {ok: true, ...result};
     } catch (error) {
       if (error.status === 401) storage.setSecret('GITHUB_TOKEN', '');  // revoked: sign in again next time

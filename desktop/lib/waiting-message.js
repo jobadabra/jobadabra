@@ -2,6 +2,7 @@
 // notification said it, and a person who is away heard nothing. One message an hour at most; a burst (the jobs an earlier run held, handed over at start) is one message; none
 // without a working channel. Never for a Claude session's own question (lib/app-reminders.js sessionNeedsYou: the 1 Oct 2026 noise reason). Guard: test/unit/main/waiting-message.test.js.
 import * as notifyChannel from './notify-channel.js';
+import {allowed} from './mail-choices.js';
 import {log as appLog} from './log.js';
 
 export const HOUR_MS = 60 * 60 * 1000;
@@ -23,7 +24,7 @@ const words = count => `${count} application${count === 1 ? ' is' : 's are'} wai
  * working channel nothing is sent and the hour is not used up; a failed send is logged and dropped (the app's own notification already showed it). Everything else is injectable for tests.
  */
 export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, ms) => unref(setTimeout(fn, ms)), channels = () => notifyChannel.channelsOf(storage),
-  sendEmail = mail => notifyChannel.sendEmail(storage, {...mail, urgent: true}), sendTelegram = text => sendBot(storage, text), log = appLog} = {}) {
+  sendEmail = mail => allowed(storage, 'app-needs-you') && notifyChannel.sendEmail(storage, {...mail, urgent: true, mail: 'app-needs-you'}), sendTelegram = text => sendBot(storage, text), log = appLog} = {}) {
   const pending = new Map(), handed = new Map();   // `handed`: every application handed over and when (in memory), whether or not a message went: the pop-up "waited N hours" (waitedFor)
   let timer = null, sending = false;
   const lastAt = () => Date.parse(storage.settings().waitingMessageAt) || 0;

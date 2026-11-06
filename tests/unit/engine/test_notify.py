@@ -165,6 +165,65 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(site.sent[0]['key'], 'JPF1.i.t')
 
 
+class MailRowTests(unittest.TestCase):
+    """The person's switch per e-mail (hr 4/8): each mail the engine can name carries its row, and a row they turned off is not sent."""
+
+    def test_each_mail_names_its_row_and_a_message_with_no_row_names_none(self):
+        site = Site()
+
+        def work():
+            telegram.send(CARD, None, None, kind='matches')
+            telegram.send('📊 <b>Weekly report</b>\nA quiet week', None, None, kind='weekly')
+            telegram.send('🔔 <b>Budget</b>\n80% used', None, None)
+            telegram.send('<b>Interview reviewed</b>', None, None, urgent=True)
+            notify.main(['Jobadabra daily run failed: https://example.test/run/1'])
+            return notify.flush()
+        self.assertTrue(run_with(EMAIL, site, work))
+        rows = {message['body']['subject']: message['body'].get('mail') for message in site.sent}
+        self.assertEqual(rows, {'3 new matches': 'app-matches', 'Weekly report': 'app-weekly', 'Budget': None,
+                                'Interview reviewed': None, 'Jobadabra daily run failed: https://example.test/run/1': 'app-stopped'})
+
+    def test_the_weekly_report_is_its_own_mail_with_its_row_and_still_held_for_the_digest_as_before(self):
+        site = Site()
+        run_with(EMAIL, site, lambda: (telegram.send('<b>Weekly report</b>', None, None, kind='weekly'), notify.flush()))
+        self.assertEqual((site.sent[0]['body']['kind'], site.sent[0]['body']['mail']), ('activity', 'app-weekly'))   # Why (6 Nov 2026, review): the site's own change decides what a held mail with a row becomes; this PR keeps today's delivery
+
+    def test_a_row_the_person_turned_off_is_not_sent_and_is_not_a_failure(self):
+        site = Site()
+        off = {**EMAIL, 'JOBADABRA_MAIL_OFF': 'app-matches, app-stopped'}
+
+        def work():
+            telegram.send(CARD, None, None, kind='matches')
+            telegram.send('<b>Weekly report</b>', None, None, kind='weekly')
+            telegram.send('<b>Budget</b>', None, None)
+            notify.main(['the run failed'])
+            return notify.flush()
+        self.assertTrue(run_with(off, site, work))
+        self.assertEqual(sorted(m['body']['subject'] for m in site.sent), ['Budget', 'Weekly report'], 'the other rows and the row-less digest still go')
+
+    def test_an_urgent_message_with_no_row_ignores_the_off_list(self):
+        site = Site()
+        run_with({**EMAIL, 'JOBADABRA_MAIL_OFF': 'app-matches,app-weekly,app-stopped'}, site, lambda: telegram.send('<b>Interview reviewed</b>', None, None, urgent=True))
+        self.assertEqual(len(site.sent), 1)
+
+    def test_the_weekly_mode_sends_its_report_as_the_weekly_kind_and_the_daily_insight_as_activity(self):
+        from types import SimpleNamespace
+        from src import daily_modes
+        for mode, kind in (('weekly', 'weekly'), ('insight', 'activity')):
+            sent = []
+
+            def make(db, stores, send=None, stats=None, **_):
+                send('<b>Report</b>', None)
+                return 'done'
+            args = SimpleNamespace(mode=mode, send=True, db=':memory:', if_due=False)
+            with mock.patch.object(telegram, 'credentials', lambda: ('tok', '1')), mock.patch.object(telegram, 'deliver', lambda *a, **k: sent.append(k.get('kind'))), \
+                    mock.patch.object(daily_modes.insights, 'weekly', make), mock.patch.object(daily_modes.insights, 'run', make), mock.patch.object(daily_modes.store, 'connect', mock.MagicMock()), \
+                    mock.patch.object(daily_modes, 'new_cron_run', lambda name: {'warnings': []}), mock.patch.object(daily_modes, 'log_ai_run', lambda *a, **k: None), mock.patch.object(daily_modes, '_run_store', lambda stores, message: object()), \
+                    mock.patch.object(daily_modes.insights, 'category_of', lambda text: ''):
+                daily_modes.insight_mode(args)
+            self.assertEqual(sent, [kind], mode)
+
+
 class OneMechanismTests(unittest.TestCase):
     """The class: every message the engine sends to a person goes through telegram.send, so each has its e-mail form."""
 

@@ -2,7 +2,7 @@
 // the address kept on our site (GET/PUT /api/account/email, site/src/account-email.js), the env the engine reads (JOBADABRA_NOTIFY, src/notify.py), and the one e-mail the app itself sends.
 // Guards: test/unit/main/notify-channel.test.js, test/unit/main/telegram-send.test.js.
 import {FREE_BASE, TRIAL_KEY} from './ai-free.js';
-import {LINE} from '../renderer/email-consent-words.js';
+import {wordingOf} from '../renderer/email-consent-words.js';
 import * as consent from './email-consent.js';
 
 const BASE = FREE_BASE.replace(/\/api\/ai$/, '');
@@ -40,7 +40,7 @@ const WORDS = {
 };
 // Why (#3011, Gitar, 2 Nov 2026): a hanging connection kept this call, and so the Full automation confirmation that waits on the state, open for minutes: no call to the site outlasts SLOW_MS.
 export const SLOW_MS = 8000;
-async function call(storage, method, path, body, fetcher) {
+export async function call(storage, method, path, body, fetcher) {   // exported for lib/mail-choices.js: one way to the site, one key, one time limit
   const key = installKey(storage);
   if (!key) return {ok: false, error: 'No install key yet: open the app online once, then try again.'};
   const limit = new AbortController(), timer = setTimeout(() => limit.abort(), SLOW_MS);
@@ -63,7 +63,7 @@ export async function state(storage, fetcher = globalThis.fetch) {
 
 // Saves the choice. A changed address or opt-in goes to the site first; the choice is kept only if it was accepted. Choosing e-mail with an address is the consent (stored with the date and
 // the sentence shown: `consentVia` = where it was given, 'settings' when omitted; `consentGiven` = 'default' when a switch that started on was left on); turning e-mail off withdraws it.
-export async function save(storage, {by, email, marketing, cadence, consentVia, consentGiven}, fetcher = globalThis.fetch, now = new Date()) {
+export async function save(storage, {by, email, marketing, cadence, consentVia, consentGiven, consentWording}, fetcher = globalThis.fetch, now = new Date()) {
   const clean = String(email || '').trim().toLowerCase();
   const wasOn = channelsOf(storage).includes('email');   // before keepAddress: an address typed in this save is not e-mail having been on
   if (Array.isArray(by) && by.includes('email') && !clean && !emailOf(storage)) return {ok: false, error: 'Enter your email address to be told by email.'};
@@ -71,35 +71,35 @@ export async function save(storage, {by, email, marketing, cadence, consentVia, 
   if (clean && (clean !== emailOf(storage) || typeof marketing === 'boolean' || digest)) {
     const site = await call(storage, 'PUT', '/api/account/email', {email: clean, ...(typeof marketing === 'boolean' ? {marketing} : {}), ...(digest ? {cadence: digest} : {})}, fetcher);
     if (!site.ok) return site;
-    keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven}, now);
+    keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven, consentWording}, now);
   }
   if (Array.isArray(by)) {
     storage.saveSettings({notifyBy: by.filter(name => CHANNELS.includes(name))});
-    followConsent(storage, by, wasOn, {consentVia, consentGiven}, now);
+    followConsent(storage, by, wasOn, {consentVia, consentGiven, consentWording}, now);
   }
   return {ok: true};
 }
 
 // The site took the address: kept here. A new address with no consent stored records one (typing it and saving is the act; the CV step passes how it was given).
-function keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven}, now) {
+function keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven, consentWording}, now) {
   const changed = clean !== emailOf(storage);   // the day count of the unconfirmed reminders (lib/notify-moments.js) starts with a new address, not with a new news choice
-  if (changed && !storage.settings().emailConsent?.at) consent.record(storage, consentVia || 'settings', LINE, now, consentGiven || 'switched');
+  if (changed && !storage.settings().emailConsent?.at) consent.record(storage, consentVia || 'settings', consentWording || wordingOf(consentVia || 'settings'), now, consentGiven || 'switched');
   storage.saveSettings({notifyEmail: clean, ...(changed ? {notifyEmailAt: now.toISOString()} : {}), ...(typeof marketing === 'boolean' ? {notifyMarketing: marketing} : {}), ...(digest ? {notifyCadence: digest} : {})});
 }
 
 // A saved choice moves the consent (lib/email-consent.js): e-mail chosen with an address and none stored yet records it; e-mail left out withdraws it.
-// Why (5 Nov 2026, #3282): Settings saves on every switch, so only e-mail going from on to off is a withdrawal; a save by someone never asked leaves them askable.
-function followConsent(storage, by, wasOn, {consentVia, consentGiven}, now) {
+// Why (5 Nov 2026, #3282): Settings saves on every switch, so only e-mail going from on to off is a withdrawal; a save by someone never asked still leaves them askable (the rule is unchanged in hr 4/8, 6 Nov 2026; a caller may now name the sentence its own switch showed, `consentWording`).
+function followConsent(storage, by, wasOn, {consentVia, consentGiven, consentWording}, now) {
   if (!by.includes('email')) { if (wasOn) consent.clear(storage); }
-  else if (emailOf(storage) && !storage.settings().emailConsent?.at) consent.record(storage, consentVia || 'settings', LINE, now, consentGiven || 'switched');
+  else if (emailOf(storage) && !storage.settings().emailConsent?.at) consent.record(storage, consentVia || 'settings', consentWording || wordingOf(consentVia || 'settings'), now, consentGiven || 'switched');
 }
 
 // One message the app itself sends (not an engine run): by the chosen channels' e-mail form. Plain text in, never throws. It joins the digest (kind 'activity'), never a mail of its own,
-// unless `urgent` (an application waits for the person: lib/waiting-message.js): then it goes at once. -> true when the site took it.
-export async function sendEmail(storage, {subject, text, urgent = false, buttons}, fetcher = globalThis.fetch) {
+// unless `urgent` (an application waits for the person: lib/waiting-message.js): then it goes at once. `mail` names its row (lib/mail-choices.js ROWS). -> true when the site took it.
+export async function sendEmail(storage, {subject, text, urgent = false, buttons, mail = ''}, fetcher = globalThis.fetch) {
   if (!channelsOf(storage).includes('email')) return false;
   const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity'}, fetcher)).ok === true;
+  return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity', ...(mail ? {mail} : {})}, fetcher)).ok === true;   // `mail`: the row the person's switch holds it by (lib/mail-choices.js; the site refuses a row they turned off)
 }
 
 const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switched off on our side for now.', rate: 'Too many e-mails today. Try again tomorrow.', suppressed: 'Your address bounced or marked us as spam. Check it in Settings → Notifications.', unsubscribed: 'You stopped our e-mails. Turn them back on in Settings → Notifications.', empty: 'Nothing to send.', unconfirmed_stopped: 'Confirm your address first: press "Send the confirm link again" in Settings → Notifications.'};
