@@ -145,5 +145,19 @@ class TheFirstJobNeedsOneBatch(unittest.TestCase):
         self.assertEqual(run.scored, ['near'])
 
 
+    def test_the_slices_look_at_the_early_eures_read_leaves_it_for_the_free_api_stage(self):
+        """Gitar on #3336: the slice's thread popped the early read, so a slice that ended first made the free-API stage read EURES again."""
+        from concurrent.futures import ThreadPoolExecutor
+        from src.sources import eures
+        seen = []
+        with mock.patch.object(eures, 'early', return_value=object()), mock.patch.object(eures, 'read', side_effect=lambda search, keep=False: seen.append(keep) or []), \
+                mock.patch('src.paths.load_search_config', return_value={}), mock.patch.object(first_jobs, 'placed', side_effect=lambda jobs: jobs):
+            pool = ThreadPoolExecutor(max_workers=1)
+            futures = first_jobs._others(pool)
+            futures['EURES'].result(10)
+            pool.shutdown()
+        self.assertEqual(seen, [True], 'read with keep=True: the early read stays in place')
+
+
 if __name__ == '__main__':
     unittest.main()

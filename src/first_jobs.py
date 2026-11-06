@@ -202,7 +202,7 @@ def _others(pool):
     def read_eures():   # EURES reads the person's nearest area first
         from .ai import batch_scope
         with batch_scope.reader('EURES'), slots.priority(slots.FIRST):
-            return placed(eures.read(search))
+            return placed(eures.read(search, keep=True))
     return {'EURES': pool.submit(slots.carry(read_eures))}
 
 
