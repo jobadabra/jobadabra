@@ -18,7 +18,7 @@ export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held
     evidence: [], answers: ['Not now'], alsoJobs: true, actions: [{label: 'Turn on Always on', do: 'turn_on_hosted'}]}];
 }
 
-/** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; news stays off; a shared draft paints replies into the latest row. */
+/** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; it never sends a news answer; a shared draft paints replies into the latest row. */
 export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess, draft = {}, words = {}}) {
   const busyNote = words.busy || 'Turning on…', failedNote = words.failed || 'Could not turn it on just now.';
   let input = null;
@@ -44,7 +44,7 @@ export function bindHostedOffer({body, button, email, emailField, turnOn, onSucc
     const sentTo = address();
     Object.assign(draft, {busy: true, bad: false, note: busyNote}); draft.paint();
     try {
-      const result = await turnOn({email: sentTo, marketing: false});
+      const result = await turnOn({email: sentTo});
       if (result?.ok) { draft.note = ''; onSuccess(sentTo); return; }
       Object.assign(draft, {bad: true, note: result?.error || failedNote});
     } catch (error) {

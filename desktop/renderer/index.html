@@ -1275,7 +1275,6 @@
                 <span><span>Email</span><span class="muted small" id="notify-email-note">New matches, reminders and answers in your inbox.</span></span></div>
               <label class="inline-field">Email address<input type="email" id="notify-address" placeholder="you@example.com" autocomplete="email"></label>
               <label class="inline-field">Everything except new matches<select id="notify-cadence"><option value="daily">One email a day</option><option value="weekly">One email a week (Mondays)</option></select></label>
-              <label class="check-row"><input type="checkbox" id="notify-marketing"><span><span>Also send me product news and the Pro launch offer (unsubscribe in one click)</span></span></label>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-app" aria-label="Tell me by app notifications"><span></span></span>
                 <span><span>App notifications</span><span class="muted small">A notification on this computer while the app is open.</span></span></div>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-telegram" aria-label="Tell me by Telegram"><span></span></span>
@@ -1291,6 +1290,11 @@
             <div id="mail-rows" class="run-mode-main"></div>
             <div class="mail-pitch" id="mail-pitch" hidden><span class="muted small">Turn on Always on and these arrive on schedule, even with your Mac off.</span> <button type="button" class="link small" id="mail-turn-on">Turn on</button></div>
             <p class="message" id="mail-message"></p>
+          </div>
+          <div class="setting panel" id="setting-news" data-keywords="news from jobadabra what's new tips offers product" hidden>
+            <div class="summary-head"><i data-icon="bell"></i><h3>News from Jobadabra</h3></div>
+            <p class="muted panel-lead">Mails from us, at most one a week.</p>
+            <div id="news-rows" class="run-mode-main"></div>
           </div>
         </div>
         <div class="settings-page" data-settings-page="apply" hidden>

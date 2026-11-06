@@ -1,4 +1,4 @@
-// The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
+// The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows; the news mails, #news-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
 import {$} from './core.js';
@@ -49,6 +49,15 @@ function drawCard(state, shown) {
   $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : state?.note || '');
 }
 
+// "News from Jobadabra": the site's two news mails, with the site's own words. A press is the same as a row's; hidden with the other card (MAIL_SWITCHES_SHOWN) and never drawn beside an automation.
+function drawNews(state, shown) {
+  const panel = $('setting-news'), list = $('news-rows');
+  if (!panel || !list) return;
+  const news = shown ? state.news || [] : [];
+  panel.hidden = !news.length;
+  list.replaceChildren(...news.map(row => switchRow(row, '', mail.note(row.id), mail.press)));
+}
+
 // The rows beside an automation (`data-mail-slot`), the Apply card's one "where" line, and the cards of slots that have none to show.
 function drawSlots(state, shown) {
   for (const slot of document.querySelectorAll('[data-mail-slot]')) {
@@ -64,6 +73,7 @@ function drawSlots(state, shown) {
 function draw() {
   const state = mail.state(), shown = !!state?.ok && !state.hidden;
   drawCard(state, shown);
+  drawNews(state, shown);
   drawSlots(state, shown);
 }
 

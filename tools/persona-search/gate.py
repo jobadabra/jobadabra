@@ -63,6 +63,7 @@ def extract(db_path, out):
     """The open jobs of the persona's install, without URLs or posting text: what the judge reads. A store the press never created, or created empty, reads as no jobs.
     Why (PR 3130, run 41813036119, personas 3 and 6, 4 Nov 2026): the press was cut by the 3-minute stop before any step opened the store, so this call died on "unable to open"
     or "no such table: jobs", the press step went red, and the judge never ran; the row should read as zero jobs, grey."""
+    Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder (6 Nov 2026, run 42191804037); it worked only because an earlier step had made it
     if not Path(db_path).exists():
         rows = []
     else:

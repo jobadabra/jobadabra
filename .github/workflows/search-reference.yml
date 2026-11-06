@@ -32,7 +32,6 @@ jobs:
       - name: This run can use the Codex broker
         id: token
         run: |
-          mkdir -p out
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
             echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
           fi
@@ -60,6 +59,7 @@ jobs:
         if: steps.token.outputs.ok == 'yes'
         run: |
           set -o pipefail
+          mkdir -p out   # Why (6 Nov 2026, run 42191804037): a mkdir before actions/checkout is wiped by checkout's clean; the tool makes it too
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run out/reference.json 2>&1 | tee out/reference.log
       - name: Send the counts to Admin → Job search → Night search
         if: steps.token.outputs.ok == 'yes'

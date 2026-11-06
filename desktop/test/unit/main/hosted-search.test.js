@@ -28,15 +28,15 @@ function site(routes) {
   return {calls, fetcher};
 }
 
-test('turning on sends the e-mail, the news box and the profile with the install key, and remembers it', async () => {
+test('turning on sends the e-mail and the profile (never a news answer) with the install key, and remembers it', async () => {
   const st = store(), s = site({'PUT /api/hosted/schedule': {ok: true}, 'PUT /api/hosted/config': {ok: true}});
   assert.deepEqual(await turnOn(st, {email: 'bad'}, {fetcher: s.fetcher}), {ok: false, error: 'Enter an email address like you@example.com.'});
-  assert.deepEqual(await turnOn(st, {email: ' A@Example.com ', marketing: true}, {fetcher: s.fetcher}), {ok: true});
+  assert.deepEqual(await turnOn(st, {email: ' A@Example.com '}, {fetcher: s.fetcher}), {ok: true});
   assert.deepEqual(s.calls.map(c => c.key), ['PUT /api/hosted/schedule', 'PUT /api/hosted/config']);
-  assert.deepEqual(s.calls[0].body, {on: true, email: 'A@Example.com', marketing: true});
+  assert.deepEqual(s.calls[0].body, {on: true, email: 'A@Example.com'});
   assert.deepEqual(s.calls[1].body, {search: {role_keywords: ['sre']}, profile: 'My profile', cv: ''});
   assert.ok(s.calls.every(c => c.key_header === FREE));
-  assert.deepEqual([state(st).on, state(st).email, state(st).marketing], [true, 'A@Example.com', true]);
+  assert.deepEqual([state(st).on, state(st).email], [true, 'A@Example.com']);
 });
 
 test('the site refusing leaves it off with the site\'s own words', async () => {

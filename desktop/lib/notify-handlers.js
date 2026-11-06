@@ -16,10 +16,12 @@ const DEMO_ROWS = [
   {id: 'app-applied', name: 'Applied for you', when: 'Full automation sent an application', suggested: {mac: 'no', always: 'no'}}, {id: 'app-weekly', name: 'Weekly summary', when: 'Mondays', suggested: {mac: 'mail', always: 'mail'}},
   {id: 'app-stopped', name: 'Always on stopped working', when: 'a run fails', suggested: {mac: 'hidden', always: 'mail'}}, {id: 'app-nothing', name: 'Nothing found for days', when: 'days with no new match', suggested: {mac: 'hidden', always: 'mail'}},
 ].map(row => ({...row, choice: ''}));
+// The two news mails, fictional like the rows; both start off (owner, 6 Nov 2026: nobody is signed up before saying yes).
+const DEMO_NEWS = [{id: 'releases', name: "What's new", when: 'a new version and what changed', on: false}, {id: 'tips', name: 'News and tips', when: 'offers, tips, and a reminder if you have been away', on: false}];
 const demoRows = (storage, state = process.env.JOBADABRA_DEMO_MAIL || '') => {
   if (state === 'off') return {ok: true, hidden: true, rows: []};
   const mode = state === 'suggested' ? 'mac' : mail.modeOf(storage), going = state !== 'suggested';   // the demo profile has Always on: its rows follow it, so the status beside Find jobs and the switch agree
-  return {ok: true, mode, where: mail.viewOf(DEMO_ROWS[0], mode).where, macWhere: mail.viewOf(DEMO_ROWS[0], 'mac').where, emailing: going, rows: DEMO_ROWS.map(row => mail.viewOf(row, mode, going)).filter(row => row.shown)};
+  return {ok: true, mode, where: mail.viewOf(DEMO_ROWS[0], mode).where, macWhere: mail.viewOf(DEMO_ROWS[0], 'mac').where, emailing: going, news: DEMO_NEWS.map(item => ({...item})), rows: DEMO_ROWS.map(row => mail.viewOf(row, mode, going)).filter(row => row.shown)};
 };
 
 const MOMENTS = ['day3', 'day10', 'stopped', 'waited', 'lost', 'match', 'reply', 'recruiter'];
@@ -28,8 +30,8 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   const moments = createNotifyMoments(storage);
   if (!DEMO) setTimeout(() => mail.settle(storage).catch(() => {}), 20000).unref?.();   // once, for someone who already has e-mail on (lib/mail-choices.js settle); after start-up has made the install key
   ipcMain.handle('notifyState', async () => {
-    if (DEMO && process.env.JOBADABRA_DEMO_MAIL === 'suggested') return {by: ['app'], chosen: ['app'], telegram: channel.telegramReady(storage), email: '', confirmed: false, marketing: false, cadence: 'daily', reached: true};   // a preview of the first run: e-mail is not on yet, no address on our site
-    if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, marketing: true, cadence: 'daily', reached: true};
+    if (DEMO && process.env.JOBADABRA_DEMO_MAIL === 'suggested') return {by: ['app'], chosen: ['app'], telegram: channel.telegramReady(storage), email: '', confirmed: false, cadence: 'daily', reached: true};   // a preview of the first run: e-mail is not on yet, no address on our site
+    if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, cadence: 'daily', reached: true};
     return channel.state(storage);
   });
   // The pop-ups (lib/notify-moments.js): `moment` is the next one the main process knows (an application that waited, an address reminder, Full automation with nobody to tell) or null; `seenAt`/`backAt`
@@ -69,7 +71,7 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     if (DEMO) return {ok: true};
     const address = await cvAddress(storage);
     if (!address || !consent.PLACES.includes(where)) return {ok: false, error: FAILED};
-    const result = await save({by: [...new Set([...channel.channelsOf(storage), 'email'])], email: address, marketing: false, consentVia: where, consentGiven: consent.GIVEN.includes(given) ? given : 'switched'});
+    const result = await save({by: [...new Set([...channel.channelsOf(storage), 'email'])], email: address, consentVia: where, consentGiven: consent.GIVEN.includes(given) ? given : 'switched'});
     if (result.ok && where === 'cv') {   // Continue with the switch on = "e-mail me app notifications": the suggested rows of the person's mode turn on, stored as their choices (a refusal here never fails the step)
       const rows = await mail.turnOnSuggested(storage).catch(error => ({ok: false, error: error.message}));
       log('notify', rows.ok ? 'CV step turned on the suggested mails' : 'CV step could not store the suggested mails', {rows: (rows.turned || []).join(','), error: rows.error || ''});

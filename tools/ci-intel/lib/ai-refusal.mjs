@@ -2,6 +2,8 @@
 // One place for every job that asks the AI broker from here (since 31 Oct 2026 no scheduled job calls the Anthropic API: owner, "We should use fully the Codex"): name the refusal (limit / auth / rate / overloaded),
 // say "AI skipped", tell the owner on Telegram (once per outage, not every hour), never print a token.
 // Guard: desktop/test/ci-intel-ai-refusal.test.js. The Telegram bot is the CI alerts one when this repo has it, else the Build Log bot (the secrets this repo holds).
+import {causeOf} from '../../../desktop/e2e/lib/ai-failure-words.mjs';
+
 export class AiRefused extends Error {
   constructor(status, reason) { super(`broker answered ${status}: ${reason}`); this.name = 'AiRefused'; this.status = status; this.reason = reason; this.kind = kindOf(status, reason); }
 }
@@ -62,7 +64,9 @@ export async function reportRefusal(error, {job, effect, workflow, zurichHour, e
   console.log(`::error::${job}: ${describe(error)}${effect ? ` ${effect}` : ''}`);
   const previous = workflow && run ? previousConclusion(workflow, {env, run}) : null;
   if (!shouldTell({previous, zurichHour})) return {skipped: 'already told in the run before'};
-  const result = await tellOwner(`⚠️ ${job}: ${describe(error)}${effect ? `\n${effect}` : ''}`, {env, fetch: doFetch});
+  // Why (6 Nov 2026, owner: "make it human readable"): Telegram gets the plain cause, never the broker's raw words; the ::error:: line above keeps them for the log.
+  const cause = causeOf(`${error.status} ${error.reason}`);
+  const result = await tellOwner(`⚠️ ${job}: ${cause.icon} ${cause.label}${effect ? `\n${effect}` : ''}`, {env, fetch: doFetch});
   console.log(`Telegram: ${JSON.stringify(result)}`);
   return result;
 }

@@ -66,3 +66,20 @@ test('a read that runs while a press is saving waits for it, so the press is not
   await Promise.all([press, reading]);
   assert.equal(mail.state().rows[0].on, false, 'the read happened after the save: it shows what the (fake) website returns, here the stored original');
 });
+
+test('a news switch is pressed like a row: at once, saved by its id, and put back with the website\'s words when refused', async () => {
+  const withNews = () => ({...rows(), news: [{id: 'releases', name: "What's new", when: 'a new version', on: false}, {id: 'tips', name: 'News and tips', when: 'tips', on: true}]});
+  const ok = setup({read: async () => withNews()});
+  await ok.mail.read();
+  const press = ok.mail.press('releases', true);
+  assert.equal(ok.mail.state().news[0].on, true, 'on screen before the website answers');
+  await press;
+  assert.deepEqual(ok.saved, [['releases', true]]);
+  assert.equal(ok.mail.state().news[0].on, true);
+  const refused = setup({read: async () => withNews(), set: async () => ({ok: false, error: 'Add your e-mail address first.'})});
+  await refused.mail.read();
+  await refused.mail.press('tips', false);
+  assert.equal(refused.mail.state().news[1].on, true, 'back where it was');
+  assert.equal(refused.mail.note('tips'), 'Add your e-mail address first.');
+  assert.equal(refused.mail.note('releases'), '', 'only the pressed switch carries the words');
+});

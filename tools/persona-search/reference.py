@@ -124,6 +124,7 @@ def main(argv):
     """`run <out.json>` or `send <out.json>` (see the module docstring); anything else prints it."""
     kind = argv[0] if argv else ''
     if kind == 'run' and len(argv) == 2:
+        Path(argv[1]).parent.mkdir(parents=True, exist_ok=True)   # Why (6 Nov 2026, run 42191804037): `out/` did not exist and the 6-minute read ended in FileNotFoundError; make the folder first
         record = run()
         Path(argv[1]).write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"reference: {len(record['personas'])} of {len(PERSONAS)} personas")

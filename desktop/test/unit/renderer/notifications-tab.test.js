@@ -8,7 +8,7 @@ import {clean, plan, SECTIONS} from '../../../renderer/targets.js';
 const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const html = read('renderer/index.html');
 const pageOf = name => html.split('<div class="settings-page" data-settings-page="').find(part => part.startsWith(`${name}"`)) || '';   // from its opening tag to the next page's
-const CONTROLS = ['notify-email', 'notify-address', 'notify-cadence', 'notify-marketing', 'notify-app', 'notify-telegram', 'notify-telegram-connect', 'notify-message'];
+const CONTROLS = ['notify-email', 'notify-address', 'notify-cadence', 'notify-app', 'notify-telegram', 'notify-telegram-connect', 'notify-message'];
 
 test('Settings lists Notifications right after Automation, with a bell', () => {
   const buttons = [...html.matchAll(/<button data-settings-go="([\w-]+)"[^>]*><i data-icon="([\w-]+)">/g)].map(([, go, icon]) => [go, icon]);
