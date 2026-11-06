@@ -23,6 +23,7 @@ on:
       - 'docs/**'
       - '*.md'
       - '.claude/**'
+      - 'lab/**'   # the back-office folded in from jobadabra-lab (lm 1/3): its tests run in the last step
       - '.github/**'
       - '.github/workflows/tests-python.yml'
 
@@ -54,3 +55,9 @@ jobs:
       - run: |
           [ -s "$RUNNER_TEMP/changed.txt" ] && export JOBADABRA_PY_CHANGED_FILE="$RUNNER_TEMP/changed.txt"
           bash tools/check.sh --area python
+      # Why (6 Nov 2026, owner: "Only lab I want", lm 1/3): the lab's own tests ran in its repo (and in lab-ci.yml); they live in lab/ now and run with the engine's tests. Python tests need `cryptography` (tools/license.py); the node ones read the extension's schemas.
+      - name: The back-office's own tests (lab/)
+        run: |
+          python3 -m pip install --quiet cryptography==44.0.2
+          python3 -m unittest discover -s lab/tests
+          node --test $(find lab -name '*.test.mjs' -not -path '*/node_modules/*')

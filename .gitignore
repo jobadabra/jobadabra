@@ -2,6 +2,8 @@ __pycache__/
 data/
 # Why (3 Nov 2026, test folders 2/3): `data/` above ignores every folder of that name; the guards of the person's data (TESTS.md) are not one, so a new test there is kept.
 !tests/guards/data/
+# Why (6 Nov 2026, owner: "Only lab I want"; docs/superpowers/specs/2026-11-06-lab-into-jobadabra-design.md): the lab's data/ folder (licenses.json lists who got a key, no keys; notion.json) is tracked, not engine output.
+!lab/data/
 !desktop/test/guards/data/
 reports/
 .env
