@@ -25,6 +25,7 @@ JOBSCH_PAGES = 5   # jobs.ch pages read at most per search and place (20 posting
 TIMEOUT = 30
 CHEAP_PAST_CUT = ('EURES',)   # readers that run even past the read cut: each bounds its own time (eures.SECONDS)
 TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_runs (source TEXT PRIMARY KEY, at TEXT NOT NULL)'
+TAKEN = set()   # (search key, reader) taken earlier in this press by the first-jobs slice (scan(readers=...)): the free-API stage does not read it again
 SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
 # Search-place country words -> Adzuna's country codes (the countries it covers).
 # Every country Adzuna serves (its API's endpoints), by the English name places.countries() answers (src/places.py: the AI says which
@@ -242,28 +243,52 @@ def mark_read(db, name, now, search=None):
             db.execute('INSERT OR REPLACE INTO aggregator_searches (source, search) VALUES (?, ?)', (name, search_key(search)))
 
 
-def kept(db, name, found, now=None):
+def _item(db, name, job, now):
+    """One matched job in the report's shape, recorded in the seen history (its status is the first one it gets)."""
+    return {**{k: job[k] for k in ('company', 'id', 'title', 'url', 'date_posted', 'description')},
+            'location': job['location'] or 'Unspecified', 'work_mode': 'Remote (stated)' if job['remote'] else '',
+            'salary_text': job['salary'], 'notes': f'Found on {name}', 'source': name, 'source_kind': 'job board',
+            'status': feeds.record(db, name.lower(), job, now.isoformat(timespec='seconds'))}
+
+
+def early_items(db, name, jobs, shown, now=None):
+    """The jobs the AI's title sort just said fit (feeds.triage hands them batch by batch, src/ai/title_queue.py) that are in your places, in the report's shape,
+    recorded once and kept in `shown` ({url: item}) -> the new ones; `kept` then takes them as they are. Why (#2918, owner 6 Nov 2026: "Score from the nearest
+    batches as they land"): the first job no longer waits for a whole sort."""
+    now, items = now or datetime.now(timezone.utc), []
+    with db:
+        for job in jobs:
+            if job.get('url') and job['url'] not in shown:
+                shown[job['url']] = _item(db, name, job, now)
+                items.append(shown[job['url']])
+    board_employers.fill_missing(items)
+    board_employers.note(items, name)
+    return items
+
+
+def kept(db, name, found, now=None, shown=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
-    (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py)."""
-    now, matched = now or datetime.now(timezone.utc), []
+    (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py). shown: {url: item} of the jobs handed early (early_items),
+    taken as they are, not recorded again."""
+    now, matched, fresh, shown = now or datetime.now(timezone.utc), [], [], shown if shown is not None else {}
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
     with db:
         for job in found:
-            if not (job.get('url') and feeds.wanted_title(job['title']) and feeds.wanted_location(job)):
-                continue
-            matched.append({**{k: job[k] for k in ('company', 'id', 'title', 'url', 'date_posted', 'description')},
-                            'location': job['location'] or 'Unspecified', 'work_mode': 'Remote (stated)' if job['remote'] else '',
-                            'salary_text': job['salary'], 'notes': f'Found on {name}', 'source': name, 'source_kind': 'job board',
-                            'status': feeds.record(db, name.lower(), job, now.isoformat(timespec='seconds'))})
-    board_employers.fill_missing(matched)   # the page's own hiringOrganization, a few per run
+            if job.get('url') in shown:
+                matched.append(shown[job['url']])
+            elif job.get('url') and feeds.wanted_title(job['title']) and feeds.wanted_location(job):
+                matched.append(_item(db, name, job, now))
+                fresh.append(matched[-1])
+    board_employers.fill_missing(fresh)   # the page's own hiringOrganization, a few per run
     board_employers.note(matched, name)
     return matched
 
 
-def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
+def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=False, shown=None):
     """A feeds.scan-style report ({'jobs', 'sources'}) from the aggregators that are due; your roles and places only, source named on each job.
     on_jobs(jobs): each reader's jobs as soon as it is read (owner, 18 Oct 2026: jobs shown as quickly as possible). ahead: the found boards
-    already read beside the employer sites (src/sources/boards_ahead.py), taken instead of read again."""
+    already read beside the employer sites (src/sources/boards_ahead.py), taken instead of read again. early: the first-jobs slice takes `readers` now (TAKEN).
+    shown: {url: item} of the jobs the slice handed early (kept)."""
     report = {'jobs': [], 'sources': []}
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
     # (3 Oct 2026: jobicy rows in the quality suite). `readers` given = a test of this function itself.
@@ -274,7 +299,12 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     from .. import time_budget
     from . import read_budget
     late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/unit/sources/test_three_minutes.py)
+    key = search_key(search)
     for name, read in (readers if readers is not None else sources()):
+        if early:
+            TAKEN.add((key, name))
+        elif (key, name) in TAKEN:   # Why (#2918, 6 Nov 2026): the slice took it, cut or not; a second read in the same press only repeats it
+            continue
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
             continue
@@ -293,7 +323,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
                     with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
                         found = read(search)
                         counted.jobs = read_methods.in_places(found)
-                matched = kept(db, name, found, now)
+                matched = kept(db, name, found, now, shown)
             if name == 'EURES' and eures.CUT[0]:   # stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
                 late.append(name)
             else:

@@ -310,15 +310,31 @@ def left_line(step, left, noun='job(s)'):
 
 
 def best_first(jobs):
-    """Jobs in your best places first (Search settings "Best places"), then the closest to your search (src/job_rank.py: your role words,
-    level and skills), the order kept otherwise: a short search spends its time on them."""
+    """Jobs in your best places first (Search settings "Best places"), then the nearest to them, then the closest to your search (src/job_rank.py:
+    your role words, level and skills), the order kept otherwise: a short search spends its time on them.
+    Why (#2918, owner 5 Nov 2026: "One clear order first"): a place word cannot tell "Haute-Garonne, France" (Toulouse's own area) from Paris, both
+    "in"; geo's stored place answers can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
     from .paths import load_search_config, place_regex
     from .job_rank import ranker
     search = load_search_config()
-    best = place_regex((search.get('locations') or {}).get('top_tier') or [r'(?!x)x'])
-    closeness = ranker(search)
+    tops = (search.get('locations') or {}).get('top_tier') or []
+    best = place_regex(tops or [r'(?!x)x'])
+    closeness, near = ranker(search), near_best(tops)
     from .sources import feeds
     def first(job):   # Claude's answer when it placed the location (src/ai/place_triage.py), else the best places' words
         verdict = feeds.place_of(job)
-        return (0 if (verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')) else 1, -closeness(job))
+        return (0 if (verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')) else 1, near(job.get('location')), -closeness(job))
     return sorted(jobs, key=first)
+
+
+def near_best(tops):
+    """location -> km from it to the nearest of these best places, from geo's stored answers only (src/geo.py: no call here); inf when either is not
+    placed or has no point (a country, remote), so an unplaced location keeps today's order."""
+    from . import geo
+    data = geo.load()
+    points = [entry for entry in (data.get(geo.norm(word)) for word in tops) if entry and 'lat' in entry]
+
+    def km(location):
+        entry = data.get(geo.norm(location))
+        return min((geo.km(entry, point) for point in points), default=float('inf')) if entry and 'lat' in entry else float('inf')
+    return km

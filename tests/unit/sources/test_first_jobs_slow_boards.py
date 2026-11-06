@@ -25,11 +25,13 @@ BOARD_JOB = {'id': 'b1', 'title': 'Engineer', 'company': 'B', 'location': 'Zuric
 
 
 class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
-    def run_slice(self, boards):
+    def run_slice(self, boards, release=None):
         events, imported = [], []
 
         def scorer(db, candidates, profile, model, max_jobs, workers=5, stats=None, on_scored=None, every=10, only_ids=None, **kw):
             events.append('scored')
+            if release:
+                release.set()   # the employer jobs are scored: the boards may end
             stats.update(done=len(only_ids))
             on_scored()
 
@@ -37,9 +39,9 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
             events.append(f'import {len(report["jobs"])}')
             imported.append([job['id'] for job in report['jobs']])
         with mock.patch.object(first_jobs.score, 'queue', return_value=JOBS), mock.patch.object(first_jobs, 'to_score', return_value=JOBS), \
-                mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found: list(found)):
+                mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found, shown=None: list(found)):
             first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
-                           sync=lambda: None, say=lambda line: None, scan=lambda sources, feed_db: {'jobs': [dict(j) for j in JOBS], 'sources': []},
+                           sync=lambda: None, say=lambda line: None, scan=lambda sources, feed_db, **kw: {'jobs': [dict(j) for j in JOBS], 'sources': []},
                            scorer=scorer, fits=lambda db: {}, boards=boards, import_jobs=import_jobs)
         return events, imported
 
@@ -49,15 +51,7 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
         def boards(say):
             scored_first.append(release.wait(WAIT))   # True only when the slice scored while this step still ran
             return [BOARD_JOB]
-        original = first_jobs._score_first
-
-        def score_then_release(*args, **kwargs):
-            try:
-                return original(*args, **kwargs)
-            finally:
-                release.set()
-        with mock.patch.object(first_jobs, '_score_first', side_effect=score_then_release):
-            events, imported = self.run_slice(boards)
+        events, imported = self.run_slice(boards, release)
         self.assertEqual(scored_first, [True], 'the boards step was still running when the employer jobs were scored')
         self.assertEqual(events[:2], ['import 3', 'scored'], events)
         self.assertEqual(imported[-1], ['b1'], 'the boards joined after, when they finished')
@@ -76,19 +70,16 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
 
         def import_jobs(report):
             queue.extend(job['id'] for job in report['jobs'])   # the store gains the jobs the slice imports
-        original = first_jobs._score_first
 
-        def score_then_release(*args, **kwargs):
-            try:
-                return original(*args, **kwargs)
-            finally:
-                release.set()   # the employer batch is over (nothing to score): the boards end now
-        with mock.patch.object(first_jobs, '_score_first', side_effect=score_then_release), \
-                mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [{'id': i} for i in queue]), \
+        def say(line):
+            said.append(line)
+            if line == 'First jobs: 0 found':
+                release.set()   # the employer sites' import is over, nothing to score: the boards end now
+        with mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [{'id': i} for i in queue]), \
                 mock.patch.object(first_jobs, 'to_score', return_value=[]), \
-                mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found: list(found)):
+                mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found, shown=None: list(found)):
             first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
-                           sync=lambda: None, say=said.append, scan=lambda sources, feed_db: {'jobs': [], 'sources': []}, scorer=scorer,
+                           sync=lambda: None, say=say, scan=lambda sources, feed_db, **kw: {'jobs': [], 'sources': []}, scorer=scorer,
                            fits=lambda db: {}, boards=boards, import_jobs=import_jobs)
         self.assertEqual(scored, [['b1']], 'the board job was scored in the slice')
         self.assertFalse([line for line in said if 'none to score yet' in line], said)

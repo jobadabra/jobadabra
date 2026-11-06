@@ -285,6 +285,12 @@ def start_early(search):
     return future
 
 
+def early(search):
+    """The read started with this search (start_early), still to be taken; None without one. The first-jobs slice joins it once it has read (src/first_jobs.py)."""
+    from . import aggregators
+    return _early.get(aggregators.search_key(search))
+
+
 def read(search):
     """The free-API stage's reader: the read started with the search when there is one (waited for until the run's stop time), else a read now.
     Prints what it found, so a press log shows whether EURES gave jobs."""

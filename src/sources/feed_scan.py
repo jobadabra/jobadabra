@@ -7,7 +7,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from . import ats, feed_facts, feeds, late_reads, read_budget
-from ..ai import slots
+from ..ai import slots, title_queue
 from .. import read_methods, source_yield
 
 
@@ -33,12 +33,14 @@ def _sure(index, source, download, db, now, shown):
     return found
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None):
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
     """Fetch every source, keep SRE-type titles in preferred locations, record seen history. report['funnel'] counts what the
     crawl saw and what the role keywords caught (src/coverage.py), so a search that is too narrow can be said out loud.
     on_jobs(jobs): called with each site's sure jobs as soon as that site is read (owner, 18 Oct 2026: jobs shown as quickly as possible;
     the driver's 133 of 134 sites were read by 61 s and the last held every job until 156 s). A job the AI later places outside your
-    places leaves the list at the search's end (store.close_elsewhere)."""
+    places leaves the list at the search's end (store.close_elsewhere).
+    on_sorted(jobs): called, in this thread, with the jobs of each batch of titles the AI sorts as it lands (#2918): recorded as the sure ones are, kept in `shown`,
+    so the pass after the whole sort takes them as they are."""
     fetcher = fetcher or feeds.fetch
     now = feed_facts._now().isoformat(timespec="seconds")
     key = lambda source: f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
@@ -116,7 +118,22 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested), "unchanged": [source['company'] for source in same]}
     tally = feeds.coverage.Tally()
     feeds.triage_places([job for jobs, failure in downloads if not failure for job in jobs or []])   # where the new locations are: Claude, once each
-    feeds.triage([job for jobs, failure in downloads if not failure for job in jobs or []])   # titles the words miss: Claude sorts the new ones, once
+    owner = {id(job): (index, source) for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)) if not failure for job in jobs or []}
+
+    def hand(fit_jobs):   # a batch of titles landed: its jobs in your places go to scoring now, recorded once, still "new"
+        items = []
+        with db:
+            for job in fit_jobs:
+                index, source = owner[id(job)]
+                if (index, str(job["id"])) not in shown:
+                    board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
+                    shown[(index, str(job["id"]))] = _item(source, job, feeds.record(db, board, job, now))
+                    items.append(shown[(index, str(job["id"]))])
+        if items:
+            feeds.run_counts.matched(items)
+            on_sorted(items)
+    with title_queue.handing_to(hand if on_sorted else None):
+        feeds.triage([job for jobs, failure in downloads if not failure for job in jobs or []])   # titles the words miss: Claude sorts the new ones, once
     for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)):
         board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
         try:

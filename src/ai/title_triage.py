@@ -13,7 +13,7 @@ import threading
 
 from ..paths import DATA
 from .models import SMALL_MODEL
-from . import batch_scope, providers, slots
+from . import batch_scope, providers, slots, title_queue
 
 MODEL = SMALL_MODEL
 BATCH = 30   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
@@ -92,9 +92,11 @@ def _second_look(client, ask, decided, search, words, local=False, sure=frozense
             decided[title] = n in fit
 
 
-def decide(titles, search, client=None, local=False):
+def decide(titles, search, client=None, local=False, nearness=None, land=None):
     """Ask about the titles not decided yet for this search (at most MAX_NEW), keep the answers; returns {title: fits} for all known.
-    local: these titles are of jobs in the user's own places; the search's first few are sorted whatever the clock says (src/time_budget.py)."""
+    local: these titles are of jobs in the user's own places; the search's first few are sorted whatever the clock says (src/time_budget.py).
+    nearness: title -> a comparable key, the nearest smallest (src/sources/feeds.py): the batches are cut from the nearest titles first and src/ai/title_queue.py asks
+    them nearest first across every reader. land(fit titles, batch): called in this thread as each batch lands (a job can reach scoring after one batch)."""
     from . import engine
     key, decided = _key(search), dict(known(search))
     ask = list(dict.fromkeys(t for t in (_norm(t) for t in titles) if t and t not in decided))[:MAX_NEW]
@@ -103,6 +105,8 @@ def decide(titles, search, client=None, local=False):
     # per title (0.5 s at least), a refresh planned "28 of 600 titles" for its 3 minutes, sorted them in one 7 s call and left 572 waiting.
     taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.PARALLEL, noun='title(s)')
     forced = budget.local_titles(len(ask) - taken) if local and taken < len(ask) else 0   # past the clock: local titles only
+    if nearness:
+        ask.sort(key=nearness)   # stable: the caller's order within the same nearness
     ask, sure = ask[:taken + forced], set(ask[:taken + forced])
     if not ask:
         return decided
@@ -114,8 +118,8 @@ def decide(titles, search, client=None, local=False):
              **({'level': level} if level else {})}
     from . import cost
     from ..progress import Ticker
-    from concurrent.futures import ThreadPoolExecutor
     batches = [ask[start:start + BATCH] for start in range(0, len(ask), BATCH)]
+    nearest = [(min(map(nearness, batch)) if nearness else (1, 0.0), batch) for batch in batches]
     # Said before the first answer, then after each batch with the time left (owner, 7 Oct 2026: 6 batches ran ~2 min each with only
     # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.PARALLEL at a time.
     print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
@@ -124,26 +128,32 @@ def decide(titles, search, client=None, local=False):
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them
 
     def one(batch):
+        """Asked in a queue worker (src/ai/title_queue.py) -> the numbers of the titles that fit, or None when the search's time is up for this batch."""
         if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced and budget.title_room() or budget.local_titles(len(batch)) >= len(batch))):
             with lock:
                 late[0] += len(batch)
-            return
+            return None
         listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
         response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],
                                           messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
                                           output_config=engine.structured(SCHEMA, MODEL, 'low'))
         cost.side(MODEL, response.usage)
-        fit = {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
-        with lock:
-            for n, title in enumerate(batch, 1):
-                decided[title] = n in fit
-            sorted_[0] += len(batch)
-            ticker.tick(sorted_[0])
+        return {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
+
+    def landed(batch, fit):
+        if fit is None:
+            return
+        for n, title in enumerate(batch, 1):
+            decided[title] = n in fit
+        sorted_[0] += len(batch)
+        ticker.tick(sorted_[0])
+        if land:
+            land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
     began = time.monotonic()
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
+    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL))
     budget.record('title_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
-    slots.carry(_second_look)(client, ask, decided, search, words, local, sure, forced)   # the caller's slot level, as the sort's own calls
+    with slots.priority(slots.NORMAL):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
+        _second_look(client, ask, decided, search, words, local, sure, forced)
     with LOCK:
         data = _load()
         data[key] = {**(data.get(key) or {}), **decided}

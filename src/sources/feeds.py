@@ -107,10 +107,12 @@ def triage(jobs):
     if not titles:
         return
     here = [job['title'] for job in best_first(asked) if in_my_place(job)]   # located in your places: asked first, and past the clock (time_budget.local_titles)
+    from . import feed_order
+    nearness, land = feed_order.nearness(asked, _SEARCH, in_my_place), feed_order.handing(asked, wanted_location)
     try:
         from ..ai import title_triage
-        _triaged().update(title_triage.decide(here, _SEARCH, local=True) if here else {})
-        _triaged().update(title_triage.decide(titles, _SEARCH))
+        _triaged().update(title_triage.decide(here, _SEARCH, local=True, nearness=nearness, land=land) if here else {})
+        _triaged().update(title_triage.decide(titles, _SEARCH, nearness=nearness, land=land))
     except Exception as error:  # noqa: BLE001 — not sorted this run: the exact words only, said
         print(f'Warning: job titles not sorted by {providers.who()} ({reason(error)}): asked again next run, role-word hits only shown meanwhile')
         detail('sources', error)
@@ -424,10 +426,10 @@ def _after_check(db, board, matched, now, search=None):
     db.execute('INSERT OR REPLACE INTO feed_rest (board, misses, rest_until, search) VALUES (?, ?, ?, ?)', (board, misses, until, _search_digest(search)))
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None):
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
     """Read every employer feed of a search; the code lives in src/sources/feed_scan.py (moved for the 500-line rule)."""
     from .feed_scan import scan as read_all
-    return read_all(sources, db, fetcher=fetcher, details=details, on_jobs=on_jobs)
+    return read_all(sources, db, fetcher=fetcher, details=details, on_jobs=on_jobs, on_sorted=on_sorted)
 
 
 def render(report):
