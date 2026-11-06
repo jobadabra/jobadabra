@@ -14,7 +14,8 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const keyOf = storage => storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
 // Whether this install can run Always on at all: it holds the in-house key (Free AI or Pro) and the site is not switched off for it. No offer is made when not (spec 2026-11-02-always-on-moments-design.md).
 export const canRun = storage => { const key = keyOf(storage); return !!key && isFreeKey(key) && !siteOffForUser(); };
-export const state = storage => ({on: false, skipped: false, email: '', marketing: false, ...storage.settings().hostedSearch});
+/** This install's Always on state from its settings: {on, skipped, email, after?, copiedAt?, ...}. Never reads the site, and holds no news answer (the site keeps those). */
+export const state = storage => ({on: false, skipped: false, email: '', ...storage.settings().hostedSearch});
 const save = (storage, patch) => storage.saveSettings({hostedSearch: {...state(storage), ...patch}});
 
 export const UNAVAILABLE = 'Always on is not available just now.';   // the line when the site gave no reason of its own (lib/ready-site.js tells them apart)
@@ -59,12 +60,12 @@ export async function pushConfig(storage, options) {
 }
 
 // Turn on: the schedule (the e-mail makes the trial account), then the config. -> {ok, error?}
-export async function turnOn(storage, {email, marketing = false}, options = {}) {
+export async function turnOn(storage, {email}, options = {}) {
   const address = String(email || '').trim();
   if (!EMAIL.test(address)) return {ok: false, error: 'Enter an email address like you@example.com.'};
-  const set = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, email: address, marketing: !!marketing}, ...options});
+  const set = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, email: address}, ...options});
   if (!set.ok) return set;
-  save(storage, {on: true, skipped: false, email: address, marketing: !!marketing, after: state(storage).after || 0});
+  save(storage, {on: true, skipped: false, email: address, after: state(storage).after || 0});
   const pushed = await pushConfig(storage, options);
   return pushed.ok ? {ok: true} : {ok: true, warning: 'On, but your profile was not sent yet; it is sent again at the next start.'};
 }

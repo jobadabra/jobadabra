@@ -55,7 +55,7 @@ test('Always on uses the known address in one press with no product-news consent
     turnOn: async given => { calls.push(given); return {ok: true}; }, onSuccess: () => { removed = true; }});
   assert.equal(button.disabled, false);
   await run();
-  assert.deepEqual(calls, [{email: 'alex@example.com', marketing: false}]);
+  assert.deepEqual(calls, [{email: 'alex@example.com'}]);
   assert.equal(removed, true, 'the successful offer leaves Suggestions');
 });
 
@@ -82,7 +82,7 @@ test('Always on waits for a valid address and keeps failures in its row for retr
   assert.match(body.textContent, /Connection lost/);
   failure = {ok: true}; await run();
   assert.equal(removed, true);
-  assert.ok(calls.every(given => given.email === 'alex@example.com' && given.marketing === false));
+  assert.ok(calls.every(given => given.email === 'alex@example.com' && !('marketing' in given)));
 });
 
 test('Always on redraws preserve the draft and busy state, and late errors reach the current row', async () => {

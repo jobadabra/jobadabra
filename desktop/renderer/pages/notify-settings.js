@@ -1,4 +1,4 @@
-// Settings → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address, how often the digest comes and the product-news tick (pre-checked, unsubscribe in one click).
+// Settings → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address and how often the digest comes. Product news is its own card (mail-switches.js), never a tick here.
 // Its own Settings tab after Automation (owner, 3 Nov 2026: "Notifications should be a separate tab in Settings. Not inside Automations"); saves at once like Automation. The choice and the address live in lib/notify-channel.js; the engine and the Always on repo follow it. The words (why a switch does nothing) are
 // renderer/notify-words.js; guard test/unit/renderer/notify-choice.test.js.
 import {$} from './core.js';
@@ -25,7 +25,6 @@ export async function showNotify(error = '') {
   const offered = state.email ? '' : (await window.pilot.emailConsentView().catch(() => null))?.address || '';
   $('notify-address').placeholder = offered || 'you@example.com';
   $('notify-address').dataset.offered = offered;
-  $('notify-marketing').checked = state.marketing;
   $('notify-cadence').value = state.cadence || 'daily';
   $('notify-telegram').disabled = !state.telegram;
   const said = notes(state, error);
@@ -45,7 +44,7 @@ export function bindNotify({savedToast, updateRepo}) {
     try {
       const by = Object.entries(BOXES).filter(([, id]) => $(id).checked).map(([name]) => name);
       const email = addressToSave({typed: $('notify-address').value, offered: $('notify-address').dataset.offered || '', by});
-      const result = await window.pilot.notifySave({by, email, marketing: $('notify-marketing').checked, cadence: $('notify-cadence').value});
+      const result = await window.pilot.notifySave({by, email, cadence: $('notify-cadence').value});
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
       window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
@@ -53,7 +52,7 @@ export function bindNotify({savedToast, updateRepo}) {
     } finally { busy = false; }
     await showNotify(error);
   };
-  for (const id of [...Object.values(BOXES), 'notify-address', 'notify-marketing', 'notify-cadence']) $(id).addEventListener('change', save);
+  for (const id of [...Object.values(BOXES), 'notify-address', 'notify-cadence']) $(id).addEventListener('change', save);
   $('notify-telegram-connect').addEventListener('click', () => openSetting('telegram'));
   // Why (5 Nov 2026, owner): the card also lives in Always on's Test pop-up, where an address is confirmed right away; one button for both places.
   $('notify-resend').addEventListener('click', async () => {

@@ -44,15 +44,15 @@ test('the engine is told the channels and, for e-mail, the install key; Telegram
 
 test('saving a new address asks the site first and keeps nothing when the site says no; a taken address is said in words', async () => {
   const s = storage({secrets: KEY.JOBADABRA_TRIAL_KEY ? {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY} : {}}), asked = [];
-  const refused = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: false, error: 'taken'}], asked));
+  const refused = await save(s, {by: ['email', 'app'], email: 'Me@Example.com'}, site([{ok: false, error: 'taken'}], asked));
   assert.equal(refused.ok, false);
   assert.match(refused.error, /already has a Jobadabra account/);
   assert.equal(s.settings().notifyEmail, undefined);
   assert.equal(s.settings().notifyBy, undefined);
   const saved = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: true}], asked));
   assert.equal(saved.ok, true);
-  assert.deepEqual([s.settings().notifyEmail, s.settings().notifyBy, s.settings().notifyMarketing], ['me@example.com', ['email', 'app'], true]);
-  assert.deepEqual(asked[1], {url: 'https://www.jobadabra.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com', marketing: true}});
+  assert.deepEqual([s.settings().notifyEmail, s.settings().notifyBy, s.settings().notifyMarketing], ['me@example.com', ['email', 'app'], undefined]);   // a stray `marketing` from an old caller goes nowhere
+  assert.deepEqual(asked[1], {url: 'https://www.jobadabra.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com'}});
 });
 
 test('e-mail cannot be chosen without an address, and a switch change alone does not call the site', async () => {
@@ -66,9 +66,9 @@ test('e-mail cannot be chosen without an address, and a switch change alone does
 test('the window state shows the site\'s address and confirmation, and the kept address when offline', async () => {
   const s = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'kept@b.co'}});
   const online = await state(s, site([{ok: true, email: 'kept@b.co', confirmed: true, marketing: false}]));
-  assert.deepEqual([online.email, online.confirmed, online.marketing, online.reached], ['kept@b.co', true, false, true]);
+  assert.deepEqual([online.email, online.confirmed, 'marketing' in online, online.reached], ['kept@b.co', true, false, true]);
   const offline = await state(s, site([new Error('offline')]));
-  assert.deepEqual([offline.email, offline.reached, offline.marketing], ['kept@b.co', false, false]);
+  assert.deepEqual([offline.email, offline.reached], ['kept@b.co', false]);
 });
 
 test('an e-mail the app sends itself needs e-mail chosen, and never throws', async () => {
