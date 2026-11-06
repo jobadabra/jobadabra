@@ -53,7 +53,7 @@ test('no text still says the card lives under Automation', () => {
 });
 
 test('the card has no heading of its own: the page heading says Notifications (owner, 3 Nov 2026: "drop inner heading")', () => {
-  const card = pageOf('notifications').split('id="setting-notify"')[1]?.split('id="setting-cloud"')[0] || '';
+  const card = pageOf('notifications').split('id="setting-notify"')[1]?.split(/id="setting-(?:mail|cloud)"/)[0] || '';   // the Email card only: the next card on the tab (the per-mail switches, hr 4/8) has a title of its own
   assert.doesNotMatch(card, /<h3>/);
   assert.match(pageOf('notifications'), /<h2>Notifications<\/h2>/);
 });

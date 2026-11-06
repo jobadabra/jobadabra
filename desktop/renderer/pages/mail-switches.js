@@ -46,7 +46,7 @@ function drawCard(state, shown) {
   list.replaceChildren(...(shown ? state.rows.map(row => switchRow(row, state.mode === 'always' && FROM_MAC.includes(row.id) ? state.macWhere : '', mail.note(row.id), mail.press)) : []));   // a mail the Mac writes says so when the card says Always on
   $('mail-pitch').hidden = !shown || state.mode !== 'mac';
   $('mail-where').textContent = shown ? state.where : '';
-  $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : '');
+  $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : state?.note || '');
 }
 
 // The rows beside an automation (`data-mail-slot`), the Apply card's one "where" line, and the cards of slots that have none to show.

@@ -57,9 +57,8 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   // A press: off stores the choice; on, for a person whose e-mail is not on yet, is also the act that sends the address (the typed one, else the saved one, else the CV's) and turns the Email channel on (lib/mail-choices.js turnOn).
   ipcMain.handle('mailChoiceSet', async (_, row, on, {address = '', name = ''} = {}) => {
     if (DEMO) return {ok: true};
-    const result = on === true
-      ? await mail.turnOn(storage, row, {address: String(address).trim().toLowerCase() || channel.emailOf(storage) || await cvAddress(storage), name: String(name), save})
-      : await mail.set(storage, row, on, undefined);
+    const result = typeof on !== 'boolean' ? {ok: false, error: 'That e-mail is not one of the switches.'}
+      : await mail.choose(storage, row, on, {address: on ? String(address).trim().toLowerCase() || channel.emailOf(storage) || await cvAddress(storage) : '', name: String(name), save});
     log('notify', result.ok ? 'mail switch saved' : 'mail switch not saved', {row: String(row), on: !!on, addressSaved: !!result.addressSaved, error: result.error || ''});
     return result;
   });
