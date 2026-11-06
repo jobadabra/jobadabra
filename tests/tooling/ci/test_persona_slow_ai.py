@@ -40,9 +40,9 @@ class SlowAiIsNotAProductZero(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             row = gate.result(1, press_folder(tmp, 'main_41463124217_p1_slow.log', 153, 0))   # run 41463124217, persona 1: 153 s, nothing scored
         self.assertTrue(row['not_measured'].startswith('AI slow (a call took '), row.get('not_measured'))
-        verdict = gate.compare({n: {**row, 'persona': n} for n in range(1, 7)}, [])
+        verdict = gate.compare({n: {**row, 'persona': n} for n in range(1, len(gate.PERSONAS) + 1)}, [])
         self.assertEqual(verdict['state'], 'neutral')
-        self.assertIn('not measured (6 of 6): AI slow', verdict['head'])
+        self.assertIn(f'not measured ({len(gate.PERSONAS)} of {len(gate.PERSONAS)}): AI slow', verdict['head'])
 
     def test_a_press_the_ai_answered_fast_is_measured_even_with_no_right_job(self):
         with tempfile.TemporaryDirectory() as tmp:

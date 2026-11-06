@@ -22,7 +22,7 @@ export const NIGHT_SLOTS = ['21:00', '23:30', '01:30', '03:30', '05:30'];
 // at an hour no pass, stats start or beta uses (the passes are above; stats start at minute 40 of hours divisible by 3; 04:40 is none of them), so its AI calls never queue behind another night job's.
 export const AGENT_SLOT = '04:40';
 // The night's Search check (search-personas.yml), UTC HH:MM. Why (4 Nov 2026, owner: "Night run, off PRs"): it rides the ten-minute trigger too, at the broker's quietest hour: 0 and 2 calls in the 00 hour of the last two nights.
-// Six presses in a row took about 33-44 min (a press's job: median 5.4, max 7.2), so it ends before the 01:30 pass; the night's other AI, the scout at about 02:30 and AGENT_SLOT, comes later.
+// Six presses in a row took 26-29 min on 5-6 Nov 2026 (runs 41938128120, 42133678718; 33-44 min on 4 Nov), so 18 take about 80-85 min and it ends about 01:25: close to the 01:30 pass (6 Nov 2026, 4/5). TODO(AI): move this slot earlier or start the pass later if the two overlap (6 Nov 2026); the scout at about 02:30 and AGENT_SLOT come later.
 export const SEARCH_SLOT = '00:00';
 export const STORE_WATCH_MINUTE = 20;
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;

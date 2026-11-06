@@ -1,5 +1,5 @@
 {
- "_from": "jobadabra/jobadabra-benchmarks search-bench/personas.json (e14f9a1, seed search-2026-10-27), personas 1-6: the search round the owner reviewed on 27 Oct 2026. Fictional; the CV comes from draws.json (draw.cv).",
+ "_from": "jobadabra/jobadabra-benchmarks search-bench/personas.json (e14f9a1, seed search-2026-10-27), personas 1-6: the search round the owner reviewed on 27 Oct 2026; personas 7-18 added 6 Nov 2026 (owner: '6 personas is too narrow and could not tell the full story'): one role family and one city each, so the 18 cover 18 families in 18 countries. Fictional; the CV comes from draws.json (draw.cv).",
  "personas": [
   {
    "family": "driver",
@@ -48,6 +48,102 @@
    "city": "Zagreb",
    "country": "Croatia",
    "language": "Croatian"
+  },
+  {
+   "family": "nurse",
+   "title": "Registered Nurse",
+   "kind": "non-tech",
+   "city": "Dublin",
+   "country": "Ireland",
+   "language": "English"
+  },
+  {
+   "family": "welder",
+   "title": "Welder",
+   "kind": "non-tech",
+   "city": "Leipzig",
+   "country": "Germany",
+   "language": "German"
+  },
+  {
+   "family": "electrician",
+   "title": "Electrician",
+   "kind": "non-tech",
+   "city": "Lyon",
+   "country": "France",
+   "language": "French"
+  },
+  {
+   "family": "software",
+   "title": "Software Engineer",
+   "kind": "tech",
+   "city": "Amsterdam",
+   "country": "Netherlands",
+   "language": "Dutch"
+  },
+  {
+   "family": "data-analyst",
+   "title": "Data Analyst",
+   "kind": "tech",
+   "city": "Lisbon",
+   "country": "Portugal",
+   "language": "Portuguese"
+  },
+  {
+   "family": "accountant",
+   "title": "Accountant",
+   "kind": "non-tech",
+   "city": "Milan",
+   "country": "Italy",
+   "language": "Italian"
+  },
+  {
+   "family": "teacher",
+   "title": "Secondary School Teacher",
+   "kind": "non-tech",
+   "city": "Prague",
+   "country": "Czechia",
+   "language": "Czech"
+  },
+  {
+   "family": "mechanic",
+   "title": "Car Mechanic",
+   "kind": "non-tech",
+   "city": "Gothenburg",
+   "country": "Sweden",
+   "language": "Swedish"
+  },
+  {
+   "family": "sales",
+   "title": "Sales Representative",
+   "kind": "non-tech",
+   "city": "Budapest",
+   "country": "Hungary",
+   "language": "Hungarian"
+  },
+  {
+   "family": "pharmacist",
+   "title": "Pharmacist",
+   "kind": "non-tech",
+   "city": "Vienna",
+   "country": "Austria",
+   "language": "German"
+  },
+  {
+   "family": "hotel",
+   "title": "Hotel Receptionist",
+   "kind": "non-tech",
+   "city": "Valencia",
+   "country": "Spain",
+   "language": "Spanish"
+  },
+  {
+   "family": "civil-engineer",
+   "title": "Civil Engineer",
+   "kind": "non-tech",
+   "city": "Copenhagen",
+   "country": "Denmark",
+   "language": "Danish"
   }
  ]
 }

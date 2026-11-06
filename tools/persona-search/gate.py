@@ -1,4 +1,4 @@
-"""The night Search check (search-personas.yml, a report since 4 Nov 2026): 6 fictional job seekers each press Find jobs once; a run is red when a press runs past 3 minutes; the
+"""The night Search check (search-personas.yml, a report since 4 Nov 2026): 18 fictional job seekers (6 until 6 Nov 2026) each press Find jobs once; a run is red when a press runs past 3 minutes; the
 right jobs are shown per persona and pooled, red only from 10 measured main runs on (QUALITY_MIN_RUNS; owner, 27 Oct 2026, "Time only, until 10 runs"). Origin (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate,
 for a profile, for a speed perspective.. We break other use-cases."; his four answers on the sketch: here with our own tools, all 6 in parallel,
 right role + place by a blind judge).
@@ -21,12 +21,12 @@ PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
 # Why (owner, 27 Oct 2026, "Time only, until 10 runs"): #2289 changed no search code and went red at 10 right jobs in total against main's 13 (main's own two
 # measured runs: 13 and 16), each persona's lowest of 3 being 0-1 jobs. Until main has QUALITY_MIN_RUNS measured runs, quality is shown and never red; from then
-# on a PR is red when its six-persona total falls below main's average minus twice its spread (sample standard deviation), computed here and switched on by
+# on a PR is red when its all-persona total falls below main's average minus twice its spread (sample standard deviation), computed here and switched on by
 # itself: no guessed number.
 QUALITY_MIN_RUNS = 10
 QUALITY_SPREADS = 2
 # Why (1 Nov 2026, #2901): main's last runs judged 0 jobs on all six personas (the press ran out of its 180 s before reading one), so "average minus two spreads" fell to -1.6..-6.3 and no total could be below it:
-# a search that finds nothing stayed green. A floor below one right job is no floor; a run whose six judges saw no job at all measured nothing (see _nothing).
+# a search that finds nothing stayed green. A floor below one right job is no floor; a run whose judges saw no job at all measured nothing (see _nothing).
 QUALITY_FLOOR_MIN = 1
 # Why (2 Nov 2026, owner: "Ship speed fix, fix the gate"; #2928): the floor of 1 above was red on a total of 0 although main's own last three totals were 7, 5 and 0:
 # a PR was held to a higher bar than main itself reached (owner, 28 Oct 2026: "a PR is red only when its diff broke it"). The floor never rises above the lowest total
@@ -294,15 +294,23 @@ def row_verdict(row):
     return '⚪', f'scored {read}, none right role and place' if read else 'no right job', 'none-right'
 
 
-def _nothing(run):
-    """True when every persona's judge saw 0 jobs (explicit found == 0): this run measured nothing, so it is no main history. It is the judge's count, never the press's
+LEGACY_PERSONAS = 6   # Why (6 Nov 2026, /code-review of 4/5): main's runs before the 18 have exactly personas 1-6; their zeros must still read "measured nothing"
+
+
+def _size(run):
+    """How many personas a stored run was made for: 6 for a run before 6 Nov 2026 (exactly personas 1-6), else all of PERSONAS."""
+    return LEGACY_PERSONAS if len(PERSONAS) > LEGACY_PERSONAS and set(run) == set(range(1, LEGACY_PERSONAS + 1)) else len(PERSONAS)
+
+
+def _nothing(run, size=None):
+    """True when every persona's judge saw 0 jobs (explicit found == 0): this run measured nothing, so it is no main history. `size` = the personas that run had (_size for main's runs). It is the judge's count, never the press's
     `scored`: a press cut before scoring can leave jobs the judge still graded, and that run is a measurement (Gitar on #2974)."""
-    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
+    rows = [run.get(n) for n in range(1, (size or len(PERSONAS)) + 1)]
     return all(r is not None and not r.get('error') and not r.get('not_measured') and type(r.get('found')) is int and r['found'] == 0 for r in rows)   # the count alone: a fault in a zero run does not make it measured
 
 
 def _total(run):
-    """The six personas' right jobs added up, or None when this run did not measure every persona (an errored, failed or unmeasured one) or measured nothing."""
+    """All personas' right jobs added up, or None when this run did not measure every persona (an errored, failed or unmeasured one) or measured nothing."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
     if any(r is None or r.get('not_measured') or r.get('error') or r.get('code') or r.get('crashes') or not isinstance(r.get('local'), int) for r in rows) or _nothing(run):
         return None
@@ -310,7 +318,7 @@ def _total(run):
 
 
 def quality(pr, main_runs):
-    """-> {mode: 'shown'|'gated', measured, total, floor, red}. 'shown' below QUALITY_MIN_RUNS measured main runs (a run that measured all six personas);
+    """-> {mode: 'shown'|'gated', measured, total, floor, red}. 'shown' below QUALITY_MIN_RUNS measured main runs (a run that measured every persona, so the six-persona runs before 6 Nov 2026 are no history for the 18);
     then the newest QUALITY_MIN_RUNS of them give mean and sample spread, and the PR is red below mean - QUALITY_SPREADS x spread, at least 1 and
     at most the lowest of those totals (a PR is not held to more than main reached). When that lowest is below 1, main itself found nothing in
     one of the ten: 'shown' with a `why`, since a floor of 0 could never go red (Gitar on #2934)."""
@@ -344,7 +352,8 @@ def grey_head(rows, pr):
     parts = [text for k, text in causes.items() if k in kinds]
     if all(k == 'unmeasured' for k in kinds):   # nothing ran: no "found 0"
         return f'⚪ {parts[0]} (not a pass)', ''
-    return ('⚪ no right job on any of the six (not a pass): ' if 'unmeasured' in kinds else '⚪ found 0 right jobs on all six (not a pass): ') + ', '.join(parts), ''
+    every = len(PERSONAS)
+    return (f'⚪ no right job on any of the {every} (not a pass): ' if 'unmeasured' in kinds else f'⚪ found 0 right jobs on all {every} (not a pass): ') + ', '.join(parts), ''
 
 
 def compare(pr, main_runs):
@@ -353,7 +362,7 @@ def compare(pr, main_runs):
     rows = []
     for n in range(1, len(PERSONAS) + 1):
         row = pr.get(n)
-        _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run)])   # a run that measured nothing shows no zeros
+        _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run, _size(run))])   # a run that measured nothing shows no zeros
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
@@ -402,7 +411,7 @@ def table(verdict):
     if notes:   # where a press that found no right job spent its time (funnel.py), one line each
         lines += ['', '<sub>Where the time went: ' + ' · '.join(notes) + '</sub>']
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). A row is green with at least one right job, grey without (it says why: AI queue full, no job scored, none right); the whole check is grey when no row is green (not a pass).</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the all-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). A row is green with at least one right job, grey without (it says why: AI queue full, no job scored, none right); the whole check is grey when no row is green (not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 
