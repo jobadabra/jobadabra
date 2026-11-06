@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The description of a PR that tools/ship.sh opens (owner, 12 Oct 2026: "I have 2-5 seconds to look at it; not an essay"). Guard: tests/test_pr_body.py.
+# The description of a PR that tools/ship.sh opens (owner, 12 Oct 2026: "I have 2-5 seconds to look at it; not an essay"). Guard (image URLs load): tests/tooling/ci/test_pr_images.py.
 #   tools/pr-body.sh <base> [--body=<file>]   prints the body for the commits <base>..HEAD
 # Top: the session's 5-second summary (--body=<file>, template tools/pr-body-template.md: an emoji verdict line, **Why**, **Unblocks**, the coloured impact table, a few short bullets, a Before/After table, images when a screen changed: refused without them, and only in a | What changed | Before | After | row), else the first subject.
 # Then a table of the trailers' facts (pool row, rung, fixture, ...). The commit messages are folded in a <details>, never above it.
@@ -36,7 +36,7 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   if [ -n "$pages" ] && ! grep -qiE '!\[[^]]*\]\([^)]+\.(png|jpe?g|gif|webp)\)|<img ' "$summary"; then
     echo "pr-body: this PR changes a site page ($pages): \"No screenshots:\" is not allowed for it. Either the change draws something: add the before/after images of the changed section only (page-shot.mjs --clip '<selector>', live page vs your branch) in a | What changed | Before | After | table; or it draws nothing (a reader or data .js file, never an .html or .css one): a line \"No visible change: <why, what the page still shows>\". Never shoot a page the change does not touch to pass this check. Hosting: node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo> hosts them in the repo that owns the PR; shoot the page with page-shot.mjs in jobadabra-web (tools/pr-body-template.md)" >&2; exit 2
   fi
-  # Every image in a row of | What changed | Before | After | (owner, 17 Oct 2026, #1290: "just screens, it's not clear"): tools/pr-screens.py, the same check CI runs on the body.
+  # Every image in a row of | What changed | Before | After | (owner, 17 Oct 2026, #1290: "just screens, it's not clear") and every image URL answers 200 (owner, 6 Nov 2026): tools/pr-screens.py, the same check CI runs on the body.
   python3 "$(dirname "$0")/pr-screens.py" < "$summary" || { echo 'pr-body: the screens are not in the | What changed | Before | After | table (tools/pr-body-template.md)' >&2; exit 2; }
   # A change to the desktop window carries the 6 design checks, ticked on the after-shot (owner, 17 Oct 2026: the design system, docs/rules/desktop-ui.md;
   # the block is in tools/pr-body-template.md). "No screenshots: <why>" (nothing drawn changed) needs none.
