@@ -258,7 +258,8 @@ export async function readAgain(tab, jobUrl) {
   return consider(tab, jobUrl);
 }
 // After Continue was pressed (form-ready.js): a step that changed in place is read and filled (next-step-read.js).
-const readNextStep = (tab, before, frameId = 0) => readAfterNextStep(tab, before, {still: tabId => pageStill(tabId, {maxMs: 3000}), getTab: tabId => chrome.tabs.get(tabId).catch(() => null), signature: live => pageSignature(live, frameId),
+/** After Continue was pressed: reads the tab's new step when the page changed in place (signature `before`, frame `frameId`); see next-step-read.js. -> its verdict ('read', 'moved', 'unchanged', 'gone'). */
+export const readNextStep = (tab, before, frameId = 0) => readAfterNextStep(tab, before, {still: tabId => pageStill(tabId, {maxMs: 3000}), getTab: tabId => chrome.tabs.get(tabId).catch(() => null), signature: live => pageSignature(live, frameId),
   read: async live => readAgain(live, await jobOf(live)), log: text => decide('fill', text, {})});   // readAgain: the one in-place reader (forget the address's mark, wait, read)
 useNextStepRead(readNextStep);
 // Read one armed page through the guards, page decisions, fill and after-fill steps.

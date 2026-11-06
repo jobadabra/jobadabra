@@ -57,7 +57,25 @@ test('form-ready: a pressed Continue asks for the new step to be read; a refused
   assert.deepEqual(await formWith({answer: 'ready', step: 'middle', nextControl: ''}, true), []);
 });
 
-test('fill-flow hands the one reader to form-ready', async () => {
-  const fs = await import('node:fs');
-  assert.match(fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8'), /useNextStepRead\(readNextStep\)/);
+// Gitar on #3356 and the code review: the real wiring, not a grep of the source. The step's key is in `started` (a page is read once per address); after a pressed Continue that changed the page
+// in place, the key is forgotten and the page is read again (consider adds it back as it starts).
+test('fill-flow\'s reader forgets the page\'s key and reads it again when the step changed in place, and not when nothing changed', async () => {
+  const keep = {chrome: globalThis.chrome};
+  const sketch = {url: URL1, title: 'Step 2', headings: [], controls: [{label: 'Which country do you live in?', type: 'select'}], buttons: ['Continue'], texts: [], frames: []};
+  globalThis.chrome = {runtime: {id: 'x', getManifest: () => ({version: '0'}), onMessage: {addListener: () => {}}}, storage: {local: {get: async () => ({}), set: async () => {}}, session: {get: async () => ({}), set: async () => {}}},
+    tabs: {get: async id => ({id, url: URL1, status: 'complete'})},
+    scripting: {executeScript: async ({func}) => [{result: String(func).includes('MutationObserver') ? {still: true, ms: 1} : {...sketch}}]}};
+  try {
+    const {initFillFlow, readNextStep, fillKey} = await import('../../extension/fill-flow.js');
+    const {pageSignature} = await import('../../extension/form-ready.js');
+    const ops = [], key = fillKey(5, URL1), started = new Set([key]);
+    const watched = {has: item => started.has(item), add: item => { ops.push(['add', item]); started.add(item); return watched; }, delete: item => { ops.push(['delete', item]); return started.delete(item); }, get size() { return started.size; }, [Symbol.iterator]: () => started[Symbol.iterator]()};
+    initFillFlow({started: watched, fillOpenedTab: async () => null, reportFlow: async () => {}, onPage: async () => true});
+    const same = await pageSignature({id: 5, url: URL1}, 0);
+    assert.notEqual(same, '', 'the page reads');
+    await readNextStep({id: 5, url: URL1}, same, 0).catch(() => {});
+    assert.deepEqual(ops, [], 'a press that changed nothing: the page is not read again');
+    await readNextStep({id: 5, url: URL1}, 'the signature of step 1', 0).catch(() => {});   // consider runs on after it begins; only its first moves matter here
+    assert.deepEqual(ops.slice(0, 2), [['delete', key], ['add', key]], 'the step-2 page\'s key is forgotten, then the read begins');
+  } finally { Object.assign(globalThis, keep); }
 });
