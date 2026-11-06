@@ -25,6 +25,9 @@ const seen = {requests: [], opener: null};
 const created = new Set();   // every window the app made, the popup too (BrowserWindow.getAllWindows() did not list them all)
 const open = () => [...created].filter(win => !win.isDestroyed());
 app.on('browser-window-created', (_, win) => created.add(win));
+// Why (6 Nov 2026, #3345 app (Linux) run 42192378854, flaky): Electron quits by itself when the last window closes; this probe waits for exactly that moment (every window closed) and then
+// writes its answer, so under load the process exited (0) before the write and the test saw "the probe wrote no answer". It quits only at the end, below (app.quit()).
+app.on('window-all-closed', () => {});
 let ses;
 const serve = () => ses.protocol.handle('https', async request => {
   const url = new URL(request.url);
@@ -72,6 +75,8 @@ app.whenReady().then(async () => {
     answer.popup = {opener: seen.opener, externalAfter: [...external]};
     answer.result = await Promise.race([pending, new Promise((_, no) => setTimeout(() => no(new Error(`no sign-in answer (opener: ${seen.opener}, at ${web.isDestroyed() ? 'destroyed' : web.getURL()}, requests: ${seen.requests.join(', ')})`)), HANG_MS))]);
     answer.result = {ok: answer.result.ok, reason: answer.result.reason, cookieNames: (answer.result.cookies || []).map(c => c.name)};
+    // Why (6 Nov 2026, #3348): forces the late poll that made run 42192378854 red; signin-popup.test.js always sets it, so removing the window-all-closed handler fails the test every time.
+    if (process.env.JOBADABRA_POPUP_PROBE_PAUSE_MS) await new Promise(done => setTimeout(done, Number(process.env.JOBADABRA_POPUP_PROBE_PAUSE_MS)));
     await until(() => open().length === 0, `every window to close (${open().length} open)`);
     answer.windowsAfter = open().length;
     answer.popupsMade = created.size - 1;
