@@ -1,5 +1,5 @@
 // Job: report health
-// Guard: the nightly Search check's verdict reaches the Admin store (owner, 6 Nov 2026: "Am I getting alerted? I'm not alerted"): sent with CI's key and the UTC night, nothing leaves the Mac without it (a local run sends nothing),
+// Guard: privacy — nothing leaves the Mac without CI's key (a local run sends nothing) and only a run on main is a night (owner, 6 Nov 2026: "Am I getting alerted? I'm not alerted"); the verdict goes with the key and the UTC night,
 // a refused or unreachable site is one line and never throws, and the line carries counts only. The route itself is guarded in jobadabra-web (test/unit/admin/search/search-night.test.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {MAX_BYTES, SEARCH_NIGHT_SITE, uploadSearchNight} from '../../lib/search-night-upload.mjs';
 
-const NOW = new Date('2026-11-07T04:10:00Z'), CI = {CI: 'true', REPLAYS_PUBLISH_KEY: 'k'};
+const NOW = new Date('2026-11-07T04:10:00Z'), CI = {CI: 'true', GITHUB_REF_NAME: 'main', REPLAYS_PUBLISH_KEY: 'k'};
 const verdictFile = (body = JSON.stringify({state: 'success', head: 'measured 2 of 6', rows: [{persona: 1, kind: 'measured'}]})) => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'search-night-')), 'verdict.json');
   fs.writeFileSync(file, body);
@@ -19,8 +19,9 @@ test('a local run, a run without the key, a missing run id or no verdict file se
   const calls = [];
   const fetcher = async (...args) => { calls.push(args); return {ok: true, json: async () => ({})}; };
   const file = verdictFile();
-  assert.match(await uploadSearchNight(file, '42133678718', {env: {REPLAYS_PUBLISH_KEY: 'k'}, fetcher, now: NOW}), /local run/);
-  assert.match(await uploadSearchNight(file, '42133678718', {env: {CI: 'true'}, fetcher, now: NOW}), /no REPLAYS_PUBLISH_KEY/);
+  assert.match(await uploadSearchNight(file, '42133678718', {env: {REPLAYS_PUBLISH_KEY: 'k', GITHUB_REF_NAME: 'main'}, fetcher, now: NOW}), /local run/);
+  assert.match(await uploadSearchNight(file, '42133678718', {env: {CI: 'true', GITHUB_REF_NAME: 'main'}, fetcher, now: NOW}), /no REPLAYS_PUBLISH_KEY/);
+  for (const ref of ['gi-night-upload', 'fd/some-fix', undefined]) assert.match(await uploadSearchNight(file, '42133678718', {env: {...CI, GITHUB_REF_NAME: ref}, fetcher, now: NOW}), /only a run on main is a night/, `a run on ${ref}`);
   assert.match(await uploadSearchNight(file, 'local', {env: CI, fetcher, now: NOW}), /no run id/);
   assert.match(await uploadSearchNight(path.join(os.tmpdir(), 'no-such-verdict.json'), '42133678718', {env: CI, fetcher, now: NOW}), /no verdict\.json/);
   assert.match(await uploadSearchNight(file, '42133678718', {env: {...CI, JP_CI_ROWS_DRY: '1'}, fetcher, now: NOW}), /dry run: would send \d+ bytes for night 2026-11-07/);
