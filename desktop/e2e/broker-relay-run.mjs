@@ -25,7 +25,8 @@ export function childEnv(env, url, cap) {
  */
 export function outcomeOf(stats, job) {
   const line = `broker relay (${job}): ${stats.calls} calls reached the broker, ${stats.ok} answered, ${stats.refused} failed or refused${stats.capHit ? `, ${stats.capHit} past the run's cap (those items wait for the next run)` : ''}`;
-  const summary = {calls: stats.calls, ok: stats.ok, failed: stats.refused, causes: causeList(stats.causes)};
+  // calls = every call the job made that was answered or refused (ok + failed): a call refused after the broker latched never reached it, so stats.calls alone would read "11 of 2".
+  const summary = {calls: stats.ok + stats.refused, ok: stats.ok, failed: stats.refused, causes: causeList(stats.causes)};
   if (!stats.refused) return {line, why: '', summary};
   const first = stats.latched || stats.reasons[0] || 'unknown';
   const effect = 'their items stay unjudged until a run gets an answer';

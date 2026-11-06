@@ -46,8 +46,10 @@ export async function startRelay({cap = 0, answer = answerViaBroker, env = proce
     try { message = JSON.parse(answered.body.toString('utf8')).error?.message || ''; } catch { /* a body that is not JSON has no message */ }
     message = message || `HTTP ${answered.status}`;
     if (stats.reasons.length < 5) stats.reasons.push(message);
-    tally(stats.causes, message);   // one real count per refused call, by plain cause (lib/ai-failure-words.mjs)
-    if (/^ai-capped:/.test(message)) { stats.latched = message.replace(/^ai-capped:\s*/, ''); return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
+    // One real count per refused call, by plain cause (lib/ai-failure-words.mjs). The latching call and the calls refused after it are counted from the same words (the broker's reason without its `ai-capped:` prefix), so one cause is one row.
+    const latching = /^ai-capped:/.test(message);
+    tally(stats.causes, latching ? message.replace(/^ai-capped:\s*/, '') : message);
+    if (latching) { stats.latched = message.replace(/^ai-capped:\s*/, ''); return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
     res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length, 'x-should-retry': 'false'});
     res.end(answered.body);
   });

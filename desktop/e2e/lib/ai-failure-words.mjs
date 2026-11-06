@@ -12,10 +12,11 @@ const UNKNOWN = {key: 'failed', icon: '⚠️', label: 'The AI service failed'};
 const CAUSES = [
   [/budget:|credit balance|insufficient[_ ]quota|exceeded your current quota|usage limit|neurons|capped/i, () => ({key: 'allowance', icon: '💳', label: "The AI plan's allowance is used up"})],
   [/killed after (\d+) s|did not finish|timed? ?out/i, match => ({key: 'timeout', icon: '⏱', label: `The AI took too long${match[1] ? ` (over ${match[1]} s)` : ''}`})],
-  [/invalid schema|response_format|invalid_request|\b400\b/i, () => ({key: 'request', icon: '🧩', label: 'Our request was refused (a bug on our side)'})],
-  [/login-lost|no-token|invalid x-api-key|\b40[13]\b|unauthori[sz]ed/i, () => ({key: 'login', icon: '🔑', label: 'The AI service did not accept our login'})],
   [/no answer from the broker|cut off|fetch failed|ECONNRESET|UND_ERR|socket|unreachable|no run token/i, () => ({key: 'connection', icon: '📡', label: 'The connection to the AI service dropped'})],
-  [/rate.?limit|too many requests|\b429\b/i, () => ({key: 'rate', icon: '🚦', label: 'The AI service asked us to slow down'})],
+  // Status codes count only as a status ("HTTP 400", "status 401", "broker: 429", a reason that starts with one), never as digits inside other words ("fetch failed after 401 s").
+  [/invalid schema|response_format|invalid_request|(?:\bHTTP|\bstatus|broker:)\s*400\b|^\s*400\b/i, () => ({key: 'request', icon: '🧩', label: 'Our request was refused (a bug on our side)'})],
+  [/login-lost|no-token|invalid x-api-key|unauthori[sz]ed|(?:\bHTTP|\bstatus|broker:)\s*40[13]\b|^\s*40[13]\b/i, () => ({key: 'login', icon: '🔑', label: 'The AI service did not accept our login'})],
+  [/rate.?limit|too many requests|(?:\bHTTP|\bstatus|broker:)\s*429\b|^\s*429\b/i, () => ({key: 'rate', icon: '🚦', label: 'The AI service asked us to slow down'})],
 ];
 
 /** The plain cause of a raw failure reason: {key, icon, label}. Anything unrecognised (or empty) is the generic "The AI service failed", never the raw text. */

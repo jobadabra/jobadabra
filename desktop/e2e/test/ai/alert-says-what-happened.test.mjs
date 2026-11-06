@@ -9,7 +9,7 @@ import {causeOf} from '../../lib/ai-failure-words.mjs';
 import {startRelay} from '../../lib/broker-relay-serve.mjs';
 import {alertCappedSteps} from '../../credit-alert.mjs';
 import {noteSkipped} from '../../lib/broker-job.mjs';
-import {AiRefused, describe, kindOf} from '../../../../tools/ci-intel/lib/ai-refusal.mjs';
+import {AiRefused, describe, kindOf, reportRefusal} from '../../../../tools/ci-intel/lib/ai-refusal.mjs';
 
 const env = {CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '1', GITHUB_WORKFLOW: 'Central scout'};
 const REFUSED = 'Codex refused the AI jobs of this run; they are skipped (grey), nothing is paid';
@@ -104,11 +104,43 @@ test('the owner\'s schema alert reads as a headline, a bar and one row per cause
   assert.doesNotMatch(text, /codex-failed|response_format|schema|portals|\{|thread\.started|ran out/i);
 });
 
-test('one timeout among 200 is told as it was, and an unknown reason is the plain generic words, never its raw text', async () => {
+test('an unknown reason beside a timeout is the plain generic words, never its raw text', async () => {
   const stats = await relayed([...Array(2).fill(null), KILLED, 'something nobody has seen: 0xDEADBEEF']);
   const {text} = await alertOf(outcomeOf(stats, 'central-scout'));
   assert.ok(text.includes('2 of 4 AI calls failed') && text.includes('⚠️ 1  The AI service failed') && text.includes('⏱ 1  The AI took too long (over 100 s)'), text);
   assert.doesNotMatch(text, /DEADBEEF|nobody has seen/);
+});
+
+test('one timeout among 200, as the owner saw it, is told as "1 of 200" with its 199 answers in the bar', async () => {
+  const {text} = await alertOf(outcomeOf(await relayed([...Array(199).fill(null), KILLED]), 'central-scout'));
+  for (const line of ['Central scout: 1 of 200 AI calls failed', '199 worked · 1 failed', '⏱ 1  The AI took too long (over 100 s)']) assert.ok(text.includes(line), `${line}\n${text}`);
+  assert.equal(text.split('\n').filter(line => /^\S+ \d+ {2}/.test(line)).length, 1, 'one cause, one row');
+});
+
+test('calls refused after the broker latched are counted in the total and under the same cause as the call that latched it', async () => {
+  const stats = await relayed([null, 'ai-capped: fallback:unsupported', ...Array(10).fill('ai-capped: fallback:unsupported')]);
+  assert.equal(stats.refused, 11, 'the latching call, and the 10 the broker never saw');
+  const done = outcomeOf(stats, 'central-scout');
+  assert.deepEqual([done.summary.calls, done.summary.ok, done.summary.failed], [12, 1, 11], 'the total is what the job asked, never "11 of 2"');
+  assert.equal(done.summary.causes.length, 1, 'one cause is one row');
+  assert.equal(done.summary.causes[0].count, 11);
+});
+
+test('a status code is a status only where it is written as one, never digits inside other words', () => {
+  assert.equal(causeOf('no answer from the broker: fetch failed after 401 s').key, 'connection');
+  for (const [reason, key] of [['HTTP 429 too many requests', 'rate'], ['broker: 401', 'login'], ['HTTP 400', 'request'], ['took 400 ms', 'failed'], ['HTTP 502', 'failed']]) assert.equal(causeOf(reason).key, key, reason);
+});
+
+test('the AI-refusal Telegram text carries the plain cause, never the broker\'s raw words', async () => {
+  const sent = [], print = console.log;
+  console.log = () => {};
+  try {
+    await reportRefusal(new AiRefused('unreachable', 'no answer from the broker: fetch failed (ECONNRESET: read ECONNRESET) after 63 s'), {job: 'Changelog publish', effect: 'a plain entry was published',
+      env: {CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c'}, fetch: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
+  } finally { console.log = print; }
+  assert.equal(sent.length, 1);
+  assert.ok(sent[0].includes('📡 The connection to the AI service dropped') && sent[0].includes('a plain entry was published'), sent[0]);
+  assert.doesNotMatch(sent[0], /ECONNRESET|63 s/);
 });
 
 test('a note without counts (another producer) is told by cause with no number, and two jobs add their real counts', async () => {
