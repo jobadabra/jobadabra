@@ -7,7 +7,7 @@
 # `ship: COMMENT #n <owner|bot|other> <comment|review-<state>|line> <url>` (27 Oct 2026): once per new comment or review by the owner, a review bot or anyone else, never a session's own; the ids already told live in <pidfile>.comments,
 # so a restart or a second ship repeats none. Every read is REST with the last ETag (tools/pr-rest-lib.sh), free while nothing changed. Guard: tests/test_pr_comments.py.
 # `ship: READY #n <sha>` (30 Oct 2026): the owner's "ready" on this head: every check green, Gitar ✅ Approved (its label), no "Working on PR comments" label, no unanswered
-# owner or other comment, no conflict and not a draft; once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
+# owner or other comment, no conflict, not a draft and GitHub's merge state clean (6 Nov 2026); once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
 # Started detached by tools/ship.sh when the PR opens (18 Oct 2026: #1321 sat red for hours because the watcher began only after REVIEW); a second ship of the same branch replaces the old watcher through the pid file (18 Oct 2026: the owner merges by hand and
 # sessions only learned of it when told). Guard: tests/test_ship_watch.py, tests/test_pr_conflict_fix.py.
 set -u
@@ -101,10 +101,12 @@ while :; do
     # Why (30 Oct 2026, owner via d3: "my PRs are not fully approved by Gitar"): d3 told the owner ready on GREEN while Gitar read "approved with suggestions".
     # Why (#2618, 30 Oct 2026): an intentionally held draft is never ready for the owner's merge.
     #   Why (4 Nov 2026, owner: "follow the local ship.sh approach"; fixer driver, plan 2026-11-04-ci-agent-until-green.md 4/6): SHIP_WATCH_DRAFT_OK=1 drops ONLY this condition, for the AI fixer's PR, which stays a draft until the owner marks it ready; every other part of READY is unchanged.
+    #   Why (6 Nov 2026, owner: "red" on web #459, Gitar approved): a push and a body edit left a cancelled run beside the green one; this watcher read the newest row per check name (green) while GitHub's merge state read BLOCKED, so READY was told for a PR the owner could not merge. READY also needs GitHub's own verdict: mergeable_state "clean" (or "has_hooks"; a draft reads "draft" and counts only with SHIP_WATCH_DRAFT_OK=1). "unknown" (still computing) holds READY for one look without re-arming it. Normal states cannot hold it forever: "unstable" is a failing non-required check, which already blocks GREEN; "behind" cannot happen (strict_required_status_checks_policy is off in the ruleset); no review is required.
+    mstate="$(jq -r '.mergeState // "unknown"' <<<"$view" 2>/dev/null)"
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
-      && jq -e --arg draftok "${SHIP_WATCH_DRAFT_OK:-}" '(.isDraft != true or $draftok == "1") and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
+      && jq -e --arg draftok "${SHIP_WATCH_DRAFT_OK:-}" '(.mergeState == "clean" or .mergeState == "has_hooks" or ($draftok == "1" and .isDraft == true and .mergeState == "draft")) and (.isDraft != true or $draftok == "1") and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
       [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
-    elif [ -n "$checks" ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
+    elif [ -n "$checks" ] && [ "$mstate" != unknown ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi
   notify_session   # retry a failed delivery even if the PR state has not changed
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }
