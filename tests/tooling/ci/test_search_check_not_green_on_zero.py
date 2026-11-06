@@ -18,14 +18,14 @@ def row(n, local=0, found=0, **more):
 
 def six(by_persona=None):
     by_persona = by_persona or {}
-    return {n: row(n, **by_persona.get(n, {})) for n in range(1, 7)}
+    return {n: row(n, **by_persona.get(n, {})) for n in range(1, len(gate.PERSONAS) + 1)}
 
 
 class ZeroRightJobsIsNeverGreen(unittest.TestCase):
     def test_six_presses_with_no_right_job_are_grey_not_green(self):
         verdict = gate.compare(six({5: {'found': 1}, 6: {'found': 28}}), [])
         self.assertEqual(verdict['state'], 'neutral')
-        self.assertIn('found 0 right jobs on all six', verdict['head'])
+        self.assertIn(f'found 0 right jobs on all {len(gate.PERSONAS)}', verdict['head'])
         self.assertNotIn('🟢', verdict['head'])
         self.assertEqual({r['mark'] for r in verdict['rows']}, {'⚪'}, 'no green row in a run that is not a pass')
 
