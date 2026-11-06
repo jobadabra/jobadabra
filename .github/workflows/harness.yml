@@ -57,6 +57,7 @@ on:
       - 'tools/flaky-verdict.mjs'
       - 'tools/lanes-check.mjs'
       - 'tools/pool-rows.mjs'
+      - 'tools/pr-assets.mjs'
       - 'tools/persona-search/codex.mjs'
       - 'tools/record-env.mjs'
       - 'tools/red-main-verdict.mjs'
