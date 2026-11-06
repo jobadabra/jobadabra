@@ -1,5 +1,5 @@
 """The private discovery (discovery/commoncrawl.py, discovery/priorities.py) and the canary tool, run against the public engine's code
-(JOBADABRA_PUBLIC, default ~/jobadabra). Fake archive answers only: no network."""
+(this repo's root). Fake archive answers only: no network."""
 import importlib.util
 import io
 import json
@@ -33,7 +33,6 @@ class _Ctx:
         return False
 
 
-@unittest.skipUnless((ENGINE / 'src' / 'scout.py').exists(), 'the public engine is not checked out next to this repo')
 class DiscoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

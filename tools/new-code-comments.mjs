@@ -12,6 +12,7 @@ import {fileURLToPath} from 'node:url';
 const CODE_FILE = /\.(m?js|cjs|ts|py|sh)$/;
 // Why (6 Nov 2026, owner: "Only lab I want"; lm 1/4): lab/ is the jobadabra-lab repo imported byte for byte; its code is old, and the rule is "old code is never asked (no mass rewrite)". A moved line only counts as moved inside one repo, so an import would read as 11 new functions.
 const IMPORTED = /^lab\//;
+// TODO(AI): drop this skip so lab/ edits meet the gates (#3334); lm 4/4 removes it with the last workflow move
 const TEST_FILE = /(^|\/)(tests?|e2e\/test|__tests__)\/|\.test\.|(^|\/)test_[^/]*\.py$/;
 const JS_EXPORT = /^export\s+(?:async\s+)?function\s*\*?\s*\w|^export\s+const\s+\w+\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>|^export\s+const\s+\w+\s*=\s*(?:async\s+)?function\b/;
 const PY_DEF = /^(?:async\s+)?def\s+(?!main\s*\()[a-z]\w*\s*\(/;   // top level, public (a leading underscore is private); a script's main() needs none

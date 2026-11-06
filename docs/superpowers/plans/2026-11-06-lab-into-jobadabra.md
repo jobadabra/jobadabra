@@ -26,5 +26,7 @@ Schedules are staggered so one merge never moves two jobs.
 ## 3/4 — scout
 See the spec's five steps. Rollback: re-add the lab `schedule:`, remove it here.
 
+Also in 4/4: drop the `lab/` skip in `tools/new-code-comments.mjs` and `tools/spec-proof.mjs` (TODO(AI) in both, #3334) so lab edits meet the gates.
+
 ## Progress
 - [ ] 1/4 · [ ] 2/4 · [ ] 3/4 · [ ] 4/4

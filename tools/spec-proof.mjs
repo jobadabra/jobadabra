@@ -55,6 +55,7 @@ function main() {
   let changed;
   try { changed = git('diff', '--name-only', `${base}...HEAD`).split('\n').filter(Boolean); } catch { return 0; }   // no base here: nothing to compare (the hook's own rule)
   // Why (6 Nov 2026, owner: "Only lab I want"; lm 1/4): lab/docs/specs are the imported lab's old specs, ticked in the lab; an import is not a PR ticking them.
+  // TODO(AI): drop the lab/ skip so later lab/ spec edits meet the gate (#3334); lm 4/4 removes it
   const specs = changed.filter(file => file.endsWith('.md') && !file.startsWith('lab/') && fs.existsSync(path.join(root, file))).map(file => {
     let before = '';
     try { before = git('show', `${base}:${file}`); } catch { /* a new spec */ }

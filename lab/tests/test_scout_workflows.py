@@ -1,6 +1,6 @@
 """The central scout's and the product brain's workflows, which moved here from the public repo (1 Nov 2026, rs 6b/6; owner: "jobadabra should have no web, no worker").
 The wiring tests that read their text moved with them, so the public repo has no server workflow to read. The engine side of each assertion
-(scout_core's budgets, the relay, the brain's Codex step) stays tested in the public repo; JOBADABRA_PUBLIC points at its checkout."""
+(scout_core's budgets, the relay, the brain's Codex step) stays tested in the public repo; the engine is this repo's root."""
 import http.server
 import io
 import os
@@ -156,7 +156,6 @@ class CentralScout(unittest.TestCase):
         self.assertIn('SCOUT_SERPAPI_KEY: ${{ secrets.CENTRAL_SCOUT_SERPAPI_KEY }}', self.text)
         self.assertNotIn('SERPAPI_API_KEY:', self.text, "that name turns on the role searches' SerpApi lane, outside the month cap")
 
-    @unittest.skipUnless((ENGINE / 'src' / 'scout_core.py').exists(), 'the public engine is not checked out next to this repo (lab-ci sets JOBADABRA_PUBLIC, so it runs there)')
     def test_the_job_limit_covers_setup_both_budgets_and_the_publish_reserve(self):
         limit = int(re.search(r'timeout-minutes: (\d+)', self.text).group(1))
         setup, reserve = 6, 3   # minutes: checkout, installs, Common Crawl (3 min cap) before the scout; upload and cost report after
