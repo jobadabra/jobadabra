@@ -149,7 +149,8 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
     const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, marketing: wantsNews(storage), consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
     if (!saved.ok) return {ok: false, error: saved.error || WORDS.not_saved};
     addressSaved = true;
-    const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);   // Mac only: the rest start off; Always on: everything starts on (owner, 6 Nov 2026)
+    // Why (6 Nov 2026, owner): without Always on the other rows start off; with it everything starts on.
+    const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);
     if (!others.ok) {   // Why (6 Nov 2026, review): a press that fails must leave nothing half-done: e-mail goes back off (and its consent is withdrawn), so a retry starts the whole block again
       await save({by: channelsOf(storage).filter(name => name !== 'email')}).catch(() => {});
       return {ok: false, error: others.error || WORDS.not_saved};
