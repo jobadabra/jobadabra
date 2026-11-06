@@ -77,7 +77,7 @@ def features(binary, run=subprocess.run):
 
 def classify(text):
     if SIGNED_OUT.search(text or ''):
-        return CliLimitError(SIGNED_OUT_TEXT)
+        return CliLimitError(SIGNED_OUT_TEXT, stopped='Codex is not signed in')
     if LIMIT.search(text or ''):
         return CliLimitError(LIMIT_TEXT)
     return CliError(f'Codex failed: {(text or "no output").strip()[:300]}')

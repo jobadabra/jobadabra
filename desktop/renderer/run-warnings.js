@@ -1,7 +1,7 @@
 // Lines of a run's log that are warnings (Notion busy, a step skipped or failed…), each once. A count of zero is not
 // one: "Enriched 1 of 1 job(s); 0 failed" is a normal report line, not a warning.
 import {where} from './store-name.js';
-const WARNING = /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached/i;
+const WARNING = /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached|^AI stopped/i;
 const ZERO = /\b0 (?:failed|skipped)\b/gi;
 const CAP = 180;
 // Long API errors are capped, but at a word: "…API usage limits. You will" reads like a broken sentence.
@@ -23,9 +23,14 @@ export const runWarningLines = run => runWarnings([
 // The Anthropic account's spend limit, in any of its wordings (a line cut short still counts when another says it).
 const LIMIT = /usage limits?|credit balance|AI limit reached|spending limit|spend limit|no credit left/i;   // the last two: OpenAI's (src/ai/providers/openai_api.py)
 export const isSpendingLimit = text => LIMIT.test(String(text || ''));
+// What stopped an AI step when it is no limit (cost.stop_line): signed out, not installed, not answering, a refused key. Why (5 Nov 2026, #3059): each read as a limit.
+const STOPPED = /^(?:Warning:\s*)?AI stopped: (.+?)(?: \(|, \d+ job\(s\)|$)/i;
+/** The cause in a stop line ("AI stopped: Claude Code is not signed in, 3 job(s) left…" -> "Claude Code is not signed in"); '' for any other line. */
+export const stopCause = line => STOPPED.exec(String(line).trim())?.[1] || '';
+export const STOP_HELP = 'Settings → Connections → AI shows what to do';
 const SKIPPED =/^Skipped job (\S+): (.*)$/;
 // "N job(s) not read by AI / not scored / left for the next check": the same loss, said three ways by the pipeline.
-const UNSCORED = /^(?:AI limit reached[^,]*,\s*)?(\d+)\s+job\(s\)\s+(?:left for the next check|not read by AI|not scored|not enriched|not ranked)/i;
+const UNSCORED = /^(?:AI (?:limit reached|stopped)\b.*?,\s*)?(\d+)\s+job\(s\)\s+(?:left for the next check|not read by AI|not scored|not enriched|not ranked)/i;
 
 // A raw provider error as the sentence it means. The API's own dumping — "BadRequestError: Error code: 400 - {'type':
 // 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits…" —
@@ -91,10 +96,21 @@ const RAW_EXCEPTION = /^(.{3,80}?):\s*(?:[\w.]+\.)?\w+(?:Error|Exception)\b.*$/;
 // The run's own row in the run history (opened at the start, its result saved at the end), said by the engine without the store's name
 // ("run not opened in the run history", Notion's "cronjob run not logged to Notion"): the person is told which store and what was not saved (#342).
 const RUN_ROW = /^(?:cronjob )?run not (opened|logged) (?:in|to) (?:the run history|Notion):\s*(.*)$/i;   // about Notion: the engine's own wording
+// Notion's own reason behind a plain "HTTP 400". Why (5 Nov 2026, #3059): it says what was refused, but it can quote what was sent, so only its known shapes are shown, the words
+// before "instead was": they hold a column or a request path, ours, never a job's value. A list of what to refuse let an unquoted value through (review), as a prefix did in #3071.
+const NOTION_SAID = /\bHTTP Error (\d{3}): (.+)$/;
+const NOTION_SHAPES = [/^[\w .-]{1,40} is not a property that exists$/, /^[\w .-]{1,40} is expected to be [\w ]{1,30}$/,
+  /^(?:body failed validation: )?body\.[\w.[\]]{1,80} should (?:not )?be[\w ≤≥<>=.-]{0,40}$/];
+function notionReason(text) {
+  const [, code, said = ''] = NOTION_SAID.exec(text) || [];
+  const reason = said.split(/,?\s+instead was\b/i)[0].replace(/`(\d+)`/g, '$1').replace(/[.\s]+$/, '');
+  const plain = code && httpSentence(code) === `the service answered with an error (HTTP ${code})`;   // a busy or refused service keeps its sentence: it says what to do
+  return plain && NOTION_SHAPES.some(shape => shape.test(reason)) ? `${reason} (HTTP ${code})` : '';
+}
 function runRowWarning(raw) {
   const m = RUN_ROW.exec(raw);
   if (!m) return null;
-  const reason = humanError(m[2]);
+  const reason = notionReason(m[2]) || humanError(m[2]);
   return `${m[1].toLowerCase() === 'opened' ? "The run's row could not be opened in" : "The run's result could not be saved to"} ${where()}${reason ? `: ${reason}` : ''}`;
 }
 export function plainWarning(raw) {
@@ -105,14 +121,22 @@ export function plainWarning(raw) {
 }
 // Only for a line nothing else reworded (an HTTP status or the AI provider's error have their own sentences).
 const rawException = raw => { const m = RAW_EXCEPTION.exec(raw); return m && !PROVIDER.test(raw) ? `${m[1].replace(/^./, c => c.toUpperCase())} (an internal error; details in the technical log).` : null; };
+// The head lines of grouped warnings: the jobs left unscored, with what stopped them. A real limit in the same run keeps the count, and the stop is then its own line.
+function leftUnscored(total, stop, limit) {
+  const stopSaid = stop && `${stop}. ${STOP_HELP}`;
+  const why = stop && !limit ? stopSaid : 'the Anthropic API spending limit was reached';
+  return [...(total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
+}
 export function groupWarnings(warnings) {
   const limit = warnings.some(text => LIMIT.test(String(text)));
+  const stop = warnings.map(stopCause).find(Boolean);
   const groups = new Map(), order = [], counts = new Set();
   const add = (label, id) => { if (!groups.has(label)) { groups.set(label, []); order.push(label); } if (id) groups.get(label).push(id); };
   for (const text of warnings) {
     const raw = String(text).trim().replace(/^Warning:\s*/i, '');
     const unscored = UNSCORED.exec(raw);
-    if (unscored && (limit || LIMIT.test(raw))) { counts.add(Number(unscored[1])); continue; }
+    if (unscored && (stop || limit || LIMIT.test(raw))) { counts.add(Number(unscored[1])); continue; }
+    if (stopCause(raw)) continue;
     const skipped = SKIPPED.exec(raw);
     if (skipped) { add(humanError(skipped[2], limit), skipped[1]); continue; }
     const plain = plainWarning(raw);
@@ -123,8 +147,7 @@ export function groupWarnings(warnings) {
     if (clean === raw.replace(/^\w*Error:\s*/, '') && rawException(raw)) { add(rawException(raw), null); continue; }
     add(head && head.length < 60 && !PROVIDER.test(head) && clean !== raw && !clean.startsWith(head) ? `${head}: ${clean}` : clean, null);
   }
-  const total = [...counts].reduce((sum, count) => sum + count, 0);
-  const out = total ? [`${total} job${total === 1 ? '' : 's'} left unscored: the Anthropic API spending limit was reached`] : [];
+  const out = leftUnscored([...counts].reduce((sum, count) => sum + count, 0), stop, limit);
   for (const label of order) {
     const ids = groups.get(label) || [];
     if (!ids.length) { if (!out.includes(label)) out.push(label); continue; }

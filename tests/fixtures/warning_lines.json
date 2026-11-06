@@ -8,6 +8,7 @@
   {"line": "Enriched 3 of 5 job(s); 2 failed", "warning": true},
   {"line": "Feed acme was skipped: timeout", "warning": true},
   {"line": "AI limit reached, 12 job(s) not scored", "warning": true},
+  {"line": "AI stopped: Claude Code is not signed in, 12 job(s) left for the next check", "warning": true},
   {"line": "Enriched 1 of 1 job(s); 0 failed", "warning": false},
   {"line": "0 skipped, 0 failed", "warning": false},
   {"line": "Found 12 new jobs", "warning": false},

@@ -29,12 +29,13 @@ class AiUnavailable(AiError):
 
 
 class AiLimit(AiError):
-    """The user's plan or spend limit, or an engine that cannot run (not signed in, not installed). `final`: no fallback can help."""
+    """The user's plan or spend limit, or an engine that cannot run (not signed in, not installed). `final`: no fallback can help.
+    `stopped`: the cause in a few words when it is no limit ("Claude Code is not signed in"); every line a run writes reads it from here (cost.stopped)."""
     ai_limit = True
 
-    def __init__(self, text, final=False):
+    def __init__(self, text, final=False, stopped=''):
         super().__init__(text)
-        self.final = final
+        self.final, self.stopped = final, stopped
 
 
 def error_facts(error):
@@ -62,7 +63,7 @@ def named(error):
 def reason(error):
     """Why an AI call failed, as a sentence for the person (warnings are read by people; the class name and facts go to detail())."""
     if isinstance(error, AiLimit):
-        return 'the AI limit was reached'
+        return error.stopped or ('the AI key was refused' if getattr(error, 'ai_status', None) == 401 else 'the AI limit was reached')
     if isinstance(error, AiUnavailable):
         return 'the AI service is busy or unavailable'
     return 'the AI call failed'

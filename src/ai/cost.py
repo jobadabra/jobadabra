@@ -126,6 +126,19 @@ def limit_reason(error):
     return ('Claude Code (your Claude plan) cannot go on' if chosen.name in ('api', 'cli') else f'{chosen.label} cannot go on') + (f' ({said})' if said else '')
 
 
+def stopped(error):
+    """What stopped the step in a few words when it is no limit ("Claude Code is not signed in"); '' for a limit."""
+    return getattr(error, 'stopped', '') or ('the AI key was refused (Settings → Connections → AI)' if refused_key(error) else '')
+
+
+def stop_line(error):
+    """The run's log line for what stopped an AI step. Why (5 Nov 2026, #3059): every stop read "AI limit reached", so a person signed out was told to wait for a limit.
+    The app reads both heads: desktop/renderer/run-warnings.js."""
+    if refused_key(error):
+        return f'AI stopped: {limit_reason(error)}'   # its status and model: a refused key is debugged from this line
+    return f'AI stopped: {stopped(error)}' if stopped(error) else f'AI limit reached: {limit_reason(error)}'
+
+
 def limit_message(error, what, retry=''):
     """The message a paused AI step sends (Telegram / the app), for the API's limit or Claude Code's."""
     if cli_limit(error):

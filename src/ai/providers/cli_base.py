@@ -93,9 +93,9 @@ class CliAdapter(Adapter):
     # ----- shared -----
     def call(self, args, prompt, folder):
         if not self.binary:
-            raise CliLimitError(self.missing_text, final=True)
+            raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed')
         if self._timeouts >= TIMEOUTS_BEFORE_STOP:  # it already failed to answer: nothing waits again in this run
-            raise CliLimitError(self.not_answering_text.format(seconds=self.timeout))
+            raise CliLimitError(self.not_answering_text.format(seconds=self.timeout), stopped=f'{self.tool} did not answer')
         wait = max(self.timeout, FILES_TIMEOUT_S) if self.reads_files(args) and not os.getenv(self.timeout_env) else self.timeout
         asked = time.monotonic()
         with self._slots:
@@ -105,10 +105,10 @@ class CliAdapter(Adapter):
             except subprocess.TimeoutExpired:
                 self._timeouts += 1
                 if self._timeouts >= TIMEOUTS_BEFORE_STOP:
-                    raise CliLimitError(self.not_answering_text.format(seconds=wait)) from None
+                    raise CliLimitError(self.not_answering_text.format(seconds=wait), stopped=f'{self.tool} did not answer') from None
                 raise CliError(f'{self.tool} did not answer within {wait} s') from None
             except OSError as error:
-                raise CliLimitError(self.missing_text, final=True) from error
+                raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed') from error
         self._timeouts = 0
         return self.parse(out, args, began - asked, time.monotonic() - began)
 

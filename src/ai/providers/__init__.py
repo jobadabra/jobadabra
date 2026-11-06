@@ -32,7 +32,7 @@ ENGINES = {
                   missing='This needs your Anthropic API key (Settings → Connections → AI), or choose Claude Code there.'),
     'cli': Engine('cli', 'claude', SUBSCRIPTION, local_only=True, fallback='api', label='Claude Code (your plan)',
                   plan='Claude Code, on your Claude plan',
-                  limit='your Claude Code plan limit was reached (or it is signed out)',
+                  limit='your Claude Code plan limit was reached',
                   missing='Claude Code is chosen but not found on this computer: install it (claude.com/claude-code) or switch to '
                           'an API key in Settings → Connections → AI.'),
     'openai': Engine('openai', 'openai', API, key='OPENAI_API_KEY', label='OpenAI API', who='OpenAI',
@@ -40,7 +40,7 @@ ENGINES = {
                      missing='This needs your OpenAI API key (Settings → Connections → AI), or choose Codex there.'),
     'codex': Engine('codex', 'openai', SUBSCRIPTION, local_only=True, fallback='openai', label='Codex (your ChatGPT plan)', who='Codex',
                     plan='Codex, on your ChatGPT plan',
-                    limit='your Codex (ChatGPT plan) limit was reached (or it is signed out)',
+                    limit='your Codex (ChatGPT plan) limit was reached',
                     missing='Codex is chosen but not found on this computer: install it (developers.openai.com/codex) or switch to '
                             'an OpenAI API key in Settings → Connections → AI.'),
 }
