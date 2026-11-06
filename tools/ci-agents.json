@@ -20,6 +20,7 @@
     {"repo": "jobadabra", "file": "prompt-cases-night.yml", "name": "Prompt cases nightly", "engine": "broker"},
     {"repo": "jobadabra", "file": "prompt-cases.yml", "name": "Prompt cases by-hand re-ask", "engine": "broker"},
     {"repo": "jobadabra", "file": "search-personas.yml", "name": "Search check, 18 personas", "engine": "broker"},
+    {"repo": "jobadabra", "file": "search-reference.yml", "name": "Search reference, 18 personas", "engine": "broker"},
     {"repo": "jobadabra", "file": "replay-refill.yml", "name": "Replay refill", "engine": "api-key"},
     {"repo": "jobadabra", "file": "record-sites.yml", "name": "Record sites daily batch", "engine": "broker"},
     {"repo": "jobadabra", "file": "watch-live.yml", "name": "Daily watch list", "engine": "broker"},

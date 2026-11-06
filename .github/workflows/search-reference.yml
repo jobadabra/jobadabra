@@ -1,0 +1,83 @@
+name: CI · Search reference (18 personas)
+# The yardstick of the nightly Search check (owner, 6 Nov 2026: "how to know if it's a good or bad result?"; EURES as the baseline): for each of the 18 fictional candidates, how many right-role, right-place jobs
+# EURES lists (its public API, outside the app), judged by the same blind judge as the night. Counts go to Admin → Job search → Night search ("found 7 of 24 reachable"); nothing else leaves. A report: it blocks nothing.
+# EURES only (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone, so no Google Jobs step and no search secret here.
+# Tool: tools/persona-search/reference.py (run, send). Guard: tests/tooling/ci/test_search_reference.py. By hand for now; a weekly start from the Worker is one line in app-core/src/scheduler.js when the owner asks.
+run-name: Search reference · by hand
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:   # Why (6 Nov 2026): its own group, not the nightly's: a queued reference must not replace a queued night (GitHub keeps one pending run per group); it is short, a few minutes of broker
+  group: search-reference
+  cancel-in-progress: false
+
+env:
+  CI_AI_PROVIDER: codex
+  E2E_AI_PROVIDER: codex
+  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # as the nightly check: the blind judge on the small tier through the Codex broker
+
+jobs:
+  reference:
+    name: Search reference
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # the broker's GitHub OIDC, no stored secret
+    steps:
+      - name: This run can use the Codex broker
+        id: token
+        run: |
+          mkdir -p out
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+            echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "::warning::No trusted GitHub OIDC token: the reference is not judged"
+      - uses: actions/checkout@v5
+        if: steps.token.outputs.ok == 'yes'
+        with: {persist-credentials: false}
+      - uses: ./.github/actions/gh-ledger
+        if: steps.token.outputs.ok == 'yes'
+        with:
+          phase: start
+        timeout-minutes: 5
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.ok == 'yes'
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        if: steps.token.outputs.ok == 'yes'
+        with: {python-version: '3.12'}
+      - name: The engine's libraries (the EURES reader, the judge)
+        if: steps.token.outputs.ok == 'yes'
+        run: |
+          pip install --quiet -r requirements.txt
+          (cd desktop/e2e && (npm ci || npm install))
+      - name: Read EURES for the 18 candidates, then the blind judge (right role, right place; Codex small tier)
+        if: steps.token.outputs.ok == 'yes'
+        run: |
+          set -o pipefail
+          node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run out/reference.json 2>&1 | tee out/reference.log
+      - name: Send the counts to Admin → Job search → Night search
+        if: steps.token.outputs.ok == 'yes'
+        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
+        run: python3 tools/persona-search/reference.py send out/reference.json 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: search-reference
+          retention-days: 90
+          path: |
+            out/reference.json
+            out/reference.log
+      - if: always() && steps.token.outputs.ok == 'yes'
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5

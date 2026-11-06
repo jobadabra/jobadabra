@@ -7,7 +7,14 @@
    "kind": "non-tech",
    "city": "Sofia",
    "country": "Bulgaria",
-   "language": "Bulgarian"
+   "language": "Bulgarian",
+   "reference": {
+    "words": [
+     "шофьор",
+     "камионен шофьор"
+    ],
+    "nuts2": "BG41"
+   }
   },
   {
    "family": "hr",
@@ -15,7 +22,14 @@
    "kind": "non-tech",
    "city": "Cluj-Napoca",
    "country": "Romania",
-   "language": "Romanian"
+   "language": "Romanian",
+   "reference": {
+    "words": [
+     "specialist resurse umane",
+     "HR"
+    ],
+    "nuts2": "RO11"
+   }
   },
   {
    "family": "carpenter",
@@ -23,7 +37,14 @@
    "kind": "non-tech",
    "city": "Brussels",
    "country": "Belgium",
-   "language": "French"
+   "language": "French",
+   "reference": {
+    "words": [
+     "charpentier",
+     "menuisier"
+    ],
+    "nuts2": "BE10"
+   }
   },
   {
    "family": "warehouse",
@@ -31,7 +52,14 @@
    "kind": "non-tech",
    "city": "Zurich",
    "country": "Switzerland",
-   "language": "German"
+   "language": "German",
+   "reference": {
+    "words": [
+     "Lagerist",
+     "Lagermitarbeiter"
+    ],
+    "nuts2": "CH04"
+   }
   },
   {
    "family": "chef",
@@ -39,7 +67,14 @@
    "kind": "non-tech",
    "city": "Krakow",
    "country": "Poland",
-   "language": "Polish"
+   "language": "Polish",
+   "reference": {
+    "words": [
+     "kucharz",
+     "cook"
+    ],
+    "nuts2": "PL21"
+   }
   },
   {
    "family": "marketing",
@@ -47,7 +82,14 @@
    "kind": "tech",
    "city": "Zagreb",
    "country": "Croatia",
-   "language": "Croatian"
+   "language": "Croatian",
+   "reference": {
+    "words": [
+     "digitalni marketing",
+     "marketing menadžer"
+    ],
+    "nuts2": "HR05"
+   }
   },
   {
    "family": "nurse",
@@ -55,7 +97,14 @@
    "kind": "non-tech",
    "city": "Dublin",
    "country": "Ireland",
-   "language": "English"
+   "language": "English",
+   "reference": {
+    "words": [
+     "registered nurse",
+     "staff nurse"
+    ],
+    "nuts2": "IE06"
+   }
   },
   {
    "family": "welder",
@@ -63,7 +112,13 @@
    "kind": "non-tech",
    "city": "Leipzig",
    "country": "Germany",
-   "language": "German"
+   "language": "German",
+   "reference": {
+    "words": [
+     "Schweißer"
+    ],
+    "nuts2": "DED5"
+   }
   },
   {
    "family": "electrician",
@@ -71,7 +126,13 @@
    "kind": "non-tech",
    "city": "Lyon",
    "country": "France",
-   "language": "French"
+   "language": "French",
+   "reference": {
+    "words": [
+     "électricien"
+    ],
+    "nuts2": "FRK2"
+   }
   },
   {
    "family": "software",
@@ -79,7 +140,14 @@
    "kind": "tech",
    "city": "Amsterdam",
    "country": "Netherlands",
-   "language": "Dutch"
+   "language": "Dutch",
+   "reference": {
+    "words": [
+     "software engineer",
+     "softwareontwikkelaar"
+    ],
+    "nuts2": "NL32"
+   }
   },
   {
    "family": "data-analyst",
@@ -87,7 +155,13 @@
    "kind": "tech",
    "city": "Lisbon",
    "country": "Portugal",
-   "language": "Portuguese"
+   "language": "Portuguese",
+   "reference": {
+    "words": [
+     "analista de dados"
+    ],
+    "nuts2": "PT17"
+   }
   },
   {
    "family": "accountant",
@@ -95,7 +169,13 @@
    "kind": "non-tech",
    "city": "Milan",
    "country": "Italy",
-   "language": "Italian"
+   "language": "Italian",
+   "reference": {
+    "words": [
+     "contabile"
+    ],
+    "nuts2": "ITC4"
+   }
   },
   {
    "family": "teacher",
@@ -103,7 +183,13 @@
    "kind": "non-tech",
    "city": "Prague",
    "country": "Czechia",
-   "language": "Czech"
+   "language": "Czech",
+   "reference": {
+    "words": [
+     "učitel"
+    ],
+    "nuts2": "CZ01"
+   }
   },
   {
    "family": "mechanic",
@@ -111,7 +197,13 @@
    "kind": "non-tech",
    "city": "Gothenburg",
    "country": "Sweden",
-   "language": "Swedish"
+   "language": "Swedish",
+   "reference": {
+    "words": [
+     "bilmekaniker"
+    ],
+    "nuts2": "SE23"
+   }
   },
   {
    "family": "sales",
@@ -119,7 +211,13 @@
    "kind": "non-tech",
    "city": "Budapest",
    "country": "Hungary",
-   "language": "Hungarian"
+   "language": "Hungarian",
+   "reference": {
+    "words": [
+     "értékesítő"
+    ],
+    "nuts2": "HU11"
+   }
   },
   {
    "family": "pharmacist",
@@ -127,7 +225,13 @@
    "kind": "non-tech",
    "city": "Vienna",
    "country": "Austria",
-   "language": "German"
+   "language": "German",
+   "reference": {
+    "words": [
+     "Apotheker"
+    ],
+    "nuts2": "AT13"
+   }
   },
   {
    "family": "hotel",
@@ -135,7 +239,13 @@
    "kind": "non-tech",
    "city": "Valencia",
    "country": "Spain",
-   "language": "Spanish"
+   "language": "Spanish",
+   "reference": {
+    "words": [
+     "recepcionista"
+    ],
+    "nuts2": "ES52"
+   }
   },
   {
    "family": "civil-engineer",
@@ -143,7 +253,14 @@
    "kind": "non-tech",
    "city": "Copenhagen",
    "country": "Denmark",
-   "language": "Danish"
+   "language": "Danish",
+   "reference": {
+    "words": [
+     "civilingeniør"
+    ],
+    "nuts2": "DK01"
+   }
   }
- ]
+ ],
+ "_reference": "Per persona, for the weekly reference (tools/persona-search/reference.py, 6 Nov 2026): `words` = the role in the place's own language (EURES matches words, not our English title), `nuts2` = the city's NUTS 2021 region (checked against Eurostat's table)."
 }
