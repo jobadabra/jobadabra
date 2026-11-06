@@ -294,6 +294,13 @@
    "kind": "ci"
   },
   {
+   "path": "/search-check/night",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/applying/fidelity",
    "methods": [
     "PUT"
