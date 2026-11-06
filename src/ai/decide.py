@@ -75,7 +75,9 @@ def items_waiting():
     return f'The AI could not judge {n} items this time; they wait for the next run'
 
 
-def _say_waiting():
+def say_waiting():
+    """Say what waits for the next run and how many AI calls each kind made: at exit (atexit), and by src/run_exit.py just before a hard stop, which skips atexit.
+    Why (#3339, 6 Nov 2026, night p1 Sofia: no `AI decide calls` line): the press ended by os._exit, so the slow presses the nightly counts calls on never printed it."""
     # stderr: these print after a command's answer, and a JSON command's answer is its last stdout line (desktop/lib/pipeline-commands.js; #2118's
     # PR run, 26 Oct 2026: Focus said "Could not read your Notion" after a read that asked the AI). The run log and the Notion row read stderr too.
     line = items_waiting()
@@ -86,7 +88,8 @@ def _say_waiting():
         print('AI decide calls: ' + ', '.join(f'{t} {n}' for t, n in sorted(WAITING['calls'].items())), file=sys.stderr, flush=True)
 
 
-atexit.register(_say_waiting)
+_say_waiting = say_waiting   # the name tests/unit/ai/test_plain_ai_warnings.py calls
+atexit.register(say_waiting)
 
 
 def failed(what, error, n=1):

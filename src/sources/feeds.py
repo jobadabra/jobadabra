@@ -119,8 +119,12 @@ def triage(jobs):
 
 
 def in_my_place(job):
-    """The job is located in one of your places (Claude's 'best' answer, or the place words name it), not merely remote anywhere."""
-    return place_of(job) == 'best' or mentions(PLACE, country_codes.name(job.get('location') or ''))
+    """The job is located in one of your places, not merely remote anywhere: Claude's answer decides ('best' or 'in' yes, 'out' no), the place words only when it has none.
+    Why (#3339, 6 Nov 2026, night p13 Prague): 'in' did not count and a word beat an 'out', so a vacancy the AI placed in the region ("Praha, Czech Republic" vs the word "czechia") missed the local title floor."""
+    verdict = place_of(job)
+    if verdict in ('best', 'in'):
+        return True
+    return False if verdict == 'out' else mentions(PLACE, country_codes.name(job.get('location') or ''))
 
 
 def excluded_title(title):
