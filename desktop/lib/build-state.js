@@ -35,13 +35,14 @@ export function headBuild(repo, run = execFileSync) {
 }
 
 // running: {commit, time} the app started on. -> {label, commit, ahead}: ahead = PRs merged into the checkout since that change desktop/ or extension/ (0 when unknown).
-// Why (owner, 29 Oct 2026: "let's fix this counter to show merged PRs in master, not other things"): it counted commits, 41 for 13 merged PRs. Main
-// takes PRs as merge commits, so each PR is one merge on the first-parent line.
+// Why (owner, 29 Oct 2026: "let's fix this counter to show merged PRs in master, not other things"): it counted commits, 41 for 13 merged PRs.
+// Why (6 Nov 2026, owner: "why I don't see anymore … a yellow badge"): main takes PRs as squash commits since 1 Nov, so `--merges` counted 0 of 13. Each PR is one commit on the
+// first-parent line either way (a squash, or an older merge), so the count walks that line without --merges.
 export function appBuild({repo, running, run = execFileSync, now = Date.now()}) {
   const label = labelOf(running);
   if (!running?.commit) return {label, commit: '', ahead: 0};
   let ahead = 0;
-  try { ahead = Number(cached(`ahead:${repo}:${running.commit}`, now, () => gitIn(repo, run)('rev-list', '--count', '--merges', '--first-parent', `${running.commit}..HEAD`, '--', 'desktop', 'extension'))) || 0; } catch { /* nothing is claimed */ }
+  try { ahead = Number(cached(`ahead:${repo}:${running.commit}`, now, () => gitIn(repo, run)('rev-list', '--count', '--first-parent', `${running.commit}..HEAD`, '--', 'desktop', 'extension'))) || 0; } catch { /* nothing is claimed */ }
   return {label, commit: running.commit, ahead};
 }
 

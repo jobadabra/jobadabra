@@ -24,12 +24,24 @@ test('a build is told as short sha and time; no sha says nothing', () => {
 });
 
 test('the app run from source: its start commit, and how many merged desktop/extension PRs the checkout has gained since', () => {
-  const run = fakeGit({'rev-parse --short=7 HEAD': 'abc1234\n', 'log -1 --format=%cI HEAD': `${T}\n`, 'rev-list --count --merges --first-parent abc1234..HEAD -- desktop extension': '3\n'});
+  const run = fakeGit({'rev-parse --short=7 HEAD': 'abc1234\n', 'log -1 --format=%cI HEAD': `${T}\n`, 'rev-list --count --first-parent abc1234..HEAD -- desktop extension': '3\n'});
   const state = appBuild({repo: '/r', running: {commit: 'abc1234', time: T}, run, now: 1e6});
   assert.deepEqual({ahead: state.ahead, label: state.label}, {ahead: 3, label: 'abc1234 · 16 Oct 14:02'});
   assert.equal(appBuild({repo: '/r', running: {commit: 'abc1234', time: T}, run: fakeGit({'rev-list --count': '0\n'}), now: 2e6}).ahead, 0);
   assert.equal(appBuild({repo: '/r', running: {commit: 'abc1234', time: T}, run: () => { throw new Error('no git'); }, now: 3e6}).ahead, 0, 'git cannot count: nothing is claimed');
   assert.equal(appBuild({repo: '/r', running: {commit: '', time: ''}, run, now: 4e6}).ahead, 0, 'a build with no commit is never "behind"');
+});
+
+test('squash-merged PRs count: one commit on main per PR, merge commits too, other folders not (owner, 6 Nov 2026: no badge after 13 PRs)', () => {
+  // Why (6 Nov 2026): main took PRs as squash commits from 1 Nov, and `--merges` counted 0 of the 13 desktop PRs since the owner's start, so the badge never showed. A real git history, not a fake.
+  const repo = mkdtempSync(join(tmpdir(), 'build-state-')), git = (...args) => execFileSync('git', ['-C', repo, ...args], {encoding: 'utf8'}).trim();
+  const commit = (file, message) => { mkdirSync(join(repo, file, '..'), {recursive: true}); writeFileSync(join(repo, file), message); git('add', '-A'); git('commit', '-qm', message); };
+  git('init', '-q', '-b', 'main'); git('config', 'user.email', 't@example.test'); git('config', 'user.name', 't');
+  commit('desktop/a.js', 'start');
+  const running = {commit: git('rev-parse', '--short=7', 'HEAD'), time: T};
+  git('checkout', '-qb', 'pr'); commit('extension/b.js', 'a merged PR'); git('checkout', '-q', 'main'); git('merge', '-q', '--no-ff', '-m', 'Merge pull request #1', 'pr');
+  commit('desktop/c.js', 'squash PR #2'); commit('extension/d.js', 'squash PR #3'); commit('docs/e.md', 'squash PR #4, docs only');
+  assert.equal(appBuild({repo, running, now: 5e6}).ahead, 3, 'one merge + two squash PRs that changed desktop/ or extension/; the docs PR is not a fix to restart for');
 });
 
 test('the extension: its commit from the version a checkout stamps, and how many fixes it lacks', () => {
