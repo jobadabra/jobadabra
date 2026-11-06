@@ -20,6 +20,7 @@ OLD = re.compile(r'GarryOne\\?/(?!jobadabra-personal-always-on)')
 CLASSES = (
     ('docs/', 'dated specs and notes are history; the owner\'s docs'),
     ('desktop/e2e/recorded/', 'recorded evidence: the case text says where the page was seen, when it was written'),
+    ('lab/', 'the imported jobadabra-lab (lm 1/4, 6 Nov 2026): its workflows name GarryOne until 2/4 and 3/4 move them to the root; the prefix goes with the last of them'),
 )
 TEST_PATH = re.compile(r'(^|/)(tests?|fixtures)/|\.test\.(js|mjs)$')   # test inputs: a fake name for a fake gh; a test that asserts a tool's output moves with the tool
 

@@ -1,3 +1,4 @@
+| `lab/` | the imported back-office (jobadabra-lab): its `lab/tests/test_*.py` and `*.test.mjs` beside their modules; run by the last step of tests-python.yml | `cd lab && python3 -m unittest tests.test_license` |
 # Where tests live
 
 > **One folder per kind of test.** The path says its type (unit, integration, e2e), its intent (a guard of a rule, a test of our own tooling) and its scope (the code it is about). A new test goes in the row that fits; `tests/guards/rules/test_test_folders.py` fails a test file anywhere else.
