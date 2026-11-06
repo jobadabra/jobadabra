@@ -49,10 +49,13 @@ def http_status(url):
 
 
 def repo_is_public(url, status=http_status):
-    """False when the repo of a github.com image URL cannot be read anonymously (private: an anonymous GET of its images answers 404 too); True for any other host or a public repo.
+    """False only when the repo of a github.com image URL answers 404 to an anonymous API call (private: its images are 404 to us too). True for any other host, a github.com path that
+    is not owner/repo (user-attachments/assets/<id> uploads), a public repo, and any other or no answer (rate limit, network): then the image's own 404 stands.
     Asked only after a 404, so a good body costs no extra call. Measured 6 Nov 2026: jobadabra, jobadabra-web and jobadabra-lab are all public."""
-    match = re.match(r'https://github\.com/([^/]+/[^/]+)/', url)
-    return not match or status(f'https://api.github.com/repos/{match.group(1)}') == 200
+    match = re.match(r'https://github\.com/([^/]+)/([^/]+)/', url)
+    if not match or match.group(1) in ('user-attachments', 'assets', 'orgs', 'settings'):
+        return True
+    return status(f'https://api.github.com/repos/{match.group(1)}/{match.group(2)}') != 404
 
 
 def unloaded(body, status=http_status):

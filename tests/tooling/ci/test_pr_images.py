@@ -100,8 +100,11 @@ class ImageUrlsLoad(unittest.TestCase):
         table = {url: 404, 'https://api.github.com/repos/jobadabra/private-repo': 404}
         self.assertEqual(screens.image_report(body(url), answers(table))[0], [])
         self.assertIn(url, screens.image_report(body(url), answers(table))[1][0])
-        table['https://api.github.com/repos/jobadabra/private-repo'] = 200   # a public repo: the 404 stands
-        self.assertEqual(len(screens.image_report(body(url), answers(table))[0]), 1)
+        for api in (200, 403, None):   # a public repo, a rate-limited or silent API: the image's 404 stands
+            table['https://api.github.com/repos/jobadabra/private-repo'] = api
+            self.assertEqual(len(screens.image_report(body(url), lambda u: table[u] if u in table else 200)[0]), 1, api)
+        upload = 'https://github.com/user-attachments/assets/0b1c2d3e-0000-0000-0000-000000000000'   # not owner/repo: no lookup, a dead upload fails
+        self.assertEqual(len(screens.image_report(body(upload), answers({upload: 404}))[0]), 1)
 
     def test_urls_come_from_markdown_and_img_tags_once(self):
         text = '![a](https://h/a.png) ![b](<https://h/b.png>) <img alt="c" src="https://h/c.png"> ![a](https://h/a.png) ![local](shot.png)'
