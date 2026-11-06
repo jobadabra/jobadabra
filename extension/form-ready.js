@@ -79,6 +79,8 @@ export async function pageSignature(tab, frameId = 0) {
   return sigOf(sketch);
 }
 
+const nextStepPressed = (pressed, tab, before, frameId) => { if (pressed) readNextStep(tab, before, frameId).catch(() => {}); };
+
 async function askForm(tab, frameId, again = false) {
   if (looking.has(tab.id)) return;
   looking.add(tab.id);
@@ -110,7 +112,7 @@ async function askForm(tab, frameId, again = false) {
     if (answer.answer === 'blocked' && !again) setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, true).catch(() => {}); }, timing.recheckMs);
     pressed = await pressNext(tab, frameId, answer, sig);   // a multi-step form's next step, when the person turned it on (next-step.js)
   } finally { looking.delete(tab.id); }
-  if (pressed) readNextStep(tab, lastSig, frameId).catch(() => {});   // after `looking` is free: the new step's own fill asks this judge again
+  nextStepPressed(pressed, tab, lastSig, frameId);   // after `looking` is free: the new step's own fill asks this judge again
 }
 
 // A fill that gave up on a REQUIRED control it can never settle (a suggest-only combobox whose list never offers a match) ends at the person, whatever the AI judge says or whether it answers
