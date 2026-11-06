@@ -127,6 +127,7 @@ def _proposed(board_ideas, search):
 
 
 def aggregators_kept(feed_db, name, jobs, shown=None):
+    """A reader's jobs in your roles and places (aggregators.kept); `shown` {url: item} are the jobs already handed to scoring as their batches landed."""
     from .sources import aggregators
     return aggregators.kept(feed_db, name, jobs, shown=shown)
 

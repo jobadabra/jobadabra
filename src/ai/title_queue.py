@@ -58,6 +58,7 @@ def hub():
 
 
 def current_hub():
+    """The hub of the press running now (None outside the first-jobs slice)."""
     return _hub[0]
 
 

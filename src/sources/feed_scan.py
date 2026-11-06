@@ -33,7 +33,29 @@ def _sure(index, source, download, db, now, shown):
     return found
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
+def _hander(db, sources, downloads, shown, now, on_sorted):
+    """The hand(jobs) a batch of landed titles calls (#2918): its jobs in your places are recorded once, kept in `shown` (the pass after the whole sort takes them as
+    they are) and given to on_sorted(items); None when nobody listens."""
+    if not on_sorted:
+        return None
+    owner = {id(job): (index, source) for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)) if not failure for job in jobs or []}
+
+    def hand(fit_jobs):
+        items = []
+        with db:
+            for job in fit_jobs:
+                index, source = owner[id(job)]
+                if (index, str(job["id"])) not in shown:
+                    board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
+                    shown[(index, str(job["id"]))] = _item(source, job, feeds.record(db, board, job, now))
+                    items.append(shown[(index, str(job["id"]))])
+        if items:
+            feeds.run_counts.matched(items)
+            on_sorted(items)
+    return hand
+
+
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):  # noqa: C901 (Why (6 Nov 2026): far over the limit before this change; the hand-over only moved to _hander, no new branch; splitting scan is its own change)
     """Fetch every source, keep SRE-type titles in preferred locations, record seen history. report['funnel'] counts what the
     crawl saw and what the role keywords caught (src/coverage.py), so a search that is too narrow can be said out loud.
     on_jobs(jobs): called with each site's sure jobs as soon as that site is read (owner, 18 Oct 2026: jobs shown as quickly as possible;
@@ -118,21 +140,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
     report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested), "unchanged": [source['company'] for source in same]}
     tally = feeds.coverage.Tally()
     feeds.triage_places([job for jobs, failure in downloads if not failure for job in jobs or []])   # where the new locations are: Claude, once each
-    owner = {id(job): (index, source) for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)) if not failure for job in jobs or []}
-
-    def hand(fit_jobs):   # a batch of titles landed: its jobs in your places go to scoring now, recorded once, still "new"
-        items = []
-        with db:
-            for job in fit_jobs:
-                index, source = owner[id(job)]
-                if (index, str(job["id"])) not in shown:
-                    board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
-                    shown[(index, str(job["id"]))] = _item(source, job, feeds.record(db, board, job, now))
-                    items.append(shown[(index, str(job["id"]))])
-        if items:
-            feeds.run_counts.matched(items)
-            on_sorted(items)
-    with title_queue.handing_to(hand if on_sorted else None):
+    hand = _hander(db, sources, downloads, shown, now, on_sorted)
+    with title_queue.handing_to(hand):
         feeds.triage([job for jobs, failure in downloads if not failure for job in jobs or []])   # titles the words miss: Claude sorts the new ones, once
     for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)):
         board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
