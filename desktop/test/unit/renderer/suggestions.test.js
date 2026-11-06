@@ -115,7 +115,19 @@ test('Always on redraws preserve the draft and busy state, and late errors reach
   assert.equal(fourth.input.value, 'alex@example.com');
 });
 
-test('every engine producer is drawn: on Focus, in its home, and on Jobs when it is about the search or applying', () => {
+test('today\'s insight is on the Jobs bar for every topic it can have, beside the rows Jobs already had (owner, 6 Nov 2026: "they should be on Focus/Jobs under suggestions card")', () => {
+  const topics = [...engine.match(/^CATEGORY_TOPICS = \{([^}]*)\}/m)[1].matchAll(/: '(\w+)'/g)].map(match => match[1]);
+  assert.ok(topics.includes('profile') && topics.includes('search') && topics.includes('applying'), 'the engine gives insights these topics');
+  const rejection = entry('rejection');
+  for (const topic of new Set(topics)) {
+    const insight = {...entry('insight'), topic};
+    assert.deepEqual(jobsEntries([insight, rejection]), [insight, rejection], `an insight about ${topic}`);
+  }
+  assert.deepEqual(jobsEntries([entry('week'), entry('analyze')]).map(item => item.kind), ['week', 'analyze'], 'week and analyze are search topics: already on Jobs, unchanged');
+  assert.deepEqual(jobsEntries([{...entry('insight'), topic: 'profile', kind: 'tune'}]), [], 'only the insight kind is let in, not a profile topic');
+});
+
+test('every engine producer is drawn: on Focus, in its home, and on Jobs when it is about the search or applying (today\'s insight always)', () => {
   assert.deepEqual(PRODUCERS.slice().sort(), Object.keys(HOMES).sort(), 'a new producer in src/suggestions.py is listed here');
   const pool = PRODUCERS.map(entry);
   assert.deepEqual(focusRows(pool, []).map(row => row.entry.kind), PRODUCERS);
@@ -123,7 +135,7 @@ test('every engine producer is drawn: on Focus, in its home, and on Jobs when it
     const [one] = pool.filter(item => item.kind === kind);
     assert.ok(LOOK[kind], `${kind} has its icon, colour and badge`);
     assert.deepEqual(homeEntries(pool, one.home).filter(item => item.kind === kind), [one], kind);
-    assert.equal(jobsEntries(pool).includes(one), ['search', 'applying'].includes(one.topic), kind);
+    assert.equal(jobsEntries(pool).includes(one), ['search', 'applying'].includes(one.topic) || kind === 'insight', kind);   // today's insight is on Jobs whatever its topic (6 Nov 2026)
   }
   assert.ok(read('../../../renderer/pages/strategy-suggestions.js').includes("homeSuggestions('strategy')"), "Strategy draws its home's entries");
 });

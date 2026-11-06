@@ -47,8 +47,11 @@ export const movedItems = items => (items || []).filter(item => item.place === '
 /** Focus's Suggestions list: the pool's entries as the engine sorted them (today's insight first), then the moved items. -> [{entry} | {item}] */
 export const focusRows = (entries, items) => [...(entries || []).map(entry => ({entry})), ...movedItems(items).map(item => ({item}))];
 
-/** The Jobs bar's entries: the search- and applying-related ones. */
-export const jobsEntries = entries => (entries || []).filter(entry => entry.alsoJobs || JOBS_TOPICS.includes(entry.topic));   // alsoJobs: Always on's card is on Jobs too (2 Nov 2026)
+/**
+ * The Jobs bar's entries: the search- and applying-related ones, Always on's card (alsoJobs, 2 Nov 2026) and today's insight whatever its topic.
+ * Why (6 Nov 2026, owner: "they should be on Focus/Jobs under suggestions card"): an insight about Skills or the CV (topic 'profile') showed on Focus only.
+ */
+export const jobsEntries = entries => (entries || []).filter(entry => entry.alsoJobs || entry.kind === 'insight' || JOBS_TOPICS.includes(entry.topic));
 
 /**
  * What the Jobs bar shows, from its four states (the one owner of that decision): kept paint = the line last drawn, until Focus is read; Focus unavailable = hidden

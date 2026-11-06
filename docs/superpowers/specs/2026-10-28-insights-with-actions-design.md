@@ -35,7 +35,8 @@ three places, one state: acting in any place updates all of them.
   forms to send). It lists open insights from every screen, strongest first: 3 shown, "Show all N". The daily Insight card
   becomes its first entry (#16).
 - **Jobs:** one collapsed bar above the list, "N suggestions for your search · Show", expanding in place to only the
-  search- and applying-related ones (Strategy #2 and #15, Tune my strategy, Analyze now). Collapsed by default; the list stays
+  search- and applying-related ones (Strategy #2 and #15, Tune my strategy, Analyze now) and today's insight whatever its topic
+  (owner, 6 Nov 2026: "they should be on Focus/Jobs under suggestions card"). Collapsed by default; the list stays
   in view. Hidden at zero.
 Every insight shows its evidence (what it saw, with links) and its action buttons. No new page.
 

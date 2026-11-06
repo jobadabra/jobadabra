@@ -242,7 +242,7 @@ function drawBullets(box, bullets) {
   }));
 }
 
-/** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; the rule is suggestions.js barView. */
+/** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries and today's insight; the rule is suggestions.js barView. */
 let focusAsked = false, focusUnavailable = false;
 export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
