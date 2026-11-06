@@ -11,8 +11,8 @@ CASES = Path(__file__).resolve().parents[2] / 'fixtures' / 'score-cases.json'
 
 class ScoreSearchLicence(unittest.TestCase):
     def test_the_rule_reaches_the_scorer_prompt(self):
-        self.assertIn('hold already', score_search.RULE)
-        self.assertIn('hold already', score_search.PART['properties']['fit']['description'])
+        self.assertIn('not prefers', score_search.RULE)
+        self.assertIn('not prefers', score_search.PART['properties']['fit']['description'])
         self.assertIn(score_search.RULE, score.SYSTEM)
 
     def test_the_case_set_holds_the_owners_case_and_both_traps(self):

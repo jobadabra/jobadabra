@@ -75,6 +75,22 @@
    "expect": {
     "score_min": 55
    }
+  },
+  {
+   "id": "preferred-certificate-is-a-gap",
+   "why": "Review of the Cessna PR: a certificate the posting only prefers is a gap, never the cap.",
+   "search": [
+    "Senior Site Reliability Engineer"
+   ],
+   "job": {
+    "title": "Senior Site Reliability Engineer",
+    "company": "Example Cloud AG",
+    "location": "Zurich, Switzerland",
+    "description": "Own the reliability of a Kubernetes platform on AWS: SLOs, incident response, Terraform, Datadog. An AWS Certified DevOps Professional certificate is a plus, not a requirement. Senior role, hybrid in Zurich, English working language. 7+ years of experience running production systems."
+   },
+   "expect": {
+    "score_min": 65
+   }
   }
  ]
 }
