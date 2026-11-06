@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="always-on-choice.css">
+<link rel="stylesheet" href="mail-switches.css">
 <link rel="stylesheet" href="add-dialog.css">
 <link rel="stylesheet" href="ui-menu.css">
 <link rel="stylesheet" href="chips.css">
@@ -186,7 +187,7 @@
       <div class="switch-row cv-consent" id="cv-email" hidden>
         <span class="switch"><input type="checkbox" id="cv-email-consent" aria-describedby="cv-email-note"><span></span></span>
         <span><label for="cv-email-consent" id="cv-email-wording"></label>
-          <span class="muted small" id="cv-email-note">To <b id="cv-email-address"></b>. <span id="cv-email-rest"></span></span>
+          <span class="muted small" id="cv-email-note">We found <b id="cv-email-address"></b> in your CV. <span id="cv-email-rest"></span></span>
           <span class="message" id="cv-email-message" role="status"></span></span>
       </div>
       <div class="actions">
@@ -1153,6 +1154,7 @@
                   <option value="1">Every hour</option><option value="2">Every 2 hours</option><option value="3">Every 3 hours</option>
                   <option value="4">Every 4 hours</option><option value="6">Every 6 hours</option><option value="8">Every 8 hours</option>
                   <option value="12">Twice a day</option><option value="24">Once a day (07:30)</option><option value="0">Only when I ask</option></select><span class="task-state" data-schedule-state="search"></span></label>
+              <div class="task-row is-mail" data-mail-slot="app-matches" hidden></div>
               <label class="task-row"><span><b>Check Gmail &amp; Calendar</b><small>Replies, interviews, reminders; needs Google connected</small></span>
                 <select data-schedule="mail">
                   <option value="1">Once daily (08:00)</option><option value="3">3 times daily</option>
@@ -1282,6 +1284,14 @@
               <p class="message" id="notify-message"></p>
             </div>
           </div>
+          <div class="setting panel" id="setting-mail" data-keywords="email switch matches weekly summary applied needs you stopped" hidden>
+            <div class="summary-head"><i data-icon="bell"></i><h3>E-mails you choose</h3></div>
+            <p class="muted panel-lead">Each one is yours to turn on or off. Off means it is never sent.</p>
+            <p class="muted small" id="mail-where"></p>
+            <div id="mail-rows" class="run-mode-main"></div>
+            <div class="mail-pitch" id="mail-pitch" hidden><span class="muted small">Turn on Always on and these arrive on schedule, even with your Mac off.</span> <button type="button" class="link small" id="mail-turn-on">Turn on</button></div>
+            <p class="message" id="mail-message"></p>
+          </div>
         </div>
         <div class="settings-page" data-settings-page="apply" hidden>
           <div class="settings-page-head has-action"><div><h2>Apply</h2><p class="muted">How Jobadabra fills and sends your applications.</p></div>
@@ -1295,6 +1305,12 @@
           <div class="setting panel" id="setting-apply-mode">
             <div class="summary-head"><i data-icon="send"></i><h3>How applying works</h3></div>
             <div id="apply-modes"></div>
+          </div>
+          <div class="setting panel" id="setting-apply-mail" data-mail-group hidden>
+            <div class="summary-head"><i data-icon="bell"></i><h3>E-mail me</h3></div>
+            <p class="muted panel-lead" id="apply-mail-where">The same switches as in Notifications.</p>
+            <div data-mail-slot="app-needs-you" hidden></div>
+            <div data-mail-slot="app-applied" hidden></div>
           </div>
           <div class="setting panel" id="setting-apply-answers">
             <div class="summary-head"><i data-icon="chat"></i><h3>Answers</h3></div>

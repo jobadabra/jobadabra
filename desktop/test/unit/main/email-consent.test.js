@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {FAILED, LINE} from '../../../renderer/email-consent-words.js';
+import {CV_LINE, FAILED, LINE, SETTINGS_LINE} from '../../../renderer/email-consent-words.js';
 import {asked, clear, consentOf, consented, record, shouldAsk} from '../../../lib/email-consent.js';
 import {cvAddress, view} from '../../../lib/email-from-cv.js';
 import {addressToSave, atContinue, startsOn} from '../../../renderer/email-consent-choice.js';
@@ -42,12 +42,19 @@ test('ticking stores the date and the exact sentence, once the site took the add
   const kept = storage({links: CV}), calls = [], now = new Date('2026-11-05T10:00:00Z');
   assert.deepEqual(await save(kept, {by: ['email', 'app'], email: await cvAddress(kept), consentVia: 'cv', consentGiven: 'default'}, site(calls), now), {ok: true});
   assert.equal(calls[0].body.email, 'alex.example@example.com');
-  assert.deepEqual(kept.settings().emailConsent, {at: '2026-11-05T10:00:00.000Z', wording: LINE, where: 'cv', given: 'default'});
+  assert.deepEqual(kept.settings().emailConsent, {at: '2026-11-05T10:00:00.000Z', wording: CV_LINE, where: 'cv', given: 'default'});
   assert.ok(consented(kept) && channelsOf(kept).includes('email'));
   const refused = storage({links: CV});
   await save(refused, {by: ['email'], email: 'alex.example@example.com'}, async () => ({json: async () => ({ok: false, error: 'taken'})}), now);
   assert.equal(refused.settings().emailConsent, undefined, 'a refused address stores no consent');
   assert.equal(consented(refused), false);
+});
+
+test('a consent given beside the Email switch in Settings stores the sentence that switch shows, the CV step its own', async () => {
+  const typed = storage();
+  await save(typed, {by: ['email', 'app'], email: 'a@b.co', consentVia: 'settings'}, site([]));
+  assert.equal(typed.settings().emailConsent.wording, SETTINGS_LINE);
+  assert.equal(SETTINGS_LINE, 'E-mail me app notifications.');
 });
 
 test('an address typed in Settings before consent existed counts as consented; unticking e-mail withdraws it for good', async () => {
@@ -167,6 +174,15 @@ test('Continue with the switch left on: the CV address goes to the site once, wi
   assert.equal(puts[0].body.marketing, false, 'the switch asks for "only when something needs you": never the product news');
   assert.equal(kept.settings().emailConsent.given, 'default');
   assert.equal(kept.settings().emailConsent.where, 'cv');
+});
+
+test('Continue with the switch left on: it means "e-mail me app notifications" and stores that sentence; while the switches are dark no row is written (the person cannot see them, and a row stored off would stop its mail)', async () => {
+  const kept = storage({links: CV}), calls = [], call = handlersOn(kept), before = globalThis.fetch;
+  const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-needs-you', suggested: {mac: 'no', always: 'mail'}, choice: ''}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: 'off'}];
+  globalThis.fetch = async (url, init) => { calls.push({url: String(url), method: init?.method || 'GET', body: init?.body ? JSON.parse(init.body) : null}); return {json: async () => (String(url).endsWith('/api/mail/choices') && !init?.body ? {ok: true, rows} : {ok: true})}; };
+  try { assert.deepEqual(await call('emailConsentGive', {where: 'cv', given: 'default'}), {ok: true}); } finally { globalThis.fetch = before; }
+  assert.equal(kept.settings().emailConsent.wording, CV_LINE);
+  assert.deepEqual(calls.filter(item => item.url.endsWith('/api/mail/choices')), [], 'dark: the rows are written by the CV step only once the switches are shown (mail-choices.test.js: "the CV step writes every row")');
 });
 
 test('Continue with the switch turned off: nothing reaches the site, and a withdrawn consent is never offered again', async () => {

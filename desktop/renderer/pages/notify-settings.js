@@ -8,6 +8,7 @@ import {openSetting} from './settings.js';
 import {forgetEmailState} from './setup-email-card.js';
 import {plainError} from '../run-warnings.js';
 import {addressToSave} from '../email-consent-choice.js';
+import {bindMailSwitches, showMailSwitches} from './mail-switches.js';
 
 const BOXES = {email: 'notify-email', app: 'notify-app', telegram: 'notify-telegram'};
 let busy = false;
@@ -33,6 +34,7 @@ export async function showNotify(error = '') {
   $('notify-resend').hidden = !state.email || !state.reached || state.confirmed;   // unknown while the site is unreachable, and a confirmed address has nothing to confirm
   $('notify-email-note').textContent = said.email;
   $('notify-message').textContent = plainError(said.message);
+  showMailSwitches();   // the per-mail switches follow the same state (Notifications and the automations)
 }
 
 export function bindNotify({savedToast, updateRepo}) {
@@ -58,5 +60,6 @@ export function bindNotify({savedToast, updateRepo}) {
     const sent = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
     $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || 'Try again in a minute.');
   });
+  bindMailSwitches();
   window.addEventListener('notify-refresh', () => showNotify());   // the Test pop-up borrows this card and asks it to read the state again
 }
