@@ -159,5 +159,20 @@ class TheFirstJobNeedsOneBatch(unittest.TestCase):
         self.assertEqual(seen, [True], 'read with keep=True: the early read stays in place')
 
 
+    def test_a_reader_that_has_read_is_sorted_before_the_next_score_starts(self):
+        """Night p1 Sofia: EURES was read at 73 s but the hub scored its employer jobs first (31 s on a slow AI) and took EURES at 112 s, past every clock. One owner of the order:
+        the hub looks at a reader that has read before it starts a score (the boards stand in for EURES: the same `_Readers` path)."""
+        import time
+
+        def scan(sources, feed_db, on_sorted=None, **kw):   # the employer scan ends only once the boards' hand-over is waiting for the hub
+            hub, end = title_queue.current_hub(), time.monotonic() + WAIT
+            while hub.box.qsize() == 0 and time.monotonic() < end:
+                time.sleep(0.005)   # a hang guard, the state waited for is the posted message
+            self.assertGreater(hub.box.qsize(), 0, 'positive control: the boards had read')
+            return {'jobs': [dict(FAR)], 'sources': []}
+        run = Slice(scan, lambda say: [dict(NEAR)])
+        run.run()
+        self.assertEqual(run.events[0], "scored ['far', 'near']", f'both jobs were there before the first score: {run.events}')
+
 if __name__ == '__main__':
     unittest.main()

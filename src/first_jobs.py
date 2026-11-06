@@ -11,7 +11,7 @@ The employer sites' jobs are imported and scored without waiting for the boards;
 Tests: tests/unit/sources/test_first_jobs.py, tests/unit/sources/test_first_jobs_slow_boards.py, tests/unit/sources/test_proven_boards.py."""
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from . import store
 from .ai import score, slots, title_queue
@@ -174,6 +174,7 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     try:
         with title_queue.hub() as hub, batch_scope.concurrent():
             readers = _Readers(hub, {'boards': pool.submit(slots.carry(read_boards)), **(_others(pool) if others is None else others)}, feed_db, imports, hand, say)
+            scoring.before = readers.take_ready
             with batch_scope.reader('employer sites'):
                 report = scan(chosen, feed_db, on_sorted=hand)
             imports.add(report)
@@ -192,18 +193,32 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
 
 def _others(pool):
     """The readers started with the search that join the slice besides the boards: EURES's early read (src/sources/eures.py start_early), when there is one, taken in
-    `pool` the moment it has read, its locations placed on the map; the hub sorts its titles with every other reader's, in the one queue (`_Readers.join`)."""
+    `pool` the moment it has read and handed over at once; its locations are placed on the map meanwhile, never waited for. The hub sorts its titles with every other
+    reader's, in the one queue (`_Readers.join`)."""
     from .paths import load_search_config
     from .sources import eures
     search = load_search_config()
     if eures.early(search) is None:
         return {}
 
+    handed = Future()   # the jobs as read: the hub takes them from here, whatever the placing below is doing
+
     def read_eures():   # EURES reads the person's nearest area first
         from .ai import batch_scope
         with batch_scope.reader('EURES'), slots.priority(slots.FIRST):
-            return placed(eures.read(search, keep=True))
-    return {'EURES': pool.submit(slots.carry(read_eures))}
+            try:
+                jobs = eures.read(search, keep=True)
+            except BaseException as error:  # noqa: BLE001 — the hub's join sees it, as it saw a failed read before
+                handed.set_exception(error)
+                raise
+            handed.set_result(jobs)
+            # Why (#3339, 6 Nov 2026, night run 42152934954, p10 Amsterdam): the jobs were placed BEFORE they were handed over, and on a slow AI one placing call took 61 s, so 200
+            # vacancies read at 52 s reached the hub at 115 s, past every title and score clock. Placing only orders by distance (geo keeps the answer): it never holds the jobs back.
+            # Same worker thread, no new one: the press's stop is unchanged (`placed` asks nothing once time_budget.ended(); src/run_exit.py bounds the thread).
+            placed(jobs)
+            return jobs
+    pool.submit(slots.carry(read_eures))
+    return {'EURES': handed}
 
 
 def placed(jobs):
@@ -271,6 +286,11 @@ class _Readers:
             self.say(f'First jobs: {self.imports.count} found on the job boards')   # Why (#2928, Gitar; #2918): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js), another wording left these jobs hidden; N counts every job imported so far, said from the hub's join of a reader
         self.hand([])
 
+    def take_ready(self):
+        """Sort and import every reader that has read and is waiting for the hub, without waiting for one that is still reading."""
+        while self.hub.run_next(0):
+            pass
+
     def settle(self, scoring):
         """Score what is read, the nearest first; with nothing left to score and a reader still reading, wait for the next one (never past the press's end)."""
         from .sources import read_budget
@@ -324,6 +344,7 @@ class _Scoring:
     def __init__(self, db, hidden, profile, scorer, model, first, fits, sync, limit):
         self.args, self.first, self.fits, self.sync, self.limit = (db, hidden, profile, scorer, model), first, fits, sync, limit
         self.done, self.tried, self.queued, self.strong, self.stopped = 0, set(), set(), False, False
+        self.before = lambda: None   # called before each batch is chosen: the readers that have read are sorted first (_Readers.take_ready)
 
     def over(self):
         return self.strong or self.stopped or len(self.tried) >= self.limit
@@ -332,6 +353,8 @@ class _Scoring:
         """Score the next batch of the nearest jobs not scored yet (time_budget.best_first), whatever they are so far -> True when a batch was scored."""
         from . import time_budget
         db, hidden, profile, scorer, model = self.args
+        self.before()   # Why (#3339, night p1 Sofia): EURES was read at 73 s and sat in the hub's box while 3 scores took 31 s (81-112 s), then its titles met the clock. One owner of the order:
+        # a reader that has read is sorted before a score starts, so its jobs compete for this batch by distance (best_first below), never behind it. First: the sort may end the slice.
         if self.over():
             return False
         order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile, scope='new')) if str(job['id']) not in self.tried]
