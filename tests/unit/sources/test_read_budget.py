@@ -36,7 +36,7 @@ class Base(unittest.TestCase):
             self.addCleanup(patch.stop)
         self.addCleanup(time_budget.start, 0)
 
-    def scan(self, sources, slow_from=60):
+    def scan(self, sources, slow_from=60, late=()):
         read, db, self.handed = [], sqlite3.connect(':memory:'), []
         db.execute(TABLE)
         handed = self.handed
@@ -48,6 +48,8 @@ class Base(unittest.TestCase):
 
         def fetcher(source):   # the first sites answer fast, the long tail slowly (the pilot run's 1,123 sites)
             n = int(source['slug'][1:])
+            if n in late:
+                time.sleep(0.05)   # Why (#3342, #3346): forces the late thread start a loaded runner showed; the OS's start order is not the ranking's
             read.append(n)
             time.sleep(0.01 if n < slow_from else 0.3)
             return [job(n)]
@@ -110,7 +112,7 @@ class RankedFirst(Base):
         time_budget.start(180)
         with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
                 mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
-            _, read, _, log = self.scan(given, slow_from=50)
+            _, read, _, log = self.scan(given, slow_from=50, late={3})
         # Why (#3342, 6 Nov 2026): this asserted the order the first wave's threads START fetching (`read`); on a loaded runner site 3 started after 10 ('2 started
         # before 9 on #2187' was the same). The code guarantees the order it hands the sites to the pool, so that is what is asserted.
         self.assertEqual(self.handed[:3], [7, 3, 9], 'the proven best are handed to the pool first, in the ranking\'s order')
