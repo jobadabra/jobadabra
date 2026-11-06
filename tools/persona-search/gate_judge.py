@@ -80,6 +80,7 @@ def judge(n, pool, asker=ask):
 
 def main(argv):
     n, jobs_path, out = argv[:3]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder, before the paid judge call, so a bad path fails at once (6 Nov 2026, run 42191804037)
     pool = json.loads(Path(jobs_path).read_text(encoding='utf-8'))
     verdict = judge(n, pool)
     Path(out).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
