@@ -45,6 +45,7 @@ pr_view() {
   printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, title: $p.title, headRefOid: $p.head.sha, headRefName: $p.head.ref,
       isDraft: ($p.draft // false), state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
       mergeable: (if $p.mergeable == true then "MERGEABLE" elif $p.mergeable == false then "CONFLICTING" else "UNKNOWN" end),
+      mergeState: ($p.mergeable_state // "unknown"),
       mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end), labels: [$p.labels[]?.name],
       comments: [.[1][]? | {id: .node_id, author: {login: (.user.login // "")}, body, url: .html_url, createdAt: .created_at}],
       reviews: [.[2][]? | {id: .node_id, author: {login: (.user.login // "")}, body, state, submittedAt: .submitted_at}],
