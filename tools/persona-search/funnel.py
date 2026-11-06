@@ -21,7 +21,8 @@ BOARD_WEB = re.compile(r'^Job boards: (?:a web search found (.+)|the web search 
 SCOUT_WEB = re.compile(r'^Scout: employers with no job site found are looked up with a web search')
 COUNTS = re.compile(r'^Run counts: looked=(\d+) matches=(\d+) scored=(\d+) good=(\d+)')
 EURES = re.compile(r'^EURES: (?:([\d,]+) vacanc|still reading when its time ended, keeping the ([\d,]+) read)')
-TITLES = re.compile(r'^Titles: asking .+? about ([\d,]+) job title\(s\) in your places, in ([\d,]+) batch')
+TITLES = re.compile(r'^Titles: .+? sorted ([\d,]+) new title\(s\) in your places')
+TITLE_BATCH = 30   # src/ai/title_triage.py BATCH: one AI call per up to 30 titles
 AI_DECIDE = re.compile(r'^AI decide calls: (.+)$')
 NO_BOARD = 'no trade or local board'
 
@@ -35,8 +36,9 @@ def step_count(part, out):
     if m := EURES.match(part):
         out['eu_jobs'] = number(m[1] or m[2])   # what OUR EURES read listed in the user's places (src/sources/eures.py), not what EURES holds
     elif m := TITLES.match(part):
+        # Why (6 Nov 2026, Gitar on #3353): the "asking ... in N batch(es)" line is the plan, printed before any batch runs; the closing "sorted N" line counts what was answered, so a press cut by its time reads fewer.
         out['titles_asked'] = (out['titles_asked'] or 0) + number(m[1])
-        out['ai_calls'] = (out['ai_calls'] or 0) + number(m[2])   # one AI call per title batch
+        out['ai_calls'] = (out['ai_calls'] or 0) + -(-number(m[1]) // TITLE_BATCH)
     elif m := AI_DECIDE.match(part):
         out['ai_calls'] = (out['ai_calls'] or 0) + sum(int(item.rsplit(' ', 1)[-1]) for item in m[1].split(', ') if item.rsplit(' ', 1)[-1].isdigit())
     else:
