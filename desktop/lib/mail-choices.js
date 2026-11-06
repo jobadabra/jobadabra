@@ -3,7 +3,7 @@
 // Owner, 5-6 Nov 2026: "each users sets his own emails" and "Only the person": the choice is final, and no Admin stop overrides it. The Mac never sends mail itself: it posts to our API (notify-channel.js).
 // Invariants: a row the person never chose shows (and acts) as the suggested default of their mode; a row they chose is never reset by a mode change; a failed save leaves the switch where it was and says so.
 // Guard: test/unit/main/mail-choices.test.js.
-import {call, channelsOf, installKey, wantsNews} from './notify-channel.js';
+import {call, channelsOf, installKey} from './notify-channel.js';
 import {rowLine} from '../renderer/email-consent-words.js';
 import * as hosted from './hosted-search.js';
 
@@ -12,6 +12,8 @@ import * as hosted from './hosted-search.js';
 export const MAIL_SWITCHES_SHOWN = true;
 
 export const ROWS = ['app-matches', 'app-needs-you', 'app-applied', 'app-weekly', 'app-stopped', 'app-nothing'];
+/** The two mails from Jobadabra itself ("News from Jobadabra" card): the site keeps each as its own list, never as part of an app row, and sends its `name`/`when` words. Owner, 6 Nov 2026: "I like the 2 switches". */
+export const NEWS = ['releases', 'tips'];
 const WHERE = {
   mac: 'From your Mac: only while your Mac is awake and the app is open. If it isn\'t, no e-mail is sent.',
   always: 'From Always on: on schedule, even with your Mac off.',
@@ -36,23 +38,25 @@ export function viewOf(row, mode, emailingNow = true) {
 
 const mirror = (storage, rows) => storage.saveSettings({mailRows: rows.map(({id, choice, suggested}) => ({id, choice: choice || '', suggested}))});
 
-/** Reads the rows from the website: -> {ok, mode, where, rows: [view]} or {ok: false, error}. Keeps the mirror the engine's env reads. Never throws.
+/** Reads the rows from the website: -> {ok, mode, where, rows: [view], news: [{id, name, when, on}]} or {ok: false, error}. Keeps the mirror the engine's env reads. Never throws.
  *  The website answers the rows for a person with no address too (web #463); a `no_address` refusal from an older answer still shows no rows. */
 export async function read(storage, fetcher = globalThis.fetch) {
   const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
   const none = !answer.ok && answer.reason === 'no_address';
   if (!answer.ok && !none) return {ok: false, error: WORDS[answer.reason] || answer.error || 'The website could not be reached.', reason: answer.reason || ''};
   const rows = none || !Array.isArray(answer.rows) ? [] : answer.rows, mode = modeOf(storage), going = emailing(storage);
+  const news = none || !Array.isArray(answer.news) ? [] : answer.news.filter(item => NEWS.includes(item?.id) && typeof item.name === 'string').map(({id, name, when, on}) => ({id, name, when: String(when || ''), on: on === true}));   // the site's own answer: off when it holds none
   mirror(storage, rows);   // no address = no rows: the engine's off-list must not keep honouring an earlier address's choices
-  return {ok: true, mode, where: WHERE[mode], macWhere: WHERE.mac, emailing: going, note: storage.settings().mailNote || '', rows: rows.map(row => viewOf(row, mode, going)).filter(row => row.shown)};
+  return {ok: true, mode, where: WHERE[mode], macWhere: WHERE.mac, emailing: going, note: storage.settings().mailNote || '', news, rows: rows.map(row => viewOf(row, mode, going)).filter(row => row.shown)};
 }
 
-/** One press: stores the person's choice for a row, with the app's own key (the website refuses a repo's key). -> {ok} or {ok: false, error: words}. The mirror follows only a saved choice. */
+/** One press: stores the person's choice for a row or a news mail, with the app's own key (the website refuses a repo's key). -> {ok} or {ok: false, error: words}. The mirror (app rows only: the engine never sends news) follows only a saved choice. */
 export async function set(storage, row, on, fetcher = globalThis.fetch) {
-  if (!ROWS.includes(row) || typeof on !== 'boolean') return {ok: false, error: 'That e-mail is not one of the switches.'};
+  if (!ROWS.includes(row) && !NEWS.includes(row) || typeof on !== 'boolean') return {ok: false, error: 'That e-mail is not one of the switches.'};
   if (!/^JPF1\./.test(installKey(storage))) return {ok: false, error: 'No install key yet: open the app online once, then try again.'};
   const answer = await call(storage, 'POST', '/api/mail/choices', {mail: row, on}, fetcher);
   if (!answer.ok) return {ok: false, error: WORDS[answer.reason] || answer.error};
+  if (NEWS.includes(row)) return {ok: true};
   mirror(storage, (storage.settings().mailRows || []).map(entry => (entry.id === row ? {...entry, choice: on ? 'on' : 'off'} : entry)));
   if (storage.settings().mailNote) storage.saveSettings({mailNote: ''});   // a saved press leaves the screen true to the site: an older refusal's words go
   return {ok: true};
@@ -103,7 +107,7 @@ async function writeRows(storage, pairs, fetcher) {
  */
 export const choose = (storage, row, on, options = {}) => queued(async () => {
   const done = on ? await turnOnNow(storage, row, options) : await set(storage, row, on, options.fetcher);
-  if (!done.ok) return done;
+  if (!done.ok || NEWS.includes(row)) return done;   // a news mail is not an app row: nothing of it is kept beside the person's own rows
   const kept = new Set(storage.settings().mailRowsPressed || []);
   if (on) kept.delete(row); else kept.add(row);
   storage.saveSettings({mailRowsPressed: [...kept]});
@@ -150,11 +154,11 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
   let addressSaved = false;
   if (!emailing(storage)) {
     if (!address) return {ok: false, error: WORDS.need_address};
-    const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, marketing: wantsNews(storage), consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
+    const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
     if (!saved.ok) return {ok: false, error: saved.error || WORDS.not_saved};
     addressSaved = true;
-    // Why (6 Nov 2026, owner): without Always on the other rows start off; with it everything starts on.
-    const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);
+    // Why (6 Nov 2026, owner; review): without Always on the other rows start off; with it everything starts on, except after a press on a news mail, which turns no app mail on in any mode (the person asked for one mail from us).
+    const others = await writeUnchosen(storage, (_, mode) => mode === 'always' && !NEWS.includes(row), fetcher, row);
     if (!others.ok) {   // Why (6 Nov 2026, review): a press that fails must leave nothing half-done: e-mail goes back off (and its consent is withdrawn), so a retry starts the whole block again
       await save({by: channelsOf(storage).filter(name => name !== 'email')}).catch(() => {});
       return {ok: false, error: others.error || WORDS.not_saved};

@@ -12,7 +12,7 @@ import {cvAddress, view} from '../../../lib/email-from-cv.js';
 import {addressToSave, atContinue, startsOn} from '../../../renderer/email-consent-choice.js';
 import {registerNotifyHandlers} from '../../../lib/notify-handlers.js';
 import {NO_ADDRESS, turnOnShared} from '../../../lib/hosted-email.js';
-import {channelsOf, notifyEnv, save, sendEmail, wantsNews} from '../../../lib/notify-channel.js';
+import {channelsOf, notifyEnv, save, sendEmail} from '../../../lib/notify-channel.js';
 
 const storage = ({settings = {}, links = [], secrets = {JOBADABRA_TRIAL_KEY: 'JPF1.install-0001.tok'}} = {}) => {
   const kept = {...settings}, root = fs.mkdtempSync(path.join(os.tmpdir(), 'consent-'));
@@ -128,14 +128,11 @@ test('Always on: a consent that could not be saved stops the press, so its messa
   } finally { Object.assign(globalThis, keep); }
 });
 
-// Why (5 Nov 2026, owner): "Keep on, service mails only": any marketing needs a separate unticked choice, so no path turns the news on without that tick.
-test('product news stay off until the person ticks them, whichever way e-mail was turned on', async () => {
-  const turned = [], kept = storage({settings: {notifyEmail: 'alex.example@example.com'}});
-  await turnOnShared(kept, {}, {turnOn: async (_, given) => { turned.push(given); return {ok: true}; }});
-  assert.equal(turned[0].marketing, false, 'Always on with no choice stored');
-  assert.equal(wantsNews(kept), false);
-  kept.saveSettings({notifyMarketing: true});
-  assert.equal(wantsNews(kept), true, 'the tick is the only way on');
+// Why (6 Nov 2026, owner: "I like the 2 switches"): the site holds the news answers; the app never sends its own copy, so turning on Always on cannot take back a person's yes.
+test('Always on is turned on with the address only: no news answer travels with it', async () => {
+  const turned = [], kept = storage({settings: {notifyEmail: 'alex.example@example.com', notifyMarketing: true}});
+  await turnOnShared(kept, {marketing: false}, {turnOn: async (_, given) => { turned.push(given); return {ok: true}; }});
+  assert.deepEqual(turned, [{email: 'alex.example@example.com'}]);
 });
 
 test('turned off before Continue: nothing reaches the site or a mailbox, and the step counts as asked', async () => {
@@ -171,7 +168,7 @@ test('Continue with the switch left on: the CV address goes to the site once, wi
   const puts = calls.filter(item => item.url.endsWith('/api/account/email') && item.method === 'PUT');
   assert.equal(puts.length, 1);
   assert.equal(puts[0].body.email, 'alex.example@example.com');
-  assert.equal(puts[0].body.marketing, false, 'the switch asks for "only when something needs you": never the product news');
+  assert.equal('marketing' in puts[0].body, false, 'the switch asks for "only when something needs you": no news answer travels with the address');
   assert.equal(kept.settings().emailConsent.given, 'default');
   assert.equal(kept.settings().emailConsent.where, 'cv');
 });

@@ -242,3 +242,50 @@ test('Always on writing in the background and a press off made meanwhile: the pe
   assert.equal(stored.get('app-matches'), 'off', 'the press waited for the background write, so its off landed last');
   assert.deepEqual(person.settings().mailRowsPressed, ['app-matches']);
 });
+
+// News from Jobadabra (owner, 6 Nov 2026: "I like the 2 switches", both start off): the site's `news` list, pressed like a row, kept apart from the app rows.
+const NEWS = [{id: 'releases', name: "What's new", when: 'a new version and what changed', on: false}, {id: 'tips', name: 'News and tips', when: 'offers and tips', on: true}];
+
+test('a read carries the site\'s news list with its own words and answers, and ignores an id the app does not know', async () => {
+  const person = storage({settings: ON});
+  const view = await read(person, site([{ok: true, rows: ROWS, news: [...NEWS, {id: 'come-back', name: 'Come back', on: true}, {id: 'releases'}]}]));
+  assert.deepEqual(view.news, [{id: 'releases', name: "What's new", when: 'a new version and what changed', on: false}, {id: 'tips', name: 'News and tips', when: 'offers and tips', on: true}]);
+  assert.deepEqual(view.rows.map(row => row.id), ['app-matches', 'app-needs-you'], 'news never joins the app rows');
+  assert.deepEqual((await read(person, site([{ok: true, rows: ROWS}]))).news, [], 'an older answer with no list: no card');
+  assert.deepEqual((await read(person, site([{ok: false, reason: 'no_address'}]))).news, []);
+});
+
+test('a news press posts {mail, on} with the app\'s key and keeps nothing beside the app rows (no mirror, no pressed list)', async () => {
+  const asked = [], person = storage({settings: {...ON, mailRows: ROWS}});
+  assert.deepEqual(await choose(person, 'tips', true, {fetcher: site([{ok: true}], asked)}), {ok: true, addressSaved: false});
+  assert.deepEqual(asked, [{url: 'https://www.jobadabra.top/api/mail/choices', method: 'POST', key: KEY, body: {mail: 'tips', on: true}}]);
+  assert.deepEqual(await choose(person, 'releases', false, {fetcher: site([{ok: true}])}), {ok: true});
+  assert.equal(person.settings().mailRowsPressed, undefined, 'a news switch is not one of the person\'s app rows');
+  assert.deepEqual(person.settings().mailRows, ROWS, 'the mirror of the app rows is untouched');
+  assert.equal(person.settings().mailRows.some(row => NEWS.some(item => item.id === row.id)), false);
+});
+
+test('a refused news press says why and the screen follows the site; an id that is neither a row nor a news mail is refused without a call', async () => {
+  const asked = [], person = storage({settings: ON});
+  assert.deepEqual(await choose(person, 'releases', true, {fetcher: site([{ok: false, reason: 'not_saved'}], asked)}), {ok: false, error: 'Could not save it just now. The switch is back where it was; try again in a minute.'});
+  assert.match((await choose(person, 'marketing', true, {fetcher: site([], asked)})).error, /not one of the switches/);
+  assert.equal(asked.length, 1);
+});
+
+test('the first news press with e-mail off is the first turn-on: the address goes to the site with no news answer, the other rows start off, then the news mail is stored on', async () => {
+  const asked = [], person = storage({settings: {notifyBy: ['app']}}), sent = [];
+  const done = await choose(person, 'releases', true, {address: 'a@b.co', name: "What's new", save: async choice => { sent.push(choice); person.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher: site([{ok: true, rows: ROWS}, {ok: true}, {ok: true}, {ok: true}], asked)});
+  assert.deepEqual(done, {ok: true, addressSaved: true});
+  assert.equal('marketing' in sent[0], false, 'the address goes alone');
+  assert.equal(sent[0].consentWording, "E-mail me: What's new.");
+  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]), [['app-matches', false], ['app-needs-you', false], ['releases', true]]);
+  assert.deepEqual((await choose(storage({settings: {notifyBy: ['app']}}), 'tips', true, {fetcher: site([])})), {ok: false, error: 'Add your e-mail address in Settings → Notifications first, then turn it on.'}, 'no address anywhere: no call, the switch goes back');
+});
+
+test('a first news press with Always on running turns no app mail on: the other rows are stored off, only the news mail is on', async () => {
+  const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: ''}], asked = [];
+  const person = storage({settings: {notifyBy: ['app'], cloud: {repo: 'me/j'}}});
+  const done = await choose(person, 'tips', true, {address: 'a@b.co', save: async choice => { person.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher: site([{ok: true, rows}, {ok: true}, {ok: true}, {ok: true}], asked)});
+  assert.equal(done.ok, true);
+  assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]).sort(), [['app-matches', false], ['app-weekly', false], ['tips', true]]);
+});

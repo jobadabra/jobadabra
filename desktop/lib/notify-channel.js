@@ -20,10 +20,6 @@ export function channelsOf(storage) {
   return wanted.filter(name => (name === 'email' ? !!emailOf(storage) && consent.consented(storage) : name === 'telegram' ? telegramReady(storage) : true));
 }
 
-// Why (5 Nov 2026, owner): "Keep on, service mails only": product news need their own tick, so a person who never chose has none. The one place this default lives.
-/** True when the person ticked product news in Settings → Notifications. */
-export const wantsNews = storage => storage.settings().notifyMarketing === true;
-
 // A run is asked to deliver (--send) when it has somewhere to deliver to besides the app's own window.
 export const deliveryReady = storage => channelsOf(storage).some(name => name === 'email' || name === 'telegram');
 
@@ -57,21 +53,21 @@ export async function state(storage, fetcher = globalThis.fetch) {
   const settings = storage.settings(), site = await call(storage, 'GET', '/api/account/email', null, fetcher);
   if (site.ok && site.email && site.email !== settings.notifyEmail) storage.saveSettings({notifyEmail: site.email});
   return {by: channelsOf(storage), chosen: Array.isArray(settings.notifyBy) ? settings.notifyBy : null, telegram: telegramReady(storage), email: site.ok ? site.email || '' : emailOf(storage),
-    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, unconfirmedStopped: !!site.unconfirmedStopped, emailAt: String(settings.notifyEmailAt || ''), cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', marketing: site.ok ? !!site.marketing : wantsNews(storage), reached: !!site.ok,
+    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, unconfirmedStopped: !!site.unconfirmedStopped, emailAt: String(settings.notifyEmailAt || ''), cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', reached: !!site.ok,
     automation: settings.apply?.mode === 'auto' && !!settings.apply?.autoConfirmedAt};   // Full automation on and confirmed (the pop-up "nothing can reach you", notify-moments)
 }
 
-// Saves the choice. A changed address or opt-in goes to the site first; the choice is kept only if it was accepted. Choosing e-mail with an address is the consent (stored with the date and
+// Saves the choice. A changed address or cadence goes to the site first; the choice is kept only if it was accepted. Choosing e-mail with an address is the consent (stored with the date and
 // the sentence shown: `consentVia` = where it was given, 'settings' when omitted; `consentGiven` = 'default' when a switch that started on was left on); turning e-mail off withdraws it.
-export async function save(storage, {by, email, marketing, cadence, consentVia, consentGiven, consentWording}, fetcher = globalThis.fetch, now = new Date()) {
+export async function save(storage, {by, email, cadence, consentVia, consentGiven, consentWording}, fetcher = globalThis.fetch, now = new Date()) {
   const clean = String(email || '').trim().toLowerCase();
   const wasOn = channelsOf(storage).includes('email');   // before keepAddress: an address typed in this save is not e-mail having been on
   if (Array.isArray(by) && by.includes('email') && !clean && !emailOf(storage)) return {ok: false, error: 'Enter your email address to be told by email.'};
   const digest = ['daily', 'weekly'].includes(cadence) ? cadence : null;   // how often the digest of everything but new matches comes
-  if (clean && (clean !== emailOf(storage) || typeof marketing === 'boolean' || digest)) {
-    const site = await call(storage, 'PUT', '/api/account/email', {email: clean, ...(typeof marketing === 'boolean' ? {marketing} : {}), ...(digest ? {cadence: digest} : {})}, fetcher);
+  if (clean && (clean !== emailOf(storage) || digest)) {
+    const site = await call(storage, 'PUT', '/api/account/email', {email: clean, ...(digest ? {cadence: digest} : {})}, fetcher);
     if (!site.ok) return site;
-    keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven, consentWording}, now);
+    keepAddress(storage, {clean, digest, consentVia, consentGiven, consentWording}, now);
   }
   if (Array.isArray(by)) {
     storage.saveSettings({notifyBy: by.filter(name => CHANNELS.includes(name))});
@@ -81,10 +77,10 @@ export async function save(storage, {by, email, marketing, cadence, consentVia, 
 }
 
 // The site took the address: kept here. A new address with no consent stored records one (typing it and saving is the act; the CV step passes how it was given).
-function keepAddress(storage, {clean, marketing, digest, consentVia, consentGiven, consentWording}, now) {
+function keepAddress(storage, {clean, digest, consentVia, consentGiven, consentWording}, now) {
   const changed = clean !== emailOf(storage);   // the day count of the unconfirmed reminders (lib/notify-moments.js) starts with a new address, not with a new news choice
   if (changed && !storage.settings().emailConsent?.at) consent.record(storage, consentVia || 'settings', consentWording || wordingOf(consentVia || 'settings'), now, consentGiven || 'switched');
-  storage.saveSettings({notifyEmail: clean, ...(changed ? {notifyEmailAt: now.toISOString()} : {}), ...(typeof marketing === 'boolean' ? {notifyMarketing: marketing} : {}), ...(digest ? {notifyCadence: digest} : {})});
+  storage.saveSettings({notifyEmail: clean, ...(changed ? {notifyEmailAt: now.toISOString()} : {}), ...(digest ? {notifyCadence: digest} : {})});
 }
 
 // A saved choice moves the consent (lib/email-consent.js): e-mail chosen with an address and none stored yet records it; e-mail left out withdraws it.
