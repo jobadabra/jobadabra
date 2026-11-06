@@ -18,10 +18,10 @@ Batches stay per reader (tape/replay, owner 18 Oct 2026, `test_triage_batch_orde
 **Cost:** a reader's far batches wait behind another's near ones. **Risks:** the tape key `key=batch[0]`; `scout_probe` also calls `feeds.triage` (no budget).
 
 ## Progress
-- [x] Queue + hand-over: `title_queue.py`, `title_triage.decide(nearness, land)`, `feeds.triage`, `feed_scan.scan(on_sorted)`
-- [x] Hub: `first_jobs.run` (`_Readers`, `_Scoring`, `_Imports`), `aggregators.early_items` / `kept(shown)`, EURES early (`eures.early`, `aggregators.TAKEN`)
-- [x] Tests: `test_title_queue` (fails on main 0/25, passes 25/25 here), `test_first_jobs_hub`, siblings adapted (scan fakes take `**kw`)
-- [x] Sibling files by importer: 122 + 47 + 50 + 81 tests green (two fakes needed the new keyword arguments)
+- [x] Queue + hand-over: `title_queue.py`, `title_triage.decide(nearness, land)`, `feeds.triage`, `feed_scan.scan(on_sorted)` (proof: tests/unit/ai/test_title_queue.py)
+- [x] Hub: `first_jobs.run` (`_Readers`, `_Scoring`, `_Imports`), `aggregators.early_items` / `kept(shown)`, EURES early (`eures.early`, `aggregators.TAKEN`) (proof: tests/unit/sources/test_first_jobs_hub.py)
+- [x] Tests: `test_title_queue` (fails on main 0/25, passes 25/25 here), `test_first_jobs_hub`, siblings adapted (scan fakes take `**kw`) (proof: tests/unit/ai/test_title_queue.py)
+- [x] Sibling files by importer: 122 + 47 + 50 + 81 tests green (two fakes needed the new keyword arguments) (proof: tests/unit/sources/test_first_jobs_slow_boards.py)
 - [ ] Measure 3 first presses per city on a quiet machine (before: Toulouse 82–86 s / 6 scored, Copenhagen 74–79 / 9, Valencia 81–126 / 3–6, Paris 70–74 / 9); EURES scored > 0 in Toulouse and Paris
 - [ ] FULL=1 run per city on main and on the branch: relevant local jobs, scored, 70+; the branch at least main's in every city
 - [ ] Report AI calls per press before/after and early-handed jobs the final pass drops
