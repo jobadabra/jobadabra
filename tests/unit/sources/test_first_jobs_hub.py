@@ -46,13 +46,13 @@ class Slice:
         self.store = [{'id': j['id'], 'company': j['company'], 'title': j['title'], 'location': j['location']} for j in getattr(self, 'store', [])]
         self.store += [{'id': j['id'], 'company': j['company'], 'title': j['title'], 'location': j['location']} for j in report['jobs']]
 
-    def run(self):
+    def run(self, others=None):
         self.store = []
         with mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [j for j in self.store if j['id'] not in self.scored]), \
                 mock.patch.object(first_jobs, 'to_score', return_value=[]), mock.patch.object(first_jobs, 'aggregators_kept', side_effect=self.kept):
             return first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
                                   sync=lambda: None, say=self.said.append, scan=self.scan, scorer=self.scorer, fits=self.fits, boards=self.boards,
-                                  import_jobs=self.import_jobs, others={})
+                                  import_jobs=self.import_jobs, others=others or {})
 
 
 def sort(batches, ask, land):
@@ -129,6 +129,20 @@ class TheFirstJobNeedsOneBatch(unittest.TestCase):
         run.run()
         self.assertEqual(run.imported, ['same'], 'imported once')
         self.assertEqual(run.scored, ['same'], 'scored once')
+
+
+    def test_a_reader_still_reading_when_the_slice_ends_is_left_to_the_full_search(self):
+        """Gitar on #3336: the slice never waits for a slow EURES; the full crawl starts at once."""
+        import time
+        from concurrent.futures import Future
+        run = Slice(lambda sources, feed_db, **kw: {'jobs': [dict(NEAR)], 'sources': []}, lambda say: [])
+        slow = Future()   # never set: a read that has not ended
+        began = time.monotonic()
+        with mock.patch('src.sources.read_budget.cut_at', lambda: time.monotonic() + 0.5):   # the read cut of a timed press
+            run.run(others={'EURES': slow})
+        self.assertLess(time.monotonic() - began, 5, 'the slice did not wait for the reader still reading')
+        self.assertFalse(slow.done())
+        self.assertEqual(run.scored, ['near'])
 
 
 if __name__ == '__main__':

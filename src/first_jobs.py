@@ -170,14 +170,18 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
         if imports.add({'jobs': items}):
             say(f'First jobs: {imports.count} found')   # the app reads the list again on this line
         scoring.step()
-    with title_queue.hub() as hub, batch_scope.concurrent(), ThreadPoolExecutor(max_workers=2) as pool:
-        readers = _Readers(hub, {'boards': pool.submit(slots.carry(read_boards)), **(_others(pool) if others is None else others)}, feed_db, imports, hand, say)
-        with batch_scope.reader('employer sites'):
-            report = scan(chosen, feed_db, on_sorted=hand)
-        imports.add(report)
-        say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
-        readers.settle(scoring)
-        readers.finish()   # the boards' pages are the full search's: waited for; EURES still reading is the free-API stage's
+    pool = ThreadPoolExecutor(max_workers=2)
+    try:
+        with title_queue.hub() as hub, batch_scope.concurrent():
+            readers = _Readers(hub, {'boards': pool.submit(slots.carry(read_boards)), **(_others(pool) if others is None else others)}, feed_db, imports, hand, say)
+            with batch_scope.reader('employer sites'):
+                report = scan(chosen, feed_db, on_sorted=hand)
+            imports.add(report)
+            say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
+            readers.settle(scoring)
+            readers.finish()   # the boards' pages are the full search's: waited for; EURES still reading is the free-API stage's
+    finally:
+        pool.shutdown(wait=False)   # Why (#2918, Gitar): a reader still reading is not waited for here; its own clock ends it
     if not scoring.queued:
         say(f'First jobs: {imports.count} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the readers joined
         return 0
@@ -269,20 +273,22 @@ class _Readers:
 
     def settle(self, scoring):
         """Score what is read, the nearest first; with nothing left to score and a reader still reading, wait for the next one (never past the press's end)."""
-        from . import time_budget
+        from .sources import read_budget
         while True:
             while scoring.step():
                 pass
             if scoring.over() or not self.pending:
                 return
-            end = time_budget.end()   # a hang guard: each reader stops on its own clock before it
-            if not self.hub.run_next(None if end is None else max(0.0, end - time.monotonic())):
+            left = read_budget.seconds_left(read_budget.cut_at())   # Why (#2918, Gitar): never past the read cut; the full crawl and a reader still reading go on from there
+            if not self.hub.run_next(left):
                 return
 
     def finish(self):
-        """Every reader still reading is waited for (each stops on its own clock) and joins: EURES's early read is popped by its thread, so leaving it would
-        lose it and the free-API stage would read it again (#2918 review)."""
+        """The boards (the full search's pages) are waited for and join, and so is any reader that has read; one still reading is left to the free-API stage, which
+        takes the same early read (eures.read keep): the full crawl never waits for it (#2918, Gitar)."""
         for name in list(self.pending):
+            if name != 'boards' and not self.pending[name].done():
+                continue
             try:
                 self.pending[name].result()
             except Exception:  # noqa: BLE001 — joined below as a failed read
