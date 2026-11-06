@@ -7,13 +7,13 @@ import {pressInPage} from '../../extension/next-step.js';
 const URL1 = 'https://www.xing.com/jobs/custom-apply/captain-c525-146641869?#jobpilotto';
 const parts = (over = {}) => {
   const calls = [];
-  return {calls, still: async () => ({still: true, ms: 600}), getTab: async () => ({id: 5, url: URL1}), signature: async () => 'step 2', forget: tab => calls.push(['forget', tab.url]), read: async tab => calls.push(['read', tab.url]), log: text => calls.push(['log', text]), ...over};
+  return {calls, still: async () => ({still: true, ms: 600}), getTab: async () => ({id: 5, url: URL1}), signature: async () => 'step 2', read: async tab => calls.push(['read', tab.url]), log: text => calls.push(['log', text]), ...over};
 };
 
 test('a step that changes in place at the same address is read again, once', async () => {
   const p = parts();
   assert.equal(await readAfterNextStep({id: 5, url: URL1}, 'step 1', p), 'read');
-  assert.deepEqual(p.calls.map(call => call[0]), ['log', 'forget', 'read']);
+  assert.deepEqual(p.calls.map(call => call[0]), ['log', 'read']);
 });
 
 test('a step that swapped before any watcher could start still reads: the page\'s signature decides, not a timer', async () => {

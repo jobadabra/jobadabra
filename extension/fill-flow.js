@@ -259,7 +259,7 @@ export async function readAgain(tab, jobUrl) {
 }
 // After Continue was pressed (form-ready.js): a step that changed in place is read and filled (next-step-read.js).
 const readNextStep = (tab, before, frameId = 0) => readAfterNextStep(tab, before, {still: tabId => pageStill(tabId, {maxMs: 3000}), getTab: tabId => chrome.tabs.get(tabId).catch(() => null), signature: live => pageSignature(live, frameId),
-  forget: live => started.delete(fillKey(live.id, live.url)), read: async live => consider(live, await jobOf(live)), log: text => decide('fill', text, {})});
+  read: async live => readAgain(live, await jobOf(live)), log: text => decide('fill', text, {})});   // readAgain: the one in-place reader (forget the address's mark, wait, read)
 useNextStepRead(readNextStep);
 // Read one armed page through the guards, page decisions, fill and after-fill steps.
 export async function consider(tab, jobUrl) {

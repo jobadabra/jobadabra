@@ -6,8 +6,8 @@
 import {pageKey} from './tab-pages.js';
 
 // tab: the tab as it was when Continue was pressed; before: the page's signature then ('' = unknown). parts: {still(tabId) (page-still.js: the page quiet for a moment), getTab(tabId), signature(tab) (now),
-// forget(tab) (the page's once-per-address mark), read(tab) (the fill's own read of a page), log(text)}. -> 'read' | 'moved' (a new address: its own load reads it) | 'unchanged' | 'gone'.
-export async function readAfterNextStep(tab, before, {still, getTab, signature, forget, read, log = () => {}}) {
+// read(tab) (fill-flow.js readAgain: forgets the page's once-per-address mark, waits for it to settle and reads it), log(text)}. -> 'read' | 'moved' (a new address: its own load reads it) | 'unchanged' | 'gone'.
+export async function readAfterNextStep(tab, before, {still, getTab, signature, read, log = () => {}}) {
   const key = pageKey(tab.url);
   await still(tab.id);
   const live = await getTab(tab.id);
@@ -16,7 +16,6 @@ export async function readAfterNextStep(tab, before, {still, getTab, signature, 
   const now = await signature(live);
   if (!before || !now || now === before) return 'unchanged';   // nothing readable, or the press changed nothing: nothing to read (and no loop on a Continue that did nothing)
   log('next step pressed: the page changed in place, read again');
-  forget(live);
   await read(live);
   return 'read';
 }
