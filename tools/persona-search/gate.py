@@ -70,6 +70,7 @@ def extract(db_path, out):
         rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': s or ''} for t, c, loc, s in table_rows(
             db, 'jobs', "SELECT j.title, co.name, j.location, s.name FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
             "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder (6 Nov 2026, run 42191804037); it worked only because an earlier step had made it
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 

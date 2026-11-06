@@ -132,6 +132,49 @@ class TheWeek(unittest.TestCase):
             self.assertIsNone(re.search(r'serp|google_jobs|REFERENCE_SERPAPI|CENTRAL_SCOUT', code, re.I), path.name)
 
 
+class TheCommandLine(unittest.TestCase):
+    """The first run of the CLI was the real run (6 Nov 2026, run 42191804037): `run out/reference.json` crashed with FileNotFoundError after a 6-minute read because nothing made `out/`
+    (the workflow's `mkdir -p out` ran BEFORE actions/checkout, whose clean removed it). The tool makes its own output folder, and before it reads anything."""
+
+    def test_run_writes_into_a_folder_that_does_not_exist_yet_and_makes_it_before_the_long_read(self):
+        folder = Path(tempfile.mkdtemp()) / 'out' / 'deeper'
+        seen = []
+
+        def fake_run():
+            seen.append(folder.is_dir())   # the folder is there before the read starts
+            return {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}}
+        with mock.patch.object(reference, 'run', fake_run):
+            self.assertEqual(reference.main(['run', str(folder / 'reference.json')]), 0)
+        self.assertEqual(seen, [True])
+        self.assertEqual(json.loads((folder / 'reference.json').read_text()), {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}})
+
+    def test_the_siblings_make_their_own_output_folder_too(self):
+        """The same pattern in gate.py extract and gate_judge.py main: they worked in the nightly only because an earlier step had made `out/`."""
+        import gate
+        import gate_judge
+        folder = Path(tempfile.mkdtemp()) / 'fresh'
+        gate.extract(str(folder / 'no.sqlite'), str(folder / 'jobs.json'))
+        self.assertEqual(json.loads((folder / 'jobs.json').read_text()), [])
+        jobs = folder.parent / 'in.json'
+        jobs.write_text('[]')
+        with mock.patch.object(gate_judge, 'judge', return_value={'rows': [], 'usd': 0, 'judged_jobs': 0}):
+            gate_judge.main(['1', str(jobs), str(folder.parent / 'other' / 'judged.json')])
+        self.assertTrue((folder.parent / 'other' / 'judged.json').exists())
+
+    def test_the_workflow_makes_out_after_the_checkout_that_would_wipe_it(self):
+        text = (ROOT / '.github' / 'workflows' / 'search-reference.yml').read_text(encoding='utf-8')
+        self.assertGreater(text.index('mkdir -p out'), text.index('actions/checkout'), 'checkout cleans untracked folders: a mkdir before it is lost')
+
+    def test_a_total_of_zero_is_stored_as_zero_not_left_out(self):
+        """EURES listing nothing for a region and role is a measurement ("EURES lists none"); only a failed read or judge leaves a candidate out."""
+        def post(body):
+            return {'jvs': []}
+        with mock.patch('src.sources.nuts_names.names', return_value=NUTS):
+            record = reference.run(post, right_if('menuisier'))
+        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0})
+        self.assertEqual(len(record['personas']), 18)
+
+
 class Sending(unittest.TestCase):
     NOW = datetime(2026, 11, 8, 3, 0, tzinfo=timezone.utc)   # a Sunday: ISO week 45
 
