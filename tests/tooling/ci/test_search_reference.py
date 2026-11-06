@@ -210,6 +210,17 @@ class Sending(unittest.TestCase):
         self.assertTrue(sent['auth'].startswith('Bearer '))
         self.assertIn('week 2026-W45 stored', line)
 
+    def test_the_upload_carries_a_named_user_agent_the_default_urllib_one_is_refused_by_the_edge(self):
+        """Run 42299710525 (6 Nov 2026): the site's edge answered 403 to `Python-urllib/3.12`, so the weekly record was not stored; a named client reaches the Worker."""
+        seen = {}
+
+        def opener(request, timeout=30):
+            seen['agent'] = request.get_header('User-agent')
+            return mock.MagicMock(__enter__=lambda s: s, __exit__=lambda *a: False, read=lambda *n: b'{"ok": true, "stored": true}')
+        reference.send(self.record(), self.env(), self.NOW, opener)
+        self.assertTrue(seen['agent'], 'no User-Agent set: urllib would send its default, which the edge refuses with a 403')
+        self.assertNotIn('urllib', seen['agent'].lower())
+
     def test_a_refused_upload_is_one_line_never_an_exception(self):
         def refuse(request, timeout=30):
             raise OSError('connection reset')

@@ -22,13 +22,14 @@ from gate import PERSONAS  # noqa: E402
 import gate_judge  # noqa: E402
 
 SITE = 'https://www.jobadabra.top/search-check/reference'
+USER_AGENT = 'jobadabra-reference'   # Why (6 Nov 2026, run 42299710525): the site's edge answers 403 to urllib's default `Python-urllib/3.x`, so every call here names itself
 EURES_PAGES = 2   # per role word: the best matches first, 100 jobs; a city region rarely has more right ones (measured 6 Nov 2026: 8 jobs for "charpentier" in Brussels)
 
 
 def eures_post(body):
     """One EURES search page (the public API: no key, no login) -> the parsed JSON; raises on a network or HTTP failure."""
     from src.sources import eures
-    request = urllib.request.Request(eures.URL, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'User-Agent': 'jobadabra-reference'})
+    request = urllib.request.Request(eures.URL, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'User-Agent': USER_AGENT})
     with urllib.request.urlopen(request, timeout=40) as response:
         return json.load(response)
 
@@ -111,7 +112,7 @@ def send(path, env=None, now=None, opener=urllib.request.urlopen):
         return 'search reference: nothing to send (EURES was read for no persona)'
     week = iso_week(now)
     request = urllib.request.Request(f'{SITE}?week={week}&run={run_id}', data=body, method='PUT',
-                                     headers={'Authorization': f"Bearer {env['REPLAYS_PUBLISH_KEY']}", 'Content-Type': 'application/json', 'X-Caller': 'search-reference'})
+                                     headers={'Authorization': f"Bearer {env['REPLAYS_PUBLISH_KEY']}", 'Content-Type': 'application/json', 'User-Agent': USER_AGENT, 'X-Caller': 'search-reference'})
     try:
         with opener(request, timeout=30) as response:
             told = json.load(response)
