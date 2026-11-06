@@ -18,7 +18,8 @@ test('a provider\'s popup finds its opener, the sign-in comes through, and every
   try {
     const out = path.join(folder, 'answer.json');
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), [fileURLToPath(new URL('./signin-popup-main.js', import.meta.url))], {
-      cwd: desktop, encoding: 'utf8', timeout: 120000, env: {...process.env, JOBADABRA_POPUP_PROBE_DIR: folder, JOBADABRA_POPUP_PROBE_OUT: out}});
+      cwd: desktop, encoding: 'utf8', timeout: 120000, env: {...process.env, JOBADABRA_POPUP_PROBE_DIR: folder, JOBADABRA_POPUP_PROBE_OUT: out,
+      JOBADABRA_POPUP_PROBE_PAUSE_MS: '1500'}});   // the probe waits this long after the sign-in ends, when every window is closed: Electron must not quit before it writes (flaky on CI, 6 Nov 2026)
     assert.ok(fs.existsSync(out), `the probe wrote no answer (exit ${run.status}, signal ${run.signal}): ${(run.stderr || run.stdout || '').slice(-600)}`);
     const answer = JSON.parse(fs.readFileSync(out, 'utf8'));
     assert.equal(answer.error, undefined, answer.error);
