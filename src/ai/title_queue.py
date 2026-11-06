@@ -13,7 +13,7 @@ import itertools
 import queue
 import threading
 
-from . import batch_scope
+from . import batch_scope, slots
 
 _cv = threading.Condition()
 _heap = []   # (key, seq, titles, ask, box): the batches waiting, the nearest first
@@ -93,8 +93,11 @@ def serve(batches, ask, land, parallel):
         if isinstance(result, BaseException):
             failed.append(result)
         else:
-            with batch_scope.using(views):   # the reader's own views, whatever else this thread is running meanwhile (the hub's nested sorts)
-                land(titles, result)
+            try:
+                with batch_scope.using(views):   # the reader's own views, whatever else this thread is running meanwhile (the hub's nested sorts)
+                    land(titles, result)
+            except Exception as error:  # noqa: BLE001 — a failed hand-over to scoring must not lose the sort's answers (the reader's final pass takes the jobs)
+                print(f'Warning: a sorted batch was not handed to scoring ({type(error).__name__}: {error}); the search goes on', flush=True)
     with _cv:
         for key, titles in batches:
             heapq.heappush(_heap, (key, next(_seq), titles, ask, functools.partial(box.put), landed))
@@ -114,9 +117,10 @@ def _work():
             if not _heap:
                 _running[0] -= 1
                 return
-            _, _, titles, ask, put, landed = heapq.heappop(_heap)
+            key, _, titles, ask, put, landed = heapq.heappop(_heap)
         try:
-            result = ask(titles)
+            with slots.ranked(key):   # Why (#2918 review): order applies at the model's slots too, not only at the pop
+                result = ask(titles)
         except BaseException as error:  # noqa: BLE001 — handed to the reader's thread, which raises it
             result = error
         put(functools.partial(landed, titles, result))

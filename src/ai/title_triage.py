@@ -125,6 +125,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
     ticker, lock, sorted_ = Ticker('Sorting job titles with AI', len(ask), every=0), threading.Lock(), [0]
 
+    spent = [0.0]   # seconds the AI took, summed over the asks (not the queue's waiting, nor the scoring the hub does meanwhile: #2918 review)
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them
 
     def one(batch):
@@ -134,10 +135,13 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
                 late[0] += len(batch)
             return None
         listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
+        asked_at = time.monotonic()
         response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],
                                           messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
                                           output_config=engine.structured(SCHEMA, MODEL, 'low'))
         cost.side(MODEL, response.usage)
+        with lock:
+            spent[0] += time.monotonic() - asked_at
         return {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
 
     def landed(batch, fit):
@@ -149,9 +153,8 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         ticker.tick(sorted_[0])
         if land:
             land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
-    began = time.monotonic()
     title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL))
-    budget.record('title_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
+    budget.record('title_rounds', spent[0] / max(1, engine.PARALLEL), -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
     with slots.priority(slots.NORMAL):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
         _second_look(client, ask, decided, search, words, local, sure, forced)
     with LOCK:

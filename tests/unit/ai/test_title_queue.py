@@ -144,5 +144,34 @@ class TheShapesAroundIt(unittest.TestCase):
         self.assertEqual(sorted(landed), [['also good'], ['good']], 'the other batches still landed')
 
 
+class TheSlotsKeepTheQueuesOrder(unittest.TestCase):
+    def test_a_near_batch_takes_a_freed_slot_before_a_far_one_that_was_popped_earlier(self):
+        """Review of #2918: the far batch is already waiting at the model's slot (popped), held by something that is not the queue (a score); the near one arrives later."""
+        gate, got, pool = slots.Slots(1), [], []
+        holder_in, holder_out = threading.Event(), threading.Event()
+
+        def holder():
+            with gate:
+                holder_in.set()
+                holder_out.wait(20)
+
+        def take(name, rank):
+            with slots.ranked(rank), gate:
+                got.append(name)
+        threading.Thread(target=holder).start()
+        holder_in.wait(20)
+        for name, rank in (('far', (1, 900.0)), ('near', (0, 5.0))):
+            thread = threading.Thread(target=take, args=(name, rank))
+            thread.start()
+            pool.append(thread)
+            deadline = time.monotonic() + 20
+            while gate.waiting() < len(pool) and time.monotonic() < deadline:
+                time.sleep(0.005)
+        holder_out.set()
+        for thread in pool:
+            thread.join(20)
+        self.assertEqual(got, ['near', 'far'])
+
+
 if __name__ == '__main__':
     unittest.main()

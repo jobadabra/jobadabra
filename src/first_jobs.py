@@ -152,6 +152,8 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     for one batch, not for a reader's whole sort, and a Toulouse press scores the jobs near Toulouse instead of 6 in Paris while EURES's rows wait.
     Threads: this one is the hub (it owns the job store); the other readers only read, then it sorts and imports what they read, in `join`."""
     started = time.monotonic()
+    from .sources import aggregators
+    aggregators.TAKEN.clear()   # this press's own takings only
     scan, scorer, model, fits = scan or feeds.scan, scorer or score.run, model or score.DEFAULT_MODEL, fits or scored_fits
     imports = _Imports(import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
     chosen = pick(sources, size)
@@ -278,14 +280,14 @@ class _Readers:
                 return
 
     def finish(self):
-        """The boards still reading are waited for and join; any other reader is left to the full search."""
-        boards = self.pending.get('boards')
-        if boards is not None:
+        """Every reader still reading is waited for (each stops on its own clock) and joins: EURES's early read is popped by its thread, so leaving it would
+        lose it and the free-API stage would read it again (#2918 review)."""
+        for name in list(self.pending):
             try:
-                boards.result()
+                self.pending[name].result()
             except Exception:  # noqa: BLE001 — joined below as a failed read
                 pass
-            self.join('boards')
+            self.join(name)
 
     def _take(self, name, future, shown):
         """One reader's jobs (report shape): the boards' through their matching, EURES through the free-API stage's own taking (aggregators.scan)."""

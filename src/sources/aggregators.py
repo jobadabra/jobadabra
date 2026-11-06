@@ -25,7 +25,7 @@ JOBSCH_PAGES = 5   # jobs.ch pages read at most per search and place (20 posting
 TIMEOUT = 30
 CHEAP_PAST_CUT = ('EURES',)   # readers that run even past the read cut: each bounds its own time (eures.SECONDS)
 TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_runs (source TEXT PRIMARY KEY, at TEXT NOT NULL)'
-TAKEN = set()   # (search key, reader) taken earlier in this press by the first-jobs slice (scan(readers=...)): the free-API stage does not read it again
+TAKEN = {}   # (search key, reader) -> {'jobs', 'sources'} of what the first-jobs slice took earlier in this press (scan(early=True)): the free-API stage adds it to its report and does not read it again; cleared at the slice's start
 SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
 # Search-place country words -> Adzuna's country codes (the countries it covers).
 # Every country Adzuna serves (its API's endpoints), by the English name places.countries() answers (src/places.py: the AI says which
@@ -301,9 +301,10 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/unit/sources/test_three_minutes.py)
     key = search_key(search)
     for name, read in (readers if readers is not None else sources()):
-        if early:
-            TAKEN.add((key, name))
-        elif (key, name) in TAKEN:   # Why (#2918, 6 Nov 2026): the slice took it, cut or not; a second read in the same press only repeats it
+        if not early and (key, name) in TAKEN:   # Why (#2918, 6 Nov 2026): the slice took it; a second read in the same press only repeats it
+            taken = TAKEN[(key, name)]   # its jobs still belong to the final report (statuses, counts), its source line too
+            report['jobs'].extend(taken['jobs'])
+            report['sources'].extend(taken['sources'])
             continue
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
@@ -332,6 +333,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
                 on_jobs(matched)
             report['jobs'].extend(matched)
             report['sources'].append({'company': name, 'ok': True, 'total': len(found), 'matches': len(matched)})
+            if early:   # only a read that worked is taken; a failed one is the free-API stage's to try
+                TAKEN[(key, name)] = {'jobs': list(matched), 'sources': list(report['sources'][-1:])}
         except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
             _source_failed(report, name, error)
     if late:

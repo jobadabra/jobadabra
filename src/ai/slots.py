@@ -30,6 +30,22 @@ def priority(at):
         _local.level = before
 
 
+def rank():
+    """The calling thread's order inside its level (a tuple; none = first): the title queue sets the nearness of the batch it asks, so a near batch takes a free slot before a far one that was popped earlier."""
+    return getattr(_local, 'rank', ())
+
+
+@contextlib.contextmanager
+def ranked(at):
+    """Inside the block this thread's slot tickets sort by `at` within their level (#2918)."""
+    before = rank()
+    _local.rank = at
+    try:
+        yield
+    finally:
+        _local.rank = before
+
+
 def carry(fn, at=None):
     """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry()."""
     at = level() if at is None else at
@@ -54,7 +70,7 @@ class Slots:
             return len(self._queue)
 
     def __enter__(self):
-        ticket = (level(), next(self._order))
+        ticket = (level(), rank(), next(self._order))
         with self._cond:
             heapq.heappush(self._queue, ticket)
             try:
