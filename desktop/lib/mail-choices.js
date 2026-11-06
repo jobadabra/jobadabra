@@ -97,7 +97,15 @@ async function writeUnchosen(storage, wantOn, fetcher, except = '') {
  * (`save` = the handler's saver, which also moves Always on) and the consent stores this row's own line; every other row the person never chose is stored off, then this row on. -> {ok, addressSaved?} or
  * {ok: false, error: words}: a refusal anywhere puts the switch back. Owner, 6 Nov 2026: "When they turn a mail on" is when the address reaches our server.
  */
-export async function turnOn(storage, row, {address = '', name = '', save, fetcher = globalThis.fetch} = {}) {
+export function turnOn(storage, row, options = {}) {
+  // Why (6 Nov 2026, Gitar on #3335): two first presses on different rows both saw "e-mail not on", both wrote the unchosen rows, and each stored the other's row off after it had been turned on. One press at a time: the second sees e-mail on and writes only its own row.
+  const run = turning.then(() => turnOnNow(storage, row, options));
+  turning = run.catch(() => {});
+  return run;
+}
+let turning = Promise.resolve();
+
+async function turnOnNow(storage, row, {address = '', name = '', save, fetcher = globalThis.fetch} = {}) {
   let addressSaved = false;
   if (!emailing(storage)) {
     if (!address) return {ok: false, error: WORDS.need_address};

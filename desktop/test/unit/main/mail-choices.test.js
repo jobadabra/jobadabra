@@ -156,3 +156,18 @@ test('no address answered by the website empties the mirror, so the engine stops
   assert.equal((await read(kept, site([{ok: false, reason: 'no_address'}]))).ok, true);
   assert.deepEqual(kept.settings().mailRows, []);
 });
+
+test('two first presses on different rows run one after the other: the second sees e-mail on and stores only its own row, so neither row ends up off', async () => {
+  const kept = storage({settings: {notifyBy: ['app']}}), stored = new Map(), applied = [];
+  const save = async choice => { await new Promise(resolve => setTimeout(resolve, 3)); kept.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; };   // the real save goes to the site first
+  // A slow site that applies a write when its delay ends (an off of the first press's row takes 60 ms, the rest 1-3 ms): without the queue the second press's off lands after the first press's on.
+  const fetcher = async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    await new Promise(resolve => setTimeout(resolve, !body ? 5 : body.on ? 1 : body.mail === 'app-matches' ? 60 : 3));
+    if (body) { stored.set(body.mail, body.on ? 'on' : 'off'); applied.push([body.mail, body.on]); }
+    return {json: async () => (body ? {ok: true} : {ok: true, rows: ROWS.slice(0, 2).map(row => ({...row, choice: stored.get(row.id) || ''}))})};
+  };
+  const [first, second] = await Promise.all([turnOn(kept, 'app-matches', {address: 'a@b.co', save, fetcher}), turnOn(kept, 'app-needs-you', {address: 'a@b.co', save, fetcher})]);
+  assert.deepEqual([first.ok, second.ok], [true, true]);
+  assert.deepEqual([stored.get('app-matches'), stored.get('app-needs-you')], ['on', 'on'], `both rows the person pressed end on (writes: ${JSON.stringify(applied)})`);
+});
