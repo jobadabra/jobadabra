@@ -54,7 +54,8 @@ function main() {
   const git = (...rest) => execFileSync('git', ['-C', root, ...rest], {encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore']});
   let changed;
   try { changed = git('diff', '--name-only', `${base}...HEAD`).split('\n').filter(Boolean); } catch { return 0; }   // no base here: nothing to compare (the hook's own rule)
-  const specs = changed.filter(file => file.endsWith('.md') && fs.existsSync(path.join(root, file))).map(file => {
+  // Why (6 Nov 2026, owner: "Only lab I want"; lm 1/4): lab/docs/specs are the imported lab's old specs, ticked in the lab; an import is not a PR ticking them.
+  const specs = changed.filter(file => file.endsWith('.md') && !file.startsWith('lab/') && fs.existsSync(path.join(root, file))).map(file => {
     let before = '';
     try { before = git('show', `${base}:${file}`); } catch { /* a new spec */ }
     return {file, base: before, head: fs.readFileSync(path.join(root, file), 'utf8')};

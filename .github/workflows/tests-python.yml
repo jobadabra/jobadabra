@@ -60,4 +60,4 @@ jobs:
         run: |
           python3 -m pip install --quiet cryptography==44.0.2
           python3 -m unittest discover -s lab/tests
-          node --test $(find lab -name '*.test.mjs' -not -path '*/node_modules/*')
+          find lab -name '*.test.mjs' -not -path '*/node_modules/*' -print0 | xargs -0 node --test
