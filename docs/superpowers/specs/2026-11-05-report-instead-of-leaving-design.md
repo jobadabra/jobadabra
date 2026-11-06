@@ -86,7 +86,7 @@ No AI spend in any step (every word is fixed). No new gate, hook or CI check. No
 - [x] 1/7 site: receipt, 24 h chip, overdue ping (proof: none: jobadabra-web #439 merged 5 Nov 2026 as cf720f2; its tests ran on that PR, not on this one)
 - [x] 1b site: closing reply for dismissed and false-positive reports (proof: none: jobadabra-web #444 merged 5 Nov 2026 as 35b6778; its tests ran on that PR)
 - [x] 2/7 site + app: +5 applications (proof: none: jobadabra-web #440 merged as efd3d63 and #3303 as 2beb068f, with #3307 (87287d7) so the wall moves as the thank-you card appears; tests ran on those PRs)
-- [x] 3/7 app: ask gate, failed application card (proof: none: #3309 merged 5 Nov 2026 as cb0aa2b; test/unit/main/asks.test.js ran on that PR)
+- [x] 3/7 app: ask gate, failed application card (proof: none: #3309 merged 5 Nov 2026 as cb0aa2b; desktop/test/unit/main/asks.test.js ran on that PR)
 - [x] 4/7 app: run failed, AI error, crash (proof: none: #3315 merged 5 Nov 2026 as ea1540b)
 - [x] 5/7 app: "Were you expecting more jobs?" (proof: none: #3323 merged 6 Nov 2026 as c984c37; the verdict, the weekly gate and the read-only `--open-count` have tests there)
 - [x] 6/7 app: tour stop (proof: none: #3318 merged 5 Nov 2026 as 0ac5cde; 6b/7 #3321 merged 6 Nov 2026 as f3f576f added the two bars at the foot, so the tour has eleven stops)
