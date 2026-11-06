@@ -12,11 +12,13 @@ from src import geo, role_kinds, scout, scout_carry, scout_core, store as job_st
 from src.ai import decide
 
 ANSWERS = {'pool-country': 'fr', 'job-region': 'europe'}   # what the AI says about the one place below
+THREE = {'town a': 'de', 'town b': 'fr', 'town c': 'gb'}   # fictional places of a feed in three countries
 FIELDS = {'countries': ['fr'], 'regions': ['europe']}      # the entry fields those answers make
 
 
-def job():
-    return [{'id': '1', 'title': 'Engineer', 'location': 'Lyon', 'url': 'u', 'date_posted': '2099-01-01', 'description': '', 'remote': False, 'salary': ''}]
+def job(places=('Town A',)):
+    return [{'id': str(n), 'title': 'Engineer', 'location': place, 'url': f'u{n}', 'date_posted': '2099-01-01', 'description': '', 'remote': False, 'salary': ''}
+            for n, place in enumerate(places)]
 
 
 class AnswersKeptTest(unittest.TestCase):
@@ -28,16 +30,19 @@ class AnswersKeptTest(unittest.TestCase):
         self.starter = [{'company': f'Co {i}', 'ats': 'lever', 'slug': f'co{i}'} for i in range(5)]   # fictional
         self.out = io.StringIO()
 
-    def read(self, today, answer, starter=None):
-        """One run. answer: 'yes' (the AI names the place), 'none' (it answers: none of these), 'capped' (it is not asked: busy or past the cap)."""
+    def read(self, today, answer, starter=None, places=('Town A',)):
+        """One run. answer: 'yes' (the AI names the place), 'none' (it answers: none of these), 'capped' (it is not asked: busy or past the cap), or the set of
+        places of THREE it answers this run (the cap reached after those)."""
         def judged(topic, items, answers, instructions, **kwargs):
             if answer == 'capped' or topic not in ANSWERS:
                 return None
+            if isinstance(answer, set):
+                return {key: (THREE[key] if topic == 'pool-country' else 'europe') for key in items if key in answer}
             return {key: ANSWERS[topic] if answer == 'yes' else 'none' for key in items}
         with mock.patch.object(decide, 'decide', judged), mock.patch('src.ai.meanings_pack.every', lambda *a, **k: []), mock.patch.object(scout_core, 'CENTRAL', True), \
                 mock.patch.object(role_kinds, 'judged', lambda texts, topic='role-kind': {}), mock.patch.object(geo, 'resolve', lambda strings, **_: {}), \
                 contextlib.redirect_stdout(self.out):
-            return scout.build_index(self.db, self.starter if starter is None else starter, lambda s, slug: job(), today=today, carry=True)[0]
+            return scout.build_index(self.db, self.starter if starter is None else starter, lambda s, slug: job(places), today=today, carry=True)[0]
 
     def test_a_re_read_the_ai_could_not_answer_keeps_every_answer(self):
         for field, value in FIELDS.items():
@@ -46,6 +51,12 @@ class AnswersKeptTest(unittest.TestCase):
                 self.assertEqual([f.get(field) for f in self.read('2026-11-05', 'capped')], [value] * 5, 'the owner\'s scenario: kept')
                 self.assertEqual([f.get(field) for f in self.read('2026-11-06', 'capped')], [value] * 5, 'and the run after it')
 
+    def test_a_re_read_that_answers_one_place_of_three_keeps_the_other_countries(self):
+        # Why (6 Nov 2026, coordinator): most of the loss was partial: 1,969 of 3,046 lost cells were on feeds that kept some countries
+        three = ('Town A', 'Town B', 'Town C')
+        self.assertEqual({tuple(f['countries']) for f in self.read('2026-11-04', set(THREE), places=three)}, {('de', 'fr', 'gb')})
+        self.assertEqual({tuple(f['countries']) for f in self.read('2026-11-05', {'town c'}, places=three)}, {('de', 'fr', 'gb')}, 'de and fr stay')
+
     def test_a_real_answer_of_none_still_empties_it(self):
         self.read('2026-11-04', 'yes')
         for field in FIELDS:
@@ -53,7 +64,7 @@ class AnswersKeptTest(unittest.TestCase):
                 self.assertEqual([f.get(field) or [] for f in self.read('2026-11-05', 'none')], [[]] * 5)
 
     def test_an_empty_cache_gets_every_answer_back_from_the_published_index(self):
-        published = [{'company': f'Co co{i}', 'ats': 'lever', 'slug': f'co{i}', 'quality': 40, 'checked': '2026-11-01', 'places': ['Lyon'], **FIELDS} for i in range(5)]
+        published = [{'company': f'Co co{i}', 'ats': 'lever', 'slug': f'co{i}', 'quality': 40, 'checked': '2026-11-01', 'places': ['Town A'], **FIELDS} for i in range(5)]
         scout_carry.seed(self.db, 'https://index.example/api/index', 'key', get=lambda request: {'feeds': published})
         feeds = self.read('2026-11-02', 'capped', starter=[])
         for field, value in FIELDS.items():
