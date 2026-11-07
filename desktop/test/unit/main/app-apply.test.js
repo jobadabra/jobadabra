@@ -83,7 +83,33 @@ test('an Apply batch drafts the missing kits for the best jobs first, quietly, a
   const result = await apply.start(storage, {n: 2, mode: 'chrome'}, fakeSpawn, async () => ({jobs}), undefined, undefined, prepare);
   assert.deepEqual(prepared, ['b']);  // only the shortfall, best fit first
   assert.match(result.message, /^Prepared 1 application first\. Opened 2 job/);
+  assert.deepEqual(result.outcomes, [{url: jobs[1].url, title: jobs[1].title, company: jobs[1].company, status: 'started', reason: ''}], 'a successfully opened Chrome batch reports the drafted kit as started');
   assert.equal(spawned[0].length, 3 + 2);
+});
+
+test('a background batch keeps mixed eligibility and preparation failures beside the eligible job it queued', async () => {
+  const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
+  const prepared = [], enqueued = [];
+  const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => {
+      prepared.push(code);
+      const job = jobs.find(row => row.code === code);
+      if (code === '2') { job.kit = true; job.ineligible = 'Required aviation credential missing.'; return {ok: true, ineligible: job.ineligible}; }
+      if (code === '3') return {ok: false, error: 'The application kit could not be saved.'};
+      job.kit = true;
+      return {ok: true};
+    }, undefined, {enqueue: async selected => {
+      enqueued.push(...selected.map(job => job.url));
+      return {ok: true, sessions: ['fictional-session'], outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))};
+    }});
+  assert.deepEqual(prepared, ['1', '2', '3']);
+  assert.deepEqual(enqueued, ['https://jobs.example.test/1'], 'the ineligible job and failed preparation never reach the queue');
+  assert.equal(result.ok, true, 'the eligible job still starts');
+  assert.deepEqual(result.outcomes, [
+    {url: jobs[0].url, title: jobs[0].title, company: jobs[0].company, status: 'started', reason: ''},
+    {url: jobs[1].url, title: jobs[1].title, company: jobs[1].company, status: 'ineligible', reason: 'Required aviation credential missing.'},
+    {url: jobs[2].url, title: jobs[2].title, company: jobs[2].company, status: 'failed', reason: 'The application kit could not be saved.'},
+  ]);
 });
 
 test('missing kits are picked saved first, then by fit, open jobs only', () => {

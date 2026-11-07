@@ -24,6 +24,7 @@ export const MAX_BACKGROUND_SESSIONS = 10;
 
 // What an Apply batch says about the jobs it did not start: not eligible (the store refused), busy (the person already has the job open in Chrome) and live (still queued for Full automation, Gitar on #3409: skipped and said, never a refusal after earlier jobs of the batch were queued).
 const SKIPS = {NOT_ELIGIBLE: 'skipped', LIVE_AUTO: 'live'};   // the store's error codes that skip one job and keep the batch going
+const OUTCOME_STATUS = {NOT_ELIGIBLE: 'ineligible', LIVE_AUTO: 'already-queued'};
 const plural = (n, why) => `${n} job${n === 1 ? ' was' : 's were'} skipped: ${why}`;
 const skippedWords = ({skipped, busy, live}) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
   + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '')
@@ -148,34 +149,38 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    */
   async function enqueue(jobs, mode, batch = null) {
     return serial(async () => {
+      // Why (7 Nov 2026, #3424): a preflight refusal has no queue row, but the selected jobs still need a reason in the dialog.
+      const refused = (error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'failed', reason: error}))});
       const {chosen, error} = batchSettings(config(), mode, batch);
-      if (error) return {ok: false, error};
-      if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
+      if (error) return refused(error);
+      if (!browserOf().ready()) return refused("Download Jobadabra's browser first: about 200 MB, only once.", {code: 'BACKGROUND_BROWSER_MISSING'});   // before any store write, so nothing waits on a browser that is not there
       const held = terminals.list().filter(item => item.background && !item.outcome);
-      if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return {ok: false, error: `At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`};
-      const enrolled = [];
+      if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return refused(`At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`);
+      const enrolled = [], outcomes = [];
       const tally = {skipped: 0, busy: 0, live: 0};
       for (const job of jobs) {
         const old = terminals.byUrl(job.url);
-        // Why (7 Nov 2026, owner screenshot: one open session blocked the whole batch): a job the person already has open in Chrome is skipped and said (counted as busy, next to skipped and live, #3363); the others still start.
-        if (old && !old.background) { tally.busy++; continue; }
+        const details = {url: job.url, title: job.title || '', company: job.company || ''};
+        // Why (7 Nov 2026, owner screenshot #3363; #3424): skip an already-open job with its reason and count, keep other jobs starting, and preserve the reason in the batch result.
+        if (old && !old.background) { tally.busy++; outcomes.push({...details, status: 'busy', reason: 'This job already has an application session open.'}); continue; }
         // Why (2026-10-28, owner screenshot): a job the store refuses as not eligible (its stage moved on since the list was read) is skipped and said, not a thrown error that reaches the window
         // as an IPC string; the other jobs still start. Any other failure (a write, a wrong mode) stops the batch with its own words.
         let state;
         // A new id each time: the store keeps an old run (its state and session) when that run still holds something for the person, and starts a new run under this id otherwise.
         try { state = await store.queue(job.url, uuid().slice(0, 8), mode, chosen); } catch (error) {
           const kind = SKIPS[error?.code];   // Gitar on #3409: a live Full automation job is skipped and said like a not-eligible one, never a refusal after earlier jobs of the batch were queued
-          if (!kind) return {ok: false, error: String(error?.message || error)};
-          tally[kind]++; continue;
+          const reason = String(error?.message || 'Could not start this application.');
+          if (!kind) { outcomes.push({...details, status: 'failed', reason}); return {ok: false, error: reason, outcomes}; }
+          tally[kind]++; outcomes.push({...details, status: OUTCOME_STATUS[error?.code] || 'skipped', reason}); continue;
         }
         await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
-        begin(item, state); enrolled.push(item.id);
+        begin(item, state); enrolled.push(item.id); outcomes.push({...details, status: 'started', reason: ''});
       }
-      if (!enrolled.length) return {ok: false, error: nothingStarted(tally)};   // nothing queued: no browser starts
+      if (!enrolled.length) return {ok: false, error: nothingStarted(tally), outcomes};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));
       log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, ...tally});
-      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
+      return {ok: true, mode, sessions: enrolled, outcomes, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
     });
   }
   // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.

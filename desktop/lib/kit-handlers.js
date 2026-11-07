@@ -55,7 +55,10 @@ export function registerKitHandlers(ctx) {
       return {ok: false, stopped: true, error: `${name}: ${stopped}`};
     }
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
-    if (quiet) { if (exit === 0) track('kit_prepared', {}); return {ok: exit === 0}; }  // an Apply batch: it reports once at the end
+    if (quiet) {
+      if (exit === 0) track('kit_prepared', {});
+      return {ok: exit === 0, ineligible: ineligible || '', ...(exit !== 0 ? {error: lines.filter(Boolean).slice(-1)[0] || 'Application kit could not be prepared.'} : {})};
+    }  // Why (7 Nov 2026, #3424): Apply needs eligibility and preparation errors to report each drafted job accurately.
     if (exit !== 0) notify('Application could not be prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');
     else notify('Application prepared', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code}, 'good');
     if (exit === 0) track('kit_prepared', {});
