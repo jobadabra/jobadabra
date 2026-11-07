@@ -24,13 +24,15 @@ test('helper messages have seven complete catalogs with matching named parameter
 
 test('every migrated helper lookup is registered and user content stays outside the catalog', async () => {
   const {messages} = await catalog('en');
+  const namespaces = {helpers: messages};
+  for (const [namespace, suffix] of Object.entries({helperState: 'state', helperMore: 'more', helperFlow: 'flow', helperProfile: 'profile'})) namespaces[namespace] = (await import(new URL(`i18n/catalogs/helpers/en-${suffix}.js`, root))).messages;
   const files = fs.readdirSync(new URL('renderer/job-drawer/', root)).filter(file => file.endsWith('.js')).map(file => `renderer/job-drawer/${file}`);
   files.push(...fs.readdirSync(new URL('renderer/', root)).filter(file => file.endsWith('.js')).map(file => `renderer/${file}`));
   let count = 0;
   for (const file of files) {
     const source = fs.readFileSync(new URL(file, root), 'utf8');
-    for (const match of source.matchAll(/t\('helpers\.([^']+)'/g)) {
-      assert.ok(match[1] in messages, `${file}: ${match[1]}`);
+    for (const match of source.matchAll(/t\('(helpers|helperState|helperMore|helperFlow|helperProfile)\.([^']+)'/g)) {
+      assert.ok(match[2] in namespaces[match[1]], `${file}: ${match[1]}.${match[2]}`);
       count++;
     }
   }
