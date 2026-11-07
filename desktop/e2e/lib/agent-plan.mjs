@@ -6,12 +6,16 @@
 import {makePersona} from './agent-persona.mjs';
 import {sequence} from './seeded-random.mjs';
 import {MAX_GOALS, MIN_GOALS} from './agent-steps.mjs';
+import {LANGUAGE_LABEL, OTHER_LANGUAGES, languageGoal, poolLabel} from './agent-moves.mjs';
 
 /** How many past sessions "seen before" looks back over. */
 export const WINDOW = 7;
 /** The share of a plan's pairs that must be new to the last WINDOW sessions (spec: at least half). */
 export const MIN_NEW = 0.5;
 const TRIES = 60;
+/** The language move is drawn at least once in this many sessions (the two before tonight carry none -> tonight has it). */
+export const LANGUAGE_EVERY = 3;
+const LANGUAGE_PAIR = `→ App: ${LANGUAGE_LABEL}`;
 
 /** The seeded generator the harness already has (lib/seeded-random.mjs): the same seed gives the same numbers, so a session is replayable from its seed. */
 export const rng = sequence;
@@ -40,11 +44,17 @@ export function newShare(pairs, coverage = []) {
   return pairs.length ? pairs.filter(pair => !seen.has(pair)).length / pairs.length : 1;
 }
 
-/** One goal order: pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */
-function draw(moves, changed, count, next, pending = []) {
+/** Whether tonight must carry the language move: none of the last LANGUAGE_EVERY - 1 sessions walked it (coverage lists only the goals that were completed, so an unfinished one is due again). */
+export const languageDue = coverage => !coverage.slice(-(LANGUAGE_EVERY - 1)).some(session => (session.pairs || []).some(pair => pair.endsWith(LANGUAGE_PAIR)));
+
+/** The night's language: the seed picks one of the six other languages, replayable from the seed. */
+export const languageOf = seed => { const codes = Object.keys(OTHER_LANGUAGES); return codes[Math.floor(rng(Number(seed) + 11)() * codes.length)]; };
+
+/** One goal order: `must` moves are in it (shuffled with the rest, not first), pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */
+function draw(moves, changed, count, next, pending = [], must = []) {
   const forced = shuffle(moves.filter(move => changed.includes(move.group)), next);
-  const chosen = new Map();
-  const groups = [...new Set([...pending.map(move => move.group), ...changed])].slice(0, count);
+  const chosen = new Map(must.map(move => [moveKey(move), move]));
+  const groups = [...new Set([...pending.map(move => move.group), ...changed])].slice(0, Math.max(0, count - must.length));
   for (const group of groups) { const one = pending.find(move => move.group === group) || forced.find(move => move.group === group); if (one) chosen.set(moveKey(one), one); }
   for (const move of pending) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
   for (const move of shuffle(moves, next)) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
@@ -68,25 +78,27 @@ export function planSession({seed, moves, coverage = [], changed = [], pending =
   const required = new Set([...priority.map(goal => goal.group), ...changedAreas]);
   const goalCount = Math.min(moves.length, max, Math.max(targetCount, Math.min(10, required.size)));
   const areas = changedAreas.slice(0, goalCount);
+  // Why (7 Nov 2026, pz, owner via mac-50: "Add a new goal to test the multi language"): the language goal is in the pool like any move and is forced in at least every LANGUAGE_EVERY nights, so each of the 6 languages is met within weeks, not by luck of the draw.
+  const must = languageDue(coverage) ? moves.filter(move => moveKey(move) === `App: ${LANGUAGE_LABEL}`) : [];
   let best = null;
   for (let attempt = 0; attempt < TRIES; attempt++) {
-    const order = draw(moves, areas, goalCount, next, priority), pairs = pairsOf(order), share = newShare(pairs, coverage);
+    const order = draw(moves, areas, goalCount, next, priority, must), pairs = pairsOf(order), share = newShare(pairs, coverage);
     if (!best || share > best.share) best = {order, pairs, share};
     if (share >= minNew) break;
   }
-  const goals = best.order.map((move, i) => ({n: i + 1, group: move.group, label: move.label, pair: best.pairs[i]}));
+  const goals = best.order.map((move, i) => ({n: i + 1, group: move.group, label: move.label === LANGUAGE_LABEL ? languageGoal(languageOf(seed)) : move.label, pair: best.pairs[i]}));   // the pair keeps the pool's one label: coverage counts the move, the goal text names the language
   const deferred = changedAreas.filter(group => !goals.some(goal => goal.group === group)).map(group => { const {label} = moves.find(move => move.group === group); return {group, label}; });   // Why (7 Nov 2026, pz): "an area whose code changed always gets a goal" now means a goal tonight or a place in the queue; a night that works every goal moves the changed-since checkpoint past the area.
   return {seed, persona: makePersona(seed), goals, newShare: Number(best.share.toFixed(3)), changedAreas: areas, deferred};
 }
 
 /** The next night's queue: interrupted goals, unstarted goals, older deferred goals, then actor-declared blockers. Fresh fictional state is used next night; only identities carry over. */
 export function pendingGoals(session, previous = []) {
-  const rows = session.summary.goals, completed = new Set(session.completed), planned = new Set(rows.map(moveKey));
+  const rows = session.summary.goals, completed = new Set(session.completed), planned = new Set(rows.map(({group, label}) => moveKey({group, label: poolLabel(label)})));   // Why (7 Nov 2026, pz, code review): a language goal's row carries the night's rewritten label; the queue holds the pool's, so it matches on the pool's
   const interrupted = rows.filter(goal => goal.verdict === 'could-not-finish' && !completed.has(goal.n));
   const unstarted = rows.filter(goal => goal.verdict === 'not-started');
   const deferred = previous.filter(goal => !planned.has(moveKey(goal)));
   const blockers = rows.filter(goal => goal.verdict === 'could-not-finish' && completed.has(goal.n));
-  return [...new Map([...interrupted, ...unstarted, ...deferred, ...blockers].map(({group, label}) => [moveKey({group, label}), {group, label}])).values()];
+  return [...new Map([...interrupted, ...unstarted, ...deferred, ...blockers].map(({group, label}) => [moveKey({group, label: poolLabel(label)}), {group, label: poolLabel(label)}])).values()];
 }
 
 /** The queue to write after a session: `pending` (what tonight started with) and the changed areas the plan had no slot for, then what pendingGoals keeps of them. A named or chained plan has no `deferred`. */

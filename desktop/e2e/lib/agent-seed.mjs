@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {cvPdf} from './agent-cv-pdf.mjs';
+import {seedImportedCv} from './applicant-seed.mjs';
 import {addApplication} from './focus-data.mjs';
 import {makePersona} from './agent-persona.mjs';
 import {NAMED_PLANS, SHAPES} from './agent-plans.mjs';
@@ -83,19 +84,20 @@ const dataOf = (planId, shapeId) => NAMED_PLANS[planId]?.data || SHAPES[shapeId]
  * `ctx.profile` is the app's data folder, `ctx.data(store, command, args)` the store the app uses. The CV answers are read by the app on the next open of Profile, so the caller reloads the window after.
  */
 export async function seedPlanData(ctx, planId, seed, shapeId = '') {
-  const data = dataOf(planId, shapeId);
-  if (!data) return '';
-  const person = makePersona(seed, data.cv ? {shape: data.cv} : {});
   const done = [];
-  if (data.cv) {
+  // Why (7 Nov 2026, pz; run 42383194898 goal 1 "Add another CV version" could-not-finish): the app disables that button until the main CV (cv/cv.json) is read, and the agent's app never had one: its "Read my CV PDF" is an AI call the stand-in leaves unanswered, so the goal could never start. A person who has used the app has imported their CV, so a night with no named plan starts with the imported one, as the live fill legs do (lib/applicant-seed.mjs); a named plan is one app state and keeps its own data.
+  if (!planId && seedImportedCv(ctx.profile)) done.push('main CV imported (cv.json)');
+  const data = dataOf(planId, shapeId);
+  const person = makePersona(seed, data?.cv ? {shape: data.cv} : {});
+  if (data?.cv) {
     fs.writeFileSync(path.join(ctx.profile, 'cv.pdf'), cvPdf(person.cv.lines));
     fs.rmSync(path.join(ctx.profile, CV_READ_FILE), {force: true});   // the read of the old CV; the app also keys it by the CV's hash, so this only saves a stale file
     answerCvRead(ctx.proxy, person);
     done.push(`CV of ${person.name} (${person.cv.shape}, its read answered)`);
   }
-  if (data.inbound) {
+  if (data?.inbound) {
     for (const row of inboundRows(person).slice(0, data.inbound)) await addApplication(ctx, row);
     done.push(`${data.inbound} inbound rows`);
   }
-  return `seeded for ${planId || `shape ${shapeId}`}: ${done.join(', ')}`;
+  return done.length ? `seeded for ${planId || `shape ${shapeId || 'none'}`}: ${done.join(', ')}` : '';
 }

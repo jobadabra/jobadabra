@@ -1,9 +1,9 @@
 // The AI user agent's day plan, person and moves (lib/agent-plan.mjs, agent-persona.mjs, agent-moves.mjs): replayable from a seed, different every day, never repeating the last week's order, always covering an area that changed.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {OWN_MOVES, movesFromPalette, poolOf} from '../../lib/agent-moves.mjs';
+import {LANGUAGE_LABEL, OTHER_LANGUAGES, OWN_MOVES, languageGoal, movesFromPalette, poolLabel, poolOf, withLanguage} from '../../lib/agent-moves.mjs';
 import {CV_SHAPES, makePersona} from '../../lib/agent-persona.mjs';
-import {MIN_NEW, WINDOW, newShare, pairsOf, planSession, recordSession} from '../../lib/agent-plan.mjs';
+import {LANGUAGE_EVERY, MIN_NEW, WINDOW, languageDue, languageOf, newShare, pairsOf, pendingGoals, planSession, recordSession} from '../../lib/agent-plan.mjs';
 
 const GROUPS = ['Go to', 'Actions', 'Profile', 'Strategy', 'Jobs', 'Focus', 'Settings'];
 const MOVES = GROUPS.flatMap(group => Array.from({length: 4}, (_, i) => ({group, label: `${group} move ${i + 1}`})));   // 28 moves in 7 areas
@@ -123,4 +123,53 @@ test('the moves come from the app: a job entry folds into one, an unsafe or queu
     {group: 'Go to', label: 'Open Jobs'}, {group: 'Jobs', label: 'Open job page'}, {group: 'Jobs', label: 'Open documents'}, {group: 'Strategy', label: 'Tune my strategy'}]);
   assert.equal(poolOf(entries).length, 4 + OWN_MOVES.length, 'the own moves are added once each, "Quit and reopen" included');
   assert.equal(poolOf([...entries, OWN_MOVES[0]]).length, 4 + OWN_MOVES.length, 'a move the app also lists is one');
+});
+
+// Why (7 Nov 2026, pz, owner via mac-50: "Add a new goal to test the multi langauge"): the language goal is drawn at least every LANGUAGE_EVERY nights, in a seed-picked language, and comes back to the pool after a night that could not finish it.
+const WITH_LANGUAGE = [...MOVES, {group: 'App', label: LANGUAGE_LABEL}];
+const walked = {pairs: [`start → App: ${LANGUAGE_LABEL}`]};
+const languageGoalOf = plan => plan.goals.find(goal => goal.group === 'App' && goal.label.startsWith('Read the app in '));
+
+test('a night with no language goal in the two before it carries one; one in either of them does not need it', () => {
+  assert.equal(LANGUAGE_EVERY, 3);
+  assert.equal(languageDue([]), true);
+  assert.equal(languageDue([walked, {pairs: []}, {pairs: []}]), true);   // three nights ago: due again
+  assert.equal(languageDue([{pairs: []}, walked, {pairs: []}]), false);
+  assert.equal(languageDue([{pairs: []}, {pairs: []}, walked]), false);
+  for (let seed = 1; seed <= 40; seed++) assert.ok(languageGoalOf(planSession({seed, moves: WITH_LANGUAGE})), `seed ${seed}: due and missing`);
+});
+
+test('the goal names the night\'s language from the seed, keeps the pool\'s pair, and is replayable', () => {
+  const names = new Set();
+  for (let seed = 1; seed <= 60; seed++) {
+    const plan = planSession({seed, moves: WITH_LANGUAGE}), goal = languageGoalOf(plan);
+    assert.equal(goal.label, languageGoal(languageOf(seed)));
+    assert.ok(goal.pair.endsWith(`→ App: ${LANGUAGE_LABEL}`), goal.pair);
+    assert.deepEqual(planSession({seed, moves: WITH_LANGUAGE}), plan);
+    names.add(languageOf(seed));
+  }
+  assert.deepEqual([...names].sort(), Object.keys(OTHER_LANGUAGES).sort(), 'every language comes up');
+  assert.match(languageGoal('de'), /"Deutsch" in the Language dropdown.*English word.*the test puts the app back in English/);
+});
+
+test('without its pool move (a pool of only the palette) nothing is forced, and a queued language goal matches the pool again', () => {
+  assert.equal(languageGoalOf(planSession({seed: 3, moves: MOVES})), undefined);
+  assert.equal(poolLabel(languageGoal('ru')), LANGUAGE_LABEL);
+  assert.equal(poolLabel('Reload the window'), 'Reload the window');
+  const session = {summary: {goals: [{n: 1, group: 'App', label: languageGoal('fr'), verdict: 'could-not-finish'}]}, completed: []};
+  assert.deepEqual(pendingGoals(session), [{group: 'App', label: LANGUAGE_LABEL}]);
+});
+
+test('a palette entry that needs a login-gated address and a browser tab is not a goal the persona is given', () => {
+  const moves = movesFromPalette([{group: 'Actions', label: 'Read this board'}, {group: 'Strategy', label: 'Tune my strategy'}]);
+  assert.deepEqual(moves.map(move => move.label), ['Tune my strategy']);
+});
+
+test('the night\'s pool is the palette plus the language move, and a language goal worked tonight leaves the queue', () => {
+  const night = withLanguage(movesFromPalette([{group: 'Strategy', label: 'Tune my strategy'}]));
+  assert.deepEqual(night.map(move => move.label), ['Tune my strategy', LANGUAGE_LABEL]);
+  assert.equal(withLanguage(night).length, 2, 'added once');
+  for (let seed = 1; seed <= 20; seed++) assert.ok(planSession({seed, moves: night, count: 2}).goals.some(goal => goal.label.startsWith('Read the app in ')), `seed ${seed}`);
+  const worked = {summary: {goals: [{n: 1, group: 'App', label: languageGoal('it'), verdict: 'worked'}]}, completed: [1]};
+  assert.deepEqual(pendingGoals(worked, [{group: 'App', label: LANGUAGE_LABEL}]), [], 'not queued again');
 });
