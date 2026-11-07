@@ -381,7 +381,7 @@ function hideCredentialSecrets() {
   maskSharedPassword();
 }
 async function openCredentials() {
-  maskSharedPassword();   // the rows are drawn again below, once the list arrives (a slow or failed read does not blank them)
+  maskSharedPassword();   // Why (7 Nov 2026, #3530): the old password is masked on every open; the account rows were emptied when the page was left and are drawn from the list below
   const result = await window.pilot.credentials();
   const rows = result?.rows || [];
   const table = $('credentials-table');
