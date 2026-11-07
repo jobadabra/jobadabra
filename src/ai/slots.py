@@ -8,6 +8,7 @@ import contextlib
 import heapq
 import itertools
 import threading
+import time
 
 FIRST, NORMAL, LATER = 0, 1, 2
 _local = threading.local()
@@ -46,6 +47,15 @@ def ranked(at):
         _local.rank = before
 
 
+def waited(reset=False):
+    """The seconds this thread has waited for a slot since the last reset, or None when it entered no slot (an engine that calls the SDK directly has none: its wait is unknown, never 0)
+    (src/ai/call_log.py reads it around one call); `reset=True` returns it and starts again."""
+    seconds = getattr(_local, 'waited', None)
+    if reset:
+        _local.waited = None
+    return seconds
+
+
 def carry(fn, at=None):
     """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry()."""
     at = level() if at is None else at
@@ -71,6 +81,7 @@ class Slots:
 
     def __enter__(self):
         ticket = (level(), rank(), next(self._order))
+        asked = time.monotonic()
         with self._cond:
             heapq.heappush(self._queue, ticket)
             try:
@@ -85,6 +96,7 @@ class Slots:
             self.free -= 1
             if self.free:   # the next in line may take another free slot
                 self._cond.notify_all()
+        _local.waited = (getattr(_local, 'waited', None) or 0.0) + time.monotonic() - asked
         return self
 
     def __exit__(self, *exc):

@@ -12,6 +12,7 @@ this file in desktop/lib/ai/contract.js. Guarded by tests/unit/ai/test_ai_provid
 from dataclasses import dataclass, field
 import re
 import sys
+import time
 
 API, SUBSCRIPTION = 'api', 'subscription'
 STOP_REASONS = ('end_turn', 'max_tokens', 'refusal', 'max_turns')
@@ -198,6 +199,7 @@ class Adapter:
     billing = API
     label = ''           # how a call was paid for, in words ("Claude Code (your plan)")
     fallback_label = ''  # the fallback, in words ("your Anthropic API key")
+    action = ''          # the step that asked (the action given to providers.build), for the run log's call lines (src/ai/call_log.py)
     reads_pdf = True     # a PDF attachment is read as Claude reads it; False: refused with a clear error, never a guessed answer
 
     def __init__(self, fallback=None, log=None):
@@ -218,6 +220,9 @@ class Adapter:
                           'and its text (the app does, desktop/lib/ai), or choose another engine in Settings → Connections → AI.')
         if self._fallen is not None:
             return self._fallen.messages.create(**params)
+        from .. import call_log, slots
+        asked = time.monotonic()
+        slots.waited(reset=True)
         try:
             try:
                 return self.complete(request)
@@ -227,6 +232,8 @@ class Adapter:
                 except Exception:   # noqa: BLE001 — an error that takes no attributes is logged without them
                     pass
                 raise
+            finally:
+                call_log.say(self.action or self.name, request.model, asked, slots.waited(reset=True))
         except AiLimit as error:
             if not self.fallback or error.final:
                 raise
