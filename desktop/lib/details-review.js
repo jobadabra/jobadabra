@@ -184,6 +184,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     const conflict = (storage.settings().profileConflicts || []).find(each => each.topic === ref.topic);
     const pick = conflict ? conflict.choices.findIndex(each => same(each.value) === same(text)) : -1;
     if (pick < 0) return {ok: false, error: t('detailNotice.pickValue')};
+    // Why (7 Nov 2026, detail-notices scope): profile-move owns delegated failures; preserve them verbatim until its separate presentation pass.
     const done = await resolve(storage, ref.topic, pick, {fetcher, save});
     return done.ok ? {...done, homeName: HOME_NAMES[conflict.home]} : done;
   }
@@ -228,6 +229,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     else await line.page.setText(line.block, `${ref.label}: ${text}`);
     return {ok: true, homeName: 'your Profile'};
   }
+  // Why (7 Nov 2026, detail-notices scope): contact/CV producers are outside this copy-only lane; do not translate or reinterpret their returned errors here.
   if (kind === 'cvcheck') return cvQueue.answer(storage, ref, text, {fetcher, save});
   if (kind === 'contact') return contactReview.answer(storage, ref.field, text, {fetcher});
   if (kind === 'missing') {

@@ -10,10 +10,10 @@ const pass=()=>{};
 const modules={
   'store/index.js':{openStore:()=>({page:()=>({outline:async()=>[],setText:forbidden('page write'),remove:forbidden('page remove')})})},
   'profile-sections.js':{SECTIONS:{availability:'Availability'},read:async()=>state().sections,save:async(_s,home,lines)=>{state().writes.push([home,lines]);if(!state().failWrite)state().sections[home]=lines;}},
-  'profile-move.js':{itemsOf:()=>[],openConflicts:forbidden('conflicts read'),resolve:forbidden('resolve'),unsureKey:JSON.stringify},
+  'profile-move.js':{itemsOf:()=>[],openConflicts:forbidden('conflicts read'),resolve:async()=>state().delegated,unsureKey:JSON.stringify},
   'question-formats.js':{kept:()=>({})},'answer-home.js':{HOME_NAMES:{availability:'Availability & compensation'},homeOf:forbidden('AI routing'),writeHome:forbidden('home write')},
   'open-wording.js':{worded:forbidden('AI wording')},'missing-facts.js':{byId:()=>null},'fact-asks.js':{},
-  'answer-clarity.js':{keepAsIs:(_s,ref)=>state().kept.push(ref)},'contact-review.js':{},'contact.js':{},'cv-queue.js':{},
+  'answer-clarity.js':{keepAsIs:(_s,ref)=>state().kept.push(ref)},'contact-review.js':{answer:async()=>state().delegated},'contact.js':{},'cv-queue.js':{answer:async()=>state().delegated},
   'eligibility-older.js':{folded:pass},'ai/anthropic-api.js':{anthropicApi:forbidden('paid AI')},'log.js':{log:pass},'profile-routing.js':{organize:forbidden('AI organize')},
   'locations-same.js':{settleSame:forbidden('AI same places')},'strategy-settings.js':{saveSettings:forbidden('shared settings write')},
   'backup.js':{run:forbidden('backup')},'set-aside.js':{keep:(_s,entries)=>state().aside.push(...entries),list:()=>[]},
@@ -115,4 +115,14 @@ test('actual location errors preserve external failures and unknown validation t
   const raw='Provider 原文 {count} this Mac <keep>';
   await assert.rejects(locations.resolveLocation(storage,'acceptable','profile',{write:async()=>{throw Error(raw);}}),error=>error.message===raw);
   const invalid=await locations.resolveLocation(storage,'acceptable','invalid');setLocale('en');assert.deepEqual(await locations.resolveLocation(storage,'acceptable','invalid'),invalid);assert.equal(invalid.ok,false);assert.deepEqual(s.writes,[]);
+});
+
+test('delegated producer errors pass through unchanged pending their separate presentation pass',async t=>{
+  const {s,storage}=rig(t);s.settings.profileConflicts=[{topic:'raw topic',home:'availability',choices:[{value:'raw pick'}]}];
+  for(const locale of SUPPORTED_LOCALES){setLocale(locale);
+    for(const [kind,ref,value,error] of [['which',{topic:'raw topic'},'raw pick','That choice is no longer open'],['contact',{field:'email'},'raw','That question is no longer open'],['cvcheck',{fact:'raw-id'},'raw','It did not save; nothing else changed']]){
+      s.delegated={ok:false,error};assert.deepEqual(await review.answer(storage,key(kind,ref),value),s.delegated);
+    }
+  }
+  assert.deepEqual(s.writes,[]);
 });
