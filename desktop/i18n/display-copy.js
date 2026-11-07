@@ -17,7 +17,10 @@ export function copyFields(value, fields) {
 function resolve(spec, fallback) {
   if (!spec || typeof spec !== 'object') return fallback;
   if (Object.hasOwn(spec, 'value')) return spec.value;
-  if (typeof spec.date === 'string') return getLocale() === 'en' ? spec.fallback : date(spec.date, spec.options || {});
+  if (typeof spec.date === 'string') {
+    if (getLocale() === 'en') return spec.fallback;
+    try { return date(spec.date, spec.options || {}); } catch { return spec.fallback ?? fallback; }
+  }
   if (Array.isArray(spec.list)) return spec.list.map((part, index) => resolve(part, fallback?.[index]));
   if (Array.isArray(spec.join)) return spec.join.map(part => resolve(part, '')).join(String(spec.separator || ''));
   if (typeof spec.key !== 'string' || !spec.key.startsWith('focusCards.')) return fallback;

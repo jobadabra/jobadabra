@@ -221,7 +221,8 @@ def missing_words(values, alternative=False):
 
 def date_words(moment, pattern, canonical=None):
     """Capture a formatted date through the shared desktop formatter, retaining its exact original English fallback."""
-    options = {'timeZone': str(TZ) if isinstance(moment, datetime) else 'UTC'}
+    zone = getattr(TZ, 'key', None) if isinstance(moment, datetime) else 'UTC'
+    options = {'timeZone': zone} if zone else {}
     for token, field, style in (('%a', 'weekday', 'short'), ('%b', 'month', 'short'), ('%d', 'day', '2-digit'),
                                 ('%H', 'hour', '2-digit'), ('%M', 'minute', '2-digit')):
         if token in pattern:

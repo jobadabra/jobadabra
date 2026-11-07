@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": {"one": "Sin novedades desde hace {quiet} día tras la entrevista. El siguiente paso era: {value}. Pregunta cómo va el proceso.", "many": "Sin novedades desde hace {quiet} días tras la entrevista. El siguiente paso era: {value}. Pregunta cómo va el proceso.", "other": "Sin novedades desde hace {quiet} días tras la entrevista. El siguiente paso era: {value}. Pregunta cómo va el proceso."},
   "build.m041": "{stage}, sin cita programada{value}. Propón horarios para la próxima llamada o pregunta cómo va el proceso.",
   "build.m043": "{done_today} de {target} hoy.",
-  "build.m029": " {reason}: crea un nuevo kit para esta ronda (unos $0.04); el anterior permanece en la página del puesto.",
+  "build.m029": " {reason}: crea un nuevo kit para esta ronda; el anterior permanece en la página del puesto.",
   "build.m044": " Tus mejores opciones: {value}.",
   "build.m049": "una entrevista",
   "build.m018": "Reservar la llamada: {label}",

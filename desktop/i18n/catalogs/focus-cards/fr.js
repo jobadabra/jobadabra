@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": {"one": "Aucune nouvelle depuis {quiet} jour après l’entretien. La prochaine étape était : {value}. Demandez où en sont les choses.", "many": "Aucune nouvelle depuis {quiet} jours après l’entretien. La prochaine étape était : {value}. Demandez où en sont les choses.", "other": "Aucune nouvelle depuis {quiet} jours après l’entretien. La prochaine étape était : {value}. Demandez où en sont les choses."},
   "build.m041": "{stage}, aucun rendez-vous fixé{value}. Proposez des créneaux pour le prochain appel ou demandez où en sont les choses.",
   "build.m043": "{done_today} sur {target} aujourd’hui.",
-  "build.m029": " {reason} : préparez un nouveau dossier pour cette étape (environ $0.04) ; l’ancien reste sur la page de l’offre.",
+  "build.m029": " {reason} : préparez un nouveau dossier pour cette étape ; l’ancien reste sur la page de l’offre.",
   "build.m044": " Vos meilleures options : {value}.",
   "build.m049": "un entretien",
   "build.m018": "Réserver l’appel : {label}",

@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": {"one": "Seit {quiet} Tag keine Neuigkeiten nach dem Vorstellungsgespräch. Der nächste Schritt war: {value}. Frage nach dem Stand.", "other": "Seit {quiet} Tagen keine Neuigkeiten nach dem Vorstellungsgespräch. Der nächste Schritt war: {value}. Frage nach dem Stand."},
   "build.m041": "{stage}, kein Termin gebucht{value}. Schlage Zeiten für das nächste Gespräch vor oder frage nach dem Stand.",
   "build.m043": "{done_today} von {target} heute.",
-  "build.m029": " {reason}: Erstelle neue Unterlagen für diese Runde (etwa $0.04); die früheren bleiben auf der Seite der Stelle.",
+  "build.m029": " {reason}: Erstelle neue Unterlagen für diese Runde; die früheren bleiben auf der Seite der Stelle.",
   "build.m044": " Deine besten Optionen: {value}.",
   "build.m049": "ein Vorstellungsgespräch",
   "build.m018": "Gespräch buchen: {label}",

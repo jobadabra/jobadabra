@@ -168,7 +168,7 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
                 kit = prep_state(prep_at, reviewed_interviews(interviews, row['id']), history)
                 detail = (text('focusCards.build.m028', 'Interview {value}. Read the posting and your kit, and practise the topics you answered weakly before.', {'value': date_words(coming.astimezone(TZ), '%a %d %b, %H:%M')}))
                 if kit['stale']:
-                    detail = join('', [detail, text('focusCards.build.m029', " {reason}: build a new kit for this round (about $0.04); the earlier one stays on the job's page.", {'reason': kit['reason']})])
+                    detail = join('', [detail, text('focusCards.build.m029', " {reason}: build a new kit for this round; the earlier one stays on the job's page.", {'reason': kit['reason']})])
                 items.append(_item(1 if hours <= SOON_HOURS else 2, 'prepare', '🎤', text('focusCards.build.m030', 'Prepare: {label}', {'label': label}), detail, row,
                                    at=coming.isoformat(), prep_at=prep_at, prep_stale=kit['stale'],
                                    prep_reason=kit['reason'], prep_since=kit['since'], prep_why=kit['why']))

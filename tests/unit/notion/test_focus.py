@@ -290,7 +290,8 @@ class PrepKitStaleTests(unittest.TestCase):
         self.assertEqual(item['prep_reason'], 'Kit from 29 Sep · your call on 30 Sep was reviewed since')
         self.assertEqual(item['meta'][1], item['prep_reason'])  # the card says why, not "ready"
         self.assertEqual(item['prep_since'], '2026-09-30')
-        self.assertIn('build a new kit for this round (about $0.04)', item['detail'])
+        self.assertIn('build a new kit for this round', item['detail'])
+        self.assertNotIn('$0.04', item['detail'])
 
     def test_a_kit_built_after_the_review_is_current(self):
         reviewed = interview('iv1', 'h1', '2026-09-30', created='2026-09-30T09:40:00.000Z')

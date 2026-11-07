@@ -1,11 +1,24 @@
 """Guard: data — UI localization retains canonical Focus fields, raw values and control identities."""
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
+from unittest import mock
 
 from src.ui_copy import text, join, wire, date
 
 
 class UiCopyTests(unittest.TestCase):
+    def test_fixed_offset_windows_zone_names_are_not_sent_as_intl_timezones(self):
+        from src import focus_items
+        zone = timezone(timedelta(hours=1), 'W. Europe Standard Time')
+        moment = datetime(2026, 11, 7, 12, 30, tzinfo=zone)
+        with mock.patch.object(focus_items, 'TZ', zone):
+            packed = wire({'badge': focus_items.date_words(moment, '%a %H:%M')})
+        spec = packed['displayCopy']['badge']
+        self.assertNotIn('timeZone', spec['options'])
+        self.assertTrue(spec['date'].endswith('+01:00'))
+        self.assertEqual(packed['badge'], moment.strftime('%a %H:%M'))
+
     def test_wire_keeps_canonical_fields_and_captures_only_authored_parts(self):
         raw = 'Apply to your next role. {count} <raw>'
         title = text('focusCards.reply', 'Reply to {who}', {'who': raw})

@@ -101,13 +101,14 @@ class FocusDisplayCopyTest(unittest.TestCase):
                 if kind not in ('which_job', 'waiting'):
                     self.assertIn('headline', item['displayCopy'])
 
-    def test_stale_prep_detail_keeps_both_recipes_and_cost_retention_warning(self):
+    def test_stale_prep_detail_keeps_both_recipes_and_retention_warning_without_price(self):
         from tests.unit.notion.test_focus import reviewed_interview
         app = row('prep', 'Northwind', 'Engineer', stage='Interview scheduled',
                   interview='2026-09-29T12:00:00Z', Interview_prep='2026-09-24')
         data = focus.build([app], [], [reviewed_interview('prep', '2026-09-25')], now=NOW)
         item = next(item for item in data['items'] if item['kind'] == 'prepare')
-        self.assertIn('about $0.04', item['detail'])
+        self.assertIn('build a new kit for this round', item['detail'])
+        self.assertNotIn('$0.04', item['detail'])
         self.assertIn("the earlier one stays on the job's page", item['detail'])
         recipe = item['displayCopy']['detail']['join']
         self.assertEqual(len(recipe), 2)

@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": "No news for {quiet} days since the interview. Next step was: {value}. Ask where things stand.",
   "build.m041": "{stage}, nothing booked{value}. Propose times for the next call, or ask where things stand.",
   "build.m043": "{done_today} of {target} today.",
-  "build.m029": " {reason}: build a new kit for this round (about $0.04); the earlier one stays on the job's page.",
+  "build.m029": " {reason}: build a new kit for this round; the earlier one stays on the job's page.",
   "build.m044": " Your best: {value}.",
   "build.m049": "an interview",
   "build.m018": "Book the call: {label}",

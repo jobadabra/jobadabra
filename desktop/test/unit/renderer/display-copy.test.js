@@ -36,3 +36,12 @@ test('date recipes reuse the existing locale formatter and keep the canonical En
   setLocale('en');
   assert.equal(copyField(source, 'title'), 'Tue');
 });
+
+test('invalid date timezone recipes retain canonical copy instead of breaking a non-English Focus render', tcase => {
+  tcase.after(() => setLocale('en'));
+  setLocale('de');
+  const source = {badge: 'Sat 12:30', displayCopy: {badge: {
+    date: '2026-11-07T12:30:00+01:00', options: {timeZone: 'W. Europe Standard Time'}, fallback: 'Sat 12:30',
+  }}};
+  assert.equal(copyField(source, 'badge'), 'Sat 12:30');
+});

@@ -184,7 +184,9 @@ class LearningTests(unittest.TestCase):
         result, = focus.build([], [], target=0, now=NOW, insights=[insight])['suggestions']
         self.assertEqual(result['source'], 'Issue detected')
         self.assertEqual(result['detail'], 'Practise one incident story')
-        self.assertEqual(result['actions'], [{'label': 'Review evidence', 'do': 'open_insight', 'link': insight['link']}])
+        self.assertEqual(result['actions'], [{'label': 'Review evidence', 'do': 'open_insight', 'link': insight['link'],
+                                            'displayCopy': {'label': {'key': 'focusCards.suggestions.m002',
+                                                                      'fallback': 'Review evidence', 'values': {}}}}])
 
     def test_supported_advice_is_saved_to_notion_with_traceable_evidence(self):
         from src.stores import memory

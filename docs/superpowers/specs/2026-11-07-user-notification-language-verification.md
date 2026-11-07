@@ -10,7 +10,7 @@ This record covers the approved seven-language email and Telegram work. It is a 
 - Full repository syncs and language-only writes share a queue. Bot deployment requests receive separate deadlines after queue waits.
 - Owner/admin/CI messages retain English context. End-user Test actions can localize; the generic test flag does not identify an owner audience.
 
-The service foundation, all twelve email templates, transactional request context, Python digest runtime, and desktop delivery bridge have merged through private #482/#483/#484 and public #3484/#3485/#3488. Final bot recording labels and desktop completion/private-error/Gmail notices merged through #3495/#3496. The remaining Python producer PR #3499 is exact-head READY for the owner's merge.
+The service foundation, all twelve email templates, transactional request context, Python digest runtime, and desktop delivery bridge have merged through private #482/#483/#484 and public #3484/#3485/#3488. Final bot recording labels and desktop completion/private-error/Gmail notices merged through #3495/#3496. The final Python producer PR #3499 was owner-merged at b98b171f7da61774df6182d5110db07aafd4a31c; report PR #3505 was owner-merged at 1757d53cf8d554c80e632525a70e58697edb6d5f.
 
 ## Verification evidence
 
@@ -41,7 +41,7 @@ The website and admin UI are outside this delivery scope. Earlier desktop/extens
 
 - Private service and email changes: merged.
 - Shared public language delivery, digest runtime and initial desktop/bot copy: merged.
-- Remaining Python notification families: #3499 READY at 7eb3113022d91b27f32cce0d47091b75b68a4ce4. The watcher emitted READY; every check and the required aggregate status passed, Gitar approved, no review threads remained open, and GitHub reported MERGEABLE/CLEAN. Owner merge remains pending.
+- Remaining Python notification families: #3499 READY at 7eb3113022d91b27f32cce0d47091b75b68a4ce4. The watcher emitted READY; every check and the required aggregate status passed, Gitar approved, no review threads remained open, and GitHub reported MERGEABLE/CLEAN. The owner subsequently merged this head as b98b171f7da61774df6182d5110db07aafd4a31c; the notification phase is complete.
 - Final desktop completion/private-error/Gmail notices: #3496 merged at 7986d7e.
 - Bot fallback names: #3495 merged at e16bcdd2e992d61563d09ed79da0d7c22d94b54e.
 - Owner merges each PR. Agents do not merge.

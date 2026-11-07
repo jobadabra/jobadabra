@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": {"one": "Nicio noutate de {quiet} zi de la interviu. Următorul pas era: {value}. Întreabă în ce stadiu sunt lucrurile.", "few": "Nicio noutate de {quiet} zile de la interviu. Următorul pas era: {value}. Întreabă în ce stadiu sunt lucrurile.", "other": "Nicio noutate de {quiet} de zile de la interviu. Următorul pas era: {value}. Întreabă în ce stadiu sunt lucrurile."},
   "build.m041": "{stage}, nicio programare{value}. Propune ore pentru următorul apel sau întreabă în ce stadiu sunt lucrurile.",
   "build.m043": "{done_today} din {target} astăzi.",
-  "build.m029": " {reason}: creează un kit nou pentru această rundă (aproximativ $0.04); cel anterior rămâne pe pagina postului.",
+  "build.m029": " {reason}: creează un kit nou pentru această rundă; cel anterior rămâne pe pagina postului.",
   "build.m044": " Cele mai bune opțiuni: {value}.",
   "build.m049": "un interviu",
   "build.m018": "Programează apelul: {label}",

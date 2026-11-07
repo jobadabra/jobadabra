@@ -42,7 +42,7 @@ export const messages = {
   "build.m039": {"one": "Nessuna notizia da {quiet} giorno dopo il colloquio. Il prossimo passo era: {value}. Chiedi a che punto sono le cose.", "many": "Nessuna notizia da {quiet} giorni dopo il colloquio. Il prossimo passo era: {value}. Chiedi a che punto sono le cose.", "other": "Nessuna notizia da {quiet} giorni dopo il colloquio. Il prossimo passo era: {value}. Chiedi a che punto sono le cose."},
   "build.m041": "{stage}, nessun appuntamento fissato{value}. Proponi degli orari per la prossima chiamata o chiedi a che punto sono le cose.",
   "build.m043": "{done_today} di {target} oggi.",
-  "build.m029": " {reason}: crea un nuovo kit per questo turno (circa $0.04); il precedente resta nella pagina del lavoro.",
+  "build.m029": " {reason}: crea un nuovo kit per questo turno; il precedente resta nella pagina del lavoro.",
   "build.m044": " Le tue opzioni migliori: {value}.",
   "build.m049": "un colloquio",
   "build.m018": "Prenota la chiamata: {label}",
