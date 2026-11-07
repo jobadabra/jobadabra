@@ -164,6 +164,13 @@ on:
       - 'desktop/i18n/catalogs/helpers/it-more.js'
       - 'desktop/i18n/catalogs/helpers/ro-more.js'
       - 'desktop/i18n/catalogs/helpers/ru-more.js'
+      - 'desktop/i18n/catalogs/helpers/de-flow.js'
+      - 'desktop/i18n/catalogs/helpers/en-flow.js'
+      - 'desktop/i18n/catalogs/helpers/es-flow.js'
+      - 'desktop/i18n/catalogs/helpers/fr-flow.js'
+      - 'desktop/i18n/catalogs/helpers/it-flow.js'
+      - 'desktop/i18n/catalogs/helpers/ro-flow.js'
+      - 'desktop/i18n/catalogs/helpers/ru-flow.js'
   workflow_dispatch:
     inputs:
       window:

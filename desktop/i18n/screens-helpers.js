@@ -28,6 +28,7 @@ for (const [locale, messages] of Object.entries({en, de, fr, it, es, ro, ru})) r
 
 
 
+
 // State catalogs stay separate to keep each bundled catalog below 500 lines.
 import {messages as enState} from './catalogs/helpers/en-state.js';
 import {messages as deState} from './catalogs/helpers/de-state.js';
@@ -47,3 +48,13 @@ import {messages as esMore} from './catalogs/helpers/es-more.js';
 import {messages as roMore} from './catalogs/helpers/ro-more.js';
 import {messages as ruMore} from './catalogs/helpers/ru-more.js';
 for (const [locale, messages] of Object.entries({en: enMore, de: deMore, fr: frMore, it: itMore, es: esMore, ro: roMore, ru: ruMore})) registerMessages(locale, 'helperMore', messages);
+
+// Flow and connection helper presentations keep canonical data values separate.
+import {messages as enFlow} from './catalogs/helpers/en-flow.js';
+import {messages as deFlow} from './catalogs/helpers/de-flow.js';
+import {messages as frFlow} from './catalogs/helpers/fr-flow.js';
+import {messages as itFlow} from './catalogs/helpers/it-flow.js';
+import {messages as esFlow} from './catalogs/helpers/es-flow.js';
+import {messages as roFlow} from './catalogs/helpers/ro-flow.js';
+import {messages as ruFlow} from './catalogs/helpers/ru-flow.js';
+for (const [locale, messages] of Object.entries({en: enFlow, de: deFlow, fr: frFlow, it: itFlow, es: esFlow, ro: roFlow, ru: ruFlow})) registerMessages(locale, 'helperFlow', messages);
