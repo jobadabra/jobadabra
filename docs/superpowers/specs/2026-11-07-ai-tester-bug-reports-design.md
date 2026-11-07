@@ -27,7 +27,7 @@ Issue: https://github.com/jobadabra/jobadabra/issues/3364. Progress: see the pla
 | The evidence | the bundle in the private store, immutable | written once by the app's tester send; deleted after 90 days |
 | "Is this app a tester?" | the process environment, read once by `lib/tester-mode.js` | whoever launches it: the persona harness or the twin; never a setting, never the person |
 
-**Tester mode** (`JOBADABRA_TESTER=persona|desktop-tester`, `JOBADABRA_TESTER_KEY`)
+**Tester mode** (`JOBADABRA_TESTER=persona|desktop-tester`, `JOBADABRA_TESTER_KEY` set by the launcher, see Keys)
 - Read only in the main process. It is refused unless the app also runs as the test app or the twin (a real person's app can never be in it); guard test.
 - Same dialog, same IPC path, same held-copy rule. The differences: the dialog also asks Journey (J-number or "none"), Expected, Seen, Severity (high / medium / low), Steps; the capture is the full bundle; **the send goes to the tester route, never to `/api/feedback`** (so no D1 row, no Telegram message, no count in Admin).
 - The persona harness calls the same two IPC handlers the dialog calls (`feedbackPrepare` at the moment the note is made, `sendFeedback` for the notes that are filed). Claude Desktop presses the dialog's button.
@@ -53,7 +53,9 @@ Issue: https://github.com/jobadabra/jobadabra/issues/3364. Progress: see the pla
 **Replay**: `npm run twin -- --replay <id>` fetches `state.json` and `env.json` with the Admin key from the Keychain, starts the twin (never the owner's window; never Submit) with the session record and job row loaded into its throw-away folder, and prints the bug's Seen / Expected. A bundle whose app version differs from the checkout says so.
 
 ## Limits and decisions
-- **Safety:** the tester route needs the narrow CI key; the app uses it only in tester mode; no real person's data is ever sent there (guard: the tester send refuses unless the app is the test app or the twin). Tests never use the owner's app, Keychain or Chrome (fake key, stand-in fetcher).
+- **Safety:** the tester send is allowed only in a test app (persona harness) or the twin; a real person's app is never in tester mode (guard test).
+- **What a twin bundle holds, said plainly:** the twin is a clone of the owner's real app folder, so its `state.json`, `logs.txt` and pictures can carry the owner's real session records, job rows and company names. They go only to the private bucket, behind the Admin login, for 90 days, redacted by `redact()` (secrets, e-mails, home folder). The Profile snapshot, CV text and answers are **not** part of the bundle (`profileText` is not called in tester mode). Persona bundles hold invented data only. Real-data bundles never enter issue text or a committed file (PR 4/5 test).
+- **Keys:** CI sends with the narrow `REPLAYS_PUBLISH_KEY` (a GitHub secret). The twin on the owner's Mac needs no CI key: the tester route also accepts the Admin key, which already lives in the Keychain (`stats_key`, the same item the Admin tooling reads); the twin's launcher reads it from the Keychain and passes it in only to the child process, never to a shell profile or a file. No key found = tester mode stays off and says so. Tests use a fake key and a stand-in fetcher.
 - **No new gate** (tooling freeze): each PR moves an existing writer; its tests guard safety or privacy only (`Guard:` line).
 - **Admin counts untouched:** nothing here writes to the `feedback` table.
 - **Depends on** the persona agent reaching screens: the 6 Nov nightly stopped at its 250k token cap after 3.3 min with 0 goals worked (run 42163935942: Claude answers at 7-9k tokens a step; the caps plan 100 steps). The filing format is useless until the agent's step plan comes from its token meter; that fix belongs to the persona sessions (`ce`/`ag`), reported to the coordinator 7 Nov. PR 4/5 waits for it.
