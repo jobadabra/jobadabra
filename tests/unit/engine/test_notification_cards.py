@@ -4,6 +4,7 @@ from html import escape
 import json
 import os
 import sqlite3
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -244,7 +245,7 @@ class NotificationCardsTests(unittest.TestCase):
                 capture = folder / 'curl.json'
                 (folder / 'curl').write_text('#!' + sys.executable + '\nimport json,os,sys\nfrom pathlib import Path\nPath(os.environ["CAPTURE"]).write_text(json.dumps(sys.argv[1:]))\n')
                 (folder / 'curl').chmod(0o755)
-                (folder / 'python').write_text('#!/bin/sh\n[ "$FORMAT_FAIL" != 1 ] || exit 1\nexec ' + str(root / '.venv/bin/python') + ' "$@"\n')
+                (folder / 'python').write_text('#!/bin/sh\n[ "$FORMAT_FAIL" != 1 ] || exit 1\nexec ' + shlex.quote(sys.executable) + ' "$@"\n')
                 (folder / 'python').chmod(0o755)
                 env = {'PATH': str(folder) + ':/usr/bin:/bin', 'JOBADABRA_NOTIFY': 'telegram',
                        'TELEGRAM_BOT_TOKEN': 'fake-token', 'TELEGRAM_CHAT_ID': '17', 'MODE': 'Raw mode {count}',
