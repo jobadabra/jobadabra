@@ -1,6 +1,7 @@
 // The message to the person's e-mail and Telegram when an application waits for them (spec docs/superpowers/specs/2026-11-02-waiting-message-design.md): until now only the app's own
 // notification said it, and a person who is away heard nothing. One message an hour at most; a burst (the jobs an earlier run held, handed over at start) is one message; none
 // without a working channel. Never for a Claude session's own question (lib/app-reminders.js sessionNeedsYou: the 1 Oct 2026 noise reason). Guard: test/unit/main/waiting-message.test.js.
+import {notificationLocale, notificationText} from '../i18n/user-notifications.js';
 import * as notifyChannel from './notify-channel.js';
 import {allowed} from './mail-choices.js';
 import {log as appLog} from './log.js';
@@ -16,7 +17,6 @@ export function waitingMessageFor(storage) {
 }
 
 const unref = timer => { timer?.unref?.(); return timer; };
-const words = count => `${count} application${count === 1 ? ' is' : 's are'} waiting for you`;
 
 /**
  * -> {add({id, title, company, note, open?})}. `add` queues an application that needs the person; the window (WINDOW_MS) and the hour since `settings.waitingMessageAt` (the only persisted state,
@@ -37,11 +37,12 @@ export function createWaitingMessage(storage, {now = Date.now, setTimer = (fn, m
       if (!items.length) return;
       const by = channels(), mail = by.includes('email'), bot = by.includes('telegram');
       if (!mail && !bot) { log('apply', 'waiting application not sent: no e-mail or Telegram works', {count: items.length}); return; }
-      const subject = words(items.length);
-      const lines = items.map(item => `${[item.title, item.company].filter(Boolean).join(' at ') || 'An application'}: ${item.note}`);
+      const locale = notificationLocale(storage.settings()), textOf = (key, variables) => notificationText(locale, key, variables);
+      const subject = textOf('waiting', {count: items.length});
+      const lines = items.map(item => `${item.title && item.company ? textOf('atCompany', {title: item.title, company: item.company}) : item.title || item.company || textOf('application')}: ${item.note}`);
       const text = lines.join('\n');
-      const buttons = [{text: 'Open in Jobadabra', url: 'https://www.jobadabra.top/open?view=sessions'}];
-      const done = await Promise.all([mail && sendEmail({subject, text, buttons}), bot && sendTelegram(`${subject}\n${text}\n\nOpen Jobadabra to finish it.`)].map(sent => Promise.resolve(sent).catch(() => false)));
+      const buttons = [{text: textOf('open'), url: 'https://www.jobadabra.top/open?view=sessions'}];
+      const done = await Promise.all([mail && sendEmail({subject, text, buttons}), bot && sendTelegram(`${subject}\n${text}\n\n${textOf('finish')}`)].map(sent => Promise.resolve(sent).catch(() => false)));
       if (done.some(Boolean)) storage.saveSettings({waitingMessageAt: new Date(now()).toISOString()});
       log('apply', 'waiting application message', {count: items.length, email: !!done[0], telegram: !!done[1]});
     } finally { sending = false; arm(); }   // an application that came while this one was sending

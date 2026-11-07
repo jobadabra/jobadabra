@@ -1,6 +1,7 @@
 // The app's notifications and Recent activity (moved out of main.js, 8 Oct 2026): a notification (macOS, or a toast in the window when macOS won't show it), the run list
 // merged from Notion and this Mac, announcing finished runs, and the nudge after two weak job checks. The window and storage are passed as getters.
 // Guards: the notify-watch, run-history, few-jobs and activity tests in desktop/test.
+import {notificationLocale} from '../i18n/user-notifications.js';
 import * as critical from './critical.js';
 import * as fewJobs from './few-jobs.js';
 import * as github from './github.js';
@@ -95,7 +96,7 @@ export function createAppNotify(ctx) {
     const what = fewJobs.due(found, getStorage().settings());
     if (!what.notify) return;
     getStorage().saveSettings({fewJobsNudgedFor: found.runId, ...(what.telegram ? {fewJobsTelegramAt: Date.now()} : {})});
-    const said = fewJobs.words(found);
+    const said = fewJobs.words(found, notificationLocale(getStorage().settings()));
     appLog('advice', 'few new jobs nudge', {run: found.runId, counts: found.counts.join(','), telegram: what.telegram, decidedBy: 'two weak checks in a row'});
     if (getWindow()?.isFocused()) toWindow('toast', {title: said.title, body: said.body, target: {run: found.runId}, tone: 'warn'});
     else notify(said.title, said.body, {run: found.runId}, 'warn');
