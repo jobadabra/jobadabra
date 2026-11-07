@@ -19,5 +19,7 @@ export default {
     "one": "🔎 Ultima căutare a găsit {shown} loc de muncă nou. Deschide Jobadabra → Strategie: relaxează un filtru, adaugă cuvinte sau locuri, conectează surse de anunțuri și deschide site-urile accesibile doar ție.",
     "other": "🔎 Ultima căutare a găsit {shown} de locuri de muncă noi. Deschide Jobadabra → Strategie: relaxează un filtru, adaugă cuvinte sau locuri, conectează surse de anunțuri și deschide site-urile accesibile doar ție.",
     "few": "🔎 Ultima căutare a găsit {shown} locuri de muncă noi. Deschide Jobadabra → Strategie: relaxează un filtru, adaugă cuvinte sau locuri, conectează surse de anunțuri și deschide site-urile accesibile doar ție."
-  }
+  },
+  "testSubject": "Test Jobadabra",
+  "testMessage": "Test Jobadabra: așa te va anunța Mereu activ despre rezultatele noi."
 };

@@ -89,3 +89,57 @@ test('pair confirmation takes only an explicit locale and retains recipient, ack
   }
   assert.deepEqual(forbidden, []);
 });
+
+test('the install user test localizes only outbound subject/body with exact routes, flags and diagnostics', async () => {
+  const {notifyCheck} = await import('../../../lib/always-on-test-checks.js');
+  const headings = ['Jobadabra test', 'Jobadabra-Test', 'Test Jobadabra', 'Test Jobadabra', 'Prueba de Jobadabra', 'Test Jobadabra', 'Проверка Jobadabra'];
+  for (const [index, locale] of locales.entries()) {
+    const settings = {displayLanguage: locale, notifyBy: ['email', 'telegram'], notifyEmail: 'fictional@example.test', telegramChatId: 42}, calls = [], forbidden = [];
+    const storage = {settings: () => settings, saveSettings: patch => Object.assign(settings, patch), secret: name => {
+      if (!['TELEGRAM_BOT_TOKEN', 'JOBADABRA_TRIAL_KEY', 'ANTHROPIC_API_KEY'].includes(name)) {forbidden.push(name); throw new Error('forbidden secret');}
+      return name === 'TELEGRAM_BOT_TOKEN' ? 'fixture' : name === 'JOBADABRA_TRIAL_KEY' ? 'fixture-install' : '';
+    }};
+    const fetcher = async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      if (!['/botfixture/sendMessage', '/api/account/email', '/api/notify/email'].includes(path)) {forbidden.push(url); throw new Error('forbidden network');}
+      calls.push({path, method: options.method || 'GET', body: options.body ? JSON.parse(options.body) : undefined});
+      return new Response(JSON.stringify(path === '/api/account/email' ? {ok: true, email: settings.notifyEmail, confirmed: true} : {ok: true, result: {}}));
+    };
+    const result = await notifyCheck(storage, {fetcher}); assert.deepEqual(result, {state: 'ok', line: ''});
+    assert.deepEqual(calls.map(item => [item.method, item.path]), [['POST', '/botfixture/sendMessage'], ['GET', '/api/account/email'], ['POST', '/api/notify/email']]);
+    const mail = calls[2].body; assert.equal(mail.subject, headings[index]); assert.equal(mail.kind, 'test');
+    assert.deepEqual(Object.keys(mail).sort(), ['html', 'kind', 'subject']);
+    assert.equal(calls[0].body.chat_id, 42); assert.ok(mail.html.includes(calls[0].body.text));
+    assert.deepEqual(settings.notifyBy, ['email', 'telegram']); assert.deepEqual(forbidden, []);
+  }
+});
+
+test('actual waiting batches retain count plural categories and grouping across every language', async () => {
+  for (const locale of locales) for (const count of [0, 1, 2, 5, 21, 1234]) {
+    const settings = {displayLanguage: locale}, sent = []; let flush;
+    const sender = createWaitingMessage({settings: () => settings, saveSettings: patch => Object.assign(settings, patch)}, {
+      now: () => Date.parse('2026-11-07T12:00:00Z'), setTimer: work => {flush = work; return {};}, channels: () => ['email'],
+      sendEmail: async value => {sent.push(value); return true;}, sendTelegram: () => {throw new Error('channel not selected');}, log() {}});
+    for (let index = 0; index < count; index++) sender.add({id: `fictional-${index}`, title: 'Original title', note: 'Original note'});
+    if (flush) await flush();
+    assert.equal(sent.length, count ? 1 : 0);
+    if (!count) {assert.equal(settings.waitingMessageAt, undefined); continue;}
+    assert.ok(sent[0].subject.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${sent[0].subject}`);
+    assert.equal(sent[0].text.split('\n').length, count); assert.doesNotMatch(sent[0].subject, /\{/);
+    if (locale === 'ru') assert.match(sent[0].subject, count === 1 || count === 21 ? /заявка ждёт/ : count === 2 || count === 1234 ? /заявки ждут/ : /заявок ждут/);
+  }
+});
+
+test('desktop catalogs align named interpolation and complete plural categories for every language', async () => {
+  const english = (await import('../../../i18n/catalogs/user-notifications/en.js')).default;
+  const names = value => [...new Set(String(value).match(/\{[A-Za-z][\w]*\}/g) || [])].sort();
+  for (const locale of locales) {
+    const messages = (await import(`../../../i18n/catalogs/user-notifications/${locale}.js`)).default;
+    assert.deepEqual(Object.keys(messages).sort(), Object.keys(english).sort());
+    for (const [key, value] of Object.entries(messages)) {
+      const base = typeof english[key] === 'string' ? english[key] : english[key].other;
+      for (const form of typeof value === 'string' ? [value] : Object.values(value)) assert.deepEqual(names(form), names(base), `${locale}/${key}`);
+      if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) assert.ok(value[category], `${locale}/${key}/${category}`);
+    }
+  }
+});

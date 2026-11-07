@@ -104,5 +104,16 @@ export default {
     "other": "{shown} сохранённых вакансий",
     "many": "{shown} сохранённых вакансий",
     "few": "{shown} сохранённые вакансии"
-  }
+  },
+  "modeSearch": "Поиск вакансий",
+  "modeEmployers": "Поиск работодателей",
+  "modeMail": "Проверка Gmail",
+  "modeWeekly": "Недельный отчёт",
+  "modeInsight": "Вывод о поиске",
+  "modeInterview": "Разбор собеседования",
+  "modeApply": "Обновление отклика",
+  "modePrepare": "Подготовка отклика",
+  "modeBrowser": "Поиск в браузере",
+  "modeMore": "Ещё вакансии",
+  "modeReminders": "Напоминания"
 };

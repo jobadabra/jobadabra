@@ -101,5 +101,16 @@ export default {
     "one": "{shown} salvata",
     "other": "{shown} salvate",
     "many": "{shown} salvate"
-  }
+  },
+  "modeSearch": "Cerca lavoro",
+  "modeEmployers": "Cerca datori di lavoro",
+  "modeMail": "Controlla Gmail",
+  "modeWeekly": "Rapporto settimanale",
+  "modeInsight": "Suggerimento di ricerca",
+  "modeInterview": "Analisi del colloquio",
+  "modeApply": "Aggiorna candidatura",
+  "modePrepare": "Prepara candidatura",
+  "modeBrowser": "Ricerca nel browser",
+  "modeMore": "Altre offerte",
+  "modeReminders": "Promemoria"
 };

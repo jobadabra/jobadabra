@@ -16,5 +16,7 @@ export default {
   "fewTelegram": {
     "one": "🔎 Your last job check found {shown} new job. Open Jobadabra → Strategy: a filter to loosen, words or places to add, job sources to connect, and sites only you can open.",
     "other": "🔎 Your last job check found {shown} new jobs. Open Jobadabra → Strategy: a filter to loosen, words or places to add, job sources to connect, and sites only you can open."
-  }
+  },
+  "testSubject": "Jobadabra test",
+  "testMessage": "Jobadabra test: this is how Always on will tell you about new matches."
 };

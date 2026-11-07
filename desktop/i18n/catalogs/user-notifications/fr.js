@@ -19,5 +19,7 @@ export default {
     "one": "🔎 Votre dernière recherche a trouvé {shown} nouvelle offre. Ouvrez Jobadabra → Stratégie : assouplir un filtre, ajouter des mots ou des lieux, connecter des sources d’offres et ouvrir les sites accessibles uniquement par vous.",
     "other": "🔎 Votre dernière recherche a trouvé {shown} nouvelles offres. Ouvrez Jobadabra → Stratégie : assouplir un filtre, ajouter des mots ou des lieux, connecter des sources d’offres et ouvrir les sites accessibles uniquement par vous.",
     "many": "🔎 Votre dernière recherche a trouvé {shown} nouvelles offres. Ouvrez Jobadabra → Stratégie : assouplir un filtre, ajouter des mots ou des lieux, connecter des sources d’offres et ouvrir les sites accessibles uniquement par vous."
-  }
+  },
+  "testSubject": "Test Jobadabra",
+  "testMessage": "Test Jobadabra : voici comment Toujours actif vous informera des nouvelles offres."
 };

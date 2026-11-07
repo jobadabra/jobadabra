@@ -1,7 +1,7 @@
 // Telegram message text for the worker: HTML escaping and the run / applications / saved-jobs listings.
 // Pure functions of Notion/GitHub rows, no I/O. Re-exported by index.js. Guarded by app-core/test/index.test.js and status.test.js.
 
-import {botText, botStage} from './bot-copy.js';
+import {botText, botStage, botMode} from './bot-copy.js';
 
 export const STAGE_EMOJI = {
   Saved: '⭐', Applied: '📨', 'Confirmation received': '📬', Screening: '📞',
@@ -46,7 +46,7 @@ export function formatRunItems(runs, context = {}) {
     const when = (run.started || '').replace('T', ' ').slice(0, 16);
     const where = run.where === 'github' ? ' · GitHub' : run.where === 'mac' ? ' · Mac' : '';
     const summary = (run.summary || '').replace(/;?\s*\(?AI cost \$[\d.]+\)?\.?$/, '');
-    return `${ICON[run.status] || '✅'} ${linked(run.link, escapeHtml(run.mode || botText(context, 'runFallback')))} · ${when} UTC${where}`
+    return `${ICON[run.status] || '✅'} ${linked(run.link, escapeHtml(run.mode ? botMode(context, run.mode) : botText(context, 'runFallback')))} · ${when} UTC${where}`
       + (summary ? `\n${escapeHtml(summary.slice(0, 160))}` : '');
   });
   return [`🛠 <b>${botText(context, 'recentRuns')}</b>\n${botText(context, 'latest', {count: lines.length})}`, lines.join('\n\n')].join('\n\n');

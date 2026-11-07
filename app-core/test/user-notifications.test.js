@@ -119,3 +119,17 @@ test('seven bot catalogs align keys and all named values in every plural form', 
     }
   }
 });
+
+test('unknown inherited-property stage names remain original display values', async () => {
+  const {botStage} = await import('../src/bot-copy.js');
+  for (const stage of ['constructor', 'toString', '__proto__', 'Original stage {name}']) assert.equal(botStage({JOBADABRA_NOTIFICATION_LANGUAGE: 'fr'}, stage), stage);
+});
+
+
+test('known run modes have localized presentation while canonical defaults and unknown modes stay original', async () => {
+  const {formatRunItems} = await import('../src/format.js');
+  const run = {mode: 'run', started: '2026-11-07T12:00Z', summary: 'Original summary'};
+  assert.ok(formatRunItems([run]).includes(' run · '));
+  assert.ok(formatRunItems([run], {JOBADABRA_NOTIFICATION_LANGUAGE: 'de'}).includes('Stellen suchen'));
+  assert.equal(run.mode, 'run');
+});

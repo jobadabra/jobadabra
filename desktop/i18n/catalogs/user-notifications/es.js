@@ -19,5 +19,7 @@ export default {
     "one": "🔎 Tu última búsqueda encontró {shown} oferta nueva. Abre Jobadabra → Estrategia: flexibiliza un filtro, añade palabras o lugares, conecta fuentes de ofertas y abre sitios a los que solo tú puedes acceder.",
     "other": "🔎 Tu última búsqueda encontró {shown} ofertas nuevas. Abre Jobadabra → Estrategia: flexibiliza un filtro, añade palabras o lugares, conecta fuentes de ofertas y abre sitios a los que solo tú puedes acceder.",
     "many": "🔎 Tu última búsqueda encontró {shown} ofertas nuevas. Abre Jobadabra → Estrategia: flexibiliza un filtro, añade palabras o lugares, conecta fuentes de ofertas y abre sitios a los que solo tú puedes acceder."
-  }
+  },
+  "testSubject": "Prueba de Jobadabra",
+  "testMessage": "Prueba de Jobadabra: así te avisará Siempre activo de las nuevas ofertas."
 };

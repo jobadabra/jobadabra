@@ -22,6 +22,11 @@ export function botText(context, key, variables = {}) {
   return template.replace(/\{([a-zA-Z][\w]*)\}/g, (placeholder, name) => name === 'shown' ? shown : Object.hasOwn(variables, name) ? String(variables[name]) : placeholder);
 }
 /** Name only known canonical stages for display; an unknown supplied stage remains byte-for-byte raw content. */
-export const botStage = (context, stage) => stages[stage] ? botText(context, stages[stage]) : stage;
+export const botStage = (context, stage) => Object.hasOwn(stages, stage) ? botText(context, stages[stage]) : stage;
 /** Assemble the six authored help sections for this request without changing command recognition. */
 export const botHelp = context => Array.from({length: 6}, (_, index) => botText(context, `help${index}`)).join('\n\n');
+
+const modes = {run: 'modeSearch', scheduled: 'modeSearch', first: 'modeSearch', today: 'modeSearch', scout: 'modeEmployers', mail: 'modeMail',
+  weekly: 'modeWeekly', insight: 'modeInsight', interview: 'modeInterview', apply: 'modeApply', add: 'modeApply', prepare: 'modePrepare', visits: 'modeBrowser', more: 'modeMore', reminders: 'modeReminders'};
+/** Project known run IDs for localized readers; legacy English and unknown supplied modes retain their exact display values. */
+export const botMode = (context, mode) => botLocale(context) !== 'en' && Object.hasOwn(modes, mode) ? botText(context, modes[mode]) : mode;

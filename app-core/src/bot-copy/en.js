@@ -98,5 +98,16 @@ export default {
   "savedCount": {
     "one": "{shown} saved",
     "other": "{shown} saved"
-  }
+  },
+  "modeSearch": "Find jobs",
+  "modeEmployers": "Find employers",
+  "modeMail": "Check Gmail",
+  "modeWeekly": "Weekly report",
+  "modeInsight": "Search insight",
+  "modeInterview": "Interview review",
+  "modeApply": "Application update",
+  "modePrepare": "Prepare application",
+  "modeBrowser": "Browser job search",
+  "modeMore": "More jobs",
+  "modeReminders": "Reminders"
 };

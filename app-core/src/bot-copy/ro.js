@@ -101,5 +101,16 @@ export default {
     "one": "{shown} salvat",
     "other": "{shown} de anunțuri salvate",
     "few": "{shown} anunțuri salvate"
-  }
+  },
+  "modeSearch": "Caută locuri de muncă",
+  "modeEmployers": "Caută angajatori",
+  "modeMail": "Verifică Gmail",
+  "modeWeekly": "Raport săptămânal",
+  "modeInsight": "Observație despre căutare",
+  "modeInterview": "Analiza interviului",
+  "modeApply": "Actualizează candidatura",
+  "modePrepare": "Pregătește candidatura",
+  "modeBrowser": "Căutare în browser",
+  "modeMore": "Mai multe anunțuri",
+  "modeReminders": "Mementouri"
 };

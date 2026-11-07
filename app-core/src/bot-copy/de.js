@@ -98,5 +98,16 @@ export default {
   "savedCount": {
     "one": "{shown} gemerkt",
     "other": "{shown} gemerkt"
-  }
+  },
+  "modeSearch": "Stellen suchen",
+  "modeEmployers": "Arbeitgeber suchen",
+  "modeMail": "Gmail prüfen",
+  "modeWeekly": "Wochenbericht",
+  "modeInsight": "Erkenntnis zur Suche",
+  "modeInterview": "Gespräch auswerten",
+  "modeApply": "Bewerbung aktualisieren",
+  "modePrepare": "Bewerbung vorbereiten",
+  "modeBrowser": "Stellensuche im Browser",
+  "modeMore": "Weitere Stellen",
+  "modeReminders": "Erinnerungen"
 };

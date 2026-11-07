@@ -101,5 +101,16 @@ export default {
     "one": "{shown} enregistrée",
     "other": "{shown} enregistrées",
     "many": "{shown} enregistrées"
-  }
+  },
+  "modeSearch": "Chercher des offres",
+  "modeEmployers": "Chercher des employeurs",
+  "modeMail": "Vérifier Gmail",
+  "modeWeekly": "Rapport hebdomadaire",
+  "modeInsight": "Conseil de recherche",
+  "modeInterview": "Analyse d’entretien",
+  "modeApply": "Mise à jour de candidature",
+  "modePrepare": "Préparer la candidature",
+  "modeBrowser": "Recherche dans le navigateur",
+  "modeMore": "Plus d’offres",
+  "modeReminders": "Rappels"
 };

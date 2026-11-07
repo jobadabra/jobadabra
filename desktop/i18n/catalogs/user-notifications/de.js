@@ -16,5 +16,7 @@ export default {
   "fewTelegram": {
     "one": "🔎 Ihre letzte Stellensuche fand {shown} neue Stelle. Öffnen Sie Jobadabra → Strategie: Filter lockern, Begriffe oder Orte ergänzen, Stellenquellen verbinden und Seiten öffnen, die nur Sie aufrufen können.",
     "other": "🔎 Ihre letzte Stellensuche fand {shown} neue Stellen. Öffnen Sie Jobadabra → Strategie: Filter lockern, Begriffe oder Orte ergänzen, Stellenquellen verbinden und Seiten öffnen, die nur Sie aufrufen können."
-  }
+  },
+  "testSubject": "Jobadabra-Test",
+  "testMessage": "Jobadabra-Test: So informiert Sie der Dauerbetrieb über neue Treffer."
 };
