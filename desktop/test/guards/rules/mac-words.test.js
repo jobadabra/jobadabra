@@ -61,11 +61,11 @@ test('every window the main process opens is accounted for on Windows', () => {
     'a new BrowserWindow: add it to WINDOWS with why its words are right on Windows (a window without the preload never runs renderer/os.js)');
 });
 
-// notify() (lib/app-notify.js) is the one choke point for the app's native notifications: its callers write plain Mac words, it swaps them. A second
-// `new Notification` elsewhere must say how its words are made right (the reminder's text is a session's own brief, never swapped).
-test('every native notification the app builds swaps its words for Windows', () => {
+// Privacy: native sinks receive finished copy; platform substitutions belong to trusted templates before personal interpolation.
+// The fixed-wording guard above covers app copy while this one prevents blanket rewriting at notification sinks.
+test('native notification sinks never rewrite already formatted or personal text', () => {
   const found = mainCode().flatMap(([file, source]) => source.split('\n').filter(line => /new Notification\(/.test(line) && !/^\s*(\/\/|\*)/.test(line)).map(line => [file, /osText\(/.test(line)]));
-  assert.deepEqual(found, [['lib/app-notify.js', true], ['lib/app-reminders.js', false]], 'a new Notification: swap its fixed words with osText(…, process.platform), or list why it needs none');
+  assert.deepEqual(found, [['lib/app-notify.js', false], ['lib/app-reminders.js', false]], 'format fixed words at the trusted template boundary; never rewrite a finished notification');
 });
 
 // Privacy: page messages already interpolate through t(); wrapping their result rewrites personal values.
