@@ -15,6 +15,7 @@ import {copyExtension, freePort, launchBrowser, makeOpenShim} from './lib/extens
 import {grantAllSites, killGroup, portsFree, refresh, reloadExtension} from './lib/twin-refresh.mjs';
 import {realFolder} from '../lib/twin.js';
 import {describeReplay, fetchBundle, loadBundle} from './lib/twin-replay.mjs';
+import {fileAll, watchFindings} from './lib/tester-issue.mjs';
 import {TOKEN_VAR} from './lib/real-notion-token.mjs';
 import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
@@ -23,6 +24,8 @@ const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Jobadabra (live
 const MIRROR_TOKEN = 'jobadabra.notion.token-live-test';
 const keychain = service => execFileSync('security', ['find-generic-password', '-s', service, '-w'], {encoding: 'utf8'}).trim();
 const say = text => console.log(`twin: ${text}`);
+// Why (code review of 4a, 7 Nov 2026): a hung network must not freeze the launcher that supervises the app; one tester bug is about 8 gh calls. The runner lives here, not in lib/ (a step's clock is its hang cap).
+const gh = args => String(execFileSync('gh', args, {encoding: 'utf8', timeout: 30_000}) || '').trim();
 const idsOf = file => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').map(line => line.trim().split('=')).filter(([key, value]) => key?.startsWith('NOTION_') && value));
 
 export async function notionStatus(token, id) {
@@ -56,6 +59,8 @@ async function main() {
     execFileSync(path.join(DESKTOP, 'node_modules', '.bin', 'electron'), [path.join(DESKTOP, 'e2e', 'lib', 'real-notion-token-main.mjs'), REAL, '--', ...copy], {stdio: ['ignore', 'ignore', 'inherit'], cwd: REPO});
   }
   // 3. A fresh copy of the real folder, then what must not come along.
+  // Why (code review of 4a): HOME is replaced at each start; a bug filed just before the last stop, or one that failed, gets one more try before it goes.
+  if (testerKey) try { fileAll(HOME, {gh, say, retryFailed: true}); } catch (error) { say(`tester bugs left from the last run were not filed: ${error.message}`); }
   fs.rmSync(HOME, {recursive: true, force: true});
   execFileSync('cp', ['-c', '-R', REAL, HOME]);   // an APFS clone: instant, no extra space
   for (const name of fs.readdirSync(HOME).filter(name => name.startsWith('Singleton'))) fs.rmSync(path.join(HOME, name), {force: true});
@@ -93,6 +98,7 @@ async function main() {
     env: withoutWrappers({...env, JOBADABRA_TWIN: '1', ...(testerKey ? {JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TESTER_KEY: testerKey} : {}), JOBADABRA_USER_DATA: HOME, JOBADABRA_TWIN_NOTION_TOKEN: token, JOBADABRA_PORT: String(port), JOBADABRA_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
       PATH: `${shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: shim.spool})});
   let app = startApp(), restarting = false;
+  const stopFindings = testerKey ? watchFindings(HOME, {gh, say}) : () => {};   // Why (7 Nov 2026, owner): a bug Claude Desktop files in the twin becomes its GitHub issue within seconds, through the Finder's text (lib/tester-issue.mjs)
   // A fresh browser profile at each start, with only the site sign-ins carried over (cookies, local storage) and saved back at stop.
   // A whole kept profile also kept the extension's worker state: once it ran stale background code, once (after clearing that) no worker
   // at all (8 Oct 2026). Nothing of the extension survives a restart now.
@@ -117,6 +123,7 @@ async function main() {
   const stop = async () => {
     if (stopping) return;
     stopping = true;
+    stopFindings();
     await killGroup(app);
     fs.rmSync(path.join(LIVE, 'twin.json'), {force: true});
     await browser.close().catch(() => {});

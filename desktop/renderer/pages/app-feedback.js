@@ -110,7 +110,7 @@ export async function init() {
       drawTester(prepared.tester);   // clear this bug's report before the next bundle is opened
       prepared = {...EMPTY};
       $('app-feedback-dialog').close();
-      toastMessage('Bug filed', `Bundle ${filed.id}: ${filed.url}`, NO_PLACE.done, 'good');
+      toastMessage('Bug filed', `Bundle ${filed.id}: ${filed.url}${filed.filing ? `. ${filed.filing}` : ''}`, NO_PLACE.done, filed.filing ? 'warn' : 'good');
       return;
     }
     const include = {screenshot: $('app-feedback-include-shot').checked, logs: $('app-feedback-include-logs').checked, page: $('app-feedback-include-page').checked, profile: $('app-feedback-include-profile').checked};
