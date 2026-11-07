@@ -97,7 +97,7 @@ export function github(env = process.env, fetcher = fetch) {
   };
 }
 
-/** Submitted versions not yet followed up (message and newest-stable step both done), newest last. */
+/** Submitted versions not yet followed up (their message is out), newest last. */
 export async function pendingVersions(gh) {
   const [submitted, followed] = await Promise.all([gh.tags('msstore-submitted-'), gh.tags('msstore-followed-')]);
   return submitted.filter(v => !followed.includes(v)).sort(compareVersions);
