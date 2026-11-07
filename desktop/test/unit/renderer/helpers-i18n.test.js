@@ -204,3 +204,13 @@ test('plan and Always on copy translate without altering caps, availability or a
   assert.equal(value.title, 'Auf unseren Servern');
   assert.equal(value.running, 'both');
 });
+
+test('CV readiness translates its display without changing the read state', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {cvStateText} = await import('../../../renderer/cv-state.js');
+  try {
+    setLocale('de');
+    assert.equal(cvStateText({base: true, custom: true}, false), '· bereit · Ihr Design');
+    assert.equal(cvStateText({base: false}, true), '· nicht gelesen');
+  } finally { setLocale('en'); }
+});

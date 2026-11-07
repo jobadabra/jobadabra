@@ -24,6 +24,7 @@ for (const [locale, messages] of Object.entries({en, de, fr, it, es, ro, ru})) r
 
 
 
+
 // State catalogs stay separate to keep each bundled catalog below 500 lines.
 import {messages as enState} from './catalogs/helpers/en-state.js';
 import {messages as deState} from './catalogs/helpers/de-state.js';
