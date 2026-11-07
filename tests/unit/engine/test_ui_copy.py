@@ -2,7 +2,7 @@
 import json
 import unittest
 
-from src.ui_copy import text, join, wire
+from src.ui_copy import text, join, wire, date
 
 
 class UiCopyTests(unittest.TestCase):
@@ -29,6 +29,12 @@ class UiCopyTests(unittest.TestCase):
         packed = wire({'summary': combined})
         self.assertEqual(packed['summary'], str(combined))
         self.assertEqual(packed['displayCopy']['summary']['join'][0]['values']['who']['key'], 'focusCards.recruiter')
+
+    def test_date_fragment_keeps_its_canonical_string_and_existing_timezone_options(self):
+        value = date('2026-07-07T12:30:00+00:00', {'weekday': 'short', 'timeZone': 'UTC'}, 'Tue')
+        packed = wire({'meta': [value]})
+        self.assertEqual(packed['meta'], ['Tue'])
+        self.assertEqual(packed['displayCopy']['meta']['list'][0]['date'], '2026-07-07T12:30:00+00:00')
 
 
 if __name__ == '__main__':

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {registerMessages, setLocale} from '../../../i18n/index.js';
 import {copyMessage, copyFields, copyField} from '../../../i18n/display-copy.js';
+registerMessages('de', 'focusCards', {testReply: 'Antwort an {who}', testToday: 'heute'});
 
 test('portable copy resolves at paint time, preserving canonical payload/action values and English-looking raw data', () => {
-  registerMessages('de', 'focusCards', {testReply: 'Antwort an {who}', testToday: 'heute'});
   const raw = 'Apply to your next role. {who} <raw>';
   const source = copyFields({title: 'Reply to ' + raw, kind: 'reply', action: {do: 'reply', value: raw}},
     {title: copyMessage('focusCards.testReply', 'Reply to ' + raw, {who: raw})});
@@ -26,4 +26,13 @@ test('JSON survives cache transport; only known authored descriptors are read, i
   assert.deepEqual(copyField(JSON.parse(JSON.stringify(payload)), 'meta'), ['heute', 'Raw English']);
   assert.equal(copyField({title: 'Raw', displayCopy: {title: {key: 'untrusted.other', fallback: 'Changed', values: {}}}}, 'title'), 'Raw');
   setLocale('en');
+});
+
+test('date recipes reuse the existing locale formatter and keep the canonical English fragment unchanged', () => {
+  const source = {title: 'Tue', displayCopy: {title: {date: '2026-07-07T12:30:00Z', options: {weekday: 'short', timeZone: 'UTC'}, fallback: 'Tue'}}};
+  setLocale('de');
+  assert.match(copyField(source, 'title'), /^Di/);
+  assert.equal(source.title, 'Tue');
+  setLocale('en');
+  assert.equal(copyField(source, 'title'), 'Tue');
 });

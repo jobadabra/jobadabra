@@ -39,6 +39,11 @@ def join(separator, parts):
                  {'join': [_descriptor(part) for part in values], 'separator': separator})
 
 
+def date(iso, options, canonical):
+    """Keep an existing canonical date fragment and ask the desktop's shared date formatter to present its ISO value."""
+    return _Text(canonical, {'date': iso, 'options': copy.deepcopy(options), 'fallback': canonical})
+
+
 def _tagged(value):
     return isinstance(value, _Text) or isinstance(value, (list, tuple)) and any(_tagged(part) for part in value)
 

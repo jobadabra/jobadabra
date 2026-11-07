@@ -1,5 +1,6 @@
 // Public Focus/Jobs display recipes survive JSON/cache transport; original fields and control values stay canonical.
-import {t} from './index.js';
+import {t, getLocale} from './index.js';
+import {date} from './format.js';
 
 const descriptor = value => ({value});
 
@@ -16,6 +17,7 @@ export function copyFields(value, fields) {
 function resolve(spec, fallback) {
   if (!spec || typeof spec !== 'object') return fallback;
   if (Object.hasOwn(spec, 'value')) return spec.value;
+  if (typeof spec.date === 'string') return getLocale() === 'en' ? spec.fallback : date(spec.date, spec.options || {});
   if (Array.isArray(spec.list)) return spec.list.map((part, index) => resolve(part, fallback?.[index]));
   if (Array.isArray(spec.join)) return spec.join.map(part => resolve(part, '')).join(String(spec.separator || ''));
   if (typeof spec.key !== 'string' || !spec.key.startsWith('focusCards.')) return fallback;
