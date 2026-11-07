@@ -61,7 +61,7 @@ test('a non-zero exit with no error line is labelled by its exit code, never by 
 // No connection is the person's network, not our bug: not reported, for any job. Anything else with the same exception class is still a failure.
 test('a run that died with no connection is not a failed run', () => {
   for (const line of ['urllib.error.URLError: <urlopen error [Errno 11001] getaddrinfo failed>', 'urllib.error.URLError: <urlopen error [WinError 10051] A socket operation was attempted to an unreachable network>',
-    'urllib.error.URLError: <urlopen error [Errno -2] Name or service not known>', 'urllib.error.URLError: <urlopen error [Errno 101] Network is unreachable>', 'urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided, or not known>']) {
+    'urllib.error.URLError: <urlopen error [Errno -2] Name or service not known>', 'urllib.error.URLError: <urlopen error [Errno 101] Network is unreachable>', 'urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided, or not known>', 'urllib.error.URLError: <urlopen error [Errno 100] Network is down>']) {
     assert.equal(runFailure({code: 1, timedOut: false, tail: ['  File "request.py", line 1360, in do_open', '    raise URLError(err)', line]}), null, line);
   }
   assert.ok(runFailure({code: 1, timedOut: false, tail: ['urllib.error.URLError: <urlopen error [Errno 111] Connection refused>']}), 'a refused server is not "no connection"');

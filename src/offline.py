@@ -6,7 +6,7 @@ import socket
 import urllib.error
 
 # errno values for "the network is not there": Linux/macOS names, and the Winsock codes Windows reports (10050 down, 10051 unreachable, 10065 host unreachable, 11001-11004 name lookup).
-CODES = {errno.ENETUNREACH, errno.EHOSTUNREACH, errno.ENETDOWN, 10050, 10051, 10065, 11001, 11002, 11004}
+CODES = {errno.ENETUNREACH, errno.EHOSTUNREACH, errno.ENETDOWN, 10050, 10051, 10065, 11001, 11002, 11003, 11004}
 
 
 def is_offline(error):
