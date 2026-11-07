@@ -1,6 +1,7 @@
 // The app's reports at start-up (moved out of main.js's start, 8 Oct 2026): technical reports, crash reports (Sentry) and usage events (PostHog): only an installed
 // build, only with Technical reports on, only where config/analytics.json names. Also the run-end events (a failed or warned run), the form issues and the daily
 // health line. The reporter objects stay main.js's (they are read there): they are set through setters. Guards: the telemetry, sentry, analytics and health tests in desktop/test.
+import {notificationLanguage} from './notification-language.js';
 import * as analyticsConfig from './analytics-config.js';
 import * as analyticsLib from './analytics.js';
 import * as engineLog from './engine-log.js';
@@ -43,7 +44,7 @@ export function registerTelemetryHandlers(ctx) {
   if (!storage.settings().setupDone) trackSetup({wizardStep: 'welcome'}, storage.settings());  // the funnel's first step: the app opened
   // Real fill errors (lib/real-errors.js): a Sentry event when crash reports are on, and one Telegram line per error kind per hour through the owner's own bot.
   let sentryCapture = () => false;
-  server.setErrorWatcher(createWatcher({sentry: (kind, fields) => sentryCapture(kind, fields), notice: text => {
+  server.setErrorWatcher(createWatcher({locale: () => notificationLanguage(storage), sentry: (kind, fields) => sentryCapture(kind, fields), notice: text => {
     const token = storage.secret('TELEGRAM_BOT_TOKEN'), chat = storage.settings().telegramChatId;
     if (quiet || !token || !chat) return;
     telegramLib.api(token, 'sendMessage', {chat_id: chat, text}).catch(error => appLog('telegram', 'error notice not sent', {error: error.message}));

@@ -82,7 +82,7 @@ export function createAppNotify(ctx) {
       if (Date.now() - Date.parse(run.endedAt || run.startedAt) > 5 * 60000) continue;
       if (getWindow()?.isFocused()) continue;
       if (run.kind === 'prepare' && run.where === 'mac') continue;  // prepareKit gives its own ("Press Apply…")
-      const note = notCheckedNotice(run) || runHistory.notice(run);
+      const note = notCheckedNotice(run) || runHistory.notice(run, notificationLanguage(getStorage()));
       if (note) notify(note.title, note.body, note.target, runTone(run));   // a click opens that run's result
     }
     nudgeFewJobs(runs);

@@ -2,6 +2,7 @@
 // error (the page fill failed, a fill that threw, an uncaught extension error, a dead end that carries an exception) and hands each to a sink: one Sentry event
 // and one deduplicated Telegram line. Only the error's text, its stack frames, the host and the extension version leave: never a field value, a URL path or a name.
 // Guards: desktop/test/unit/main/real-errors.test.js (a fake error gives one scrubbed Sentry event and one notice per hour).
+import {privateErrorNotice} from '../i18n/completion-notices.js';
 import {scrub} from './telemetry.js';
 
 export const HOUR = 3600_000;
@@ -30,7 +31,7 @@ export function classify(entry) {
 }
 
 // One notice per error kind per hour (the Sentry client keeps its own 10-minute limit per problem). sink({...classified, notice}) - notice is true for the first of the hour.
-export function createWatcher({sentry = () => false, notice = () => {}, now = () => Date.now()} = {}) {
+export function createWatcher({sentry = () => false, notice = () => {}, now = () => Date.now(), locale = () => undefined} = {}) {
   const told = new Map();
   return entries => {
     for (const entry of Array.isArray(entries) ? entries : []) {
@@ -45,7 +46,7 @@ export function createWatcher({sentry = () => false, notice = () => {}, now = ()
       const at = now();
       if (told.has(found.key) && at - told.get(found.key) < HOUR) continue;
       told.set(found.key, at);
-      try { notice(`⚠️ Jobadabra fill error${found.host ? ` on ${found.host}` : ''}${found.extVersion ? ` (extension ${found.extVersion})` : ''}: ${found.message}`); } catch { /* idem */ }
+      try { notice(privateErrorNotice(locale(), found)); } catch { /* idem */ }
     }
   };
 }
