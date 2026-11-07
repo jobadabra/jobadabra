@@ -1,12 +1,13 @@
 ---
 area: apply
-paths: [extension, docs/rules/applying.md, docs/rules/apply-flow-workflow.md, docs/flows, docs/apply-flow.md, desktop/lib/application-journey.js, desktop/e2e/flows.mjs, desktop/e2e/ladder-fixtures, tools/journey-gate.mjs, tools/ladder-gate.mjs, tools/recorded-cases.mjs, tools/replay-files.mjs, .claude/skills/apply-to-job, .claude/skills/fix-recorded-sites]
-updated: 2026-11-03
+paths: [extension, docs/rules/applying.md, docs/rules/apply-flow-workflow.md, docs/flows, docs/apply-flow.md, desktop/lib/application-journey.js, desktop/e2e/flows.mjs, desktop/e2e/ladder-fixtures, tools/journey-gate.mjs, tools/ladder-gate.mjs, tools/recorded-cases.mjs, tools/replay-files.mjs, .claude/skills/apply-to-job, .claude/skills/fix-recorded-sites, desktop/practice, docs/practice-jobs.md]
+updated: 2026-11-07
 ---
 # Apply and forms
 > The Chrome extension reads a job's form, the AI judges what each field means, and the person's kit fills it. Submit is only ever the person's press, or Full automation they turned on after one confirmation (safety lives in CLAUDE.md).
 
 ## Rules
+- Full automation can be tried end to end with no real application: `cd desktop && npm run practice` ([docs/practice-jobs.md](../practice-jobs.md)); dev builds only, its Submit lands in a local catcher.
 - The extension first: a new capability goes into the extension's flow before any "Claude can do it" path. Claude's takeover is OFF (one flag); the panel's "Report" is the way out of a stuck page.
 - A form bug is never fixed "for that website". Name which part of the self-improving mechanism it improves (operator, fingerprint, alias, recipe, noticing the miss); test the SHAPE with a fixture.
 - Universal first: no site names, hosts or growing word lists in logic (guard `tools/hardcoded-page-words.mjs`). A wrong decision is data (ladder fixture, prompt example, learned move); an unread field is universal code with a recorded page; safety is code.
