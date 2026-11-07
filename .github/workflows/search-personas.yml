@@ -17,6 +17,18 @@ on:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
         default: false
+      # Why (7 Nov 2026, ps 2/6, gi's review): the repeat press is never measured (every night is one fresh press), so a by-hand run can take 2 presses for chosen
+      # personas; such a run is not a night: it is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
+      # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565).
+      presses:
+        description: 'Presses per persona (1 = the night check; 2 also measures a repeat press)'
+        type: choice
+        options: ['1', '2']
+        default: '1'
+      personas:
+        description: 'Only these personas, a JSON list such as [7] (empty = all 18)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -36,7 +48,7 @@ jobs:
   persona:
     name: Persona ${{ matrix.persona }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: ${{ inputs.presses == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
     permissions:
       contents: read
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
@@ -44,7 +56,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        persona: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]   # Why (6 Nov 2026, owner: "6 personas is too narrow and could not tell the full story"; 4 Nov: "Night run, off PRs"): 18 fixed personas (tools/persona-search/gate-personas.json), each with its own 7-night usual on the Admin tab; still one at a time, so a slow call is the AI's and never another press's queue
+        persona: ${{ fromJSON(inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]') }}   # Why (6 Nov 2026, owner: "6 personas is too narrow and could not tell the full story"; 4 Nov: "Night run, off PRs"; 7 Nov, ps 2/6): a night runs the 18 fixed personas (tools/persona-search/gate-personas.json), each with its own 7-night usual on the Admin tab; still one at a time, so a slow call is the AI's and never another press's queue; a by-hand run may name a subset, to measure one persona's repeat press
     steps:
       - name: This run can use the Codex broker
         id: token
@@ -85,7 +97,7 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --fresh --engine api --tag gate 2>&1 | tee out/run.log || true
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '1' }}" --fresh --engine api --tag gate 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
@@ -161,10 +173,10 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: search-personas-result, path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && inputs.presses != '2') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
-        if: always()
+        if: always() && inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run is not a night
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -176,6 +188,7 @@ jobs:
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
+        if: inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
         run: test "$CODE" = 0
