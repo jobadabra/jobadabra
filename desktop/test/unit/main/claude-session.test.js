@@ -18,6 +18,9 @@ test('the session gets Notion and the app folders, the app\'s python3 first, nev
   assert.equal(env.PATH, '/data/bin:/usr/bin');
   assert.equal(env.HOME, '/Users/x');
   assert.equal(env.JOBADABRA_APPLY_RUN_DIR, storage.path('apply-runs'));
+  const tester = session.sessionEnv(storage, {PATH: '/usr/bin', JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TESTER_KEY: 'SECRET'}, 'darwin', '/data/bin');
+  assert.equal(tester.JOBADABRA_TESTER_KEY, undefined, 'the tester bundle key never reaches a Claude session');
+  assert.equal(tester.JOBADABRA_TESTER, undefined);
   const win = session.sessionEnv(storage, {Path: 'C:\\Windows'}, 'win32', 'C:\\data\\bin');
   assert.equal(win.Path, 'C:\\data\\bin;C:\\Windows');
 });
