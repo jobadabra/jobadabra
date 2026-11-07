@@ -60,6 +60,7 @@ export function wireApplyDialog({startedApplying}) {
       try {
         const result = await applyDialogStart({count: n, start: options => window.pilot.apply(options)});
         if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
+        if (result.ok && result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, {view: 'settings'}, 'warn');
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
         // Why (2026-10-28, owner screenshot): the green "queued" line kept the dialog open with nothing left to do; a toast says it and the dialog closes (a click on it opens Sessions).
         const outcome = applyDialogOutcome(result);

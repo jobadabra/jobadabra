@@ -42,6 +42,12 @@ test('tab reports carry the launcher\'s owned marker, never a version-based gues
     assert.equal(calls.at(-1).version, '0.9', 'the same version can belong to either browser');
     assert.equal(calls.at(-1).browser, 'fixture-browser');
   }
+  // Owner's 0.9.13 retest (7 Nov 2026): a reload that left the manifest at the old version must not make the copy report the version it reloaded for as its own.
+  globalThis.__jobadabraBackgroundOwned = false;
+  local.reloadedFor = '0.9.759';
+  await reporter.reportTabs();
+  assert.equal(calls.at(-1).version, '0.9', 'the manifest\'s version, whatever it reloaded for');
+  assert.equal(calls.at(-1).reloadedFor, '0.9.759', 'told apart: only a development copy counts it (lib/extension-version.js)');
 });
 
 test('a normal copy reloads once for a newer version, never while it is busy, never twice for one version', () => {

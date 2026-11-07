@@ -19,6 +19,7 @@ import * as review from './review.js';
 import {noteTabMiss} from './tab-expect.js';
 import * as server from './server.js';
 import {listenState, unheardForms} from './server-listen.js';
+import {staleExtensionNote} from './extension-target.js';
 import {extensionReady} from './extension-ready.js';
 import * as sitePassword from './site-password.js';
 import * as terminals from './terminals.js';
@@ -46,8 +47,11 @@ export function triageReadOrNull(read, url, log = appLog) {
   return Promise.resolve().then(() => read({url})).catch(error => { log('apply', 'triage: the form read failed', {url, error: String(error?.message || error).slice(0, 300)}); return null; });
 }
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
+
 export function registerApplyHandlers(ctx) {
-  const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
+  const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
+  // Why (7 Nov 2026, owner's 0.9.13 retest): old extension code filled the forms and nothing said so; a press that opens Chrome says it ('' when the copy is current or unknown). Not for the hidden browser: it carries its own copy.
+  const withNote = result => (result?.ok ? {...result, extensionNote: staleNote()} : result);
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   const background = backgroundApplyFor(storage);
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
@@ -65,8 +69,9 @@ export function registerApplyHandlers(ctx) {
     if (blocked) return blocked;
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
-    return applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
+    const started = await applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
       (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which) => background.enqueue(jobs, which)});
+    return hidden ? started : withNote(started);
   });
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');
@@ -75,7 +80,7 @@ export function registerApplyHandlers(ctx) {
     if (blocked) return blocked;
     const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)
     if (result?.ok) track('apply_started', {how: 'extension'});
-    return result;
+    return withNote(result);
   });
   // Checked session workflows share the production registration with the offline app scenario tests.
   ipcMain.handle('applyWithClaude', (_, url, details = null) => startClaude(url, details));

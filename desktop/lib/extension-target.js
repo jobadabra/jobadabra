@@ -33,11 +33,13 @@ export const olderThan = (a, b) => newer(b, a);
  * know), 'chrome' (it is there: the browser would not open; `note` adds how to update it when its version is strictly older than this app's).
  * -> {reason, note}. A reason that blames the extension is only ever given when the app has not heard from it.
  */
+/** -> the sentence for a Chrome extension STRICTLY older than this app's, '' otherwise (current, unknown, or newer: a store copy ahead of the app is never "older"). `seen` = server.extensionSeen(). */
+export const staleExtensionNote = (seen, latest) => (seen?.version && latest && olderThan(seen.version, latest) ? staleExtension(seen.version, latest, seen.id) : '');
+
 export function noPageReason({seen = null, found = [], latest = ''} = {}) {
   if (!seen && !found.length) return {reason: 'missing', note: ''};
   if (seen && !seen.id && !found.length) return {reason: 'unknown-copy', note: ''};
-  const note = seen?.version && latest && olderThan(seen.version, latest) ? staleExtension(seen.version, latest, seen.id) : '';
-  return {reason: 'chrome', note};
+  return {reason: 'chrome', note: staleExtensionNote(seen, latest)};
 }
 
 /**
