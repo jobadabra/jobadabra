@@ -11,14 +11,13 @@ import json
 import time
 import threading
 
-from .. import time_budget as budget
 from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots, title_queue
 
 MODEL = SMALL_MODEL
 BATCH = 30   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
-MAX_NEW = 600       # titles asked about in one run at most (a first run on a big list is spread over the next ones)
+MAX_NEW = 600       # titles asked about in one run at most, of each kind: your own places' titles and the others (a first run on a big list is spread over the next ones)
 STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit'],
@@ -68,6 +67,7 @@ def known(search):
 def _may_start(batch, mine, forced):
     """A batch of titles starts unless the titles' clock is up (over); the exception is a batch holding titles of the user's own places (`mine`), the floor of time_budget.local_titles:
     asked past the clock while scoring keeps its time, whatever else rides in the same call (one call is made anyway). Why (#2920, 7 Nov 2026): one pass for all titles, so a call mixes the two."""
+    from .. import time_budget as budget
     here = sum(1 for title in batch if title in mine)
     return not budget.over('titles', key=batch[0]) or bool(here and (forced and budget.title_room() or budget.local_titles(here) >= here))
 
@@ -76,6 +76,7 @@ def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0
     """The titles this call rejected that hold one of the search's role words are asked once more, alone (RECHECK_SYSTEM); a yes keeps the job.
     When that call fails or the clock is up they are dropped from `decided`: unknown, asked again next refresh, never a guessed no."""
     from . import cost, engine
+    from .. import time_budget as budget
     from ..paths import keyword_regex
     roles = keyword_regex(search.get('role_keywords'))
     doubted = [title for title in ask if decided.get(title) is False and roles.search(title)]
@@ -100,16 +101,16 @@ def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0
 
 
 def decide(titles, search, client=None, local=False, nearness=None, land=None):
-    """Ask about the titles not decided yet for this search (at most MAX_NEW), keep the answers; returns {title: fits} for all known.
+    """Ask about the titles not decided yet for this search, keep the answers; returns {title: fits} for all known. At most MAX_NEW of your places' titles and MAX_NEW others.
     local: True (all of `titles` are of jobs in the user's own places) or the titles that are: asked first in the same call, and the search's first few of them are sorted whatever the clock says (src/time_budget.py).
     nearness: title -> a comparable key, the nearest smallest (src/sources/feeds.py): the batches are cut from the nearest titles first and src/ai/title_queue.py asks
     them nearest first across every reader. land(fit titles, batch): called in this thread as each batch lands (a job can reach scoring after one batch)."""
     from . import engine
+    from .. import time_budget as budget
     key, decided = _key(search), dict(known(search))
     mine = {_norm(t) for t in (titles if local is True else local or ())}
     ask = list(dict.fromkeys(t for t in (_norm(t) for t in titles) if t and t not in decided))
-    ask = [t for t in ask if t in mine] + [t for t in ask if t not in mine]   # your own places' titles first, then the rest in the caller's order
-    ask = ask[:min(sum(1 for t in ask if t in mine), MAX_NEW) + MAX_NEW]   # as the two passes did: up to MAX_NEW of your own places' titles, and up to MAX_NEW others
+    ask = [t for t in ask if t in mine][:MAX_NEW] + [t for t in ask if t not in mine][:MAX_NEW]   # as the two passes did: each kind capped at MAX_NEW (Gitar on #3550: all-local input stops at MAX_NEW)
     # The rounds of calls that end by the titles' stop (src/time_budget.py); the rest is asked next time. 18 Oct 2026, persona runs: paced per title (0.5 s at least), a refresh
     # planned "28 of 600 titles" for its 3 minutes, sorted them in one 7 s call and left 572 waiting. 7 Nov 2026 (#2920): one pass for all, a round that fits starts.
     taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.PARALLEL, noun='title(s)', stop='titles')

@@ -137,6 +137,14 @@ class OnePassTest(unittest.TestCase):
             title_triage.decide(local + others, {'role_keywords': ['engineer']}, self.model, local=local)
         self.assertEqual(len(self.model.asked), 300 + title_triage.MAX_NEW)
 
+    def test_all_local_input_is_capped_at_the_per_kind_cap_as_the_old_local_pass_was(self):
+        # Gitar on #3550: local=True makes every title local, so a cap of "MAX_NEW + MAX_NEW" asked 1,200 where the old local pass stopped at 600
+        time_budget.DEADLINE = None
+        titles = [f'Keep Engineer Dublin {n}' for n in range(title_triage.MAX_NEW + 100)]
+        with contextlib.redirect_stdout(self.out):
+            title_triage.decide(titles, {'role_keywords': ['engineer']}, self.model, local=True)
+        self.assertEqual(len(self.model.asked), title_triage.MAX_NEW)
+
     def test_the_second_look_is_asked_for_a_role_word_no_on_the_one_pass(self):
         with mock.patch.object(feeds, '_SEARCH', {'role_keywords': ['engineer'], 'title_exclude_keywords': []}), contextlib.redirect_stdout(self.out):
             self.round = 1.0
