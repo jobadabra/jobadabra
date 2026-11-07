@@ -43,3 +43,8 @@ test('the light look: a simple form is Full automation, anything else it named n
   assert.equal(modeOfRead({...look, eligible: false, simple: true}).mode, 'none', 'a job marked not eligible is never taken by a simple form');
   assert.deepEqual(modeOfRead({eligible: true, captcha: null, login: null, accountCreation: null, allFactsSaved: null}).mode, 'check', 'an unknown look is the unsafe answer');
 });
+
+test('a read that could not be made is never a mode a batch can take', () => {
+  assert.deepEqual(modeOfRead({unreadable: true, why: 'timeout'}), {mode: 'none', reason: 'unreadable'});
+  assert.deepEqual(modeOfRead({unreadable: true, eligible: true, captcha: false, login: false, accountCreation: false, simple: true}).mode, 'none', 'even with flags that would read as simple');
+});

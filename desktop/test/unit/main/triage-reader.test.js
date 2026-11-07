@@ -23,10 +23,13 @@ test('a login wall and a captcha come through as flags', async () => {
   assert.deepEqual([read.captcha, read.login, read.accountCreation], [true, true, null], 'a flag nobody gave stays unknown');
 });
 
-test('a page that never became a form reads as nothing', async () => {
+test('a page that never became a form reads as "could not read", with the reason the extension gave, or the plain one', async () => {
   const r = reader(), pending = r.read('https://jobs.example/c');
   r.report(r.take().id, {unreadable: true});
-  assert.equal(await pending, null);
+  assert.deepEqual(await pending, {unreadable: true, why: 'unreadable'});
+  const framed = r.read('https://jobs.example/c2');
+  r.report(r.take().id, {unreadable: true, why: 'frame'});
+  assert.deepEqual(await framed, {unreadable: true, why: 'frame'});
 });
 
 test('a report for an id that is not the active read is refused', async () => {
@@ -39,13 +42,13 @@ test('a report for an id that is not the active read is refused', async () => {
   await pending;
 });
 
-test('a read with no report resolves null when its time is up, and the next read can go', async () => {
+test('a read with no report resolves "could not read: timeout" when its time is up, and the next read can go (a Cancel is still null)', async () => {
   const time = clock(), r = reader({set: time.set, clear: time.clear});
   const first = r.read('https://jobs.example/e'); r.take();
   const second = r.read('https://jobs.example/f');
   assert.equal(r.take(), null, 'the first read is still out');
   time.timers[0]();
-  assert.equal(await first, null);
+  assert.deepEqual(await first, {unreadable: true, why: 'timeout'});
   assert.equal(r.take().url, 'https://jobs.example/f');
   r.cancelAll();
   assert.equal(await second, null);
@@ -69,7 +72,7 @@ test('a read ended without a report (Cancel, a timeout) is handed back once, to 
   assert.deepEqual(r.takeEnded(), [], 'each is returned once');
   const timed = r.read('https://jobs.example/k'), {id} = r.take();
   time.timers[time.timers.length - 1]();
-  assert.equal(await timed, null);
+  assert.deepEqual(await timed, {unreadable: true, why: 'timeout'});
   assert.deepEqual(r.takeEnded(), [id], 'a timeout leaves its page open too');
   const answered = r.read('https://jobs.example/l'), next = r.take();
   r.report(next.id, {botCheck: false, loginWall: false, accountCreation: false});
@@ -165,5 +168,5 @@ test('the light look\'s verdict reaches the window as the mode table flags, and 
   assert.equal((await gated).login, true);
   const framed = r.read('https://jobs.example/frame');
   r.report(r.take().id, {unreadable: true, why: 'frame', look: {role: 'form', fields: 0, files: 0, frames: 1}});
-  assert.equal(await framed, null);
+  assert.deepEqual(await framed, {unreadable: true, why: 'frame'});
 });

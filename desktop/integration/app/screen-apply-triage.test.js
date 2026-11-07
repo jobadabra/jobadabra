@@ -18,8 +18,8 @@ const live = {skip: needsElectron.skip};
 const plain = {botCheck: false, loginWall: false, accountCreation: false};
 const CASES = [
   // chip/reason: the words the person reads for that read, written out here (not derived from the renderer's table, which would pass with the table wrong).
-  {name: 'plain, every answer saved', judged: plain, allFactsSaved: true, chip: 'Can apply automatically', reason: 'every answer is a saved fact'},
-  {name: 'plain, an answer not saved', judged: plain, allFactsSaved: false, chip: 'You review and submit', reason: 'answers you have not saved'},
+  {name: 'plain, every answer saved', judged: plain, allFactsSaved: true, chip: 'Simple form', reason: 'every answer is a saved fact'},
+  {name: 'plain, an answer not saved', judged: plain, allFactsSaved: false, chip: 'Simple form', reason: 'answers you have not saved'},
   {name: 'bot check', judged: {...plain, botCheck: true}, chip: 'Needs you', reason: 'a check that you are human'},   // was the raw id 'captcha' (#3548 review)
   {name: 'login wall', judged: {...plain, loginWall: true}, chip: 'Needs you', reason: 'login wall'},
   {name: 'account to create', judged: {...plain, accountCreation: true}, chip: 'Needs you', reason: 'asks you to create an account'},
@@ -72,7 +72,7 @@ test('before any Check every job says Not checked; after one Check each row show
     assert.equal(row.label, item.chip, `${item.name}: wrong chip`);
     assert.equal(row.reason, item.reason, `${item.name}: wrong verdict reason`);
   }
-  assert.equal(new Set(screen.result.finished.map(item => item.label)).size, 3, 'the five reads reach three chips (auto, fill, needs you)');
+  assert.equal(new Set(screen.result.finished.map(item => item.label)).size, 2, 'the five reads reach two chips (Simple form for auto and fill, Needs you); their sub-statuses differ');
 });
 
 test('a Check reads only: the app is asked for no apply, no kit and no reopen (the demo logs every blocked action)', live, () => {
