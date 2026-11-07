@@ -31,6 +31,7 @@ import {resolveSession} from '../../../lib/journey-identity.js';
 import * as pipeline from '../../../lib/pipeline.js';
 import * as questions from '../../../lib/questions.js';
 import {createStorage} from '../../../lib/storage.js';
+import {sharedRead} from '../../../lib/shared-read.js';
 import {endingOf} from '../../../e2e/lib/ending.mjs';
 import {stopsOf} from '../../../e2e/lib/pool-shadow.mjs';
 import {doorLines, runEvents} from '../../../e2e/lib/pool-gaps.mjs';
