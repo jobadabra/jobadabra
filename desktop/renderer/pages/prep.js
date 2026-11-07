@@ -2,6 +2,8 @@
 // on the job's Notion page (src/ai/prep.py). When the role is unknown it asks for the description first.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import '../../i18n/focus-cards.js';
+import {copyField} from '../../i18n/display-copy.js';
 import {$, message, show} from './core.js';
 import {loadFocus, markPrep} from './focus.js';
 import {toastMessage} from './startup.js';
@@ -21,7 +23,7 @@ let timer = null;
 function reset(item) {
   current = item;
   $('prep-title').textContent = t('pagesDynamicProfileReady.m296', {"value1": item.company || item.via || t('pagesExtraLabels.theInterview')});
-  $('prep-context').textContent = [item.job, item.badge].filter(Boolean).join(' · ');
+  $('prep-context').textContent = [item.job, copyField(item, 'badge')].filter(Boolean).join(' · ');
   $('prep-text').value = '';
   $('prep-url').value = '';
   show($('prep-describe'), false);
@@ -57,11 +59,11 @@ async function build() {
   if (result.needs_description) {
     show($('prep-describe'), true);
     $('prep-go').textContent = t('pagesProfileMore.savePrepare');
-    message('prep-message', result.text, 'info');
+    message('prep-message', copyField(result, 'text'), 'info');
     $('prep-text').focus();
     return;
   }
-  message('prep-message', result.text || '', result.ok ? 'ok' : 'error');
+  message('prep-message', copyField(result, 'text') || '', result.ok ? 'ok' : 'error');
   if (result.ok) {
     hintAfter($('prep-message'), shared.state, () => import('./settings.js').then(({openSetting}) => { openSetting('ai'); }));   // Free AI wrote it: stronger prep with an own key
     // The kit where it is: its Notion page, else the job's page here, Prep tab (the button's words follow: the Notion label is index.html's).

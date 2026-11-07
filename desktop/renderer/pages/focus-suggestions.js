@@ -4,6 +4,7 @@
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {copyField} from '../../i18n/display-copy.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, barView, bySeverity, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
@@ -82,7 +83,7 @@ export const RUN = {
   read_site: (action, event) => RUN.change_search(action, event),
   see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
   // The pay row (src/suggestions_pay.py): the jobs it names, listed in Jobs; the minimum salary opened for editing on Strategy.
-  show_jobs: action => { openView('jobs'); showJobsIn(action.label.replace(/^Show /, ''), action.urls, 'focus'); },
+  show_jobs: action => { openView('jobs'); showJobsIn(copyField(action, 'label').replace(/^Show /, ''), action.urls, 'focus'); },
   edit_minimum: () => import('./strategy-state.js').then(async ({showTab}) => { openView('strategy'); showTab('strategy-yours'); (await import('./strategy-cards.js')).openCard('goals'); }),
   // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
   use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage(t('pagesFocusReports.addSkillsFailed'), result?.error || t('pagesCommon.tryAgain'), NO_PLACE.itself, 'warn'); },
@@ -144,7 +145,7 @@ export function entryRow(entry) {
   const actions = el('div', 'focus-actions');
   const context = {};
   for (const [i, action] of entry.actions.entries()) {
-    const node = button(action.label, i ? 'secondary' : 'primary', event => RUN[action.do]?.(action, event, context));
+    const node = button(copyField(action, 'label'), i ? 'secondary' : 'primary', event => RUN[action.do]?.(action, event, context));
     if (action.do === 'turn_on_hosted') {
       node.id = 'focus-hosted-on';
       context.turnOn = bindHostedOffer({body, button: node, email: entry.email, emailField: () => emailField('focus-hosted-email'), draft: hostedDraft,
@@ -162,7 +163,7 @@ export function entryRow(entry) {
   const more = [];
   if (entry.answers.includes('Not now')) more.push({icon: 'clock', label: t('pagesCommon.notNow'), title: t('pagesFocusReports.hide14'), run: () => answerEntry(entry, 'Not now')});
   if (entry.answers.includes('Not true')) more.push({icon: 'close', label: t('pagesCommon.notTrue'), title: t('pagesFocusReports.neverEvidence'), run: () => answerEntry(entry, 'Not true')});
-  if (parts.evidence) more.push({icon: 'info', label: t('pagesFocusReports.evidence'), run: () => toastMessage(entry.title, parts.evidence, NO_PLACE.itself, 'info')});
+  if (parts.evidence) more.push({icon: 'info', label: t('pagesFocusReports.evidence'), run: () => toastMessage(copyField(entry, 'title'), parts.evidence, NO_PLACE.itself, 'info')});
   if (more.length) actions.append(moreButton(more, t('pagesCommon.more')));
   li.append(round, body, actions);
   return li;

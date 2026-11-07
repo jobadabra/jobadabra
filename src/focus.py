@@ -25,6 +25,8 @@ Usage:
   python -m src.focus history                   # what you resolved from Focus, newest first
   python -m src.focus remind [--target 30] [--send]
 """
+from .ui_copy import text, join, wire
+from .focus_items import date_words, missing_words, enum_words
 import argparse
 from datetime import date, datetime, timedelta, timezone
 from html import escape
@@ -83,21 +85,21 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
         last_received = max((e['at'] for e in history if e['kind'] == feedback.RECEIVED and e['at']), default=None)
         last_reviewed = max((e['at'] for e in history if e['kind'] == feedback.REVIEWED and e['at']), default=None)
         if not disabled('feedback') and received and (not last_reviewed or (last_received and last_received > last_reviewed)):
-            detail = 'Read their feedback, then choose what to practise before your next interview. It also feeds your insights and weekly report.'
-            items.append(_item(2, 'feedback_review', '💬', 'Learn from employer feedback', detail, row, employer_feedback=received))
+            detail = text('focusCards.build.m001', 'Read their feedback, then choose what to practise before your next interview. It also feeds your insights and weekly report.')
+            items.append(_item(2, 'feedback_review', '💬', text('focusCards.build.m002', 'Learn from employer feedback'), detail, row, employer_feedback=received))
         if stage == 'Rejected':
             if received or feedback.SKIPPED in kinds or status == 'Skipped':
                 continue
             if feedback.REQUESTED in kinds or status == 'Asked for feedback':
-                kind, detail = 'feedback_wait', ('Your request is sent. Gmail checks will collect their reply; you can also paste feedback here.' if gmail else
-                                                 'Your request is sent. Connect Gmail to collect their reply, or paste feedback here.')
+                kind, detail = 'feedback_wait', (text('focusCards.build.m003', 'Your request is sent. Gmail checks will collect their reply; you can also paste feedback here.') if gmail else
+                                                 text('focusCards.build.m004', 'Your request is sent. Connect Gmail to collect their reply, or paste feedback here.'))
             elif feedback.eligible_status(_field(row, 'feedback_status'), history):
-                kind, detail = 'feedback', 'You reached Screening or later. Ask for one or two concrete points: real feedback helps improve your next interview.'
+                kind, detail = 'feedback', text('focusCards.build.m005', 'You reached Screening or later. Ask for one or two concrete points: real feedback helps improve your next interview.')
             else:
                 continue
             rejection = next((e for e in reversed(history) if e['kind'] == 'Rejected'), {})
-            items.append(_item(4 if kind == 'feedback_wait' else 2, kind, '💬', 'Ask for feedback', detail, row,
-                               _gmail(rejection.get('source_id')), 'Open email', draft=feedback.draft(row), employer_feedback=''))
+            items.append(_item(4 if kind == 'feedback_wait' else 2, kind, '💬', text('focusCards.build.m006', 'Ask for feedback'), detail, row,
+                               _gmail(rejection.get('source_id')), text('focusCards.build.m007', 'Open email'), draft=feedback.draft(row), employer_feedback=''))
             continue
         if stage in ENDED:
             continue
@@ -118,42 +120,41 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
             if _skipped_details(history, coming_at, stage):
                 missing = []
             else:
-                when = f"Interview {coming_at.astimezone(TZ):%a %d %b, %H:%M}" if coming_at and coming_at > now else stage
-                who = _field(row, 'company') or _field(row, 'via') or 'a recruiter'
-                items.append(_item(1, 'details', '🧩', f"Add details: {who} — {_role(row)[:70]}",
-                                   f"{when}, but Jobadabra doesn't know the {' or '.join(missing)}. Paste the LinkedIn chat, "
-                                   "the recruiter's message or the job link: it fills in the job, so your prep and kit fit it.",
+                when = text('focusCards.build.m008', 'Interview {value}', {'value': date_words(coming_at.astimezone(TZ), '%a %d %b, %H:%M')}) if coming_at and coming_at > now else enum_words(stage)
+                who = _field(row, 'company') or _field(row, 'via') or text('focusCards.build.m009', 'a recruiter')
+                items.append(_item(1, 'details', '🧩', text('focusCards.build.m010', 'Add details: {who} — {value}', {'who': who, 'value': _role(row)[:70]}),
+                                   text('focusCards.build.m011', "{when}, but Jobadabra doesn't know the {value}. Paste the LinkedIn chat, the recruiter's message or the job link: it fills in the job, so your prep and kit fit it.", {'when': when, 'value': missing_words(missing, alternative=True)}),
                                    row, missing=missing))
         last = next((e for e in reversed(history) if not _bookkeeping(e)), None)
-        company = _field(row, 'company') or _field(row, 'via') or 'A recruiter'
-        label = f"{company} — {_role(row)[:70]}"
+        company = _field(row, 'company') or _field(row, 'via') or text('focusCards.build.m012', 'A recruiter')
+        label = join(' — ', [company, _role(row)[:70]])
         if last and last['kind'] in NEEDS_ANSWER:
             job_url = _field(row, 'url')
             link = _gmail(last['source_id']) or (job_url if re.search(r'mail\.google\.com|linkedin\.com/messaging', job_url) else '')
             reached = _field(row, 'reached_via') or ('LinkedIn' if 'linkedin' in link else 'Email' if 'mail.google' in link else '')
-            where = {'Email': 'by email', 'LinkedIn': 'on LinkedIn', 'Phone': 'by phone'}.get(reached, '')
+            where = {'Email': text('focusCards.build.m013', 'by email'), 'LinkedIn': text('focusCards.build.m014', 'on LinkedIn'), 'Phone': text('focusCards.build.m015', 'by phone')}.get(reached, '')
             when = _ago(last['at'], now) if last['at'] else ''
             upcoming = _when(_field(row, 'next_interview'))
             if last['kind'] == 'Offer':
-                items.append(_item(1, 'offer', '🎉', f'Answer the offer: {label}', f'Offer {when}. {last["note"][:140]}', row,
-                                   link, 'Open email' if link else '', done=True))
+                items.append(_item(1, 'offer', '🎉', text('focusCards.build.m016', 'Answer the offer: {label}', {'label': label}), text('focusCards.build.m017', 'Offer {when}. {value}', {'when': when, 'value': last["note"][:140]}), row,
+                                   link, text('focusCards.build.m007', 'Open email') if link else '', done=True))
             elif meanings.asks_to_book(last['note']):
                 # The call is already on the calendar (Next interview): "Book the call" is done. Prepare stays.
                 # A later "please confirm this time" is not a booking note, so that reply still shows beside Prepare.
                 if not (upcoming and upcoming > now):
                     booking = _booking_link(last['note'])  # a chat's Calendly link: the button opens it, wherever they wrote
-                    items.append(_item(1, 'book', '📅', f'Book the call: {label}', f'They asked you to pick a time ({when}). {last["note"][:140]}',
-                                       row, booking or link, 'Open booking link' if booking else 'Open email' if 'mail.google' in link else 'Open',
+                    items.append(_item(1, 'book', '📅', text('focusCards.build.m018', 'Book the call: {label}', {'label': label}), text('focusCards.build.m019', 'They asked you to pick a time ({when}). {value}', {'when': when, 'value': last["note"][:140]}),
+                                       row, booking or link, text('focusCards.build.m020', 'Open booking link') if booking else text('focusCards.build.m007', 'Open email') if 'mail.google' in link else text('focusCards.build.m021', 'Open'),
                                        done=True))
             else:
                 if last['kind'] == 'Recruiter lead':  # the facts that decide the answer, not the event's note
                     facts = ' · '.join(p for p in (_field(row, 'salary'), _field(row, 'location'), _field(row, 'contact').split(' · ')[0]) if p)
-                    detail = f'Recruiter pitch {when}{f" ({reached})" if reached else ""}. {facts}'
+                    detail = text('focusCards.build.m022', 'Recruiter pitch {when}{value}. {facts}', {'when': when, 'value': join('', [' (', enum_words(reached), ')']) if reached else '', 'facts': facts})
                 else:
-                    detail = f'They wrote {when}. {last["note"][:140]}'
-                items.append(_item(1, 'reply', '💬', f'Reply {where}: {label}'.replace('Reply : ', 'Reply: '),
+                    detail = text('focusCards.build.m023', 'They wrote {when}. {value}', {'when': when, 'value': last["note"][:140]})
+                items.append(_item(1, 'reply', '💬', text('focusCards.build.m024', 'Reply {where}: {label}', {'where': where, 'label': label}) if where else text('focusCards.build.replyWithoutChannel', 'Reply: {label}', {'label': label}),
                                    detail, row, link,
-                                   'Open email' if 'mail.google' in link else 'Open LinkedIn' if 'linkedin' in link else '', done=True,
+                                   text('focusCards.build.m007', 'Open email') if 'mail.google' in link else text('focusCards.build.m027', 'Open LinkedIn') if 'linkedin' in link else '', done=True,
                                    lead=last['kind'] == 'Recruiter lead'))
             # An interview still ahead keeps its own "Prepare" item next to the answer that is waiting (the recruiter
             # asking you to confirm the time must not hide the preparation for it).
@@ -165,11 +166,10 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
             if hours <= 14 * 24:
                 prep_at = _field(row, 'interview_prep')
                 kit = prep_state(prep_at, reviewed_interviews(interviews, row['id']), history)
-                detail = (f"Interview {coming.astimezone(TZ):%a %d %b, %H:%M}. Read the posting and your kit, "
-                          'and practise the topics you answered weakly before.')
+                detail = (text('focusCards.build.m028', 'Interview {value}. Read the posting and your kit, and practise the topics you answered weakly before.', {'value': date_words(coming.astimezone(TZ), '%a %d %b, %H:%M')}))
                 if kit['stale']:
-                    detail += f" {kit['reason']}: build a new kit for this round (about $0.04); the earlier one stays on the job's page."
-                items.append(_item(1 if hours <= SOON_HOURS else 2, 'prepare', '🎤', f'Prepare: {label}', detail, row,
+                    detail = join('', [detail, text('focusCards.build.m029', " {reason}: build a new kit for this round; the earlier one stays on the job's page.", {'reason': kit['reason']})])
+                items.append(_item(1 if hours <= SOON_HOURS else 2, 'prepare', '🎤', text('focusCards.build.m030', 'Prepare: {label}', {'label': label}), detail, row,
                                    at=coming.isoformat(), prep_at=prep_at, prep_stale=kit['stale'],
                                    prep_reason=kit['reason'], prep_since=kit['since'], prep_why=kit['why']))
                 continue
@@ -177,15 +177,13 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
         if coming and coming <= now:
             held_day = coming.astimezone(TZ).date().isoformat()
             if seen.get('day', '') < held_day:  # nothing recorded since: ask (one item per interview)
-                items.append(_item(1, 'happened', '🔎', f'Did the interview happen? {label}',
-                                   f"It was {coming.astimezone(TZ):%a %d %b, %H:%M}. Yes: note how it went (salary, next "
-                                   "steps, people, questions) and it moves on. No: say if it moved or was cancelled.",
+                items.append(_item(1, 'happened', '🔎', text('focusCards.build.m031', 'Did the interview happen? {label}', {'label': label}),
+                                   text('focusCards.build.m032', 'It was {value}. Yes: note how it went (salary, next steps, people, questions) and it moves on. No: say if it moved or was cancelled.', {'value': date_words(coming.astimezone(TZ), '%a %d %b, %H:%M')}),
                                    row, at=coming.isoformat()))
                 continue
             if seen.get('reviewed', '') < held_day and now - timedelta(days=3) < coming:
-                items.append(_item(2, 'review', '📝', f'Review the interview: {label}',
-                                   f"It was {coming.astimezone(TZ):%a %d %b}. It's recorded: review it (Interviews) "
-                                   'while you remember it: you get a review of every answer.', row))
+                items.append(_item(2, 'review', '📝', text('focusCards.build.m033', 'Review the interview: {label}', {'label': label}),
+                                   text('focusCards.build.m034', "It was {value}. It's recorded: review it (Interviews) while you remember it: you get a review of every answer.", {'value': date_words(coming.astimezone(TZ), '%a %d %b')}), row))
                 continue
         follow = follow_up(row, history, now, seen) if not (coming and coming > now) else None
         if follow:  # you wrote last and they haven't answered: before "move it forward", which it replaces
@@ -199,21 +197,18 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
             if quiet >= STALE_DAYS:
                 continue  # long quiet after an interview: not a to-do any more (as before reviews were read)
             if quiet < QUIET_DAYS:
-                items.append(_item(4, 'waiting', '⏳', f"Waiting for {company}'s next step",
-                                   f"Interview reviewed. Next: {seen['next_step'] or 'not stated'}. Nothing to do yet; "
-                                   f'follow up if there is no news in {QUIET_DAYS - quiet} day{"s" if QUIET_DAYS - quiet != 1 else ""}.',
+                items.append(_item(4, 'waiting', '⏳', text('focusCards.build.m035', "Waiting for {company}'s next step", {'company': company}),
+                                   text('focusCards.build.waitingOne' if QUIET_DAYS - quiet == 1 else 'focusCards.build.waitingOther', 'Interview reviewed. Next: {next_step}. Nothing to do yet; follow up if there is no news in {count} day.' if QUIET_DAYS - quiet == 1 else 'Interview reviewed. Next: {next_step}. Nothing to do yet; follow up if there is no news in {count} days.', {'next_step': seen['next_step'] or text('focusCards.build.m036', 'not stated'), 'count': QUIET_DAYS - quiet}),
                                    row, next_step=seen['next_step'], after_interview=True, quiet=quiet))
             else:
-                items.append(_item(2, 'nudge', '🤝', f'Move it forward: {label}',
-                                   f"No news for {quiet} days since the interview. Next step was: {seen['next_step'] or 'not stated'}. "
-                                   'Ask where things stand.', row, quiet=quiet))
+                items.append(_item(2, 'nudge', '🤝', text('focusCards.build.m038', 'Move it forward: {label}', {'label': label}),
+                                   text('focusCards.build.m039', 'No news for {quiet} days since the interview. Next step was: {value}. Ask where things stand.', {'quiet': quiet, 'count': quiet, 'value': seen['next_step'] or text('focusCards.build.m036', 'not stated')}), row, quiet=quiet))
             continue
         if stage in ('Screening', 'Interview scheduled') and not (coming and coming > now):
             quiet = (now - last['at']).days if last and last['at'] else QUIET_DAYS
             if quiet >= QUIET_DAYS or stage == 'Interview scheduled':
-                items.append(_item(2, 'nudge', '🤝', f'Move it forward: {label}',
-                                   f"{stage}, nothing booked{f' and no news for {quiet} days' if quiet >= QUIET_DAYS else ''}. "
-                                   'Propose times for the next call, or ask where things stand.', row, quiet=quiet))
+                items.append(_item(2, 'nudge', '🤝', text('focusCards.build.m038', 'Move it forward: {label}', {'label': label}),
+                                   text('focusCards.build.m041', '{stage}, nothing booked{value}. Propose times for the next call, or ask where things stand.', {'stage': enum_words(stage), 'value': text('focusCards.build.m040', ' and no news for {quiet} days', {'quiet': quiet, 'count': quiet}) if quiet >= QUIET_DAYS else ''}), row, quiet=quiet))
     items += questions(rows, events)
     done_today = _applied_today(rows, by_app, today)
     left = max(target - done_today, 0)
@@ -222,15 +217,14 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
         # Prepared jobs first, then by fit: the order an Apply batch takes them (desktop/lib/apply.js pick, then pickMissing).
         waiting_jobs = sorted((r for r in rows if _field(r, 'stage') in ('Saved', 'Kit ready')), key=lambda r: (not _prepared(r), -(r.get('fit') or 0)))
         best = list(dict.fromkeys(name for r in waiting_jobs if (name := _field(r, 'company'))))[:2]
-        items.append(_item(3, 'apply', '📨', f'Apply to {left} more job{"s" if left != 1 else ""} today',
-                           f'{done_today} of {target} today.' + (f' Your best: {", ".join(best)}.' if best else ''),
+        items.append(_item(3, 'apply', '📨', text('focusCards.build.applyOne' if left == 1 else 'focusCards.build.applyOther', 'Apply to {count} more job today' if left == 1 else 'Apply to {count} more jobs today', {'count': left}),
+                           join("", [text('focusCards.build.m043', '{done_today} of {target} today.', {'done_today': done_today, 'target': target}), text('focusCards.build.m044', ' Your best: {value}.', {'value': ", ".join(best)}) if best else '']),
                            applied=done_today, left=left, best=best, target=target))
     waiting = [r for r in rows if _field(r, 'stage') in ('Applied', 'Confirmation received')
                and (applied := _when(_field(r, 'applied_on'))) and (now - applied).days >= WAITING_DAYS]
     if waiting:
-        items.append(_item(4, 'waiting', '⏳', f'{len(waiting)} application{"s" if len(waiting) != 1 else ""} waiting {WAITING_DAYS}+ days',
-                           'No human reply yet. For the ones you care most about, message the recruiter or a team member '
-                           'on LinkedIn; let the rest go (they close as No response after 21 days).'))
+        items.append(_item(4, 'waiting', '⏳', text('focusCards.build.applicationsOne' if len(waiting) == 1 else 'focusCards.build.applicationsOther', '{count} application waiting {days}+ days' if len(waiting) == 1 else '{count} applications waiting {days}+ days', {'count': len(waiting), 'days': WAITING_DAYS}),
+                           text('focusCards.build.m046', 'No human reply yet. For the ones you care most about, message the recruiter or a team member on LinkedIn; let the rest go (they close as No response after 21 days).')))
     order = {'offer': 0, 'book': 1, 'which_job': 1.2, 'happened': 1.3, 'details': 1.5, 'reply': 2, 'prepare': 3, 'review': 4,
              'follow_up': 4.5, 'feedback_review': 5,
              'feedback': 6, 'nudge': 7, 'apply': 8, 'learn': 9, 'feedback_wait': 10, 'waiting': 11}
@@ -238,14 +232,14 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
     items = [{**present(item, gmail), 'place': suggestions.place(item['kind']), 'topic': suggestions.item_topic(item['kind'])} for item in items]
     # The weekly report's door counts only when the app can carry it out now (src/suggestions.py DOORS).
     doors = {'find_jobs', 'tailor'} | ({'tune'} if suggestions.tune_entry(tune) else set()) | ({'prep'} if any(i['kind'] == 'prepare' for i in items) else set())
-    return {'items': items, 'today': {'applied': done_today, 'target': target,
+    return wire({'items': items, 'today': {'applied': done_today, 'target': target,
                                       'history': _applied_by_day(rows, by_app, today)},
             'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows, search=search),
             # Strategy draws its rows from its own fresh check: these are the ones answered (Not now, Not true) wherever they were shown.
             'suggestions_hidden': sorted(key for key in suggestions.hidden(insights, now) if key.split(':')[0] in STRATEGY_ROWS + QUESTION_ROWS + ('hosted',)),
             'summary': summary(items), 'funnel': funnel(rows, events),
             'answered_questions': answered_questions(rows, events),
-            'generated_at': now.isoformat(timespec='seconds')}
+            'generated_at': now.isoformat(timespec='seconds')})
 
 
 def settings_target():
@@ -375,15 +369,15 @@ def history(stores, days=90):
         if not is_app_source(event['source']) or (event['at'] or '')[:10] < since:
             continue
         kind, app = event['kind'] or '', apps.get(event['app_id']) or {}
-        company = app.get('company') or app.get('title') or 'an employer'
+        company = app.get('company') or app.get('title') or text('focusCards.build.m047', 'an employer')
         emoji, title = HISTORY_TITLES.get(kind, ('✓', f'{kind} · {{company}}'))
-        items.append({'at': event['at'] or '', 'kind': kind, 'emoji': emoji, 'title': title.format(company=company),
+        items.append({'at': event['at'] or '', 'kind': kind, 'emoji': emoji, 'title': text('focusCards.history.' + str(list(HISTORY_TITLES).index(kind)), title, {'company': company}) if kind in HISTORY_TITLES else title.format(company=company),
                       'note': (event['note'] or '')[:240], 'url': stores.link(event['id']) or ''})
     for insight in stores.insights.list(since=since):
         rated = (insight['fields'] or {}).get('feedback')
         if not rated:
             continue
-        items.append({'at': insight['day'] or '', 'kind': 'insight', 'emoji': '💡', 'title': f'Insight: {rated}',
+        items.append({'at': insight['day'] or '', 'kind': 'insight', 'emoji': '💡', 'title': text('focusCards.build.m048', 'Insight: {rated}', {'rated': rated}),
                       'note': (insight['title'] or '')[:240], 'url': stores.link(insight['id']) or ''})
     # Interviews reviewed (their "Review the interview" step leaves Up next once the review is saved). When: the
     # record's creation (the store keeps no last-edit time for an interview).
@@ -393,9 +387,9 @@ def history(stores, days=90):
             continue
         overall = (interview['overall'] or '').capitalize()
         items.append({'at': at, 'kind': 'interview_review', 'emoji': '🎤',
-                      'title': f"Reviewed the interview: {interview['title'] or 'an interview'}",
-                      'note': f'Outcome: {overall}' if overall else '', 'url': stores.link(interview['id']) or ''})
-    return sorted(items, key=lambda item: item['at'], reverse=True)
+                      'title': text('focusCards.build.m050', 'Reviewed the interview: {value}', {'value': interview['title'] or text('focusCards.build.m049', 'an interview')}),
+                      'note': text('focusCards.build.m051', 'Outcome: {overall}', {'overall': overall}) if overall else '', 'url': stores.link(interview['id']) or ''})
+    return wire(sorted(items, key=lambda item: item['at'], reverse=True))
 
 
 def main(argv=None):

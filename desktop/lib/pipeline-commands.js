@@ -2,6 +2,7 @@
 // reassign, feedback, unapply/not-submitted, outcomes, delete, set status. None is queued; each is a run() plus parsing the last line.
 // Guarded by: test/unit/main/lead-confirm.test.js, test/app.test.js, test/unit/main/app-scenarios.test.js, test/unit/main/notion-trying.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
+import {copyMessage, copyFields} from '../i18n/display-copy.js';
 import {markFinished} from './job-flags.js';
 import {jobFrom, jobFromResult} from './job-line.js';
 import {log as appLog} from './log.js';
@@ -13,6 +14,18 @@ import {run} from './pipeline-run.js';
 const engineRun = run;   // the default of the shared reads below (a test passes its own)
 import {afterWrite, sharedRead} from './shared-read.js';
 import * as viewCache from './view-cache.js';
+
+// Fallback provenance stays private while command results feed diagnostics; only the deliberate Focus/Jobs reply opts in.
+const focusCopies = new WeakMap();
+function focusFallback(value, field, key) {
+  focusCopies.set(value, {[field]: copyMessage(`focusCards.${key}`, value[field])});
+  return value;
+}
+/** Clone only known authored fallbacks into the intentional Focus/Jobs UI reply; raw provider/engine results remain unchanged. */
+export function focusDisplayReply(value) {
+  const fields = focusCopies.get(value);
+  return fields ? copyFields(value, fields) : value;
+}
 
 // limit: how many of the best rows to send (the list's "Show more" raises it); the counts cover every row (src/desktop.py jobs).
 // One read at a time per limit, for every caller (17 Oct 2026: a card asked for the list on every activity event, each read took ~60 s on a slow Notion day and 187 Python runs piled up): a second ask joins the running one.
@@ -105,14 +118,16 @@ export async function reviewRejection(storage, url, onLine = () => {}) {
   const {code, stdout} = await run(storage, ['src.ai.rejection', '--job', url], onLine, {JOBADABRA_TRIGGER: 'Mac (you)'});
   const lines = stdout.trim().split('\n').filter(Boolean);
   const summary = lines.find(line => line.includes('Why rejected')) || '';
-  return {ok: code === 0 && !!summary, text: summary || lines.pop() || 'The review failed (see the activity log)'};
+  const text = summary || lines.pop();
+  return text ? {ok: code === 0 && !!summary, text}
+    : focusFallback({ok: false, text: 'The review failed (see the activity log)'}, 'text', 'mainReviewFailed');
 }
 
 // Focus (src/focus.py, no AI): what to do next, from Notion.
 export async function focus(storage) {
   const {code, stdout} = await run(storage, ['src.focus']);  // the target comes from ⚙️ Search settings
   try { return {ok: code === 0, focus: JSON.parse(stdout.trim().split('\n').pop())}; }
-  catch { return {ok: false, error: 'Could not read your Notion (see the activity log).'}; }
+  catch { return focusFallback({ok: false, error: 'Could not read your Notion (see the activity log).'}, 'error', 'mainFocusReadFailed'); }
 }
 // what: 'replied' (you answered them), 'followed_up' (Focus → Follow up: your nudge, which re-arms it),
 // or 'details_skipped' (you don't know the employer yet: the card stays gone after a refresh).
@@ -126,7 +141,7 @@ export async function focusDone(storage, pageId, what = 'replied') {
 export async function focusHistory(storage) {
   const {code, stdout} = await run(storage, ['src.focus', 'history']);
   try { return {...JSON.parse(stdout.trim().split('\n').pop()), ok: code === 0}; }
-  catch { return {ok: false, error: 'Your history could not be read. Try again.', items: []}; }
+  catch { return focusFallback({ok: false, error: 'Your history could not be read. Try again.', items: []}, 'error', 'mainHistoryReadFailed'); }
 }
 const lastJson = (stdout, fallback) => { try { return JSON.parse(stdout.trim().split('\n').pop()); } catch { return fallback; } };
 // Interview prep kit (src/ai/prep.py): built on the job's Notion page; needs_description when the role is unknown.

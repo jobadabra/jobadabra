@@ -10,6 +10,7 @@ Usage:
   python -m src.notion.funnel            # print the funnel
   python -m src.notion.funnel --write    # also update the Pipeline page (Notion only)
 """
+from ..ui_copy import text, join
 import argparse
 import os
 import sys
@@ -71,9 +72,9 @@ def inbound_funnel(apps):
     (apps: {'seen', 'url'}) for the Jobs list a click shows."""
     contacted = len(apps)
     steps = []
-    for name, marks in INBOUND_STEPS:
+    for index, (name, marks) in enumerate(INBOUND_STEPS):
         here = [a for a in apps if marks is None or a['seen'] & marks]
-        steps.append({'step': name, 'reached': len(here), 'of_contacted': len(here) / contacted if contacted else None,
+        steps.append({'step': text('focusCards.funnel.inbound' + str(index), name), 'reached': len(here), 'of_contacted': len(here) / contacted if contacted else None,
                       'urls': [a['url'] for a in here if a.get('url')]})
     return steps
 
@@ -107,7 +108,7 @@ def funnel(apps):
         nxt = STEPS[index + 1][1] if index + 1 < len(STEPS) else None
         # Still open at this step: reached it, not the next one, not closed.
         waiting = [a for a in here if a['stage'] not in CLOSED_STAGES and not (nxt and a['seen'] & nxt)]
-        step = {'step': name, 'reached': len(here), 'waiting': len(waiting), 'benchmark': benchmark, 'advice': advice}
+        step = {'step': text('focusCards.funnel.step' + str(index), name), 'reached': len(here), 'waiting': len(waiting), 'benchmark': benchmark, 'advice': text('focusCards.funnel.advice' + str(index), advice) if advice else ''}
         if previous is not None:
             step['from'] = previous['reached']
             step['decided'] = previous['reached'] - previous['waiting']
@@ -139,21 +140,18 @@ def summary(steps):
     lines = []
     step = focus(steps)
     if step:
-        lines.append(f"Improve {step['step']}: {pct(step['decided_conversion'])} of decided applications get here, "
-                     f"rule of thumb {pct(step['benchmark'])}. {step['advice']}")
+        lines.append(text('focusCards.funnel.m001', 'Improve {step}: {value} of decided applications get here, rule of thumb {value2}. {advice}', {'step': step['step'], 'value': pct(step['decided_conversion']), 'value2': pct(step['benchmark']), 'advice': step['advice']}))
     else:
-        lines.append('No step is clearly below its rule of thumb yet.')
+        lines.append(text('focusCards.funnel.m002', 'No step is clearly below its rule of thumb yet.'))
     prepared, applied = steps[0], steps[1]
     if prepared['waiting'] >= max(2 * applied['reached'], MIN_DECIDED):
-        lines.append(f"Biggest lever now is volume: {prepared['waiting']} applications are prepared but not sent, against "
-                     f"{applied['reached']} sent. More applications also make the later steps measurable.")
+        lines.append(text('focusCards.funnel.m003', 'Biggest lever now is volume: {waiting} applications are prepared but not sent, against {reached} sent. More applications also make the later steps measurable.', {'waiting': prepared['waiting'], 'reached': applied['reached']}))
     small = [s['step'] for s in steps[1:] if s['decided'] < MIN_DECIDED and s['from']]
     if small:
-        lines.append(f"Too early to judge {', '.join(small)}: fewer than {MIN_DECIDED} decided applications "
-                     'reached the step before it.')
-    open_ = [f"{s['waiting']} at {s['step']}" for s in steps[1:-1] if s['waiting']]
+        lines.append(text('focusCards.funnel.m004', 'Too early to judge {value}: fewer than {MIN_DECIDED} decided applications reached the step before it.', {'value': join(', ', small), 'MIN_DECIDED': MIN_DECIDED}))
+    open_ = [text('focusCards.funnel.m005', '{waiting} at {step}', {'waiting': s['waiting'], 'step': s['step']}) for s in steps[1:-1] if s['waiting']]
     if open_:
-        lines.append('Still open: ' + ', '.join(open_) + '.')
+        lines.append(join("", [join("", [text('focusCards.funnel.m006', 'Still open: '), join(', ', open_)]), '.']))
     return lines
 
 

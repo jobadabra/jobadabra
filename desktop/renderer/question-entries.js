@@ -1,5 +1,7 @@
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+import '../i18n/focus-cards.js';
+import {copyField} from '../i18n/display-copy.js';
 // The Jobs drawers as rows of Focus → Suggestions and the Jobs bar: Cover letter, Fill your details and What we learned, from the count Jobs already reads
 // (pages/jobs-questions.js questionsNow), free of the DOM so the tests can check them. Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1c).
 // Guarded by test/unit/renderer/question-entries.test.js.
@@ -27,8 +29,8 @@ export function questionEntries({details = [], learned = [], letter = null, erro
   }
   const found = [];
   if (letter) {
-    found.push(row('letter', {key: 'letter:setup', title: t('helperRest.letterMissing'), short: t('helperRest.letterMissing'), detail: letter.hint || '', source: t('helpers.coverLetter'), blocking: true,
-      actions: [{label: letter.setup?.action || t('helperRest.setupLetter'), do: 'open_letter'}]}));
+    found.push(row('letter', {key: 'letter:setup', title: t('helperRest.letterMissing'), short: t('helperRest.letterMissing'), detail: copyField(letter, 'hint') || '', source: t('helpers.coverLetter'), blocking: true,
+      actions: [{label: copyField(letter.setup, 'action') || t('helperRest.setupLetter'), do: 'open_letter'}]}));
   }
   if (details.length) {
     found.push(row('details', {key: 'details:open', title: t('helperRest.fillDetails'), short: t('helperRest.detailsMissing', {count: details.length}), detail: [COUNT.details(details.length), fromDetails > 0 ? fromDetailsLine(fromDetails) : ''].filter(Boolean).join(' · '),

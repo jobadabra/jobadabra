@@ -6,6 +6,8 @@ interview's job is its app_id). src/focus.py re-exports every name here.
 
 Guarded by tests/unit/notion/test_focus.py, tests/unit/ai/test_follow_up.py and tests/unit/stores/test_focus_history.py.
 """
+from .ui_copy import text, join
+from .focus_items import date_words, enum_words
 import re
 from datetime import date, datetime, timedelta, timezone
 
@@ -80,7 +82,8 @@ def reviewed_interviews(interviews, app_id):
 
 
 def _day(day):
-    return f'{date.fromisoformat(day[:10]).day} {date.fromisoformat(day[:10]):%b}'
+    moment = date.fromisoformat(day[:10])
+    return date_words(moment, '%d %b', f'{moment.day} {moment:%b}')
 
 
 def prep_state(prep_at, reviewed, history=()):
@@ -96,13 +99,13 @@ def prep_state(prep_at, reviewed, history=()):
     latest = reviewed[0] if reviewed else None
     if latest and latest['day'] and (latest['moment'] >= built if built and latest['moment'] else latest['day'] >= built_day):
         return {'stale': True, 'since': latest['day'], 'why': 'reviewed',
-                'reason': f"Kit from {_day(built_day)} · your call on {_day(latest['day'])} was reviewed since"}
+                'reason': text('focusCards.state.m001', 'Kit from {value} · your call on {value2} was reviewed since', {'value': _day(built_day), 'value2': _day(latest['day'])})}
     booked = [e['at'] for e in history if e['kind'] == 'Interview scheduled' and e['at']]
     booked = max(booked, default=None)
     if booked and (booked > built if built else booked.astimezone(TZ).date().isoformat() > built_day):
         day = booked.astimezone(TZ).date().isoformat()
         return {'stale': True, 'since': day, 'why': 'booked',
-                'reason': f"Kit from {_day(built_day)} · the interview was booked or moved on {_day(day)}"}
+                'reason': text('focusCards.state.m002', 'Kit from {value} · the interview was booked or moved on {value2}', {'value': _day(built_day), 'value2': _day(day)})}
     return current
 
 
@@ -161,8 +164,8 @@ def questions(rows, events):
         note, kind = event.get('note') or '', event.get('kind') or ''
         at = _when(event.get('at') or '')
         label = f"{_field(suggested, 'company') or _field(suggested, 'via') or '?'} — {_role(suggested)[:60]}" if suggested else ''
-        title = f'Is this email about {label}?' if suggested else 'Which job is this email about?'
-        detail = f"{kind}{f', {at.astimezone(TZ):%a %d %b %H:%M}' if at else ''}: {note[:220]}"
+        title = text('focusCards.state.m004', 'Is this email about {label}?', {'label': label}) if suggested else text('focusCards.state.m005', 'Which job is this email about?')
+        detail = join('', [enum_words(kind), join('', [', ', date_words(at.astimezone(TZ), '%a %d %b %H:%M')]) if at else '', ': ', note[:220]])
         asked.append(_item(1, 'which_job', '🔎', title, detail, suggested, event_id=event['id'], event_kind=kind, note=note,
                            subject=_asked_subject(event),
                            suggested_url=_field(suggested, 'url') if suggested else '', suggested_label=label))
@@ -225,10 +228,11 @@ def follow_up(row, history, now, interviewed=None):
     job_url = _field(row, 'url')
     link = _gmail(last['source_id']) if last['source'] == 'Gmail' else ''
     link = link or (job_url if re.search(r'mail\.google\.com|linkedin\.com/messaging', job_url) else '')
-    who = _field(row, 'company') or _field(row, 'via') or _field(row, 'contact').split(' · ')[0] or 'the recruiter'
-    said = f"{last['at'].astimezone(TZ):%a} {last['at'].astimezone(TZ).day} {last['at'].astimezone(TZ):%b}"
-    return _item(2, 'follow_up', '📨', f'Follow up with {who}', f'You wrote {said} ({_days_ago(days)}), no reply yet.', row,
-                 link, 'Open email' if 'mail.google' in link else 'Open chat' if 'linkedin' in link else '', done=True,
+    who = _field(row, 'company') or _field(row, 'via') or _field(row, 'contact').split(' · ')[0] or text('focusCards.state.m006', 'the recruiter')
+    moment = last['at'].astimezone(TZ)
+    said = date_words(moment, '%a %d %b', f'{moment:%a} {moment.day} {moment:%b}')
+    return _item(2, 'follow_up', '📨', text('focusCards.state.m007', 'Follow up with {who}', {'who': who}), text('focusCards.state.m008', 'You wrote {said} ({value}), no reply yet.', {'said': said, 'value': _days_ago(days)}), row,
+                 link, text('focusCards.state.m009', 'Open email') if 'mail.google' in link else text('focusCards.state.m010', 'Open chat') if 'linkedin' in link else '', done=True,
                  at=last['at'].isoformat(), quiet=days)
 
 

@@ -1,5 +1,7 @@
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+import '../i18n/focus-cards.js';
+import {copyField} from '../i18n/display-copy.js';
 // Focus's Suggestions, the Jobs bar and a home's rows: which entries each place shows and the words around them, free of the DOM so the tests
 // can check them. Entries come from the engine's pool (src/suggestions.py); pages/focus-suggestions.js draws them and runs their buttons.
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
@@ -105,7 +107,7 @@ export const jobsBarWords = (count, open, line = '') => ({title: open ? t('helpe
 /** A row's parts: its look, its meta line (where it comes from unless the badge says it, what it says), and the evidence behind it for the hover. */
 export function entryParts(entry) {
   const look = LOOK[entry.kind] || {icon: 'bulb', tone: 'info', badge: ''};
-  const badge = badgeText(look.badge), translatedSource = badgeText(entry.source);
+  const badge = badgeText(look.badge), translatedSource = badgeText(copyField(entry, 'source'));
   const source = translatedSource === badge ? '' : translatedSource;
-  return {...look, badge, headline: entry.title, meta: [source, entry.detail].filter(Boolean), evidence: (entry.evidence || []).join('\n')};
+  return {...look, badge, headline: copyField(entry, 'title'), meta: [source, copyField(entry, 'detail')].filter(Boolean), evidence: (copyField(entry, 'evidence') || []).join('\n')};
 }

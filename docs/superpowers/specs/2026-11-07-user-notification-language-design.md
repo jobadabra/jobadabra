@@ -50,9 +50,9 @@ The service PRs land before the public bridge starts sending new metadata. Templ
 - [x] Desktop and scheduled engine propagate resolved preference without changing consent or recipients. (proof: desktop/test/unit/main/notification-bridge.test.js @e689bf1e85e405f92e0eaf79c21728a54b293f45)
 ### 3. End-user content
 - [x] All twelve email templates and shared frame/footer localize. (proof: none: private email PR #483 merged at a0c35c7; all twelve templates across seven languages, HTML/text parity, operational-English negative checks and raw-content preservation passed)
-- [ ] Python notification templates localize with canonical diagnostics preserved.
+- [x] Python notification templates localize with canonical diagnostics preserved. (proof: none: PR #3499 owner-merged at b98b171f7da61774df6182d5110db07aafd4a31c; 182 focused checks and 98 fictional scenarios)
 - [x] Desktop notification and bot help/reply templates localize. (proof: app-core/src/bot-copy.js @22adc19fdab6a9c7af1edbbf510d3ec463584896)
 ### 4. Verification and handoff
-- [ ] Seven-language content/plural/escape tests and operational-English negative cases pass. (pending: PR #3499 owner merge for landed proof)
+- [x] Seven-language content/plural/escape tests and operational-English negative cases pass. (proof: none: PR #3499 merged at b98b171f7da61774df6182d5110db07aafd4a31c; verification PR #3505 merged at 1757d53cf8d554c80e632525a70e58697edb6d5f)
 - [x] Fictional email/Telegram render inventory reviewed; remaining dynamic-content fallbacks disclosed. (proof: docs/superpowers/specs/2026-11-07-user-notification-language-verification.md)
-- [ ] All scoped PRs exact-head READY and progress report updated. (pending: PR #3499 owner merge for final integration)
+- [x] All scoped PRs exact-head READY and progress report updated. (proof: none: final implementation PR #3499 and report PR #3505 owner-merged; Notion progress record updated and read-back verified on 7 Nov 2026)

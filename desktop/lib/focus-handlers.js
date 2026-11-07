@@ -1,6 +1,8 @@
 // The jobs, focus and status IPC (moved out of main.js, 8 Oct 2026): the theme and automation switches, deleting a job and setting its status, the Focus
 // page's list, the daily target and audience, interview prep, describing a job, reassigning an email, focus history, outcomes and the rejection
 // review. main.js passes in the services they share. Guards: the focus, targets and status tests in desktop/test.
+import {copyMessage, copyFields} from '../i18n/display-copy.js';
+import {focusDisplayReply} from './pipeline-commands.js';
 import * as notionGate from './notion-gate.js';
 import {forWindow} from './site-accounts.js';
 import * as pipeline from './pipeline.js';
@@ -12,6 +14,10 @@ import path from 'node:path';
 import {log as appLog} from './log.js';
 import {afterWrite, sharedRead} from './shared-read.js';
 import {demoPath} from './demo.js';
+
+function authoredFailure(field, canonical, key, variables = {}) {
+  return copyFields({ok: false, [field]: canonical}, {[field]: copyMessage(`focusCards.${key}`, canonical, variables)});
+}
 
 export function registerFocusHandlers(ctx) {
   const writeHandle = (channel, fn) => ipcMain.handle(channel, afterWrite(fn));   // a finished write closes the running reads' join (shared-read.js)
@@ -57,7 +63,7 @@ export function registerFocusHandlers(ctx) {
   ipcMain.handle('focus', sharedRead('focus', async () => {
     const gate = needsNotion('focus');
     if (gate) return gate;
-    if (!DEMO) return viewCache.remember(storage, 'focus', await pipeline.focus(storage));
+    if (!DEMO) return focusDisplayReply(viewCache.remember(storage, 'focus', await pipeline.focus(storage)));
     await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_DEMO_FOCUS_DELAY) || 0));
     return {ok: true, focus: demoFocusData()};
   }, {log: appLog}));
@@ -80,7 +86,7 @@ export function registerFocusHandlers(ctx) {
     if (gate) return gate;
     try {
       return {ok: true, target: await strategy.setDailyTarget(storage, value, settingsDeps())};
-    } catch (error) { return {ok: false, error: `Notion: ${error.message}. The target wasn't changed.`}; }
+    } catch (error) { return authoredFailure('error', `Notion: ${error.message}. The target wasn't changed.`, 'mainTargetSaveError', {error: error.message}); }
   });
   // Demo mode: a fictional history.
   const demoHistory = () => {
@@ -98,7 +104,7 @@ export function registerFocusHandlers(ctx) {
       if (item) Object.assign(item, {prep_at: new Date().toLocaleDateString('en-CA'), prep_stale: false});
       return {ok: true, text: 'Interview preparation ready (demo): nothing was written.'};
     }
-    if (!aiReady()) return {ok: false, text: 'The prep kit needs AI: choose an AI engine: Claude Code, Codex or an API key (Settings → Connections → AI).'};
+    if (!aiReady()) return authoredFailure('text', 'The prep kit needs AI: choose an AI engine: Claude Code, Codex or an API key (Settings → Connections → AI).', 'mainPrepNeedsAi');
     // Its lines and result also go to logs/app.log (a failed kit left no trace before).
     return pipeline.interviewPrep(storage, String(pageId), line => {
       log(line);
@@ -121,7 +127,7 @@ export function registerFocusHandlers(ctx) {
     }
     return {ok: true, text: 'Moved (demo): nothing was written.'};
   });
-  ipcMain.handle('focusHistory', () => (DEMO ? demoHistory() : needsNotion('focus') || pipeline.focusHistory(storage)));
+  ipcMain.handle('focusHistory', async () => (DEMO ? demoHistory() : needsNotion('focus') || focusDisplayReply(await pipeline.focusHistory(storage))));
   ipcMain.handle('focusDone', (_, pageId, what = 'replied') => (DEMO ? {ok: true} : needsNotion('focus') || pipeline.focusDone(storage, String(pageId), String(what))));
   // Focus → "Did the interview happen?": held (notes), moved (a new time) or cancelled; Notion first.
   writeHandle('interviewHappened', (_, pageId, answer, detail = {}) => (DEMO ? {ok: true, review: false}
@@ -131,7 +137,7 @@ export function registerFocusHandlers(ctx) {
   // A rejected job's menu → Why was I rejected? (also runs by itself after the Gmail check logs a rejection).
   ipcMain.handle('reviewRejection', async (_, url) => {
     if (DEMO) return {ok: true, text: 'Reviewed (demo): nothing was written.'};
-    if (!aiReady()) return {ok: false, text: 'The review needs AI: choose an AI engine: Claude Code, Codex or an API key (Settings → Connections → AI).'};
-    try { return await pipeline.reviewRejection(storage, url, log); } catch (error) { return {ok: false, text: error.message}; }
+    if (!aiReady()) return authoredFailure('text', 'The review needs AI: choose an AI engine: Claude Code, Codex or an API key (Settings → Connections → AI).', 'mainReviewNeedsAi');
+    try { return focusDisplayReply(await pipeline.reviewRejection(storage, url, log)); } catch (error) { return {ok: false, text: error.message}; }
   });
 }

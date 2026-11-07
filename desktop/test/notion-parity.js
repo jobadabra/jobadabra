@@ -22,8 +22,8 @@ export const NOTION_PARITY = {
   'pages/activity-mail.js jobLink': JOB,
   'pages/activity-run-card.js renderRunCard': {view: 'pages/employers.js loadEmployers'},   // Find employers' card → All employers
   'pages/activity.js init': {view: 'pages/activity-panel.js openActivity'},                             // links inside a run's result: the weekly report in full, an insight
-  'pages/focus.js openLink': {none: 'helper: its callers are rows of their own (focusCard)'},
-  'pages/focus.js focusCard': JOB,
+  'pages/focus.js openLink': {none: 'helper: its callers are rows of their own (focusMoreActions)'},
+  'pages/focus.js focusMoreActions': JOB,
   'pages/focus.js loadHistory': JOB,                             // the job's History tab
   'pages/focus.js prepAction': PREP,
   'pages/focus.js init': FUNNEL,                                // the funnel link (#focus-funnel-notion)

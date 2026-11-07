@@ -1,5 +1,6 @@
 import '../i18n/screens-helpers.js';
 import {t, getLocale} from '../i18n/index.js';
+import {copyField} from '../i18n/display-copy.js';
 import {date} from '../i18n/format.js';
 import {ai} from './ai-name.js';
 // The Focus card of an interview to prepare for: its meta line, its main button and its ⋯ entries, from the item
@@ -16,10 +17,10 @@ export function prepDay(at, today = new Date().toLocaleDateString('en-CA')) {
 export function prepCard(item, today) {
   const day = at => prepDay(at, today);
   const on = at => (day(at) === t('helperMore.hostedToday') ? t('helperMore.hostedToday') : t('helperFlow.onDay', {day: day(at)}));
-  const job = item.meta?.[0];
+  const meta = copyField(item, 'meta') || [], job = meta[0];
   const build = {label: t('helperFlow.prepareInterview'), run: 'build', tone: 'primary', title: ai(COST_HINT)};
   if (item.building) return {meta: [job, t('helperFlow.buildingPrep')], primary: {label: t('helperFlow.building'), run: 'join', tone: 'secondary'}, more: []};
-  if (!item.prep_at) return {meta: item.meta || [], primary: build, more: []};
+  if (!item.prep_at) return {meta, primary: build, more: []};
   if (item.prep_stale) {
     // The kit was for an earlier call: building the one for this round comes first; the earlier kit stays on the page.
     const since = item.prep_why === 'booked' ? t('helperFlow.interviewMoved', {when: on(item.prep_since)})
