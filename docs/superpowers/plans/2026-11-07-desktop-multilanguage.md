@@ -31,9 +31,9 @@
 
 **Files:** this plan and the linked spec. External: one Notion progress page beneath the project Progress section, containing findings, status, PR links, and test evidence; code/spec remain canonical in git.
 **Interfaces:** produces spec PR URL and Notion progress URL.
-- [ ] Check spec against the worker audit and owner's approved scope.
-- [ ] Commit docs and open with tools/ship.sh --background; verify PR exists.
-- [ ] Create/update the requested Notion progress record without exposing credentials.
+- [x] Check spec against the worker audit and owner's approved scope.
+- [x] Commit docs and open with tools/ship.sh --background; verify PR exists.
+- [x] Create/update the requested Notion progress record without exposing credentials.
 
 ### Task 2: Translation runtime and explicit static binding
 

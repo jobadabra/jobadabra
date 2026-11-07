@@ -98,6 +98,9 @@ Use fictional demo data for representative first-run, Settings, Jobs/drawer, Pro
 
 ## Progress
 
+Live findings/progress/report: [Notion record](https://app.notion.com/p/41162be8fd8681f9a8e8ce827978f676).
+Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
+
 ### 1. Scope and design
 
 - [x] Confirm desktop-only scope and seven languages (proof: none: owner supplied the Trello card and desktop priority).
