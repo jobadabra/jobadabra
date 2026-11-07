@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {catalogs} from '../../../../extension/i18n.js';
 import {readPanel} from '../../../../app-core/test/helpers/panel.js';
 import * as review from '../../../lib/review.js';
 
@@ -23,7 +24,13 @@ test('a posting tab with the mark, plus the bound form tab: the posting is told 
 test('the panel: moved is never ready, shows Go there, and the worker brings the named tab forward', () => {
   const panel = readPanel();
   assert.match(panel, /ready = !moved && (?:!pageMark && )?total > 0 && left === 0/);
-  assert.match(panel, /moved \? 'Continues in another tab'/g);
+  const titleSource = panel.match(/function pillTitle\([\s\S]*?\n    }/)[0];
+  for (const [locale, messages] of Object.entries(catalogs)) {
+    const t = (key, fallback, values) => globalThis.__jobadabraFormatDisplayMessage(messages, catalogs.en, locale, key, values, fallback);
+    const title = new Function('t', `return (${titleSource});`)(t);
+    assert.equal(title({moved:true, ready:true, total:6, left:0}), messages['panel.moved'], locale);
+    assert.equal(title({moved:false, ready:true, readyWords:'ready', total:6, left:0}), 'ready', locale);
+  }
   assert.match(panel, /\$\('\.go-there'\)\.onclick = .*type: 'panelGoTab', tab: movedTab/);
   assert.match(read('panel-markup.js'), /class="link go-there" hidden/);
   assert.match(read('messages-panel.js'), /message\?\.type === 'panelGoTab'[\s\S]*chrome\.tabs\.update\(message\.tab, \{active: true\}\)/);
