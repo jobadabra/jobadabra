@@ -14,7 +14,7 @@ import {recordIpc} from './lib/e2e-ipc.js';
 import {standInHost, watchRunner} from './lib/e2e-host.js';
 import {isTwin, twinRefusal} from './lib/twin.js';
 import {forWindow} from './lib/site-accounts.js';
-import {channelsOf} from './lib/notify-channel.js';
+import {channelsOf, refreshLanguage} from './lib/notify-channel.js';
 import * as devMarker from './lib/dev-marker.js';
 import {hideWindows} from './lib/e2e-hidden.js';
 import fs from 'node:fs';
@@ -413,7 +413,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   { const lost = (storage.secretsPresent(), storage.unreadableSecrets()); if (lost.length) appLog('secrets', 'unreadable on this computer: asked again', {names: lost}); }
   const firstStart = DEMO ? null : versionLine(storage, app.getVersion(), buildInfo ? `build ${buildInfo.build} · ${buildInfo.commit}` : '');
   if (firstStart) appLog('update', firstStart);
-  aiFree.apply(storage.settings()); watchAiCaps(); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => { void refreshDeliveryLanguage(storage); return trialServer.keepFresh(storage, license); }).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
+  aiFree.apply(storage.settings()); watchAiCaps(); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => { void refreshLanguage(storage); return trialServer.keepFresh(storage, license); }).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
   // Technical reports (lib/telemetry.js): on by default, off in Settings → Advanced; never in demo mode, and never
   // from a source checkout (npm start): its crashes are work in progress, not users' problems, and would open triage issues.
   license = licenseLib.create(storage, {appliedNow: () => viewCache.recall(storage, 'focus')?.result?.focus?.funnel?.steps
