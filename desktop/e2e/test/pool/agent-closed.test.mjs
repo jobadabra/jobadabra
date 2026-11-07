@@ -7,7 +7,7 @@ import {BATCH1_RULES, batchKnowledge, batchMarkdown, askBatch, loadBatch, scoreB
 import {SYSTEM, judgePrompt} from '../../lib/agent-judge.mjs';
 import {knowledgeFor} from '../../lib/agent-knowledge.mjs';
 import {readExpectations} from '../../lib/agent-memory.mjs';
-import {citedIds, joinSameElement, rankNotes} from '../../lib/agent-notes.mjs';
+import {citedIds, holdingIds, joinSameElement, rankNotes} from '../../lib/agent-notes.mjs';
 import {AGENT_SYSTEM, goalIntro} from '../../lib/agent-run.mjs';
 import {summarizeSession, summaryMarkdown} from '../../lib/agent-session.mjs';
 
@@ -90,19 +90,30 @@ test('a disagree is held only when it names a rule or closed verdict that is in 
   assert.deepEqual(ranked.ruled.map(note => note.title), ['ruled']);
   const summary = summarizeSession({session: 's', persona: 'P', seed: 1, goals: [], notes: [ruledNote, agreed], joined: [{title: 'twin', view: 'settings'}]});
   const text = summaryMarkdown(summary);
-  assert.match(text, /Not filed, the second opinion names a rule or a closed verdict \(1\)[\s\S]*- ruled \(settings\): settings-3/);
+  assert.match(text, /Not filed, the second opinion answers a rule the note cited or a closed verdict \(1\)[\s\S]*- ruled \(settings\): settings-3/);
   assert.match(text, /Joined to an earlier note of this run \(1\)[\s\S]*- twin \(settings\)/);
 });
 
-test('batch 1 through the production hold, with the verdicts the judge really gave: #3534 and #3539 named a rule and are held, the other 7 file', () => {
+test('batch 1 through the production hold, with the verdicts the judge really gave: only #3539 (it cited settings-3 itself) is held; #3534 files with judge:disagrees', () => {
   const asJudged = note => {
     const knowledge = batchKnowledge(note, {expectations, lessons: batch.lessons}, 'before');   // the rules as they were that day
-    return {...note, judge: note.recorded.judge, judgeReason: note.recorded.reason, judgeCites: citedIds(note.recorded.reason, knowledge)};
+    return {...note, judge: note.recorded.judge, judgeReason: note.recorded.reason, judgeCites: holdingIds(note, note.recorded.reason, knowledge)};
   };
   const ranked = rankNotes(batch.notes.map(asJudged), 20);
-  assert.deepEqual(ranked.ruled.map(note => note.issue).sort(), [3534, 3539]);
-  assert.equal(ranked.filed.length, 7);
+  assert.deepEqual(ranked.ruled.map(note => note.issue), [3539]);
+  assert.equal(ranked.filed.length, 8);
+  assert.equal(ranked.filed.find(note => note.issue === 3534).judge, 'disagrees', 'a note citing "general UX" against a rule the judge names still files, labelled');
   assert.deepEqual(ranked.filed.filter(note => note.label === 'real').map(note => note.issue).sort(), [3530, 3532, 3533], 'the three real ones still file');
+});
+
+test('a judge that misapplies a rule never holds a real note: only a rule the note cited or a closed verdict holds (exam run 42407753226: real note #9 was held 3 of 3 runs by settings-3)', () => {
+  const knowledge = '## Settings\n- settings-3 a row names a setting\n- jobs-3 an applied job\n- jobs-30 something else\n- closed-3539 Not a bug: GitHub row: x';
+  const reason = 'Rule settings-3 says the label does not claim the setting is on, see also closed-3539 and jobs-3.';
+  const realNote = {expected: 'general UX: Automation status must consistently indicate whether it is active.'};
+  assert.deepEqual(holdingIds(realNote, reason.replace(', see also closed-3539 and jobs-3', ''), knowledge), [], 'a rule the note did not cite does not hold it');
+  assert.deepEqual(holdingIds({expected: 'settings-3: a row such as "Always on: your GitHub" names a setting'}, reason.replace(', see also closed-3539 and jobs-3', ''), knowledge), ['settings-3'], 'the rule the note cited, answered by the judge');
+  assert.deepEqual(holdingIds(realNote, reason, knowledge), ['closed-3539'], 'a closed verdict holds even a general-UX note');
+  assert.deepEqual(holdingIds({expected: 'jobs-30 says so'}, 'jobs-3 forbids this', knowledge), [], 'jobs-3 is not jobs-30');
 });
 
 test('the batch-1 exam set: 3 real, 6 false, every note has its picture, and each variant tells the judge what it should', () => {
@@ -122,8 +133,8 @@ test('the batch-1 score: the production rule holds a false note only on a named 
   const ask = async ({messages}) => {
     const text = [].concat(messages[0].content).map(part => part.text || '').join('');
     const falseNote = batch.notes.find(note => text.includes(`Report: ${note.title}`) && note.label === 'false');
-    // a fake judge: disagrees on every false note and on one real one, naming the first rule or closed id it was given only for the false ones
-    const id = /^- ((?:closed|[a-z]+)-\d+) /m.exec(text.split('Report:')[0])?.[1];
+    // a fake judge: disagrees on every false note naming the first closed verdict it was given, and on one real note without naming anything
+    const id = /^- (closed-\d+) /m.exec(text.split('Report:')[0])?.[1];
     const real = batch.notes.find(note => text.includes(`Report: ${note.title}`) && note.n === 2);
     return JSON.stringify(falseNote ? {verdict: 'disagrees', reason: `${id} says so.`} : real ? {verdict: 'disagrees', reason: 'it looks fine to me'} : {verdict: 'agrees', reason: 'the picture shows it'});
   };
