@@ -1,5 +1,6 @@
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+import {number} from '../i18n/format.js';
 // The words of the Tune my strategy dialog, kept free of the DOM (like weekly-card.js) so the tests can check them.
 const VERB = {drop_role: 'helperGuide.stopRole', drop_place: 'helperGuide.stopPlace', exclude_title: 'helperGuide.skipTitle'};
 
@@ -15,7 +16,7 @@ export const proposalCounts = item => (item.dismissed != null ? t('helperGuide.p
 export function basisParts(answer) {
   const b = answer.basis || {};
   if (!b.jobs) return {lead: t('helperGuide.noLearning'), counts: ''};
-  const counts = `${t('helperGuide.proposalCounts', {dismissed: b.dismissed, engaged: b.engaged})} · ${t('helperRest.peerInterviews', {count: b.interviews})}`;
+  const counts = `${t('helperGuide.proposalCounts', {dismissed: b.dismissed, engaged: b.engaged})} · ${t('helperRest.peerInterviews', {count: b.interviews || 0, shown: number(Number(b.interviews || 0))})}`;
   const lead = t('helperGuide.basisJobs', {count: b.jobs});
   return answer.proposals?.length ? {lead, counts}
     : {lead: lead + t('helperGuide.nothingChange', {count: b.min_dismissed}), counts};

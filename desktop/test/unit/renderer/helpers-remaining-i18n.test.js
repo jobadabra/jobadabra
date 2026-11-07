@@ -225,3 +225,22 @@ test('coverage and board plural counts retain locale grouping and raw plural sel
     }
   } finally {setLocale('en');}
 });
+
+
+test('Tune strategy basis formats interview counts in every locale with no unresolved placeholder', async () => {
+  const {basisParts} = await import('../../../renderer/tune-text.js');
+  try {
+    for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+      setLocale(locale);
+      for (const count of [0, 1, 2, 5, 1234, 1001]) {
+        const answer = {basis: {jobs: 20, dismissed: 3, engaged: 4, interviews: count}, proposals: [{}]};
+        const wire = JSON.stringify(answer), view = basisParts(answer);
+        assert.ok(view.counts.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${view.counts}`);
+        assert.doesNotMatch(view.counts, /\{shown\}|\{count\}/);
+        assert.equal(JSON.stringify(answer), wire);
+      }
+      const missing = basisParts({basis: {jobs: 20, dismissed: 3, engaged: 4}, proposals: [{}]});
+      assert.ok(missing.counts.includes('0')); assert.doesNotMatch(missing.counts, /undefined|\{/);
+    }
+  } finally {setLocale('en');}
+});
