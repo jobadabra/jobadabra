@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Focus's Suggestions, the Jobs bar and a home's rows: which entries each place shows and the words around them, free of the DOM so the tests
 // can check them. Entries come from the engine's pool (src/suggestions.py); pages/focus-suggestions.js draws them and runs their buttons.
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
@@ -25,6 +27,33 @@ export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, re
   rescore: {icon: 'refresh', tone: 'warn', badge: 'Old scores'},   // the Jobs list's scores from the previous search settings (renderer/rescore-entry.js; was the yellow bar above the list)
   skills: {icon: 'file', tone: 'info', badge: 'Your CV'}};   // Insights PR 2 (#6): skills only the Experience bank has
 
+// Translate known app-owned badge/source names only; unknown source text stays original.
+const BADGE_KEYS = {
+  "Insight": "helperTail.insight",
+  "Rejection": "helperTail.rejection",
+  "Always on": "helperMore.alwaysOn",
+  "Notifications": "helperTail.notifications",
+  "New": "helperFlow.new",
+  "Your week": "helperTail.yourWeek",
+  "Analyze": "helperTail.analyze",
+  "Tune": "helperTail.tune",
+  "Places": "helperTail.places",
+  "Roles": "helperTail.roles",
+  "Role words": "helperTail.roleWords",
+  "Filters": "helperTail.filters",
+  "Sites": "helperTail.sites",
+  "Pay": "helperTail.pay",
+  "High priority": "helperTail.highPriority",
+  "Details": "helperTail.details",
+  "Learned": "helperTail.learnedShort",
+  "Your AI app": "helperTail.yourAiApp",
+  "Not loaded": "helperTail.notLoaded",
+  "Old scores": "helperTail.oldScores",
+  "Your CV": "helperTail.yourCv",
+  "Applying": "helpers.stageApplying"
+};
+const badgeText = value => BADGE_KEYS[value] ? t(BADGE_KEYS[value]) : value;
+
 // The one severity of an entry, from its LOOK tone (owner, 5 Nov 2026: "add some bullets, for example: 1 red, 3 warnings/yellow, 4 info"): red = bad, yellow = warn, blue = info
 // (good reads as info). No caller picks a colour; the row's edge, its badge and the bar's bullets all follow this one table. Only the Jobs drawers' rows are sorted by it (pages/focus-suggestions.js rowsNow); the bullets count every entry.
 export const SEVERITY = [{key: 'bad', label: 'urgent'}, {key: 'warn', label: 'warning'}, {key: 'info', label: 'info'}];
@@ -33,9 +62,9 @@ export const severityOf = entry => { const tone = (LOOK[entry.kind] || {}).tone;
 /** The entries with the most severe first (stable inside a severity), so the bar and its bullets read top-down. */
 export const bySeverity = entries => [...entries].sort((a, b) => SEVERITY.findIndex(s => s.key === severityOf(a)) - SEVERITY.findIndex(s => s.key === severityOf(b)));
 /** The bar's bullets: [{key, count, text}] for each severity that has entries, most severe first ("1 urgent", "3 warnings", "4 info"). */
-export const severityCounts = entries => SEVERITY.map(({key, label}) => {
+export const severityCounts = entries => SEVERITY.map(({key}) => {
   const count = entries.filter(entry => severityOf(entry) === key).length;
-  return {key, count, text: `${count} ${label}${count !== 1 && key === 'warn' ? 's' : ''}`};
+  return {key, count, text: t({bad: 'helperTail.urgentCount', warn: 'helperTail.warningCount', info: 'helperTail.infoCount'}[key], {count})};
 }).filter(item => item.count > 0);
 
 /** Up next: the Focus items that can't wait (src/suggestions.place; null = left out). An item read before places existed (a saved Focus) stays there. */
@@ -67,15 +96,16 @@ export function barView({focusRead, unavailable = false, kept = null, entries = 
 export const homeEntries = (entries, home) => (entries || []).filter(entry => entry.home === home);
 
 /** The Focus head's count: "3 of 5" while folded, else the total. */
-export const countWords = (shown, total) => (shown < total ? `${shown} of ${total}` : String(total));
+export const countWords = (shown, total) => (shown < total ? t('helpers.position', {index: shown, total}) : String(total));
 
 /** The Jobs bar's line, folded ("2 suggestions for your search", or `line` when the drawers' rows are in it: foldedLine) and open. */
-export const jobsBarWords = (count, open, line = '') => ({title: open ? 'Suggestions for your search' : line || `${count} suggestion${count === 1 ? '' : 's'} for your search`,
+export const jobsBarWords = (count, open, line = '') => ({title: open ? t('helperTail.suggestionsSearch') : line || t('helperTail.suggestionsForSearch', {count}),
   detail: foldToggleWord(open)});
 
 /** A row's parts: its look, its meta line (where it comes from unless the badge says it, what it says), and the evidence behind it for the hover. */
 export function entryParts(entry) {
   const look = LOOK[entry.kind] || {icon: 'bulb', tone: 'info', badge: ''};
-  const source = entry.source === look.badge ? '' : entry.source;
-  return {...look, headline: entry.title, meta: [source, entry.detail].filter(Boolean), evidence: (entry.evidence || []).join('\n')};
+  const badge = badgeText(look.badge), translatedSource = badgeText(entry.source);
+  const source = translatedSource === badge ? '' : translatedSource;
+  return {...look, badge, headline: entry.title, meta: [source, entry.detail].filter(Boolean), evidence: (entry.evidence || []).join('\n')};
 }

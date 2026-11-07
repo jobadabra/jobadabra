@@ -1,5 +1,67 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "noneYet": "încă niciuna",
+  "noSessions": "Încă nu există sesiuni. Când aplici, formularul apare aici.",
+  "onSite": " pe {host}",
+  "signRefusedStep": "Pasul 1 din 2 · Autentificare refuzată{site}: o încercare, fără reluare",
+  "accountStep": "Pasul 1 din 2 · {doing}{site}",
+  "signIn": "Autentifică-te",
+  "creatingAccount": "Se creează contul tău",
+  "confirmEmailStep": "Pasul 1 din 2 · Confirmă e-mailul{site}",
+  "formFilled": "Formular de candidatură completat",
+  "fillingForm": "Se completează formularul de candidatură",
+  "accountCreatedLead": "Cont creat · ",
+  "formStep": "Pasul 2 din 2 · {account}{doing}",
+  "chromeSilent": "Chrome nu raportează",
+  "cancelAll": "Anulează toate candidaturile",
+  "checkComplete": "Verificare finalizată",
+  "noMailChanges": "Niciun e-mail nou despre joburi și nicio candidatură modificată.",
+  "noNewEmails": "Niciun e-mail nou despre joburi.",
+  "noRecordsChanged": "Nicio candidatură modificată.",
+  "relevant": "relevante",
+  "noDetailsRecorded": "{updates} înregistrate, dar această rulare nu a păstrat detaliile.",
+  "whichJobFocus": "{text} — care ofertă? Răspuns în Focus",
+  "claudeSession": "Sesiune Claude",
+  "formFill": "Completare formular",
+  "form": "Formular",
+  "working": "În lucru",
+  "waitingYou": "Te așteaptă",
+  "timesAsked": "Întrebări puse",
+  "replyMedian": "Răspunsul tău (mediană)",
+  "readyDecided": "Gata → decis",
+  "turns": "Ture",
+  "toolCalls": "Apeluri de instrumente",
+  "latest": "ultima {day}",
+  "noAnswerAfter": "niciun răspuns după {count} s",
+  "libraryReadFailed": "Interviurile nu au putut fi citite din {where}. Reîncearcă cu ↻; motivul este în jurnal.",
+  "libraryStale": "Nu s-a putut actualiza din {where} · se arată copia {when}",
+  "justNow": "chiar acum",
+  "minutesAgo": "acum {count} min",
+  "hoursAgo": "acum {count} h",
+  "savedAgo": "salvată {when}",
+  "shownBefore": "arătată anterior",
+  "suggestionsSearch": "Sugestii pentru căutarea ta",
+  "highPriority": "Prioritate înaltă",
+  "yourAiApp": "Aplicația ta IA",
+  "notLoaded": "Neîncărcat",
+  "roleWords": "Termeni de rol",
+  "insight": "Analiză",
+  "rejection": "Respingere",
+  "notifications": "Notificări",
+  "yourWeek": "Săptămâna ta",
+  "analyze": "Analizează",
+  "tune": "Ajustează",
+  "places": "Locuri",
+  "roles": "Roluri",
+  "filters": "Filtre",
+  "sites": "Site-uri",
+  "pay": "Salariu",
+  "details": "Date",
+  "learnedShort": "Învățat",
+  "oldScores": "Scoruri vechi",
+  "yourCv": "CV-ul tău",
+  "rejectionUnclear": "Motivul respingerii neclar",
+  "whyRejected": "Motivul respingerii: {verdict}",
   "noAnswerReason": "Încă nu avem un răspuns: dă-l o dată și va fi reținut.",
   "unreadReason": "Întrebarea din pagină nu a putut fi citită.",
   "triesReason": "Site-ul nu a păstrat răspunsul după 3 încercări.",
@@ -55,5 +117,75 @@ export const messages = {
     "one": "aproximativ {count} minut",
     "other": "aproximativ {count} de minute",
     "few": "aproximativ {count} minute"
+  },
+  "cancelling": {
+    "one": "Se anulează {count} candidatură…",
+    "other": "Se anulează {count} de candidaturi…",
+    "few": "Se anulează {count} candidaturi…"
+  },
+  "emailsReviewed": {
+    "one": "{count} e-mail verificat.",
+    "other": "{count} de e-mailuri verificate.",
+    "few": "{count} e-mailuri verificate."
+  },
+  "recordsChanged": {
+    "one": "{count} candidatură modificată.",
+    "other": "{count} de candidaturi modificate.",
+    "few": "{count} candidaturi modificate."
+  },
+  "updateLabel": {
+    "one": "actualizare înregistrată",
+    "other": "actualizări înregistrate",
+    "few": "actualizări înregistrate"
+  },
+  "newEmailLabel": {
+    "one": "e-mail nou",
+    "other": "e-mailuri noi",
+    "few": "e-mailuri noi"
+  },
+  "emailLabel": {
+    "one": "e-mail verificat",
+    "other": "e-mailuri verificate",
+    "few": "e-mailuri verificate"
+  },
+  "unlistedUpdates": {
+    "one": "{count} actualizare înregistrată, fără detalii păstrate.",
+    "other": "{count} de actualizări înregistrate, fără detalii păstrate.",
+    "few": "{count} actualizări înregistrate, fără detalii păstrate."
+  },
+  "formFills": {
+    "one": "{count} completare",
+    "other": "{count} de completări",
+    "few": "{count} completări"
+  },
+  "needsInput": {
+    "one": "{count} cere un răspuns",
+    "other": "{count} cer răspunsuri",
+    "few": "{count} cer răspunsuri"
+  },
+  "fields": {
+    "one": "{count} câmpuri",
+    "other": "{count} de câmpuri",
+    "few": "{count} câmpuri"
+  },
+  "suggestionsForSearch": {
+    "one": "{count} sugestie pentru căutare",
+    "other": "{count} de sugestii pentru căutare",
+    "few": "{count} sugestii pentru căutare"
+  },
+  "urgentCount": {
+    "one": "{count} urgent",
+    "other": "{count} urgente",
+    "few": "{count} urgente"
+  },
+  "warningCount": {
+    "one": "{count} avertisment",
+    "other": "{count} de avertismente",
+    "few": "{count} avertismente"
+  },
+  "infoCount": {
+    "one": "{count} informație",
+    "other": "{count} de informații",
+    "few": "{count} informații"
   }
 };

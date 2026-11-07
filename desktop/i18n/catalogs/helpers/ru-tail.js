@@ -1,5 +1,67 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "noneYet": "пока нет",
+  "noSessions": "Сеансов пока нет. Когда вы подадите заявку, здесь появится форма.",
+  "onSite": " на {host}",
+  "signRefusedStep": "Шаг 1 из 2 · Вход отклонён{site}: одна попытка, без повтора",
+  "accountStep": "Шаг 1 из 2 · {doing}{site}",
+  "signIn": "Войти",
+  "creatingAccount": "Создание вашей учётной записи",
+  "confirmEmailStep": "Шаг 1 из 2 · Подтвердите почту{site}",
+  "formFilled": "Форма заявки заполнена",
+  "fillingForm": "Заполнение формы заявки",
+  "accountCreatedLead": "Учётная запись создана · ",
+  "formStep": "Шаг 2 из 2 · {account}{doing}",
+  "chromeSilent": "Chrome не передаёт данные",
+  "cancelAll": "Отменить все заявки",
+  "checkComplete": "Проверка завершена",
+  "noMailChanges": "Нет новых писем о работе, записи заявок не изменились.",
+  "noNewEmails": "Новых писем о работе нет.",
+  "noRecordsChanged": "Записи заявок не изменились.",
+  "relevant": "подходящих",
+  "noDetailsRecorded": "Записано: {updates}; этот запуск не сохранил подробностей.",
+  "whichJobFocus": "{text} — какая вакансия? Ответ в Фокусе",
+  "claudeSession": "Сеанс Claude",
+  "formFill": "Заполнение формы",
+  "form": "Форма",
+  "working": "В работе",
+  "waitingYou": "Ожидает вас",
+  "timesAsked": "Число запросов",
+  "replyMedian": "Ваш ответ (медиана)",
+  "readyDecided": "Готово → решение",
+  "turns": "Ходы",
+  "toolCalls": "Вызовы инструментов",
+  "latest": "последний {day}",
+  "noAnswerAfter": "нет ответа спустя {count} с",
+  "libraryReadFailed": "Не удалось прочитать собеседования из {where}. Повторите через ↻; причина в журнале приложения.",
+  "libraryStale": "Не удалось обновить из {where} · показана копия {when}",
+  "justNow": "только что",
+  "minutesAgo": "{count} мин назад",
+  "hoursAgo": "{count} ч назад",
+  "savedAgo": "сохранённая {when}",
+  "shownBefore": "показанная ранее",
+  "suggestionsSearch": "Рекомендации по поиску",
+  "highPriority": "Высокий приоритет",
+  "yourAiApp": "Ваше приложение ИИ",
+  "notLoaded": "Не загружено",
+  "roleWords": "Слова ролей",
+  "insight": "Вывод",
+  "rejection": "Отказ",
+  "notifications": "Уведомления",
+  "yourWeek": "Ваша неделя",
+  "analyze": "Анализировать",
+  "tune": "Настроить",
+  "places": "Места",
+  "roles": "Роли",
+  "filters": "Фильтры",
+  "sites": "Сайты",
+  "pay": "Оплата",
+  "details": "Данные",
+  "learnedShort": "Изучено",
+  "oldScores": "Старые оценки",
+  "yourCv": "Ваше CV",
+  "rejectionUnclear": "Причина отказа неясна",
+  "whyRejected": "Причина отказа: {verdict}",
   "noAnswerReason": "Ответа пока нет: укажите один раз, и он сохранится.",
   "unreadReason": "Не удалось прочитать вопрос на странице.",
   "triesReason": "Сайт не сохранил ответ после 3 попыток.",
@@ -56,5 +118,89 @@ export const messages = {
     "other": "около {count} минут",
     "few": "около {count} минут",
     "many": "около {count} минут"
+  },
+  "cancelling": {
+    "one": "Отмена {count} заявки…",
+    "other": "Отмена {count} заявок…",
+    "few": "Отмена {count} заявок…",
+    "many": "Отмена {count} заявок…"
+  },
+  "emailsReviewed": {
+    "one": "Проверено писем: {count}.",
+    "other": "Проверено писем: {count}.",
+    "few": "Проверено писем: {count}.",
+    "many": "Проверено писем: {count}."
+  },
+  "recordsChanged": {
+    "one": "Изменено записей заявок: {count}.",
+    "other": "Изменено записей заявок: {count}.",
+    "few": "Изменено записей заявок: {count}.",
+    "many": "Изменено записей заявок: {count}."
+  },
+  "updateLabel": {
+    "one": "записанное обновление",
+    "other": "записанных обновлений",
+    "few": "записанные обновления",
+    "many": "записанных обновлений"
+  },
+  "newEmailLabel": {
+    "one": "новое письмо",
+    "other": "новых писем",
+    "few": "новых письма",
+    "many": "новых писем"
+  },
+  "emailLabel": {
+    "one": "проверенное письмо",
+    "other": "проверенных писем",
+    "few": "проверенных письма",
+    "many": "проверенных писем"
+  },
+  "unlistedUpdates": {
+    "one": "Записано обновлений: {count}; подробности не сохранены.",
+    "other": "Записано обновлений: {count}; подробности не сохранены.",
+    "few": "Записано обновлений: {count}; подробности не сохранены.",
+    "many": "Записано обновлений: {count}; подробности не сохранены."
+  },
+  "formFills": {
+    "one": "{count} заполнение формы",
+    "other": "{count} заполнений форм",
+    "few": "{count} заполнения форм",
+    "many": "{count} заполнений форм"
+  },
+  "needsInput": {
+    "one": "Ждут ввода: {count}",
+    "other": "Ждут ввода: {count}",
+    "few": "Ждут ввода: {count}",
+    "many": "Ждут ввода: {count}"
+  },
+  "fields": {
+    "one": "Полей: {count}",
+    "other": "Полей: {count}",
+    "few": "Полей: {count}",
+    "many": "Полей: {count}"
+  },
+  "suggestionsForSearch": {
+    "one": "{count} рекомендация по поиску",
+    "other": "{count} рекомендаций по поиску",
+    "few": "{count} рекомендации по поиску",
+    "many": "{count} рекомендаций по поиску"
+  },
+  "urgentCount": {
+    "one": "Срочно: {count}",
+    "other": "Срочно: {count}",
+    "few": "Срочно: {count}",
+    "many": "Срочно: {count}"
+  },
+  "warningCount": {
+    "one": "{count} предупреждение",
+    "other": "{count} предупреждений",
+    "few": "{count} предупреждения",
+    "many": "{count} предупреждений"
+  },
+  "infoCount": {
+    "one": "Сведения: {count}",
+    "other": "Сведения: {count}",
+    "few": "Сведения: {count}",
+    "many": "Сведения: {count}"
   }
 };

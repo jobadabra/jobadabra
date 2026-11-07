@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Form-fill history, without a window (pages/form-fills.js draws it): one agent run (src/stores/base.py AGENT_RUN_FIELDS + EXTRAS) as
 // the list row and the detail, read from the shapes in the store spec's "Agent run shapes": fields.data = {fields, left_for_you,
 // attachments, steps}; fields.timeline = a Claude session's status line. Guarded by test/unit/renderer/form-fills-view.test.js.
@@ -15,7 +17,7 @@ export const isSession = run => /^claude$/i.test(String(run?.fields?.agent || ru
 
 export function agentOf(run) {
   const agent = String(run?.fields?.agent || run?.ats || '');
-  return isSession(run) ? 'Claude session' : /^extension$/i.test(agent) ? 'Extension' : run?.fields?.agent || 'Form fill';
+  return isSession(run) ? t('helperTail.claudeSession') : /^extension$/i.test(agent) ? 'Extension' : run?.fields?.agent || t('helperTail.formFill');
 }
 
 // The list row: {title, company, agent, outcome, tone, at, minutes, fields, left}.
@@ -23,7 +25,7 @@ export function summary(run) {
   const f = run?.fields || {}, rows = data(run).fields || [];
   const outcome = run?.outcome || f.status || 'Open';
   const count = num(f.field_count) ?? (rows.length || null);
-  return {title: f.job || hostOf(run?.url) || 'Form', company: f.company || '', agent: agentOf(run), outcome, tone: outcomeTone(outcome),
+  return {title: f.job || hostOf(run?.url) || t('helperTail.form'), company: f.company || '', agent: agentOf(run), outcome, tone: outcomeTone(outcome),
     at: f.started || run?.created_at || '', minutes: num(f.minutes), fields: count,
     left: num(f.unfilled_required) ?? rows.filter(row => row.outcome !== 'filled' && row.required).length};
 }
@@ -52,17 +54,17 @@ export const learnings = run => String(run?.learnings || '').split(' · ').map(t
 // A Claude session's numbers, [label, value] for the ones present.
 export function sessionNumbers(run) {
   const f = run?.fields || {};
-  const pairs = [['Working', f.working_min, ' min'], ['Waiting for you', f.waiting_min, ' min'], ['Times asked', f.times_asked, ''],
-    ['Your reply (median)', f.reply_median_s, ' s'], ['Ready → decided', f.ready_to_decided_min, ' min'], ['Turns', f.turns, ''],
-    ['Tool calls', f.tool_calls, '']];
+  const pairs = [[t('helperTail.working'), f.working_min, ' min'], [t('helperTail.waitingYou'), f.waiting_min, ' min'], [t('helperTail.timesAsked'), f.times_asked, ''],
+    [t('helperTail.replyMedian'), f.reply_median_s, ' s'], [t('helperTail.readyDecided'), f.ready_to_decided_min, ' min'], [t('helperTail.turns'), f.turns, ''],
+    [t('helperTail.toolCalls'), f.tool_calls, '']];
   return [...pairs.filter(([, value]) => num(value) !== null).map(([label, value, unit]) => [label, `${num(value)}${unit}`]),
-    ...(f.model ? [['Model', f.model]] : [])];
+    ...(f.model ? [[t('helperRest.model'), f.model]] : [])];
 }
 
 // The detail's meta line: when, how long, billed to, why.
 export function metaLine(run, {when = iso => iso} = {}) {
   const s = summary(run), f = run?.fields || {};
-  return [s.at && when(s.at), s.minutes !== null && `${s.minutes} min`, s.fields !== null && `${s.fields} fields`, f.billed_to, f.reason]
+  return [s.at && when(s.at), s.minutes !== null && t('helperRest.minutes', {count: s.minutes}), s.fields !== null && t('helperTail.fields', {count: s.fields}), f.billed_to, f.reason]
     .filter(Boolean).join(' · ');
 }
 
@@ -71,8 +73,8 @@ export function metaLine(run, {when = iso => iso} = {}) {
 export function listLine(runs = [], shown = runs) {
   const all = runs || [], waiting = all.filter(run => summary(run).outcome === 'Needs input').length;
   const latest = all.map(run => summary(run).at).filter(Boolean).sort().at(-1);
-  const count = `${shown.length === all.length ? '' : `${shown.length} of `}${all.length} form fill${all.length === 1 ? '' : 's'}`;
-  return [count, waiting && `${waiting} need${waiting === 1 ? 's' : ''} input`, latest && `latest ${shortDay(latest)}`].filter(Boolean).join(' · ');
+  const count = shown.length === all.length ? t('helperTail.formFills', {count: all.length}) : t('helperRest.shownOf', {shown: shown.length, text: t('helperTail.formFills', {count: all.length})});
+  return [count, waiting && t('helperTail.needsInput', {count: waiting}), latest && t('helperTail.latest', {day: shortDay(latest)})].filter(Boolean).join(' · ');
 }
 
 // The list's filter: free text over job, company, host, agent and outcome; outcome '' = all.
@@ -85,8 +87,9 @@ export function filterRuns(runs, {text = '', outcome = ''} = {}) {
 }
 
 // A read that has not answered after `ms` becomes {error}, so a screen shows an error with Retry instead of loading forever.
+/** Return a localized timeout error while preserving the original asynchronous result. */
 export const withTimeout = (promise, ms) => {
   let timer;
-  const late = new Promise(resolve => { timer = setTimeout(() => resolve({error: `no answer after ${ms / 1000} s`}), ms); });
+  const late = new Promise(resolve => { timer = setTimeout(() => resolve({error: t('helperTail.noAnswerAfter', {count: ms / 1000})}), ms); });
   return Promise.race([promise, late]).finally(() => clearTimeout(timer));
 };

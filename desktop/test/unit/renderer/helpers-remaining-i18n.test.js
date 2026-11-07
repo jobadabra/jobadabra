@@ -130,3 +130,32 @@ test('desktop tips translate without changing the extension pool or its evidence
     assert.equal(JSON.stringify(TIPS), original);
   } finally { setLocale('en'); }
 });
+
+test('mail recorded-update summaries use data counts independently of translated count labels', async () => {
+  const {mailCounts, mailNoCards} = await import('../../../renderer/mail-report.js');
+  try {
+    setLocale('de');
+    const report = {emails: [], updates: [], status: {emails: 0, updates: 3}};
+    assert.equal(mailCounts(report).at(-1).label, 'Aktualisierungen erfasst');
+    assert.equal(mailNoCards(report), '3 Aktualisierungen erfasst, aber ohne gespeicherte Einzelheiten.');
+  } finally { setLocale('en'); }
+});
+
+test('suggestion badges translate without changing metadata, severity or repeated source suppression', async () => {
+  const {entryParts, severityCounts, jobsEntries} = await import('../../../renderer/suggestions.js');
+  const {summary} = await import('../../../renderer/form-fills-view.js');
+  const {sessionStage, cancelAllButton} = await import('../../../renderer/session-state.js');
+  try {
+    setLocale('de');
+    const entry = {kind: 'skills', topic: 'applying', source: 'Your CV', title: 'Original skill text', detail: 'Original evidence'};
+    const display = entryParts(entry);
+    assert.equal(display.badge, 'Ihr CV');
+    assert.deepEqual(display.meta, ['Original evidence']);
+    assert.equal(display.headline, entry.title);
+    assert.equal(jobsEntries([entry])[0], entry);
+    assert.equal(severityCounts([entry])[0].key, 'info');
+    assert.equal(summary({outcome: 'Needs input', fields: {job: 'Original job'}}).outcome, 'Needs input');
+    assert.equal(sessionStage({stage: 'form'}, true).text, 'Bewerbungsformular ausgefüllt');
+    assert.equal(cancelAllButton([]).hidden, true);
+  } finally { setLocale('en'); }
+});

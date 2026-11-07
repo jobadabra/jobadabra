@@ -1,5 +1,67 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "noneYet": "ancora nessuna",
+  "noSessions": "Ancora nessuna sessione. Quando ti candidi, il modulo appare qui.",
+  "onSite": " su {host}",
+  "signRefusedStep": "Passo 1 di 2 · Accesso rifiutato{site}: un tentativo, senza riprovare",
+  "accountStep": "Passo 1 di 2 · {doing}{site}",
+  "signIn": "Accedi",
+  "creatingAccount": "Creazione dell’account",
+  "confirmEmailStep": "Passo 1 di 2 · Conferma l’email{site}",
+  "formFilled": "Modulo di candidatura compilato",
+  "fillingForm": "Compilazione del modulo di candidatura",
+  "accountCreatedLead": "Account creato · ",
+  "formStep": "Passo 2 di 2 · {account}{doing}",
+  "chromeSilent": "Chrome non comunica",
+  "cancelAll": "Annulla tutte le candidature",
+  "checkComplete": "Controllo completato",
+  "noMailChanges": "Nessuna nuova email di lavoro e nessuna candidatura modificata.",
+  "noNewEmails": "Nessuna nuova email di lavoro.",
+  "noRecordsChanged": "Nessuna candidatura modificata.",
+  "relevant": "pertinenti",
+  "noDetailsRecorded": "{updates} registrati, ma questa esecuzione non ha conservato i dettagli.",
+  "whichJobFocus": "{text} — quale offerta? Risposto in Focus",
+  "claudeSession": "Sessione Claude",
+  "formFill": "Compilazione modulo",
+  "form": "Modulo",
+  "working": "In corso",
+  "waitingYou": "In attesa di te",
+  "timesAsked": "Richieste",
+  "replyMedian": "Tua risposta (mediana)",
+  "readyDecided": "Pronto → deciso",
+  "turns": "Turni",
+  "toolCalls": "Chiamate strumenti",
+  "latest": "ultimo {day}",
+  "noAnswerAfter": "nessuna risposta dopo {count} s",
+  "libraryReadFailed": "Impossibile leggere i colloqui da {where}. Riprova con ↻; il motivo è nel registro dell’app.",
+  "libraryStale": "Aggiornamento da {where} non riuscito · copia mostrata {when}",
+  "justNow": "proprio ora",
+  "minutesAgo": "{count} min fa",
+  "hoursAgo": "{count} ore fa",
+  "savedAgo": "salvata {when}",
+  "shownBefore": "mostrata prima",
+  "suggestionsSearch": "Suggerimenti per la ricerca",
+  "highPriority": "Alta priorità",
+  "yourAiApp": "La tua app IA",
+  "notLoaded": "Non caricato",
+  "roleWords": "Termini dei ruoli",
+  "insight": "Analisi",
+  "rejection": "Rifiuto",
+  "notifications": "Notifiche",
+  "yourWeek": "La tua settimana",
+  "analyze": "Analizza",
+  "tune": "Ottimizza",
+  "places": "Luoghi",
+  "roles": "Ruoli",
+  "filters": "Filtri",
+  "sites": "Siti",
+  "pay": "Retribuzione",
+  "details": "Dati",
+  "learnedShort": "Appreso",
+  "oldScores": "Valutazioni precedenti",
+  "yourCv": "Il tuo CV",
+  "rejectionUnclear": "Motivo del rifiuto poco chiaro",
+  "whyRejected": "Motivo del rifiuto: {verdict}",
   "noAnswerReason": "Non c’è ancora una risposta: scrivila una volta e verrà ricordata.",
   "unreadReason": "Impossibile leggere questa domanda nella pagina.",
   "triesReason": "Il sito non ha conservato la risposta dopo 3 tentativi.",
@@ -54,5 +116,61 @@ export const messages = {
   "aboutMinutes": {
     "one": "circa {count} minuto",
     "other": "circa {count} minuti"
+  },
+  "cancelling": {
+    "one": "Annullamento di {count} candidatura…",
+    "other": "Annullamento di {count} candidature…"
+  },
+  "emailsReviewed": {
+    "one": "{count} email esaminata.",
+    "other": "{count} email esaminate."
+  },
+  "recordsChanged": {
+    "one": "{count} candidatura modificata.",
+    "other": "{count} candidature modificate."
+  },
+  "updateLabel": {
+    "one": "aggiornamento registrato",
+    "other": "aggiornamenti registrati"
+  },
+  "newEmailLabel": {
+    "one": "nuova email",
+    "other": "nuove email"
+  },
+  "emailLabel": {
+    "one": "email esaminata",
+    "other": "email esaminate"
+  },
+  "unlistedUpdates": {
+    "one": "{count} aggiornamento registrato, senza dettagli conservati.",
+    "other": "{count} aggiornamenti registrati, senza dettagli conservati."
+  },
+  "formFills": {
+    "one": "{count} compilazione",
+    "other": "{count} compilazioni"
+  },
+  "needsInput": {
+    "one": "{count} richiede una risposta",
+    "other": "{count} richiedono una risposta"
+  },
+  "fields": {
+    "one": "{count} campi",
+    "other": "{count} campi"
+  },
+  "suggestionsForSearch": {
+    "one": "{count} suggerimento per la ricerca",
+    "other": "{count} suggerimenti per la ricerca"
+  },
+  "urgentCount": {
+    "one": "{count} urgente",
+    "other": "{count} urgenti"
+  },
+  "warningCount": {
+    "one": "{count} avviso",
+    "other": "{count} avvisi"
+  },
+  "infoCount": {
+    "one": "{count} informazione",
+    "other": "{count} informazioni"
   }
 };

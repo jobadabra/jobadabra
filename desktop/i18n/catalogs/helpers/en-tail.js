@@ -1,5 +1,67 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "noneYet": "none yet",
+  "noSessions": "No application sessions yet. When you apply to a job, its form shows up here.",
+  "onSite": " on {host}",
+  "signRefusedStep": "Step 1 of 2 · Sign-in refused{site}: tried once, not retried",
+  "accountStep": "Step 1 of 2 · {doing}{site}",
+  "signIn": "Sign in",
+  "creatingAccount": "Creating your account",
+  "confirmEmailStep": "Step 1 of 2 · Confirm your email{site}",
+  "formFilled": "Application form filled",
+  "fillingForm": "Filling the application form",
+  "accountCreatedLead": "Account created · ",
+  "formStep": "Step 2 of 2 · {account}{doing}",
+  "chromeSilent": "Chrome not reporting",
+  "cancelAll": "Cancel all applications",
+  "checkComplete": "Check complete",
+  "noMailChanges": "No new job emails, and no application records changed.",
+  "noNewEmails": "No new job emails.",
+  "noRecordsChanged": "No application records changed.",
+  "relevant": "relevant",
+  "noDetailsRecorded": "{updates} recorded, but this run kept no details of which.",
+  "whichJobFocus": "{text} — which job? Answered in Focus",
+  "claudeSession": "Claude session",
+  "formFill": "Form fill",
+  "form": "Form",
+  "working": "Working",
+  "waitingYou": "Waiting for you",
+  "timesAsked": "Times asked",
+  "replyMedian": "Your reply (median)",
+  "readyDecided": "Ready → decided",
+  "turns": "Turns",
+  "toolCalls": "Tool calls",
+  "latest": "latest {day}",
+  "noAnswerAfter": "no answer after {count} s",
+  "libraryReadFailed": "Couldn't read your interviews from {where}. Try again with ↻; the reason is in the app log.",
+  "libraryStale": "Couldn't refresh from {where} · showing the copy {when}",
+  "justNow": "just now",
+  "minutesAgo": "{count} min ago",
+  "hoursAgo": "{count} h ago",
+  "savedAgo": "saved {when}",
+  "shownBefore": "shown before",
+  "suggestionsSearch": "Suggestions for your search",
+  "highPriority": "High priority",
+  "yourAiApp": "Your AI app",
+  "notLoaded": "Not loaded",
+  "roleWords": "Role words",
+  "insight": "Insight",
+  "rejection": "Rejection",
+  "notifications": "Notifications",
+  "yourWeek": "Your week",
+  "analyze": "Analyze",
+  "tune": "Tune",
+  "places": "Places",
+  "roles": "Roles",
+  "filters": "Filters",
+  "sites": "Sites",
+  "pay": "Pay",
+  "details": "Details",
+  "learnedShort": "Learned",
+  "oldScores": "Old scores",
+  "yourCv": "Your CV",
+  "rejectionUnclear": "Rejection reason unclear",
+  "whyRejected": "Why rejected: {verdict}",
   "noAnswerReason": "We have no answer for this yet: give it once and it is remembered.",
   "unreadReason": "This question on the page could not be read.",
   "triesReason": "The site did not keep the answer after 3 tries.",
@@ -54,5 +116,61 @@ export const messages = {
   "aboutMinutes": {
     "one": "about {count} minute",
     "other": "about {count} minutes"
+  },
+  "cancelling": {
+    "one": "Cancelling {count} application…",
+    "other": "Cancelling {count} applications…"
+  },
+  "emailsReviewed": {
+    "one": "{count} email reviewed.",
+    "other": "{count} emails reviewed."
+  },
+  "recordsChanged": {
+    "one": "{count} application record changed.",
+    "other": "{count} application records changed."
+  },
+  "updateLabel": {
+    "one": "update recorded",
+    "other": "updates recorded"
+  },
+  "newEmailLabel": {
+    "one": "new email",
+    "other": "new emails"
+  },
+  "emailLabel": {
+    "one": "email reviewed",
+    "other": "emails reviewed"
+  },
+  "unlistedUpdates": {
+    "one": "{count} update recorded, but this run kept no details of which.",
+    "other": "{count} updates recorded, but this run kept no details of which."
+  },
+  "formFills": {
+    "one": "{count} form fill",
+    "other": "{count} form fills"
+  },
+  "needsInput": {
+    "one": "{count} needs input",
+    "other": "{count} need input"
+  },
+  "fields": {
+    "one": "{count} fields",
+    "other": "{count} fields"
+  },
+  "suggestionsForSearch": {
+    "one": "{count} suggestion for your search",
+    "other": "{count} suggestions for your search"
+  },
+  "urgentCount": {
+    "one": "{count} urgent",
+    "other": "{count} urgent"
+  },
+  "warningCount": {
+    "one": "{count} warning",
+    "other": "{count} warnings"
+  },
+  "infoCount": {
+    "one": "{count} info",
+    "other": "{count} info"
   }
 };

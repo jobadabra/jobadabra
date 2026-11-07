@@ -1,5 +1,67 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "noneYet": "noch keine",
+  "noSessions": "Noch keine Bewerbungssitzungen. Wenn Sie sich bewerben, erscheint das Formular hier.",
+  "onSite": " auf {host}",
+  "signRefusedStep": "Schritt 1 von 2 · Anmeldung abgelehnt{site}: einmal versucht, nicht wiederholt",
+  "accountStep": "Schritt 1 von 2 · {doing}{site}",
+  "signIn": "Anmelden",
+  "creatingAccount": "Ihr Konto wird erstellt",
+  "confirmEmailStep": "Schritt 1 von 2 · E-Mail bestätigen{site}",
+  "formFilled": "Bewerbungsformular ausgefüllt",
+  "fillingForm": "Bewerbungsformular wird ausgefüllt",
+  "accountCreatedLead": "Konto erstellt · ",
+  "formStep": "Schritt 2 von 2 · {account}{doing}",
+  "chromeSilent": "Chrome meldet sich nicht",
+  "cancelAll": "Alle Bewerbungen abbrechen",
+  "checkComplete": "Prüfung abgeschlossen",
+  "noMailChanges": "Keine neuen Job-E-Mails und keine Bewerbungsdaten geändert.",
+  "noNewEmails": "Keine neuen Job-E-Mails.",
+  "noRecordsChanged": "Keine Bewerbungsdaten geändert.",
+  "relevant": "relevant",
+  "noDetailsRecorded": "{updates} erfasst; dieser Lauf hat keine Einzelheiten dazu behalten.",
+  "whichJobFocus": "{text} — welche Stelle? In Fokus beantwortet",
+  "claudeSession": "Claude-Sitzung",
+  "formFill": "Formularausfüllung",
+  "form": "Formular",
+  "working": "In Arbeit",
+  "waitingYou": "Wartet auf Sie",
+  "timesAsked": "Nachfragen",
+  "replyMedian": "Ihre Antwort (Median)",
+  "readyDecided": "Bereit → entschieden",
+  "turns": "Schritte",
+  "toolCalls": "Werkzeugaufrufe",
+  "latest": "zuletzt {day}",
+  "noAnswerAfter": "keine Antwort nach {count} s",
+  "libraryReadFailed": "Gespräche aus {where} konnten nicht gelesen werden. Mit ↻ erneut versuchen; der Grund steht im App-Log.",
+  "libraryStale": "Aktualisierung aus {where} fehlgeschlagen · angezeigt wird die Kopie {when}",
+  "justNow": "gerade eben",
+  "minutesAgo": "vor {count} Min.",
+  "hoursAgo": "vor {count} Std.",
+  "savedAgo": "gespeichert {when}",
+  "shownBefore": "zuvor angezeigt",
+  "suggestionsSearch": "Vorschläge für Ihre Suche",
+  "highPriority": "Hohe Priorität",
+  "yourAiApp": "Ihre KI-App",
+  "notLoaded": "Nicht geladen",
+  "roleWords": "Rollenbegriffe",
+  "insight": "Erkenntnis",
+  "rejection": "Absage",
+  "notifications": "Benachrichtigungen",
+  "yourWeek": "Ihre Woche",
+  "analyze": "Analysieren",
+  "tune": "Anpassen",
+  "places": "Orte",
+  "roles": "Rollen",
+  "filters": "Filter",
+  "sites": "Websites",
+  "pay": "Gehalt",
+  "details": "Angaben",
+  "learnedShort": "Gelernt",
+  "oldScores": "Alte Bewertungen",
+  "yourCv": "Ihr CV",
+  "rejectionUnclear": "Absagegrund unklar",
+  "whyRejected": "Absagegrund: {verdict}",
   "noAnswerReason": "Dafür fehlt noch eine Antwort: einmal angeben, dann wird sie gemerkt.",
   "unreadReason": "Diese Frage auf der Seite konnte nicht gelesen werden.",
   "triesReason": "Die Website hat die Antwort nach 3 Versuchen nicht behalten.",
@@ -54,5 +116,61 @@ export const messages = {
   "aboutMinutes": {
     "one": "etwa {count} Minute",
     "other": "etwa {count} Minuten"
+  },
+  "cancelling": {
+    "one": "{count} Bewerbung wird abgebrochen…",
+    "other": "{count} Bewerbungen werden abgebrochen…"
+  },
+  "emailsReviewed": {
+    "one": "{count} E-Mail geprüft.",
+    "other": "{count} E-Mails geprüft."
+  },
+  "recordsChanged": {
+    "one": "{count} Bewerbungseintrag geändert.",
+    "other": "{count} Bewerbungseinträge geändert."
+  },
+  "updateLabel": {
+    "one": "Aktualisierung erfasst",
+    "other": "Aktualisierungen erfasst"
+  },
+  "newEmailLabel": {
+    "one": "neue E-Mail",
+    "other": "neue E-Mails"
+  },
+  "emailLabel": {
+    "one": "E-Mail geprüft",
+    "other": "E-Mails geprüft"
+  },
+  "unlistedUpdates": {
+    "one": "{count} Aktualisierung erfasst, aber ohne gespeicherte Einzelheiten.",
+    "other": "{count} Aktualisierungen erfasst, aber ohne gespeicherte Einzelheiten."
+  },
+  "formFills": {
+    "one": "{count} Formularausfüllung",
+    "other": "{count} Formularausfüllungen"
+  },
+  "needsInput": {
+    "one": "{count} braucht Angaben",
+    "other": "{count} brauchen Angaben"
+  },
+  "fields": {
+    "one": "{count} Felder",
+    "other": "{count} Felder"
+  },
+  "suggestionsForSearch": {
+    "one": "{count} Vorschlag für Ihre Suche",
+    "other": "{count} Vorschläge für Ihre Suche"
+  },
+  "urgentCount": {
+    "one": "{count} dringend",
+    "other": "{count} dringend"
+  },
+  "warningCount": {
+    "one": "{count} Warnung",
+    "other": "{count} Warnungen"
+  },
+  "infoCount": {
+    "one": "{count} Info",
+    "other": "{count} Infos"
   }
 };
