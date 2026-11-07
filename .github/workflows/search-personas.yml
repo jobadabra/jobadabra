@@ -29,6 +29,7 @@ concurrency:   # one at a time, so no two runs share the broker; a newer queued 
 env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
+  JOBADABRA_AI_CALL_LOG: '1'   # Why (7 Nov 2026, #2920): one run-log line per AI call (step, asked, slot wait, answered; src/ai/call_log.py) so a run says where the 2:15 clock went
   JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
 
 jobs:
@@ -87,6 +88,8 @@ jobs:
           node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --fresh --engine api --tag gate 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json
+          titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
+          if [ -f "$titles" ]; then cp "$titles" out/titles-judged.json; fi   # the title sort's verdicts ({search key: {title: fits}}): public job titles only, to read what was judged no (#2920)
       - name: The blind judge (right role, right place; Codex small tier)
         if: steps.token.outputs.ok == 'yes'
         run: |
@@ -109,6 +112,7 @@ jobs:
             out/draw/presses.jsonl
             out/draw/run-*.log
             out/draw/draft.json
+            out/titles-judged.json
       - if: always() && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger
         with:

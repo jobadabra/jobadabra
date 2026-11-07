@@ -90,15 +90,18 @@ def build(env=None, action='', log=None):
     fallback = (lambda: build(dict(env, JOBADABRA_AI_ENGINE=ENGINES[name].fallback), action, log)) if fallback_allowed(env) else None
     if name == 'cli':
         from .claude_code import ClaudeCode, find_binary
-        return ClaudeCode(binary=find_binary(env), log=log, fallback=fallback)
-    if name == 'codex':
+        client = ClaudeCode(binary=find_binary(env), log=log, fallback=fallback)
+    elif name == 'codex':
         from .codex_cli import Codex, find_binary
-        return Codex(binary=find_binary(env), log=log, fallback=fallback)
-    if name == 'openai':
+        client = Codex(binary=find_binary(env), log=log, fallback=fallback)
+    elif name == 'openai':
         from .openai_api import OpenAIApi
-        return OpenAIApi(action=action, log=log)
-    from .anthropic_api import AnthropicApi
-    return AnthropicApi(action=action, log=log)
+        client = OpenAIApi(action=action, log=log)
+    else:
+        from .anthropic_api import AnthropicApi
+        client = AnthropicApi(action=action, log=log)
+    client.action = action   # the run log's call lines name the step (src/ai/call_log.py)
+    return client
 
 
 def transient_errors():
