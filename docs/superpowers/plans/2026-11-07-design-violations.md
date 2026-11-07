@@ -5,8 +5,8 @@ Owner, 7 Nov 2026: "It should check design system compliance. Spacing/magins,col
 Sorted (dv, 7 Nov 2026): clipped is the checker's, not the screens': all 132 are at 380 px, a 475 px window the app cannot have (`lib/main-window.js` MIN_WIDTH 640, owner 9 Oct 2026); they were tables in scroll wrappers, tooltip slides and one scrolling `main`. The rest are real.
 
 ## Progress
-- [ ] 1/5 Checker: text a clip or a scroller holds is not "lost"; `main` scrolling sideways is one hit (`design-evaluator.mjs` `reached`); the narrow width is 640
-- [ ] 2/5 Job logo initials reach AA in light (one token, `--logo-ink-l`)
+- [x] 1/5 Checker: text a clip or a scroller holds is not "lost"; `main` scrolling sideways is one hit (`design-evaluator.mjs` `reached`); the narrow width is 640 (proof: desktop/scripts/design-check.mjs @4917d27d)
+- [x] 2/5 Job logo initials reach AA in light (one token, `--logo-ink-l`) (proof: desktop/renderer/tokens.css)
 - [ ] 3/5 One primary button per card: only the first row's main action is primary (Focus, suggestions)
 - [ ] 4/5 No ghost/link buttons: History, Hide, Show more, full report, Technical log, Review setup, table company links
 - [ ] 5/5 Strategy cards' gap on the scale (`.review .card` 10px → 12px)
