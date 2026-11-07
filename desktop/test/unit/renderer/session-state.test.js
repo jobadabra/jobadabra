@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
-import {CHECK_MS, SESSION_STATE, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
+import {CHECK_MS, SESSION_STATE, cancelAllButton, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
 
 test('a filled form waiting for you is "ready for review"; a message ending on your question is not', () => {
   const report = 'The N26 form is filled and open in Chrome. Nothing was submitted.\n\n**Left for you:**\n' +
@@ -427,4 +427,11 @@ test('a row being cancelled reads "Cancelling…", whatever else it was doing', 
   assert.deepEqual(cancellingState({cancelling: true, background: {state: 'queued'}, status: 'running'}), ['Cancelling…', 'neutral']);
   assert.equal(cancellingState({cancelling: false, status: 'running'}), null);
   assert.equal(cancellingState(undefined), null);
+});
+
+test('the Cancel all button: hidden with nothing open; says how many are closing while it works', () => {
+  assert.deepEqual(cancelAllButton([]), {hidden: true, textContent: 'Cancel all applications', closing: 0});
+  assert.equal(cancelAllButton([{id: 1}]).textContent, 'Cancel all applications');
+  assert.deepEqual(cancelAllButton([{id: 1, cancelling: true}]), {hidden: false, textContent: 'Cancelling 1 application…', closing: 1});
+  assert.equal(cancelAllButton([{id: 1, cancelling: true}, {id: 2, cancelling: true}, {id: 3}]).textContent, 'Cancelling 2 applications…');
 });

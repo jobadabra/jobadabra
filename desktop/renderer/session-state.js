@@ -215,6 +215,13 @@ export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.
 
 /** The state a row shows while Cancel all applications is closing it ([label, tone]), or null: it comes before the row's own state, so a queued or filling application does not look untouched. */
 export const cancellingState = item => (item?.cancelling ? ['Cancelling…', 'neutral'] : null);
+
+/** The header button of Cancel all applications: hidden with nothing to cancel; while some are being closed it says how many and is off (owner, 7 Nov 2026: a greyed button and the old list showed nothing). */
+export function cancelAllButton(list) {
+  const closing = list.filter(item => item.cancelling).length;
+  const text = closing ? `Cancelling ${closing} application${closing === 1 ? '' : 's'}…` : 'Cancel all applications';
+  return {hidden: !cancellable(list).length, textContent: text, closing};
+}
 /** -> whether this application is being sent right now: Full automation pressed Submit and waits for the site's reply (lib/background-apply-store.js `submitting`). */
 export const beingSent = item => item?.background?.state === 'submitting';
 /**
