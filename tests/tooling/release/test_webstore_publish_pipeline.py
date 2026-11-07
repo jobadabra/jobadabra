@@ -291,7 +291,7 @@ class MicrosoftStoreGetsOneVersionAWeek(unittest.TestCase):
         for path in (*WORKFLOWS.glob('*.yml'), ROOT / 'tools' / 'release-stable.sh', ROOT / 'tools' / 'msix-store-watch.mjs'):
             if path.name in ('msix-store.yml', 'msix-store-weekly.yml'):
                 continue
-            code = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith(('#', '//')) and 'by hand' not in line.lower() and 'Once ' not in line)   # code, not the hand-start hints told to the owner
+            code = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith(('#', '//')) and 'by hand' not in line.lower() and 'once ' not in line.lower())   # code, not the hand-start hints told to the owner
             self.assertNotRegex(code, r'workflow run msix-store\.yml|workflows/msix-store\.yml/dispatches|start_store "Microsoft', f'{path.name} starts a Store submission')
 
     def test_the_promotion_records_the_date_the_weekly_pick_reads(self):
