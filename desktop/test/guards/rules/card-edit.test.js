@@ -1,6 +1,7 @@
 // One Edit button for every card, at the right of the card's title line (owner, 18 Oct 2026: "I don't like the Edit button position"), quiet since the UI redesign
 // the same day (D1: "a compact pencil + Edit button ... with a neutral outline"): drawn by components.js cardEdit or, in static markup, with the same classes. A test fails when a card draws its own Edit outside it; a row's own action is listed with its reason.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

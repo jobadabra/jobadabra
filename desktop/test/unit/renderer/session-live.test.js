@@ -53,3 +53,20 @@ test('a press on the picture lands on the same spot of the page at any picture s
   assert.equal(keyMessage({key: 'Backspace', keyCode: 8}).text, undefined);
   assert.deepEqual(keyMessage({key: 'a', keyCode: 65}, true), {t: 'key', key: 'a', code: 65, up: true, text: undefined});
 });
+
+test('translated live-card copy keeps the ready, bot-check and missing-field gates intact', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('ru');
+    const ready = liveCard({state: 'ready_for_review'}, facts(0), {at});
+    assert.equal(ready.submit.on, true);
+    const missing = liveCard({state: 'ready_for_review'}, facts(2), {at});
+    assert.equal(missing.submit.on, false);
+    assert.equal(missing.submit.hint, 'Осталось 2 обязательных поля');
+    const bot = liveCard({state: 'manual_submit_required', reason: 'captcha_runtime'}, facts(0), {at});
+    assert.equal(bot.submit.on, false);
+    assert.match(bot.note, /никогда не решает/);
+    const own = liveCard({state: 'needs_user_handoff'}, facts(2), {at, note: 'Original provider note'});
+    assert.equal(own.note, 'Original provider note');
+  } finally { setLocale('en'); }
+});

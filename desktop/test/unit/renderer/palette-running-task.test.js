@@ -1,3 +1,4 @@
+import {messages as englishFlow} from '../../../i18n/catalogs/helpers/en-flow.js';
 // ⌘K lists every task action also while it runs; choosing a running one opens its progress (owner, 18 Oct 2026: typed "find", no "Find jobs" while a search ran).
 import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
@@ -61,6 +62,9 @@ test('every task button has a ⌘K entry, and no entry loop skips a button that 
 test('the palette draws the shared spinner on a running row and an "Enter to open" footer', () => {
   const palette = read('palette.js');
   assert.match(palette, /command\.running\) label\.append\(.*className: 'spinner small'/);
-  assert.match(palette, /Enter to \$\{shown\[active\]\?\.enter \|\| \(shown\[active\]\?\.path \? 'open' : 'run'\)\}/);   // a row with a path only brings you to its card
+  assert.match(palette, /t\('helperFlow\.paletteFoot', \{action: shown\[active\]\?\.enter \|\| t\(shown\[active\]\?\.path \? 'helperFlow\.paletteOpen' : 'helperFlow\.paletteRun'\)\}\)/);
+  assert.equal(englishFlow.paletteFoot, '↑↓ to move · Enter to {action} · Esc to close');
+  assert.equal(englishFlow.paletteOpen, 'open');
+  assert.equal(englishFlow.paletteRun, 'run');   // a row with a path only brings you to its card
   assert.match(read('pages/nav.js'), /\{enter: entry\.enter, running: entry\.running[,}]/);
 });

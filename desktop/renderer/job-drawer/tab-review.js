@@ -1,6 +1,8 @@
 // Drawer → Review (owner's board 06): the analysis of a rejection or of a completed interview, with a choice between them when there is more
 // than one (the rejection's review, then each interview's, newest first). "Reviewed by …" muted on top, the verdict a callout, each section's
 // lines a plain list, the to-dos as the interview insights' "Practice next" steps (read-only: the review is a record). None yet: a state card.
+import '../../i18n/screens-helpers.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {groupsOf, rejectionOf, reviewsOf} from '../job-page-view.js';
 import {card, choice, lineView, stateCard} from './parts.js';
@@ -63,20 +65,20 @@ function rejectionHead(page) {
   if (rejection) {
     const quote = rejection.statement
       ? el('blockquote', 'jd-quote', `“${rejection.statement}”`)
-      : el('p', '', 'The email does not give a specific reason.');
-    nodes.push(stateCard({icon: 'close', tone: 'bad', title: 'Application rejected', text: [rejection.when && `Rejection email received ${rejection.when}`, rejection.from && `from ${rejection.from}`].filter(Boolean).join(' ')}),
-      card('Employer statement', quote));
+      : el('p', '', t('helpers.noSpecificReason'));
+    nodes.push(stateCard({icon: 'close', tone: 'bad', title: t('helpers.applicationRejected'), text: [rejection.when && t('helpers.rejectionReceived', {when: rejection.when}), rejection.from && t('helpers.fromLower', {name: rejection.from})].filter(Boolean).join(' ')}),
+      card(t('helpers.employerStatement'), quote));
   }
-  nodes.push(stateCard({icon: 'bulb', tone: 'info', title: 'AI suggestions', text: 'Suggestions from what Jobadabra kept, not confirmed rejection reasons.'}));
+  nodes.push(stateCard({icon: 'bulb', tone: 'info', title: t('helpers.aiSuggestions'), text: t('helpers.suggestionsDisclaimer')}));
   return nodes;
 }
 
 export function reviewTab({job, page}, redraw) {
   const reviews = reviewsOf(page);
-  if (!reviews.length) return [stateCard({icon: 'search', title: 'No review yet', text: 'Available after rejection feedback or a completed interview.'})];
+  if (!reviews.length) return [stateCard({icon: 'search', title: t('helpers.noReview'), text: t('helpers.reviewAvailable')})];
   const active = reviews.find(review => review.key === chosen.get(job.url)) || reviews[0];
   const nodes = [];
-  if (reviews.length > 1) nodes.push(choice(reviews.map(review => [review.key, review.label]), active.key, key => { chosen.set(job.url, key); redraw(); }, 'Review of'));
+  if (reviews.length > 1) nodes.push(choice(reviews.map(review => [review.key, review.label]), active.key, key => { chosen.set(job.url, key); redraw(); }, t('helpers.reviewOf')));
   if (active.key === 'rejection') nodes.push(...rejectionHead(page));
   nodes.push(...reviewBody(groupsOf(active.markdown)));
   return nodes;

@@ -1,6 +1,7 @@
 // Roomy cards (owner, 18 Oct 2026, mockup 03 approved: "Look at the cards with chips how roomier they are"): the shared parts keep their shape, and every
 // Strategy card sits in the .roomy-cards container with its header from card-shell.js cardHead, so a new card gets the look without its own CSS.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

@@ -1,6 +1,7 @@
 // The card shell (renderer/card-shell.js; owner, 18 Oct 2026, UI redesign): read rows with "Not set" and notes under values, chips on one line, aligned editor
 // rows, and the editing state that hides Edit (CSS) and opens a folded card.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

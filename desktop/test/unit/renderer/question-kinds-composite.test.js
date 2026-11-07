@@ -127,3 +127,29 @@ test('every kind has a name, a mark word and a control (a new kind added without
     assert.equal(node.dataset.answerKind, each === 'single' || each === 'multi' ? each : each, each);
   }
 });
+
+test('translated composite choices retain canonical salary, permit and language values', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    const salary = answerControl({control: 'salary'}, '95000 CHF/year gross', () => {});
+    assert.equal(salary.querySelectorAll('select')[1].children.at(-1).textContent, 'Jahr');
+    assert.equal(salary.value, '95000 CHF/year gross');
+    const permit = answerControl({control: 'per_country'}, '', () => {});
+    const button = permit.querySelector('button');
+    assert.equal(button.textContent, 'Ja, uneingeschränkt');
+    fire(button, 'click');
+    assert.equal(permit.value, 'yes, freely');
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    const language = answerControl({control: 'language', single: true}, '', () => {});
+    const native = [...language.querySelectorAll('button')].at(-1);
+    assert.equal(native.textContent, 'Muttersprache');
+    fire(native, 'click');
+    assert.equal(language.value, 'native');
+    const date = answerControl({control: 'date', constraints: true}, '1 December 2026', () => {});
+    const none = date.querySelector('button');
+    assert.equal(none.textContent, 'Keine Einschränkungen');
+    fire(none, 'click');
+    assert.equal(date.value, '1 December 2026; no constraints');
+  } finally { setLocale('en'); }
+});

@@ -3,6 +3,8 @@
 
 // Call once per button, BEFORE its own click listener (this one stops the click while a sign-in waits). Returns wait(start): runs start() with the
 // button turned into Cancel; a press runs `cancel()` (the main process ends the wait, so start() returns and the button is as before).
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export function signInWait(button, cancel) {
   let waiting = false;
   button.addEventListener('click', event => {
@@ -11,10 +13,10 @@ export function signInWait(button, cancel) {
     cancel();
   });
   return async function wait(start) {
-    if (waiting) return {ok: false, error: 'A sign-in is already waiting.'};
+    if (waiting) return {ok: false, error: t('helperFlow.signinWaiting')};
     waiting = true;
     const label = button.textContent;
-    button.textContent = 'Cancel sign-in';
+    button.textContent = t('helperFlow.cancelSignin');
     button.disabled = false;
     button.setAttribute('aria-busy', 'true');   // the spinner sits inside the button (components.css), not on a line of its own
     try { return await start(); }

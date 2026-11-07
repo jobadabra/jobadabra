@@ -1,4 +1,5 @@
 // The update button is one short line: the version (and "beta"), never the release's long title (it wrapped to three lines, 4 Oct 2026).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {updateLabel, updateTooltip} from '../../../renderer/update-label.js';

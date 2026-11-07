@@ -1,11 +1,13 @@
 // Focus → Get started: the first steps after the setup, in order, each ticked from what really happened (owner, 6 Oct 2026).
 // Pure (no DOM): pages/focus.js draws it. A step once done stays done (settings.onboarding), and the card is gone for good once every step is.
 
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export const STEPS = [
-  {key: 'search', label: 'Find jobs', hint: 'Your first matches in under a minute; then every job site, wider when it needs to', button: 'Run'},
-  {key: 'notion', label: 'Connect Notion', hint: 'Where your applications are tracked', button: 'Connect'},
-  {key: 'tailor', label: 'Tailor CV + cover letter for top matches', hint: 'A CV and a cover letter written for each of your best matches', button: 'Open'},
-  {key: 'apply', label: 'Apply to your first job', hint: 'The extension fills the form; you press Submit', button: 'Apply'},
+  {key: 'search', label: t('helperFlow.findJobs'), hint: t('helperFlow.onboardingSearch'), button: t('helperFlow.run')},
+  {key: 'notion', label: t('helperMore.connectNotion'), hint: t('helperFlow.onboardingTracking'), button: t('helperFlow.connect')},
+  {key: 'tailor', label: t('helperFlow.onboardingTailor'), hint: t('helperFlow.onboardingTailorHint'), button: t('helpers.open')},
+  {key: 'apply', label: t('helperFlow.onboardingFirstApply'), hint: t('helperFlow.onboardingExtension'), button: t('helperFlow.apply')},
 ];
 
 const finished = (runs, kind) => (runs || []).filter(run => run.kind === kind && run.ok !== false && !run.live && run.endedAt);
@@ -46,9 +48,9 @@ export const ENOUGH_FEEDS = 10;
 export function employersAdvice(run, {runs = [], settings = {}} = {}) {
   if (!run || run.kind !== 'search' || run.live || run.ok === false) return null;
   const scouted = !!settings.lastScoutAt || finished(runs, 'scout').length > 0;
-  if (!scouted) return {text: 'Your search hasn’t gone wider yet. Find jobs again searches wider, so your next search finds more jobs.'};
+  if (!scouted) return {text: t('helperFlow.searchWider')};
   if (run.feeds != null && run.feeds < ENOUGH_FEEDS) {
-    return {text: `Only ${run.feeds} employer site${run.feeds === 1 ? '' : 's'} searched. Find jobs again searches wider, so your next search finds more jobs.`};
+    return {text: t('helperFlow.searchFewSites', {count: run.feeds})};
   }
   return null;
 }

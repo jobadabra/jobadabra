@@ -1,5 +1,6 @@
 // Saves that rewrite ⚙️ Search settings say how far they are (7 Oct 2026: Strategy's Save sat on "Saving…" 71 s): every caller goes through one
 // helper in main.js, and every button that starts one listens.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';

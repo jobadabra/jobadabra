@@ -1,4 +1,5 @@
 // The "More · N" component (sidebar and Actions page): count in the title, hidden at 0, closed by default, state remembered per key.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {isOpen, moreGroup, moreTitle} from '../../../renderer/more-group.js';

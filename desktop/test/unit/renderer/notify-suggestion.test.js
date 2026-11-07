@@ -1,5 +1,6 @@
 // The notification card (spec docs/superpowers/specs/2026-11-02-notify-moments-design.md): always present on Focus and Jobs while no channel works (the Always on card's pattern),
 // with the buttons of the address's state; Not now hides it 14 days; gone the moment a channel works. Pure: the page draws it (pages/focus-suggestions.js).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {jobsEntries} from '../../../renderer/suggestions.js';
@@ -47,4 +48,13 @@ test('the e-mail the card saves keeps what the person already chose and adds e-m
 
 test('offline (the website did not answer): no card on a guess', () => {
   assert.deepEqual(notifyEntries({state: {...none, reached: false}}), []);
+});
+
+test('localized notification offers keep the canonical Not now action', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    const [entry] = notifyEntries({state: {reached: true, by: ['app'], email: ''}});
+    assert.deepEqual(entry.answers, ['Not now']);
+  } finally { setLocale('en'); }
 });

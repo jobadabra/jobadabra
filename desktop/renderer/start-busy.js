@@ -2,8 +2,12 @@
 // "We should handle this properly"). One rule for every button that starts a run: its task waiting behind another turns the button into
 // "Queued · starts after <task>" (the short form on small buttons), and the press answers with a toast. Pure functions; pages/runs-page.js applies them.
 // Guarded by: test/unit/renderer/start-busy.test.js.
-export const queuedText = (afterName, small = false) => (small ? `Queued · after ${afterName}` : `Queued · starts after ${afterName}`);
-export const queuedToast = (kindName, afterName) => ({title: `${kindName} is queued`, body: `It starts when ${afterName} ends.`});
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
+/** Describe the task already ahead in the queue; small selects the compact display wording. */
+export const queuedText = (afterName, small = false) => (small ? t('helpers.queuedAfter', {task: afterName}) : t('helpers.queuedStarts', {task: afterName}));
+/** Build the queued-task toast from its display names without changing task identifiers or queue order. */
+export const queuedToast = (kindName, afterName) => ({title: t('helpers.taskQueued', {task: kindName}), body: t('helpers.taskEnds', {task: afterName})});
 
 // The tasks the Mac runs, as the buttons see them: {running: kind|null, queued: [kind]}. -> 'running' | 'queued' | null for a button of `kind`.
 export function startState(kind, {running = null, queued = []} = {}) {
@@ -30,6 +34,6 @@ export function applyQueuedLook(node, state, afterName) {
       if (node.dataset.text0 === undefined) node.dataset.text0 = node.textContent;
       node.textContent = queuedText(afterName, node.classList?.contains('small') || node.dataset.text0.length < 6);
     }
-    node.title = `Waiting for ${afterName} to end: it starts by itself`;
+    node.title = t('helpers.waitingTask', {task: afterName});
   } else if (node.dataset.text0 !== undefined) { node.textContent = node.dataset.text0; delete node.dataset.text0; }
 }

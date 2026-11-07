@@ -5,6 +5,8 @@
 // Degree / qualification · School · Years per entry, + Add education and Remove entry; a line not in that shape stays as written until the person
 // chooses Organize into fields (education-model.js); a table's rows stay cells; notes in brackets are kept and shown. Any other section: a field per
 // line and per cell, + Add a line. Guarded by test/unit/renderer/experience-editors.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {editRows} from './card-shell.js';
 import {chipsInput, longText} from './edit-controls.js';
@@ -37,7 +39,7 @@ const notesOf = part => (part?.lines || []).filter(line => isNote(line.text)).ma
 
 export function summaryEditor(part, {onChange}) {
   const node = el('div', 'exp-part-lines'), lines = part?.lines.length ? part.lines : [{text: ''}];
-  const boxes = lines.map(line => longText(shownText(line.text), 'Professional summary', 'Who you are in two or three sentences', onChange, {least: 2}));
+  const boxes = lines.map(line => longText(shownText(line.text), t('helperMore.professionalSummary'), t('helperMore.summaryHint'), onChange, {least: 2}));
   node.append(...boxes);
   const texts = () => boxes.map((box, i) => (part?.lines[i] && box.value.trim() === shownText(part.lines[i].text) ? part.lines[i].text : box.value));
   return {node, changes: () => changesFor('summary', part, texts())};
@@ -50,17 +52,17 @@ export function strengthsEditor(part, {onChange}) {
     const row = el('div', 'strength-group');
     if (draft.plain !== undefined) {
       row.classList.add('is-plain');
-      row.append(field(draft.plain, 'Strength', '', () => { draft.plain = row.querySelector('input').value; onChange(); }));
+      row.append(field(draft.plain, t('helperMore.strength'), '', () => { draft.plain = row.querySelector('input').value; onChange(); }));
       return row;
     }
-    const name = field(draft.label, 'Group name', 'Group (e.g. Cloud)', () => { draft.label = name.value; onChange(); });
-    const chips = chipsInput(draft.items, {placeholder: 'Add, then Enter', ariaLabel: `${draft.label || 'New group'}: add a value`, split: strengths.typedItems,
+    const name = field(draft.label, t('helperMore.groupName'), t('helperMore.groupExample'), () => { draft.label = name.value; onChange(); });
+    const chips = chipsInput(draft.items, {placeholder: t('helpers.addEnter'), ariaLabel: t('helperMore.groupAddValue', {name: draft.label || t('helperMore.newGroup')}), split: strengths.typedItems,
       onChange: values => { draft.items = values; onChange(); }});
     row.append(name, chips.node);
     return row;
   };
   list.append(...drafts.map(group));
-  const add = quiet('+ Add a group', 'link', () => { const draft = {index: null, label: '', items: []}; drafts.push(draft); list.append(group(draft)); });
+  const add = quiet(t('helperMore.addGroup'), 'link', () => { const draft = {index: null, label: '', items: []}; drafts.push(draft); list.append(group(draft)); });
   node.append(list, add);
   return {node, changes: () => changesFor('strengths', part, strengths.textsOf(part, drafts))};
 }
@@ -68,22 +70,22 @@ export function strengthsEditor(part, {onChange}) {
 export function educationEditor(part, {onChange}) {
   const node = el('div', 'exp-part-lines education-edit'), list = el('div', 'edu-entries');
   const drafts = education.entriesOf(part).map(entry => ({index: entry.index, text: entry.text, fields: entry.fields && {...entry.fields}}));
-  const cells = cellRows(part, 'Education', onChange);
+  const cells = cellRows(part, t('helperMore.educationLabel'), onChange);
   const entry = draft => {
     const box = el('div', 'edu-entry');
-    const remove = quiet('Remove entry', 'link', () => { draft.removed = true; box.remove(); onChange(); });
+    const remove = quiet(t('helperMore.removeEntry'), 'link', () => { draft.removed = true; box.remove(); onChange(); });
     const draw = () => {
       if (!draft.fields) {   // a line not in Degree · School · Years: its words, never split by the app
-        const words = field(shownText(draft.text || ''), 'Education entry', '', () => { draft.text = words.value; onChange(); });
-        const organize = quiet('Organize into fields', 'secondary small-btn', () => { draft.fields = {degree: '', school: '', years: ''}; draw(); onChange(); });
-        box.replaceChildren(editRows([{label: 'As written', control: words, hint: 'Kept exactly as written. Organize it into fields if you like.'}]), actions(organize, remove));
+        const words = field(shownText(draft.text || ''), t('helperMore.educationEntry'), '', () => { draft.text = words.value; onChange(); });
+        const organize = quiet(t('helperMore.organizeFields'), 'secondary small-btn', () => { draft.fields = {degree: '', school: '', years: ''}; draw(); onChange(); });
+        box.replaceChildren(editRows([{label: t('helperMore.asWritten'), control: words, hint: t('helperMore.asWrittenHint')}]), actions(organize, remove));
         return;
       }
       const input = (key, label, hint) => { const each = field(draft.fields[key], label, hint, () => { draft.fields[key] = each.value; onChange(); }); return each; };
-      const rows = [{label: 'Degree / qualification', control: input('degree', 'Degree / qualification', 'e.g. MSc Computer Science')},
-        {label: 'School', control: input('school', 'School', 'e.g. Example Technical University')},
-        {label: 'Years', control: input('years', 'Years', 'e.g. 2014 – 2018, or 2024 – ongoing')}];
-      const was = draft.index != null && !education.fieldsOf(draft.text || '') ? [el('p', 'muted small', `Was: ${shownText(draft.text)}`)] : [];
+      const rows = [{label: t('helperMore.degreeLabel'), control: input('degree', t('helperMore.degreeLabel'), t('helperMore.degreeExample'))},
+        {label: t('helperMore.schoolLabel'), control: input('school', t('helperMore.schoolLabel'), t('helperMore.schoolExample'))},
+        {label: t('helperMore.yearsLabel'), control: input('years', t('helperMore.yearsLabel'), t('helperMore.yearsExample'))}];
+      const was = draft.index != null && !education.fieldsOf(draft.text || '') ? [el('p', 'muted small', t('helperMore.wasText', {text: shownText(draft.text)}))] : [];
       box.replaceChildren(...was, editRows(rows), actions(remove));
     };
     draw();
@@ -91,7 +93,7 @@ export function educationEditor(part, {onChange}) {
   };
   const actions = (...buttons) => { const row = el('div', 'inline edu-actions'); row.append(...buttons); return row; };
   list.append(...cells.rows, ...drafts.map(entry));
-  const add = quiet('+ Add education', 'link', () => { const draft = {index: null, fields: {degree: '', school: '', years: ''}}; drafts.push(draft); list.append(entry(draft)); });
+  const add = quiet(t('helperMore.addEducation'), 'link', () => { const draft = {index: null, fields: {degree: '', school: '', years: ''}}; drafts.push(draft); list.append(entry(draft)); });
   node.append(list, ...notesOf(part), add);
   return {node, changes: () => changesFor('education', part, education.textsOf(part, drafts), cells.read())};
 }
@@ -102,7 +104,7 @@ export function linesEditor(key, title, part, {onChange}) {
   const line = text => { const input = field(text.replace(/\*\*/g, ''), title, '', onChange); input.dataset.partLine = key; return input; };
   const cells = cellRows(part, title, onChange);
   list.append(...cells.rows, ...(part?.lines.length ? part.lines.map(each => line(each.text)) : cells.rows.length ? [] : [line('')]));
-  node.append(list, quiet('+ Add a line', 'link', () => list.append(line(''))));
+  node.append(list, quiet(t('helperMore.addLine'), 'link', () => list.append(line(''))));
   // A line whose words did not change keeps its own text (its bold, its list mark): only an edited line is rewritten.
   const texts = () => [...list.querySelectorAll('input[data-part-line]')].map((input, i) => {
     const was = part?.lines[i]?.text;

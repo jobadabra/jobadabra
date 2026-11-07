@@ -1,6 +1,7 @@
 // Email vs Telegram vs both (owner, 26 Oct 2026: "a way for the user to choose his notification channel"): the Always on repo follows a Telegram-off choice, the window says why a switch
 // does nothing (no address, no bot, our sender off, unsubscribed), and no screen presents Telegram as the only or a required channel. Guards renderer/notify-words.js, lib/github.js.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -102,4 +103,16 @@ test('the Email card in "Your setup" shows each state, and only when e-mail is c
   assert.equal(emailCard({...base, by: ['telegram', 'app'], email: ''}).shown, false, 'Telegram users are not nagged');
   const settings = read('renderer/pages/settings.js');
   assert.match(settings, /emailSetupCard\(/, 'Overview draws it');
+});
+
+test('the displayed consent sentence matches the recorded wording in every display language', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {SETTINGS_LINE, wordingOf} = await import('../../../renderer/email-consent-words.js');
+  try {
+    for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+      setLocale(locale);
+      assert.equal(SETTINGS_LINE, wordingOf('settings'));
+      assert.ok(notes({email: '', by: []}).email.startsWith(`${SETTINGS_LINE} `), locale);
+    }
+  } finally { setLocale('en'); }
 });

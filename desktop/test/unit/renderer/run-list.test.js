@@ -1,5 +1,6 @@
 // The Recent activity list's grouping: Today / Earlier, and which clock each row shows. A run at 23:59 is today;
 // one a minute later is not — the boundary the owner sees when a schedule runs near midnight.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {filterRuns, groupRuns, kindCounts, runTime} from '../../../renderer/run-list.js';

@@ -1,23 +1,25 @@
 // LinkedIn jobs on every Find jobs (owner, 31 Oct 2026, spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the words of the one consent and the Suggestions entry, and
 // when the ask is due. Pure, so test/unit/renderer/linkedin-consent.test.js checks them; pages/linkedin-consent.js draws the dialog, and the four doors (Settings, Find jobs ask, Suggestions, ⌘K) open it.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {NO_PLACE} from './targets.js';
 export const KEY = 'linkedin:jobs';
 // The owner's line (31 Oct 2026: "LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.").
-export const LINE = 'LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.';
-const WHERE = 'Settings → Connections → LinkedIn';
-const LEAD = `Jobadabra can read your LinkedIn job searches every time you press Find jobs, in the background with no window. You sign in once, in a Jobadabra window, on LinkedIn's own page: you type your password there and Jobadabra never sees it. The sign-in stays on this Mac, and you can turn it off any time in ${WHERE}.`;
+export const LINE = t('helperFlow.linkedinWarning');
+const WHERE = t('helperFlow.linkedinWhere');
+const LEAD = t('helperFlow.linkedinLead', {where: WHERE});
 
 export const CONSENT = {
-  ask: {title: 'Also search LinkedIn on every Find jobs?', lead: LEAD, line: LINE, yes: 'Sign in to LinkedIn', no: 'Not now', chrome: 'Use my Chrome sign-in'},
-  'turn-on': {title: 'Also search LinkedIn on every Find jobs?', lead: LEAD, line: LINE, yes: 'Sign in to LinkedIn', no: 'Not now', chrome: 'Use my Chrome sign-in'},
-  manage: {title: 'LinkedIn jobs is on', lead: 'Every Find jobs also reads your LinkedIn job searches in the background, with your LinkedIn sign-in kept in this Mac\'s Keychain. Turning it off deletes that sign-in.', line: '', yes: 'Turn off', no: 'Keep on'},
+  ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
+  'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
+  manage: {title: t('helperFlow.linkedinOn'), lead: t('helperFlow.linkedinManage'), line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
 };
 
 /** The Suggestions entry while the switch is off; `view` is the window's read of the state (pages/linkedin-consent.js), `hidden`/`held` the keys answered Not now. */
 export function linkedinEntries({view, hidden = new Set(), held = new Set()} = {}) {
   if (!view?.loaded || view.on || hidden.has(KEY) || held.has(KEY)) return [];
-  return [{kind: 'linkedin', home: 'focus', topic: 'profile', key: KEY, title: 'Also search LinkedIn when you find jobs', source: '',
-    detail: 'In the background, no window. You sign in to LinkedIn once, in a Jobadabra window.', evidence: [], answers: ['Not now'], actions: [{label: 'Sign in to LinkedIn', do: 'turn_on_linkedin'}]}];
+  return [{kind: 'linkedin', home: 'focus', topic: 'profile', key: KEY, title: t('helperFlow.linkedinSuggestion'), source: '',
+    detail: t('helperFlow.linkedinSuggestionDetail'), evidence: [], answers: ['Not now'], actions: [{label: t('helperFlow.linkedinSignin'), do: 'turn_on_linkedin'}]}];
 }
 
 /** The ask on Find jobs: only a real Find jobs press (a re-score or Find employers goes through the same call), and only while the app says it is due. */
@@ -25,9 +27,9 @@ export const askOnPress = (view, why) => !!view?.ask && !(why && (why.reason || 
 
 // Why "Turn on LinkedIn" opened no page, from the app (lib/extension-target.js noPageReason): the extension is only blamed when the app has not heard from it.
 const NOT_OPENED = {
-  missing: ['Chrome extension needed', 'LinkedIn jobs uses the Jobadabra Chrome extension. Connect it in Settings → Connections → Chrome extension, then try again.'],
-  'unknown-copy': ['Jobadabra cannot open this extension copy', 'The extension is connected, but it is a copy Jobadabra does not recognise. Install it from Settings → Connections → Chrome extension, then try again.'],
-  chrome: ['Chrome did not open', 'The extension is connected, but Jobadabra could not open Chrome. Open Chrome and press Turn on LinkedIn again.'],
+  missing: [t('helperFlow.extensionNeeded'), t('helperFlow.linkedinExtensionHelp')],
+  'unknown-copy': [t('helperFlow.extensionUnknown'), t('helperFlow.extensionUnknownHelp')],
+  chrome: [t('helperFlow.chromeNotOpened'), t('helperFlow.chromeNotOpenedHelp')],
 };
 /** The toast's arguments for a press that opened no page: `answer` = {opened: false, reason, note} (no answer at all reads as "missing"); `note` says how to update an older copy. */
 export function notOpened(answer) {
@@ -38,17 +40,17 @@ export function notOpened(answer) {
 // How the sign-in window ended without a session (lib/linkedin-signin-window.js reasons; 'not-kept' = the Keychain or the sign-in itself was refused, its own sentence comes with it;
 // 'popup-ended' = a provider's popup (Google, Apple) had opened and the window ended with no sign-in: the app cannot read that page, so the words only say it may not allow sign-in here).
 const SIGN_IN_ENDED = {
-  cancelled: ['LinkedIn jobs is still off', 'The sign-in window was closed before you finished. Press Sign in to LinkedIn to try again.', 'info'],
-  timeout: ['LinkedIn jobs is still off', 'The sign-in window waited 10 minutes and was closed. Press Sign in to LinkedIn to try again.', 'info'],
-  'load-failed': ['LinkedIn did not load', 'The sign-in page did not open. Check your internet connection and press Sign in to LinkedIn again.', 'warn'],
-  'no-keychain': ['LinkedIn jobs is not available here yet', 'Jobadabra keeps your LinkedIn sign-in in the system keychain, and this computer has no store for it yet. Nothing was opened.', 'info'],
-  'not-kept': ['LinkedIn jobs stayed off', 'You signed in, but Jobadabra could not keep the sign-in.', 'warn'],
-  'popup-ended': ['LinkedIn jobs is still off', 'Google or Apple may not allow sign-in in this window.', 'info'],
+  cancelled: [t('helperFlow.linkedinStillOff'), t('helperFlow.linkedinCancelled'), 'info'],
+  timeout: [t('helperFlow.linkedinStillOff'), t('helperFlow.linkedinTimeout'), 'info'],
+  'load-failed': [t('helperFlow.linkedinLoadFailed'), t('helperFlow.linkedinLoadHelp'), 'warn'],
+  'no-keychain': [t('helperFlow.linkedinUnavailable'), t('helperFlow.linkedinNoKeychain'), 'info'],
+  'not-kept': [t('helperFlow.linkedinStayedOff'), t('helperFlow.linkedinNotKept'), 'warn'],
+  'popup-ended': [t('helperFlow.linkedinStillOff'), t('helperFlow.linkedinPopupEnded'), 'info'],
 };
 // Why (owner, 5 Nov 2026: "Allow popup, you try once"; "if Google refuses, the window says so plainly and points to signing in with Chrome"): the way out is the Chrome sign-in shortcut, or connecting the extension first.
 const CHROME_WAY = {
-  connected: 'Sign in with Chrome instead: open the LinkedIn sign-in again and press Use my Chrome sign-in.',
-  missing: 'Sign in with Chrome instead: connect the Chrome extension in Settings → Connections → Chrome extension, then press Use my Chrome sign-in.',
+  connected: t('helperFlow.linkedinChromeWay'),
+  missing: t('helperFlow.linkedinChromeMissing'),
 };
 /** The toast's arguments for a sign-in window that ended with no session: `answer` = {ok: false, reason, error?}; an unknown reason reads as closed. `view.extension` = the Chrome extension is connected (pages/linkedin-consent.js). */
 export function signInEnded(answer, view = {}) {

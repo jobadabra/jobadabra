@@ -1,3 +1,4 @@
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {runWarningLines, runWarnings} from '../../../renderer/run-warnings.js';

@@ -2,6 +2,8 @@
 // disagree. Two facts go in: whether a browser has the extension (lib/extension-install.js reads the browser's own
 // profile — instant, and true even with Chrome closed) and when it last reported in (every 30 s; only a fresh report
 // says the app can fill a form right now). Free of the DOM, like renderer/ai-engine-view.js, so tests can check it.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export const FRESH_MS = 90 * 1000;
 
 // known: false only until the app has read the browser's profile — a moment, not the old 60 s grace.
@@ -12,13 +14,13 @@ export const FRESH_MS = 90 * 1000;
 export function extensionState({known = true, installed = [], seen = null, browserRunning = null, now = Date.now(), justStarted = false} = {}) {
   const copy = installed[0] || null;
   const fresh = !!seen && now - (seen.at || 0) < FRESH_MS;
-  if (!known) return {state: 'checking', checking: true, on: false, version: '', words: 'Checking…'};
-  if (!seen && copy?.enabled && browserRunning !== false && justStarted) return {state: 'checking', checking: true, on: false, version: '', words: 'Checking…'};
-  if (fresh) return {state: 'connected', checking: false, on: true, version: seen.version || copy?.version || '', words: 'Connected'};
-  if (copy && !copy.enabled) return {state: 'off', checking: false, on: false, version: copy.version || '', words: 'Installed · turned off'};
-  if (copy && browserRunning === false) return {state: 'closed', checking: false, on: false, version: copy.version || '', words: 'Installed · open Chrome'};
-  if (copy) return {state: 'idle', checking: false, on: false, version: copy.version || '', words: 'Installed · not connected'};
-  return {state: 'absent', checking: false, on: false, version: '', words: 'Not connected'};
+  if (!known) return {state: 'checking', checking: true, on: false, version: '', words: t('helpers.checking')};
+  if (!seen && copy?.enabled && browserRunning !== false && justStarted) return {state: 'checking', checking: true, on: false, version: '', words: t('helpers.checking')};
+  if (fresh) return {state: 'connected', checking: false, on: true, version: seen.version || copy?.version || '', words: t('helpers.connected')};
+  if (copy && !copy.enabled) return {state: 'off', checking: false, on: false, version: copy.version || '', words: t('helpers.installedOff')};
+  if (copy && browserRunning === false) return {state: 'closed', checking: false, on: false, version: copy.version || '', words: t('helpers.installedOpen')};
+  if (copy) return {state: 'idle', checking: false, on: false, version: copy.version || '', words: t('helpers.installedIdle')};
+  return {state: 'absent', checking: false, on: false, version: '', words: t('helpers.notConnected')};
 }
 
 // The window's first 40 s: long enough for the extension's first 30 s report after the app starts.
@@ -29,9 +31,9 @@ export const justStarted = () => (globalThis.performance?.now?.() ?? Infinity) <
 export const extensionFrom = (record, {justStarted: started = false} = {}) => extensionState({known: !!record, installed: record?.installed || [],
   seen: record?.seen || null, browserRunning: record?.browserUp ?? null, now: record?.at ?? Date.now(), justStarted: started});
 // The AI card of Settings → Connections: on only while the key works. keyBad = the provider refused the saved key (state().aiKeyBad, lib/ai-key-health.js).
-export const aiService = (ready, keyBad) => ({on: !!ready && !keyBad, words: ready && keyBad ? 'Key refused · paste a new one' : ''});
+export const aiService = (ready, keyBad) => ({on: !!ready && !keyBad, words: ready && keyBad ? t('helpers.keyRefused') : ''});
 // One key row of Connections → AI ([data-secret]): "✓ Connected", "Not set", or, for the one key the provider refused (aiKeyBad = that key's name), "Key refused".
 export const keyRow = (secret, isSet, keyBad) => {
   const refused = !!isSet && !!keyBad && secret === keyBad;
-  return {text: refused ? 'Key refused · paste a new one' : isSet ? '✓ Connected' : 'Not set', on: !!isSet && !refused};
+  return {text: refused ? t('helpers.keyRefused') : isSet ? t('helpers.connectedTick') : t('helpers.notSet'), on: !!isSet && !refused};
 };

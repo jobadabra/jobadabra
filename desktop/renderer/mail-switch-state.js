@@ -1,9 +1,11 @@
 // The state behind every per-mail switch on screen (pages/mail-switches.js draws it): the last read of the person's choices, and a press that shows at once, saves, and puts the switch back with the website's words when the save fails.
 // One state for all places (Notifications, Automation, Apply), so two switches for a row never disagree. No DOM here, so test/unit/renderer/mail-switch-state.test.js runs it in Node.
-const NOT_SAVED = 'Could not save it just now. The switch is back where it was.';
+const NOT_SAVED = t('helperFlow.mailNotSaved');
 
 /** `pilot`: window.pilot (mailChoices, mailChoiceSet); `redraw`: called after every change; `extra(row)`: what the main process needs with a press (the typed address, the row's name); `saved(result)`: after a press the website took.
  *  -> {read(), press(row, on), state(), note(row)}. */
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export function createMailState(pilot, redraw, {extra = () => ({}), saved = () => {}} = {}) {
   let current = null;   // {ok, hidden?, mode, where, rows: [{id, name, when, on}], news: [{id, name, when, on}]} or {ok: false, error}, null before the first read
   const failed = new Map();   // row id -> the words of its last refused save, kept until that row is pressed again

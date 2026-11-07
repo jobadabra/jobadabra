@@ -1,5 +1,6 @@
 // The job drawer (pages/job-panel.js, renderer/job-drawer/): one body per tab, every state through the one state card, one overlay slot with
 // Recent activity, the drawer never resizing the list. Source checks, as the other page tests (the DOM runs in the app and `npm run shot`).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -46,23 +47,23 @@ test('Application: Preparation and Submitted through the shared choice, each wit
   const tab = read('job-drawer/tab-application.js');
   assert.match(tab, /choice\(OPTIONS, active/);
   assert.match(tab, /ctx\.parts\.submitted \? 'submitted' : 'preparation'/, 'opens on what was sent when there is a snapshot');
-  assert.match(read('job-drawer/application-preparation.js'), /Not prepared/);
+  assert.match(read('job-drawer/application-preparation.js'), /helpers\.notPrepared/);
   const submitted = read('job-drawer/application-submitted.js');
-  assert.match(submitted, /No application snapshot captured/);
-  assert.match(submitted, /Not submitted yet/);
-  assert.match(submitted, /do not change this snapshot/);
+  assert.match(submitted, /helpers\.noSnapshot/);
+  assert.match(submitted, /helpers\.notSubmitted/);
+  assert.match(submitted, /helpers\.snapshotImmutable/);
   assert.doesNotMatch(submitted, /contenteditable|<textarea|createElement\('textarea'/, 'a snapshot is read-only');
 });
 
 test('Messages: a filter with counts, folding email cards, Add note, and Gmail-not-connected says so', () => {
   const source = read('job-drawer/tab-messages.js');
-  assert.match(source, /choice\(\[\['all', `All \$\{counts\.all\}`\], \['email'/);
+  assert.match(source, /choice\(\[\['all', t\('helpers\.allCount', \{count: counts\.all\}\)\], \['email'/);
   assert.match(source, /foldCard\(/);
   assert.match(source, /openLogFor\(job\.url, job\.title\)/, 'Add note opens the Log box on this job');
   assert.match(source, /gmailConnected\(\) === false/, 'only when known not connected');
   assert.match(source, /openSetting\('google'\)/);
-  assert.match(source, /No linked messages yet/);
-  assert.match(source, /No emails linked to this job/);
+  assert.match(source, /helpers\.noMessages/);
+  assert.match(source, /helpers\.noEmails/);
   assert.match(read('pages/job-panel.js'), /close: closeJobPanel/);
 });
 
@@ -72,7 +73,7 @@ test('Timeline: one plain list with no filter, entries with the way to their det
   assert.match(source, /timelineOf\(page\?\.events, job, page\?\.match, parts\)/);
   assert.match(source, /openLogFor\(job\.url, job\.title\)/);
   assert.match(source, /showSubmitted\(job\.url\); pick\(tab\)/, 'View snapshot opens what was sent');
-  assert.match(source, /Nothing has happened yet/);
+  assert.match(source, /helpers\.nothingHappened/);
   const shots = fs.readFileSync(new URL('../../../scripts/drawer-shots.mjs', import.meta.url), 'utf8');
   for (const [key] of TABS) assert.ok(shots.includes(`'${key}'`), `drawer-shots has a picture of ${key}`);
 });
@@ -81,10 +82,10 @@ test('Interviews and Review: cards that fold, the way from an interview to its r
   const interviews = read('job-drawer/tab-interviews.js'), review = read('job-drawer/tab-review.js');
   assert.match(interviews, /foldCard\(/);
   assert.match(interviews, /showReview\(job\.url, `iv-\$\{record\.key\}`\); pick\('review'\)/, 'View interview review opens that review');
-  assert.match(interviews, /No interviews yet/);
+  assert.match(interviews, /helpers\.noInterviews/);
   assert.match(review, /choice\(reviews\.map/, 'a choice only when there is more than one');
   assert.match(review, /reviews\.length > 1/);
-  assert.match(review, /No review yet/);
+  assert.match(review, /helpers\.noReview/);
 });
 
 test('Description: Fetch original and Paste description only for a job with an application; a failed fetch keeps Try again and Paste; a not-seen posting says so', () => {
@@ -92,26 +93,26 @@ test('Description: Fetch original and Paste description only for a job with an a
   assert.match(source, /window\.pilot\.describeJob\(app, '', job\.url\)/, 'fetch: the posting\'s page');
   assert.match(source, /window\.pilot\.describeJob\(app, field\.value, ''\)/, 'paste: the person\'s own text');
   assert.match(source, /if \(app\) actions\.push\(\.\.\.buttons\(\)\)/, 'a job with no application has nowhere to keep it');
-  assert.match(source, /Could not retrieve the page/);
-  assert.match(source, /Try again, or paste the description/);
+  assert.match(source, /helpers\.cannotRetrieve/);
+  assert.match(source, /helpers\.retrieveRetry/);
   assert.match(source, /notSeen\(page\) \? \[closedCard\(\)\]/);
   assert.match(read('job-drawer/tab-overview.js'), /notSeen\(page\)/);
-  assert.match(read('job-drawer/header.js'), /Not seen lately/);
+  assert.match(read('job-drawer/header.js'), /helpers\.notSeen/);
 });
 
 test('Review: a rejection shows the employer\'s words, or that the email gave no reason, before the AI suggestions', () => {
   const source = read('job-drawer/tab-review.js');
-  assert.match(source, /Employer statement/);
-  assert.match(source, /The email does not give a specific reason/);
-  assert.match(source, /AI suggestions/);
-  assert.match(source, /not confirmed rejection reasons/);
+  assert.match(source, /helpers\.employerStatement/);
+  assert.match(source, /helpers\.noSpecificReason/);
+  assert.match(source, /helpers\.aiSuggestions/);
+  assert.match(source, /helpers\.suggestionsDisclaimer/);
   assert.match(source, /active\.key === 'rejection'/);
 });
 
 test('Messages: an email waiting on this job asks first, and its answer reuses the Focus actions', () => {
   const source = read('job-drawer/tab-messages.js');
   assert.match(source, /waitingEmails\(focusItems\(\), job\.url\)/);
-  assert.match(source, /Does this email belong to this job\?/);
+  assert.match(source, /helpers\.emailBelongs/);
   assert.match(source, /moveEmail\(email\.eventId, job\.url, email\.item\)/, 'Link to this job: the Focus move');
   assert.match(source, /whichJob\(email\.item/, 'Choose another job: the Focus picker');
   assert.match(read('pages/focus.js'), /export const focusItems = \(\) => lastFocus\?\.items \|\| \[\]/);
@@ -119,20 +120,20 @@ test('Messages: an email waiting on this job asks first, and its answer reuses t
 
 test('The last states: Check now and scoring in progress, Add interview and Prepare, the gone-posting message', () => {
   const match = read('job-drawer/tab-match.js');
-  assert.match(match, /Scoring in progress/);
+  assert.match(match, /helpers\.scoring/);
   assert.match(match, /lastActivity\?\.running/, 'a check is running');
   assert.match(match, /document\.getElementById\('refresh'\)\.click\(\)/, 'Check now is the Jobs page\'s own');
-  assert.match(read('job-drawer/tab-interviews.js'), /button\('Add interview', \(\) => openLogFor\(job\.url, job\.title\)/);
-  assert.match(read('job-drawer/header.js'), /page\?\.app\?\.id \? 'Prepare →' : 'Open interviews →'/);
+  assert.match(read('job-drawer/tab-interviews.js'), /button\(t\('helpers\.addInterview'\), \(\) => openLogFor\(job\.url, job\.title\)/);
+  assert.match(read('job-drawer/header.js'), /page\?\.app\?\.id \? t\('helpers\.prepareArrow'\) : t\('helpers\.interviewsArrow'\)/);
   assert.match(read('pages/job-panel.js'), /openPrep\(\{page_id: page\.app\.id/);
-  assert.match(read('job-drawer/tab-description.js'), /The saved copy is no longer available/);
+  assert.match(read('job-drawer/tab-description.js'), /helpers\.savedUnavailable/);
 });
 
 test('Overview: built from the shared card, tile and state-card parts, each part only when it has something', () => {
   const source = read('job-drawer/tab-overview.js');
   for (const part of ['card(', 'factTile(', 'iconRow(', 'stateCard(', 'glanceTiles(', 'clarifyOf(', 'callFacts(']) assert.ok(source.includes(part), part);
-  assert.match(source, /Worth clarifying/);
-  assert.match(source, /From your conversations/);
+  assert.match(source, /helpers\.clarifying/);
+  assert.match(source, /helpers\.conversations/);
   assert.match(read('job-drawer/header.js'), /nextInterview\(page\?\.app\)/, 'the next interview is on every tab\'s header');
 });
 
@@ -140,8 +141,8 @@ test('Description: reads the saved posting once per job, and offers Retry only a
   const source = read('job-drawer/tab-description.js');
   assert.match(source, /window\.pilot\.jobPosting\(job\.url\)/);
   assert.match(source, /read\.has\(job\.url\)/, 'asked once per job');
-  assert.match(source, /answer\.failed[\s\S]*button\('Retry'/, 'Retry only on a failed read');
-  assert.match(source, /This job has no saved description/);
+  assert.match(source, /answer\.failed[\s\S]*button\(t\('helpers\.retry'/, 'Retry only on a failed read');
+  assert.match(source, /helpers\.noDescription/);
   assert.match(source, /factStrip\(postingFacts\(/, 'the strip of facts');
   assert.match(source, /postingBody\(postingBlocks\(text\)\)/, 'headings and bullets, not one block');
   assert.match(source, /sourceCard\(postingSource\(found\)/, 'where it came from, with the way to the original');

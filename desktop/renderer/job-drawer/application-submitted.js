@@ -2,6 +2,8 @@
 // recorded and how the answers were captured, the answers and cover letter as sent (an edit from the draft is marked), the CV version and the
 // files. It never changes when the kit or CV are edited afterwards. No record: "Not submitted yet", or, for a job marked applied, "No
 // application snapshot captured". Opening the employer's page is not proof of submission: only a recorded submission shows here.
+import '../../i18n/screens-helpers.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {copyButton, factGrid, group, stateCard} from './parts.js';
 import {documentsView} from './documents-files.js';
@@ -10,22 +12,22 @@ export function submittedView({parts, page}) {
   const sent = parts.submitted;
   if (!sent) {
     return [page?.app?.applied_on
-      ? stateCard({icon: 'info', title: 'No application snapshot captured', text: 'This job was marked as applied, but what was sent was not recorded (applied elsewhere, or before snapshots).'})
-      : stateCard({icon: 'file', title: 'Not submitted yet', text: 'When you submit, what was sent is saved here: the answers, the cover letter and the CV version.'})];
+      ? stateCard({icon: 'info', title: t('helpers.noSnapshot'), text: t('helpers.noSnapshotText')})
+      : stateCard({icon: 'file', title: t('helpers.notSubmitted'), text: t('helpers.notSubmittedText')})];
   }
-  const nodes = [stateCard({icon: 'check-circle', tone: 'good', title: sent.when ? `Submitted ${sent.when}` : 'Submitted', text: sent.note || 'Recorded when the application was submitted.'})];
+  const nodes = [stateCard({icon: 'check-circle', tone: 'good', title: sent.when ? t('helpers.submittedWhen', {when: sent.when}) : t('helpers.submitted'), text: sent.note || t('helpers.recordedSubmission')})];
   if (sent.facts.length) nodes.push(factGrid(sent.facts));
   if (sent.answers.length) {
-    nodes.push(group('🧾 Form answers sent', sent.answers.map(item => {
+    nodes.push(group(t('helpers.answersSent'), sent.answers.map(item => {
       const row = el('div', 'iv-moment');
       const line = el('div', 'job-panel-line');
       line.append(el('b', '', item.question), copyButton(item.answer));
-      row.append(line, el('div', '', item.answer || '—'), ...(item.edited ? [el('span', 'muted small', '✏️ edited from the draft')] : []));
+      row.append(line, el('div', '', item.answer || '—'), ...(item.edited ? [el('span', 'muted small', t('helpers.editedDraft'))] : []));
       return row;
     })));
   }
-  if (sent.letter) nodes.push(group('✉️ Cover letter sent', sent.letter.split(/\n\s*\n/).map(text => el('div', 'iv-moment', text)), copyButton(sent.letter)));
-  nodes.push(...documentsView(parts.documents || [], '📎 Documents'));
-  nodes.push(el('p', 'muted small', 'Later edits to your answers or the CV do not change this snapshot.'));
+  if (sent.letter) nodes.push(group(t('helpers.letterSent'), sent.letter.split(/\n\s*\n/).map(text => el('div', 'iv-moment', text)), copyButton(sent.letter)));
+  nodes.push(...documentsView(parts.documents || [], t('helpers.documents')));
+  nodes.push(el('p', 'muted small', t('helpers.snapshotImmutable')));
   return nodes;
 }

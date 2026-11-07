@@ -1,5 +1,6 @@
 // The job drawer's Application tab lists this job's questions (renderer/job-drawer/application-questions.js) and now the answers kept for this job only; every state it drew
 // before (asked by this job only, asked once, remembered with Undo) stays.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

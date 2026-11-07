@@ -4,6 +4,8 @@
 // Guarded by: test/guards/rules/start-refusals.test.js.
 
 // -> {text, credit, allowance, cap?, resetsAt?} for a refusal, or null when the run started (or only finished badly: that is a run, shown in Recent activity).
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export function refusal(result) {
   if (!result || result.ok !== false || result.removed) return null;   // removed: the person took it out of the queue
   const text = String(result.error || result.text || '').replace(/^⚠️\s*/, '').trim();
@@ -13,4 +15,4 @@ export function refusal(result) {
 }
 
 // The button for a refusal the person can fix: the top-up dialog's way out (pages/topup-dialog.js: Top up for Pro, Upgrade to Pro for the free tier), or the plans after the trial.
-export const refusalAction = why => (why?.credit ? (why.cap ? 'Upgrade to Pro' : 'Top up') : why?.allowance ? 'See plans' : '');   // the dialog's words (plan-view.js topupWords)
+export const refusalAction = why => (why?.credit ? (why.cap ? t('helperMore.upgradePro') : t('helperMore.topUp')) : why?.allowance ? t('helperMore.seePlans') : '');   // the dialog's words (plan-view.js topupWords)

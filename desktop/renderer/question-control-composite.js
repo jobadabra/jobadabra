@@ -2,16 +2,23 @@
 // period, net or gross), a notice period, work status per country, a language level, a percentage range and a link. Each is a composite (a div whose .value
 // is the saved text, renderer/question-values.js) built from native inputs and the shared .segmented; text the kind cannot read stays visible as it was
 // written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/unit/renderer/question-kinds-composite.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
 import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, languageParts, partIsExact, splitDuration, splitPermit, splitRange, splitSalary, withLevel} from './question-values.js';
-import {STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
+import {STATUSES, STATUS_NAMES} from './work-eligibility.js';
+
+const VALUE_TEXT = {year: 'periodYear', month: 'periodMonth', week: 'periodWeek', day: 'periodDay', hour: 'periodHour', net: 'basisNet', gross: 'basisGross', native: 'nativeLevel'};
+const valueText = value => VALUE_TEXT[value] ? t(`helperMore.${VALUE_TEXT[value]}`) : value;
+const PERMIT_TEXT = {'Yes, freely': 'permitFreely', 'Yes, with a permit': 'permitWith', 'No, needs sponsorship': 'permitNeeds'};
+const PERMIT_HINT = {'Yes, freely': 'permitFreeHint', 'Yes, with a permit': 'permitWithHint', 'No, needs sponsorship': 'permitNeedsHint'};
 
 const input = (type, value, ariaLabel, placeholder = '') => Object.assign(el('input', ''), {type, value, ariaLabel, placeholder});
-function menu(options, value, ariaLabel, blank = '') {
+function menu(options, value, ariaLabel, blank = '', labelFor = option => option) {
   const node = Object.assign(el('select', ''), {ariaLabel});
   if (blank) node.append(new Option(blank, ''));
-  for (const each of options) node.append(new Option(each, each));
+  for (const each of options) node.append(new Option(labelFor(each), each));
   node.value = value;
   return node;
 }
@@ -25,8 +32,8 @@ function salary(format, raw, onChange, label) {
   const currencies = [...new Set([...(format?.options?.length ? format.options : CURRENCIES_ALL), state.currency])];
   const answer = () => (state.number ? joinSalary(state) : readable(raw, start.number) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
-  const number = input('number', state.number, label, 'Amount');
-  const parts = [menu(currencies, state.currency, `${label}: currency`), menu(PERIODS, state.period, `${label}: period`, 'per…'), menu(BASES, state.basis, `${label}: net or gross`, 'net/gross')];
+  const number = input('number', state.number, label, t('helperMore.amount'));
+  const parts = [menu(currencies, state.currency, t('helperMore.currencyLabel', {label: label})), menu(PERIODS, state.period, t('helperMore.periodLabel', {label: label}), t('helperMore.perBlank'), valueText), menu(BASES, state.basis, t('helperMore.basisLabel', {label: label}), t('helperMore.basisBlank'), valueText)];
   number.addEventListener('input', () => { state.number = number.value; onChange(answer()); });
   const keys = ['currency', 'period', 'basis'];
   parts.forEach((part, at) => part.addEventListener('change', () => { state[keys[at]] = part.value; onChange(answer()); }));
@@ -39,13 +46,13 @@ function duration(raw, onChange, label) {
   const start = splitDuration(raw), state = {number: start.number, unit: start.unit || 'month', monthEnd: start.monthEnd};
   const answer = () => (state.number ? joinDuration(state) : readable(raw, start.number) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
-  const number = input('number', state.number, label, 'How many');
-  const unit = menu(UNITS, state.unit, `${label}: unit`);
-  const end = Object.assign(el('input', ''), {type: 'checkbox', checked: state.monthEnd, ariaLabel: `${label}: ends at month-end`});
+  const number = input('number', state.number, label, t('helperMore.howMany'));
+  const unit = menu(UNITS, state.unit, t('helperMore.unitLabel', {label: label}), '', valueText);
+  const end = Object.assign(el('input', ''), {type: 'checkbox', checked: state.monthEnd, ariaLabel: t('helperMore.monthEndLabel', {label: label})});
   number.addEventListener('input', () => { state.number = number.value; onChange(answer()); });
   unit.addEventListener('change', () => { state.unit = unit.value; onChange(answer()); });
   end.addEventListener('change', () => { state.monthEnd = end.checked; onChange(answer()); });
-  node.append(number, unit, el('label', 'muted small', 'ends at month-end'), end);
+  node.append(number, unit, el('label', 'muted small', t('helperMore.monthEnd')), end);
   if (readable(raw, start.number)) node.append(savedAs(raw));
   return node;
 }
@@ -60,8 +67,8 @@ function permit(raw, onChange, label) {
   const isOn = option => STATUS_NAMES[state.status] === option;
   const group = segmented(STATUSES.map(each => STATUS_NAMES[each]), isOn, (option, each) => {
     state.status = isOn(option) ? '' : STATUSES.find(key => STATUS_NAMES[key] === option); refresh(each, isOn); onChange(answer());
-  }, label);
-  group.querySelectorAll('button').forEach(button => { button.title = STATUS_HINTS[STATUSES.find(key => STATUS_NAMES[key] === button.textContent)] || ''; });
+  }, label, option => t(`helperMore.${PERMIT_TEXT[option]}`));
+  group.querySelectorAll('button').forEach(button => { button.title = t(`helperMore.${PERMIT_HINT[button.dataset.choiceValue]}`); });
   node.append(group);
   if (readable(raw, start.status)) node.append(savedAs(raw));
   return node;
@@ -71,7 +78,7 @@ function range(raw, onChange, label) {
   const start = splitRange(raw), state = {...start};
   const answer = () => (state.from && state.to ? joinRange(state) : readable(raw, start.from) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
-  const from = input('number', state.from, `${label}: from`, 'From'), to = input('number', state.to, `${label}: to`, 'To');
+  const from = input('number', state.from, t('helperMore.fromLabel', {label: label}), t('helperMore.from')), to = input('number', state.to, t('helperMore.toLabel', {label: label}), t('helperMore.to'));
   from.addEventListener('input', () => { state.from = from.value; onChange(answer()); });
   to.addEventListener('input', () => { state.to = to.value; onChange(answer()); });
   node.append(from, el('span', 'muted small', '–'), to, el('span', 'muted small', '%'));
@@ -89,7 +96,7 @@ function language(raw, onChange, label, format) {
   const answer = () => current || (raw && !level ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
   const isOn = option => option === current;
-  node.append(segmented(LEVELS, isOn, (option, group) => { current = isOn(option) ? '' : option; refresh(group, isOn); onChange(answer()); }, label));
+  node.append(segmented(LEVELS, isOn, (option, group) => { current = isOn(option) ? '' : option; refresh(group, isOn); onChange(answer()); }, label, valueText));
   if (raw && !level) node.append(savedAs(raw));
   return node;
 }
@@ -107,7 +114,7 @@ function languageLines(raw, parts, onChange, label) {
     row.append(el('span', 'qa-language-name', part.name), segmented(LEVELS, isOn, (option, group) => {
       if (isOn(option)) return;   // the level already shown: nothing to rewrite
       current = withLevel(current, at, option); refresh(group, isOn); onChange(current);
-    }, `${label}: ${part.name}`));
+    }, `${label}: ${part.name}`, valueText));
     if (!partIsExact(part)) row.append(savedAs(part.raw));   // Why (5 Nov 2026, #3285 Gitar): a level outside the scale ("German (fluent)") shows no chip, so what was written stays visible
     node.append(row);
   });
@@ -121,7 +128,7 @@ function link(raw, onChange, label, placeholder) {
 }
 
 // control: a kind of renderer/question-kind.js COMPOSITE; format: {options}; value: the saved text; onChange(text).
-export function compositeControl(control, format, value, onChange, {ariaLabel = 'Answer', placeholder = ''} = {}) {
+export function compositeControl(control, format, value, onChange, {ariaLabel = t('helperMore.answer'), placeholder = ''} = {}) {
   const raw = String(value ?? '').trim();
   if (control === 'salary') return salary(format, raw, onChange, ariaLabel);
   if (control === 'duration') return duration(raw, onChange, ariaLabel);

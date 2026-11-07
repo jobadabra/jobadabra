@@ -1,6 +1,8 @@
 // Editor controls the Profile cards share (design system, docs/rules/desktop-ui.md: the value's kind picks its control): a box that grows for long
 // text, and chips with × plus "Add, then Enter" for several values from a list. They hold their own value and call onChange(value) on every edit;
 // the card reads value() back. Used by renderer/survey-rows.js and renderer/experience-editors.js. Guarded by test/unit/renderer/experience-editors.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {chip, el} from './components.js';
 import {answerControl} from './question-control.js';
 
@@ -14,7 +16,7 @@ export function longText(value, label, placeholder = '', onInput = () => {}, {le
 }
 
 // Chips with × and an "Add, then Enter" field. split(text) turns what was typed into values (a list typed at once becomes several chips).
-export function chipsInput(items, {placeholder = 'Add, then Enter', ariaLabel = placeholder, split = text => [text.trim()].filter(Boolean), onChange = () => {}} = {}) {
+export function chipsInput(items, {placeholder = t('helpers.addEnter'), ariaLabel = placeholder, split = text => [text.trim()].filter(Boolean), onChange = () => {}} = {}) {
   let values = [...items];
   const box = el('div', 'values-input'), list = el('div', 'chip-list');
   const add = Object.assign(el('input', 'add'), {type: 'text', placeholder});

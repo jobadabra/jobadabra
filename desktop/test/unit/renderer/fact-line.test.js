@@ -44,3 +44,15 @@ test('a new line is named by the person and starts as text', () => {
   fire(value, 'input');
   assert.deepEqual(factOf(row), {label: 'Spanish', value: 'native', kind: ''});
 });
+
+test('translated fact controls retain the original profile label, answer and note', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('fr');
+    const original = {label: 'My employer wording', value: 'My original answer', note: 'Keep my note'};
+    const row = factRow('availability', original, {}, () => {});
+    assert.equal(row.querySelector('[data-fact-label]').placeholder, 'Quoi (ex. préavis)');
+    assert.equal(row.querySelector('summary').textContent, 'Note pour l’IA');
+    assert.deepEqual(factOf(row), {...original, kind: ''});
+  } finally { setLocale('en'); }
+});

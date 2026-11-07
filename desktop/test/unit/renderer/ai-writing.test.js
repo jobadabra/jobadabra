@@ -1,6 +1,7 @@
 // The shared "AI is writing this text" state (renderer/ai-writing.js; owner, 28 Oct 2026, option A): a strip with a live timer above the box, the kept
 // text faded, skeleton lines for an empty box; stop() puts the box back. Also the class: every box the AI rewrites uses it (base letter, a job's letter).
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

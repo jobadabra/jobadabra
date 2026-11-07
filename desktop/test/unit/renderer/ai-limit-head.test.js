@@ -1,5 +1,6 @@
 // A run the AI provider stopped (usage limit, rate limit) says so in plain words with the one fix, not "Had problems"
 // and a raw log (the owner's mockup, 6 Oct 2026). One variant of the failure box, beside the others.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {aiLimitHead, failureHead} from '../../../renderer/run-status.js';
@@ -48,4 +49,13 @@ test('other failures and successful runs keep their own box', () => {
   assert.equal(aiLimitHead({ok: false, kind: 'mail', log: ['Google sign-in expired']}, 'Gmail check'), null);
   assert.equal(aiLimitHead({...limited, ok: true}, 'Gmail check'), null);
   assert.equal(failureHead({ok: false, problem: 'Google sign-in expired'}).fix.label, 'Reconnect Google');
+});
+
+test('billing routing keeps the same provider URLs with another display language', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('ru');
+    assert.equal(aiLimitHead({ok: false, billing: 'ChatGPT plan', log: ['AI limit reached']}).fix.url, 'https://chatgpt.com/codex/settings/usage');
+    assert.equal(aiLimitHead({ok: false, billing: 'OpenAI API credits', log: ['AI limit reached']}).fix.url, 'https://platform.openai.com/settings/organization/limits');
+  } finally { setLocale('en'); }
 });

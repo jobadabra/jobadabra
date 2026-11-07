@@ -2,6 +2,8 @@
 // as a compact summary (label → value rows, chips), a quiet Edit sits at the right of its title line (components.js cardEdit), Edit opens the editor in
 // place (Edit hidden, the card kept open, drafts kept) with an aligned label column and full-width controls, and nothing is saved per card: the page's one
 // save bar saves (save-bar.js). The rules: docs/rules/desktop-ui.md "Cards: read → Edit → editor". Guarded by test/unit/renderer/card-shell.test.js and test/guards/rules/card-system.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {chip, el, pill, tile, unfold} from './components.js';
 import {icon as glyph} from './icons.js';
 
@@ -12,7 +14,7 @@ const isNode = value => value && typeof value === 'object' && 'tagName' in value
 // icon: an icon name drawn before the label (roomy cards, mockup 03: icon · small grey label · bold value).
 export function readRows(rows, {lined = false} = {}) {
   const list = el('dl', `summary-rows is-compact${lined ? ' is-lined' : ''}${rows.some(row => row.icon) ? ' has-icons' : ''}`);
-  for (const {label, value, note = '', missing = 'Not set', icon = ''} of rows) {
+  for (const {label, value, note = '', missing = t('helpers.notSet'), icon = ''} of rows) {
     const empty = value == null || (!isNode(value) && !String(value).trim());
     if (empty && missing === '') continue;
     const cell = el('dd'), term = el('dt');
@@ -43,7 +45,7 @@ export function factColumns(cols) {
     if (body) words.append(body);
     else {
       const empty = value == null || (!isNode(value) && !String(value).trim()), shown = el('span', 'fact-col-value');
-      shown.append(empty ? pill('Not set', 'warn') : isNode(value) ? value : String(value), ...(badge ? [badge] : []));
+      shown.append(empty ? pill(t('helpers.notSet'), 'warn') : isNode(value) ? value : String(value), ...(badge ? [badge] : []));
       if (note) { shown.title = note; shown.append(glyph('info', 'icon fact-col-note')); }
       words.append(el('span', 'fact-col-label', label), shown);
     }
@@ -87,7 +89,7 @@ export const isEditing = card => Boolean(card?.classList.contains('is-editing'))
 // The editor's way out while it holds no change: a quiet "Done" (shown only at 0 changes; with changes the page bar's Save all / Discard all decide,
 // and the card's save/discard close it). count: the card's own draft count; call done.sync() after each edit. Every card uses this one, not its own Close.
 export function doneButton(card, count) {
-  const done = Object.assign(el('button', 'link small card-done', 'Done'), {type: 'button'});
+  const done = Object.assign(el('button', 'link small card-done', t('helpers.done')), {type: 'button'});
   const sync = () => { done.hidden = count() > 0; };
   done.addEventListener('click', () => setEditing(card, false));
   sync();

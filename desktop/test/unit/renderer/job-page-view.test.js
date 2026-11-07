@@ -1,4 +1,5 @@
 // Jobs → a job's page (renderer/job-page-view.js): which tabs a job has and what each shows, from the store's sections and events.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -228,7 +229,7 @@ test('Interviews: upcoming from the events (an email and a calendar entry for on
   assert.deepEqual([found.upcoming[0].title, found.upcoming[0].status, found.upcoming[0].source], ['Technical interview invitation', 'Scheduled', 'From S <s@x.com>']);
   assert.deepEqual(found.past.map(item => item.status), ['Past']);
   assert.deepEqual(found.records.map(record => [record.key, record.overall?.[0], record.hasReview]), [['b', 'Positive', true], ['a', 'Mixed', false]], 'newest first; a record with no id is left out');
-  assert.match(found.upcoming[0].when, /Wed 14 Oct · 10:00/);
+  assert.match(found.upcoming[0].when, /Wed, Oct 14 · 10:00/);
   assert.equal(interviewsOf({app: {next_interview: '2026-10-14T10:00:00'}}, now).upcoming.length, 1, 'the job\'s next interview alone is enough');
   assert.deepEqual(interviewsOf({}, now), {upcoming: [], past: [], records: []});
 });

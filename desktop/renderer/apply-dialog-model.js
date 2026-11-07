@@ -1,4 +1,6 @@
 // The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/unit/renderer/apply-dialog-mode.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {dialogNeedsConfirm, modeBuilt} from './apply-settings-model.js';
 
 /** The count as a whole number of jobs from 1 to 10, or null for anything else (empty, 0, 11, 1.5). */
@@ -10,7 +12,7 @@ export function validCount(value) {
 /** The primary button: "Apply to 3 jobs" (owner, 28 Oct 2026: the dialog applies to jobs; it is not a settings editor). */
 export function applyButtonLabel(count) {
   const n = validCount(count);
-  return n ? `Apply to ${n} job${n === 1 ? '' : 's'}` : 'Apply to jobs';
+  return n ? t('helperFlow.applyCount', {count: n}) : t('helperFlow.applyJobs');
 }
 
 /**
@@ -32,11 +34,11 @@ export async function applyDialogPick({mode, settings, confirm, now = () => new 
 export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', chosen = false, cancelled = false, start}) {
   if (cancelled) return {cancelled: true};
   const n = validCount(count);
-  if (!n) return {ok: false, error: 'Choose between 1 and 10 jobs.'};
+  if (!n) return {ok: false, error: t('helperFlow.applyCountBounds')};
   try { return await start({n, mode: 'settings', ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {})}); } catch (error) {
     // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
     const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
-    return {ok: false, error: `Could not start applying: ${reason || 'something went wrong.'}${reason.endsWith('.') || !reason ? '' : '.'} Try again in a moment.`};
+    return {ok: false, error: t('helperFlow.applyStartFailed', {reason: `${reason || t('helperFlow.somethingWrong')}${reason.endsWith('.') || !reason ? '' : '.'}`})};
   }
 }
 
@@ -45,8 +47,8 @@ export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', 
  * -> {close: true, toast: {title, body, target, tone}} | {close: false, error}
  */
 export function applyDialogOutcome(result) {
-  if (result?.ok) return {close: true, toast: {title: 'Applying started', body: result.message, target: {view: 'sessions'}, tone: 'good'}};
-  return {close: false, error: result?.error || 'Could not start applying. Try again in a moment.'};
+  if (result?.ok) return {close: true, toast: {title: t('helperFlow.applyingStarted'), body: result.message, target: {view: 'sessions'}, tone: 'good'}};
+  return {close: false, error: result?.error || t('helperFlow.applyStartFallback')};
 }
 
 /** One start at a time: a second press while the first batch starts is ignored; a later deliberate start is not. */

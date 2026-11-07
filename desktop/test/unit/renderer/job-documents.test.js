@@ -1,5 +1,6 @@
 // The Documents tab (job-drawer/tab-documents.js): the tailored CV and the cover letter moved out of Application → Preparation, each fact one
 // label → value row, and every way in lands on it. One loop over the entry points; a new tab alias or entry without a test fails here.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -29,12 +30,12 @@ test('the Documents cards are label → value rows with at most one primary butt
     assert.match(source, /rows\(/, file);
     assert.doesNotMatch(source, /el\('p', 'muted small'/, `${file}: a status goes in a row, not a caption line`);
   }
-  assert.match(read('job-drawer/job-letter.js'), /docCopy\(status\.text, 'Copy', true\)/, 'the letter card has one primary: Copy');
+  assert.match(read('job-drawer/job-letter.js'), /docCopy\(status\.text, t\('helpers\.copy'\), true\)/, 'the letter card has one primary: Copy');
   assert.doesNotMatch(read('job-drawer/tab-documents.js') + read('job-drawer/job-letter.js'), /soft-button|'link'/, 'every other button is the standard secondary');
 });
 
 test('the Documents tab says "not drafted yet" through the state card, with the action that drafts it', () => {
   const source = read('job-drawer/tab-documents.js');
-  assert.match(source, /stateCard\(\{icon: 'file', title: 'Not drafted yet'/);
+  assert.match(source, /stateCard\(\{icon: 'file', title: t\('helpers\.notDrafted'\)/);
   assert.match(source, /tailorCv\(job\.code/);
 });
