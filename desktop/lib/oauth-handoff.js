@@ -21,18 +21,24 @@ export function cancel(flow) {
 
 /**
  * Start waiting for a flow. -> {state, result}: open the website with `state`; `result` resolves to {ok: true, fields} (the website's fields, without `state`) or {ok: false, error}
- * after `timeout` (`timeoutError` says what to do then) or a cancel.
+ * after `timeout` (`timeoutError` says what to do then) or a cancel. Optional synchronous `onFailureResult(answer, reason)` privately observes timeout/open failures only; its return is ignored.
  */
-export function begin(flow, {timeout = 5 * 60 * 1000, timeoutError = 'The website didn\'t answer in 5 minutes. Try again.'} = {}) {
+export function begin(flow, {timeout = 5 * 60 * 1000, timeoutError = 'The website didn\'t answer in 5 minutes. Try again.', onFailureResult} = {}) {
   if (!FLOWS.includes(flow)) throw new Error(`unknown hand-off flow: ${flow}`);
   cancel(flow);
   const state = crypto.randomBytes(32).toString('base64url');
   const result = new Promise(resolve => {
-    const mine = {state, done: answer => { clearTimeout(mine.timer); resolve(answer); },
-      timer: setTimeout(() => { if (waiting.get(flow) === mine) waiting.delete(flow); resolve({ok: false, error: timeoutError}); }, timeout)};
+    const mine = {state, onFailureResult, done: answer => { clearTimeout(mine.timer); resolve(answer); },
+      timer: setTimeout(() => { if (waiting.get(flow) === mine) waiting.delete(flow); resolve(failureResult(mine, {ok: false, error: timeoutError}, 'timeout')); }, timeout)};
     waiting.set(flow, mine);
   });
   return {state, result};
+}
+
+// Why (7 Nov 2026, multilanguage coordinator): optional presentation metadata must never prevent a canonical failure from resolving; it cannot receive success credentials or cancellation.
+function failureResult(mine, answer, reason) {
+  try { mine.onFailureResult?.(answer, reason); } catch { /* Private observers are optional; the original answer still resolves. */ }
+  return answer;
 }
 
 /** Give up on a wait that never started (the browser would not open). */
@@ -40,7 +46,7 @@ export function fail(flow, error) {
   const mine = waiting.get(flow);
   if (!mine) return;
   waiting.delete(flow);
-  mine.done({ok: false, error});
+  mine.done(failureResult(mine, {ok: false, error}, 'open'));
 }
 
 /** The route's call: the form fields of POST /<flow>/callback (a URLSearchParams). -> true when it was the awaited one (taken once); anything else is dropped unread. */

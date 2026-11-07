@@ -5,6 +5,8 @@
 // disagree are never resolved here: both stay where they are, queued for "Which is right?" (settings.profileConflicts). After the move every
 // original value is checked to be on a page still, else it throws with the backup's place. Works on every store (lib/store).
 // Guarded by test/unit/main/profile-move.test.js.
+import {t} from '../i18n/detail-notices.js';
+import {withDisplay} from '../i18n/store-errors.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {anthropicApi} from './ai/anthropic-api.js';
@@ -213,7 +215,7 @@ export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = s
   // Each moved line must read back from its section before any original goes: a failed write stops here with both pages as they were.
   const written = await sections.read(storage, fetcher);
   const missing = moves.filter(each => !written[each.home].some(line => same(line.value) === same(each.value)));
-  if (missing.length) throw new Error(`Your details move: ${missing.length} line(s) did not save; nothing was removed (the pages before it are in ${kept.dir})`);
+  if (missing.length) throw withDisplay(new Error(`Your details move: ${missing.length} line(s) did not save; nothing was removed (the pages before it are in ${kept.dir})`), 'storeError.profileMissing', {count: missing.length, path: kept.dir});
   // The originals go once their line is written; found again by their text (an id may have shifted), last first, a section's own lines never.
   const gone = new Set([...moves.flatMap(each => each.from), ...stale].map(item => `${item.page}\n${item.key}`));
   for (const name of ['answers', 'profile']) {
@@ -222,7 +224,7 @@ export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = s
   }
   const after = same(await texts(opened));
   const lost = before.filter(value => !after.includes(value));
-  if (lost.length) throw new Error(`Your details move: ${lost.length} value(s) not found after it; the pages before it are in ${kept.dir}`);
+  if (lost.length) throw withDisplay(new Error(`Your details move: ${lost.length} value(s) not found after it; the pages before it are in ${kept.dir}`), 'storeError.profileLost', {count: lost.length, path: kept.dir});
   storage.saveSettings({profileMovedAt: now.toISOString(), factsMovedFor: waiting});
   return {moved: moves.length, conflicts, cleared: stale.length, copy: kept};
 }
@@ -232,11 +234,11 @@ export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = s
 export async function resolve(storage, topic, pick, {fetcher, save = sections.save} = {}) {
   const queue = storage.settings().profileConflicts || [];
   const conflict = queue.find(each => each.topic === topic), chosen = conflict?.choices[pick];
-  if (!chosen) return {ok: false, error: 'That choice is no longer open'};
+  if (!chosen) return {ok: false, error: t('detailNotice.choiceClosed')};
   const values = new Set(conflict.choices.map(choice => same(choice.value)));
   const current = (await sections.read(storage, fetcher))[conflict.home];
   await save(storage, conflict.home, [...current.filter(line => !values.has(same(line.value))), {label: chosen.label || topic, value: chosen.value}], fetcher);
-  if (!(await sections.read(storage, fetcher))[conflict.home].some(line => same(line.value) === same(chosen.value))) return {ok: false, error: 'It did not save; nothing else changed'};
+  if (!(await sections.read(storage, fetcher))[conflict.home].some(line => same(line.value) === same(chosen.value))) return {ok: false, error: t('detailNotice.saveFailed')};
   const others = [...new Map(conflict.choices.filter(choice => same(choice.value) !== same(chosen.value)).map(choice => [same(choice.value), choice])).values()];
   keep(storage, others.map(({label, value}) => ({source: 'profile', title: conflict.topic, label, value, restore: {home: conflict.home, label: label || topic, value}})));
   const opened = openStore(storage, {fetcher});
@@ -265,8 +267,8 @@ export async function openConflicts(storage, {fetcher} = {}) {
 // Undo of a set-aside fact: its line goes back into its section (once). -> {ok, error}.
 export async function restoreFact(storage, entry, {fetcher, save = sections.save} = {}) {
   const {home, label, value} = entry.restore || {};
-  if (!sections.SECTIONS[home]) return {ok: false, error: 'That fact has no place to go back to'};
+  if (!sections.SECTIONS[home]) return {ok: false, error: t('detailNotice.restoreFactMissing')};
   const current = (await sections.read(storage, fetcher))[home];
   if (!current.some(line => same(line.value) === same(value))) await save(storage, home, [...current, {label, value}], fetcher);
-  return (await sections.read(storage, fetcher))[home].some(line => same(line.value) === same(value)) ? {ok: true} : {ok: false, error: 'It did not save'};
+  return (await sections.read(storage, fetcher))[home].some(line => same(line.value) === same(value)) ? {ok: true} : {ok: false, error: t('detailNotice.restoreFailed')};
 }

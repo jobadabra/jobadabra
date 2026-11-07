@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The sidebar as an icon rail: automatically in a narrow window (under 1180 px, where there is no room for labels), or when the person
 // collapsed it with the button at the foot of the menu (remembered in this window's localStorage). .app.rail carries the layout (style.css).
 import {icon} from './icons.js';
@@ -21,7 +23,7 @@ export function init() {
     app.classList.toggle('rail', railed(width, collapsed));
     if (!button) return;
     button.hidden = !toggleShown(width);
-    const label = collapsed ? 'Expand menu' : 'Collapse menu';
+    const label = collapsed ? t('helperTail.expandMenu') : t('helperTail.collapseMenu');
     button.title = label;
     button.setAttribute('aria-pressed', String(collapsed));
     button.querySelector('svg')?.replaceWith(icon(collapsed ? 'expand' : 'collapse'));

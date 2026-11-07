@@ -3,8 +3,10 @@
 // written for it until the person picks (resolveLocation). Both pages are copied and the backup runs before anything is written; every written list is
 // read back, else it throws with the copy's place. The Profile rows are never removed here: the old editors stay until crawl and scoring read the new
 // source (spec step c). Works on every store (lib/store). Guarded by test/unit/main/locations-store.test.js.
+import {withDisplay} from '../i18n/store-errors.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import {t} from '../i18n/detail-notices.js';
 import {openStore} from './store/index.js';
 import {itemsOf} from './profile-move.js';
 import {fieldFor} from '../renderer/preferences-model.js';
@@ -65,7 +67,7 @@ export async function moveLocations(storage, {fetcher, ai = {}, deps = null, wri
   const copy = await copyFirst(storage, {fetcher, now, run});
   await write(storage, next, deps);
   const missing = readBack(storage, resolved);
-  if (missing.length) throw new Error(`Locations move: ${missing.join(', ')} did not save; the Profile is untouched (the copy is in ${copy.dir})`);
+  if (missing.length) throw withDisplay(new Error(`Locations move: ${missing.join(', ')} did not save; the Profile is untouched (the copy is in ${copy.dir})`), 'storeError.locationsVerify', {fields: missing.join(', '), path: copy.dir});
   return {moved: Object.keys(resolved).length, conflicts, copy};
 }
 
@@ -88,13 +90,13 @@ export async function recheckQueue(storage, {ai = {}, deps = null, write = defau
 // "Which is right?" for one kind: the pick is written and read back, then the question closes. → {ok, error}.
 export async function resolveLocation(storage, kind, choice, {places = [], deps = null, write = defaultWrite} = {}) {
   const queue = storage.settings().locationsConflicts || [];
-  if (!queue.some(each => each.kind === kind)) return {ok: false, error: 'That choice is no longer open'};
+  if (!queue.some(each => each.kind === kind)) return {ok: false, error: t('detailNotice.choiceClosed')};
   let plan;
   try { plan = resolveConflict({resolved: {}, conflicts: queue}, kind, choice, {places}); } catch (error) { return {ok: false, error: error.message}; }
   const search = readSearch(storage);
   await write(storage, applyLocations(search, plan.resolved), deps);
   const missing = readBack(storage, plan.resolved);
-  if (missing.length) return {ok: false, error: 'It did not save; nothing else changed'};
+  if (missing.length) return {ok: false, error: t('detailNotice.saveFailed')};
   setAsideReplaced(storage, search.locations || {}, readSearch(storage).locations || {});
   storage.saveSettings({locationsConflicts: plan.conflicts});
   return {ok: true};
@@ -112,9 +114,9 @@ function setAsideReplaced(storage, before, after) {
 // Undo of a set-aside list: written back to the search settings, read back. -> {ok, error}.
 export async function restoreLocation(storage, entry, {deps = null, write = defaultWrite} = {}) {
   const {key, list, relocation} = entry.restore || {};
-  if (!LISTS.some(([each]) => each === key) || !Array.isArray(list)) return {ok: false, error: 'That list has no place to go back to'};
+  if (!LISTS.some(([each]) => each === key) || !Array.isArray(list)) return {ok: false, error: t('detailNotice.restoreMissing')};
   const search = readSearch(storage);
   const locations = {...search.locations, [key]: list, ...(relocation ? {relocation} : {})};
   await write(storage, {...search, locations}, deps);
-  return same(readSearch(storage).locations?.[key], list) ? {ok: true} : {ok: false, error: 'It did not save'};
+  return same(readSearch(storage).locations?.[key], list) ? {ok: true} : {ok: false, error: t('detailNotice.restoreFailed')};
 }

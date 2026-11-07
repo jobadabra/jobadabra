@@ -1,8 +1,10 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // What a job's fit score and what became of it look like to the product, as counts (src/intelligence.js on the site): the score bands, the states,
 // the one-tap dismiss reasons and the daily snapshot. Pure: jobs in, counts out. Nothing here carries a title, a company or a link.
 export const REASONS = [
-  {id: 'seniority', label: 'Wrong seniority'}, {id: 'location', label: 'Wrong location'}, {id: 'tech', label: 'Not my tech'},
-  {id: 'company', label: 'Company'}, {id: 'role', label: 'Not my kind of role'}, {id: 'other', label: 'Other'},
+  {id: 'seniority', label: t('helperTail.wrongSeniority')}, {id: 'location', label: t('helperTail.wrongLocation')}, {id: 'tech', label: t('helperTail.notMyTech')},
+  {id: 'company', label: t('helperTail.company')}, {id: 'role', label: t('helperTail.notMyRole')}, {id: 'other', label: t('helperGuide.other')},
 ];
 
 export function scoreBucket(score) {

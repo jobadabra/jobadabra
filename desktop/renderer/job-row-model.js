@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // What one Jobs row (the list and the Board card) draws for a job: the parts that fit the job's state and where it came from. Pure, no DOM.
 // Guarded by: test/unit/renderer/job-row-model.test.js (every filter's rows) and integration/app/screen-jobs-inbound.test.js (the tester's screen).
 // Why (2 Nov 2026, owner: "why the jobs list are showing in such a broken state?", a Windows tester's Inbound list): a job you applied to, a
@@ -14,7 +16,8 @@ export const NA = 'N/A';
 const isCandidate = job => !isInbound(job) && !SENT.has(job.stage) && job.status !== 'applied' && job.status !== 'dismissed' && job.stage !== 'Dismissed' && job.stage !== 'Closed';
 
 // The rejection review's verdict in words that stand alone (src/ai/rejection.py VERDICTS); "Unclear" alone says nothing.
-export const rejectionWords = verdict => (verdict === 'Unclear' ? 'Rejection reason unclear' : `Why rejected: ${verdict}`);
+/** Label an original rejection verdict without rewriting its content. */
+export const rejectionWords = verdict => (verdict === 'Unclear' ? t('helperTail.rejectionUnclear') : t('helperTail.whyRejected', {verdict}));
 
 /**
  * The row's parts for one job. Every row has the same slots (an inbound reply is built like a job match: owner, 2 Nov 2026, "there should not be much

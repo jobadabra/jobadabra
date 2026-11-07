@@ -1,3 +1,6 @@
+import '../i18n/screens-helpers.js';
+import {number} from '../i18n/format.js';
+import {t} from '../i18n/index.js';
 // Employers & Sources, without a window (pages/employers.js draws it): the filter, a feed status's tone, the stats line, an employer's
 // research links and detail lines. Field names: src/stores/base.py EMPLOYER_FIELDS. Guarded by test/unit/renderer/employers-view.test.js.
 import {shortDay} from './date.js';
@@ -8,18 +11,18 @@ export const feedTone = status => FEED_TONES[status] || 'neutral';
 
 // What each status means and what happens next (the scout's check: src/scout.py check_one, src/scout_notion.py employer_record).
 export const FEED_HELP = {
-  'Feed found': 'We read its job list and some jobs are in your places. It starts Active: every search reads it.',
-  'Low relevance': 'We read its job list, but none of its jobs are in your places. It starts paused; checked again in 3 weeks. Switch it on to read it anyway.',
-  'No open jobs': 'Its careers page or job list had no postings when we looked. It starts paused; checked again every week.',
-  'Manual watch': 'Listed with a careers page, but no job list a program can read. You watch it by hand: searches skip it.',
-  'No public feed': 'We found no job list a program can read. It is not searched; checked again in 3 months.',
+  'Feed found': t('helperRest.feedFoundHelp'),
+  'Low relevance': t('helperRest.feedLowHelp'),
+  'No open jobs': t('helperRest.feedEmptyHelp'),
+  'Manual watch': t('helperRest.feedManualHelp'),
+  'No public feed': t('helperRest.feedNoneHelp'),
 };
 export const feedHelp = status => FEED_HELP[status] || '';
 
 // Quality column: the scale and what it adds up (src/scout_probe.py quality). A row's own counts follow in its notes.
-export const QUALITY_HELP = 'How well its jobs fit your search, 0 to 100. Up to 20 for jobs matching your roles, 40 for jobs in your places, 10 each for a match in your top places, '
-  + 'overlap with your CV’s skills, postings under 90 days old and a published salary. 60 or more is a good fit; under 30 means little in your places. – means no job list was read.';
-export const qualityHelp = row => [`Quality ${row.quality} of 100.`, row.notes].filter(Boolean).join(' ');
+export const QUALITY_HELP = t('helperRest.qualityHelp');
+/** Describe the quality score while retaining the employer’s original notes. */
+export const qualityHelp = row => [t('helperRest.qualityOf', {score: number(row.quality)}), row.notes].filter(Boolean).join(' ');
 
 const words = row => [row.name, row.website, row.cities, row.relevant_roles, row.ats, row.slug, row.notes, row.origin, row.kind, row.size]
   .filter(Boolean).join(' ').toLowerCase();
@@ -37,11 +40,12 @@ export function feedStatuses(rows) {
   return [...Object.keys(FEED_TONES).filter(status => present.has(status)), ...[...present].filter(status => !(status in FEED_TONES)).sort()];
 }
 
+/** Summarize employer counts without changing feed statuses or filtering. */
 export function statsLine(rows, shown = rows) {
   const all = rows || [], active = all.filter(row => row.active).length, boards = all.filter(row => row.kind === 'Job board').length;
   const feeds = all.filter(row => row.feed_status === 'Feed found').length;
-  const head = `${all.length} tracked · ${active} active · ${feeds} feed found${boards ? ` · ${boards} job board${boards === 1 ? '' : 's'}` : ''}`;
-  return shown.length === all.length ? head : `${shown.length} of ${head}`;
+  const head = t('helperRest.employerStats', {total: number(all.length), active: number(active), feeds: number(feeds)}) + (boards ? ` · ${t('helperRest.employerBoards', {count: boards})}` : '');
+  return shown.length === all.length ? head : t('helperRest.shownOf', {shown: number(shown.length), text: head});
 }
 
 // The job system and its board name ("greenhouse · acme"), or the feed's host, or ''.
@@ -52,30 +56,32 @@ export function feedName(row) {
 
 // Links to open: [label, url]; only http(s).
 export function researchLinks(row) {
-  return [['Website', row.website], ['Careers', row.careers_url], ['Feed', row.feed], ['Glassdoor', row.glassdoor], ['levels.fyi', row.levels_fyi]]
+  return [[t('helperRest.website'), row.website], [t('helperRest.careers'), row.careers_url], [t('helperRest.feed'), row.feed], ['Glassdoor', row.glassdoor], ['levels.fyi', row.levels_fyi]]
     .filter(([, url]) => /^https?:\/\//i.test(String(url || '')));
 }
 
 // The muted line under the name: cities, size, relevant roles.
-export const metaLine = row => [row.cities, row.size && `${row.size} people`, row.relevant_roles].filter(Boolean).join(' · ');
+/** Show employer metadata while preserving stored cities and role text. */
+export const metaLine = row => [row.cities, row.size && t('helperRest.people', {count: row.size}), row.relevant_roles].filter(Boolean).join(' · ');
 
 // The rest of the record, for the row's detail: [label, value] with a value only.
+/** Label nonempty employer facts for display without rewriting their content. */
 export function detailLines(row) {
-  const yes = value => (value === true ? 'yes' : value === false ? 'no' : value);
-  return [['Notes', row.notes], ['Integration', row.integration], ['Verification', row.verification],
-    ['In your preferred places', yes(row.in_preferred_places)], ['Added', day(row.added || row.created_at)]]
+  const yes = value => (value === true ? t('helperRest.yesLower') : value === false ? t('helperRest.noLower') : value);
+  return [[t('helperRest.notes'), row.notes], [t('helperRest.integration'), row.integration], [t('helperRest.verification'), row.verification],
+    [t('helperRest.preferredPlaces'), yes(row.in_preferred_places)], [t('helperMore.added'), day(row.added || row.created_at)]]
     .filter(([, value]) => value !== undefined && value !== null && value !== '');
 }
 
 // The table's sortable columns (renderer/table-sort.js). Feed status sorts in the select's order (found first); blanks go last.
 export const SORT_COLUMNS = [
-  {key: 'name', label: 'Employer', type: 'words', value: row => row.name},
-  {key: 'kind', label: 'Kind', type: 'words', value: row => row.kind || 'Employer'},
-  {key: 'feed', label: 'Feed', type: 'number', value: row => (row.feed_status ? -(Object.keys(FEED_TONES).indexOf(row.feed_status) + 1 || Object.keys(FEED_TONES).length + 1) : null)},
-  {key: 'quality', label: 'Quality', type: 'number', tip: QUALITY_HELP, value: row => (row.quality === '' ? null : row.quality)},
-  {key: 'origin', label: 'Origin', type: 'words', value: row => row.origin},
-  {key: 'checked', label: 'Checked', type: 'date', value: row => (row.checked ? Date.parse(row.checked) || null : null)},
-  {key: 'active', label: 'Active', type: 'flag', value: row => (row.active ? 1 : 0)},
+  {key: 'name', label: t('helpers.employer'), type: 'words', value: row => row.name},
+  {key: 'kind', label: t('helperRest.kind'), type: 'words', value: row => row.kind || 'Employer'},
+  {key: 'feed', label: t('helperRest.feed'), type: 'number', value: row => (row.feed_status ? -(Object.keys(FEED_TONES).indexOf(row.feed_status) + 1 || Object.keys(FEED_TONES).length + 1) : null)},
+  {key: 'quality', label: t('helperRest.quality'), type: 'number', tip: QUALITY_HELP, value: row => (row.quality === '' ? null : row.quality)},
+  {key: 'origin', label: t('helperRest.origin'), type: 'words', value: row => row.origin},
+  {key: 'checked', label: t('helperRest.checked'), type: 'date', value: row => (row.checked ? Date.parse(row.checked) || null : null)},
+  {key: 'active', label: t('helperFlow.active'), type: 'flag', value: row => (row.active ? 1 : 0)},
 ];
 
 // The date a row was checked, in the screens' one format (date.js).

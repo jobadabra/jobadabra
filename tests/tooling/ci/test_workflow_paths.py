@@ -215,6 +215,7 @@ class TheCheckedPaths(unittest.TestCase):
     `replay-files.mjs --check`, tests/test_pre_push_workflow_paths.py (the pin that the hook runs that loop) and the copy of the harness.yml check in test/harness/test-reach.test.mjs."""
 
     def test_catalogs_and_registrars_share_one_stable_trigger(self):
+        # Guard: release — future catalog and registrar changes must still start the recorded replay verdict.
         script = """import {pathEntries} from './tools/replay-files.mjs';
 const before = ['desktop/i18n/catalogs/en.js', 'desktop/i18n/index.js'];
 const after = [...before, 'desktop/i18n/catalogs/new-group/de.js', 'desktop/i18n/new-notices.js'];

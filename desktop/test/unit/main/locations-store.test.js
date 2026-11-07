@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {displayText} from '../../../i18n/display-values.js';
+import {setLocale, SUPPORTED_LOCALES} from '../../../i18n/index.js';
 import {createStorage} from '../../../lib/storage.js';
 import * as store from '../../../lib/store/index.js';
 import {moveLocations, recheckQueue, resolveLocation} from '../../../lib/locations-store.js';
@@ -65,7 +67,18 @@ test('resolving a conflict writes the pick, reads it back, clears the queue', as
 
 test('a write that does not read back stops with the copy named and the queue kept', async () => {
   const storage = await fresh();
-  await assert.rejects(moveLocations(storage, {ai: ai(ANSWER), backup: noBackup, write: () => {}}), /did not save/);
+  try {
+    for (const locale of SUPPORTED_LOCALES) {
+      setLocale(locale);
+      await assert.rejects(moveLocations(storage, {ai: ai(ANSWER), backup: noBackup, write: () => {}}), error => {
+        assert.match(error.message, /^Locations move: .* did not save; the Profile is untouched/);
+        const shown = displayText(error, error.message);
+        if (locale === 'en') assert.equal(shown, error.message);
+        else assert.notEqual(shown, error.message, locale);
+        return true;
+      });
+    }
+  } finally { setLocale('en'); }
 });
 
 // 17 Oct 2026: a queue saved before the place-name fix kept raw patterns, so the card still showed "\bz[uü]rich\b, "zug" ..." after the fix landed.

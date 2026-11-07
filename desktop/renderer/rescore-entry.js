@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The Jobs bar's "old scores" row (owner, 5 Nov 2026: "let's move this into this card"): the yellow notice "N jobs were scored using previous search settings" with its Re-score
 // button, now one more row of the summary card beside Cover letter and Fill your details. Free of the DOM so the tests can check it; the count is pages/rescore-run.js's (the one
 // state), the words rescore-words.js's (the same sentence as Strategy's notice), the button pages/focus-suggestions.js RUN.rescore. Guarded by test/unit/renderer/rescore-entry.test.js.
@@ -9,5 +11,5 @@ export const RESCORE_KEY = 'rescore:stale';
 export function rescoreEntries({count = 0, running = false} = {}) {
   if (!(count > 0) || running) return [];
   return [{kind: 'rescore', home: 'jobs', topic: 'applying', source: 'Old scores', evidence: [], answers: [], blocking: false, key: RESCORE_KEY,
-    title: noticeTitle(count), short: `${count} old score${count === 1 ? '' : 's'}`, detail: callHint, actions: [{label: pressLabel(count), do: 'rescore', count}]}];
+    title: noticeTitle(count), short: t('helperTail.oldScoreCount', {count}), detail: callHint, actions: [{label: pressLabel(count), do: 'rescore', count}]}];
 }

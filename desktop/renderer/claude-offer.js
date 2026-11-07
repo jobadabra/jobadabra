@@ -6,21 +6,13 @@ import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {cardOffer} from './claude-offer-view.js';
-import {icon} from './icons.js';
 import {resumeOffered} from './claude-help.js';
+import {actionButton as button} from './pages/action-row.js';
 import {shared} from './pages/shared.js';
 import {toastMessage} from './pages/startup.js';
 import {jobPlace} from './targets.js';
 
 const dismissed = new Set(), asking = new Set();   // sessions whose offer the person waved away / whose consent line is open
-
-function button(text, kind, run, glyph) {
-  const node = el('button', `${kind}${glyph ? ' with-icon' : ''}`);
-  if (glyph) node.append(icon(glyph));
-  node.append(el('span', '', text));
-  node.addEventListener('click', run);
-  return node;
-}
 
 // -> {buttons, notes}: what the card adds to its actions and to its text; `after` runs once Claude started (refresh the list, open the session).
 export function offerParts(item, {rerender, after = async () => {}}) {

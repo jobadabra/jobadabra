@@ -14,6 +14,7 @@ import {accountProgress, askOutdated, linkOffLine, pageLine, asksYou, leftForYou
 import {resumeOffered} from '../claude-help.js';
 import {offerParts} from '../claude-offer.js';
 import {$, show} from './core.js';
+import {actionButton, drawActions} from './action-row.js';
 import {shared} from './shared.js';
 import {initOptional, showOptional} from './session-optional.js';
 import {jobsChanged} from './jobs.js';
@@ -32,13 +33,7 @@ import {NO_PLACE, sessionPlace} from '../targets.js';
 // (it reloads a form page, so it must not sit in the row by default). Cleared when the page answers again.
 const panelDead = new Set();
 const hhmmOf = iso => displayDate(new Date(iso), {hour: '2-digit', minute: '2-digit'});
-function sessionButton(text, kind, run, glyph) {
-  const button = el('button', `${kind}${glyph ? ' with-icon' : ''}`);
-  if (glyph) button.append(icon(glyph));
-  button.append(el('span', '', text));
-  button.addEventListener('click', run);
-  return button;
-}
+const sessionButton = actionButton;
 // A row that shows one line and unfolds the rest on click (a › that turns).
 function foldRow(short, more) {
   const li = el('li', 'ss-check');
@@ -123,7 +118,7 @@ function renderSilent(item) {
   if (starting) connect.disabled = true;
   // Why (29 Oct 2026, owner: the Open Chrome press sent a connected extension to its settings page and never opened the job): with a job URL the card reopens that job's form; Open Chrome stays as the link that connects the extension.
   const reopen = reopenButton(item);
-  $('ss-actions').replaceChildren(...silentChromeButtons(item).map(kind => kind === 'reopen' ? reopen : connect));
+  drawActions($('ss-actions'), silentChromeButtons(item).map(kind => kind === 'reopen' ? reopen : connect));
 }
 // The first look is over and no tab is known for the session: it says so and offers the one way forward, the same reopen every closed-tab button uses.
 // The reopen of a session's form: the one button both the lost-tab card and the silent card (Chrome not reporting) draw.
@@ -135,7 +130,7 @@ function renderLost(item) {
   $('ss-decision').className = 'ss-next tone-warn';
   $('ss-next-title').textContent = t('pagesSession.tabMissing');
   $('ss-question').replaceChildren(el('p', 'rich-p', t('pagesSessionHelp.tabLost')));
-  $('ss-actions').replaceChildren(reopenButton(item));
+  drawActions($('ss-actions'), [reopenButton(item)]);
 }
 /** The stopped card's line in the person's language, from the origin the journey stored (lib/application-journey.js stopSource); a session saved before it had one reads neutral.
  * Why (#3410, owner 7 Nov 2026: "Yes, ship it (Recommended)" on the preview): only an explicit Stop press says "by you". */
@@ -336,7 +331,7 @@ export function renderNextStep(item) {
     const toIt = actions.find(button => toForm.test(button.textContent));
     if (toIt) { toIt.classList.replace('secondary', 'primary'); actions.splice(actions.indexOf(toIt), 1); actions.unshift(toIt); }
   }
-  $('ss-actions').replaceChildren(...actions);
+  drawActions($('ss-actions'), actions);
   renderCards(item, {checks, forYou, audit, done, review, asking, gone});
 }
 

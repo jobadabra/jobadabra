@@ -1,7 +1,10 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Logged activity: the green box that links to the job a run created or updated ("Job created — <title>", Open job
-// in Notion, Show in Jobs), in Recent activity's run detail and the Log box's result. No imports, so it's tested
+// in Notion, Show in Jobs), in Recent activity's run detail and the Log box's result. Pure, so it's tested
 // without a window (test/unit/main/job-link.test.js); jobActions builds its buttons only when called.
-export const jobHeadline = job => `${job?.created ? 'Job created' : 'Job updated'}${job?.title ? ` — ${job.title}` : ''}`;
+/** Name the job activity while preserving the original job title. */
+export const jobHeadline = job => `${job?.created ? t('helperTail.jobCreated') : t('helperTail.jobUpdated')}${job?.title ? ` — ${job.title}` : ''}`;
 
 const bare = id => String(id || '').replace(/-/g, '');
 // A run read from Notion knows only the job's page (its Application relation) until its log is read: its title and
@@ -16,8 +19,8 @@ export function withListJob(job, jobs = []) {
 // (the Jobs list filtered to it), the second only when the job's key is known.
 export function jobLinkActions(job, {openNotion, show}) {
   return [
-    {id: 'notion', label: 'Open job in Notion ↗', run: event => openNotion(job.url, !!(event?.metaKey || event?.ctrlKey))},
-    ...(job.jobUrl ? [{id: 'jobs', label: 'Show in Jobs', run: () => show(job)}] : []),
+    {id: 'notion', label: t('helperTail.openJobNotion'), run: event => openNotion(job.url, !!(event?.metaKey || event?.ctrlKey))},
+    ...(job.jobUrl ? [{id: 'jobs', label: t('helperTail.showJobs'), run: () => show(job)}] : []),
   ];
 }
 

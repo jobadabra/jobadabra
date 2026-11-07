@@ -1,6 +1,8 @@
 // Free AI (owner, 16 Oct 2026): the engine for people with no key. The app's Anthropic SDKs (JS and the Python pipeline) are pointed at our website
 // (ANTHROPIC_BASE_URL), which answers with an open model on Cloudflare Workers AI (site/src/free-ai.js). The "API key" is JPF1.<install>.<token>,
 // the install's own token for purpose "ai"; no account, no founder key, nothing on this Mac from Cloudflare. An own key saved later → back to Anthropic directly.
+import '../i18n/setup-notices.js';
+import {withDisplay} from '../i18n/display-values.js';
 import {installId} from './pool-share.js';
 import {siteOffForUser} from './recipes.js';
 import {installToken} from './install-token.js';
@@ -30,13 +32,13 @@ export async function start(storage, env = process.env, fetcher = globalThis.fet
   // would, and the website is never asked. Never set for a user (the variable alone, without JOBADABRA_E2E, changes nothing).
   const relayKey = env.JOBADABRA_E2E && isFreeKey(env.JOBADABRA_E2E_FREE_AI_KEY) ? env.JOBADABRA_E2E_FREE_AI_KEY : '';
   if (relayKey) storage.setSecret('ANTHROPIC_API_KEY', relayKey);
-  else if (siteOffForUser()) return {ok: false, error: 'This is not a regular install, so Free AI is not asked.'};
+  else if (siteOffForUser()) return withDisplay({ok: false, error: 'This is not a regular install, so Free AI is not asked.'}, 'setupNotice.freeNotRegular');
   else try {
     const install = installId(storage);
     const token = await installToken(storage, install, 'ai', {base: FREE_BASE.replace(/\/api\/ai$/, ''), fetcher});
-    if (!token) return {ok: false, error: 'Free AI could not start just now. Check your connection and try again.'};
+    if (!token) return withDisplay({ok: false, error: 'Free AI could not start just now. Check your connection and try again.'}, 'setupNotice.freeStartFailed');
     storage.setSecret('ANTHROPIC_API_KEY', `JPF1.${install}.${token}`);
-  } catch { return {ok: false, error: 'Free AI could not start just now. Check your connection and try again.'}; }
+  } catch { return withDisplay({ok: false, error: 'Free AI could not start just now. Check your connection and try again.'}, 'setupNotice.freeStartFailed'); }
   storage.saveSettings({aiFree: true, aiTrial: false, aiEngine: 'api'});   // Free IS the Anthropic API engine: an earlier Codex/OpenAI/CLI pick must not stay in charge
   apply(storage.settings(), env);
   return {ok: true};

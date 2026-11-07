@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The one sentence a person ticks to be e-mailed (CV step, Always on, Settings → Notifications), and what the app says when it cannot save the tick.
 // Why (5 Nov 2026, owner): "I shouldn't start sending him email right away. We should still get the user consent": the sentence is stored with the date, so it must be one string.
 // Guard: test/unit/main/email-consent.test.js.
@@ -5,7 +7,7 @@
 export const WHAT = 'E-mail me when an application needs me or a strong match comes in.';
 export const REST = 'We only write when something needs you. Stop any time.';
 export const LINE = `${WHAT} ${REST}`;
-export const FAILED = 'Could not save it just now. You can turn it on in Settings → Notifications.';
+export const FAILED = t('helperTail.consentSaveFailed');
 
 // The CV step's own switch (owner, 6 Nov 2026: "that switch on the CV, it should be for enabling the email notifications", on by default): label + note as shown, no promotional line. `<address>` stands for the one found in the CV;
 // the stored consent keeps this sentence word for word (where: 'cv'). Always on and Settings keep LINE.
