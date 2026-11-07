@@ -35,7 +35,8 @@ class TheEighteenPersonas(unittest.TestCase):
             self.assertEqual(len(values), len(set(values)), f'two personas share a {key}')
 
     def test_the_workflow_runs_exactly_one_press_per_persona(self):
-        matrix = re.search(r'^\s+persona: \[([\d, ]+)\]', WORKFLOW, re.M)
+        # the night's list: the default of the by-hand `personas` input (ps 2/6, 7 Nov 2026), so a night with no input runs all of them
+        matrix = re.search(r"^\s+persona: \$\{\{ fromJSON\(inputs\.personas \|\| '\[([\d, ]+)\]'\) \}\}", WORKFLOW, re.M)
         self.assertIsNotNone(matrix, 'the matrix line was not found')
         self.assertEqual([int(n) for n in matrix.group(1).split(',')], list(range(1, len(gate.PERSONAS) + 1)))
         self.assertIn('max-parallel: 1', WORKFLOW, 'one press at a time: a slow call is the AI\'s, never another press\'s queue')
