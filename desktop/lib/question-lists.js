@@ -52,9 +52,8 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   const {verdicts: judged, usage} = await verdicts.ensure(storage, [...formRows, ...saved, ...answered].map(row => row.question), {answered, facts: baseFacts, ai});
   // A form question that is a Your details fact's own label is that fact, as the AI's 'details' verdict would say: no AI, no verdict, and it was listed here as a bare label as well as in Fill your details (#3514).
   // Only when that drawer asks it today or the fact already holds a value; a fact the daily pick has not reached yet stays listed here, its only ask (never in neither list). The AI's own verdict wins.
-  const sameLabel = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  const askedHere = new Set([...items.filter(row => row.details?.kind === 'missing').map(row => row.details.fact), ...baseFacts.filter(fact => fact.value).map(fact => fact.label)].map(sameLabel));
-  const ownFacts = Object.fromEntries(formRows.filter(row => askedHere.has(sameLabel(factLabelled(row.question)?.label))).map(row => [keyOf(row.question), {reuse: 'details', fact: factLabelled(row.question).label}]));
+  const askedHere = new Set([...items.filter(row => row.details?.kind === 'missing').map(row => row.details.fact), ...baseFacts.filter(fact => fact.value).map(fact => fact.label)].map(keyOf));
+  const ownFacts = Object.fromEntries(formRows.map(row => [row, factLabelled(row.question)]).filter(([, fact]) => fact && askedHere.has(keyOf(fact.label))).map(([row, fact]) => [keyOf(row.question), {reuse: 'details', fact: fact.label}]));
   const {shown, hidden, fromDetails} = visibleQuestions(formRows, {...ownFacts, ...judged}, {open: baseFacts.filter(fact => !fact.value).map(fact => fact.label)});
   const kept = await keptFormats(storage, shown.filter(row => !row.details), ai);   // the kinds of what is shown only: a hidden row costs no call
   const known = verdicts.cached(storage), formatted = rows => rows.map(row => (row.details ? row : withFormat([row], kept)[0]));
