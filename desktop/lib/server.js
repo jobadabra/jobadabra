@@ -11,7 +11,7 @@ import {POST_CORS, tokenRequest, jsonHeaders, jsonBody} from './server-http.js';
 import {handleExtension} from '../shared/app-core/extension.js';
 import {log as appLog} from './log.js';
 import {timed, noteConnection} from './ext-http-timing.js';
-import {listen, portFrom, DEFAULT_PORT} from './server-listen.js';
+import {listen, portFrom, DEFAULT_PORT, testWithoutOwnPort} from './server-listen.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile, noteExtensionId} from './server-env.js';
@@ -30,7 +30,9 @@ export {setNotifier, setWindowSignal, setAppliedHook, setRenderer, setTabsHandle
   setErrorWatcher, setFormIssueHandler, setOpenHandler, setAccountCodeHandler, setStoppedHandler, setStartedHandler, requestStop} from './server-hooks.js';
 
 export {DEFAULT_PORT, portFrom};   // defined in server-listen.js (the demo's card needs the port without this file's imports; the test-app guard reads portFrom)
-export const PORT = portFrom();
+// Why (7 Nov 2026, a test of mine sent fake check-ins to the owner's real app): a test process with no port of its own gets PORT 0, which nothing listens on, so a test that talks to `server.PORT`
+// fails instead of reaching the app on 47111 (listen() already keeps such a process off the port; this closes the client side). Guard: test/guards/safety/real-world-off-under-test.test.js.
+export const PORT = testWithoutOwnPort() ? 0 : portFrom();
 // The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
 // The first is the copy loaded from the app's folder (the public "key" in extension/manifest.json); the second the Chrome Web Store item's
 // (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/unit/extension/extension-store-id.test.js.

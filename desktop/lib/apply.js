@@ -4,6 +4,7 @@
 //     Claude in Chrome; it follows a job board's Apply to the employer's site, signs up there if asked,
 //     and fills every page. Recommended when Claude Code is installed; needs Notion kits.
 import {spawn} from 'node:child_process';
+import {guarded} from './real-world.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -101,9 +102,12 @@ function reuseOpenTab(session, focus, log) {
   return true;
 }
 
+/** The default launcher of a form tab (`open -a Chrome` …): under `node --test` it throws, so a test that reaches it unfaked fails instead of opening the owner's Chrome (lib/real-world.js). */
+export const openBrowser = guarded(spawn, 'open a form tab');
+
 // One job, from its row: open it in Chrome with the fill marker, so the extension fills the form by itself.
 // `reuse`: the job's own form (not another address, like a confirmation link) goes to its open tab instead of a second one.
-export function openOne(url, {session = '', open = spawn, log = appLog, reuse = false, focus = openFormTab} = {}) {
+export function openOne(url, {session = '', open = openBrowser, log = appLog, reuse = false, focus = openFormTab} = {}) {
   if (!/^https?:\/\//.test(url || '')) return {ok: false, error: 'This job has no link to open.'};
   if (!session) return {ok: false, error: 'A form tab is opened for a session; none was given.'};   // every tab the app opens is owned from its first page (spec 2026-10-12-tab-owned.md)
   if (reuse && reuseOpenTab(session, focus, log)) return {ok: true, reused: true};
@@ -124,7 +128,7 @@ const releaseEndedRuns = (release, urls) => Promise.all(urls.map(job => release(
 // The Apply button: the form tab, and a form session for it in the Applying page (the job goes to Applying in Notion, like an
 // Apply with Claude session). The session shows what is left in the form from the extension's reports and moves to Applied
 // when the extension sees the submit. Pressing Apply on a job that already has an open form session reopens only the tab.
-export async function applyOne(storage, url, details = {}, {open = spawn, term = terminals, run = pipeline.run, id = () => crypto.randomUUID().slice(0, 8), focus = openFormTab, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
+export async function applyOne(storage, url, details = {}, {open = openBrowser, term = terminals, run = pipeline.run, id = () => crypto.randomUUID().slice(0, 8), focus = openFormTab, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   if (!/^https?:\/\//.test(url || '')) return {ok: false, error: 'This job has no link to open.'};
   await releaseEndedRuns(release, [url]);   // an earlier hidden-browser run that ended without an answer leaves the list first: this press is a session of its own (7 Nov 2026, owner's HYPE session)
   const fresh = !term.list().some(s => s.url === url.split('#')[0] && s.kind === 'form' && !s.outcome);
@@ -274,7 +278,7 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 
 // `prepare` drafts a missing kit (the app's prepareKit): with it, a batch with fewer than N ready jobs drafts the rest first.
 // mode 'background' (Background or Full automation, applyMode 'fill'/'auto'): the chosen jobs go to `enqueue` (the hidden browser's queue, lib/background-apply-controller.js).
-export async function start(storage, {n, mode, applyMode}, open = spawn, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
+export async function start(storage, {n, mode, applyMode}, open = openBrowser, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
   if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report});
   let {jobs} = await list(storage);

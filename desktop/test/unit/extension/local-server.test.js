@@ -9,6 +9,7 @@ import * as server from '../../../lib/server.js';
 import * as terminals from '../../../lib/terminals.js';
 import {logText} from '../../log-text.mjs';
 import {strictSetSecret} from '../../strict-set-secret.js';
+import {testWithoutOwnPort} from '../../../lib/server-listen.js';
 
 function fakePty() {
   const spawned = [];
@@ -171,5 +172,5 @@ test('the local port is 47111 (the extension has it built in) unless JOBADABRA_P
   assert.equal(server.portFrom({}), 47111);
   assert.equal(server.portFrom({JOBADABRA_PORT: '48123'}), 48123);
   for (const bad of ['', 'abc', '0', '65536', '-5', '47111x', '4711.5', ' 48123']) assert.equal(server.portFrom({JOBADABRA_PORT: bad}), 47111, `"${bad}" is ignored`);
-  assert.equal(server.PORT, server.portFrom(process.env), 'the server uses the same rule');
+  assert.equal(server.PORT, testWithoutOwnPort(process.env) ? 0 : server.portFrom(process.env), 'the server uses the same rule; a test with no port of its own gets 0, never 47111 (guards/safety/real-world-off-under-test.test.js)');
 });

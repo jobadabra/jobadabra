@@ -73,7 +73,7 @@ export function registerApplyHandlers(ctx) {
     if (gate) return gate;
     const blocked = await allowanceBlock() || needExtension();
     if (blocked) return blocked;
-    const result = await (DEMO ? apply.openOne(url, {session: 'demo'}) : apply.applyOne(storage, url, details || {}));
+    const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)
     if (result?.ok) track('apply_started', {how: 'extension'});
     return result;
   });
