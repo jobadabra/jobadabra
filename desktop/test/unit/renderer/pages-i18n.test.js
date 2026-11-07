@@ -170,3 +170,25 @@ test('every explicit page catalog reference resolves in English', () => {
     }
   }
 });
+
+test('unnamed field summaries keep the marker consumed by proposal-pick while the title translates', () => {
+  const source = fs.readFileSync(new URL('renderer/pages/session-needs.js', root), 'utf8');
+  const body = source.match(/export (function emptyFields[\s\S]*?\n\})/)[1];
+  const states = new Map([['localized-summary', {left: 3, pending: []}]]);
+  const emptyFields = new Function('reviewStates', 'agreeLabel', 'sameQuestion', 't', `${body}; return emptyFields;`)(states, () => '', () => false, t);
+  try {
+    setLocale('de');
+    assert.deepEqual(emptyFields({id: 'localized-summary'}, []), ['3 more fields']);
+    assert.match(source, /titleLine\(more \? t\('pagesDynamicSessionReports\.m350'/);
+    assert.equal(t('pagesDynamicSessionReports.m350', {unnamed: 3, count: 3}), '3 weitere Felder');
+  } finally { setLocale('en'); }
+});
+
+test('the nonrunning form summary translates its complete remaining count', () => {
+  const source = fs.readFileSync(new URL('renderer/pages/session-form-card.js', root), 'utf8');
+  assert.match(source, /pagesFinalCopy\.remainingFields/);
+  try {
+    setLocale('ru');
+    assert.equal(t('pagesFinalCopy.remainingFields', {count: 3}), 'осталось: 3');
+  } finally { setLocale('en'); }
+});

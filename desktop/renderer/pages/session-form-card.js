@@ -114,7 +114,7 @@ export function showFormCard(item, state) {
   const start = filled.find(field => field.at)?.at || 0;
   $('ss-form-more').hidden = !filled.length && !left.length;
   const leftCount = Math.max(left.length, state.left);
-  const leftText = leftCount ? `${leftCount} ${item.status === 'running' ? t('pagesAuditThird.a178') : 'left'}` : '';
+  const leftText = leftCount ? t('pagesFinalCopy.remainingFields', {count: leftCount}) : '';
   $('ss-form-summary').textContent = filled.length ? t('pagesDynamicSessionReports.m340', {"length": filled.length, "value3": leftText ? t('pagesDynamicSessionReports.andFields', {fields: leftText}) : '', count: filled.length})
     : t('pagesDynamicSessionReports.m341', {"leftText": leftText});
   // Who filled it: you (after the fill was over) or the fill (Claude, the extension); the time only when the app saw it.

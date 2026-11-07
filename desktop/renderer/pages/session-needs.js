@@ -197,7 +197,8 @@ export function emptyFields(item, needs) {
   const listed = needs.flatMap(need => [agreeLabel(need), need.question, need.text]).filter(Boolean);
   const left = (state?.pending || state?.missing || []).filter(label => label && !listed.some(text => sameQuestion(text, label)));
   const unnamed = (state?.left || 0) - (state?.pending || state?.missing || []).length;
-  if (unnamed > 0) left.push(t('pagesDynamicSessionReports.m350', {"unnamed": unnamed, count: unnamed}));
+  // This synthetic label is an internal marker recognized by proposal-pick; translate only its visible title.
+  if (unnamed > 0) left.push(`${unnamed} more field${unnamed === 1 ? '' : 's'}`);
   return left;
 }
 // Text we drafted from the person's facts and they have not read yet: its own words, in place of a reason it was left (extension/panel-written.js).
@@ -207,7 +208,7 @@ export function emptyRow(label, item) {
   const li = el('li', 'ss-need is-empty'), body = el('div', 'ss-need-body'), actions = el('div', 'ss-need-actions');
   li.dataset.empty = label;
   const more = /^\d+ more fields?$/.test(label), name = label.replace(/^\s*\*\s*|\s*\*\s*$/g, '');
-  body.append(titleLine(name), el('span', 'ss-need-desc small', more
+  body.append(titleLine(more ? t('pagesDynamicSessionReports.m350', {unnamed: Number.parseInt(label, 10), count: Number.parseInt(label, 10)}) : name), el('span', 'ss-need-desc small', more
     ? t('pagesDynamicSessionReports.stillEmpty')
     : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || t('pagesSession.sectionEmpty')));   // why the fill left it (reason-words.js)
   actions.append(more ? smallButton(t('pagesSession.openForm'), 'secondary is-review', event => openForm(item, event.currentTarget))
