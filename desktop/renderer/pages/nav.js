@@ -125,7 +125,7 @@ const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L
  * Why (5 Nov 2026, arch-check no-circular): an event, not an import of jobs.js / startup.js, which import this page; pages/focus-suggestions.js answers it with the row's own handler. */
 /** The Sessions header's two ways out, as ⌘K entries: Stop the extension (always) and Cancel all applications (only while one is unfinished). */
 function addSessionExits(addNode) {
-  // Why (#2512, Gitar; owner 18 Oct 2026: an entry brings you to a button, never presses it; 5 Nov 2026: the header shows Stop no more): this entry (always listed) opens Sessions and shows Stop for 30 s, then the usual reveal focuses it.
+  // Why (7 Nov 2026, #2512): only the palette label/hint is localized; choosing this entry still opens Sessions and reveals Stop for 30 s, never presses it (owner, 18 Oct 2026; header reveal, 5 Nov 2026).
   addNode($('ss-stop'), 'Sessions', finalText('nav1'), finalText('nav2'), 'stop freeze halt panic extension chrome everything cancel emergency', () => {
     openView('sessions'); shared.stopPinnedUntil = Date.now() + 30 * 1000; $('ss-stop').hidden = false;
     setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early

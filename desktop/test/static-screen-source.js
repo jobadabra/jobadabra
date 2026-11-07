@@ -4,6 +4,7 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {callArgs, topLevel} from './toast-scan.js';
 import '../i18n/screens-pages.js';
+import {finalText} from '../i18n/final-pages.js';
 import {getLocale, setLocale, t} from '../i18n/index.js';
 
 const renderer = fileURLToPath(new URL('../renderer/', import.meta.url));
@@ -25,7 +26,7 @@ function bindingValues(argument) {
   return values;
 }
 function translationCall(source, match) {
-  const from = match.index + 2;
+  const from = match.index + match[0].indexOf('(') + 1;
   try {
     const args = callArgs(source, from), parts = topLevel(args);
     if (parts.length > 2) return null;
@@ -33,12 +34,15 @@ function translationCall(source, match) {
   } catch { return null; }   // unsupported source remains unchanged so its existing guards still see it
 }
 function translationCalls(source) {
-  return [...source.matchAll(/\bt\((['"])(pages[A-Z][\w]*\.[\w]+)\1/g)]
-    .map(match => translationCall(source, match)).filter(Boolean);
+  const calls = [...source.matchAll(/\bt\((['"])(pages[A-Z][\w]*\.[\w]+)\1/g)]
+    .map(match => translationCall(source, match));
+  calls.push(...[...source.matchAll(/\bfinalText\((['"])([\w]+)\1/g)]
+    .map(match => ({...translationCall(source, match), final: true})));
+  return calls.filter(call => call?.key);
 }
 function translatedBinding(source, call) {
-  const english = t(call.key);
-  if (english === call.key || !call.values) return source.slice(call.start, call.end);
+  const english = call.final ? finalText(call.key) : t(call.key);
+  if (english === call.key || english === `finalPages.${call.key}` || !call.values) return source.slice(call.start, call.end);
   let used = false;
   const pieces = english.split(/(\{\w+\})/g).map(piece => {
     const expression = call.values.get(piece.slice(1, -1));
@@ -60,7 +64,7 @@ function englishBindings(source, calls) {
 
 // Resolve explicit bundled page bindings; unknown keys and unsupported shapes remain source text.
 function englishPageSource(source) {
-  if (!/\bt\(/.test(source)) return source;
+  if (!/\b(?:t|finalText)\(/.test(source)) return source;
   const locale = getLocale();
   setLocale('en');
   try { return englishBindings(source, translationCalls(source)); }

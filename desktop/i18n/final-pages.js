@@ -1,7 +1,7 @@
+// Register remaining primary-page display keys and explicit aliases to existing catalog messages.
 import './screens.js';
 import './screens-pages.js';
 import './screens-helpers.js';
-// Register the remaining primary-page display catalog without modifying canonical model or document values.
 import {number} from './format.js';
 import {registerMessages, t} from './index.js';
 import en from './catalogs/final-pages/en.js';

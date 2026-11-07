@@ -19,6 +19,6 @@ Tier 1: named logic/consumer tests plus focused fictional demo views. Failing-fi
 - [x] Confirm shared-file ownership and write the implementation plan. (proof: docs/superpowers/plans/2026-11-07-desktop-pages-final.md)
 - [x] Add failing focused tests for the confirmed display leaks and invariants. (proof: desktop/test/unit/renderer/final-pages-copy.test.js)
 - [x] Implement keyed readers and seven catalogs across the bounded page families. (proof: desktop/renderer/final-pages-copy.js)
-- [ ] Pass named tests, catalog/placeholder/plural and required changed-source checks.
+- [x] Pass named tests, catalog/placeholder/plural and required changed-source checks. (proof: 55 focused + 48 source guard tests; changed-file ESLint; 20 workflow-path tests)
 - [ ] Render/open light and dark before-after previews and obtain owner approval.
 - [ ] Ship own PR, address CI/review feedback and report exact-head READY.

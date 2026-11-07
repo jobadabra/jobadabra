@@ -78,12 +78,12 @@ test('notification palette actual callbacks localize their copy and retain actio
 
 test('actual interview picker suffix and review dialog headings localize without changing raw job/review content', async () => {
   const {install} = await import('../../tiny-dom.js'); const body = install();
-  window.pilot.state = async () => ({settings: {}});
+  globalThis.window.pilot.state = async () => ({settings: {}});
   const {jobName} = await import('../../../renderer/pages/interview-lists.js');
   const {showReview,reviewParts} = await import('../../../renderer/interview-review-view.js');
   const {el,pill} = await import('../../../renderer/components.js');
   const nodes = Object.fromEntries(['review-title','review-facts','review-body','review-dialog'].map(id => {
-    const node = document.createElement('div'); node.id = id; body.append(node); return [id,node];
+    const node = globalThis.document.createElement('div'); node.id = id; body.append(node); return [id,node];
   })); nodes['review-dialog'].showModal = () => {};
   const job = {company:'Raw <Company> {name}',title:'Raw Role',status:'applied'};
   const record = {title:'Raw review',review:'## Strengths\nRaw AI prose {name}\n## Raw custom heading\nRaw other prose'};

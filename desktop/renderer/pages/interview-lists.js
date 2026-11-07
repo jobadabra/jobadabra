@@ -14,6 +14,7 @@ import {jobOfApplication} from '../jobs-view.js';
 const iv = window.pilot.interviews;
 export const plainId = id => String(id || '').replace(/-/g, '');
 export const jobList = () => (Array.isArray(shared.allJobs) ? shared.allJobs : []);  // unset while the job list loads
+/** Show a supplied job name with a localized applied marker, preserving the employer, title and status value. */
 export const jobName = job => job.status === 'applied' ? finalText('appliedSuffix', {job: `${job.company} — ${job.title}`}) : `${job.company} — ${job.title}`;
 // An interview's job: by the store's id (job.page_id, every store) or its Notion page (renderer/jobs-view.js jobOfApplication).
 export const jobForPage = pageId => jobOfApplication(jobList(), pageId);
