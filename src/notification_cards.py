@@ -9,25 +9,28 @@ def _spec(value):
     return ('raw', '' if value is None else str(value))
 
 
-def _text(spec, locale):
+def _text(spec, locale, canonical=False):
     kind, *parts = spec
+    if kind == 'override':
+        return parts[0] if canonical else _text(parts[1], locale)
     if kind == 'raw':
         return parts[0]
     if kind == 'words':
         key, pairs, count = parts
-        return language.render(key, dict(pairs), locale=locale, count=count)
+        values = {name: _text(value[1], locale, canonical) if value[0] == 'part' else value[1] for name, value in pairs}
+        return language.render(key, values, locale=locale, count=count)
     if kind == 'escape':
-        return escape(_text(parts[0], locale))
+        return escape(_text(parts[0], locale, canonical))
     if kind == 'join':
-        return parts[0].join(_text(part, locale) for part in parts[1])
+        return parts[0].join(_text(part, locale, canonical) for part in parts[1])
     if kind == 'dot':
-        return tgcard.dot(*[_text(part, locale) for part in parts[0]])
+        return tgcard.dot(*[_text(part, locale, canonical) for part in parts[0]])
     if kind == 'block':
-        return tgcard.block(_text(parts[0], locale), *[_text(part, locale) for part in parts[1]])
+        return tgcard.block(_text(parts[0], locale, canonical), *[_text(part, locale, canonical) for part in parts[1]])
     if kind == 'fact':
-        return tgcard.fact(_text(parts[0], locale), _text(parts[1], locale))
+        return tgcard.fact(_text(parts[0], locale, canonical), _text(parts[1], locale, canonical))
     title, subtitle, blocks, emoji, footer = parts
-    return tgcard.card(_text(title, locale), _text(subtitle, locale), [_text(part, locale) for part in blocks], emoji, _text(footer, locale))
+    return tgcard.card(_text(title, locale, canonical), _text(subtitle, locale, canonical), [_text(part, locale, canonical) for part in blocks], emoji, _text(footer, locale, canonical))
 
 
 def _render(snapshot, locale):
@@ -39,7 +42,7 @@ def _render(snapshot, locale):
 
 
 def _message(spec, buttons=()):
-    return language.projected_text(_text(spec, 'en'), (spec, buttons), _render)
+    return language.projected_text(_text(spec, 'en', canonical=True), (spec, buttons), _render)
 
 
 def raw(value):
@@ -48,8 +51,10 @@ def raw(value):
 
 
 def words(key, variables=None, *, count=None):
-    """Choose a bundled authored key with immutable raw named values; the existing caller still owns escaping."""
-    return _message(('words', key, tuple((variables or {}).items()), count))
+    """Choose a bundled key with immutable raw values or captured authored parts; the caller still owns escaping."""
+    pairs = tuple((name, ('part', _spec(value)) if getattr(value, '_renderer', None) is _render else ('value', value))
+                  for name, value in (variables or {}).items())
+    return _message(('words', key, pairs, count))
 
 
 def safe(value):
@@ -92,16 +97,18 @@ def with_buttons(message, markup, keys):
 
 def canonical(text, presentation):
     """Attach a known authored presentation tree to an existing canonical string without changing any serialized bytes."""
-    return language.projected_text(text, presentation._snapshot, _render)
+    return _message(('override', str(text), _spec(presentation)))
 
 
 def delivery(message, markup=None, *, locale=None):
     """Explicit end-user producer boundary: project a tagged message; ordinary operational text yields no sender overrides."""
     locale = language.language() if locale is None else locale
-    if locale not in language.LOCALES or locale == 'en':
+    if locale not in language.LOCALES:
         return {}
     projected = language.projection(message, locale=locale)
     if projected is None:
         return {}
     text, buttons = projected
+    if locale == 'en' and text == str(message) and (buttons is None or buttons == markup):
+        return {}
     return {'display_text': text, 'display_reply_markup': markup if buttons is None else buttons}

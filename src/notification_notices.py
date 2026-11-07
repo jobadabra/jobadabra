@@ -13,7 +13,7 @@ def health_message(facts):
 
 def failure_message(kind, mode, url):
     """Tag the known install-user workflow failure case; raw mode/URL values are never parsed, translated or sent here."""
-    if kind not in ('run', 'mail'):
+    if kind not in ('run', 'mail', 'scout'):
         raise ValueError('unknown end-user workflow failure kind')
     return cards.words('failure.' + kind, {'mode': mode, 'url': url})
 

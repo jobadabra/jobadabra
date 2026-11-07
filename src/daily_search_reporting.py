@@ -117,7 +117,7 @@ def after_delivery(args, stores, run, spend, token, chat_id, datetime):
         try:
             run['insight'] = {}
             with store.connect(args.db) as db:
-                print(insights.run(db, stores, send=lambda text, markup: telegram.deliver(text, token, chat_id, markup),
+                print(insights.run(db, stores, send=lambda text, markup: telegram.deliver(text, token, chat_id, markup, **cards.delivery(text, markup)),
                                    stats=run['insight']))
         except Exception as error:
             print(f'Warning: insight skipped: {type(error).__name__}: {error}')

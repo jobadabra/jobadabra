@@ -5,6 +5,7 @@ import hashlib
 import re
 from datetime import date
 
+from .. import notification_cards as cards
 from ..notion.ledger import REPLY
 from ..stores import rules
 from . import added, mail, opportunity
@@ -49,12 +50,11 @@ def _last_message(stores, app, item, source, kind):
         return ''
     day = date.fromisoformat(at[:10])
     said = f'{day:%a} {day.day} {day:%b}'
-    return (f'Your last message was on {said}: saved so Focus can remind you to follow up.' if who == 'you'
-            else f'Their last message was on {said}, waiting for your answer: saved for Focus.')
+    return cards.words('inbox.yourLast' if who == 'you' else 'inbox.theirLast', {'day': said})
 
 
 def _check_line(check):
-    return f" ⚠️ Check: {'; '.join(check)}." if check else ''
+    return cards.join('', [cards.words('inbox.checkPrefix'), cards.join('; ', check), '.']) if check else ''
 
 
 def _rich(on_new, app, item, text):

@@ -11,8 +11,9 @@ from pathlib import Path
 import unittest
 from types import SimpleNamespace
 from unittest import mock
-from src.ai import rejection, budget, insights, mail_lines, mail_calendar
-from src import notify, notification_notices as notices, scout, doctor, trial, focus, notification_language, notification_cards as cards
+from src.ai import cost, interviews_blocks, rejection, budget, insights, mail_lines, mail_calendar
+from src.stores import memory
+from src import ledger_store, daily_helpers, daily_modes, notify, notification_notices as notices, scout, doctor, trial, focus, notification_language, notification_cards as cards
 
 
 class NotificationCardsTests(unittest.TestCase):
@@ -40,6 +41,12 @@ class NotificationCardsTests(unittest.TestCase):
             self.assertIn(notification_language.render('focus.title', locale=locale), shown)
             self.assertIsNone(markup)
         self.assertEqual(cards.delivery('Operational CI English'), {})
+        nested = cards.safe(cards.canonical('Canonical <record> {count}', cards.words('focus.title')))
+        self.assertEqual(str(nested), 'Canonical &lt;record&gt; {count}')
+        self.assertEqual(json.dumps(nested), json.dumps(str(nested)))
+        for locale in notification_language.LOCALES:
+            shown, _ = notification_language.projection(nested, locale=locale)
+            self.assertEqual(shown, escape(notification_language.render('focus.title', locale=locale)))
 
     def test_actual_focus_reminder_projects_with_canonical_records_and_fixed_conditions(self):
         now = datetime(2026, 11, 7, 12, tzinfo=timezone.utc)
@@ -222,7 +229,7 @@ class NotificationCardsTests(unittest.TestCase):
 
     def test_actual_workflow_failure_bodies_use_fake_curl_and_preserve_gate_and_fallback(self):
         root = Path(__file__).resolve().parents[3]
-        for workflow, step, kind in [('daily', 'Report failure to Telegram', 'run'), ('mail', 'Report failure', 'mail')]:
+        for workflow, step, kind in [('daily', 'Report failure to Telegram', 'run'), ('mail', 'Report failure', 'mail'), ('scout', 'Report failure to Telegram', 'scout')]:
             source = (root / '.github' / 'workflows' / f'{workflow}.yml').read_text()
             body = source.split(f'      - name: {step}\n', 1)[1].split('        run: |\n', 1)[1].split('      - name:', 1)[0]
             script = '\n'.join(line[10:] for line in body.splitlines() if line.startswith('          '))
@@ -251,6 +258,169 @@ class NotificationCardsTests(unittest.TestCase):
                 result = subprocess.run(['/bin/bash', '-e', '-c', script], cwd=root, env={**env, 'JOBADABRA_NOTIFY': 'off'}, capture_output=True, text=True, timeout=10)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertFalse(capture.exists())
+
+
+    def test_actual_apply_command_callback_preserves_action_records_and_raw_values(self):
+        job = {'title': 'Raw <Role> {count}', 'company': 'A&B <Labs>', 'url': 'https://fictional.test/job'}
+        found = {'id': 'fictional-id'}
+        stores = SimpleNamespace(name='sqlite', link=lambda page: '')
+        for locale in notification_language.LOCALES:
+            sent = []
+            with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': locale}, clear=True), \
+                    mock.patch.object(daily_helpers, 'find_job', return_value=job), \
+                    mock.patch.object(daily_helpers.rules, 'mark', return_value=(found, 'updated')) as mark, \
+                    mock.patch('src.ledger_store.add_event') as event, mock.patch('src.ledger_store.record') as record, \
+                    mock.patch.object(daily_helpers, 'queue_mail_check') as queued, \
+                    mock.patch.object(daily_modes.store, 'connect'), \
+                    mock.patch('src.telegram.credentials', return_value=('fake-token', '17')), \
+                    mock.patch('src.telegram.deliver', side_effect=lambda *args, **kwargs: sent.append((args, kwargs))), \
+                    mock.patch('builtins.print'):
+                self.assertEqual(daily_modes.apply_mode(SimpleNamespace(job='code', action='applied', send=True, db='fake-db'), stores), 0)
+            self.assertEqual(mark.call_args.args, (stores, job, 'Applied'))
+            self.assertEqual(event.call_args.args, (stores, found, 'Applied', 'Telegram'))
+            self.assertEqual(record.call_args.args, (stores, job['url']))
+            self.assertEqual(queued.call_count, 1)
+            canonical = str(sent[0][0][0])
+            self.assertIn('Marked applied', canonical)
+            shown = sent[0][1].get('display_text', canonical)
+            self.assertIn(notification_language.render('apply.marked', locale=locale), shown)
+            self.assertIn('Raw &lt;Role&gt; {count}', shown)
+            self.assertIn('A&amp;B &lt;Labs&gt;', shown)
+
+
+    def test_actual_interview_command_callback_preserves_raw_review_and_urgent_flag(self):
+        review = {'company': 'A&B <Labs>', 'round': 'Raw <Round> {count}', 'summary': 'Raw <Summary>',
+                  'questions': [{'quality': 'weak', 'topic': 'Raw <Topic>', 'better': 'Raw <Better>', 'question': 'Raw question'}],
+                  'strengths': ['Raw <Strong>'], 'practice': ['Raw <Practice>'], 'next_step': 'Raw <Step>'}
+        app = {'company': 'A&B <Labs>', 'title': 'Raw role', 'via': '', 'url': 'https://fictional.test/job'}
+        merged = {'filled': [{'label': 'Raw <label>', 'value': 'Raw <value>'}], 'differs': [{'label': 'Raw <label2>', 'value': 'Raw <call>', 'current': 'Raw <record>'}]}
+        before = json.dumps(merged)
+        message = interviews_blocks.message(review, app, 'https://fictional.test/?a=1&b=2', .123, truncated=True, merged=merged)
+        self.assertEqual(json.dumps(merged), before)
+        for locale in notification_language.LOCALES:
+            sent, logged = [], []
+            def fake_review(**kwargs):
+                self.assertEqual(kwargs['note'], 'raw note')
+                kwargs['send'](message)
+                return 'Interview analysed again: canonical result'
+            with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': locale}, clear=True), \
+                    mock.patch('src.telegram.credentials', return_value=('fake-token', '17')), \
+                    mock.patch('src.telegram.deliver', side_effect=lambda *args, **kwargs: sent.append((args, kwargs))), \
+                    mock.patch.object(daily_modes.interviews, 'run', side_effect=fake_review), \
+                    mock.patch.object(daily_modes, 'log_ai_run', side_effect=lambda stores, run, args: logged.append(run)), \
+                    mock.patch('builtins.print'):
+                args = SimpleNamespace(mode='interview', file=None, send=True, note='raw note', job=app['url'], interview=None)
+                self.assertEqual(daily_modes.interview_mode(args, SimpleNamespace(name='sqlite')), 0)
+            self.assertEqual(logged[0]['headline'], 'Interview analysed again: canonical result')
+            self.assertTrue(sent[0][1]['urgent'])
+            shown = sent[0][1].get('display_text', str(message))
+            self.assertIn(notification_language.render('interview.title', locale=locale), shown)
+            self.assertIn(notification_language.render('interview.truncated', locale=locale), shown)
+            self.assertIn('Raw &lt;Summary&gt;', shown)
+            self.assertIn('Raw &lt;Better&gt;', shown)
+            self.assertIn('Raw &lt;call&gt;', shown)
+            self.assertIn('Raw &lt;record&gt;', shown)
+            self.assertIn('$0.123', shown)
+
+
+    def test_explicit_cost_pause_keeps_raw_error_and_unprojected_diagnostics(self):
+        for cli in (False, True):
+            error = RuntimeError('Raw <Provider> {count}')
+            error.ai_limit = cli
+            for kind, what in [('interview', 'the interview review'), ('insight', 'the insight report'), ('weekly', 'the weekly report')]:
+                canonical = cost.limit_message(error, what)
+                message = cost.limit_message(error, what, notice=kind)
+                self.assertEqual(str(message), canonical)
+                for locale in notification_language.LOCALES:
+                    shown, _ = notification_language.projection(message, locale=locale)
+                    self.assertIn(notification_language.render('limit.' + ('cli.' if cli else 'api.') + kind, {'error': escape(str(error)), 'retry': ''}, locale=locale), shown)
+                    if cli:
+                        self.assertIn('Raw &lt;Provider&gt; {count}', shown)
+            with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': 'ru'}):
+                self.assertEqual(cards.delivery(cost.limit_message(error, 'Operational check')), {})
+
+
+    def test_actual_track_link_callback_keeps_store_fields_and_canonical_log(self):
+        stores = memory.open_store()
+        meta = {'title': 'Raw <Role> {count}', 'company': 'A&B <Labs>', 'description': 'Raw posting text'}
+        sent, logs = [], []
+        args = SimpleNamespace(mode='add', job='https://fictional.test/job', note='2026-11-07', job_title=None,
+            job_company=None, job_text=None, origin=None, from_app=False, send=True, db='fake-db')
+        with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': 'ru'}, clear=True), \
+                mock.patch.object(daily_modes.ledger, 'page_meta', return_value=dict(meta)), \
+                mock.patch.object(daily_modes.added, 'process', return_value=None), \
+                mock.patch.object(ledger_store, 'record', return_value=(None, 'recorded')), \
+                mock.patch.object(daily_modes.store, 'connect'), mock.patch.object(daily_modes.store, 'track_applied') as track, \
+                mock.patch.object(daily_modes, 'queue_mail_check'), mock.patch.object(daily_modes, 'log_store_job'), \
+                mock.patch.object(daily_modes, 'log_ai_run', side_effect=lambda stores, run, args, **kwargs: logs.append(run)), \
+                mock.patch('src.telegram.credentials', return_value=('fake-token', '17')), \
+                mock.patch('src.telegram.deliver', side_effect=lambda *args, **kwargs: sent.append((args, kwargs))), \
+                mock.patch('builtins.print'):
+            self.assertEqual(daily_modes.add_link_mode(args, stores), 0)
+        row = stores.applications.get(args.job)
+        self.assertEqual((row['stage'], row['title'], row['company'], row['applied_on']), ('Applied', meta['title'], meta['company'], '2026-11-07'))
+        self.assertEqual(track.call_args.args[1], args.job)
+        self.assertIn('Tracked:', logs[0]['headline'])
+        message = sent[0][0][0]
+        for locale in notification_language.LOCALES:
+            shown, _ = notification_language.projection(message, locale=locale)
+            self.assertIn('Raw &lt;Role&gt; {count}', shown)
+            self.assertIn('A&amp;B &lt;Labs&gt;', shown)
+            self.assertIn('2026-11-07', shown)
+        self.assertNotEqual(sent[0][1]['display_text'], str(message))
+
+
+    def test_actual_pasted_message_receipt_keeps_state_ai_reads_and_english_records(self):
+        from tests.unit.ai.test_inbox import Inbox, row, job, reading, Client, NOW
+        from tests.mail_fakes import stores_for
+        tracker = Inbox([row('p1', 'https://fictional.test/1', 'Raw <Role>', 'A&B <Labs>')],
+                        [job('https://fictional.test/1', 'Raw <Role>', 'A&B <Labs>', 'Applied')])
+        client = Client(reading('Rejected', 0, summary='Raw <AI> {count}'))
+        message = daily_modes.inbox.log(stores_for(tracker), text='Fictional rejection message: thank you for applying; we will not proceed with your application.', client=client, now=NOW)
+        self.assertEqual(len(client.calls), 1)
+        self.assertIn(('p1', {'Stage': {'select': {'name': 'Rejected'}}}), tracker.updates)
+        self.assertTrue(str(message).startswith('❌ Updated:'))
+        sent = []
+        with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': 'ru'}, clear=True), \
+                mock.patch.object(daily_modes.inbox, 'log', return_value=message), \
+                mock.patch.object(daily_modes.added, 'hook', return_value=None), \
+                mock.patch.object(daily_modes, 'queue_mail_check'), mock.patch.object(daily_modes, 'log_ai_run'), \
+                mock.patch('src.telegram.credentials', return_value=('fake-token', '17')), \
+                mock.patch('src.telegram.deliver', side_effect=lambda *args, **kwargs: sent.append((args, kwargs))), \
+                mock.patch('builtins.print'):
+            args = SimpleNamespace(mode='add', file=None, from_app=False, send=True, propose=False, reading=None,
+                                   note='Fictional rejection message', action=None, target=None, db='fake-db')
+            self.assertEqual(daily_modes.add_message_mode(args, SimpleNamespace(name='sqlite')), 0)
+        canonical = sent[0][0][0]
+        self.assertEqual(str(canonical), escape(str(message)))
+        for locale in notification_language.LOCALES:
+            shown, _ = notification_language.projection(canonical, locale=locale)
+            self.assertIn('A&amp;B &lt;Labs&gt;', shown)
+            self.assertNotIn('A&amp;amp;B', shown)
+            self.assertIn('Raw &lt;AI&gt; {count}', shown)
+        self.assertEqual(len(client.calls), 1)
+
+
+    def test_all_literal_authored_producer_keys_are_registered(self):
+        import ast
+        root = Path(__file__).resolve().parents[3]
+        files = ['src/focus.py', 'src/trial.py', 'src/doctor.py', 'src/notification_notices.py', 'src/daily_helpers.py',
+                 'src/daily_modes.py', 'src/ledger_store.py', 'src/scout.py', 'src/ai/insights.py', 'src/ai/insights_text.py',
+                 'src/ai/interviews_blocks.py', 'src/ai/mail.py', 'src/ai/mail_calendar.py', 'src/ai/mail_inbox.py',
+                 'src/ai/mail_leads.py', 'src/ai/mail_lines.py', 'src/ai/rejection.py', 'src/ai/inbox.py',
+                 'src/ai/inbox_events.py', 'src/ai/inbox_fields.py', 'src/ai/inbox_notion.py', 'src/ai/opportunity.py']
+        def keys_of(node):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                yield node.value
+            elif isinstance(node, ast.IfExp):
+                yield from keys_of(node.body)
+                yield from keys_of(node.orelse)
+        for file in files:
+            for call in ast.walk(ast.parse((root / file).read_text())):
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == 'words' and call.args:
+                    for key in keys_of(call.args[0]):
+                        for locale in notification_language.LOCALES:
+                            self.assertNotEqual(notification_language.render(key, locale=locale), key, (file, locale, key))
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ import json
 import re
 from datetime import date, datetime, timezone
 
+from . import notification_cards as cards
 from .ai import kit as kit_module
 from .notion import ledger
 from .notion.ledger_record import RECORD_HEADING, build_fields, cv_version, record_markdown
@@ -189,7 +190,7 @@ def add_application(stores, url, *, applied=None, approx=False, channel=None, vi
     existed = bool(app)
     if app:
         if app['stage'] in ledger.OUTCOME_STAGES and app['stage'] != 'Applied':
-            return f'Already tracked at {app["stage"]}: {app["title"]}'
+            return cards.words('receipt.alreadyAt', {'stage': app['stage'], 'title': app['title']})
         fields.update({name: value for name, value in columns.items()
                        if name == 'fit' or app.get(name) in (None, '')})  # what you set stays
         app = stores.applications.update(app['id'], fields)
@@ -209,11 +210,14 @@ def add_application(stores, url, *, applied=None, approx=False, channel=None, vi
     try:
         _, recorded = record(stores, url, posting=lambda _url: meta)
     except Exception as error:  # noqa: BLE001
-        recorded = f'record skipped: {type(error).__name__}'
+        recorded = cards.words('receipt.recordSkipped', {'error': type(error).__name__})
     title = app.get('title') or meta.get('title') or url
     company = app.get('company') or meta.get('company') or '?'
-    when = ('on or before ' if approx else '') + applied.isoformat()
-    return f'Tracked: {title} — {company}, applied {when} ({channel}{f" via {via}" if via else ""}); {recorded}'
+    when = cards.join('', [cards.words('receipt.onOrBefore') if approx else '', applied.isoformat()])
+    recorded_view = (cards.words('receipt.recorded' if recorded == 'recorded' else 'receipt.exists')
+                     if recorded in ('recorded', 'exists') else recorded)
+    return cards.words('receipt.tracked', {'title': title, 'company': company, 'when': when, 'channel': channel,
+        'via': cards.words('receipt.via', {'via': via}) if via else '', 'recorded': recorded_view})
 
 
 # ---------- the scheduled checks ----------
