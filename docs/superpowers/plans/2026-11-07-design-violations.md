@@ -10,6 +10,6 @@ Sorted (dv, 7 Nov 2026): clipped is the checker's, not the screens': all 132 are
 - [ ] 3/5 One primary button per card: only the first row's main action is primary (Focus, suggestions)
 - [ ] 4/5 No ghost/link buttons: History, Hide, Show more, full report, Technical log, Review setup, table company links
 - [ ] 5/5 Strategy cards' gap on the scale (`.review .card` 10px → 12px)
-- [x] Owner's decision, 7 Nov 2026 "Yes, 640 (Recommended)": the check's narrow width 380 → 640 (the real minimum window), in this PR
+- [x] Owner's decision, 7 Nov 2026 "Yes, 640 (Recommended)": the check's narrow width 380 → 640 (the real minimum window), in this PR (proof: desktop/scripts/design-check.mjs)
 
 Every UI PR: a Preview side-by-side (before | after, light + dark, 640 + 1100) and the owner's yes before the UI commit; its body carries the measured table, counts only go down.
