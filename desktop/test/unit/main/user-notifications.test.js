@@ -132,7 +132,7 @@ test('actual waiting batches retain count plural categories and grouping across 
     if (!count) {assert.equal(settings.waitingMessageAt, undefined); continue;}
     assert.ok(sent[0].subject.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${sent[0].subject}`);
     assert.equal(sent[0].text.split('\n').length, count); assert.doesNotMatch(sent[0].subject, /\{/);
-    if (locale === 'ru') assert.match(sent[0].subject, count === 1 || count === 21 ? /заявка ждёт/ : count === 2 || count === 1234 ? /заявки ждут/ : /заявок ждут/);
+    if (locale === 'ru') assert.match(sent[0].subject, [1, 21].includes(count) ? /заявка ждёт/ : [2, 1234].includes(count) ? /заявки ждут/ : /заявок ждут/);
   }
 });
 
