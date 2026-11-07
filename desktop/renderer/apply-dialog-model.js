@@ -43,12 +43,16 @@ export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', 
 }
 
 /**
- * What the dialog does with a finished start: a queued batch is a toast to Sessions and the dialog closes (owner, 28 Oct 2026); anything else stays in the dialog as its error.
- * -> {close: true, toast: {title, body, target, tone}} | {close: false, error}
+ * What the dialog does with a finished start: fully started batches close to the Sessions toast; batches with attempted-job outcomes stay open with rows and an optional browser offer.
+ * -> {close: true, toast: {title, body, target, tone}} | {close: false, error, outcomes?, browserOffer?}
  */
 export function applyDialogOutcome(result) {
-  if (result?.ok) return {close: true, toast: {title: t('helperFlow.applyingStarted'), body: result.message, target: {view: 'sessions'}, tone: 'good'}};
-  return {close: false, error: result?.error || t('helperFlow.applyStartFallback')};
+  // Why (7 Nov 2026, #3424): a fully-started batch uses the existing Sessions toast; inline inspection is for skipped or failed jobs.
+  const toast = {title: t('helperFlow.applyingStarted'), body: result?.message, target: {view: 'sessions'}, tone: 'good'};
+  if (result?.ok && result.outcomes?.length && result.outcomes.every(item => item.status === 'started')) return {close: true, toast};
+  if (result?.outcomes?.length) return {close: false, error: result.ok ? result.message : result.error || t('helperFlow.applyStartFallback'), outcomes: result.outcomes, ...(result.code === 'BACKGROUND_BROWSER_MISSING' ? {browserOffer: true} : {})};
+  if (result?.ok) return {close: true, toast};
+  return {close: false, error: result?.error || t('helperFlow.applyStartFallback'), ...(result?.code === 'BACKGROUND_BROWSER_MISSING' ? {browserOffer: true} : {})};
 }
 
 /** One start at a time: a second press while the first batch starts is ignored; a later deliberate start is not. */

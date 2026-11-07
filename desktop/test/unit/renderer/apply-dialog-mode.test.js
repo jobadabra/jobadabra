@@ -97,6 +97,19 @@ test('a start whose call fails says so and gives the button back', () => {
   assert.match(page, /busy: saving \|\| gate\.isStarting\(\)/, 'the cards are off while a batch starts');
 });
 
+test('batch outcome inspection uses the solid button and the Jobs page drawer callback', () => {
+  const page = read('renderer/pages/jobs-apply.js');
+  assert.match(page, /el\('button', 'secondary small-button', 'Inspect job/);
+  assert.match(page, /openJob\(\{url: outcome\.url, title: outcome\.title \|\| '', company: outcome\.company \|\| ''\}, 'application'\)/);
+  assert.doesNotMatch(page, /from '\.\/job-panel\.js'/, 'Jobs injects the drawer opener to avoid a page dependency cycle');
+  assert.match(read('renderer/pages/jobs.js'), /wireApplyDialog\(\{startedApplying, openJob: openJobPanel\}\)/);
+});
+
+test('fully refused batches keep the error tone when they also have per-job outcomes', () => {
+  assert.match(read('renderer/pages/jobs-apply.js'), /message\('apply-message', outcome\.error, result\.ok \? undefined : 'error'\)/);
+  assert.match(read('renderer/pages/jobs-apply.js'), /'not-started': \['Not started', 'bad'\]/);
+});
+
 test('Start sends the validated count; the main process runs the saved mode\'s own runner', async () => {
   const registered = register('check');
   const result = await applyDialogStart({count: '3', start: args => registered.handles.get('apply')({}, args)});
@@ -181,6 +194,24 @@ test('a queued batch is a toast to Sessions and the dialog closes; a refusal sta
   assert.deepEqual(applyDialogOutcome({ok: false, error: 'Download the browser first.'}), {close: false, error: 'Download the browser first.'});
   assert.equal(applyDialogOutcome(undefined).close, false);
   assert.match(applyDialogOutcome({}).error, /Try again/);
+});
+
+test('a partial batch with per-job outcomes stays open so skipped and failed jobs remain inspectable', () => {
+  const outcomes = [
+    {url: 'https://jobs.example.test/1', title: 'Fictional Pilot', company: 'Example Air', status: 'started', reason: ''},
+    {url: 'https://jobs.example.test/2', title: 'Fictional First Officer', company: 'Example Air', status: 'ineligible', reason: 'Required credential missing.'},
+    {url: 'https://jobs.example.test/3', title: 'Fictional Captain', company: 'Example Air', status: 'failed', reason: 'The application kit could not be saved.'},
+  ];
+  assert.deepEqual(applyDialogOutcome({ok: true, message: '1 application queued.', outcomes}), {close: false, error: '1 application queued.', outcomes});
+  assert.deepEqual(applyDialogOutcome({ok: false, error: 'No applications were started.', outcomes}), {close: false, error: 'No applications were started.', outcomes});
+  assert.equal(applyDialogOutcome({ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: 'Download Jobadabra\'s browser first.', outcomes}).browserOffer, true, 'the download offer survives when failed rows are shown');
+});
+
+test('an all-started batch still closes to the Sessions toast when its outcome list has no skips or failures', () => {
+  const result = applyDialogOutcome({ok: true, message: '2 applications queued.', outcomes: [
+    {url: 'https://jobs.example.test/1', status: 'started'}, {url: 'https://jobs.example.test/2', status: 'started'},
+  ]});
+  assert.deepEqual(result, {close: true, toast: {title: 'Applying started', body: '2 applications queued.', target: {view: 'sessions'}, tone: 'good'}});
 });
 
 test('while a batch starts the dialog shows its strip and no spinner row: the strip is in the markup, hidden until then, and the page never asks for a waiting message', () => {

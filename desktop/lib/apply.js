@@ -56,21 +56,25 @@ export function pickUntailored(jobs, n) {
 // Why (5 Nov 2026, review): a job stopped for its posting stays the best missing one, so without spare tries every batch would stop on it.
 const SPARE_TRIES = 3;
 
-// Draft the missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
-// A job the engine stopped uses no try, up to SPARE_TRIES. Returns how many are ready now, and the first reason a kit was refused ('' when none gave one).
+// Draft missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
+// A job the engine stopped uses no try, up to SPARE_TRIES. Returns the prepared count, the first preparation error and one outcome per attempted job.
 export async function draftMissing(jobs, shortfall, prepare, report = () => {}) {
   let done = 0, why = '', tries = 0;
+  const outcomes = [];
   const missing = pickMissing(jobs, shortfall + SPARE_TRIES);
   const wanted = Math.min(shortfall, missing.length);
   for (const job of missing) {
     if (tries >= shortfall) break;
     report(`Preparing application ${tries + 1} of ${wanted}: ${job.title} · ${job.company} (about 20 s each)…`);
-    const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(() => ({ok: false}));
+    // Why (7 Nov 2026, #3424): a rejected prepare is still one job's failure; keep its message with that outcome.
+    const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
     if (result.ok) done++;
     else why ||= result.error || '';
+    // Why (7 Nov 2026, #3424): drafting can succeed while eligibility prevents a job from starting; preserve that result for the batch summary.
+    outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: result.ineligible ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: result.ineligible || result.error || ''});
     if (!result.stopped) tries++;
   }
-  return {done, why};
+  return {done, why, outcomes};
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
@@ -286,18 +290,26 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report});
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n);
-  let drafted = 0, why = '';
+  let drafted = 0, why = '', outcomes = [];
   if (chosen.length < n && prepare) {
     const result = await draftMissing(jobs, n - chosen.length, prepare, report);
     drafted = result.done;
     why = result.why;
+    outcomes = result.outcomes;
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
   }
-  if (!chosen.length) return {ok: false, error: why || nothingStarted(jobs)};
-  // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
-  if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
+  if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs)), ...(outcomes.length ? {outcomes} : {})};
+  // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue outcomes join kit-preparation results for the dialog.
+  if (mode === 'background') {
+    const result = enqueue ? await enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
+    const queued = result.outcomes || [], queuedUrls = new Set(queued.map(item => item.url));
+    const combined = [...queued, ...outcomes.filter(item => !queuedUrls.has(item.url))];
+    return combined.length ? {...result, outcomes: combined} : result;
+  }
   await releaseEndedRuns(release, chosen.map(job => job.url));   // ended hidden-browser runs leave the list first, as in applyOne (7 Nov 2026, review of the owner's HYPE fix)
-  return openBatchInChrome(chosen, drafted, {open, focus});
+  const result = openBatchInChrome(chosen, drafted, {open, focus});
+  if (result.ok) outcomes = outcomes.map(item => item.status === 'prepared' ? {...item, status: 'started'} : item);
+  return outcomes.length ? {...result, outcomes} : result;
 }
 
 
