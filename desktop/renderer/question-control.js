@@ -2,27 +2,31 @@
 // options (a segmented choice when they are few and short, else a menu), several picks, a date or an amount (renderer/question-control-values.js). Built from the shared parts (.segmented, a native select): no CSS
 // of its own. Used by Jobs → Answer once and Profile → Application answers; the value it gives is the meaning the fill maps to each form's own options.
 // Guarded by test/unit/renderer/question-control.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {COMPOSITE, KINDS, KIND_NAMES, joinPicks, picksOf} from './question-kind.js';
 import {isAsked} from './work-eligibility.js';
 import {compositeControl} from './question-control-composite.js';
 import {amountControl, dateControl, refresh, savedAs, segmented} from './question-control-values.js';
 
+const KIND_TEXT = {text: 'helperMore.kindText', long_text: 'helperMore.kindLong', single: 'helperMore.kindSingle', multi: 'helperMore.kindMulti', yes_no: 'helperMore.kindYesNo', date: 'helperMore.kindDate', amount: 'helperMore.amount', salary: 'helperMore.kindSalary', duration: 'helperMore.kindDuration', link: 'helperMore.kindLink', per_country: 'helperMore.kindCountry', language: 'helperMore.kindLanguage', range: 'helperMore.kindRange'};
+
 const FEW = 3, SHORT = 18, FEW_PICKS = 6;
 const segmentedOk = (options, most) => options.length <= most && options.every(option => option.length <= SHORT);
 
 // format: {control, options}; value: the saved answer ('' = none); onChange(value). -> the control node (its .value reads the current answer).
-export function answerControl(format, value, onChange, {placeholder = 'Your answer', ariaLabel = 'Answer', chips = false} = {}) {
+export function answerControl(format, value, onChange, {placeholder = t('helperMore.yourAnswer'), ariaLabel = t('helperMore.answer'), chips = false} = {}) {
   const control = format?.control || 'text', options = format?.options || [];
   let current = String(value ?? '');
   const set = next => { current = next; node.value = next; onChange(next); };
   let node;
   if (control === 'yes_no' || (control === 'single' && segmentedOk(options, chips ? FEW_PICKS : FEW))) {
     const isOn = option => option.toLowerCase() === current.toLowerCase();
-    node = segmented(options, isOn, (option, group) => { set(isOn(option) ? '' : option); refresh(group, isOn); }, ariaLabel);
+    node = segmented(options, isOn, (option, group) => { set(isOn(option) ? '' : option); refresh(group, isOn); }, ariaLabel, control === 'yes_no' ? option => t(option === 'Yes' ? 'helperMore.answerYes' : 'helperMore.answerNo') : undefined);
   } else if (control === 'single') {
     node = Object.assign(el('select', ''), {ariaLabel});
-    node.append(new Option('Choose…', ''));
+    node.append(new Option(t('helperMore.choose'), ''));
     // An answer saved in other words (typed before the kind was known) stays as a choice: nothing is lost.
     if (current && !options.some(option => option.toLowerCase() === current.toLowerCase())) node.append(new Option(current, current));
     for (const option of options) node.append(new Option(option, option));
@@ -70,8 +74,8 @@ export function answerControl(format, value, onChange, {placeholder = 'Your answ
 
 // "Answer as": the person changes a question's kind (it is written to the store with the question). onPick(kind).
 export function kindPicker(kind, onPick) {
-  const node = Object.assign(el('select', ''), {ariaLabel: 'Answer as'});
-  for (const each of KINDS) node.append(new Option(KIND_NAMES[each], each));
+  const node = Object.assign(el('select', ''), {ariaLabel: t('helperMore.answerAs')});
+  for (const each of KINDS) node.append(new Option(t(KIND_TEXT[each]) || KIND_NAMES[each], each));
   node.value = KINDS.includes(kind) ? kind : 'text';
   node.addEventListener('change', () => onPick(node.value));
   return node;
