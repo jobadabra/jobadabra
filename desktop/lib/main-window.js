@@ -99,7 +99,10 @@ export function createMainWindow(ctx) {
         // JOBADABRA_SMOKE_RELOAD_JS: reload the window (⌘R), then run these steps (a bug that shows only after a reload).
         if (process.env.JOBADABRA_SMOKE_RELOAD_JS) {
           await new Promise(resolve => { win.window.webContents.once('did-finish-load', resolve); win.window.webContents.reload(); });
-          await whenBooted(win.window.webContents);   // the reloaded app, started again (a state, not 1.5 s)
+          try { await whenBooted(win.window.webContents); } catch (error) {   // the reloaded app, started again (a state, not 1.5 s); a hang is reported like the first start's (Gitar on #3419)
+            fs.writeFileSync(`${process.env.JOBADABRA_SMOKE}.json`, JSON.stringify({error: `after the reload: ${error.message}`}));
+            app.quit(); return;
+          }
           await win.window.webContents.executeJavaScript(process.env.JOBADABRA_SMOKE_RELOAD_JS);
           await new Promise(resolve => setTimeout(resolve, 400));
         }
