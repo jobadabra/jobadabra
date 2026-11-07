@@ -30,10 +30,12 @@ test('the three-a-day e2e runs start the scheduled plan; an unknown cron starts 
   assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *']);
 });
 
-test('the ten-minute cron starts the PR verdict sweep on every tick without dispatch inputs', () => {
+// Why (7 Nov 2026, gl, owner: "Redrawn on a timer too"): the Gitar label sweep rides the same tick, so a label is at most ten minutes behind Gitar's comment.
+test('the ten-minute cron starts the PR verdict sweep and the Gitar label sweep on every tick without dispatch inputs', () => {
   for (const minute of ['00', '10', '20', '30', '40', '50']) {
     const jobs = jobsFor('*/10 * * * *', at(`2026-10-31T00:${minute}:00Z`));
     assert.deepEqual(jobs.filter(job => job.workflow === 'pr-verdict.yml'), [{workflow: 'pr-verdict.yml'}], minute);
+    assert.deepEqual(jobs.filter(job => job.workflow === 'pr-labels.yml'), [{workflow: 'pr-labels.yml'}], minute);
   }
 });
 
@@ -57,7 +59,7 @@ test('the night burn-in starts five full e2e passes at five different UTC times,
     if (night.length) started.push([now.toISOString().slice(11, 16), night]);
   }
   assert.deepEqual(started.map(([time, jobs]) => [time, jobs[0].inputs.night_pass, jobs.length]), [['01:30', '3/5', 1], ['03:30', '4/5', 1], ['05:30', '5/5', 1], ['21:00', '1/5', 1], ['23:30', '2/5', 1]]);
-  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-10-31T21:00:00Z')), [{workflow: 'pr-verdict.yml'}, {workflow: 'e2e.yml', inputs: {night_pass: '1/5'}}], 'the verdict sweep keeps its tick');
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-10-31T21:00:00Z')), [{workflow: 'pr-verdict.yml'}, {workflow: 'pr-labels.yml'}, {workflow: 'e2e.yml', inputs: {night_pass: '1/5'}}], 'the verdict and label sweeps keep their tick');
   assert.equal(nightPassAt(new Date('2026-10-31T21:10:00Z')), '', 'a tick next to a slot is not a pass');
   assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'], 'no 4th trigger');
 });
@@ -69,7 +71,7 @@ test('the AI user agent starts once a day at 04:40 UTC, alone on its tick, on th
     if (jobs.length) started.push([now.toISOString().slice(11, 16), jobs]);
   }
   assert.deepEqual(started, [[AGENT_SLOT, [{workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}}]]]);
-  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-03T04:40:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'ai-user-agents.yml'], 'no stats start, no night pass shares its tick');
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-03T04:40:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'pr-labels.yml', 'ai-user-agents.yml'], 'no stats start, no night pass shares its tick');
   assert.ok(!NIGHT_SLOTS.includes(AGENT_SLOT));
 });
 
@@ -112,11 +114,11 @@ test('failed verdict sweep ticks fail the cron without paging and still allow st
     const calls = [], told = [], reported = [];
     const dispatch = async (env, inputs, workflow) => {
       calls.push(workflow);
-      if (workflow === 'pr-verdict.yml') throw new Error('GitHub dispatch failed: 403 nope');
+      if (workflow === 'pr-verdict.yml' || workflow === 'pr-labels.yml') throw new Error('GitHub dispatch failed: 403 nope');
     };
     await assert.rejects(runScheduled({cron: '*/10 * * * *', scheduledTime: Date.parse(`2026-10-31T00:${minute}:00Z`)}, {},
-      {dispatch, notify: async text => told.push(text), report: async text => reported.push(text)}), /scheduled start failed: pr-verdict\.yml: GitHub dispatch failed: 403/);
-    assert.deepEqual(calls, minute === '40' ? ['pr-verdict.yml', 'self-heal-stats.yml'] : ['pr-verdict.yml']);
+      {dispatch, notify: async text => told.push(text), report: async text => reported.push(text)}), /scheduled start failed: pr-verdict\.yml: GitHub dispatch failed: 403 nope; pr-labels\.yml: GitHub dispatch failed: 403/);
+    assert.deepEqual(calls, minute === '40' ? ['pr-verdict.yml', 'pr-labels.yml', 'self-heal-stats.yml'] : ['pr-verdict.yml', 'pr-labels.yml']);
     assert.deepEqual(told, [], 'a sustained sweep failure must not page Telegram 144 times a day');
     assert.deepEqual(reported, [], 'the ten-minute sweep must not churn the watchdog issue');
   }
@@ -130,5 +132,5 @@ test('the Microsoft Store submission starts once a week, Monday 07:00 UTC, on th
   }
   assert.deepEqual(started, ['2026-11-02T07:00:00.000Z', '2026-11-09T07:00:00.000Z']);
   assert.equal(STORE_WEEKLY.day, 1);
-  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-09T07:00:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'msix-store-weekly.yml'], 'alone on its tick');
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-09T07:00:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'pr-labels.yml', 'msix-store-weekly.yml'], 'alone on its tick but for the two PR sweeps');
 });

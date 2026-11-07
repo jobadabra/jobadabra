@@ -6,8 +6,8 @@ import {CRONS, jobsFor, TITLES} from './scheduler.js';
 
 export const LABEL = 'schedule-watchdog';
 export const TITLE = '⏰ On-time starts missing';
-// Why (5 Nov 2026): the hourly Store review check is not watched either; a missed tick delays one message by an hour, and the daily starts already show a dead Worker.
-const UNWATCHED = ['pr-verdict.yml', 'msix-store-watch.yml'];
+// Why (5 Nov 2026; 7 Nov 2026 for the ten-minute Gitar label sweep, which is not watched either: a missed tick leaves a label stale for one more tick): the hourly Store review check is not watched either; a missed tick delays one message by an hour, and the daily starts already show a dead Worker.
+const UNWATCHED = ['pr-verdict.yml', 'pr-labels.yml', 'msix-store-watch.yml'];
 export const GRACE_MIN = 30;     // a slot younger than this is not judged yet (the run may still be starting)
 export const WINDOW_MIN = 10;    // a Worker start appears within seconds of its slot; a hand start in the same ten minutes is accepted too
 

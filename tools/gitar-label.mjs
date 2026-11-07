@@ -3,13 +3,16 @@
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
-// Design (30 Oct 2026, owner chose "run only on review + push"): the labels change only on a push (the head moved: "reviewing" until Gitar judges it), on Gitar
-// submitting or dismissing a review, posting a new comment or its check starting or ending (its verdict; 5 Nov 2026, #3176), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
-// them used up the repo's REST budget, and the runs that hit the limit left labels wrong in silence (#2516, 29 Oct 2026). Reads are one GraphQL call.
-// Usage (workflow .github/workflows/pr-labels.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
+// Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
+//   States: changes requested | approved with suggestions | approved | reviewing (no verdict for the current head), plus the gray "working" mark a session sets.
+//   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
+//   Moments that run it: a push, open or reopen of the PR, Gitar's review or new comment, EVERY push to main (all open PRs), and the Worker's ten-minute tick (all open PRs;
+//   app-core/src/scheduler.js). Gitar closes a finding by only EDITING its comment, which starts nothing, so the tick is what bounds the label's age: at most ten minutes stale.
+//   Gone with it: the check_run trigger and its PR lookup, and the wait for Gitar's comment to catch up with its review (up to 2 minutes of re-reads, then a red run): a read that is
+//   a few seconds early is corrected by the next moment. Reads are one GraphQL call per PR; a label is written only when it differs (#2516: 151 runs an hour once spent the REST budget).
+// Usage (workflow .github/workflows/pr-labels.yml): node tools/gitar-label.mjs <pr-number> | all
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
 import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 export const LABELS = {
@@ -30,18 +33,6 @@ export function verdictKind(body) {
   if (/approved with suggestions/i.test(text)) return 'suggestions';
   if (/approved/i.test(text)) return 'approved';
   return 'changes';   // Why (28 Oct 2026): an unknown Code Review state is not an approval; red is the safe side
-}
-
-/** A run started by Gitar's review: re-reads (one GraphQL call each) until Gitar's comment was updated at or after the review, at most `tries` times; -> the last read.
- * Why (30 Oct 2026, measured on 60 PRs): Gitar submits its review first and edits the verdict line of its comment up to 7 s later, and only the comment tells
- * "approved with suggestions" (an empty COMMENTED review) from a plain comment batch. */
-export function awaitComment(read, since, reread, {tries = 12, pause = () => {}} = {}) {
-  let current = read;
-  for (let tried = 0; since && tried < tries && !(current.review && Date.parse(current.review.updated_at) >= Date.parse(since)); tried++) {
-    pause();
-    current = reread();
-  }
-  return current;
 }
 
 /** The label name to hold: Gitar's verdict if its comment was written at or after the head commit, else null (a stale approval never stays green). */
@@ -106,10 +97,8 @@ export function converge(once, max = 3) {
   return rounds;
 }
 
-function main(pr, since = null) {
-  // Why (30 Oct 2026): only the first round waits for Gitar's comment; a converge re-read after a write reads at once.
-  let wait = since;
-  converge(() => { const changed = syncOnce(pr, wait); wait = null; return changed; });
+function main(pr) {
+  converge(() => syncOnce(pr));
 }
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
@@ -155,27 +144,12 @@ function readPrByRest(repo, pr, info) {
   return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
 }
 
-/** The read a run labels from: `first`, or after waiting for Gitar's comment to catch up with the review `since` (awaitComment).
- * Why (30 Oct 2026, Gitar on #2525): a thread too long for the GraphQL read is read by paged REST, about 6 calls; 13 such reads in one wait would spend the
- * budget this design protects, so that rare path reads once. */
-export function readForRun(first, since, reread, opts) {
-  return first.viaRest ? first : awaitComment(first, since, reread, opts);
-}
-
 const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
-const WAIT_MS = Number(process.env.GITAR_LABEL_WAIT_MS || 10000);   // between re-reads while Gitar's comment catches up with its review (12 tries: 2 minutes)
-const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, WAIT_MS);
 
-/** One read of the verdict, head and labels (after Gitar's comment caught up with the review `since`, if any), then the writes it needs; -> true when it changed a label. */
-function syncOnce(pr, since) {
+/** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
+function syncOnce(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const read = readForRun(readLive(repo, pr), since, () => readLive(repo, pr), {pause});
-  // Why (30 Oct 2026, Gitar on #2525): the comment trailed the review by at most 7 s on the last 60 PRs; one still behind after 2 minutes may hold a stale
-  // verdict, so the run goes red (a re-run corrects it) instead of a green run with a wrong label.
-  if (since && !(read.review && Date.parse(read.review.updated_at) >= Date.parse(since))) {
-    console.log(`::error::gitar-label: Gitar's comment on #${pr} did not catch up with its review in 12 reads; labelled from what it read, re-run to correct it`);
-    process.exitCode = 1;
-  }
+  const read = readLive(repo, pr);
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
   const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});
@@ -197,29 +171,25 @@ function markWorking(pr) {
   main(pr); // Reconcile a push or verdict that arrived while marking work.
 }
 
-/** The review time a run must wait for: Gitar's review's submitted_at on a pull_request_review event, else null (a push, a new Gitar comment, its check or a by-hand run reads at once). */
-export function reviewSince(event, payload) {
-  return event === 'pull_request_review' && payload?.review?.user?.login === 'gitar-bot[bot]' ? payload.review.submitted_at || null : null;
-}
-
-/** The open PR whose head is the commit of Gitar's check, or null. Why (5 Nov 2026): the check_run payload's own PR list isn't relied on: REST listed one on 3 of 40 checks, and a commit's PRs are one call. `run` is the gh call. */
-export function prOfCheck(repo, payload, run = gh) {
-  const sha = payload?.check_run?.head_sha;
-  if (!sha) return null;
-  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/pulls`)).find(pr => pr.state === 'open' && pr.head.sha === sha)?.number ?? null;
+/** Every open PR, each read and labelled on its own: one that fails does not stop the others, and the run is red at the end (a failure stays visible, #2516). */
+function syncAll() {
+  const repo = process.env.GITHUB_REPOSITORY;
+  const open = JSON.parse(gh('pr', 'list', '--state', 'open', '--limit', '100', '--json', 'number', '-R', repo)).map(pr => pr.number);
+  console.log(`gitar-label: ${open.length} open PR(s)`);
+  if (open.length === 100) console.log('::warning::gitar-label: 100 open PRs, the list stops there and older ones are not labelled');
+  for (const pr of open) {
+    try { main(pr); } catch (error) { console.error(`gitar-label: #${pr}: ${error.message}`); process.exitCode = 1; }
+  }
 }
 
 /** A failure stays red, rate limit or not: a label left wrong in silence is what this design removes (#2516). */
 function cli() {
   try {
-    let payload = {};
-    try {
-      if (process.env.GITHUB_EVENT_PATH) payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-    } catch { /* An unreadable event file only means no review time to wait for: the run reads at once. */ }
     if (process.argv[2] === 'working') return markWorking(process.argv[3]);
-    const pr = process.argv[2] || prOfCheck(process.env.GITHUB_REPOSITORY, payload);
-    if (!pr) return console.log('gitar-label: no open PR has this commit as its head, nothing to label');
-    main(pr, reviewSince(process.env.GITHUB_EVENT_NAME, payload));
+    if (process.argv[2] === 'all') return syncAll();
+    // Why (7 Nov 2026, gl, code review): jobadabra-web and -lab run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is synced to templates/org-repo/pr-labels.yml; that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once both repos carry the synced workflow (14 Nov 2026)
+    if (!process.argv[2]) return console.log('gitar-label: no PR number given (an event that no longer labels), nothing to do');
+    main(process.argv[2]);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
