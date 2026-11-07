@@ -1,5 +1,6 @@
 // A tab the app opened to apply, on a site the extension may not run on yet (extension/site-allow.js). 9 Oct 2026: on a friend's
 // Windows Chrome, jobs.ch got a '?' badge and nothing else: no panel, no Allow, no line in the app's log.
+import {catalogs} from '../../../../extension/i18n.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
@@ -85,5 +86,6 @@ test('the apply path and the read path share the one Allow page, and the popup n
   assert.match(read('extension/background.js'), /permissions\.onAdded\.addListener\(\(\) => \{ startWaiting\(\); resumeFillWaiting\(\{decide\}\); \}\);\n  watchUnallowedFillTabs\(\{decide\}\);/);
   assert.doesNotMatch(read('extension/background.js'), /setBadgeText\(\{tabId, text: '\?'\}\)/, 'no silent ? badge');
   assert.match(read('extension/visit.js'), /await openAllowPage\(\)/);
-  assert.match(read('extension/popup.js'), /isn\\'t allowed on this site yet/);
+  assert.match(read('extension/popup.js'), /text\('intro', 'fillPermission'\)/);
+  assert.match(catalogs.en.fillPermission, /isn[’']t allowed on this site yet/);
 });

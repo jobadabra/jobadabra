@@ -1,7 +1,8 @@
 // Verify bundled extension display languages without touching app state, browser profiles or networks.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createI18n, catalogs, locales} from '../../../../extension/i18n.js';
+import {SUPPORTED_LOCALES, LANGUAGE_NAMES} from '../../../i18n/index.js';
+import {createI18n, catalogs, locales, languageNames} from '../../../../extension/i18n.js';
 
 test('default English, inherited switches, offline cache and explicit override', async () => {
   let stored = {};
@@ -43,4 +44,10 @@ test('interpolation is single-pass plain text and preserves external content; lo
   assert.equal(i18n.t('jobs',{count:20}), '20 de joburi');
   assert.equal(i18n.number(1234.5), new Intl.NumberFormat('ro').format(1234.5));
   assert.equal(i18n.date(0,{timeZone:'UTC'}),new Intl.DateTimeFormat('ro',{timeZone:'UTC'}).format(0));
+});
+
+// The extension ships separately, so this parity check is the sync step for its bundled list and native names.
+test('extension locales and native names mirror the desktop supported list', () => {
+  assert.deepEqual([...locales], [...SUPPORTED_LOCALES]);
+  for (const locale of locales) assert.ok(languageNames[locale].endsWith(' ' + LANGUAGE_NAMES[locale]), locale);
 });
