@@ -260,7 +260,7 @@ jobs:
           STATE=e2e-artifacts/agent/agent-chain.json
           ENDED="$(jq -r .ended "$STATE")"
           if [ -n "$ENDED" ]; then echo "Chain $(jq -r .chain "$STATE") ended after link $(jq -r .link "$STATE"): $ENDED" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          # Why (5 Nov 2026, code review): every setting of link 1 goes on to the next link, or the chain would mix states (a different app, rules on, the screen reader on).
+          # Why (7 Nov 2026, owner): carry every setting, including recording and scheduled status, so a later chain link cannot undo a manual video opt-out or start recording a scheduled run.
           ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")" -f video="$IN_VIDEO" -f scheduled="$IN_SCHEDULED")
           add() { if [ -n "$2" ]; then ARGS+=(-f "$1=$2"); fi; }
           add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF"; add engine "$IN_ENGINE";
