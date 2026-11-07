@@ -96,11 +96,17 @@ test('hand-off: a packaged Store copy with private data writes the marker, start
 test('the helper end to end: waits for the app to exit, copies, marks done and starts the app again', async () => {
   const cache = path.join(tmp(), 'Jobadabra'), target = path.join(tmp(), 'Jobadabra'), flag = path.join(tmp(), 'restarted.txt');
   put(cache, STORE_USER); put(target, FRESH_START);
-  const app = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 700)'], {stdio: 'ignore'});
+  // Why (7 Nov 2026, flaky on windows-latest, PR #3498 run 42385125137): the "app" lived a fixed 700 ms and the test slept a fixed 200 ms, so a loaded runner let the app exit before the check ran and the copy
+  // had legitimately begun. The app now stays until the test releases it (a file), so "nothing is copied while it runs" holds however slow the machine is.
+  const releaseApp = path.join(tmp(), 'release-app');
+  const app = spawn(process.execPath, ['-e', 'const f = process.argv[1]; const t = setInterval(() => { if (require("fs").existsSync(f)) { clearInterval(t); } }, 25);', releaseApp], {stdio: 'ignore'});
   const exited = new Promise(resolve => app.on('exit', resolve));
   const finished = run([String(app.pid), cache, target, process.execPath, '-e', `require('fs').writeFileSync(${JSON.stringify(flag)}, 'up')`], {settleMs: 50});
-  await new Promise(resolve => setTimeout(resolve, 200));
-  assert.ok(!fs.existsSync(path.join(target, 'data', 'jobs.sqlite')), 'nothing is copied while the app is still running');
+  try {
+    assert.ok(fs.existsSync(path.join(target, LOCK)), 'the helper has started and is waiting for the app');   // its lock is written before it waits
+    await new Promise(resolve => setTimeout(resolve, 400));   // two of its own 200 ms looks at the app, which cannot have exited: it waits for the release
+    assert.ok(!fs.existsSync(path.join(target, 'data', 'jobs.sqlite')), 'nothing is copied while the app is still running');
+  } finally { fs.writeFileSync(releaseApp, 'go'); }   // a failed check must not leave the "app" running
   await exited;
   const result = await finished;
   assert.deepEqual(result.failed, []);
