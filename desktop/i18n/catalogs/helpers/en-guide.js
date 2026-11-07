@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Nothing to change: no role, place or title word has {count}+ dismissals and none kept.",
   "applyChanges": "Apply changes",
   "movedNotion": "Moved to Notion ✓",
-  "keptNotion": "Your Notion already had {text}, so it was kept; this Mac's version is in {archive}.",
+  "keptNotion": "Your Notion already had {text}, so it was kept; this computer's version is in {archive}.",
   "aProfile": "a Profile",
   "standardAnswers": "standard answers",
   "formKnowledge": "form knowledge",

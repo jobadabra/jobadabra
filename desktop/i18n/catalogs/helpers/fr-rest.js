@@ -37,7 +37,7 @@ export const messages = {
   "firstJobs": "Premières offres",
   "findBrowser": "Rechercher avec votre navigateur",
   "moreEmployers": "Plus d’employeurs",
-  "thisMac": "Ce Mac",
+  "thisMac": "Cet ordinateur",
   "inCloud": "Dans le cloud",
   "readingJobsAI": "Lecture des offres avec l’IA",
   "readingSources": "Lecture des sources",

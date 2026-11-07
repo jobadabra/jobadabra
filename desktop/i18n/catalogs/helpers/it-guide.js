@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Nulla da cambiare: nessun ruolo, luogo o termine ha almeno {count} scarti senza offerte salvate.",
   "applyChanges": "Applica modifiche",
   "movedNotion": "Spostato su Notion ✓",
-  "keptNotion": "Notion conteneva già {text}, che è stato mantenuto; la versione del Mac è in {archive}.",
+  "keptNotion": "Notion conteneva già {text}, che è stato mantenuto; la versione del computer è in {archive}.",
   "aProfile": "un profilo",
   "standardAnswers": "risposte standard",
   "formKnowledge": "conoscenze sui moduli",

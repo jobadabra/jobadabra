@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Менять нечего: нет роли, места или слова с {count}+ отклонениями без сохранённых вакансий.",
   "applyChanges": "Применить изменения",
   "movedNotion": "Перенесено в Notion ✓",
-  "keptNotion": "В Notion уже было {text}, поэтому это сохранено; версия с этого Mac находится в {archive}.",
+  "keptNotion": "В Notion уже было {text}, поэтому это сохранено; версия с этого компьютера находится в {archive}.",
   "aProfile": "профиль",
   "standardAnswers": "стандартные ответы",
   "formKnowledge": "знания о формах",

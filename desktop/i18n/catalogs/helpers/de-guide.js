@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Nichts zu ändern: keine Rolle, kein Ort und kein Titelwort hat {count}+ Ablehnungen ohne gespeicherte Stelle.",
   "applyChanges": "Änderungen anwenden",
   "movedNotion": "Nach Notion verschoben ✓",
-  "keptNotion": "Ihr Notion enthielt bereits {text}; es wurde behalten. Die Version dieses Macs liegt in {archive}.",
+  "keptNotion": "Ihr Notion enthielt bereits {text}; es wurde behalten. Die Version dieses Computers liegt in {archive}.",
   "aProfile": "ein Profil",
   "standardAnswers": "Standardantworten",
   "formKnowledge": "Formularwissen",

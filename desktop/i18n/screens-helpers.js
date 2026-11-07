@@ -79,3 +79,13 @@ import {messages as esTips} from './catalogs/helpers/es-tips.js';
 import {messages as roTips} from './catalogs/helpers/ro-tips.js';
 import {messages as ruTips} from './catalogs/helpers/ru-tips.js';
 for (const [locale, messages] of Object.entries({en: enTips, de: deTips, fr: frTips, it: itTips, es: esTips, ro: roTips, ru: ruTips})) registerMessages(locale, 'helperTips', messages);
+
+// Residual helper catalogs.
+import {messages as enTail} from './catalogs/helpers/en-tail.js';
+import {messages as deTail} from './catalogs/helpers/de-tail.js';
+import {messages as frTail} from './catalogs/helpers/fr-tail.js';
+import {messages as itTail} from './catalogs/helpers/it-tail.js';
+import {messages as esTail} from './catalogs/helpers/es-tail.js';
+import {messages as roTail} from './catalogs/helpers/ro-tail.js';
+import {messages as ruTail} from './catalogs/helpers/ru-tail.js';
+for (const [locale, messages] of Object.entries({en: enTail, de: deTail, fr: frTail, it: itTail, es: esTail, ro: roTail, ru: ruTail})) registerMessages(locale, 'helperTail', messages);

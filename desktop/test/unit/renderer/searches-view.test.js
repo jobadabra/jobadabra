@@ -25,7 +25,7 @@ test('only search runs are listed, newest first, at most 50', () => {
 
 test('a list row names the search, where it ran and how it went', () => {
   const [mac, cloud, old, stopped] = demo.map(listRow);
-  assert.deepEqual([mac.name, mac.where, mac.added, mac.outcome, mac.kept], ['Find jobs', 'This Mac', 0, 'OK', true]);
+  assert.deepEqual([mac.name, mac.where, mac.added, mac.outcome, mac.kept], ['Find jobs', 'This computer', 0, 'OK', true]);
   assert.deepEqual([cloud.where, cloud.added, cloud.tone], ['In the cloud', 11, 'warn']);
   assert.equal(old.kept, false);
   assert.equal(stopped.tone, 'bad');

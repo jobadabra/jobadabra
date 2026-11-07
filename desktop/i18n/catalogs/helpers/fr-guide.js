@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Rien à changer : aucun poste, lieu ou mot de titre n’a {count}+ rejets sans offre gardée.",
   "applyChanges": "Appliquer les modifications",
   "movedNotion": "Déplacé vers Notion ✓",
-  "keptNotion": "Votre Notion contenait déjà {text}, conservé ; la version de ce Mac est dans {archive}.",
+  "keptNotion": "Votre Notion contenait déjà {text}, conservé ; la version de cet ordinateur est dans {archive}.",
   "aProfile": "un profil",
   "standardAnswers": "des réponses standard",
   "formKnowledge": "des connaissances de formulaires",

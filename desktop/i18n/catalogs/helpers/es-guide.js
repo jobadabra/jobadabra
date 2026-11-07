@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Nada que cambiar: ningún puesto, lugar o término tiene {count}+ descartes sin ofertas guardadas.",
   "applyChanges": "Aplicar cambios",
   "movedNotion": "Movido a Notion ✓",
-  "keptNotion": "Notion ya tenía {text} y se conservó; la versión de este Mac está en {archive}.",
+  "keptNotion": "Notion ya tenía {text} y se conservó; la versión de este equipo está en {archive}.",
   "aProfile": "un perfil",
   "standardAnswers": "respuestas estándar",
   "formKnowledge": "conocimiento de formularios",

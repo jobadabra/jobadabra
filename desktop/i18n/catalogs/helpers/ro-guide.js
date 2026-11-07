@@ -142,7 +142,7 @@ export const messages = {
   "nothingChange": " Nimic de schimbat: niciun rol, loc sau termen nu are {count}+ respingeri fără oferte păstrate.",
   "applyChanges": "Aplică modificările",
   "movedNotion": "Mutat în Notion ✓",
-  "keptNotion": "Notion avea deja {text}, deci a fost păstrat; versiunea Macului este în {archive}.",
+  "keptNotion": "Notion avea deja {text}, deci a fost păstrat; versiunea computerului este în {archive}.",
   "aProfile": "un profil",
   "standardAnswers": "răspunsuri standard",
   "formKnowledge": "cunoștințe despre formulare",
