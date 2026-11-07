@@ -29,7 +29,7 @@ export const TEXT = {
   codex: {title: t('helperMore.yourOpenAiPlan'), text: t('helperMore.useCodexPlan'),
     short: t('helperMore.usePaidPlan')},
   free: {title: t('helperMore.free'), text: t('helperMore.freeDescription', {quality: FREE_WEAKER}), short: t('helperMore.freeShort', {quality: FREE_WEAKER_SHORT[0].toUpperCase() + FREE_WEAKER_SHORT.slice(1)})},
-  // Why (2 Nov 2026, owner): Always on runs on our servers with Jobadabra's own AI; the old lines said it "uses an API key". Bundled translations preserve the same server AI routing.
+  // Why (2 Nov 2026, owner; localized 7 Nov 2026): Always on uses Jobadabra's AI on our servers, so translated plan notes must not imply a personal API key.
   note: t('helperMore.claudeNote'),
   codexNote: t('helperMore.codexNote'),
   fallback: t('helperMore.claudeFallback'),

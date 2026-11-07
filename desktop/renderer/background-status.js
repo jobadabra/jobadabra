@@ -6,7 +6,7 @@ import {MODES} from './apply-settings-model.js';
 
 // Why (5 Nov 2026, owner: "we need to have a distinguish about what session and mode does it have? Are they fully automated? are they manually triggered"; the
 // sketch's chips, owner's yes): each session says at a glance where it runs and who presses Submit, in its Settings mode's own icon (MODES). [words, tone]
-// Why (5 Nov 2026, owner, of the Sessions list: "2 yellow chips. Looks bad"): the words fit one line of the list, and the status chip beside this one owns "Needs you". Translated mode labels retain that separation.
+// Why (5 Nov 2026, owner, Sessions list; localized 7 Nov 2026): the mode chip describes execution in one line; only its neighboring status chip says Needs you, avoiding two yellow status chips.
 const MODE_CHIPS = {auto: [t('helperState.fullAutoSends'), 'violet'], fill: [t('helperState.backgroundSubmit'), 'info'], check: [t('helperState.chromeSubmit'), 'neutral']};
 // Why (5 Nov 2026, review of [ap] 4/7): a bot check, Stop, a mode change or a quit hands a Full automation job to the person and the store keeps mode 'auto'
 // (lib/background-apply-store.js manual()), so its chip said "sends by itself" beside "Needs you".

@@ -17,7 +17,7 @@ export const PACKAGE_INCLUDES = {pro: [...EVERYTHING, ALWAYS_ON], 'pro-ai': [t('
 export const INCLUDED = EVERYTHING;   // the waitlist card's list (pages/plan-waitlist.js)
 export const TOPUP_NOTE = t('helperMore.topupNote');
 // The euro amount an offer adds, as the site says it (offers[].creditEur; 24 Oct 2026: €1 of credit = €1 at our AI prices, so a top-up adds what it costs). '' when the site did not send it (an older site).
-// Why (27 Oct 2026, owner): an amount always says what it buys (renderer/credit-buys.js), so "€10 of AI credit" reads "€10 of AI credit (about 70 applications)"; the bar itself stays a percent. The desktop-only localized credit wrapper preserves that estimate and the shared calculation.
+// Why (27 Oct 2026, owner; localized 7 Nov 2026): every credit amount also states its application estimate through credit-buys-view.js; the shared calculation stays unchanged and the bar remains a percentage.
 export const creditWords = offer => (offer?.creditEur > 0 ? t('helperMore.creditWords', {amount: euro(offer.creditEur), buys: buysSuffix(offer.creditEur)}) : '');
 export const NOTES = {
   30: t('helperMore.creditUnder30'),
