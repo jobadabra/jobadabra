@@ -294,5 +294,13 @@ export default {
   "visit.waitAllow": "Jobadabra: waiting for you: press Allow on the page it opened",
   "visit.readBadge": "Read",
   "visit.signIn": "Jobadabra: sign in here if the board asks, then press Read in the toolbar popup",
-  "tooltip.written": "Written by AI: read it before submitting"
+  "tooltip.written": "Written by AI: read it before submitting",
+  "report.unavailable": "Report could not open on this page. Reload the page and try again.",
+  "menu.suggested": "✈️ Suggested: {answer} (pick it yourself)",
+  "step.closedPopup": "Closed a popup (\"{banner}\")",
+  "error.noApp": "can't reach the Jobadabra app: is it open?",
+  "error.notConnected": "the Jobadabra app didn't accept this extension, even after reconnecting",
+  "error.notManaged": "This page was not opened by the Jobadabra app: press Apply in the app.",
+  "error.start": "Could not start here.",
+  "error.jobLoad": "Connected, but this job couldn't be loaded ({reason}): trying again",
 };

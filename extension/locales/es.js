@@ -294,5 +294,13 @@ export default {
   "visit.waitAllow": "Jobadabra te espera: pulsa Permitir en la página que abrió",
   "visit.readBadge": "Leer",
   "visit.signIn": "Jobadabra: inicia sesión aquí si el sitio lo pide y pulsa Leer en el menú de la extensión",
-  "tooltip.written": "Escrito por la IA: léelo antes de enviar"
+  "tooltip.written": "Escrito por la IA: léelo antes de enviar",
+  "report.unavailable": "No se pudo abrir el informe en esta página. Recarga la página e inténtalo de nuevo.",
+  "menu.suggested": "✈️ Sugerencia: {answer} (selecciónala tú)",
+  "step.closedPopup": "Ventana emergente cerrada (\"{banner}\")",
+  "error.noApp": "No se puede conectar con la aplicación Jobadabra: ¿está abierta?",
+  "error.notConnected": "La aplicación Jobadabra no aceptó esta extensión, incluso después de volver a conectar.",
+  "error.notManaged": "Esta página no fue abierta por la aplicación Jobadabra: pulsa Solicitar en la aplicación.",
+  "error.start": "No se pudo iniciar aquí.",
+  "error.jobLoad": "Conectado, pero no se pudo cargar esta oferta ({reason}): se volverá a intentar",
 };

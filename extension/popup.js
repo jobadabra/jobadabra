@@ -1,11 +1,12 @@
 // The toolbar popup: whether the extension can reach the Jobadabra app and, on a tab the app opened and manages, what fits that tab (Apply on this page,
 // Allow, Read on a board it opened for you, Stop). On any other tab it only says where things happen: no control at all (popup-controls.js, owner 16 Oct 2026).
-import {displayLanguage, localize} from './i18n.js';
+import {startDisplayPage} from './display-page.js';
+import {localize} from './i18n.js';
 import {api, settings} from './flow.js';
 import {popupMode} from './tab-pages.js';
 import {POPUP_CONTROLS, judgedUrl, popupControls} from './popup-controls.js';
 
-const i18n = await displayLanguage();
+const i18n = startDisplayPage(document);
 const t = (key, values) => i18n.t(key, values);
 const messages = new Map();
 const text = (id, key, values = {}) => { messages.set(id, {key, values}); document.getElementById(id).textContent = t(key, values); };
@@ -71,7 +72,7 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
     $('apply-here').addEventListener('click', () => {
       $('apply-here').disabled = true;
       text('apply-progress', 'starting');
-      chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}, answer => { if (answer?.ok) text('apply-progress', 'started'); else if (answer?.why) externalText('apply-progress', answer.why); else text('apply-progress', 'startError'); $('apply-here').disabled = false; });
+      chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}, answer => { if (answer?.ok) text('apply-progress', 'started'); else if (answer?.whyKey) text('apply-progress',answer.whyKey,answer.whyValues); else if (answer?.why) externalText('apply-progress', answer.why); else text('apply-progress', 'startError'); $('apply-here').disabled = false; });
     });
     return checked;
   }

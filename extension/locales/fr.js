@@ -294,5 +294,13 @@ export default {
   "visit.waitAllow": "Jobadabra vous attend : appuyez sur Autoriser dans la page ouverte",
   "visit.readBadge": "Lire",
   "visit.signIn": "Jobadabra : connectez-vous ici si le site le demande, puis appuyez sur Lire dans le menu de l’extension",
-  "tooltip.written": "Rédigé par l’IA : à lire avant l’envoi"
+  "tooltip.written": "Rédigé par l’IA : à lire avant l’envoi",
+  "report.unavailable": "Le rapport ne peut pas être ouvert sur cette page. Rechargez la page et réessayez.",
+  "menu.suggested": "✈️ Suggestion : {answer} (à sélectionner vous-même)",
+  "step.closedPopup": "Fenêtre fermée (« {banner} »)",
+  "error.noApp": "Impossible de joindre l’application Jobadabra : est-elle ouverte ?",
+  "error.notConnected": "L’application Jobadabra n’a pas accepté cette extension, même après reconnexion.",
+  "error.notManaged": "Cette page n’a pas été ouverte par l’application Jobadabra : appuyez sur Postuler dans l’application.",
+  "error.start": "Impossible de démarrer ici.",
+  "error.jobLoad": "Connexion établie, mais cette offre n’a pas pu être chargée ({reason}) : nouvelle tentative",
 };

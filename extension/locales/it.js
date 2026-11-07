@@ -294,5 +294,13 @@ export default {
   "visit.waitAllow": "Jobadabra ti aspetta: premi Consenti nella pagina aperta",
   "visit.readBadge": "Leg.",
   "visit.signIn": "Jobadabra: accedi qui se il sito lo richiede, poi premi Leggi nel menu dell’estensione",
-  "tooltip.written": "Scritto dall’IA: leggi prima di inviare"
+  "tooltip.written": "Scritto dall’IA: leggi prima di inviare",
+  "report.unavailable": "Impossibile aprire la segnalazione su questa pagina. Ricarica la pagina e riprova.",
+  "menu.suggested": "✈️ Suggerimento: {answer} (selezionalo tu)",
+  "step.closedPopup": "Popup chiuso (\"{banner}\")",
+  "error.noApp": "Impossibile raggiungere l’app Jobadabra: è aperta?",
+  "error.notConnected": "L’app Jobadabra non ha accettato questa estensione, nemmeno dopo la riconnessione.",
+  "error.notManaged": "Questa pagina non è stata aperta dall’app Jobadabra: premi Candidati nell’app.",
+  "error.start": "Impossibile avviare qui.",
+  "error.jobLoad": "Connesso, ma impossibile caricare questa offerta ({reason}): nuovo tentativo",
 };

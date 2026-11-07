@@ -2,6 +2,7 @@
 // trusted) click opens it (page/menu-pick.js checks the pick took); where the next armed menu and the phone box are, for flow.js clickCombos;
 // the phone's country from its prefix. Needs page/fill-labels.js first. Guarded by desktop/e2e/test/menu-pick.test.mjs, fill-categories.test.js.
 (() => {
+  const suggested = answer => (window.__jobadabraDisplayWords?.suggested || '✈️ Suggested: {answer} (pick it yourself)').replace('{answer}', () => String(answer));
   if (window.__jobadabraFillMenusLoaded) return;
   window.__jobadabraFillMenusLoaded = true;
   const {clean, norm, sleep, labelOf, comboControl, comboValue} = window.__jobadabraFillKit;
@@ -131,7 +132,7 @@
     window.__jobadabraForgetNotTaken?.(el.id || el.name);   // decided: never typed over again as a box that did not take its answer (page/fill-verify.js)
     window.__jobadabraLastPick = {asked, got: text, same: found.option ? !!window.__jobadabraValueClass?.fits?.(asked, text) : null, opened: found.shown.length > 0 || !!found.option, found: !!found.option, choices: found.option ? [] : found.shown.slice(0, 8).map(item => clean(item).slice(0, 40)), peek: '', ...took};
     if (took.selectedAfter) { el.setAttribute('data-jobadabra-picked', text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); return took; }
-    badge.textContent = `✈️ Suggested: ${asked} (pick it yourself)`; window.__jobadabraMenuMissed?.(el, found.shown);
+    badge.textContent = suggested(asked); window.__jobadabraMenuMissed?.(el, found.shown);
     return took;
   };
 
@@ -199,7 +200,7 @@
         window.__jobadabraLastPick = {asked: opts.consent && option ? clean(option.textContent) : String(answer).split(' || ')[0], got: option ? clean(option.textContent) : '', same: option ? !!window.__jobadabraValueClass?.fits?.(String(answer).split(' || ')[0], clean(option.textContent)) : null, opened, found: !!option, choices: option ? [] : (shown || []).slice(0, 8).map(text => text.slice(0, 60)),
           peek: option ? '' : Array.from(document.querySelectorAll('[class*="menu-notice"], [class*="menu-list"], [role="listbox"]')).filter(n => !/iti__|country/.test(String(n.className))).map(n => clean(n.textContent).slice(0, 30)).slice(0, 3).join(' | '), ...took};   // choices, peek: the form's own wording of a menu nothing matched (its choices, or its "No options" notice), for the log; never the answer
         if (took.selectedAfter) { el.setAttribute('data-jobadabra-picked', clean(option.textContent).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); if (rest.length) moreChoices.push([field, rest.join(' && ')]); return; }   // the fill's own pick, for the one reader's mismatch (page/read-back.js)
-        badge.textContent = `✈️ Suggested: ${answer} (pick it yourself)`; if (!option) window.__jobadabraMenuMissed?.(el, shown);   // page/propose.js: no text left in the box; its choices go to the app
+        badge.textContent = suggested(answer); if (!option) window.__jobadabraMenuMissed?.(el, shown);   // page/propose.js: no text left in the box; its choices go to the app
       } finally { window.__jobadabraPicking = false; attemptLog?.note(el, 'pick', before, !!took?.selectedAfter); } }, 120);
     };
     control.addEventListener('mousedown', onOpen, true); control.__jobadabraDisarm = done;
