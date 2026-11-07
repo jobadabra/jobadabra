@@ -40,6 +40,7 @@ const CHEVRON_FILES = {
   'gaps-rows.js': 'native <details>: the whole Reviewed line toggles',
   'cv-check-view.js': 'native <details>: the whole summary row toggles',
   'multi-select.js': 'a dropdown button: its chevron turns down, the whole button opens the list',
+  'pages/language.js': 'native language select: a padded decorative chevron, not a collapsible panel',
   'survey-rows.js': 'native <details>: the whole Saved preferences row toggles',
 };
 test('every file that draws a chevron is accounted for', () => {

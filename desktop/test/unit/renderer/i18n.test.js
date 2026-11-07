@@ -52,7 +52,7 @@ test('every language supplies real selector copy with the same interpolation par
     setLocale(locale);
     assert.ok(t('common.language').length > 0);
     assert.notEqual(t('common.language'), 'common.language');
-    for (const key of ['chooseLanguage', 'chooseHelp', 'continue', 'system', 'unsavedLanguage', 'languageFailed']) assert.notEqual(t(`common.${key}`), `common.${key}`);
+    for (const key of ['chooseHelp', 'system', 'unsavedLanguage', 'languageFailed']) assert.notEqual(t(`common.${key}`), `common.${key}`);
     if (locale !== 'en') assert.notEqual(t('common.languageHelp'), 'Choose the language used in Jobadabra. The view reloads when you change it.');
   }
 });

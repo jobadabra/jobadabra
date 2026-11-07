@@ -2,11 +2,11 @@
 import {setLocale} from '../i18n/index.js';
 import '../i18n/screens.js';
 import {translate} from './i18n-dom.js';
-import {init as language} from './pages/language.js';
+import {startWithLocale} from './locale-start.js';
 
-const state = await window.pilot.locale?.() || {choice: 'en', locale: 'en'};
-setLocale(state.locale);
-document.documentElement.lang = state.locale;
-translate(document.body);
-language(state);
-await import('./app.js');
+await startWithLocale({read: () => window.pilot.locale?.(), apply: async state => {
+  document.documentElement.lang = setLocale(state.locale);
+  translate(document.body);
+  const {init: language} = await import('./pages/language.js');
+  language(state);
+}, start: () => import('./app.js'), onUnavailable: () => window.dispatchEvent(new Event('pilot-outdated'))});
