@@ -56,3 +56,21 @@ test('text bindings are leaves so translating them cannot erase nested links, ic
   assert.ok(!english.includes('data-i18n'), 'the source guards see only fallback markup');
   assert.ok(english.includes('<span data-notion-only> and in your Notion</span>'), 'inline spacing and original visibility stay intact');
 });
+
+test('Windows static copy uses explicit localized PC and credential-storage wording', async () => {
+  const oldWindow = globalThis.window;
+  const {setLocale, t} = await import('../../../i18n/index.js');
+  try {
+    globalThis.window = {pilot: {platform: 'win32'}};
+    await import('../../../i18n/screens.js?platform=windows');
+    setLocale('en');
+    assert.equal(t('screenWelcome.privacy'), 'Passwords and keys are encrypted in Windows Credential Manager. While Always on is off, your data stays on this PC.');
+    setLocale('ru');
+    assert.equal(t('screenWelcome.staysMac'), 'Остаётся на этом ПК');
+    assert.ok(t('screenWelcome.privacy').includes('Диспетчере учётных данных Windows'));
+  } finally {
+    globalThis.window = oldWindow;
+    await import('../../../i18n/screens.js?platform=restore');
+    setLocale('en');
+  }
+});

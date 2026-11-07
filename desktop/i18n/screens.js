@@ -11,6 +11,7 @@ import dialogsOne from './catalogs/screens/dialogs-one.js';
 import dialogsTwo from './catalogs/screens/dialogs-two.js';
 import attributes from './catalogs/screens/attributes.js';
 import external from './catalogs/screens/external.js';
+import platform from './catalogs/screens/platform.js';
 import './screens-pages.js';
 import './screens-helpers.js';
 
@@ -19,5 +20,13 @@ const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 for (const {namespace, messages} of [common, welcome, main, profile, automation, connections, settings, dialogsOne, dialogsTwo, attributes, external]) {
   for (const [column, locale] of locales.entries()) {
     registerMessages(locale, namespace, Object.fromEntries(Object.entries(messages).map(([key, values]) => [key, values[column]])));
+  }
+}
+
+// Only reviewed app-owned messages have platform variants; personal values never pass through these catalogs.
+if (globalThis.window?.pilot?.platform === 'win32') {
+  for (const [qualified, values] of Object.entries(platform.messages)) {
+    const dot = qualified.indexOf('.'), namespace = qualified.slice(0, dot), key = qualified.slice(dot + 1);
+    for (const [column, locale] of locales.entries()) registerMessages(locale, namespace, {[key]: values[column]});
   }
 }
