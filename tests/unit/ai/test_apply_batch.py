@@ -110,6 +110,14 @@ class NothingReadyTests(unittest.TestCase):
 class NextJobsTests(unittest.TestCase):
     """Apply to N with Claude: the best N jobs with a kit, picked from the records (no kit is opened), fast."""
 
+    def test_does_not_pick_a_kit_ready_row_marked_not_eligible(self):
+        stores = stores_with([
+            ('https://ineligible', 'Kit ready', None, {'next_step': '⛔ Not eligible: needs a work permit', 'fit': 95}),
+            ('https://eligible', 'Kit ready', None, {'next_step': '📝 Kit ready: review it, then Apply', 'fit': 80}),
+        ])
+        with mock.patch.object(apply_batch, 'still_open', lambda s, url: True):
+            self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1), ['https://eligible'])
+
     def test_best_scored_open_jobs_with_a_kit_without_opening_kits(self):
         stores = stores_with([('https://a', 'Kit ready', None, {}), ('https://b', 'Saved', None, {'next_step': '📝 Kit ready: review it'}),
                               ('https://c', 'Saved', None, {}), ('https://d', 'Kit ready', None, {}), ('https://e', 'Kit ready', None, {})],

@@ -103,7 +103,8 @@ def unstarted_urls_by_score(stores, max_jobs):
         if record.get('url') and record.get('fit') not in (None, ''):
             url_score.setdefault(record['url'], record['fit'])
     candidates = [record['url'] for record in records
-                  if record.get('url') and (record.get('stage') == 'Kit ready' or (record.get('next_step') or '').startswith(KIT_STEP))]
+                  if record.get('url') and not (record.get('next_step') or '').startswith('⛔ Not eligible:')
+                  and (record.get('stage') == 'Kit ready' or (record.get('next_step') or '').startswith(KIT_STEP))]
     unstarted_urls_by_score.rows = {record['url']: record for record in records if record.get('url')}  # for job_details()
     candidates = sorted(dict.fromkeys(candidates), key=lambda url: url_score.get(url, -1), reverse=True)
     urls, batch = [], max(max_jobs * 2, 4)
