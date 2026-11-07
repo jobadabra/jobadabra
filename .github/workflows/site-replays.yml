@@ -198,6 +198,7 @@ jobs:
         env:
           JP_REPLAY_SHARD: ${{ matrix.shard }}/5
           JOBADABRA_MODEL_MEMO_LATENCY_PAD_MS: '4000'
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
         run: |
           node replay-records.mjs "$GITHUB_WORKSPACE/records" "$GITHUB_WORKSPACE/replay-late" > /dev/null || true
           node replay-late.mjs "$GITHUB_WORKSPACE/replay-late/replays" | tee "$GITHUB_WORKSPACE/replay-out/late.md"

@@ -85,6 +85,7 @@ jobs:
           BUILDLOG_TELEGRAM_TOKEN: ${{ secrets.BUILDLOG_TELEGRAM_TOKEN }}   # only the once-a-week "cap reached" note
           BUILDLOG_TELEGRAM_CHAT: ${{ secrets.BUILDLOG_TELEGRAM_CHAT }}
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
         run: node desktop/e2e/discovery-pick.mjs discovery-out discovery-states 2>&1 | tee discovery-out.log
       - name: The picked rows
         uses: actions/upload-artifact@v6

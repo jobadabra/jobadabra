@@ -28,6 +28,7 @@ jobs:
         with:
           node-version: 22
       - name: Judge the recorded notes, before and after
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
         run: node desktop/e2e/agent-judge-set.mjs judge-set-out 2>&1 | tee judge-set.log
       - uses: actions/upload-artifact@v6
         if: always() && hashFiles('judge-set-out/judge-set.json') != ''

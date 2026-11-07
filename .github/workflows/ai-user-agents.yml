@@ -258,6 +258,7 @@ jobs:
         working-directory: desktop/e2e
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
         run: node agent-run-upload.mjs "$E2E_ARTIFACTS" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       # The same artifact name pattern an e2e suite uses, so ui-findings.yml files this run's findings without a second reader; a replay run is named otherwise, so the Finder never files a bug that was fixed long ago.
       - name: Screenshots, findings, summary and trace
