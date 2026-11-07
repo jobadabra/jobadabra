@@ -5,13 +5,16 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {execFileSync} from 'node:child_process';
+import {STEP_TOKENS} from '../../lib/agent-steps.mjs';
 import {capsFor, changedLogArgs, engineState, FULL, lastSessionCommit, memoryCommitFiles, nightWorked} from '../../lib/agent-nightly.mjs';
 import {pushMemory} from '../../lib/agent-memory.mjs';
 
 test('the broker\'s answer decides the size of the night: Codex = full, Codex out = half, refused = skip with the reason', () => {
   const codex = {ok: true, engine: 'codex'}, out = {ok: true, engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]};
   assert.deepEqual([engineState(codex), engineState(out), engineState({ok: true, engine: 'claude'}), engineState({ok: false, status: 'capped'}), engineState(null)], ['codex', 'codex-out', 'other', 'refused', 'refused']);
-  assert.deepEqual(capsFor('codex', {}), {skip: false, reason: '', ...FULL, note: 'Codex answers: the full session.'});
+  assert.deepEqual(capsFor('codex', {}), {skip: false, reason: '', ...FULL, step_tokens: STEP_TOKENS.resumed, note: 'Codex answers: the full session.'});
+  assert.equal(capsFor('other', {}).step_tokens, STEP_TOKENS.stateless, 'Claude re-sends the whole prompt every call: 7-9k tokens a step, run 42163935942');
+  assert.equal(capsFor('codex-out', {}).step_tokens, STEP_TOKENS.stateless);
   const half = capsFor('codex-out', {});
   assert.deepEqual([half.minutes, half.calls, half.steps], [FULL.minutes / 2, FULL.calls / 2, FULL.steps / 2]);
   assert.match(half.note, /Codex ran out/);

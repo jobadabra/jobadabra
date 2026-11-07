@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {isCapStop} from './agent-tier.mjs';
+import {STEP_TOKENS} from './agent-steps.mjs';
 
 export const FULL = {minutes: 20, calls: 120, steps: 100};
 const HALF_FLOOR = {minutes: 5, calls: 30, steps: 30};
@@ -30,9 +31,11 @@ export function engineState(answer) {
 export function capsFor(state, vars = {}, detail = '') {
   const base = {minutes: Math.min(MAX_MINUTES, whole(vars.minutes) || FULL.minutes), calls: whole(vars.calls) || FULL.calls, steps: whole(vars.steps) || FULL.steps};
   if (state === 'refused') return {skip: true, reason: detail || 'the AI broker did not answer', ...base, note: `No session tonight: ${detail || 'the AI broker did not answer'}.`};
-  if (state !== 'codex-out') return {skip: false, reason: '', ...base, note: {codex: 'Codex answers: the full session.', 'codex-busy': 'Codex was at capacity at the first call: the full session (each call tries Codex first).'}[state] || 'Another engine answers: the full session.'};
+  // Why (7 Nov 2026, #3378): the steps a night may plan depend on what a step costs on the engine that answered (1k resumed on Codex, 9k on Claude), so the session gets that number and sizes its goals from it (lib/agent-steps.mjs).
+  const step_tokens = state === 'codex' ? STEP_TOKENS.resumed : STEP_TOKENS.stateless;
+  if (state !== 'codex-out') return {skip: false, reason: '', ...base, step_tokens, note: {codex: 'Codex answers: the full session.', 'codex-busy': 'Codex was at capacity at the first call: the full session (each call tries Codex first).'}[state] || 'Another engine answers: the full session.'};
   const half = key => Math.max(HALF_FLOOR[key], Math.floor(base[key] / 2));
-  return {skip: false, reason: '', minutes: half('minutes'), calls: half('calls'), steps: half('steps'), note: 'Codex ran out: a half session on the engine that answers.'};
+  return {skip: false, reason: '', minutes: half('minutes'), calls: half('calls'), steps: half('steps'), step_tokens, note: 'Codex ran out: a half session on the engine that answers.'};
 }
 
 /** The git arguments listing the commits since the last session (`last` = its commit from the memory branch; none = the last 30), in the shape lib/agent-knowledge.mjs changedSince reads. */

@@ -41,15 +41,16 @@ const tokensOf = (answer, args) => (answer?.tokens?.counted > 0 ? answer.tokens.
 const calibrationInput = answer => (answer?.tokens?.counted > 0 ? Math.max(0, answer.tokens.counted - (answer.usage?.output_tokens || 0)) : answer?.usage?.input_tokens || 0);
 
 /**
- * The run's token meter and the three asks that spend against it. -> {actor(ask), reader(ask), judge(ask), state}: each takes an `ask({system, messages, schema})` and returns one that counts every answer and refuses (throws CAP_REACHED, nothing sent) a call whose worst case would pass the cap;
+ * The run's token meter and the three asks that spend against it. -> {actor(ask), reader(ask), judge(ask), state, usable()}: each takes an `ask({system, messages, schema})` and returns one that counts every answer and refuses (throws CAP_REACHED, nothing sent) a call whose worst case would pass the cap;
  * `actor` and `reader` leave the judge's reserve free, `judge` may use it. `state` {capTokens, used: {actor, reader, judge}, total, calls, stoppedAtCap} is read after the session for the report.
  * Why (5 Nov 2026, code review on the 250k cap): the broker does not forward max_tokens and the Claude engine counts its thinking as output, and its input count includes a wrapper the estimate does not see; so the worst case of a call is its estimate plus the largest gap seen so far between a real count and the estimate (added or in proportion), plus the largest answer seen so far (at least 1,024). The first call of a run is the only one judged on the flat estimate; one answer larger than any before it can still pass the cap by its excess, and the report then shows the total over the cap.
  */
 export function runBudget({capTokens = RUN_CAP_TOKENS, reserve = JUDGE_RESERVE_TOKENS} = {}) {
   const state = {capTokens, used: {actor: 0, reader: 0, judge: 0}, total: 0, calls: 0, stoppedAtCap: false};
-  const seen = {output: MAX_OUTPUT_TOKENS, add: 0, mul: 0};
+  const seen = {output: MAX_OUTPUT_TOKENS, add: 0, mul: 0, worst: 0};
   const counted = (part, ask, kept) => async args => {
     const estimate = requestTokens(args), worst = estimate + Math.max(seen.add, Math.ceil(estimate * seen.mul)) + seen.output;
+    seen.worst = Math.max(seen.worst, worst);
     if (state.total + worst > state.capTokens - kept) { state.stoppedAtCap = true; throw new Error(CAP_REACHED); }
     state.calls++;
     const answer = await ask(args), spent = tokensOf(answer, args), input = calibrationInput(answer);
@@ -58,7 +59,8 @@ export function runBudget({capTokens = RUN_CAP_TOKENS, reserve = JUDGE_RESERVE_T
     state.used[part] += spent; state.total += spent;
     return answer;
   };
-  return {actor: ask => counted('actor', ask, reserve), reader: ask => counted('reader', ask, reserve), judge: ask => counted('judge', ask, 0), state};
+  // `usable()`: what the actor and the screen reader may still spend (the cap less the judge's reserve, what is used and the worst case of the next call, which the cap refuses on: a goal planned to the last token would end on a refusal); lib/agent-steps.mjs sizes each goal from it.
+  return {actor: ask => counted('actor', ask, reserve), reader: ask => counted('reader', ask, reserve), judge: ask => counted('judge', ask, 0), state, usable: () => Math.max(0, state.capTokens - reserve - state.total - seen.worst)};
 }
 
 /** The reason a session ended, with a stop that was the cap's refusal of the actor's call named as the cap (and a real broker failure left as it is, even when an earlier reader or judge call had hit the cap). */

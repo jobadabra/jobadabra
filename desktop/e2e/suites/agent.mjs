@@ -11,6 +11,7 @@ import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
 import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
+import {STEP_TOKENS} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
@@ -88,12 +89,14 @@ export async function run(ctx) {
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
     const budget = runBudget();
+    const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens: Number(process.env.E2E_AGENT_STEP_TOKENS) || STEP_TOKENS.stateless};   // Why (7 Nov 2026, #3378): goals are sized by the token meter; an unset number is the dearer engine's, never the cheaper
     try {
       session = await runSession({act, ask: budget.actor(brokerAsk(actorTier, {only: engine})), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
-        caps: CAPS, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, chain: pointerOf(chainState)}});
+        caps: CAPS, meter, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, chain: pointerOf(chainState)}});
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
     session.stopped = stoppedLabel(session.stopped, budget.state);
+    if (session.unfunded.length) console.log(`  ${session.unfunded.length} goal(s) not started: the token budget could not fund them (goals ${session.unfunded.join(', ')})`);
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
     // The memory the workflow pushes to the agent-memory branch afterwards (this suite never touches git): merged notes per area, the coverage record, the plan's pairs.
@@ -101,8 +104,8 @@ export async function run(ctx) {
     for (const [area, texts] of Object.entries(session.observations)) merged[area] = mergeNotes(notes[area] || [], texts, {today, commit: (process.env.GITHUB_SHA || '').slice(0, 7), session: `${today}-${seed}`});
     for (const [file, text] of Object.entries(memoryFiles({...notes, ...merged}))) { fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true}); fs.writeFileSync(path.join(out, file), text); }
     fs.mkdirSync(out, {recursive: true});
-    fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, plan), null, 1));
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
+    fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, {...plan, goals: plan.goals.filter(goal => session.played.includes(goal.n))}), null, 1));
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, unfunded: session.unfunded, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n${conversationLine(session.trace)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
     // Why (4 Nov 2026, AI user agents 9/12 part 2b; FR 3/4: its plan field also names a night's seeded shape, "shape inbound"): the record and one picture per note, for the Admin "AI persona" tab; the workflow's upload step sends them (agent-run-upload.mjs), this suite sends nothing.

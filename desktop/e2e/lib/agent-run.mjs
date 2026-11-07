@@ -9,8 +9,8 @@ import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
 import {pointerLine} from './agent-chain.mjs';
+import {goalSteps, MIN_STEPS, stepCost} from './agent-steps.mjs';
 
-const MIN_STEPS_PER_GOAL = 6;
 const choice = values => ({type: 'string', enum: ['', ...values]});
 
 // Why (3 Nov 2026, AI user agents 7/12): in its first real session the agent ended a goal as could-not-finish for the Focus page after pressing More actions, never using the go action it was offered; the prompt now says what go is for.
@@ -95,20 +95,30 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
 /**
  * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
+ * `meter` (optional): {usable(), actorUsed(), stepTokens}, the run's token meter: each goal's steps come from what `usable()` leaves and what a step costs (lib/agent-steps.mjs), and a goal the budget cannot fund is not started (`unfunded`). Without it every goal gets its share of `maxSteps`.
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}}) {
+export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
-  const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
-  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [];
-  let stoppedByBroker = '';
+  const perGoal = Math.max(MIN_STEPS, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
+  const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [], unfunded = [];
+  let stoppedByBroker = '', actorCalls = 0;
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
     if (callsLeft <= 0 || minutesLeft <= 0) break;
     const mine = [];
-    const result = await explore({act, ask, views, caps: {maxSteps: perGoal, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge), session: `agent-g${goal.n}`,
+    let steps = perGoal;
+    if (meter) {   // Why (7 Nov 2026, #3378): the steps of a goal are what the token meter can pay for on this engine, so a night never plans goals its cap refuses
+      const left = plan.goals.length - results.length - unfunded.length;
+      const next = goalSteps({left: meter.usable(), cost: stepCost({used: meter.actorUsed(), calls: actorCalls, fallback: meter.stepTokens}), goalsLeft: left, maxPerGoal: perGoal});
+      if (!next.steps) { unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
+      steps = next.steps;
+      log(`  goal ${goal.n}: ${steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
+    }
+    const result = await explore({act, ask, views, caps: {maxSteps: steps, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge), session: `agent-g${goal.n}`,
       extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
+    actorCalls += result.spent.calls;
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
     if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
@@ -123,5 +133,5 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
   const observations = {};
   for (const row of summary.goals) if (row.verdict !== 'worked') (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
-  return {summary, findings, observations, trace, spent, notes, ends, stopped: stoppedByBroker || 'goals'};
+  return {summary, findings, observations, trace, spent, notes, ends, unfunded, played: results.map(each => each.n), stopped: stoppedByBroker || 'goals'};
 }
