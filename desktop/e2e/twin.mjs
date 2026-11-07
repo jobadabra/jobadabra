@@ -7,7 +7,8 @@
 // Everything live-test lives in ~/Library/Application Support/Job Pilotto (live test)/: ids.env (the mirror's ids), notion-copy/ (sync map),
 // home/ (the twin's folder, replaced at each start), browser/ (only its site sign-ins: cookies, local storage), isolated-secrets.json (the job-site passwords it made), site-accounts.json (the site accounts it learned), twin.json (ports, for a script that drives the window). Ctrl-C stops both.
 // Job: wait on state
-import {execFileSync, spawn} from 'node:child_process';
+import {execFile, execFileSync, spawn} from 'node:child_process';
+import {promisify} from 'node:util';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,7 +26,7 @@ const MIRROR_TOKEN = 'jobadabra.notion.token-live-test';
 const keychain = service => execFileSync('security', ['find-generic-password', '-s', service, '-w'], {encoding: 'utf8'}).trim();
 const say = text => console.log(`twin: ${text}`);
 // Why (code review of 4a, 7 Nov 2026): a hung network must not freeze the launcher that supervises the app; one tester bug is about 8 gh calls. The runner lives here, not in lib/ (a step's clock is its hang cap).
-const gh = args => String(execFileSync('gh', args, {encoding: 'utf8', timeout: 30_000}) || '').trim();
+const gh = async args => String((await promisify(execFile)('gh', args, {encoding: 'utf8', timeout: 30_000})).stdout || '').trim();
 const idsOf = file => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').map(line => line.trim().split('=')).filter(([key, value]) => key?.startsWith('NOTION_') && value));
 
 export async function notionStatus(token, id) {
@@ -60,7 +61,7 @@ async function main() {
   }
   // 3. A fresh copy of the real folder, then what must not come along.
   // Why (code review of 4a): HOME is replaced at each start; a bug filed just before the last stop, or one that failed, gets one more try before it goes.
-  flushLeftovers(HOME, {enabled: !!testerKey, gh, say});
+  await flushLeftovers(HOME, {enabled: !!testerKey, gh, say});
   fs.rmSync(HOME, {recursive: true, force: true});
   execFileSync('cp', ['-c', '-R', REAL, HOME]);   // an APFS clone: instant, no extra space
   for (const name of fs.readdirSync(HOME).filter(name => name.startsWith('Singleton'))) fs.rmSync(path.join(HOME, name), {force: true});
@@ -123,8 +124,8 @@ async function main() {
   const stop = async () => {
     if (stopping) return;
     stopping = true;
-    stopFindings();
     await killGroup(app);
+    await stopFindings();   // after the app is gone: a slow network never delays quitting it
     fs.rmSync(path.join(LIVE, 'twin.json'), {force: true});
     await browser.close().catch(() => {});
     fs.rmSync(path.join(LIVE, 'browser'), {recursive: true, force: true});   // the sign-ins kept for next time, nothing else
