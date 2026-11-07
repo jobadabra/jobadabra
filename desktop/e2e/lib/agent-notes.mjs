@@ -44,26 +44,32 @@ const QUOTED = /["\u201c]([^"\u201c\u201d]{4,80})["\u201d]/g;
 const quotesOf = note => new Set([...String(note.observed || '').matchAll(QUOTED)].map(match => match[1].trim().toLowerCase()));
 
 /**
- * One note per element per run. Two notes of one run on one screen that quote the same element (they share two quoted strings, or one when the shorter note quotes only one) are the same
- * bug found by two goals: the first stays and says which goals saw it (`alsoGoals`), the later one is returned in `joined`, never filed twice and never lost.
- * Why (7 Nov 2026, pz, owner via mac-50: batch 1 of the lanes, #3538 and #3539 were the "Always on" row of one run noted by goals 2 and 4): the Finder's fingerprint hashes the title, and two titles for one row make two issues.
+ * One note per element per run. Two notes of one run on one screen that share TWO quoted strings (the row's name and its status, as the person reads them) are the same bug found by two goals: the one with the
+ * higher severity stays (the first on a tie), carries the other's goal in `alsoGoals`, and the other is returned in `joined` with `joinedTo` (its title), never filed twice and never lost. A single shared quote does not join
+ * (code-review finding, 7 Nov 2026: "Not connected" is on unrelated rows, and a low note could hide a high one). The joined note is listed in the run summary; its picture and trail are not in the Admin record.
+ * Why (7 Nov 2026, pz, owner via mac-50: batch 1 of the lanes, #3538 and #3539 were the "Always on" row of one run noted by goals 4 and 2): the Finder's fingerprint hashes the title, and two titles for one row make two issues.
  * -> {kept, joined}. A note that quotes nothing is never joined (it has no element to compare).
  */
 export function joinSameElement(notes) {
   const kept = [], joined = [];
   for (const note of notes) {
     const mine = quotesOf(note);
-    const twin = mine.size ? kept.find(other => other.view === note.view && (() => {
-      const theirs = quotesOf(other), shared = [...mine].filter(text => theirs.has(text)).length;
-      return shared >= 2 || (shared === 1 && Math.min(mine.size, theirs.size) === 1);
-    })()) : null;
-    if (twin) { twin.alsoGoals = [...(twin.alsoGoals || []), note.goal].filter(goal => goal !== undefined); joined.push(note); } else kept.push(note);
+    const at = mine.size ? kept.findIndex(other => other.view === note.view && [...quotesOf(other)].filter(text => mine.has(text)).length >= 2) : -1;
+    if (at < 0) { kept.push(note); continue; }
+    const twin = kept[at], winner = SEVERITY_RANK[note.severity] < SEVERITY_RANK[twin.severity] ? note : twin, loser = winner === note ? twin : note;
+    winner.alsoGoals = [...new Set([...(winner.alsoGoals || []), ...(loser.alsoGoals || []), loser.goal].filter(goal => goal !== undefined))];
+    loser.joinedTo = winner.title;
+    kept[at] = winner;
+    joined.push(loser);
   }
   return {kept, joined};
 }
 
-/** The rule or closed-verdict ids a judge's reason names that are really in the knowledge it was given: only an id code can find in that text counts, a made-up one never holds a note. */
-export const citedIds = (reason, knowledge) => [...new Set([...String(reason || '').matchAll(/\b([a-z]+-\d+)\b/g)].map(match => match[1]))].filter(id => String(knowledge || '').includes(`- ${id} `));
+/** The rule or closed-verdict ids a judge's reason names that are really a line of the knowledge it was given: only an id code can find at the start of a knowledge line counts, a made-up one never holds a note. */
+export const citedIds = (reason, knowledge) => {
+  const lines = String(knowledge || '').split('\n');
+  return [...new Set([...String(reason || '').matchAll(/\b([a-z]+-\d+)\b/g)].map(match => match[1]))].filter(id => lines.some(line => line.startsWith(`- ${id} `)));
+};
 
 /**
  * Which notes are filed. Low severity is never filed (the Finder's rule, owner 4 Oct 2026: "if we assess it as low, let's not open it"; the agent's nitpicks of wording are low). The rest are ranked

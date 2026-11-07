@@ -1,7 +1,7 @@
 name: CI · AI judge exam
 
 # The AI user agent's judge exam (owner, 5 Nov 2026: "Judge first"): the 11 recorded notes of one real tour run (desktop/e2e/fixtures/agent-judge-set), each with a settled label, judged three times by the old judge and three times by the current one through the AI broker, scored as "real notes kept" and "false notes dropped".
-# Report only, by hand: it gates nothing and no schedule starts it. About 150 short calls on the Claude mid tier, one at a time: 66 for the tour set and 81 for batch 1 of the persona lanes (7 Nov 2026, pz: the old rules, the three new rules and the closed verdicts, each alone).
+# Report only, by hand: it gates nothing and no schedule starts it. About 175 short calls on the Claude mid tier, one at a time: 66 for the tour set and 108 for batch 1 of the persona lanes (7 Nov 2026, pz: the old rules, the three new rules, and the closed verdicts with and without each note's own closure).
 run-name: AI judge exam · by hand
 
 on:

@@ -70,9 +70,15 @@ export function tableMarkdown(before, after) {
 export const BATCH1_RULES = ['jobs-6', 'jobs-7', 'settings-5'];
 const without = (expectations, ids) => Object.fromEntries(Object.entries(expectations).map(([area, entries]) => [area, entries.filter(entry => !ids.includes(entry.id))]));
 
-/** What the judge is told for one batch note under a variant: 'before' (the rules as they were), 'rules' (plus the 3 new ones), 'closed' (the old rules plus the closed verdicts of `lessons`). */
+/** The lessons of `lessons` without the note's own closure: what the judge would know if this note were a NEW false alarm worded like the old ones, not the same report again. */
+const othersOf = (lessons, note) => Object.fromEntries(Object.entries(lessons).map(([area, list]) => [area, list.filter(lesson => lesson.number !== note.issue)]));
+
+/**
+ * What the judge is told for one batch note under a variant: 'before' (the rules as they were), 'rules' (plus the 3 new ones), 'closed' (the old rules plus the closed verdicts of `lessons`, this note's own included:
+ * a recurrence), 'others' (the same without this note's own closure: a new report). Capped at 1000 tokens as the production judge is (suites/agent.mjs judgeKnowledge); code review, 7 Nov 2026: the exam must tell what a run tells.
+ */
 export const batchKnowledge = (note, {expectations, lessons}, variant) =>
-  knowledgeFor([areaOfView(note.view)], {expectations: variant === 'rules' ? expectations : without(expectations, BATCH1_RULES), closed: variant === 'closed' ? lessons : {}});
+  knowledgeFor([areaOfView(note.view)], {expectations: variant === 'rules' ? expectations : without(expectations, BATCH1_RULES), closed: variant === 'closed' ? lessons : variant === 'others' ? othersOf(lessons, note) : {}, maxTokens: 1000});
 
 /** Asks one variant about every batch-1 note, `runs` times each. -> [{n, label, verdicts, reasons, cites}] where `cites[i]` are the rule or closed-verdict ids run i's reason names (checked against the knowledge it got). */
 export async function askBatch({ask, notes, expectations, lessons, variant, runs = RUNS}) {
@@ -96,7 +102,8 @@ export function scoreBatch(rows) {
   const majority = test => rows.filter(row => row.verdicts.filter((_, i) => test(row, i)).length * 2 > row.verdicts.length);
   const real = rows.filter(row => row.label === 'real'), fake = rows.filter(row => row.label === 'false');
   const held = majority(heldIn), alone = majority((row, i) => row.verdicts[i] === 'disagrees');
-  return {realTotal: real.length, falseTotal: fake.length, realFiled: real.filter(row => !held.includes(row)).length, falseHeld: fake.filter(row => held.includes(row)).length,
+  const runs = Math.max(0, ...rows.map(row => row.verdicts.length)), perRun = Array.from({length: runs}, (_, i) => ({falseHeld: fake.filter(row => heldIn(row, i)).length, realHeld: real.filter(row => heldIn(row, i)).length}));   // production asks once per note: a single run is what a night sees
+  return {perRun, realTotal: real.length, falseTotal: fake.length, realFiled: real.filter(row => !held.includes(row)).length, falseHeld: fake.filter(row => held.includes(row)).length,
     realKeptByJudgeAlone: real.filter(row => !alone.includes(row)).length, falseDroppedByJudgeAlone: fake.filter(row => alone.includes(row)).length,
     rows: rows.map(row => ({n: row.n, label: row.label, held: held.includes(row), droppedAlone: alone.includes(row), verdicts: row.verdicts, cites: [...new Set(row.cites.flat())]}))};
 }
@@ -104,9 +111,9 @@ export function scoreBatch(rows) {
 /** The batch-1 table as markdown: per variant the production rule's counts and the judge-alone counts, then every note's outcome per variant. */
 export function batchMarkdown(scores) {
   const names = Object.keys(scores), first = scores[names[0]];
-  const line = name => `| ${name} | ${scores[name].falseHeld} of ${scores[name].falseTotal} | ${scores[name].realFiled} of ${scores[name].realTotal} | ${scores[name].falseDroppedByJudgeAlone} of ${scores[name].falseTotal} | ${scores[name].realKeptByJudgeAlone} of ${scores[name].realTotal} |`;
+  const line = name => `| ${name} | ${scores[name].falseHeld} of ${scores[name].falseTotal} | ${scores[name].realFiled} of ${scores[name].realTotal} | ${scores[name].perRun.map(run => `${run.falseHeld}/${run.realHeld}`).join(', ')} | ${scores[name].falseDroppedByJudgeAlone} of ${scores[name].falseTotal} | ${scores[name].realKeptByJudgeAlone} of ${scores[name].realTotal} |`;
   const cell = row => `${row.label === 'false' ? (row.held ? '✅ held' : '❌ filed') : (row.held ? '❌ held' : '✅ filed')}${row.cites.length ? ` (${row.cites.join(', ')})` : ''}`;
-  return ['| Knowledge | False notes held | Real notes filed | False dropped by the judge alone | Real kept by the judge alone |', '|---|---|---|---|---|', ...names.map(line), '',
+  return ['| Knowledge | False notes held | Real notes filed | Per run (false held / real held) | False dropped by the judge alone | Real kept by the judge alone |', '|---|---|---|---|---|---|', ...names.map(line), '',
     `| Note | Label | ${names.join(' | ')} |`, `|---|---|${names.map(() => '---').join('|')}|`, ...first.rows.map((row, i) => `| ${row.n} | ${row.label} | ${names.map(name => cell(scores[name].rows[i])).join(' | ')} |`)].join('\n');
 }
 

@@ -22,7 +22,7 @@ const tourLine = `Tour set, ${tourHeld.length} real notes, ${RUNS} runs each: th
 // Why (7 Nov 2026, pz): batch 1 of the persona lanes replayed with the old rules, the three new rules, and the closed verdicts, each alone (a recurrence test: the closed verdicts are those of these very notes; the real notes show nothing is over-dropped).
 const batch = loadBatch(path.join(here, 'fixtures/agent-judge-set-b1'));
 const batchScores = {};
-for (const [name, variant] of [['old rules', 'before'], ['+ the 3 new rules', 'rules'], ['+ closed verdicts', 'closed']]) batchScores[name] = scoreBatch(await askBatch({ask, notes: batch.notes, expectations, lessons: batch.lessons, variant}));
+for (const [name, variant] of [['old rules', 'before'], ['+ the 3 new rules', 'rules'], ['+ closed verdicts (own included: the same report again)', 'closed'], ['+ closed verdicts (own left out: a new report)', 'others']]) batchScores[name] = scoreBatch(await askBatch({ask, notes: batch.notes, expectations, lessons: batch.lessons, variant}));
 const batchTable = batchMarkdown(batchScores);
 fs.mkdirSync(out, {recursive: true});
 fs.writeFileSync(path.join(out, 'judge-set.json'), JSON.stringify({before, after, afterRows, tourHeld, batchScores}, null, 1));

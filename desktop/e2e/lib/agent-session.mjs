@@ -38,7 +38,7 @@ export function summaryMarkdown(summary) {
   const held = summary.held.length ? ['', `**Held, not filed (${summary.held[0].judgeReason || 'the second opinion was unavailable'}):**`, ...summary.held.map(note => `- ${note.title} (${note.view}): ${String(note.observed).replace(/\s+/g, ' ').slice(0, 160)}`)] : [];
   // Why (7 Nov 2026, pz, owner via mac-50: "list the held notes, never lose them"): a note the judge disagreed with by naming a rule or closed verdict is not filed, and a twin of an earlier note is joined; both are named here with the id or the note they follow.
   const ruled = summary.ruled?.length ? ['', `**Not filed, the second opinion names a rule or a closed verdict (${summary.ruled.length}):**`, ...summary.ruled.map(note => `- ${note.title} (${note.view}): ${(note.judgeCites || []).join(', ')}: ${String(note.judgeReason || '').slice(0, 160)}`)] : [];
-  const joinedLines = summary.joined?.length ? ['', `**Joined to an earlier note of this run (${summary.joined.length}):**`, ...summary.joined.map(note => `- ${note.title} (${note.view})`)] : [];
+  const joinedLines = summary.joined?.length ? ['', `**Joined to an earlier note of this run (${summary.joined.length}):**`, ...summary.joined.map(note => `- ${note.title} (${note.view}), goal ${note.goal ?? '?'}, joined to "${note.joinedTo || 'an earlier note'}"`)] : [];
   const stopped = summary.stopped ? [`Stopped: ${{goals: 'every goal returned a verdict', budget: 'remaining token budget cannot fund another goal', steps: 'a goal reached its step limit'}[summary.stopped] || summary.stopped}.`, ''] : [];
   return [head, '', ...stopped, ...table, ...held, ...ruled, ...joinedLines].join('\n');
 }

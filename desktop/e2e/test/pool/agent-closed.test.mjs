@@ -69,6 +69,12 @@ test('batch 1: the "Always on" row noted by two goals of one run is one note; no
   assert.equal(joinSameElement([a, b]).joined.length, 0, 'one common phrase among several quotes is not the same element');
   assert.equal(joinSameElement([{view: 'jobs', goal: 1, observed: 'nothing quoted'}, {view: 'jobs', goal: 2, observed: 'nothing quoted'}]).joined.length, 0);
   assert.equal(joinSameElement([a, {...a, view: 'jobs', goal: 3}]).joined.length, 0, 'another screen is another element');
+  // code review (7 Nov 2026): one shared quote joined a low note with a high one on another row and hid the high one
+  const low = {view: 'settings', goal: 1, severity: 'low', title: 'low', observed: 'The status reads "Not connected" next to the GitHub row.'}, high = {view: 'settings', goal: 2, severity: 'high', title: 'high', observed: 'The AI row says "Not connected" while the key is saved.'};
+  assert.equal(joinSameElement([low, high]).joined.length, 0, 'one shared quote is not the same element');
+  const fresh = note => ({...note, alsoGoals: undefined, joinedTo: undefined}), lowTwin = {...fresh(twins[0]), severity: 'low', title: 'low twin', goal: 5}, highTwin = {...fresh(twins[1]), severity: 'high', title: 'high twin', goal: 6};
+  const merged = joinSameElement([lowTwin, highTwin]);
+  assert.deepEqual([merged.kept.map(note => note.title), merged.joined.map(note => note.title), merged.joined[0].joinedTo, merged.kept[0].alsoGoals], [['high twin'], ['low twin'], 'high twin', [5]], 'the higher severity of two twins stays');
 });
 
 test('a disagree is held only when it names a rule or closed verdict that is in the knowledge; held notes are listed in the summary', () => {
@@ -88,6 +94,17 @@ test('a disagree is held only when it names a rule or closed verdict that is in 
   assert.match(text, /Joined to an earlier note of this run \(1\)[\s\S]*- twin \(settings\)/);
 });
 
+test('batch 1 through the production hold, with the verdicts the judge really gave: #3534 and #3539 named a rule and are held, the other 7 file', () => {
+  const asJudged = note => {
+    const knowledge = batchKnowledge(note, {expectations, lessons: batch.lessons}, 'before');   // the rules as they were that day
+    return {...note, judge: note.recorded.judge, judgeReason: note.recorded.reason, judgeCites: citedIds(note.recorded.reason, knowledge)};
+  };
+  const ranked = rankNotes(batch.notes.map(asJudged), 20);
+  assert.deepEqual(ranked.ruled.map(note => note.issue).sort(), [3534, 3539]);
+  assert.equal(ranked.filed.length, 7);
+  assert.deepEqual(ranked.filed.filter(note => note.label === 'real').map(note => note.issue).sort(), [3530, 3532, 3533], 'the three real ones still file');
+});
+
 test('the batch-1 exam set: 3 real, 6 false, every note has its picture, and each variant tells the judge what it should', () => {
   assert.equal(batch.notes.filter(note => note.label === 'real').length, 3);
   assert.equal(batch.notes.filter(note => note.label === 'false').length, 6);
@@ -96,6 +113,8 @@ test('the batch-1 exam set: 3 real, 6 false, every note has its picture, and eac
   const raw = batch.notes.find(note => note.issue === 3537), zoom = batch.notes.find(note => note.issue === 3531);
   assert.ok(!know(raw, 'before').includes('jobs-7') && know(raw, 'rules').includes('jobs-7') && !know(raw, 'closed').includes('jobs-7'));
   assert.ok(know(raw, 'closed').includes('closed-3537') && !know(raw, 'rules').includes('closed-3537') && !know(zoom, 'before').includes('closed-3531'));
+  const jobsNote = batch.notes.find(note => note.issue === 3529);
+  assert.ok(know(jobsNote, 'others').includes('closed-3537') && !know(jobsNote, 'others').includes('closed-3529') && know(jobsNote, 'closed').includes('closed-3529'), 'leave-one-out: the other closures, never the note\'s own');
   assert.deepEqual(BATCH1_RULES.filter(id => !Object.values(expectations).flat().some(rule => rule.id === id)), [], 'the three rules exist in docs/app-expectations');
 });
 
@@ -112,6 +131,6 @@ test('the batch-1 score: the production rule holds a false note only on a named 
   assert.equal(score.falseHeld, 6, 'every false note names an id of its area');
   assert.equal(score.realFiled, 3, 'a real note the judge disagrees with without naming anything is still filed');
   assert.equal(score.realKeptByJudgeAlone, 2, 'a judge-alone gate would have dropped it');
-  assert.match(batchMarkdown({closed: score}), /\| closed \| 6 of 6 \| 3 of 3 \| 6 of 6 \| 2 of 3 \|/);
+  assert.match(batchMarkdown({closed: score}), /\| closed \| 6 of 6 \| 3 of 3 \| 6\/0, 6\/0, 6\/0 \| 6 of 6 \| 2 of 3 \|/);
   assert.ok(fs.existsSync(new URL('notes.json', dir)));
 });
