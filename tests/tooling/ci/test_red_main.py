@@ -62,6 +62,7 @@ CLASSIFIED = {
     'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
     'CI · Search check (18 personas)': 'ignored: a night report on live public job sites; started by the Worker, never by a push to main',
     'CI · Search reference (18 personas)': 'ignored: a report on a live public job portal (EURES), started by hand; never by a push to main',
+    'Press tapes': 'ignored: records the 18 personas\' tapes, started by hand; never by a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'Tooling': 'ignored: alone only on pull requests that change the harness (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',

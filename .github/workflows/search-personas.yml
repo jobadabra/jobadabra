@@ -18,7 +18,7 @@ on:
         type: boolean
         default: false
       # Why (7 Nov 2026, ps 2/6, gi's review): the repeat press is never measured (every night is one fresh press), so a by-hand run can take 2 presses for chosen
-      # personas; such a run is not a night: it is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
+      # personas; such a run (a subset or 2 presses; a plain by-hand run of all 18 is still a night) is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
       # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565).
       presses:
         description: 'Presses per persona (1 = the night check; 2 also measures a repeat press)'

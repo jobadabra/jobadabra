@@ -96,6 +96,18 @@ class ReplayTest(unittest.TestCase):
             answer = self.client(asked, '').messages.create(**question(['a.test', 'c.test']))
         self.assertEqual(json.loads(answer.content[0].text), {'keep': [2, 1]}, 'c.test (now 2) was the recorded best')
 
+    def test_another_cap_is_another_question_and_a_cut_answer_is_not_split(self):
+        asked = []
+        with self.mode('record'):
+            self.client(asked, '{"fit": [1]}').messages.create(**question(['Nurse', 'Cook']))
+        with self.mode('replay', JOBADABRA_TAPE_LIVE='0'), self.assertRaises(RuntimeError):
+            self.client(asked, '').messages.create(**{**question(['Cook', 'Nurse']), 'max_tokens': 200})
+        cut = contract.Response(content=[contract.TextBlock('{"fit": [1]}')], usage=contract.Usage(1, 1), model='m', stop_reason='max_tokens')
+        with self.mode('record'):
+            search_tape._Client(lambda: mock.Mock(messages=mock.Mock(create=lambda **params: cut))).messages.create(**question(['Driver', 'Pilot']))
+        with self.mode('replay', JOBADABRA_TAPE_LIVE='0'), self.assertRaises(RuntimeError):
+            self.client(asked, '').messages.create(**question(['Pilot', 'Driver']))
+
     def test_without_the_switch_a_reordered_batch_misses_as_before(self):
         asked = []
         with self.mode('record'):

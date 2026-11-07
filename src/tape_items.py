@@ -64,6 +64,6 @@ def join(field, items):
 
 
 def context(params, prefix):
-    """What makes two items the same question besides their own text: the request without its size (max_tokens), the list or the earlier turns' list."""
-    rest = {k: v for k, v in params.items() if k not in ('messages', 'max_tokens')}
+    """What makes two items the same question besides their own text: the whole request but its list (max_tokens stays: a lower cap may cut a batch off)."""
+    rest = {k: v for k, v in params.items() if k != 'messages'}
     return json.dumps([rest, (params.get('messages') or [])[:-1], prefix], sort_keys=True, default=str, ensure_ascii=False)
