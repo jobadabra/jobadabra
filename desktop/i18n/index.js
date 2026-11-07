@@ -1,5 +1,6 @@
 // Shared desktop message catalogs: explicit keys, English fallback and language-specific plural selection.
 import {common} from './catalogs/common.js';
+import {osText} from './platform.js';
 
 export const SUPPORTED_LOCALES = Object.freeze(['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']);
 export const LANGUAGE_NAMES = Object.freeze({en: 'English', de: 'Deutsch', fr: 'Français', it: 'Italiano', es: 'Español', ro: 'Română', ru: 'Русский'});
@@ -39,7 +40,9 @@ function message(locale, key, variables) {
 export function t(key, variables = {}) {
   const template = message(active, key, variables) ?? message('en', key, variables);
   if (typeof template !== 'string') return String(key);
-  return template.replace(/\{([a-zA-Z][\w]*)\}/g, (placeholder, name) => Object.hasOwn(variables, name) ? String(variables[name]) : placeholder);
+  // Adapt only the trusted template: interpolation values remain byte-for-byte personal content.
+  const platform = globalThis.window?.pilot?.platform ?? globalThis.process?.platform;
+  return osText(template, platform).replace(/\{([a-zA-Z][\w]*)\}/g, (placeholder, name) => Object.hasOwn(variables, name) ? String(variables[name]) : placeholder);
 }
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'common', messages);

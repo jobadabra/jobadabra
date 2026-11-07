@@ -1,5 +1,5 @@
-// "Mac" in the window's words on Windows (owner, 9 Oct 2026: "Not installed on this Mac" on a PC). Every piece of text the window or the app shows is passed through
-// renderer/os.js on Windows, so the test runs each line of the renderer and lib through the same swap: a "Mac" that survives it would be shown to a PC user.
+// Platform wording in trusted app copy (owner, 9 Oct 2026: "Not installed on this Mac" on a PC). The localization design (7 Nov 2026) adapts catalog templates before interpolation;
+// renderer/os.js remains a compatibility export for explicit app-owned strings. This source guard checks supported wording, not arbitrary user DOM content.
 // A line may keep one on purpose (listed below, with why); a tip that only the Mac has is marked data-mac-only and hidden on Windows.
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
@@ -41,7 +41,7 @@ test('a native dialog, notification or menu never shows a Mac-only word on Windo
 // A window with no preload (and so no os.js) must swap its own words. Every BrowserWindow is listed with why its words are right on Windows; a new one fails here
 // until someone decides.
 const WINDOWS = {
-  'lib/main-window.js': {count: 2, why: 'the app window runs renderer/os.js; the second shows Notion\'s own page'},
+  'lib/main-window.js': {count: 2, why: 'the app window uses platform-aware catalog templates; the second shows Notion\'s own page'},
   'lib/cv-windows.js': {count: 3, why: 'two hidden print windows; the review window\'s page is written by lib/cv.js reviewPage through osText (test/unit/cv/cv.test.js)'},
   'lib/cv-look.js': {count: 1, why: 'hidden: measures the CV, shows nothing'},
   'lib/page-render.js': {count: 1, why: 'hidden: renders an employer page for the engine'},
