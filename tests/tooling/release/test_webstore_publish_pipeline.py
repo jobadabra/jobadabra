@@ -293,3 +293,12 @@ class MicrosoftStoreGetsOneVersionAWeek(unittest.TestCase):
                 continue
             code = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith(('#', '//')) and 'by hand' not in line.lower() and 'Once ' not in line)   # code, not the hand-start hints told to the owner
             self.assertNotRegex(code, r'workflow run msix-store\.yml|workflows/msix-store\.yml/dispatches|start_store "Microsoft', f'{path.name} starts a Store submission')
+
+    def test_the_promotion_records_the_date_the_weekly_pick_reads(self):
+        # Code review of the weekly Store PR: published_at is the beta's, so "stable for a day" needs the promotion's own date (annotated tag stable-promoted-X.Y.Z).
+        script = (ROOT / 'tools' / 'release-stable.sh').read_text()
+        picker = (ROOT / 'tools' / 'msix-store-weekly.mjs').read_text()
+        self.assertGreater(script.index('stable-promoted-'), script.index('--prerelease=false --latest'), 'recorded after the release is stable')
+        self.assertIn('git/ref/tags/stable-promoted-${stable.version}', picker, 'the pick reads the tag the promotion writes')
+        self.assertIn('refs/tags/stable-promoted-${tag#desktop-v}', script)
+        self.assertRegex(script, r'promotion date not recorded', 'a tag that cannot be written never undoes the promotion')

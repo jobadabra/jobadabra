@@ -58,7 +58,7 @@ export function reasonOf(getText, status = '') {
 export function messageOf(kind, {version, reason = '', run = '', repo = '', next = ''}) {
   if (kind === 'live') return `✅ Jobadabra ${version} is live in the Microsoft Store.\n${STORE_PAGE}`;
   if (kind === 'failed') {
-    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself. Once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
+    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself; the weekly run sends the next newer stable that passes. To retry this one once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
   }
   throw new Error(`unknown message kind ${kind}`);
 }

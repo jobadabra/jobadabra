@@ -90,6 +90,13 @@ if [ "${DRY_RUN:-0}" = 1 ]; then echo "Dry run: would make $tag stable (its Wind
 was_beta=$(gh release view "$tag" -R "$repo" --json isPrerelease -q .isPrerelease 2>/dev/null || echo true)
 gh release edit "$tag" -R "$repo" --prerelease=false --latest
 echo "Stable: $tag (friends' apps offer it within 10 minutes, or at their next start)"
+# Why (7 Nov 2026, code review of the weekly Store PR): a release's published_at is its BETA's publish time and promoting changes nothing the API shows, so "has been stable for a day" (owner: "only after it has run a day on the .exe")
+# needs its own date: an annotated tag dated now, read by tools/msix-store-weekly.mjs. Only when this run made it stable; a failed tag never hides or undoes the promotion.
+if [ "$was_beta" = true ]; then
+  if sha=$(gh api "repos/$repo/commits/$tag" --jq .sha 2>/dev/null) && tagsha=$(gh api "repos/$repo/git/tags" -f tag="stable-promoted-${tag#desktop-v}" -f message="$tag promoted to stable" -f object="$sha" -f type=commit -f "tagger[name]=github-actions[bot]" -f "tagger[email]=41898282+github-actions[bot]@users.noreply.github.com" -f "tagger[date]=$(date -u +%Y-%m-%dT%H:%M:%SZ)" --jq .sha 2>/dev/null); then
+    gh api "repos/$repo/git/refs" -f ref="refs/tags/stable-promoted-${tag#desktop-v}" -f sha="$tagsha" --silent 2>/dev/null || echo "(promotion date not recorded: tag exists or was refused)" >&2
+  else echo "(promotion date not recorded)" >&2; fi
+fi
 # Why (1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released"): one Telegram alert on EVERY way a release becomes stable (all of them end here),
 # only when this run made it stable: a re-run on a tag that already is stable says nothing. A failed alert never hides or undoes the promotion.
 if [ "$was_beta" = true ]; then GITHUB_REPOSITORY="$repo" node "$here/../desktop/e2e/release-alert.mjs" stable "$tag" || echo "(release alert not sent)" >&2; fi
