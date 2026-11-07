@@ -31,6 +31,7 @@ from pathlib import Path
 from ..notion import client as notion
 from ..sources import ats
 from .. import ledger_store
+from . import kit as kit_module
 from ..repos import PUBLIC_REPO
 from ..stores import base, open_stores, rules
 
@@ -62,7 +63,7 @@ def ready_jobs(stores, max_jobs):
     pairs = []
     for record in records:
         kit_data = _kit(stores, record)
-        if kit_data:
+        if kit_data and kit_data.get('eligible') is not False:
             pairs.append((record, kit_data))
         if len(pairs) >= max_jobs:
             break
@@ -103,7 +104,7 @@ def unstarted_urls_by_score(stores, max_jobs):
         if record.get('url') and record.get('fit') not in (None, ''):
             url_score.setdefault(record['url'], record['fit'])
     candidates = [record['url'] for record in records
-                  if record.get('url') and not (record.get('next_step') or '').startswith('⛔ Not eligible:')
+                  if record.get('url') and not (record.get('next_step') or '').startswith(kit_module.NOT_ELIGIBLE)
                   and (record.get('stage') == 'Kit ready' or (record.get('next_step') or '').startswith(KIT_STEP))]
     unstarted_urls_by_score.rows = {record['url']: record for record in records if record.get('url')}  # for job_details()
     candidates = sorted(dict.fromkeys(candidates), key=lambda url: url_score.get(url, -1), reverse=True)

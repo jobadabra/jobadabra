@@ -356,10 +356,13 @@ def auto_run(db, candidates, stores, model, max_jobs, min_score, client=None, op
     return f'Auto-drafted {len(drafted_jobs)} of {len(pending)} kit(s); {failures} failed', drafted_jobs
 
 
+NOT_ELIGIBLE = '⛔ Not eligible: '
+
+
 def next_step(kit):
     """The Applications row's Next step after a kit: the eligibility verdict first (the desktop app shows it)."""
     if kit.get('eligible') is False:
-        return f"⛔ Not eligible: {kit.get('eligibility_note') or 'see your application'}"
+        return f"{NOT_ELIGIBLE}{kit.get('eligibility_note') or 'see your application'}"
     return '📝 Kit ready: review it, then Apply'
 
 
