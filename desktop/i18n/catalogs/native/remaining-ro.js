@@ -24,5 +24,6 @@ export default {
   "stuckBody": "Extensia nu poate termina această pagină. Claude poate: deschide sesiunea pentru a alege.",
   "focusTitle": "Priorități: ce să faci în continuare",
   "inputTitle": "Este nevoie de răspunsul tău · {title}",
-  "inputBody": "Claude are nevoie de răspunsul tău"
+  "inputBody": "Claude are nevoie de răspunsul tău",
+  "claudeOff": "Aplică folosind Claude este dezactivat. Folosește Completează în Chrome sau permite funcția data viitoare."
 };

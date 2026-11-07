@@ -24,5 +24,6 @@ export default {
   "stuckBody": "L’estensione non riesce a completare questa pagina. Claude può farlo: apri la sessione per scegliere.",
   "focusTitle": "Focus: cosa fare adesso",
   "inputTitle": "Serve il tuo intervento · {title}",
-  "inputBody": "Claude ha bisogno del tuo intervento"
+  "inputBody": "Claude ha bisogno del tuo intervento",
+  "claudeOff": "Candidati con Claude è disattivato. Usa Compila in Chrome oppure consentilo la prossima volta."
 };

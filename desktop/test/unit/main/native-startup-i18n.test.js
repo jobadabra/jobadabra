@@ -43,3 +43,17 @@ test('a localized move failure preserves the original error without a second int
   assert.ok(shown[1].detail.startsWith(`${raw}\n\n`));
   assert.notEqual(shown[1].message, "Jobadabra couldn't move itself");
 });
+
+test('replacement resolves locale at the conflict callback and never replaces a running copy', () => {
+  const shown = []; let conflict;
+  const app = {isPackaged: true, isInApplicationsFolder: () => false,
+    moveToApplicationsFolder: options => { conflict = options.conflictHandler; return true; }};
+  assert.equal(offerMove({app, dialog: {showMessageBoxSync: options => {shown.push(options); return 0;}}, platform: 'darwin'}), true);
+  setLocale('de');
+  assert.equal(conflict('existsAndRunning'), false);
+  assert.equal(shown.length, 1);
+  assert.equal(conflict('exists'), true);
+  assert.equal(shown[1].message, 'Jobadabra in Programme ersetzen?');
+  assert.deepEqual([shown[1].defaultId, shown[1].cancelId], [0, 1]);
+  assert.match(shown[1].detail, /außerhalb der App/);
+});

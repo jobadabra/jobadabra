@@ -24,5 +24,6 @@ export default {
   "stuckBody": "The extension cannot finish this page. Claude can: open the session to choose.",
   "focusTitle": "Focus: what to do next",
   "inputTitle": "Needs your input · {title}",
-  "inputBody": "Claude needs your input"
+  "inputBody": "Claude needs your input",
+  "claudeOff": "Apply with Claude is off. Use Fill in Chrome, or allow it next time."
 };

@@ -24,5 +24,6 @@ export default {
   "stuckBody": "Die Erweiterung kann diese Seite nicht fertig bearbeiten. Claude kann es: Öffne die Sitzung, um zu wählen.",
   "focusTitle": "Fokus: Was als Nächstes zu tun ist",
   "inputTitle": "Deine Eingabe ist nötig · {title}",
-  "inputBody": "Claude benötigt deine Eingabe"
+  "inputBody": "Claude benötigt deine Eingabe",
+  "claudeOff": "Mit Claude bewerben ist ausgeschaltet. Nutze In Chrome ausfüllen oder erlaube es beim nächsten Mal."
 };

@@ -24,5 +24,6 @@ export default {
   "stuckBody": "La extensión no puede terminar esta página. Claude sí puede: abre la sesión para elegir.",
   "focusTitle": "Enfoque: qué hacer a continuación",
   "inputTitle": "Se necesita tu respuesta · {title}",
-  "inputBody": "Claude necesita tu respuesta"
+  "inputBody": "Claude necesita tu respuesta",
+  "claudeOff": "Solicitar con Claude está desactivado. Usa Rellenar en Chrome o permítelo la próxima vez."
 };

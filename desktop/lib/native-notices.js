@@ -53,3 +53,6 @@ export function focusReminderTitle() { return text('focusTitle'); }
 export function sessionInputNotice({title, brief}) {
   return {title: text('inputTitle', {title}), body: brief || text('inputBody')};
 }
+
+/** Explain the disabled Claude action without changing feature gating or consent state. */
+export function claudeOffText() { return text('claudeOff'); }

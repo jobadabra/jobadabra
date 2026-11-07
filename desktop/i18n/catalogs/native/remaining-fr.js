@@ -24,5 +24,6 @@ export default {
   "stuckBody": "L’extension ne peut pas terminer cette page. Claude le peut : ouvrez la session pour choisir.",
   "focusTitle": "Focus : que faire ensuite",
   "inputTitle": "Votre réponse est nécessaire · {title}",
-  "inputBody": "Claude attend votre réponse"
+  "inputBody": "Claude attend votre réponse",
+  "claudeOff": "Postuler avec Claude est désactivé. Utilisez Remplir dans Chrome ou autorisez cette fonction la prochaine fois."
 };
