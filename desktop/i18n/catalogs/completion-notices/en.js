@@ -42,5 +42,8 @@ export default {
   "updates": {
     "one": "Gmail: {shown} application update{where}",
     "other": "Gmail: {shown} application updates{where}"
-  }
+  },
+  "gmailNotChecked": "Gmail check not checked",
+  "gmailDisconnected": "Gmail is not connected: open Jobadabra to connect it.",
+  "gmailWhy": "Open Jobadabra to see why and what to do."
 };

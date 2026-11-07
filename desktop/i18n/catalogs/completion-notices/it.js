@@ -45,5 +45,8 @@ export default {
     "one": "Gmail: {shown} aggiornamento sulle candidature{where}",
     "other": "Gmail: {shown} aggiornamenti sulle candidature{where}",
     "many": "Gmail: {shown} aggiornamenti sulle candidature{where}"
-  }
+  },
+  "gmailNotChecked": "Gmail non controllato",
+  "gmailDisconnected": "Gmail non è collegato: apri Jobadabra per collegarlo.",
+  "gmailWhy": "Apri Jobadabra per scoprire il motivo e cosa fare."
 };

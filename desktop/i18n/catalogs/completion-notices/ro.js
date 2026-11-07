@@ -45,5 +45,8 @@ export default {
     "one": "Gmail: {shown} actualizare a candidaturilor{where}",
     "other": "Gmail: {shown} de actualizări ale candidaturilor{where}",
     "few": "Gmail: {shown} actualizări ale candidaturilor{where}"
-  }
+  },
+  "gmailNotChecked": "Gmail nu a fost verificat",
+  "gmailDisconnected": "Gmail nu este conectat: deschide Jobadabra pentru a-l conecta.",
+  "gmailWhy": "Deschide Jobadabra pentru a vedea motivul și ce ai de făcut."
 };

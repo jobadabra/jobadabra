@@ -199,7 +199,7 @@ export function notice(run, locale) {
   const said = run.rescore ? rescoreNotice(run, locale) : noticeText(run, locale);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }
-// Why (4 Nov 2026, #3108): the Find jobs pop-up. Kept out of noticeText() so its complexity does not grow (tools/clean-code-js.mjs: an old function over the limit may not grow).
+// Why (7 Nov 2026, #3108): a time-limited search keeps its partial verdict in every language; this helper formats authored copy separately from the run record and its raw result.
 // A search that did not finish is never "done" with "No jobs added"; it says it ended at the time limit.
 function searchNotice(run, {where, verdict, look}, locale) {
   const text = (key, variables, canonical) => completionWords(locale, key, variables, canonical);

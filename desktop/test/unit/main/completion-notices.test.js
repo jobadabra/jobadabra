@@ -82,3 +82,19 @@ test('counts and warning/partial verdicts use explicit presentation without inve
     assert.equal(scored.body, completionText(locale, 'scores', {count}));
   }
 });
+
+test('actual not-checked announceRuns short-circuit uses saved language without changing target or canonical verdict', t => {
+  t.mock.timers.enable({apis: ['Date'], now: Date.parse('2026-11-07T12:00:00Z')});
+  const titles = ['Gmail check not checked', 'Gmail wurde nicht geprüft', 'Gmail non vérifié', 'Gmail non controllato', 'Gmail sin revisar', 'Gmail nu a fost verificat', 'Gmail не проверен'];
+  for (const [index, locale] of locales.entries()) for (const off of [true, false]) {
+    let rows = []; const output = [], storage = {settings: () => ({displayLanguage: locale}), readText: () => JSON.stringify(rows)};
+    const app = createAppNotify({DEMO: true, Notification: {isSupported: () => false}, app: {}, getStorage: () => storage,
+      targets: {clean: x => x}, toWindow: (...args) => output.push(args), getWindow: () => null});
+    app.announceRuns(); setLocale('es');
+    rows = [{id: 42, kind: 'mail', ok: false, off, problem: off ? '' : 'not checked: raw provider reason', endedAt: new Date().toISOString()}];
+    const wire = JSON.stringify(rows); app.announceRuns(); app.announceRuns();
+    assert.equal(output.length, 1); assert.equal(output[0][1].title, titles[index]);
+    assert.deepEqual(output[0][1].target, {run: 42}); assert.equal(JSON.stringify(rows), wire);
+    assert.equal(output[0][1].body, completionText(locale, off ? 'gmailDisconnected' : 'gmailWhy'));
+  }
+});

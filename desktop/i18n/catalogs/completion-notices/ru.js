@@ -48,5 +48,8 @@ export default {
     "other": "Gmail: {shown} обновлений откликов{where}",
     "few": "Gmail: {shown} обновления откликов{where}",
     "many": "Gmail: {shown} обновлений откликов{where}"
-  }
+  },
+  "gmailNotChecked": "Gmail не проверен",
+  "gmailDisconnected": "Gmail не подключён: откройте Jobadabra, чтобы подключить его.",
+  "gmailWhy": "Откройте Jobadabra, чтобы узнать причину и что делать."
 };

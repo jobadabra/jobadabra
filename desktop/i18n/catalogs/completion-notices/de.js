@@ -42,5 +42,8 @@ export default {
   "updates": {
     "one": "Gmail: {shown} Bewerbungsupdate{where}",
     "other": "Gmail: {shown} Bewerbungsupdates{where}"
-  }
+  },
+  "gmailNotChecked": "Gmail wurde nicht geprüft",
+  "gmailDisconnected": "Gmail ist nicht verbunden: Öffne Jobadabra, um es zu verbinden.",
+  "gmailWhy": "Öffne Jobadabra, um den Grund und die nächsten Schritte zu sehen."
 };
