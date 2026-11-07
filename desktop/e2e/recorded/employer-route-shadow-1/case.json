@@ -4,6 +4,10 @@
   "shape": "a posting whose AI-named employer application link is inside an open shadow root and leads to the form",
   "why": "A direct employer route can appear in the page sketch because it traverses open shadow roots. The Apply finder and click lookup must see the same listed control so this universal route continues to the form.",
   "sample": "fictional job board and employer application",
+  "control": {
+    "build": "0.9.762",
+    "failed": "The AI-named employer link inside the open shadow root was not pressed, so the fictional form was not reached."
+  },
   "rung": 2,
   "pages": [
     {"url": "https://board.example.test/jobs/route-1", "file": "posting.html"},

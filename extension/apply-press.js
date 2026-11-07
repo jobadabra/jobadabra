@@ -18,6 +18,7 @@ const PAGE_BUTTONS = 'a[href], button, [role="button"], input[type="button"]';
 function applyCandidates(tabId, listed = PAGE_BUTTONS) {   // listed: PAGE_BUTTONS for the phrase path, NAMED_BUTTONS (the page sketch's own list) when the AI named the control
   return chrome.scripting.executeScript({target: {tabId}, func: selector => {
     // Why (2026-11-07, #3425 offline fixture): the page sketch reads open shadow roots; a document-only button scan could not follow its named route.
+    // Keep in sync with the serialized click lookup below so AI candidate indexes resolve to the same node.
     const all = () => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const host of root.querySelectorAll('*')) if (host.shadowRoot && !/^jobadabra/.test(host.id)) walk(host.shadowRoot); }; walk(document); return found; };
     return all().map((el, index) => {
     if (el.closest('[id^=jobadabra], [id^=jobadabra]')) return null;   // never the extension's own UI; the index stays the page's (desktop/integration/extension/own-ui-not-read.test.mjs)
@@ -78,6 +79,7 @@ export async function pressApply(tabId, phrases = [], named = '', want = '', noE
   if (!mayAct()) return {pressed: null, via: '', buttons: [], why: null};   // stopped by the person (stop.js): nothing is pressed
   notePress(tabId);   // right before the click: a tab this press opens joins the application, any other tab never does (tabs.js followOpener)
   const done = await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: (selector, index) => {   // MAIN: the page's own window.open, below
+    // Keep in sync with the serialized candidate lookup above so it clicks the node the AI named.
     const all = () => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const host of root.querySelectorAll('*')) if (host.shadowRoot && !/^jobadabra/.test(host.id)) walk(host.shadowRoot); }; walk(document); return found; };
     const el = all()[index];
     if (!el) return false;
