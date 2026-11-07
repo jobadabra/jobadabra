@@ -16,9 +16,11 @@ function folder(mutate = () => {}) {
   fs.mkdirSync(path.join(dir, 'cv'));
   fs.mkdirSync(path.join(dir, 'config'));
   const db = new DatabaseSync(path.join(dir, 'data', 'tracker.sqlite'));
-  db.exec("CREATE TABLE jobs (id INTEGER PRIMARY KEY, title TEXT, stage TEXT); CREATE TABLE notes (a TEXT, b TEXT)");
+  // Why (7 Nov 2026, ts 5/5, owner: "windows unit tests are still very slow"; hypothesis until the Windows run): 30 folders x 33 commits, each flushed to disk, was 32.5 s of this file on a Windows runner (0.4 s on a Mac); one transaction per folder is one flush.
+  db.exec("BEGIN; CREATE TABLE jobs (id INTEGER PRIMARY KEY, title TEXT, stage TEXT); CREATE TABLE notes (a TEXT, b TEXT)");
   for (let n = 1; n <= 30; n++) db.prepare('INSERT INTO jobs (id, title, stage) VALUES (?, ?, ?)').run(n, `Role ${n}`, n % 3 ? 'new' : 'applied');
   db.prepare('INSERT INTO notes VALUES (?, ?)').run('x', 'y');
+  db.exec('COMMIT');
   fs.writeFileSync(path.join(dir, 'profile.md'), '# Ada\n');
   fs.writeFileSync(path.join(dir, 'answers.md'), 'Why us? Because.\n');
   fs.writeFileSync(path.join(dir, 'portrait.md'), 'A careful nurse.\n');

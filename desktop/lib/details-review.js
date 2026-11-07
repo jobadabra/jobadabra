@@ -89,7 +89,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const outline = async page => (outlines[page] ||= await opened.page(page).outline());
   const out = [];
   const client = ai.client || (ai.apiKey ? anthropicApi(ai.apiKey) : null);
-  await cvQueue.readOnce(storage, {client}).catch(() => false);   // an install set up before the CV read: once per CV file
+  await cvQueue.readOnce(storage, {client, fetcher}).catch(() => false);   // an install set up before the CV read: once per CV file
   // Why (28 Oct 2026, owner, #2322): a zone your nationality opens is answered ("conclude as much as possible, by ourselves"), so it is never asked.
   const eligibility = eligibilityOf(found.eligibility), concluded = eligibility.rows.map(row => row.label);
   // A zone still asked (the template's ❓) waits for Nationality and is never asked once Nationality answers it, like the catalogue's zones (lib/missing-facts.js).

@@ -22,14 +22,14 @@ export const detailsNote = ({saved = [], left = []} = {}) => !saved.length && !l
   : `${saved.length} filled${left.length ? `, ${left.length} to check in Your details` : ''}`;
 
 // -> {saved: [key], left: [key]} (left: proposed but not saved) ; never throws (a failed read leaves Your details as the draft wrote them, and says why in the log).
-export async function detailsFromCvAtSetup(storage, {client, log = () => {}, contactSaved = () => {}, profile = ''} = {}) {
+export async function detailsFromCvAtSetup(storage, {client, log = () => {}, contactSaved = () => {}, profile = '', fetcher} = {}) {
   try {
-    const contact = await contactDetails.read(storage);
+    const contact = await contactDetails.read(storage, fetcher);
     if (!fromCv.emptyFields(contact).length) return {saved: [], left: []};
     const {proposals, error} = await fromCv.forCv(storage, {contact, client, cvHash: hashOf(storage), profile, again: true, log});
     const save = toSave(proposals, contact), left = (proposals || []).map(item => item.field).filter(key => !save[key]);
     if (!Object.keys(save).length) { log('profile', `details from the CV at setup: none saved${error ? ` (${error})` : ''}`, {left}); return {saved: [], left}; }
-    const saved = await contactDetails.save(storage, {...contact, ...save});
+    const saved = await contactDetails.save(storage, {...contact, ...save}, fetcher);
     contactSaved(saved);
     log('profile', `details from the CV at setup: ${Object.keys(save).length} saved, ${left.length} left as proposals`, {saved: Object.keys(save), left});   // which fields, never values
     return {saved: Object.keys(save), left};

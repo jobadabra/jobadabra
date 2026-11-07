@@ -55,11 +55,11 @@ async function post(fetchImpl, site, token, route, body) {
 }
 
 // chromium: Playwright's (main.mjs passes `playwright`'s; the fixture proof passes the desktop's), so this file loads without a browser package. -> {held: Map(jobId -> page), context, close()} once every job has been tried (the pages stay open).
-export async function runNight({chromium, site, token, fetchImpl = fetch, log = () => {}, fillSeconds = 120, extraArgs = [], launchOptions = {}, record = null}) {   // extraArgs/launchOptions: the fixture proof's host rules and certificate (proof.mjs)
+export async function runNight({chromium, site, token, fetchImpl = fetch, log = () => {}, fillSeconds = 120, extraArgs = [], launchOptions = {}, record = null, settleMs = 3000}) {   // extraArgs/launchOptions: the fixture proof's host rules and certificate (proof.mjs)
   const batch = await post(fetchImpl, site, token, 'batch');
   const held = new Map(), told = new Set();   // told: the jobs whose result the site already has
   if (!batch.ok || batch.stop || !batch.jobs?.length) { log('nothing to do', {stop: !!batch.stop}); return {held, close: async () => {}}; }
-  try { return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record}); }
+  try { return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs}); }
   catch (error) {   // the night could not start or stopped: each job not yet told is told, so the card says so at once instead of "waiting" until the night's end
     for (const job of batch.jobs.filter(job => !held.has(job.id) && !told.has(job.id))) await post(fetchImpl, site, token, 'result', {job: job.id, state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0}).catch(() => {});
     throw error;
@@ -71,7 +71,7 @@ export async function runNight({chromium, site, token, fetchImpl = fetch, log = 
 export const pressOf = job => `${job.id}:${Number(job.turn) || 0}`;
 export const NIGHT_FAILED = 'the night could not start';   // the word the card shows beside "could not fill"; the error itself stays in the container's /state and log
 // clean-code-ok: Why (1 Nov 2026, rs 5a/6): a pure move from hosted/ (never checked) into desktop/; splitting this function is its own change, not part of the move.
-async function fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record}) {
+async function fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs}) {
   const standIn = await createStandIn(batch, {answer: await answererFor({batch, site, token, fetchImpl})});
   let profile = '', context = null;
   try {   // a setup that fails closes what it opened (the stand-in's server, the browser, the profile folder), so the process can end
@@ -96,7 +96,7 @@ async function fillAll({told, batch, chromium, site, token, fetchImpl, log, fill
     standIn.reset(job.url);
     await held.get(job.id)?.close().catch(() => {}); held.delete(job.id);   // filled again: its earlier tab goes
     const onStep = stepper({fetchImpl, site, token, job: job.id});
-    const done = await fillJob({context, standIn, job, fillSeconds, onStep, ...(record ? {record} : {})}).catch(error => ({state: 'failed', wall: 'error', filled: 0, left: 0, humanCheck: false, ms: 0, page: null, video: null, error: String(error).slice(0, 80)}));
+    const done = await fillJob({context, standIn, job, fillSeconds, onStep, settleMs, ...(record ? {record} : {})}).catch(error => ({state: 'failed', wall: 'error', filled: 0, left: 0, humanCheck: false, ms: 0, page: null, video: null, error: String(error).slice(0, 80)}));
     if (done.stopped) {   // the owner stopped it: nothing is reported (the site already put the row back), its tab and video go
       told.add(job.id); await done.page?.close().catch(() => {}); discard(done.video?.path);
       log('job stopped', {id: job.id});

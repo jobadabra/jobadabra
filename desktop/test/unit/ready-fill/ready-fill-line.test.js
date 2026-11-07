@@ -2,7 +2,7 @@
 // the site is faked at fetch and the browser by a small stand-in (no Chrome), so the line itself is what is tested: a form added while the night runs joins it,
 // each form's steps reach the site, a form the owner stopped is dropped without a result, and the night ends when its token is refused (no orphan run).
 import assert from 'node:assert/strict';
-import {test} from 'node:test';
+import {mock, test} from 'node:test';
 
 const job = id => ({id, url: `https://boards.example.com/${id}`, title: 'SRE', company: 'Acme', kit: {}, cv: '', letterPdf: ''});
 
@@ -36,7 +36,7 @@ test('a form joins the running night, its steps reach the site, a stopped form s
     if (route === 'result') return answer({ok: true, stop: false});
     return answer({ok: true});
   };
-  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, record: () => null});
+  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, settleMs: 0, record: () => null});
   const of = id => calls.filter(([, job]) => job === id);
   assert.deepEqual(of('j1').filter(([route]) => route === 'progress').map(([, , step]) => step), ['opening', 'form', 'reading'], 'j1\'s live line');
   assert.deepEqual(of('j1').filter(([route]) => route === 'result').map(([, , state]) => state), ['prepared'], 'j1 filled and told once');
@@ -54,7 +54,7 @@ test('a site from before the line (it returns every form, not only those waiting
     if (route === 'result') results.push(body.job);
     return {status: 200, json: async () => (route === 'batch' ? {ok: true, night: '2026-10-18', contact: {}, facts: {}, jobs: [job('j1')]} : {ok: true, stop: false})};
   };
-  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, record: () => null});
+  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, settleMs: 0, record: () => null});
   assert.deepEqual(results, ['j1'], 'the form is filled once');
   await night.close();
 });
@@ -72,7 +72,7 @@ test('the container fills each press of a form once: a stale list fills nothing 
     const jobs = reads === 1 ? [job('j1')] : reads === 2 ? [job('j1'), job('j2')] : reads === 3 ? [{...job('j1'), turn: 1}] : [{...job('j1'), turn: 1}, job('j2')];
     return {status: 200, json: async () => ({ok: true, line: true, night: '2026-10-18', contact: {}, facts: {}, jobs})};
   };
-  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, record: () => null});
+  const night = await runNight({chromium: fakeChromium(), site: 'https://site.example', token: 't', fetchImpl, fillSeconds: 2, settleMs: 0, record: () => null});
   assert.deepEqual(results, ['j1', 'j2', 'j1'], 'one fill per press; the stale answers fill nothing, the night ends');
   await night.close();
 });
@@ -89,4 +89,22 @@ test('the live line goes to the site when the step changes or every 10 s; a stop
   assert.deepEqual(sent, [{job: 'j1', step: 'filling'}, {job: 'j1', step: 'filling'}, {job: 'j1', step: 'answering', n: 2}], 'the same step twice within 10 s is sent once');
   reply = {ok: true, stop: true}; assert.equal(await step('reading'), true, 'stopped by the owner');
   reply = {ok: false, error: 'unauthorized'}; assert.equal(await step('opening'), true, 'the night is over');
+});
+
+test('a form still waits 3 s for the record at the fill\'s end when no settle time is given (the night\'s default is unchanged)', async () => {
+  const {fillJob} = await import('../../../ready-fill/fill-job.mjs');
+  const page = {evaluate: async () => false, goto: async () => {}, close: async () => {}, waitForFunction: async () => { throw new Error('no panel'); }};
+  const standIn = {started: () => true, outcome: () => ({filled: 5, left: 0}), role: () => '', answered: () => 0};
+  const settle = async () => { for (let turn = 0; turn < 20; turn++) await new Promise(resolve => setImmediate(resolve)); };
+  mock.timers.enable({apis: ['setTimeout']});
+  try {
+    let done = false;
+    const run = fillJob({context: {newPage: async () => page}, standIn, job: {id: 'j1', url: 'https://boards.example.com/j1'}, record: () => null}).then(result => { done = true; return result; });
+    await settle();
+    mock.timers.tick(2999); await settle();
+    assert.equal(done, false, 'not done after 2.999 s');
+    mock.timers.tick(1); await settle();
+    assert.equal(done, true, 'done at 3 s');
+    assert.equal((await run).state, 'prepared');
+  } finally { mock.timers.reset(); }
 });
