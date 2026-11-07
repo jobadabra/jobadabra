@@ -4,6 +4,7 @@
 // Needs NOTION_BRAIN_WRITE_TOKEN (an integration with insert rights on the tracker) and BUG_TRACKER_DB; the read-only token of the stats cannot write. Pure but for the Notion call.
 // Job: report health
 import {parseReplay, replayCommand} from './replay.mjs';
+import {textOfTitle} from './finder-prefix.mjs';
 
 export const NOTION_VERSION = '2022-06-28';
 // Issues that are the loop's own ledgers or other loops' work, never a bug someone found.
@@ -19,7 +20,7 @@ export function trackerRow(issue) {
   if (labels.some(name => NOT_A_BUG.has(name))) return null;
   const miss = labels.includes('kind:detector-miss');
   if (labels.includes('auto-ui') && !miss) return null;   // the Finder found it itself
-  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 150) || `Issue #${issue.number}`;
+  const title = textOfTitle(issue.title).trim().slice(0, 150) || `Issue #${issue.number}`;
   const severity = SEVERITY[(labels.find(name => name.startsWith('severity:')) || '').slice(9)] || 'Medium';
   const area = miss ? 'e2e harness' : AREAS.find(([pattern]) => pattern.test(`${issue.title} ${labels.join(' ')}`))?.[1] || '';
   const replay = parseReplay(issue.body);

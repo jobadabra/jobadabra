@@ -4,6 +4,7 @@
 import {classify, detectorOf} from './selfheal-stats.mjs';
 import {afterEpoch} from './stats-epoch.mjs';
 import {whyOf} from './verdict-comment.mjs';
+import {stripTag} from './finder-prefix.mjs';
 
 // Only the loop's own words and the owner's team count as reasons (the repo is public: anyone can comment).
 const TRUSTED = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
@@ -19,7 +20,7 @@ export function reasonOf(issue) {
 }
 
 const inWeek = (issue, since) => [issue.createdAt, issue.closedAt].some(date => date && Date.parse(date) >= since);
-const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${oneLine(issue.title, 90).replace(/^\[(?:auto-ui|AI persona)\]\s*/, '')}`;
+const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${stripTag(oneLine(issue.title, 90))}`;
 
 export function weekFacts(issues, {now = Date.now(), days = 7, cap = 40} = {}) {
   const since = now - days * 86400000;

@@ -1,11 +1,13 @@
 // Files the AI code review's findings (code-review.yml) as issues on the same board as the UI loop: label auto-ui, source:code-review, one issue per bug, never twice.
 //   node code-review-file.mjs --findings .review/findings.json --range <a>..<b> --run-url <url>      (needs gh and GH_TOKEN)
 // Only well-formed findings with a file, a line, a scenario and a failing test are filed: the proof bar of the review (code-review-prompt.md).
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {LABEL, labelFor} from './lib/triage.mjs';
+import {titleOf} from './lib/finder-prefix.mjs';
 
 const KINDS = ['functionality', 'crash', 'error-shown', 'security', 'release'];
 const SEVERITY = ['high', 'medium', 'low'];
@@ -45,7 +47,7 @@ export function fileReview({findings, range, runUrl, repo = '', sha = '', gh = r
     if (has(id)) continue;
     const labels = [LABEL, labelFor(id), 'source:code-review', `kind:${item.kind}`, `severity:${item.severity}`, `view:${area(item.file)}`.slice(0, 50)];
     for (const label of labels.slice(1)) gh(['label', 'create', label, '--force', '--color', label.startsWith('severity:high') ? 'D93F0B' : 'EDEDED']);
-    gh(['issue', 'create', '--title', `[auto-ui] ${area(item.file)}: ${String(item.title).trim()}`.slice(0, 120), '--body', reviewBody(item, {range, runUrl, repo, sha}), '--label', labels.join(',')]);
+    gh(['issue', 'create', '--title', titleOf('code-review', area(item.file), String(item.title).trim()), '--body', reviewBody(item, {range, runUrl, repo, sha}), '--label', labels.join(',')]);
     filed.push(id);
   }
   return {checked: items.length, filed};

@@ -2,6 +2,7 @@
 // Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
 // Job: report health
 import {fingerprint, cappedSeverity} from './vision.mjs';
+import {titleOf} from './finder-prefix.mjs';
 
 
 export const LABEL = 'auto-ui';
@@ -119,8 +120,8 @@ export function normalize({ui = [], ai = [], suite = [], dropped = []}) {
 }
 
 /**
- * The issue title: `[AI persona] <view>: <title>` for a finding of the AI user agent (source ai-user-agent), `[auto-ui] <view>: <title>` for every other finder, at most 120 characters.
- * Why (7 Nov 2026, pz, owner via mac-50: "'[AI persona]' prefix (Recommended)": "by hand or automatic, and keep the source:ai-user-agent label as the filter. Other finders keep '[auto-ui]'"): the issue list says at a glance which bugs a persona found. Every reader that takes the view out of a title (triage.mjs, lib/triage-match.mjs, ...) accepts both tags.
+ * The issue title: `[<prefix>] <view>: <title>`, the prefix named by the finding's source (lib/finder-prefix.mjs PREFIXES: AI persona, AI code review, AI screenshot, Layout check, Test step, ...), `[auto-ui]` for a source the map does not know; at most 120 characters.
+ * Why (7 Nov 2026, pz, owner via mac-50: "One prefix per method (Recommended)"; first "'[AI persona]' prefix"): the issue list says at a glance which method found a bug; the `auto-ui` label and the fp: label stay, so counting and matching do not change. Every reader of a title goes through the same map.
  */
-export const issueTitle = finding => `[${finding.source === 'ai-user-agent' ? 'AI persona' : 'auto-ui'}] ${finding.view}: ${finding.shown || finding.title}`.slice(0, 120);
+export const issueTitle = finding => titleOf(finding.source, finding.view, finding.shown || finding.title);
 export const labelFor = id => `fp:${id}`.slice(0, 50);

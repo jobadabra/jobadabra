@@ -15,6 +15,7 @@ import {checklistRequest, checksToFindings} from './lib/review-checklist.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 import {PUBLIC_REPO} from './lib/repos.mjs';
 import {askBroker} from './lib/broker-client.mjs';
+import {textOfTitle} from './lib/finder-prefix.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
@@ -52,7 +53,7 @@ for (let page = 1; page < 10; page++) {
   if (got.length < 100) break;
 }
 const cases = issues.map(issue => ({number: issue.number, resolution: label(issue, 'resolution:'), view: issue.body?.match(/Page `([^`]+)`/)?.[1],
-  png: issue.body?.match(/!\[[^\]]*\]\((https:\/\/raw\.githubusercontent\.com\/[^)]+\.png)\)/)?.[1], title: issue.title.replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, ''),
+  png: issue.body?.match(/!\[[^\]]*\]\((https:\/\/raw\.githubusercontent\.com\/[^)]+\.png)\)/)?.[1], title: textOfTitle(issue.title),
   found: (issue.body?.match(/### What was found\n+([\s\S]*?)\n###/)?.[1] || '').trim().slice(0, 600)}))
   .filter(item => ['resolution:fixed', ...FALSE_ALARMS].includes(item.resolution) && item.view && item.png).slice(0, LIMIT);
 const lessons = LESSONS === 'off' ? [] : await fetchLessons({repo: REPO, token});
