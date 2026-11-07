@@ -1,6 +1,7 @@
 // The Interviews page's IPC (moved out of main.js, 8 Oct 2026): drafts on this Mac (recording, transcribing, editing), saved interviews in
 // Notion 🎤 Interviews, their review and the recordings folder. Demo mode shows fictional ones and changes nothing. main.js passes in the
 // services it shares (registerInterviewHandlers). Guards: interviews tests in desktop/test and the interviews e2e suite.
+import {validationNotice} from '../i18n/validation-notices.js';
 import {t} from '../i18n/native.js';
 import {afterWrite} from './shared-read.js';
 import fs from 'node:fs';
@@ -98,13 +99,13 @@ export function registerInterviewHandlers(ctx) {
     const id = String(pageId), caller = `Interview review (${why || 'interviews page'})`;
     if (!mayStart(reviewingStarted, id)) {
       appLog('dispatch', `refused ${caller} → daily.yml (interview) in ${storage.settings().cloud?.repo || 'this Mac'}: already started within ${REVIEW_WINDOW_MS / 60000} min`);
-      return {ok: true, already: true, summary: 'Already reviewing this interview — it shows in Recent activity'};
+      return {ok: true, already: true, summary: validationNotice('alreadyReviewing')};
     }
     reviewingStarted.set(id, Date.now());
     if (cloud()) {
       return dispatchCloud(caller, {mode: 'interview', interview: id}).then(started => (started.ok
-        ? {ok: true, cloud: true, summary: 'Reviewing on GitHub: it shows in Recent activity, and the review lands on the interview in Notion.'}   // about Notion: Always on needs Notion
-        : {ok: false, error: `Could not start the review on GitHub: ${started.error}`}));
+        ? {ok: true, cloud: true, summary: validationNotice('reviewingCloud')}   // about Notion: Always on needs Notion
+        : {ok: false, error: validationNotice('reviewStartFailed', {error: started.error})}));
     }
     return Promise.resolve(interviews.review(storage, id)).then(result => {
       if (!result?.ok) reviewingStarted.delete(id);  // it failed: a retry must be able to start at once

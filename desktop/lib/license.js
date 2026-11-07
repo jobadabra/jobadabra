@@ -4,6 +4,7 @@
 // keep working, and nothing is cut mid-application. A key signed by the owner (Ed25519, tools/license.py in the private
 // ops repo) lifts the limit. Key: JP1.<base64url payload>.<base64url signature>, payload {id, name, kind, until?}.
 // A technical user can patch this out: accepted at this stage (the server enforces it in Stage 2).
+import {validationNotice} from '../i18n/validation-notices.js';
 import crypto from 'node:crypto';
 
 export const PUBLIC_KEY = 'cfYdshTDuVKHsd89v28_UbZieTTEpId-sKptFb1vu40';  // the owner's public key (raw Ed25519, base64url)
@@ -29,9 +30,9 @@ export function open(text, prefix = 'JP1', publicKey = PUBLIC_KEY) {
 // Check a pasted key: {ok, license: {id, name, kind, until}} or {ok: false, error} in words the user can act on.
 export function check(text, {now = Date.now(), revoked = [], publicKey = PUBLIC_KEY} = {}) {
   const payload = open(text, 'JP1', publicKey);
-  if (!payload || !payload.id || !payload.name || !KINDS.includes(payload.kind)) return {ok: false, error: "That isn't a Jobadabra license key. Paste it exactly as you got it (it starts with JP1.)."};
-  if (revoked.includes(payload.id)) return {ok: false, error: 'This key was withdrawn. Ask Igor for a new one.'};
-  if (payload.until && Date.parse(`${payload.until}T23:59:59Z`) < now) return {ok: false, error: `This key ended on ${payload.until}. Ask Igor for a new one.`};
+  if (!payload || !payload.id || !payload.name || !KINDS.includes(payload.kind)) return {ok: false, error: validationNotice('invalidKey')};
+  if (revoked.includes(payload.id)) return {ok: false, error: validationNotice('revokedKey')};
+  if (payload.until && Date.parse(`${payload.until}T23:59:59Z`) < now) return {ok: false, error: validationNotice('expiredKey', {date: payload.until})};
   return {ok: true, license: {id: payload.id, name: payload.name, kind: payload.kind, until: payload.until || null}};
 }
 
