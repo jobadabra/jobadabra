@@ -12,4 +12,4 @@ Measured (31 runs, 7 Nov 2026): 17 of 122 goals worked; 43 never started (plan o
 - [ ] 5/5 jobadabra-web: the headline counts "not started" apart from "attempted but unfinished" (jobadabra-web #480 merged and shows partial goals; whether its headline wording is this item was not re-checked, so left open)
 - [ ] Report the before → after goal rate from the next night to the coordinator
 
-After 1/5-4/5 the persona work continued outside this list: lanes (#3522), closed-verdict knowledge (#3555), the stricter judge hold (#3559); its design is in `2026-11-07-persona-completion-design.md` (a different spec: stop and goal states, token labels).
+After 1/5-4/5 the persona work continued outside this list: lanes (#3522), closed-verdict knowledge (#3555), the stricter judge hold (#3559); the persona completion spec is [`../specs/2026-11-07-persona-completion-design.md`](../specs/2026-11-07-persona-completion-design.md) (a different spec: stop and goal states, token labels).
