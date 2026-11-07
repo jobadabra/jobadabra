@@ -8,12 +8,13 @@ import common from '../../../i18n/catalogs/screens/common.js';
 import profile from '../../../i18n/catalogs/screens/profile.js';
 import {logFile} from '../../../lib/log.js';
 
+const NOW = 1800000000000;
 const trial = ['The free trial is over.', 'Die kostenlose Testphase ist vorbei.', 'La période d’essai gratuite est terminée.', 'Il periodo di prova gratuito è terminato.', 'La prueba gratuita ha terminado.', 'Perioada de probă gratuită s-a încheiat.', 'Бесплатный пробный период завершён.'];
 
 function fixture({plan, ended = false, ownKey = false} = {}) {
   const forbidden = [], sent = [];
   const deny = name => { forbidden.push(name); throw Error(`Forbidden ${name}`); };
-  const settings = {aiFree: !ownKey, ...(plan ? {plan: {at: Date.now(), status: plan}} : {})};
+  const settings = {aiFree: !ownKey, ...(plan ? {plan: {at: NOW, status: plan}} : {})};
   const storage = {settings: () => settings, saveSettings: () => deny('write'), secret: () => deny('secret')};
   const app = createAppAllowance({DEMO: false, getStorage: () => storage, getTelemetry: () => null,
     getLicense: () => ({state: () => ({licensed: false, license: null, used: 25, limit: 20, daysLeft: 0, ended})}),
@@ -24,7 +25,7 @@ function fixture({plan, ended = false, ownKey = false} = {}) {
 
 test('actual trial and credit gates retain verdicts while their authored errors follow each locale', t => {
   const network = [];
-  t.mock.method(Date, 'now', () => 1800000000000);
+  t.mock.timers.enable({apis: ['Date'], now: NOW});
   t.mock.method(globalThis, 'fetch', () => { network.push('fetch'); throw Error('No network'); });
   assert.equal(logFile(), null);
   setSiteOff('');
@@ -55,7 +56,7 @@ test('actual trial and credit gates retain verdicts while their authored errors 
 
 test('raw cap messages remain exact and only a missing-message fallback localizes', async t => {
   const network = [], raw = 'Fictional this Mac Keychain ⌘K {error}';
-  t.mock.method(Date, 'now', () => 1800000000000);
+  t.mock.timers.enable({apis: ['Date'], now: NOW});
   t.mock.method(globalThis, 'fetch', () => { network.push('fetch'); throw Error('No network'); });
   try {
     for (const [column, locale] of SUPPORTED_LOCALES.entries()) {
