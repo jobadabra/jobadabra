@@ -114,6 +114,12 @@
       "about": "which NUTS-2 region a place lies in (src/sources/eures.py): the AI chooses from the real regions of the place's country, a code no region has is dropped and a kept one is asked again (#2918: the same Toulouse got FRJ2 in 2 installs and FR61, no real code, in 2); offline stub-client checks",
       "cases": ["tests/unit/sources/test_eures.py"],
       "prompts": {"src/sources/eures.py": ["SYSTEM"]}
+    },
+    "score": {
+      "live": false,
+      "about": "the fit score's search part (src/ai/score_search.py, score.py): a role that needs a licence, certification or rating the person does not hold is capped at 49 (owner, 7 Nov 2026: a Cessna captain job scored 85 while its card said Not eligible); a scheme that trains from zero, a job in the person's own field, a language gap (49 cap) and a missing tool keep their bands. Replay: tools/score-cases.py on the Claude plan ($0).",
+      "cases": ["tests/fixtures/score-cases.json", "tools/score-cases.py"],
+      "prompts": {"src/ai/score_search.py": ["RULE"], "src/ai/score.py": ["SYSTEM"]}
     }
   }
 }
