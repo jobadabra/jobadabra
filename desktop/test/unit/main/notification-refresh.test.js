@@ -33,3 +33,13 @@ test('the initial repository payload and both scheduled workflows carry the same
     assert.ok(source.includes('JOBADABRA_NOTIFICATION_LANGUAGE: ${{ vars.JOBADABRA_NOTIFICATION_LANGUAGE }}'));
   }
 });
+
+test('an explicit language change refreshes the deployed bot while startup leaves that work to the existing startup owner', async () => {
+  const storage = {settings: () => ({})}, calls = [];
+  const service = async () => ({ok: true}), scheduled = async () => ({ok: true});
+  const bot = async () => { calls.push('bot'); return {ok: true}; };
+  await refreshDeliveryLanguage(storage, {service, scheduled, bot});
+  assert.deepEqual(calls, []);
+  await refreshDeliveryLanguage(storage, {service, scheduled, bot, cloud: true});
+  assert.deepEqual(calls, ['bot']);
+});
