@@ -50,15 +50,15 @@ test('Ready callbacks localize display errors after registration without changin
   const {useKeychainReader} = await import('../../../lib/ready-site.js');
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'activity-ready-'));
-  const handlers = {}, settings = {}, raw = 'Fictional {error} this Mac Keychain ⌘K';
+  const handlers = {}, settings = {}, notices = [], raw = 'Fictional {error} this Mac Keychain ⌘K';
   let jobs = [], response = {ok: true, jobs: []}, failure = raw;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify(response), {status: 200});
   useKeychainReader(() => null); // The fake routes never read the owner's Keychain.
   try {
-    registerReadyHandlers({ipcMain: {handle: (name, fn) => {handlers[name] = fn;}},
+    registerReadyHandlers({ipcMain: {handle: (name, fn) => {handlers[name] = fn;}}, notify: (...args) => notices.push(args),
       storage: {settings: () => settings, saveSettings: patch => Object.assign(settings, patch),
-        secret: name => /TRIAL/.test(name) ? 'JPF1.fictional.token' : '', path: name => path.join(dir, name)},
+        secret: name => name === 'READY_OWNER_SECRET' ? 'fictional-owner' : /TRIAL/.test(name) ? 'JPF1.fictional.token' : '', path: name => path.join(dir, name)},
       deps: {jobs: async () => jobs, apply: {formUrl: value => value, applyOne: () => assert.fail('no page: no form opens')},
         prepare: {kit: async () => ({ok: false, error: failure}), cv: async () => ({ok: false, error: failure})}}});
     for (const locale of SUPPORTED_LOCALES) {
@@ -79,6 +79,31 @@ test('Ready callbacks localize display errors after registration without changin
       assert.deepEqual(await handlers.readyRun(null, {top: ['fictional']}), {ok: false, nothing: true,
         error: activityText('nothingPrepared', {error: activityText('noCv', {name})})});
       jobs = []; failure = raw;
+      settings.ready = {};
+      response = {ok: true, jobs: [{state: 'prepared'}, {state: 'partial'}], batch: {night: `fictional-${locale}`}};
+      const before = notices.length;
+      assert.equal((await handlers.readyState()).owner, true);
+      assert.deepEqual(notices.at(-1), [activityText('overnightTitle'), activityText('overnight', {count: 2, left: activityText('overnightLeft', {count: 1})}), {view: 'actions'}, 'good']);
+      await handlers.readyState();
+      assert.equal(notices.length, before + 1, 'the same night is still announced once');
+      response = {ok: true, jobs: []};
     }
   } finally {globalThis.fetch = previousFetch; fs.rmSync(dir, {recursive: true, force: true});}
+});
+
+test('actual quit callback localizes its title while retaining the wait decision and app target', async () => {
+  const {installQuitHandling} = await import('../../../lib/lifecycle.js');
+  const {NO_PLACE} = await import('../../../renderer/targets.js');
+  for (const locale of SUPPORTED_LOCALES) {
+    setLocale(locale);
+    const notices = [], decisions = [];
+    const beforeQuit = installQuitHandling({app: {on() {}, quit: () => assert.fail('unfinished work must not quit')}, platform: 'darwin',
+      state: () => ({}), pipeline: {running: () => ({kind: 'search'}), queued: () => [], taskName: () => 'Fictional task', whenIdle: () => new Promise(() => {})},
+      terminals: {running: () => [], list: () => [], label: () => 'Fictional task'}, shouldAskOnQuit: () => false,
+      showDialog: (_parent, options) => {decisions.push(options); return 0;}, icon: () => ({}), getWindows: () => [],
+      notify: (...args) => notices.push(args), log() {}});
+    beforeQuit({preventDefault() {}});
+    assert.equal(decisions[0].defaultId, 0); assert.equal(decisions[0].cancelId, 2);
+    assert.deepEqual(notices, [[activityText('quitTitle'), decisions[0].detail, NO_PLACE.app, 'info']]);
+  }
 });
