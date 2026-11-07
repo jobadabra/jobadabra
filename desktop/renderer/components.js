@@ -1,3 +1,4 @@
+import {finalText} from '../i18n/final-pages.js';
 // Jobadabra's UI building blocks (styles in components.css, values in tokens.css). Screens build their
 // pills, tags, tiles and ⋯ menus with these, so the same thing looks and behaves the same everywhere;
 // gallery.html shows every one of them side by side.
@@ -268,7 +269,7 @@ export function notionBenefits(count = NOTION_BENEFITS.length, {compact = false}
 // A page that needs Notion, until it is connected: the reason, the advantages and one button (pages/notion-connect.js).
 export function notionGate({reasonText = '', onConnect = () => {}} = {}) {
   const card = el('section', 'card ui-gate');
-  const connect = el('button', 'primary', 'Connect with Notion');
+  const connect = el('button', 'primary', finalText('gateConnect'));
   connect.type = 'button';
   connect.addEventListener('click', onConnect);
   card.append(el('h2', '', GATE_TITLE), ...(reasonText ? [el('p', 'ui-gate-reason', reasonText)] : []), notionBenefits(),

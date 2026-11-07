@@ -1,3 +1,4 @@
+import {reportHeading} from '../final-pages-copy.js';
 // Reports (owner's choice, 9 Oct 2026: one page, tabs Weekly · Insights · Funnel · Form fills · Searches): what Notion's 💡 Insights and 🎯 Pipeline
 // pages showed, for every store. Weekly: a report in full (priorities, what worked, numbers, daily insights), ‹ › through the weeks.
 // Insights: the history with its feedback (Useful / Not useful / Acting on it). Funnel: the Pipeline table and "Where to improve".
@@ -46,7 +47,7 @@ function weeklyTab() {
   card.classList.add('is-flat');   // inside #reports-body, already a card: no box in a box (as Form fills' cards)
   for (const part of extra) {
     const section = el('section', 'insight-section');
-    section.append(el('h4', '', part.title));
+    section.append(el('h4', '', reportHeading(part.title)));
     const list = el('ul', 'insight-evidence');
     for (const line of part.lines) {
       const item = el('li', '', line.text);

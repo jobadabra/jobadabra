@@ -1,3 +1,4 @@
+import {finalText, preferenceField, preferenceSide, preferenceOption} from '../final-pages-copy.js';
 // Strategy → Job preferences (owner, 17 Oct 2026: "Must-haves / deal-breakers: determine whether it is acceptable. Preferences: improve a job's
 // ranking"; was Settings → Profile → Preferences, the owner's mockup of 16 Oct 2026). Two sides, each the fields it owns (chips, selects, workload
 // min/max) and its other rules folded under a one-line summary ("No on-call · Exclude recruitment agencies · 2 more"), plus "Add a deal-breaker" /
@@ -49,7 +50,7 @@ function chips(view, field, bind) {
     node.append(x);
     list.append(node);
   }
-  const add = Object.assign(el('input', ''), {type: 'text', placeholder: field.add, ariaLabel: field.add});
+  const add = Object.assign(el('input', ''), {type: 'text', placeholder: preferenceField(field).add, ariaLabel: preferenceField(field).add});
   const commit = () => { if (add.value.trim()) { bind.set(chipsText([...chipsOf(bind.text()), add.value.trim()])); view.redraw(); } };
   add.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault?.(); commit(); } });
   add.addEventListener('change', commit);
@@ -62,7 +63,7 @@ function modes(view, bind) {
   const chosen = modesOf(bind.text());
   for (const mode of MODES) {
     const on = chosen.includes(mode);
-    const button = Object.assign(el('button', on ? 'is-active' : '', mode), {type: 'button'});
+    const button = Object.assign(el('button', on ? 'is-active' : '', preferenceOption(mode)), {type: 'button'});
     button.setAttribute('aria-pressed', String(on));
     button.addEventListener('click', () => { bind.set(modesText(on ? chosen.filter(m => m !== mode) : [...chosen, mode])); view.redraw(); });
     box.append(button);
@@ -78,22 +79,22 @@ function workload(bind) {
     field.addEventListener('input', () => { now[key] = field.value; bind.set(workloadText(now)); });
     return labelled(text, field);
   };
-  box.append(part('min', t('pagesControlStatus.workloadMin'), 'e.g. 50'), part('max', t('pagesControlStatus.workloadMax'), 'e.g. 100'));
+  box.append(part('min', t('pagesControlStatus.workloadMin'), finalText('example', {value: '50'})), part('max', t('pagesControlStatus.workloadMax'), finalText('example', {value: '100'})));
   return box;
 }
 
 function control(view, field, item, anchor) {
-  const bind = binding(view, field, item, anchor);
-  const hint = item?.hint ? `e.g. ${shown(item.hint)}` : field.placeholder || t('pagesCommon.notSet');
-  if (field.widget === 'chips') return labelled(field.label, chips(view, field, bind));
-  if (field.widget === 'modes') return labelled(field.label, modes(view, bind));
+  const bind = binding(view, field, item, anchor), ui = preferenceField(field);
+  const hint = item?.hint ? finalText('example', {value: shown(item.hint)}) : ui.placeholder || t('pagesCommon.notSet');
+  if (field.widget === 'chips') return labelled(ui.label, chips(view, field, bind));
+  if (field.widget === 'modes') return labelled(ui.label, modes(view, bind));
   if (field.widget === 'workload') { const box = workload(bind); box.classList.add('span-all'); return box; }
   if (field.widget === 'select') {
     const now = bind.text();
-    const options = [['', t('pagesCommon.notSet')], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, option])];
-    return labelled(field.label, select(options, now, value => bind.set(value), field.label));
+    const options = [['', t('pagesCommon.notSet')], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, preferenceOption(option)])];
+    return labelled(ui.label, select(options, now, value => bind.set(value), ui.label));
   }
-  return labelled(field.label, input(bind.text(), value => bind.set(value), {placeholder: hint, ariaLabel: field.label}));
+  return labelled(ui.label, input(bind.text(), value => bind.set(value), {placeholder: hint, ariaLabel: ui.label}));
 }
 
 // A rule of a side: its label and one input (a sentence without a label is its own text).
@@ -116,7 +117,7 @@ function addChange(side, ends, text) {
 }
 
 function side(view, key, {fields, other, ends, note}, anchor) {
-  const group = SIDES[key];
+  const group = preferenceSide(key, SIDES[key]);
   const box = el('section', 'answer-item qa-section pref-section');
   box.dataset.side = key;
   const head = el('div', 'qa-section-head pref-head');
@@ -132,7 +133,7 @@ function side(view, key, {fields, other, ends, note}, anchor) {
   more.open = folded[key];
   more.addEventListener('toggle', () => { folded[key] = more.open; });
   const line = el('summary', 'pref-more-head');
-  line.append(el('b', '', key === 'must' ? t('pagesJobs.otherDealBreakers') : t('pagesJobs.otherPreferences')), el('span', 'muted small pref-summary', summaryOf(rules)));
+  line.append(el('b', '', key === 'must' ? t('pagesJobs.otherDealBreakers') : t('pagesJobs.otherPreferences')), el('span', 'muted small pref-summary', summaryOf(rules, 2, {empty: finalText('noneSet'), more: count => finalText('more', {count})})));
   const list = el('div', 'form-grid cols-2 pref-body');
   for (const item of rules) list.append(itemField(view, item));
   if (key === 'rank' && note) list.append(noteBox(view, note));   // the review's one Original wording note
@@ -192,16 +193,16 @@ function readValue(field, item) {
   if (!text) return el('span', 'muted', t('pagesCommon.any'));
   if (field.widget === 'chips') return chipLine(chipsOf(text));
   if (field.widget === 'workload') return workloadText(workloadOf(text)) || text;
-  return text;
+  return field.widget === 'select' ? preferenceOption(text) : text;
 }
 // Each row's icon (mockup 03: icon · small grey label · bold value).
 const ROW_ICONS = {home: 'pin', employment: 'briefcase', workload: 'clock', roles: 'target'};
 function readSide(read, key) {
-  const group = SIDES[key], countries = typed.get('countries') ?? read.fields.countries?.value ?? '';
+  const group = preferenceSide(key, SIDES[key]), countries = typed.get('countries') ?? read.fields.countries?.value ?? '';
   const rows = FIELDS.filter(field => field.side === key && (field.key !== 'workload' || showWorkload(countries, review.parse?.countries)))
-    .map(field => ({icon: ROW_ICONS[field.key] || 'check', label: field.label, value: readValue(field, read.fields[field.key]), any: !readText(field, read.fields[field.key])}));
+    .map(field => ({icon: ROW_ICONS[field.key] || 'check', label: preferenceField(field).label, value: readValue(field, read.fields[field.key]), any: !readText(field, read.fields[field.key])}));
   const rules = read.other.filter(item => item.side === key).map(item => ({...item, value: typed.get(item.id) ?? item.value}));
-  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? t('pagesJobs.dealBreakers') : t('pagesJobs.otherPreferences'), value: summaryOf(rules)});
+  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? t('pagesJobs.dealBreakers') : t('pagesJobs.otherPreferences'), value: summaryOf(rules, 2, {empty: finalText('noneSet'), more: count => finalText('more', {count})})});
   // Fields with no limit fold into one quiet row ("Must-haves: any home base, workload"), so the card reads its set values (mockup 03: three rows).
   // No heading per side (owner, 18 Oct 2026: "Either we're fully inline, either we're fully on the new line"): the row labels say which side.
   const open = rows.filter(row => row.any);

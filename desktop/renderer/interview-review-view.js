@@ -1,3 +1,4 @@
+import {reviewHeading} from './final-pages-copy.js';
 // An interview's review in the app (Interviews → Open review), for a store with no page to open (the data on this Mac): the same content as
 // the Notion page (src/ai/interviews.py): round, overall, the counts, the next step, answers and topics to work on, the review, the transcript.
 // reviewParts() is pure (test/unit/renderer/interview-review-view.test.js); showReview() draws it in #review-dialog with the moments dialog's parts
@@ -93,7 +94,7 @@ export function showReview(record, {$, el, pill}) {
   $('review-facts').textContent = parts.facts;
   const groups = parts.groups.map(group => {
     const box = el('div', 'iv-moments-group');
-    box.append(el('h3', '', group.title), ...group.lines.map(line => el('div', 'iv-moment', line)));
+    box.append(el('h3', '', reviewHeading(group.title)), ...group.lines.map(line => el('div', 'iv-moment', line)));
     return box;
   });
   // In the page's order: the facts from the call before the practice list, every question at the end (src/ai/interviews_blocks.py).

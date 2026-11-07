@@ -1,3 +1,4 @@
+import {partTitle} from '../final-pages-copy.js';
 // Settings → Profile: the Profile page's own sections as folded cards with Edit (owner, 17 Oct 2026: "It should be properly formatted. It should be
 // collapsed, it should be using cards"). Experience: summary and strengths open, education and any section the app does not know folded; Strengths
 // as one row per "Label:" with its values as tags; a heading's "(…)" note and lines in brackets shown small. The role history is drawn by the job
@@ -86,11 +87,12 @@ function draw(tab) {
 // The card's Edit/Add: the shared header button (components.js cardEdit), at the right of the title line.
 const editButton = (tab, each) => {
   const empty = isEmpty(each.part);
-  return cardEdit(empty ? t('pagesCommon.add') : t('pagesStatus.edit'), each.title.toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
+  return cardEdit(empty ? t('pagesCommon.add') : t('pagesStatus.edit'), partTitle(each.key, each.title).toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
 };
 
 function card(tab, each) {
-  const {key, title, part} = each;
+  const {key, title: canonicalTitle, part} = each;
+  const title = partTitle(key, canonicalTitle);
   const box = el('details', 'answer-item qa-section qa-fold exp-part');
   box.dataset.part = key;
   box.open = folded.has(key) ? folded.get(key) : OPEN_FIRST.has(key) || editing.has(key);

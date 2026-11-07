@@ -1,3 +1,4 @@
+import {finalText} from '../final-pages-copy.js';
 // ⌘K for the notification offer: set it up, and send the confirm mail again. They exist only while the Suggestions card would be drawn (renderer/notify-words.js offerCard).
 // The state and the two actions are handed in by pages/focus-suggestions.js, which owns the card and already opens Settings and shows toasts: this module imports no page, so the palette
 // (pages/nav.js) adds no import cycle (the arch gate counts them: #3011). `add` is the palette's (group, label, hint, keywords, run). Guard: test/unit/renderer/notify-commands.test.js.
@@ -18,6 +19,6 @@ export const openNotifications = () => actions.open();
 export function addNotifyCommands(add) {
   const card = offerCard(state);
   if (!card) return;
-  add(t('pagesCommon.settings'), 'Get a message when something needs you', t('pagesExtraLabels.emailTelegram'), 'notify notification email e-mail telegram message reminder alert tell me', () => actions.open());
-  if (card.resend) add(t('pagesCommon.settings'), t('pagesExtraLabels.resendConfirm'), 'The link that starts your e-mails', 'resend confirm confirmation link e-mail email inbox verify', () => actions.resend());
+  add(t('pagesCommon.settings'), finalText('notifyOffer'), t('pagesExtraLabels.emailTelegram'), 'notify notification email e-mail telegram message reminder alert tell me', () => actions.open());
+  if (card.resend) add(t('pagesCommon.settings'), t('pagesExtraLabels.resendConfirm'), finalText('notifyConfirmHint'), 'resend confirm confirmation link e-mail email inbox verify', () => actions.resend());
 }
