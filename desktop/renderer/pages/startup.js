@@ -89,7 +89,7 @@ export async function init() {
     if (panel) setTimeout(() => { shared.selectedRun = panel === 'live' ? null : Number(panel) || panel; openActivity(true); }, 0);
   } else {
     show($('wizard'));
-    const resume = firstWizardStep(shared.state.settings); // Language is confirmed before any setup step (owner, 7 Nov 2026).
+    const resume = firstWizardStep(shared.state.settings); // Welcome keeps its optional language dropdown; no extra step (owner, 7 Nov 2026).
     if (resume === 'draft') toDraft(); else goStep(resume);
   }
 

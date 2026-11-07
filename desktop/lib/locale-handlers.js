@@ -5,7 +5,7 @@ import {SUPPORTED_LOCALES, resolveLocale, setLocale} from '../i18n/index.js';
 export function registerLocaleHandlers({ipcMain, app, storage, onChange = () => {}}) {
   const view = () => {
     const saved = storage.settings().displayLanguage;
-    const choice = SUPPORTED_LOCALES.includes(saved) ? saved : 'system';
+    const choice = saved === 'system' || SUPPORTED_LOCALES.includes(saved) ? saved : 'en';
     return {choice, locale: resolveLocale(choice, app.getPreferredSystemLanguages?.() || [app.getLocale?.() || 'en']), supported: [...SUPPORTED_LOCALES]};
   };
   setLocale(view().locale);

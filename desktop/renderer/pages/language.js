@@ -1,4 +1,4 @@
-// Language is the wizard's first question and a display preference in Settings → Overview.
+// Optional language dropdown on Welcome and a saved display preference in Settings → Overview.
 import {SUPPORTED_LOCALES, LANGUAGE_NAMES, t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {anyUnsaved} from '../save-bar.js';
@@ -25,7 +25,7 @@ async function applyChoice(select, message, state, pilot) {
   }
 }
 
-/** Mount the first wizard step and Overview selector before wizard initialization binds its sidebar. */
+/** Mount optional Welcome and Overview language selectors without adding a wizard step or card. */
 export function init(state, pilot = window.pilot) {
   const overview = document.querySelector('[data-settings-page="overview"]');
   if (overview && !document.getElementById('setting-language')) {
@@ -36,19 +36,11 @@ export function init(state, pilot = window.pilot) {
     panel.append(label, select, help, message); overview.append(panel);
     select.addEventListener('change', () => applyChoice(select, message, state, pilot));
   }
-  const body = document.querySelector('#wizard .step-body'), steps = document.getElementById('step-list');
-  if (!body || !steps || document.getElementById('wizard-language')) return;
-  const item = el('li', '', t('common.language')); item.dataset.step = 'language'; steps.prepend(item);
-  const step = el('div', 'step'); step.dataset.step = 'language'; step.id = 'wizard-language'; step.hidden = true;
-  const stage = el('div', 'magic-stage'), card = el('section', 'magic');
+  const welcome = document.querySelector('.step[data-step="welcome"] .magic');
+  if (!welcome || document.getElementById('wizard-language-choice')) return;
+  const row = el('div', 'welcome-language');
   const {label, select} = selector('wizard-language-choice', state.choice);
   const message = el('p', 'message'); message.setAttribute('role', 'status');
-  const next = el('button', 'primary', t('common.continue')); next.type = 'button'; next.id = 'wizard-language-continue';
-  card.append(el('h1', 'magic-title', t('common.chooseLanguage')), label, select, el('p', 'muted magic-sub', t('common.chooseHelp')), message, next);
-  stage.append(card); step.append(stage); body.prepend(step);
-  next.addEventListener('click', async () => {
-    next.disabled = true;
-    await applyChoice(select, message, state, pilot);
-    next.disabled = false;
-  });
+  row.append(label, select); welcome.prepend(row); row.after(message);
+  select.addEventListener('change', () => applyChoice(select, message, state, pilot));
 }

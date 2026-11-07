@@ -11,8 +11,9 @@ function setup(settings = {}, {fail = false} = {}) {
     storage: {settings: () => settings, saveSettings: patch => { if (fail) throw new Error('Disk full'); writes.push(patch); Object.assign(settings, patch); }}, onChange: () => events.push(getLocale())});
   return {handlers, settings, writes, events};
 }
-test('startup resolves the OS choice and a saved preference wins', () => {
-  const a = setup(); assert.equal(a.handlers.locale().locale, 'fr'); assert.equal(a.handlers.locale().choice, 'system');
+test('a new install starts in English; explicit system or saved language choices win', () => {
+  const a = setup(); assert.equal(a.handlers.locale().locale, 'en'); assert.equal(a.handlers.locale().choice, 'en');
+  const system = setup({displayLanguage: 'system'}); assert.equal(system.handlers.locale().locale, 'fr');
   const b = setup({displayLanguage: 'ru'}); assert.equal(b.handlers.locale().locale, 'ru'); assert.equal(getLocale(), 'ru');
 });
 test('only explicit supported choices or system can be persisted', () => {

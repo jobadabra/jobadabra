@@ -16,9 +16,11 @@ let ai, sqlite, notion, language;
 before(() => {
   if (needsElectron.skip) return;
   language = probeWindow({...NEW_INSTALL, settings: {...NEW_INSTALL.settings, displayLanguage: null}, script: async kit => {
-    await kit.until(() => document.querySelector('#wizard-language:not([hidden])'), 'the first language question');
+    await kit.until(() => document.querySelector('.step[data-step="welcome"]:not([hidden]) #wizard-language-choice'), 'the Welcome language dropdown');
+    const select = document.getElementById('wizard-language-choice'), rect = select.getBoundingClientRect();
     return {first: document.querySelector('#step-list li').dataset.step, choices: [...document.getElementById('wizard-language-choice').options].map(option => option.value),
-      continue: document.getElementById('wizard-language-continue').textContent, saved: (await window.pilot.state()).settings.displayLanguage};
+      clickable: document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === select,
+      choice: select.value, extraStep: !!document.getElementById('wizard-language'), lang: document.documentElement.lang, saved: (await window.pilot.state()).settings.displayLanguage};
   }});
   ai = probeWindow({...NEW_INSTALL, timeout: 180000, script: async kit => {
     const step = () => [...document.querySelectorAll('.step')].find(node => !node.hidden)?.dataset.step;
@@ -92,10 +94,13 @@ before(() => {
   notion = focusAndInterviews('notion');
 });
 
-test('a new install asks for language before any setup choice and waits for confirmation', live, () => {
-  assert.equal(language.result.first, 'language');
+test('Welcome starts in English and offers a language dropdown without an extra wizard step', live, () => {
+  assert.equal(language.result.first, 'welcome');
   assert.deepEqual(language.result.choices, ['system', 'en', 'de', 'fr', 'it', 'es', 'ro', 'ru']);
-  assert.equal(language.result.continue, 'Continue');
+  assert.equal(language.result.choice, 'en');
+  assert.equal(language.result.lang, 'en');
+  assert.equal(language.result.extraStep, false);
+  assert.equal(language.result.clickable, true, 'the Welcome Start button overlay must not cover the dropdown');
   assert.equal(language.result.saved, null);
 });
 

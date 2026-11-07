@@ -1,9 +1,6 @@
 // A language switch preserves unsaved drafts and reloads only after the preference was saved successfully.
-import {SUPPORTED_LOCALES} from '../i18n/index.js';
-
-/** Ask for language before setup until a valid explicit language or system default was confirmed. */
+/** Resume the existing wizard without adding a language step; Welcome offers an optional dropdown. */
 export function firstWizardStep(settings) {
-  if (settings.displayLanguage !== 'system' && !SUPPORTED_LOCALES.includes(settings.displayLanguage)) return 'language';
   const saved = settings.wizardStep;
   if (['letter', 'hosted', 'extras'].includes(saved)) return 'draft';
   if (['goals', 'notion'].includes(saved)) return 'cv';
