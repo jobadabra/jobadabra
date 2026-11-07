@@ -11,7 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {appLogLines} from '../../e2e/lib/app-log.mjs';
 import {ZONE} from '../../e2e/lib/focus-data.mjs';
 import {LIMITS, inspect} from '../../e2e/lib/uicheck.mjs';
-import {xServerNow} from './x-server-now.js';
+import {xHandshake, xServerNow} from './x-server-now.js';
 
 const desktop = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -78,10 +78,12 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const launchEnv = {
       ...process.env, TZ: ZONE, JOBADABRA_DEMO: '1', JOBADABRA_DEMO_DIR: folder, JOBADABRA_USER_DATA: folder, JOBADABRA_SMOKE: out, ...(keep ? {} : {JOBADABRA_SMOKE_NO_PICTURE: '1'}), JOBADABRA_E2E_OPEN_DIR: folder,
       JOBADABRA_SMOKE_EVAL: code, ...(after ? {JOBADABRA_SMOKE_JS: first, JOBADABRA_SMOKE_RELOAD_JS: '0'} : keep ? {JOBADABRA_SMOKE_JS: first} : {}), JOBADABRA_E2E_RUNNER_PID: String(process.pid), ...env};
+    const began = performance.now();
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: launchEnv});
+    const ranMs = Math.round(performance.now() - began);
     const answer = `${out}.json`;
     if (!fs.existsSync(answer)) {
-      throw new Error(noAnswerMessage(run, launchEnv));
+      throw new Error(noAnswerMessage(run, launchEnv, ranMs));
     }
     const value = JSON.parse(fs.readFileSync(answer, 'utf8'));
     if (value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.error === 'string') throw new Error(value.error);
@@ -93,14 +95,15 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
 }
 
 /**
- * The error for a launch that wrote no answer: exit code and signal, whether DISPLAY and the auth file were set (presence only, never values), the X server's state right now (Linux),
- * and the app's own stderr. The evidence line never hides the launch's own failure.
+ * The error for a launch that wrote no answer: exit code, signal and how long the launch ran, whether DISPLAY and the auth file were set (presence only, never values), the X server's state
+ * and what a new connection to it gets right now (Linux), and the app's own stderr. The evidence line never hides the launch's own failure.
  */
-function noAnswerMessage(run, launchEnv) {
+function noAnswerMessage(run, launchEnv, ranMs) {
   const authorityPresent = Boolean(launchEnv.XAUTHORITY && fs.existsSync(launchEnv.XAUTHORITY));
   let serverNow;
   try { serverNow = xServerNow(launchEnv.DISPLAY); } catch (error) { serverNow = `X server now: unreadable (${error.code || error.message})`; }
-  return `the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}${serverNow ? `; ${serverNow}` : ''}): ${run.stderr || (run.stdout || '').slice(-600)}`;
+  const handshake = serverNow ? xHandshake(launchEnv.DISPLAY) : '';
+  return `the app wrote no answer (exit ${run.status}, signal ${run.signal}, ran ${ranMs} ms; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}${serverNow ? `; ${serverNow}; ${handshake}` : ''}): ${run.stderr || (run.stdout || '').slice(-600)}`;
 }
 
 /** Copies the app's end-of-run picture to <dir>/ui-<name>.png; a failure is a warning, the test goes on. */
