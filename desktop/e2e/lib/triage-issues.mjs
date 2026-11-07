@@ -9,7 +9,7 @@ import {agentLabels} from './agent-notes.mjs';
 export const NO_CREDIT = /credit balance is too low|spend limit is reached|AI limit reached|usage limits?\b/i;
 export const LIMIT_TESTED = ['activityfailures'];
 
-const SOURCE_WORDS = {'layout-check': 'the layout check', 'suite-failure': 'a run of the suite (a step failed)', 'ai-review': 'the AI screenshot review', 'explorer': 'the AI explorer (an AI found it, a script proved it again without AI)', 'ai-user-agent': 'the AI user agent (a person-like session that argued why it is a bug; a second call judged the argument)', 'interaction-probe': 'the interaction probe (it pressed the control and recorded what happened)'};
+const SOURCE_WORDS = {'layout-check': 'the layout check', 'suite-failure': 'a run of the suite (a step failed)', 'ai-review': 'the AI screenshot review', 'explorer': 'the AI explorer (an AI found it, a script proved it again without AI)', 'ai-user-agent': 'the AI user agent (a person-like session that argued why it is a bug; a second call judged the argument)', 'desktop-tester': 'Claude Desktop testing the live-test twin (it filed the bug through the app\'s Send feedback; the evidence is in the private bundle)', 'interaction-probe': 'the interaction probe (it pressed the control and recorded what happened)'};
 const sourceWords = finding => (finding.source === 'suite-failure' ? `a run of the ${finding.view} suite (a step of the ${finding.view} suite failed)` : SOURCE_WORDS[finding.source] || SOURCE_WORDS['ai-review']);
 
 // The app's own words for its state when the picture was taken (ui-<view>.json), as table rows; empty ones are left out.

@@ -101,3 +101,24 @@ test('the held key still makes the twin a tester app after it leaves process.env
     assert.equal(testerMode()?.key, 'SECRET');
   } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
 });
+
+test('a desktop tester send leaves a finding the issue text is built from: the owner\'s scenario, an employer typed on the Jobs screen with no session open, never reaches the issue', async () => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const {bodyOf, findingOf: issueFinding} = await import('../../../e2e/lib/tester-issue.mjs');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tester-finding-'));
+  try {
+    const upload = async () => ({ok: true, id: '0123456789abcdef', url: 'https://www.jobadabra.top/admin/bug-bundle/0123456789abcdef'});
+    const jobsOf = async () => ({jobs: [{url: 'https://x.test/job', company: 'Acme Corp', title: 'Senior Designer'}]});
+    setup({app: {...app, getPath: () => home}, upload, jobsOf, sessionsOf: () => [], tester: () => ({source: 'persona', key: 'k'})});
+    await handlers.feedbackPrepare({}, 'actions');
+    assert.equal((await handlers.sendTesterBug({}, INPUT)).ok, true);
+    assert.ok(!fs.existsSync(path.join(home, 'tester-findings')), 'a persona send leaves no file');
+    setup({app: {...app, getPath: () => home}, upload, jobsOf, sessionsOf: () => [], tester: () => ({source: 'desktop-tester', key: 'k'})});
+    await handlers.feedbackPrepare({}, 'jobs');
+    const result = await handlers.sendTesterBug({}, {...INPUT, title: 'Acme Co listed twice', seen: 'Acme Corp row says Senior Designer twice'});
+    assert.equal(result.filing, undefined);
+    const file = JSON.parse(fs.readFileSync(path.join(home, 'tester-findings', '0123456789abcdef.json'), 'utf8'));
+    const issue = [issueFinding(file).title, issueFinding(file).detail, bodyOf(file)].join('\n');
+    assert.ok(!/acme|senior designer/i.test(issue), `no employer or title in the issue: ${issue}`);
+  } finally { fs.rmSync(home, {recursive: true, force: true}); }
+});
