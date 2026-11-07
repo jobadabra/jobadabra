@@ -2,6 +2,8 @@
 // secrets, the AI engine (Claude Code or a key), Free AI, choosing and changing the CV. main.js passes in the services they share.
 // Guards: the notion-oauth, settings, claude-code and cv tests in desktop/test.
 import {t} from '../i18n/native.js';
+import {setupText} from '../i18n/setup-notices.js';
+import {displayText} from '../i18n/display-values.js';
 import * as aiFree from './ai-free.js';
 import * as claudeCode from './claude-code.js';
 import * as atUpload from './cv-import-at-upload.js';
@@ -43,15 +45,15 @@ export function registerSetupHandlers(ctx) {
   registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, log: appLog, page: id => backgroundApplyFor(storage).page(id),   // a hidden-browser session's held tab, in the app
     submitControl: id => backgroundApplyFor(storage).submitControl(id), stop: id => stopSession(storage, id)});
   handleImportant('notionConnect', 'Connecting Notion', async (_, pasted) => {   // about Notion
-    const {value: token, error} = cleanSecret(pasted);
-    if (error) return {ok: false, error};
+    const cleaned = cleanSecret(pasted), {value: token, error} = cleaned;
+    if (error) return {ok: false, error: displayText(cleaned, error)};
     return connectNotion(token);
   });
   // "Connect with Notion": Notion's consent page in the browser, then the same connect as above.
   handleImportant('notionOAuth', 'Connecting Notion', async (_, options = {}) => {   // about Notion
     setNotionFrom(typeof options?.from === 'string' ? options.from.slice(0, 40) : 'unknown');  // for the log: wizard, gate:<reason>, settings
     const signedIn = await notionOAuth.connect(url => shell.openExternal(url));
-    if (!signedIn.ok) return signedIn;
+    if (!signedIn.ok) return {...signedIn, error: displayText(signedIn, signedIn.error)};
     getWindow()?.show();
     getWindow()?.focus();
     return {...await connectNotion(signedIn.access_token, {templateRoot: notionOAuth.templateRoot(signedIn)}), workspace: signedIn.workspace_name};
@@ -64,8 +66,8 @@ export function registerSetupHandlers(ctx) {
     return forWindow(saved);   // the same shape as the window's state: the account switch must not flip to ON for an unset (assist) setting
   });
   ipcMain.handle('saveSecret', (_, name, pasted) => {
-    const {value, error} = cleanSecret(pasted);
-    if (error) throw new Error(error);
+    const cleaned = cleanSecret(pasted), {value, error} = cleaned;
+    if (error) throw new Error(displayText(cleaned, error));
     storage.setSecret(name, value);
     if (name === 'ANTHROPIC_API_KEY' && !aiFree.isFreeKey(value)) aiFree.stop(storage);  // own key: leave Free AI
     return storage.secretsPresent();
@@ -81,22 +83,25 @@ export function registerSetupHandlers(ctx) {
   // The status, Verify, file picker, install page and support details of Claude Code and Codex: lib/plan-handlers.js (the readiness states).
   registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell, clipboard: ctx.clipboard, track: ctx.track, DEMO, appVersion: ctx.app?.getVersion?.() || '', ...(ctx.plan || {})});
   ipcMain.handle('checkOpenAI', async (_, pasted) => {
-    const {value: key, error} = cleanSecret(pasted);
-    if (error) return {ok: false, error};
+    const cleaned = cleanSecret(pasted), {value: key, error} = cleaned;
+    if (error) return {ok: false, error: displayText(cleaned, error)};
     try {
       await checkOpenAiKey(key);   // free call: is the key valid?
       return {ok: true};
     } catch (error) {
-      return {ok: false, error: error.status === 401 ? 'This key was rejected. Copy it again from platform.openai.com → API keys.' : error.message};
+      return {ok: false, error: error.status === 401 ? setupText('openaiRejected') : error.message};
     }
   });
   ipcMain.handle('setAiFallback', (_, on) => { storage.saveSettings({aiFallback: !!on}); return forWindow(storage.settings()); });
   ipcMain.handle('dismissEngineOffer', () => { storage.saveSettings({aiEngineOffered: true}); return forWindow(storage.settings()); });
   // Free AI for everyone (lib/ai-free.js).
-  ipcMain.handle('startFreeAi', () => aiFree.start(storage));
+  ipcMain.handle('startFreeAi', async () => {
+    const result = await aiFree.start(storage);
+    return result.ok ? result : {...result, error: displayText(result, result.error)};
+  });
   ipcMain.handle('checkAnthropic', async (_, pasted) => {
-    const {value: key, error} = cleanSecret(pasted);
-    if (error) return {ok: false, error};
+    const cleaned = cleanSecret(pasted), {value: key, error} = cleaned;
+    if (error) return {ok: false, error: displayText(cleaned, error)};
     try {
       // Why (29 Oct 2026, run 40836904987; #2427 exposed it; names renamed 1 Nov 2026): backbone setup checks use a dummy key, never Anthropic; outside e2e the real validator is unchanged.
       const testKey = process.env.JOBADABRA_E2E && storage.settings().anthropicKeyTest;
@@ -107,7 +112,7 @@ export function registerSetupHandlers(ctx) {
       }
       return {ok: true};
     } catch (error) {
-      return {ok: false, error: error.status === 401 ? 'This key was rejected. Copy it again from console.anthropic.com.' : error.message};
+      return {ok: false, error: error.status === 401 ? setupText('anthropicRejected') : error.message};
     }
   });
   ipcMain.handle('chooseCv', async () => {

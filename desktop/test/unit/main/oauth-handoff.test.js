@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {test} from 'node:test';
-import {FLOWS, begin, cancel, receive} from '../../../lib/oauth-handoff.js';
+import {FLOWS, begin, cancel, fail, receive} from '../../../lib/oauth-handoff.js';
 import {isOauthHandoff} from '../../../lib/oauth-handoff-route.js';
 import {routeTable} from '../../../lib/server-routes.js';
 
@@ -68,4 +68,48 @@ test('a new wait cancels the old one, a too large hand-off is dropped, and only 
   assert.equal(isOauthHandoff('/other/callback'), false);
   assert.equal(isOauthHandoff('/notion-connect/callback'), true);
   assert.equal(isOauthHandoff('/notion-connect/callback?x=1'), true);
+});
+
+test('private failure observer sees canonical timeout/open identity for every flow, ignores returns and never sees cancellation or credentials', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  for (const flow of FLOWS) {
+    const seen = [], observe = (...args) => {seen.push(args); return {ok: true, fields: {mustNotReplace: true}};};
+    const timed = begin(flow, {timeout: 7, timeoutError: 'canonical timeout', onFailureResult: observe});
+    t.mock.timers.tick(7);
+    const timeoutAnswer = await timed.result;
+    assert.deepEqual(timeoutAnswer, {ok: false, error: 'canonical timeout'});
+    assert.equal(seen[0][0], timeoutAnswer); assert.deepEqual(seen[0].slice(1), ['timeout']);
+    assert.deepEqual(Reflect.ownKeys(timeoutAnswer), ['ok', 'error']);
+    const opened = begin(flow, {onFailureResult: observe}); fail(flow, 'canonical open failure');
+    const openAnswer = await opened.result;
+    assert.deepEqual(openAnswer, {ok: false, error: 'canonical open failure'});
+    assert.equal(seen[1][0], openAnswer); assert.deepEqual(seen[1].slice(1), ['open']);
+    const cancelled = begin(flow, {onFailureResult: observe}); cancel(flow);
+    assert.deepEqual(await cancelled.result, {ok: false, error: 'Cancelled.'});
+    const replaced = begin(flow, {onFailureResult: observe}), success = begin(flow, {onFailureResult: observe});
+    assert.deepEqual(await replaced.result, {ok: false, error: 'Cancelled.'});
+    assert.equal(receive(flow, new URLSearchParams({state: replaced.state, access_token: SECRET})), false);
+    assert.equal(receive(flow, new URLSearchParams({state: success.state, access_token: SECRET})), true);
+    assert.deepEqual(await success.result, {ok: true, fields: {access_token: SECRET}});
+    assert.equal(receive(flow, new URLSearchParams({state: success.state, access_token: SECRET})), false);
+    t.mock.timers.tick(5 * 60 * 1000);
+    assert.equal(seen.length, 2, 'only authored failure results reach the observer');
+    assert.ok(seen.every(([answer]) => JSON.stringify(answer).includes(SECRET) === false));
+  }
+});
+
+test('a throwing private failure observer cannot stop timeout/open resolution or change default callers', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  for (const flow of FLOWS) {
+    const seen = [], onFailureResult = (answer, reason) => {seen.push([answer, reason]); throw new Error('metadata failed');};
+    const timed = begin(flow, {timeout: 1, onFailureResult}); t.mock.timers.tick(1);
+    assert.deepEqual(await timed.result, {ok: false, error: 'The website didn\'t answer in 5 minutes. Try again.'});
+    const opened = begin(flow, {onFailureResult}); fail(flow, 'canonical fallback');
+    assert.deepEqual(await opened.result, {ok: false, error: 'canonical fallback'});
+    assert.deepEqual(seen.map(([, reason]) => reason), ['timeout', 'open']);
+    const plain = begin(flow, {timeout: 1}); t.mock.timers.tick(1);
+    assert.deepEqual(await plain.result, {ok: false, error: 'The website didn\'t answer in 5 minutes. Try again.'});
+    const plainOpen = begin(flow); fail(flow, 'unchanged');
+    assert.deepEqual(await plainOpen.result, {ok: false, error: 'unchanged'});
+  }
 });
