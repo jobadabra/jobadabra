@@ -48,5 +48,19 @@
   "notification.subjectMore": {
     "one": "{title} and {count} more",
     "other": "{title} and {count} more"
-  }
+  },
+  "focus.title": "Your focus",
+  "focus.recruiter": "A recruiter",
+  "focus.waiting": "Waiting for your answer.",
+  "focus.soon": "Interview soon.",
+  "focus.learning": "Review one learning point before your next interview.",
+  "focus.today": "Today",
+  "focus.progress": "{applied} of {target} applications",
+  "focus.waitingCount": "{count} waiting for you",
+  "focus.soonCount": "{count} interview soon",
+  "focus.learningCount": {
+    "one": "{count} feedback item to review",
+    "other": "{count} feedback items to review"
+  },
+  "trial.over": "Your free trial is over: Always on paused new searches. Get Pro to continue."
 }

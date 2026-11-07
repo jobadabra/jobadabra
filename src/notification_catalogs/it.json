@@ -48,5 +48,22 @@
   "notification.subjectMore": {
     "one": "{title} e {count} altro",
     "other": "{title} e {count} altri"
-  }
+  },
+  "focus.title": "Le tue priorità",
+  "focus.recruiter": "Un recruiter",
+  "focus.waiting": "In attesa della tua risposta.",
+  "focus.soon": "Colloquio a breve.",
+  "focus.learning": "Rivedi un punto da migliorare prima del prossimo colloquio.",
+  "focus.today": "Oggi",
+  "focus.progress": "Candidature: {applied}/{target}",
+  "focus.waitingCount": "{count} in attesa di te",
+  "focus.soonCount": {
+    "one": "{count} colloquio a breve",
+    "other": "{count} colloqui a breve"
+  },
+  "focus.learningCount": {
+    "one": "{count} feedback da rivedere",
+    "other": "{count} feedback da rivedere"
+  },
+  "trial.over": "La prova gratuita è terminata: Always on ha sospeso le nuove ricerche. Passa a Pro per continuare."
 }

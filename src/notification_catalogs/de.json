@@ -48,5 +48,25 @@
   "notification.subjectMore": {
     "one": "{title} und {count} weitere",
     "other": "{title} und {count} weitere"
-  }
+  },
+  "focus.title": "Dein Fokus",
+  "focus.recruiter": "Ein Recruiter",
+  "focus.waiting": "Wartet auf deine Antwort.",
+  "focus.soon": "Baldiges Vorstellungsgespräch.",
+  "focus.learning": "Sieh dir vor deinem nächsten Gespräch einen Lernpunkt an.",
+  "focus.today": "Heute",
+  "focus.progress": "Bewerbungen: {applied}/{target}",
+  "focus.waitingCount": {
+    "one": "{count} wartet auf dich",
+    "other": "{count} warten auf dich"
+  },
+  "focus.soonCount": {
+    "one": "{count} Vorstellungsgespräch bald",
+    "other": "{count} Vorstellungsgespräche bald"
+  },
+  "focus.learningCount": {
+    "one": "{count} Feedbackpunkt zum Prüfen",
+    "other": "{count} Feedbackpunkte zum Prüfen"
+  },
+  "trial.over": "Deine kostenlose Testphase ist vorbei: Always on hat neue Suchen pausiert. Hol dir Pro, um fortzufahren."
 }

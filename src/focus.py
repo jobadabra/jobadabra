@@ -28,6 +28,7 @@ Usage:
 import argparse
 from datetime import date, datetime, timedelta, timezone
 from html import escape
+from . import notification_cards as cards
 import json
 import os
 import re
@@ -337,16 +338,17 @@ def reminder_card(focus, now=None):
     behind = today['applied'] < today['target'] * min(max((hour - 8) / 12, 0), 1)
     blocks = []
     for item in waiting[:3]:
-        blocks.append(tgcard.block(escape(item['company'] or 'A recruiter'), 'Waiting for your answer.'))
+        blocks.append(cards.block(cards.safe(item['company']) if item['company'] else cards.words('focus.recruiter'), cards.words('focus.waiting')))
     for item in soon[:2]:
-        blocks.append(tgcard.block(escape(item['company']), 'Interview soon.'))
+        blocks.append(cards.block(escape(item['company']), cards.words('focus.soon')))
     for item in learning[:3]:
-        blocks.append(tgcard.block(escape(item['company']), 'Review one learning point before your next interview.'))
+        blocks.append(cards.block(escape(item['company']), cards.words('focus.learning')))
     if behind or not blocks:
-        blocks.append(tgcard.block('Today', escape(f"{today['applied']} of {today['target']} applications")))
-    counts = [f"{len(waiting)} waiting for you" if waiting else '', f"{len(soon)} interview soon" if soon else '',
-              f"{len(learning)} feedback item{'s' if len(learning) != 1 else ''} to review" if learning else '']
-    return tgcard.card('Your focus', tgcard.dot(*counts), blocks, emoji='🧭')
+        blocks.append(cards.block(cards.words('focus.today'), cards.safe(cards.words('focus.progress', {'applied': today['applied'], 'target': today['target']}))))
+    counts = [cards.words('focus.waitingCount', count=len(waiting)) if waiting else '',
+              cards.words('focus.soonCount', count=len(soon)) if soon else '',
+              cards.words('focus.learningCount', count=len(learning)) if learning else '']
+    return cards.card(cards.words('focus.title'), cards.dot(*counts), blocks, emoji='🧭')
 
 
 # ---- history: what you resolved from Focus (Notion keeps it: 📈 Application Events from the app, and 💡 Insights you rated)
@@ -432,7 +434,8 @@ def main(argv=None):
             from .features import disabled
             if not disabled('telegram'):
                 token, chat_id = telegram.credentials()   # (None, None) = e-mail only
-                telegram.deliver(reminder_card(focus), token, chat_id)
+                message = reminder_card(focus)
+                telegram.deliver(message, token, chat_id, **cards.delivery(message))
         print(json.dumps({'text': text}))
         return 0
     print(json.dumps(focus, ensure_ascii=False))

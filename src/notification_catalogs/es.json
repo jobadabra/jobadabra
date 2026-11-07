@@ -48,5 +48,22 @@
   "notification.subjectMore": {
     "one": "{title} y {count} más",
     "other": "{title} y {count} más"
-  }
+  },
+  "focus.title": "Tus prioridades",
+  "focus.recruiter": "Un reclutador",
+  "focus.waiting": "Espera tu respuesta.",
+  "focus.soon": "Entrevista pronto.",
+  "focus.learning": "Revisa un punto de mejora antes de tu próxima entrevista.",
+  "focus.today": "Hoy",
+  "focus.progress": "Candidaturas: {applied}/{target}",
+  "focus.waitingCount": "{count} esperan tu respuesta",
+  "focus.soonCount": {
+    "one": "{count} entrevista próxima",
+    "other": "{count} entrevistas próximas"
+  },
+  "focus.learningCount": {
+    "one": "{count} comentario por revisar",
+    "other": "{count} comentarios por revisar"
+  },
+  "trial.over": "Tu prueba gratuita ha terminado: Always on ha pausado las nuevas búsquedas. Consigue Pro para continuar."
 }

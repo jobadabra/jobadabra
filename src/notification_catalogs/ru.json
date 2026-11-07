@@ -54,5 +54,31 @@
     "few": "{title} и ещё {count}",
     "many": "{title} и ещё {count}",
     "other": "{title} и ещё {count}"
-  }
+  },
+  "focus.title": "Ваши приоритеты",
+  "focus.recruiter": "Рекрутер",
+  "focus.waiting": "Ждёт вашего ответа.",
+  "focus.soon": "Скоро собеседование.",
+  "focus.learning": "Повторите один вывод перед следующим собеседованием.",
+  "focus.today": "Сегодня",
+  "focus.progress": "Отклики: {applied}/{target}",
+  "focus.waitingCount": {
+    "one": "{count} ждёт вашего ответа",
+    "few": "{count} ждут вашего ответа",
+    "many": "{count} ждут вашего ответа",
+    "other": "{count} ждут вашего ответа"
+  },
+  "focus.soonCount": {
+    "one": "{count} собеседование скоро",
+    "few": "{count} собеседования скоро",
+    "many": "{count} собеседований скоро",
+    "other": "{count} собеседования скоро"
+  },
+  "focus.learningCount": {
+    "one": "{count} отзыв для разбора",
+    "other": "{count} отзывов для разбора",
+    "few": "{count} отзыва для разбора",
+    "many": "{count} отзывов для разбора"
+  },
+  "trial.over": "Бесплатный пробный период завершён: Always on приостановил новые поиски. Перейдите на Pro, чтобы продолжить."
 }

@@ -50,5 +50,24 @@
   "notification.subjectMore": {
     "one": "{title} și încă {count}",
     "other": "{title} și încă {count}"
-  }
+  },
+  "focus.title": "Prioritățile tale",
+  "focus.recruiter": "Un recrutor",
+  "focus.waiting": "Așteaptă răspunsul tău.",
+  "focus.soon": "Interviu în curând.",
+  "focus.learning": "Revizuiește un punct de îmbunătățit înainte de următorul interviu.",
+  "focus.today": "Astăzi",
+  "focus.progress": "Candidaturi: {applied}/{target}",
+  "focus.waitingCount": "{count} așteaptă răspunsul tău",
+  "focus.soonCount": {
+    "one": "{count} interviu în curând",
+    "few": "{count} interviuri în curând",
+    "other": "{count} de interviuri în curând"
+  },
+  "focus.learningCount": {
+    "one": "{count} feedback de revizuit",
+    "other": "{count} de feedbackuri de revizuit",
+    "few": "{count} feedbackuri de revizuit"
+  },
+  "trial.over": "Perioada gratuită de probă s-a încheiat: Always on a întrerupt căutările noi. Treci la Pro pentru a continua."
 }

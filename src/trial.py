@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 
 from .sources.ats import USER_AGENT
+from . import notification_cards as cards
 from .stores.rules import EMPLOYER_STAGES
 
 APPLIED_OR_LATER = {'Applied', *EMPLOYER_STAGES}
@@ -65,5 +66,5 @@ def pause_run(args, stores, mode=None):
         return False
     print(OVER_LINE, flush=True)
     if args.send and answer.get('notify'):   # once a day per install, decided by the website
-        telegram.deliver(OVER_LINE, *telegram.credentials())
+        telegram.deliver(OVER_LINE, *telegram.credentials(), **cards.delivery(cards.words('trial.over')))
     return True
