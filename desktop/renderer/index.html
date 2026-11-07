@@ -44,27 +44,27 @@
 <!-- "Look around first" (lib/demo.js): shown only in that demo, above the whole window (pages/demo.js). -->
 <div class="demo-banner" id="demo-banner" role="status" hidden>
   <i data-icon="eye"></i>
-  <span><b>You're looking at demo data</b> — nothing is real, nothing is sent.</span>
-  <button class="primary" id="demo-leave">Set up my own</button>
+  <span><b data-i18n="screenWelcome.demoBanner">You're looking at demo data</b> <span data-i18n="screenWelcome.demoNothing">— nothing is real, nothing is sent.</span></span>
+  <button class="primary" id="demo-leave" data-i18n="screenWelcome.setupOwn">Set up my own</button>
 </div>
 <!-- First run: the setup wizard -->
 <section id="wizard" class="wizard" hidden>
   <aside class="steps">
     <div class="brand"><img class="mark" src="logo.png" alt="">Jobadabra</div>
     <ol id="step-list">
-      <li data-step="welcome">Welcome</li>
-      <li data-step="ai">AI</li>
-      <li data-step="cv">Your CV</li>
-      <li data-step="draft">Your strategy</li>
+      <li data-step="welcome" data-i18n="screenWelcome.welcome">Welcome</li>
+      <li data-step="ai" data-i18n="screenCommon.ai">AI</li>
+      <li data-step="cv" data-i18n="screenCommon.yourCv">Your CV</li>
+      <li data-step="draft" data-i18n="screenCommon.yourStrategy">Your strategy</li>
     </ol>
     <div class="steps-foot">
-      <button class="nav wizard-exit" id="wizard-exit" type="button" hidden><i data-icon="undo"></i>Back to the app</button>
-      <button class="nav wizard-stuck" id="wizard-stuck" type="button"><i data-icon="help"></i>Stuck? Tell us</button>
+      <button class="nav wizard-exit" id="wizard-exit" type="button" hidden><i data-icon="undo"></i><span data-i18n="screenWelcome.backApp">Back to the app</span></button>
+      <button class="nav wizard-stuck" id="wizard-stuck" type="button"><i data-icon="help"></i><span data-i18n="screenWelcome.stuck">Stuck? Tell us</span></button>
       <div class="steps-privacy-wrap">
-        <button type="button" class="fine steps-privacy" id="privacy-toggle" aria-expanded="false" aria-controls="privacy-pop"><i data-icon="shield"></i><span>Encrypted</span></button>
-        <div class="privacy-pop" id="privacy-pop" role="dialog" aria-label="Privacy" hidden>
-          <p id="privacy-text">Passwords and keys are encrypted in the Keychain. While Always on is off, your data stays on this Mac.</p>
-          <button type="button" class="icon-btn privacy-close" id="privacy-close" aria-label="Close" title="Close (Esc)"><i data-icon="close"></i></button>
+        <button type="button" class="fine steps-privacy" id="privacy-toggle" aria-expanded="false" aria-controls="privacy-pop"><i data-icon="shield"></i><span data-i18n="screenCommon.encrypted">Encrypted</span></button>
+        <div class="privacy-pop" id="privacy-pop" role="dialog" aria-label="Privacy" hidden data-i18n-aria-label="screenCommon.privacy">
+          <p id="privacy-text" data-i18n="screenWelcome.privacy">Passwords and keys are encrypted in the Keychain. While Always on is off, your data stays on this Mac.</p>
+          <button type="button" class="icon-btn privacy-close" id="privacy-close" aria-label="Close" title="Close (Esc)" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
         </div>
       </div>
       <p class="fine steps-version"><i data-icon="info"></i><span data-version></span></p>
@@ -73,42 +73,42 @@
 
   <div class="step-body">
     <div class="review-mode" id="review-mode" hidden><i data-icon="shield"></i>
-      <span><strong>Setup is done.</strong> You're reviewing it: nothing changes unless you replace your strategy at <span data-step-reference="draft">the Your strategy step</span>, after a confirmation.</span>
-      <span class="fine">For small changes, edit your Profile or Search settings.</span></div>
+      <span><strong data-i18n="screenWelcome.setupDone">Setup is done.</strong> <span data-i18n="screenWelcome.reviewing">You're reviewing it: nothing changes unless you replace your strategy at</span> <span data-step-reference="draft" data-i18n="screenWelcome.strategyStep">the Your strategy step</span><span data-i18n="screenWelcome.confirmation">, after a confirmation.</span></span>
+      <span class="fine" data-i18n="screenWelcome.smallChanges">For small changes, edit your Profile or Search settings.</span></div>
     <div class="step" data-step="welcome">
       <div class="magic-stage">
       <div class="magic" data-magic>
         <span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span>
         <span class="ui-tile tone-signal" aria-hidden="true"><i data-icon="sparkle"></i></span>
-        <span class="eyebrow" data-when="first">Check-in · about 5 minutes</span><span class="eyebrow" data-when="done" hidden>Setup complete</span>
-        <h1 class="magic-title" data-when="first">Help me find a job</h1><h1 class="magic-title" data-when="done" hidden>Your job search is set up</h1>
-        <p class="muted subtitle magic-sub" data-when="first">Jobadabra finds openings that fit you, scores them against your CV, and helps you fill applications. You review and click Submit yourself.</p>
-        <p class="muted subtitle magic-sub" data-when="done" hidden>Nothing changes here unless you replace your strategy at <span data-step-reference="draft">the Your strategy step</span>, after a confirmation. For small changes, edit your Profile or Search settings.</p>
+        <span class="eyebrow" data-when="first" data-i18n="screenWelcome.checkIn">Check-in · about 5 minutes</span><span class="eyebrow" data-when="done" hidden data-i18n="screenWelcome.complete">Setup complete</span>
+        <h1 class="magic-title" data-when="first" data-i18n="screenWelcome.helpFind">Help me find a job</h1><h1 class="magic-title" data-when="done" hidden data-i18n="screenWelcome.searchReady">Your job search is set up</h1>
+        <p class="muted subtitle magic-sub" data-when="first" data-i18n="screenWelcome.intro">Jobadabra finds openings that fit you, scores them against your CV, and helps you fill applications. You review and click Submit yourself.</p>
+        <p class="muted subtitle magic-sub" data-when="done" hidden><span data-i18n="screenWelcome.reviewIntro">Nothing changes here unless you replace your strategy at</span> <span data-step-reference="draft" data-i18n="screenWelcome.strategyStep">the Your strategy step</span><span data-i18n="screenWelcome.confirmSmall">, after a confirmation. For small changes, edit your Profile or Search settings.</span></p>
         <ul class="magic-steps">
-          <li><i data-icon="zap"></i>Connect your AI</li>
-          <li><i data-icon="file"></i>Choose your CV</li>
-          <li><i data-icon="target"></i>Check the strategy it proposes</li>
+          <li><i data-icon="zap"></i><span data-i18n="screenWelcome.connectAi">Connect your AI</span></li>
+          <li><i data-icon="file"></i><span data-i18n="screenWelcome.chooseCv">Choose your CV</span></li>
+          <li><i data-icon="target"></i><span data-i18n="screenWelcome.checkStrategy">Check the strategy it proposes</span></li>
         </ul>
-        <button class="primary magic-go" data-next><span data-when="first">Start</span><span data-when="done" hidden>Review the steps</span></button>
+        <button class="primary magic-go" data-next><span data-when="first" data-i18n="screenCommon.start">Start</span><span data-when="done" hidden data-i18n="screenWelcome.reviewSteps">Review the steps</span></button>
       </div>
       <div class="magic-side">
-        <section class="card magic-mini"><div><b>Just exploring?</b><p class="muted small">See the app with a fictional candidate and jobs. Nothing of yours is used or sent.</p></div>
-          <button class="secondary" data-look-around="welcome">Look around first (demo data)</button></section>
-        <section class="card magic-mini"><div><b>Used Jobadabra before?</b><p class="muted small">Bring back your data from this or another computer. The app restarts.</p></div>
-          <button class="secondary" id="welcome-import" data-import>Import an export…</button></section>
+        <section class="card magic-mini"><div><b data-i18n="screenWelcome.exploring">Just exploring?</b><p class="muted small" data-i18n="screenWelcome.demoIntro">See the app with a fictional candidate and jobs. Nothing of yours is used or sent.</p></div>
+          <button class="secondary" data-look-around="welcome" data-i18n="screenWelcome.lookAround">Look around first (demo data)</button></section>
+        <section class="card magic-mini"><div><b data-i18n="screenWelcome.usedBefore">Used Jobadabra before?</b><p class="muted small" data-i18n="screenWelcome.restoreIntro">Bring back your data from this or another computer. The app restarts.</p></div>
+          <button class="secondary" id="welcome-import" data-import data-i18n="screenWelcome.importExport">Import an export…</button></section>
       </div>
       <section class="card step-card welcome-privacy">
-        <div class="panel-top"><div class="summary-head"><i data-icon="flag"></i><h3>Keep a trace of each form fill</h3></div>
-          <span class="switch"><input type="checkbox" id="welcome-trace" checked aria-label="Keep a trace of each form fill"><span></span></span></div>
-        <p class="muted panel-lead">So you can report a problem and we can fix it. It stays on this Mac unless you send it.</p>
-        <details class="welcome-more"><summary>What is kept and sent</summary>
-          <p class="muted small">Keep a trace of each form fill, so you can report a problem and we can fix it. Stays on this Mac, sent only when you press Report in the panel and then Send (personal details removed automatically first), never sign-in pages, deleted when the application ends. Chrome shows a debugging bar while it is kept.</p></details>
+        <div class="panel-top"><div class="summary-head"><i data-icon="flag"></i><h3 data-i18n="screenWelcome.trace">Keep a trace of each form fill</h3></div>
+          <span class="switch"><input type="checkbox" id="welcome-trace" checked aria-label="Keep a trace of each form fill" data-i18n-aria-label="screenWelcome.trace"><span></span></span></div>
+        <p class="muted panel-lead" data-i18n="screenWelcome.traceReason">So you can report a problem and we can fix it. It stays on this Mac unless you send it.</p>
+        <details class="welcome-more"><summary data-i18n="screenWelcome.keptSent">What is kept and sent</summary>
+          <p class="muted small" data-i18n="screenWelcome.traceDetails">Keep a trace of each form fill, so you can report a problem and we can fix it. Stays on this Mac, sent only when you press Report in the panel and then Send (personal details removed automatically first), never sign-in pages, deleted when the application ends. Chrome shows a debugging bar while it is kept.</p></details>
         <div class="welcome-rule"></div>
-        <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3>Technical reports</h3></div>
+        <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3 data-i18n="screenWelcome.technicalReports">Technical reports</h3></div>
           <span class="switch"><input type="checkbox" id="welcome-telemetry" checked aria-label="Send technical reports"><span></span></span></div>
-        <p class="muted panel-lead">Anonymous errors and counts, never your answers, CV, emails or names. Turn off any time in Settings → Advanced.</p>
-        <details class="welcome-more"><summary>What is sent</summary>
-          <p class="muted small">Jobadabra sends technical reports (errors, forms it couldn't fill, anonymous counts like forms filled and interviews) to improve it for everyone, asks our service for shared fixes to forms that trip it up (by the control's anonymous shape, never its text), and shares which employer career pages you use, with two labels (your kind of role and your region), to grow the shared pool of employers. Never your answers, CV, emails or names. Turn either off any time in Settings → Advanced.</p></details>
+        <p class="muted panel-lead" data-i18n="screenWelcome.technicalShort">Anonymous errors and counts, never your answers, CV, emails or names. Turn off any time in Settings → Advanced.</p>
+        <details class="welcome-more"><summary data-i18n="screenWelcome.whatSent">What is sent</summary>
+          <p class="muted small" data-i18n="screenWelcome.technicalDetails">Jobadabra sends technical reports (errors, forms it couldn't fill, anonymous counts like forms filled and interviews) to improve it for everyone, asks our service for shared fixes to forms that trip it up (by the control's anonymous shape, never its text), and shares which employer career pages you use, with two labels (your kind of role and your region), to grow the shared pool of employers. Never your answers, CV, emails or names. Turn either off any time in Settings → Advanced.</p></details>
       </section>
       </div>
     </div>
@@ -116,39 +116,39 @@
     <div class="step" data-step="ai">
       <header class="view-head step-head">
         <div><span class="eyebrow" data-step-count></span>
-          <h1>Connect your AI</h1>
-          <p class="muted subtitle">The AI reads postings, scores them and drafts your answers.</p>
+          <h1 data-i18n="screenWelcome.connectAi">Connect your AI</h1>
+          <p class="muted subtitle" data-i18n="screenWelcome.aiReads">The AI reads postings, scores them and drafts your answers.</p>
           <ul class="chip-list step-facts" aria-label="Ways to connect">
-            <li class="chip-tag"><i data-icon="zap"></i>Free to start</li><li class="chip-tag"><i data-icon="key"></i>Your own API key</li><li class="chip-tag"><i data-icon="bot"></i>Your own AI plan</li></ul>
-          <details class="step-more"><summary>How each option works</summary>
-            <p class="muted small">Start with Free (nothing to set up), or bring your own Claude or OpenAI: an API key (you pay per use, usually a few dollars a month)
+            <li class="chip-tag"><i data-icon="zap"></i><span data-i18n="screenWelcome.freeStart">Free to start</span></li><li class="chip-tag"><i data-icon="key"></i><span data-i18n="screenWelcome.ownKey">Your own API key</span></li><li class="chip-tag"><i data-icon="bot"></i><span data-i18n="screenWelcome.ownPlan">Your own AI plan</span></li></ul>
+          <details class="step-more"><summary data-i18n="screenWelcome.howOptions">How each option works</summary>
+            <p class="muted small" data-i18n="screenWelcome.optionsIntro">Start with Free (nothing to set up), or bring your own Claude or OpenAI: an API key (you pay per use, usually a few dollars a month)
               or your own Claude Code / Codex (your Claude or ChatGPT plan).</p></details></div>
       </header>
       <section class="card step-card engine" id="ai-engine"></section>
       <section class="card step-card" id="ai-key-part" hidden>
         <ol class="howto">
-          <li>Open <a href="#" data-link="https://console.anthropic.com/settings/keys">console.anthropic.com → API keys</a> and sign up or sign in
+          <li><span data-i18n="screenCommon.open">Open</span> <a href="#" data-link="https://console.anthropic.com/settings/keys">console.anthropic.com → API keys</a> and sign up or sign in
             (a separate account from a Claude.ai subscription).</li>
           <li>New account? Go to <a href="#" data-link="https://console.anthropic.com/settings/billing">Billing</a> and add a small amount
             of credit, e.g. $5: it lasts weeks. Keys don't work without credit.</li>
           <li>Back in <b>API keys</b>: click <b>Create Key</b>, name it "Jobadabra", copy it, and paste it here.</li>
         </ol>
         <div class="step-field">
-          <label for="anthropic-key">API key</label>
+          <label for="anthropic-key" data-i18n="screenWelcome.key">API key</label>
           <input id="anthropic-key" type="password" placeholder="sk-ant-…" autocomplete="off">
           <p class="message" id="ai-message"></p>
         </div>
       </section>
       <section class="card step-card" id="ai-openai-key-part" hidden>
         <ol class="howto">
-          <li>Open <a href="#" data-link="https://platform.openai.com/api-keys">platform.openai.com → API keys</a> and sign up or sign in
+          <li><span data-i18n="screenCommon.open">Open</span> <a href="#" data-link="https://platform.openai.com/api-keys">platform.openai.com → API keys</a> and sign up or sign in
             (a separate account from a ChatGPT subscription).</li>
           <li>New account? Go to <a href="#" data-link="https://platform.openai.com/settings/organization/billing">Billing</a> and add a small amount
             of credit, e.g. $5: it lasts weeks. Keys don't work without credit.</li>
           <li>Back in <b>API keys</b>: click <b>Create new secret key</b>, name it "Jobadabra", copy it, and paste it here.</li>
         </ol>
         <div class="step-field">
-          <label for="openai-key">OpenAI API key</label>
+          <label for="openai-key" data-i18n="screenWelcome.openAiKey">OpenAI API key</label>
           <input id="openai-key" type="password" placeholder="sk-…" autocomplete="off">
           <p class="message" id="ai-openai-message"></p>
         </div>
@@ -159,9 +159,9 @@
         <p class="message" id="ai-free-message"></p>
       </section>
       <div class="actions">
-        <button class="ghost" data-back>Back</button>
-        <button class="ghost" id="ai-skip">Skip for now</button>
-        <button class="primary" id="ai-save">Check and save</button>
+        <button class="ghost" data-back data-i18n="screenCommon.back">Back</button>
+        <button class="ghost" id="ai-skip" data-i18n="screenWelcome.skipNow">Skip for now</button>
+        <button class="primary" id="ai-save" data-i18n="screenWelcome.checkSave">Check and save</button>
       </div>
     </div>
 
@@ -171,28 +171,28 @@
         <span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span>
         <span class="ui-tile tone-signal" aria-hidden="true"><i data-icon="file-text"></i></span>
         <span class="eyebrow" data-step-count></span>
-        <h1 class="magic-title">Your CV</h1>
-        <p class="muted magic-sub">The AI reads it for your roles, places and salary.</p>
+        <h1 class="magic-title" data-i18n="screenCommon.yourCv">Your CV</h1>
+        <p class="muted magic-sub" data-i18n="screenWelcome.readsCv">The AI reads it for your roles, places and salary.</p>
         <ul class="magic-steps" aria-label="What is read">
-          <li><i data-icon="target"></i>Roles</li><li><i data-icon="pin"></i>Places</li><li><i data-icon="briefcase"></i>Work mode</li><li><i data-icon="coins"></i>Salary</li><li><i data-icon="globe"></i>Languages</li>
+          <li><i data-icon="target"></i><span data-i18n="screenCommon.roles">Roles</span></li><li><i data-icon="pin"></i><span data-i18n="screenCommon.places">Places</span></li><li><i data-icon="briefcase"></i><span data-i18n="screenCommon.workMode">Work mode</span></li><li><i data-icon="coins"></i><span data-i18n="screenCommon.salary">Salary</span></li><li><i data-icon="globe"></i><span data-i18n="screenCommon.languages">Languages</span></li>
         </ul>
-        <div class="cv-file" id="cv-file" hidden><i data-icon="file-text"></i><b id="cv-name">No CV chosen yet</b><span class="muted small" id="cv-meta"></span></div>
-        <p class="fine cv-kinds"><i data-icon="shield"></i><span>Stays on this Mac<span data-notion-only> and in your Notion</span></span><span id="cv-kinds"></span></p>
+        <div class="cv-file" id="cv-file" hidden><i data-icon="file-text"></i><b id="cv-name" data-i18n="screenWelcome.noCv">No CV chosen yet</b><span class="muted small" id="cv-meta"></span></div>
+        <p class="fine cv-kinds"><i data-icon="shield"></i><span><span data-i18n="screenWelcome.staysMac">Stays on this Mac</span><span data-notion-only data-i18n="screenWelcome.andNotion"> and in your Notion</span></span><span id="cv-kinds"></span></p>
         <div class="cv-ways">
-          <button class="secondary cv-way" id="cv-linkedin" type="button" title="For LinkedIn members in the EU, EEA and Switzerland."><i data-icon="link"></i><span>From LinkedIn</span></button>
-          <button class="primary magic-go" id="cv-choose" title="Only the AI reads it, when building your strategy."><span id="cv-choose-label">Choose your CV…</span></button>
-          <button class="secondary cv-way" id="cv-build" type="button" data-wand title="Answer a few questions and the AI writes your CV"><i data-icon="sparkle"></i><span>Build one with AI</span></button>
+          <button class="secondary cv-way" id="cv-linkedin" type="button" title="For LinkedIn members in the EU, EEA and Switzerland."><i data-icon="link"></i><span data-i18n="screenWelcome.fromLinkedin">From LinkedIn</span></button>
+          <button class="primary magic-go" id="cv-choose" title="Only the AI reads it, when building your strategy."><span id="cv-choose-label" data-i18n="screenWelcome.chooseCvAction">Choose your CV…</span></button>
+          <button class="secondary cv-way" id="cv-build" type="button" data-wand title="Answer a few questions and the AI writes your CV"><i data-icon="sparkle"></i><span data-i18n="screenWelcome.buildCv">Build one with AI</span></button>
         </div>
       </div>
       <div class="switch-row cv-consent" id="cv-email" hidden>
         <span class="switch"><input type="checkbox" id="cv-email-consent" aria-describedby="cv-email-note"><span></span></span>
         <span><label for="cv-email-consent" id="cv-email-wording"></label>
-          <span class="muted small" id="cv-email-note">We found <b id="cv-email-address"></b> in your CV. <span id="cv-email-rest"></span></span>
+          <span class="muted small" id="cv-email-note"><span data-i18n="screenWelcome.weFound">We found</span> <b id="cv-email-address"></b> <span data-i18n="screenWelcome.inCv">in your CV.</span> <span id="cv-email-rest"></span></span>
           <span class="message" id="cv-email-message" role="status"></span></span>
       </div>
       <div class="actions">
-        <button class="ghost" data-back>Back</button>
-        <button class="primary" id="cv-next" disabled>Continue</button>
+        <button class="ghost" data-back data-i18n="screenCommon.back">Back</button>
+        <button class="primary" id="cv-next" disabled data-i18n="screenCommon.continue">Continue</button>
       </div>
       </div>
     </div>
@@ -200,8 +200,8 @@
     <div class="step" data-step="draft">
       <header class="view-head step-head">
         <div><span class="eyebrow" data-step-count></span>
-          <h1 id="draft-title">Your strategy</h1>
-          <p class="muted subtitle" id="draft-subtitle" hidden>Check what Jobadabra will search for, score jobs against and use in applications.</p></div>
+          <h1 id="draft-title" data-i18n="screenCommon.yourStrategy">Your strategy</h1>
+          <p class="muted subtitle" id="draft-subtitle" hidden data-i18n="screenWelcome.strategyIntro">Check what Jobadabra will search for, score jobs against and use in applications.</p></div>
         <div class="head-actions"><span class="pill-ai" id="draft-cost" hidden></span></div>
       </header>
       <!-- Before a draft exists (or to build again): what the user wants, in their words, then Build. The note field
@@ -209,47 +209,47 @@
       <div id="draft-intro" hidden>
         <section class="card step-card">
           <div class="step-field" id="note-field">
-            <label for="q-more" id="note-label">What should the AI know about what you want? <span class="muted">(optional)</span></label>
+            <label for="q-more" id="note-label"><span data-i18n="screenWelcome.whatWant">What should the AI know about what you want?</span> <span class="muted" data-i18n="screenWelcome.optional">(optional)</span></label>
             <textarea id="q-more" rows="4" placeholder="e.g. senior or staff level, permanent only, companies under 500 people, English-speaking teams, no on-call, skip my current employer"></textarea>
-            <p class="muted small note-hint">Your CV says what you've done; this says what you want next. It's saved with your Profile<span data-notion-only> in Notion</span>.</p>
+            <p class="muted small note-hint"><span data-i18n="screenWelcome.cvPast">Your CV says what you've done; this says what you want next. It's saved with your Profile</span><span data-notion-only data-i18n="screenWelcome.inNotion"> in Notion</span>.</p>
           </div>
         </section>
-        <p class="muted small step-note" id="goals-cost"><i data-icon="info"></i><span id="goals-cost-text">Building reads your CV and your note with <span data-ai="main">Claude Sonnet</span>.
-          Nothing is saved until you review the result.</span></p>
+        <p class="muted small step-note" id="goals-cost"><i data-icon="info"></i><span id="goals-cost-text"><span data-i18n="screenWelcome.buildingReads">Building reads your CV and your note with</span> <span data-ai="main">Claude Sonnet</span><span data-i18n="screenWelcome.nothingSaved">.
+          Nothing is saved until you review the result.</span></span></p>
         <div class="actions">
-          <button class="ghost" data-back>Back</button>
-          <button class="primary" id="draft-build" data-wand>Build my strategy</button>
+          <button class="ghost" data-back data-i18n="screenCommon.back">Back</button>
+          <button class="primary" id="draft-build" data-wand data-i18n="screenWelcome.buildStrategy">Build my strategy</button>
         </div>
       </div>
       <div id="draft-loading" class="progress" hidden>
-        <div class="progress-head"><span class="spinner"></span><b id="draft-part">Reading your CV</b><span id="draft-percent" class="muted"></span></div>
+        <div class="progress-head"><span class="spinner"></span><b id="draft-part" data-i18n="screenWelcome.readingCv">Reading your CV</b><span id="draft-percent" class="muted"></span></div>
         <div class="bar"><span id="draft-bar"></span></div>
         <ul class="draft-feed" id="draft-feed"></ul>
-        <p class="fine" id="draft-time"><span data-ai>Claude</span> reads your CV and writes your Profile, standard answers and search settings. This usually takes 1 to 2 minutes.</p>
+        <p class="fine" id="draft-time"><span data-ai>Claude</span> <span data-i18n="screenWelcome.readsWrites">reads your CV and writes your Profile, standard answers and search settings. This usually takes 1 to 2 minutes.</span></p>
       </div>
       <div id="draft-error" class="message error" hidden></div>
       <div class="stale-draft" id="draft-stale" hidden><span id="draft-stale-text"></span>
-        <button class="secondary small-btn" id="draft-redraft" data-wand>Redraft</button></div>
+        <button class="secondary small-btn" id="draft-redraft" data-wand data-i18n="screenWelcome.redraft">Redraft</button></div>
       <div id="draft-view" class="review" hidden>
         <!-- The summary the AI wrote and Change CV; below it the Strategy page's own cards (pages/setup-strategy.js moves #strategy-live in here). -->
         <section class="card overview">
-          <div class="card-head"><div><h2>Your search strategy</h2><p class="muted" id="draft-summary"></p></div>
-            <button class="link with-icon" data-goto-step="cv"><i data-icon="edit"></i><span>Change CV</span></button></div>
+          <div class="card-head"><div><h2 data-i18n="screenWelcome.searchStrategy">Your search strategy</h2><p class="muted" id="draft-summary"></p></div>
+            <button class="link with-icon" data-goto-step="cv"><i data-icon="edit"></i><span data-i18n="screenWelcome.changeCv">Change CV</span></button></div>
         </section>
         <div id="setup-strategy-slot" class="strategy-page"></div>
-        <details class="doc note-box" id="note-box"><summary><b>Your note to the AI</b> <span class="muted" id="note-summary">used when you regenerate</span></summary>
+        <details class="doc note-box" id="note-box"><summary><b data-i18n="screenWelcome.noteAi">Your note to the AI</b> <span class="muted" id="note-summary" data-i18n="screenWelcome.regenerateUse">used when you regenerate</span></summary>
           <div id="note-slot"></div></details>
       </div>
       <div class="actions sticky" id="draft-actions">
-        <span class="saved-note" id="draft-saved" hidden>✓ Saved automatically</span>
-        <button class="ghost" data-back>Back</button>
-        <button class="secondary" id="draft-again" data-wand>Regenerate draft</button>
-        <button class="primary" id="draft-save" disabled>Save strategy &amp; continue</button>
+        <span class="saved-note" id="draft-saved" hidden data-i18n="screenWelcome.autoSaved">✓ Saved automatically</span>
+        <button class="ghost" data-back data-i18n="screenCommon.back">Back</button>
+        <button class="secondary" id="draft-again" data-wand data-i18n="screenWelcome.regenerate">Regenerate draft</button>
+        <button class="primary" id="draft-save" disabled data-i18n="screenWelcome.saveContinue">Save strategy &amp; continue</button>
       </div>
       <p class="message" id="draft-save-message"></p>
     </div>
 
-    <div class="actions sticky" id="setup-finish" hidden><button class="primary" id="finish">Go to my jobs</button></div>
+    <div class="actions sticky" id="setup-finish" hidden><button class="primary" id="finish" data-i18n="screenWelcome.goJobs">Go to my jobs</button></div>
 
   </div>
 </section>
@@ -261,28 +261,28 @@
     <div class="brand" data-version-title><img class="mark" src="logo.png" alt="">Jobadabra</div>
     <div class="nav-scroll" id="nav-scroll">
     <p class="nav-group">Work</p>
-    <button class="nav" data-view="focus"><i data-icon="target"></i>Focus</button>
-    <button class="nav active" data-view="jobs"><i data-icon="briefcase"></i>Jobs<span class="nav-badge nav-count" id="nav-jobs-badge" hidden></span></button>
-    <button class="nav" data-view="sessions"><i data-icon="send"></i>Applying<span class="nav-badge" id="nav-applying-badge" hidden></span></button>
-    <button class="nav" data-view="actions"><i data-icon="check"></i>Actions<span class="spinner nav-running" id="nav-actions-running" role="status" hidden></span></button>
+    <button class="nav" data-view="focus"><i data-icon="target"></i><span data-i18n="screenCommon.focus">Focus</span></button>
+    <button class="nav active" data-view="jobs"><i data-icon="briefcase"></i><span data-i18n="screenCommon.jobs">Jobs</span><span class="nav-badge nav-count" id="nav-jobs-badge" hidden></span></button>
+    <button class="nav" data-view="sessions"><i data-icon="send"></i><span data-i18n="screenCommon.applying">Applying</span><span class="nav-badge" id="nav-applying-badge" hidden></span></button>
+    <button class="nav" data-view="actions"><i data-icon="check"></i><span data-i18n="screenCommon.actions">Actions</span><span class="spinner nav-running" id="nav-actions-running" role="status" hidden></span></button>
     <!-- Interviews and Reports appear when they have something (renderer/menu-reveal.js); Calendar comes with Interviews. All stay in ⌘K. -->
-    <button class="nav" data-view="interviews" id="nav-interviews" hidden><i data-icon="mic"></i>Interviews<span class="nav-dot" hidden></span></button>
-    <button class="nav" data-view="calendar" id="nav-calendar" hidden><i data-icon="calendar"></i>Calendar<span class="nav-dot" hidden></span></button>
-    <button class="nav" data-view="reports" id="nav-reports" hidden><i data-icon="chart"></i>Reports<span class="nav-dot" hidden></span></button>
+    <button class="nav" data-view="interviews" id="nav-interviews" hidden><i data-icon="mic"></i><span data-i18n="screenCommon.interviews">Interviews</span><span class="nav-dot" hidden></span></button>
+    <button class="nav" data-view="calendar" id="nav-calendar" hidden><i data-icon="calendar"></i><span data-i18n="screenCommon.calendar">Calendar</span><span class="nav-dot" hidden></span></button>
+    <button class="nav" data-view="reports" id="nav-reports" hidden><i data-icon="chart"></i><span data-i18n="screenCommon.reports">Reports</span><span class="nav-dot" hidden></span></button>
     <p class="nav-group">Setup</p>
-    <button class="nav" data-view="strategy"><i data-icon="sliders"></i>Strategy<span class="nav-dot" id="strategy-dot" hidden title="Few new jobs lately: see what would bring more"></span></button>
-    <button class="nav" data-view="employers" id="nav-employers" hidden><i data-icon="building"></i>Employers<span class="nav-dot" hidden></span></button>
-    <button class="nav" data-view="settings" data-settings="profile"><i data-icon="user"></i>Profile</button>
+    <button class="nav" data-view="strategy"><i data-icon="sliders"></i><span data-i18n="screenCommon.strategy">Strategy</span><span class="nav-dot" id="strategy-dot" hidden title="Few new jobs lately: see what would bring more"></span></button>
+    <button class="nav" data-view="employers" id="nav-employers" hidden><i data-icon="building"></i><span data-i18n="screenCommon.employers">Employers</span><span class="nav-dot" hidden></span></button>
+    <button class="nav" data-view="settings" data-settings="profile"><i data-icon="user"></i><span data-i18n="screenCommon.profile">Profile</span></button>
     <!-- Pages not shown yet, with when they unlock (renderer/menu-reveal.js stillLocked, pages/nav.js): closed by default, its state remembered. -->
     <div class="nav-more" id="nav-more" hidden>
-      <button class="nav-more-head" id="nav-more-head" aria-expanded="false"><i data-icon="chevron"></i><span id="nav-more-title">More</span></button>
+      <button class="nav-more-head" id="nav-more-head" aria-expanded="false"><i data-icon="chevron"></i><span id="nav-more-title" data-i18n="screenCommon.more">More</span></button>
       <div class="nav-more-list" id="nav-more-list" hidden></div>
     </div>
     <!-- The Notion pages: in ⌘K (Search & commands), not in the menu. -->
     <div class="notion-links" id="notion-links" hidden></div>
     </div>
     <div class="sidebar-bottom">
-      <button class="nav" data-view="settings"><i data-icon="settings"></i>Settings</button>
+      <button class="nav" data-view="settings"><i data-icon="settings"></i><span data-i18n="screenCommon.settings">Settings</span></button>
       <button class="allowance-chip" id="allowance-chip" hidden aria-live="polite"><span class="allowance-chip-plan" id="allowance-chip-plan"></span><span class="allowance-chip-text" id="allowance-chip-text"></span><span class="allowance-chip-bar"><i id="allowance-chip-fill"></i></span></button>
       <div class="nav-tools">
         <button class="nav" id="nav-feedback" title="Send feedback: tell the maker what works and what doesn't" aria-label="Send feedback"><i data-icon="chat"></i><span hidden>Send feedback</span></button>
@@ -291,7 +291,7 @@
       </div>
       <button class="palette-hint" id="palette-hint" title="Search every command"><i data-icon="search"></i><kbd>⌘K</kbd><span>Search &amp; commands</span></button>
       <button class="nav-update" id="nav-update" hidden><i data-icon="upload"></i><span id="nav-update-text">Update available</span></button>
-      <button class="nav-update" id="nav-restart" hidden><i data-icon="upload"></i><span id="nav-restart-text">Restart</span></button>
+      <button class="nav-update" id="nav-restart" hidden><i data-icon="upload"></i><span id="nav-restart-text" data-i18n="screenCommon.restart">Restart</span></button>
       <p class="build-line" id="build-line" hidden><span id="build-text"></span><button class="link" id="build-news" type="button" hidden>What's new</button></p>
       <button class="nav-sessions" data-view="sessions" id="nav-sessions" hidden><span class="nav-sessions-dot" id="nav-sessions-badge"></span><span id="nav-sessions-text"></span><i data-icon="chevron"></i></button>
     </div>
@@ -304,10 +304,10 @@
     <div id="ask-card" hidden></div>
     <div class="view" data-view="jobs">
       <header class="view-head jobs-head">
-        <div><h1>Job matches</h1><p class="muted subtitle" id="jobs-stats">Loading…</p></div>
+        <div><h1>Job matches</h1><p class="muted subtitle" id="jobs-stats" data-i18n="screenCommon.loading">Loading…</p></div>
         <div class="jobs-head-right">
         <div class="head-actions">
-          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, searches wider when it needs to, removes the jobs that are gone or outside your search, and scores the new ones with AI." data-wand><i data-icon="refresh"></i><span>Find jobs</span></button>
+          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, searches wider when it needs to, removes the jobs that are gone or outside your search, and scores the new ones with AI." data-wand><i data-icon="refresh"></i><span data-i18n="screenCommon.findJobs">Find jobs</span></button>
           <button class="primary with-icon" id="apply-open"><i data-icon="send"></i><span>Apply to jobs…</span></button>
         </div>
         <button class="last-search" id="search-status" title="Open the progress and history of your searches for new jobs"><span class="dot"></span><b>No search yet</b><small></small></button>
@@ -316,10 +316,10 @@
       <div class="alert tone-bad settings-alert" id="jobs-profile-empty" hidden></div>   <!-- a copy of #strategy-profile-empty, made by profile-empty.js -->
       <div class="alert tone-info settings-alert search-changed" id="jobs-search-changed" hidden><i data-icon="refresh"></i>
         <div><strong>Your search changed</strong><p>Refresh your jobs to apply it: jobs outside your search are removed (not the ones you applied to or interview for), and new ones are found.</p></div>
-        <button class="primary" data-refresh-jobs data-wand>Find jobs</button></div>
+        <button class="primary" data-refresh-jobs data-wand data-i18n="screenCommon.findJobs">Find jobs</button></div>
       <div class="ss-tips" id="tips-jobs" aria-label="Tips"></div>
       <div class="stat-cards">
-        <button class="stat signal" data-stat="applied" aria-pressed="false"><span class="stat-icon"><i data-icon="send"></i></span><div><b id="stat-applied">–</b><span>Applied</span></div></button>
+        <button class="stat signal" data-stat="applied" aria-pressed="false"><span class="stat-icon"><i data-icon="send"></i></span><div><b id="stat-applied">–</b><span data-i18n="screenCommon.applied">Applied</span></div></button>
         <button class="stat blue" data-stat="waiting" aria-pressed="false"><span class="stat-icon"><i data-icon="clock"></i></span><div><b id="stat-waiting">–</b><span>Waiting for reply</span></div></button>
         <button class="stat green" data-stat="interviews" aria-pressed="false"><span class="stat-icon"><i data-icon="mic"></i></span><div><b id="stat-interviews">–</b><span>In process</span></div></button>
         <button class="stat red" data-stat="closed" aria-pressed="false"><span class="stat-icon"><i data-icon="close"></i></span><div><b id="stat-closed">–</b><span>Closed</span></div></button>
@@ -340,11 +340,11 @@
       </details>
       <div class="toolbar">
         <label class="search-box"><i data-icon="search"></i><input id="filter-text" type="search" placeholder="Search jobs, companies or places, or paste a job link" aria-label="Search jobs"></label>
-        <button type="button" class="select-button" id="filter-status" aria-label="Show"></button>
+        <button type="button" class="select-button" id="filter-status" aria-label="Show" data-i18n-aria-label="screenCommon.show"></button>
         <label class="sort-box"><i data-icon="sort"></i><select id="sort-by" aria-label="Sort by">
           <option value="best">Best match</option><option value="newest">Newest</option><option value="company">Company A–Z</option>
         </select></label>
-        <button type="button" class="secondary add-button" id="add-open" title="Add a job, an application you sent elsewhere, or a message or update about a job"><i data-icon="plus"></i> Add</button>
+        <button type="button" class="secondary add-button" id="add-open" title="Add a job, an application you sent elsewhere, or a message or update about a job"><i data-icon="plus"></i> <span data-i18n="screenCommon.add">Add</span></button>
         <button type="button" class="secondary" id="triage-open" title="Reads each job's application form once and shows which jobs can apply automatically. Nothing is filled or sent."><i data-icon="zap"></i> See which jobs can apply automatically</button>
         <!-- The three flows' own openers: the Add dialog (pages/jobs-add.js) presses them, openLogFor too; out of sight, so only "+ Add" shows. -->
         <span hidden>
@@ -352,7 +352,7 @@
           <button type="button" class="secondary" id="applied-open" title="Applied to a job outside Jobadabra? Track it with the rest"><i data-icon="plus"></i> Add application</button>
           <button type="button" class="secondary" id="lead-open" title="A recruiter's pitch, a reply, a rejection… paste the text or a screenshot"><i data-icon="plus"></i> Add message or update</button>
         </span>
-        <button type="button" class="secondary" id="jobs-export" aria-label="Export job list" hidden><i data-icon="external"></i> Export</button>
+        <button type="button" class="secondary" id="jobs-export" aria-label="Export job list" hidden><i data-icon="external"></i> <span data-i18n="screenCommon.export">Export</span></button>
       </div>
       <div class="stuck-banner" id="jobs-stuck" hidden>
         <i data-icon="alert"></i><span id="jobs-stuck-text"></span>
@@ -378,20 +378,20 @@
       <section class="card find-card is-none is-loading" id="find-card" aria-live="polite" aria-busy="true">
         <div class="find-head-box"><div class="find-head"><h3 class="find-title"><span class="skeleton tall w-name"></span></h3></div><p class="muted find-lead"><span class="skeleton w-60"></span></p></div><span class="skeleton button"></span>
       </section>
-      <div class="job-list-head" id="jobs-head" aria-hidden="true"><span>Fit</span><span>Role</span><span>Company</span><span>Location</span><span>Status</span><span>Actions</span></div>
+      <div class="job-list-head" id="jobs-head" aria-hidden="true"><span>Fit</span><span data-i18n="screenCommon.role">Role</span><span data-i18n="screenCommon.company">Company</span><span data-i18n="screenCommon.location">Location</span><span data-i18n="screenCommon.status">Status</span><span data-i18n="screenCommon.actions">Actions</span></div>
       <div class="board shows-scrollbar" id="jobs-board" hidden></div>
       <div class="job-split" id="jobs-split">
         <div class="job-list" id="jobs-body"></div>
       </div>
-      <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs data-wand><b>Find jobs</b></button>.</p>
+      <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs data-wand><b data-i18n="screenCommon.findJobs">Find jobs</b></button>.</p>
     </div>
 
     <div class="view" data-view="focus" hidden>
       <header class="view-head">
-        <div><h1>Focus</h1><p class="muted subtitle">The next steps for your job search.</p></div>
+        <div><h1 data-i18n="screenCommon.focus">Focus</h1><p class="muted subtitle">The next steps for your job search.</p></div>
         <div class="head-actions">
           <span class="focus-status muted small" id="focus-status"></span>
-          <button class="secondary with-icon" id="focus-refresh"><i data-icon="refresh"></i><span>Refresh</span></button>
+          <button class="secondary with-icon" id="focus-refresh"><i data-icon="refresh"></i><span data-i18n="screenCommon.refresh">Refresh</span></button>
         </div>
       </header>
       <div class="ss-tips" id="tips-focus" aria-label="Tips"></div>
@@ -399,7 +399,7 @@
         <div class="focus-main">
           <section class="card" id="focus-onboarding" hidden>
             <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="target"></i>Get started</h2>
-              <span class="focus-head-side"><span id="onboarding-count"></span><button class="link" id="onboarding-hide">Hide</button></span></div>
+              <span class="focus-head-side"><span id="onboarding-count"></span><button class="link" id="onboarding-hide" data-i18n="screenCommon.hide">Hide</button></span></div>
             <ol class="focus-list" id="onboarding-list"></ol>
           </section>
           <section class="card is-lit">
@@ -440,7 +440,7 @@
             <div class="focus-tip"><i data-icon="target"></i><span>A target, not a deadline. Consistency wins.</span></div>
           </section>
           <section class="card">
-            <div class="focus-card-head"><h2>Reminders</h2><button type="button" class="secondary small-btn with-icon card-edit" id="focus-edit-reminders" aria-label="Edit reminders"><i data-icon="edit"></i><span>Edit</span></button></div>
+            <div class="focus-card-head"><h2>Reminders</h2><button type="button" class="secondary small-btn with-icon card-edit" id="focus-edit-reminders" aria-label="Edit reminders"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="focus-reminder">
               <span class="focus-round"><i data-icon="bell"></i></span>
               <div><span class="muted small">Remind me at</span><b>11:00 · 15:00 · 19:00</b></div>
@@ -480,7 +480,7 @@
         <div class="ss-empty-actions">
           <button class="primary with-icon" id="ss-empty-jobs"><i data-icon="briefcase"></i><span>Find a job to apply to</span></button>
         </div>
-        <p class="muted small">On a job's row, press <b>Apply</b> to start one.</p>
+        <p class="muted small">On a job's row, press <b data-i18n="screenCommon.apply">Apply</b> to start one.</p>
       </section>
       <div class="ss-grid" id="ss-grid" hidden>
         <section class="card ss-list-card">
@@ -565,7 +565,7 @@
               <div class="ss-chips" id="ss-replies">
                 <span class="small">Type in the log, or send a quick reply:</span>
                 <button class="ui-tag is-action" data-say="Explain in one or two lines what you are doing now and why.">Explain this step</button>
-                <button class="ui-tag is-action" data-say="Continue.">Continue</button>
+                <button class="ui-tag is-action" data-say="Continue." data-i18n="screenCommon.continue">Continue</button>
                 <button class="ui-tag is-action" data-say="Stop here. Leave the form as it is for me to finish.">I'll finish it myself</button>
               </div>
             </div>
@@ -576,13 +576,13 @@
 
     <div class="view" data-view="actions" hidden>
       <header class="view-head">
-        <div><h1>Actions</h1><p class="muted subtitle">Run a task now and follow its result here.</p></div>
+        <div><h1 data-i18n="screenCommon.actions">Actions</h1><p class="muted subtitle">Run a task now and follow its result here.</p></div>
         <div class="head-actions actions-head">
           <span class="actions-telegram muted" id="actions-telegram"></span>
           <a href="#" class="link" id="actions-automation">Automation settings</a>
         </div>
       </header>
-      <div class="tabs" role="tablist" aria-label="Actions">
+      <div class="tabs" role="tablist" aria-label="Actions" data-i18n-aria-label="screenCommon.actions">
         <button role="tab" type="button" data-actions-tab="tasks" class="is-active" aria-selected="true">Tasks</button>
         <button role="tab" type="button" data-actions-tab="runs" aria-selected="false">Runs</button>
       </div>
@@ -592,7 +592,7 @@
         <div class="run-banner-words"><b id="run-banner-title"></b><span class="muted" id="run-banner-step"></span></div>
         <button class="primary" id="run-banner-act" hidden>Go to Chrome and allow</button>
         <a href="#" class="link" id="run-banner-log" hidden>View log ↗</a>
-        <button class="secondary" id="run-banner-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
+        <button class="secondary" id="run-banner-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there." data-i18n="screenCommon.stop">Stop</button>
         <button class="secondary" id="run-banner-view">View details</button>
       </section>
       <!-- The next queued task and the last finished one, compact (pages/run-banner.js); their full report is the run panel's (drawer / Runs). -->
@@ -605,8 +605,8 @@
 <div class="task-card is-large">
             <span class="task-category">DISCOVERY</span>
             <div class="task-body"><span class="task-tile"><i data-icon="search"></i></span>
-              <div class="task-words"><b>Find jobs</b><span class="muted">Reads job boards and every employer site, searches wider when it needs to, adds new jobs, removes gone ones, AI scores the new</span><span class="task-schedule muted small" data-task-schedule="search"></span></div>
-              <button class="secondary action" data-command="run" data-wand><b hidden>Find jobs</b>Run</button></div>
+              <div class="task-words"><b data-i18n="screenCommon.findJobs">Find jobs</b><span class="muted">Reads job boards and every employer site, searches wider when it needs to, adds new jobs, removes gone ones, AI scores the new</span><span class="task-schedule muted small" data-task-schedule="search"></span></div>
+              <button class="secondary action" data-command="run" data-wand><b hidden data-i18n="screenCommon.findJobs">Find jobs</b><span data-i18n="screenCommon.run">Run</span></button></div>
           </div>
         </div>
         <div class="task-pair">
@@ -615,24 +615,24 @@
             <div class="task-body"><span class="task-tile"><i data-icon="file-text"></i></span>
               <div class="task-words"><b>Tailor CV + cover letter for top matches</b><span class="muted">A tailored CV and cover letter (PDF) for each of your best matches<br>Ready before you apply · 1–2 min each</span></div>
               <label class="task-count-field"><input id="tailor-top-n" class="task-count" type="number" min="1" max="10" value="5" aria-label="How many top matches"><span class="task-count-unit">top matches</span></label>
-              <button class="secondary action" id="tailor-top" data-palette="tailor" data-wand><b hidden>Tailor CV + cover letter for top matches</b>Run</button></div>
+              <button class="secondary action" id="tailor-top" data-palette="tailor" data-wand><b hidden>Tailor CV + cover letter for top matches</b><span data-i18n="screenCommon.run">Run</span></button></div>
           </div>
 <div class="task-card is-medium">
             <span class="task-category">COMMUNICATION</span>
             <div class="task-body"><span class="task-tile"><i data-icon="mail"></i></span>
               <div class="task-words"><b>Check Gmail &amp; Calendar</b><span class="muted">Sync replies, confirmations and interviews</span><span class="task-schedule muted small" data-task-schedule="mail"></span></div>
-              <button class="secondary action" data-command="mail" data-wand><b hidden>Check Gmail &amp; Calendar</b>Run</button></div>
+              <button class="secondary action" data-command="mail" data-wand><b hidden>Check Gmail &amp; Calendar</b><span data-i18n="screenCommon.run">Run</span></button></div>
           </div>
         </div>
         <!-- More: the smaller tasks, collapsed by default, its state remembered (renderer/more-group.js, pages/actions-layout.js). -->
         <div class="more-group actions-more" id="actions-more">
-          <button class="more-head" id="actions-more-head" aria-expanded="false"><i data-icon="chevron"></i><span id="actions-more-title">More</span></button>
+          <button class="more-head" id="actions-more-head" aria-expanded="false"><i data-icon="chevron"></i><span id="actions-more-title" data-i18n="screenCommon.more">More</span></button>
           <div class="task-rows more-list" id="actions-more-list" hidden>
 <div class="task-card is-row" id="visits-card">
             <span class="task-category">DISCOVERY</span>
             <div class="task-body"><span class="task-tile"><i data-icon="globe"></i></span>
               <div class="task-words"><b>Find jobs using your browser</b><span class="muted">Like Find jobs, for the sites and job portals that block it: read in your browser by the extension</span></div>
-              <button class="secondary action" id="visits-run" data-palette="visits" data-wand><b hidden>Find jobs using your browser</b>Run</button></div>
+              <button class="secondary action" id="visits-run" data-palette="visits" data-wand><b hidden>Find jobs using your browser</b><span data-i18n="screenCommon.run">Run</span></button></div>
           </div>
           </div>
         </div>
@@ -659,10 +659,10 @@
 
     <div class="view" data-view="reports" hidden>
       <header class="view-head jobs-head">
-        <div><h1>Reports</h1><p class="muted subtitle">Your weekly reports, insights, funnel, form fills and every search in full.</p></div>
+        <div><h1 data-i18n="screenCommon.reports">Reports</h1><p class="muted subtitle">Your weekly reports, insights, funnel, form fills and every search in full.</p></div>
         <span class="muted small" id="reports-state"></span>
       </header>
-      <div class="tabs" role="tablist" aria-label="Reports">
+      <div class="tabs" role="tablist" aria-label="Reports" data-i18n-aria-label="screenCommon.reports">
         <button role="tab" type="button" data-reports-tab="weekly" class="is-active">Weekly</button>
         <button role="tab" type="button" data-reports-tab="insights">Insights</button>
         <button role="tab" type="button" data-reports-tab="funnel">Funnel</button>
@@ -673,7 +673,7 @@
     </div>
     <div class="view" data-view="calendar" hidden>
       <header class="view-head jobs-head">
-        <div><h1>Calendar</h1><p class="muted subtitle">Your screenings and interviews.</p></div>
+        <div><h1 data-i18n="screenCommon.calendar">Calendar</h1><p class="muted subtitle">Your screenings and interviews.</p></div>
       </header>
       <div class="cal-layout">
         <section class="card cal-card">
@@ -682,12 +682,12 @@
             <span id="cal-status" class="muted small cal-status" hidden></span>
             <div class="cal-nav">
               <button class="secondary" id="cal-prev" aria-label="Previous month">‹</button>
-              <button class="secondary" id="cal-today">Today</button>
+              <button class="secondary" id="cal-today" data-i18n="screenCommon.today">Today</button>
               <button class="secondary" id="cal-next" aria-label="Next month">›</button>
             </div>
           </div>
           <div class="cal-grid" id="cal-grid"></div>
-          <div class="cal-legend muted small"><span><i class="dot kind-screening"></i>Screening</span><span><i class="dot kind-interview"></i>Interview</span><span><i class="dot today"></i>Today</span></div>
+          <div class="cal-legend muted small"><span><i class="dot kind-screening"></i>Screening</span><span><i class="dot kind-interview"></i>Interview</span><span><i class="dot today"></i><span data-i18n="screenCommon.today">Today</span></span></div>
         </section>
         <aside class="cal-side">
           <section class="card"><h2>Coming up</h2><div id="cal-upcoming"></div></section>
@@ -702,7 +702,7 @@
 
     <div class="view" data-view="interviews" hidden>
       <header class="view-head jobs-head">
-        <div><h1>Interviews</h1><p class="muted subtitle" title="The transcript is made on this Mac, then saved under its job">Record, transcribe and review every interview in one place.</p></div>
+        <div><h1 data-i18n="screenCommon.interviews">Interviews</h1><p class="muted subtitle" title="The transcript is made on this Mac, then saved under its job">Record, transcribe and review every interview in one place.</p></div>
         <div class="head-actions">
           <button class="secondary with-icon" id="iv-add" title="An audio or video file, or a transcript you already have"><i data-icon="upload"></i><span>Import recording</span></button>
           <button class="primary with-icon" id="iv-record" disabled title="First confirm that everyone on the call agreed to be recorded"><i data-icon="mic"></i><span>Record interview</span></button>
@@ -713,7 +713,7 @@
         <span class="rec-dot" aria-hidden="true"></span><b>Recording</b><span class="iv-timer" id="iv-timer">00:00</span>
         <span class="iv-meter" id="iv-meter" hidden title="The call's audio: it moves when the other people speak"><span id="iv-meter-bar"></span></span>
         <span class="muted small" id="iv-sources"></span>
-        <button class="secondary" id="iv-stop">Stop</button>
+        <button class="secondary" id="iv-stop" data-i18n="screenCommon.stop">Stop</button>
       </section>
       <section class="notice setup" id="iv-setup" hidden>
         <span class="spinner small"></span>
@@ -724,7 +724,7 @@
       <section class="notice permission" id="iv-permission" hidden>
         <span id="iv-permission-text"></span>
         <span class="notice-actions"><button class="secondary small-btn" id="iv-permission-open">Open Settings</button>
-          <button class="secondary small-btn" id="iv-permission-restart">Restart</button>
+          <button class="secondary small-btn" id="iv-permission-restart" data-i18n="screenCommon.restart">Restart</button>
           <button class="link" id="iv-mic-only" title="For an interview in person or on speakers">Mic only</button></span>
       </section>
       <section class="consent-card" id="iv-consent-box">
@@ -744,7 +744,7 @@
       <section class="card iv-editor" id="iv-editor" hidden>
         <div class="iv-editor-head">
           <input id="iv-title" aria-label="Interview name" placeholder="e.g. Grafana, round 1">
-          <button class="ghost" id="iv-close">Close</button>
+          <button class="ghost" id="iv-close" data-i18n="screenCommon.close">Close</button>
         </div>
         <div id="iv-transcribe" class="iv-transcribe" hidden>
           <label for="iv-count">People on the call</label>
@@ -783,7 +783,7 @@
         <div class="iv-section-head spread">
           <div><h2>Interview library</h2><p class="muted small" id="iv-lib-stats">Your saved interviews</p></div>
           <div class="head-actions">
-            <button class="secondary with-icon" id="iv-refresh"><i data-icon="refresh"></i><span>Refresh</span></button>
+            <button class="secondary with-icon" id="iv-refresh"><i data-icon="refresh"></i><span data-i18n="screenCommon.refresh">Refresh</span></button>
             <button class="secondary with-icon" id="iv-recordings" title="The recordings kept on this Mac"><i data-icon="folder"></i><span>Open recordings folder</span></button>
           </div>
         </div>
@@ -793,7 +793,7 @@
         </div>
         <div class="lib-wrap">
           <table class="lib-table">
-            <thead><tr><th>Date</th><th>Job</th><th>Interview</th><th>Location</th><th>Outcome</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Job</th><th>Interview</th><th data-i18n="screenCommon.location">Location</th><th>Outcome</th><th data-i18n="screenCommon.actions">Actions</th></tr></thead>
             <tbody id="iv-saved"></tbody>
           </table>
         </div>
@@ -802,15 +802,15 @@
     </div>
 
     <div class="view strategy-page" data-view="strategy" hidden>
-      <header class="view-head"><div><h1>Search strategy</h1><p class="muted">Choose the jobs you want and how they are ranked.</p></div>
+      <header class="view-head"><div><h1 data-i18n="screenCommon.searchStrategy">Search strategy</h1><p class="muted">Choose the jobs you want and how they are ranked.</p></div>
         <div class="head-actions"><span class="synced" id="strategy-synced"></span>
           <button class="secondary" id="strategy-redo" data-wand>↻ Rebuild from CV…</button>
           <!-- Owner, 18 Oct 2026 (review fix 10): Notion is one "View source in Notion" in this menu, on the Notion store only (pages/strategy.js). -->
-          <button type="button" class="secondary ui-more" id="strategy-more" data-notion-only title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><i data-icon="more"></i></button>
+          <button type="button" class="secondary ui-more" id="strategy-more" data-notion-only title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" data-i18n-title="screenCommon.more"><i data-icon="more"></i></button>
           <button class="primary" id="strategy-jobs">View matching jobs</button></div></header>
       <!-- Owner, 18 Oct 2026 (review fix 3): heading → tabs → a compact notice → content; real tabs since 7 Oct 2026 (each replaces the content under it). -->
-      <div class="tabs strategy-tabs" role="tablist" aria-label="Strategy">
-        <button type="button" role="tab" class="is-active" aria-selected="true" aria-controls="strategy-yours" data-tab="strategy-yours">Your strategy</button>
+      <div class="tabs strategy-tabs" role="tablist" aria-label="Strategy" data-i18n-aria-label="screenCommon.strategy">
+        <button type="button" role="tab" class="is-active" aria-selected="true" aria-controls="strategy-yours" data-tab="strategy-yours" data-i18n="screenCommon.yourStrategy">Your strategy</button>
         <button type="button" role="tab" aria-selected="false" aria-controls="strategy-suggestions" data-tab="strategy-suggestions">Suggestions<span class="ui-pill tone-warn tab-count" id="suggestions-count" data-count-of="strategy-suggestions" hidden></span></button>
         <button type="button" role="tab" aria-selected="false" aria-controls="strategy-scoring" data-tab="strategy-scoring">Scoring &amp; results</button></div>
       <div class="strategy-notices">
@@ -819,7 +819,7 @@
         <button class="primary" id="profile-empty-rebuild" data-wand>Rebuild from CV</button></div>
       <div class="alert tone-info settings-alert search-changed" id="strategy-search-changed" hidden><i data-icon="refresh"></i>
         <div><strong>Your search changed</strong><p>Refresh your jobs to apply it: jobs outside your search are removed (not the ones you applied to or interview for), and new ones are found.</p></div>
-        <button class="primary" data-refresh-jobs data-wand>Find jobs</button></div>
+        <button class="primary" data-refresh-jobs data-wand data-i18n="screenCommon.findJobs">Find jobs</button></div>
       <div class="alert tone-info settings-alert" id="strategy-cv-changed" hidden><i data-icon="info"></i>
         <div><strong>Your CV changed</strong><p>New applications already use it. Review what it changes in your Profile before anything is re-scored.</p></div>
         <button class="primary" id="strategy-cv-review">Review what changes</button></div>
@@ -884,14 +884,14 @@
 
     <div class="view" data-view="employers" hidden>
       <header class="view-head">
-        <div><h1>Employers &amp; Sources</h1><p class="muted subtitle" id="emp-stats">Loading…</p></div>
+        <div><h1>Employers &amp; Sources</h1><p class="muted subtitle" id="emp-stats" data-i18n="screenCommon.loading">Loading…</p></div>
         <div class="head-actions">
-          <button class="secondary with-icon" id="emp-refresh"><i data-icon="refresh"></i><span>Refresh</span></button>
+          <button class="secondary with-icon" id="emp-refresh"><i data-icon="refresh"></i><span data-i18n="screenCommon.refresh">Refresh</span></button>
         </div>
       </header>
       <div class="toolbar">
         <label class="search-box"><i data-icon="search"></i><input id="emp-filter" type="search" placeholder="Search employers, places, roles or job systems" aria-label="Search employers"></label>
-        <select id="emp-kind" aria-label="Kind"><option value="">All kinds</option><option value="Employer">Employers</option><option value="Job board">Job boards</option></select>
+        <select id="emp-kind" aria-label="Kind"><option value="">All kinds</option><option value="Employer" data-i18n="screenCommon.employers">Employers</option><option value="Job board">Job boards</option></select>
         <select id="emp-feed" aria-label="Feed status"><option value="">Any feed status</option></select>
         <select id="emp-active" aria-label="Active"><option value="">All employers</option><option value="on">Active</option><option value="off">Paused</option></select>
       </div>
@@ -906,20 +906,20 @@
     </div>
 
     <div class="view" data-view="settings" hidden>
-      <header class="view-head"><div><h1>Settings</h1><p class="muted">Manage your profile, automations and connections.</p></div></header>
+      <header class="view-head"><div><h1 data-i18n="screenCommon.settings">Settings</h1><p class="muted">Manage your profile, automations and connections.</p></div></header>
       <div class="settings-layout">
         <nav class="settings-nav" aria-label="Settings sections">
-          <button data-settings-go="overview" class="is-active"><i data-icon="columns"></i>Overview</button>
-          <button data-settings-go="automation"><i data-icon="clock"></i>Automation</button>
-          <button data-settings-go="notifications"><i data-icon="bell"></i>Notifications</button>
-          <button data-settings-go="apply"><i data-icon="send"></i>Apply</button>
-          <button data-settings-go="connections"><i data-icon="link"></i>Connections<span class="nav-dot" id="connections-dot" hidden></span></button>
+          <button data-settings-go="overview" class="is-active"><i data-icon="columns"></i><span data-i18n="screenCommon.overview">Overview</span></button>
+          <button data-settings-go="automation"><i data-icon="clock"></i><span data-i18n="screenCommon.automation">Automation</span></button>
+          <button data-settings-go="notifications"><i data-icon="bell"></i><span data-i18n="screenCommon.notifications">Notifications</span></button>
+          <button data-settings-go="apply"><i data-icon="send"></i><span data-i18n="screenCommon.apply">Apply</span></button>
+          <button data-settings-go="connections"><i data-icon="link"></i><span data-i18n="screenCommon.connections">Connections</span><span class="nav-dot" id="connections-dot" hidden></span></button>
           <button data-settings-go="data"><i data-icon="database"></i>Data &amp; backup</button>
-          <button data-settings-go="appearance"><i data-icon="sun"></i>Appearance</button>
+          <button data-settings-go="appearance"><i data-icon="sun"></i><span data-i18n="screenCommon.appearance">Appearance</span></button>
           <button data-settings-go="license"><i data-icon="zap"></i>Plan</button>
-          <button data-settings-go="advanced"><i data-icon="sliders"></i>Advanced</button>
-          <button data-settings-go="credentials"><i data-icon="key"></i>Credentials</button>
-          <button data-settings-go="logs"><i data-icon="terminal"></i>Logs</button>
+          <button data-settings-go="advanced"><i data-icon="sliders"></i><span data-i18n="screenCommon.advanced">Advanced</span></button>
+          <button data-settings-go="credentials"><i data-icon="key"></i><span data-i18n="screenCommon.credentials">Credentials</span></button>
+          <button data-settings-go="logs"><i data-icon="terminal"></i><span data-i18n="screenCommon.logs">Logs</span></button>
         </nav>
         <div class="settings-pages">
         <div class="settings-page" data-settings-page="overview">
@@ -938,9 +938,9 @@
               <button class="arrow-link" id="ov-profile">Edit profile</button>
             </article>
             <article class="summary-card">
-              <div class="summary-head"><i data-icon="clock"></i><h3>Automation</h3></div>
+              <div class="summary-head"><i data-icon="clock"></i><h3 data-i18n="screenCommon.automation">Automation</h3></div>
               <p class="muted">Your job search schedule and automation settings.</p>
-              <dl class="summary-rows"><dt>Find jobs</dt><dd id="ov-search"></dd>
+              <dl class="summary-rows"><dt data-i18n="screenCommon.findJobs">Find jobs</dt><dd id="ov-search"></dd>
                 <dt>Always on: your GitHub</dt><dd id="ov-cloud"></dd></dl>
               <button class="arrow-link" data-settings-go="automation">Manage automation</button>
             </article>
@@ -954,13 +954,13 @@
         </div>
         
         <div class="settings-page" data-settings-page="profile" hidden>
-          <div class="settings-page-head has-action profile-head"><div><h1>Profile</h1><p class="muted">Your CV, details and reusable application answers: what goes into your applications (nothing here re-scores jobs).</p></div>
+          <div class="settings-page-head has-action profile-head"><div><h1 data-i18n="screenCommon.profile">Profile</h1><p class="muted">Your CV, details and reusable application answers: what goes into your applications (nothing here re-scores jobs).</p></div>
             <div class="panel-actions"><span class="synced is-on" data-store-saved>Saved in Notion</span><span id="profile-more"></span></div></div>
 
           <div class="tabs" role="tablist">
             <button role="tab" data-profile-tab="cv" class="is-active">CV</button>
-            <button role="tab" data-profile-tab="details">Your details<span class="ui-pill tone-warn tab-count" id="tab-count-details" hidden></span></button>
-            <button role="tab" data-profile-tab="experience">Experience</button>
+            <button role="tab" data-profile-tab="details"><span data-i18n="screenCommon.yourDetails">Your details</span><span class="ui-pill tone-warn tab-count" id="tab-count-details" hidden></span></button>
+            <button role="tab" data-profile-tab="experience" data-i18n="screenCommon.experience">Experience</button>
             <button role="tab" data-profile-tab="answers">What we learned<span class="ui-pill tone-info tab-count" id="tab-count-answers" hidden></span></button>
             <button role="tab" data-profile-tab="letter">Cover letter</button>
             <button role="tab" data-profile-tab="portrait">Your portrait</button>
@@ -1022,16 +1022,16 @@
           </div>
           <div class="setting panel roomy" id="setting-contact" data-profile-panel="details">
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="user"></i></span><div class="card-words"><h3>Contact</h3><p class="muted small">Your personal details for application forms; empty ones come from your CV for you to check.</p></div></div>
-              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit contact"><i data-icon="edit"></i><span>Edit</span></button></div>
+              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit contact"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="card-read" id="contact-read" data-reads-contact></div>
             <div class="card-editor">
             <div class="form-grid edit-aligned" data-reads-contact>
               <label>First name<input data-contact="first_name" type="text"></label>
               <label>Last name<input data-contact="last_name" type="text"></label>
               <label>Salutation<input data-contact="salutation" type="text" placeholder="e.g. Mr, Ms, Madame"></label>
-              <label>Email<input data-contact="email" type="email"></label>
-              <label>Phone<input data-contact="phone" type="tel"></label>
-              <label class="span-all">Location<input data-contact="location" type="text" placeholder="e.g. your town or city"></label>
+              <label><span data-i18n="screenCommon.email">Email</span><input data-contact="email" type="email"></label>
+              <label><span data-i18n="screenCommon.phone">Phone</span><input data-contact="phone" type="tel"></label>
+              <label class="span-all"><span data-i18n="screenCommon.location">Location</span><input data-contact="location" type="text" placeholder="e.g. your town or city"></label>
               <label class="span-all">Street<input data-contact="street" type="text"></label>
               <label>Postal code<input data-contact="postal_code" type="text"></label>
               <label data-swiss-only hidden>Place of origin<input data-contact="place_of_origin" type="text"></label>
@@ -1044,7 +1044,7 @@
           </div>
           <div class="setting panel roomy" id="setting-links" data-profile-panel="details">
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="link"></i></span><div class="card-words"><h3>Professional links</h3><p class="muted small">Links to your online profiles, automatically included where relevant.</p></div></div>
-              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit professional links"><i data-icon="edit"></i><span>Edit</span></button></div>
+              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit professional links"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="card-read"><div id="links-view" data-reads-contact></div></div>
             <div class="card-editor">
             <div class="form-grid edit-aligned" id="links-form" data-reads-contact>
@@ -1057,7 +1057,7 @@
           </div>
           <div class="setting panel roomy" id="setting-eligibility" data-profile-panel="details">
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="shield"></i></span><div class="card-words"><h3>Work eligibility</h3><p class="muted small">Where you may work: EU / EEA + Switzerland, the UK and the US.</p></div></div>
-              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit work eligibility"><i data-icon="edit"></i><span>Edit</span></button></div>
+              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit work eligibility"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="card-read" data-facts-read="eligibility"></div>
             <div class="card-editor">
             <div class="form-grid cols-2" data-facts="eligibility"></div>
@@ -1066,7 +1066,7 @@
           </div>
           <div class="setting panel roomy" id="setting-availability" data-profile-panel="details">
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="coins"></i></span><div class="card-words"><h3>Availability &amp; compensation</h3><p class="muted small">Notice period, start date and the salary you tell employers (your search minimum stays in Strategy).</p></div></div>
-              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit availability and compensation"><i data-icon="edit"></i><span>Edit</span></button></div>
+              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit availability and compensation"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="card-read" data-facts-read="availability"></div>
             <div class="card-editor">
             <div class="form-grid cols-2" data-facts="availability"></div>
@@ -1074,8 +1074,8 @@
             </div>
           </div>
           <div class="setting panel roomy" id="setting-languages" data-profile-panel="details">
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="globe"></i></span><div class="card-words"><h3>Languages</h3><p class="muted small">The languages you speak, with your level.</p></div></div>
-              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit languages"><i data-icon="edit"></i><span>Edit</span></button></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="globe"></i></span><div class="card-words"><h3 data-i18n="screenCommon.languages">Languages</h3><p class="muted small">The languages you speak, with your level.</p></div></div>
+              <button type="button" class="secondary small-btn with-icon card-edit" aria-label="Edit languages"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div>
             <div class="card-read" data-facts-read="languages"></div>
             <div class="card-editor">
             <div class="form-grid cols-2" data-facts="languages"></div>
@@ -1084,13 +1084,13 @@
             <p class="message" id="facts-message"></p>
           </div>
           <div class="setting panel roomy" id="setting-details-profile" data-profile-panel="details">
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file-text"></i></span><div class="card-words"><h3>Voluntary surveys <span class="ui-pill tone-neutral">Optional</span></h3><p class="muted small">Standing answers for equal-opportunity questions (age, gender, disability…), so forms don't ask each time.</p></div></div><span id="details-profile-edit"></span></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file-text"></i></span><div class="card-words"><h3>Voluntary surveys <span class="ui-pill tone-neutral" data-i18n="screenCommon.optional">Optional</span></h3><p class="muted small">Standing answers for equal-opportunity questions (age, gender, disability…), so forms don't ask each time.</p></div></div><span id="details-profile-edit"></span></div>
             <div class="exp-profile" id="details-profile"></div>
             <p class="message" id="details-profile-message"></p>
           </div>
           <div class="setting panel roomy" id="setting-letter-style" data-profile-panel="letter" hidden>
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="sliders"></i></span><div class="card-words"><h3>Writing preferences</h3><p class="muted small">How each letter is written: length, tone, what to stress and what to leave out.</p></div></div>
-              <div class="panel-actions"><button type="button" class="secondary small-btn with-icon card-edit" id="letter-style-edit" aria-label="Edit writing preferences"><i data-icon="edit"></i><span>Edit</span></button></div></div>
+              <div class="panel-actions"><button type="button" class="secondary small-btn with-icon card-edit" id="letter-style-edit" aria-label="Edit writing preferences"><i data-icon="edit"></i><span data-i18n="screenCommon.edit">Edit</span></button></div></div>
             <div class="outline-body" id="letter-style-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-letter" data-profile-panel="letter" hidden>
@@ -1130,13 +1130,13 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="automation" hidden>
-          <div class="settings-page-head has-action"><div><h2>Automation</h2><p class="muted">Choose what runs, when, and where.</p></div>
+          <div class="settings-page-head has-action"><div><h2 data-i18n="screenCommon.automation">Automation</h2><p class="muted">Choose what runs, when, and where.</p></div>
             <p class="muted small save-state" id="automation-state">Changes save automatically</p></div>
           <div class="setting panel run-mode" id="setting-automation">
             <div class="run-mode-main">
               <h3>Run mode</h3>
               <div class="segmented" role="group" aria-label="Run mode">
-                <button data-run-mode="local">While app is open</button><button data-run-mode="cloud">Always on</button>
+                <button data-run-mode="local">While app is open</button><button data-run-mode="cloud" data-i18n="screenCommon.alwaysOn">Always on</button>
               </div>
               <p class="muted" id="run-mode-text"></p>
               <button class="arrow-link" id="run-mode-more">Learn about Always on</button>
@@ -1148,8 +1148,8 @@
           <div class="setting panel" id="setting-schedule">
             <h3>Schedules</h3>
             <div class="task-table">
-              <div class="task-row is-head"><span>Task</span><span>Frequency</span><span>Status</span></div>
-              <label class="task-row"><span><b>Find jobs</b><small>Job boards and employer sites, AI scoring, your digest</small></span>
+              <div class="task-row is-head"><span>Task</span><span>Frequency</span><span data-i18n="screenCommon.status">Status</span></div>
+              <label class="task-row"><span><b data-i18n="screenCommon.findJobs">Find jobs</b><small>Job boards and employer sites, AI scoring, your digest</small></span>
                 <select data-schedule="search">
                   <option value="1">Every hour</option><option value="2">Every 2 hours</option><option value="3">Every 3 hours</option>
                   <option value="4">Every 4 hours</option><option value="6">Every 6 hours</option><option value="8">Every 8 hours</option>
@@ -1158,7 +1158,7 @@
               <label class="task-row"><span><b>Check Gmail &amp; Calendar</b><small>Replies, interviews, reminders; needs Google connected</small></span>
                 <select data-schedule="mail">
                   <option value="1">Once daily (08:00)</option><option value="3">3 times daily</option>
-                  <option value="6">6 times daily</option><option value="0">Off</option></select><span class="task-state" data-schedule-state="mail"></span></label>
+                  <option value="6">6 times daily</option><option value="0" data-i18n="screenCommon.off">Off</option></select><span class="task-state" data-schedule-state="mail"></span></label>
               <!-- Visible, not usable until proven (owner, 5 Nov 2026: "show it as coming soon, but still being present"): no control, no word on where it runs. -->
               <div class="task-row is-soon"><span><b>Ready to send</b><small>Forms filled ahead of time; you check them and press Submit</small></span>
                 <span></span><span><span class="ui-pill tone-neutral">Coming soon</span></span></div>
@@ -1266,13 +1266,13 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="notifications" hidden>
-          <div class="settings-page-head has-action"><div><h2>Notifications</h2><p class="muted">How Jobadabra tells you about new matches, reminders and answers.</p></div>
+          <div class="settings-page-head has-action"><div><h2 data-i18n="screenCommon.notifications">Notifications</h2><p class="muted">How Jobadabra tells you about new matches, reminders and answers.</p></div>
             <p class="muted small save-state" id="notifications-state">Changes save automatically</p></div>
           <div class="setting panel" id="setting-notify" data-keywords="email telegram tell me notify alerts digest">
             <p class="muted panel-lead">Tell me by: email, Telegram or both. New matches, reminders and answers go where you choose, also from Always on while this Mac is off.</p>
             <div class="run-mode-main">
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-email" aria-label="Tell me by email"><span></span></span>
-                <span><span>Email</span><span class="muted small" id="notify-email-note">New matches, reminders and answers in your inbox.</span></span></div>
+                <span><span data-i18n="screenCommon.email">Email</span><span class="muted small" id="notify-email-note">New matches, reminders and answers in your inbox.</span></span></div>
               <label class="inline-field">Email address<input type="email" id="notify-address" placeholder="you@example.com" autocomplete="email"></label>
               <label class="inline-field">Everything except new matches<select id="notify-cadence"><option value="daily">One email a day</option><option value="weekly">One email a week (Mondays)</option></select></label>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-app" aria-label="Tell me by app notifications"><span></span></span>
@@ -1298,12 +1298,12 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="apply" hidden>
-          <div class="settings-page-head has-action"><div><h2>Apply</h2><p class="muted">How Jobadabra fills and sends your applications.</p></div>
+          <div class="settings-page-head has-action"><div><h2 data-i18n="screenCommon.apply">Apply</h2><p class="muted">How Jobadabra fills and sends your applications.</p></div>
             <p class="muted small save-state">Changes save automatically</p></div>
           <div class="alert tone-info settings-alert" id="apply-confirm-bar" hidden>
             <i data-icon="info"></i>
             <div><strong>Confirm how Jobadabra applies for you</strong><p>The job you pressed goes on after you confirm.</p></div>
-            <button class="secondary" id="apply-confirm-cancel" type="button">Not now</button>
+            <button class="secondary" id="apply-confirm-cancel" type="button" data-i18n="screenCommon.notNow">Not now</button>
             <button class="primary" id="apply-confirm-go" type="button">Confirm</button>
           </div>
           <div class="setting panel" id="setting-apply-mode">
@@ -1356,14 +1356,14 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="connections" hidden>
-          <div class="settings-page-head"><h2>Connections</h2><p class="muted">Manage the services Jobadabra uses.</p>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.connections">Connections</h2><p class="muted">Manage the services Jobadabra uses.</p>
             <p class="conn-status" id="conn-status" aria-live="polite"></p></div>
           <div class="alert tone-warn settings-alert" id="conn-alert" hidden>
             <i data-icon="info"></i>
             <div><strong id="conn-alert-title"></strong><p id="conn-alert-text"></p></div>
             <button class="primary" id="conn-alert-go"></button>
           </div>
-          <div class="settings-page-head"><h2>Connected</h2><p class="muted">Services you're currently using.</p></div>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.connected">Connected</h2><p class="muted">Services you're currently using.</p></div>
           <div class="service-grid is-rows" id="conn-on"></div>
           <div class="settings-page-head" id="conn-off-head"><h2>Available</h2><p class="muted">Additional services you can connect.</p></div>
           <div class="service-grid is-rows" id="conn-off"></div>
@@ -1371,14 +1371,14 @@
       <div class="setting conn-panel" id="setting-ai" hidden>
         <div class="engine" id="ai-engine-settings"></div>
         <div class="conn-foot" data-family="claude">
-          <div class="conn-foot-head"><h3>API key</h3><span class="status-line" data-secret="ANTHROPIC_API_KEY"></span></div>
+          <div class="conn-foot-head"><h3 data-i18n="screenWelcome.key">API key</h3><span class="status-line" data-secret="ANTHROPIC_API_KEY"></span></div>
           <p class="muted small">Always on (on our servers) uses Jobadabra's own AI, not this key.</p>
-          <div class="inline"><input type="password" id="set-anthropic" placeholder="sk-ant-…"><button class="secondary" id="set-anthropic-save">Save</button></div>
+          <div class="inline"><input type="password" id="set-anthropic" placeholder="sk-ant-…"><button class="secondary" id="set-anthropic-save" data-i18n="screenCommon.save">Save</button></div>
         </div>
         <div class="conn-foot" data-family="openai" hidden>
-          <div class="conn-foot-head"><h3>OpenAI API key</h3><span class="status-line" data-secret="OPENAI_API_KEY"></span></div>
+          <div class="conn-foot-head"><h3 data-i18n="screenWelcome.openAiKey">OpenAI API key</h3><span class="status-line" data-secret="OPENAI_API_KEY"></span></div>
           <p class="muted small">Always on (on our servers) uses Jobadabra's own AI, not this key.</p>
-          <div class="inline"><input type="password" id="set-openai" placeholder="sk-…"><button class="secondary" id="set-openai-save">Save</button></div>
+          <div class="inline"><input type="password" id="set-openai" placeholder="sk-…"><button class="secondary" id="set-openai-save" data-i18n="screenCommon.save">Save</button></div>
         </div>
       </div>
       <div class="setting conn-panel" id="setting-notion" hidden>
@@ -1393,13 +1393,13 @@
         <div><h3>💬 Telegram</h3><p class="muted status-line" data-secret="TELEGRAM_BOT_TOKEN"></p>
           <ol class="howto small">
             <li>In Telegram, open <a href="#" data-link="https://t.me/BotFather">@BotFather</a> → <b>/newbot</b> → pick a name and a username ending in "bot" → copy the token it gives you.</li>
-            <li>Paste it here and click <b>Connect</b>, then open your new bot and press <b>Start</b> within 2 minutes.</li>
+            <li>Paste it here and click <b data-i18n="screenCommon.connect">Connect</b>, then open your new bot and press <b data-i18n="screenCommon.start">Start</b> within 2 minutes.</li>
           </ol></div>
-        <div class="inline"><input type="password" id="set-telegram" placeholder="123456789:AA…"><button class="secondary" id="set-telegram-save">Connect</button><span id="telegram-more" hidden></span></div>
+        <div class="inline"><input type="password" id="set-telegram" placeholder="123456789:AA…"><button class="secondary" id="set-telegram-save" data-i18n="screenCommon.connect">Connect</button><span id="telegram-more" hidden></span></div>
         <p class="message" id="telegram-message"></p>
       </div>
       <div class="setting conn-panel" id="setting-google" hidden>
-        <div><h3>📧 Gmail and Calendar</h3><p class="muted status-line" id="google-status">Checking…</p>
+        <div><h3>📧 Gmail and Calendar</h3><p class="muted status-line" id="google-status" data-i18n="screenCommon.checking">Checking…</p>
           <p class="muted small">Read-only. Tracks replies and interviews. Nothing is ever sent or changed.</p></div>
         <div class="inline"><button class="secondary" id="google-connect">Connect Google</button><span id="google-more" hidden></span></div>
         <p class="message" id="google-message"></p>
@@ -1422,7 +1422,7 @@
           <span class="ui-tile tone-info"><i data-icon="puzzle"></i></span>
           <div class="conn-head-text"><h3>Chrome extension</h3>
             <p class="muted" id="ext-line">Looking for it in Chrome…</p></div>
-          <span class="service-state is-checking" id="ext-status"><span class="spinner"></span>Checking…</span>
+          <span class="service-state is-checking" id="ext-status"><span class="spinner"></span><span data-i18n="screenCommon.checking">Checking…</span></span>
         </div>
         <p class="message" id="ext-message"></p>
         <div class="alert tone-warn" id="ext-stray" hidden>
@@ -1446,12 +1446,12 @@
           <details class="troubleshoot" id="ext-dev" data-dev-only hidden><summary><i data-icon="folder"></i>For developers: load it from a folder</summary>
             <ol class="conn-steps">
               <li><span class="conn-step-words"><b>Enable Developer mode</b>
-                <span class="muted">Open <button class="code-link" id="ext-open-page">chrome://extensions</button> in Chrome and turn on Developer mode.</span></span></li>
+                <span class="muted"><span data-i18n="screenCommon.open">Open</span> <button class="code-link" id="ext-open-page">chrome://extensions</button> in Chrome and turn on Developer mode.</span></span></li>
               <li><span class="conn-step-words"><b>Load the extension</b>
                 <span class="muted">In Chrome, choose <b>Load unpacked</b>, then select the extension folder.</span>
                 <span class="conn-pick">
                   <span class="pick-box"><i data-icon="folder"></i><code id="ext-path"></code>
-                    <button class="link" data-copy="ext-path"><i data-icon="copy"></i>Copy</button></span>
+                    <button class="link" data-copy="ext-path"><i data-icon="copy"></i><span data-i18n="screenCommon.copy">Copy</span></button></span>
                   <button class="secondary is-signal" data-show-extension-folder>Show folder</button>
                 </span>
                 <span class="muted small" data-mac-only>Mac tip: in the folder picker, press <code>⌘⇧G</code>, paste the copied path, then press Return.</span></span></li>
@@ -1479,37 +1479,37 @@
         </div>
         <p class="message" id="dai-message" role="status"></p>
         <div class="inline">
-          <button class="primary" id="dai-connect">Connect</button>
-          <button class="secondary" id="dai-disconnect" hidden>Disconnect</button>
+          <button class="primary" id="dai-connect" data-i18n="screenCommon.connect">Connect</button>
+          <button class="secondary" id="dai-disconnect" hidden data-i18n="screenCommon.disconnect">Disconnect</button>
         </div>
       </div>
       <div class="setting conn-panel" id="setting-serpapi" data-parked="google_jobs" hidden>
         <div><h3>🔎 Google Jobs (SerpApi)</h3><p class="muted status-line" data-secret="SERPAPI_API_KEY"></p>
           <p class="muted small">Free plan at <a href="#" data-link="https://serpapi.com/users/sign_up">serpapi.com</a>: 250 searches a month.</p></div>
-        <div class="inline"><input type="password" id="set-serpapi" placeholder="SerpApi key"><button class="secondary" id="set-serpapi-save">Save</button></div>
+        <div class="inline"><input type="password" id="set-serpapi" placeholder="SerpApi key"><button class="secondary" id="set-serpapi-save" data-i18n="screenCommon.save">Save</button></div>
       </div>
       <div class="setting conn-panel" id="setting-brave" data-parked="brave_search" hidden>
         <div><h3>🔎 Web search (Brave)</h3><p class="muted status-line" data-secret="BRAVE_SEARCH_API_KEY"></p>
           <p class="muted small">Finds an employer's own job site with a web search ("Coop jobs"), as you would, when its name and website lead
             nowhere. Free plan at <a href="#" data-link="https://brave.com/search/api/">brave.com/search/api</a>: 2,000 searches a month. When your AI runs
             on Claude Code, its own web search is used first (on your Claude plan); this key, then your SerpApi key, come after.</p></div>
-        <div class="inline"><input type="password" id="set-brave" placeholder="Brave Search key"><button class="secondary" id="set-brave-save">Save</button></div>
+        <div class="inline"><input type="password" id="set-brave" placeholder="Brave Search key"><button class="secondary" id="set-brave-save" data-i18n="screenCommon.save">Save</button></div>
       </div>
       <div class="setting conn-panel" id="setting-aggregators" data-parked="adzuna,jooble" hidden>
         <div><h3>🔎 Adzuna and Jooble</h3><p class="muted status-line" data-secret="ADZUNA_APP_KEY"></p>
           <p class="muted small">More jobs from two job search engines (Adzuna covers many countries). Free keys: register at
             <a href="#" data-link="https://developer.adzuna.com/signup">developer.adzuna.com</a> (an app id and a key) and request one at
             <a href="#" data-link="https://jooble.org/api/about">jooble.org/api</a>. Either one is enough; the search for new jobs asks each at most every 6 hours.</p></div>
-        <div class="inline"><input type="password" id="set-adzuna-id" placeholder="Adzuna app id"><button class="secondary" id="set-adzuna-id-save">Save</button></div>
-        <div class="inline"><input type="password" id="set-adzuna-key" placeholder="Adzuna app key"><button class="secondary" id="set-adzuna-key-save">Save</button></div>
-        <div class="inline"><input type="password" id="set-jooble" placeholder="Jooble key"><button class="secondary" id="set-jooble-save">Save</button></div>
+        <div class="inline"><input type="password" id="set-adzuna-id" placeholder="Adzuna app id"><button class="secondary" id="set-adzuna-id-save" data-i18n="screenCommon.save">Save</button></div>
+        <div class="inline"><input type="password" id="set-adzuna-key" placeholder="Adzuna app key"><button class="secondary" id="set-adzuna-key-save" data-i18n="screenCommon.save">Save</button></div>
+        <div class="inline"><input type="password" id="set-jooble" placeholder="Jooble key"><button class="secondary" id="set-jooble-save" data-i18n="screenCommon.save">Save</button></div>
       </div>
           <p class="muted small keychain-note"><i data-icon="shield"></i>Credentials are stored in your Mac’s Keychain and never leave this Mac, except to the service they belong to.</p>
           <details class="troubleshoot"><summary>Troubleshooting other services</summary>
             <ul class="small">
               <li><b>Notion</b> says it lost access: Manage → <b>Reconnect with Notion</b> and pick your Jobadabra page again.</li>
               <li><b>Gmail</b> shows "Sign-in expired": Manage → <b>Reconnect</b>.</li>
-              <li><b>Telegram</b> doesn't answer: open your bot, press <b>Start</b>, then Manage → paste the token again → <b>Connect</b>.</li>
+              <li><b>Telegram</b> doesn't answer: open your bot, press <b data-i18n="screenCommon.start">Start</b>, then Manage → paste the token again → <b data-i18n="screenCommon.connect">Connect</b>.</li>
               <li>An AI key was rejected: create a new one at console.anthropic.com and paste it under Anthropic → Manage.</li>
             </ul>
           </details>
@@ -1533,20 +1533,20 @@
           </div>
           <div class="setting panel" id="setting-backup">
             <div class="panel-top">
-              <div class="summary-head"><i data-icon="database"></i><h3>Automatic backup</h3><span class="ui-pill tone-good" id="backup-on">On</span></div>
+              <div class="summary-head"><i data-icon="database"></i><h3>Automatic backup</h3><span class="ui-pill tone-good" id="backup-on" data-i18n="screenCommon.on">On</span></div>
               <div class="panel-actions"><button class="secondary" id="backup-now">Back up now</button><button class="arrow-link" id="backup-show">View backups</button></div>
             </div>
             <div class="data-progress" data-progress="backup" hidden></div>
             <p class="muted panel-lead"><span id="backup-notion-line" data-notion-only>Your CV and tailored CVs are also kept in Notion. </span>Recordings and the rest of this computer's data are backed up once a week (never your keys), the last four kept.</p>
             <div class="fact-row"><div><span class="muted">Last backup</span><b id="backup-last">None yet</b></div>
-              <div><span class="muted">Location</span><b id="backup-where"></b></div></div>
+              <div><span class="muted" data-i18n="screenCommon.location">Location</span><b id="backup-where"></b></div></div>
           </div>
           <div class="setting panel" id="setting-data">
             <div class="summary-head"><i data-icon="refresh"></i><h3>Move your data</h3></div>
             <p class="muted panel-lead">Save a copy of what Jobadabra keeps on this computer, or restore one.<span id="data-notion-line"> Your Notion data stays in Notion: to keep, copy or move it, use Notion itself (its page history, Duplicate, Export, Move to another workspace).</span></p>
             <div class="choice-grid card-grid">
               <div class="choice-card"><span class="file-tile"><i data-icon="upload"></i></span>
-                <div><b>Export</b><p class="muted small">Save a copy of everything Jobadabra keeps on this computer: settings, profile, CVs, recordings, job list and history.</p>
+                <div><b data-i18n="screenCommon.export">Export</b><p class="muted small">Save a copy of everything Jobadabra keeps on this computer: settings, profile, CVs, recordings, job list and history.</p>
                   <button class="secondary" id="export-data">Export data</button>
                   <div class="data-progress" data-progress="export" hidden></div>
                   <details class="troubleshoot"><summary>Export options</summary>
@@ -1556,7 +1556,7 @@
                       <span class="muted small">Holds your job-site passwords in plain text: keep the file private. Left out, the accounts stay in this Mac's Keychain.</span></span></label>
                   </details></div></div>
               <div class="choice-card"><span class="file-tile"><i data-icon="folder"></i></span>
-                <div><b>Import</b><p class="muted small">Restore from a Jobadabra export. Current data is backed up first.</p>
+                <div><b data-i18n="screenCommon.import">Import</b><p class="muted small">Restore from a Jobadabra export. Current data is backed up first.</p>
                   <button class="secondary" id="import-data" data-import>Import data</button>
                   <div class="data-progress" data-progress="import" hidden></div></div></div>
               <div class="choice-card is-wide" id="clear-jobs-card"><span class="file-tile"><i data-icon="trash"></i></span>
@@ -1565,7 +1565,7 @@
                   <div class="data-progress" data-progress="clear" hidden></div>
                   <div class="clear-jobs-confirm" id="clear-jobs-confirm" hidden>
                     <p class="small" id="clear-jobs-counts"></p>
-                    <div class="panel-actions"><button class="secondary" id="clear-jobs-cancel">Cancel</button><button class="danger-solid" id="clear-jobs-go">Clear</button></div>
+                    <div class="panel-actions"><button class="secondary" id="clear-jobs-cancel" data-i18n="screenCommon.cancel">Cancel</button><button class="danger-solid" id="clear-jobs-go" data-i18n="screenCommon.clear">Clear</button></div>
                   </div></div></div>
             </div>
             <p class="message" id="data-message"></p>
@@ -1599,24 +1599,24 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="appearance" hidden>
-          <div class="settings-page-head"><h2>Appearance</h2><p class="muted">How Jobadabra looks on this Mac.</p></div>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.appearance">Appearance</h2><p class="muted">How Jobadabra looks on this Mac.</p></div>
           <div class="setting panel is-lit" id="setting-theme">
-            <div class="summary-head"><i data-icon="sun"></i><h3>Theme</h3></div>
-            <div class="segmented" role="group" aria-label="Theme">
-              <button data-theme-choice="system">System</button><button data-theme-choice="light">Light</button><button data-theme-choice="dark">Dark</button>
+            <div class="summary-head"><i data-icon="sun"></i><h3 data-i18n="screenCommon.theme">Theme</h3></div>
+            <div class="segmented" role="group" aria-label="Theme" data-i18n-aria-label="screenCommon.theme">
+              <button data-theme-choice="system" data-i18n="screenCommon.system">System</button><button data-theme-choice="light" data-i18n="screenCommon.light">Light</button><button data-theme-choice="dark" data-i18n="screenCommon.dark">Dark</button>
             </div>
             <p class="muted" id="theme-text"></p>
           </div>
           <div class="setting panel" id="setting-text-size">
-            <div class="summary-head"><i data-icon="sliders"></i><h3>Text size</h3></div>
-            <div class="segmented" role="group" aria-label="Text size">
-              <button id="text-size-small" data-size-choice="small">Small</button><button id="text-size-default" data-size-choice="default">Default</button><button id="text-size-large" data-size-choice="large">Large</button>
+            <div class="summary-head"><i data-icon="sliders"></i><h3 data-i18n="screenCommon.textSize">Text size</h3></div>
+            <div class="segmented" role="group" aria-label="Text size" data-i18n-aria-label="screenCommon.textSize">
+              <button id="text-size-small" data-size-choice="small" data-i18n="screenCommon.small">Small</button><button id="text-size-default" data-size-choice="default" data-i18n="screenCommon.default">Default</button><button id="text-size-large" data-size-choice="large" data-i18n="screenCommon.large">Large</button>
             </div>
             <p class="muted" id="text-size-text"></p>
           </div>
         </div>
         <div class="settings-page" data-settings-page="advanced" hidden>
-          <div class="settings-page-head"><h2>Advanced</h2><p class="muted">Troubleshooting and setup controls.</p></div>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.advanced">Advanced</h2><p class="muted">Troubleshooting and setup controls.</p></div>
           <div class="setting panel" id="setting-diagnostics">
             <div class="panel-top"><div class="summary-head"><i data-icon="settings"></i><h3>Diagnostics</h3></div>
               <button class="secondary" id="diag-troubleshoot">Open troubleshooting</button></div>
@@ -1628,8 +1628,8 @@
               <dt>Test builds</dt><dd id="diag-test" class="diag-update"><span id="diag-test-text"></span><span class="diag-actions"><button class="link" id="diag-test-toggle"></button></span></dd></dl>
           </div>
           <div class="setting panel" id="setting-telemetry">
-            <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3>Technical reports</h3></div>
-              <label class="switch-row"><input type="checkbox" id="telemetry-on"><span>Send</span></label></div>
+            <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3 data-i18n="screenWelcome.technicalReports">Technical reports</h3></div>
+              <label class="switch-row"><input type="checkbox" id="telemetry-on"><span data-i18n="screenCommon.send">Send</span></label></div>
             <p class="panel-lead tr-lead">✨ Small, anonymous signals that help us fix problems and improve matching for everyone. Your answers, CV, emails, names, companies and keys <b>stay on your Mac</b>: they are removed before anything is sent.</p>
             <div class="tr-grid">
               <section class="tr-card"><h4>🛠️ Keeping it smooth</h4><ul><li>Anonymous notes when something doesn't work as expected (through Sentry)</li><li>Which forms Jobadabra finds tricky, so we can teach it</li></ul></section>
@@ -1645,8 +1645,8 @@
             <details class="telemetry-shown"><summary>See the shared counts and shapes sent</summary><pre class="log" id="shared-sent">Nothing sent yet.</pre></details>
           </div>
           <div class="setting panel" id="setting-report-form" hidden>
-            <div class="panel-top"><div class="summary-head"><i data-icon="flag"></i><h3>Keep a trace of each form fill</h3></div>
-              <label class="switch-row"><input type="checkbox" id="report-form-on"><span>On</span></label></div>
+            <div class="panel-top"><div class="summary-head"><i data-icon="flag"></i><h3 data-i18n="screenWelcome.trace">Keep a trace of each form fill</h3></div>
+              <label class="switch-row"><input type="checkbox" id="report-form-on"><span data-i18n="screenCommon.on">On</span></label></div>
             <p class="muted panel-lead">Keep a trace of each form fill, so you can report a problem and we can fix it. It stays on this Mac, is sent only when you press Report in the panel and then Send (your personal details are removed automatically first), never includes sign-in pages, and is deleted when the application ends. Chrome shows a debugging bar while Jobadabra keeps the trace. Never sent: what you typed, passwords, your CV or profile.</p>
             <p class="muted small" id="report-sent-row" hidden><span id="report-sent-count"></span> <button class="secondary" id="report-delete" type="button">Delete them</button></p>
           </div>
@@ -1670,10 +1670,10 @@
             <h4>Notion: your own connection token</h4>
             <div>
           <p class="muted small">For a workspace that doesn't allow outside connections: create one in <a href="#" data-link="https://www.notion.so/profile/integrations">Developer tools → Connections</a>, give it your Jobadabra page, paste its token.</p>
-          <div class="inline"><input type="password" id="set-notion" placeholder="ntn_…"><button class="secondary" id="set-notion-save">Save</button></div></div>
+          <div class="inline"><input type="password" id="set-notion" placeholder="ntn_…"><button class="secondary" id="set-notion-save" data-i18n="screenCommon.save">Save</button></div></div>
             <h4>Chrome extension: manual connection</h4>
             <p class="muted small">If its settings page didn't connect: 🧩 → ⋮ next to Jobadabra → <b>Options</b> → paste these.</p>
-            <div class="kv"><span>Connection URL</span><code id="ext-url"></code><button class="link" data-copy="ext-url">Copy</button></div><div class="kv"><span>Token</span><code id="ext-token"></code><button class="link" data-copy="ext-token">Copy</button></div>
+            <div class="kv"><span>Connection URL</span><code id="ext-url"></code><button class="link" data-copy="ext-url" data-i18n="screenCommon.copy">Copy</button></div><div class="kv"><span>Token</span><code id="ext-token"></code><button class="link" data-copy="ext-token" data-i18n="screenCommon.copy">Copy</button></div>
           </details>
           <div class="setting danger-zone" id="setting-reset">
             <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3>Reset Jobadabra on this Mac</h3></div>
@@ -1695,7 +1695,7 @@
                   <div><b>1 · Save a copy (recommended)</b>
                     <p class="muted small">Importing the saved file brings everything back.</p>
                     <div class="inline"><button class="secondary" id="reset-export">Export everything</button>
-                      <button class="link" id="reset-skip-export">Skip</button><span class="ui-pill" id="reset-export-state" hidden></span></div>
+                      <button class="link" id="reset-skip-export" data-i18n="screenCommon.skip">Skip</button><span class="ui-pill" id="reset-export-state" hidden></span></div>
                     <div class="data-progress" data-progress="export" hidden></div>
                     <label class="check-row"><input type="checkbox" id="reset-export-accounts"><span><span>Include this profile's job-site accounts</span>
                       <span class="muted small">Holds your job-site passwords in plain text: keep the file private.</span></span></label></div></div>
@@ -1712,7 +1712,7 @@
           </div>
         </div>
         <div class="settings-page" data-settings-page="credentials" hidden>
-          <div class="settings-page-head"><h2>Credentials</h2><p class="muted">Accounts Jobadabra created on job sites. The passwords stay in this Mac's Keychain, encrypted; one is shown only when you press Show.</p></div>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.credentials">Credentials</h2><p class="muted">Accounts Jobadabra created on job sites. The passwords stay in this Mac's Keychain, encrypted; one is shown only when you press Show.</p></div>
           <div class="setting panel" id="setting-credentials">
             <div class="task-table" id="credentials-table">
               <div class="task-row is-head"><span>Site</span><span>Password</span><span></span></div>
@@ -1721,19 +1721,19 @@
             <p class="message" id="credentials-message"></p>
             <div class="switch-line">
               <span class="cv-card-text"><span>Old job-site password: <b id="credentials-shared">••••••••</b></span><span class="muted small">Only for accounts made before 10 Oct 2026. New accounts each have their own: Show it in the list above.</span></span>
-              <span class="inline"><button class="secondary small-button" id="credentials-shared-show">Show</button><button class="secondary small-button" id="credentials-shared-copy">Copy</button></span>
+              <span class="inline"><button class="secondary small-button" id="credentials-shared-show" data-i18n="screenCommon.show">Show</button><button class="secondary small-button" id="credentials-shared-copy" data-i18n="screenCommon.copy">Copy</button></span>
             </div>
           </div>
         </div>
         <div class="settings-page logs-page" data-settings-page="logs" hidden>
-          <div class="settings-page-head"><h2>Logs</h2><p class="muted">What the app did on this Mac, one file per day for 30 days. Nothing here is sent anywhere; copy a part to share it.</p></div>
+          <div class="settings-page-head"><h2 data-i18n="screenCommon.logs">Logs</h2><p class="muted">What the app did on this Mac, one file per day for 30 days. Nothing here is sent anywhere; copy a part to share it.</p></div>
           <div class="setting panel" id="setting-logs">
             <div class="panel-top">
               <div class="tabs" role="tablist" aria-label="Log">
                 <button type="button" role="tab" class="is-active" aria-selected="true" data-log="app">App</button>
                 <button type="button" role="tab" aria-selected="false" data-log="engine">Engine runs</button>
                 <button type="button" role="tab" aria-selected="false" data-log="notion" data-about-notion>Notion requests</button></div>
-              <div class="panel-actions"><button class="secondary with-icon" data-copy="logs-lines"><i data-icon="copy"></i>Copy</button><button class="arrow-link" id="logs-show">Show in Finder</button></div>
+              <div class="panel-actions"><button class="secondary with-icon" data-copy="logs-lines"><i data-icon="copy"></i><span data-i18n="screenCommon.copy">Copy</span></button><button class="arrow-link" id="logs-show">Show in Finder</button></div>
             </div>
             <div class="toolbar">
               <label class="search-box"><i data-icon="search"></i><input id="logs-search" type="search" placeholder="Search this log" aria-label="Search this log"></label>
@@ -1800,13 +1800,13 @@
               <button class="primary" id="activity-go" hidden></button>
               <button class="link small" id="activity-report" hidden title="Every number of this search, in Reports">Full report →</button>
               <button class="secondary" id="check-mail" hidden data-wand>Check Gmail now</button>
-              <button class="secondary" id="activity-unqueue" hidden title="Take it out of the queue: it will not start">Cancel</button>
-              <button class="secondary" id="activity-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
+              <button class="secondary" id="activity-unqueue" hidden title="Take it out of the queue: it will not start" data-i18n="screenCommon.cancel">Cancel</button>
+              <button class="secondary" id="activity-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there." data-i18n="screenCommon.stop">Stop</button>
               <a href="#" class="activity-notion" id="activity-notion" hidden>Open in Notion ↗</a>
               <a href="#" class="activity-notion" id="activity-github" hidden>View GitHub run ↗</a>
               <span id="activity-more"></span>
               <a href="#" class="link small ap-open-runs" id="activity-open-runs" title="Every run, in Actions → Runs">Open in Runs →</a>
-              <button class="icon-btn ap-close" id="activity-close" aria-label="Close" title="Close (Esc)"><i data-icon="close"></i></button>
+              <button class="icon-btn ap-close" id="activity-close" aria-label="Close" title="Close (Esc)" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
             </div>
           </div>
           <div class="activity-result" id="activity-result" role="region" aria-label="Result" tabindex="0" hidden></div>
@@ -1829,7 +1829,7 @@
                 </div>
                 <ul class="small" id="activity-warnings-list" hidden></ul>
               </div>
-              <button class="icon-btn ap-warn-fold" id="activity-warnings-fold" aria-expanded="true" title="Hide" aria-label="Hide"><i data-icon="chevron"></i></button>
+              <button class="icon-btn ap-warn-fold" id="activity-warnings-fold" aria-expanded="true" title="Hide" aria-label="Hide" data-i18n-title="screenCommon.hide" data-i18n-aria-label="screenCommon.hide"><i data-icon="chevron"></i></button>
             </div>
             <ol class="activity-phases ap-card" id="activity-phases"></ol>
             <pre class="activity-message" id="activity-message" hidden></pre>
@@ -1839,7 +1839,7 @@
           <!-- A search with few new jobs: employer coverage, then other ways to broaden the search (pages/activity.js withFewJobsHelp). -->
           <div class="few-help" id="activity-help" hidden></div>
           <section class="insight-next" id="activity-next" hidden></section>
-          <details class="activity-log ap-card" id="activity-log"><summary><i data-icon="file"></i><b id="log-title">Technical log</b><span class="muted" id="log-count"></span><span class="ui-pill tone-info dot" id="log-live" hidden>Live</span><button type="button" class="link with-icon log-copy" id="log-copy" data-copy="log" title="Copy the whole log"><i data-icon="copy"></i>Copy</button></summary><pre id="log" class="log"></pre><button type="button" class="link log-latest" id="log-latest" hidden>Jump to latest ↓</button></details>
+          <details class="activity-log ap-card" id="activity-log"><summary><i data-icon="file"></i><b id="log-title">Technical log</b><span class="muted" id="log-count"></span><span class="ui-pill tone-info dot" id="log-live" hidden>Live</span><button type="button" class="link with-icon log-copy" id="log-copy" data-copy="log" title="Copy the whole log"><i data-icon="copy"></i><span data-i18n="screenCommon.copy">Copy</span></button></summary><pre id="log" class="log"></pre><button type="button" class="link log-latest" id="log-latest" hidden>Jump to latest ↓</button></details>
         </section>
       </div>
     </div>
@@ -1859,13 +1859,13 @@
 <dialog id="replace-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="refresh"></i></span><h2>Review what this rebuild changes</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
-    <p class="dialog-lead">Tick what to apply. Nothing changes until you do; a copy of your current strategy is kept<span data-notion-only> in Notion</span> first
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
+    <p class="dialog-lead">Tick what to apply. Nothing changes until you do; a copy of your current strategy is kept<span data-notion-only data-i18n="screenWelcome.inNotion"> in Notion</span> first
       (“🗂 Previous strategy”). Applications and their history are never changed. <span id="rebuild-draft-cost"></span></p>
     <div class="review-groups" id="rebuild-groups"><p class="message waiting">Comparing the draft with your current strategy…</p></div>
     <p class="muted small" id="rebuild-total"></p>
     <div class="dialog-foot">
-      <button class="secondary" id="replace-cancel" value="cancel" formnovalidate>Cancel</button>
+      <button class="secondary" id="replace-cancel" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
       <button class="primary" id="replace-go" value="default" disabled>Apply selected</button>
     </div>
   </form>
@@ -1875,7 +1875,7 @@
 <dialog id="linkedin-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="linkedin"></i></span><h2 id="linkedin-title"></h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="linkedin-lead"></p>
     <div class="alert tone-warn" id="linkedin-line-box"><i data-icon="info"></i><div><strong id="linkedin-line"></strong></div></div>
     <div class="dialog-foot">
@@ -1890,7 +1890,7 @@
 <dialog id="gmail-offer-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mail"></i></span><h2 id="gmail-offer-title"></h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="gmail-offer-lead"></p>
     <div class="dialog-foot">
       <button class="secondary" id="gmail-offer-no" value="cancel" formnovalidate></button>
@@ -1903,7 +1903,7 @@
 <dialog id="desktop-ai-privacy-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span><h2 id="desktop-ai-privacy-title"></h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="desktop-ai-privacy-text"></p>
     <details class="conn-setup plain"><summary id="desktop-ai-privacy-tools"></summary>
       <ul class="muted small" id="desktop-ai-privacy-list"></ul>
@@ -1919,10 +1919,10 @@
 <dialog id="aon-protect-dialog" class="save-dialog panel-dialog aon-protect-dialog" aria-labelledby="aon-protect-title">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="shield"></i></span><h2 id="aon-protect-title"></h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="aon-protect-lead"></p>
     <ul class="aon-measures" id="aon-protect-list"></ul>
-    <div class="dialog-foot"><button class="primary" value="default">Close</button></div>
+    <div class="dialog-foot"><button class="primary" value="default" data-i18n="screenCommon.close">Close</button></div>
   </form>
 </dialog>
 
@@ -1930,7 +1930,7 @@
 <dialog id="cvb-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span>
     <div class="cv-head"><h2 id="cvb-title">Build your CV</h2><p class="dialog-lead" id="cvb-lead">Answer what you can. The AI writes the wording; your employers, titles and dates stay exactly as you type them.</p></div>
-    <button class="ghost icon-btn" id="cvb-close" aria-label="Close" title="Close"><i data-icon="close"></i></button></div>
+    <button class="ghost icon-btn" id="cvb-close" aria-label="Close" title="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
   <div id="cvb-form">
     <div class="form-grid edit-aligned">
       <label class="inline-label">Your name<input id="cvb-name" type="text" autocomplete="name"></label>
@@ -1966,24 +1966,24 @@
           <label class="inline-label">What you did<textarea data-cvb="did" rows="3" placeholder="In your own words: tasks, tools, results"></textarea></label>
         </div></details>
     <div class="form-grid edit-aligned">
-      <label class="inline-label">Skills<input id="cvb-skills" type="text" placeholder="Separated by commas"></label>
+      <label class="inline-label"><span data-i18n="screenCommon.skills">Skills</span><input id="cvb-skills" type="text" placeholder="Separated by commas"></label>
       <label class="inline-label">School<input id="cvb-school" type="text"></label>
       <label class="inline-label">Degree or course<input id="cvb-degree" type="text"></label>
       <label class="inline-label">Years there<input id="cvb-eduperiod" type="text" placeholder="2014 – 2018"></label>
-      <label class="inline-label">Languages<input id="cvb-languages" type="text" placeholder="Romanian, English (B2)"></label>
+      <label class="inline-label"><span data-i18n="screenCommon.languages">Languages</span><input id="cvb-languages" type="text" placeholder="Romanian, English (B2)"></label>
     </div>
     <p class="muted small" id="cvb-cost"><i data-icon="info"></i> One AI call writes the draft.</p>
   </div>
   <div id="cvb-draft" hidden>
-    <div class="form-grid edit-aligned"><label class="inline-label">Summary<textarea id="cvb-summary" rows="3"></textarea></label></div>
+    <div class="form-grid edit-aligned"><label class="inline-label"><span data-i18n="screenCommon.summary">Summary</span><textarea id="cvb-summary" rows="3"></textarea></label></div>
     <div id="cvb-roles"></div>
-    <div class="form-grid edit-aligned"><label class="inline-label">Skills<input id="cvb-draft-skills" type="text"></label></div>
+    <div class="form-grid edit-aligned"><label class="inline-label"><span data-i18n="screenCommon.skills">Skills</span><input id="cvb-draft-skills" type="text"></label></div>
   </div>
   <p class="message" id="cvb-message"></p>
   <div class="dialog-foot">
     <button class="secondary" id="cvb-back" hidden>Back to my answers</button>
     <button class="secondary" id="cvb-download" hidden><span>Save PDF…</span></button>
-    <button class="secondary" id="cvb-cancel">Cancel</button>
+    <button class="secondary" id="cvb-cancel" data-i18n="screenCommon.cancel">Cancel</button>
     <button class="primary" id="cvb-go" data-wand>Write my CV</button>
   </div>
 </dialog>
@@ -1992,7 +1992,7 @@
 <dialog id="cv-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="file-text"></i></span>
     <div class="cv-head"><h2>Your CV is updated</h2><p class="dialog-lead">Here's what changed, and what you can review.</p></div>
-    <button class="ghost icon-btn" id="cv-later" aria-label="Close" title="Close: you can review this later"><i data-icon="close"></i></button></div>
+    <button class="ghost icon-btn" id="cv-later" aria-label="Close" title="Close: you can review this later" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
   <div class="cv-file"><span class="cv-file-icon"><i data-icon="file"></i></span>
     <div><b id="cv-dialog-name"></b><small id="cv-dialog-sub"></small></div></div>
   <ul class="cv-rows">
@@ -2020,24 +2020,24 @@
     <button class="link" id="cv-kits-more" hidden></button>
   </section>
   <p class="cv-unchanged"><i data-icon="info"></i>Search preferences, match scores and applications already sent are unchanged (they keep the CV you sent).</p>
-  <div class="dialog-foot"><span class="muted small">You can come back to these later.</span><button class="primary" id="cv-done">Done</button></div>
+  <div class="dialog-foot"><span class="muted small">You can come back to these later.</span><button class="primary" id="cv-done" data-i18n="screenCommon.done">Done</button></div>
 </dialog>
 
 <!-- Tune my strategy: changes the user's own outcomes support (src/tune.py), applied only when ticked (pages/tune.js) -->
 <dialog id="tune-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="sliders"></i></span>
     <div class="cv-head"><h2>Tune my strategy</h2><p class="dialog-lead" id="tune-basis">Reading your results…</p></div>
-    <button class="ghost icon-btn" id="tune-close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <button class="ghost icon-btn" id="tune-close" aria-label="Close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
   <ul class="tune-list" id="tune-list"></ul>
   <p class="message" id="tune-message"></p>
   <div class="dialog-foot"><span class="muted small">Only selected changes will be applied.</span>
-    <span class="inline"><button class="secondary" id="tune-cancel" type="button" hidden>Cancel</button><button class="primary" id="tune-apply" hidden>Apply changes</button></span></div>
+    <span class="inline"><button class="secondary" id="tune-cancel" type="button" hidden data-i18n="screenCommon.cancel">Cancel</button><button class="primary" id="tune-apply" hidden>Apply changes</button></span></div>
 </dialog>
 <!-- Find jobs using your browser (owner, 7 Oct 2026): Run opens this; pick the sites, how many at a time, filter or not -->
 <dialog id="visits-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="globe"></i></span>
     <div class="cv-head"><h2>Find jobs using your browser</h2><p class="dialog-lead" id="visits-lead">Reading your sites…</p></div>
-    <button class="ghost icon-btn" id="visits-close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <button class="ghost icon-btn" id="visits-close" aria-label="Close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
   <!-- Two tabs, one list at a time (owner, 8 Oct 2026: two stacked lists, each scrolling, pushed the buttons off the dialog): the sites to read, and
        jobs in your places whose posting only your browser can open (a sign-in site, a site that refused this Mac), read here and then scored.
        The tabs show only when there are such jobs. -->
@@ -2050,13 +2050,13 @@
   <label class="check-row inline-label"><input type="checkbox" id="visits-filter" checked><span><span class="muted">Filter each site for my search first</span></span></label>
   <label class="task-count-field"><input id="visits-at-once" class="task-count" type="number" min="1" max="5" value="2" aria-label="How many sites at once" title="How many sites at once"><span class="task-count-unit">at a time</span></label>
   <div class="dialog-foot"><span class="muted small">Each site opens in Chrome, where the extension reads it.</span>
-    <span class="inline"><button class="secondary" id="visits-cancel" type="button">Cancel</button><button class="primary" id="visits-start" type="button" disabled>Read sites</button></span></div>
+    <span class="inline"><button class="secondary" id="visits-cancel" type="button" data-i18n="screenCommon.cancel">Cancel</button><button class="primary" id="visits-start" type="button" disabled>Read sites</button></span></div>
 </dialog>
 <!-- CV match: this job's posting against the CV (lib/match-check.js) -->
 <dialog id="match-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="scale"></i></span>
     <div class="cv-head"><h2>CV match</h2><p class="dialog-lead" id="match-job"></p></div>
-    <button class="ghost icon-btn" id="match-close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <button class="ghost icon-btn" id="match-close" aria-label="Close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
   <div class="cvc-result" id="match-result" hidden>
     <div class="cvc-head"><span class="cvc-score" id="match-grade"></span><div><b id="match-summary"></b><span class="muted small" id="match-sub"></span></div></div>
     <h3 class="match-h">What the posting asks for</h3>
@@ -2077,16 +2077,16 @@
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="upload"></i></span><h2 id="save-title">Saving your strategy<span data-notion-only> to Notion</span></h2></div>
   <p class="dialog-lead" data-notion-only>Notion is written one block at a time, so this takes a minute or two. You can leave this window open.</p>
   <ol class="save-steps" id="save-steps">
-    <li data-save-step="snapshot" hidden>Keeping a copy of your current strategy<span data-notion-only> in Notion</span></li>
+    <li data-save-step="snapshot" hidden>Keeping a copy of your current strategy<span data-notion-only data-i18n="screenWelcome.inNotion"> in Notion</span></li>
     <li data-save-step="local">Saving your search settings on this computer</li>
     <li data-save-step="profile">Writing your Profile<span data-notion-only> to Notion</span> <span class="count"></span></li>
     <li data-save-step="answers">Writing your standard answers<span data-notion-only> to Notion</span> <span class="count"></span></li>
-    <li data-save-step="search">Saving your ⚙️ Search settings<span data-notion-only> in Notion</span></li>
+    <li data-save-step="search">Saving your ⚙️ Search settings<span data-notion-only data-i18n="screenWelcome.inNotion"> in Notion</span></li>
     <li data-save-step="details">Reading your details from your CV <span class="count"></span></li>
   </ol>
   <div class="bar"><span id="save-bar"></span></div>
   <p class="message" id="save-message"></p>
-  <div class="dialog-foot"><button class="secondary" id="save-close" hidden>Close</button><button class="primary" id="save-retry" hidden>Try again</button></div>
+  <div class="dialog-foot"><button class="secondary" id="save-close" hidden data-i18n="screenCommon.close">Close</button><button class="primary" id="save-retry" hidden data-i18n="screenCommon.retry">Try again</button></div>
 </dialog>
 
 <dialog id="apply-choice-dialog" class="save-dialog panel-dialog apply-choice-dialog">
@@ -2094,7 +2094,7 @@
     <h2>How should Jobadabra apply for you?</h2>
     <div id="apply-choice-modes"></div>
     <div class="actions">
-      <button class="link" id="apply-choice-later" type="button">Not now</button>
+      <button class="link" id="apply-choice-later" type="button" data-i18n="screenCommon.notNow">Not now</button>
       <button class="secondary" id="apply-choice-adjust" type="button">Adjust settings…</button>
       <button class="primary" id="apply-choice-go" type="button">Continue with this job</button>
     </div>
@@ -2106,7 +2106,7 @@
     <p id="hosted-moment-text"></p>
     <div id="hosted-moment-body"></div>
     <div class="actions">
-      <button class="secondary" id="hosted-moment-later" type="button">Not now</button>
+      <button class="secondary" id="hosted-moment-later" type="button" data-i18n="screenCommon.notNow">Not now</button>
       <button class="primary" id="hosted-moment-go" type="button">Turn on Always on</button>
     </div>
   </form>
@@ -2117,7 +2117,7 @@
     <p id="aon-notify-lead"></p>
     <div id="aon-notify-slot"></div>   <!-- the one Settings → Notifications card (#setting-notify) is moved in while this is open -->
     <div class="actions">
-      <button class="secondary" id="aon-notify-close" type="button">Close</button>
+      <button class="secondary" id="aon-notify-close" type="button" data-i18n="screenCommon.close">Close</button>
       <button class="primary" id="aon-notify-test" type="button">Test again</button>
     </div>
   </form>
@@ -2133,7 +2133,7 @@
     </div>
     <p class="message" id="notify-moment-note" role="status"></p>
     <div class="actions">
-      <button class="secondary" id="notify-moment-later" type="button">Not now</button>
+      <button class="secondary" id="notify-moment-later" type="button" data-i18n="screenCommon.notNow">Not now</button>
       <button class="secondary" id="notify-moment-telegram" type="button" hidden>Use Telegram</button>
       <button class="primary" id="notify-moment-go" type="button">Send the link again</button>
     </div>
@@ -2150,7 +2150,7 @@
     </ul>
     <p class="muted small">After installing, press Apply again.</p>
     <div class="actions">
-      <button class="secondary" id="extension-needed-later" type="button">Not now</button>
+      <button class="secondary" id="extension-needed-later" type="button" data-i18n="screenCommon.notNow">Not now</button>
       <button class="primary" id="extension-needed-go" type="button">Install the extension</button>
     </div>
   </form>
@@ -2169,7 +2169,7 @@
     <p class="message" id="notion-connect-message"></p>
     <p class="muted small" id="notion-connect-token" data-about-notion hidden>Or paste a token: Settings → Connections → Notion.</p>
     <div class="actions">
-      <button class="secondary" id="notion-connect-later" type="button">Not now</button>
+      <button class="secondary" id="notion-connect-later" type="button" data-i18n="screenCommon.notNow">Not now</button>
       <button class="primary" id="notion-connect-go" type="button">Connect with Notion</button>
     </div>
     <div class="notion-why" id="notion-connect-why" hidden></div>
@@ -2183,7 +2183,7 @@
     <input id="import-url" type="url" placeholder="https://…" required>
     <p class="message" id="import-message"></p>
     <div class="actions">
-      <button class="ghost" value="cancel" formnovalidate>Close</button>
+      <button class="ghost" value="cancel" formnovalidate data-i18n="screenCommon.close">Close</button>
       <button class="primary" id="import-go" value="default">Add it</button>
     </div>
   </form>
@@ -2199,7 +2199,7 @@
       <p class="muted small">LinkedIn, Glassdoor and Indeed often show a sign-in page instead of the posting. If the fit score finds no text, add it here:</p>
       <label for="applied-title">Job title</label>
       <input id="applied-title" placeholder="e.g. Senior Product Designer">
-      <label for="applied-company">Company</label>
+      <label for="applied-company" data-i18n="screenCommon.company">Company</label>
       <input id="applied-company" placeholder="e.g. Acme">
       <label for="applied-text">Job description (paste it)</label>
       <textarea id="applied-text" rows="5" placeholder="Copy the posting's text here, for the facts and the fit score"></textarea>
@@ -2213,7 +2213,7 @@
     <p class="muted small field-hint">A job someone brought you counts in the inbound funnel, not in your application funnel.</p>
     <p class="message" id="applied-message"></p>
     <div class="actions">
-      <button class="ghost" value="cancel" formnovalidate>Close</button>
+      <button class="ghost" value="cancel" formnovalidate data-i18n="screenCommon.close">Close</button>
       <button class="primary" id="applied-go" value="default">Track it</button>
     </div>
   </form>
@@ -2222,7 +2222,7 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="chat"></i></span>
       <h2 id="feedback-title">Employer feedback</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p id="feedback-context" class="dialog-lead"></p>
     <p id="feedback-help" class="muted small"></p>
@@ -2232,7 +2232,7 @@
     <div class="dialog-foot">
       <button type="button" id="feedback-copy" class="secondary">Copy request</button>
       <button type="button" id="feedback-email" class="secondary">Open email</button>
-      <button class="secondary" value="cancel" formnovalidate>Cancel</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
       <button id="feedback-save" class="primary" value="default">Save feedback</button>
     </div>
   </form>
@@ -2242,7 +2242,7 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mic"></i></span>
       <h2>Practice session</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <div id="practice-body"></div>
     <div class="dialog-foot" id="practice-foot"></div>
@@ -2252,13 +2252,13 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="bulb"></i></span>
       <h2>Supporting moments</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p class="dialog-lead muted">What each pattern is based on: words copied from your interview reviews.</p>
     <div id="moments-body"></div>
     <div class="dialog-foot">
       <button type="button" id="moments-notion" class="secondary">Open in Notion</button>
-      <button class="ghost" value="cancel" formnovalidate>Close</button>
+      <button class="ghost" value="cancel" formnovalidate data-i18n="screenCommon.close">Close</button>
     </div>
   </form>
 </dialog>
@@ -2267,11 +2267,11 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mic"></i></span>
       <h2 id="review-title">Interview review</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p class="dialog-lead muted" id="review-facts"></p>
     <div id="review-body"></div>
-    <div class="dialog-foot"><button class="ghost" value="cancel" formnovalidate>Close</button></div>
+    <div class="dialog-foot"><button class="ghost" value="cancel" formnovalidate data-i18n="screenCommon.close">Close</button></div>
   </form>
 </dialog>
 <!-- The free allowance is over (pages/license.js): new work pauses, everything else keeps working. -->
@@ -2281,7 +2281,7 @@
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="refresh"></i></span><h2 id="score-first-title">Score first</h2></div>
     <p class="dialog-lead" id="score-first-lead"></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel">Cancel</button>
+      <button class="secondary" value="cancel" data-i18n="screenCommon.cancel">Cancel</button>
       <button class="secondary" value="find" id="score-first-find">Find jobs without re-scoring</button>
       <button class="primary" value="go" id="score-first-go" data-wand>Re-score</button>
     </div>
@@ -2293,7 +2293,7 @@
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="refresh"></i></span><h2 id="rescore-title">Re-score older scores?</h2></div>
     <p class="dialog-lead" id="rescore-lead"></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel">Cancel</button>
+      <button class="secondary" value="cancel" data-i18n="screenCommon.cancel">Cancel</button>
       <button class="primary" value="go" id="rescore-go" data-wand>Re-score</button>
     </div>
   </form>
@@ -2311,7 +2311,7 @@
       <p class="muted small">An application can stop for a check only you can do. We e-mail you a link: press it to start. Prefer Telegram? Set it up in Settings → Notifications.</p>
       <p class="message" id="auto-confirm-channel-note" role="status"></p>
     </div>
-    <div class="panel-actions"><button type="button" class="secondary" id="auto-confirm-cancel" value="cancel">Not now</button><button type="button" class="primary" id="auto-confirm-go" value="yes">Turn on Full automation</button></div>
+    <div class="panel-actions"><button type="button" class="secondary" id="auto-confirm-cancel" value="cancel" data-i18n="screenCommon.notNow">Not now</button><button type="button" class="primary" id="auto-confirm-go" value="yes">Turn on Full automation</button></div>
   </form>
 </dialog>
 <dialog id="triage-dialog" class="panel-dialog triage-dialog">
@@ -2323,9 +2323,9 @@
     <div id="triage-progress" class="triage-progress" hidden>
       <div class="triage-bar"><i id="triage-bar"></i></div>
       <span class="muted small" id="triage-progress-text"></span>
-      <button type="button" class="secondary" id="triage-cancel">Cancel</button>
+      <button type="button" class="secondary" id="triage-cancel" data-i18n="screenCommon.cancel">Cancel</button>
     </div>
-    <div class="panel-actions"><button type="button" class="secondary" id="triage-close">Close</button><button type="button" class="primary" id="triage-start">Check jobs</button></div>
+    <div class="panel-actions"><button type="button" class="secondary" id="triage-close" data-i18n="screenCommon.close">Close</button><button type="button" class="primary" id="triage-start">Check jobs</button></div>
   </form>
 </dialog>
 <dialog id="busy-dialog" class="panel-dialog busy-dialog" aria-live="polite">
@@ -2336,17 +2336,17 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mail"></i></span>
       <h2>Google shows a warning first</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p class="dialog-lead">Jobadabra is free and Google has not reviewed it yet, so its sign-in page says <b>"Google hasn't verified this app"</b>. That is expected. Three clicks get you through:</p>
     <ol class="dialog-steps">
-      <li>Click <b>Advanced</b> at the bottom left of Google's page (Google writes it in your language: Avansat, Erweitert, Avancé…).</li>
+      <li>Click <b data-i18n="screenCommon.advanced">Advanced</b> at the bottom left of Google's page (Google writes it in your language: Avansat, Erweitert, Avancé…).</li>
       <li>Click <b>Go to Jobadabra (unsafe)</b>, the link that appears.</li>
-      <li>Tick the Gmail and Calendar read access and press <b>Continue</b>.</li>
+      <li>Tick the Gmail and Calendar read access and press <b data-i18n="screenCommon.continue">Continue</b>.</li>
     </ol>
     <p class="muted small">Read-only: Jobadabra can read your mail and calendar to track replies and interviews, and never sends, changes or deletes anything. The sign-in stays on this computer, in its Keychain or Credential Manager.</p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate>Cancel</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
       <button id="google-warning-go" type="button" class="primary" value="default">Continue to Google</button>
     </div>
   </form>
@@ -2355,12 +2355,12 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span>
       <h2>Your free trial is over</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p class="dialog-lead" id="allowance-lead"><span id="allowance-plan"></span>
       <span class="small">Your jobs, tracking, <span data-notion-only>Notion, </span>export and data all keep working.</span></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate>Not now</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.notNow">Not now</button>
       <button id="allowance-settings" type="button" class="primary" value="default">Open Plan settings</button>
     </div>
   </form>
@@ -2369,7 +2369,7 @@
 <dialog id="why-dialog" class="panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="chat"></i></span><h2 id="why-title">Leaving setup? What stopped you?</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="why-lead">One tap helps make setup easier for the next person. Optional.</p>
     <div class="why-options" id="why-options">
       <label data-about-notion class="inline-label"><input type="radio" name="why" value="notion"> I don't use Notion</label>
@@ -2380,7 +2380,7 @@
       <label class="inline-label"><input type="radio" name="why" value="broke"> Something broke</label>
       <label class="inline-label"><input type="radio" name="why" value="other"> Other</label>
     </div>
-    <label for="why-text">Anything to add? <span class="muted">(optional)</span></label>
+    <label for="why-text">Anything to add? <span class="muted" data-i18n="screenWelcome.optional">(optional)</span></label>
     <textarea id="why-text" rows="3" maxlength="500"></textarea>
     <div class="dialog-foot">
       <button class="ghost" id="why-skip" type="button">Just quit</button>
@@ -2392,13 +2392,13 @@
 <dialog id="app-feedback-dialog" class="panel-dialog">
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="chat"></i></span><h2>Send feedback</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead">What works, what's confusing, what's missing? It goes straight to the maker, Igor. Your job data isn't sent: only
       what you write here, the app version, your system and a random install id, plus what is ticked below. You can turn each of them off.</p>
     <label for="app-feedback-text">Your feedback</label>
     <textarea id="app-feedback-text" data-about-notion rows="7" maxlength="8000" placeholder="e.g. Setup took 20 minutes; the Notion step was unclear…"></textarea>
     <p class="muted small" id="app-feedback-count" hidden></p>
-    <label for="app-feedback-contact">Email or handle, if you'd like a reply <span class="muted">(optional)</span></label>
+    <label for="app-feedback-contact">Email or handle, if you'd like a reply <span class="muted" data-i18n="screenWelcome.optional">(optional)</span></label>
     <input id="app-feedback-contact" type="text" maxlength="200" autocomplete="email">
     <p class="muted small" id="app-feedback-contact-note" hidden>Your e-mail from Settings is filled in so a reply can reach you. Clear it to stay anonymous.</p>
     <div class="feedback-attach" id="app-feedback-attach">
@@ -2418,8 +2418,8 @@
     </div>
     <p id="app-feedback-message" class="message"></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate>Cancel</button>
-      <button id="app-feedback-send" class="primary" value="default">Send</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
+      <button id="app-feedback-send" class="primary" value="default" data-i18n="screenCommon.send">Send</button>
     </div>
   </form>
 </dialog>
@@ -2428,7 +2428,7 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mic"></i></span>
       <h2 id="prep-title">Interview prep kit</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p id="prep-context" class="dialog-lead"></p>
     <div id="prep-describe" hidden>
@@ -2440,7 +2440,7 @@
     </div>
     <p id="prep-message" class="message"></p>
     <div class="dialog-foot">
-      <button class="ghost" value="cancel" formnovalidate>Close</button>
+      <button class="ghost" value="cancel" formnovalidate data-i18n="screenCommon.close">Close</button>
       <button id="prep-open" type="button" class="secondary" hidden>Open in Notion</button>
       <button id="prep-go" class="primary" value="default" data-wand>Prepare the interview</button>
     </div>
@@ -2452,14 +2452,14 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mic"></i></span>
       <h2 id="happened-title">How did it go?</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p id="happened-context" class="dialog-lead"></p>
     <div id="happened-yes">
       <label for="happened-notes">What did you learn? Salary, next steps, people, questions asked
-        <span class="muted">(optional)</span></label>
+        <span class="muted" data-i18n="screenWelcome.optional">(optional)</span></label>
       <textarea id="happened-notes" rows="8" placeholder="e.g. 30 min with the recruiter. Band 90–110k, contract possible. They asked about on-call and Kafka. Next: a call with the CTO next week."></textarea>
-      <p class="muted small">Saved to 🎤 Interviews<span data-notion-only> in Notion</span> and the job moves on to Interviewing. With a few lines, <span data-ai>Claude</span> reviews them
+      <p class="muted small">Saved to 🎤 Interviews<span data-notion-only data-i18n="screenWelcome.inNotion"> in Notion</span> and the job moves on to Interviewing. With a few lines, <span data-ai>Claude</span> reviews them
         like a recording: the next step, and salary, contract or place filled in on the job.</p>
     </div>
     <fieldset id="happened-no">
@@ -2471,8 +2471,8 @@
     </fieldset>
     <p id="happened-message" class="message"></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate>Cancel</button>
-      <button id="happened-save" class="primary" value="default">Save</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
+      <button id="happened-save" class="primary" value="default" data-i18n="screenCommon.save">Save</button>
     </div>
   </form>
 </dialog>
@@ -2480,7 +2480,7 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="mail"></i></span>
       <h2 id="reassign-title">Which job is this email about?</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p id="reassign-context" class="dialog-lead"></p>
     <div class="choice-list" id="reassign-choices">
@@ -2492,8 +2492,8 @@
     <p class="reassign-note muted" id="reassign-note"><i data-icon="link"></i><span id="reassign-help"></span></p>
     <p id="reassign-message" class="message"></p>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate>Cancel</button>
-      <button id="reassign-save" class="primary" value="default">Save</button>
+      <button class="secondary" value="cancel" formnovalidate data-i18n="screenCommon.cancel">Cancel</button>
+      <button id="reassign-save" class="primary" value="default" data-i18n="screenCommon.save">Save</button>
     </div>
   </form>
 </dialog>
@@ -2501,8 +2501,8 @@
   <form method="dialog">
     <div class="dialog-head">
       <span class="dialog-icon"><i data-icon="plus"></i></span>
-      <h2>Add</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <h2 data-i18n="screenCommon.add">Add</h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <p class="dialog-lead">What would you like to add?</p>
     <div class="add-choices" role="menu">
@@ -2517,7 +2517,7 @@
     <div class="dialog-head">
       <span class="dialog-icon"><i data-icon="inbox"></i></span>
       <h2>Log job activity</h2>
-      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
     </div>
     <div id="lead-compose">
     <p class="dialog-lead">Paste a recruiter message or add a screenshot.<span class="muted small">Gmail messages are imported automatically.</span></p>
@@ -2561,7 +2561,7 @@
       <div class="lead-field" data-field="channel">
         <div class="lead-field-head"><label>Where is this conversation from?</label><span class="lead-flag"></span></div>
         <div class="segmented is-fill" id="lead-channel" role="radiogroup" aria-label="Where is this conversation from?">
-          <button type="button" data-channel="LinkedIn">LinkedIn</button><button type="button" data-channel="Email">Email</button>
+          <button type="button" data-channel="LinkedIn">LinkedIn</button><button type="button" data-channel="Email" data-i18n="screenCommon.email">Email</button>
           <button type="button" data-channel="Phone">Phone / call</button><button type="button" data-channel="Other">Other</button></div>
         <input type="text" id="lead-channel-other" placeholder="Where? e.g. WhatsApp, a job fair" maxlength="40" hidden>
         <p class="muted small field-hint" id="lead-channel-hint"></p></div>
@@ -2580,7 +2580,7 @@
       <div class="lead-field" data-field="agree">
         <div class="lead-field-head"><label id="lead-agree-label">Did you agree to talk to the recruiter?</label><span class="lead-flag"></span></div>
         <div class="segmented is-fill" id="lead-agree" role="radiogroup" aria-labelledby="lead-agree-label">
-          <button type="button" data-agree="yes">Yes</button><button type="button" data-agree="no">Not yet</button></div>
+          <button type="button" data-agree="yes" data-i18n="screenCommon.yes">Yes</button><button type="button" data-agree="no" data-i18n="screenCommon.notYet">Not yet</button></div>
         <p class="muted small field-hint" id="lead-agree-hint"></p></div>
       <div class="lead-field" data-field="interview">
         <div class="lead-field-head"><label for="lead-interview" id="lead-interview-label">When is the call?</label><span class="lead-flag"></span></div>
@@ -2616,8 +2616,8 @@
         <button type="button" class="link" id="lead-result-pick" hidden>Choose a job manually</button></div>
     </div>
     <div class="dialog-foot">
-      <button class="secondary" value="cancel" formnovalidate id="lead-cancel">Cancel</button>
-      <button type="button" class="ghost" id="lead-back" hidden>Back</button>
+      <button class="secondary" value="cancel" formnovalidate id="lead-cancel" data-i18n="screenCommon.cancel">Cancel</button>
+      <button type="button" class="ghost" id="lead-back" hidden data-i18n="screenCommon.back">Back</button>
       <button class="primary" id="lead-go" value="default">Log activity</button>
     </div>
   </form>
@@ -2630,7 +2630,7 @@
     <fieldset><legend>How Jobadabra applies</legend><div id="apply-mode-cards"></div></fieldset>
     <p class="message" id="apply-message" role="status"></p>
     <div id="apply-browser" data-browser-progress="quiet" hidden></div>
-    <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Apply to 3 jobs</button></div>
+    <div class="actions"><button class="secondary" value="cancel" data-i18n="screenCommon.close">Close</button><button class="primary" id="apply-go" value="default">Apply to 3 jobs</button></div>
     <div class="alert tone-info" id="apply-start-banner" hidden>
       <i data-icon="layers"></i>
       <div><strong>Preparing your applications</strong><p id="apply-start-status" role="status"></p></div>
@@ -2645,7 +2645,7 @@
   <input id="find-text" type="text" placeholder="Find on this page" aria-label="Find on this page" spellcheck="false">
   <button type="button" class="icon-button" id="find-prev" title="Previous (⇧Enter)" aria-label="Previous match"><i data-icon="chevron"></i></button>
   <button type="button" class="icon-button" id="find-next" title="Next (Enter)" aria-label="Next match"><i data-icon="chevron"></i></button>
-  <button type="button" class="icon-button" id="find-close" title="Close (Esc)" aria-label="Close"><i data-icon="close"></i></button>
+  <button type="button" class="icon-button" id="find-close" title="Close (Esc)" aria-label="Close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button>
 </div>
 </body>
 </html>
