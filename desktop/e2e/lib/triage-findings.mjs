@@ -119,7 +119,7 @@ export function normalize({ui = [], ai = [], suite = [], dropped = []}) {
   return all.filter(item => item.severity !== 'low').filter(item => !seen.has(item.id) && seen.add(item.id));
 }
 
-// Why (7 Nov 2026, pz, mac-50: "the batch's titles repeat themselves, e.g. [AI persona] settings: consistency on settings: GitHub row claims…"): `normalize` builds `title` as "<kind> on <view>: <text>" (the fingerprint hashes it, so it stays), but the issue's title already has the view and the kind is a label: 48 of the issues filed so far say it twice.
+// Why (7 Nov 2026, pz, mac-50: "the batch's titles repeat themselves, e.g. [AI persona] settings: consistency on settings: GitHub row claims…"): `normalize` builds `title` as "<kind> on <view>: <text>" (the fingerprint hashes it, so it stays), but the issue's title already has the view and the kind is a label, so the title said both twice.
 const textOnly = finding => {
   const text = String(finding.shown || finding.title), lead = `${String(finding.kind || '').replace(/-/g, ' ')} on ${finding.view}: `;
   return finding.kind && text.startsWith(lead) && text.length > lead.length ? text.slice(lead.length) : text;
