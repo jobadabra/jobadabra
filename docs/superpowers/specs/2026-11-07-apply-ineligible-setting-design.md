@@ -16,7 +16,7 @@ Automatic Apply pickers skip a kit whose explicit eligibility verdict is false. 
 
 ## Approval provenance
 
-On 7 November 2026 (UTC), the owner requested the optional setting at 01:49:17Z. The coordinator disclosed that it affects selection and the existing Full automation final eligibility gate at 01:51:49Z, then stated that it applies across all modes at 01:52Z. The owner approved at 02:18:43Z and specified the preview. The wording about eligibility policy affecting selection and the existing Full-auto eligibility check was the coordinator's description of the scope, not a literal owner quote. This records the approved scope; separate submission authorization and page proof remain required.
+On 7 November 2026 (UTC), the owner requested the optional setting at 01:49:17Z. The coordinator disclosed that it affects selection and the existing Full automation final eligibility gate at 01:51:49Z, then stated that it applies across all modes at 01:52Z. The owner approved at 02:18:43Z and specified the preview. The wording about eligibility policy affecting selection and the existing Full-auto eligibility check was the coordinator's description of the scope, not a literal owner quote. The owner subsequently answered the explicit choice between Full automation submitting ineligible jobs and only preparing them: "Full automation may submit them" (7 November 2026, relayed by 27 Coordinator). This directly authorizes submission with the opt-in on; separate submission authorization and page proof remain required.
 
 ## Constraints and non-goals
 
