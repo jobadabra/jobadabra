@@ -90,5 +90,35 @@ class AskedTogether(unittest.TestCase):
         self.assertEqual([b['name'] for b in board_ideas.ideas(SEARCH, again)], ['Bfield', *('B' + n for n in firsts)], 'the failed one is asked next time')
 
 
+    def test_a_call_that_raises_itself_leaves_the_others(self):
+        """Not the AI's error (that is caught in _ask) but the call: a full disk under the cache write."""
+        real, calls = board_ideas._proposal, []
+
+        def proposal(part, client=None):
+            calls.append(part[1][0])
+            if len(calls) == 2:
+                raise OSError('disk full')
+            return real(part, client)
+        with mock.patch('src.ai.board_ideas._proposal', proposal):
+            found = board_ideas.ideas(SEARCH, Client())
+        self.assertEqual(len(found), 3, 'the field and the two slices that did not raise')
+
+    def test_a_call_keeps_the_callers_ai_level(self):
+        from src.ai import slots
+        seen = []
+
+        def before(name):
+            seen.append(slots.level())
+        with slots.priority(slots.FIRST):
+            board_ideas.ideas(SEARCH, Client(before))
+        self.assertEqual(set(seen), {slots.FIRST}, 'asked from the first-jobs slice, every call keeps its place in the AI queue')
+
+    def test_the_cache_is_written_whole_and_leaves_no_temp_file(self):
+        board_ideas.ideas(SEARCH, Client())
+        saved = json.loads(board_ideas._store().read_text())
+        self.assertEqual(len(saved['ideas']), 4, 'the field and the three slices, all kept though they ended together')
+        self.assertEqual([f.name for f in board_ideas._store().parent.iterdir()], ['found_boards.json'])
+
+
 if __name__ == '__main__':
     unittest.main()

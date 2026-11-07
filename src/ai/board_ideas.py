@@ -6,6 +6,7 @@ address on the board's own host, the {role} placeholder, not a portal the visit 
 levels.fyi) and not one of the boards with their own reader (jobs.ch, SwissDevJobs, TechTree). Tests: tests/unit/ai/test_board_ideas.py."""
 import hashlib
 import json
+import os
 import re
 import threading
 import urllib.parse
@@ -76,7 +77,7 @@ def valid(board, listing=False):
     return {'name': name, 'host': host, 'search_url': url, 'countries': countries, 'kinds': kinds, 'source_kind': source_kind}
 
 
-_STORE = threading.Lock()   # load-change-save of found_boards.json 'ideas' from the calls asked together (_together)
+STORE = threading.Lock()   # every load-change-save of found_boards.json takes it: the calls asked together (_together) and src/sources/board_web.py write it at once
 
 
 def _store():
@@ -94,7 +95,10 @@ def load():
 def save(data):
     file = _store()
     file.parent.mkdir(parents=True, exist_ok=True)
-    file.write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    # Why (#2920): written whole or not at all: a reader that met a half-written file read {} and saved it back over the boards' history.
+    temp = file.with_name(f'{file.name}.{os.getpid()}.{threading.get_ident()}.tmp')
+    temp.write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    os.replace(temp, file)
 
 
 SLICE = 5   # countries per proposal call; a region's countries are split into equal slices, each asked (26 Oct 2026: Europe = its first 5 only)
@@ -160,7 +164,7 @@ def _together(calls):
     """What each of `calls` returns, in the calls' order (None for one that raised), asked together on the engine's own number of AI slots.
     Why (#2920, 7 Nov 2026): the field call and the slices' calls share no answer but were asked one after the other: on the Codex relay
     the field ended at 87 s and the slice at 109-123 s, so the boards were read with 12-25 s left (19 of 20 runs of the 7 Nov search
-    check: "Time is up for job boards: 5-6 boards wait"). A call is a whole _field/_proposal (their cache write is under _STORE)."""
+    check: "Time is up for job boards: 5-6 boards wait"). A call is a whole _field/_proposal (their cache write is under STORE)."""
     from . import engine, slots
     out = [None] * len(calls)
     with ThreadPoolExecutor(max_workers=max(1, min(len(calls), engine.PARALLEL))) as pool:
@@ -188,7 +192,7 @@ def _field(asked, client=None):
     if answer is None:
         return None
     found = list({b['host']: b for b in (valid({**item, 'source_kind': item.get('source_kind') or 'sector'}) for item in answer if isinstance(item, dict)) if b}.values())[:MAX_BOARDS]
-    with _STORE:
+    with STORE:
         data = load()
         data.setdefault('ideas', {})[key] = found
         save(data)
@@ -228,7 +232,7 @@ def _proposal(asked, client=None):
     if answer is None:
         return None   # no AI: the boards other installs found for these countries
     found = list({b['host']: b for b in (valid(item) for item in answer) if b}.values())[:MAX_BOARDS]
-    with _STORE:
+    with STORE:
         data = load()
         data.setdefault('ideas', {})[key] = found
         save(data)
