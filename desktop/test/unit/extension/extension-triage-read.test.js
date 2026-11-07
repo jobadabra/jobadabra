@@ -149,17 +149,27 @@ test('a forced poll waits for an in-flight alarm then makes its own extension re
   assert.equal(calls, 2, 'the forced poll made a new request after the alarm');
 });
 
-// #3519: the app and the Jobs dialog learn which step a read is on; the report is the last thing posted and the step posts never wait for or fail the read.
-test('a usable form is reported as planning before its answer, and a failing step post never loses the read', async t => {
+// #3519: the app learns which step a read is on; the report is the last thing posted and a step post never waits for or fails the read.
+test('a usable form posts planning before its report, and a step post the app never answers does not lose the read', async t => {
   const {posted, removed} = install(t);
   const {backgroundFormReady} = await import('../../../../extension/background-apply.js');
-  const base = globalThis.fetch;
+  const answered = globalThis.fetch;
   t.mock.method(globalThis, 'fetch', async (url, init) => {
-    if (JSON.parse(init?.body || '{}').action === 'triage-step') throw new Error('the app did not answer');
-    return base(url, init);
+    const body = JSON.parse(init?.body || '{}');
+    if (body.action === 'triage-step') { posted.push({url: String(url), body}); throw new Error('the app did not answer'); }
+    return answered(url, init);
   });
   await backgroundFormReady({id: 7, url: 'https://jobs.example.test/a'}, 0, {answer: 'ready', botCheck: false, loginWall: false, accountCreation: false});
-  const actions = posted.map(call => call.body.action);
-  assert.equal(actions.at(-1), 'triage-read', 'the report comes last');
+  assert.deepEqual(posted.filter(call => ['triage-step', 'triage-read'].includes(call.body.action)).map(call => [call.body.action, call.body.step]), [['triage-step', 'planning'], ['triage-read', undefined]]);
   assert.deepEqual(removed, [7], 'the read still ended and closed its tab');
+});
+
+test('a page that is a form posts judging before the judge is asked, and a bot check or a page that is not a form posts no step', async t => {
+  const {posted} = install(t);
+  const {backgroundRead} = await import('../../../../extension/background-apply.js');
+  await backgroundRead({id: 7, url: 'https://jobs.example.test/a'}, {kind: {botCheck: true}, role: 'form'});
+  await backgroundRead({id: 7, url: 'https://jobs.example.test/a'}, {kind: {}, role: 'posting'});
+  assert.deepEqual(posted.filter(call => call.body.action === 'triage-step'), []);
+  await backgroundRead({id: 7, url: 'https://jobs.example.test/a'}, {kind: {}, role: 'form'}).catch(() => {});
+  assert.deepEqual(posted.filter(call => call.body.action === 'triage-step').map(call => call.body.step), ['judging']);
 });
