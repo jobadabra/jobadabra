@@ -177,3 +177,10 @@ test('Apply answers only after the job is marked Applying, and a failed mark sti
   const failed = await apply.applyOne({}, `${URL1}-2`, {company: 'OpenAI'}, {...harness().options, run: async () => { throw new Error('store down'); }, id: () => 'f9'});
   assert.equal(failed.ok, true);
 });
+
+// #3532: Show only makes and reads the job-site password (no clipboard step to fail on a host with no helper, no secret left on the clipboard); Copy is the one that copies.
+test('Settings\' Show asks the engine for the job-site password without the clipboard, Copy with it', async () => {
+  const {runArgs} = await import('../../../lib/site-password.js');
+  assert.deepEqual(runArgs('show'), ['src.ai.passwords', 'shared', '--no-copy']);
+  assert.deepEqual(runArgs('copy'), ['src.ai.passwords', 'shared']);
+});
