@@ -24,11 +24,20 @@ export function testerReport(input = {}, at = new Date()) {
   return {report: {title, journey: text(input.journey) || 'none', severity, expected, seen, steps, at: at.toISOString()}};
 }
 
-/** The lines whose ISO timestamp (the first token, lib/log.js format) is within `minutes` of `at`; a line with no timestamp (a wrapped one) is dropped. -> lines, oldest first */
+/**
+ * The lines within `minutes` of `at`. A line's time is its own ISO timestamp (the first token, lib/log.js format), else the time of the last timed line above it: engine.log holds the engine's raw output between
+ * two timed run markers (lib/engine-log.js), and a wrapped line belongs to the line it wraps. A line before any timed line is dropped. -> lines, oldest first
+ * Why (Gitar on #3406): keeping only timed lines left just the run markers of engine.log and none of what the engine printed.
+ */
 export function windowLines(lines, at, minutes = WINDOW_MINUTES) {
   const centre = at instanceof Date ? at.getTime() : Date.parse(at);
   if (!Number.isFinite(centre)) return [];
-  return (Array.isArray(lines) ? lines : []).filter(line => { const time = Date.parse(String(line).split(' ', 1)[0]); return Number.isFinite(time) && Math.abs(time - centre) <= minutes * 60000; });
+  let last = NaN;
+  return (Array.isArray(lines) ? lines : []).filter(line => {
+    const own = Date.parse(String(line).split(' ', 1)[0]);
+    if (Number.isFinite(own)) last = own;
+    return Number.isFinite(last) && Math.abs(last - centre) <= minutes * 60000;
+  });
 }
 
 /**

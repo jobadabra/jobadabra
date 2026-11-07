@@ -9,7 +9,8 @@ export function drawTester(tester) {
   $('app-feedback-tester').hidden = !tester;
   $('app-feedback-person').hidden = !!tester;
   $('app-feedback-text').placeholder = tester ? 'A short title for the bug' : 'e.g. Setup took 20 minutes; the Notion step was unclear…';
-  if (!tester) for (const id of IDS) $(`app-feedback-tester-${id}`).value = '';
+  for (const id of IDS) $(`app-feedback-tester-${id}`).value = '';   // every open is a new bug (Gitar on #3406): the last one's words never ride on the next bundle
+  $('app-feedback-tester-severity').value = 'medium';
 }
 
 /** The report the fields hold, in the shape `sendTesterBug` takes. */
