@@ -7,4 +7,4 @@ Why (7 Nov 2026, owner: "I'd like to have the twin icon everywhere"; #3366): on 
 
 - Building the Mac app needs `actool` from Xcode 26 or later (electron-builder runs it); the release runner (`macos-latest`, macOS 26 image, Xcode 26.6) has it. A Mac with only the Command Line Tools cannot run `npm run build`.
 - The release job checks the built app carries `Assets.car` and `CFBundleIconName` (`.github/workflows/desktop.yml`, Compile step).
-- To redraw: change `icon.png`, regenerate the layer (the dark part only, alpha = how dark, cropped to the 824 px square and scaled to 1024), keep the fill the same yellow.
+- To redraw: change the vector mark (`tools/brand_mark.py`) and run `python3 tools/brand.py`: it writes `icon.png` and, through `tools/brand_icon.py`, the layer (`icon.icon/Assets/foreground.png`: the dark shapes, alpha = how dark, placed as in the 824 px tile and scaled to 1024) and the fill colour in `icon.json`. Never edit those two by hand (Gitar, #3510).
