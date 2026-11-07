@@ -125,15 +125,16 @@ async function waitingBatch(locale, count) {
   return {settings, sent};
 }
 
+function assertWaitingBatch(locale, count, {settings, sent}) {
+  assert.equal(sent.length, count ? 1 : 0);
+  if (!count) {assert.equal(settings.waitingMessageAt, undefined); return;}
+  assert.ok(sent[0].subject.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${sent[0].subject}`);
+  assert.equal(sent[0].text.split('\n').length, count); assert.doesNotMatch(sent[0].subject, /\{/);
+  if (locale === 'ru') assert.match(sent[0].subject, [1, 21].includes(count) ? /заявка ждёт/ : [2, 1234].includes(count) ? /заявки ждут/ : /заявок ждут/);
+}
+
 test('actual waiting batches retain count plural categories and grouping across every language', async () => {
-  for (const locale of locales) for (const count of [0, 1, 2, 5, 21, 1234]) {
-    const {settings, sent} = await waitingBatch(locale, count);
-    assert.equal(sent.length, count ? 1 : 0);
-    if (!count) {assert.equal(settings.waitingMessageAt, undefined); continue;}
-    assert.ok(sent[0].subject.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${sent[0].subject}`);
-    assert.equal(sent[0].text.split('\n').length, count); assert.doesNotMatch(sent[0].subject, /\{/);
-    if (locale === 'ru') assert.match(sent[0].subject, [1, 21].includes(count) ? /заявка ждёт/ : [2, 1234].includes(count) ? /заявки ждут/ : /заявок ждут/);
-  }
+  for (const locale of locales) for (const count of [0, 1, 2, 5, 21, 1234]) assertWaitingBatch(locale, count, await waitingBatch(locale, count));
 });
 
 test('desktop catalogs align named interpolation and complete plural categories for every language', async () => {
