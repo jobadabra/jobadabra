@@ -480,7 +480,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   terminals.onChange(watchSessions(toWindow));   // lib/session-journal.js: the live step log
   registerExtServerHandlers({DEMO, app, createWindow, cvOf, flow, ipcMain, notify, readSites, scoreVisitJobs, sessionNeedsYou, storage, getTelemetry: () => telemetry, toWindow, getWindow: () => window,
     setRecipeReporter: value => { recipeReporterRef = value; }});   // lib/ext-server-handlers.js
-  registerBackgroundHandlers({BrowserWindow, DEMO, announceRuns, app, backupNow, checkForUpdate, cloud, dialog, focusReminder, log, notify, powerMonitor, restartTelegram, resumeQueue, shell, skipUntilNotion, storage, syncCv, toWindow});   // lib/background-handlers.js
+  registerBackgroundHandlers({BrowserWindow, DEMO, announceRuns, app, backupNow, checkForUpdate, cloud, dialog, focusReminder, log, notify, powerMonitor, restartTelegram, resumeQueue, shell, skipUntilNotion, storage, syncCv, toWindow, updatedAtStart: /updated from/.test(firstStart || '')});   // lib/background-handlers.js
 }});
 
 // Focus reminders at 11:00, 15:00 and 19:00 (this Mac's time), once per slot: a notification and a Telegram
