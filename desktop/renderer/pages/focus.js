@@ -98,7 +98,7 @@ function dismiss(item) {
   settled.set(itemKey(item), Date.now() + HOLD_MS);
   keepHolds();
   if (lastFocus) renderFocus(lastFocus);
-  focusStatus('Saving…', true);
+  focusStatus(t('pagesFieldsStatus.saving'), true);
 }
 // A question answered in a dialog (Which job?) leaves the list at once too; undone if Notion refuses it.
 export const holdItem = item => dismiss(item);
@@ -124,7 +124,7 @@ export function loadFocus() {
   if (gatedOut('focus')) return Promise.resolve();   // behind the Notion gate: nothing reads it (#410)
   focusLoading ||= loadFocusOnce().catch(error => {
     // Never a blank page: say what went wrong where the list goes.
-    focusStatus('Could not load');
+    focusStatus(t('pagesFieldsStatus.loadFailed'));
     const li = el('li', 'focus-item muted');
     li.textContent = plainError(isOutdated(error) ? OUTDATED_LINE : `Focus could not load: ${error?.message || error}. Try Refresh.`);
     if (isOutdated(error)) li.append(' ', restartButton());
@@ -134,7 +134,7 @@ export function loadFocus() {
 }
 async function loadFocusOnce() {
   $('focus-refresh').disabled = true;
-  focusStatus('Syncing your jobs…', true);
+  focusStatus(t('pagesFieldsStatus.syncJobs'), true);
   const setting = await window.pilot.dailyTarget();
   showTarget(setting.target);
   $('focus-remind').checked = setting.reminders;
@@ -250,7 +250,7 @@ function showHistory(on) {
 const dayOf = iso => {
   const day = new Date(iso), today = new Date();
   const diff = Math.round((new Date(today.toDateString()) - new Date(day.toDateString())) / 86400000);
-  return diff === 0 ? t('pagesCommon.today') : diff === 1 ? 'Yesterday' : displayDate(day, {weekday: 'short', day: 'numeric', month: 'short'});
+  return diff === 0 ? t('pagesCommon.today') : diff === 1 ? t('pagesFieldsStatus.yesterday') : displayDate(day, {weekday: 'short', day: 'numeric', month: 'short'});
 };
 async function loadHistory() {
   const list = $('focus-history');

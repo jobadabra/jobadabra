@@ -72,7 +72,7 @@ export function refreshCv() {
   $('cv-meta').textContent = cvName && cvAddedAt ? `Added ${displayDate(new Date(cvAddedAt), {day: 'numeric', month: 'short'})}` : '';
   $('cv-choose').classList.toggle('primary', !cvName);   // chosen: Replace is quiet, Continue is the one primary
   $('cv-choose').classList.toggle('secondary', !!cvName);
-  $('cv-choose-label').textContent = cvName ? t('pagesStatus.replaceCv') : `Choose your CV (${kinds})…`;
+  $('cv-choose-label').textContent = cvName ? t('pagesStatus.replaceCv') : t('pagesDynamicActivity.m17', {"kinds": kinds});
   $('cv-kinds').textContent = `· ${kinds}`;
   $('cv-next').disabled = !shared.state.hasCv;
   if (cvName) showCvEmail(undefined, toastMessage); else show($('cv-email'), false);   // the CV's address and the e-mail line (pages/cv-email-consent.js)
@@ -101,14 +101,14 @@ export async function buildDraft() {
   $('draft-part').textContent = t('pagesStatus.readingCv'); $('draft-percent').textContent = ''; $('draft-bar').style.width = '2%';
   const clock = setInterval(() => {
     const seconds = Math.round((Date.now() - started) / 1000);
-    $('draft-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} so far. Usually 1 to 2 minutes; you can leave this window open and wait.`;
+    $('draft-time').textContent = t('pagesDynamicActivity.m18', {"value1": Math.floor(seconds / 60), "value2": String(seconds % 60).padStart(2, '0')});
   }, 1000);
   try {
     shared.draft = await window.pilot.draftStrategy(answers);
   } catch (error) {
     clearInterval(clock);
     showDraftIntro();  // the note stays, Build tries again
-    $('draft-error').textContent = `Couldn't draft your strategy: ${humanError(error.message.replace(/^Error invoking remote method '[^']+': /, ''))}`;
+    $('draft-error').textContent = t('pagesDynamicActivity.m19', {"humanError": humanError(error.message.replace(/^Error invoking remote method '[^']+': /, ''))});
     show($('draft-error'));
     return;
   }

@@ -23,7 +23,7 @@ function savedLine(id, words, file) {
   const line = $(id);
   line.className = 'message ok';
   const link = document.createElement('button');
-  link.className = 'arrow-link'; link.textContent = osText('Show in Finder');   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
+  link.className = 'arrow-link'; link.textContent = osText(t('pagesFieldsStatus.showFinder'));   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
   link.addEventListener('click', () => window.pilot.showFile(file));
   line.replaceChildren(`${words} ${file.split(/[\\/]/).pop()} `, link);
 }
@@ -84,7 +84,7 @@ export async function init() {
   $('export-data').addEventListener('click', async () => {
     // Notion data is not exported: it stays in Notion, with Notion's own history, Duplicate, Export and Move (owner, 8 Oct 2026)
     const result = await window.pilot.exportProfile({keys: $('export-keys').checked, accounts: $('export-accounts').checked});
-    if (result.ok) savedLine('data-message', 'Exported ✓', result.file);
+    if (result.ok) savedLine('data-message', t('pagesFieldsStatus.exported'), result.file);
     else if (result.cancelled) message('data-message', t('pagesProfile.exportCancelled'), 'waiting');
     else if (result.error) message('data-message', `Export failed: ${result.error}`, 'error');
   });
@@ -129,7 +129,7 @@ export async function init() {
   showBackup();
   $('backup-now').addEventListener('click', async () => {
     const result = await window.pilot.backupNow();
-    if (result.ok) savedLine('data-message', 'Backed up ✓', result.file);
+    if (result.ok) savedLine('data-message', t('pagesFieldsStatus.backedUp'), result.file);
     else message('data-message', result.error === 'cancelled' ? t('pagesProfile.backupCancelled') : `Backup failed: ${result.error}`, result.error === 'cancelled' ? 'waiting' : 'error');
     showBackup();
   });

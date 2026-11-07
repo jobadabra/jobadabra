@@ -13,8 +13,8 @@ const mail = createMailState(window.pilot, () => draw(), {
   saved: result => { if (result.addressSaved) window.dispatchEvent(new Event('notify-refresh')); },   // e-mail is on now: the Email switch and every row read the state again
 });   // window.pilot is the bridge object: its methods are read at call time
 // What each row says in the app, in the person's words (the website's `when` is Admin's wording: "the person's day, Mondays by default").
-const WHEN = {'app-matches': 'When a search finds new jobs', 'app-needs-you': 'When an application is waiting for you', 'app-applied': 'When Full automation sends an application', 'app-weekly': 'Your week in one e-mail, on Mondays',
-  'app-stopped': 'When Always on stops working', 'app-nothing': 'When days pass with no new match'};
+const WHEN = {'app-matches': t('pagesExtraLabels.newJobsNotify'), 'app-needs-you': t('pagesExtraLabels.waitingNotify'), 'app-applied': t('pagesExtraLabels.fullAutoNotify'), 'app-weekly': t('pagesExtraLabels.weeklyEmail'),
+  'app-stopped': t('pagesExtraLabels.alwaysStopsNotify'), 'app-nothing': t('pagesExtraLabels.noMatchesNotify')};
 // The mails the Mac writes in every mode (an application waits, Full automation applied): they come from the Mac even when the card's line says Always on.
 const FROM_MAC = ['app-needs-you', 'app-applied'];
 const sentence = text => (text ? text[0].toUpperCase() + text.slice(1) : '');

@@ -79,7 +79,7 @@ export const readConnection = () => refreshConnection();
 /** The press with its toast, for the Focus and Jobs row and ⌘K: says what was copied and whether the app opened. */
 export async function pressDesktopAi() {
   const done = await copyDesktopAi(questionsNow().desktopAi?.family);
-  seams.toast(done.ok ? 'Instruction copied ✓' : 'Nothing copied', done.text, done.ok ? 'good' : 'warn');
+  seams.toast(done.ok ? t('pagesFieldsStatus.instructionCopied') : t('pagesFieldsStatus.nothingCopied'), done.text, done.ok ? 'good' : 'warn');
 }
 
 /**

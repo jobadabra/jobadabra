@@ -20,7 +20,7 @@ const keyOf = change => (change.op === 'append' || change.op === 'insert' ? `${c
 // (save-bar.js pageSaveBar: Profile's profileBar, Strategy's), the tab it sits on and the card's name in "N unsaved changes in <label>".
 export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange = () => {}, bar, tab = '', label = ''} = {}) {
   // No page bar yet (Strategy before its cards are drawn, a unit test): the shared bar in this card, never buttons of its own.
-  bar ||= pageSaveBar({host: body.parentNode, area: label || 'this card', words: 'Your changes are kept as a draft until you save.'});
+  bar ||= pageSaveBar({host: body.parentNode, area: label || t('pagesExtraLabels.thisCard'), words: 'Your changes are kept as a draft until you save.'});
   const pending = Object.fromEntries(names.map(name => [name, new Map()]));
   let state = {items: {}, store: '', link: {}};
   const size = () => names.reduce((sum, name) => sum + pending[name].size, 0);

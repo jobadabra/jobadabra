@@ -29,7 +29,7 @@ const EXT_LINE = {
   idle: 'Installed in Chrome, connecting to this app. If it stays amber, press Connect the extension below and then Connect to the Jobadabra app.',
   off: 'Installed in Chrome but turned off: switch it back on in chrome://extensions.',
   absent: 'Not installed in Chrome yet: Add to Chrome below takes a minute.',
-  checking: 'Looking for it in Chrome…',
+  checking: t('pagesFieldsStatus.lookingChrome'),
 };
 let browserApp = 'Google Chrome';  // the browser the extension is (or will be) installed in, from the app
 
@@ -42,7 +42,7 @@ function drawCard(state) {
   $('ext-line').textContent = inBrowser(EXT_LINE[state.state] || EXT_LINE.absent, browserApp);
   show($('ext-connect'), state.state === 'idle');
   foldFollows($('ext-setup'), state.state, state.state !== 'connected');
-  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: t('pagesDetails.installExtension')};
+  const SUMMARY = {connected: t('pagesFieldsStatus.reinstall'), absent: t('pagesDetails.installExtension')};
   $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || t('pagesConnections.troubleshoot');
 }
 

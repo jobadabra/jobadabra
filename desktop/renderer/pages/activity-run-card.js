@@ -64,7 +64,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // internal and never drawn; the digest's open, in-your-places and applied counts are not shown either (owner, 24 Oct 2026: "Do we need them? I don't think so"). The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
     const fresh = runNewCount(run, card);
     // In the run panel the card's top says the number (run-result-card.js): the bottom never says it again.
-    if (target.id !== 'activity-card') stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
+    if (target.id !== 'activity-card') stats.append(stat(fresh, t('pagesDynamicActivity.m33', {count: fresh})));
     // A run that found nothing new lists no jobs: the digest's "top matches" are the best open jobs from any run, and shown here they read as
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
@@ -101,8 +101,8 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
       : fresh ? t('pagesActivityMore.inJobs') : t('pagesActivityMore.runNothingNew')));
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
-    if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));
-    const words = !total || nothingNew ? t('pagesExtraCommon.openJobs') : !here ? t('pagesExtraCommon.viewJobs') : here === total ? `View all ${total} in Jobs →` : `View ${here} in Jobs →`;
+    if (here && here < total) rows.append(el('li', 'muted', t('pagesDynamicActivity.m34', {"value1": total - here, "total": total, count: total - here})));
+    const words = !total || nothingNew ? t('pagesExtraCommon.openJobs') : !here ? t('pagesExtraCommon.viewJobs') : here === total ? t('pagesDynamicActivity.m35', {"total": total}) : t('pagesDynamicActivity.m36', {"here": here});
     const view = el('button', 'link run-card-view', words);
     // In the run panel the card's top offers it ("See the N new jobs" presses this button): the bottom does not show it again.
     view.hidden = target.id === 'activity-card';
@@ -120,18 +120,17 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   } else {
     // New to the search or checked again after its wait: a run never re-reads the same list (an older message has neither number).
     // Every count says its word for 1 and for many (7 Oct 2026: "1 new job feeds"); the bottom line says why some were set aside.
-    const s = n => (n === 1 ? '' : 's');
     // The one number: the employers this run added. Nothing else is shown (checked, checked again, set aside).
     // In the run panel the card's top says it (run-result-card.js WORDS.scout).
-    if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
+    if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, t('pagesDynamicActivity.m37', {count: card.fresh ?? 0})));
     heading = t('pagesExtraCommon.newEmployers');
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');
     rows.append(...card.items.slice(0, all ? undefined : 5).map(item => {
       const row = el('li', 'run-card-row');
       const words = el('span', 'run-card-words');
-      words.append(el('b', '', item.company), el('span', 'muted', [item.ats, item.roles != null && `${item.roles} matching role${item.roles === 1 ? '' : 's'}`,
-        item.yours != null && `${item.yours} in your places`].filter(Boolean).join(' · ')));
+      words.append(el('b', '', item.company), el('span', 'muted', [item.ats, item.roles != null && t('pagesDynamicActivity.m38', {"roles": item.roles, count: item.roles}),
+        item.yours != null && t('pagesDynamicActivity.m39', {"yours": item.yours})].filter(Boolean).join(' · ')));
       row.append(words, ...(item.tier ? [el('span', 'run-card-fit', item.tier.replace('Tier ', 'T'))] : []));
       return row;
     }));

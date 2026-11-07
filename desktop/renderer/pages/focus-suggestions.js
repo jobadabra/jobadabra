@@ -62,10 +62,10 @@ export const RUN = {
   read_week: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('weekly'))),
   open_rejection: (action, event) => (action.link ? openLink(action.link, event)
     : (openView('jobs'), openJobPanel({url: action.url, title: action.title, company: action.company}, 'review'))),
-  analyze: async () => started('Analyze my job search', await runCommand('weekly')),
+  analyze: async () => started(t('pagesFieldsStatus.analyzeSearch'), await runCommand('weekly')),
   tune: () => openTune(),
   find_jobs: () => { openView('jobs'); return startSearch(); },
-  tailor: async () => started('Tailor CVs', await startTailor()),
+  tailor: async () => started(t('pagesFieldsStatus.tailorCvs'), await startTailor()),
   // The next interview's prep kit, as its Up next row builds or opens it (pages/focus.js prepAction).
   prep: (_action, event) => {
     const next = focusItems().find(item => item.kind === 'prepare' && item.page_id);
@@ -120,7 +120,7 @@ const button = (label, className, run) => {
 };
 // The notification card's e-mail field and its Send button: saves the address (its confirm mail goes out), then the card asks again (`notify-changed`).
 function bindNotifyEmail(body, node) {
-  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: t('pagesPlans.saveFailed')},
+  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', t('pagesFieldsStatus.notifyWhere'), FIELD_HINT), draft: notifyDraft, words: {busy: t('pagesFieldsStatus.sendingLink'), failed: t('pagesPlans.saveFailed')},
     turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
       toastMessage(t('pagesFocusReports.inboxCheck'), `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
       window.dispatchEvent(new Event('notify-changed'));

@@ -13,9 +13,9 @@ import {weeklyCard} from './activity-cards.js';
 import {$} from './core.js';
 import {gatedOut} from './notion-connect.js';
 
-export const REPORT_TABS = [['weekly', 'Weekly report', 'weekly report search analysis priorities numbers week'],
-  ['insights', 'Insights', 'insights history daily feedback useful'], ['funnel', 'Funnel', 'funnel pipeline conversion from previous where to improve'],
-  ['fills', 'Form fills', 'form fills history runs fields timings extension'],
+export const REPORT_TABS = [['weekly', t('pagesExtraLabels.weeklyReport'), 'weekly report search analysis priorities numbers week'],
+  ['insights', t('pagesExtraLabels.insights'), 'insights history daily feedback useful'], ['funnel', t('pagesExtraLabels.funnel'), 'funnel pipeline conversion from previous where to improve'],
+  ['fills', t('pagesExtraLabels.formFills'), 'form fills history runs fields timings extension'],
   ['searches', t('pagesFocusReports.searches'), 'searches find jobs runs details numbers employers boards how the search ran full report']];
 const state = {tab: 'weekly', insights: null, week: 0, error: '', openSearch: null};
 
@@ -68,7 +68,7 @@ function feedbackChoice(item) {
   box.setAttribute('role', 'group');
   box.setAttribute('aria-label', t('pagesFocusReports.useful'));
   for (const value of ['Useful', 'Not useful', 'Acting on it']) {
-    const button = Object.assign(el('button', item.feedback === value ? 'is-active' : '', value), {type: 'button'});
+    const button = Object.assign(el('button', item.feedback === value ? 'is-active' : '', t(({'Useful': 'pagesExtraLabels.useful', 'Not useful': 'pagesExtraLabels.notUseful', 'Acting on it': 'pagesExtraLabels.acting'})[value])), {type: 'button'});
     button.setAttribute('aria-pressed', String(item.feedback === value));
     button.addEventListener('click', async () => {
       const done = await window.pilot.insightFeedback(item.id, value).catch(error => ({ok: false, error: error.message}));
@@ -105,7 +105,7 @@ async function funnelTab() {
   if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : t('pagesReadyReports.noApplications'));
   const table = el('table', 'data-table');
   const head = el('tr');
-  for (const name of ['Step', 'Reached', 'From previous', 'Of applied', 'Still open here']) head.append(el('th', '', name));
+  for (const name of [t('pagesFieldsStatus.step'), t('pagesExtraLabels.reached'), t('pagesExtraLabels.fromPrevious'), t('pagesExtraLabels.ofApplied'), t('pagesExtraLabels.stillOpen')]) head.append(el('th', '', name));
   table.append(head);
   for (const row of funnelRows(funnel)) {
     const line = el('tr');
@@ -117,7 +117,7 @@ async function funnelTab() {
   const steps = el('section', 'card');
   steps.append(table, el('p', 'muted small', t('pagesReadyReports.fromPrevious')));
   const better = el('section', 'card');
-  if (improve.length) better.append(group('💡 Where to improve', improve.map(text => ({text}))));
+  if (improve.length) better.append(group(t('pagesExtraLabels.whereImprove'), improve.map(text => ({text}))));
   return improve.length ? [steps, better] : [steps];
 }
 

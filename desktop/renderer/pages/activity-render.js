@@ -83,7 +83,7 @@ export async function unqueue(run) {
 }
 function removeLink(run) {
   const link = el('span', 'run-link', t('pagesCommon.remove'));
-  Object.assign(link, {title: `Take ${KIND[kindOf(run)].name} out of the queue: it will not start`, tabIndex: 0});
+  Object.assign(link, {title: t('pagesDynamicActivity.m21', {"name": KIND[kindOf(run)].name}), tabIndex: 0});
   link.setAttribute('role', 'button');
   const go = event => { event.preventDefault(); event.stopPropagation(); unqueue(run); };
   link.addEventListener('click', go);
@@ -112,11 +112,11 @@ export function renderActivity(fresh) {
   const liveLines = running ? shared.logLines : null;
   const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? t('pagesExtraCommon.notChecked') : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
     : gmailConnected() === false ? t('pagesExtraCommon.gmailNotChecked')   // #541: no "due now" for a check that cannot run
-    : nextMailAt ? `First Gmail check ${nextWords(nextMailAt)}` : '';
+    : nextMailAt ? t('pagesDynamicActivity.m22', {"nextWords": nextWords(nextMailAt)}) : '';
   if (running) {
     const kind = KIND[kindOf(running)];
     const next = (data.queued || []).length;
-    $('activity-title').textContent = kindOf(running) === 'search' ? `Finding jobs${running.where === 'github' ? ' (on GitHub)' : ''}${next ? ` · ${next} queued` : ''}`
+    $('activity-title').textContent = kindOf(running) === 'search' ? t('pagesDynamicActivity.m23', {"value1": running.where === 'github' ? t('pagesDynamicActivity.onGithub') : '', "value2": next ? t('pagesDynamicActivity.queued', {next}) : ''})
       : `${kind.icon} ${kind.name} running (${WHO[running.trigger] || running.trigger}${running.where === 'github' ? ', on GitHub' : ''})${next ? ` · ${next} queued` : ''}`;
     $('activity-step').textContent = stepWords(running.step) || t('pagesCommon.starting');
     barLabel();
@@ -127,7 +127,7 @@ export function renderActivity(fresh) {
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : t('pagesActivityMore.clickWhy')) : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
-    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [mailNote, nextSearchAt && t('pagesDynamicActivity.m24', {"nextWords": nextWords(nextSearchAt)})].filter(Boolean).join(' · ');
   } else {
     $('activity-title').textContent = t('pagesCommon.noSearch');
     $('activity-step').textContent = t('pagesActivityMore.startSearch');
@@ -165,8 +165,8 @@ export function renderActivity(fresh) {
     if (warned) button.dataset.state = 'warn';
     const words = el('span', 'run-words');
     // A run's note says what it is for beyond its kind ("Re-scoring 75 older scores", lib/pipeline.js refresh), queued, running and done.
-    words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [`Running now`, run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
-      ? [run.note, `Waiting · starts after ${run.after}`].filter(Boolean).join(' · ')
+    words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [t('pagesDynamicActivity.m25'), run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
+      ? [run.note, t('pagesDynamicActivity.m26', {"after": run.after})].filter(Boolean).join(' · ')
       : [run.note, capital(outcome(run)), WHERE[run.where]].filter(Boolean).join(' · ')));
     if (byYou(run)) words.lastChild.prepend(tag(t('pagesExtraCommon.byYouTitle'), {title: t('pagesActivityMore.youStarted')}), ' ');
     // No cost and no live log here: the list is for finding a run and seeing its state; the log and the cost are in the detail pane.
@@ -301,7 +301,7 @@ export function renderActivity(fresh) {
   const found = !run?.live && kindOf(run) === 'search' ? newJobsShown(run, shownText) : 0;   // the card's own count (run-cards.js)
   show($('activity-report'), hasFullReport({...run, kind: kindOf(run)}));   // the search's full report in Reports → Searches
   show($('activity-go'), found > 0);
-  $('activity-go').textContent = `View new job${found === 1 ? '' : 's'} →`;
+  $('activity-go').textContent = t('pagesDynamicActivity.m29', {count: found});
   // The header's one visible link, then the rest under ⋯: a Notion page is the run's record, its GitHub run the build
   // behind it. A GitHub-only run shows that link itself; with nothing else to offer there is no ⋯ at all.
   // A run's record opens only when it is a page somewhere (Notion); in the store on this Mac its link is only a key (store:cron_runs/<id>).
@@ -327,7 +327,7 @@ export function renderActivity(fresh) {
       const li = Object.assign(document.createElement('li'), {className: phaseStatus(run, i, at), textContent: phaseLabel(phase, lines)});
       // The step a stopped run was on says what it was doing and the last thing it reported.
       if (li.className === 'warn' && stepWarnings.length) li.append(el('span', 'phase-note', stepNote(stepWarnings)));   // why this step has the !
-      if (i === at && stopped) li.append(...[stopped.doing && `Stopped while ${stopped.doing}.`, stopped.last && `Last reported: ${stopped.last}`].filter(Boolean).map(text => el('span', 'phase-note', text)));
+      if (i === at && stopped) li.append(...[stopped.doing && t('pagesDynamicActivity.m30', {"doing": stopped.doing}), stopped.last && t('pagesDynamicActivity.m31', {"last": stopped.last})].filter(Boolean).map(text => el('span', 'phase-note', text)));
       return li;
     })));
   // Find jobs using your browser: a row per tab it opens in Chrome, each at its state, and how far the run is (owner, 7 Oct 2026: "right now it's a black box").

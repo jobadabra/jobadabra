@@ -99,23 +99,23 @@ function draw(model) {
     live.addEventListener('toggle', () => { liveOpen = live.open; });
     const steps = el('div', 'find-steps-row');   // the chips, with the fold's label at the right of the same row; the lines open below it
     steps.append(chips, live);
-    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
+    card.replaceChildren(findHead(t('pagesControlStatus.findingJobs'), model, model.added ? 'New matches appear below as they’re found.' : t('pagesControlStatus.firstJobs'), {spinner: true}), readProgress(model), steps);
     if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
     const head = model.partial
-      ? findHead('Search ended at the time limit', model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
-      : findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
+      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
+      : findHead(t('pagesControlStatus.searchDone'), model, 'The best matches are first. Find jobs again any time.', {done: true});
     if (model.runId) head.append(wand(button(t('pagesJobs.fullReport'), () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
     card.replaceChildren(head, again(t('pagesCommon.findAgain')));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
-    const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
+    const head = findHead(t('pagesControlStatus.findMore'), model, 'Reads your employers and job boards again, and adds what is new.');
     card.replaceChildren(head, again(t('pagesCommon.findJobs')));
   } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
     const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out
-    card.replaceChildren(findHead('Find jobs did not start', model, model.problem),
+    card.replaceChildren(findHead(t('pagesControlStatus.findNotStarted'), model, model.problem),
       label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: t('pagesCommon.findJobs'), retry: () => start()}) : openSetting('plan')), 'primary find-again') : again(t('pagesCommon.tryAgainShort')));
   } else if (model.state === 'failed') {
-    card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
+    card.replaceChildren(cardHead(t('pagesControlStatus.searchStopped'), t('pagesControlStatus.searchNotFinished'), {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button(t('pagesCommon.tryAgainShort'), () => start()));
   }
   card.removeAttribute('aria-busy');

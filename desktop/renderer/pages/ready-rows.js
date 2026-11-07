@@ -2,7 +2,7 @@
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-const WORDS = {prepared: ['complete', 'good'], partial: [t('pagesExtraCommon.needsYou'), 'warn'], wall: ['a wall', 'warn'], 'no-form': ['no form found', 'neutral'], closed: ['job closed', 'neutral'], failed: ['could not fill', 'bad'], queued: ['waiting', 'info'],
+const WORDS = {prepared: ['complete', 'good'], partial: [t('pagesExtraCommon.needsYou'), 'warn'], wall: [t('pagesExtraLabels.wall'), 'warn'], 'no-form': [t('pagesExtraLabels.noForm'), 'neutral'], closed: [t('pagesExtraLabels.jobClosed'), 'neutral'], failed: [t('pagesExtraLabels.fillFailed'), 'bad'], queued: ['waiting', 'info'],
   filling: ['filling', 'info'], stopped: ['stopped', 'neutral']};
 
 // The one rule for "ready to submit" (owner, 19 Oct 2026): a form the night filled completely and you have not submitted or deleted. The card's count, the Jobs list's chip,
@@ -26,8 +26,8 @@ export function waitingOf(jobs) {
 // A form the night still works on (owner, 18 Oct 2026: "2 rows, 2 progress bars", "a line with live updates from each row"): its badge, its live line and how far it is,
 // from the step the container reported (site src/ready-line.js STEPS). null for a form that has its result, or when its night is not running.
 // pending: the app just sent it (a row's Fill again) and the site has not shown it yet.
-const STEP = {opening: ["Opening the job's page", 15], form: ['Page open: starting the fill', 30], filling: ['Filling the form', 55],
-  answering: [n => `Answering ${n} question${n === 1 ? '' : 's'} with AI`, 70], reading: ['Reading what was filled', 90]};
+const STEP = {opening: [t('pagesExtraLabels.openingJob'), 15], form: [t('pagesExtraLabels.pageOpenFill'), 30], filling: [t('pagesExtraLabels.fillingForm'), 55],
+  answering: [n => `Answering ${n} question${n === 1 ? '' : 's'} with AI`, 70], reading: [t('pagesExtraLabels.readingFilled'), 90]};
 // why: the site's fixed word for a night whose forms wait for another reason than taking turns (site src/ready-why.js, 19 Oct 2026: "Waiting its turn" said nothing for 2 h).
 const clock = at => displayDate(new Date(at), {hour: '2-digit', minute: '2-digit', hour12: false});
 const WHY = {
@@ -46,6 +46,6 @@ export function liveOf(job, nightState, pending = false, why = null) {
     if (reason) return {badge: 'waiting', tone: 'neutral', percent: 0, since: 0, ...reason};
     return nightState === 'capped' ? null : {badge: 'waiting', tone: 'neutral', line: t('pagesReadyReports.waitingTurn'), percent: 3, since: 0};
   }
-  const [words, percent] = STEP[job.step] || ['Starting the fill', 8];
+  const [words, percent] = STEP[job.step] || [t('pagesExtraLabels.startingFill'), 8];
   return {badge: 'filling', tone: 'info', line: typeof words === 'function' ? words(job.step_n || 0) : words, percent, since: Date.parse(job.started_at || '') || 0};
 }

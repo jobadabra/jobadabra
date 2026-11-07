@@ -51,7 +51,7 @@ export async function openCvChange() {
   $('cv-profile-status').textContent = t('pagesProfile.notCompared');
   $('cv-compare').textContent = t('pagesProfile.compareProfile');
   show($('cv-cost'), true);
-  setPill('cv-profile-pill', 'Not compared', 'neutral');
+  setPill('cv-profile-pill', t('pagesFieldsStatus.notCompared'), 'neutral');
   $('cv-suggestions').replaceChildren();
   show($('cv-apply-row'), false);
   show($('cv-profile-status').parentElement, true);
@@ -60,10 +60,10 @@ export async function openCvChange() {
   if (!change.comparable) {
     $('cv-profile-text').textContent = `The previous CV is not on this computer, so there is nothing to compare. ${byStore(t('pagesProfile.editNotion'), t('pagesProfile.editProfile'))}`;
     show($('cv-profile-status').parentElement, false);
-    setPill('cv-profile-pill', 'Edit in Notion', 'neutral');
+    setPill('cv-profile-pill', t('pagesFieldsStatus.editNotion'), 'neutral');
   }
   $('cv-base-text').textContent = change.base ? t('pagesLettersData.oldCvVersion') : t('pagesLettersData.firstTailorRead');
-  setPill('cv-base-pill', change.base ? 'To update' : 'Nothing to do', change.base ? 'warn' : 'neutral');
+  setPill('cv-base-pill', change.base ? t('pagesFieldsStatus.toUpdate') : t('pagesFieldsStatus.nothingDo'), change.base ? 'warn' : 'neutral');
   show($('cv-base-actions'), change.base);
   const kits = shared.allJobs.filter(job => job.kit && job.code && job.status !== 'applied' && job.status !== 'dismissed');
   let showAll = false;
@@ -78,7 +78,7 @@ export async function openCvChange() {
         redraft.textContent = t('pagesProfile.redrafting');
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
         redraft.textContent = result.ok ? t('pagesProfile.redrafted') : t('pagesCommon.retry');
-        sayRefused('Redraft did not start', result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
+        sayRefused(t('pagesFieldsStatus.redraftNotStarted'), result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;
       });
       const name = el('div');
@@ -118,8 +118,8 @@ export async function init() {
       setVerdict('info', `${cvSuggestions.length} Profile edit${cvSuggestions.length === 1 ? '' : 's'} suggested`, `${result.summary}\nPick the ones you want below; nothing is written until you apply.`);
       setPill('cv-profile-pill', `${cvSuggestions.length} to review`, 'warn');
     } else {
-      setVerdict('good', 'No Profile edits needed', 'Your new CV matches the previous one in substance.\nRoles, dates, titles, skills, achievements and contact details are unchanged.');
-      setPill('cv-profile-pill', 'Unchanged', 'neutral');
+      setVerdict('good', t('pagesFieldsStatus.noProfileEdits'), 'Your new CV matches the previous one in substance.\nRoles, dates, titles, skills, achievements and contact details are unchanged.');
+      setPill('cv-profile-pill', t('pagesFieldsStatus.unchanged'), 'neutral');
     }
     const label = {update: [t('pagesCommon.update'), 'info'], add: [t('pagesCommon.add'), 'good'], remove: [t('pagesCommon.remove'), 'bad']};
     $('cv-suggestions').replaceChildren(...cvSuggestions.map(s => {
@@ -149,7 +149,7 @@ export async function init() {
     if (!result.ok) return message('cv-review-message', result.error, 'error');
     message('cv-review-message', result.failed.length ? `${result.applied} applied; not applied: ${result.failed.join('; ')}`
       : `✓ ${result.applied} change${result.applied === 1 ? '' : 's'} saved to your Profile${byStore(' in Notion', '')}.`, result.failed.length ? 'error' : 'ok');
-    if (!result.failed.length) { $('cv-suggestions').replaceChildren(); show($('cv-apply-row'), false); setPill('cv-profile-pill', '✓ Updated', 'good'); setVerdict('good', 'Profile updated', byStore('Your selected changes are saved in Notion.', 'Your selected changes are saved.')); }
+    if (!result.failed.length) { $('cv-suggestions').replaceChildren(); show($('cv-apply-row'), false); setPill('cv-profile-pill', '✓ Updated', 'good'); setVerdict('good', t('pagesFieldsStatus.profileUpdated'), byStore('Your selected changes are saved in Notion.', 'Your selected changes are saved.')); }
   });
   $('cv-base-read').addEventListener('click', async () => {
     const button = $('cv-base-read');

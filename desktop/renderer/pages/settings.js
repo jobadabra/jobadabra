@@ -88,7 +88,7 @@ function statusFrom({extension, google}) {
   const on = {ai: ai.on, notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     aggregators: !!((shared.state.secrets.ADZUNA_APP_ID && shared.state.secrets.ADZUNA_APP_KEY) || shared.state.secrets.JOOBLE_API_KEY), cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
     telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on};
-  const detail = {ai: aiReady() && ({cli: 'Claude Code · your plan', codex: 'Codex · your plan', openai: 'OpenAI API key'}[shared.state.settings.aiEngine] || 'Anthropic API key'), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
+  const detail = {ai: aiReady() && ({cli: t('pagesFinalLabels.claudePlan'), codex: t('pagesFinalLabels.codexPlan'), openai: t('pagesFinalLabels.openaiApiKey')}[shared.state.settings.aiEngine] || t('pagesFinalLabels.anthropicApiKey')), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
   const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': t('pagesCommon.off'), ai: ai.words};
@@ -251,7 +251,7 @@ function renderContact(contact) {
     $('ov-contact').replaceChildren(line);
     return;
   }
-  const needed = {first_name: 'first name', last_name: 'last name', email: 'email', phone: 'phone'};
+  const needed = {first_name: t('pagesFinalLabels.firstName'), last_name: t('pagesFinalLabels.lastName'), email: 'email', phone: 'phone'};
   const gaps = Object.keys(needed).filter(key => !contact[key]).map(key => needed[key]);
   const line = el('span', `service-state${gaps.length ? '' : ' is-on'}`);
   line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? t('pagesSetup.missing', {details: gaps.join(', ')}) : t('pagesCommon.complete')));
@@ -372,7 +372,7 @@ async function openCredentials() {
   table.replaceChildren(table.firstElementChild, ...rows.map(row => {
     const line = el('div', 'task-row');
     const who = el('span');
-    const details = [row.email || 'email not recorded', when(row.accountAt || row.created), ({confirmed: 'Account ready', pending: 'Waiting for the confirmation'})[row.state] || '', row.job ? (() => { try { return new URL(row.job).hostname.replace(/^www\./, ''); } catch { return ''; } })() : '']
+    const details = [row.email || t('pagesFinalLabels.emailNotRecorded'), when(row.accountAt || row.created), ({confirmed: t('pagesFinalLabels.accountReady'), pending: t('pagesFinalLabels.waitingConfirm')})[row.state] || '', row.job ? (() => { try { return new URL(row.job).hostname.replace(/^www\./, ''); } catch { return ''; } })() : '']
       .filter(Boolean).join(' · ');
     who.append(el('b', '', row.host), ...(row.test ? [el('small', 'cred-companies', t('pagesSetup.testAccount'))] : []), ...(row.unassigned ? [el('small', 'cred-companies', t('pagesSetup.unassigned'))] : []), ...(row.companies?.length ? [el('small', 'cred-companies', t('pagesSetup.forCompanies', {companies: row.companies.join(', ')}))] : []), el('small', '', details));
     const secret = el('b', '', '••••••••');

@@ -29,9 +29,9 @@ const DRAFTS = 'questionDrafts';
 // Each drawer's words (owner's sketch, 28 Oct 2026).
 export const DRAWERS = {
   details: {title: t('pagesProfileMore.fillDetails'), lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
-    done: 'Your details are complete', doneText: 'A detail shows here when a form asks for one you have not given.'},
-  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: 'Save change',
-    done: 'Nothing to check', doneText: 'A question shows here when a form asks something your answers do not cover.'},
+    done: t('pagesExtraLabels.detailsComplete'), doneText: 'A detail shows here when a form asks for one you have not given.'},
+  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
+    done: t('pagesExtraLabels.nothingCheck'), doneText: 'A question shows here when a form asks something your answers do not cover.'},
 };
 const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
 const drafts = new Map();
@@ -84,9 +84,9 @@ function dismissAction(q, mine) {
     button.addEventListener('click', () => dismiss(q, on));
     return button;
   };
-  if (q.dismissed) return [make('qr-bring-back', 'Bring this question back', 'undo', t('pagesProfileMore.askedAgain'), false)];
+  if (q.dismissed) return [make('qr-bring-back', t('pagesExtraLabels.bringQuestion'), 'undo', t('pagesProfileMore.askedAgain'), false)];
   const pick = mine && ['which', 'conflict', 'where'].includes(mine.kind);
-  return pick || state.aside ? [] : [make('qr-dismiss', 'Dismiss this question', 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
+  return pick || state.aside ? [] : [make('qr-dismiss', t('pagesExtraLabels.dismissQuestion'), 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
 }
 
 function question(q) {
@@ -312,6 +312,6 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape' && st
 /** The source pill of a Your details item: a contact detail says how many forms ask it, any other kind why it is in the queue. */
 const sourceWords = mine => (mine.kind === 'contact' ? askWords(mine) : mine.source);
 /** The line over the answer box: a suggested answer, or what the item asks (a contact detail by its rating, see question-nav.js askWords). */
-const kindWords = (suggested, mine) => (suggested ? 'Suggested from saved answer' : askWords(mine || {}, t('pagesCommon.missingAnswer')));
+const kindWords = (suggested, mine) => (suggested ? t('pagesExtraLabels.suggestSaved') : askWords(mine || {}, t('pagesCommon.missingAnswer')));
 /** The label over the answer control: a pick between existing values, or a written answer. */
-const answerLabel = mine => (['which', 'where'].includes(mine?.kind) ? 'Your pick' : t('pagesCommon.yourAnswer'));
+const answerLabel = mine => (['which', 'where'].includes(mine?.kind) ? t('pagesExtraLabels.yourPick') : t('pagesCommon.yourAnswer'));

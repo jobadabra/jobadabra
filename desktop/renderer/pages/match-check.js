@@ -5,8 +5,8 @@ import {el, pill} from '../components.js';
 import {costText, dollars} from '../ai-cost.js';
 import {$, message, runWhen, show} from './core.js';
 
-const FOUND = {found: ['Stated', 'good'], implied: ['Only implied', 'warn'], bank: ['In your bank', 'good'], missing: ['Not mentioned', 'bad']};
-const KNOCK = {ok: ['Supported', 'good'], check: ['Confirm it', 'warn'], conflict: ['May conflict', 'bad']};
+const FOUND = {found: [t('pagesExtraLabels.stated'), 'good'], implied: [t('pagesExtraLabels.implied'), 'warn'], bank: [t('pagesExtraLabels.inBank'), 'good'], missing: [t('pagesExtraLabels.notMentioned'), 'bad']};
+const KNOCK = {ok: [t('pagesExtraLabels.supported'), 'good'], check: [t('pagesExtraLabels.confirm'), 'warn'], conflict: [t('pagesExtraLabels.mayConflict'), 'bad']};
 let current = null;
 
 function row(label, tone, title, detail) {

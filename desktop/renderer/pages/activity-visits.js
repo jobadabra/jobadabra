@@ -52,12 +52,12 @@ function claudeSiteEnded(url, said) {
   shown?.append(el('span', 'muted visit-claude-error', said));
 }
 window.pilot?.onVisitClaudeDone?.(result => {
-  claudeReadEnded(result.url, `Claude read ${result.jobs} job${result.jobs === 1 ? '' : 's'}${(result.urls || []).length > 1 ? ` from ${result.urls.length} sites` : ''}, ${result.fits} matching your search`);
-  toastMessage(`Claude read ${result.jobs} jobs from ${result.name || 'the site'}, ${result.fits} matching your search`,
+  claudeReadEnded(result.url, t('pagesDynamicActivity.m40', {"jobs": result.jobs, "value3": (result.urls || []).length > 1 ? t('pagesDynamicActivity.fromSites', {count: result.urls.length}) : '', "fits": result.fits, count: result.jobs}));
+  toastMessage(t('pagesDynamicActivity.m41', {"jobs": result.jobs, "value2": result.name || t('pagesDynamicActivity.site'), "fits": result.fits}),
     result.fits ? t('pagesActivityMore.matchingScored') : t('pagesActivityMore.noneMatch'), {view: 'jobs'}, 'good');
 });
 window.pilot?.onSession?.((event, payload) => {   // a session that stopped without finishing (closed, failed)
-  if (event === 'update' && payload?.kind === 'read' && ['ended', 'failed'].includes(payload.status)) claudeReadEnded(payload.url, `Claude's session ${payload.status === 'failed' ? 'stopped' : 'ended'} before it finished`);
+  if (event === 'update' && payload?.kind === 'read' && ['ended', 'failed'].includes(payload.status)) claudeReadEnded(payload.url, t('pagesDynamicActivity.m42', {"value1": payload.status === 'failed' ? t('pagesDynamicActivity.stopped') : t('pagesDynamicActivity.ended')}));
 });
 
 // A stopped site's "Read with Claude", the same in the result card's list and in the run's site rows (siteRow): one key per site, so a
@@ -93,14 +93,14 @@ export function viewJobsButton(site, text, since) {
   if (fresh < 2) return null;
   const button = el('button', 'link item-action', t('pagesStatus.viewJobs'));
   button.type = 'button';
-  button.title = `Opens Jobs, only what this run added from ${site.name}`;
+  button.title = t('pagesDynamicActivity.m43', {"name": site.name});
   button.addEventListener('click', () => {
     const from = Date.parse(since || '') || 0;
     const urls = (shared.allJobs || []).filter(job => sameCompany(job.company, site.name) && (!from || Date.parse(job.first_seen_at) >= from - 60000)).map(job => job.url);
-    if (!urls.length) { toastMessage(`No new job from ${site.name} in Jobs`, `${fresh} were read, but none fit your search and profile, so none joined your Jobs list.`, {activity: true}, 'info'); return; }
+    if (!urls.length) { toastMessage(t('pagesDynamicActivity.m44', {"name": site.name}), t('pagesDynamicActivity.m45', {"fresh": fresh}), {activity: true}, 'info'); return; }
     openActivity(false);
     openView('jobs');
-    showJobsIn(`New from ${site.name}`, urls, 'activity');
+    showJobsIn(t('pagesDynamicActivity.m46', {"name": site.name}), urls, 'activity');
   });
   return button;
 }
@@ -115,13 +115,13 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
   // The reading works, said first; how many reach Jobs beside it (owner). How many reach Jobs, said plainly (owner, 7 Oct 2026: "Read 5 jobs, but
   // my Jobs count never grows"): only those with your role words and places. Postings only your browser could open (lib/visits.js readPostings):
   // how many were read, said under the sites' line; scored with them above.
-  const head = cardHead(t('pagesExtraCommon.sitesOnlyYou'), onlyPostings ? `Read ${card.postings.read} of ${plural(card.postings.asked, 'job')} we couldn't read` : card.fits === null ? `Read ${card.read} of ${plural(card.total, 'site')} · ${plural(card.jobs, 'job')} (${card.fresh} new)`
-    : `Read ${plural(card.jobs, 'job')}, ${card.fits} matching your search`, {subtitles: [card.fits === null ? 'Your next jobs check filters and scores them like any other.'
+  const head = cardHead(t('pagesExtraCommon.sitesOnlyYou'), onlyPostings ? t('pagesDynamicActivity.m47', {"read": card.postings.read, "plural": plural(card.postings.asked, 'job')}) : card.fits === null ? `Read ${card.read} of ${plural(card.total, 'site')} · ${plural(card.jobs, 'job')} (${card.fresh} new)`
+    : t('pagesDynamicActivity.m48', {"plural": plural(card.jobs, 'job'), "fits": card.fits}), {subtitles: [card.fits === null ? 'Your next jobs check filters and scores them like any other.'
     : `From ${card.read} of ${plural(card.total, 'site')}. ` + (card.fits && card.listed !== null && card.listed !== undefined
-      ? `Scored before this run ended: ${plural(card.listed, 'job')} added to your Jobs list${card.listed < card.fits ? ' (the others did not fit your profile, or were there already)' : ''}.`
+      ? t('pagesDynamicActivity.m49', {"plural": plural(card.listed, 'job'), "value2": card.listed < card.fits ? t('pagesDynamicActivity.othersNotAdded') : ''})
       : card.fits ? (card.fits === 1 ? 'The matching one is being scored now (about a minute, first in line): if it fits your profile, it joins your Jobs list.' : 'The matching ones are being scored now (about a minute, first in line): those that fit your profile join your Jobs list.')
       : t('pagesActivityMore.noneMatch')),
-    card.postings && !onlyPostings && `Jobs we couldn't read: ${card.postings.read} of ${card.postings.asked} read in your browser, scored with the rest.`]});
+    card.postings && !onlyPostings && t('pagesDynamicActivity.m50', {"read": card.postings.read, "asked": card.postings.asked})]});
   // Two or more stopped sites: one Claude session reads them all, in turn (owner, 7 Oct 2026: "a 'Read the failed sites with Claude' button").
   const stopped = card.sites.filter(site => !site.ok).slice(0, 10);   // one session reads at most 10 (main.js visitsWithClaude)
   const allStopped = card.sites.filter(site => !site.ok).length;
@@ -129,7 +129,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
   // Run again, the stopped sites ticked (owner, 8 Oct 2026: a run that read 2 of 4 had no Run again): the dialog opens with them, as the failure
   // box's Run again does for a failed run (shared.visitsPreselect, pages/actions.js).
   if (allStopped && card.sites.some(site => site.ok)) {
-    const again = el('button', 'secondary', `Run again on the ${allStopped === 1 ? 'stopped site' : `${allStopped} stopped sites`}`);
+    const again = el('button', 'secondary', t('pagesDynamicActivity.m51', {"value1": allStopped === 1 ? t('pagesDynamicActivity.stoppedSite') : t('pagesDynamicActivity.m52', {allStopped})}));
     again.type = 'button';
     again.title = t('pagesActivityMore.openBrowserFind');
     again.addEventListener('click', () => {
@@ -139,7 +139,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     ways.append(again);
   }
   if (stopped.length > 1 && resumeOffered()) {   // only with Claude help on (claude-help.js)
-    const idle = allStopped > stopped.length ? `Read the first ${stopped.length} of ${allStopped} stopped sites with Claude` : `Read the ${stopped.length} stopped sites with Claude`;
+    const idle = allStopped > stopped.length ? t('pagesDynamicActivity.m53', {"length": stopped.length, "allStopped": allStopped}) : t('pagesDynamicActivity.m54', {"length": stopped.length});
     const all = el('button', 'secondary', idle);
     all.type = 'button';
     all.title = t('pagesActivityMore.manySitesClaude');
@@ -149,7 +149,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     all.addEventListener('click', async () => {
       const started = await pressWhile(key, t('pagesCommon.startingClaude'), () => window.pilot.visitsWithClaude(stopped.map(site => ({url: site.url, name: site.name})))).catch(error => ({ok: false, error: error.message}));
       if (!started?.ok) { setPress(key, {text: idle, error: plainError(started?.error || t('pagesCommon.claudeFailed'))}); toastMessage(t('pagesStatus.claudeNotStarted'), started?.error || '', {activity: true}, 'bad'); return; }
-      setPress(key, {done: true, text: `Claude is reading ${stopped.length} sites in Chrome`});
+      setPress(key, {done: true, text: t('pagesDynamicActivity.m55', {"length": stopped.length})});
       claudeGroups.set(stopped[0].url, stopped.map(site => site.url));
       for (const site of stopped) setPress(`claude:${site.url}`, {done: true, text: t('pagesCommon.claudeReading')});
     });

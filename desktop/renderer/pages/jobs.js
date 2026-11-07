@@ -238,7 +238,7 @@ async function runSearch(why) {
     result = await window.pilot.refresh(why).catch(error => ({ok: false, error: error.message}));
     const refused = refusal(result);
     // On the card when it is in view; elsewhere a pop-up. No AI credit or a Free AI line also opens the top-up dialog, which can press it again.
-    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? 'Re-score did not start' : why?.employers ? 'Search wider did not start' : 'Find jobs did not start', result, {place: {view: 'jobs'}, retry: () => startSearch(why)});
+    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? t('pagesFinalLabels.rescoreNotStarted') : why?.employers ? t('pagesFinalLabels.widerNotStarted') : t('pagesControlStatus.findNotStarted'), result, {place: {view: 'jobs'}, retry: () => startSearch(why)});
     return result;
   } finally {
     $('refresh').disabled = false;

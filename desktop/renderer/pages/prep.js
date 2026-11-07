@@ -20,7 +20,7 @@ let timer = null;
 
 function reset(item) {
   current = item;
-  $('prep-title').textContent = `Prepare for ${item.company || item.via || 'the interview'}`;
+  $('prep-title').textContent = `Prepare for ${item.company || item.via || t('pagesExtraLabels.theInterview')}`;
   $('prep-context').textContent = [item.job, item.badge].filter(Boolean).join(' · ');
   $('prep-text').value = '';
   $('prep-url').value = '';

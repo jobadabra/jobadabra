@@ -269,7 +269,7 @@ const paintCoverage = verdict => {
   const coverage = unanswered(coverageCard(verdict), keys.coverage);
   rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'),
     summary: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, text: coverage.text,
-    options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
+    options: coverage.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.addRoleWord'), preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
       run: press({kind: 'role', value: chip.term})})),
     brief: {title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'), text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: t('pagesStrategyMore.reviewWords')},
     menu: answerItems('coverage', keys.coverage, t('pagesCommon.addRoleWords'))});
@@ -278,7 +278,7 @@ const paintCoverage = verdict => {
   rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: t('pagesStrategyMore.broaden'),
     summary: `${topPlace.place} · ${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} outside your places${places.chips.length > 1 ? `, and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`,
     text: places.text,
-    options: places.chips.map(chip => ({label: plain(chip.label), button: 'Add place', preview: `Adds ${chip.place} to your places; jobs you already have stay. ${chip.title}`,
+    options: places.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.addPlace'), preview: `Adds ${chip.place} to your places; jobs you already have stay. ${chip.title}`,
       run: press({kind: 'place', value: chip.place})})),
     brief: {title: t('pagesStrategyMore.expandPlaces'), text: `${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} in ${topPlace.place}${places.chips.length > 1 ? ` and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`, cta: t('pagesStrategyMore.reviewLocation')},
     menu: answerItems('places', keys.places, t('pagesStrategyMore.broaden'))});
@@ -287,7 +287,7 @@ const paintCoverage = verdict => {
   const filterHidden = filters ? filters.chips.reduce((sum, chip) => sum + chip.count, 0) : 0;
   rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: t('pagesCommon.loosen'),
     summary: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, text: filters.text,
-    options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
+    options: filters.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.removeFilter'), preview: chip.title,
       run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
     brief: {title: t('pagesCommon.loosen'), text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: t('pagesStrategyMore.reviewFilters')},
     menu: answerItems('filters', keys.filters, t('pagesCommon.loosen'))});
@@ -295,7 +295,7 @@ const paintCoverage = verdict => {
   const sources = unanswered(sourcesCard(verdict), keys.sources);
   rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: t('pagesStrategyMore.moreJobSources'), review: t('pagesCommon.setup'),
     summary: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(' · '), text: sources.text,
-    options: sources.chips.map(chip => ({label: plain(chip.label), button: 'Open in Settings', preview: chip.title,
+    options: sources.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.openSettings'), preview: chip.title,
       run: () => { adviceEvent('taken', 'source', 'strategy', {source: chip.id}); openSetting(chip.id); }})),
     brief: {title: t('pagesStrategyMore.moreSources'), text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: t('pagesCommon.setup')},
     menu: answerItems('source', keys.sources, t('pagesStrategyMore.moreJobSources'))});
@@ -341,7 +341,7 @@ const paintCoverage = verdict => {
   const forYou = unanswered(employersCard(verdict), keys.foryou);
   rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: t('pagesStrategyMore.employersLikeYou'),
     summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), text: forYou.text,
-    options: forYou.chips.map(chip => ({label: chip.label, button: 'See their jobs', preview: chip.title, run: () => {
+    options: forYou.chips.map(chip => ({label: chip.label, button: t('pagesFinalLabels.seeJobs'), preview: chip.title, run: () => {
       adviceEvent('taken', 'employer', 'strategy');
       openView('jobs');
       const box = $('filter-text');
@@ -397,7 +397,7 @@ function paintIdeas(ideas) {
   const card = unanswered(ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), [], strategyState.shownVerdict), ideasKey);
   if (!card) { rows.ideas = null; drawSuggestions(); return; }
   // A card each: the role, why it fits, its openings; the word it is searched by under "Search details" (owner mockup, 7 Oct 2026).
-  const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: '+ Add role', accent: true,
+  const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: t('pagesFinalLabels.addRole'), accent: true,
     meta: `${chip.count} opening${chip.count === 1 ? '' : 's'} now in your places`, tech: `Searched as "${chip.term}" in job titles. Adding it makes the next searches look for it.`,
     preview: `Adds "${chip.term}" to your role words: ${chip.title}`,
     run: press({kind: 'role', value: chip.term})});
@@ -408,7 +408,7 @@ function paintIdeas(ideas) {
     summary: card.narrow || (top ? `${plain(top.label).replace(/ · \d+$/, '')} · ${top.count} open role${top.count === 1 ? '' : 's'}${open.length > 1 ? `, and ${open.length - 1} more` : ''}`
       : `${empty.length} role${empty.length === 1 ? '' : 's'} from your Profile, none with openings in your places now`),
     text: t('pagesStrategyMore.roleFuture'), options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
-    hiddenLabel: 'Show roles with no current openings',
+    hiddenLabel: t('pagesFinalLabels.noOpeningsRoles'),
     brief: {title: t('pagesStrategyMore.relatedRoles'), text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: t('pagesStrategyMore.reviewRoles')},
     menu: answerItems('ideas', ideasKey, t('pagesStrategyMore.relatedRoles'), card.chips.map(chip => chip.term))});
   drawSuggestions();

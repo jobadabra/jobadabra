@@ -2,6 +2,8 @@
 // (lib/email-consent.js stores it with the date, the sentence and how it was given), off sends nothing. Moving the switch sends nothing either: only Continue does.
 // Why (5 Nov 2026, owner): "we shouldn't start sending him email right away. We should still get the user consent"; the first try in the card was "Too crowded";
 // then "Let it be on by default". Leaving with it off is "asked once" (Always on asks once more). Guard: test/unit/main/email-consent.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 import {CV_REST, CV_WHAT, FAILED} from '../email-consent-words.js';
 import {atContinue, startsOn} from '../email-consent-choice.js';
@@ -41,6 +43,6 @@ function bind() {
     const answer = atContinue({on: $('cv-email-consent').checked, touched});
     if (answer.asked) { await window.pilot.emailConsentAsked('cv'); return; }
     const done = await window.pilot.emailConsentGive({where: 'cv', given: answer.give.given}).catch(() => ({ok: false}));
-    if (!done.ok) toast('E-mail not turned on', done.error || FAILED, {card: 'notify'}, 'warn');   // the step is gone by now: said where the person is
+    if (!done.ok) toast(t('pagesFieldsStatus.emailNotOn'), done.error || FAILED, {card: 'notify'}, 'warn');   // the step is gone by now: said where the person is
   });
 }

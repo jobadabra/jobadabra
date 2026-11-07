@@ -27,7 +27,7 @@ function sectionBlock(section, evidence, open) {
   const list = el('div', 'portrait-statements');
   for (const statement of section.statements) {
     const one = el('div', 'portrait-statement'), sources = el('div', 'portrait-sources');
-    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: `Open ${PROFILE_TABS[evidence[id].tab] || 'the source'} to correct it`, onClick: () => open(evidence[id].tab)})));
+    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: `Open ${PROFILE_TABS[evidence[id].tab] || t('pagesExtraLabels.theSource')} to correct it`, onClick: () => open(evidence[id].tab)})));
     one.append(el('p', 'portrait-text', statement.text), sources);
     list.append(one);
   }
@@ -35,7 +35,7 @@ function sectionBlock(section, evidence, open) {
   return block;
 }
 
-const VIEWS = [['structured', 'Structured'], ['letter', 'Plain text']];
+const VIEWS = [['structured', t('pagesExtraLabels.structured')], ['letter', t('pagesExtraLabels.plainText')]];
 const viewSwitch = (view, onView) => {
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
@@ -64,7 +64,7 @@ const letterSheet = status => {
 export function portraitView(status, {open = openTab, view = 'structured', onView = () => {}, note = ''} = {}) {
   const box = el('div', 'portrait-view');
   if (status.state === 'not_yet') {
-    box.append(emptyState({icon: 'user', chip: 'Not yet', title: t('pagesProfileMore.notEnough'),
+    box.append(emptyState({icon: 'user', chip: t('pagesExtraLabels.notYet'), title: t('pagesProfileMore.notEnough'),
       text: t('pagesProfileMore.portraitHelp')}));
     const needs = el('ul', 'portrait-needs');
     needs.append(...status.progress.map(progressRow));
@@ -72,7 +72,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
     return box;
   }
   if (!status.sections.length) {   // enough to write, nothing written yet: the first run is pending, or it could not run (Gitar on #2334)
-    box.append(emptyState({icon: 'user', chip: note ? 'Not written' : t('pagesProfileMore.updatingSoon'), title: note ? t('pagesProfileMore.portraitFailed') : t('pagesProfileMore.writingPortrait'),
+    box.append(emptyState({icon: 'user', chip: note ? t('pagesExtraLabels.notWritten') : t('pagesProfileMore.updatingSoon'), title: note ? t('pagesProfileMore.portraitFailed') : t('pagesProfileMore.writingPortrait'),
       text: note || t('pagesProfileMore.portraitOnOpen')}));
     return box;
   }

@@ -25,7 +25,7 @@ let clock = 0;   // the once-a-second redraw of the title while a card counts do
 function viewFor(item) {
   if (view?.id === item.id) return view;
   closeLive();
-  const img = Object.assign(el('img', 'live-img'), {alt: 'The application page, live', draggable: false});
+  const img = Object.assign(el('img', 'live-img'), {alt: t('pagesFinalLabels.livePage'), draggable: false});
   const marks = el('div', 'live-marks'), page = el('div', 'live-page'), screen = el('div', 'live-screen'), strip = el('div', 'live-strip');
   const empty = el('div', 'live-empty');
   const ask = el('div', 'live-ask'), filling = el('div', 'live-filling'), zoomText = el('span', 'live-zoom-text', '100%'), address = el('span', 'live-url', '');
@@ -37,10 +37,10 @@ function viewFor(item) {
   stage.append(screen, filling, ask);
   const zoomButton = (text, label, step) => Object.assign(el('button', 'secondary live-zoom', text), {ariaLabel: label, onclick: () => setZoom(step)});
   const expand = el('button', 'secondary live-zoom with-icon', icon('maximize'));
-  expand.ariaLabel = 'Expand';
+  expand.ariaLabel = t('pagesFinalLabels.expand');
   expand.onclick = () => { root.classList.toggle('is-expanded'); expand.replaceChildren(icon(root.classList.contains('is-expanded') ? 'collapse' : 'maximize')); };
   const hide = Object.assign(el('button', 'secondary live-zoom', t('pagesCommon.hide')), {ariaLabel: t('pagesSession.hideLive'), onclick: () => dispatch(mine, {type: 'hide'})});
-  strip.append(liveDot('live'), el('b', '', t('pagesSession.live')), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand, hide);
+  strip.append(liveDot('live'), el('b', '', t('pagesSession.live')), address, el('span', 'live-gap'), zoomButton('−', t('pagesFinalLabels.zoomOut'), -1), zoomText, zoomButton('+', t('pagesFinalLabels.zoomIn'), 1), expand, hide);
   const root = el('div', 'live-view');
   root.append(strip, stage);
   // state: what the view is doing (renderer/live-view-state.js, its one owner); checked: the card kind whose page was last asked about (livePage); drawn: the stage last drawn.

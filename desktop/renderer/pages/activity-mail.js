@@ -143,7 +143,7 @@ function emailCard(result, pending, answered, meetingPanel) {
     ? () => interviewPanel({interview: {when: update?.when || (outcome?.summary || '').replace(/\s*·\s*/, ' '), company: result.company, title: result.role,
       where: (outcome?.details || []).map(line => /^Event:\s*(.+)$/i.exec(line)?.[1]).find(Boolean) || '', summary: '', people: []}, topics: [], nextSteps: [], consent: '', url: ''}) : null;
   const card = mailCardRow({
-    company: result.company || email?.subject, role: asked && !asked.answered ? `${KIND_NOUN[asking] || t('pagesCommon.email')} · Role unidentified` : result.role,
+    company: result.company || email?.subject, role: asked && !asked.answered ? t('pagesDynamicActivity.m13', {"value1": KIND_NOUN[asking] || t('pagesCommon.email')}) : result.role,
     lines: [[email?.sender, email?.time].filter(Boolean).join(' · ')],
     tag, summary: interviewHere ? '' : said, changes: update && !update.question ? update.changes : changeOf(email?.changes),
     panel: review ? assessmentPanel(review) : meetingPanel ? meetingPanel() : interviewHere ? interviewHere()
@@ -170,7 +170,7 @@ function placedCard(result, asked, kind) {
   const interview = /^Interview/.test(kind);
   const note = el('div', 'mail-mapped');
   const line = resolution(asked, result.company || company);
-  const why = `The ${interview ? 'invitation' : 'email'} names ${result.company || t('pagesExtraCommon.sender')} but doesn't specify the role.`;
+  const why = t('pagesDynamicActivity.m14', {"value1": interview ? t('pagesDynamicActivity.invitation') : t('pagesDynamicActivity.email'), "value2": result.company || t('pagesExtraCommon.sender')});
   note.append(line, fold(`asked:${subjectKey(email.subject)}`, t('pagesCommon.originalQuestion'), el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
   let panel = note;
   if (interview) {
@@ -191,7 +191,7 @@ function updateCard(update, pending, answered, meetingPanel) {
     if (state.answered && state.job && open) {   // placed: the card of what it is, for that job, as for an email
       return {card: placedCard({email: {subject: open.subject, sender: '', time: ''}, company: open.company}, state, update.summary), waiting: 0};
     }
-    const card = mailCardRow({company: open?.company || company, role: `${KIND_NOUN[update.summary] || t('pagesCommon.email')} · Role unidentified`, tag: state.answered ? pill(t('pagesStatus.answered'), 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'),
+    const card = mailCardRow({company: open?.company || company, role: t('pagesDynamicActivity.m15', {"value1": KIND_NOUN[update.summary] || t('pagesCommon.email')}), tag: state.answered ? pill(t('pagesStatus.answered'), 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'),
       panel: questionPanel(state, subjectKey(update.job), open?.subject || '', {noun: 'email', company: ''}), details: open?.subject || ''});
     return {card, waiting: state.answered ? 0 : 1};
   }
@@ -371,7 +371,7 @@ function resolution(state, company = '') {
   line.append(icon('check-circle'));
   if (state.unknown) line.append(t('pagesStatus.alreadyAnswered'), el('span', 'muted', t('pagesActivity.noJobRecorded')));
   else if (!state.job) line.append(t('pagesActivity.notJobRelated'));
-  else if (isNewJob(state.job)) line.append(`Created a job for ${company || state.job.split(/\s+—\s+/)[0]} and linked this email`, el('span', 'muted', t('pagesActivity.addRoleFocus')));
+  else if (isNewJob(state.job)) line.append(t('pagesDynamicActivity.m16', {"value1": company || state.job.split(/\s+—\s+/)[0]}), el('span', 'muted', t('pagesActivity.addRoleFocus')));
   else line.append(t('pagesActivity.linkedTo'), jobLink(state.job, 'span'));
   return line;
 }

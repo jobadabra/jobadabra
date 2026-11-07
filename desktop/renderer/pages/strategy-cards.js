@@ -24,7 +24,7 @@ export const CARDS = {
   // Job preferences keeps its drafts in pages/outline-tab.js and registers with the bar itself (barFor); job-preferences.js sets its count.
   prefs: {title: t('pagesCommon.jobPreferences'), lists: [], values: [], own: true, count: () => 0},
 };
-export const GOAL_LABELS = {seniority: 'Target level', work_mode: 'Work mode', minimum_salary: 'Minimum salary'};
+export const GOAL_LABELS = {seniority: t('pagesExtraLabels.targetLevel'), work_mode: t('pagesExtraLabels.workMode'), minimum_salary: t('pagesExtraLabels.minimumSalary')};
 export const cardOf = name => Object.keys(CARDS).find(key => CARDS[key].lists.includes(name) || CARDS[key].values.includes(name)) || '';
 export const PLAIN = new Set(['roles', 'languages', 'skip', 'gqueries', 'gplaces']);   // stored as typed, not lower-cased
 
@@ -91,7 +91,7 @@ export function strategyBar(deps) {
   if (bar) return bar;
   redraw = deps.redraw;
   bar = pageSaveBar({host: $('strategy-bar-host'), tabs: {'strategy-yours': t('pagesCommon.yourStrategy')}, tabButton: key => document.querySelector(`.strategy-tabs [data-tab="${key}"]`),
-    openTab: showTab, area: 'Strategy', saveLabel: 'Save strategy changes', words: 'Applies to future searches.', savedWords: 'Saved ✓ Refresh your jobs to search with it.'});
+    openTab: showTab, area: t('pagesExtraLabels.strategy'), saveLabel: t('pagesFinalLabels.saveStrategy'), words: 'Applies to future searches.', savedWords: 'Saved ✓ Refresh your jobs to search with it.'});
   const reloadSoon = () => { clearTimeout(reloading); reloading = setTimeout(deps.reload, 50); };
   for (const [key, card] of Object.entries(CARDS)) {
     if (card.own) continue;

@@ -119,7 +119,7 @@ export function withFewJobsHelp(runId) {
     }
     for (const source of groups?.sources || []) {
       items.push(row(source.id === 'serpapi' ? 'search' : 'link', source.name, source.sub,
-        act({kind: 'source', label: `Set up ${source.name}`, value: source.id}, Object.assign(el('button', 'secondary', t('pagesCommon.setup')), {type: 'button'})), source.title));
+        act({kind: 'source', label: t('pagesDynamicActivity.m11', {"name": source.name}), value: source.id}, Object.assign(el('button', 'secondary', t('pagesCommon.setup')), {type: 'button'})), source.title));
     }
     if (groups?.visits?.length) {
       // One row, handed to Find jobs using your browser (owner, 7 Oct 2026: "pass them to Find jobs using your browser"): the extension reads them all in Chrome, a few at a time.
@@ -135,7 +135,7 @@ export function withFewJobsHelp(runId) {
         onScreen('read-sites').title = result?.text || read.title;
         sayRefused(t('pagesExtraCommon.readingNotStarted'), {ok: false, error: result?.text || result?.error || t('pagesCommon.tryAgain')}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
-      items.push(row('external', t('pagesCommon.browseManually'), [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
+      items.push(row('external', t('pagesCommon.browseManually'), [t('pagesDynamicActivity.m12', {"length": names.length, count: names.length}), shown], read));
     }
     broaden.append(items.length ? rows(items) : el('p', 'muted small', t('pagesActivity.noObvious')), why, answer);
     parts.push(broaden);

@@ -1,6 +1,7 @@
 // "Import from LinkedIn" (Settings → Profile → CV, ⌘K, and the setup's CV step as its third way in): the dialog that says what is read, waits for the person's consent on LinkedIn's
 // own page, then shows "What came in" as rows to tick. Data and rules: lib/linkedin-import*.js (IPC linkedinImport*); spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md.
 // Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/unit/renderer/linkedin-import-page.test.js.
+import {counted as countedLabel} from './page-counts.js';
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
@@ -12,10 +13,10 @@ import {$} from './core.js';
 
 const SECTIONS = [['positions', t('pagesStatus.positions')], ['education', t('pagesStatus.education')], ['skills', t('pagesStatus.skills')], ['languages', t('pagesStatus.languages')], ['details', t('pagesDetails.yourDetails')]];
 const DOMAIN_WORDS = {PROFILE: t('pagesCommon.profile'), POSITIONS: t('pagesStatus.positions'), EDUCATION: t('pagesStatus.education'), SKILLS: t('pagesStatus.skills'), LANGUAGES: t('pagesStatus.languages')};
-const DETAIL_WORDS = {first_name: t('pagesStatus.firstName'), last_name: t('pagesStatus.lastName'), location: t('pagesCommon.location'), street: t('pagesStatus.street'), postal_code: t('pagesStatus.postalCode'), website: 'Website'};
-const CHIPS = {new: ['new', 'info'], 'new-bullets': ['new bullets', 'info'], differs: [t('pagesLinkedinServices.differs'), 'warn']};
+const DETAIL_WORDS = {first_name: t('pagesStatus.firstName'), last_name: t('pagesStatus.lastName'), location: t('pagesCommon.location'), street: t('pagesStatus.street'), postal_code: t('pagesStatus.postalCode'), website: t('pagesFieldsStatus.website')};
+const CHIPS = {new: ['new', 'info'], 'new-bullets': [t('pagesExtraLabels.newBullets'), 'info'], differs: [t('pagesLinkedinServices.differs'), 'warn']};
 const EU_NOTE = 'For LinkedIn members in the EU, EEA and Switzerland. Elsewhere, use your LinkedIn data file.';
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word) => countedLabel(word, n);
 
 let dialog = null, view = {connected: false}, review = null, onDone = () => {};
 let afterCvBuilt = async () => {};   // Why (3 Nov 2026, review): app.js passes cv-build's cvSaved in; importing it here closed a cycle through activity.js and nav.js (tools/arch-check.py)
@@ -50,9 +51,9 @@ function intro() {
   setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? `Connected until ${displayDate(new Date(view.expiresAt))}. Update reads your profile again, with no new sign-in.`
     : t('pagesLinkedinServices.importHelp'));
   const read = el('ul', 'li-list');
-  for (const text of ['Positions, education, skills and languages', 'Your name, location, postal code, street and website']) read.append(el('li', '', text));
+  for (const text of [t('pagesFinalLabels.linkedinReads'), t('pagesFinalLabels.linkedinContact')]) read.append(el('li', '', text));
   const never = el('ul', 'li-list');
-  for (const text of ['Messages, connections, posts or anything else on LinkedIn', 'Your password: you type it on LinkedIn, never here']) never.append(el('li', '', text));
+  for (const text of [t('pagesFinalLabels.linkedinNever'), t('pagesFinalLabels.linkedinPassword')]) never.append(el('li', '', text));
   bodyOf().replaceChildren(el('h3', '', t('pagesLinkedinServices.whatRead')), read, el('h3', '', t('pagesLinkedinServices.neverRead')), never, el('p', 'small muted', EU_NOTE),
     el('p', 'small muted', t('pagesLinkedinServices.keyHelp')));
   const actions = [button(t('pagesCommon.cancel'), 'secondary', close), button(t('pagesLinkedinServices.dataFile'), 'secondary', async () => {
@@ -75,10 +76,10 @@ const progress = {lines: [], domains: {}};
 let running = false;
 function onStep(step) {
   if (!dialog || !running) return;
-  if (step.what === 'waiting') progress.lines = ['Waiting for you on LinkedIn: sign in and press Allow in your browser'];
-  else if (step.what === 'reading') progress.lines = ['Signed in', 'Reading your profile'];
-  else if (step.what === 'domain') { progress.domains[step.domain] = step.status; progress.lines = ['Signed in', ...Object.entries(progress.domains).map(([d, s]) => `${DOMAIN_WORDS[d] || d}: ${s === 'ok' ? 'read' : s === 'pending' ? 'LinkedIn is still preparing it' : 'stopped'}`)]; }
-  else if (step.what === 'comparing') progress.lines = ['Read', 'Comparing with your CV'];
+  if (step.what === 'waiting') progress.lines = [t('pagesFinalLabels.linkedinWait')];
+  else if (step.what === 'reading') progress.lines = [t('pagesFinalLabels.signedIn'), t('pagesExtraLabels.readingProfile')];
+  else if (step.what === 'domain') { progress.domains[step.domain] = step.status; progress.lines = [t('pagesFinalLabels.signedIn'), ...Object.entries(progress.domains).map(([d, s]) => `${DOMAIN_WORDS[d] || d}: ${s === 'ok' ? 'read' : s === 'pending' ? t('pagesExtraLabels.linkedinPreparing') : 'stopped'}`)]; }
+  else if (step.what === 'comparing') progress.lines = [t('pagesExtraLabels.read'), t('pagesExtraLabels.compareCv')];
   working(progress.lines);
 }
 

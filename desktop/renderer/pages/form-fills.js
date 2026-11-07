@@ -62,7 +62,7 @@ function listView() {
   input.addEventListener('input', () => { state.text = input.value; keep(); });
   select.addEventListener('change', () => { state.outcome = select.value; draw(); });
   box.append(el('p', 'muted small', listLine(state.runs, shown)), bar);   // the tab's meta line, as Weekly's
-  if (rows.length) box.append(table(['When', 'Job', 'By', t('pagesFocusReports.outcome'), 'Fields', 'Time'], rows));
+  if (rows.length) box.append(table([t('pagesFieldsStatus.when'), t('pagesFieldsStatus.job'), t('pagesFieldsStatus.by'), t('pagesFocusReports.outcome'), t('pagesFieldsStatus.fields'), t('pagesFieldsStatus.time')], rows));
   else box.append(el('p', 'empty', state.runs.length ? t('pagesFocusReports.noFillFilter')
     : t('pagesReadyReports.noFills')));
   return box;
@@ -83,23 +83,23 @@ function detailView(run) {
   }
   const backLine = el('div', ''); backLine.append(back);   // a line of its own: a grid cell would stretch the button
   box.append(backLine, head);
-  const figures = [s.minutes !== null && ['Time', `${s.minutes} min`], s.fields !== null && ['Fields', String(s.fields)],
-    s.fields !== null && ['Required left', String(s.left || 0)], ...sessionNumbers(run)].filter(Boolean);
+  const figures = [s.minutes !== null && [t('pagesFieldsStatus.time'), `${s.minutes} min`], s.fields !== null && [t('pagesFieldsStatus.fields'), String(s.fields)],
+    s.fields !== null && [t('pagesFieldsStatus.requiredLeft'), String(s.left || 0)], ...sessionNumbers(run)].filter(Boolean);
   if (figures.length) box.append(numbers(figures));
   const fields = fieldRows(run);
   if (fields.length) {
-    box.append(section('Field by field', table(['Field', 'Required', 'Answer from', 'Result', t('pagesCommon.note')], fields.map(row => {
+    box.append(section(t('pagesFieldsStatus.fieldByField'), table([t('pagesFieldsStatus.field'), t('pagesFieldsStatus.required'), t('pagesFieldsStatus.answerFrom'), t('pagesFieldsStatus.result'), t('pagesCommon.note')], fields.map(row => {
       const note = el('span', 'muted', row.note);
       return tr(el('b', '', row.label), el('span', '', row.required), el('span', '', row.source),
         pill(row.result === 'filled' ? t('pagesFocusReports.filled') : t('pagesFocusReports.left'), row.result === 'filled' ? 'good' : 'warn'),
         row.low ? (() => { const cell = el('span', ''); cell.append(pill(t('pagesCommon.check'), 'warn'), ' ', note); return cell; })() : note);
     }))));
   }
-  if (leftForYou(run).length) box.append(section('Left for you', list(leftForYou(run))));
-  if (attachments(run).length) box.append(section('Attached', list(attachments(run))));
-  if (learnings(run).length) box.append(section('Learnings', list(learnings(run))));
-  if (steps(run).length) box.append(section('Steps', table(['Step', 'Took'], steps(run).map(step => tr(el('span', '', step.step), el('span', 'muted', `${step.seconds} s`))))));
-  if (timeline(run).length) box.append(section('Session timeline', el('p', 'insight-source', timeline(run).join(' → '))));
+  if (leftForYou(run).length) box.append(section(t('pagesFieldsStatus.leftYou'), list(leftForYou(run))));
+  if (attachments(run).length) box.append(section(t('pagesFieldsStatus.attached'), list(attachments(run))));
+  if (learnings(run).length) box.append(section(t('pagesFieldsStatus.learnings'), list(learnings(run))));
+  if (steps(run).length) box.append(section(t('pagesFieldsStatus.steps'), table([t('pagesFieldsStatus.step'), t('pagesFieldsStatus.took')], steps(run).map(step => tr(el('span', '', step.step), el('span', 'muted', `${step.seconds} s`))))));
+  if (timeline(run).length) box.append(section(t('pagesFieldsStatus.sessionTimeline'), el('p', 'insight-source', timeline(run).join(' → '))));
   if (!fields.length && !isSession(run)) box.append(el('p', 'insight-source', t('pagesReadyReports.noFieldRecord')));
   return box;
 }

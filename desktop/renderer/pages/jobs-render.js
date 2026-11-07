@@ -1,4 +1,5 @@
 // Jobs page, the list: renderJobs (rows, filters, row actions), the stuck banner, loading state, kit label. Guarded by: test/unit/renderer/count-flash.test.js.
+import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
@@ -106,7 +107,7 @@ export function renderJobs() {
     if (!parts.fit) {   // an applied, rejected or inbound job with no score: the same ring, saying N/A, never "Not scored" (job-row-model.js)
       ring.replaceChildren(el('span', '', NA));
     }
-    fit.title = !parts.fit ? t('pagesJobsHelp.noScore') : scoring ? t('pagesJobsHelp.scoring') : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? 'Click to see why' : '')}`;
+    fit.title = !parts.fit ? t('pagesJobsHelp.noScore') : scoring ? t('pagesJobsHelp.scoring') : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? t('pagesControlStatus.clickWhy') : '')}`;
     const live = sessionFor(job.url);
     const [statusLabel, statusTone] = live && !live.endedAt ? sessionState(live) : [statusPill(job).label, statusPill(job).tone];
 
@@ -179,7 +180,7 @@ export function renderJobs() {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
       if (result.background) return queuedInBackground(result);   // a saved hidden-browser mode queued the job: no tab opened, so the row does not read "Opened"
       if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); if (result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, jobPlace(job), 'warn'); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
-      else if (sayRefused('Apply did not start', result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = t('pagesJobs.noLink');
+      else if (sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = t('pagesJobs.noLink');
       else toastMessage(t('pagesJobs.openJobFailed'), t('pagesJobs.hasNoLink'), jobPlace(job), 'bad');
     };
     // Why (2026-11-05, owner screenshots): queued and filling sessions must open their existing work, never offer another Apply, regardless of AI provider.
@@ -232,7 +233,7 @@ export function renderJobs() {
         renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
         if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
-        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
+        else { preparing.set(job.code, 'failed'); sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
       box.append(prepare);
@@ -260,7 +261,7 @@ export function renderJobs() {
       // soft skills, or a different profile (nothing to improve). Written on the job's Notion page.
       menu.push({icon: 'search', label: job.rejection ? t('pagesJobs.reviewRejection') : t('pagesJobs.whyMe'),
         title: ai('{AI} reviews this application: presentation, hard skills, soft skills, or not on you (~20 s)'),
-        run: () => background('🔎 Reviewing the rejection…', async () => {
+        run: () => background(t('pagesFinalLabels.reviewingRejection'), async () => {
           const result = await window.pilot.reviewRejection(job.url);
           toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), result.text, jobPlace(job), result.ok ? 'good' : 'bad');
           if (result.ok) loadJobs();
@@ -360,10 +361,10 @@ export function renderJobs() {
     body.append(row);
   }
   // What the list is filtered to, said once: a chip (✕ shows every job) and "4 of 195 jobs".
-  const statLabel = jobsState.statFilter?.label || {applied: t('pagesExtraCommon.applied'), waiting: 'Waiting for a reply', interviews: 'In process', closed: 'Closed',
-    stuck: 'Still marked Applying', high: 'High fit (70+)', companies: 'One per company'}[jobsState.statFilter];
+  const statLabel = jobsState.statFilter?.label || {applied: t('pagesExtraCommon.applied'), waiting: t('pagesControlStatus.waitingReply'), interviews: t('pagesControlStatus.inProcess'), closed: t('pagesControlStatus.closed'),
+    stuck: t('pagesControlStatus.stillApplying'), high: t('pagesControlStatus.highFit'), companies: t('pagesControlStatus.oneCompany')}[jobsState.statFilter];
   renderStuck();
-  const plural = count => `${count} job${count === 1 ? '' : 's'}`;
+  const plural = count => countedLabel('job', count);
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
   const notLoaded = Math.max(0, (jobsState.lastJobsData?.total ?? 0) - shared.allJobs.length);
   $('jobs-count').textContent = (statLabel ? `${rows.length} of ${plural(shared.allJobs.length)}` : plural(rows.length)) +

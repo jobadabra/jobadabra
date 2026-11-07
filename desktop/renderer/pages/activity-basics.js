@@ -1,5 +1,6 @@
 // Recent activity: run names, phases, outcomes, the Gmail connection and the card chooser (cardFor).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {counted as countedLabel} from './page-counts.js';
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
@@ -42,7 +43,7 @@ export async function showSearchStatus() {
   if (searching) { title.textContent = t('pagesActivity.findingJobs'); detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
   if (!lastSearchAt) { title.textContent = t('pagesActivity.noCheck'); detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
-  const found = last?.new != null ? ` · ${last.new} new match${last.new === 1 ? '' : 'es'}` : '';
+  const found = last?.new != null ? t('pagesDynamicActivity.m3', {"new": last.new, count: last.new}) : '';
   const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
   if (last && !last.ok) { title.textContent = t('pagesActivity.checkProblems'); detail.textContent = clockTime(lastSearchAt); return; }
   title.textContent = `Checked ${clockTime(lastSearchAt)}${found}${cost}`;
@@ -71,7 +72,7 @@ export function searchPhase(step = '') {
   if (/^Scored (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.matching');
   if (/^Enriched (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.readingNew');
   if (/^Checked: /.test(step)) return t('pagesActivity.careerPages');
-  if (/^Job Matches:/.test(step)) return `Saving to ${storeName()}`;
+  if (/^Job Matches:/.test(step)) return t('pagesDynamicActivity.m4', {"storeName": storeName()});
   if (/digest|telegram/i.test(step)) return t('pagesExtraCommon.sendingDigest');
   return step.length > 60 ? `${step.slice(0, 57)}…` : step;
 }
@@ -91,11 +92,11 @@ export function warningSummary(warnings) {
   // The Anthropic account's spending limit: jobs were left unscored. Said plainly, with what to do.
   const limited = limitedJobs(warnings);
   if (limited && warnings.some(text => /Claude Code/.test(text))) {  // the user's own Claude Code: its plan's usage window
-    return `Your Claude plan's usage window is exhausted, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
+    return t('pagesDynamicActivity.m5', {"plural": plural(limited, 'job'), count: limited})
       + 'The next check scores them once your plan\'s limit resets; Settings → Connections → AI shows Claude Code\'s status.';
   }
   if (limited) {
-    return `Your Anthropic API spending limit was reached, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
+    return t('pagesDynamicActivity.m6', {"plural": plural(limited, 'job'), count: limited})
       + 'Raise the limit at console.anthropic.com → Settings → Limits; the next check scores them.';
   }
   // The same limit stopped a step that scores nothing (a Gmail check's own AI call, an insight): say that, not the
@@ -145,7 +146,7 @@ function siteAction(site) {
 }
 // live: the run is going. A finished run keeps its rows and marks (owner, 7 Oct 2026: "keep the ticks and crosses after the task completes"),
 // without the links that act on a running tab; a site the run left mid-way reads as stopped there, not as still going.
-const settled = site => (['done', 'stopped', 'closed'].includes(site.state) ? site : {...site, state: 'stopped', words: `${site.words.replace(/…$/, '')}: the run ended here`});
+const settled = site => (['done', 'stopped', 'closed'].includes(site.state) ? site : {...site, state: 'stopped', words: t('pagesDynamicActivity.m7', {"value1": site.words.replace(/…$/, '')})});
 export function siteRow(site, live = true, since = '') {
   if (!live) site = settled(site);
   const li = el('li', `${SITE_MARK[site.state] || 'todo'} site-row`);
@@ -194,12 +195,12 @@ export function nextWords(at, now = Date.now()) {
   const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? t('pagesExtraCommon.tomorrow') : displayDate(date, {weekday: 'short'});
   return `${day} ${hhmm(at)}`;
 }
-export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+export const plural = (n, word) => countedLabel(word, n);
 export const capital = text => String(text || '').replace(/^./, c => c.toUpperCase());
 // One line on what a finished run did.
 export function outcome(run) {
   const said = outcomeOf(run);
-  return deliveryHead({...run, kind: kindOf(run)}) ? `${capital(said)} · Telegram not sent` : said;
+  return deliveryHead({...run, kind: kindOf(run)}) ? t('pagesDynamicActivity.m8', {"capital": capital(said)}) : said;
 }
 function outcomeOf(run) {
   if (run.stopped === 'you') return t('pagesExtraCommon.stoppedByYou');
@@ -223,7 +224,7 @@ function outcomeOf(run) {
     if (run.updates?.length) return plural(run.updates.length, 'application update');
     // "Mail: 2 new email(s) classified, 0 update(s), …": emails were read but none changed an application.
     const read = Number(/^Mail: (\d+) new email/.exec(run.summary || '')?.[1] || 0);
-    return read ? `${plural(read, 'email')} checked · no updates` : t('pagesExtraCommon.nothingNew');
+    return read ? t('pagesDynamicActivity.m9', {"plural": plural(read, 'email')}) : t('pagesExtraCommon.nothingNew');
   }
   if (!run.ok) return t('pagesExtraCommon.hadProblems');
   // A one-off job (insight, weekly report, today's list, find employers): the result line it printed.

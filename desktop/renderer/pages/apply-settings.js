@@ -73,7 +73,7 @@ export async function askFullAutomation() {
   const channel = await prepareChannel();   // no way to be told yet: the same step asks for one (pages/auto-confirm-channel.js)
   const auto = applyOf(current).auto;
   $('auto-confirm-checks').replaceChildren(...[
-    auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)',
+    auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : t('pagesFinalLabels.noWait'),
   ].map(text => Object.assign(document.createElement('li'), {textContent: text})));
   return new Promise(resolve => {
     const finish = yes => { dialog.close(); resolve(yes); };

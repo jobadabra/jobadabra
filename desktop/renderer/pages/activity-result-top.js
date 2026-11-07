@@ -80,7 +80,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   if (problem) {
     // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
     $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
-      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? t('pagesStatus.runningWarnings') : `${WARN_NOUN[kindOf(run)] || t('pagesCommon.run')} completed with warnings`;
+      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? t('pagesStatus.runningWarnings') : t('pagesDynamicActivity.m32', {"value1": WARN_NOUN[kindOf(run)] || t('pagesCommon.run')});
     const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
     $('activity-warnings-summary').textContent = summary;
     show($('activity-warnings-hint'), !!head?.hint);

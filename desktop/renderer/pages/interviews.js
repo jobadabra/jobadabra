@@ -131,11 +131,11 @@ async function saveToNotion(andReview) {
 // Saved interviews, from Notion. Changing the job updates the row's Application there.
 let reviewing = new Set();  // being reviewed: here (awaiting the call) or on GitHub (review-pending.js)
 let reviewPoll = null;
-const OUTCOME = {positive: 'Positive', neutral: 'Neutral', negative: 'Negative'};
+const OUTCOME = {positive: t('pagesControlStatus.positive'), neutral: t('pagesControlStatus.neutral'), negative: t('pagesControlStatus.negative')};
 const OUTCOME_TONE = {positive: 'good', neutral: 'warn', negative: 'bad'};
 // While the library loads from Notion (like the Jobs list): a spinner in the empty table the first time;
 // afterwards the rows stay and the subtitle says it's refreshing.
-const savedTo = () => byStore('Saved to Notion 🎤 Interviews', 'Saved in Jobadabra');
+const savedTo = () => byStore(t('pagesControlStatus.savedNotionInterviews'), t('pagesControlStatus.savedLocal'));
 // Loading: the last good list at once (lib/view-cache.js, "saved 3 min ago · updating…"); with nothing saved yet,
 // skeleton rows in the table (the boxes are there, shimmering) until Notion answers.
 async function showSavedLoading() {
@@ -193,7 +193,7 @@ async function loadSavedOnce() {
   ivSavedRows = next.rows;
   ivInsight = next.insight;
   insightFresh = true;
-  insightNote = next.insightError ? "Couldn't read the saved insights (see the app log)" : '';
+  insightNote = next.insightError ? t('pagesControlStatus.insightsReadFailed') : '';
   // Reviews running on GitHub stay "Reviewing…" until their outcome is in Notion; look again every 30 s meanwhile.
   const before = new Set(reviewing);
   reviewing = new Set([...reviewing, ...pendingReviews.settle(ivSavedRows)]);
@@ -265,10 +265,10 @@ async function refreshInsights() {
   insightBusy = false;
   if (result.ok) {
     if (result.insight !== undefined) ivInsight = result.insight;
-    insightNote = result.status === 'unchanged' ? 'Up to date' : '';
+    insightNote = result.status === 'unchanged' ? t('pagesControlStatus.upToDate') : '';
     message('iv-message', result.status === 'unchanged' ? t('pagesInterviews.insightsCurrent') : result.text, 'ok');
   } else {
-    message('iv-message', humanError(result.error || 'Could not refresh the insights'), 'error');
+    message('iv-message', humanError(result.error || t('pagesControlStatus.refreshInsightsFailed')), 'error');
   }
   renderInsight();
 }
@@ -323,7 +323,7 @@ function renderSaved() {
     const picker = el('div', 'iv-picker');
     picker.hidden = true;
     const select = document.createElement('select');
-    jobOptions(select, job?.url || '', row.application?.[0] && !job ? byStore('Linked in Notion (job not in this list)', 'Linked (job not in this list)') : 'No job linked');
+    jobOptions(select, job?.url || '', row.application?.[0] && !job ? byStore(t('pagesControlStatus.linkedNotion'), t('pagesControlStatus.linkedNotListed')) : t('pagesControlStatus.noJobLinked'));
     if (row.application?.[0] && !job) select.value = '';
     const pasted = Object.assign(document.createElement('input'), {type: 'url', placeholder: 'https://… then Enter', hidden: true});
     const relink = async url => {
@@ -373,7 +373,7 @@ function renderSaved() {
       {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
-      {label: t('pagesCommon.delete'), danger: true, title: osText(byStore("Moves the row to Notion's trash (restorable for 30 days) and deletes its recording on this Mac", 'Deletes the interview and its recording on this Mac')), run: async () => {
+      {label: t('pagesCommon.delete'), danger: true, title: osText(byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal'))), run: async () => {
         if (!confirm(osText(byStore(`Delete "${row.title}"? It goes to Notion's trash (30 days) and its recording is removed from this Mac.`,
           `Delete "${row.title}" and its recording on this Mac?`)))) return;
         const done = await iv.remove(row.id);
@@ -391,7 +391,7 @@ function renderSaved() {
   restoreMenu();
 }
 
-async function reviewRow(pageId, why = t('pagesCommon.review')) {
+async function reviewRow(pageId, why = 'Review') {
   if (!aiReady()) { message('iv-message', t('pagesInterviews.aiReviews'), 'error'); return; }
   if (reviewing.has(pageId)) return;  // already asked for: a second press must not spend a second review (1 Oct 2026)
   reviewing.add(pageId);

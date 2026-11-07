@@ -1,6 +1,7 @@
 // Session page: what Claude needs from you, and the form page in step.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {outcomeLabel} from './session-outcomes.js';
 import {el, pill} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {renderSteps} from './session-steps.js';
@@ -32,7 +33,7 @@ const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };
 const handled = remembered(new Map(), keptRows.handled);  // `${session}|${text}` → what was done
 const KEEP = /^(?:keep|leave|ok|fine|no change|looks right|as is|nothing)/i;
-export const offline = item => (item.live === false ? 'The session has ended: resume it to send this' : '');
+export const offline = item => (item.live === false ? t('pagesFinalLabels.resumeToSend') : '');
 // The answers you already saved (Notion → Application Answers, the same page the Profile shows), for the rows that
 // offer a choice: read once, on the side, the first time a row wants them. Offline or without Notion the row still
 // offers Claude's own answer and "Change with Claude…".
@@ -78,7 +79,7 @@ function doneRow(li, key, outcome) {
   li.classList.add('is-done');
   const number = li.querySelector('.ss-need-num');
   if (number) number.textContent = '✓';
-  li.querySelector('.ss-need-actions')?.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${outcome}`));
+  li.querySelector('.ss-need-actions')?.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${outcomeLabel(outcome)}`));
   updateNeedsCount();
 }
 // The form page says every required field is filled (the extension's ring is green).
@@ -308,7 +309,7 @@ export function needRow(need, item) {
       // A recommendation that isn't "keep it as it is" is an instruction for Claude (with Claude help on), not just an acknowledgement.
       const change = !!need.recommended && !KEEP.test(need.recommended) && resumeOffered();
       if (change) queue(item, key, `${name}: ${chosen.value}`);
-      doneRow(li, key, change ? `To send: ${chosen.value}` : KEEP.test(chosen.value) ? t('pagesSession.checked') : `Agreed: ${chosen.value}`);
+      doneRow(li, key, change ? `To send: ${chosen.value}` : KEEP.test(chosen.value) ? 'Checked' : `Agreed: ${chosen.value}`);
     };
     const change = () => {
       const before = [...actions.childNodes];

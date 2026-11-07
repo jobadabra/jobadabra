@@ -38,14 +38,14 @@ import {GROUPS, asWholeWord, matchGroups, placeLabel, shownGroups, shownWord} fr
 // 2026, mockup 03); every other list still edits here: Locations beside Job preferences, the rest folded under Advanced search settings.
 export const CARD_TONE = {roles: 'violet', places: 'teal', stack: 'info', languages: 'warn', search: 'neutral'};   // the colours of each kind's suggestions
 export const TARGET_CARDS = [
-  ['places', 'pin', t('pagesStrategy.locations'), [['places', t('pagesCommon.preferredPlaces'), 'Add a city or region'], ['country', t('pagesCommon.acceptablePlaces'), 'Add a country or region'],
-    ['abroad', t('pagesStrategyMore.relocatePlaces'), 'Add a city abroad'], ['rights', 'Work rights: where you can work without a visa', 'Add a country or EU']]],
-  ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', 'Key skills and tools you want in jobs.', 'Add a skill or tool']]],
-  ['languages', 'shield', t('pagesStrategy.exclusions'), [['languages', t('pagesStrategyMore.languageExclusions'), 'Add a language']]],
+  ['places', 'pin', t('pagesStrategy.locations'), [['places', t('pagesCommon.preferredPlaces'), t('pagesFinalLabels.addCity')], ['country', t('pagesCommon.acceptablePlaces'), t('pagesFinalLabels.addCountry')],
+    ['abroad', t('pagesStrategyMore.relocatePlaces'), t('pagesFinalLabels.addCityAbroad')], ['rights', t('pagesFinalLabels.rightsHelp'), t('pagesFinalLabels.addCountryEu')]]],
+  ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', 'Key skills and tools you want in jobs.', t('pagesFinalLabels.addSkill')]]],
+  ['languages', 'shield', t('pagesStrategy.exclusions'), [['languages', t('pagesStrategyMore.languageExclusions'), t('pagesFinalLabels.addLanguage')]]],
   // What only the ⚙️ Search settings page had (P8, 9 Oct 2026), so every store edits it here (lib/strategy-edit.js), with the level and the digest's minimum.
-  ['search', 'search', t('pagesStrategy.moreSearch'), [['titleSkip', 'Job titles to skip', 'Add a word'], ['skip', 'Companies to skip', 'Add a company'], ['remoteSkip', 'Remote jobs: regions to skip', 'Add a region'],
-    ['finders', 'Words that find new employers', 'Add a word'], ['gqueries', 'Google Jobs searches', 'Add a search'],
-    ['gplaces', 'Google Jobs places: "City,Region,Country · language"', 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
+  ['search', 'search', t('pagesStrategy.moreSearch'), [['titleSkip', t('pagesFinalLabels.skipTitles'), t('pagesFinalLabels.addWord')], ['skip', t('pagesFinalLabels.skipCompanies'), t('pagesFinalLabels.addCompany')], ['remoteSkip', t('pagesFinalLabels.remoteSkip'), t('pagesFinalLabels.addRegion')],
+    ['finders', t('pagesFinalLabels.finders'), t('pagesFinalLabels.addWord')], ['gqueries', t('pagesFinalLabels.googleSearches'), t('pagesFinalLabels.addSearch')],
+    ['gplaces', t('pagesFinalLabels.googlePlacesHelp'), 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
 ];
 export const TARGET_LISTS = ['roles', ...TARGET_CARDS.flatMap(([, , , lists]) => lists.map(([name]) => name))];
 export {shownLists};
@@ -138,7 +138,7 @@ function remoteChoice() {
 }
 // Your level (Search settings "Your level"): postings whose title plainly names another level are skipped; Any keeps them all. Its one home is Goals → Target
 // level (owner, 18 Oct 2026: "Goals only"; lib/goal-level.js writes it): shown here read-only, in both modes, with "Change in Goals" (opens Main goals' editor).
-const LEVELS = [['', t('pagesCommon.any')], ['junior', 'Junior'], ['mid', 'Mid'], ['senior', 'Senior'], ['lead', 'Lead']];
+const LEVELS = [['', t('pagesCommon.any')], ['junior', t('pagesFinalLabels.junior')], ['mid', t('pagesFinalLabels.mid')], ['senior', t('pagesFinalLabels.senior')], ['lead', t('pagesFinalLabels.lead')]];
 function levelChoice() {
   const goal = strategyState.lastStrategy?.goals?.seniority, now = goal ? searchLevel(goal) : strategyState.lastStrategy?.level || '', line = el('span', '');
   const change = Object.assign(el('button', 'link', t('pagesStrategyMore.changeGoals')), {type: 'button', title: t('pagesStrategyMore.followsLevel')});
@@ -255,9 +255,9 @@ const VIEWS = {
       return {icon: glyph, label, value};
     };
     return [readRows([{icon: 'user', label: t('pagesStrategyMore.yourLevel'), value: levelChoice()}, {icon: 'target', label: t('pagesStrategyMore.minimumScore'), value: minScoreInput()},
-      row('close', 'Job titles to skip', 'titleSkip', t('pagesCommon.none')), row('building', 'Companies to skip', 'skip', t('pagesCommon.none')), row('globe', 'Remote jobs: regions to skip', 'remoteSkip', t('pagesCommon.none')),
-      row('sparkle', 'Words that find new employers', 'finders', t('pagesCommon.none')),
-      ...(offered('serpapi') ? [row('search', 'Google Jobs searches', 'gqueries', 'None: Google Jobs is not searched'), row('pin', 'Google Jobs places', 'gplaces', t('pagesCommon.none'))] : [])], {lined: true})];
+      row('close', t('pagesFinalLabels.skipTitles'), 'titleSkip', t('pagesCommon.none')), row('building', t('pagesFinalLabels.skipCompanies'), 'skip', t('pagesCommon.none')), row('globe', t('pagesFinalLabels.remoteSkip'), 'remoteSkip', t('pagesCommon.none')),
+      row('sparkle', t('pagesFinalLabels.finders'), 'finders', t('pagesCommon.none')),
+      ...(offered('serpapi') ? [row('search', t('pagesFinalLabels.googleSearches'), 'gqueries', t('pagesFinalLabels.noGoogle')), row('pin', t('pagesFinalLabels.googlePlaces'), 'gplaces', t('pagesCommon.none'))] : [])], {lined: true})];
   },
   languages() {
     const data = strategyState.lastStrategy, {languages, hide, lower} = exclusionGroups({...data, texts: {...data?.texts, languages: labelsOf('languages')}});
@@ -273,9 +273,9 @@ const VIEWS = {
     }
     const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', t('pagesCommon.none'))];
     const rules = el('div', 'setting-body');
-    rules.append(...group('Hide matching jobs', hide), ...group('Rank them lower', lower));
+    rules.append(...group(t('pagesFinalLabels.hideMatching'), hide), ...group(t('pagesFinalLabels.rankLower'), lower));
     return [readRows([{icon: 'globe', label: t('pagesStrategyMore.languageExclusions'), value: block},
-      {icon: 'sliders', label: labelWith('Other exclusions and ranking rules', `${hide.length} hide jobs, ${lower.length} rank${lower.length === 1 ? 's' : ''} lower`), value: rules}], {lined: true})];
+      {icon: 'sliders', label: labelWith(t('pagesFinalLabels.otherRules'), `${hide.length} hide jobs, ${lower.length} rank${lower.length === 1 ? 's' : ''} lower`), value: rules}], {lined: true})];
   },
 };
 const reloadTargets = async () => { await loadStrategy(); renderTargets(); };

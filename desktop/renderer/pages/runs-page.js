@@ -22,11 +22,11 @@ export async function showStatusCard() {
   const {running, runs, nextSearchAt, nextMailAt} = data;
   const lastSearch = runs.find(run => kindOf(run) === 'search'), lastMail = runs.find(run => kindOf(run) === 'mail');
   const rows = [
-    running && ['▶️', 'Running now', `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
-    ['🔎', t('pagesCommon.lastRefresh'), lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : 'none yet'],
-    ['⏭', 'Next refresh', nextSearchAt ? nextWords(nextSearchAt) : 'only when you ask'],
-    ['📧', 'Last Gmail check', lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : 'none yet'],
-    ['⏭', 'Next Gmail check', nextMailAt ? nextWords(nextMailAt) : 'off'],
+    running && ['▶️', t('pagesExtraLabels.runningNow'), `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
+    ['🔎', t('pagesCommon.lastRefresh'), lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : t('pagesExtraLabels.noneYet')],
+    ['⏭', t('pagesExtraLabels.nextRefresh'), nextSearchAt ? nextWords(nextSearchAt) : t('pagesExtraLabels.onlyAsk')],
+    ['📧', t('pagesExtraLabels.lastGmail'), lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : t('pagesExtraLabels.noneYet')],
+    ['⏭', t('pagesExtraLabels.nextGmail'), nextMailAt ? nextWords(nextMailAt) : 'off'],
   ].filter(Boolean);
   const card = $('status-card');
   card.replaceChildren(el('h2', '', t('pagesFocusReports.status')), ...rows.map(([glyph, label, value]) => {
@@ -44,8 +44,8 @@ export async function showStatusCard() {
 
 // Actions page: the live banner (what runs now), Recent runs, and Telegram's state. Fed by the activity data.
 const TASK_ICON = {search: 'search', mail: 'mail', insight: 'chart', weekly: 'file', today: 'send', scout: 'building', kits: 'file-text', tailor: 'scissors'};
-const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: 'Gmail & Calendar check', insight: t('pagesActivity.insight'), weekly: 'Analyze my job search', kits: t('pagesActivity.prepareTop'), tailor: 'Tailor CV + cover letter for top matches',
-  today: "Today's matches", scout: t('pagesActivity.moreEmployers')};
+const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: t('pagesExtraLabels.gmailCalendar'), insight: t('pagesActivity.insight'), weekly: t('pagesFieldsStatus.analyzeSearch'), kits: t('pagesActivity.prepareTop'), tailor: t('pagesExtraLabels.tailorTop'),
+  today: t('pagesExtraLabels.todayMatches'), scout: t('pagesActivity.moreEmployers')};
 // A task's name as the Actions banners say it (running, queued and finished: one word for one task).
 export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask');
 // Every button that starts a task is off while that task runs or waits (a second press would only join it), and back when it ends: the Actions cards, Tailor CVs, and the same

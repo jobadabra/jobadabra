@@ -17,12 +17,12 @@ const shown = key => !document.querySelector(`[data-contact="${key}"]`)?.closest
 // Contact as columns (mockup 05): the name (salutation before it) over the location | how to reach you | where you live and the rest. Every detail
 // shows, an empty one as "<label> not set" so a missing detail is seen; the Swiss-only Place of origin only when the form shows it.
 export const CONTACT_ROWS = [[t('pagesProfile.name'), ['first_name', 'last_name']], [t('pagesProfile.salutation'), ['salutation']], [t('pagesCommon.email'), ['email']], [t('pagesStatus.phone'), ['phone']],
-  [t('pagesCommon.location'), ['location']], [t('pagesStatus.street'), ['street']], [t('pagesStatus.postalCode'), ['postal_code']], ['Place of origin', ['place_of_origin']], ['Date of birth', ['birth_date']]];
+  [t('pagesCommon.location'), ['location']], [t('pagesStatus.street'), ['street']], [t('pagesStatus.postalCode'), ['postal_code']], [t('pagesFieldsStatus.origin'), ['place_of_origin']], [t('pagesFieldsStatus.birthDate'), ['birth_date']]];
 const LINK_KEYS = ['linkedin', 'github', 'website'];
 const CONTACT_KEYS = CONTACT_ROWS.flatMap(([, keys]) => keys);
 // The icon lines of the 2nd and 3rd columns: [icon, label, keys].
 export const CONTACT_LINES = [[['mail', t('pagesCommon.email'), ['email']], ['phone', t('pagesStatus.phone'), ['phone']]],
-  [['home', 'Address', ['street', 'postal_code']], ['calendar', 'Date of birth', ['birth_date']], ['flag', 'Place of origin', ['place_of_origin']]]];
+  [['home', t('pagesFieldsStatus.address'), ['street', 'postal_code']], ['calendar', t('pagesFieldsStatus.birthDate'), ['birth_date']], ['flag', t('pagesFieldsStatus.origin'), ['place_of_origin']]]];
 
 const notSet = label => el('span', 'muted', `${label} not set`);
 export function contactView(read = value, visible = shown) {
@@ -50,7 +50,7 @@ export function contactView(read = value, visible = shown) {
 
 // Professional links as columns: the site's icon, its name, the address in the link colour (GitHub only when its box shows: fitDetailsToCandidate).
 export function linksView(read = value, visible = shown) {
-  return factColumns([['linkedin', 'LinkedIn', 'linkedin'], ['github', 'GitHub', 'github'], ['website', 'Website', 'link']].filter(([key]) => visible(key)).map(([key, label, glyph]) => {
+  return factColumns([['linkedin', 'LinkedIn', 'linkedin'], ['github', 'GitHub', 'github'], ['website', t('pagesFieldsStatus.website'), 'link']].filter(([key]) => visible(key)).map(([key, label, glyph]) => {
     const address = read(key).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
     return {icon: glyph, label, value: address ? el('span', 'link-text', address) : el('span', 'muted', t('pagesCommon.notAdded'))};
   }));

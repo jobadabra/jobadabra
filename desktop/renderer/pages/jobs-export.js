@@ -1,6 +1,7 @@
 // Jobs page, "Export" (Pro): saves the jobs on screen, or all of them, as a spreadsheet file. The lock here is only a hint: the main process checks the licence
 // (lib/jobs-export-handlers.js). A free person always sees the button with a Pro label: with paying off it opens the Upgrade dialog, with paying on Settings → Plan (renderer/pro-gate.js).
 // Guarded by: test/unit/main/jobs-export.test.js, test/guards/money/pro-gate.test.js.
+import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, openMenu} from '../components.js';
@@ -12,7 +13,7 @@ import {exportState} from '../pro-gate.js';
 import {toastMessage} from './startup.js';
 import {NO_PLACE} from '../targets.js';
 
-const plural = n => `${n} job${n === 1 ? '' : 's'}`;
+const plural = n => countedLabel('job', n);
 export {exportState};
 
 export async function exportJobs(options) {
@@ -35,8 +36,8 @@ export function wireExport() {
     if (exportState(shared.licenseState || {}) === 'locked') return openProGate();
     const shown = jobsState.visible || [], all = shared.allJobs || [];
     openMenu(event.currentTarget, [
-      {label: `These ${plural(shown.length)}`, detail: 'What the list shows now', disabled: !shown.length, run: () => exportJobs({urls: shown.map(job => job.url)})},
-      {label: `All ${plural(all.length)}`, detail: 'Every job in your list', disabled: !all.length, run: () => exportJobs({all: true})},
+      {label: `These ${plural(shown.length)}`, detail: t('pagesControlStatus.listShows'), disabled: !shown.length, run: () => exportJobs({urls: shown.map(job => job.url)})},
+      {label: `All ${plural(all.length)}`, detail: t('pagesControlStatus.everyJob'), disabled: !all.length, run: () => exportJobs({all: true})},
     ]);
   });
 }

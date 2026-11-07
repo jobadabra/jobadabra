@@ -4,7 +4,7 @@
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 
-const WORDS = {export: 'Exporting', import: 'Importing', backup: 'Backing up', clear: 'Clearing your job list'};
+const WORDS = {export: t('pagesFieldsStatus.exporting'), import: t('pagesFieldsStatus.importing'), backup: t('pagesFieldsStatus.backingUp'), clear: t('pagesFieldsStatus.clearing')};
 const STARTERS = ['#export-data', '#import-data', '#backup-now', '#reset-export', '[data-import]', '#clear-jobs'];
 
 // -> the strip's text for one event: "Exporting… 42%", or "Exporting…" until the total is known

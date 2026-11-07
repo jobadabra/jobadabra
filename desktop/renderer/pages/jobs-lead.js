@@ -144,7 +144,7 @@ async function pickJob(target) {
   if (!target || !leadProposal) return;
   const text = $('lead-text').value.trim();
   const next = await working(`Reading your jobs in ${storeName()}`, () => window.pilot.proposeLead(text, [], target, leadProposal));
-  if (!next.ok) { leadResult('warn', "Couldn't use that job", String(next.text || '').replace(/^\S+\s/, '')); return; }
+  if (!next.ok) { leadResult('warn', t('pagesControlStatus.useJobFailed'), String(next.text || '').replace(/^\S+\s/, '')); return; }
   showConfirm(next, confirmStep.carry(leadState, next));
 }
 // Every field's mark (please check / needs an answer / ✓), the choices shown, and the Save button's words.
@@ -228,10 +228,10 @@ function leadTargets() {
     .sort((a, b) => `${a.company} ${a.title}`.localeCompare(`${b.company} ${b.title}`));
   const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
   const group = document.createElement('optgroup');
-  group.label = 'Your applications';
+  group.label = t('pagesControlStatus.yourApplications');
   tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageLabel(job.stage)})`)));
-  $('lead-target').replaceChildren(option('', 'Choose the job…'),
-    option('new', 'Not in my list yet: add it from these details'), ...(tracked.length ? [group] : []));
+  $('lead-target').replaceChildren(option('', t('pagesControlStatus.chooseJob')),
+    option('new', t('pagesControlStatus.addFromDetails')), ...(tracked.length ? [group] : []));
 }
 // "Find the job automatically" (ticked by default): untick it to choose the job yourself.
 function setAuto(on, locked = false) {
@@ -269,7 +269,7 @@ export function wireLead() {
   $('lead-shot-file').addEventListener('change', () => { [...$('lead-shot-file').files].forEach(readShot); $('lead-shot-file').value = ''; });
   $('lead-shot-paste').addEventListener('click', async () => {
     const shot = await window.pilot.clipboardImage();
-    if (shot) setLeadShot(shot); else leadResult('info', 'No image on the clipboard',
+    if (shot) setLeadShot(shot); else leadResult('info', t('pagesControlStatus.noClipboardImage'),
       osPick('Copy a screenshot first (⇧⌘4, then Ctrl-click to copy it), or use Add screenshot.',
         'Copy a screenshot first (Win+Shift+S saves one to the clipboard), or use Add screenshot.'));
   });
@@ -331,15 +331,15 @@ export function wireLead() {
     const text = $('lead-text').value.trim();
     leadResult('', '');
     if (!leadProposal) {  // step 1: Claude reads it; nothing is written yet
-      if (!leadShots.length && text.length < 40) { leadResult('warn', 'Nothing to log yet', 'Paste the whole message, or add a screenshot of it.'); return; }
-      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', 'Which job is it?', 'Choose the job, or tick "Find the job automatically".'); return; }
-      const proposal = await working(leadShots.length > 1 ? `Sending ${leadShots.length} screenshots` : 'Starting the engine',
+      if (!leadShots.length && text.length < 40) { leadResult('warn', t('pagesControlStatus.nothingLog'), 'Paste the whole message, or add a screenshot of it.'); return; }
+      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', t('pagesControlStatus.whichJob'), 'Choose the job, or tick "Find the job automatically".'); return; }
+      const proposal = await working(leadShots.length > 1 ? `Sending ${leadShots.length} screenshots` : t('pagesControlStatus.startingEngine'),
         () => window.pilot.proposeLead(text, leadShots, leadTarget()));
       if (!proposal.ok) {
         const said = String(proposal.text || '').replace(/^\S+\s/, '');  // without the leading emoji
         const notJob = /doesn't look like a message about a job/.test(said);
         const unsure = /can't tell which company and role/.test(said);
-        leadResult('warn', notJob ? 'No job activity found' : unsure ? 'Which job is it?' : "Couldn't log it",
+        leadResult('warn', notJob ? t('pagesControlStatus.noActivity') : unsure ? t('pagesControlStatus.whichJob') : t('pagesControlStatus.logFailed'),
           notJob ? 'This looks like something other than a job (e.g. a services pitch), so nothing was added.' : said, notJob || unsure);
         return;
       }
@@ -357,9 +357,9 @@ export function wireLead() {
     const result = await working(`Saving to ${storeName()}`, () => window.pilot.addLead(text, leadShots,
       leadProposal.target ?? leadTarget(), leadProposal, answers));
     const said = result.text.replace(/^\S+\s/, '');
-    if (!result.ok) { leadResult('warn', "Couldn't log it", said); return; }
+    if (!result.ok) { leadResult('warn', t('pagesControlStatus.logFailed'), said); return; }
     leadStep2(false);
-    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? t('pagesProfile.nothingNew') : result.job ? jobHeadline(result.job) : 'Logged', said);
+    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? t('pagesProfile.nothingNew') : result.job ? jobHeadline(result.job) : t('pagesControlStatus.logged'), said);
     if (/^ℹ️/.test(result.text)) return;
     // The job it created or updated, one click away (its Notion page, or the Jobs list filtered to it).
     if (result.job) $('lead-result-text').after(jobActions(result.job, {openNotion: window.pilot.openNotion,

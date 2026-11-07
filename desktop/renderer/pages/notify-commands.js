@@ -18,6 +18,6 @@ export const openNotifications = () => actions.open();
 export function addNotifyCommands(add) {
   const card = offerCard(state);
   if (!card) return;
-  add(t('pagesCommon.settings'), 'Get a message when something needs you', 'By e-mail or Telegram', 'notify notification email e-mail telegram message reminder alert tell me', () => actions.open());
-  if (card.resend) add(t('pagesCommon.settings'), 'Resend the confirmation e-mail', 'The link that starts your e-mails', 'resend confirm confirmation link e-mail email inbox verify', () => actions.resend());
+  add(t('pagesCommon.settings'), 'Get a message when something needs you', t('pagesExtraLabels.emailTelegram'), 'notify notification email e-mail telegram message reminder alert tell me', () => actions.open());
+  if (card.resend) add(t('pagesCommon.settings'), t('pagesExtraLabels.resendConfirm'), 'The link that starts your e-mails', 'resend confirm confirmation link e-mail email inbox verify', () => actions.resend());
 }

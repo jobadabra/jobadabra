@@ -4,12 +4,14 @@
  * Runs `run(url)` (an app call answering {ok, ...}) on every copy of the row's posting, the row's own link first, and stops at the first refusal.
  * -> the row's own answer when all went through; else the refusal, saying how many links were already changed (a half-done change is never "not changed").
  */
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 export async function onEveryCopy(job, run) {
   const urls = job.copies?.length ? job.copies : [job.url];
   let own;
   for (const [done, url] of urls.entries()) {
     const result = await Promise.resolve(run(url)).catch(error => ({ok: false, error: error.message})) || {ok: false};
-    if (!result.ok) return done ? {...result, error: `Changed on ${done} of ${urls.length} links, then: ${result.error || 'something went wrong'}`} : result;
+    if (!result.ok) return done ? {...result, error: `Changed on ${done} of ${urls.length} links, then: ${result.error || t('pagesControlStatus.somethingWrong')}`} : result;
     own ??= result;   // the first answer is the row's own: its stage is what the row shows
   }
   return own;

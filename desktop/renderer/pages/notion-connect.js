@@ -30,7 +30,7 @@ function finish() {
 }
 
 function progressLine({found, total, building, waitingPage, template, moving}) {
-  if (moving) return 'Moving your strategy and matches into Notion…';
+  if (moving) return t('pagesExtraLabels.movingStrategy');
   if (building) return 'Connected ✓ Building your Jobadabra workspace in Notion (databases, columns, pages)… about a minute.';
   if (waitingPage) return 'Waiting for Notion to share an empty page for your new Jobadabra workspace with the app…';
   return template ? `Connected ✓ Notion is copying the Jobadabra template into your workspace: ${found} of ${total} ready. About a minute; the app keeps checking.`

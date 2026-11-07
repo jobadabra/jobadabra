@@ -87,7 +87,7 @@ export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () 
     $('triage-progress').hidden = true;
     paintCount();
     rerender();
-    toast(done ? 'Checked your jobs' : 'Nothing was checked', done ? `${done} of ${jobs.length} read. Each chip shows how it can apply.` : 'No form could be read. The hidden browser has to be downloaded first, and no application can be open.', null, done ? 'good' : 'info');
+    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), done ? `${done} of ${jobs.length} read. Each chip shows how it can apply.` : 'No form could be read. The hidden browser has to be downloaded first, and no application can be open.', null, done ? 'good' : 'info');
   });
   paintCount();
 }

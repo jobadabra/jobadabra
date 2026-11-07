@@ -170,12 +170,12 @@ export async function init() {
     const ordered = [...sites.filter(tickedSite), ...sites.filter(site => !tickedSite(site))];
     $('visits-sites').replaceChildren(...ordered.map(site => visitRow({value: site.url,
       ticked: tickedSite(site),
-      name: site.kind === 'portal' ? `${site.name} · your search` : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
+      name: site.kind === 'portal' ? t('pagesDynamicActivity.m0', {"name": site.name}) : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
       note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : t('pagesExtraCommon.neverRead'), title: site.note,
       drop: t('pagesCommon.remove'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsHide(site.url)})));
     // Jobs in your places whose posting only your browser can open: ticked (not on Run again of a run, which is about its sites); Dismiss: not offered again.
     // A site that asked us to slow down (429) waits for its next try, unticked: a browser read now would be asked the same (owner, 20 Oct 2026).
-    const nextTry = job => (job.waiting_until ? ` · waiting: the site asked us to slow down, next try ${displayDate(new Date(job.waiting_until * 1000), {hour: '2-digit', minute: '2-digit'})}` : '');
+    const nextTry = job => (job.waiting_until ? t('pagesDynamicActivity.m1', {"when": displayDate(new Date(job.waiting_until * 1000), {hour: '2-digit', minute: '2-digit'})}) : '');
     $('visits-unread').replaceChildren(...(stuck?.jobs || []).map(job => visitRow({value: job.url, ticked: !wanted && !job.waiting_until,
       name: job.company ? `${job.title} · ${job.company}` : job.title, note: `${job.location ? `${job.location} · ` : ''}${new URL(job.url).hostname.replace(/^www\./, '')}${nextTry(job)}`,
       drop: t('pagesCommon.dismiss'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsDismiss(job.url)})));
@@ -218,7 +218,7 @@ export async function init() {
     await replaceCv({choose: () => window.pilot.chooseCv(), readState: async () => { shared.state = await window.pilot.state(); },
       say: file => {
         $('contact-cv').textContent = file;
-        message('strategy-message', `CV replaced: ${file}. New applications use it now. Review what it changes in your strategy when you're ready.`, 'ok');
+        message('strategy-message', t('pagesDynamicActivity.m2', {"file": file}), 'ok');
         showCvChanged();
       }});   // the CV card and its check redraw through cv-replace.js (profile.js registers its loader)
   });

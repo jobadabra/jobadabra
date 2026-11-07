@@ -77,11 +77,11 @@ function answersMenu() {
 // The links card's read view (pages/details-read.js linksView; GitHub only while its box shows).
 const showLinks = () => $('links-view')?.replaceChildren(linksView());
 // Sidebar: the Notion pages, most used first. Click opens them in the app's Notion window; ⌘-click in the browser.
-const NOTION_LINKS = [['NOTION_MATCHES_DB', 'Job matches', 'target'], ['NOTION_APPLICATIONS_DB', t('pagesCommon.applications'), 'layers'],
-  ['NOTION_EVENTS_DB', 'Replies & events', 'mail'], ['NOTION_INTERVIEWS_DB', t('pagesFocusReports.interviews'), 'mic'], ['NOTION_INSIGHTS_DB', 'Insights', 'chart'],
-  ['NOTION_PIPELINE_PAGE', 'Pipeline', 'columns'], ['NOTION_PROFILE_PAGE_ID', t('pagesCommon.profile'), 'user'], ['NOTION_ANSWERS_PAGE_ID', 'Standard answers', 'file'],
-  ['NOTION_SEARCH_SETTINGS_PAGE', 'Search settings', 'settings'], ['NOTION_KNOWLEDGE_PAGE', 'Form knowledge', 'bookmark'],
-  ['NOTION_EMPLOYERS_DB', 'Employers', 'building'], ['NOTION_CRON_RUNS_DB', 'Search runs', 'search'], ['NOTION_AGENT_RUNS_DB', 'Form fills', 'bot']];
+const NOTION_LINKS = [['NOTION_MATCHES_DB', t('pagesExtraLabels.jobMatches'), 'target'], ['NOTION_APPLICATIONS_DB', t('pagesCommon.applications'), 'layers'],
+  ['NOTION_EVENTS_DB', t('pagesExtraLabels.repliesEvents'), 'mail'], ['NOTION_INTERVIEWS_DB', t('pagesFocusReports.interviews'), 'mic'], ['NOTION_INSIGHTS_DB', t('pagesExtraLabels.insights'), 'chart'],
+  ['NOTION_PIPELINE_PAGE', t('pagesExtraLabels.pipeline'), 'columns'], ['NOTION_PROFILE_PAGE_ID', t('pagesCommon.profile'), 'user'], ['NOTION_ANSWERS_PAGE_ID', t('pagesExtraLabels.standardAnswers'), 'file'],
+  ['NOTION_SEARCH_SETTINGS_PAGE', t('pagesExtraLabels.searchSettings'), 'settings'], ['NOTION_KNOWLEDGE_PAGE', t('pagesExtraLabels.formKnowledge'), 'bookmark'],
+  ['NOTION_EMPLOYERS_DB', t('pagesExtraLabels.employers'), 'building'], ['NOTION_CRON_RUNS_DB', t('pagesExtraLabels.searchRuns'), 'search'], ['NOTION_AGENT_RUNS_DB', t('pagesExtraLabels.formFills'), 'bot']];
 function renderNotionLinks() {
   const box = $('notion-links');
   box.querySelectorAll('.notion-link').forEach(link => link.remove());
@@ -107,7 +107,7 @@ export async function loadCvSetting() {
   const status = await window.pilot.cvStatus();
   // One glance: ready (and which design), or not read yet. ✂️ Tailor CV on a job uses it.
   $('cv-state').textContent = cvStateText(status, shared.cvReadFailed);
-  $('cv-facts').textContent = ['Current CV', documentFacts({pages: lastCheck()?.ats?.pages, ...(status.file || {})}, runWhen)].filter(Boolean).join(' · ');
+  $('cv-facts').textContent = [t('pagesExtraLabels.currentCv'), documentFacts({pages: lastCheck()?.ats?.pages, ...(status.file || {})}, runWhen)].filter(Boolean).join(' · ');
   $('cv-view').hidden = !status.base;
   // ⋯ the rarer CV actions: read the PDF again (or for the first time), and the folder with the CV's files.
   $('cv-more').replaceChildren(moreButton(() => [
@@ -120,8 +120,8 @@ export async function loadSettings() {
   showNotionPanel();
   const hints = await window.pilot.secretHints();
   for (const [id, name, empty] of [['set-anthropic', 'ANTHROPIC_API_KEY', 'sk-ant-…'], ['set-openai', 'OPENAI_API_KEY', 'sk-…'], ['set-notion', 'NOTION_TOKEN', 'ntn_…'],
-    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', 'SerpApi key'], ['set-brave', 'BRAVE_SEARCH_API_KEY', 'Brave Search key'], ['set-adzuna-id', 'ADZUNA_APP_ID', 'Adzuna app id'],
-    ['set-adzuna-key', 'ADZUNA_APP_KEY', 'Adzuna app key'], ['set-jooble', 'JOOBLE_API_KEY', 'Jooble key']]) {
+    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', t('pagesExtraLabels.serpapiKey')], ['set-brave', 'BRAVE_SEARCH_API_KEY', t('pagesExtraLabels.braveKey')], ['set-adzuna-id', 'ADZUNA_APP_ID', t('pagesExtraLabels.adzunaId')],
+    ['set-adzuna-key', 'ADZUNA_APP_KEY', t('pagesExtraLabels.adzunaKey')], ['set-jooble', 'JOOBLE_API_KEY', t('pagesExtraLabels.joobleKey')]]) {
     if ($(id)) $(id).placeholder = hints[name] ? `${hints[name]} · saved (paste a new one to replace it)` : empty;
   }
   renderNotionLinks();
@@ -240,8 +240,8 @@ export async function init() {
   // Long detail cards start closed; the bar shows their summary (owner, 17 Oct 2026). Forms you fill in stay open.
   foldProfilePanels({closed: new Set(['setting-experience-sources', 'setting-details-profile'])});   // every Profile card folds (profile-fold.js); these start closed (the voluntary surveys: optional, owner's review item 5); Work history starts open (owner, 18 Oct 2026, mockup 09)
   initFoldBar();
-  $('cvc-run').addEventListener('click', () => cvCheckAction($('cvc-run'), 'Reading your CV…', () => window.pilot.cvCheckRun(), checkOptions).then(loadCvSetting));
-  $('cvc-ai-run').addEventListener('click', () => cvCheckAction($('cvc-ai-run'), 'Reviewing… (about 30 s)', () => window.pilot.cvCheckAi(), checkOptions));
+  $('cvc-run').addEventListener('click', () => cvCheckAction($('cvc-run'), t('pagesExtraLabels.readingCv'), () => window.pilot.cvCheckRun(), checkOptions).then(loadCvSetting));
+  $('cvc-ai-run').addEventListener('click', () => cvCheckAction($('cvc-ai-run'), t('pagesExtraLabels.reviewing'), () => window.pilot.cvCheckAi(), checkOptions));
   $('set-telegram-save').addEventListener('click', async () => {
     const value = $('set-telegram').value.trim();
     if (!/^\d+:[\w-]{30,}$/.test(value)) { message('telegram-message', t('pagesSetup.botToken'), 'error'); return; }

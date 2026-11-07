@@ -48,7 +48,7 @@ function clearHeader() {
   $('ss-more').replaceChildren();
 }
 // A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
-const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
+const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? [t('pagesFinalLabels.formClosed'), 'neutral'] : sessionState(item));
 // The header's way out of every unfinished application at once (session-state.js cancellable). While it works the button says how many are closing (owner, 7 Nov 2026: a greyed button and the old list showed nothing).
 function paintCancelAll(button, list) {
   const {closing, ...paint} = cancelAllButton(list);
@@ -133,10 +133,10 @@ export function renderSessionPage() {
   const review = sessionReview(item, formReady(item));
   const [logLabel, logTone] = isSubmitted(item) ? [label, tone] : item.status === 'running' ? [t('pagesCommon.working'), 'info']
     // Claude stopped on a list for you ("Needs you: tick the robot box, reply ok") in a live window: it waits, it has not completed (8 Oct 2026).
-    : review && isLive(item) && readSessionMessage(item.question || '').needs.length ? ['Waiting for you', 'warn']
-    : review ? ['Completed', 'good']
-    : item.status === 'input' && !isLive(item) ? ['Closed with the app', 'neutral']
-    : item.status === 'input' ? ['Waiting for your reply', 'warn'] : [label, tone];
+    : review && isLive(item) && readSessionMessage(item.question || '').needs.length ? [t('pagesFinalLabels.waitingYou'), 'warn']
+    : review ? [t('pagesFinalLabels.completed'), 'good']
+    : item.status === 'input' && !isLive(item) ? [t('pagesFinalLabels.closedWithApp'), 'neutral']
+    : item.status === 'input' ? [t('pagesFinalLabels.waitingReply'), 'warn'] : [label, tone];
   const livePill = pill(`${logLabel} · ${sessionDuration(item)}`, logTone, {dot: true});
   if (item.status === 'running') ticking(livePill, `${logLabel} · `, item.startedAt);
   $('ss-live-state').replaceChildren(livePill);

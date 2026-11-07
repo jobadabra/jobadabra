@@ -1,5 +1,6 @@
 // Settings → Profile → Experience: the sources of what tailoring knows about the person (the main CV, other CV versions) and, per job,
 // the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/unit/main/experience-page.test.js.
+import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
@@ -9,7 +10,7 @@ import {$, message, runWhen} from './core.js';
 import {loadExperienceProfile} from './experience-profile.js';
 import {swr} from '../swr.js';
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word) => countedLabel(word, n);
 
 // One source row: its name and what it adds, then its action. The main CV is the reference and is replaced on the CV tab.
 export function sourceRow(source) {
@@ -54,7 +55,7 @@ export function roleBlock(role) {
 
 // The sources as one line, for the folded Experience sources card: "Main CV + LinkedIn + 2 other CV versions".
 export function sourcesSummary(view) {
-  if (!view?.main) return 'Main CV not read yet';
+  if (!view?.main) return t('pagesFieldsStatus.mainNotRead');
   const cvs = view.sources.filter(source => source.kind !== 'linkedin').length;
   return ['Main CV', ...(view.sources.some(source => source.kind === 'linkedin') ? ['LinkedIn'] : []), ...(cvs ? [`${cvs} other CV version${cvs === 1 ? '' : 's'}`] : [])].join(' + ');
 }
@@ -105,8 +106,8 @@ export function changeLines(answer) {
   if (c.newRoles?.length) lines.push([`Jobs not in your main CV (listed, not used): ${list(c.newRoles)}`, 'warn']);
   if (c.goneRoles?.length) lines.push([`No longer listed as missing from your main CV: ${list(c.goneRoles)}`, 'neutral']);
   const changed = c.details || c.skillsAdded?.length || c.skillsRemoved?.length || c.newRoles?.length || c.goneRoles?.length;
-  if (!changed && (done.length || answer.removed)) lines.push([done.length ? 'Nothing new: this says what your main CV already says' : 'Nothing was offered from it that other versions do not also say', 'neutral']);
-  if (answer.removed) lines.push(['Your main CV and your profile are not changed: other versions are only read when a CV is tailored', 'neutral']);
+  if (!changed && (done.length || answer.removed)) lines.push([done.length ? t('pagesFieldsStatus.sameMain') : t('pagesFieldsStatus.noUnique'), 'neutral']);
+  if (answer.removed) lines.push([t('pagesFieldsStatus.mainUnchanged'), 'neutral']);
   return lines;
 }
 export function showChanges(answer) {
@@ -160,7 +161,7 @@ export function showExperience(view) {
 // The main CV is not changed by any of them. Hidden when there are none.
 export function addedBlock(items, remove) {
   if (!items?.length) return [];
-  const KIND = {skill: 'Skill', bullet: 'Detail', correction: 'Correction'};
+  const KIND = {skill: t('pagesFieldsStatus.skill'), bullet: t('pagesFieldsStatus.detail'), correction: t('pagesFieldsStatus.correction')};
   const list = el('ul', 'item-rows');
   for (const item of items) {
     const row = el('li'), words = el('div', 'item-words');

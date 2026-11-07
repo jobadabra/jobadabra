@@ -20,7 +20,7 @@ async function loadDays() {
     const option = new Option(`${dayLabel(d.day)}${d.bytes ? ` · ${size(d.bytes)}` : ''}`, d.day);
     option.selected = d.day === day;
     return option;
-  }), new Option('Every day (search)', ''));
+  }), new Option(t('pagesExtraLabels.everyDay'), ''));
 }
 
 // Today's page, an older page ("Show older lines"), or the search's hits; the newest line at the bottom.
@@ -31,13 +31,13 @@ async function read({keepScroll = false} = {}) {
   let result, stats;
   if (query) {
     result = await window.pilot.logs.search(log, query, {day}).catch(error => ({lines: [], error}));
-    const where = !day ? 'in the last 30 days' : day === 'today' ? 'today' : `on ${dayLabel(day)}`;
+    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? 'today' : `on ${dayLabel(day)}`;
     stats = result.lines.length ? `${result.lines.length}${result.more ? ' newest' : ''} line${result.lines.length === 1 ? '' : 's'} with "${query}" ${where}${result.more ? ' (more are older: narrow the search)' : ''}`
       : `No line with "${query}" ${where}.`;
   } else {
     result = await pages(shown).catch(error => ({lines: [], more: false, error}));
     const when = (day || 'today') === 'today' ? 'today' : dayLabel(day);
-    stats = result.lines.length ? `The newest ${result.lines.length} line${result.lines.length === 1 ? '' : 's'} of ${when}` : `Nothing written ${when === 'today' ? 'today' : 'that day'} yet.`;
+    stats = result.lines.length ? `The newest ${result.lines.length} line${result.lines.length === 1 ? '' : 's'} of ${when}` : `Nothing written ${when === 'today' ? 'today' : t('pagesExtraLabels.thatDay')} yet.`;
   }
   if (ticket !== reading) return;   // a newer read (another tab, day or search) already answered
   if (result.error) stats = `Couldn't read this log: ${result.error.message || result.error}`;

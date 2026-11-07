@@ -28,6 +28,12 @@ import {messages as linkedinServices} from './catalogs/pages/linkedin-services.j
 import {messages as misc} from './catalogs/pages/misc.js';
 import {messages as extraCommon} from './catalogs/pages/extra-common.js';
 import {messages as fieldsStatus} from './catalogs/pages/fields-status.js';
+import {messages as controlStatus} from './catalogs/pages/control-status.js';
+import {messages as extraLabels} from './catalogs/pages/extra-labels.js';
+import {messages as finalLabels} from './catalogs/pages/final-labels.js';
+import {messages as countNouns} from './catalogs/pages/count-nouns.js';
+import {messages as dynamicActivity} from './catalogs/pages/dynamic-activity.js';
+import {messages as sessionOutcomes} from './catalogs/pages/session-outcomes.js';
 import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
@@ -59,3 +65,9 @@ for (const [locale, messages] of Object.entries(linkedinServices)) registerMessa
 for (const [locale, messages] of Object.entries(misc)) registerMessages(locale, 'pagesMisc', messages);
 for (const [locale, messages] of Object.entries(extraCommon)) registerMessages(locale, 'pagesExtraCommon', messages);
 for (const [locale, messages] of Object.entries(fieldsStatus)) registerMessages(locale, 'pagesFieldsStatus', messages);
+for (const [locale, messages] of Object.entries(controlStatus)) registerMessages(locale, 'pagesControlStatus', messages);
+for (const [locale, messages] of Object.entries(extraLabels)) registerMessages(locale, 'pagesExtraLabels', messages);
+for (const [locale, messages] of Object.entries(finalLabels)) registerMessages(locale, 'pagesFinalLabels', messages);
+for (const [locale, messages] of Object.entries(countNouns)) registerMessages(locale, 'pagesCountNouns', messages);
+for (const [locale, messages] of Object.entries(dynamicActivity)) registerMessages(locale, 'pagesDynamicActivity', messages);
+for (const [locale, messages] of Object.entries(sessionOutcomes)) registerMessages(locale, 'pagesSessionOutcomes', messages);

@@ -10,7 +10,7 @@ import {setAsideRows} from './set-aside.js';
 import {titleCase} from '../fragment-words.js';
 
 export const KIND_NAMES = {preferred: t('pagesCommon.preferredPlaces'), acceptable: t('pagesCommon.acceptablePlaces'), relocation: t('pagesCommon.relocation')};
-const MODE_WORDS = {no: 'No relocation', yes: t('pagesCommon.yes'), unspecified: 'Not specified'};
+const MODE_WORDS = {no: t('pagesExtraLabels.noRelocation'), yes: t('pagesCommon.yes'), unspecified: t('pagesExtraLabels.notSpecified')};
 const SHOWN = 10;   // a long crawl list (70 places abroad) shows its first places and "+N more"
 // A side as the person reads it: its places in title case, or for relocation what it said when it named none.
 export const sideText = (places, mode) => {
@@ -19,7 +19,7 @@ export const sideText = (places, mode) => {
   return names.length > SHOWN ? `${names.slice(0, SHOWN).join(', ')} + ${names.length - SHOWN} more` : names.join(', ');
 };
 // What only one side has, from the same-meaning check (lib/locations-same.js), in the same words.
-export const differs = conflict => [['Only in Strategy', conflict.onlyStrategy], ['Only in Profile', conflict.onlyProfile]]
+export const differs = conflict => [[t('pagesExtraLabels.onlyStrategy'), conflict.onlyStrategy], [t('pagesExtraLabels.onlyProfile'), conflict.onlyProfile]]
   .filter(([, list]) => list?.length).map(([label, list]) => `${label}: ${sideText(list)}`);
 
 // Why (4 Nov 2026, a tester on 0.9.2: "after choosing Use Profile's, Locations still shows the old list until reopened"): a pick, or the Undo of one, changes the Locations
@@ -66,7 +66,7 @@ function row(conflict) {
     return card;
   };
   const options = el('div', 'which-options');
-  options.append(option('strategy', 'Strategy', conflict.strategy, '', conflict.onlyStrategy, 'violet', go('strategy')),
+  options.append(option('strategy', t('pagesExtraLabels.strategy'), conflict.strategy, '', conflict.onlyStrategy, 'violet', go('strategy')),
     option('profile', t('pagesCommon.profile'), conflict.profile, conflict.profileMode, conflict.onlyProfile, 'teal', go('profile')));
   // The other ways out: one quiet "Choose…" menu beside the two boxes, never a line of links under them (owner: no lone line under a list).
   const typed = Object.assign(el('input', 'add'), {placeholder: t('pagesStrategy.placesComma'), hidden: true});

@@ -28,7 +28,7 @@ export const rescoring = () => running;
 
 /** Whether a Find jobs search runs now (the one <body data-find-card> state, pages/jobs-find.js searchingNow, read here so this module stays light). */
 const searching = () => document.body.dataset.findCard === 'searching';
-const WAIT = ['Re-score waits', 'Jobs are being found right now: one run at a time. Press Re-score again when it ends.', {view: 'jobs'}, 'warn'];
+const WAIT = [t('pagesExtraLabels.rescoreWaits'), 'Jobs are being found right now: one run at a time. Press Re-score again when it ends.', {view: 'jobs'}, 'warn'];
 
 /**
  * Re-score every outdated job once: queue them (engine), then a re-score run (engine mode rescore, never a Find jobs search) scores up to 60 now; the rest stay marked Old score for the next press (its row says "Re-scoring N older scores").
@@ -45,7 +45,7 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
   changed();
   try {
     const result = await window.pilot.rescoreOutdated().catch(error => ({ok: false, error: error.message}));
-    if (!result.ok) { toast('Not re-scored', result.error, {view: 'strategy'}, 'bad'); return; }
+    if (!result.ok) { toast(t('pagesExtraLabels.notRescored'), result.error, {view: 'strategy'}, 'bad'); return; }
     const searching = startSearch({reason: 'rescore', count: result.queued});   // resolves when the search ends
     // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
     if (refusal(await Promise.race([searching, new Promise(resolve => setTimeout(resolve, 1500))]))) return;

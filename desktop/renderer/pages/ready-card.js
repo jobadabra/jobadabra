@@ -177,7 +177,7 @@ export async function initReadyCard() {
       if (result.ok) import('./jobs.js').then(jobs => jobs.startedApplying()).catch(() => {});   // the job is Applying now: the Jobs list is read again (loaded on use: the card also runs without the Jobs page)
       button.disabled = false; say(result.ok ? 'Opened in your browser: check it, solve a bot check if there is one, and press Submit there yourself.' : (result.error || 'Could not open it.'), result.ok ? 'good' : 'bad'); });
     return button; };
-  const act = {open, live: code => { const button = iconButton('pulse', 'Open live recording', 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },
+  const act = {open, live: code => { const button = iconButton('pulse', t('pagesExtraLabels.openLive'), 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },
     watch: code => { const button = iconButton('eye', t('pagesReadyReports.watch'), 'the video of the server filling this form tonight (3 minutes at most)', 'watch');
       button.addEventListener('click', () => watchFill(button, code)); return button; },
     again: code => { const button = iconButton('refresh', t('pagesReadyReports.fillAgain'), 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
@@ -185,7 +185,7 @@ export async function initReadyCard() {
     stopAll: () => { const button = el('button', 'secondary ready-stop-all', t('pagesReadyReports.stopAll')); button.type = 'button'; button.title = t('pagesReadyReports.stopNight'); button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
     done: code => { const button = iconButton('check', t('pagesCommon.done'), 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
   // What just happened, as a badge and its line (owner, 18 Oct 2026: the status lines "should be shown as badges").
-  const LABEL = {info: t('pagesCommon.working'), good: t('pagesCommon.done'), warn: t('pagesCommon.note'), bad: 'Problem'};
+  const LABEL = {info: t('pagesCommon.working'), good: t('pagesCommon.done'), warn: t('pagesCommon.note'), bad: t('pagesExtraLabels.problem')};
   const say = (text, tone = 'info') => {
     note.textContent = '';
     if (!text) return;
@@ -238,7 +238,7 @@ export async function initReadyCard() {
   // A row's Fill again: after a yes, the server fills that form again from the night's own copy (lib/ready-handlers.js readyAgain). Its own row shows it at once
   // ("sending"), then waiting or filling with its own bar; a night already running takes it at the end of its line.
   const fillAgain = async code => {
-    const name = names[code] || 'This form';
+    const name = names[code] || t('pagesExtraLabels.thisForm');
     if (!await confirmFill({again: true, jobs: [{code, name}], replaces: 0, note: 'The night\'s other forms keep what was filled; Open in my browser still works for them.'})) return say('Not started: nothing changed on the server.');
     pending.add(code); say(''); repaint();
     const result = await window.pilot.readyAgain(code).catch(error => ({ok: false, error: errorLine(error)}));

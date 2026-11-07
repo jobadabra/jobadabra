@@ -27,7 +27,7 @@ test('page catalogs provide seven real translations with matching interpolation'
         for (const form of forms) {
           assert.equal(typeof form, 'string');
           assert.deepEqual(parameters(form), parameters(english), `${locale}.${key}`);
-          if (locale !== 'en' && !['no', 'question'].includes(key)) assert.notEqual(form, english, `${locale}.${key}: real translation`);
+          if (locale !== 'en' && !['no', 'question'].includes(key) && !(file === 'count-nouns.js' && locale === 'fr' && ['site', 'version'].includes(key))) assert.notEqual(form, english, `${locale}.${key}: real translation`);
         }
         if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
           assert.ok(value[category] || value.other, `${locale}.${key}.${category}`);
@@ -83,4 +83,30 @@ test('the fill picker translates its branches while job names stay plain text', 
       assert.equal(await answer, null, 'Cancel preserves the no-submit behavior');
     } finally { setLocale('en'); }
   }
+});
+
+test('counted page nouns use native categories without translating noun identifiers', async () => {
+  const {counted} = await import('../../../renderer/pages/page-counts.js');
+  try {
+    setLocale('ru');
+    assert.equal(counted('job', 1), '1 вакансия');
+    assert.equal(counted('job', 2), '2 вакансии');
+    assert.equal(counted('job', 5), '5 вакансий');
+    setLocale('ro');
+    assert.equal(counted('site', 1), '1 site');
+    assert.equal(counted('site', 2), '2 site-uri');
+    assert.equal(counted('site', 20), '20 de site-uri');
+  } finally { setLocale('en'); }
+});
+
+test('stored completion receipts keep their identifiers and user answers while their labels translate', async () => {
+  const {outcomeLabel} = await import('../../../renderer/pages/session-outcomes.js');
+  try {
+    setLocale('ru');
+    assert.equal(outcomeLabel('Filled in the form'), 'Заполнено в форме');
+    assert.equal(outcomeLabel('Ticked in the form'), 'Отмечено в форме');
+    assert.equal(outcomeLabel('Checked'), 'Проверено');
+    assert.equal(outcomeLabel('To send: <em>Original answer</em>'), 'К отправке: <em>Original answer</em>');
+    assert.equal(outcomeLabel('user-written content'), 'user-written content');
+  } finally { setLocale('en'); }
 });

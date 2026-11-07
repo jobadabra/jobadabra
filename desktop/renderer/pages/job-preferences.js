@@ -78,7 +78,7 @@ function workload(bind) {
     field.addEventListener('input', () => { now[key] = field.value; bind.set(workloadText(now)); });
     return labelled(text, field);
   };
-  box.append(part('min', 'Workload (minimum %)', 'e.g. 50'), part('max', 'Workload (maximum %)', 'e.g. 100'));
+  box.append(part('min', t('pagesControlStatus.workloadMin'), 'e.g. 50'), part('max', t('pagesControlStatus.workloadMax'), 'e.g. 100'));
   return box;
 }
 
@@ -112,7 +112,7 @@ function noteBox(view, note) {
 function addChange(side, ends, text) {
   if (side === 'must' && ends.rules) return {op: 'insert', after: ends.rules, key: 'add-must', lines: [text]};
   const after = ends[side];
-  return after && {op: 'insert', after, key: `add-${side}`, lines: [`${side === 'must' ? 'Deal-breaker' : 'Preference'}: ${text}`]};
+  return after && {op: 'insert', after, key: `add-${side}`, lines: [`${side === 'must' ? t('pagesControlStatus.dealBreaker') : t('pagesControlStatus.preference')}: ${text}`]};
 }
 
 function side(view, key, {fields, other, ends, note}, anchor) {

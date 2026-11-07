@@ -86,7 +86,7 @@ async function saveSchedule(select) {
   const schedule = scheduleWith(shared.state.settings.schedule, select.dataset.schedule, /^\d+$/.test(select.value) ? Number(select.value) : select.value);
   await window.pilot.saveSettings({schedule});
   shared.state = await window.pilot.state();
-  const task = select.closest('.task-row')?.querySelector('b')?.textContent || 'Schedule';
+  const task = select.closest('.task-row')?.querySelector('b')?.textContent || t('pagesFinalLabels.schedule');
   savedToast(t('pagesCommon.saved'), `${task}: ${select.selectedOptions[0]?.textContent}`);
   updateRepo();
 }
@@ -117,7 +117,7 @@ export function showCloud() {
     ? osText(`${cloud.repo} · runs the schedule above, even with the Mac off`) : t('pagesConnections.githubDaily');
   $('cloud-connect').textContent = cloud?.repo ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   $('cloud-open').hidden = $('cloud-more').hidden = !cloud?.repo;
-  $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut('Turn off Always on', () => $('cloud-off').click())] : []));
+  $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut(t('pagesFinalLabels.turnOffAlways'), () => $('cloud-off').click())] : []));
   showCloudPill();
   showCloudNeeds();
   $('auto-search').disabled = !!cloud?.repo;
@@ -172,7 +172,7 @@ function showTelegramCloud() {
   if (on) $('tg-cloud-actions').prepend($('tg-cloud-on')); else $('tg-cloud-form').querySelector('.inline').append($('tg-cloud-on'));
   $('tg-cloud-on').textContent = on ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   show($('tg-cloud-more'), !!on);
-  $('tg-cloud-more').replaceChildren(...(on ? [wayOut('Turn off Telegram buttons', () => $('tg-cloud-off').click())] : []));
+  $('tg-cloud-more').replaceChildren(...(on ? [wayOut(t('pagesFinalLabels.turnOffTelegram'), () => $('tg-cloud-off').click())] : []));
   refreshServices();  // Settings → Connections: the GitHub and Cloudflare cards move between Available and Connected
 }
 let cloudUrls = null;
@@ -189,7 +189,7 @@ export async function showGoogle() {
   $('google-connect').textContent = google.connected ? t('pagesConnections.reconnect') : t('pagesConnections.connectGoogle');
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").
   $('google-more').hidden = !google.connected;
-  $('google-more').replaceChildren(...(google.connected ? [wayOut('Disconnect Gmail', disconnectGoogle)] : []));
+  $('google-more').replaceChildren(...(google.connected ? [wayOut(t('pagesFinalLabels.disconnectGmail'), disconnectGoogle)] : []));
   setGmailConnected(google.connected);   // the Suggestions card and ⌘K follow (pages/gmail-offer.js)
   noteCheck({google: {connected: !!google.connected, email: google.email || ''}});  // the cards above follow
 }
@@ -197,7 +197,7 @@ export async function showGoogle() {
 export function showTelegram() {
   const on = !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId);
   $('telegram-more').hidden = !on;
-  $('telegram-more').replaceChildren(...(on ? [wayOut('Disconnect Telegram', disconnectTelegram)] : []));
+  $('telegram-more').replaceChildren(...(on ? [wayOut(t('pagesFinalLabels.disconnectTelegram'), disconnectTelegram)] : []));
 }
 async function disconnectTelegram() {
   message('telegram-message', t('pagesConnections.disconnecting'), 'waiting');
@@ -382,7 +382,7 @@ export async function init() {
       const value = $(`set-${id}`).value.trim();
       if (!value) return;
       const checked = check ? await window.pilot[check](value) : {ok: true};   // a free call: is the key valid?
-      if (!checked.ok) { alertLine(name, checked.error || 'That key was rejected'); return; }
+      if (!checked.ok) { alertLine(name, checked.error || t('pagesFinalLabels.keyRejected')); return; }
       try {
         await window.pilot.saveSecret(name, value);
       } catch (error) {

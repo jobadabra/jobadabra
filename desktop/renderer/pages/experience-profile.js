@@ -213,7 +213,7 @@ async function write(open) {
     draw(tab);
   }
   if (result.items) keep('profile-parts', {...result, ok: true});
-  return result.ok ? {ok: true} : {ok: false, error: result.error || 'couldn\'t save it'};
+  return result.ok ? {ok: true} : {ok: false, error: result.error || t('pagesFieldsStatus.saveFailed')};
 }
 
 function editorOf(key, card) {

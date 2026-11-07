@@ -35,7 +35,7 @@ async function watchUntilOn() {
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  if (view.on) toast('LinkedIn jobs is on', 'Every Find jobs now also reads your LinkedIn job searches, in the background.', NO_PLACE.itself, 'good');
+  if (view.on) toast(t('pagesFinalLabels.linkedinOn'), 'Every Find jobs now also reads your LinkedIn job searches, in the background.', NO_PLACE.itself, 'good');
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
@@ -45,7 +45,7 @@ async function signInHere() {
   const answer = await window.pilot.linkedinJobsSignIn().catch(() => null);
   signingIn = false;
   await refreshLinkedin().catch(() => {});
-  if (answer?.ok) toast('LinkedIn jobs is on', 'Every Find jobs now also reads your LinkedIn job searches, in the background.', NO_PLACE.itself, 'good');
+  if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), 'Every Find jobs now also reads your LinkedIn job searches, in the background.', NO_PLACE.itself, 'good');
   else toast(...signInEnded(answer, view));
 }
 
@@ -53,7 +53,7 @@ async function signInHere() {
 async function turnOnWithChrome() {
   const opened = await window.pilot.linkedinJobsConnect().catch(() => null);
   if (opened?.opened) {
-    toast('Finish in Chrome', 'A Jobadabra page opened in Chrome: press "Allow and turn on LinkedIn jobs" there. This window notices by itself.', NO_PLACE.itself, 'info');
+    toast(t('pagesFinalLabels.finishChrome'), 'A Jobadabra page opened in Chrome: press "Allow and turn on LinkedIn jobs" there. This window notices by itself.', NO_PLACE.itself, 'info');
     watchUntilOn();
   } else toast(...notOpened(opened));
 }
@@ -61,7 +61,7 @@ async function turnOnWithChrome() {
 async function turnOff() {
   await window.pilot.linkedinJobsOff();
   await refreshLinkedin();
-  toast('LinkedIn jobs is off', 'Your LinkedIn sign-in was deleted from this Mac.', NO_PLACE.itself, 'info');
+  toast(t('pagesFinalLabels.linkedinOff'), 'Your LinkedIn sign-in was deleted from this Mac.', NO_PLACE.itself, 'info');
 }
 
 /**

@@ -52,7 +52,7 @@ function askToFill(list) {
   const rows = el('ul', 'tune-list');
   for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : ' (check it)'}`));
   const foot = el('div', 'dialog-foot');
-  for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', 'Fill them in']]) foot.append(Object.assign(el('button', cls, label), {value}));
+  for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', t('pagesFieldsStatus.fillThem')]]) foot.append(Object.assign(el('button', cls, label), {value}));
   const form = el('form');
   form.method = 'dialog';
   form.append(el('h2', '', t('pagesProfile.fillThese')), el('p', 'dialog-lead', t('pagesLettersData.cvHintsOnly')), rows, foot);
@@ -136,7 +136,7 @@ export async function loadProposals({again = false} = {}) {
 }
 
 // After Apply: forms usually ask for these; when some are empty, say so once per app run, with what the CV can fill.
-const USUAL = {phone: 'phone', street: 'street', postal_code: 'postal code', location: 'town'};
+const USUAL = {phone: 'phone', street: 'street', postal_code: t('pagesFieldsStatus.postalCode'), location: 'town'};
 let nudged = false;
 export async function nudgeMissingDetails() {
   if (nudged) return;

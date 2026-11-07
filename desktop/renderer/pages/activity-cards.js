@@ -100,7 +100,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
   const {done = kits.jobs.length, total = kits.jobs.length, failed = []} = kits.outcome || {};
   const noun = cvs ? 'CV' : 'application';
   const head = cardHead(cvs ? t('pagesExtraCommon.tailoredDocuments') : t('pagesCommon.applications'), total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
-    {subtitles: [total > done ? `${plural(total - done, noun)} could not be ${cvs ? 'tailored' : 'drafted'}${failed.length ? '.' : ': the run did not record which.'}`
+    {subtitles: [total > done ? t('pagesDynamicActivity.m10', {"plural": plural(total - done, noun), "value2": cvs ? t('pagesDynamicActivity.tailored') : t('pagesDynamicActivity.drafted'), "value3": failed.length ? '.' : t('pagesDynamicActivity.notRecorded')})
       : kits.subtitle]});   // partial: the line above says it, with the counts
   // One row per job (the shared .item-rows): its title (the posting opens from it) and company, then the one action, aligned.
   const list = el('ul', 'item-rows kits-jobs');

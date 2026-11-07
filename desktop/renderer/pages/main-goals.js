@@ -20,7 +20,7 @@ import {strategyState} from './strategy-state.js';
 import {GOAL_LABELS, cardHeader, changed, drafts, isOpen} from './strategy-cards.js';
 import {draftEntries, listChips} from './strategy-targets.js';
 
-const TILES = [['roles', 'briefcase', t('pagesStrategy.targetRoles')], ['seniority', 'user', 'Target level'], ['work_mode', 'building', 'Work mode'], ['minimum_salary', 'coins', 'Minimum salary']];
+const TILES = [['roles', 'briefcase', t('pagesStrategy.targetRoles')], ['seniority', 'user', t('pagesExtraLabels.targetLevel')], ['work_mode', 'building', t('pagesExtraLabels.workMode')], ['minimum_salary', 'coins', t('pagesExtraLabels.minimumSalary')]];
 const TONES = {roles: 'violet', seniority: 'info', work_mode: 'good', minimum_salary: 'warn'};
 
 // The saved goals, a Profile written before the goals rows standing in with its Compensation line and the search's level.
@@ -67,7 +67,7 @@ function fromDetails() {
 }
 
 function editor() {
-  const rows = [{label: t('pagesStrategy.targetRoles'), control: listChips('roles', 'Add a job title'), hint: t('pagesStrategy.roleHelp')}];
+  const rows = [{label: t('pagesStrategy.targetRoles'), control: listChips('roles', t('pagesExtraLabels.addTitle')), hint: t('pagesStrategy.roleHelp')}];
   for (const [key, , label] of TILES.slice(1)) {
     const kind = GOAL_KINDS[key], saved = savedGoals()[key] || '';
     const format = formatFor({marked: {kind: kind.kind, options: kind.options || []}});
