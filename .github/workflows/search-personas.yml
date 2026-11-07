@@ -95,6 +95,7 @@ jobs:
       - name: The persona's numbers
         if: always() && steps.token.outputs.ok == 'yes'
         run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
+      # Why (7 Nov 2026, #2920): the draft's role words and places differ run to run; p1/p3 EURES jobs fell 86 -> 18 and 18 -> 8 and the words behind it were never kept (draft.json is a fictional persona's, no real data)
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -107,6 +108,7 @@ jobs:
             out/judge.log
             out/draw/presses.jsonl
             out/draw/run-*.log
+            out/draw/draft.json
       - if: always() && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger
         with:
