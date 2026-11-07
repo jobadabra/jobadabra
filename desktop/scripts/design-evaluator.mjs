@@ -17,12 +17,23 @@ function selectorOf(el) {
 /** Whether the element takes part in the layout (a fixed box counts, a hidden one does not). */
 function isVisible(win, el) { return el.offsetParent !== null || win.getComputedStyle(el).position === 'fixed'; }
 
-/** Spacing (padding or gap off the scale), primary (2+ `button.primary` in one card) and nested (a card inside a card; a `details` wrapper or `.is-plain` is not a card). */
+/**
+ * What a primary button is counted in: its own row when it sits in a list of peer rows (an `li` of a `ul`/`ol` inside the card), else the card.
+ * Why (7 Nov 2026, owner: "One amber per row (Recommended)"; Keep today's look (each row's main action amber; Done and ⋯ plain) … The 'one primary' rule stays for real cards (a form, a dialog)): rows of a list are peers, any of them may be the urgent one, so each row has one amber and no row outranks another.
+ */
+function primaryScope(button, card) {
+  const row = button.closest('li');
+  return row && row !== card && card.contains(row) && row.parentElement && /^(UL|OL)$/.test(row.parentElement.tagName) ? row : card;
+}
+
+/** Spacing (padding or gap off the scale), primary (2+ `button.primary` in one card, or in one row of a list of peer rows) and nested (a card inside a card; a `details` wrapper or `.is-plain` is not a card). */
 function cardHits(win, doc, add) {
   const cards = [...doc.querySelectorAll(CARD)].filter(card => isVisible(win, card));
   for (const card of cards) {
     const primaries = [...card.querySelectorAll('button.primary')].filter(button => isVisible(win, button) && button.closest(CARD) === card);
-    if (primaries.length > 1) add('primary', card, `${primaries.length} primary buttons`);
+    const scopes = new Map();
+    for (const button of primaries) { const scope = primaryScope(button, card); scopes.set(scope, (scopes.get(scope) || 0) + 1); }
+    for (const [scope, count] of scopes) if (count > 1) add('primary', scope, `${count} primary buttons`);
     const parent = card.parentElement && card.parentElement.closest(CARD);
     if (parent && parent.tagName !== 'DETAILS' && !parent.classList.contains('is-plain') && !card.classList.contains('is-plain')) add('nested', card, `inside ${selectorOf(parent)}`);
     const style = win.getComputedStyle(card);
@@ -126,6 +137,6 @@ function evaluate(win, doc) {
   return {out, cards, texts};
 }
 
-const PARTS = [selectorOf, isVisible, cardHits, colorOf, mixColors, luminanceOf, backgroundOf, lowContrast, reached, clippedNote, textHits, evaluate];
+const PARTS = [selectorOf, isVisible, primaryScope, cardHits, colorOf, mixColors, luminanceOf, backgroundOf, lowContrast, reached, clippedNote, textHits, evaluate];
 /** The expression for `shot.mjs --eval`: the constants, the functions' source and the call. */
 export const designEval = `(() => { const CARD = ${JSON.stringify(CARD)}, SCALE = ${JSON.stringify(SCALE)}; ${PARTS.map(part => part.toString()).join('\n')}\nreturn evaluate(window, document); })()`;
