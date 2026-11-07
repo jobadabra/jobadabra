@@ -27,8 +27,12 @@ trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 #   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
 #   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Outside a cmux session both exit 0 silently and the log stays the channel.
 notify_session() {
+  local result=0
   if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
-  else python3 "$here/claude-pr-events.py" "$log"; fi
+  else python3 "$here/claude-pr-events.py" "$log"; fi || result=1
+  # Why (7 Nov 2026, owner, #3415): the worker received CONFLICT but stopped with its repair unpushed; the coordinator must hear it independently.
+  python3 "$here/pr-coordinator-events.py" "$log" || result=1
+  return "$result"
 }
 say() { echo "ship: $*" >> "$log"; notify_session; }
 finish_terminal() {

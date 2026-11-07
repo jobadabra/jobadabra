@@ -25,7 +25,10 @@ def deliver(log, thread, codex, *, run=subprocess.run, cmux=None, surface=None):
         return False
 
     def send(events):
-        message = ('PR watcher events for your existing work. Inspect new failures/comments, '
+        message = ('PR watcher events for your existing work. FAILED = diagnose and retry the pending push; '
+                   'CONFLICT = integrate main preserving both sides; RED = fix the failing check; COMMENT = inspect and address. '
+                   'Do not end with a local repair still unpushed; escalate an actual blocker to your coordinator. '
+                   'Inspect new failures/comments, '
                    'events may be superseded: verify the current head. Continue authorized work, and report READY only on its exact head. '
                    f'Do not merge or submit applications. Owning Codex thread: {thread}; if this is not your thread, do not act on its work.\n' + '\n'.join(events) + f'\nLog: {log}')
         env = dict(os.environ)

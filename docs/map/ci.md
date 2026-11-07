@@ -14,6 +14,7 @@ updated: 2026-11-03
 - A new gate, hook or CI check only if it would have caught at least 2 real escapes in the last 30 days, or it guards a safety step. No new tests of our own tooling unless they guard safety, data, money, privacy or the release verdict, with a `Guard:` line ([change loop](../rules/change-loop.md)).
 - One required check, "All checks passed" (`tools/pr-verdict.py`); a PR's own jobs stay under 10 minutes. Tests also run on Windows and Linux: temp dirs via `os.tmpdir()`, compare paths after normalising slashes.
 - A PR is ready only when all checks passed, Gitar reads Approved, and no comment is unanswered. Fix red at once and name the cause.
+- Delegated PRs register `branch.<worker-branch>.shipCoordinator` with the coordinator's cmux surface UUID; the watcher independently escalates actionable events there. Verify the worker acts, rather than treating queue acceptance as acknowledgement ([change loop](../rules/change-loop.md)).
 - A small fix several open PRs need goes into each branch as one shared commit; no PR waits for another to merge.
 
 ## Key files
