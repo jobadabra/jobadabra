@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {realDataFolders} from '../../lib/app-identity.js';
+import {writePrivate} from '../../lib/private-file.js';
 
 export const SITE = 'https://www.jobadabra.top';
 /** A bundle id as the site mints it (16 lowercase hex characters), else null: the only shape that is ever put into a URL. */
@@ -51,9 +52,9 @@ export function loadBundle(id, bundle, home, {real = realDataFolders(), now = ne
   let kept = [];
   try { const onDisk = JSON.parse(fs.readFileSync(file, 'utf8')); if (Array.isArray(onDisk)) kept = onDisk.filter(record => !sessions.some(added => added.id === record.id)); } catch (error) { if (error.code !== 'ENOENT') throw new Error(`sessions.json in the twin folder is not readable: ${error.message}`); }   // Why: no file yet is the normal first replay
   fs.mkdirSync(folder, {recursive: true});
-  fs.writeFileSync(file, JSON.stringify([...kept, ...sessions]), {mode: 0o600});
+  writePrivate(file, JSON.stringify([...kept, ...sessions]));
   const job = bundle.state?.job && typeof bundle.state.job === 'object' ? bundle.state.job : null;
-  if (job) { fs.mkdirSync(path.join(folder, 'replay', id), {recursive: true}); fs.writeFileSync(path.join(folder, 'replay', id, 'job.json'), JSON.stringify(job, null, 2), {mode: 0o600}); }
+  if (job) { fs.mkdirSync(path.join(folder, 'replay', id), {recursive: true}); writePrivate(path.join(folder, 'replay', id, 'job.json'), JSON.stringify(job, null, 2)); }
   return {sessions: sessions.length, job: !!job, file};
 }
 

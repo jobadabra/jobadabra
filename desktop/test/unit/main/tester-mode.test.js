@@ -91,3 +91,13 @@ test('the launcher\'s key leaves the process environment once, so a Claude sessi
   assert.equal(env.JOBADABRA_TESTER_KEY, undefined);
   assert.equal(testerMode(env), null, 'an environment copy without the key is not tester mode (the held key is only for process.env)');
 });
+
+test('the held key still makes the twin a tester app after it leaves process.env', () => {
+  const saved = {...process.env};
+  try {
+    Object.assign(process.env, {JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TWIN: '1', JOBADABRA_TESTER_KEY: 'SECRET'});
+    takeTesterKey(process.env);
+    assert.equal(process.env.JOBADABRA_TESTER_KEY, undefined);
+    assert.equal(testerMode()?.key, 'SECRET');
+  } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
+});

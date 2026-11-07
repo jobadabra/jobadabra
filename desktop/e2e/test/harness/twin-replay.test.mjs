@@ -57,7 +57,7 @@ test('a malformed or old record from a tester cannot break the Sessions list or 
       assert.equal(record.startedAt, now.toISOString(), 'an old bug is not dropped by the app\'s 14-day restore');
       assert.ok(!record.transcript && !record.claudeId && !record.output, 'no transcript path, Claude id or output is carried');
     }
-    assert.ok(!fs.existsSync(path.join(root, 'escape')), 'a record id with a path in it is dropped');
+    assert.deepEqual(records.map(record => record.id), ['a1', 'old'], 'the record with a path in its id is not written');
   } finally { fs.rmSync(root, {recursive: true, force: true}); }
 });
 
