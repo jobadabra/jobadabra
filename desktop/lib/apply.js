@@ -118,12 +118,15 @@ export function openOne(url, {session = '', open = spawn, log = appLog, reuse = 
   return {ok: true};
 }
 
+/** Lets each job's ended hidden-browser run (Stop, Cancel, a quit or update before an answer) leave the list before a Chrome session starts for it; a failing store read leaves things as they were. */
+const releaseEndedRuns = (release, urls) => Promise.all(urls.map(job => release(job.split('#')[0]).catch(() => false)));
+
 // The Apply button: the form tab, and a form session for it in the Applying page (the job goes to Applying in Notion, like an
 // Apply with Claude session). The session shows what is left in the form from the extension's reports and moves to Applied
 // when the extension sees the submit. Pressing Apply on a job that already has an open form session reopens only the tab.
 export async function applyOne(storage, url, details = {}, {open = spawn, term = terminals, run = pipeline.run, id = () => crypto.randomUUID().slice(0, 8), focus = openFormTab, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   if (!/^https?:\/\//.test(url || '')) return {ok: false, error: 'This job has no link to open.'};
-  await release(url.split('#')[0]).catch(() => false);   // an earlier hidden-browser run that ended without an answer leaves the list first: this press is a session of its own (7 Nov 2026, owner's HYPE session)
+  await releaseEndedRuns(release, [url]);   // an earlier hidden-browser run that ended without an answer leaves the list first: this press is a session of its own (7 Nov 2026, owner's HYPE session)
   const fresh = !term.list().some(s => s.url === url.split('#')[0] && s.kind === 'form' && !s.outcome);
   // The session first (an open one on this job is reused), then its tab, which carries the session's id.
   const session = term.startForm({id: id(), url: url.split('#')[0], title: details?.title || '', company: details?.company || '',
@@ -271,28 +274,9 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 
 // `prepare` drafts a missing kit (the app's prepareKit): with it, a batch with fewer than N ready jobs drafts the rest first.
 // mode 'background' (Background or Full automation, applyMode 'fill'/'auto'): the chosen jobs go to `enqueue` (the hidden browser's queue, lib/background-apply-controller.js).
-export async function start(storage, {n, mode, applyMode}, open = spawn, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null} = {}) {
+export async function start(storage, {n, mode, applyMode}, open = spawn, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
-  if (mode === 'agents') {
-    const ready = claudeReady(storage);
-    if (!ready.ok) return ready;
-    let urls = await next(storage, n);
-    let drafted = 0, why = '';
-    if (urls.length < n && prepare) {
-      const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report);
-      drafted = result.done;
-      why = result.why;
-      if (drafted) urls = await next(storage, n);
-    }
-    if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs)};
-    const here = launch === session.launch && await inApp(storage);
-    (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
-    n = urls.length;
-    const first = drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : '';
-    return {ok: true, inApp: here, message: first + (here
-      ? `Starting ${n} Claude session(s) in the app, a few seconds apart. Each shows in Application sessions at the bottom; you're notified when one needs you. It stops before Submit for your review.`
-      : `Starting ${n} Claude session(s), one window per job. Each reads sign-up emails itself, asks you in its window for a CAPTCHA, and stops before Submit for your review.`)};
-  }
+  if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report});
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n);
   let drafted = 0, why = '';
@@ -305,6 +289,13 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
   if (!chosen.length) return {ok: false, error: why || nothingStarted(jobs)};
   // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
   if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
+  await releaseEndedRuns(release, chosen.map(job => job.url));   // ended hidden-browser runs leave the list first, as in applyOne (7 Nov 2026, review of the owner's HYPE fix)
+  return openBatchInChrome(chosen, drafted, {open, focus});
+}
+
+
+/** The Apply-to-N batch in Chrome: a form session per job, then one launch with a tab for each job whose tab is not open yet. -> the start() answer. */
+function openBatchInChrome(chosen, drafted, {open, focus}) {
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.
   const owners = chosen.map(job => terminals.startForm({id: crypto.randomUUID().slice(0, 8), url: job.url.split('#')[0], title: job.title || '', company: job.company || '',
     location: job.location || '', workMode: job.workMode || ''}));
@@ -315,4 +306,27 @@ export async function start(storage, {n, mode, applyMode}, open = spawn, list = 
   return {ok: true, jobs: chosen.map(job => `${job.title} · ${job.company}`),
     message: `${drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : ''}Opened ${chosen.length} job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself. ` +
       '(If a form sits behind an "Apply" button, open it and click ✈️ → Fill with AI.)'};
+}
+
+
+/** The Apply-to-N batch with Claude sessions: drafts missing kits first, then starts one session per job in the app or a window. -> the start() answer. */
+async function startAgents(storage, n, {list, launch, next, prepare, report}) {
+  const ready = claudeReady(storage);
+  if (!ready.ok) return ready;
+  let urls = await next(storage, n);
+  let drafted = 0, why = '';
+  if (urls.length < n && prepare) {
+    const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report);
+    drafted = result.done;
+    why = result.why;
+    if (drafted) urls = await next(storage, n);
+  }
+  if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs)};
+  const here = launch === session.launch && await inApp(storage);
+  (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
+  n = urls.length;
+  const first = drafted ? `Prepared ${drafted} application${drafted === 1 ? '' : 's'} first. ` : '';
+  return {ok: true, inApp: here, message: first + (here
+    ? `Starting ${n} Claude session(s) in the app, a few seconds apart. Each shows in Application sessions at the bottom; you're notified when one needs you. It stops before Submit for your review.`
+    : `Starting ${n} Claude session(s), one window per job. Each reads sign-up emails itself, asks you in its window for a CAPTCHA, and stops before Submit for your review.`)};
 }

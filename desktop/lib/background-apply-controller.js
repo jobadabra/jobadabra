@@ -241,10 +241,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   // Hands to the person every background job of `fits` the interrupted check accepts; returns their session ids.
   async function handOverAll(fits, options) {
-    const handed = [];
-    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && fits(entry))) if (await handOverInterrupted(item, options)) handed.push(item.id);
+    const handed = [], told = options.quit && updatedStart ? {...options, updated: true} : options;   // Why (7 Nov 2026, review): a poll can reach a held job before the start-up sweep; both say "updated"
+    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && fits(entry))) if (await handOverInterrupted(item, told)) handed.push(item.id);
     return handed;
   }
+  let updatedStart = false;
+  /** Marks this start as the first of a new version: every hand-over of a job an earlier run held then says `app_updated`, whichever (poll or sweep) reaches it first. */
+  const markUpdatedStart = () => { updatedStart = true; };
   const heldBefore = (item, startedBefore = started) => Date.parse(item.startedAt) < startedBefore;   // a job an earlier run of the app held: its quit cut it off
   const heldOpen = item => heldBefore(item) && !item.background?.manualOverride;   // one not handed over yet (the cached state, so a poll asks the store only for those)
   /**
@@ -376,5 +379,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, releaseEnded, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  return {enqueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

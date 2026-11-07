@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundApplyController} from '../../../lib/background-apply-controller.js';
 import {createBackgroundApplyStore} from '../../../lib/background-apply-store.js';
-import {applyOne} from '../../../lib/apply.js';
+import {applyOne, start} from '../../../lib/apply.js';
 
 const url = 'https://jobs.example.test/captain';
 const NOW = Date.parse('2026-11-07T00:29:00Z');
@@ -68,4 +68,21 @@ test('a hand-off that stays with the person (a bot check, an unknown submit) kee
     assert.deepEqual([...w.records.keys()], ['old']);
     assert.deepEqual(w.closed, []);
   }
+});
+
+// Review of the fix (7 Nov 2026): "Apply to N jobs" in Chrome mode started its sessions without asking the rule, so an ended hidden-browser run was still reused there.
+test('the Apply-to-N batch in Chrome mode releases an ended hidden-browser run before its session starts', async () => {
+  const w = world({stored: {reason: 'stopped'}}), released = [];
+  const jobs = [{url: `${url}#top`, status: 'unreviewed', fit: 80, title: 'Captain', company: 'A', kit: true}];
+  const result = await start({}, {n: 1, mode: 'chrome'}, () => ({unref() {}}), async () => ({jobs}), undefined, undefined, null, () => {}, {focus: async () => {}, release: async job => { released.push(job); return w.controller.releaseEnded(job); }});
+  assert.deepEqual(released, [url], 'asked for the job address without its #fragment');
+  assert.equal(w.records.has('old'), false, `the ended session left the list (${JSON.stringify(result)})`);
+});
+
+// Review of the fix: a poll can reach a held job before the start-up sweep; the update's words must not depend on which comes first.
+test('once the start is marked as an update, a hand-over by any reader says "updated"', async () => {
+  const w = world({stored: {state: 'filling', manualOverride: false, reason: ''}});
+  w.controller.markUpdatedStart();
+  await w.controller.sweepInterrupted();
+  assert.equal(w.records.get('old').background.reason, 'app_updated');
 });

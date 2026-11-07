@@ -38,6 +38,7 @@ export function registerBackgroundHandlers(ctx) {
     const moves = startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log)), outcome => appLog('migrate', 'startup moves finished', outcome));
     moves.then(moved => { if (moved.length) toWindow('moved', moved); }, () => {});   // a failed move is already in the log line above
     // Crash rule (2026-10-29, owner): a press the last run's quit cut off is handed to the person once the store is settled; never retried (guard test/unit/main/crash-rule-wired.test.js).
+    if (updatedAtStart) backgroundApplyFor(storage).markUpdatedStart();   // before any poll can hand a held job over as "closed"
     moves.catch(() => {}).then(() => backgroundApplyFor(storage).sweepInterrupted(undefined, {updated: !!updatedAtStart})).catch(error => appLog('apply', `interrupted presses not checked: ${error.message}`));
     // Stalled press (2026-10-29, owner): a press with no reply 3 minutes on is handed to the person by the app's own timer, extension open or not (guard test/unit/main/stalled-press-wired.test.js).
     watchStalled(() => backgroundApplyFor(storage).sweepStalled(), {onError: error => appLog('apply', `stalled presses not checked: ${error.message}`)});
