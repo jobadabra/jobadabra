@@ -6,6 +6,7 @@ import {call} from './notion.js';   // Notion-only: copyLocal() writes this Mac'
 import {openStore} from './store/index.js';
 import {jobFrom} from './job-line.js';
 import {partialSearch, runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
+import {completionGuide, completionWords} from '../i18n/completion-notices.js';
 import {partialWords} from '../renderer/find-card-model.js';
 import {KIND, fromRow, result} from './run-rows.js';
 
@@ -184,41 +185,51 @@ const NAMES = {search: 'Find jobs', mail: 'Gmail check', insight: 'Insight', int
   prep: 'Interview prep kit', import: 'Add a job', tailor: 'Tailor CV + cover letter'};
 // A notification is the news of one run, so a click opens that run's result (Recent activity, the run selected); renderer/targets.js says how.
 // A Re-score's own news (it is a search-kind row, but not a Find jobs press: no "no jobs added"): how many scores it updated.
-function rescoreNotice(run) {
-  const where = run.where === 'github' ? ' (on GitHub)' : '';
-  if (run.ok === false || run.off) return {title: `Re-score had problems${where}`, body: 'Open Jobadabra and click the activity bar to see what happened.'};
+function rescoreNotice(run, locale) {
+  const text = (key, variables, canonical) => completionWords(locale, key, variables, canonical);
+  const suffix = run.where === 'github' ? text('where', {}, ' (on GitHub)') : '';
+  const name = text('rescore', {}, 'Re-score');
+  if (run.ok === false || run.off) return {title: text('failed', {name, where: suffix}, `Re-score had problems${suffix}`), body: text('failedBody', {}, 'Open Jobadabra and click the activity bar to see what happened.')};
   const warned = runWarned(run);
-  return {title: `Re-score ${warned ? 'finished with warnings' : 'done'}${where}`, body: `${run.scored ?? 0} score${run.scored === 1 ? '' : 's'} updated.${warned ? ' Open Jobadabra to see what it said.' : ''}`};
+  return {title: text(warned ? 'warned' : 'done', {name, where: suffix}, `Re-score ${warned ? 'finished with warnings' : 'done'}${suffix}`),
+    body: text('scores', {count: run.scored ?? 0}, `${run.scored ?? 0} score${run.scored === 1 ? '' : 's'} updated.`) + (warned ? text('look', {}, ' Open Jobadabra to see what it said.') : '')};
 }
-export function notice(run) {
-  const said = run.rescore ? rescoreNotice(run) : noticeText(run);
+/** Present a completed run; omitted locale preserves canonical callers, explicit saved locale localizes only authored framing. */
+export function notice(run, locale) {
+  const said = run.rescore ? rescoreNotice(run, locale) : noticeText(run, locale);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }
-// Why (4 Nov 2026, #3108): the Find jobs pop-up. Kept out of noticeText() so its complexity does not grow (tools/clean-code-js.mjs: an old function over the limit may not grow).
+// Why (7 Nov 2026, #3108): a time-limited search keeps its partial verdict in every language; this helper formats authored copy separately from the run record and its raw result.
 // A search that did not finish is never "done" with "No jobs added"; it says it ended at the time limit.
-function searchNotice(run, {where, verdict, look}) {
-  const name = run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs';
-  if (partialSearch(run)) return {title: `${name} ended at the time limit${where}`, body: `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`};
+function searchNotice(run, {where, verdict, look}, locale) {
+  const text = (key, variables, canonical) => completionWords(locale, key, variables, canonical);
+  const name = text(run.trigger === 'schedule' ? 'scheduled' : 'kind_search', {}, run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs');
+  if (partialSearch(run)) return {title: text('limitTitle', {name, where}, `${name} ended at the time limit${where}`), body: partialNoticeBody(run, locale)};
   const fresh = run.new;
-  return {title: `${name} ${verdict}${where}`,
-    body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
+  return {title: text(runWarned(run) ? 'warned' : 'done', {name, where}, `${name} ${verdict}${where}`),
+    body: (fresh ? text('added', {count: fresh}, `${fresh} job${fresh === 1 ? '' : 's'} added to your list.`) : text('noAdded', {}, 'No jobs added this time.')) + look};   // one number, the run's own record (owner, 24 Oct 2026)
 }
-function noticeText(run) {
+function partialNoticeBody(run, locale) {
+  return partialWords(run, run.new, locale === undefined ? undefined : completionGuide(locale)) + '.'
+    + completionWords(locale, 'look', {}, ' Open Jobadabra to see what it said.');
+}
+function noticeText(run, locale) {
   if (!NAMES[run.kind] && run.kind) return null;
-  const where = run.where === 'github' ? ' (on GitHub)' : '';
-  const name = NAMES[run.kind] || 'Find jobs';
-  if (run.ok === false || run.off) return {title: `${name} had problems${where}`, body: 'Open Jobadabra and click the activity bar to see what happened.'};
+  const text = (key, variables, canonical) => completionWords(locale, key, variables, canonical);
+  const where = run.where === 'github' ? text('where', {}, ' (on GitHub)') : '';
+  const name = text(`kind_${run.kind || 'search'}`, {}, NAMES[run.kind] || 'Find jobs');
+  if (run.ok === false || run.off) return {title: text('failed', {name, where}, `${name} had problems${where}`), body: text('failedBody', {}, 'Open Jobadabra and click the activity bar to see what happened.')};
   if (run.kind === 'mail') {
     const count = run.updates?.length ?? Number(/(\d+) update/.exec(run.result || run.summary || '')?.[1] || 0);
     if (!count) return null;
-    return {title: `Gmail: ${count} application update${count === 1 ? '' : 's'}${where}`,
+    return {title: text('updates', {count, where}, `Gmail: ${count} application update${count === 1 ? '' : 's'}${where}`),
       body: run.updates?.length ? run.updates.slice(0, 3).join('\n') : run.result};
   }
-  // A run that worked but said something (its Status is Warnings, or its log has a warning line) is not "done": the Actions page already calls it "With warnings",
-  // and a pop-up that says "done" over a refused AI call is the contradiction the UI loop found (#51, #52).
+  // A warning remains a warning in both the activity record and its user-facing notice.
   const verdict = runWarned(run) ? 'finished with warnings' : 'done';
-  const look = runWarned(run) ? ' Open Jobadabra to see what it said.' : '';
-  if (!run.kind || run.kind === 'search') return searchNotice(run, {where, verdict, look});
-  return {title: `${name} ${verdict}${where}`, body: String(run.result || run.summary || run.message || 'Done.').split('\n')[0].slice(0, 180) + look};
+  const look = runWarned(run) ? text('look', {}, ' Open Jobadabra to see what it said.') : '';
+  if (!run.kind || run.kind === 'search') return searchNotice(run, {where, verdict, look}, locale);
+  return {title: text(runWarned(run) ? 'warned' : 'done', {name, where}, `${name} ${verdict}${where}`),
+    body: String(run.result || run.summary || run.message || text('fallback', {}, 'Done.')).split('\n')[0].slice(0, 180) + look};
 }
 export {KIND as RUN_KINDS};   // every app task kind must be here, or its runs never get a Notion row (test/unit/main/run-kinds.test.js)

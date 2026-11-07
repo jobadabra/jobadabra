@@ -102,7 +102,7 @@ export function addedSoFar(log = []) {
   return (log || []).reduce((sum, line) => sum + Number((/^Added (\d+) new job/.exec(String(line)) || [])[1] || 0), 0);
 }
 /** Describe jobs added to the list using the display language’s plural form. */
-export const addedWords = n => (n ? t('helperGuide.addedJobs', {count: n}) : t('helperGuide.noAddedJobs'));
+export const addedWords = (n, text = t) => (n ? text('helperGuide.addedJobs', {count: n}) : text('helperGuide.noAddedJobs'));
 
 // The employer read as progress: the latest "Reading employer job sites: 1953 of 2251" ticker line (src/progress.py), or null before it starts.
 // When time ran out, the engine's "Employers: read 78 of 608 sites in the time" ends the bar there, not at the last tick (owner, 26 Oct 2026).
@@ -120,11 +120,13 @@ export function employersRead(log = []) {
 export const partialSites = log => { const sites = employersRead(log || []); return sites ? {done: sites.done, total: sites.total} : {}; };
 // How a search that ended at the 3-minute limit says so, lower-case, for a title or a lead: with the engine's count when it gave one, else without any number (#3108).
 /** Describe the search time limit using only the employer counts the engine reported. */
-export const limitWords = (sites = {}) => t('helperGuide.endedLimit') + (sites.total ? t('helperGuide.searchedSites', {done: number(sites.done), total: number(sites.total)}) : '');
+export const limitWords = (sites = {}, {text = t, formatNumber = number} = {}) => text('helperGuide.endedLimit')
+  + (sites.total ? text('helperGuide.searchedSites', {done: formatNumber(sites.done), total: formatNumber(sites.total)}) : '');
 // The title of a search that ended at the 3-minute limit (#3108): says so, how many employer sites it read when the engine reported that, and the jobs it did add.
 // Never "No jobs added to your list" alone: that reads as a finished search that found nothing. Used by the result card, the pop-up and the Find card.
 /** Name a partial search result with its known site counts and added jobs. */
-export const partialWords = (run, added = 0) => t('helperGuide.partial', {text: limitWords(partialSites(run?.log))}) + (added ? ` · ${addedWords(added)}` : '');
+export const partialWords = (run, added = 0, options = {}) => (options.text || t)('helperGuide.partial', {text: limitWords(partialSites(run?.log), options)})
+  + (added ? ` · ${addedWords(added, options.text)}` : '');
 
 // The bar under the numbers: counted once the engine says "N of M" employers, a sliding bar before (the search is working, the count is not known yet).
 export const readProgressModel = employers => (employers
