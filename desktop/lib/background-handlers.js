@@ -1,6 +1,7 @@
 // The app's background jobs at start-up (moved out of main.js, 8 Oct 2026): the one-time move of user data left on this Mac to Notion, the update check, the
 // timers (the focus reminder, the run announcements), resuming the queue and the Always-on checks. main.js passes in the services they share.
 // Guards: the update, queue and focus-reminder tests in desktop/test.
+import {activityText} from '../i18n/activity-notices.js';
 import * as backup from './backup.js';
 import * as critical from './critical.js';
 import * as aiFree from './ai-free.js';
@@ -169,7 +170,7 @@ export function registerBackgroundHandlers(ctx) {
       mail: () => (notionGate.tracking(storage) ? pipeline.checkMail(storage, log, 'schedule') : skipUntilNotion('mail')),
       scout: () => pipeline.scout(storage, log, 'schedule'),
       insight: () => pipeline.insight(storage, log, 'schedule'),
-    }, powerMonitor, {covered: () => serversRunSearch(storage), soon: () => notify('Searching for new jobs in 1 minute', 'Your scheduled search for new jobs is about to run.', {activity: true}, 'info')});
+    }, powerMonitor, {covered: () => serversRunSearch(storage), soon: () => notify(activityText('scheduleTitle'), activityText('scheduleBody'), {activity: true}, 'info')});
     setInterval(announceRuns, 5000);
     scheduleResume(pipeline, storage, {cloud: !!storage.settings().cloud?.repo, begin: resumeQueue, delayMs: resumeDelay()});  // after the schedule's own catch-up check has queued what's due; the queue is read now, not then
   }

@@ -1,0 +1,20 @@
+// Native quit-dialog task labels in en/de/fr/it/es/ro/ru; English labels remain the canonical critical registry identities.
+export const rows = {
+  saveCv: ['Saving your CV','Dein Lebenslauf wird gespeichert','Enregistrement de votre CV','Salvataggio del tuo CV','Guardando tu CV','Se salvează CV-ul tău','Сохранение вашего резюме'],
+  saveCvStrategy: ['Saving your CV and strategy','Lebenslauf und Strategie werden gespeichert','Enregistrement du CV et de la stratégie','Salvataggio di CV e strategia','Guardando tu CV y estrategia','Se salvează CV-ul și strategia','Сохранение резюме и стратегии'],
+  saveInterview: ['Saving an interview','Ein Gespräch wird gespeichert','Enregistrement d’un entretien','Salvataggio di un colloquio','Guardando una entrevista','Se salvează un interviu','Сохранение собеседования'],
+  transcribe: ['Transcribing an interview','Ein Gespräch wird transkribiert','Transcription d’un entretien','Trascrizione di un colloquio','Transcribiendo una entrevista','Se transcrie un interviu','Расшифровка собеседования'],
+  moveNotion: ['Moving your data to Notion','Deine Daten werden nach Notion verschoben','Déplacement de vos données vers Notion','Spostamento dei dati in Notion','Moviendo tus datos a Notion','Se mută datele în Notion','Перенос данных в Notion'],
+  connectNotion: ['Connecting Notion','Notion wird verbunden','Connexion à Notion','Collegamento a Notion','Conectando Notion','Se conectează Notion','Подключение Notion'],
+  reset: ['Resetting this computer','Dieser Computer wird zurückgesetzt','Réinitialisation de cet ordinateur','Reimpostazione di questo computer','Restableciendo este equipo','Se resetează acest computer','Сброс этого компьютера'],
+  clear: ['Clearing your job list','Deine Jobliste wird geleert','Effacement de votre liste d’offres','Svuotamento dell’elenco delle offerte','Vaciando tu lista de empleos','Se golește lista de joburi','Очистка списка вакансий'],
+  export: ['Exporting your data','Deine Daten werden exportiert','Exportation de vos données','Esportazione dei dati','Exportando tus datos','Se exportă datele','Экспорт данных'],
+  import: ['Importing your data','Deine Daten werden importiert','Importation de vos données','Importazione dei dati','Importando tus datos','Se importă datele','Импорт данных'],
+  backup: ['Backing up your data','Deine Daten werden gesichert','Sauvegarde de vos données','Backup dei dati','Creando una copia de tus datos','Se creează copia de siguranță','Резервное копирование данных'],
+  cloudOn: ['Setting up Always on','Immer an wird eingerichtet','Configuration de Toujours actif','Configurazione di Sempre attivo','Configurando Siempre activo','Se configurează Mereu activ','Настройка постоянной работы'],
+  cloudOff: ['Turning off Always on','Immer an wird ausgeschaltet','Désactivation de Toujours actif','Disattivazione di Sempre attivo','Desactivando Siempre activo','Se dezactivează Mereu activ','Отключение постоянной работы'],
+  telegramButtonsOn: ['Setting up the Telegram buttons','Telegram-Schaltflächen werden eingerichtet','Configuration des boutons Telegram','Configurazione dei pulsanti Telegram','Configurando los botones de Telegram','Se configurează butoanele Telegram','Настройка кнопок Telegram'],
+  telegramButtonsOff: ['Turning off the Telegram buttons','Telegram-Schaltflächen werden ausgeschaltet','Désactivation des boutons Telegram','Disattivazione dei pulsanti Telegram','Desactivando los botones de Telegram','Se dezactivează butoanele Telegram','Отключение кнопок Telegram'],
+  telegramConnect: ['Connecting Telegram','Telegram wird verbunden','Connexion à Telegram','Collegamento a Telegram','Conectando Telegram','Se conectează Telegram','Подключение Telegram'],
+  telegramDisconnect: ['Disconnecting Telegram','Telegram wird getrennt','Déconnexion de Telegram','Disconnessione da Telegram','Desconectando Telegram','Se deconectează Telegram','Отключение Telegram'],
+};
