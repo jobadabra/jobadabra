@@ -15,8 +15,16 @@ export function modeOfRead(read) {
   if (read.captcha !== false) return {mode: 'check', reason: read.why === 'check' ? 'check' : 'captcha'}; // words-ok: the read's own flag, not a page word list
   if (read.login !== false) return {mode: 'check', reason: 'login wall'}; // words-ok: the read's own flag, not a page word list
   if (read.accountCreation !== false) return {mode: 'check', reason: 'asks you to create an account'};
-  // Why (7 Nov 2026, owner, #3519: "to understand if it's a simple form and can be submitted automatically"): the light read has no answer plan, so its own verdict decides here: a simple form is auto, anything else it named needs the person.
-  if (read.simple === true) return {mode: 'auto', reason: 'a simple form'};
+  // Why (7 Nov 2026, owner, #3519: "to understand if it's a simple form and can be submitted automatically"): the light read has no answer plan, so its own verdict decides here: anything but a simple form needs the person; a simple form is auto only when the check's one match judged every required question (L2b, owner 7 Nov 2026), else fill (details missing, answers not checked).
+  // L2b (owner 7 Nov 2026: "Simple form, but can or not be applied automatically"): the check's one match of the form's required questions says what saved details it lacks; no match (AI off, no questions) leaves it as it was.
+  if (read.simple === true) {
+    if (read.match?.missing?.length) return {mode: 'fill', reason: 'needs your details'};
+    if (read.match?.unnamed > 0) return {mode: 'fill', reason: 'a box without a question'};   // a required box the page left unnamed cannot be judged, now or on a re-check
+    // Not judged = not read on a guess (review of L2b): a form with required questions that were not all judged (the AI was off or busy, the match never ran, the page refused the label read) is not "can apply automatically".
+    const asked = read.questions === null || read.questions?.length > 0;
+    if (asked && read.match?.unjudged !== 0) return {mode: 'fill', reason: 'answers not checked'};
+    return {mode: 'auto', reason: 'a simple form'};
+  }
   if (read.simple === false) return {mode: 'check', reason: read.why || 'not a simple form'};
   if (read.allFactsSaved !== true) return {mode: 'fill', reason: 'answers you have not saved'};
   return {mode: 'auto', reason: 'every answer is a saved fact'};

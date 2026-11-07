@@ -64,7 +64,8 @@ test('every file that reads the open questions is a known consumer of the shared
   }
   // each reads through lib/question-lists.js (the drawers, what Claude needs) or is the filter's own source; a new reader fails here until it is added with its filter
   // lib/desktop-ai-writes.js (3 Nov 2026, #3063) reads the store only to confirm a key is still the question the window listed before it writes; it shows no list, so it needs no filter
-  assert.deepEqual(readers.sort(), ['lib/desktop-ai-writes.js', 'lib/job-actions-handlers.js', 'lib/question-lists.js', 'lib/server-env.js', 'renderer/pages/jobs-questions.js', 'renderer/pages/session-needs.js'].sort());
+  // lib/triage-match.js (7 Nov 2026, #3563) reads the saved standard answers only to tell which of a FORM's required questions a saved answer covers; it lists nothing, so it needs no filter
+  assert.deepEqual(readers.sort(), ['lib/desktop-ai-writes.js', 'lib/job-actions-handlers.js', 'lib/question-lists.js', 'lib/server-env.js', 'lib/triage-match.js', 'renderer/pages/jobs-questions.js', 'renderer/pages/session-needs.js'].sort());
 });
 
 test('ranking: a question that blocked a fill, then the most asked, first', () => {

@@ -107,3 +107,25 @@ test('three statuses: Simple form, Needs you, Couldn\'t read, each with a sub-st
   assert.equal(chipOf({unreadable: true, why: 'something new'}).detail, "the page didn't load or couldn't be read", 'an unknown reason never shows its raw id');
   assert.equal(chipOf(null).label, 'Not checked', 'positive control: no read is still Not checked');
 });
+
+test('a simple form that lacks saved details says which, three at most and the rest as a count', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: ''};
+  const some = labels => ({...look, match: {missing: labels.map(label => ({kind: 'detail', label})), unjudged: 0}});
+  assert.deepEqual(chipOf(some(['Notice period'])), {label: 'Simple form', tone: 'info', detail: 'needs your details: Notice period'});
+  assert.equal(chipOf(some(['Phone', 'Street', 'Notice period', 'Postal code', 'City'])).detail, 'needs your details: Phone, Street, Notice period +2');
+  assert.equal(chipOf(some(['Phone', 'Phone'])).detail, 'needs your details: Phone', 'the same detail asked twice is said once');
+  assert.equal(chipOf({...look, match: {missing: [], unjudged: 0}}).detail, 'can apply automatically');
+});
+
+test('a question no saved answer covers says "needs your answer", never "your details"; details come first; unjudged answers say so', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: ''};
+  assert.equal(chipOf({...look, match: {missing: [{kind: 'answer', label: 'Do you speak French?'}], unjudged: 0}}).detail, 'needs your answer: Do you speak French?');
+  assert.equal(chipOf({...look, match: {missing: [{kind: 'answer', label: 'Do you speak French?'}, {kind: 'detail', label: 'Phone'}], unjudged: 0}}).detail, 'needs your details: Phone, Do you speak French?');
+  assert.deepEqual(chipOf({...look, questions: ['Notice period']}), {label: 'Simple form', tone: 'info', detail: 'answers not checked'});
+  assert.equal(chipOf({...look, questions: null}).detail, 'answers not checked');
+});
+
+test('a box with no question text says so in words, never a raw id', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: '', questions: ['field_1'], match: {missing: [], unjudged: 0, unnamed: 1}};
+  assert.equal(chipOf(look).detail, 'a required box has no question text');
+});

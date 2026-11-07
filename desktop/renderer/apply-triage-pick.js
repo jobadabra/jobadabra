@@ -33,11 +33,18 @@ const UNREADABLE_CHIP = {label: t('helperTail.couldntRead'), tone: 'neutral'};
 // Why a read could not be made (the reader's `why`): the sub-status of "Couldn't read", never the raw id.
 const UNREAD_REASONS = {unreadable: 'triageNoLoad', frame: 'triageFrame', unknown: 'triageUnknown', timeout: 'triageTimeout'};
 
+// The first three missing details or questions, the rest as "+N": a chip's tooltip stays one line (the whole list is the suggestion's job, L2c).
+const namesOf = missing => { const labels = [...new Set([...missing.filter(item => item.kind === 'detail'), ...missing.filter(item => item.kind !== 'detail')].map(item => item.label))]; return labels.slice(0, 3).join(', ') + (labels.length > 3 ? ` +${labels.length - 3}` : ''); };
+
 /** The chip for a job's read: {label, tone, detail}. No read yet is "Not checked", never a guess. */
 export function chipOf(read) {
   if (!read) return {label: t('helperTail.notChecked'), tone: 'neutral', detail: ''};
   if (read.unreadable === true) return {...UNREADABLE_CHIP, detail: t(`helperTail.${UNREAD_REASONS[read.why] || 'triageNoLoad'}`)};
   const {mode, reason} = modeOfRead(read);
+  // Your details to fill, else (only questions no saved answer covers) an answer to give: the words never send the person to Your details for a question that is not one of its facts.
+  if (reason === 'needs your details') return {...CHIPS.fill, detail: t(read.match.missing.some(item => item.kind === 'detail') ? 'helperTail.triageNeedsDetails' : 'helperTail.triageNeedsAnswer', {names: namesOf(read.match.missing)})};
+  if (reason === 'answers not checked') return {...CHIPS.fill, detail: t('helperTail.triageUnchecked')};
+  if (reason === 'a box without a question') return {...CHIPS.fill, detail: t('helperTail.triageUnnamed')};
   const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts', captcha: 'triageCaptcha', check: 'triageCheck', 'a simple form': 'triageSimple', 'no form': 'triageNoForm', 'not a simple form': 'triageNotSimple'}[reason];
   return {...CHIPS[mode], detail: reasonKey ? t(`helperTail.${reasonKey}`) : reason};
 }

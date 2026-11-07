@@ -32,8 +32,9 @@ const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_
 //   running  -> the count is read-only, the line is replaced by the job being read (its number, company and a seconds counter that ticks) and the jobs finished so far with their chips,
 //               the footer is Close + Stop (no Check, no second Cancel). Close hides the dialog and the run goes on; opening it again shows the same state.
 //   stopping -> Stop is pressed: the same view says "Stopping…" and Stop is disabled until the read in flight has ended.
+//   matching -> every read is in: the simple forms' required questions are matched against Your details in ONE call (L2b); the words say so, Stop is gone (a call cannot be stopped), then done.
 //   done     -> back to idle; the rows' chips and the toast say what was read.
-const state = {picking: false, running: false, stopping: false, total: 0, seen: 0, job: null, startedAt: 0};
+const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0};
 let cancelled = false, ticker = null;   // one run at a time: a second Start while one runs does nothing
 
 // The popup's one choice: the first N best matching jobs not checked before (owner, 30 Oct 2026), N from the one field.
@@ -59,7 +60,7 @@ function paint() {
   set('triage-count', el => { el.hidden = state.running; });
   set('triage-n', el => { el.disabled = on; });
   set('triage-start', el => { el.hidden = state.running; });
-  set('triage-cancel', el => { el.hidden = !state.running; el.disabled = state.stopping; });
+  set('triage-cancel', el => { el.hidden = !state.running || state.matching; el.disabled = state.stopping; });
   if (!state.running) {   // idle, or picking the fresh list (Check stays visible but disabled, as before, so the dialog is never a bare body)
     const picked = pickForTriage(shared.allJobs || [], choiceNow());
     const {text, measured} = estimateOf(picked.length, timings);
@@ -68,24 +69,39 @@ function paint() {
     set('triage-start', el => { el.textContent = t('pagesShortJobs.m202', {"length": picked.length, count: picked.length}); el.disabled = picked.length === 0 || on; });
     return;
   }
-  const words = state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.company].filter(Boolean).join(' · ');
+  const words = state.matching ? t('helperTail.triageMatching') : state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.company].filter(Boolean).join(' · ');
   set('triage-progress-text', el => { el.textContent = words; el.title = state.job?.title || ''; });
   set('triage-elapsed', el => { el.textContent = state.stopping ? '' : clock(Date.now() - state.startedAt); });
-  set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0));
-  set('triage-bar', el => { el.style.width = state.seen === 0 ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
+  set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0 || state.matching));
+  set('triage-bar', el => { el.style.width = state.seen === 0 || state.matching ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
+}
+
+// One match for the whole check (L2b): the simple forms' required questions, asked of `match` once; a form it names gets its missing details on its read, and its line in the dialog is drawn again.
+async function matchChecked(jobs, match, rows) {
+  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length).map(({url, read}) => ({url, questions: read.questions}));
+  if (!asked.length) return;
+  Object.assign(state, {matching: true, job: null});
+  paint();
+  const found = await match(asked).catch(() => ({}));   // a failed match leaves every form as it was read, never a guess
+  for (const {url} of asked) {
+    if (!found?.[url]) continue;
+    setRead(url, {...readOf(url), match: found[url]});
+    rows.get(url)?.replaceWith(resultRow(jobs.find(job => job.url === url), readOf(url)));
+  }
 }
 
 /**
  * Runs the checks on the picked jobs, one at a time, through `read(job)` (the hidden-browser read). The dialog names the job in flight from the first moment, counts its seconds, and lists
  * each finished job's result as it lands; Stop ends before the next one. Resolves with {read, failed}: how many were read and how many could not be.
  */
-export async function runTriage(jobs, read) {
+export async function runTriage(jobs, read, match = null) {
   if (state.running) return {read: 0, failed: 0};
   Object.assign(state, {picking: false, running: true, stopping: false, total: jobs.length, seen: 0, job: null});
   cancelled = false;
   $('triage-results')?.replaceChildren();
   ticker = setInterval(paint, 1000);   // Why (#3519): one read takes about a minute; the seconds are the proof it is alive between its steps
   let done = 0, failed = 0;
+  const rows = new Map();   // the dialog's line of each job, so the match can redraw it
   try {
     for (const job of jobs) {
       if (cancelled) break;
@@ -96,13 +112,16 @@ export async function runTriage(jobs, read) {
       if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
-      $('triage-results')?.append(resultRow(job, result));
+      const row = resultRow(job, result);
+      rows.set(job.url, row);
+      $('triage-results')?.append(row);
       $('triage-results')?.lastElementChild?.scrollIntoView({block: 'nearest'});
       paint();
     }
+    if (match && !cancelled) await matchChecked(jobs, match, rows);   // Stop ends the check where it is: no match runs, so the simple forms read so far say "answers not checked" (apply-triage-mode.js), never "can apply automatically"
   } finally {
     clearInterval(ticker);
-    Object.assign(state, {running: false, stopping: false, job: null});
+    Object.assign(state, {running: false, stopping: false, matching: false, job: null});
     paint();
   }
   return {read: done, failed};
@@ -112,7 +131,7 @@ export async function runTriage(jobs, read) {
 const notYetRead = async () => null;
 
 /** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended. Takes the callbacks; a missing dialog wires nothing. */
-export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () => {}, toast = () => {}} = {}) {
+export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
@@ -125,7 +144,7 @@ export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () 
     let jobs = [], done = 0, failed = 0;
     try {
       jobs = await pickWhenFresh(() => shared.allJobs || [], listReady, choiceNow());   // never the kept copy painted before the fresh read (jobs-state.js)
-      ({read: done, failed} = await runTriage(jobs, read));
+      ({read: done, failed} = await runTriage(jobs, read, match));
     } finally {
       state.picking = false;
       paint();

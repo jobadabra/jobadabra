@@ -1,7 +1,7 @@
 // The light triage read (#3519): load the page, read its controls, ask the page kind once (kept per page shape), report a verdict. Replaces the whole apply journey for a read tab.
 // Why (7 Nov 2026, owner: "we don't need to go through normal flow of applying… Load the page and read form controls… a more simpler/faster flow specifically for form triaging", "for that it would be 5 seconds"):
 // no Apply press, no 20 s watch for a missing form, no form judge (~49 s) and no answer plan (~15 s); one settle of at most 3 s. The judgment stays the AI's (askKind); the counts only AND with it (triage-verdict.js).
-import {pageShape} from './page-reads.js';
+import {labelReaderIn, pageShape, pageSketchOf} from './page-reads.js';
 import {pageStill} from './page-still.js';
 import {brokenOf} from './ladder/site-broken.js';
 import {verdictOf} from './triage-verdict.js';
@@ -54,5 +54,32 @@ export async function lookAtForm(step, parts = {}) {
   }
   const {simple, why} = verdict;
   const look = {role: kind?.role || '', fields: (counts.fields || 0) + (counts.textareas || 0), files: counts.files || 0, frames: counts.frames || 0};
-  return why === 'unknown' || why === 'frame' ? {unreadable: true, why, look} : {look, simple, why};   // a page whose form this read cannot see is "not checked", never a guess
+  return reportOf({look, simple, why}, step, parts);
+}
+
+/** The report for a finished verdict: unreadable for a form this read cannot see, the bare verdict for a form that is not simple, and for a simple one also its required questions (null when the tab moved on meanwhile). */
+async function reportOf({look, simple, why}, step, parts) {
+  if (why === 'unknown' || why === 'frame') return {unreadable: true, why, look};   // a page whose form this read cannot see is "not checked", never a guess
+  if (!simple) return {look, simple, why};
+  const gone = what => step.flow.late(step.tab, step.gen, what);
+  if (gone('triage questions')) return null;
+  const questions = await requiredQuestions(step.tab.id, parts);
+  if (gone('triage questions read')) return null;   // the tab moved on while its labels were read: the page it moved to has its own look
+  return {look, simple, why, questions};
+}
+
+// Question types a saved fact or answer can settle: a box to type or choose in. A radio or checkbox names its OPTION ("Yes", "I agree"), not the question, so it is left out (known limit, stated in the PR).
+const TYPED = new Set(['text', 'email', 'tel', 'url', 'number', 'date', 'textarea', 'select']);
+const MAX_QUESTIONS = 30;
+
+/**
+ * The words of the form's required text questions, for the app's one match against saved details (L2b, owner 7 Nov 2026: "can apply automatically" or "needs your details: ..."). Read only, never the value of a box.
+ * Takes the tab id and, in a test, {sketch, labels}. Returns an array of labels (empty when the form has none) or null when the page cannot be read (the app then says its answers were not checked).
+ */
+export async function requiredQuestions(tabId, {sketch = pageSketchOf, labels = labelReaderIn} = {}) {
+  let page = null;
+  try { await labels(tabId); page = await sketch(tabId); } catch { return null; }   // null: the page refused this read; the form is still simple but its answers were not read, and the app says so (never a guess)
+  if (!page) return null;
+  const words = (page?.controls || []).filter(control => control.required === true && TYPED.has(control.type)).map(control => String(control.label || '').trim()).filter(Boolean);
+  return [...new Set(words)].slice(0, MAX_QUESTIONS);
 }

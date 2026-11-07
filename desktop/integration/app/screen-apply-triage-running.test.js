@@ -61,7 +61,16 @@ before(() => {
     // Gitar on #3556: the re-offer and the reason were never asserted (the old `read !== null` would pass the line above too): the idle dialog must offer the unreadable job again, and the chip's tooltip is the reason.
     const offered = (await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog after the mixed run', 15000)).footer;
     const reason = document.querySelectorAll('#triage-results li')[1]?.querySelector('[title]')?.title;
-    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length, mixed, rows, again, offered, reason};
+    // L2b: once every read is in, the simple forms' questions go to ONE match: the dialog says so, has no Stop (a call cannot be stopped), and the form's line is drawn again with what it lacks.
+    const asks = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: '', questions: ['Start date']};
+    let answerMatch; const held = new Promise(resolve => { answerMatch = resolve; }), asked = [];
+    const matched = runTriage([jobs[0]], async () => asks, async reads => { asked.push(reads); return held; });
+    const matching = await kit.until(() => { const now = look(); return now.words === 'Matching your saved answers…' ? now : ''; }, 'the matching words while the match is held', 15000);
+    answerMatch({[jobs[0].url]: {missing: [{kind: 'detail', label: 'Notice period'}], unjudged: 0}});
+    await matched;
+    const split = document.querySelector('#triage-results li [title]')?.title;
+    const splitChip = document.querySelector('#triage-results li')?.textContent.replace(/\s+/g, ' ').trim();
+    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length, mixed, rows, again, offered, reason, matching: matching.footer, asked, split, splitChip};
   }});
 });
 
@@ -124,4 +133,12 @@ test('the job that could not be read is offered again by the next Check, and its
   const {offered, reason} = screen.result;
   assert.deepEqual(offered, ['Close', 'Check 1 job'], 'only the unreadable job is left to offer (the two reads that worked are not)');
   assert.equal(reason, 'took too long', 'the reason for a timeout, in words, never the raw id');
+});
+
+test('after the reads the dialog matches the questions once, says so, has no Stop, and the form that lacks a detail says which', live, () => {
+  const {matching, asked, split, splitChip} = screen.result;
+  assert.deepEqual(matching, ['Close'], 'while matching there is no Stop: the call cannot be stopped');
+  assert.deepEqual(asked, [[{url: 'https://jobs.triage-running.example/roles/1', questions: ['Start date']}]], 'one match, for the simple form\'s questions');
+  assert.equal(split, 'needs your details: Notice period');
+  assert.match(splitChip, /Alder Works.*Simple form/);
 });
