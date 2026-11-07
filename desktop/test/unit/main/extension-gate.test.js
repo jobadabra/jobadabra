@@ -30,7 +30,7 @@ test('the class: Apply, batch Apply and Start again each answer the gate and ope
   const blocked = {ok: false, needsExtension: true, state: 'absent'};
   const ipcMain = {handle: (name, fn) => handles.set(name, fn)};
   registerApplyHandlers({DEMO: false, extensionGate: () => blocked, allowanceBlock: () => null, needsNotion: () => null, claudeConsent: async () => true,
-    ipcMain, log: () => {}, here, storage: {}, toWindow: () => {}, track: () => {}, shell: {}, prepareKitFor: async () => ({}), startClaude: () => ({}), getRecipeReporter: () => null, cloud: {}});
+    ipcMain, log: () => {}, here, storage: {settings: () => ({apply: {mode: 'check', chosenAt: 'c1'}})}, toWindow: () => {}, track: () => {}, shell: {}, prepareKitFor: async () => ({}), startClaude: () => ({}), getRecipeReporter: () => null, cloud: {}});
   terminals._reset();
   terminals.usePty(async () => ({spawn: () => ({onData: () => {}, onExit: () => {}, write: () => {}, resize: () => {}, kill: () => {}})}));
   registerSessionHandlers({ipcMain, appLog: () => {}, storage: {}, getWindow: () => null, here, DEMO: false, extensionGate: () => blocked, nativeImage: {createFromPath: () => ({})},

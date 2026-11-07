@@ -15,6 +15,7 @@ import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
+import {applyDialogOutcome} from '../apply-dialog-model.js';
 import {jobPlace} from '../targets.js';
 import {openFeedback} from './feedback.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
@@ -164,9 +165,17 @@ export function renderJobs() {
       renderJobs();
       if (next === 'dismissed') askWhy(job);   // one optional tap: why (counted with the score band only)
     };
+    // Same words as the batch's toast (applyDialogOutcome); a refusal (browser missing, not confirmed) is said, never "No link".
+    const queuedInBackground = result => {
+      const outcome = applyDialogOutcome(result);
+      if (!outcome.close) { toastMessage('Apply did not start', outcome.error, jobPlace(job), 'warn'); return; }
+      startedApplying(job); renderJobs();
+      toastMessage(outcome.toast.title, outcome.toast.body, outcome.toast.target, outcome.toast.tone);
+    };
     // Chrome opens the job's form and the extension fills it at once from the kit.
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
+      if (result.background) return queuedInBackground(result);   // a saved hidden-browser mode queued the job: no tab opened, so the row does not read "Opened"
       if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); if (result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, jobPlace(job), 'warn'); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
       else if (sayRefused('Apply did not start', result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.', jobPlace(job), 'bad');
