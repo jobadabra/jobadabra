@@ -5,7 +5,7 @@ Owner request, 7 Nov 2026: proceed with translating user email/Telegram notifica
 ## Outcome and language policy
 Use the same seven desktop languages: English, German, French, Italian, Spanish, Romanian and Russian. End-user delivery follows the resolved desktop display language; resolve `system` on the desktop, never on a server. Unknown or unsupported preference falls back to English. No extra language setting or wizard step is introduced.
 
-The desktop preference already exists. Carry its resolved value into end-user notification producers and the delivery service's existing account/preferences boundary so scheduled mail can use it while the app is off. The service support must land before the desktop starts sending new metadata. Reuse existing identity and consent; do not add a second user-profile store.
+The desktop preference already exists. Carry its resolved value into end-user notification producers and the delivery service's existing account/preferences boundary so scheduled mail can use it while the app is off. The service support must land before the desktop starts sending new metadata. Reuse existing identity and consent; do not add a second user-profile store. The desktop display-language preference is authoritative; the service value and scheduled-run environment are derived, refreshable delivery caches, never a separately editable preference. Refresh them on an explicit language change, launch (including a fresh OS resolution of system), successful account/email registration and normal notification preparation. A failed refresh never changes the saved desktop choice or claims remote success: retain the last acknowledged remote value, record a canonical non-secret failure and retry at the next normal refresh opportunity. Explicit current-language delivery context applies to that message; off-app sends use the last acknowledged cache, or English when none exists. No background loop or second profile store is added.
 
 ## Audience boundary
 Audience comes from the actual recipient and purpose, not whether a workflow triggered it. A failed Always on run sent to that install's user is end-user copy. Build/release health sent to maintainers is operational copy and stays English. Shared template rendering defaults to English; only a proven end-user call path supplies a supported locale. Admin previews, owner test sends and CI fixtures stay English unless an explicitly isolated localization fixture requests another language. No change to admin UI language.
@@ -28,10 +28,21 @@ Coordinator owns language selection/transport/persistence, audience enforcement 
 ## Verification
 Use fake transports/accounts only. Test all seven languages, missing/invalid preference, regional/system resolution, counts (including Russian/Romanian), HTML/text parity, escaping, raw-value preservation and delivery payload/recipient invariants. Add explicit negative tests proving owner/admin/CI subjects/bodies stay English even if a user locale is present elsewhere. Render representative fictional HTML emails and capture Telegram examples before claiming completion. No local full suites or live sends.
 
+## PRs
+1/7 Spec, approved language contract and audience inventory (this PR).
+2/7 Service language cache, pure formatting and English-default audience integration.
+3/7 All twelve email templates, frame/footer and release rendering.
+4/7 Desktop and scheduled engine language propagation/cache refresh.
+5/7 Python notification locale runtime and job-digest delivery projection.
+6/7 Remaining Python end-user notification producers.
+7/7 Desktop user notifications and bot replies, final coverage verification/report.
+
+The service PRs land before the public bridge starts sending new metadata. Template workers may adopt the small shared formatting foundation without waiting for a merge, but each PR is independently checked. No private implementation file is copied into this public repo.
+
 ## Progress
 ### 1. Scope and inventory
 - [ ] Record complete producer/template/audience inventory and exclusions.
-- [ ] Confirm preference and fallback contract with owner.
+- [x] Confirm preference and fallback contract with owner. (proof: none: owner explicitly approved this design on 7 Nov 2026)
 ### 2. Shared language delivery
 - [ ] Service accepts/stores/resolves end-user preference with English-default operational rendering.
 - [ ] Desktop and scheduled engine propagate resolved preference without changing consent or recipients.
