@@ -4,6 +4,7 @@ import {test, afterEach} from 'node:test';
 import '../../../i18n/screens-helpers.js';
 import '../../../i18n/screens-pages.js';
 import windowsTemplates from '../../../i18n/catalogs/windows-platform.js';
+import {guide} from '../../../renderer/ai-plan-guide.js';
 import {SUPPORTED_LOCALES, setLocale, t} from '../../../i18n/index.js';
 
 afterEach(() => setLocale('en'));
@@ -18,7 +19,6 @@ test('device copy is Windows-specific in every locale, with personal engine name
     const cloud = t('helperMore.githubOwnKeyWhy', {engine: raw}, 'win32');
     assert.ok(cloud.includes(raw), locale);
     assert.doesNotMatch(cloud.replaceAll(raw, ''), /\bMac\b/, locale);
-    assert.match(t('helpers.terminal', {}, 'win32'), /PowerShell/, locale);
   }
 });
 
@@ -54,4 +54,13 @@ test('reviewed Windows variants preserve catalog parameters and leave all insert
 test('genuine Mac-only instructions are kept when shown as an explanation on Windows', () => {
   setLocale('en');
   assert.match(t('pagesAuditThird.a194', {}, 'win32'), /can only be asked of a Mac/);
+});
+
+
+test('the real AI guide keeps its existing Windows shell selector instead of translating a Mac-only hint', () => {
+  assert.equal(Object.hasOwn(windowsTemplates, 'helpers.terminal'), false);
+  for (const locale of SUPPORTED_LOCALES) {
+    setLocale(locale);
+    assert.match(guide('app-only', {platform: 'win32'}).steps[0], /PowerShell/, locale);
+  }
 });
