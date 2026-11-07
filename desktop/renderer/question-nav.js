@@ -3,6 +3,8 @@
 // names the question and opens the queue list (the shared ⋯ menu's list rows: kind tile, where it comes from, its state, the set-aside ones
 // apart, a search box from 9), and previous / next arrows. Replaces the native <select> (qr-pick). Drawn by pages/question-review.js, which owns
 // the state and passes it in. Guarded by test/unit/renderer/question-review.test.js ("navigator: …") and test/unit/renderer/ui-menu-rows.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el, openMenu} from './components.js';
 import {icon} from './icons.js';
 
@@ -10,10 +12,10 @@ const SEGMENTS_UP_TO = 30;   // past it each segment would be a few pixels wide:
 const SEARCH_FROM = 9;   // owner, 18 Oct 2026: "From 9 questions"
 
 // What a Your details item asks for (lib/details-review.js), over its answer box and as its state in the list.
-export const ASKS = {taught: 'Learned from a form', conflict: 'Pick the right one', which: 'Pick the right one', where: 'Pick its home', check: 'Pick the parts', open: 'Missing answer', unclear: 'Make it sure', contact: 'Asked by forms', cvcheck: 'Check it'};
+export const ASKS = {taught: t('helperFlow.learnedForm'), conflict: t('helperFlow.pickRight'), which: t('helperFlow.pickRight'), where: t('helperFlow.pickHome'), check: t('helperFlow.pickParts'), open: t('helperFlow.missingAnswer'), unclear: t('helperFlow.makeSure'), contact: t('helperFlow.askedForms'), cvcheck: t('helperFlow.checkIt')};
 
 // A contact detail's words by the AI's rating of how many applications for this person's line of work ask it (lib/contact-review.js importance; below 2 is never asked).
-const FORMS_ASK = {3: 'Needed by every form', 2: 'Asked by many forms'};
+const FORMS_ASK = {3: t('helperFlow.neededEveryForm'), 2: t('helperFlow.askedManyForms')};
 /** What a Your details item asks, in words: a contact detail by how many forms ask it, any other kind by ASKS; `other` when the kind is not in the list. */
 export const askWords = (details, other = '') => (details.kind === 'contact' ? FORMS_ASK[details.importance] || ASKS.contact : ASKS[details.kind] || other);
 
@@ -30,31 +32,31 @@ export function shortTitle(text, most = 56) {
 }
 
 // Where a question comes from: its Your details section, or the form that asked it.
-export const sourceOf = q => (q.setup ? 'Application setup' : q.details ? q.details.where || 'Your details' : [q.company, 'Application form'].filter(Boolean).join(' · '));
+export const sourceOf = q => (q.setup ? t('helperFlow.applicationSetup') : q.details ? q.details.where || t('helperFlow.yourDetails') : [q.company, t('helperFlow.applicationForm')].filter(Boolean).join(' · '));
 
 // Its state in the list: [words, tone] for pill(). Answered questions leave the queue, so these are the ones still open.
 export function stateOf(q, {aside = false, drafted = false} = {}) {
-  if (aside) return [q.dismissed ? 'Dismissed' : 'Set aside', 'neutral'];
-  if (drafted) return ['Draft', 'neutral'];
+  if (aside) return [q.dismissed ? t('helpers.stageDismissed') : t('helperFlow.setAside'), 'neutral'];
+  if (drafted) return [t('helperFlow.draft'), 'neutral'];
   if (q.setup) return [q.priority, 'bad'];
-  if (q.details) return [askWords(q.details, 'Missing answer'), 'warn'];
-  return q.proposal ? ['Suggested', 'info'] : ['Missing', 'warn'];
+  if (q.details) return [askWords(q.details, t('helperFlow.missingAnswer')), 'warn'];
+  return q.proposal ? [t('helperFlow.suggested'), 'info'] : [t('helperFlow.missing'), 'warn'];
 }
 
 // The header's "where am I" block. state: {queue, setAside, at, aside}; drafts: a Map of typed answers by key; go(kind, index): 'q' or 's'.
 export function questionNav({queue, setAside, at, aside}, drafts, go) {
   const where = el('div', 'qr-where');
   const top = el('div', 'qr-where-top');
-  top.append(el('b', '', aside ? (aside.dismissed ? 'A dismissed question' : 'A set-aside question') : `Question ${at + 1} of ${queue.length}`), progress(queue, at, aside, drafts, go));
+  top.append(el('b', '', aside ? (aside.dismissed ? t('helperFlow.dismissedQuestion') : t('helperFlow.asideQuestion')) : t('helperFlow.questionPosition', {at: at + 1, count: queue.length})), progress(queue, at, aside, drafts, go));
   const current = aside || queue[at];
-  const nav = Object.assign(el('button', 'qr-nav'), {type: 'button', id: 'qr-nav', title: 'All questions'});
+  const nav = Object.assign(el('button', 'qr-nav'), {type: 'button', id: 'qr-nav', title: t('helperFlow.allQuestions')});
   nav.setAttribute('aria-haspopup', 'menu');
   nav.setAttribute('aria-expanded', 'false');
   nav.append(el('span', 'qr-nav-tile', icon(KIND_TILE[current?.format?.kind] || 'help')), el('span', 'qr-nav-title', shortTitle(current?.question)),
-    el('span', 'qr-nav-count', aside ? `${setAside.length} aside` : `${at + 1} / ${queue.length}`), icon('chevron'));
+    el('span', 'qr-nav-count', aside ? t('helperFlow.asideCount', {count: setAside.length}) : `${at + 1} / ${queue.length}`), icon('chevron'));
   nav.addEventListener('click', () => openMenu(nav, listItems({queue, setAside, at, aside}, drafts, go), {search: SEARCH_FROM, width: 'anchor'}));
   const row = el('div', 'qr-where-row');
-  row.append(nav, arrow('qr-prev', 'Previous question', 'chevron', () => go('step', -1)), arrow('qr-next', 'Next question', 'chevron', () => go('step', 1)));
+  row.append(nav, arrow('qr-prev', t('helperFlow.previousQuestion'), 'chevron', () => go('step', -1)), arrow('qr-next', t('helperFlow.nextQuestion'), 'chevron', () => go('step', 1)));
   where.append(top, row);
   return where;
 }
@@ -76,11 +78,11 @@ function progress(queue, at, aside, drafts, go) {
   }
   const segs = el('div', 'qr-segs');
   segs.setAttribute('role', 'group');
-  segs.setAttribute('aria-label', 'Questions');
+  segs.setAttribute('aria-label', t('helperFlow.questions'));
   queue.forEach((q, index) => {
     const here = !aside && index === at;
     const seg = Object.assign(el('button', ['qr-seg', here && 'is-current', drafts.has(q.key) && 'is-draft'].filter(Boolean).join(' ')),
-      {type: 'button', title: `${index + 1} · ${shortTitle(q.question)}`, ariaLabel: `Question ${index + 1}: ${shortTitle(q.question)}`});
+      {type: 'button', title: `${index + 1} · ${shortTitle(q.question)}`, ariaLabel: t('helperFlow.questionTitle', {at: index + 1, title: shortTitle(q.question)})});
     if (here) seg.setAttribute('aria-current', 'step');
     seg.addEventListener('click', () => go('q', index));
     segs.append(seg);
@@ -93,6 +95,6 @@ function listItems({queue, setAside, at, aside}, drafts, go) {
   const item = (q, kind, index) => ({label: shortTitle(q.question, 80), detail: sourceOf(q), tile: KIND_TILE[q.format?.kind] || 'help',
     badge: stateOf(q, {aside: kind === 's', drafted: drafts.has(q.key)}), current: kind === 's' ? aside === q : !aside && index === at, run: () => go(kind, index)});
   const items = queue.map((q, index) => item(q, 'q', index));
-  if (setAside.length) items.push({heading: `Dismissed or set aside · ${setAside.length} · not counted`}, ...setAside.map((q, index) => item(q, 's', index)));
+  if (setAside.length) items.push({heading: t('helperFlow.asideHeading', {count: setAside.length})}, ...setAside.map((q, index) => item(q, 's', index)));
   return items;
 }

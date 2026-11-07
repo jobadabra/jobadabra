@@ -1,6 +1,8 @@
 // One line of Your details' fact sections (owner, 17 Oct 2026: "Base facts fixed, AI the rest"): its label and the control of its kind (the mark on the line,
 // else the kind judged for the label on this Mac; renderer/question-control.js), and what the Save bar reads back. A kind the code can't read the line in keeps
 // the words as written with a "Check" chip: nothing is lost. Guarded by test/unit/renderer/fact-line.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {chip, el, pill} from './components.js';
 import {answerControl} from './question-control.js';
 import {COMPOSITE, formatFor} from './question-kind.js';
@@ -18,7 +20,7 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   // Why (28 Oct 2026, owner, #2322): a Work eligibility row is one of the three fixed zones; a country line saved before stays as written with a Check.
   const perCountry = key === 'eligibility' && format.kind === 'per_country';
   const row = el(perCountry ? 'div' : 'label', perCountry ? 'fact-line country-row' : 'fact-line');
-  const name = Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: 'What (e.g. Notice period)'});
+  const name = Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: t('helperFlow.factWhat')});
   name.dataset.factLabel = key;
   // A line read from the Profile keeps its words as its label; a new one is named by you.
   if (label) { name.hidden = true; row.append(el('span', '', label)); }
@@ -26,21 +28,21 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   // A long value in words is a box that grows, never cut by a one-line field.
   const long = format.control === 'text' && (String(value).length > LONG || String(value).includes('\n'));
   const citizenship = key === 'eligibility' && label === NATIONALITY && (!String(value).trim() || isAsked(value) || nationalityOf(value));
-  const control = citizenship ? nationalityPick(value, onChange) : answerControl(long ? {...format, control: 'textarea'} : format, value, onChange, {ariaLabel: label || 'Answer'});
+  const control = citizenship ? nationalityPick(value, onChange) : answerControl(long ? {...format, control: 'textarea'} : format, value, onChange, {ariaLabel: label || t('helperMore.answer')});
   if (long) { control.rows = 1; row.classList.add('span-all'); }   // the whole row of the grid
   control.dataset.factValue = key;
   row.dataset.kind = composite ? format.kind : '';
   row.append(name, control);
-  if (key === 'eligibility' && label === NATIONALITY && !citizenship) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the countries instead'}));
-  else if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved before the zones; folded into its zone when you Save'}));
-  else if (needsCheck(format.kind, value)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the parts to make it exact'}));
+  if (key === 'eligibility' && label === NATIONALITY && !citizenship) row.append(pill(t('helpers.check'), 'warn', {title: t('helperFlow.pickCountriesHint')}));
+  else if (perCountry && label && !isRowName(label)) row.append(pill(t('helpers.check'), 'warn', {title: t('helperFlow.olderZoneHint')}));
+  else if (needsCheck(format.kind, value)) row.append(pill(t('helpers.check'), 'warn', {title: t('helperFlow.pickPartsHint')}));
   // The words the value does not hold (a rule, a date it was confirmed) sit under it, never in it: folded as "Note for the AI" in a box that grows
   // (owner, 18 Oct 2026: "Folded Note for the AI"; the same fold as Profile → Application answers).
   if (note) {
-    const fold = el('details', 'plain qa-note-fold'), remark = Object.assign(el('textarea', 'fact-note'), {value: note, rows: 1, ariaLabel: `${label || 'Answer'}: note for the AI`});
+    const fold = el('details', 'plain qa-note-fold'), remark = Object.assign(el('textarea', 'fact-note'), {value: note, rows: 1, ariaLabel: t('helperFlow.noteAILabel', {label: label || t('helperMore.answer')})});
     remark.dataset.factNote = key;
     remark.addEventListener('input', onChange);
-    fold.append(el('summary', 'muted small', 'Note for the AI'), remark);
+    fold.append(el('summary', 'muted small', t('helperFlow.noteAI')), remark);
     row.append(fold);
   }
   return row;
@@ -50,9 +52,9 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
 function nationalityPick(value, onChange) {
   let names = nationalityOf(value) || [];
   const node = el('div', 'qa-values qa-nationality');
-  const pick = Object.assign(el('select', ''), {ariaLabel: 'Add a nationality'});
+  const pick = Object.assign(el('select', ''), {ariaLabel: t('helperFlow.addNationality')});
   const draw = () => {
-    pick.replaceChildren(new Option(names.length ? 'Add another…' : 'Add a nationality…', ''), ...COUNTRY_NAMES.filter(name => !names.includes(name)).map(name => new Option(name, name)));
+    pick.replaceChildren(new Option(names.length ? t('helperFlow.addAnother') : t('helperFlow.addNationalityBlank'), ''), ...COUNTRY_NAMES.filter(name => !names.includes(name)).map(name => new Option(name, name)));
     node.replaceChildren(...names.map(name => chip(name, {onRemove: () => { names = names.filter(each => each !== name); draw(); onChange(); }})), pick);
   };
   pick.addEventListener('change', () => { if (pick.value) { names = [...names, pick.value]; draw(); onChange(); } });

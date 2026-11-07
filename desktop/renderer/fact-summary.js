@@ -2,10 +2,12 @@
 // lines that say the same thing joined into one, the first few lines with "Show all N", and ONE "N to check" count in the card's header instead of a mark on every
 // cell. Shortening is by shape only (a common start, a clause, a length), never by words; the full saved words stay on hover, nothing is dropped or invented.
 // Guarded by test/unit/renderer/fact-summary.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el, pill} from './components.js';
 import {shortLabel, valueAndNote} from './survey-rows.js';
 import {splitPermit} from './question-values.js';
-import {NATIONALITY, STATUS_NAMES, ZONES, eligibilityOf, isOldAsked, isRowName, zoneOfLabel} from './work-eligibility.js';
+import {NATIONALITY, ZONES, eligibilityOf, isOldAsked, isRowName, zoneOfLabel} from './work-eligibility.js';
 
 export const SHOWN = 4;   // lines before "Show all N"
 const VALUE_MAX = 48;
@@ -56,10 +58,10 @@ export function summaryView(lines, {shown = SHOWN} = {}) {
   grid.append(...items.slice(0, shown).map(cell));
   box.append(grid);
   if (items.length > shown) {
-    const more = el('div', 'fact-sum-grid fact-sum-more'), toggle = Object.assign(el('button', 'link small', `Show all ${items.length}`), {type: 'button'});
+    const more = el('div', 'fact-sum-grid fact-sum-more'), toggle = Object.assign(el('button', 'link small', t('helperFlow.showAll', {count: items.length})), {type: 'button'});
     more.hidden = true;
     more.append(...items.slice(shown).map(cell));
-    toggle.addEventListener('click', () => { more.hidden = !more.hidden; toggle.textContent = more.hidden ? `Show all ${items.length}` : 'Show fewer'; });
+    toggle.addEventListener('click', () => { more.hidden = !more.hidden; toggle.textContent = more.hidden ? t('helperFlow.showAll', {count: items.length}) : t('helperFlow.showFewer'); });
     box.append(more, toggle);
   }
   return box;
@@ -73,25 +75,27 @@ export function languagesView(lines, chipLine) {
 // Work eligibility's read view (#2322): Nationality, then the three zones, each a chip with its status ("United Kingdom · Yes, freely"; a zone your nationality
 // opens "· from your nationality"; one not set says so); then any other line (one saved before the zones) as a summary. -> {node, check} (check: the lines to look at, for the card's one count).
 export function eligibilityView(lines, chipLine) {
-  const detail = value => STATUS_NAMES[splitPermit(value).status] || shortValue(value);
+  const statuses = {'yes, freely': 'helperMore.permitFreely', 'yes, with a permit': 'helperMore.permitWith', 'no, needs sponsorship': 'helperMore.permitNeeds'};
+  const detail = value => statuses[splitPermit(value).status] ? t(statuses[splitPermit(value).status]) : shortValue(value);
+  const zoneText = zone => t({eu: 'helperFlow.zoneEU', uk: 'helperFlow.zoneUK', us: 'helperFlow.zoneUS'}[zone.id]);
   const {nationality, rows} = eligibilityOf(lines);
   const rest = lines.filter(line => line.label !== NATIONALITY && !(line.kind === 'per_country' && zoneOfLabel(line.label)) && String(line.value ?? '').trim() && !isOldAsked(line));
   const zoneChip = zone => {
     const row = rows.find(each => zoneOfLabel(each.label) === zone);
-    if (!row) return {text: zone.label, detail: 'Not set', tone: 'warn'};
-    return {text: zone.label, detail: row.from === 'nationality' ? 'Yes, freely · from your nationality' : detail(row.value)};
+    if (!row) return {text: zoneText(zone), detail: t('helpers.notSet'), tone: 'warn'};
+    return {text: zoneText(zone), detail: row.from === 'nationality' ? t('helperFlow.fromNationality') : detail(row.value)};
   };
   const box = el('div', 'fact-eligibility');
   const head = (words, node) => { const part = el('div', 'fact-eligibility-part'); part.append(el('span', 'fact-sum-label', words), node); return part; };
-  box.append(head('Nationality', nationality?.length ? chipLine(nationality) : pill('Not set', 'warn')),
-    head('Where you may work', chipLine(ZONES.map(zoneChip))));
+  box.append(head(t('helperFlow.nationality'), nationality?.length ? chipLine(nationality) : pill(t('helpers.notSet'), 'warn')),
+    head(t('helperFlow.whereWork'), chipLine(ZONES.map(zoneChip))));
   if (rest.length) box.append(summaryView(rest));
   const earlier = lines.some(line => line.earlier);
-  if (earlier) box.append(el('p', 'muted small', 'Filled from your earlier answers: check them, then Save. The older lines are folded in, with Undo.'));
+  if (earlier) box.append(el('p', 'muted small', t('helperFlow.earlierAnswers')));
   return {node: box, check: lines.filter(line => line.check || line.earlier || (line.kind === 'per_country' && line.label && !isRowName(line.label) && !isOldAsked(line))).length};
 }
 
 // The one count of lines to check, in the card's title: "2 to check" (a pill), none when nothing is unclear.
 export function checkBadge(count) {
-  return count ? pill(`${count} to check`, 'warn', {title: 'Saved as you wrote it: Edit to pick the parts that make each one exact'}) : null;
+  return count ? pill(t('helperFlow.toCheck', {count}), 'warn', {title: t('helperFlow.checkPartsHint')}) : null;
 }
