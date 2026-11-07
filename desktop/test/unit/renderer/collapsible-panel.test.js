@@ -1,4 +1,5 @@
 // The collapsible panel: the whole head bar toggles (not only the chevron); CV check uses it.
+import '../../../i18n/screens-helpers.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';

@@ -1,5 +1,6 @@
 // Jobs → a job's page, on sections shaped like the real ones: made by the engine's own writers (test/fixtures/job_sections.py) and the Notion
 // adapter's codec, then read by renderer/job-page-view.js. A writer's format change fails here (parity checklist A+, real-page scan 2-7).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';

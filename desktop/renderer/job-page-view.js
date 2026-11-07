@@ -2,7 +2,9 @@
 // every store (the data on this Mac too). Pure: the drawer's nine tabs, and each tab's parts as text (never HTML). Drawn by
 // pages/job-panel.js and job-drawer/; guarded by test/unit/renderer/job-page-view.test.js. The sections are the engine's own headings (src/ai/kit.py KIT_HEADING,
 // prep.py HEADING, rejection.py HEADING, notion/ledger_record.py RECORD_HEADING, inbox_notion.py DESCRIPTION_HEADING, opportunity.py HEADING).
-import {stageLabel} from './jobs-board-rules.js';
+import {t} from '../i18n/index.js';
+import {date as formatDate} from '../i18n/format.js';
+import {stageLabel, stageText} from './jobs-board-rules.js';
 import {shortDay} from './date.js';
 export const SECTIONS = {
   kit: '📝 Application kit', prep: '🎤 Interview prep', review: '🔎 Why it was rejected', record: '🗂 Application record',
@@ -13,8 +15,8 @@ const isMessages = name => name === SECTIONS.recruiter || /^📥/.test(name);
 
 // [key, label] in the owner's order (10 Oct 2026): fixed for every job, so a tab is where it was last time; a tab with nothing yet says so
 // (job-drawer/tab-*.js). Kit and Prep became Application, Record its Submitted part, History the Timeline.
-export const TABS = [['overview', 'Overview'], ['match', 'Match'], ['description', 'Description'], ['application', 'Application'], ['documents', 'Documents'],
-  ['interviews', 'Interviews'], ['review', 'Review'], ['messages', 'Messages'], ['timeline', 'Timeline']];
+export const TABS = [['overview', t('helpers.overview')], ['match', t('helpers.match')], ['description', t('helpers.description')], ['application', t('helpers.application')], ['documents', t('helpers.documentsTab')],
+  ['interviews', t('helpers.interviews')], ['review', t('helpers.review')], ['messages', t('helpers.messages')], ['timeline', t('helpers.timeline')]];
 // The tabs' old names (a kit chip, a rejection chip, the prep card) → where that content lives now.
 export const TAB_ALIASES = {kit: 'application', prep: 'application', record: 'application', history: 'timeline', cv: 'documents', letter: 'documents', 'cover-letter': 'documents', files: 'documents'};
 export const tabKey = tab => (TABS.some(([key]) => key === tab) ? tab : TAB_ALIASES[tab] || 'overview');
@@ -106,24 +108,24 @@ export function historyItems(events = []) {
 export function factPairs(match = null) {
   if (!match) return [];
   const languages = (Array.isArray(match.languages) ? match.languages : []).map(name => name.replace(/ \+$/, ' (a plus)')).join(', ');
-  const pairs = [['Posted', day(match.posted)], ['Deadline', day(match.deadline)], ['Seniority', match.seniority], ['Role family', match.role_family],
-    ['Contract', match.contract], ['Work mode', match.work_mode], ['Remote scope', match.remote_scope], ['Workload', match.workload],
-    ['On call', match.on_call], ['Visa sponsorship', match.visa], ['Languages', languages], ['Technologies', match.technologies],
-    ['Salary', match.salary]].filter(([, value]) => value);
-  return match.recruiter === true ? [...pairs, ['Posted by', 'a recruiter']] : pairs;
+  const pairs = [[t('helpers.posted'), day(match.posted)], [t('helpers.deadline'), day(match.deadline)], [t('helpers.seniority'), match.seniority], [t('helpers.roleFamily'), match.role_family],
+    [t('helpers.contract'), match.contract], [t('helpers.workMode'), match.work_mode], [t('helpers.remoteScope'), match.remote_scope], [t('helpers.workload'), match.workload],
+    [t('helpers.onCall'), match.on_call], [t('helpers.visa'), match.visa], [t('helpers.languages'), languages], [t('helpers.technologies'), match.technologies],
+    [t('helpers.salary'), match.salary]].filter(([, value]) => value);
+  return match.recruiter === true ? [...pairs, [t('helpers.postedBy'), t('helpers.recruiter')]] : pairs;
 }
 
 // The search's facts about the job (its 🎯 Job Matches row on every store, src/stores/matches_sync.py facts): what a Notion user reads in
 // those columns. Strengths and gaps are on the row's fit ring (jobs-fit.js), not repeated here. [] when the job has no match.
 export function matchGroups(match = null) {
   if (!match) return [];
-  const score = [match.fit != null && match.fit !== '' ? `🎯 ${match.fit}` : '', match.tier, match.confidence && `confidence ${match.confidence}`]
+  const score = [match.fit != null && match.fit !== '' ? `🎯 ${match.fit}` : '', match.tier, match.confidence && t('helpers.confidence', {value: match.confidence})]
     .filter(Boolean).join(' · ');
-  const scored = match.scored ? `Scored ${day(match.scored)}${match.scoring_method === 'Previous' ? ' (from your earlier Profile)' : ''}` : '';
-  const facts = factPairs(match).map(([label, value]) => (label === 'Posted by' ? `Posted by ${value}` : `${label} · ${value}`));
+  const scored = match.scored ? t('helpers.scoredWhen', {when: day(match.scored), note: match.scoring_method === 'Previous' ? t('helpers.earlierProfile') : ''}) : '';
+  const facts = factPairs(match).map(([label, value]) => (label === t('helpers.postedBy') ? t('helpers.postedByValue', {value}) : `${label} · ${value}`));
   const groups = [];
-  if (score || scored) groups.push({title: 'Fit', lines: [score, scored].filter(Boolean)});
-  if (facts.length) groups.push({title: 'About the job', lines: facts});
+  if (score || scored) groups.push({title: t('helpers.fit'), lines: [score, scored].filter(Boolean)});
+  if (facts.length) groups.push({title: t('helpers.aboutJob'), lines: facts});
   return groups;
 }
 
@@ -144,20 +146,20 @@ export function matchView(job = {}, page = null) {
 export function glanceTiles(match = null) {
   const m = match || {};
   const languages = (Array.isArray(m.languages) ? m.languages : []).map(name => name.replace(/ \+$/, ' (a plus)')).join('; ');
-  const tile = (key, label, value, note = '') => ({key, label, value: value || 'Not stated', note: value ? note : '', known: !!value});
+  const tile = (key, label, value, note = '') => ({key, label, value: value || t('helpers.notStated'), note: value ? note : '', known: !!value});
   const mode = m.work_mode;
-  return [tile('salary', 'Salary', m.salary, 'From the posting'),
-    tile('mode', 'Work mode', mode, m.remote_scope || (mode === 'Hybrid' ? 'Office days not stated' : '')),
-    tile('contract', 'Contract', m.contract, m.workload ? `Workload ${m.workload}` : ''),
-    tile('seniority', 'Seniority', m.seniority, m.role_family ? `Role family: ${m.role_family}` : ''),
-    tile('languages', 'Languages', languages),
-    tile('posted', 'Posted', pastDay(m.posted), m.deadline ? `Deadline ${day(m.deadline)}` : '')];
+  return [tile('salary', t('helpers.salary'), m.salary, t('helpers.fromPosting')),
+    tile('mode', t('helpers.workMode'), mode, m.remote_scope || (mode === 'Hybrid' ? t('helpers.noOfficeDays') : '')),
+    tile('contract', t('helpers.contract'), m.contract, m.workload ? t('helpers.workloadValue', {value: m.workload}) : ''),
+    tile('seniority', t('helpers.seniority'), m.seniority, m.role_family ? t('helpers.roleFamilyValue', {value: m.role_family}) : ''),
+    tile('languages', t('helpers.languages'), languages),
+    tile('posted', t('helpers.posted'), pastDay(m.posted), m.deadline ? t('helpers.deadlineValue', {when: day(m.deadline)}) : '')];
 }
 
 // "First found 9 Oct · Scored 9 Oct" under the tiles.
 export function foundLine(job = {}, match = null) {
   const found = pastDay(match?.first_seen || job.first_seen_at), scored = pastDay(match?.scored);
-  return [found && `First found ${found}`, scored && `Scored ${scored}`].filter(Boolean).join(' · ');
+  return [found && t('helpers.firstFoundWhen', {when: found}), scored && t('helpers.scoredWhen', {when: scored, note: ''})].filter(Boolean).join(' · ');
 }
 
 // What the role involves, one short line each (the extractor's responsibilities, written a line each), and the technologies as chips.
@@ -205,15 +207,15 @@ export function postingBlocks(text) {
 }
 
 // The Description tab's facts (the owner's mock): who, when it was posted, when the search found it, and the saved copy. [{key, label, value, note}].
-const SOURCE_KIND = {'employer feed': 'careers page', 'job board': 'job board', you: 'added by you'};
+const sourceKind = kind => ({'employer feed': t('helpers.careersPage'), 'job board': t('helpers.jobBoard'), you: t('helpers.addedYou')})[kind];
 export function postingFacts(job = {}, found = {}, text = '') {
   const words = String(text).trim().split(/\s+/).filter(Boolean).length;
-  return [{key: 'employer', label: 'Employer', value: job.company || found.company || 'Not stated', note: SOURCE_KIND[found.source_kind] || found.source || ''},
-    {key: 'posted', label: 'Posted', value: pastDay(found.posted_at) || 'Not stated', note: ''},
-    {key: 'found', label: 'First found', value: pastDay(found.first_seen_at || job.first_seen_at) || 'Not stated', note: ''},
-    {key: 'saved', label: 'Saved posting', value: text ? 'Saved' : 'None', note: text ? `${words} words` : ''}];
+  return [{key: 'employer', label: t('helpers.employer'), value: job.company || found.company || t('helpers.notStated'), note: sourceKind(found.source_kind) || found.source || ''},
+    {key: 'posted', label: t('helpers.posted'), value: pastDay(found.posted_at) || t('helpers.notStated'), note: ''},
+    {key: 'found', label: t('helpers.firstFound'), value: pastDay(found.first_seen_at || job.first_seen_at) || t('helpers.notStated'), note: ''},
+    {key: 'saved', label: t('helpers.savedPosting'), value: text ? t('helpers.savedPlain') : t('helpers.none'), note: text ? t('helpers.wordCount', {count: words}) : ''}];
 }
-export const postingSource = (found = {}) => `Job description from ${SOURCE_KIND[found.source_kind] || found.source || 'the search'}${found.source && SOURCE_KIND[found.source_kind] ? ` (${found.source})` : ''}`;
+export const postingSource = (found = {}) => t('helpers.postingSource', {source: sourceKind(found.source_kind) || found.source || t('helpers.search'), detail: found.source && sourceKind(found.source_kind) ? ` (${found.source})` : ''});
 
 // The Messages tab: what was communicated about the job. Emails are the job's Gmail events (src/ai/mail_record.py: the subject and sender in `changes`, the
 // message id in `source_id`); notes are what you logged or a recruiter wrote (the 📥 sections). A Gmail link is the one the app always builds
@@ -230,10 +232,10 @@ export function messagesOf(parts = {}, events = []) {
     .sort((a, b) => String(b.at || b.created_at || '').localeCompare(String(a.at || a.created_at || '')))
     .map(event => {
       const changes = changesOf(event);
-      return {key: String(event.id || event.source_id), kind: 'email', title: plain(changes.subject || event.kind || 'Email'), outcome: String(event.kind || ''),
+      return {key: String(event.id || event.source_id), kind: 'email', title: plain(changes.subject || event.kind || t('helpers.email')), outcome: String(event.kind || ''),
         when: day(event.at || event.created_at), from: plain(changes.from || ''), text: plain(event.note || ''), url: gmailUrl(event.source_id)};
     });
-  const notes = ((parts.groups || {}).messages || []).map((each, n) => ({key: `note${n}`, kind: 'note', title: each.title || 'Message', lines: each.lines}));
+  const notes = ((parts.groups || {}).messages || []).map((each, n) => ({key: `note${n}`, kind: 'note', title: each.title || t('helpers.message'), lines: each.lines}));
   return {emails, notes, counts: {all: emails.length + notes.length, email: emails.length, note: notes.length}};
 }
 
@@ -245,7 +247,7 @@ const clock = at => {
   const text = String(at || '');
   if (!/T\d\d:\d\d/.test(text)) return '';
   const when = new Date(text);
-  return Number.isNaN(when.getTime()) ? '' : when.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+  return Number.isNaN(when.getTime()) ? '' : formatDate(when, {hour: '2-digit', minute: '2-digit', hour12: false});
 };
 export function timelineOf(events = [], job = {}, match = null, parts = {}) {
   const items = (events || []).filter(event => event?.kind).map(event => {
@@ -255,11 +257,11 @@ export function timelineOf(events = [], job = {}, match = null, parts = {}) {
     const kinds = [...(APPLICATION_KINDS.has(event.kind) ? ['application'] : []), ...(email ? ['message'] : []), ...(interview ? ['interview'] : [])];
     const link = interview ? 'interviews' : email ? 'messages' : event.kind === 'Applied' && parts.submitted ? 'snapshot' : null;
     return {key: String(event.id || `${event.kind}-${event.at}`), at: String(event.at || event.created_at || ''), when: day(event.at || event.created_at),
-      time: clock(event.at), kind: String(event.kind), title: plain(changes.subject && email ? `${event.kind}: ${changes.subject}` : event.kind),
+      time: clock(event.at), kind: String(event.kind), title: plain(changes.subject && email ? `${stageText(event.kind)}: ${changes.subject}` : stageText(event.kind)),
       source: email ? `From ${plain(changes.from || 'an email')} (Gmail)` : event.source ? `Source: ${event.source}` : '', text: plain(event.note || ''), kinds, link};
   }).sort((a, b) => b.at.localeCompare(a.at));
   const found = match?.first_seen || job.first_seen_at;
-  if (found && pastDay(found)) items.push({key: 'discovered', at: String(found), when: day(found), time: clock(found), kind: 'Job discovered', title: 'Job discovered', source: '', text: 'Found by the search and added to your job list.', kinds: ['application'], link: null});
+  if (found && pastDay(found)) items.push({key: 'discovered', at: String(found), when: day(found), time: clock(found), kind: 'Job discovered', title: t('helpers.jobDiscovered'), source: '', text: t('helpers.foundSearch'), kinds: ['application'], link: null});
   return items;
 }
 
@@ -269,10 +271,10 @@ const slot = at => {
   const text = String(at || '');
   const when = new Date(text);
   if (!text || Number.isNaN(when.getTime())) return '';
-  const date = when.toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'});
-  return /T\d\d:\d\d/.test(text) ? `${date} · ${when.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}` : date;
+  const date = formatDate(when, {weekday: 'short', day: 'numeric', month: 'short'});
+  return /T\d\d:\d\d/.test(text) ? `${date} · ${formatDate(when, {hour: '2-digit', minute: '2-digit', hour12: false})}` : date;
 };
-const OVERALL = {positive: ['Positive', 'good'], mixed: ['Mixed', 'warn'], negative: ['Needs work', 'bad']};
+const overall = key => ({positive: [t('helpers.positive'), 'good'], mixed: [t('helpers.mixed'), 'warn'], negative: [t('helpers.needsWork'), 'bad']})[key];
 export function interviewsOf(page = {}, now = Date.now()) {
   const planned = new Map();
   for (const event of page.events || []) {
@@ -280,16 +282,16 @@ export function interviewsOf(page = {}, now = Date.now()) {
     if (!at || Number.isNaN(new Date(at).getTime())) continue;
     const key = at.slice(0, 16);
     const changes = changesOf(event);
-    const found = planned.get(key) || {key: `slot-${key}`, kind: 'slot', at, title: 'Interview', note: '', source: ''};
+    const found = planned.get(key) || {key: `slot-${key}`, kind: 'slot', at, title: t('helpers.interview'), note: '', source: ''};
     if (event.source === 'Gmail') { found.title = plain(changes.subject || found.title); found.note = plain(event.note || found.note); found.source = `From ${plain(changes.from || 'an email')}`; }
     else if (!found.note) found.note = plain(event.note || '');
     planned.set(key, found);
   }
-  if (!planned.size && page.app?.next_interview) planned.set('next', {key: 'slot-next', kind: 'slot', at: String(page.app.next_interview), title: 'Interview', note: '', source: ''});
+  if (!planned.size && page.app?.next_interview) planned.set('next', {key: 'slot-next', kind: 'slot', at: String(page.app.next_interview), title: t('helpers.interview'), note: '', source: ''});
   const slots = [...planned.values()].map(item => ({...item, when: slot(item.at), upcoming: new Date(item.at).getTime() >= now,
-    status: new Date(item.at).getTime() >= now ? 'Scheduled' : 'Past'})).sort((a, b) => b.at.localeCompare(a.at));
-  const records = (page.interviews || []).filter(record => record?.id).map(record => ({key: String(record.id), kind: 'record', title: plain(record.title || 'Interview'), round: plain(record.round || ''),
-    when: slot(record.at || record.created_at), at: String(record.at || record.created_at || ''), overall: OVERALL[record.overall] || null, nextStep: plain(record.next_step || ''),
+    status: new Date(item.at).getTime() >= now ? t('helpers.scheduled') : t('helpers.past')})).sort((a, b) => b.at.localeCompare(a.at));
+  const records = (page.interviews || []).filter(record => record?.id).map(record => ({key: String(record.id), kind: 'record', title: plain(record.title || t('helpers.interview')), round: plain(record.round || ''),
+    when: slot(record.at || record.created_at), at: String(record.at || record.created_at || ''), overall: overall(record.overall) || null, nextStep: plain(record.next_step || ''),
     input: String(record.input || ''), transcript: readablePart(String(record.transcript || '')).trim(), hasReview: !!String(record.review || '').trim()}))
     .sort((a, b) => b.at.localeCompare(a.at));
   return {upcoming: slots.filter(item => item.upcoming), past: slots.filter(item => !item.upcoming), records};
@@ -299,9 +301,9 @@ export function interviewsOf(page = {}, now = Date.now()) {
 // section (the rejection) or the interview record's review.
 export function reviewsOf(page = {}) {
   const rejection = (page.sections || {})[SECTIONS.review];
-  const found = rejection ? [{key: 'rejection', label: 'Rejection review', markdown: rejection}] : [];
+  const found = rejection ? [{key: 'rejection', label: t('helpers.rejectionReview'), markdown: rejection}] : [];
   return [...found, ...(page.interviews || []).filter(record => record?.id && String(record.review || '').trim())
-    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).map(record => ({key: `iv-${record.id}`, label: `${plain(record.title || 'Interview')} review`, markdown: String(record.review)}))];
+    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).map(record => ({key: `iv-${record.id}`, label: t('helpers.reviewTitle', {title: plain(record.title || t('helpers.interview'))}), markdown: String(record.review)}))];
 }
 
 // The rejection, as its email said it (board 06): when and from whom, and what the employer stated: the latest "Rejected" event's note. "" when
@@ -354,14 +356,14 @@ export function pageParts({sections = {}, kit = null, events = [], files = [], m
 
 // What was actually sent, from the application's frozen record (its JSON, src/notion/ledger_record.py build_fields): {facts, note, answers, letter}
 // or null when nothing was captured. It never changes when the kit or the CV are edited afterwards: the record is written once at submission.
-const HOW = {Form: 'Answers read from the form just before Submit.', 'Kit draft': 'Answers were prepared for this application; edits made in the form before Submit are unknown.',
-  None: 'No answers were captured.'};
+const HOW = {Form: t('helpers.answersCaptured'), 'Kit draft': t('helpers.answersDraft'),
+  None: t('helpers.noCapturedAnswers')};
 export function submittedOf(sections = {}, app = null) {
   const record = jsonOf(sections[SECTIONS.record]);
   if (!record || !(record.recorded_at || record.job || record.answers)) return null;   // an empty or foreign JSON is not a snapshot
   const site = record.job?.ats ? record.job.ats.charAt(0).toUpperCase() + record.job.ats.slice(1) : '';
-  const facts = [['Recorded', day(record.recorded_at)], ['Site', site], ['Channel', app?.channel],
-    ['Via', app?.via], ['CV version', record.cv], ['Application version', record.variant], ['Agent', record.run?.agent]].filter(([, value]) => value);
+  const facts = [[t('helpers.recorded'), day(record.recorded_at)], [t('helpers.site'), site], [t('helpers.channel'), app?.channel],
+    [t('helpers.via'), app?.via], [t('helpers.cvVersion'), record.cv], [t('helpers.applicationVersion'), record.variant], [t('helpers.agent'), record.run?.agent]].filter(([, value]) => value);
   const answers = (Array.isArray(record.answers) ? record.answers : []).filter(item => item?.question)
     .map(item => ({question: String(item.question), answer: String(item.answer ?? ''), edited: item.draft != null && item.draft !== item.answer}));
   return {facts, note: HOW[record.answers_captured] || '', answers, letter: String(record.cover_letter || '').trim(),
@@ -371,14 +373,14 @@ export function submittedOf(sections = {}, app = null) {
 // "Next interview 14 Oct 2026 · prep 13 Oct 2026" and the call's facts (Applications Next interview, Interview prep, Call facts).
 export function interviewFacts(app = null) {
   if (!app) return '';
-  return [app.next_interview && `Next interview ${day(app.next_interview)}`, app.interview_prep && `prep ${day(app.interview_prep)}`,
-    app.call_facts && `From the calls: ${plain(app.call_facts)}`].filter(Boolean).join(' · ');
+  return [app.next_interview && t('helpers.nextInterviewWhen', {when: day(app.next_interview)}), app.interview_prep && t('helpers.prepWhen', {when: day(app.interview_prep)}),
+    app.call_facts && t('helpers.fromCalls', {text: plain(app.call_facts)})].filter(Boolean).join(' · ');
 }
 
 // "applied 1 Oct" (the drawer header's chip row; the place and the score are already in the header).
 export function appliedLine(job = {}, app = null) {
   const applied = app?.applied_on || job.applied_on;
-  return applied ? `applied ${day(applied)}` : '';
+  return applied ? t('helpers.appliedWhen', {when: day(applied)}) : '';
 }
 
 // "Applied 1 Oct 2026 · Zurich · 🎯 82" (the mockup's line under the title).

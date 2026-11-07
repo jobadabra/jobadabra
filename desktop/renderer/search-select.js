@@ -1,5 +1,6 @@
 // A searchable "select": the native <select> stays the source of truth (its options, value and change event, so the code that fills and
 // reads it is untouched); a search box with a list of matches sits in front of it. Used where the list is long (your jobs).
+import {t} from '../i18n/index.js';
 import {icon} from './icons.js';
 
 // Every word you typed must be in the option's text (any order, any case); the groups with no match disappear.
@@ -20,7 +21,7 @@ const groupsOf = select => [...select.children].reduce((out, node) => {
 }, []);
 
 let counter = 0;
-export function searchSelect(select, {placeholder = 'Search company or job…'} = {}) {
+export function searchSelect(select, {placeholder = t('helpers.searchCompany')} = {}) {
   if (!select || select.dataset.searchSelect) return;
   select.dataset.searchSelect = '1';
   const id = `search-select-${++counter}`;
@@ -72,7 +73,7 @@ export function searchSelect(select, {placeholder = 'Search company or job…'} 
         button.addEventListener('click', () => choose(o.value));
         buttons.push(button);
         return button;
-      })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: 'No matching jobs'})]));
+      })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: t('helpers.noMatchingJobs')})]));
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
     highlight(all ? Math.max(0, buttons.findIndex(b => b.getAttribute('aria-selected') === 'true')) : (buttons.length ? 0 : -1));

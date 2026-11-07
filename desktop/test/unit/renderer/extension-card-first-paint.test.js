@@ -1,6 +1,7 @@
 // Settings → Connections → Chrome extension (owner, 26 Oct 2026): "We should see the status from beginning", the fold opens or closes only when
 // the state changes (a refresh after Add to Chrome closed what he had opened), and "For developers: load it from a folder" only in a development run.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

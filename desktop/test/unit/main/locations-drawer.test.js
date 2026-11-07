@@ -1,6 +1,7 @@
 // A job's drawer says "scored with older places" and offers that one job's Refresh (owner, 17 Oct 2026: "Each job's drawer shows 'scored with older places ·
 // Refresh'; one column, repaired into older workspaces automatically"). The engine's fingerprint of today's places is asked once per change of the search
 // settings, not per drawer; a score that recorded no places is never called older; the refresh takes this job only.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

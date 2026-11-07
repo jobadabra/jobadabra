@@ -1,6 +1,7 @@
 // Strategy's cards as one system (owner, 18 Oct 2026, UI redesign B, decision 4): Edit opens only that card's editor; opening another keeps the first
 // card's draft and marks it "Unsaved"; one page bar, "Save strategy changes", saves each card's draft to its own home (lists → editTargets, goals →
 // editGoal) and discards them all; Esc closes the editor without dropping the draft. The class: every list the target cards edit belongs to one card.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

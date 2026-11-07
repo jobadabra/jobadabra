@@ -38,3 +38,73 @@ test('every migrated helper lookup is registered and user content stays outside 
   const rows = fs.readFileSync(new URL('renderer/job-drawer/documents-rows.js', root), 'utf8');
   assert.match(rows, /document\.createTextNode\(part\)/);
 });
+
+test('localized controls resolve at call time and preserve interpolation as plain text', async () => {
+  await import('../../../i18n/screens-helpers.js');
+  const {setLocale, t} = await import('../../../i18n/index.js');
+  const {foldToggleWord} = await import('../../../renderer/fold-toggle.js');
+  try {
+    setLocale('de');
+    assert.equal(foldToggleWord(false), 'Anzeigen');
+    setLocale('ru');
+    assert.equal(foldToggleWord(true), 'Скрыть');
+    assert.equal(t('helpers.yourAnswer', {answer: '<img onerror=bad>'}), 'Ваш ответ: <img onerror=bad>');
+    setLocale('ro');
+    assert.equal(t('helpers.position', {index: 2, total: 5}), '2 din 5');
+  } finally { setLocale('en'); }
+});
+
+test('drawer facts translate labels while preserving posting, employer and answer text', async () => {
+  await import('../../../i18n/screens-helpers.js');
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {glanceTiles, postingFacts, postingBlocks, kitParts, allAnswers} = await import('../../../renderer/job-page-view.js');
+  try {
+    setLocale('ru');
+    const tiles = glanceTiles({salary: 'CHF 120000', work_mode: 'Hybrid', technologies: 'Rust'});
+    assert.equal(tiles[0].label, 'Зарплата');
+    assert.equal(tiles[0].value, 'CHF 120000');
+    assert.equal(tiles[1].value, 'Hybrid');
+    assert.equal(tiles[1].note, 'Дни в офисе не указаны');
+    const company = '<Acme & Sons>';
+    assert.equal(postingFacts({company}, {}, 'Keep the original text.')[0].value, company);
+    assert.equal(postingBlocks('## Original employer heading\nOriginal posting text.')[0].text, 'Original employer heading');
+    const kit = kitParts({answers: [{question: 'Why Acme?', answer: '<My own answer>'}], cover_letter: 'My own letter'}, '');
+    assert.equal(kit.letter, 'My own letter');
+    assert.equal(allAnswers(kit.answers), 'Why Acme?\n<My own answer>');
+  } finally { setLocale('en'); }
+});
+
+test('stage display translations never change stored board stages or filtering', async () => {
+  await import('../../../i18n/screens-helpers.js');
+  const {setLocale} = await import('../../../i18n/index.js');
+  const rules = await import('../../../renderer/jobs-board-rules.js');
+  try {
+    setLocale('de');
+    assert.equal(rules.stageText('Applied'), 'Beworben');
+    assert.equal(rules.stageText('Kit ready'), 'Gespeichert');
+    assert.equal(rules.stageText('Employer-specific stage'), 'Employer-specific stage');
+    assert.equal(rules.columnOf({stage: 'Applied'}), 'Applied');
+    assert.equal(rules.inView({stage: 'Applied'}, 'active'), true);
+  } finally { setLocale('en'); }
+});
+
+test('timeline icon lookup keeps stored event kinds as keys', () => {
+  const source = fs.readFileSync(new URL('renderer/job-drawer/tab-timeline.js', root), 'utf8');
+  const icons = source.match(/const ICONS = (.*);/)[1];
+  assert.equal(icons, "{'Job discovered': 'search', Applied: 'file', 'Confirmation received': 'check-circle', 'Interview scheduled': 'calendar', Rejected: 'close', Offer: 'check-circle'}");
+});
+
+test('AI install guidance translates copy while preserving executable commands and action ids', async () => {
+  await import('../../../i18n/screens-helpers.js');
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('es');
+    const {guide} = await import('../../../renderer/ai-plan-guide.js');
+    const result = guide('app-only', {family: 'openai', platform: 'win32', inApp: true});
+    assert.match(result.title, /Encontramos/);
+    assert.equal(result.actions[0].id, 'install');
+    assert.equal(result.actions[0].label, 'Instalar Codex');
+    assert.equal(result.command, 'powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"');
+    assert.match(result.steps[0], /^Abre PowerShell/);
+  } finally { setLocale('en'); }
+});

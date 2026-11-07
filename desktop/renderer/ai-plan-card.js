@@ -1,6 +1,7 @@
 // Draws one readiness state of the person's own AI plan (renderer/ai-plan-guide.js says it): an alert box with the title, one line of text, the numbered install steps with the official line
 // (and Copy), and the buttons (one primary, the rest links). onAction(id) is the page's; copy(text) puts the install line on the clipboard.
 // Why (2 Nov 2026, owner): "We should never show a raw error": this box is the only thing drawn for a missing, broken or signed-out CLI.
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {icon} from './icons.js';
 
@@ -22,7 +23,7 @@ export function progressCard({title, text = '', seconds = 0, onCancel = () => {}
   const timer = el('p', 'muted small', clock(seconds));
   timer.dataset.seconds = '';
   body.append(el('b', '', title), ...(text ? [el('p', '', text)] : []), bar, timer);
-  const cancel = Object.assign(el('button', 'secondary', 'Cancel'), {type: 'button'});
+  const cancel = Object.assign(el('button', 'secondary', t('helpers.cancel')), {type: 'button'});
   cancel.dataset.action = 'cancel';
   cancel.addEventListener('click', () => onCancel());
   const actions = el('div', 'engine-actions');
@@ -46,8 +47,8 @@ export function planCard(g, {onAction = () => {}, copy = text => navigator.clipb
   }
   if (g.command) {
     const line = el('div', 'engine-command');
-    const copyButton = Object.assign(el('button', 'secondary', 'Copy'), {type: 'button'});
-    copyButton.addEventListener('click', () => { copy(g.command); copyButton.textContent = 'Copied'; });
+    const copyButton = Object.assign(el('button', 'secondary', t('helpers.copy')), {type: 'button'});
+    copyButton.addEventListener('click', () => { copy(g.command); copyButton.textContent = t('helpers.copiedPlain'); });
     line.append(el('code', '', g.command), copyButton);
     body.append(line);
   }

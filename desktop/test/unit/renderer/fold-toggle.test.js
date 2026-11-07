@@ -1,6 +1,7 @@
 // The Show / Hide button of the Jobs folds (owner, 5 Nov 2026: "\"Show\" doesn't look like a button, but rather like a text"): one word source and one style for every `.jobs-fold`
 // (Suggestions for your search, In conversation). The class loop reads the page: a fold added later without the toggle fails here.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {foldToggleWord} from '../../../renderer/fold-toggle.js';

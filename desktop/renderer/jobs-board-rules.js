@@ -1,6 +1,7 @@
 // Jobs → Board and the saved views, the rules without a window: the stage columns in funnel order, the Applications database's 10 views
 // (read from the real workspace's view filters, 9 Oct 2026) and which app action a card dropped on a column asks for.
 // Guarded by: test/unit/renderer/jobs-board-rules.test.js. Drawn by pages/jobs-board.js and pages/jobs-views.js.
+import {t} from '../i18n/index.js';
 import {READY_LABEL} from './pages/ready-rows.js';
 
 // Every Applications Stage the person sees (config/notion_schema.json), in the order a job moves through them.
@@ -13,6 +14,15 @@ const TONE = {'Recruiter lead': 'signal', Saved: 'signal', Applying: 'info', App
 /** A stored stage in the person's words: the internal Kit ready reads Saved; every other stage is its own word. */
 export const stageLabel = stage => stage === 'Kit ready' ? 'Saved' : stage;
 export const stageTone = stage => TONE[stage] || 'info';
+const STAGE_MESSAGES = {'Recruiter lead': 'stageRecruiter', Saved: 'savedPlain', Applying: 'stageApplying', Applied: 'stageApplied',
+  'Confirmation received': 'stageConfirmed', Screening: 'stageScreening', 'Interview scheduled': 'stageScheduled', Interviewing: 'stageInterviewing',
+  Offer: 'stageOffer', Rejected: 'stageRejected', 'No response': 'stageNoResponse', Withdrawn: 'stageWithdrawn', Closed: 'stageClosed', Dismissed: 'stageDismissed'};
+/** Translate known stage labels for display only; board columns and filters retain their stored English identifiers. */
+export function stageText(stage) {
+  const value = stageLabel(stage), key = STAGE_MESSAGES[value];
+  return key ? t(`helpers.${key}`) : value;
+}
+
 /** A job's Next step for the screen: '' for the stored "📝 Kit ready…" step (src/ai/kit.py next_step, internal data), else its own words. */
 export const nextStepOf = job => /kit ready/i.test(job?.next_step || '') ? '' : job?.next_step || '';
 

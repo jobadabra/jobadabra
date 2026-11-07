@@ -14,7 +14,7 @@ export function submittedView({parts, page}) {
       ? stateCard({icon: 'info', title: t('helpers.noSnapshot'), text: t('helpers.noSnapshotText')})
       : stateCard({icon: 'file', title: t('helpers.notSubmitted'), text: t('helpers.notSubmittedText')})];
   }
-  const nodes = [stateCard({icon: 'check-circle', tone: 'good', title: sent.when ? `Submitted ${sent.when}` : t('helpers.submitted'), text: sent.note || t('helpers.recordedSubmission')})];
+  const nodes = [stateCard({icon: 'check-circle', tone: 'good', title: sent.when ? t('helpers.submittedWhen', {when: sent.when}) : t('helpers.submitted'), text: sent.note || t('helpers.recordedSubmission')})];
   if (sent.facts.length) nodes.push(factGrid(sent.facts));
   if (sent.answers.length) {
     nodes.push(group(t('helpers.answersSent'), sent.answers.map(item => {

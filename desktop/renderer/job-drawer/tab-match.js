@@ -23,7 +23,7 @@ export function matchTab({job, page}) {
     nodes.push(stateCard({title: t('helpers.oldProfile'), text: t('helpers.oldProfileText')}));
   }
   if (match.fit_detail) nodes.push(fitDetail(match));
-  nodes.push(...matchGroups(match).filter(part => part.title === 'Fit').map(part => group(part.title, part.lines)));
+  nodes.push(...matchGroups(match).filter(part => part.title === t('helpers.fit')).map(part => group(part.title, part.lines)));
   return nodes;
 }
 

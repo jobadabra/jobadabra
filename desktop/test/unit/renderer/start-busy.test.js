@@ -1,5 +1,6 @@
 // A Start button pressed while another task runs (owner, 25 Oct 2026: "when I apply to Find jobs it doesn't do anything"): the button says it is queued and after what,
 // the press answers with a toast, and the rule covers every start button. Guards renderer/start-busy.js, pages/start-feedback.js and the switch in pages/runs-page.js.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

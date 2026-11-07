@@ -1,6 +1,7 @@
 // Jobadabra's UI building blocks (styles in components.css, values in tokens.css). Screens build their
 // pills, tags, tiles and ⋯ menus with these, so the same thing looks and behaves the same everywhere;
 // gallery.html shows every one of them side by side.
+import {t} from '../i18n/index.js';
 import {icon} from './icons.js';
 import {isRawValue} from './chip-text.js';
 import {GATE_FOOTNOTE, GATE_TITLE, NOTION_BENEFITS} from './notion-benefits.js';
@@ -53,8 +54,8 @@ export function chip(text, {detail = '', tone = '', onRemove = null, title = ''}
   if (title) node.title = title;
   if (isRawValue(value)) node.dataset.raw = '1';
   if (onRemove) {
-    const remove = Object.assign(el('button', 'x', '×'), {type: 'button', title: `Remove ${value}`});
-    remove.setAttribute('aria-label', `Remove ${value}`);
+    const remove = Object.assign(el('button', 'x', '×'), {type: 'button', title: t('helpers.removeValue', {value})});
+    remove.setAttribute('aria-label', t('helpers.removeValue', {value}));
     remove.addEventListener('click', onRemove);
     node.append(remove);
   }
@@ -207,7 +208,7 @@ export function openMenu(anchor, items, {search = 0, width = 'auto'} = {}) {
   const nodes = items.map(menuItem);
   const rows = items.filter(item => item !== '-' && !item.heading).length;
   if (search && rows >= search) {
-    const box = Object.assign(document.createElement('input'), {type: 'search', placeholder: 'Find…', ariaLabel: 'Find in this list'});
+    const box = Object.assign(document.createElement('input'), {type: 'search', placeholder: t('helpers.find'), ariaLabel: t('helpers.findList')});
     box.addEventListener('input', () => filterMenu(box.value));
     nodes.unshift(el('label', 'search-box ui-menu-search', icon('search')));
     nodes[0].append(box);
@@ -239,10 +240,10 @@ export function scrollCloses(anchor, at) {
 document.addEventListener('scroll', () => { if (!menu.hidden && scrollCloses(menuAnchor, menuAt)) closeMenu(); }, true);   // not `closeMenu` itself: the Event would be taken as `within` and throw (#307)
 
 // The ⋯ button that opens a menu. items: an array, or a function returning one (built when opened).
-export function moreButton(items, title = 'More actions') {
+export function moreButton(items, title = t('helpers.moreActions')) {
   const button = el('button', 'secondary ui-more');
   button.title = title;
-  button.setAttribute('aria-label', 'More actions');
+  button.setAttribute('aria-label', t('helpers.moreActions'));
   button.setAttribute('aria-haspopup', 'menu');
   button.setAttribute('aria-expanded', 'false');
   button.append(icon('more'));
@@ -408,7 +409,7 @@ export function numberStrip(cells, {valueFirst = false} = {}) {
 }
 
 // The card a tab shows while nothing has been read yet: the shared shimmer lines under the line saying what is read (Profile tabs, renderer/swr.js).
-export function loadingCard(what = 'Reading it from your store…', lines = [40, 90, 75, 60]) {
+export function loadingCard(what = t('helpers.loadingStore'), lines = [40, 90, 75, 60]) {
   const card = el('div', 'summary-card loading-card');
   card.setAttribute('role', 'status');
   card.append(...lines.map(width => Object.assign(el('span', 'skeleton'), {style: `width:${width}%`})), el('span', 'muted small', what));

@@ -2,7 +2,7 @@
 // the controls: previous / next ("3 of 38"), expand, close; "Back to Recent activity" above them when a run opened the job.
 // One header for every tab. Words: renderer/job-page-view.js headerFacts, interviewFacts. Guarded by test/unit/renderer/job-drawer.test.js.
 import {t} from '../../i18n/index.js';
-import {stageLabel} from '../jobs-board-rules.js';
+import {stageText} from '../jobs-board-rules.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {fitRing} from '../fit-ring.js';
@@ -32,7 +32,7 @@ export function drawerHeader(job, page, {at, back, expanded, on}) {
   words.append(el('h2', '', job.title), el('p', 'muted', [job.company, job.location || page?.app?.location].filter(Boolean).join(' · ')));
   const chips = el('div', 'jd-chips');
   const stage = page?.app?.stage || job.stage;
-  if (stage) chips.append(pill(stageLabel(stage), 'info'));
+  if (stage) chips.append(pill(stageText(stage), 'info'));
   if (job.work_mode) chips.append(pill(job.work_mode, 'neutral'));
   if (notSeen(page)) chips.append(pill(t('helpers.notSeen'), 'warn', {title: t('helpers.notSeenHint')}));
   const applied = appliedLine(job, page?.app);
@@ -41,7 +41,7 @@ export function drawerHeader(job, page, {at, back, expanded, on}) {
   const nav = el('div', 'jd-nav');
   const flip = control('chevron', t('helpers.previousJob'), on.prev, !at || at.index <= 0);
   flip.classList.add('is-flipped');
-  nav.append(flip, el('span', 'muted small jd-count', at && at.total > 1 ? `${at.index + 1} of ${at.total}` : ''),
+  nav.append(flip, el('span', 'muted small jd-count', at && at.total > 1 ? t('helpers.position', {index: at.index + 1, total: at.total}) : ''),
     control('chevron', t('helpers.nextJob'), on.next, !at || at.index >= at.total - 1),
     control('maximize', expanded ? t('helpers.shrink') : t('helpers.expand'), on.expand), control('close', t('helpers.closeEsc'), on.close));
   top.append(cell, words, nav);
@@ -52,7 +52,7 @@ export function drawerHeader(job, page, {at, back, expanded, on}) {
     // Prepare builds the interview prep kit (the Focus action); a job with no application has none to build: the bar leads to its interviews.
     const open = Object.assign(el('button', 'primary', page?.app?.id ? t('helpers.prepareArrow') : t('helpers.interviewsArrow')), {type: 'button'});
     open.addEventListener('click', page?.app?.id ? on.prepare : on.interviews);
-    bar.append(icon('calendar'), el('span', '', `Next interview · ${next.when}`), open);
+    bar.append(icon('calendar'), el('span', '', t('helpers.nextInterview', {when: next.when})), open);
     head.append(bar);
   }
   return head;

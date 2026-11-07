@@ -1,5 +1,6 @@
 // What the window says when the provider refused the saved AI key (Windows tester on 0.9.2, 3 Nov 2026: Connections said "Connected · Anthropic API key" while every AI step
 // failed with 401, and the portrait sat on "Updating soon"). state().aiKeyBad comes from lib/ai-key-health.js; Connections and the portrait read the same flag.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

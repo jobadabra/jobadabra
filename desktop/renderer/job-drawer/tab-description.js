@@ -23,7 +23,7 @@ function saved(text, job, found = {}) {
 function missing({job, page, reload}, box, paint, problem = '') {
   const app = page?.app?.id;
   const actions = [];
-  const failed = text => { box.replaceChildren(stateCard({icon: 'alert', tone: 'bad', title: t('helpers.cannotRetrieve'), text: `${text} Try again, or paste the description.`, actions: buttons()})); };
+  const failed = text => { box.replaceChildren(stateCard({icon: 'alert', tone: 'bad', title: t('helpers.cannotRetrieve'), text: t('helpers.retrieveRetry', {error: text}), actions: buttons()})); };
   const done = async result => { if (result.ok) { read.delete(job.url); reload(); } else failed(plainError(result.text || result.error || t('helpers.pageNoAnswer'))); };
   const fetchOriginal = () => {
     box.replaceChildren(stateCard({icon: 'info', title: t('helpers.fetchingOriginal'), text: t('helpers.retrievingEmployer')}), ...skeleton());

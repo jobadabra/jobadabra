@@ -1,5 +1,6 @@
 // The one page save bar (renderer/save-bar.js; owner, 18 Oct 2026, UI redesign D2): counts drafts across tabs and names them, dots on those tabs, Discard all
 // asks when drafts sit on more than one tab, a failed check saves nothing and names tab + field, a part-way failure keeps the failed drafts, leaving asks.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

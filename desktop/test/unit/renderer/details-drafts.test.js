@@ -2,6 +2,7 @@
 // fields that differ from what was read or saved, a refresh never draws over drafts, a proposal from the CV is a draft only once the person presses Fill (never saved by itself, never filled on open), and nothing
 // on the tab has its own Save any more.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

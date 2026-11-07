@@ -13,7 +13,7 @@ function kitView(kit) {
   if (kit.groups) return kit.groups.map(part => group(part.title, part.lines));
   const parts = [];
   if (kit.intro) parts.push(el('p', 'muted small', kit.intro));
-  if (kit.ineligible) parts.push(el('div', 'callout tone-bad', `Not eligible: ${kit.ineligible}`));
+  if (kit.ineligible) parts.push(el('div', 'callout tone-bad', t('helpers.notEligible', {reason: kit.ineligible})));
   if (kit.check.length) parts.push(group(t('helpers.checkSending'), kit.check));
   if (kit.lead.length) parts.push(group(t('helpers.leadWith'), kit.lead));
   if (kit.answers.length) {

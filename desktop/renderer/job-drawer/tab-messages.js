@@ -33,7 +33,7 @@ function shotsView(shots) {
 
 function emailCard(email, first) {
   const body = [];
-  if (email.from) body.push(el('p', 'muted small', `From ${email.from}`));
+  if (email.from) body.push(el('p', 'muted small', t('helpers.from', {name: email.from})));
   body.push(el('p', '', email.text || t('helpers.noSummary')));
   body.push(button(t('helpers.openGmail'), () => window.pilot.openExternal(email.url), 'soft-button'));
   return foldCard({title: email.title, tag: email.outcome, when: email.when, open: first}, ...body);
@@ -47,7 +47,7 @@ function waitingCard(email, job, reload) {
     else event.currentTarget.disabled = false;
   }, 'primary');
   const other = button(t('helpers.chooseJob'), () => whichJob(email.item, () => reload()), 'soft-button');
-  return stateCard({icon: 'alert', tone: 'warn', title: t('helpers.emailBelongs'), text: `“${email.subject}”${email.note ? `: ${email.note}` : ''} This email isn't linked to this job yet.`, actions: [link, other]});
+  return stateCard({icon: 'alert', tone: 'warn', title: t('helpers.emailBelongs'), text: t('helpers.emailUnlinked', {subject: `“${email.subject}”${email.note ? `: ${email.note}` : ''}`}), actions: [link, other]});
 }
 
 const noteCard = (note, first) => foldCard({iconName: 'chat', title: note.title, open: first}, ...note.lines.map(lineView));
@@ -57,21 +57,21 @@ export function messagesTab({job, page, parts, close, reload}, redraw) {
   const add = button(t('helpers.addNote'), () => openLogFor(job.url, job.title), 'soft-button');
   const nodes = waitingEmails(focusItems(), job.url).map(email => waitingCard(email, job, reload));   // first: it needs an answer
   if (gmailConnected() === false) {   // known not connected (null = not known yet: say nothing)
-    nodes.push(stateCard({icon: 'alert', tone: 'warn', title: 'Connect Gmail to read new messages', text: 'Messages already linked to this job still show here.',
-      actions: [button('Connect Gmail', () => { close(); openSetting('google'); }, 'primary')]}));
+    nodes.push(stateCard({icon: 'alert', tone: 'warn', title: t('helpers.connectMessages'), text: t('helpers.linkedStill'),
+      actions: [button(t('helpers.connectGmail'), () => { close(); openSetting('google'); }, 'primary')]}));
   }
   if (!counts.all && !parts.shots.length) {
-    nodes.push(stateCard({icon: 'mail', title: 'No linked messages yet', text: 'Replies from the employer and the notes you log about this job show here.', actions: [add]}));
+    nodes.push(stateCard({icon: 'mail', title: t('helpers.noMessages'), text: t('helpers.messagesEmpty'), actions: [add]}));
     return nodes;
   }
   const active = chosen.get(job.url) || 'all';
   const row = el('div', 'jd-filter');
-  row.append(choice([['all', `All ${counts.all}`], ['email', `Email ${counts.email}`], ['note', `Notes ${counts.note}`]], active, key => { chosen.set(job.url, key); redraw(); }, 'Messages'), add);
+  row.append(choice([['all', t('helpers.allCount', {count: counts.all})], ['email', t('helpers.emailCount', {count: counts.email})], ['note', t('helpers.notesCount', {count: counts.note})]], active, key => { chosen.set(job.url, key); redraw(); }, t('helpers.messages')), add);
   nodes.push(row);
   const shown = [...(active === 'note' ? [] : emails.map((email, n) => emailCard(email, n === 0 && active !== 'note'))),
     ...(active === 'email' ? [] : notes.map((note, n) => noteCard(note, !emails.length && active !== 'email' && n === 0)))];
   if (shown.length) nodes.push(...shown);
-  else nodes.push(stateCard({icon: 'search', title: active === 'email' ? 'No emails linked to this job' : 'No notes on this job', text: 'Choose All to see everything linked.'}));
+  else nodes.push(stateCard({icon: 'search', title: active === 'email' ? t('helpers.noEmails') : t('helpers.noNotes'), text: t('helpers.chooseAll')}));
   if (active !== 'email') nodes.push(...shotsView(parts.shots));
   return nodes;
 }
