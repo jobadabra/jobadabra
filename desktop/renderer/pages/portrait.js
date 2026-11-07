@@ -15,7 +15,7 @@ const openTab = key => document.querySelector(`[data-profile-tab="${key}"]`)?.cl
 
 const progressRow = ({label, have, need}) => {
   const row = el('li', 'portrait-need');
-  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? t('pagesCommon.done') : 'Needed', have >= need ? 'good' : 'neutral'));
+  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? t('pagesCommon.done') : t('pagesMisc.needed'), have >= need ? 'good' : 'neutral'));
   return row;
 };
 
@@ -39,7 +39,7 @@ const VIEWS = [['structured', 'Structured'], ['letter', 'Plain text']];
 const viewSwitch = (view, onView) => {
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'How to read your portrait');
+  group.setAttribute('aria-label', t('pagesMisc.portraitRead'));
   for (const [key, label] of VIEWS) {
     const button = Object.assign(el('button', key === view ? 'is-active' : '', label), {type: 'button'});
     button.dataset.portraitView = key;
@@ -64,16 +64,16 @@ const letterSheet = status => {
 export function portraitView(status, {open = openTab, view = 'structured', onView = () => {}, note = ''} = {}) {
   const box = el('div', 'portrait-view');
   if (status.state === 'not_yet') {
-    box.append(emptyState({icon: 'user', chip: 'Not yet', title: 'Not enough to describe you yet',
-      text: 'Your portrait appears as we learn about you: your CV, your form fills and your interview reviews. You cannot edit it; correct the sources and it follows.'}));
+    box.append(emptyState({icon: 'user', chip: 'Not yet', title: t('pagesProfileMore.notEnough'),
+      text: t('pagesProfileMore.portraitHelp')}));
     const needs = el('ul', 'portrait-needs');
     needs.append(...status.progress.map(progressRow));
     box.append(needs);
     return box;
   }
   if (!status.sections.length) {   // enough to write, nothing written yet: the first run is pending, or it could not run (Gitar on #2334)
-    box.append(emptyState({icon: 'user', chip: note ? 'Not written' : 'Updating soon', title: note ? 'Your portrait could not be written yet' : 'Writing your first portrait',
-      text: note || 'It is written when you open this tab, from what we know about you.'}));
+    box.append(emptyState({icon: 'user', chip: note ? 'Not written' : t('pagesProfileMore.updatingSoon'), title: note ? t('pagesProfileMore.portraitFailed') : t('pagesProfileMore.writingPortrait'),
+      text: note || t('pagesProfileMore.portraitOnOpen')}));
     return box;
   }
   const showLetter = view === 'letter' && status.letter?.length > 0;
@@ -81,7 +81,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const title = el('div', 'portrait-title');
   title.append(el('h2', '', t('pagesDetails.yourPortrait')), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
   line.append(title);
-  if (status.state === 'outdated') line.append(note ? pill('Not updated', 'bad', {title: note}) : pill('Updating soon', 'info'));   // a note says why it is not (the AI key was refused)
+  if (status.state === 'outdated') line.append(note ? pill(t('pagesProfileMore.notUpdated'), 'bad', {title: note}) : pill(t('pagesProfileMore.updatingSoon'), 'info'));   // a note says why it is not (the AI key was refused)
   if (status.letter?.length) line.append(viewSwitch(showLetter ? 'letter' : 'structured', onView));
   box.append(line);
   if (showLetter) { box.append(letterSheet(status)); return box; }
@@ -90,7 +90,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const tabs = new Map();
   for (const id of cited) { const info = status.evidence[id]; if (info) tabs.set(info.tab, (tabs.get(info.tab) || 0) + 1); }
   const built = el('footer', 'portrait-built');
-  built.append(el('span', 'portrait-label', 'Built from'), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: `Open ${PROFILE_TABS[tab] || tab}`, onClick: () => open(tab)})));
+  built.append(el('span', 'portrait-label', t('pagesProfileMore.builtFrom')), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: `Open ${PROFILE_TABS[tab] || tab}`, onClick: () => open(tab)})));
   sheet.append(built);
   box.append(sheet);
   return box;

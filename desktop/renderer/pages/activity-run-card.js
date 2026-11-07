@@ -36,7 +36,7 @@ export function showRunJob(runJob) {
 export function showJob(job) {
   openActivity(false);
   openView('jobs');
-  showJobsIn(job.title || 'Logged job', [job.jobUrl]);
+  showJobsIn(job.title || t('pagesExtraCommon.loggedJob'), [job.jobUrl]);
 }
 // Text with its web addresses as links (the run's Notion page, a GitHub run…); the log's click handler opens them.
 export function linked(text) {
@@ -73,7 +73,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // this run added. A digest whose new section mixes in earlier runs' jobs lists none here: the count stays and Jobs has them.
     const listed = nothingNew ? [] : runItems(card);
     const items = card.own || listed.length === fresh ? listed : [];
-    heading = nothingNew ? 'No new jobs this run' : 'Added in this run';
+    heading = nothingNew ? t('pagesExtraCommon.noNewJobs') : t('pagesExtraCommon.addedRun');
     rows.append(...byFit(items).slice(0, 3).map(item => {   // highest fit first, unscored last
       const row = el('li', 'run-card-row');
       // Two lines: the job, then who it is with. Its fit as a pill when it has a score; the posting opens from the arrow.
@@ -102,7 +102,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
     if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));
-    const words = !total || nothingNew ? 'Open Jobs →' : !here ? 'View in Jobs →' : here === total ? `View all ${total} in Jobs →` : `View ${here} in Jobs →`;
+    const words = !total || nothingNew ? t('pagesExtraCommon.openJobs') : !here ? t('pagesExtraCommon.viewJobs') : here === total ? `View all ${total} in Jobs →` : `View ${here} in Jobs →`;
     const view = el('button', 'link run-card-view', words);
     // In the run panel the card's top offers it ("See the N new jobs" presses this button): the bottom does not show it again.
     view.hidden = target.id === 'activity-card';
@@ -124,7 +124,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // The one number: the employers this run added. Nothing else is shown (checked, checked again, set aside).
     // In the run panel the card's top says it (run-result-card.js WORDS.scout).
     if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
-    heading = 'New employers';
+    heading = t('pagesExtraCommon.newEmployers');
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');
     rows.append(...card.items.slice(0, all ? undefined : 5).map(item => {

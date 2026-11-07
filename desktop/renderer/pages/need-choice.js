@@ -4,6 +4,8 @@
 // proposal could not be picked (a select fires no change for the option it already shows). The choices come from answer-options.js;
 // session-needs.js passes in what a pick does. Guard: test/unit/renderer/need-choice.test.js.
 
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 const capital = text => text.replace(/^./, c => c.toUpperCase());
 
 // -> the row's buttons for these choices: the proposal (when there is one), then Change…. `button(text, run, role)` makes
@@ -17,7 +19,7 @@ export function choiceButtons(choices, {button, pick, change, field = ''}) {
     out.push(agree);
   }
   // Your saved answers and a box: a way to say something else wherever there is a proposal, a saved answer, a field to fill or Claude to tell.
-  if (proposed || field || choices.some(choice => choice.kind !== 'proposed')) out.push(button('Change…', change, 'change'));   // 'change' = Claude help on
+  if (proposed || field || choices.some(choice => choice.kind !== 'proposed')) out.push(button(t('pagesStrategy.change'), change, 'change'));   // 'change' = Claude help on
   return out;
 }
 

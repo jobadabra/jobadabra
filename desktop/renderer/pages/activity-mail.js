@@ -43,14 +43,14 @@ function mailDiff(changes) {
 //   ⑤ "Email details", folded: the subject.
 // An update no email claims (a calendar event, a run kept on this Mac) and a day-before interview reminder are cards of the
 // same shape. With no relevant email one line says nothing changed; with no new email the strip alone says it.
-const OUTCOME = {Rejected: ['Rejected', 'bad'], Interview: ['Interview scheduled', 'good'], 'Interview scheduled': ['Interview scheduled', 'good'],
-  Offer: ['Offer', 'good'], 'Reply received': ['Reply received', 'info'], 'Application received': ['Application received', 'info'],
-  Applied: ['Applied', 'info'], 'You replied': ['You replied', 'neutral']};
+const OUTCOME = {Rejected: [t('pagesExtraCommon.rejected'), 'bad'], Interview: [t('pagesJobs.interviewScheduled'), 'good'], 'Interview scheduled': [t('pagesJobs.interviewScheduled'), 'good'],
+  Offer: [t('pagesExtraCommon.offer'), 'good'], 'Reply received': [t('pagesExtraCommon.replyReceived'), 'info'], 'Application received': [t('pagesExtraCommon.applicationReceived'), 'info'],
+  Applied: [t('pagesExtraCommon.applied'), 'info'], 'You replied': [t('pagesExtraCommon.youReplied'), 'neutral']};
 const outcomePill = kind => { const [text, tone] = OUTCOME[kind] || [kind, 'info']; return pill(text, tone); };
 const sentence = text => (text && !/[.!?]$/.test(text) ? `${text}.` : text || '');
 const changeOf = text => (/→/.test(text || '') ? text : '');   // "nothing to record (Rejected)" is not a change
-const VERDICT_TITLE = {'Hard skills': 'Possible skills gap', 'Soft skills': 'Possible soft-skills gap',
-  Presentation: 'Possible gap: how the application read', Unclear: 'Reason unclear'};
+const VERDICT_TITLE = {'Hard skills': t('pagesExtraCommon.possibleSkills'), 'Soft skills': t('pagesExtraCommon.possibleSoftSkills'),
+  Presentation: t('pagesExtraCommon.applicationReadGap'), Unclear: t('pagesExtraCommon.reasonUnclear')};
 const openFolds = new Set();   // which folds are open, kept across the card's redraws (it is drawn again on every refresh)
 const jobKey = text => String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -112,7 +112,7 @@ function mailSections(box, report, pending = [], answered = null) {
     cards.push(made.card);
   }
   if (meeting && !meetingShown) {   // the day-before reminder: the interview was recorded by an earlier check
-    cards.push(mailCardRow({company: meeting.company, role: meeting.title, lines: ['Already on record'], tag: pill(t('pagesStatus.reminder'), 'neutral'), panel: meetingPanel(),
+    cards.push(mailCardRow({company: meeting.company, role: meeting.title, lines: [t('pagesExtraCommon.alreadyRecorded')], tag: pill(t('pagesStatus.reminder'), 'neutral'), panel: meetingPanel(),
       noDetails: 'A reminder from your calendar: no new email. The interview was recorded by an earlier check.'}));
   }
   if (!cards.length && !(found > 0)) return 0;
@@ -153,8 +153,8 @@ function emailCard(result, pending, answered, meetingPanel) {
 }
 // What the email itself is, while its job is the question: the engine's question line says it ("<mark> Interview · Blockdaemon —
 // which job?"), Focus's question too (event_kind); an invitation without either is an interview.
-const KIND_NOUN = {Interview: 'Interview invitation', 'Interview scheduled': 'Interview invitation', Rejected: 'Rejection',
-  'Reply received': 'Reply', 'Application received': 'Application confirmation', Offer: 'Offer'};
+const KIND_NOUN = {Interview: t('pagesExtraCommon.interviewInvitation'), 'Interview scheduled': t('pagesExtraCommon.interviewInvitation'), Rejected: t('pagesExtraCommon.rejection'),
+  'Reply received': t('pagesExtraCommon.reply'), 'Application received': t('pagesExtraCommon.confirmation'), Offer: t('pagesExtraCommon.offer')};
 function questionKind(result, asked, noun) {
   const said = result.update?.question ? result.update.summary : asked.open?.event_kind || '';
   return said || (noun === 'invitation' ? t('pagesCommon.interview') : '');
@@ -170,7 +170,7 @@ function placedCard(result, asked, kind) {
   const interview = /^Interview/.test(kind);
   const note = el('div', 'mail-mapped');
   const line = resolution(asked, result.company || company);
-  const why = `The ${interview ? 'invitation' : 'email'} names ${result.company || 'the sender'} but doesn't specify the role.`;
+  const why = `The ${interview ? 'invitation' : 'email'} names ${result.company || t('pagesExtraCommon.sender')} but doesn't specify the role.`;
   note.append(line, fold(`asked:${subjectKey(email.subject)}`, t('pagesCommon.originalQuestion'), el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
   let panel = note;
   if (interview) {
@@ -178,7 +178,7 @@ function placedCard(result, asked, kind) {
     const meeting = {when: whenOf(email.subject), company, title: title.join(' — '), summary: '', where: '', people: []};
     panel.append(interviewPanel({interview: meeting, topics: [], nextSteps: [], consent: '', url: ''}), note);
   }
-  return mailCardRow({company, role: created ? 'New job · role to add in Focus' : title.join(' — '), lines: [[email.sender, email.time].filter(Boolean).join(' · ')],
+  return mailCardRow({company, role: created ? t('pagesExtraCommon.newRoleFocus') : title.join(' — '), lines: [[email.sender, email.time].filter(Boolean).join(' · ')],
     tag: kind ? outcomePill(interview ? 'Interview scheduled' : kind) : pill(t('pagesStatus.answered'), 'good'), panel, details: email.subject});
 }
 // An update no email claims: its job, what it moved, or the which-job question it raised.
@@ -402,7 +402,7 @@ export function renderMailCard(report, pending = [], answered = null, target = $
   };
   const counts = mailCounts(report);
   counts.forEach(({value, label}) => { const [, glyph, tone] = ICONS.find(([pattern]) => pattern.test(label)) || [null, 'mail', '']; status.append(stat(value, label, glyph, tone)); });
-  if (waiting) status.append(stat(waiting, waiting === 1 ? 'needs your answer' : 'need your answer', 'bang-circle', 'is-warn'));
+  if (waiting) status.append(stat(waiting, waiting === 1 ? t('pagesExtraCommon.needsAnswer') : t('pagesExtraCommon.needAnswer'), 'bang-circle', 'is-warn'));
   if (!counts.length) {   // no new email: the strip alone says so
     const cell = el('span', 'mail-strip-stat is-good');
     cell.append(icon('check-circle'), report.status.sentence || report.status.title);
@@ -411,7 +411,7 @@ export function renderMailCard(report, pending = [], answered = null, target = $
   // In the run panel the card's top says the counts (run-result-card.js): the strip is not drawn twice, and a check with nothing else has no bottom.
   // A count of 0 is not said ("0 updates recorded"); a check that changed nothing says so once, under the top's title.
   const title = [...counts.filter(({value}) => Number(value) !== 0).map(({value, label}) => `${value} ${label}`),
-    waiting && `${waiting} ${waiting === 1 ? 'needs your answer' : 'need your answer'}`].filter(Boolean).join(' · ') || report.status.sentence || report.status.title || '';
+    waiting && `${waiting} ${waiting === 1 ? t('pagesExtraCommon.needsAnswer') : t('pagesExtraCommon.needAnswer')}`].filter(Boolean).join(' · ') || report.status.sentence || report.status.title || '';
   if (target.id === 'activity-card') {
     const only = box.childElementCount === 1 && box.firstElementChild.classList.contains('mail-nochange') ? box.firstElementChild.textContent : '';
     if (!box.childElementCount || only) { target.replaceChildren(); return {empty: true, title, summary: only, asks: waiting}; }

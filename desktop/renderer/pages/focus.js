@@ -152,7 +152,7 @@ async function loadFocusOnce() {
   }
   renderFocus(result.focus);
   focusUpdatedAt = Date.now();
-  focusStatus('Updated just now');
+  focusStatus(t('pagesFocusReports.updatedNow'));
 }
 function focusCard(item) {
   const li = el('li', `focus-item tone-${item.tone || 'neutral'}`);

@@ -33,7 +33,7 @@ export async function moveJob(job, stage) {
 }
 
 function card(job) {
-  const item = Object.assign(el('li', 'focus-item board-card'), {tabIndex: 0, draggable: true, title: 'Drag to another stage, or click to open'});
+  const item = Object.assign(el('li', 'focus-item board-card'), {tabIndex: 0, draggable: true, title: t('pagesJobsHelp.dragStage')});
   Object.assign(item.dataset, {code: job.code || '', url: job.url || ''});   // a pop-up's click finds it (pages/open-target.js focusJob)
   const body = el('div', 'focus-body'), parts = rowModel(job);
   body.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
@@ -69,5 +69,5 @@ export function renderBoard(jobs) {
     } else box.title = `${stageLabel(column.stage)} is set by Jobadabra, not by moving a card`;
     return box;
   }));
-  if (!jobs.length) board.prepend(el('p', 'empty board-empty', 'No applications here yet. Save, apply to or log a job and it shows on the board.'));
+  if (!jobs.length) board.prepend(el('p', 'empty board-empty', t('pagesJobsHelp.noBoard')));
 }

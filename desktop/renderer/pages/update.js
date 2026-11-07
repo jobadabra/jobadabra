@@ -26,7 +26,7 @@ export async function init() {
     if (result.ok) return;  // the app quits and reopens updated
     if (result.manual && result.url) window.pilot.openExternal(result.url);   // the automatic update failed before: the installer by hand
     button.disabled = false;
-    $('nav-update-text').textContent = 'Update: try again';
-    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.', NO_PLACE.app, 'bad');
+    $('nav-update-text').textContent = t('pagesMisc.updateRetry');
+    toastMessage(t('pagesMisc.updateFailed'), result.text || t('pagesMisc.websiteDownload'), NO_PLACE.app, 'bad');
   });
 }

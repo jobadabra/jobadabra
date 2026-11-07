@@ -110,8 +110,8 @@ export function renderActivity(fresh) {
   const lastMail = runs.find(run => kindOf(run) === 'mail');
   $('activity').dataset.state = barState(running, lastSearch || lastMail || last);
   const liveLines = running ? shared.logLines : null;
-  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? 'not checked' : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
-    : gmailConnected() === false ? 'Gmail not checked · not connected'   // #541: no "due now" for a check that cannot run
+  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? t('pagesExtraCommon.notChecked') : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
+    : gmailConnected() === false ? t('pagesExtraCommon.gmailNotChecked')   // #541: no "due now" for a check that cannot run
     : nextMailAt ? `First Gmail check ${nextWords(nextMailAt)}` : '';
   if (running) {
     const kind = KIND[kindOf(running)];
@@ -143,7 +143,7 @@ export function renderActivity(fresh) {
   // Each queued one says what it waits for: the one queued before it, or the running task.
   const queue = data.queued || [];
   const waiting = queue.map((run, i) => ({...run, waiting: true,
-    after: i ? KIND[kindOf(queue[i - 1])].name : running ? KIND[kindOf(running)].name : 'the current task'})).reverse();
+    after: i ? KIND[kindOf(queue[i - 1])].name : running ? KIND[kindOf(running)].name : t('pagesExtraCommon.currentTask')})).reverse();
   // Task, Status and Date keep what the list shows (renderer/run-filters.js); a page of them, queued and running first, then Load more.
   const by = {kindOf, toneOf: run => runPill(run)[1]};
   const liveRows = filterBy(waiting.concat(running ? [{...running, live: true}] : []), listFilter, by);
@@ -168,7 +168,7 @@ export function renderActivity(fresh) {
     words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [`Running now`, run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
       ? [run.note, `Waiting · starts after ${run.after}`].filter(Boolean).join(' · ')
       : [run.note, capital(outcome(run)), WHERE[run.where]].filter(Boolean).join(' · ')));
-    if (byYou(run)) words.lastChild.prepend(tag('By you', {title: t('pagesActivityMore.youStarted')}), ' ');
+    if (byYou(run)) words.lastChild.prepend(tag(t('pagesExtraCommon.byYouTitle'), {title: t('pagesActivityMore.youStarted')}), ' ');
     // No cost and no live log here: the list is for finding a run and seeing its state; the log and the cost are in the detail pane.
     const when = el('span', 'run-time', run.live || run.waiting ? '' : runTime(run));
     if (run.live && run.where === 'github' && run.url) {
@@ -202,9 +202,9 @@ export function renderActivity(fresh) {
   const plan = {search: 4, mail: 3, ...(shared.state?.settings?.schedule || {})};
   // No time: "Off" only when Settings → Automation says so; else the app just doesn't know it yet (it was started
   // before an update: a restart fixes it), so it names where it runs.
-  const unknown = cloud ? 'On GitHub' : 'On this Mac';
+  const unknown = cloud ? t('pagesExtraCommon.onGithub') : t('pagesExtraCommon.onMac');
   // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js).
-  const items = [[t('pagesCommon.findJobs'), 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : t('pagesCommon.off')]];
+  const items = [[t('pagesCommon.findJobs'), 'search', nextSearchAt, plan.search ? unknown : t('pagesExtraCommon.whenAsk')], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : t('pagesCommon.off')]];
   const soonest = Math.min(...items.map(([, , at]) => at || Infinity));
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it
   $('activity-schedule').replaceChildren(...items.map(([name, kind, at, none]) => {
@@ -240,7 +240,7 @@ export function renderActivity(fresh) {
       readTrace.push(`${pageId} read #${tries} gave message=${!!detail?.message} log=${(detail?.log || []).length}`);
       const empty = !detail?.message && !(detail?.log || []).length;
       if (empty && tries < 4 && !hasLog) {
-        runDetails.set(pageId, {log: [byStore('Waiting for the log from Notion…', 'Waiting for the log…')]});
+        runDetails.set(pageId, {log: [byStore(t('pagesExtraCommon.waitingNotionLog'), t('pagesExtraCommon.waitingLog'))]});
         setTimeout(() => read(tries + 1), 5000);
       } else {
         readingPages.delete(pageId);
@@ -283,7 +283,7 @@ export function renderActivity(fresh) {
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
   const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => `AI ${dollars(usd)}`));
-  const queued = queueWords(run, data, kindName => KIND[kindName]?.name || 'the current task');
+  const queued = queueWords(run, data, kindName => KIND[kindName]?.name || t('pagesExtraCommon.currentTask'));
   show($('activity-unqueue'), !!run?.waiting && !!run.id);
   $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';
   // The run's result in one line goes in its card's top when that top is drawn (subLine(false)): the header says it only when no top does.
@@ -293,8 +293,8 @@ export function renderActivity(fresh) {
     !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
     !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
     cost,
-    run.where === 'github' ? 'In the cloud' : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
-    !run.live && run.telegram && 'Sent to Telegram',
+    run.where === 'github' ? t('pagesExtraCommon.inCloud') : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
+    !run.live && run.telegram && t('pagesExtraCommon.sentTelegram'),
   ].filter(Boolean).join(' · '));
   $('activity-sub').textContent = subLine(true);
   // A search that found new jobs: straight to them (newest first).
@@ -396,7 +396,7 @@ export function renderActivity(fresh) {
   show($('log-copy'), !noLog);   // nothing to copy on "No log available"
   const log = $('log');
   const text = readable.join('\n') || (githubLive
-    ? (run.url ? 'This run is on GitHub. Its log is copied here when it finishes.' : 'Starting on GitHub…')
+    ? (run.url ? 'This run is on GitHub. Its log is copied here when it finishes.' : t('pagesExtraCommon.startingGithub'))
     : (run?.live ? 'Nothing to show yet.' : 'No log for this run.'));
   if (log.textContent !== text) {
     const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;

@@ -2,6 +2,8 @@
 // kept inside it and still searched), a typo flagged as "Did you mean …? Fix · Keep" (never fixed silently), whole-word entries as their own group
 // and a Google Jobs place read as a place (renderer/match-groups.js, from the design system's PR B). The meanings come from lib/list-meanings.js (AI, cached by the lists).
 // chipsOf / folded moved here from strategy-targets.js (a pure move). Pure rules in ../chip-meanings.js. Guarded by test/unit/renderer/strategy-chips.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {chip as valueChip, el} from '../components.js';
 import {titleCase} from '../fragment-words.js';
 import {strategyState} from './strategy-state.js';
@@ -41,7 +43,7 @@ export function typoHints(name, {fix, keep}) {
   return typos.map(typo => {
     const line = el('span', 'muted small');
     const button = (label, run) => { const b = el('button', 'link', label); b.type = 'button'; b.addEventListener('click', () => { b.disabled = true; run(b); }); return b; };
-    line.append(`"${typo.entry}": did you mean "${typo.suggestion}"? `, button('Fix', b => fix(typo.entry, typo.suggestion, b)), ' · ', button('Keep', () => keep(typo.entry)));
+    line.append(`"${typo.entry}": did you mean "${typo.suggestion}"? `, button(t('pagesStrategy.fix'), b => fix(typo.entry, typo.suggestion, b)), ' · ', button(t('pagesStrategy.keep'), () => keep(typo.entry)));
     return line;
   });
 }

@@ -1,6 +1,8 @@
 // How an answer leaves a "Needs your attention" row: through the extension into the form (sessionFillField, as "Use" does), else, with
 // Claude help on, in one batch message for Claude (the footer's "Send all N answers", hidden while the takeover is off: owner, 15 Oct 2026).
 // Moved out of session-needs.js on 27 Oct 2026 (pure move + sendAnswer). Guarded by test/guards/rules/resume-hidden.test.js, test/unit/renderer/need-choice.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
 import {say} from './session-log.js';
@@ -31,7 +33,7 @@ export function showSendBar(item) {
   const open = document.querySelectorAll('#ss-needs > .ss-need:not(.is-done)').length;
   $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? ` · ${open} still open` : ''}`;
   const button = $('ss-needs-send-btn');
-  button.textContent = waiting.length === 1 ? 'Send answer' : `Send all ${waiting.length} answers`;
+  button.textContent = waiting.length === 1 ? t('pagesStrategy.sendAnswer') : `Send all ${waiting.length} answers`;
   button.disabled = !!offline(item);
   button.onclick = () => { say(batchMessage(waiting)); batch.delete(item.id); show(bar, false); };
 }
@@ -43,5 +45,5 @@ export async function sendAnswer(item, key, label, value, line) {
   const filled = await window.pilot.sessionFillField(item.id, label, value).catch(error => ({ok: false, error: error.message}));
   if (filled?.ok) return {ok: true, outcome: `Filled in the form: ${value}`};
   if (resumeOffered()) { queue(item, key, line); return {ok: true, outcome: `To send: ${value}`}; }
-  return {ok: false, error: filled?.error || 'Couldn\'t reach the form'};
+  return {ok: false, error: filled?.error || t('pagesStrategy.reachFailed')};
 }

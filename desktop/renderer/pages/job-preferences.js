@@ -218,7 +218,7 @@ function reviewButton() {
   const button = Object.assign(el('button', 'secondary small-btn', t('pagesJobs.reviewPreferences')), {type: 'button', id: 'preferences-review'});
   button.addEventListener('click', reviewPreferences);
   const row = el('div', 'pref-review-row');
-  row.append(el('span', 'muted small', 'The AI reads your preferences and proposes clean values; nothing changes until you accept.'), button);
+  row.append(el('span', 'muted small', t('pagesJobsHelp.reviewPreferences')), button);
   return row;
 }
 // On Strategy: the card's header (Unsaved, Edit / Done) and its mode. Elsewhere (tests, the Profile's old tab) there is no card: the controls are drawn.

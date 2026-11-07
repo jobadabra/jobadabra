@@ -44,10 +44,10 @@ export async function showStatusCard() {
 
 // Actions page: the live banner (what runs now), Recent runs, and Telegram's state. Fed by the activity data.
 const TASK_ICON = {search: 'search', mail: 'mail', insight: 'chart', weekly: 'file', today: 'send', scout: 'building', kits: 'file-text', tailor: 'scissors'};
-const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: 'Gmail & Calendar check', insight: 'Insight', weekly: 'Analyze my job search', kits: 'Prepare top matches', tailor: 'Tailor CV + cover letter for top matches',
-  today: "Today's matches", scout: 'More employers'};
+const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: 'Gmail & Calendar check', insight: t('pagesActivity.insight'), weekly: 'Analyze my job search', kits: t('pagesActivity.prepareTop'), tailor: 'Tailor CV + cover letter for top matches',
+  today: "Today's matches", scout: t('pagesActivity.moreEmployers')};
 // A task's name as the Actions banners say it (running, queued and finished: one word for one task).
-export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || 'A task';
+export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask');
 // Every button that starts a task is off while that task runs or waits (a second press would only join it), and back when it ends: the Actions cards, Tailor CVs, and the same
 // task's other buttons (Jobs → Refresh jobs, Settings → Check Gmail now). `busy` is the kinds running or queued now. Only a button this turned off is turned on again.
 export function syncRunButtons(busy, runningKind = null) {
@@ -114,7 +114,7 @@ export function renderActionsPage(data) {
     li.addEventListener('click', () => showRunsTab(run.id));   // in the app, on that run (owner, 25 Oct 2026)
     return li;
   });
-  $('runs-table').replaceChildren(...(rows.length ? rows : [el('li', 'muted runs-empty', 'Nothing has run yet. Press Run on a task above.')]));
+  $('runs-table').replaceChildren(...(rows.length ? rows : [el('li', 'muted runs-empty', t('pagesReadyReports.noRuns'))]));
 }
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).

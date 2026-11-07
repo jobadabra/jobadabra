@@ -14,7 +14,7 @@ const MODE_WORDS = {no: 'No relocation', yes: t('pagesCommon.yes'), unspecified:
 const SHOWN = 10;   // a long crawl list (70 places abroad) shows its first places and "+N more"
 // A side as the person reads it: its places in title case, or for relocation what it said when it named none.
 export const sideText = (places, mode) => {
-  if (!places?.length) return MODE_WORDS[mode] || 'Nothing set';
+  if (!places?.length) return MODE_WORDS[mode] || t('pagesStrategy.nothingSet');
   const names = [...new Set(places.map(name => (name === name.toLowerCase() ? titleCase(name) : name)))];   // a pattern's lowercase name, never the person's own words
   return names.length > SHOWN ? `${names.slice(0, SHOWN).join(', ')} + ${names.length - SHOWN} more` : names.join(', ');
 };
@@ -35,7 +35,7 @@ function ask(kind, choice, places = []) {
 function sideChips(places, mode, only, tone) {
   const box = el('div', 'chips which-chips');
   const names = [...new Set((places || []).map(name => (name === name.toLowerCase() ? titleCase(name) : name)))];
-  if (!names.length) { box.append(el('span', 'muted', MODE_WORDS[mode] || 'Nothing set')); return box; }
+  if (!names.length) { box.append(el('span', 'muted', MODE_WORDS[mode] || t('pagesStrategy.nothingSet'))); return box; }
   const alone = new Set((only || []).map(name => String(name).toLowerCase()));
   const chipOf = name => chip(name, {tone: alone.has(name.toLowerCase()) ? tone : ''});
   box.append(...names.slice(0, SHOWN).map(chipOf));
@@ -69,15 +69,15 @@ function row(conflict) {
   options.append(option('strategy', 'Strategy', conflict.strategy, '', conflict.onlyStrategy, 'violet', go('strategy')),
     option('profile', t('pagesCommon.profile'), conflict.profile, conflict.profileMode, conflict.onlyProfile, 'teal', go('profile')));
   // The other ways out: one quiet "Choose…" menu beside the two boxes, never a line of links under them (owner: no lone line under a list).
-  const typed = Object.assign(el('input', 'add'), {placeholder: 'Places, separated by commas', hidden: true});
+  const typed = Object.assign(el('input', 'add'), {placeholder: t('pagesStrategy.placesComma'), hidden: true});
   typed.setAttribute('aria-label', `${KIND_NAMES[conflict.kind] || conflict.kind}: places`);
-  const save = button('Save these places', 'secondary small-btn', go('choose', () => typed.value.split(/\s*,\s*/).filter(Boolean)));
+  const save = button(t('pagesStrategy.savePlaces'), 'secondary small-btn', go('choose', () => typed.value.split(/\s*,\s*/).filter(Boolean)));
   save.hidden = true;
-  const choose = button('Choose…', 'secondary which-choose', event => openMenu(event.currentTarget, [
-    {label: 'Other places…', run: () => { typed.hidden = false; save.hidden = false; choose.hidden = true; typed.focus(); }},
-    {label: 'Search with Strategy\'s, score with Profile\'s', run: () => go('separate')({currentTarget: choose})}]));
+  const choose = button(t('pagesStrategy.choose'), 'secondary which-choose', event => openMenu(event.currentTarget, [
+    {label: t('pagesStrategy.otherPlaces'), run: () => { typed.hidden = false; save.hidden = false; choose.hidden = true; typed.focus(); }},
+    {label: t('pagesStrategy.strategySearchProfileScore'), run: () => go('separate')({currentTarget: choose})}]));
   choose.setAttribute('aria-haspopup', 'menu');
-  choose.title = 'Other places, or search with the Strategy places and score with the Profile ones';
+  choose.title = t('pagesStrategy.choosePlacesHelp');
   options.append(choose);
   const body = el('div', 'which-body');
   body.append(options);

@@ -16,7 +16,7 @@ export async function emailSetupCard(list, open) {
   if (!state) return;
   const card = emailCard(state);
   if (!card.shown) return;
-  const button = Object.assign(document.createElement('button'), {type: 'button', className: 'service-card', title: 'Open Notifications'});
+  const button = Object.assign(document.createElement('button'), {type: 'button', className: 'service-card', title: t('pagesMisc.openNotifications')});
   button.dataset.service = 'email';
   const text = el('span', 'service-text'), line = el('span', `service-state${card.on ? ' is-on' : ''}`);
   line.append(icon(card.on ? 'check-circle' : 'info'), el('span', 'service-state-text', card.text));

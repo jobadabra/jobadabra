@@ -15,7 +15,7 @@ import {byStore, storeName} from '../store-words.js';
 import {gatedOut} from './notion-connect.js';
 
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const KINDS = {screening: ['Screening', 'teal'], interview: [t('pagesCommon.interview'), 'info']};
+const KINDS = {screening: [t('pagesExtraCommon.screening'), 'teal'], interview: [t('pagesCommon.interview'), 'info']};
 let month = null;        // {year, month} shown
 let pastShown = 20;      // how many past meetings the Recent list shows (Load more adds 20)
 let calJobs = [];        // the jobs the meetings come from (the Calendar's own small read; the full list only while it is the one at hand)
@@ -47,7 +47,7 @@ function open(m) {
 // The small ✕ on a meeting that hasn't been held: give up on it (confirmation first). It leaves the calendar at once.
 function cross(m) {
   if (m.held || !m.job || !cal.page(m.job)) return null;
-  const button = Object.assign(el('button', 'cal-cross', '×'), {type: 'button', title: 'Dismiss this interview'});
+  const button = Object.assign(el('button', 'cal-cross', '×'), {type: 'button', title: t('pagesMisc.dismissInterview')});
   button.setAttribute('aria-label', `Dismiss the ${name(m)} interview`);
   button.onclick = event => {
     event.stopPropagation();
@@ -65,7 +65,7 @@ function chip(m) {
   const when = `${m.held ? '✓ ' : ''}${timeOf(m)}`.trim();
   if (when) button.append(el('span', 'cal-chip-time', when));
   button.append(el('span', 'cal-chip-name', name(m)));
-  button.title = `${KINDS[m.kind][0]}${m.round ? ` · ${m.round}` : ''} · ${name(m)}${m.held ? ' (held)' : ''}`;
+  button.title = `${KINDS[m.kind][0]}${m.round ? ` · ${m.round}` : ''} · ${name(m)}${m.held ? t('pagesMisc.held') : ''}`;
   button.onclick = () => open(m);
   const x = cross(m);
   if (!x) return button;
@@ -96,7 +96,7 @@ const skeletons = () => [0, 1, 2].map(() => { const box = el('div', 'cal-row'); 
 
 function status() {
   const text = phase === 'loading' ? byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))
-    : phase === 'updating' ? byStore('Updating from Notion…', 'Updating…')
+    : phase === 'updating' ? byStore(t('pagesExtraCommon.updatingNotion'), t('pagesExtraCommon.updating'))
     : phase === 'failed' ? `Couldn't refresh from ${storeName()}${savedAt ? ` · showing the copy saved ${savedAt}` : ''}. ${failure}`.trim() : '';
   const node = $('cal-status');
   node.replaceChildren(...(phase === 'failed' || !text ? [] : [el('span', 'spinner')]), text);

@@ -62,9 +62,9 @@ function listView() {
   input.addEventListener('input', () => { state.text = input.value; keep(); });
   select.addEventListener('change', () => { state.outcome = select.value; draw(); });
   box.append(el('p', 'muted small', listLine(state.runs, shown)), bar);   // the tab's meta line, as Weekly's
-  if (rows.length) box.append(table(['When', 'Job', 'By', 'Outcome', 'Fields', 'Time'], rows));
+  if (rows.length) box.append(table(['When', 'Job', 'By', t('pagesFocusReports.outcome'), 'Fields', 'Time'], rows));
   else box.append(el('p', 'empty', state.runs.length ? t('pagesFocusReports.noFillFilter')
-    : 'No form fills yet. Apply on a job (the extension fills the form) and each fill is listed here with what it did, field by field.'));
+    : t('pagesReadyReports.noFills')));
   return box;
 }
 
@@ -100,7 +100,7 @@ function detailView(run) {
   if (learnings(run).length) box.append(section('Learnings', list(learnings(run))));
   if (steps(run).length) box.append(section('Steps', table(['Step', 'Took'], steps(run).map(step => tr(el('span', '', step.step), el('span', 'muted', `${step.seconds} s`))))));
   if (timeline(run).length) box.append(section('Session timeline', el('p', 'insight-source', timeline(run).join(' → '))));
-  if (!fields.length && !isSession(run)) box.append(el('p', 'insight-source', 'No field-by-field record for this fill (an older extension, or a fill from before 9 Oct 2026).'));
+  if (!fields.length && !isSession(run)) box.append(el('p', 'insight-source', t('pagesReadyReports.noFieldRecord')));
   return box;
 }
 
@@ -127,7 +127,7 @@ export async function renderFormFills(container) {
     const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderFormFills(container));
     host.replaceChildren(el('p', 'message error', `Could not read your form fills from ${storeName()}: ${plainError(answer.error)}`),
-      el('p', 'muted small', byStore('Form fills are kept in Notion 🤖 Agent Runs.', 'Form fills are kept by Jobadabra on this Mac.')), retry);
+      el('p', 'muted small', byStore(t('pagesReadyReports.fillsNotion'), t('pagesReadyReports.fillsLocal'))), retry);
     return;
   }
   state.runs = answer?.runs || [];

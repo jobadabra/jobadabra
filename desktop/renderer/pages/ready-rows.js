@@ -2,12 +2,12 @@
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-const WORDS = {prepared: ['complete', 'good'], partial: ['needs you', 'warn'], wall: ['a wall', 'warn'], 'no-form': ['no form found', 'neutral'], closed: ['job closed', 'neutral'], failed: ['could not fill', 'bad'], queued: ['waiting', 'info'],
+const WORDS = {prepared: ['complete', 'good'], partial: [t('pagesExtraCommon.needsYou'), 'warn'], wall: ['a wall', 'warn'], 'no-form': ['no form found', 'neutral'], closed: ['job closed', 'neutral'], failed: ['could not fill', 'bad'], queued: ['waiting', 'info'],
   filling: ['filling', 'info'], stopped: ['stopped', 'neutral']};
 
 // The one rule for "ready to submit" (owner, 19 Oct 2026): a form the night filled completely and you have not submitted or deleted. The card's count, the Jobs list's chip,
 // filter and button all read it. Guard: test/unit/renderer/ready-to-submit.test.js.
-export const READY_LABEL = 'Ready to submit';
+export const READY_LABEL = t('pagesSessionStates.readySubmit');
 export const readyToSubmit = row => !!row && row.state === 'prepared' && !row.cleared_at && !row.submitted_at;
 
 export function rowOf(job) {
@@ -32,19 +32,19 @@ const STEP = {opening: ["Opening the job's page", 15], form: ['Page open: starti
 const clock = at => displayDate(new Date(at), {hour: '2-digit', minute: '2-digit', hour12: false});
 const WHY = {
   later: why => ({line: `Set for ${clock(why.at)}. Fill now starts it at once`}),
-  soon: () => ({line: 'Sent: the server starts it within 5 minutes'}),
-  'no-queue': () => ({badge: 'stuck', tone: 'warn', line: "Not started: the server's queue is not set up"}),
+  soon: () => ({line: t('pagesReadyReports.sentFive')}),
+  'no-queue': () => ({badge: 'stuck', tone: 'warn', line: t('pagesReadyReports.queueNotSetup')}),
   starting: why => ({line: t('pagesCommon.serverStarting'), since: Date.parse(why.at) || 0, percent: 2}),
   silent: why => ({badge: 'stuck', tone: 'warn', line: `Started at ${clock(why.at)} but no form has reported: the server may have failed to start. Stop all, then Fill now`}),
-  capped: () => ({badge: 'stuck', tone: 'warn', line: "Stopped: the night reached its cost cap"}),
+  capped: () => ({badge: 'stuck', tone: 'warn', line: t('pagesReadyReports.costCap')}),
 };
 export function liveOf(job, nightState, pending = false, why = null) {
-  if (pending) return {badge: 'sending', tone: 'info', line: 'Sending it to the server', percent: 2, since: 0};
+  if (pending) return {badge: 'sending', tone: 'info', line: t('pagesReadyReports.sendingServer'), percent: 2, since: 0};
   if (!['queued', 'running', 'capped'].includes(nightState) || !['queued', 'filling'].includes(job.state)) return null;
   if (job.state === 'queued') {
     const reason = WHY[why?.kind]?.(why);
     if (reason) return {badge: 'waiting', tone: 'neutral', percent: 0, since: 0, ...reason};
-    return nightState === 'capped' ? null : {badge: 'waiting', tone: 'neutral', line: 'Waiting its turn: forms fill one after another', percent: 3, since: 0};
+    return nightState === 'capped' ? null : {badge: 'waiting', tone: 'neutral', line: t('pagesReadyReports.waitingTurn'), percent: 3, since: 0};
   }
   const [words, percent] = STEP[job.step] || ['Starting the fill', 8];
   return {badge: 'filling', tone: 'info', line: typeof words === 'function' ? words(job.step_n || 0) : words, percent, since: Date.parse(job.started_at || '') || 0};

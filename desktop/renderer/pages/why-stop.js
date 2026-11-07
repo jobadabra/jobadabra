@@ -11,11 +11,11 @@ let mode = 'quit';
 function open(asked) {
   mode = asked;
   const quit = mode === 'quit';
-  $('why-title').textContent = quit ? 'Leaving setup? What stopped you?' : 'Stuck? What\'s in the way?';
-  $('why-lead').textContent = quit ? 'One tap helps make setup easier for the next person. Optional.'
-    : 'Tell us what\'s blocking you: it goes straight to the maker, and helps the next person too.';
-  $('why-skip').textContent = quit ? 'Just quit' : t('pagesCommon.cancel');
-  $('why-send').textContent = quit ? 'Send & quit' : t('pagesSession.send');
+  $('why-title').textContent = quit ? t('pagesMisc.leavingSetup') : t('pagesMisc.stuck');
+  $('why-lead').textContent = quit ? t('pagesMisc.oneTap')
+    : t('pagesMisc.blockerFeedback');
+  $('why-skip').textContent = quit ? t('pagesMisc.justQuit') : t('pagesCommon.cancel');
+  $('why-send').textContent = quit ? t('pagesMisc.sendQuit') : t('pagesSession.send');
   document.querySelectorAll('input[name=why]').forEach(input => { input.checked = false; });
   $('why-text').value = '';
   $('why-dialog').showModal();
@@ -26,7 +26,7 @@ async function answer(reason) {
   await window.pilot.leaveReason({reason, text: $('why-text').value, mode}).catch(() => {});
   $('why-send').disabled = false;
   $('why-dialog').close();
-  if (mode === 'stuck' && reason) toastMessage(t('pagesCommon.thanks'), 'Got it. If you wrote something, the maker will read it today.', NO_PLACE.done, 'good');
+  if (mode === 'stuck' && reason) toastMessage(t('pagesCommon.thanks'), t('pagesMisc.makerReads'), NO_PLACE.done, 'good');
 }
 
 export async function init() {

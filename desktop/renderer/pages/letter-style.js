@@ -34,8 +34,8 @@ function draw() {
     grid.append(labelled(rule.label || t('pagesCommon.rule'), input(typed.has(i) ? typed.get(i) : rule.value, text => { typed.set(i, text); changed(); }, {ariaLabel: rule.label || t('pagesCommon.rule')})));
   });
   if (!saved.length) grid.append(el('p', 'muted span-all', DEFAULT));
-  grid.append(labelled('Add a style rule', input(typed.get('add') || '', text => { typed.set('add', text); changed(); },
-    {placeholder: 'e.g. Never mention: salary', ariaLabel: 'Add a style rule'}), true));
+  grid.append(labelled(t('pagesJobsFinal.addStyle'), input(typed.get('add') || '', text => { typed.set('add', text); changed(); },
+    {placeholder: t('pagesJobsFinal.styleExample'), ariaLabel: t('pagesJobsFinal.addStyle')}), true));
   done = doneButton(card(), changes);
   editor.append(grid, done);
   node.replaceChildren(read, editor);
@@ -47,7 +47,7 @@ export async function loadLetterStyle() {
   node = document.getElementById('letter-style-body');
   if (!node) return;
   if (!source) {
-    source = profileBar().register({id: 'letter-style', tab: 'letter', label: 'Writing preferences', count: changes,
+    source = profileBar().register({id: 'letter-style', tab: 'letter', label: t('pagesJobsFinal.writingPrefs'), count: changes,
       save: async () => {
         const result = await window.pilot.letterStyleSave(drafted(), saved).catch(error => ({ok: false, error: error.message}));
         if (!result?.ok) return {ok: false, error: result?.error || 'The writing preferences were not saved.'};

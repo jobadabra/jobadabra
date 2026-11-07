@@ -20,12 +20,12 @@ function dialog() {
   const head = el('div', 'dialog-head'), tile = el('span', 'dialog-icon'), close = el('button', 'ghost icon-btn', '');
   tile.append(icon('sparkle'));
   close.type = 'button'; close.id = 'pro-waitlist-close'; close.setAttribute('aria-label', t('pagesCommon.close')); close.append(icon('close'));
-  head.append(tile, el('h2', '', 'Join the Pro waitlist'), close);
-  const label = el('label', '', 'Your e-mail'), field = el('input', '');
+  head.append(tile, el('h2', '', t('pagesPlans.joinWaitlist')), close);
+  const label = el('label', '', t('pagesPlans.yourEmail')), field = el('input', '');
   label.htmlFor = 'pro-waitlist-email';
   Object.assign(field, {id: 'pro-waitlist-email', type: 'email', placeholder: 'you@example.com', autocomplete: 'email'});
-  const note = el('p', 'muted small', 'We\'ll e-mail you once when Pro opens. Nothing else.');
-  const msg = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), join = el('button', 'primary', 'Join'), foot = el('div', 'dialog-foot'), buttons = el('span', 'inline');
+  const note = el('p', 'muted small', t('pagesPlans.emailOnce'));
+  const msg = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), join = el('button', 'primary', t('pagesPlans.join')), foot = el('div', 'dialog-foot'), buttons = el('span', 'inline');
   msg.id = 'pro-waitlist-message'; cancel.id = 'pro-waitlist-cancel'; cancel.type = 'button'; join.id = 'pro-waitlist-join'; join.type = 'button';
   buttons.append(cancel, join);
   foot.append(el('span', ''), buttons);
@@ -35,7 +35,7 @@ function dialog() {
   cancel.addEventListener('click', shut);
   join.addEventListener('click', async () => {
     join.disabled = true;
-    message('pro-waitlist-message', 'Adding you…');
+    message('pro-waitlist-message', t('pagesPlans.addingYou'));
     const result = await window.pilot.proWaitlistJoin(field.value).catch(() => ({ok: false, error: 'That did not work. Try again in a moment.'}));
     join.disabled = false;
     if (!result.ok) { message('pro-waitlist-message', result.error, 'error'); return; }
@@ -70,7 +70,7 @@ export function showProCard(state = {}) {
   body.replaceChildren(el('p', 'panel-lead', el('span', 'ui-pill tone-good', BADGE)), el('ul', 'plan-list', ''));
   body.lastChild.append(...PRO_FEATURES.map(text => el('li', '', text)));
   if (joined) { body.append(el('p', 'plan-joined', `You're on the waitlist (${joined})`)); body.lastChild.id = 'pro-waitlist-joined'; body.append(promoLink(reloadPlan)); return; }
-  const button = el('button', 'primary', PRO_CHECKOUT ? 'Upgrade to Pro' : 'Join the Pro waitlist');
+  const button = el('button', 'primary', PRO_CHECKOUT ? t('pagesPlans.upgrade') : t('pagesPlans.joinWaitlist'));
   button.id = 'pro-waitlist-open';
   button.addEventListener('click', () => PRO_CHECKOUT ? window.pilot.planCheckout('pro') : openWaitlist());
   const row = el('div', 'inline', '');

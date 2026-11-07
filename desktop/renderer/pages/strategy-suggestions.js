@@ -69,12 +69,12 @@ function drawSuggestions() {
     const row = el('section', 'suggestion-card is-loading'), head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words');
     row.id = 'strategy-coverage-checking';
     row.setAttribute('aria-busy', 'true');
-    words.append(el('h3', '', 'Checking whether your search is too narrow…'), el('span', 'muted', 'Reading the postings your searches saw.'));
+    words.append(el('h3', '', t('pagesStrategyMore.checkingNarrow')), el('span', 'muted', t('pagesStrategyMore.readingPostings')));
     head.append(tile('target', 'neutral'), words);
     row.append(head);
     list.push(row);
   }
-  box.replaceChildren(...(list.length ? list : [el('p', 'card muted empty-row', 'No suggestions right now: your search already catches what the last check saw.')]));
+  box.replaceChildren(...(list.length ? list : [el('p', 'card muted empty-row', t('pagesStrategyMore.noSuggestions'))]));
   paintCount(SUGGESTIONS);   // the tab's badge; the line under the tabs paints the same count (drawImprove)
   drawImprove();
   openPending();
@@ -107,7 +107,7 @@ export function drawImprove() {
   title.append(count, ' to improve your search');
   words.append(title);
   if (top) box.title = `Top: ${top}`;   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
-  const go = el('button', 'secondary item-action', 'Review suggestions');
+  const go = el('button', 'secondary item-action', t('pagesStrategyMore.reviewSuggestions'));
   go.type = 'button';
   go.addEventListener('click', () => showTab('strategy-suggestions'));
   box.replaceChildren(tile('bulb', 'signal'), words, go);
@@ -156,7 +156,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
     const card = el('div', 'option-row option-card'), words = el('div', 'option-words');
     words.append(el('b', '', option.label), el('span', 'muted', option.why || option.preview || ''));
     if (option.meta) { const meta = el('span', 'option-meta', icon('info')); meta.append(option.meta); words.append(meta); }
-    if (option.tech) { const more = el('details', 'plain option-tech'); more.append(el('summary', '', 'Search details'), el('span', 'muted small', option.tech)); words.append(more); }
+    if (option.tech) { const more = el('details', 'plain option-tech'); more.append(el('summary', '', t('pagesStrategyMore.searchDetails')), el('span', 'muted small', option.tech)); words.append(more); }
     const button = el('button', `secondary${option.accent ? ' is-signal' : ''}`, option.button);
     Object.assign(button, {type: 'button', title: option.preview || option.why || ''});
     button.addEventListener('click', () => option.run(button));
@@ -199,8 +199,8 @@ function tuneRow(entry) {
   review.type = 'button';
   review.addEventListener('click', () => RUN.tune());
   head.append(tile('sliders', TONE.tune), words, review, moreButton([
-    {icon: 'clock', label: t('pagesCommon.notNow'), title: 'Hidden for 14 days, then shown again if your results still support it', run: () => answerEntry(entry, 'Not now')},
-    {icon: 'close', label: t('pagesCommon.notTrue'), title: 'Never shown again for these changes', run: () => answerEntry(entry, 'Not true')}], 'More about tuning'));
+    {icon: 'clock', label: t('pagesCommon.notNow'), title: t('pagesStrategyMore.hidden14'), run: () => answerEntry(entry, 'Not now')},
+    {icon: 'close', label: t('pagesCommon.notTrue'), title: t('pagesStrategyMore.neverChanges'), run: () => answerEntry(entry, 'Not true')}], t('pagesStrategyMore.moreTuning')));
   row.append(head);
   return row;
 }
@@ -234,13 +234,13 @@ export async function changeSearch(action, button, where = 'strategy') {
   if (action.kind === 'visit') {
     adviceEvent('taken', 'visit', where);
     const opened = await readSiteInChrome(window.pilot, action.value);
-    if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${action.note ? ` ${action.note}.` : ''}`, {activity: true}, 'info');
-    else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
+    if (opened.started) toastMessage(t('pagesStrategyMore.readingChrome'), `Jobadabra reads its jobs there by itself; follow it in Recent activity.${action.note ? ` ${action.note}.` : ''}`, {activity: true}, 'info');
+    else toastMessage(opened.ok ? t('pagesStrategyMore.openedChrome') : t('pagesStrategyMore.notOpened'), opened.ok ? opened.why || t('pagesStrategyMore.readStartFailed') : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
     return;
   }
   const {list, done} = CHANGES[action.kind](action.value);
   if (list && dirty().has(list)) {
-    toastMessage('Save or discard your changes first', `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'}, 'warn');
+    toastMessage(t('pagesStrategyMore.saveDiscard'), `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'}, 'warn');
     const bar = strategyBarNow()?.node;
     if (bar) { bar.classList.remove('is-nudged'); void bar.offsetWidth; bar.classList.add('is-nudged'); }
     return;
@@ -253,7 +253,7 @@ export async function changeSearch(action, button, where = 'strategy') {
   if (!result.ok) { toastMessage(t('pagesCommon.notAdded'), result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
   adviceEvent('taken', action.kind, where);
   // The next step with it: a refresh searches with the change (7 Oct 2026: the pop-up said only "Search widened").
-  toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
+  toastMessage({title: t('pagesStrategyMore.widened'), body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
   if (where === 'strategy') loadStrategy();   // the cards show it at once, not after the next visit (it re-reads the suggestions too)
   loadFocus();   // Focus's row offers the next option, or leaves
 }
@@ -267,21 +267,21 @@ const paintCoverage = verdict => {
   strategyState.shownVerdict = verdict;
   const keys = verdict?.keys || {};
   const coverage = unanswered(coverageCard(verdict), keys.coverage);
-  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? 'Catch titles in other languages' : t('pagesCommon.addRoleWords'),
+  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'),
     summary: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, text: coverage.text,
     options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
       run: press({kind: 'role', value: chip.term})})),
-    brief: {title: verdict.local ? 'Catch titles in other languages' : t('pagesCommon.addRoleWords'), text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
+    brief: {title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'), text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: t('pagesStrategyMore.reviewWords')},
     menu: answerItems('coverage', keys.coverage, t('pagesCommon.addRoleWords'))});
   const places = unanswered(placesCard(verdict), keys.places);
   const topPlace = places?.chips[0];
-  rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: 'Broaden locations',
+  rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: t('pagesStrategyMore.broaden'),
     summary: `${topPlace.place} · ${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} outside your places${places.chips.length > 1 ? `, and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`,
     text: places.text,
     options: places.chips.map(chip => ({label: plain(chip.label), button: 'Add place', preview: `Adds ${chip.place} to your places; jobs you already have stay. ${chip.title}`,
       run: press({kind: 'place', value: chip.place})})),
-    brief: {title: 'Expand your locations', text: `${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} in ${topPlace.place}${places.chips.length > 1 ? ` and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`, cta: 'Review location'},
-    menu: answerItems('places', keys.places, 'Broaden locations')});
+    brief: {title: t('pagesStrategyMore.expandPlaces'), text: `${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} in ${topPlace.place}${places.chips.length > 1 ? ` and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`, cta: t('pagesStrategyMore.reviewLocation')},
+    menu: answerItems('places', keys.places, t('pagesStrategyMore.broaden'))});
   // Filters of the user's own that hide matching jobs: an option removes that filter.
   const filters = unanswered(filtersCard(verdict), keys.filters);
   const filterHidden = filters ? filters.chips.reduce((sum, chip) => sum + chip.count, 0) : 0;
@@ -289,16 +289,16 @@ const paintCoverage = verdict => {
     summary: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, text: filters.text,
     options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
       run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
-    brief: {title: t('pagesCommon.loosen'), text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
+    brief: {title: t('pagesCommon.loosen'), text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: t('pagesStrategyMore.reviewFilters')},
     menu: answerItems('filters', keys.filters, t('pagesCommon.loosen'))});
   // Unused job sources: an option opens its panel in Settings → Connections (a key to add there); nothing is turned on from here.
   const sources = unanswered(sourcesCard(verdict), keys.sources);
-  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: t('pagesCommon.setup'),
+  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: t('pagesStrategyMore.moreJobSources'), review: t('pagesCommon.setup'),
     summary: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(' · '), text: sources.text,
     options: sources.chips.map(chip => ({label: plain(chip.label), button: 'Open in Settings', preview: chip.title,
       run: () => { adviceEvent('taken', 'source', 'strategy', {source: chip.id}); openSetting(chip.id); }})),
-    brief: {title: 'Connect more sources', text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: t('pagesCommon.setup')},
-    menu: answerItems('source', keys.sources, 'Connect more job sources')});
+    brief: {title: t('pagesStrategyMore.moreSources'), text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: t('pagesCommon.setup')},
+    menu: answerItems('source', keys.sources, t('pagesStrategyMore.moreJobSources'))});
   // Sites only you can open: one chip per company in the row; Review lists every page (a company can have two genuinely different ones).
   const visits = unanswered(visitCard(verdict), keys.visits);
   if (visits) {
@@ -334,12 +334,12 @@ const paintCoverage = verdict => {
     }
     rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: t('pagesCommon.browseManually'), count: sites.length,
       summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
-      brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: 'Use the Chrome extension', cta: 'View sites'},
+      brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: t('pagesStrategyMore.useExtension'), cta: t('pagesStrategyMore.viewSites')},
       menu: answerItems('visit', keys.visits, t('pagesCommon.browseManually'))});
   } else rows.visits = null;
   // Employers where people like you got interviews (shared pool): an option shows that employer's jobs in the Jobs list.
   const forYou = unanswered(employersCard(verdict), keys.foryou);
-  rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: 'Employers hiring people like you',
+  rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: t('pagesStrategyMore.employersLikeYou'),
     summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), text: forYou.text,
     options: forYou.chips.map(chip => ({label: chip.label, button: 'See their jobs', preview: chip.title, run: () => {
       adviceEvent('taken', 'employer', 'strategy');
@@ -347,8 +347,8 @@ const paintCoverage = verdict => {
       const box = $('filter-text');
       if (box) { box.value = chip.company; box.dispatchEvent(new Event('input', {bubbles: true})); }
     }})),
-    brief: {title: 'Employers hiring people like you', text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: 'See employers'},
-    menu: answerItems('employer', keys.foryou, 'Employers hiring people like you')});
+    brief: {title: t('pagesStrategyMore.employersLikeYou'), text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: t('pagesStrategyMore.seeEmployers')},
+    menu: answerItems('employer', keys.foryou, t('pagesStrategyMore.employersLikeYou'))});
   if (shownIdeas) paintIdeas(shownIdeas);   // drawn before this check answered: its "your role words catch" line comes now
   drawSuggestions();
   if (strategyState.strategyShown && !strategyState.editing) renderTargets();   // the exclusions card says what the languages hid
@@ -403,13 +403,13 @@ function paintIdeas(ideas) {
     run: press({kind: 'role', value: chip.term})});
   const {open, empty} = byOpenings(card.chips);
   const top = open[0];
-  rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: 'Explore related roles', count: card.chips.length,
+  rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: t('pagesStrategyMore.relatedRoles'), count: card.chips.length,
     note: open.length ? '' : 'No current openings found in your selected locations.',
     summary: card.narrow || (top ? `${plain(top.label).replace(/ · \d+$/, '')} · ${top.count} open role${top.count === 1 ? '' : 's'}${open.length > 1 ? `, and ${open.length - 1} more` : ''}`
       : `${empty.length} role${empty.length === 1 ? '' : 's'} from your Profile, none with openings in your places now`),
-    text: 'Based on your Profile. A role you add is included in your future searches.', options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
+    text: t('pagesStrategyMore.roleFuture'), options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
     hiddenLabel: 'Show roles with no current openings',
-    brief: {title: 'Explore related roles', text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: 'Review roles'},
-    menu: answerItems('ideas', ideasKey, 'Explore related roles', card.chips.map(chip => chip.term))});
+    brief: {title: t('pagesStrategyMore.relatedRoles'), text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: t('pagesStrategyMore.reviewRoles')},
+    menu: answerItems('ideas', ideasKey, t('pagesStrategyMore.relatedRoles'), card.chips.map(chip => chip.term))});
   drawSuggestions();
 }

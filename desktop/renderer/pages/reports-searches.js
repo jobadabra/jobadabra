@@ -77,7 +77,7 @@ function listView() {
   box.append(el('p', 'muted small', listLine(rows)));
   if (!rows.length) {
     const empty = el('section', 'card');
-    empty.append(el('p', 'empty', 'No searches yet. Run Find jobs and every number of the search lands here: how it ran, how many jobs and employers, what was left out.'));
+    empty.append(el('p', 'empty', t('pagesReadyReports.noSearches')));
     box.append(empty);
     return box;
   }
@@ -147,7 +147,7 @@ export async function renderSearches(container, openId = null) {
     const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderSearches(container));
     host.replaceChildren(el('p', 'message error', `Could not read your searches from ${storeName()}: ${plainError(answer.error)}`),
-      el('p', 'muted small', byStore('Searches are kept in Notion ⏱️ Search runs.', 'Searches are kept by Jobadabra on this Mac.')), retry);
+      el('p', 'muted small', byStore(t('pagesReadyReports.searchesNotion'), t('pagesReadyReports.searchesLocal'))), retry);
     return;
   }
   state.runs = answer?.runs || [];

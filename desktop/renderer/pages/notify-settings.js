@@ -59,7 +59,7 @@ export function bindNotify({savedToast, updateRepo}) {
   // Why (5 Nov 2026, owner): the card also lives in Always on's Test pop-up, where an address is confirmed right away; one button for both places.
   $('notify-resend').addEventListener('click', async () => {
     const sent = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || t('pagesCommon.minute'));
+    $('notify-message').textContent = plainError(sent?.ok ? t('pagesStrategy.sentInbox') : sent?.error || t('pagesCommon.minute'));
   });
   bindMailSwitches(openSetting);
   window.addEventListener('notify-refresh', () => showNotify());   // the Test pop-up borrows this card and asks it to read the state again

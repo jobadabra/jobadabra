@@ -22,7 +22,7 @@ export {cancelSession, removeSession, restartSession, resumeSession, skipSession
 const closedForm = item => formGone(item);  // its Chrome tab was closed (a form or a Claude session's)
 const sessionStatus = item => backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (closedForm(item) ? ['Form closed', 'neutral'] : sessionState(item, formReady(item)));
 export {firstLine, isLive, sessionDuration, sessionReview, sessionStatus as sessionState};
-export const SESSION_PILL = {running: {label: 'Applying', tone: 'info'}, input: {label: 'Needs input', tone: 'warn'}, done: {label: 'Form filled', tone: 'good'}};
+export const SESSION_PILL = {running: {label: 'Applying', tone: 'info'}, input: {label: t('pagesSessionStates.needsInput'), tone: 'warn'}, done: {label: t('pagesSessionStates.formFilled'), tone: 'good'}};
 export let sessionList = [], logChoice = {};
 // Set once the app has answered with its sessions: until then "no open session" can't be told from "not loaded yet".
 export let sessionsLoaded = false;
@@ -115,11 +115,11 @@ export function renderDock() {
     const title = el('b', 'focus-headline', `${sessionCompany(item)} · ${sessionTitle(item)}`);
     title.title = title.textContent;
     const state = el('div', 'sd-state');  // the badge, then what it's doing (or asking), on one line under the title
-    const note = el('span', 'muted small sd-note', isSubmitted(item) ? 'Marked Applied' : item.status === 'input' ? item.brief || item.note || '' : item.note || '');
+    const note = el('span', 'muted small sd-note', isSubmitted(item) ? t('pagesSessionStates.markedApplied') : item.status === 'input' ? item.brief || item.note || '' : item.note || '');
     note.title = note.textContent;
     state.append(pill(label, tone, {dot: item.status === 'running'}), note);
     words.append(title, state);
-    const action = el('button', item.status === 'input' ? 'primary' : 'secondary', item.status === 'input' ? 'Respond' : item.status === 'done' ? t('pagesCommon.review') : 'Open session');
+    const action = el('button', item.status === 'input' ? 'primary' : 'secondary', item.status === 'input' ? t('pagesSessionStates.respond') : item.status === 'done' ? t('pagesCommon.review') : t('pagesSessionStates.openSession'));
     action.addEventListener('click', () => openSession(item.id));
     card.addEventListener('click', event => { if (!event.target.closest('button')) openSession(item.id); });  // the whole card
     card.append(sessionLogo(item), words, action);  // stop / open posting: on the session page (⋯), keeping cards compact
@@ -128,11 +128,11 @@ export function renderDock() {
 }
 export function sessionMenu(item) {
   const menu = [{icon: 'external', label: t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(item.url)}];
-  if (isLive(item)) menu.push({label: '⏸ Pause Claude (Esc)', run: () => pauseSession()});
-  if (item.resumable && !isSubmitted(item) && resumeOffered()) menu.push({label: '▶ Resume Claude', run: () => resumeSession(item)});
-  if (isLive(item)) menu.push({label: '⏹ Stop Claude', run: () => window.pilot.sessionStop(item.id)});
-  menu.push({label: '🛑 Stop the extension', run: () => $('ss-stop').click()});   // always here: the header shows Stop only when ⌘K asks for it (owner, 29 Oct and 5 Nov 2026)
-  menu.push({label: '✕ Close this session', danger: true, run: () => closeSession(item)});
+  if (isLive(item)) menu.push({label: t('pagesSessionStates.pauseClaude'), run: () => pauseSession()});
+  if (item.resumable && !isSubmitted(item) && resumeOffered()) menu.push({label: t('pagesSessionStates.resumeClaude'), run: () => resumeSession(item)});
+  if (isLive(item)) menu.push({label: t('pagesSessionStates.stopClaude'), run: () => window.pilot.sessionStop(item.id)});
+  menu.push({label: t('pagesSessionStates.stopExtension'), run: () => $('ss-stop').click()});   // always here: the header shows Stop only when ⌘K asks for it (owner, 29 Oct and 5 Nov 2026)
+  menu.push({label: t('pagesSessionStates.closeSession'), danger: true, run: () => closeSession(item)});
   return menu;
 }
 // Live while Claude works: a ticking duration, and its latest step from the log (the last "●" line it wrote).
@@ -147,7 +147,7 @@ export function openLog(open, remember = true) {
   if (remember && shared.openSessionId) logChoice[shared.openSessionId] = open;
   show($('ss-log-body'), open);
   show($('ss-log-last'), !open);
-  $('ss-expand').textContent = open ? 'Collapse log' : 'Expand log';
+  $('ss-expand').textContent = open ? t('pagesSessionStates.collapseLog') : t('pagesSessionStates.expandLog');
   $('ss-expand').setAttribute('aria-expanded', open);
   if (open) setTimeout(async () => {
     if (shared.termShownFor !== shared.openSessionId) await attachTerminal(shared.openSessionId);

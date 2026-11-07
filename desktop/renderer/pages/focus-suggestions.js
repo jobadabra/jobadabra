@@ -120,7 +120,7 @@ const button = (label, className, run) => {
 };
 // The notification card's e-mail field and its Send button: saves the address (its confirm mail goes out), then the card asks again (`notify-changed`).
 function bindNotifyEmail(body, node) {
-  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
+  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: t('pagesPlans.saveFailed')},
     turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
       toastMessage(t('pagesFocusReports.inboxCheck'), `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
       window.dispatchEvent(new Event('notify-changed'));

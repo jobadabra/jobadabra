@@ -1,6 +1,8 @@
 // A Start button pressed while another task runs answers at once (owner, 25 Oct 2026): the toast says the task is queued and after what, with a way to see the queue.
 // One click listener for every button that starts a task (Jobs, the Actions cards, Tailor, Find jobs using your browser, Gmail check; ⌘K clicks them too), so a new
 // start button is covered by listing it in TASK_BUTTONS, not by remembering to call this. Rule and look: renderer/start-busy.js. Guard: test/unit/renderer/start-busy.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {COMMAND_KIND, TASK_BUTTONS, kindOf} from './activity.js';
 import {kindOfStartButton, queuedToast, startState} from '../start-busy.js';
 import {showRunsTab} from './runs-tab.js';
@@ -14,7 +16,7 @@ export async function announceQueued(kind, {runs = () => window.pilot.runs(), to
   const state = startState(kind, {running: kindOf(data.running), queued: (data.queued || []).map(kindOf)});
   if (state !== 'queued') return null;
   const {title, body} = queuedToast(taskName(kind), taskName(kindOf(data.running)));
-  toast({title, body, action: {label: 'View queue', run: showRunsTab}, tone: 'info'});
+  toast({title, body, action: {label: t('pagesMisc.viewQueue'), run: showRunsTab}, tone: 'info'});
   return state;
 }
 

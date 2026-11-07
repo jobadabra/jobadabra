@@ -67,15 +67,15 @@ function showConfirm(proposal, state = null) {
   $('lead-kind').value = leadState.values.kind || '';
   $('lead-channel-other').value = '';
   const started = fields.started || {};
-  $('lead-started-label').textContent = started.question || 'When did it start?';
+  $('lead-started-label').textContent = started.question || t('pagesJobsHelp.whenStart');
   $('lead-started').value = leadState.values.started || '';
   $('lead-started').max = localDay();
   $('lead-years').hidden = !started.years?.length;
   $('lead-years').replaceChildren(...(started.years || []).map(year => Object.assign(document.createElement('button'),
     {type: 'button', textContent: String(year), onclick: () => leadSet('started', confirmStep.withYear(started, year))})));
-  $('lead-interview-label').textContent = fields.interview?.question || 'When is the call?';
+  $('lead-interview-label').textContent = fields.interview?.question || t('pagesJobsHelp.whenCall');
   $('lead-interview').value = leadState.values.interview || '';
-  $('lead-last-label').textContent = fields.last?.question || 'When was the last message?';
+  $('lead-last-label').textContent = fields.last?.question || t('pagesJobsHelp.whenMessage');
   $('lead-last').value = leadState.values.last || '';
   $('lead-last').max = localDay();
   $('lead-company').value = leadState.values.company || '';
@@ -159,8 +159,8 @@ function renderConfirm() {
     textContent: leadState.picking ? t('pagesJobs.keepJob') : t('pagesStatus.change')});
   change.addEventListener('click', () => { leadState = {...leadState, picking: !leadState.picking}; $('lead-job').value = ''; closeJobChoices(); renderConfirm(); });
   $('lead-found-flag').replaceChildren(...(asked ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true}), change]));
-  $('lead-job-hint').textContent = asked ? 'Several of your jobs are from this recruiter or company: pick one, or a new job. The details follow your pick.'
-    : 'Pick the job it is about, or a new job. The details follow your pick.';
+  $('lead-job-hint').textContent = asked ? t('pagesJobsHelp.severalJobs')
+    : t('pagesJobsHelp.pickRelated');
   document.querySelectorAll('#lead-confirm .lead-field[data-field]').forEach(box => {
     const name = box.dataset.field, field = fields[name];
     if (name === 'job') {
@@ -191,8 +191,8 @@ function renderConfirm() {
   if ($('lead-started').value !== (v.started || '')) $('lead-started').value = v.started || '';  // a year picked fills the date
   $('lead-years').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', (v.started || '').startsWith(b.textContent)));
   const said = fields.interview?.as_written ? `The message says "${fields.interview.as_written}". ` : '';
-  $('lead-interview-hint').textContent = said + (v.kind === t('pagesJobs.interviewScheduled') ? 'A booked call needs its date and time.'
-    : 'Leave empty if no time is fixed yet.');
+  $('lead-interview-hint').textContent = said + (v.kind === t('pagesJobs.interviewScheduled') ? t('pagesJobsHelp.bookedTime')
+    : t('pagesJobsHelp.noFixedTime'));
   if (fields.last) $('lead-last-hint').textContent = confirmStep.lastHint(fields.last, v.last);
   if (fields.origin) {
     $('lead-origin').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.origin === v.origin));

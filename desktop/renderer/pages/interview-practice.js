@@ -34,7 +34,7 @@ export function showMoments(view, showRow, title = '') {
     for (const item of group.quotes) {
       const line = el('div', 'iv-moment');
       line.append(el('span', '', `“${item.quote}”`));
-      const who = Object.assign(el('button', 'link small', item.where || item.name), {type: 'button', title: 'Show this interview in the library'});
+      const who = Object.assign(el('button', 'link small', item.where || item.name), {type: 'button', title: t('pagesInterviews.showLibrary')});
       who.addEventListener('click', () => { $('moments-dialog').close(); showRow(item.id); });
       line.append(who);
       box.append(line);
@@ -68,13 +68,13 @@ function drawPractice() {
   if (!step) {
     const {done, skipped, total} = practice.summary(session);
     body.replaceChildren(el('h3', '', done === total ? t('pagesJobs.allDone') : `${done} of ${total} practised`),
-      el('p', 'muted', skipped ? `${skipped} skipped: they stay in Practice next.` : 'Ticked in Practice next. Do it again before the next interview.'));
+      el('p', 'muted', skipped ? `${skipped} skipped: they stay in Practice next.` : t('pagesInterviews.practiceTicked')));
     foot.replaceChildren(button(t('pagesCommon.close'), 'primary', () => $('practice-dialog').close()));
     return;
   }
   const time = el('div', `iv-practice-clock${session.remaining === 0 ? ' is-over' : ''}`, session.remaining === 0 ? t('pagesJobs.timeUp') : practice.clock(session.remaining));
   body.replaceChildren(el('p', 'muted small', `Step ${session.index + 1} of ${session.steps.length}`), el('h3', '', step.title),
-    ...(step.detail ? [el('p', 'muted', step.detail)] : []), el('p', '', 'Say your answer out loud, as you would in the interview. Then mark it done.'), time);
+    ...(step.detail ? [el('p', 'muted', step.detail)] : []), el('p', '', t('pagesInterviews.answerAloud')), time);
   const go = button(session.running ? t('pagesSession.pause') : session.remaining === practice.STEP_SECONDS ? t('pagesJobs.startClock') : t('pagesJobs.resume'), 'secondary', () => { session = practice.toggle(session); drawPractice(); });
   foot.replaceChildren(go, button(t('pagesCommon.skip'), 'ghost', () => { session = practice.finishStep(session, 'skipped'); drawPractice(); }),
     button(t('pagesJobs.doneNext'), 'primary', () => {

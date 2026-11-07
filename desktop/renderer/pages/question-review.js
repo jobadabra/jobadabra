@@ -28,7 +28,7 @@ export {shortTitle};
 const DRAFTS = 'questionDrafts';
 // Each drawer's words (owner's sketch, 28 Oct 2026).
 export const DRAWERS = {
-  details: {title: 'Fill your details', lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
+  details: {title: t('pagesProfileMore.fillDetails'), lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
     done: 'Your details are complete', doneText: 'A detail shows here when a form asks for one you have not given.'},
   learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: 'Save change',
     done: 'Nothing to check', doneText: 'A question shows here when a form asks something your answers do not cover.'},
@@ -73,7 +73,7 @@ function go(kind, index) {
 // Why (3 Nov 2026, owner: the line sat under every question, "Workload" included): the cases line is for a learning a form taught, whose answer has conditions,
 // not for a Your details fact or a Profile question.
 const casesLine = (written, mine) => (written && (!mine || mine.kind === 'taught')
-  ? [el('p', 'muted small qr-cases', 'Think about the different cases and what you would answer in each. Be as specific as you can.')] : []);
+  ? [el('p', 'muted small qr-cases', t('pagesProfileMore.specificAnswers'))] : []);
 
 // Why (2 Nov 2026, owner: "we don't have an option to dismiss a question"): ONE action, one wording, on every question that is not a pick between two copies. It only hides the
 // question (lib/question-dismissed.js: both drawers, their counts and Focus); nothing in the store changes, and a dismissed question has "Bring back". -> [button] or [].
@@ -84,7 +84,7 @@ function dismissAction(q, mine) {
     button.addEventListener('click', () => dismiss(q, on));
     return button;
   };
-  if (q.dismissed) return [make('qr-bring-back', 'Bring this question back', 'undo', 'It will be asked again', false)];
+  if (q.dismissed) return [make('qr-bring-back', 'Bring this question back', 'undo', t('pagesProfileMore.askedAgain'), false)];
   const pick = mine && ['which', 'conflict', 'where'].includes(mine.kind);
   return pick || state.aside ? [] : [make('qr-dismiss', 'Dismiss this question', 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
 }
@@ -94,7 +94,7 @@ function question(q) {
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
   const asked = el('p', 'muted small qr-asked', sourceOf(q));
   if (mine) asked.append(' ', pill(sourceWords(mine), 'warn'));
-  if (state.aside) asked.append(' ', pill('Set aside', 'neutral'));
+  if (state.aside) asked.append(' ', pill(t('pagesProfileMore.setAside'), 'neutral'));
   body.append(asked, el('h3', 'qr-question', q.question));
   if (mine?.line) body.append(el('p', 'qr-line', mine.line));
   const suggested = Boolean(q.proposal);
@@ -111,7 +111,7 @@ function question(q) {
     keepDrafts();
     word.textContent = saveWord(q, value);
     confirm.disabled = state.busy || !ready();
-  }, {placeholder: 'Type your answer', ariaLabel: q.question, chips: Boolean(mine)});
+  }, {placeholder: t('pagesProfileMore.typeAnswer'), ariaLabel: q.question, chips: Boolean(mine)});
   control.id = 'qr-control';
   // A value to make exact is ready only once its parts read (the same rule as the line's Check chip); an unclear answer once it changed ("Keep as is" keeps it).
   const ready = () => control.complete && !(mine?.kind === 'check' && needsCheck(q.format?.kind, control.value))
@@ -121,21 +121,21 @@ function question(q) {
   if (mine?.kind === 'which') body.append(el('p', 'muted small', `${q.hint}. The other is set aside, never deleted: Undo in Your details.`));
   if (q.coveredBy) {
     const source = el('details', 'plain qr-source');
-    const view = Object.assign(el('button', 'link small', 'View source →'), {type: 'button', id: 'qr-source-go'});
+    const view = Object.assign(el('button', 'link small', t('pagesProfileMore.viewSource')), {type: 'button', id: 'qr-source-go'});
     view.addEventListener('click', () => manageAnswers(q.coveredBy));
-    source.append(el('summary', '', 'Source'), el('p', 'muted small', `From your saved answer “${q.coveredBy}”.`), view);
+    source.append(el('summary', '', t('pagesProfileMore.source')), el('p', 'muted small', `From your saved answer “${q.coveredBy}”.`), view);
     body.append(source);
   }
   if (q.hint && mine?.kind !== 'which') body.append(el('p', 'muted small', q.hint));
   body.append(...dismissAction(q, mine));
   if (mine?.kind === 'unclear') {   // the AI found it unclear; the person may know better: never asked again for this value
-    const keepIt = Object.assign(el('button', 'link small qr-drop', 'Keep as is'), {type: 'button', id: 'qr-keep', title: 'It is right as it is: not asked again unless it changes'});
+    const keepIt = Object.assign(el('button', 'link small qr-drop', t('pagesProfileMore.keepAsIs')), {type: 'button', id: 'qr-keep', title: t('pagesProfileMore.rightAsIs')});
     keepIt.addEventListener('click', () => answer(q, KEEP_AS_IS));
     body.append(keepIt);
   }
   if (state.saved) body.append(el('p', 'muted small qr-saved', state.saved));
   if (state.error) body.append(el('p', 'message error', plainError(state.error)));
-  if (state.consent) body.append(el('p', 'muted small qr-consent', 'Terms and consent boxes are ticked for you on each form (Settings → Consent boxes turns that off).'));
+  if (state.consent) body.append(el('p', 'muted small qr-consent', t('pagesProfileMore.consentHelp')));
   const word = el('span', '', saveWord(q, drafts.get(q.key) ?? q.proposal ?? q.value ?? ''));
   const confirm = Object.assign(el('button', 'primary'), {type: 'button', id: 'qr-confirm'});
   confirm.append(word, icon('chevron'));
@@ -153,7 +153,7 @@ const saveWord = (q, value) => {
 
 function footer(confirm) {
   const bar = el('footer', 'jd-foot qr-foot');
-  const back = button('← Back', () => step(-1), 'ghost');
+  const back = button(t('pagesProfileMore.back'), () => step(-1), 'ghost');
   back.id = 'qr-back';
   back.disabled = !state.aside && state.at === 0;
   const skip = button(DRAWERS[state.kind].skip, () => step(1), 'secondary');
@@ -210,7 +210,7 @@ export function draw() {
   if (!panel || !state.open) return;
   if (state.loading) { const body = el('div', 'jd-body qr-body'); body.append(...skeleton()); panel.replaceChildren(header(), body); return; }
   if (state.failed) {
-    panel.replaceChildren(header(), el('div', 'jd-body qr-body', stateCard({icon: 'alert', tone: 'bad', title: 'Could not read your questions', text: state.failed,
+    panel.replaceChildren(header(), el('div', 'jd-body qr-body', stateCard({icon: 'alert', tone: 'bad', title: t('pagesProfileMore.questionsFailed'), text: state.failed,
       actions: [button(t('pagesCommon.retry'), () => openQuestionReview({force: true, queue: state.kind}))]})));   // the drawer that was open (Gitar on #2325)
     return;
   }
@@ -220,8 +220,8 @@ export function draw() {
     const body = el('div', 'jd-body qr-body', done);
     // Why (3 Nov 2026, code review): with the last question dismissed there is no navigator, so its Dismissed group is listed here, each with Bring back.
     for (const gone of state.setAside.filter(each => each.dismissed)) {
-      const back = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', title: 'It will be asked again'});
-      back.append(icon('undo'), el('span', '', 'Bring back'));
+      const back = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', title: t('pagesProfileMore.askedAgain')});
+      back.append(icon('undo'), el('span', '', t('pagesProfileMore.bringBack')));
       back.addEventListener('click', () => dismiss(gone, false));
       body.append(el('p', 'muted small qr-dismissed-row', `Dismissed: ${shortTitle(gone.question, 80)}`), back);
     }

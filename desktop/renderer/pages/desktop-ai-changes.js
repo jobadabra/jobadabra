@@ -1,6 +1,8 @@
 // "Changes by Claude" on Profile → What we learned (4/6): one row per change the desktop AI made, what it was before and is now, when, and Undo. A change that cannot be undone says why in the row.
 // The list comes from the app (lib/desktop-ai-connect.js changesOf); Undo restores the question only while the person has not edited it since (lib/desktop-ai-writes.js undoChange).
 // Invariants: the strip draws nothing while there is no change; it imports no page (the answers page hands in what to redraw after an Undo), so it adds no import cycle.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {connectWords, whenText} from '../desktop-ai-words.js';
 import {plainError} from '../run-warnings.js';
@@ -13,7 +15,7 @@ export function changeRow(change, link, onUndo, now = new Date()) {
   const what = el('div', 'qa-change-what');
   const dismissed = change.tool === 'dismiss_question';
   const when = whenText(change.at, now), line = [dismissed ? link.changes.dismissed : link.changes.arrow(change.before, change.after), when].filter(Boolean).join(' · ');
-  what.append(el('b', '', change.question || 'A question'), el('span', 'muted small', line));
+  what.append(el('b', '', change.question || t('pagesMisc.aQuestion')), el('span', 'muted small', line));
   if (change.why && !change.undone) what.append(el('span', 'muted small', change.why));
   const note = el('span', 'muted small');
   note.setAttribute('role', 'status');

@@ -258,7 +258,7 @@ function showRow(id) {
   setTimeout(() => tr.classList.remove('is-flash'), 1600);
 }
 async function refreshInsights() {
-  if (!aiReady()) { message('iv-message', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get insights.', 'error'); return; }
+  if (!aiReady()) { message('iv-message', t('pagesInterviews.aiInsights'), 'error'); return; }
   insightBusy = true; insightNote = '';
   renderInsight();
   const result = await iv.insights().catch(error => ({ok: false, error: String(error?.message || error)}));
@@ -266,7 +266,7 @@ async function refreshInsights() {
   if (result.ok) {
     if (result.insight !== undefined) ivInsight = result.insight;
     insightNote = result.status === 'unchanged' ? 'Up to date' : '';
-    message('iv-message', result.status === 'unchanged' ? 'Insights are up to date: no review changed since the last update (no AI cost).' : result.text, 'ok');
+    message('iv-message', result.status === 'unchanged' ? t('pagesInterviews.insightsCurrent') : result.text, 'ok');
   } else {
     message('iv-message', humanError(result.error || 'Could not refresh the insights'), 'error');
   }
@@ -281,7 +281,7 @@ function renderSaved() {
     return (!text || words.includes(text)) && (!outcome || (outcome === 'none' ? !row.overall : row.overall === outcome));
   });
   show($('iv-empty'), rows.length === 0);
-  $('iv-empty').textContent = ivSavedRows.length ? 'No interview matches this filter.' : byStore('No interviews in Notion yet.', 'No saved interviews yet.');
+  $('iv-empty').textContent = ivSavedRows.length ? t('pagesInterviews.noInterviewFilter') : byStore(t('pagesInterviews.noNotionInterviews'), t('pagesInterviews.noSavedInterviews'));
   $('iv-saved').replaceChildren(...rows.map(row => {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
@@ -299,13 +299,13 @@ function renderSaved() {
     let openPicker = () => {};
     if (cellJob.kind === 'job') {
       // The job's name opens it in the Jobs view (only that job listed).
-      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: 'Open this job in the Jobs list'});
+      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: t('pagesInterviews.openJobsList')});
       open.addEventListener('click', () => { openView('jobs'); showJobsIn(cellJob.name, [job.url]); });
       jobLines.append(el('b', '', ''));
       jobLines.firstChild.append(open);
       if (cellJob.role) jobLines.append(el('div', 'muted small', cellJob.role));
     } else if (cellJob.kind === 'notion') {
-      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: 'This job is not in the app list: open it in Notion'});
+      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: t('pagesInterviews.jobNotListed')});
       open.addEventListener('click', event => window.pilot.openNotion(cellJob.notion, event.metaKey));
       jobLines.append(open);
     } else {
@@ -318,7 +318,7 @@ function renderSaved() {
     // Interview: the round (or the interview's own title), and the next step.
     const who = el('div', '');
     who.append(el('b', '', row.round || row.title));
-    who.append(el('div', 'muted small', row.next_step ? `Next: ${row.next_step}` : 'Next step not stated'));
+    who.append(el('div', 'muted small', row.next_step ? `Next: ${row.next_step}` : t('pagesInterviews.noNextStep')));
     // Change job…: the job picker, shown on the row when asked for from the menu.
     const picker = el('div', 'iv-picker');
     picker.hidden = true;
@@ -331,7 +331,7 @@ function renderSaved() {
       message('iv-message', `Linking in ${storeName()}…`);
       const done = await iv.link(row.id, url);
       select.disabled = pasted.disabled = false;
-      message('iv-message', done.ok ? `"${row.title}" is now ${url ? 'linked to that job' : 'not linked to a job'} in ${storeName()}.` : done.error, done.ok ? 'ok' : 'error');
+      message('iv-message', done.ok ? `"${row.title}" is now ${url ? t('pagesInterviews.linkedJob') : t('pagesInterviews.notLinkedJob')} in ${storeName()}.` : done.error, done.ok ? 'ok' : 'error');
       if (done.ok) {
         if (url && !jobList().some(j => j.url === url && j.notion_url)) {  // just added to Applications
           try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {}
@@ -360,7 +360,7 @@ function renderSaved() {
     let main;
     if (row.overall) {
       main = el('button', 'secondary iv-main', t('pagesJobs.openReview'));
-      main.title = byStore('The review and transcript, in Notion', 'The review and transcript');
+      main.title = byStore(t('pagesInterviews.reviewTranscriptNotion'), t('pagesInterviews.reviewTranscript'));
       main.addEventListener('click', event => (row.url ? window.pilot.openNotion(row.url, event.metaKey) : openReview(row.id)));
     } else {
       main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? t('pagesJobs.reviewing') : t('pagesCommon.review')), {disabled: reviewing.has(row.id),
@@ -368,8 +368,8 @@ function renderSaved() {
       main.addEventListener('click', () => reviewRow(row.id));
     }
     const menu = [
-      ...(row.url ? [{label: '↗ Open interview in Notion', run: event => window.pilot.openNotion(row.url, event.metaKey)}] : []),
-      ...(cellJob.notion ? [{label: '↗ Open job in Notion', run: event => window.pilot.openNotion(cellJob.notion, event.metaKey)}] : []),
+      ...(row.url ? [{label: t('pagesInterviews.openInterviewNotion'), run: event => window.pilot.openNotion(row.url, event.metaKey)}] : []),
+      ...(cellJob.notion ? [{label: t('pagesInterviews.openJobNotion'), run: event => window.pilot.openNotion(cellJob.notion, event.metaKey)}] : []),
       {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
@@ -384,7 +384,7 @@ function renderSaved() {
       }},
     ];
     actions.append(main, moreButton(() => menu.map(item => (item.again ? reviewAgain.againItem(row, reviewingAgain.has(row.id), item.run) : item)),
-      byStore('More: open in Notion, change job, review again, delete', 'More: change job, review again, delete')));
+      byStore(t('pagesInterviews.moreNotion'), t('pagesInterviews.moreLocal'))));
     cell(actions);
     return tr;
   }));
@@ -392,7 +392,7 @@ function renderSaved() {
 }
 
 async function reviewRow(pageId, why = t('pagesCommon.review')) {
-  if (!aiReady()) { message('iv-message', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get reviews.', 'error'); return; }
+  if (!aiReady()) { message('iv-message', t('pagesInterviews.aiReviews'), 'error'); return; }
   if (reviewing.has(pageId)) return;  // already asked for: a second press must not spend a second review (1 Oct 2026)
   reviewing.add(pageId);
   message('iv-message', ai('{AI} is reviewing the interview (about a minute)…'));
@@ -400,7 +400,7 @@ async function reviewRow(pageId, why = t('pagesCommon.review')) {
   const result = await iv.review(pageId, why);
   if (result.ok && result.cloud) pendingReviews.add(pageId);  // GitHub reviews it: keep "Reviewing…" until it lands
   else reviewing.delete(pageId);
-  message('iv-message', result.ok ? (result.already ? result.summary : `${result.summary}. ${byStore('The review is on the Notion page.', 'The review is saved with it.')}`) : humanError(result.error), result.ok ? 'ok' : 'error');
+  message('iv-message', result.ok ? (result.already ? result.summary : `${result.summary}. ${byStore(t('pagesInterviews.reviewNotion'), t('pagesInterviews.reviewSaved'))}`) : humanError(result.error), result.ok ? 'ok' : 'error');
   readAgain();
 }
 
@@ -408,7 +408,7 @@ async function reviewRow(pageId, why = t('pagesCommon.review')) {
 const reviewingAgain = new Set();
 async function reviewAgainRow(pageId) {
   if (reviewingAgain.has(pageId)) return;
-  if (!aiReady()) { message('iv-message', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get reviews.', 'error'); return; }
+  if (!aiReady()) { message('iv-message', t('pagesInterviews.aiReviews'), 'error'); return; }
   reviewingAgain.add(pageId);
   message('iv-message', ai(reviewAgain.START));
   const result = await iv.review(pageId, 'Review again').catch(error => ({ok: false, error: String(error?.message || error)}));

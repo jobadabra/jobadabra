@@ -1,5 +1,7 @@
 // Apply triage on the Jobs screen (spec 2026-10-30-apply-triage, PR B): the button, the popup (how many of the best new jobs), the progress with Cancel, and the chip on each job.
 // The form read itself is the hidden browser's (lib/triage-reader.js); a job that was not read keeps its "Not checked" chip.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {chip} from '../components.js';
 import {$} from './core.js';
 import {KEEP_TIMINGS, chipOf, estimateOf, pickForTriage, pickWhenFresh} from '../apply-triage-pick.js';
@@ -16,7 +18,7 @@ export const setRead = (url, read) => reads.set(url, {read, at: new Date().toISO
 /** The chip for a job's row on the board: the mode of its last read, or "Not checked". */
 export function triageChip(job) {
   const {label, tone, detail} = chipOf(readOf(job?.url));
-  return chip(label, {tone, detail, title: detail || 'Not read yet: press "See which jobs can apply automatically"'});
+  return chip(label, {tone, detail, title: detail || t('pagesJobsFinal.notReadYet')});
 }
 
 // The seconds each real read took on this Mac (the last ten), so the popup's estimate learns from them; a window with no storage keeps them for this session only.

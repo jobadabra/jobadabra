@@ -2,10 +2,12 @@
 
 // The entry a button gets in ⌘K, or null when it is not offered. A button off for any other reason (no Notion link, a missing setup) is not offered;
 // one that runs-page.js syncRunButtons turned off (data-run-busy) is, with a hint that it runs now.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 export function buttonEntry(node, entry) {
   if (node.disabled && !node.dataset.runBusy) return null;
   const shown = {...entry, enter: 'open'};   // Enter brings you to the card (reveal below), it never presses
-  return node.dataset.runBusy ? {...shown, hint: 'Running now: take a look at its card', running: true} : shown;
+  return node.dataset.runBusy ? {...shown, hint: t('pagesStrategy.runningCard'), running: true} : shown;
 }
 
 // Bring a button into view: its card scrolls to the middle, the button takes focus, the card pulses once (.palette-flash in components.css).

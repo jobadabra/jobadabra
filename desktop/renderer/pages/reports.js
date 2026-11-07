@@ -16,7 +16,7 @@ import {gatedOut} from './notion-connect.js';
 export const REPORT_TABS = [['weekly', 'Weekly report', 'weekly report search analysis priorities numbers week'],
   ['insights', 'Insights', 'insights history daily feedback useful'], ['funnel', 'Funnel', 'funnel pipeline conversion from previous where to improve'],
   ['fills', 'Form fills', 'form fills history runs fields timings extension'],
-  ['searches', 'Searches', 'searches find jobs runs details numbers employers boards how the search ran full report']];
+  ['searches', t('pagesFocusReports.searches'), 'searches find jobs runs details numbers employers boards how the search ran full report']];
 const state = {tab: 'weekly', insights: null, week: 0, error: '', openSearch: null};
 
 function group(title, lines) {
@@ -29,7 +29,7 @@ const empty = text => [el('p', 'muted', text)];
 
 function weeklyTab() {
   const weeks = weeklyReports(state.insights);
-  if (!weeks.length) return empty('No weekly report yet: one comes each Monday after your first week of applications.');
+  if (!weeks.length) return empty(t('pagesReadyReports.noWeekly'));
   state.week = Math.min(state.week, weeks.length - 1);
   const week = weeks[state.week];
   const nav = el('div', 'inline');
@@ -85,7 +85,7 @@ function feedbackChoice(item) {
 
 function insightsTab() {
   const items = insightItems(state.insights);
-  if (!items.length) return empty('No insights yet: the first comes after a few days of searching and applying.');
+  if (!items.length) return empty(t('pagesReadyReports.noInsights'));
   return items.map(item => {
     const box = el('section', 'card iv-moments-group reports-insight');   // one card per insight (#reports-body is then plain, see draw)
     const head = el('h3', '', item.title);
@@ -102,7 +102,7 @@ function insightsTab() {
 async function funnelTab() {
   const read = await window.pilot.focus().catch(error => ({ok: false, error: error.message}));   // Focus's own read (shared with its page)
   const focus = read?.focus || {}, funnel = focus.funnel;
-  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : 'No applications yet: the funnel fills as you apply.');
+  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : t('pagesReadyReports.noApplications'));
   const table = el('table', 'data-table');
   const head = el('tr');
   for (const name of ['Step', 'Reached', 'From previous', 'Of applied', 'Still open here']) head.append(el('th', '', name));
@@ -115,7 +115,7 @@ async function funnelTab() {
   }
   const improve = improveLines(funnel);
   const steps = el('section', 'card');
-  steps.append(table, el('p', 'muted small', 'From previous = share of the previous step that got this far.'));
+  steps.append(table, el('p', 'muted small', t('pagesReadyReports.fromPrevious')));
   const better = el('section', 'card');
   if (improve.length) better.append(group('💡 Where to improve', improve.map(text => ({text}))));
   return improve.length ? [steps, better] : [steps];
@@ -124,7 +124,7 @@ async function funnelTab() {
 async function fillsTab(box) {
   // Lane F's view (mac-cd): it owns its list, detail and states. Until it lands, this tab says so.
   const view = await import('./form-fills.js').catch(() => null);
-  if (!view?.renderFormFills) return empty('Your past form fills will show here soon.');
+  if (!view?.renderFormFills) return empty(t('pagesReadyReports.pastFills'));
   view.renderFormFills(box);
   return null;
 }

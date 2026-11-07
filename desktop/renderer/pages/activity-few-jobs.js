@@ -108,10 +108,10 @@ export function withFewJobsHelp(runId) {
       further.type = 'button';
       further.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
       adviceEvent('shown', 'employer', 'few-jobs');
-      const coverage = card('file', 'Wider search', 'Looks beyond your current sources for jobs that fit you', further);
+      const coverage = card('file', t('pagesExtraCommon.widerSearch'), t('pagesExtraCommon.beyondSources'), further);
       parts.push(coverage);
     }
-    const broaden = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);
+    const broaden = card('bulb', t('pagesExtraCommon.otherWays'), t('pagesExtraCommon.optionalSearch'), strategy);
     const items = [];
     for (const action of groups?.words || []) {
       const button = Object.assign(el('button', 'secondary', action.row.button), {type: 'button', title: action.title});
@@ -131,9 +131,9 @@ export function withFewJobsHelp(runId) {
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
-        if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', '✓ Reading in Chrome'); return; }
+        if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', t('pagesExtraCommon.readingChrome')); return; }
         onScreen('read-sites').title = result?.text || read.title;
-        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || t('pagesCommon.tryAgain')}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
+        sayRefused(t('pagesExtraCommon.readingNotStarted'), {ok: false, error: result?.text || result?.error || t('pagesCommon.tryAgain')}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
       items.push(row('external', t('pagesCommon.browseManually'), [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
     }
@@ -141,7 +141,7 @@ export function withFewJobsHelp(runId) {
     parts.push(broaden);
     box.replaceChildren(...parts);
   };
-  const waiting = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);
+  const waiting = card('bulb', t('pagesExtraCommon.otherWays'), t('pagesExtraCommon.optionalSearch'), strategy);
   waiting.append(why, answer);
   box.append(waiting);
   if (kept.ready !== undefined) paint(kept.ready); else kept.groups.then(groups => { kept.ready = groups; paint(groups); });

@@ -171,7 +171,7 @@ export async function init() {
     $('visits-sites').replaceChildren(...ordered.map(site => visitRow({value: site.url,
       ticked: tickedSite(site),
       name: site.kind === 'portal' ? `${site.name} · your search` : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
-      note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : 'never read', title: site.note,
+      note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : t('pagesExtraCommon.neverRead'), title: site.note,
       drop: t('pagesCommon.remove'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsHide(site.url)})));
     // Jobs in your places whose posting only your browser can open: ticked (not on Run again of a run, which is about its sites); Dismiss: not offered again.
     // A site that asked us to slow down (429) waits for its next try, unticked: a browser read now would be asked the same (owner, 20 Oct 2026).

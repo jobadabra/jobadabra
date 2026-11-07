@@ -62,7 +62,7 @@ export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange 
         const failed = results.find(result => !result.ok);
         return failed ? {ok: false, error: failed.error} : {ok: true, results};
       }, {
-        loading: () => body.replaceChildren(loadingCard('Reading it from your store…')),
+        loading: () => body.replaceChildren(loadingCard(t('pagesStrategy.readingStore'))),
         paint: (answer, kept) => settle(answer.results, kept),
         fail: failed => body.replaceChildren(el('p', 'message error', `Couldn't read it: ${plainError(failed.error)}`)),
       });
@@ -79,6 +79,6 @@ export function lineInput(view, name, item, typed) {
   const field = input(typed.get(item.id) ?? original, text => {
     const change = changeFor(item, text);
     if (text === original) { typed.delete(item.id); view.undo(name, change); } else { typed.set(item.id, text); view.change(name, change); }
-  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.notSet'), ariaLabel: item.label || 'Line'});
+  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.notSet'), ariaLabel: item.label || t('pagesStrategy.line')});
   return labelled(item.label ? shown(item.label) : '', field, !item.label);
 }

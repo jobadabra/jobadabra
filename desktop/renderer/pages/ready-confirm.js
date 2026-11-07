@@ -14,7 +14,7 @@ export function confirmFill(ask) {
     tile.append(icon('moon'));
     const n = ask.jobs.length, forms = count => `${count} form${count === 1 ? '' : 's'}`;
     lead.append(el('h2', '', ask.again ? `Fill ${n === 1 ? 'this job' : `these ${n} jobs`} again?` : `Fill ${forms(n)} now?`),
-      el('p', 'muted', ask.again ? `The server fills ${n === 1 ? 'it' : 'them'} again from the start; nothing is submitted.` : 'The server fills them now; nothing is submitted.'));
+      el('p', 'muted', ask.again ? `The server fills ${n === 1 ? 'it' : 'them'} again from the start; nothing is submitted.` : t('pagesReadyReports.serverNow')));
     const close = el('button', 'ghost icon-btn', '');
     close.id = 'ready-confirm-close'; close.type = 'button'; close.setAttribute('aria-label', t('pagesCommon.close'));
     close.append(icon('close'));
@@ -25,7 +25,7 @@ export function confirmFill(ask) {
     if (ask.note) parts.push(el('p', 'muted', ask.note));
     if (ask.replaces) parts.push(el('p', 'message', `This replaces ${forms(ask.replaces)} from this night still waiting for you: open or finish ${ask.replaces === 1 ? 'it' : 'them'} first if you need ${ask.replaces === 1 ? 'it' : 'them'}.`));
     const foot = el('div', 'dialog-foot'), buttons = el('span', 'inline');
-    const no = el('button', 'secondary', t('pagesCommon.cancel')), yes = el('button', 'primary', ask.again ? 'Fill again' : t('pagesCommon.fillNow'));
+    const no = el('button', 'secondary', t('pagesCommon.cancel')), yes = el('button', 'primary', ask.again ? t('pagesReadyReports.fillAgain') : t('pagesCommon.fillNow'));
     no.id = 'ready-confirm-no'; yes.id = 'ready-confirm-yes'; no.type = yes.type = 'button';
     buttons.append(no, yes);
     foot.append(el('span', 'muted small', t('pagesCommon.nothingSubmitted')), buttons);

@@ -68,7 +68,7 @@ function drawEmpty(card) {
   const twinkles = [0, 1, 2].map(() => Object.assign(el('span', 'magic-twinkle'), {ariaHidden: 'true'}));
   twinkles.forEach(node => node.append(icon('sparkle')));
   card.replaceChildren(...twinkles, tile('search'), el('span', 'eyebrow', t('pagesJobs.getStarted')), el('h2', 'magic-title', t('pagesCommon.findJobs')),
-    el('p', 'muted subtitle magic-sub', 'Reads employer sites and job boards, scores each job against your profile, and lists the first matches in under a minute. The rest keeps coming.'),
+    el('p', 'muted subtitle magic-sub', t('pagesJobsHelp.searchHelp')),
     button(t('pagesCommon.findJobs'), () => start(), 'primary magic-go'));
   wire(card);
 }

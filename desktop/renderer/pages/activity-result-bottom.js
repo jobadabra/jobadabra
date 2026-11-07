@@ -2,6 +2,8 @@
 // the kits, the sites read, skeleton bars while its page is read, or the box of a run that saved nothing).
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
 // desktop/test/unit/renderer/run-result-card.test.js and the e2e activity suites.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {parseRunMessage} from '../run-cards.js';
 import {parseVisits} from '../visits-card.js';
 import {parseInsight} from '../insight-card.js';
@@ -52,7 +54,7 @@ export function drawResultBottom({run, lines, shownText, tabs, readingNow, redra
   else if (reading) renderCardSkeleton();
   // Nothing saved: the amber box with Read again and the log (it was the Actions card's; the Actions banner is compact since 25 Oct 2026).
   const unsaved = !card && !mail && !insight && !weekly && !review && !kits && !sites && !reading && unsavedRun(run);
-  if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: 'The run'}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
+  if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: t('pagesExtraCommon.run')}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
     fix: run.pageId ? () => { runDetails.delete(run.pageId); redraw(); } : null});
   if (card || insight || weekly || mail || review || kits || sites) show($('activity-result'), false);  // the card shows the same, laid out
   show($('activity-card'), ((!!card || !!mail) && !drawnCard?.empty) || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);

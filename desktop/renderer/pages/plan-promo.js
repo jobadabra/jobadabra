@@ -10,13 +10,13 @@ let dialog = null;
 export function openPromoDialog(onDone = () => {}) {
   if (!dialog) {
     dialog = el('dialog', 'save-dialog panel-dialog', '');
-    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), go = el('button', 'primary', 'Redeem');
-    Object.assign(field, {type: 'text', id: 'promo-code', placeholder: 'Enter your code', autocomplete: 'off', spellcheck: false, maxLength: 64});
-    head.append(el('h2', '', 'Redeem a promo code'));
+    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), go = el('button', 'primary', t('pagesPlans.redeem'));
+    Object.assign(field, {type: 'text', id: 'promo-code', placeholder: t('pagesPlans.enterCode'), autocomplete: 'off', spellcheck: false, maxLength: 64});
+    head.append(el('h2', '', t('pagesPlans.redeemPromo')));
     cancel.type = go.type = 'button';
     cancel.addEventListener('click', () => dialog.close());
     const redeem = async () => {
-      if (!field.value.trim()) { answer.textContent = 'Enter your code.'; answer.className = 'message warn'; return; }
+      if (!field.value.trim()) { answer.textContent = t('pagesPlans.enterCodePeriod'); answer.className = 'message warn'; return; }
       go.disabled = true;
       const result = await window.pilot.planRedeem(field.value.trim()).catch(() => ({ok: false, error: 'offline'}));
       go.disabled = false;
@@ -26,7 +26,7 @@ export function openPromoDialog(onDone = () => {}) {
     };
     go.addEventListener('click', redeem);
     field.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); redeem(); } });
-    dialog.append(head, el('label', '', 'Promo code'), field, answer, el('div', 'dialog-foot', ''));
+    dialog.append(head, el('label', '', t('pagesPlans.promo')), field, answer, el('div', 'dialog-foot', ''));
     dialog.querySelector('.dialog-foot').append(cancel, go);
     dialog.querySelector('label').htmlFor = 'promo-code';
     document.body.append(dialog);
@@ -39,7 +39,7 @@ export function openPromoDialog(onDone = () => {}) {
 
 // The quiet link under the Free plan's packages.
 export function promoLink(onDone) {
-  const link = el('button', 'ghost', 'Have a promo code?');
+  const link = el('button', 'ghost', t('pagesPlans.havePromo'));
   link.id = 'plan-promo-link';
   link.type = 'button';
   link.addEventListener('click', () => openPromoDialog(onDone));

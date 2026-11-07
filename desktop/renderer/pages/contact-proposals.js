@@ -129,7 +129,7 @@ export async function loadProposals({again = false} = {}) {
   const result = await window.pilot.contactProposals({again, settle: !again}).catch(error => ({proposals: [], error: error.message}));
   const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {
-    message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === 'no AI' ? 'choose your AI in Settings → Connections first' : result.error}.`
+    message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === t('pagesMisc.noAi') ? t('pagesMisc.chooseAiFirst') : result.error}.`
       : t('pagesLettersData.cvNoDetails'), result?.error ? 'error' : '');
   }
   return shown;

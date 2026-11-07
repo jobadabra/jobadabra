@@ -12,9 +12,9 @@ export function openFeedback(item, mode = 'receive') {
   $('feedback-title').textContent = mode === 'request' ? t('pagesProfile.askFeedback') : mode === 'review' ? t('pagesProfile.employerFeedback') : t('pagesProfile.addFeedback');
   $('feedback-context').textContent = `${item.company || t('pagesEmployers.employer')} · ${item.job || item.title || t('pagesProfile.application')}`;
   $('feedback-help').textContent = mode === 'request'
-    ? 'You reached Screening or later. One specific point can improve your next interview. Copy this short request, send it yourself, then mark it sent.'
-    : mode === 'review' ? 'Look for one change to practise next. This evidence also feeds your daily insights and weekly report.'
-    : 'Paste their feedback at any stage. It stays separate from AI interpretations and feeds your insights and weekly report.';
+    ? t('pagesInterviews.feedbackRequestHelp')
+    : mode === 'review' ? t('pagesInterviews.feedbackPractice')
+    : t('pagesInterviews.feedbackPasteHelp');
   $('feedback-text').value = mode === 'request' ? item.draft || '' : mode === 'review' ? item.employer_feedback || '' : '';
   $('feedback-text').readOnly = mode === 'review';
   $('feedback-copy').hidden = mode !== 'request';
@@ -37,7 +37,7 @@ export async function saveFeedbackAction(item, action, text = '') {
 export function init() {
   $('feedback-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText($('feedback-text').value); $('feedback-copy').textContent = t('pagesProfile.copied'); }
-    catch { message('feedback-message', 'Could not copy. Select the text and copy it yourself.', 'warn'); }
+    catch { message('feedback-message', t('pagesInterviews.copyFailed'), 'warn'); }
   });
   $('feedback-email').addEventListener('click', () => current?.link && window.pilot.openExternal(current.link));
   $('feedback-save').addEventListener('click', async event => {

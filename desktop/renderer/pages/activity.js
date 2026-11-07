@@ -114,7 +114,7 @@ export async function init() {
     shared.selectedRun = null;
     try {
       const result = await window.pilot.checkMail().catch(error => ({ok: false, error: error.message}));
-      sayRefused('Gmail check did not start', result, {place: {activity: true}});   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
+      sayRefused(t('pagesExtraCommon.gmailNotStarted'), result, {place: {activity: true}});   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
       if (result.cloud) toastMessage(t('pagesActivityMore.gmailGithub'), t('pagesActivityMore.resultsSoon'), {activity: true}, 'info');   // about Notion
     } finally {
       $('check-mail').disabled = false;

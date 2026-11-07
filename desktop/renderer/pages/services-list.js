@@ -15,18 +15,18 @@ const ALL_SERVICES = [
     why: t('pagesDetails.aiWhy')},
   {id: 'notion', name: 'Notion', icon: 'layers', what: t('pagesDetails.workspace'), required: false,   // about Notion
     why: t('pagesDetails.notionWhy')},
-  {id: 'google', name: 'Gmail & Calendar', icon: 'mail', what: t('pagesDetails.readOnly'), required: true,
+  {id: 'google', name: t('pagesLinkedinServices.gmailCalendar'), icon: 'mail', what: t('pagesDetails.readOnly'), required: true,
     why: t('pagesDetails.gmailWhy')},
   {id: 'extension', name: t('pagesDetails.extensionName'), icon: 'puzzle', what: t('pagesDetails.formFilling'), required: true,
     why: t('pagesDetails.extensionWhy')},
-  {id: 'linkedin-jobs', name: 'LinkedIn jobs', icon: 'linkedin', what: `Search LinkedIn on every Find jobs, in the background. ${LINE}`, required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
+  {id: 'linkedin-jobs', name: t('pagesLinkedinServices.linkedinJobs'), icon: 'linkedin', what: `Search LinkedIn on every Find jobs, in the background. ${LINE}`, required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
   {id: 'telegram', name: 'Telegram', icon: 'send', what: t('pagesDetails.digests'), required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
-    why: 'Digests and reminders need a bot connection, or email: Settings → Notifications.'},
+    why: t('pagesLinkedinServices.notificationWhy')},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: t('pagesDetails.moreResults'), connect: t('pagesDetails.addKey')},
-  {id: 'brave', name: 'Web search (Brave)', icon: 'search', what: 'Finds employers\' own job sites', connect: t('pagesDetails.addKey')},
-  {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: 'More job results (free keys)', connect: t('pagesDetails.addKeys')},
-  {id: 'cloud', name: 'GitHub · Always on', icon: 'cloud', what: 'Runs your searches and checks while your Mac is off', connect: t('pagesCommon.setup')},
-  {id: 'tg-cloud', name: 'Cloudflare · Telegram buttons', icon: 'zap', what: 'Your bot answers buttons with the Mac off', connect: t('pagesCommon.setup'),
+  {id: 'brave', name: t('pagesLinkedinServices.webSearch'), icon: 'search', what: t('pagesLinkedinServices.findOwnSites'), connect: t('pagesDetails.addKey')},
+  {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: t('pagesLinkedinServices.moreFreeResults'), connect: t('pagesDetails.addKeys')},
+  {id: 'cloud', name: t('pagesLinkedinServices.githubAlways'), icon: 'cloud', what: t('pagesLinkedinServices.runsMacOff'), connect: t('pagesCommon.setup')},
+  {id: 'tg-cloud', name: t('pagesLinkedinServices.cloudflareButtons'), icon: 'zap', what: t('pagesLinkedinServices.botMacOff'), connect: t('pagesCommon.setup'),
     shown: () => !!shared.state.settings.cloud?.repo},  // it starts runs in the GitHub repository, so only with Always on
 ];
 export const SERVICES = ALL_SERVICES.filter(service => offered(service.id));

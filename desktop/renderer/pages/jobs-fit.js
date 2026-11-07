@@ -70,7 +70,7 @@ export function fitDetail(job, close = null, full = null) {
   if (parts.risk != null) {
     const risk = el('p', `fit-risk ${band(100 - parts.risk)}`);
     risk.append(icon('alert'), el('b', 'fit-risk-label', t('pagesJobs.risk')), el('b', '', String(parts.risk)),
-      el('span', 'muted', '/ 100 · Lower is better'));
+      el('span', 'muted', t('pagesJobsHelp.lowerBetter')));
     box.append(risk);
   }
   const cards = FIT_LISTS.map(([tone, title, key]) => fitCard(tone, title, key === 'strengths' ? strengths : gaps)).filter(Boolean);

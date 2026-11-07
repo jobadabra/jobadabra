@@ -13,7 +13,7 @@ export function showFillVideo(bytes, name) {
   dialog.id = 'ready-video-dialog';
   const head = el('div', 'dialog-head'), lead = el('div', 'cv-head'), tile = el('span', 'dialog-icon');
   tile.append(icon('eye'));
-  lead.append(el('h2', '', 'Watch the fill'), el('p', 'muted', name));
+  lead.append(el('h2', '', t('pagesReadyReports.watch')), el('p', 'muted', name));
   const close = el('button', 'ghost icon-btn', '');
   close.id = 'ready-video-close'; close.type = 'button';
   close.setAttribute('aria-label', t('pagesCommon.close'));
@@ -22,7 +22,7 @@ export function showFillVideo(bytes, name) {
   const video = document.createElement('video');
   video.controls = true; video.autoplay = true; video.muted = true;
   video.src = URL.createObjectURL(new Blob([bytes], {type: 'video/webm'}));
-  const note = el('p', 'muted small field-hint', 'The server filling this form tonight, 3 minutes at most. Nothing was submitted.');   // a line, not a foot: a foot without buttons is hidden (style.css)
+  const note = el('p', 'muted small field-hint', t('pagesReadyReports.videoHelp'));   // a line, not a foot: a foot without buttons is hidden (style.css)
   dialog.append(head, video, note);
   let gone = false;
   const done = () => { if (gone) return; gone = true; URL.revokeObjectURL(video.src); dialog.remove(); };

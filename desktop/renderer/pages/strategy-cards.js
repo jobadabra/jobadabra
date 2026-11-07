@@ -17,10 +17,10 @@ import {inDraft, sink} from '../strategy-sink.js';
 // card key → what its draft holds: lists and one-value settings (Search settings, lib/strategy-edit.js) and goals (the Profile, lib/goals.js).
 export const CARDS = {
   goals: {title: t('pagesCommon.mainGoals'), lists: ['roles'], values: [], goals: ['seniority', 'work_mode', 'minimum_salary']},
-  places: {title: 'Locations', lists: ['places', 'country', 'abroad', 'rights'], values: ['remote', 'relocation']},
-  stack: {title: 'Skills & experience', lists: ['stack'], values: []},
-  languages: {title: 'Exclusions & preferences', lists: ['languages'], values: []},
-  search: {title: 'More search settings', lists: ['titleSkip', 'skip', 'remoteSkip', 'finders', 'gqueries', 'gplaces'], values: ['level', 'minScore']},
+  places: {title: t('pagesStrategy.locations'), lists: ['places', 'country', 'abroad', 'rights'], values: ['remote', 'relocation']},
+  stack: {title: t('pagesStrategy.skillsExperience'), lists: ['stack'], values: []},
+  languages: {title: t('pagesStrategy.exclusions'), lists: ['languages'], values: []},
+  search: {title: t('pagesStrategy.moreSearch'), lists: ['titleSkip', 'skip', 'remoteSkip', 'finders', 'gqueries', 'gplaces'], values: ['level', 'minScore']},
   // Job preferences keeps its drafts in pages/outline-tab.js and registers with the bar itself (barFor); job-preferences.js sets its count.
   prefs: {title: t('pagesCommon.jobPreferences'), lists: [], values: [], own: true, count: () => 0},
 };
@@ -44,7 +44,7 @@ export const isOpen = key => strategyState.editing === key;
 
 // The card's header: its tile and title, "Unsaved" while it holds a draft, and a quiet Edit (the shared Done while its editor is open). card: its section.
 export function cardHeader(key, glyph, tone, title = CARDS[key].title, lead = '', card = null) {
-  const badge = pill('Unsaved', 'warn');
+  const badge = pill(t('pagesStrategy.unsaved'), 'warn');
   badge.classList.add('unsaved-badge');
   badge.hidden = !cardCount(key);
   let action;

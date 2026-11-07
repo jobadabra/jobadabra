@@ -42,7 +42,7 @@ export async function openSession(id) {
 }
 // The header has nothing to say about a session that isn't there (or isn't known yet).
 function clearHeader() {
-  $('ss-title').textContent = 'Application sessions';
+  $('ss-title').textContent = t('pagesSessionStates.sessions');
   $('ss-role').textContent = '';
   $('ss-status').replaceChildren();
   $('ss-more').replaceChildren();
@@ -96,13 +96,13 @@ export function renderSessionPage() {
   const [label, tone] = stateOf(item);
   $('ss-title').textContent = sessionCompany(item);
   $('ss-role').textContent = sessionTitle(item);
-  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}), modeChip(item));
+  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? t('pagesSessionStates.readyReview') : label, tone, {dot: true}), modeChip(item));
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
-  const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
+  const again = Object.assign(el('button', 'secondary', t('pagesSessionStates.startAgain')), {title: t('pagesSessionStates.startAgainHelp')});
   again.addEventListener('click', () => busy(again, t('pagesCommon.restarting'), () => restartSession(item)));
-  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: 'Stop applying to this job'});
-  cancel.addEventListener('click', () => busy(cancel, 'Cancelling…', () => cancelSession(item)));
-  if (item.kind === 'form') cancel.title = 'Stop applying to this job';
+  const cancel = Object.assign(el('button', 'secondary', t('pagesSessionStates.cancelApplication')), {title: t('pagesSessionStates.stopApplying')});
+  cancel.addEventListener('click', () => busy(cancel, t('pagesSessionStates.cancelling'), () => cancelSession(item)));
+  if (item.kind === 'form') cancel.title = t('pagesSessionStates.stopApplying');
   $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), t('pagesCommon.more')));
   show($('ss-log'), terminalShown(item));   // the terminal only for a Claude conversation with Claude help on, or when asked (session-steps.js)
   renderSteps(item);   // no terminal behind a form session: the form in Chrome is the whole story
@@ -125,7 +125,7 @@ export function renderSessionPage() {
     if (opened && !formGone(item) && !unknown) line.append(ticking(el('span'), ' · open for ', new Date(tab.tabAt).toISOString()));
     words.append(line);
   }
-  const view = Object.assign(el('a', 'link small', 'View job ↗'), {href: '#'});
+  const view = Object.assign(el('a', 'link small', t('pagesSessionStates.viewJob')), {href: '#'});
   view.addEventListener('click', event => { event.preventDefault(); window.pilot.openExternal(item.url); });
   head.append(sessionLogo(item), words, view);
   $('ss-job').replaceChildren(head);
@@ -140,7 +140,7 @@ export function renderSessionPage() {
   const livePill = pill(`${logLabel} · ${sessionDuration(item)}`, logTone, {dot: true});
   if (item.status === 'running') ticking(livePill, `${logLabel} · `, item.startedAt);
   $('ss-live-state').replaceChildren(livePill);
-  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? 'Form filled in Chrome. Waiting for your review.' : item.note || t('pagesCommon.starting')}`;
+  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? t('pagesSessionStates.filledReview') : item.note || t('pagesCommon.starting')}`;
   // A session that isn't running (closed with the app, or ended) takes no typing: say so, with Resume one click away.
   const offline = !isLive(item);
   show($('ss-offline'), offline);
@@ -149,8 +149,8 @@ export function renderSessionPage() {
   $('ss-offline').querySelector('span').textContent = isSubmitted(item)
     ? `Submitted. This application is marked Applied in ${storeName()}.`
     : item.resumable
-    ? (resumeOffered() ? ai('{AI} isn\'t running. This is its conversation; resume it to answer or ask for more.') : 'The session isn\'t running. This is its conversation, kept for reference.')
-    : 'This session has ended. Start a new session from the job to continue.';
+    ? (resumeOffered() ? ai('{AI} isn\'t running. This is its conversation; resume it to answer or ask for more.') : t('pagesSessionStates.conversationReference'))
+    : t('pagesSessionStates.endedNew');
   openLog(logChoice[item.id] ?? item.status === 'running', false);
 }
 // A button that waits on the main process (a confirmation, the form tab closing, Notion) says so and cannot be pressed twice.
@@ -225,7 +225,7 @@ function renderTranscript(talk) {
     }
     const row = el('div', `ss-tr-msg is-${entry.kind}`);
     const head = el('div', 'ss-tr-who');
-    head.append(el('b', '', entry.kind === 'you' ? 'You' : ai('{AI}')), el('span', '', entry.time || hhmm(entry.at)));
+    head.append(el('b', '', entry.kind === 'you' ? t('pagesSessionStates.you') : ai('{AI}')), el('span', '', entry.time || hhmm(entry.at)));
     const body = el('div', 'ss-tr-text');
     body.append(...(entry.kind === 'claude' ? richText(entry.text) : [el('p', '', entry.text.length > 400 ? `${entry.text.slice(0, 400)}…` : entry.text)]));
     row.append(head, body);
@@ -255,7 +255,7 @@ export async function init() {
   $('ss-copy').addEventListener('click', async () => {
     const text = (await window.pilot.sessionOutput(shared.openSessionId)).replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
     await navigator.clipboard.writeText(text);
-    toastMessage('Log copied', 'The session\'s output is on the clipboard.', NO_PLACE.done, 'good');
+    toastMessage(t('pagesSessionStates.logCopied'), t('pagesSessionStates.outputClipboard'), NO_PLACE.done, 'good');
   });
   // The whole header bar opens and closes the log (Copy log does its own thing).
   $('ss-log-head').addEventListener('click', event => { if (!event.target.closest('#ss-copy')) openLog($('ss-log-body').hidden); });

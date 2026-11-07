@@ -20,7 +20,7 @@ import {strategyState} from './strategy-state.js';
 import {GOAL_LABELS, cardHeader, changed, drafts, isOpen} from './strategy-cards.js';
 import {draftEntries, listChips} from './strategy-targets.js';
 
-const TILES = [['roles', 'briefcase', 'Target roles'], ['seniority', 'user', 'Target level'], ['work_mode', 'building', 'Work mode'], ['minimum_salary', 'coins', 'Minimum salary']];
+const TILES = [['roles', 'briefcase', t('pagesStrategy.targetRoles')], ['seniority', 'user', 'Target level'], ['work_mode', 'building', 'Work mode'], ['minimum_salary', 'coins', 'Minimum salary']];
 const TONES = {roles: 'violet', seniority: 'info', work_mode: 'good', minimum_salary: 'warn'};
 
 // The saved goals, a Profile written before the goals rows standing in with its Compensation line and the search's level.
@@ -43,8 +43,8 @@ function tileValue(key) {
   // A status beside the value, its words on hover (owner: no lone grey line under a value).
   if (key === 'minimum_salary') {
     const words = salaryWords(text);
-    if (note === 'estimated') return {text: words.text, badge: {text: 'Estimated', title: 'Estimated by the AI: Edit to confirm it'}};
-    return {text: words.text, ...(words.note ? {badge: {text: 'As written', tone: 'neutral', title: words.note}} : {})};
+    if (note === 'estimated') return {text: words.text, badge: {text: t('pagesStrategy.estimated'), title: t('pagesStrategy.estimateConfirm')}};
+    return {text: words.text, ...(words.note ? {badge: {text: t('pagesStrategy.asWritten'), tone: 'neutral', title: words.note}} : {})};
   }
   const shown = GOAL_KINDS[key]?.read && text ? GOAL_KINDS[key].read(text) || text : text;
   return {text: shown};
@@ -67,7 +67,7 @@ function fromDetails() {
 }
 
 function editor() {
-  const rows = [{label: 'Target roles', control: listChips('roles', 'Add a job title'), hint: 'The job titles your search looks for. The first 5 (with the magnifier) are also searched on job boards.'}];
+  const rows = [{label: t('pagesStrategy.targetRoles'), control: listChips('roles', 'Add a job title'), hint: t('pagesStrategy.roleHelp')}];
   for (const [key, , label] of TILES.slice(1)) {
     const kind = GOAL_KINDS[key], saved = savedGoals()[key] || '';
     const format = formatFor({marked: {kind: kind.kind, options: kind.options || []}});
@@ -76,7 +76,7 @@ function editor() {
       if (String(next || '').trim() && String(next).trim() !== saved) drafts().goalEdits[key] = String(next).trim(); else delete drafts().goalEdits[key];
       changed();
     }, {ariaLabel: GOAL_LABELS[key] || label, chips: kind.chips});
-    rows.push({label, control, hint: key === 'seniority' ? 'Also the level your search keeps: postings that plainly name another level are skipped.' : ''});
+    rows.push({label, control, hint: key === 'seniority' ? t('pagesStrategy.levelHelp') : ''});
   }
   const box = el('div', 'card-editor');
   box.append(editRows(rows));
@@ -90,6 +90,6 @@ export function renderMainGoals() {
   card.dataset.card = 'goals';
   const read = el('div', 'card-read');
   read.append(tiles(), ...[fromDetails()].filter(Boolean));
-  card.append(cardHeader('goals', 'target', 'signal', t('pagesCommon.mainGoals'), 'What every job is scored against.', card), read, ...(isOpen('goals') ? [editor()] : []));
+  card.append(cardHeader('goals', 'target', 'signal', t('pagesCommon.mainGoals'), t('pagesStrategy.scoredAgainst'), card), read, ...(isOpen('goals') ? [editor()] : []));
   host.replaceChildren(card);
 }

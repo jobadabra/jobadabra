@@ -38,7 +38,7 @@ function tick() {
 
 async function build() {
   if (!running || running.pageId !== current.page_id) {
-    step = 'Starting';
+    step = t('pagesJobs.starting');
     const pageId = current.page_id;
     running = {pageId, started: Date.now(),
       promise: window.pilot.interviewPrep(pageId).catch(error => ({ok: false, text: error.message}))};
@@ -56,7 +56,7 @@ async function build() {
   $('prep-go').disabled = false;
   if (result.needs_description) {
     show($('prep-describe'), true);
-    $('prep-go').textContent = 'Save and prepare';
+    $('prep-go').textContent = t('pagesProfileMore.savePrepare');
     message('prep-message', result.text, 'info');
     $('prep-text').focus();
     return;
@@ -66,10 +66,10 @@ async function build() {
     hintAfter($('prep-message'), shared.state, () => import('./settings.js').then(({openSetting}) => { openSetting('ai'); }));   // Free AI wrote it: stronger prep with an own key
     // The kit where it is: its Notion page, else the job's page here, Prep tab (the button's words follow: the Notion label is index.html's).
     const jobUrl = current.url || current.job_url;
-    $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : 'Open the prep kit';
+    $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : t('pagesProfileMore.openPrep');
     show($('prep-open'), !!(current.notion_url || jobUrl));
-    $('prep-go').textContent = 'Prepare the interview again';
-    toastMessage('Interview preparation ready', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
+    $('prep-go').textContent = t('pagesProfileMore.prepareAgain');
+    toastMessage(t('pagesProfileMore.prepReady'), `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore(t('pagesProfileMore.notionPage'), 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
     loadFocus();
   }
 }
@@ -100,9 +100,9 @@ export async function init() {
     if (!current) return;
     if (!$('prep-describe').hidden) {
       const text = $('prep-text').value.trim(), url = $('prep-url').value.trim();
-      if (!text && !url) { message('prep-message', 'Paste the job description or its link.', 'error'); return; }
+      if (!text && !url) { message('prep-message', t('pagesProfileMore.pasteDescription'), 'error'); return; }
       $('prep-go').disabled = true;
-      message('prep-message', 'Saving the description on the job…', 'waiting');
+      message('prep-message', t('pagesProfileMore.savingDescription'), 'waiting');
       const saved = await window.pilot.describeJob(current.page_id, text, url).catch(error => ({ok: false, text: error.message}));
       $('prep-go').disabled = false;
       if (!saved.ok) { message('prep-message', saved.text, 'error'); return; }

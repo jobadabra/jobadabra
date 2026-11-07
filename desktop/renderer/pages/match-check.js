@@ -20,7 +20,7 @@ function row(label, tone, title, detail) {
 function showResult(data) {
   const result = data?.result;
   show($('match-result'), !!result);
-  $('match-run').textContent = result ? t('pagesCommon.checkAgain') : 'Check the match';
+  $('match-run').textContent = result ? t('pagesCommon.checkAgain') : t('pagesStrategy.checkMatch');
   if (!result) return;
   $('match-grade').textContent = result.grade;
   $('match-grade').className = `cvc-score ${result.grade <= 'A' ? 'good' : result.grade === 'B' ? 'ok' : 'low'}`;
@@ -38,7 +38,7 @@ export async function openMatchCheck(job, {tailor = null} = {}) {
   $('match-job').textContent = `${job.title} · ${job.company}`;
   message('match-message', '');
   showResult(await window.pilot.matchSaved(job.code).catch(() => null));
-  $('match-cost').textContent = 'Reads the posting and your CV once.';
+  $('match-cost').textContent = t('pagesStrategy.readsOnce');
   if (!$('match-dialog').open) $('match-dialog').showModal();
 }
 export function init() {
@@ -46,7 +46,7 @@ export function init() {
   $('match-run').addEventListener('click', async () => {
     const button = $('match-run'), label = button.textContent;
     button.disabled = true;
-    button.textContent = 'Comparing… (about 30 s)';
+    button.textContent = t('pagesStrategy.comparing');
     message('match-message', '');
     const result = await window.pilot.matchCheck(current.job.code);
     button.disabled = false;

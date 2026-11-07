@@ -1,6 +1,8 @@
 // The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows; the news mails, #news-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {el} from '../components.js';
 import {plainError} from '../run-warnings.js';
@@ -28,7 +30,7 @@ export function switchRow(row, where, note = '', press = () => {}) {
   track.append(box, el('span'));
   const words = el('span');
   const title = el('span', '', row.name);
-  if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', 'Suggested'));   // e-mail is not on yet: the row is off, and this is what the mode would start with
+  if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', t('pagesStrategy.suggested')));   // e-mail is not on yet: the row is off, and this is what the mode would start with
   words.append(title, el('span', 'muted small', [WHEN[row.id] || sentence(row.when), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
   const label = el('label', 'switch-row');
   label.append(track, words);

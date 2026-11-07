@@ -1,6 +1,9 @@
 // What the "Find jobs using your browser" offer on a finished Find jobs run's card says, and when (pure, no page: its test runs without a DOM).
 // Used by pages/browser-offer.js (the card) and nav.js (⌘K); the count is settings.refusedOffer (lib/refused-offer.js). Guard: test/guards/safety/refused-reads-button.test.js.
-export const LABEL = 'Find jobs using your browser';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
+
+export const LABEL = t('pagesActivity.browserFind');
 export const ALLOW = 'The extension needs “Work on every job site” once: open its settings in Chrome and press Allow.';
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const isSearch = run => run?.kind === 'search';

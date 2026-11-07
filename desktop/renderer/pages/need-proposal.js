@@ -58,7 +58,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   if (!counted.has(key)) { counted.add(key); noteUse(item.id, proposal.source, 'shown'); }
   // A menu: the form's own choices, the one that means the same picked (proposal-pick.js onChoices); otherwise a text box.
   const input = proposal.options?.length ? el('select', 'ss-ask-input') : el('input', 'ss-ask-input');
-  if (proposal.options?.length) input.append(el('option', '', proposal.waiting ? 'Finding the matching choice…' : ''), ...proposal.options.map(option => el('option', '', option)));
+  if (proposal.options?.length) input.append(el('option', '', proposal.waiting ? t('pagesStrategy.findingChoice') : ''), ...proposal.options.map(option => el('option', '', option)));
   else { input.type = 'text'; input.placeholder = t('pagesCommon.yourAnswer'); }
   input.value = picks.start(key, tried?.value || proposal.value);
   input.addEventListener('input', () => picks.note(key, input.value));   // a text box and a menu both fire input
@@ -67,22 +67,22 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   body.append(titleLine(label.replace(/^\s*\*\s*|\s*\*\s*$/g, '')), note, line);
   li.append(badge(), body);
   if (tried && now - tried.at >= TAKES_MS) {   // still empty in the form after Use
-    note.textContent = 'The form didn\'t take it: the answer is copied, paste or pick it there';
+    note.textContent = t('pagesStrategy.formDidNotTake');
     actions.append(smallButton(t('pagesSession.openInForm'), 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
     return li;
   }
   if (tried) {
     input.disabled = true;
-    note.textContent = tried.kept ? 'Filled in the form · remembered for future forms' : `Filled in the form (not remembered: ${storeName()} didn't answer)`;
+    note.textContent = tried.kept ? t('pagesStrategy.filledRemembered') : `Filled in the form (not remembered: ${storeName()} didn't answer)`;
     li.classList.add('is-done');
     return li;
   }
-  const use = smallButton('Use', 'secondary is-answer', async () => {
+  const use = smallButton(t('pagesStrategy.use'), 'secondary is-answer', async () => {
     const value = input.value.trim();
     if (!value) { note.textContent = t('pagesSession.writeFirst'); input.focus(); return; }
     use.disabled = input.disabled = true;
     const filled = await window.pilot.sessionFillField(item.id, label, value).catch(error => ({ok: false, error: error.message}));
-    if (!filled?.ok) { use.disabled = input.disabled = false; note.textContent = plainError(filled?.error || 'Couldn\'t reach the form'); return; }
+    if (!filled?.ok) { use.disabled = input.disabled = false; note.textContent = plainError(filled?.error || t('pagesStrategy.reachFailed')); return; }
     noteUse(item.id, proposal.source, proposal.value && value === String(proposal.value).trim() ? 'used' : 'edited');
     // Kept for every later form: a contact detail in Your details, any other answer in your Answers (Notion).
     // Your saved detail, unchanged (or only put in this form's words, "Monsieur" as "Sir"): nothing to write.

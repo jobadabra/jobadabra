@@ -35,11 +35,11 @@ export function renderTalking(narrowed = false) {
   const mixed = found > 0 && found < talking.length;  // a tag per row only tells something when both kinds are listed
   $('jobs-talking-list').replaceChildren(...talking.map(job => {
     const li = Object.assign(el('li', 'focus-item tone-info'), {tabIndex: 0, role: 'button',
-      title: job.notion_url ? t('pagesCommon.openNotion') : 'Open its page'});
+      title: job.notion_url ? t('pagesCommon.openNotion') : t('pagesJobsFinal.openPage')});
     const round = el('span', 'focus-round');
     round.append(icon('chat'));
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), pill(stageLabel(job.stage) || 'Recruiter lead', 'info', {dot: true}));
+    top.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), pill(stageLabel(job.stage) || t('pagesJobsFinal.recruiterLead'), 'info', {dot: true}));
     const meta = el('div', 'focus-meta muted small');
     const who = [job.company, job.via && job.via !== job.company ? `via ${job.via}` : ''].filter(Boolean).join(' ');
     [who, mixed ? (isInbound(job) ? 'Inbound' : 'Outbound') : '', nextStepOf(job) ? `Next: ${nextStepOf(job)}` : ''].filter(Boolean).forEach((part, i) => {
@@ -63,7 +63,7 @@ export function renderTalking(narrowed = false) {
 export function paintTalkingFirst() {
   const kept = keptBlock('jobs-talking');
   if (!kept?.shown) return;
-  $('jobs-talking-title').textContent = kept.title || 'In conversation';
+  $('jobs-talking-title').textContent = kept.title || t('pagesJobsFinal.inConversation');
   $('jobs-talking-count').textContent = kept.detail || '';
   $('jobs-talking-toggle').textContent = foldToggleWord($('jobs-talking').open);
   $('jobs-talking-list').replaceChildren(...Array.from({length: Math.min(Number(kept.rows) || 0, 20)}, () => {

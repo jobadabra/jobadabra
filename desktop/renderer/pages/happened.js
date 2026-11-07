@@ -17,7 +17,7 @@ const who = item => item.company || item.via || 'the recruiter';
 export function openHappened(item, answer) {
   current = {item, answer};
   const at = item.at ? new Date(item.at) : null;
-  $('happened-title').textContent = answer === 'yes' ? 'How did it go?' : "The interview didn't happen";
+  $('happened-title').textContent = answer === 'yes' ? t('pagesInterviews.howWent') : t('pagesInterviews.notHappened');
   $('happened-context').textContent = `${who(item)} · ${item.job || t('pagesCommon.interview')}${at ? ` · ${displayDate(at, {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}` : ''}`;
   show($('happened-yes'), answer === 'yes');
   show($('happened-no'), answer !== 'yes');
@@ -32,12 +32,12 @@ export function openHappened(item, answer) {
 // A few lines of notes: Claude reviews them like a transcript (the same review as a recording), in the background.
 async function review(pageId, item) {
   if (!aiReady()) {
-    toastMessage(t('pagesCommon.saved'), 'Choose your AI in Settings (Claude Code, Codex or an API key) to get a review of your notes (Interviews → Review).', {card: 'ai'}, 'good');
+    toastMessage(t('pagesCommon.saved'), t('pagesInterviews.chooseAiNotes'), {card: 'ai'}, 'good');
     return;
   }
   toastMessage(t('pagesCommon.saved'), `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'}, 'good');
   const result = await window.pilot.interviews.review(pageId).catch(error => ({ok: false, error: error.message}));
-  toastMessage(result.ok ? 'Interview reviewed' : 'Review failed', result.ok ? result.summary : result.error || 'Try again from Interviews.', {view: 'interviews'}, result.ok ? 'good' : 'bad');
+  toastMessage(result.ok ? t('pagesInterviews.reviewed') : t('pagesInterviews.reviewFailed'), result.ok ? result.summary : result.error || t('pagesInterviews.tryInterviews'), {view: 'interviews'}, result.ok ? 'good' : 'bad');
   loadFocus();
   loadJobs();
 }
@@ -51,7 +51,7 @@ async function save() {
     kind = document.querySelector('input[name="happened-why"]:checked')?.value || 'moved';
     if (kind === 'moved') {
       const value = $('happened-at').value;
-      if (!value) { message('happened-message', 'Pick the new date and time, or choose Cancelled.', 'warn'); return false; }
+      if (!value) { message('happened-message', t('pagesInterviews.reschedule'), 'warn'); return false; }
       detail = {at: new Date(value).toISOString()};
     }
   }
@@ -76,7 +76,7 @@ export async function dismissInterview({page_id, company, via}, {onConfirmed = (
   onConfirmed();   // the row leaves the list at once; Notion takes seconds
   const result = await window.pilot.interviewHappened(page_id, 'cancelled', {}).catch(error => ({ok: false, error: error.message}));
   if (!result.ok) { onFail(); toastMessage(t('pagesCommon.notSaved'), result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}, 'bad'); return false; }
-  toastMessage('Dismissed ✓', `${name}: the interview is logged as cancelled.`, {view: 'interviews'}, 'good');
+  toastMessage(t('pagesInterviews.dismissed'), `${name}: the interview is logged as cancelled.`, {view: 'interviews'}, 'good');
   onDone();
   loadFocus();
   loadJobs();

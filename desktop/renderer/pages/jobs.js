@@ -65,7 +65,7 @@ async function linkToJob(dialogId, messageId, result) {
   const job = (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
     || {url: added.jobUrl, title: added.title, notion_url: added.url};
   const open = document.createElement('button');
-  open.type = 'button'; open.className = 'link'; open.textContent = 'Open job →';
+  open.type = 'button'; open.className = 'link'; open.textContent = t('pagesJobsFinal.openJob');
   open.addEventListener('click', () => { $(dialogId).close(); openJobPanel(job); });
   $(messageId).append(' ', open);
 }
@@ -129,7 +129,7 @@ async function showMore() {
     const fresh = await writes.read({limit: jobsLimit});
     if (fresh) showJobsData(fresh);
   } catch (error) {
-    toastMessage('Could not load more jobs', error.message, {view: 'jobs'}, 'bad');
+    toastMessage(t('pagesJobsFinal.loadMoreFailed'), error.message, {view: 'jobs'}, 'bad');
   }
   button.disabled = false;
   renderJobs();
@@ -162,7 +162,7 @@ export function showJobsData(data) {
   if ('profile_empty' in data) showProfileEmpty(!!data.profile_empty);   // "Your Profile is empty, so fit scores are paused" (#2759): setup ends here
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
-      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your application is kept.`, jobPlace(job), 'warn');
+      toastMessage(t('pagesJobsFinal.postingRemoved'), `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your application is kept.`, jobPlace(job), 'warn');
     }
     shared.allJobs = data.jobs;
     noteOutdated(data.outdated);   // the scores from the previous strategy: Strategy's own count, kept by rescore-run.js (after the rows: its redraw reads them)
@@ -175,7 +175,7 @@ export function showJobsData(data) {
       (count.week ? ` · ${count.week} new this week` : '') + (data.filtered ? ` · ${data.filtered} hidden` : '') +
       // Found but not checked yet (the engine: not scored): the next refreshes take them, a batch at a time, best places first (src/daily.py).
       (data.waiting ? ` · ${data.waiting} waiting, run Find jobs again` : '') +
-      (data.stale ? ' · ⚠️ Notion unreachable: statuses may be out of date' : '');   // about Notion
+      (data.stale ? t('pagesJobsFinal.notionUnreachable') : '');   // about Notion
     $('jobs-stats').title = `${count.scored} scored by the AI` + (data.filtered ? `; ${data.filtered} hidden by your language or company filters` : '');
     const totalBefore = $('stat-total').textContent, flash = setCount($('stat-total'), count.total);
     // Whether a person could see it (7 Oct 2026: "the flashing is not consistently working"): logs/app.log, area ui
@@ -195,9 +195,9 @@ export function showJobsData(data) {
     for (const kind of Object.keys(applications)) setCount($(`stat-${kind}`), applications[kind]);
     const talking = inProcess(shared.allJobs);
     document.querySelector('[data-stat="interviews"]').title = `Now: ${talking.screening} screening · ${talking.interviews} interviewing or offer.`;
-    document.querySelector('[data-stat="applied"]').title = 'Applications sent = waiting for a reply + in process + closed. Forms still being filled are sessions, not counted here.';
-    document.querySelector('[data-stat="waiting"]').title = 'Sent, no answer yet (Applied, Confirmation received).';
-    document.querySelector('[data-stat="closed"]').title = 'Rejected, withdrawn, or no answer after the waiting time.';
+    document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.sentDefinition');
+    document.querySelector('[data-stat="waiting"]').title = t('pagesJobsFinal.waitingDefinition');
+    document.querySelector('[data-stat="closed"]').title = t('pagesJobsFinal.closedDefinition');
     renderStuck();
   }
 }
@@ -288,9 +288,9 @@ export async function init() {
   $('import-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('import-url').value.trim();
-    if (!/^https?:\/\//.test(url)) { message('import-message', 'Paste the job link (it starts with https://).', 'error'); return; }
+    if (!/^https?:\/\//.test(url)) { message('import-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('import-go').disabled = true;
-    message('import-message', 'Reading the posting and scoring it…', 'waiting');
+    message('import-message', t('pagesJobsFinal.readingScoring'), 'waiting');
     const result = await window.pilot.importJob(url);
     $('import-go').disabled = false;
     message('import-message', result.text, result.ok ? 'ok' : 'error');
@@ -320,13 +320,13 @@ export async function init() {
   $('applied-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('applied-url').value.trim();
-    if (!/^https?:\/\//.test(url)) { message('applied-message', 'Paste the job link (it starts with https://).', 'error'); return; }
+    if (!/^https?:\/\//.test(url)) { message('applied-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('applied-go').disabled = true;
     message('applied-message', `Reading the posting and adding it to ${storeName()}…`, 'waiting');
     const day = $('applied-when').value;  // YYYY-MM-DD from the date picker
-    if (!day) { message('applied-message', 'Pick the day you applied.', 'error'); return; }
+    if (!day) { message('applied-message', t('pagesJobsFinal.appliedDay'), 'error'); return; }
     const manual = !$('applied-manual').hidden;
-    if (manual && !$('applied-title').value.trim()) { message('applied-message', 'Add the job title (the page itself isn\'t read).', 'error'); return; }
+    if (manual && !$('applied-title').value.trim()) { message('applied-message', t('pagesJobsFinal.addTitle'), 'error'); return; }
     const details = {...(manual ? {title: $('applied-title').value.trim(), company: $('applied-company').value.trim(), text: $('applied-text').value.trim()} : {}),
       ...(appliedOrigin() === 'inbound' ? {origin: 'inbound'} : {})};
     const result = await window.pilot.addApplied(url, $('applied-approx').checked ? `on or before ${day}` : day, details);

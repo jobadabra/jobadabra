@@ -1,5 +1,7 @@
 // Technical reports: the window's own errors go to the app's reporter (lib/telemetry.js, scrubbed there); Settings →
 // Advanced shows the switch and the last events, exactly as they'd be sent.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 
 let reported = 0;  // at most a few per session: a broken loop must not flood the queue
@@ -14,8 +16,8 @@ async function show() {
   $('welcome-telemetry').checked = on;   // the setup Welcome step's twin of the Settings switch
   $('tester-logs-row').hidden = !tester;
   $('tester-logs-on').checked = !!testerLogs;
-  $('telemetry-events').textContent = events.length ? events.map(item => JSON.stringify(item, null, 1)).join('\n\n') : 'Nothing sent yet.';
-  $('shared-sent').textContent = shared.length ? shared.map(item => `${item.at}  ${item.what}\n${JSON.stringify(item.sent, null, 1)}`).join('\n\n') : 'Nothing sent yet.';
+  $('telemetry-events').textContent = events.length ? events.map(item => JSON.stringify(item, null, 1)).join('\n\n') : t('pagesMisc.nothingSent');
+  $('shared-sent').textContent = shared.length ? shared.map(item => `${item.at}  ${item.what}\n${JSON.stringify(item.sent, null, 1)}`).join('\n\n') : t('pagesMisc.nothingSent');
 }
 
 export async function init() {

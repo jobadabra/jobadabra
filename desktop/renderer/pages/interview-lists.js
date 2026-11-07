@@ -55,12 +55,12 @@ export function renderDrafts(drafts, env) {
       {disabled: busy && draft.id !== env.openId()});
     main.addEventListener('click', () => env.openDraft(draft.id));
     const menu = [{label: t('pagesCommon.open'), run: () => env.openDraft(draft.id)}];
-    if (draft.pageUrl) menu.push({label: '↗ Transcript in Notion', run: () => window.pilot.openExternal(draft.pageUrl)});
+    if (draft.pageUrl) menu.push({label: t('pagesInterviews.transcriptNotion'), run: () => window.pilot.openExternal(draft.pageUrl)});
     // Saved with the data on this Mac (no page to open): the saved transcript and its review in the app (interview-review-view.js).
-    else if (draft.pageId && env.openReview) menu.push({label: 'Transcript and review', run: () => env.openReview(draft.pageId)});
-    menu.push({label: osText('Show in Finder'), run: () => iv.recordings(), title: 'The recordings kept on this Mac'});
+    else if (draft.pageId && env.openReview) menu.push({label: t('pagesInterviews.transcriptReview'), run: () => env.openReview(draft.pageId)});
+    menu.push({label: osText('Show in Finder'), run: () => iv.recordings(), title: t('pagesInterviews.recordingsLocal')});
     if (!busy) {
-      menu.push('-', {label: draft.pageId ? byStore('Delete here and in Notion', t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
+      menu.push('-', {label: draft.pageId ? byStore(t('pagesInterviews.deleteBoth'), t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
         if (!confirm(draft.pageId ? `Delete "${draft.title}"${byStore(' on this Mac and in Notion', '')}?` : `Delete "${draft.title}" and its recording?`)) return;
         await iv.discard(draft.id);
         if (env.openId() === draft.id) env.closeEditor();
@@ -68,7 +68,7 @@ export function renderDrafts(drafts, env) {
       }});
     }
     const actions = el('div', 'row-actions');
-    actions.append(main, moreButton(menu, 'More: open, show in Finder, delete'));
+    actions.append(main, moreButton(menu, t('pagesInterviews.recordingMenu')));
     row.append(tile(draft.kind === 'audio' ? 'mic' : 'file'), text, state, actions);
     return row;
   }));
@@ -79,7 +79,7 @@ export function renderSpeakers(onRename) {
   const names = [...new Set([...$('iv-text').value.matchAll(/^\[\d\d:\d\d:\d\d\] ([^:\n]{1,60}):/gm)].map(m => m[1]))];
   $('iv-speakers').replaceChildren(...names.map(name => {
     const label = Object.assign(document.createElement('label'), {textContent: name});
-    const input = Object.assign(document.createElement('input'), {value: name, placeholder: 'e.g. You, Recruiter, Hiring manager'});
+    const input = Object.assign(document.createElement('input'), {value: name, placeholder: t('pagesInterviews.speakersExample')});
     input.addEventListener('change', () => {
       const to = input.value.replace(/[:\n[\]]/g, ' ').trim();
       if (!to || to === name) { input.value = name; return; }

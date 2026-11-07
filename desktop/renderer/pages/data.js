@@ -73,7 +73,7 @@ export async function init() {
     say(`Moving ${MOVE_WORDS[entity] || entity}… ${done} of ${total}`, 'waiting'));
   // "Move my data to Notion": the same prompt as every connect (pages/notion-connect.js, "Connect and move" or "Move to Notion"); its result lands here.
   $('store-move').addEventListener('click', () => openNotionConnect({reason: 'move', where: 'settings', from: 'settings', then: async result => {
-    if (!result?.ok) { say(result?.text || result?.error || 'Not moved.', 'error'); return; }
+    if (!result?.ok) { say(result?.text || result?.error || t('pagesStrategy.notMoved'), 'error'); return; }
     shared.state = await window.pilot.state();
     await showStore();
     say(movedText(result), 'ok');

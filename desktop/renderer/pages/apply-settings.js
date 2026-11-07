@@ -21,7 +21,7 @@ export const settingsNow = () => current;
  * A mode not built yet is disabled with a "Coming soon" pill in place of its badge; busy: every card off (a save or a start in flight).
  */
 export function modeCards(selected, onPick, {busy = false} = {}) {
-  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : ['Coming soon', 'neutral']}));
+  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : [t('pagesExtraCommon.comingSoon'), 'neutral']}));
   const group = choiceCards(modes, {selected, onPick, label: t('pagesActivityMore.howApplying')});
   group.classList.add('is-single');
   return group;
@@ -29,7 +29,7 @@ export function modeCards(selected, onPick, {busy = false} = {}) {
 
 // The one Full automation setting: the optional wait before a submit (owner, 29 Oct 2026: remove all checks), a number as a short field.
 export const CHECKS = [
-  {key: 'waitMin', before: 'Wait', after: 'minutes before sending, with Stop', min: 0, max: 120},
+  {key: 'waitMin', before: t('pagesExtraCommon.wait'), after: 'minutes before sending, with Stop', min: 0, max: 120},
 ];
 const el = (tag, cls = '', text = '') => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text ? {textContent: text} : {});
 

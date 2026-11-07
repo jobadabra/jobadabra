@@ -32,7 +32,7 @@ function paint(next) {
 }
 
 // ⌘K: the same action as the button, only while there is something to restart for.
-export const buildCommands = () => (state.ahead > 0 ? [{group: 'App', label: state.restart, hint: t('pagesLettersData.reopenLatest'), keywords: 'restart relaunch reload update fixes build new version', run: restart}] : []);
+export const buildCommands = () => (state.ahead > 0 ? [{group: t('pagesExtraCommon.app'), label: state.restart, hint: t('pagesLettersData.reopenLatest'), keywords: 'restart relaunch reload update fixes build new version', run: restart}] : []);
 
 export async function init() {
   const ask = () => window.pilot.buildState().then(paint).catch(() => {});

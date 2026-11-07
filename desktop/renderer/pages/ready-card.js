@@ -31,8 +31,8 @@ export function paint(card, state, names, act) {
     if (needs) summary.append(pill(`${needs} need${needs === 1 ? 's' : ''} you`, 'warn'));
     const spent = costText(night.costUsd, usd => `${dollars(usd)} of AI and servers`);
     if (spent) summary.append(pill(spent, 'neutral'));
-    if (night.aiStopped) summary.append(Object.assign(pill('AI stopped', 'warn'), {title: "Your AI stopped during the night (its limit or the night's cost cap): open questions are left for you, the rest is filled."}));
-  } else summary.append(pill('Nothing sent yet', 'neutral'));
+    if (night.aiStopped) summary.append(Object.assign(pill(t('pagesProfileMore.aiStopped'), 'warn'), {title: t('pagesProfileMore.aiNightStopped')}));
+  } else summary.append(pill(t('pagesReadyReports.nothingSent'), 'neutral'));
   // The forms the night works on now: how many fill and wait, and one Stop for all of them (owner, 18 Oct 2026: Stop for the whole night).
   const lives = jobs.map(job => liveOf(job, night?.state, state.pending?.has(job.job), night?.why));
   const badged = badge => lives.filter(live => live?.badge === badge).length, stuck = badged('stuck'), waiting = badged('waiting'), filling = lives.filter(live => live && !['waiting', 'stuck'].includes(live.badge)).length;
@@ -64,24 +64,24 @@ export function paint(card, state, names, act) {
   });
   if (jobs.length) body.append(rows);
   const next = el('div', 'ready-summary');
-  next.append(el('span', 'muted', 'Tonight'));
+  next.append(el('span', 'muted', t('pagesReadyReports.tonight')));
   const count = pill(`${tonight.length} ready`, tonight.length ? 'good' : 'warn');
-  count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : 'No job has its application, CV and cover letter ready yet: Fill now makes them for your best matches.';
+  count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : t('pagesReadyReports.nothingReady');
   next.append(count);
   if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${displayDate(new Date(state.sent.at), {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
-    {title: 'Sent again by itself when this list changes and before your Mac goes off.'}));
-  if (!tonight.length) next.append(el('span', 'muted', 'Fill now makes the application, CV and letter for your best matches first.'));
+    {title: t('pagesReadyReports.resentAuto')}));
+  if (!tonight.length) next.append(el('span', 'muted', t('pagesReadyReports.prepareBest')));
   body.append(next);
 }
 
 export function build() {
   const card = el('div', 'task-card is-medium ready-card'), words = el('div', 'task-words');
-  card.append(el('span', 'task-category', 'APPLICATIONS'));
-  const main = el('div', 'task-body'), send = el('button', 'secondary action', 'Fill tonight on the server'), run = el('button', 'secondary action', t('pagesCommon.fillNow'));
+  card.append(el('span', 'task-category', t('pagesReadyReports.applicationsHeading')));
+  const main = el('div', 'task-body'), send = el('button', 'secondary action', t('pagesReadyReports.fillTonight')), run = el('button', 'secondary action', t('pagesCommon.fillNow'));
   wand(send); wand(run);
   send.id = 'ready-send'; send.dataset.palette = 'ready'; run.id = 'ready-run';
-  const hidden = el('b', '', 'Ready to send: fill tonight\'s forms on the server (nothing is submitted)'); hidden.hidden = true; send.prepend(hidden);
-  words.append(el('b', '', 'Ready to send'), el('span', 'muted', 'Your finished jobs are filled on our server overnight. Nothing is submitted: in the morning you open a filled form and press Submit yourself.'));
+  const hidden = el('b', '', t('pagesReadyReports.fillTonightTitle')); hidden.hidden = true; send.prepend(hidden);
+  words.append(el('b', '', t('pagesReadyReports.readySend')), el('span', 'muted', t('pagesReadyReports.overnightHelp')));
   main.append(tile('moon'), words, send, run);
   card.append(main, el('div', 'ready-body'), el('div', 'muted ready-note'));
   return {card, send, run};
@@ -95,7 +95,7 @@ export function blocked(card, why, retry) {
   again.addEventListener('click', () => { again.disabled = true; again.textContent = t('pagesCommon.checking'); retry(); });
   body.textContent = '';
   const status = el('div', 'ready-status');
-  status.append(pill('Not available', 'warn'), el('span', 'muted', `${why || 'Our server did not answer.'} · checked ${checked}`), ...(why === OUTDATED_LINE ? [restartButton()] : []), again);
+  status.append(pill(t('pagesReadyReports.unavailable'), 'warn'), el('span', 'muted', `${why || t('pagesReadyReports.serverNoAnswer')} · checked ${checked}`), ...(why === OUTDATED_LINE ? [restartButton()] : []), again);
   body.append(status);
   for (const button of card.querySelectorAll('.task-body button')) { button.disabled = true; button.title = why || ''; }
 }
@@ -111,7 +111,7 @@ export async function initReadyCard() {
   if (!anchor) return;
   const {card, send, run} = build(), note = card.querySelector('.ready-note'), names = {};
   send.disabled = run.disabled = true;
-  card.querySelector('.ready-body').append(el('div', 'muted', 'Checking our server…'));
+  card.querySelector('.ready-body').append(el('div', 'muted', t('pagesReadyReports.checkingServer')));
   anchor.after(card);   // shown at once, always (owner, 18 Oct 2026); what it can do follows
   let tonightNow = null, last = null;
   // Fill now's progress (renderer/pages/ready-progress.js): the press shows "Sending" at once, before any answer; then the site's night moves it.
@@ -128,14 +128,14 @@ export async function initReadyCard() {
     last = state;
     const unfinished = (state.site?.jobs || []).some(job => ['queued', 'filling'].includes(job.state)), running = nightState(state) === 'running' && (unfinished || !state.site?.jobs?.length);
     const busy = ['sending', 'preparing'].includes(phase) || running;   // a night being filled is never replaced by a second press
-    run.textContent = busy ? 'Filling…' : t('pagesCommon.fillNow');
+    run.textContent = busy ? t('pagesReadyReports.filling') : t('pagesCommon.fillNow');
     Object.assign(names, state.names || {});
     const now = progressOf({phase, batch: state.site?.batch, jobs: state.site?.jobs || []})?.steps.find(step => step.state === 'now')?.label || '';
     if (now !== nowStep) { nowStep = now; since = now ? Date.now() : 0; }   // the clock counts the step running now
     if (wholeNight && !['queued', 'running'].includes(nightState(state)) && !['sending', 'preparing'].includes(phase)) wholeNight = false;
     paint(card, {...state, tonight: tonightNow ?? state.tonight, phase, phaseError, since, wholeNight, pending}, names, act);
     // Fill tonight and Fill now are off while a night is sent or filled: a new batch would replace the one running (18 Oct 2026: a 2nd press wiped the first fill).
-    for (const each of sends()) { each.disabled = busy; if (busy) each.title = 'The server is filling tonight\'s forms: wait for it to finish'; else if (each === send || each === run) each.title = ''; }
+    for (const each of sends()) { each.disabled = busy; if (busy) each.title = t('pagesReadyReports.serverBusy'); else if (each === send || each === run) each.title = ''; }
     keepClock();
   };
   const repaint = () => last && show(last);
@@ -170,7 +170,7 @@ export async function initReadyCard() {
     button.setAttribute('aria-label', name);
     return button;
   };
-  const open = code => { const button = iconButton('external', 'Open in my browser', 'the real page in your own Chrome, filled as the night left it', 'browser', t('pagesCommon.openChrome'));
+  const open = code => { const button = iconButton('external', t('pagesSession.openBrowser'), 'the real page in your own Chrome, filled as the night left it', 'browser', t('pagesCommon.openChrome'));
     button.addEventListener('click', async () => { button.disabled = true; say('Opening the filled form in your browser…');
       const result = await window.pilot.readyOpen(code).catch(error => ({ok: false, error: errorLine(error)}));
       if (result.cancelled) { button.disabled = false; return; }   // Not now in the first-Apply dialog (pages/apply-choice.js)
@@ -178,11 +178,11 @@ export async function initReadyCard() {
       button.disabled = false; say(result.ok ? 'Opened in your browser: check it, solve a bot check if there is one, and press Submit there yourself.' : (result.error || 'Could not open it.'), result.ok ? 'good' : 'bad'); });
     return button; };
   const act = {open, live: code => { const button = iconButton('pulse', 'Open live recording', 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },
-    watch: code => { const button = iconButton('eye', 'Watch the fill', 'the video of the server filling this form tonight (3 minutes at most)', 'watch');
+    watch: code => { const button = iconButton('eye', t('pagesReadyReports.watch'), 'the video of the server filling this form tonight (3 minutes at most)', 'watch');
       button.addEventListener('click', () => watchFill(button, code)); return button; },
-    again: code => { const button = iconButton('refresh', 'Fill again', 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
-    stop: code => { const button = el('button', 'secondary ready-stop', t('pagesCommon.stop')); button.type = 'button'; button.title = 'Stop filling this form: it goes back to how it was'; button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
-    stopAll: () => { const button = el('button', 'secondary ready-stop-all', 'Stop all'); button.type = 'button'; button.title = 'Stop every form the night is filling or about to fill'; button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
+    again: code => { const button = iconButton('refresh', t('pagesReadyReports.fillAgain'), 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
+    stop: code => { const button = el('button', 'secondary ready-stop', t('pagesCommon.stop')); button.type = 'button'; button.title = t('pagesReadyReports.stopForm'); button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
+    stopAll: () => { const button = el('button', 'secondary ready-stop-all', t('pagesReadyReports.stopAll')); button.type = 'button'; button.title = t('pagesReadyReports.stopNight'); button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
     done: code => { const button = iconButton('check', t('pagesCommon.done'), 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
   // What just happened, as a badge and its line (owner, 18 Oct 2026: the status lines "should be shown as badges").
   const LABEL = {info: t('pagesCommon.working'), good: t('pagesCommon.done'), warn: t('pagesCommon.note'), bad: 'Problem'};

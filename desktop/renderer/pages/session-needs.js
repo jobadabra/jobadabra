@@ -100,9 +100,9 @@ export const formGone = item => tabClosed(item, shared.formsOpen, !!reviewStates
 export function tabStatus(item) {
   if (checkingTab(item)) return [t('pagesCommon.checking'), 'neutral'];
   if (redirecting(item)) return [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'];
-  if (waitingChrome(item)) return ['Waiting for Chrome…', 'neutral'];
+  if (waitingChrome(item)) return [t('pagesSession.waitingChrome'), 'neutral'];
   if (silentChrome(item)) return [silentPill(shared.formsOpen), 'warn'];
-  if (tabLost(item)) return ['Tab not found', 'warn'];
+  if (tabLost(item)) return [t('pagesSession.tabMissing'), 'warn'];
   return null;
 }
 // What's left, said the way you act on it: "2 actions remaining". The split it counts (in the form, to check) is the
@@ -308,7 +308,7 @@ export function needRow(need, item) {
       // A recommendation that isn't "keep it as it is" is an instruction for Claude (with Claude help on), not just an acknowledgement.
       const change = !!need.recommended && !KEEP.test(need.recommended) && resumeOffered();
       if (change) queue(item, key, `${name}: ${chosen.value}`);
-      doneRow(li, key, change ? `To send: ${chosen.value}` : KEEP.test(chosen.value) ? 'Checked' : `Agreed: ${chosen.value}`);
+      doneRow(li, key, change ? `To send: ${chosen.value}` : KEEP.test(chosen.value) ? t('pagesSession.checked') : `Agreed: ${chosen.value}`);
     };
     const change = () => {
       const before = [...actions.childNodes];

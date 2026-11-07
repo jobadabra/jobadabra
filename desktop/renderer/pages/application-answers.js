@@ -131,7 +131,7 @@ const statusPill = (label, tone, glyph) => { const node = pill(label, tone); nod
 const cutShort = question => String(question || '').length >= 118 && String(question).length <= 120 && /[\p{L}\p{N}]$/u.test(question);
 // A question as a row's title: a cut one ends in "…" (never mid-word with nothing after), and every row that shows it says why (saved and Needs review alike).
 const titleOf = question => (cutShort(question) ? `${shown(question)}…` : shown(question));
-const cutNote = question => (cutShort(question) ? 'Cut short by an older version' : '');
+const cutNote = question => (cutShort(question) ? t('pagesExtraCommon.olderVersionCut') : '');
 const openDrawer = start => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned', start}));
 // A section's notes (an instruction for the AI, not an answer: owner, 17 Oct 2026) folded in one row; still on the page and still sent to the AI.
 function noteFold(notes) {
@@ -141,7 +141,7 @@ function noteFold(notes) {
   return fold;
 }
 const answerRow = (view, item, chip = null) => row(view, {key: item.id, button: false, chip, title: item.kind === 'note' ? t('pagesCommon.note') : titleOf(item.question),
-  under: [item.asked ? `Asked by ${item.asked}` : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? 'Unconfirmed: saved as a guess' : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
+  under: [item.asked ? `Asked by ${item.asked}` : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? t('pagesExtraCommon.unconfirmedGuess') : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
   field: () => (item.kind === 'note' ? input(valueOf(item), text => setAnswer(view, item, text), {placeholder: t('pagesCommon.yourAnswer'), ariaLabel: t('pagesCommon.note')}) : answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.yourAnswer'))),
   kind: item.kind === 'note' ? null : () => kindField(view, item)});
 

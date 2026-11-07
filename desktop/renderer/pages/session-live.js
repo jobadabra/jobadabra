@@ -217,7 +217,7 @@ export function renderLive(item, on) {
       pressed.disabled = true;
       const result = await window.pilot.liveSubmit(item.id).catch(error => ({ok: false, error: error.message}));
       pressed.disabled = false;
-      if (!result?.ok) on.problem('Not submitted', result?.error || t('pagesCommon.tryAgain'));
+      if (!result?.ok) on.problem(t('pagesJobs.notSubmitted'), result?.error || t('pagesCommon.tryAgain'));
     });
     submit.disabled = !card.submit.on;
     actions.push(submit);

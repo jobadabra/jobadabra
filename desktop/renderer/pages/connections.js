@@ -48,7 +48,7 @@ export function showScheduleState(next = shared.nextRuns || {}) {
   const when = at => nextWord(at);
   const state = {
     search: value('search') === '0' ? [t('pagesCommon.off')] : [t('pagesCommon.on'), [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
-    mail: value('mail') === '0' ? [t('pagesCommon.off')] : google === false ? ['Connect Google', '', '', 'warn'] : [t('pagesCommon.on'), [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
+    mail: value('mail') === '0' ? [t('pagesCommon.off')] : google === false ? [t('pagesConnections.connectGoogle'), '', '', 'warn'] : [t('pagesCommon.on'), [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
   };
   document.querySelectorAll('[data-schedule-state]').forEach(node => {
     const [label, where, at, tone] = state[node.dataset.scheduleState] || [t('pagesCommon.off')];

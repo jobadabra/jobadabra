@@ -68,11 +68,11 @@ export function searchPhase(step = '') {
   if (live) return live;
   const phase = PHASES.find(item => item.match.test(step));
   if (phase) return phase.label;
-  if (/^Scored (\d+) of (\d+)/.test(step)) return 'Matching jobs to your profile';
-  if (/^Enriched (\d+) of (\d+)/.test(step)) return 'Reading new jobs';
-  if (/^Checked: /.test(step)) return 'Employer career pages';
+  if (/^Scored (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.matching');
+  if (/^Enriched (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.readingNew');
+  if (/^Checked: /.test(step)) return t('pagesActivity.careerPages');
   if (/^Job Matches:/.test(step)) return `Saving to ${storeName()}`;
-  if (/digest|telegram/i.test(step)) return 'Sending your digest';
+  if (/digest|telegram/i.test(step)) return t('pagesExtraCommon.sendingDigest');
   return step.length > 60 ? `${step.slice(0, 57)}…` : step;
 }
 // icon: emoji for text the owner reads (toasts, messages); line: the line icon for rows and headers (same as Actions → Recent runs).
@@ -84,8 +84,8 @@ export const KIND = {search: {icon: '🔎', line: 'search', name: t('pagesCommon
   prep: {icon: '🎤', line: 'mic', name: t('pagesActivity.prepKit')}};
 export const KITS_CARD = new Set(['kits', 'prepare', 'tailor']);   // the runs whose result is a list of jobs on the kits card
 export const kindOf = run => (KIND[run?.kind] ? run.kind : 'search');
-export const WHO = {schedule: 'scheduled', you: 'by you', first: 'first check'};
-export const WHERE = {github: 'GitHub', mac: 'this Mac', cloud: 'our servers'};  // where a run ran, after who started it
+export const WHO = {schedule: 'scheduled', you: t('pagesExtraCommon.byYou'), first: t('pagesExtraCommon.firstCheck')};
+export const WHERE = {github: 'GitHub', mac: 'this Mac', cloud: t('pagesExtraCommon.ourServers')};  // where a run ran, after who started it
 // The warnings in one plain sentence (the list is one click away).
 export function warningSummary(warnings) {
   // The Anthropic account's spending limit: jobs were left unscored. Said plainly, with what to do.
@@ -116,8 +116,8 @@ export function warningSummary(warnings) {
   return humanError(warnings[0]) || '';
 }
 // "<task> completed with warnings": which run it is, said in the box's title.
-export const WARN_NOUN = {search: 'Job search', scout: 'Employer search', mail: 'Gmail check', tailor: 'Tailoring', visits: 'Site reading', kits: 'Application preparation',
-  weekly: 'Search analysis', insight: 'The insight', today: 'Today’s list'};
+export const WARN_NOUN = {search: t('pagesExtraCommon.jobSearch'), scout: t('pagesExtraCommon.employerSearch'), mail: t('pagesActivity.gmailCheck'), tailor: t('pagesExtraCommon.tailoring'), visits: t('pagesExtraCommon.siteReading'), kits: t('pagesActivity.preparation'),
+  weekly: t('pagesActivity.searchAnalysis'), insight: t('pagesExtraCommon.theInsight'), today: t('pagesExtraCommon.todayList')};
 export const runResults = new Map();  // run id -> the message a finished task produced, for Recent activity
 export const runDetails = new Map();  // a Notion run's result and log, read once (pageId -> {message, log})
 // Find jobs using your browser' step card (renderer/visits-card.js parseSiteRows): the meter (the few-jobs box's score-track) and one row per site.
@@ -136,10 +136,10 @@ export function runProgress({done, total, percent}, noun = '') {
 // Each row's one action, a button on its right (owner, 7 Oct 2026: "per row, on the right, Open in Chrome"): the tab while it reads, the site
 // once it is done, Allow while it waits on you, Open again for a tab you closed, the extension when it did not answer.
 function siteAction(site) {
-  if (site.state === 'waiting') return ['Go to Chrome and allow', () => window.pilot.focusBrowser()];
+  if (site.state === 'waiting') return [t('pagesFocusReports.goAllow'), () => window.pilot.focusBrowser()];
   if (site.state === 'reading' || site.state === 'opening') return [t('pagesCommon.openChrome'), () => window.pilot.visitShowTab(site.url)];
-  if (site.state === 'closed') return ['Open again', () => window.pilot.visitAgain(site.url)];
-  if (site.state === 'stopped' && /no answer from the extension|did not answer/.test(site.words)) return ['Check the extension', () => openSetting('extension')];
+  if (site.state === 'closed') return [t('pagesExtraCommon.openAgain'), () => window.pilot.visitAgain(site.url)];
+  if (site.state === 'stopped' && /no answer from the extension|did not answer/.test(site.words)) return [t('pagesExtraCommon.checkExtension'), () => openSetting('extension')];
   if (site.state === 'next') return null;   // not opened yet: no tab to show
   return [t('pagesCommon.openChrome'), () => window.pilot.openVisit(site.url)];   // done or stopped: the site itself
 }
@@ -189,9 +189,9 @@ export const hhmm = ms => displayDate(new Date(ms), {hour: '2-digit', minute: '2
  * @param {number} at ms of the next check. @param {number} [now] ms. @returns {string}
  */
 export function nextWords(at, now = Date.now()) {
-  if (at <= now) return 'due now';
+  if (at <= now) return t('pagesExtraCommon.dueNow');
   const date = new Date(at), today = new Date(now), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : displayDate(date, {weekday: 'short'});
+  const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? t('pagesExtraCommon.tomorrow') : displayDate(date, {weekday: 'short'});
   return `${day} ${hhmm(at)}`;
 }
 export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -202,30 +202,30 @@ export function outcome(run) {
   return deliveryHead({...run, kind: kindOf(run)}) ? `${capital(said)} · Telegram not sent` : said;
 }
 function outcomeOf(run) {
-  if (run.stopped === 'you') return 'Stopped by you · what it saved is kept, the next run continues';
+  if (run.stopped === 'you') return t('pagesExtraCommon.stoppedByYou');
   // Closed while it ran (lib/pipeline.js INTERRUPTED): said as such, as its box does (7 Oct 2026: the row read "Unexpected error")
-  if (run.interrupted) return 'Interrupted · Jobadabra was closed while this ran; run it again to continue';
+  if (run.interrupted) return t('pagesExtraCommon.interrupted');
   const explained = notConnectedHead(run) || waitedHead({...run, kind: kindOf(run)});
   if (explained) return explained.short;   // the box says the rest
   const stopped = stoppedHead({...run, kind: kindOf(run)});
   if (stopped) return `Stopped · ${stopped.stopped}`;   // the watchdog stopped it: the box says why and where
   if (run.problem && (kindOf(run) === 'mail' || !run.ok)) return run.problem;   // why it read nothing or did not arrive comes before the counts a Notion row says (#290, #298)
-  if (aiLimitHead({...run, kind: kindOf(run)})) return 'results unavailable';   // the AI provider stopped it: the box says why
+  if (aiLimitHead({...run, kind: kindOf(run)})) return t('pagesExtraCommon.resultsUnavailable');   // the AI provider stopped it: the box says why
   const failed = failedOutcome(run);
   if (failed) return failed;   // a failed run says so before what its Notion row reports (#301)
-  if (!run.ok && !run.problem && !run.live && !run.waiting) return 'Unexpected error';   // no reason recognised: the box says what to do
+  if (!run.ok && !run.problem && !run.live && !run.waiting) return t('pagesExtraCommon.unexpectedError');   // no reason recognised: the box says what to do
   if (run.result) return run.result;  // a run read from Notion ⏱️ Search runs says it itself
-  if (unsavedRun(run)) return 'its result was not saved';   // the pill says No result (run-status.js)
+  if (unsavedRun(run)) return t('pagesExtraCommon.resultNotSaved');   // the pill says No result (run-status.js)
   if (kindOf(run) === 'mail') {
-    if (run.off) return 'Gmail not connected (Settings → Connections)';
+    if (run.off) return t('pagesExtraCommon.gmailNotConnected');
     if (run.problem) return run.problem;
-    if (!run.ok) return 'had problems';
+    if (!run.ok) return t('pagesExtraCommon.hadProblems');
     if (run.updates?.length) return plural(run.updates.length, 'application update');
     // "Mail: 2 new email(s) classified, 0 update(s), …": emails were read but none changed an application.
     const read = Number(/^Mail: (\d+) new email/.exec(run.summary || '')?.[1] || 0);
-    return read ? `${plural(read, 'email')} checked · no updates` : 'nothing new';
+    return read ? `${plural(read, 'email')} checked · no updates` : t('pagesExtraCommon.nothingNew');
   }
-  if (!run.ok) return 'had problems';
+  if (!run.ok) return t('pagesExtraCommon.hadProblems');
   // A one-off job (insight, weekly report, today's list, find employers): the result line it printed.
   // An employers search or today's list says its number from its message (run-result-card.js WORDS), as its result card's top does: never "done".
   const card = !run.summary && WORDS[kindOf(run)] && run.message ? parseRunMessage(run.message) : null;

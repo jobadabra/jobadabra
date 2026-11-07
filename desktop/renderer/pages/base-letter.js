@@ -149,7 +149,7 @@ export function initLetter({openAiSettings} = {}) {
     discard: () => { $('letter-text').value = saved.text || ''; writing = false; paint(); },
     reveal: () => $('letter-text').focus()});
   $('letter-approve').addEventListener('click', async () => {
-    const result = await act($('letter-approve'), 'Making the PDF…', () => window.pilot.coverLetterApprove($('letter-text').value));
+    const result = await act($('letter-approve'), t('pagesExtraCommon.makingPdf'), () => window.pilot.coverLetterApprove($('letter-text').value));
     const words = 'Approved ✓ Used when a job has no usable tailored letter.';
     message('letter-message', result.ok ? words : result.error, result.ok ? 'ok' : 'error');
   });

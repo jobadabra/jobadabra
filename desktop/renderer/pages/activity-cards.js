@@ -69,7 +69,7 @@ export function renderInsightCard(insight, target = $('activity-card')) {
 export function renderInterviewCard(review, target = $('activity-card')) {
   const box = el('div', 'insight-card');
   box.dataset.guidance = 'interview';   // the UI Finder checks its words against who the candidate is
-  box.append(cardHead(`Interview · ${review.round}`, review.title || 'Interview review', {subtitles: [review.summary]}));
+  box.append(cardHead(`Interview · ${review.round}`, review.title || t('pagesActivity.interviewReview'), {subtitles: [review.summary]}));
   for (const section of review.sections) {
     const node = el('section', 'insight-section');
     node.append(el('h4', '', `${section.icon} ${section.label}`.trim()));
@@ -99,7 +99,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
   // Some failed: the heading says how many of how many; the jobs that failed get a row each, as their log lines name them.
   const {done = kits.jobs.length, total = kits.jobs.length, failed = []} = kits.outcome || {};
   const noun = cvs ? 'CV' : 'application';
-  const head = cardHead(cvs ? 'Tailored CVs + cover letters' : t('pagesCommon.applications'), total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
+  const head = cardHead(cvs ? t('pagesExtraCommon.tailoredDocuments') : t('pagesCommon.applications'), total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
     {subtitles: [total > done ? `${plural(total - done, noun)} could not be ${cvs ? 'tailored' : 'drafted'}${failed.length ? '.' : ': the run did not record which.'}`
       : kits.subtitle]});   // partial: the line above says it, with the counts
   // One row per job (the shared .item-rows): its title (the posting opens from it) and company, then the one action, aligned.
@@ -149,7 +149,7 @@ export function renderWeeklyCard(weekly, target = $('activity-card')) {
 export function weeklyCard(weekly) {
   const box = el('div', 'insight-card');
   box.dataset.guidance = 'weekly';   // the UI Finder checks its words against who the candidate is
-  box.append(cardHead('Search analysis · last 7 days', weekly.headline, {subtitles: [weekly.finding && `💡 ${weekly.finding}`, weekly.summary]}));
+  box.append(cardHead(t('pagesExtraCommon.lastSeven'), weekly.headline, {subtitles: [weekly.finding && `💡 ${weekly.finding}`, weekly.summary]}));
   if (weekly.focus) {
     const words = el('div', 'insight-next-words');
     words.append(el('b', '', t('pagesStatus.focusNext')), el('p', '', weekly.focus));
@@ -157,7 +157,7 @@ export function weeklyCard(weekly) {
     focus.append(el('span', 'insight-next-icon', icon('target')), words);
     box.append(focus);
   }
-  for (const [title, items] of [['What worked', weekly.worked], ['Change next week', weekly.change]]) {
+  for (const [title, items] of [[t('pagesExtraCommon.whatWorked'), weekly.worked], [t('pagesExtraCommon.changeNextWeek'), weekly.change]]) {
     if (!items.length) continue;
     const section = el('section', 'insight-section');
     section.append(el('h4', '', title));

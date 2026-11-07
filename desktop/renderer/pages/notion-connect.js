@@ -44,7 +44,7 @@ function setMode(box) {
   box.sent = box.mode === 'move';   // a move-only prompt is no connect to report
   const why = shared.state?.notionReasons?.[box.reason];
   const words = box.mode !== 'move' ? reasonText(box.reason) : why && box.reason !== 'move' ? `Needed ${why}.` : '';
-  $('notion-connect-title').textContent = box.mode === 'move' ? 'Move your data to Notion' : GATE_TITLE;   // about Notion
+  $('notion-connect-title').textContent = box.mode === 'move' ? t('pagesStrategy.moveNotion') : GATE_TITLE;   // about Notion
   $('notion-connect-reason').textContent = words;
   show($('notion-connect-reason'), !!words);
   show($('notion-connect-move'), box.mode !== 'connect');
@@ -76,7 +76,7 @@ export function openNotionConnect({reason = 'none', where = 'dialog', from = 'di
 async function move(box) {
   box.moving = true;
   $('notion-connect-go').disabled = true;
-  message('notion-connect-message', 'Moving your data to Notion…', 'waiting');
+  message('notion-connect-message', t('pagesStrategy.movingNotion'), 'waiting');
   const result = await window.pilot.moveToNotion().catch(error => ({ok: false, error: error.message}));
   box.moving = false;
   $('notion-connect-go').disabled = false;
@@ -85,7 +85,7 @@ async function move(box) {
     // Stopped: nothing changed, the data is still on this Mac; the prompt stays open with "Move to Notion" to try again.
     box.mode = 'move';
     $('notion-connect-go').textContent = GO_LABEL.move;
-    message('notion-connect-message', result?.text || result?.error || 'Not moved.', 'error');
+    message('notion-connect-message', result?.text || result?.error || t('pagesStrategy.notMoved'), 'error');
     box.then?.(result);
     return;
   }
@@ -141,7 +141,7 @@ export function showNotionPanel() {
   const list = $('set-notion-benefits');
   if (!list.children.length) list.replaceChildren(...notionBenefits().children);
   show(list, !on);
-  $('set-notion-oauth').textContent = on ? 'Reconnect with Notion' : 'Connect with Notion';
+  $('set-notion-oauth').textContent = on ? t('pagesStrategy.reconnectNotion') : t('pagesStrategy.connectNotion');
 }
 
 // A page that needs Notion: until it is connected only the gate card shows. true = locked (don't load the page).
@@ -174,7 +174,7 @@ export function init() {
     show($('notion-connect-why'));
     $('notion-connect-later').textContent = t('pagesCommon.close');
   });
-  $('notion-connect-why').replaceChildren(el('span', 'muted small', 'Why not? (optional)'), ...WHY_CHOICES.map(([key, label]) => {
+  $('notion-connect-why').replaceChildren(el('span', 'muted small', t('pagesStrategy.whyNot')), ...WHY_CHOICES.map(([key, label]) => {
     const chip = el('button', 'ui-tag is-action', label);
     chip.type = 'button';
     chip.addEventListener('click', () => { if (current) current.why = key; $('notion-connect-dialog').close(); });

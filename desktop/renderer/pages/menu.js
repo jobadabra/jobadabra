@@ -63,7 +63,7 @@ function tour() {
   const stops = stopsFor(present);
   if (!stops.length) return;
   const card = document.createElement('div');
-  card.className = 'menu-tour'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Menu tour');
+  card.className = 'menu-tour'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', t('pagesStrategy.menuTour'));
   const title = document.createElement('b'), text = document.createElement('span'), count = document.createElement('small');
   const next = Object.assign(document.createElement('button'), {className: 'primary', textContent: t('pagesCommon.next')});
   const skip = Object.assign(document.createElement('button'), {className: 'link', textContent: t('pagesCommon.skip')});

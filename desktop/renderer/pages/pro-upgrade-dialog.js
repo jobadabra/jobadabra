@@ -20,8 +20,8 @@ function build() {
   tile.append(icon('sparkle'));
   close.type = 'button'; close.setAttribute('aria-label', t('pagesCommon.close')); close.append(icon('close'));
   close.addEventListener('click', () => box.close());
-  head.append(tile, el('h2', '', 'Upgrade to Pro'), close);
-  const list = el('ul', 'plan-list', ''), join = el('button', 'primary', 'Join the Pro waitlist'), row = el('div', 'inline', '');
+  head.append(tile, el('h2', '', t('pagesPlans.upgrade')), close);
+  const list = el('ul', 'plan-list', ''), join = el('button', 'primary', t('pagesPlans.joinWaitlist')), row = el('div', 'inline', '');
   list.append(...PRO_FEATURES.map(text => el('li', '', text)));
   join.id = 'pro-upgrade-join'; join.type = 'button';
   join.addEventListener('click', () => { box.close(); openWaitlist(); });

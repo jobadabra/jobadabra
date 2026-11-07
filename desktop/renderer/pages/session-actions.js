@@ -18,7 +18,7 @@ export async function removeSession(item) {
   if (sessionJob(item).stage === 'Applying') {
     const result = await window.pilot.sessionFinish(item.id);
     if (result?.cancelled) return;
-    if (!result?.ok) { toastMessage('Not removed', result?.error || `${storeName()} could not be updated. Try again.`, sessionPlace(item), 'bad'); return; }
+    if (!result?.ok) { toastMessage(t('pagesSessionStates.notRemoved'), result?.error || `${storeName()} could not be updated. Try again.`, sessionPlace(item), 'bad'); return; }
     jobsChanged(sessionJob(item), result.submitted ? {stage: 'Applied', status: 'applied'} : {stage: 'Kit ready', status: 'saved'});
   } else await window.pilot.sessionRemove(item.id);
   if (shared.openSessionId === item.id) shared.openSessionId = null;
@@ -34,11 +34,11 @@ export async function closeSession(item) {
 export async function cancelSession(item) {
   const result = await window.pilot.sessionCancel(item.id);
   if (result?.cancelled) return;
-  if (!result?.ok) { toastMessage('Not cancelled', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage(t('pagesSessionStates.notCancelled'), result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
   jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready', status: 'saved'} : {});
   // Why (2026-11-05, owner): cancellation confirms only the result, without internal stages or missing-tab instructions.
-  toastMessage('Application cancelled', '', NO_PLACE.done, 'info');
+  toastMessage(t('pagesSessionStates.cancelled'), '', NO_PLACE.done, 'info');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();
   if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs();
@@ -46,9 +46,9 @@ export async function cancelSession(item) {
 // Skip this role: give up. Claude stops, the form tab closes, the job is dismissed, the session goes (no question).
 export async function skipSession(item) {
   const result = await window.pilot.sessionSkip(item.id);
-  if (!result?.ok) { toastMessage('Not skipped', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage(t('pagesSessionStates.notSkipped'), result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   jobsChanged(sessionJob(item), {stage: 'Dismissed', status: 'dismissed'});
-  if (!result.closed) toastMessage('Role skipped', 'The job is dismissed. Its form tab wasn\'t found: close it in Chrome yourself.', NO_PLACE.outside, 'warn');
+  if (!result.closed) toastMessage(t('pagesSessionStates.roleSkipped'), t('pagesSessionStates.skipMissingTab'), NO_PLACE.outside, 'warn');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();
   if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs();
@@ -57,7 +57,7 @@ export async function skipSession(item) {
 export async function restartSession(item) {
   const result = await window.pilot.sessionRestart(item.id);
   if (result?.cancelled || result?.needsExtension) return;   // needsExtension: the install dialog is open (extension-needed.js)
-  if (!result?.ok) { toastMessage('Not started again', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage(t('pagesSessionStates.notRestarted'), result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   startedApplying(sessionJob(item));
   await refreshSessions();
   if (result.session?.id) openSession(result.session.id);
@@ -66,7 +66,7 @@ export async function restartSession(item) {
 export async function resumeSession(item) {
   const result = await window.pilot.sessionResume(item.id);
   if (result?.cancelled) return;   // Not now in the first-Apply dialog
-  if (!result?.ok) { toastMessage('Not resumed', result?.error || 'Claude could not be started.', sessionPlace(item), 'bad'); return; }
+  if (!result?.ok) { toastMessage(t('pagesSessionStates.notResumed'), result?.error || t('pagesSessionStates.claudeFailed'), sessionPlace(item), 'bad'); return; }
   logChoice[item.id] = true;
   shared.termShownFor = null;
   await refreshSessions();

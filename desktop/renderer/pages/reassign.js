@@ -68,7 +68,7 @@ export function whichJob(item, onSaved = null) {
     if (ok && onSaved) onSaved(jobOf(choice, item));
     return ok;
   };
-  open({title: 'Which job is this email about?', context: item.detail,
+  open({title: t('pagesReadyReports.whichJob'), context: item.detail,
     why: questionWhy(emailNoun({subject: item.subject}), item.company)});
 }
 
@@ -82,6 +82,6 @@ export async function init() {
     message('reassign-message', `Saving to ${storeName()}…`, 'waiting');
     const ok = await pending();
     $('reassign-save').disabled = false;
-    if (ok) $('reassign-dialog').close(); else message('reassign-message', 'Not saved. Try again.', 'error');
+    if (ok) $('reassign-dialog').close(); else message('reassign-message', t('pagesReadyReports.notSavedRetry'), 'error');
   });
 }

@@ -30,5 +30,5 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
     row.append(el('span', 'muted small', `${entry.title}: ${entry.value}`), undo);
     return row;
   });
-  return [el('b', '', 'Set aside'), el('p', 'muted small', 'You picked the other value. These are kept; Undo puts one back.'), ...rows];
+  return [el('b', '', t('pagesProfileMore.setAside')), el('p', 'muted small', t('pagesMisc.otherValue')), ...rows];
 }
