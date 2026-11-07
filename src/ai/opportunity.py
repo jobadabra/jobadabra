@@ -20,6 +20,7 @@ Usage:
 import argparse
 import hashlib
 import json
+from .. import notification_cards as cards
 import os
 import re
 import sys
@@ -241,7 +242,7 @@ def track(stores, lead, text, *, source, event_source, talking=False, at=None, g
         lead = {**lead, 'platform': 'Email'}  # found in Gmail: an email (LinkedIn's notification emails stay LinkedIn)
     url = url or lead_url(lead, text, gmail_id, seed)
     if stores.applications.get(url) or same_pitch(stores, lead):
-        return None, f'Already tracked: {label(lead)}'
+        return None, cards.words('inbox.alreadyLead', {'label': label(lead)})
     talking = talking or bool(lead.get('owner_agreed'))
     stage = 'Applied' if applied else 'Screening' if talking else LEAD_STAGE
     # A recruiter's pitch: it found you (Inbound, src/notion/origin.py); an Inbound job's title names who it is for
@@ -265,7 +266,8 @@ def track(stores, lead, text, *, source, event_source, talking=False, at=None, g
     if talking:
         rules.add_event(stores, record, 'Screening', event_source, note='Already talking to the recruiter when tracked')
     facts = ' · '.join(p for p in (lead.get('salary'), lead.get('location') or lead.get('work_mode')) if p)
-    return record, f"Tracked {'application' if applied else 'recruiter lead'}: {label(lead)}{f' · {facts}' if facts else ''} ({stage})"
+    return record, cards.words('inbox.trackedApplication' if applied else 'inbox.trackedLead',
+        {'label': label(lead), 'facts': f' · {facts}' if facts else '', 'stage': stage})
 
 
 def add_from_text(stores, text, *, client=None, model=DEFAULT_MODEL, source='Manual', event_source='CLI',

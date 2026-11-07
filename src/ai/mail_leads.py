@@ -4,7 +4,7 @@ from html import escape
 import re
 import sys
 
-from .. import tgcard
+from .. import notification_cards as cards
 from ..notion.ledger import REPLY
 from ..stores import rules
 from . import opportunity
@@ -59,7 +59,7 @@ def _from_email(stores, apps, result, email, stats, lines, on_new=None):
         rules.add_event(stores, row, 'Applied', 'Gmail', at=applied or None,
                         note=f'Applied without marking it; found in the email "{email["subject"][:120]}" (date is an upper bound)')
         apps.append(row)
-        lines.append(tgcard.block(_head(row, 'Applied'), f"Marked applied from this email (it was {escape(before)})."))
+        lines.append(cards.block(_head(row, 'Applied'), cards.words('mail.markedApplied', {'before': escape(before)})))
         if stats is not None:
             stats.setdefault('updates', []).append(f"➕ Marked applied · {company} — {role[:70]}")
         return row
@@ -132,7 +132,7 @@ def new_lead(stores, client, model, email, apps, stats, on_new=None):
         # this email's row; opportunity.label() ("Role — Client via Agency") drew a second card. Telegram below keeps the full label.
         stats.setdefault('updates', []).append(f"🤝 Recruiter lead · {_job_name(row)}"[:140])
     page = stores.link(row['id'])  # a store without pages (this Mac) has no link: the card shows none
-    link = (f"<a href=\"{escape(page, quote=True)}\">In Notion</a>" if page else '')
-    return [tgcard.block(f"New recruiter lead · {escape(opportunity.label(lead))}",
-                         escape(tgcard.dot(lead.get('salary'), fit)), link,
-                         tgcard.fact('Next step', 'set Stage to Screening once you reply'))], row
+    link = cards.join('', [f'<a href="{escape(page, quote=True)}">', cards.words('mail.inNotion'), '</a>']) if page else ''
+    return [cards.block(cards.words('mail.newLead', {'label': escape(opportunity.label(lead))}),
+                         cards.safe(cards.dot(lead.get('salary'), fit)), link,
+                         cards.fact(cards.words('notice.nextStep'), cards.words('mail.setScreening')))], row

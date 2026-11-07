@@ -11,6 +11,7 @@ from ..notion import cron_runs
 from ..notion import origin as origin_rule, titles
 from ..notion.ledger import _block
 from ..stores import base, rules
+from .. import notification_cards as cards
 from . import mail, opportunity
 from .inbox_dates import _day
 from .inbox_reading import APPLIED, images_of, step
@@ -181,12 +182,12 @@ def _fill_gaps(stores, app, item, report=None):
             was = (origin_rule.LABELS[_origin_of(app)] if field == 'origin' else app.get(field)) or ''
             now = changes.get(field)
             if field in changes and was and was != now:
-                report.append(f'{label} {was} → {now}')
+                report.append(cards.words('inbox.fieldChange', {'label': cards.canonical(label, cards.words('inbox.label.' + field)), 'was': was, 'now': now}))
     if changes:
         app.update(stores.applications.update(app['id'], changes))
-    named = {'title': f'the title "{title}"'} if fuller else {}
-    filled = [GAPS.get(field) or named[field] for field in changes if field in GAPS or field in named]
-    return filled + ([f'first contact on {platform}'] if set(changes) & FIRST_CONTACT else [])
+    named = {'title': cards.words('inbox.titleFilled', {'title': title})} if fuller else {}
+    filled = [cards.words('inbox.field.' + field) if field in GAPS else named[field] for field in changes if field in GAPS or field in named]
+    return filled + ([cards.words('inbox.firstContact', {'platform': platform})] if set(changes) & FIRST_CONTACT else [])
 
 
 FIRST_CONTACT = {'source', 'reached_via', 'notes'}

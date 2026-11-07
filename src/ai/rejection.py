@@ -25,12 +25,11 @@ Usage:
   python -m src.ai.rejection --pending [--limit 3] [--send]   # every Rejected application without a review
 """
 import argparse
-from html import escape
 import json
 import os
 import sys
 
-from .. import run_log, telegram, tgcard
+from .. import run_log, telegram, notification_cards as cards
 from ..notion import cron_runs
 from ..notion.ledger import RECORD_HEADING
 from ..stores import base, open_stores
@@ -189,8 +188,8 @@ def write(stores, app, result, model):
 
 def line(app, result):
     """One short line for Telegram and the desktop app's activity panel."""
-    return (f"{EMOJI[result['verdict']]} Why rejected · {app.get('company') or ''} — "
-            f"{(app.get('title') or '')[:60]}: {result['verdict']} ({result['confidence']}). {result['summary']}")
+    return cards.words('rejection.line', {'emoji': EMOJI[result['verdict']], 'company': app.get('company') or '',
+        'title': (app.get('title') or '')[:60], 'verdict': result['verdict'], 'confidence': result['confidence'], 'summary': result['summary']})
 
 
 def review(stores, app, *, email_text='', client=None, model=DEFAULT_MODEL, stats=None, profile=None):
@@ -247,8 +246,9 @@ def main(argv=None):
         run_log.log_run(stores, log)
     if args.send and lines:
         token, chat_id = telegram.credentials()
-        telegram.deliver(tgcard.card('Why it was rejected', f"{len(lines)} application{'s' if len(lines) != 1 else ''} reviewed",
-                                  ['\n'.join(map(escape, lines))], emoji='🔎'), token, chat_id)
+        message = cards.card(cards.words('rejection.title'), cards.words('rejection.reviewed', count=len(lines)),
+                             [cards.join('\n', [cards.safe(line) for line in lines])], emoji='🔎')
+        telegram.deliver(message, token, chat_id, **cards.delivery(message))
     print(f"Rejection review: {len(lines)} application(s) (${(stats or {}).get('usd', 0.0):.3f})")
     return 0
 

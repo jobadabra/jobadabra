@@ -5,6 +5,8 @@ Anthropic first-party rates, checked 2026-09-26; OpenAI rates below. An unpriced
 """
 import sys
 import threading
+from html import escape
+from .. import notification_cards as cards
 
 PRICES = {
     'claude-opus-5-5': (4.00, 20.00, 0.20),  # interview reviews and insights (checked 2026-09-30)
@@ -139,11 +141,16 @@ def stop_line(error):
     return f'AI stopped: {stopped(error)}' if stopped(error) else f'AI limit reached: {limit_reason(error)}'
 
 
-def limit_message(error, what, retry=''):
-    """The message a paused AI step sends (Telegram / the app), for the API's limit or Claude Code's."""
+def limit_message(error, what, retry='', *, notice=None):
+    """Keep canonical pause diagnostics; an explicit known end-user context adds only immutable presentation facts."""
     if cli_limit(error):
-        return f'⚠️ {what[0].upper()}{what[1:]} is paused. {error}'
-    return LIMIT_MESSAGE.format(what=what, retry=retry)
+        text, key = f'⚠️ {what[0].upper()}{what[1:]} is paused. {error}', 'limit.cli.'
+    else:
+        text, key = LIMIT_MESSAGE.format(what=what, retry=retry), 'limit.api.'
+    if notice not in ('interview', 'insight', 'weekly'):
+        return text
+    return cards.canonical(text, cards.words(key + notice, {'error': escape(str(error)), 'retry': retry}))
+
 
 
 LIMIT_MESSAGE = ('⚠️ The Anthropic API spend limit is reached, so {what} is paused. Raise the limit in the '

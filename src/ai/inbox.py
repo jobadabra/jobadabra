@@ -18,13 +18,14 @@ Usage:
 """
 import argparse
 import hashlib
+from html import unescape
 import re
 import sys
 from . import providers
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from .. import ledger_store
+from .. import ledger_store, notification_cards as cards
 from ..notion import client as notion, cron_runs, ledger  # noqa: F401 (cron_runs: re-exported for tests)
 from ..notion import origin as origin_rule, titles  # noqa: F401
 from ..notion.ledger import REPLY
@@ -196,7 +197,7 @@ def log(stores, *, text='', image=None, client=None, model=DEFAULT_MODEL, talkin
         item['interview_at'] = ''
     check = [] if proposal.get('confirmed') else unchecked(item, kind)
     if not proposal.get('confirmed') and ((proposal.get('fields') or {}).get('job') or {}).get('state') == 'ask':
-        check.append(f"which job it is ({len(proposal['fields']['job']['candidates'])} possible)")
+        check.append(cards.words('inbox.whichJob', count=len(proposal['fields']['job']['candidates'])))
     if not proposal.get('confirmed'):  # nobody confirmed the dates: a year-less one is this year's (and flagged)
         for key in ('when', 'first_contact'):
             if mail._when(item.get(key) or ''):
@@ -209,12 +210,12 @@ def log(stores, *, text='', image=None, client=None, model=DEFAULT_MODEL, talkin
     item['owner_agreed'] = talking  # opportunity.track reads it too: never a yes you didn't give
     if not (talking or proposal.get('confirmed')) and agreement(item) == 'unclear' \
             and agree_applies(proposal.get('new', True), proposal.get('stage') or ''):
-        check.append('whether you agreed to talk to the recruiter (not moved to Screening)')
+        check.append(cards.words('inbox.agreementCheck'))
     seed = hashlib.sha256(re.sub(r'\s+', ' ', text).lower().encode() + b''.join(s[1] for s in images_of(image))).hexdigest()[:16]
     source_id = f'paste:{seed}'
     when = item['when'] if mail._when(item.get('when') or '') else now.isoformat(timespec='seconds')
     if item.get('interview_at') and not ledger.plausible_interview(item['interview_at'], when):
-        check.append(f"call date {item['interview_at'][:10]} impossible for this message: not saved")
+        check.append(cards.words('inbox.impossibleDate', {'date': item['interview_at'][:10]}))
         item['interview_at'] = ''
     first_here = item.get('first_contact_here')
     # A new job's first contact: its first event is dated when the conversation began, so a later contact logged
@@ -233,14 +234,14 @@ def log(stores, *, text='', image=None, client=None, model=DEFAULT_MODEL, talkin
         app, line = opportunity.track(stores, lead, text, source=source, event_source=event_source, talking=talking,
                                       at=began or when, seed=seed, extra_markdown=extra, note=_noted(f'Logged: {summary}', item))
         if not app:
-            return 'ℹ️ ' + line
+            return cards.join('', ['ℹ️ ', line])
         if images_of(image) and not linked:  # this Mac's store, or Notion with no run open: the job's own files
             _attach_screenshots(stores, app['id'], image)
         if found is not None:
             found.update(row=app, created=True)
         fit = _rich(on_new, app, lead, text)
         noted = _last_message(stores, app, item, event_source, kind)
-        return '🤝 ' + line + (f' · {fit}' if fit else '') + (f' {noted}' if noted else '') + _check_line(check)
+        return cards.join('', ['🤝 ', line, f' · {fit}' if fit else '', cards.join('', [' ', noted]) if noted else '', _check_line(check)])
 
     created = False
     if app is None and job:  # an open job, not tracked yet
@@ -276,20 +277,22 @@ def log(stores, *, text='', image=None, client=None, model=DEFAULT_MODEL, talkin
         step('Saving the job description on the job')
         try:
             stores.applications.set_section(app['id'], DESCRIPTION_HEADING, about)
-            filled.append('the job description')
+            filled.append(cards.words('inbox.description'))
         except Exception as error:  # noqa: BLE001 — the update itself matters more
             print(f'Warning: job description not saved: {type(error).__name__}: {error}', file=sys.stderr)
         if not created and not app.get('fit'):
             step('Scoring how well the job fits you')
             fit = _rich(on_new, app, {**item, 'summary': about}, about)
             if fit:
-                filled.append(f'fit {fit}')
+                filled.append(cards.words('inbox.fit', {'fit': fit}))
     label = mail._label(app)
+    shown_label = unescape(label)  # The known HTML formatter escaped this label; the outer delivery boundary escapes its raw view once.
     changed = None
     if kind == OUTREACH and stage not in EARLY:  # the same pitch again (a follow-up would read as a reply)
         if not (talking and stage == opportunity.LEAD_STAGE):
             noted = _last_message(stores, app, item, event_source, kind)
-            return f'ℹ️ Already tracked: {label} ({stage}). ' + (f'Nothing new about the job. {noted}' if noted else 'Nothing new to log.')
+            return cards.canonical(f'ℹ️ Already tracked: {label} ({stage}). ' + (f'Nothing new about the job. {noted}' if noted else 'Nothing new to log.'),
+                cards.words('inbox.alreadyNoted' if noted else 'inbox.alreadyQuiet', {'label': shown_label, 'stage': stage, 'note': noted}))
     elif kind == UPDATE:  # a job already tracked: only its gaps, its description and who wrote last
         pass
     elif kind == OUTREACH:
@@ -313,21 +316,29 @@ def log(stores, *, text='', image=None, client=None, model=DEFAULT_MODEL, talkin
     if changed and not created and stage:  # the stage the job really has now (a kind that moved nothing changes nothing)
         after = (_row_for(stores, url) or app).get('stage')
         if after and after != stage:
-            changes.append(f'Stage {stage} → {after}')
-    said = f" Changed: {'; '.join(changes)}." if changes else ''
+            changes.append(cards.words('inbox.stageChange', {'before': stage, 'after': after}))
+    said = cards.join('', [cards.words('inbox.changedPrefix'), cards.join('; ', changes), '.']) if changes else ''
     if not changed and filled:
         _keep(stores, app, text, image, summary, when, _channel_named(item), check, changes)
-        return f"🧩 Updated: {label}: added {', '.join(filled)}.{said}{' ' + noted if noted else ''}{_check_line(check)}"
+        return cards.canonical(f"🧩 Updated: {label}: added {', '.join(filled)}.{said}{' ' + noted if noted else ''}{_check_line(check)}",
+            cards.words('inbox.filled', {'label': shown_label, 'fields': cards.join(', ', filled), 'changes': said,
+                'noted': cards.join('', [' ', noted]) if noted else '', 'check': _check_line(check)}))
     if not changed and noted:
         _keep(stores, app, text, image, summary, when, _channel_named(item), check, changes)
-        return f'ℹ️ Already tracked: {label} ({stage}). Nothing new about the job. {noted}{said}{_check_line(check)}'
+        return cards.canonical(f'ℹ️ Already tracked: {label} ({stage}). Nothing new about the job. {noted}{said}{_check_line(check)}',
+            cards.words('inbox.alreadyDetailed', {'label': shown_label, 'stage': stage, 'note': noted, 'changes': said, 'check': _check_line(check)}))
     if not changed:
-        return f'ℹ️ Already tracked: {label} ({stage}). Nothing new to log.' if kind == UPDATE else f'ℹ️ Already logged: {label} ({stage})'
+        return cards.canonical(f'ℹ️ Already tracked: {label} ({stage}). Nothing new to log.' if kind == UPDATE else f'ℹ️ Already logged: {label} ({stage})',
+            cards.words('inbox.alreadyQuiet' if kind == UPDATE else 'inbox.alreadyLogged', {'label': shown_label, 'stage': stage}))
     _keep(stores, app, text, image, summary, when, _channel_named(item), check, changes)
     fit = _rich(on_new, app, item, text) if created and not job else None  # an open job was scored by its search
     verb = 'Tracked' if created else 'Updated'
-    return (f"{EMOJI.get(kind, '•')} {verb}: {label} → {changed}. {summary}" + (f' · {fit}' if fit else '')
+    canonical_reply = (f"{EMOJI.get(kind, '•')} {verb}: {label} → {changed}. {summary}" + (f' · {fit}' if fit else '')
             + (f" Added {', '.join(filled)}." if filled else '') + said + (f' {noted}' if noted else '') + _check_line(check))
+    return cards.canonical(canonical_reply, cards.words('inbox.tracked' if created else 'inbox.updated', {
+        'emoji': EMOJI.get(kind, '•'), 'label': shown_label, 'stage': changed, 'summary': summary,
+        'fit': f' · {fit}' if fit else '', 'added': cards.words('inbox.added', {'fields': cards.join(', ', filled)}) if filled else '',
+        'changes': said, 'noted': cards.join('', [' ', noted]) if noted else '', 'check': _check_line(check)}))
 
 
 def load_image(path):

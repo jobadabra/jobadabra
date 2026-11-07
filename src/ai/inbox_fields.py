@@ -1,6 +1,7 @@
 """📥 Log anything, part 4: the confirmation step's questions (fields: ok / check / ask), the agreement to talk, and what an
 unconfirmed log took on trust. Re-exported by src/ai/inbox.py. Tests: tests/unit/ai/test_inbox_confirm.py, tests/unit/ai/test_inbox.py.
 """
+from .. import notification_cards as cards
 from ..notion import ledger
 from ..notion import origin as origin_rule
 from . import mail, opportunity
@@ -113,11 +114,11 @@ def unchecked(item, kind):
     """What a log that wasn't confirmed (Telegram, the terminal) took on trust, for its reply and its page entry."""
     seen, notes = item.get('seen') or {}, []
     if seen.get('year') == 'missing' and not item.get('first_contact_resolved') and (item.get('when') or item.get('first_contact')):
-        notes.append(f"year assumed{_as_written(item.get('first_contact_text'))}")
+        notes.append(cards.words('inbox.yearAssumed', {'written': _as_written(item.get('first_contact_text'))}))
     if seen.get('channel') != 'shown':
-        notes.append(f"channel {item.get('platform') or 'unknown'} guessed")
+        notes.append(cards.words('inbox.channelGuessed', {'channel': item.get('platform') or cards.words('inbox.unknown')}))
     if seen.get('interview') == 'partial' and item.get('interview_at'):
-        notes.append(f"call time guessed{_as_written(item.get('interview_text'))}")
+        notes.append(cards.words('inbox.timeGuessed', {'written': _as_written(item.get('interview_text'))}))
     if kind != UPDATE:  # "Update on this job" follows from the job being tracked, not from Claude's reading
-        notes.append(f'kind "{kind}" read by {providers.who()}')
+        notes.append(cards.words('inbox.kindRead', {'kind': kind, 'provider': providers.who()}))
     return notes

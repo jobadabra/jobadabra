@@ -3,7 +3,7 @@ the Telegram summary. Re-exported by src/ai/interviews.py. Tests: tests/unit/ai/
 """
 from html import escape
 
-from .. import tgcard
+from .. import notification_cards as cards
 from ..notion import titles
 from ..notion.ledger import plain
 from ..notion.titles import named
@@ -88,27 +88,27 @@ def review_fields(result, app, today, model, usd, source):
 
 
 def message(result, app, page_url, usd, truncated=False, merged=None, stage=None):
-    title = (tgcard.dot(app.get('company') or '', titles.role_of(app.get('title') or '', app.get('company') or '', app.get('via') or ''))
-             if app else f"{named(result['company']) or 'Unknown company'} · not linked to an application")
+    title = (cards.dot(app.get('company') or '', titles.role_of(app.get('title') or '', app.get('company') or '', app.get('via') or ''))
+             if app else cards.words('interview.unlinked', {'company': named(result['company']) or cards.words('interview.unknownCompany')}))
     weak = [q for q in result['questions'] if q['quality'] in ('weak', 'not_answered')]
-    blocks = [tgcard.block(escape(title), escape(result['summary']))]
+    blocks = [cards.block(cards.safe(title), escape(result['summary']))]
     if result['strengths']:
-        blocks.append(tgcard.block('Strong', *[f'• {escape(s)}' for s in result['strengths'][:3]]))
+        blocks.append(cards.block(cards.words('interview.strong'), *[f'• {escape(s)}' for s in result['strengths'][:3]]))
     if weak:
-        blocks.append(tgcard.block(f'Weak answers ({len(weak)} of {len(result["questions"])})', *[
+        blocks.append(cards.block(cards.words('interview.weak', {'weak': len(weak), 'total': len(result['questions'])}), *[
             f"• {escape(q['topic'])}: {escape(q['better'] or q['question'])}" for q in weak[:3]]))
     if result['practice']:
-        blocks.append(tgcard.block('Practise', *[f'• {escape(p)}' for p in result['practice'][:3]]))
-    blocks.append(tgcard.block('Next step', escape(result['next_step']), f'Stage → {escape(stage)}' if stage else ''))
+        blocks.append(cards.block(cards.words('interview.practise'), *[f'• {escape(p)}' for p in result['practice'][:3]]))
+    blocks.append(cards.block(cards.words('notice.nextStep'), escape(result['next_step']), cards.words('interview.stage', {'stage': escape(stage)}) if stage else ''))
     extra = changes_lines(merged)
     if extra:
-        blocks.append(tgcard.block('Changes', *extra))
-    notes = (['The transcript was very long; only the first part was analysed.'] if truncated else []) \
-        + ([] if app else ['Link it to its application in Notion (Application column).'])
+        blocks.append(cards.block(cards.words('interview.changes'), *extra))
+    notes = ([cards.words('interview.truncated')] if truncated else []) \
+        + ([] if app else [cards.words('interview.linkApplication')])
     if notes:
-        blocks.append('\n'.join(escape(n) for n in notes))
-    return tgcard.card('Interview review', result['round'], blocks, emoji='🎤',
-                       footer=f'<a href="{escape(page_url, quote=True)}">Full analysis and transcript</a> · ${usd:.3f}')
+        blocks.append(cards.join('\n', [cards.safe(n) for n in notes]))
+    return cards.card(cards.words('interview.title'), result['round'], blocks, emoji='🎤',
+                       footer=cards.join('', [f'<a href="{escape(page_url, quote=True)}">', cards.words('interview.full'), f'</a> · ${usd:.3f}']))
 
 
 def changes_lines(merged):
@@ -117,10 +117,9 @@ def changes_lines(merged):
         return []
     lines = []
     if merged['filled']:
-        lines.append('Added to the job: ' + escape('; '.join(f"{f['label']}: {f['value']}" for f in merged['filled'])))
+        lines.append(cards.words('interview.added', {'facts': escape('; '.join(f"{f['label']}: {f['value']}" for f in merged['filled']))}))
     for fact in merged['differs']:
-        lines.append(f"{escape(fact['label'])}: the call said “{escape(fact['value'])}”, the job says "
-                     f"“{escape(fact['current'])}” (not changed)")
+        lines.append(cards.words('interview.differs', {'label': escape(fact['label']), 'value': escape(fact['value']), 'current': escape(fact['current'])}))
     return lines
 
 

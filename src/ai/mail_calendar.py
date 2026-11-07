@@ -4,7 +4,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from html import escape
 
-from .. import tgcard
+from .. import notification_cards as cards
 from . import cost, meanings
 from .insights_data import interview_stats
 from .mail_config import TZ
@@ -50,8 +50,8 @@ def calendar_pass(stores, google, client, model, apps, index, state, stats, now=
                              f"cal:{event['id']}", f"Calendar: {event.get('summary', '')[:150]} at {start.astimezone(TZ):%a %d %b %H:%M}",
                              index, start.isoformat(), now)
             if changed:
-                lines.append(tgcard.block(_head(row, 'Interview'), f"{start.astimezone(TZ):%a %d %b · %H:%M}",
-                                          tgcard.fact('Event', event.get('summary', '')[:80]), tgcard.fact('Source', 'Google Calendar')))
+                lines.append(cards.block(_head(row, 'Interview'), f"{start.astimezone(TZ):%a %d %b · %H:%M}",
+                                          cards.fact(cards.words('calendar.event'), event.get('summary', '')[:80]), cards.fact(cards.words('calendar.source'), 'Google Calendar')))
                 _short(stats, 'Interview scheduled', row, f" · {start.astimezone(TZ):%a %d %b %H:%M}")
         notes += reminders(stores, row, event, start, end, state, now)
     return lines, notes
@@ -70,9 +70,9 @@ def reminders(stores, row, event, start, end, state, now):
         state['notified'].append(key_after)
         # Already reviewed (a recording or notes saved from the app, Telegram or /interview on or after the call's day): don't ask.
         if not reviewed_since(stores, row, start.astimezone(TZ).date().isoformat()):
-            messages.append(tgcard.card('How did it go?', '', [tgcard.block(_head(row, 'Interview'),
-                tgcard.fact('Next step', 'send the transcript (or /interview with your notes) for a review'),
-                tgcard.fact('Caption', f"{_who(row)}, {event.get('summary', 'interview')[:40]}"))], emoji='🎤'))
+            messages.append(cards.card(cards.words('calendar.how'), '', [cards.block(_head(row, 'Interview'),
+                cards.fact(cards.words('notice.nextStep'), cards.words('calendar.sendTranscript')),
+                cards.fact(cards.words('calendar.caption'), cards.join('', [_who(row), ', ', event['summary'][:40] if 'summary' in event else cards.words('calendar.interview')])))], emoji='🎤'))
     return messages
 
 
@@ -93,13 +93,13 @@ def prep_message(stores, row, event, start, day):
     people = [a.get('displayName') or a.get('email', '') for a in event.get('attendees', []) if not a.get('self')]
     weak = list(interview_stats(stores)['topics_answered_weakly'])[:3]
     link = event.get('hangoutLink') or event.get('location') or ''
-    blocks = [tgcard.block(_head(row, 'Interview'), escape(f"{day} · {start.astimezone(TZ):%H:%M}"), escape(event.get('summary', '')),
-                           escape(link), tgcard.fact('With', ', '.join(people[:5])))]
+    blocks = [cards.block(_head(row, 'Interview'), cards.safe(cards.join(' · ', [cards.words('calendar.tomorrow' if day == 'Tomorrow' else 'calendar.today') if day in ('Tomorrow', 'Today') else day, f'{start.astimezone(TZ):%H:%M}'])), escape(event.get('summary', '')),
+                           escape(link), cards.fact(cards.words('calendar.with'), ', '.join(people[:5])))]
     if weak:
-        blocks.append(tgcard.block('Answered weakly in past interviews', *[f'• {escape(t)}' for t in weak]))
+        blocks.append(cards.block(cards.words('calendar.weak'), *[f'• {escape(t)}' for t in weak]))
     if _field(row, 'next_step'):
-        blocks.append(tgcard.block('Next step', escape(_field(row, 'next_step'))[:300]))
+        blocks.append(cards.block(cards.words('notice.nextStep'), escape(_field(row, 'next_step'))[:300]))
     page = stores.link(row['id'])  # a store without pages (this Mac) has no link to give
-    blocks.append('Recording? Ask everyone for consent at the start.'
-                  + (f"\n<a href=\"{escape(page, quote=True)}\">Application in Notion</a>" if page else ''))
-    return tgcard.card('Interview ' + day.lower(), '', blocks, emoji='🗓')
+    blocks.append(cards.join('', [cards.words('calendar.consent'),
+                  cards.join('', [f'\n<a href="{escape(page, quote=True)}">', cards.words('calendar.application'), '</a>']) if page else '']))
+    return cards.card(cards.words('calendar.titleTomorrow' if day == 'Tomorrow' else 'calendar.titleToday') if day in ('Tomorrow', 'Today') else 'Interview ' + day.lower(), '', blocks, emoji='🗓')

@@ -8,7 +8,7 @@ import re
 from collections import Counter
 from datetime import datetime, timezone
 from html import escape
-from . import digest, employer_index, features, role_kinds, run_log, scout, store, telegram, tgcard
+from . import digest, employer_index, features, role_kinds, run_log, scout, store, telegram, tgcard, notification_cards as cards
 from .ai import cost, enrich, kit, provenance, score
 from .notion import client as notion, cron_runs, matches
 from .paths import JOBS_DB, REPORTS, load_search_config
@@ -167,8 +167,8 @@ def apply_message(db, code, stores, action='applied'):
     (tests/unit/notion/test_daily_store_notion.py)."""
     job = find_job(db, code) or tracked_job(code, stores)
     if not job:
-        where = 'Notion' if stores.name == 'notion' else 'the app'
-        return f"⚠️ <b>Job not found</b>\nNo job with code <code>{escape(code)}</code>. It may have closed; add it in {where} manually."
+        where = 'Notion' if stores.name == 'notion' else cards.words('notice.app')
+        return cards.words('apply.notFound', {'code': escape(code), 'where': where})
     stage = ACTIONS[action]
     found, outcome = rules.mark(stores, job, stage)
     page = {'id': found['id'], 'url': stores.link(found['id']) or ''}
@@ -182,15 +182,12 @@ def apply_message(db, code, stores, action='applied'):
         except Exception as error:
             print(f'Warning: application record skipped: {type(error).__name__}: {error}')
         queue_mail_check()
-    link = f'<a href="{escape(page.get("url", ""), quote=True)}">Notion</a>' if page.get('url') else 'the app'
+    link = f'<a href="{escape(page.get("url", ""), quote=True)}">Notion</a>' if page.get('url') else cards.words('notice.app')
     title = f"{escape(job['title'])}\n{escape(job['company'])}"
     if outcome == 'unchanged':
-        return f"ℹ️ <b>Already tracked</b>\n{title}\n\n<b>Next step</b>\nSee {link}."
-    return {
-        'Applied': f"✅ <b>Marked applied</b>\n{title}\n\n<b>Next step</b>\nIt won't appear in digests again. Track the stage in {link}.",
-        'Saved': f"⭐ <b>Saved</b>\n{title}\n\n<b>Next step</b>\nIt stays in digests with a star; /saved lists your saved jobs.",
-        'Dismissed': f"❌ <b>Dismissed</b>\n{title}\n\n<b>Next step</b>\nIt won't appear again, and helps tune the scores.",
-    }[stage]
+        return cards.words('apply.already', {'title': title, 'link': link, 'next': cards.words('notice.nextStep')})
+    keys = {'Applied': 'apply.applied', 'Saved': 'apply.saved', 'Dismissed': 'apply.dismissed'}
+    return cards.words(keys[stage], {'title': title, 'link': link, 'next': cards.words('notice.nextStep')})
 
 
 def queue_mail_check(delay=5):

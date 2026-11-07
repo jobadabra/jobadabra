@@ -8,7 +8,7 @@ import json
 import os
 from html import escape
 from pathlib import Path
-from . import features, import_url, store, telegram
+from . import features, import_url, store, telegram, notification_cards as cards
 from .app_source import APP_SOURCE
 from .ai import added, cost, inbox, insights, interview_insights, interviews, kit
 from .notion import client as notion, cron_runs, ledger
@@ -82,7 +82,7 @@ def apply_mode(args, stores=None):
     print(reply)
     # Save/Dismiss are already confirmed on the button itself; only Applied gets a message (Notion link).
     if args.send and args.action == 'applied':
-        telegram.deliver(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials(), **cards.delivery(reply))
     return 0
 
 
@@ -207,7 +207,7 @@ def add_message_mode(args, stores=None):
                                      agency=args.agency, last_at=args.last_at,
                                      first_contact=None if args.first_contact is None else args.first_contact == 'yes',
                                      agreed=None if args.agreed is None else args.agreed == 'yes', origin=args.origin)
-        reply = escape(inbox.log(stores, text=args.note or '', image=image, source=source,
+        reply = cards.safe(inbox.log(stores, text=args.note or '', image=image, source=source,
                                  event_source=_add_source(args),
                                  talking=args.action == 'talking', stats=run['mail'], target=args.target,
                                  on_new=added.hook(stores, args.db, run), proposal=proposal, found=found))
@@ -226,7 +226,7 @@ def add_message_mode(args, stores=None):
         log_ai_run(stores, run, args, failed=failed)
     print(log_text(reply))  # the log (and the app) get plain text; Telegram gets the HTML
     if args.send:
-        telegram.deliver(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials(), **cards.delivery(reply))
     return 1 if failed else 0
 
 
@@ -250,16 +250,14 @@ def add_link_mode(args, stores=None):
                 fit = added.process(db, args.job, meta, stats=run, stores=stores)
             except Exception as error:  # noqa: BLE001
                 print(f'Warning: AI stages skipped: {type(error).__name__}: {error}')
-            reply = '📥 ' + escape(ledger_store.add_application(stores, args.job, applied=applied, approx=approx, source=_add_source(args),
-                                                               meta=meta, found=found, origin=args.origin))
+            reply = cards.join('', ['📥 ', cards.safe(ledger_store.add_application(stores, args.job, applied=applied, approx=approx, source=_add_source(args),
+                                                               meta=meta, found=found, origin=args.origin))])
             if fit:
-                reply += f' · {escape(fit)}'
+                reply = cards.join('', [reply, f' · {escape(fit)}'])
             if ledger.walled(args.job) and not meta.get('description'):
-                reply += ('\nℹ️ That page showed a sign-in page instead of the posting. For the fit score and facts, send me a screenshot of '
-                          'the job posting too, or add it in the app with its text.')
+                reply = cards.join('', [reply, cards.words('receipt.walled')])
             elif not fit and not (meta.get('description') or '').strip():
-                reply += ('\nℹ️ The posting text could not be read, so it is not scored yet. Add its text (the app asks for it) '
-                          'for the fit score and facts.')
+                reply = cards.join('', [reply, cards.words('receipt.noPosting')])
             # The app's Jobs list shows it too, as Applied (the local cache of the Applications row just written).
             store.track_applied(db, args.job, meta)
         queue_mail_check()
@@ -274,7 +272,7 @@ def add_link_mode(args, stores=None):
         log_ai_run(stores, run, args, failed=failed)
     print(log_text(reply))  # the log (and the app) get plain text; Telegram gets the HTML
     if args.send:
-        telegram.deliver(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials(), **cards.delivery(reply))
     return 1 if failed else 0
 
 
@@ -283,7 +281,7 @@ def interview_mode(args, stores=None):
     # Telegram only to send the summary or fetch a file sent to the bot; the app's reviews work without it.
     from_bot = bool(args.file) and not Path(args.file).is_file()
     token, chat_id = telegram.credentials() if args.send or from_bot else (None, None)
-    sender = (lambda text: telegram.deliver(text, token, chat_id, urgent=True)) if args.send else None   # an interview review is answered at once, never held for a batch
+    sender = (lambda text: telegram.deliver(text, token, chat_id, urgent=True, **cards.delivery(text))) if args.send else None   # an interview review is answered at once, never held for a batch
     run = new_cron_run('interview')
     run['interview'] = {}
     reviewed = {}  # the job the interview is linked to, once known (interviews.run fills it)
@@ -314,8 +312,7 @@ def interview_mode(args, stores=None):
             raise
         run_url = f"{os.getenv('GITHUB_SERVER_URL', 'https://github.com')}/{os.getenv('GITHUB_REPOSITORY', '')}/actions/runs/{os.getenv('GITHUB_RUN_ID', '')}"
         message = cost.limit_message(error, 'the interview review', retry=(
-            ' Your transcript is kept: after raising it, send it again, or re-run '
-            f'<a href="{escape(run_url, quote=True)}">this run</a>.' if os.getenv('GITHUB_RUN_ID') else ''))
+            cards.words('limit.retryInterview', {'url': escape(run_url, quote=True)}) if os.getenv('GITHUB_RUN_ID') else ''), notice='interview')
         print(message)
         if sender:
             sender(message)
@@ -341,7 +338,7 @@ def insight_mode(args, stores=None):
         return 0
     stores = _run_store(stores, f'--mode {args.mode} requires NOTION_TOKEN')
     kind = 'weekly' if args.mode == 'weekly' else 'activity'   # the weekly report is its own mail under the person's "Weekly summary" switch (src/notify.py ROW_OF)
-    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup, kind=kind)) if args.send else telegram.to_app
+    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup, kind=kind, **cards.delivery(text, markup))) if args.send else telegram.to_app
     with store.connect(args.db) as db:
         make = insights.run if args.mode == 'insight' else insights.weekly
         run = new_cron_run(args.mode)
@@ -356,10 +353,10 @@ def insight_mode(args, stores=None):
         except Exception as error:
             if not cost.limit_reached(error):
                 raise
-            message = cost.limit_message(error, f'the {args.mode} report')
+            message = cost.limit_message(error, f'the {args.mode} report', notice=args.mode)
             print(message)
             if args.send:
-                telegram.deliver(message, *telegram.credentials())
+                telegram.deliver(message, *telegram.credentials(), **cards.delivery(message))
             else:
                 telegram.to_app(message)
             # Closed here as a warning that names the limit: left open, the end-of-process guard wrote the row as Failed ("Insight failed") while the run exited 0.
