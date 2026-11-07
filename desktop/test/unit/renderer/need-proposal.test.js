@@ -62,7 +62,7 @@ test('every way the card is fed shows proposals: Claude\'s message (askRow) and 
 
 test('Enter in an answer box presses its button, for every row with one (Use, Fill it in, Send)', () => {
   const sources = ['session-needs.js', 'need-proposal.js'].map(name => fs.readFileSync(new URL(`../../../renderer/pages/${name}`, import.meta.url), 'utf8')).join('\n');
-  const buttons = [...sources.matchAll(/const (\w+) = smallButton\('(Use|Fill it in|Send)'/g)];
+  const buttons = [...sources.matchAll(/const (\w+) = smallButton\(t\('(pagesStrategy\.use|pagesSession\.fillIt|pagesSession\.send)'\)/g)];
   assert.equal(buttons.length, 3);
   for (const [, name, text] of buttons) assert.match(sources, new RegExp(`submitOnEnter\\(input, ${name}\\)`), `${text}: Enter does nothing`);
   // The page module needs a DOM to import: the helper is run from its own source.

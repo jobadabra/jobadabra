@@ -1,5 +1,6 @@
 // Ready to send, the app's calls to the site (lib/ready-site.js) and the window's handlers (lib/ready-handlers.js): the card shows only for the owner, a send reaches /api/ready/batch with the install key, and nothing else is sent.
 import test from 'node:test';
+import {t} from '../../../i18n/index.js';
 import assert from 'node:assert/strict';
 import {done, link, owner, ownerSecret, runNow, send, status, useKeychainReader, video} from '../../../lib/ready-site.js';
 import {setSiteOff} from '../../../lib/recipes.js';
@@ -105,7 +106,10 @@ test('the card never says "send" for what is only a fill on the server, and says
   const {readFileSync} = await import('node:fs');
   const card = readFileSync(new URL('../../../renderer/pages/ready-card.js', import.meta.url), 'utf8');
   assert.ok(!/'Send tonight'|'Run now'|Sending tonight/.test(card));
-  for (const label of ['Fill tonight on the server', 'Fill now', 'nothing is submitted', 'not submitted']) assert.ok(card.includes(label), label);
+  for (const key of ['pagesReadyReports.fillTonight', 'pagesCommon.fillNow', 'pagesExtraLabels.handingNight', 'pagesShortReady.m279']) assert.ok(card.includes(key), key);
+  assert.equal(t('pagesReadyReports.fillTonight'), 'Fill tonight on the server');
+  assert.match(t('pagesShortReady.m279', {queued: 1, count: 1, night: 'demo', value4: ''}), /not submitted/);
+  assert.match(t('pagesExtraLabels.handingNight'), /nothing is submitted/);
 });
 
 test('a failed row says why when the night gave a reason, and never a bare internal word', () => {
