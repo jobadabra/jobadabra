@@ -13,5 +13,7 @@ export const messages = {
   "heading": "Это заголовок, а не ответ: он не сохраняется",
   "choiceClosed": "Этот выбор больше не открыт",
   "restoreMissing": "Для этого списка нет места для восстановления",
-  "restoreFailed": "Не удалось сохранить"
+  "restoreFailed": "Не удалось сохранить",
+  "typeAnswerNow": "Введите ответ",
+  "restoreFactMissing": "Для этого факта нет места для восстановления"
 };

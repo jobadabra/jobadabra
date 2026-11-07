@@ -117,7 +117,7 @@ test('actual location errors preserve external failures and unknown validation t
   const invalid=await locations.resolveLocation(storage,'acceptable','invalid');setLocale('en');assert.deepEqual(await locations.resolveLocation(storage,'acceptable','invalid'),invalid);assert.equal(invalid.ok,false);assert.deepEqual(s.writes,[]);
 });
 
-test('delegated producer errors pass through unchanged pending their separate presentation pass',async t=>{
+test('delegated producer errors pass through unchanged after producer-owned localization',async t=>{
   const {s,storage}=rig(t);s.settings.profileConflicts=[{topic:'raw topic',home:'availability',choices:[{value:'raw pick'}]}];
   for(const locale of SUPPORTED_LOCALES){setLocale(locale);
     for(const [kind,ref,value,error] of [['which',{topic:'raw topic'},'raw pick','That choice is no longer open'],['contact',{field:'email'},'raw','That question is no longer open'],['cvcheck',{fact:'raw-id'},'raw','It did not save; nothing else changed']]){

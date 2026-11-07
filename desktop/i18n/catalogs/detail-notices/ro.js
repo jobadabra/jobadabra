@@ -13,5 +13,7 @@ export const messages = {
   "heading": "Acesta este un titlu, nu un răspuns: nu este păstrat",
   "choiceClosed": "Această alegere nu mai este deschisă",
   "restoreMissing": "Această listă nu are un loc în care să fie restaurată",
-  "restoreFailed": "Nu s-a salvat"
+  "restoreFailed": "Nu s-a salvat",
+  "typeAnswerNow": "Scrie răspunsul",
+  "restoreFactMissing": "Acest fapt nu are un loc în care să fie restaurat"
 };

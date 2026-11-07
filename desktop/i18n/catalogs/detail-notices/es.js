@@ -13,5 +13,7 @@ export const messages = {
   "heading": "Es un encabezado, no una respuesta: no se conserva",
   "choiceClosed": "Esta opción ya no está abierta",
   "restoreMissing": "Esta lista no tiene un lugar donde restaurarse",
-  "restoreFailed": "No se guardó"
+  "restoreFailed": "No se guardó",
+  "typeAnswerNow": "Escribe la respuesta",
+  "restoreFactMissing": "Este dato no tiene un lugar donde restaurarse"
 };

@@ -6,6 +6,7 @@
 // ("Mobile" answers Phone). Kept per set (settings.contactAsks), so a Profile is read once. The weight is that importance, raised by what forms measurably asked
 // (renderer/question-filter.js factScore). The same wording asks a contact value the CV proposes (lib/cv-queue.js). No AI: the first four empty fields' own labels, in the
 // schema's order. Guarded by test/unit/main/details-review.test.js (the class loop), test/unit/main/contact-review.test.js and test/unit/main/queue-wording.test.js.
+import {t} from '../i18n/detail-notices.js';
 import * as contactDetails from './contact.js';
 import {written} from './queue-wording.js';
 import {BLOCKED, MUST} from '../renderer/question-filter.js';
@@ -54,10 +55,10 @@ export async function wordsFor(storage, keys, options = {}) {
 // The person's answer into its field; nothing else in the details changes. -> {ok, homeName, error}
 export async function answer(storage, field, value, {fetcher} = {}) {
   const given = String(value ?? '').replace(/\s+/g, ' ').trim();
-  if (!contactDetails.LABELS[field] || NEVER.has(field)) return {ok: false, error: 'That question is no longer open'};
-  if (!given) return {ok: false, error: 'Type the answer'};
+  if (!contactDetails.LABELS[field] || NEVER.has(field)) return {ok: false, error: t('detailNotice.questionClosed')};
+  if (!given) return {ok: false, error: t('detailNotice.typeAnswerNow')};
   await contactDetails.save(storage, {...await contactDetails.read(storage, fetcher), [field]: given}, fetcher);
-  return String((await contactDetails.read(storage, fetcher))[field] || '').trim() ? {ok: true, homeName: 'Your details → Contact details'} : {ok: false, error: 'It did not save; nothing else changed'};
+  return String((await contactDetails.read(storage, fetcher))[field] || '').trim() ? {ok: true, homeName: 'Your details → Contact details'} : {ok: false, error: t('detailNotice.saveFailed')};
 }
 
 export const format = {kind: 'text', list: '', options: [], constraints: false, control: 'text'};

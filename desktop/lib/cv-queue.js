@@ -4,6 +4,7 @@
 // file) and the base facts of lib/fact-catalog.js (work permit, sponsorship, notice, start, salary, languages), read from the CV by ONE AI call, cached per CV file in
 // cv/fact-proposals.json. The AI decides what the CV implies and says how (stated / inferred) and why; the code only validates the shape. Confirm saves the value into
 // its home (a Your details section, or 📇 Contact details); an edit replaces it. A value is never saved without that press. Guarded by test/unit/main/cv-queue.test.js.
+import {t} from '../i18n/detail-notices.js';
 import fs from 'node:fs';
 import * as contactDetails from './contact.js';
 import * as fromCv from './contact-from-cv.js';
@@ -93,16 +94,16 @@ export async function items(storage, {fetcher, client, have = [], never = [], wo
 // Confirm (the proposed value) or an edit (the new one). -> {ok, homeName, error}
 export async function answer(storage, ref, value, {fetcher, save} = {}) {
   const text = String(value ?? '').trim();
-  if (!text) return {ok: false, error: 'Type the answer'};
+  if (!text) return {ok: false, error: t('detailNotice.typeAnswerNow')};
   if (ref.contact) {
-    if (!contactDetails.LABELS[ref.contact]) return {ok: false, error: 'That question is no longer open'};
+    if (!contactDetails.LABELS[ref.contact]) return {ok: false, error: t('detailNotice.questionClosed')};
     const contact = await contactDetails.read(storage, fetcher);
     await contactDetails.save(storage, {...contact, [ref.contact]: text}, fetcher);
-    return (await contactDetails.read(storage, fetcher))[ref.contact] === text ? {ok: true, homeName: 'Your details → Contact details'} : {ok: false, error: 'It did not save; nothing else changed'};
+    return (await contactDetails.read(storage, fetcher))[ref.contact] === text ? {ok: true, homeName: 'Your details → Contact details'} : {ok: false, error: t('detailNotice.saveFailed')};
   }
   const fact = byId(ref.fact);
-  if (!fact) return {ok: false, error: 'That question is no longer open'};
-  return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
+  if (!fact) return {ok: false, error: t('detailNotice.questionClosed')};
+  return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: t('detailNotice.saveFailed')};
 }
 
 // An install whose CV was never read for its details (it was set up before the wizard step): the same read the setup runs, once per CV file, when the queue opens

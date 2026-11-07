@@ -13,5 +13,7 @@ export const messages = {
   "heading": "Das ist eine Überschrift, keine Antwort: Sie wird nicht beibehalten",
   "choiceClosed": "Diese Auswahl ist nicht mehr offen",
   "restoreMissing": "Diese Liste hat keinen Ort, an dem sie wiederhergestellt werden kann",
-  "restoreFailed": "Es wurde nicht gespeichert"
+  "restoreFailed": "Es wurde nicht gespeichert",
+  "typeAnswerNow": "Gib die Antwort ein",
+  "restoreFactMissing": "Dieser Fakt hat keinen Ort, an dem er wiederhergestellt werden kann"
 };
