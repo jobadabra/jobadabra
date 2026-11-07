@@ -21,7 +21,7 @@ const noNotion = async url => { throw new Error(`Notion was called: ${url}`); };
 
 test('the CV and the cover letter are not uploaded to Notion when the store is this Mac', async () => {
   const storage = onThisMacWithNotionLeft();
-  assert.deepEqual(await files.syncCv(storage, noNotion), {skipped: 'the data is on this Mac'});
+  assert.deepEqual(await files.syncCv(storage, noNotion), {skipped: `the data is on this ${process.platform === 'win32' ? 'PC' : 'Mac'}`});
   assert.equal(await files.coverLetterToProfile(storage, storage.path('cv.pdf'), noNotion), null);
 });
 
