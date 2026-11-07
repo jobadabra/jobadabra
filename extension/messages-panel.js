@@ -1,7 +1,7 @@
 // The extension worker's messages from the page's panel (moved out of background.js, 8 Oct 2026): the job it shows, Fill, bringing the tab forward or closing it, taking over with
 // Claude, the tip and opening the app. Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
 // (docs/flows/applying.md). Guards: the panel and review tests in desktop/test and the matrix (npm run flows).
-import {createI18n, catalogs} from './i18n.js';
+import {withDisplayLocale} from './panel-locale-message.js';
 import {NO_APP} from './flow.js';
 import {plainWhy} from './ai-reply.js';
 import {TIPS} from './tips-pool.js';
@@ -15,14 +15,14 @@ import {consider, tabReloaded} from './fill-flow.js';
 import {sayStep} from './fill-flow.js';
 import {forgetJudged, formNext, handGivenUpToPerson} from './form-ready.js';
 
+/** Compose display-only locale routing around the unchanged application-action router. */
 export function createPanelMessages(ctx) {
+  return withDisplayLocale(applicationPanelMessages(ctx));
+}
+
+function applicationPanelMessages(ctx) {
   const {fillOpenedTab, jobOf, prefetch, readyHandoff, started} = ctx;
   return function messages_panel(message, sender, reply) {
-    // Display dictionaries only: no employer page, applicant facts, credentials or filling action.
-    if (message?.type === 'panelLocale') {
-      createI18n(chrome.storage.local).then(ui => reply({locale:ui.locale(),messages:catalogs[ui.locale()],english:catalogs.en})).catch(() => reply({locale:'en',messages:catalogs.en,english:catalogs.en}));
-      return true;
-    }
     // The panel (review.js). App first: its job, its session and the state of the form, shared both ways. Without the
     // app (not open, or your own Worker) the panel still shows the form's progress and fills through your Worker.
     if (message?.type === 'panelJob' && sender.tab) {

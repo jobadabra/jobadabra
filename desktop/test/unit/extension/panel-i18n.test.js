@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {registerHooks} from 'node:module';
 import {test} from 'node:test';
 const source = file => fs.readFileSync(new URL('../../../../extension/' + file, import.meta.url), 'utf8');
 
@@ -116,4 +117,50 @@ test('a missing shared formatter leaves the panel helper absent for the existing
   const context=vm.createContext({chrome:{runtime:{sendMessage(){throw Error('No request before dependencies exist');}}}});context.window=context;
   vm.runInContext(source('panel-i18n.js'),context);
   assert.equal(context.__jobadabraPanelI18n,undefined);
+});
+
+test('locale-message wrapper delegates every application request unchanged and returns bundled display data only', async () => {
+  const {withDisplayLocale}=await import('../../../../extension/panel-locale-message.js');
+  const calls=[],message={type:'panelFill',url:'https://fictional.example',force:false},sender={tab:{id:8}},callback=()=>{};
+  const handler=withDisplayLocale((...args)=>{calls.push(args);return 'delegated';},()=>({get:async()=>({extensionLanguage:'ro'})}));
+  assert.equal(handler(message,sender,callback),'delegated');
+  assert.equal(calls[0][0],message);assert.equal(calls[0][1],sender);assert.equal(calls[0][2],callback);
+  let pending;
+  const answer=await new Promise(resolve=>{pending=handler({type:'panelLocale'},sender,resolve);});
+  assert.equal(pending,true);assert.equal(answer.locale,'ro');
+  assert.deepEqual(Object.keys(answer).sort(),['english','locale','messages']);
+  assert.equal(calls.length,1,'display query never reaches application actions');
+  const offline=withDisplayLocale(()=>{throw Error('No action delegation');},()=>({get:async()=>{throw Error('fictional offline');}}));
+  const fallback=await new Promise(resolve=>offline({type:'panelLocale'},sender,resolve));
+  assert.equal(fallback.locale,'en');
+});
+
+test('permission handlers work before locale IO resolves and remain usable if locale IO rejects', async () => {
+  const base=new URL('../../../../extension/',import.meta.url);
+  registerHooks({load(url,context,next){
+    if(url===new URL('flow.js',base).href)return{format:'module',shortCircuit:true,source:'export const api=async()=>({});export const settings=async()=>({});'};
+    if(url===new URL('linkedin-session.js',base).href)return{format:'module',shortCircuit:true,source:'export const connect=async()=>{globalThis.__permissionLocaleCalls++;return{ok:false,why:"denied"};};'};
+    return next(url,context);
+  }});
+  for(const file of ['allow.js','linkedin.js']) {
+    let started;const readStarted=new Promise(resolve=>{started=resolve;});const pendingReads=[];
+    const button={handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}},said={dataset:{},textContent:''};
+    globalThis.__permissionLocaleCalls=0;
+    globalThis.document={documentElement:{},getElementById:id=>id==='allow'?button:said,querySelectorAll:()=>[]};
+    globalThis.chrome={storage:{local:{get:()=>new Promise((resolve,reject)=>{pendingReads.push({resolve,reject});started();})},onChanged:{addListener(){}}},permissions:{request:async()=>{globalThis.__permissionLocaleCalls++;return false;}}};
+    globalThis.window={close(){}};
+    const loaded=import(new URL(file+'?permission-locale-regression',base));
+    await readStarted;
+    try {
+      assert.equal(typeof button.handlers.click,'function',file+': permission handler must not wait for locale settings');
+      await button.handlers.click();
+      assert.equal(globalThis.__permissionLocaleCalls,1,file+': click reaches only the existing mocked permission/connect action');
+      assert.ok(said.textContent.length>0);
+    } finally {
+      for(const pending of pendingReads)pending.reject(Error('fictional locale storage unavailable'));
+      await loaded.catch(()=>{});
+    }
+    await button.handlers.click();
+    assert.equal(globalThis.__permissionLocaleCalls,2,file+': locale failure cannot disable the permission action');
+  }
 });

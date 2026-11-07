@@ -7,6 +7,7 @@
 (() => {
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   if (window.__jobadabraClaude) return;
+  const countdownText = count => t('claude.countdown','Claude takes over in {count} s',{count});
   const COUNT = 5;   // seconds the person sees before "always" starts Claude
 
   // The view for the facts (info: on = Claude ready, stuck, auto = countdown allowed [always + "Do it for me"], consent) and what the person pressed.
@@ -79,11 +80,11 @@
       box.replaceChildren(el('p', {}, t("claude.consent", 'Claude will click and type in this tab without asking each step. It never presses Submit.')),
         el('div', {className: 'co-row'}, button(t("common.continue", 'Continue'), 'continue', 'primary'), button(t("common.cancel", 'Cancel'), 'myself')));
     } else if (view === 'countdown') {
-      const count = el('b', {textContent:t('claude.countdown', 'Claude takes over in {count} s', {count:COUNT})});
+      const count = el('b', {textContent:countdownText(COUNT)});
       box.replaceChildren(el('p', {className: 'co-count'}, count), el('div', {className: 'co-row'}, button(t("common.cancel", 'Cancel'), 'cancel')),
         el('p', {className: 'co-muted'}, t("claude.stops", 'It works in this tab and stops before Submit.')));
       let left = COUNT;
-      timer = setInterval(() => { left -= 1; count.textContent = t('claude.countdown', 'Claude takes over in {count} s', {count:Math.max(left,0)}); if (left <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
+      timer = setInterval(() => { left -= 1; count.textContent = countdownText(Math.max(left,0)); if (left <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
     } else if (view === 'sent') {
       box.replaceChildren(el('p', {}, t("claude.starting", 'Claude is starting in Jobadabra. It works in this tab and stops before Submit.')));
     }

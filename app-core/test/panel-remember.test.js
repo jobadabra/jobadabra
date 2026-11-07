@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const SOURCE = fs.readFileSync(new URL('../../extension/panel-learn.js', import.meta.url), 'utf8');
+const SOURCE = ['i18n-format.js','panel-i18n.js','panel-learn.js'].map(file => fs.readFileSync(new URL('../../extension/'+file, import.meta.url), 'utf8')).join('\n');
 const element = tag => ({tag, children: [], listeners: {}, hidden: false, append(...nodes) { this.children.push(...nodes); }, replaceChildren(...nodes) { this.children = nodes; },
   addEventListener(type, fn) { this.listeners[type] = fn; }});
 
