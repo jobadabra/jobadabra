@@ -150,3 +150,16 @@ test('resume-name deduplication stays canonical before display so translations c
   await reminders.resumeQueue([{kind: 'search'}, {kind: 'unknown-fixture'}]);
   assert.equal(questions[0].detail, t('native.resumeOne'));
 });
+
+test('unknown update progress and raw diagnostics cannot become a catalog key or be translated by English matching', async () => {
+  const {updateStepText} = await import('../../../i18n/settings-native.js');
+  const {displayText} = await import('../../../i18n/display-values.js');
+  const raw = 'Fictional {status} this Mac <b>raw</b>';
+  for (const locale of locales) {
+    setLocale(locale);
+    assert.equal(updateStepText(raw, 'unknown-provider-step'), raw);
+    assert.equal(updateStepText(raw), raw);
+    assert.equal(displayText(new Error(raw), raw), raw);
+    if (locale !== 'en') assert.notEqual(updateStepText('Downloading…', 'updateDownloading'), 'Downloading…');
+  }
+});

@@ -165,7 +165,7 @@ export function macSwapScript(pid, oldApp, newApp, logFile = '', target = oldApp
 // doesn't understand what's happening"). The one-click installer asks nothing; it only shows its progress bar.
 export const WINDOWS_INSTALLER_ARGS = ['--updated', '--force-run'];
 
-// Downloads and installs `update`; calls quit() when the app should close. onStep(text) for progress.
+// Downloads and installs `update`; calls quit() when the app should close. onStep(canonicalText, displayKey) for progress.
 // What a Windows person reads before the app closes for an update (lib/app-updates.js shows it as a dialog).
 export const windowsExplanation = update => ({type: 'info', buttons: [t('native.updateWindowsAction')], defaultId: 0, title: t('native.updateWindowsTitle'),
   message: t('native.updateWindowsInstalling', {version: update.version}),

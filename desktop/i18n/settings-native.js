@@ -11,3 +11,7 @@ for (const [locale, messages] of Object.entries({en, de, fr, it, es, ro, ru})) r
 
 /** Resolve an explicitly authored display message at invocation; interpolation values are inserted once and remain raw. */
 export function settingsText(key, variables = {}) { return t(`settingsNative.${key}`, variables); }
+
+const UPDATE_STEPS = new Set(['updateDownloading', 'updateReady', 'updateInstalling', 'updateUnpacking', 'updateRestarting']);
+/** Project only the updater's explicit known step keys; unknown/untagged progress keeps its exact canonical text. */
+export function updateStepText(canonical, key) { return UPDATE_STEPS.has(key) ? settingsText(key) : canonical; }

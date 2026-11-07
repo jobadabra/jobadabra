@@ -3,7 +3,7 @@
 // Guards: the updater, app-menu, setup-funnel and beta tests in desktop/test.
 import * as appMenu from './app-menu.js';
 import {t} from '../i18n/native.js';
-import {settingsText} from '../i18n/settings-native.js';
+import {updateStepText} from '../i18n/settings-native.js';
 import {displayText} from '../i18n/display-values.js';
 import * as setupFunnel from './setup-funnel.js';
 import * as updater from './updater.js';
@@ -100,7 +100,7 @@ export function createAppUpdates(ctx) {
       storage.saveSettings({updateTried: {to: updateOffer.version, from: app.getVersion()}});
       appLog('update', `install ${updateOffer.version} over ${app.getVersion()}: started`);
       await updater.install(updateOffer, {exe: app.getPath('exe'), logFile: logFile(),
-        onStep: (text, key) => { appLog('update', `install ${updateOffer.version}: ${text}`); toWindow('updateStep', key ? settingsText(key) : text); },
+        onStep: (text, key) => { appLog('update', `install ${updateOffer.version}: ${text}`); toWindow('updateStep', updateStepText(text, key)); },
         quit: () => { appLog('update', `install ${updateOffer.version}: quitting so the new version can be put in place`); app.quit(); },
         explain: async update => { await dialog.showMessageBox(parentWindow(), updater.windowsExplanation(update)); }});  // the quit dialog still asks if a job runs; the swap waits for the app to close
       return {ok: true};
