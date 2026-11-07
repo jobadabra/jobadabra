@@ -88,8 +88,9 @@ export function github(env = process.env, fetcher = fetch) {
     async releaseIfHeld(name) {
       const answer = await call(`git/refs/tags/${name}`, {method: 'DELETE'});
       if (answer.status === 404) return;
-      if (answer.status === 422 && /does not exist/i.test(String((await answer.json().catch(() => ({}))).message))) return;
-      await ok(answer, `release ${name}`);
+      const message = answer.status === 422 ? String((await answer.json().catch(() => ({}))).message) : '';
+      if (/^reference does not exist/i.test(message)) return;
+      if (!answer.ok) throw new Error(`release ${name}: GitHub ${answer.status}${message ? ` (${message})` : ''}`);
     },
     /** Newest stable desktop release version, '' when none. */
     async stables() {
