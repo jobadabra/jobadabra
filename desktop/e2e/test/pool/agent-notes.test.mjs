@@ -111,3 +111,15 @@ test('a session accounts for every goal: a missing result is not started, an unk
   assert.match(text, /\*\*ines-lisbon\*\* \(seed `42`\): 1 worked, 1 doubts, 0 could not finish, 1 not started, 0 bugs\. Filed 0\. 20 AI calls, 108k gross tokens \(input \+ output\), 4 min\./);
   assert.match(text, /\| 3 \| Run the quick check \| ⏸ not-started \| the session ended before this goal \|/);
 });
+
+// Why (7 Nov 2026, pz 4/5, owner: "Yes, same path as the twin"): a persona issue carries the Admin evidence block of the shared renderer (the twin's tester bugs use it too), a repeat of the same note on another night is the same fingerprint (joins the first issue), a low note is not filed, and a run with no GitHub id (a local one) names no private page.
+test('a persona issue carries the evidence bundle block; a repeat on another night has the same fingerprint; a local run has no block', () => {
+  const note = {...ok(RAW).note, judge: 'agrees', judgeReason: 'plausible', proved: false};
+  const filed = run => normalize({ui: [toFinding(note, {steps: [], session: {persona: 'ines-lisbon', seed: 42, snapshot: 'abc1234', run}})]})[0];
+  const first = filed('42327808352'), again = filed('42400000001'), local = filed('');
+  const body = issueBody(first, 'https://github.com/x/y/actions/runs/42327808352', {});
+  assert.match(body, /### Evidence bundle\n`42327808352` \(private, Admin only\): https:\/\/www\.jobadabra\.top\/admin\/testing\/ai-persona\?run=42327808352\nThe run's path/);
+  assert.equal(first.id, again.id, 'the same note on another night joins the first issue (fp: label)');
+  assert.ok(!/Evidence bundle/.test(issueBody(local, 'https://github.com/x/y/actions/runs/1', {})), 'a local run has no private page to name');
+  assert.deepEqual(normalize({ui: [toFinding({...note, severity: 'low'}, {session: {run: '42327808352'}})]}), [], 'low is not filed');
+});

@@ -1,4 +1,5 @@
 // Ordered local HTTP routes for launcher, engine and extension requests; tab/event state stays in server.js.
+import {t} from '../i18n/server-notices.js';
 import {getLocale} from '../i18n/index.js';
 import * as pageRender from './page-render.js';
 import {extensionToken, issueTicket, checkTicket} from './server-env.js';
@@ -55,7 +56,7 @@ async function handleClaudeNotify(req, res, body) {
   const local = req.method === 'POST' && req.headers['x-jobadabra'] === 'launcher' && !req.headers.origin;
   const form = new URLSearchParams(body?.toString() || '');
   const message = form.get('message')?.slice(0, 300);
-  if (local && message) notify(`Jobadabra · ${form.get('job')?.slice(0, 120) || 'Application'}`, message, {view: 'sessions'}, 'info');
+  if (local && message) notify(`Jobadabra · ${form.get('job')?.slice(0, 120) || t('serverNotice.application')}`, message, {view: 'sessions'}, 'info');
   jsonHeaders(res, local && message ? 200 : 403);
   jsonBody(res, {ok: !!(local && message)});
 }

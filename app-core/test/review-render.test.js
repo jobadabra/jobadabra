@@ -126,7 +126,7 @@ async function panel(options = {}) {
   storage: {local: {get: async () => ({}), set: async () => {}}}};
   for (const name of ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle']) window[`__jobadabra${name}`] ||= {};
   window.__jobadabraPanelForm = {KNOCKOUT: /permit/i, AGREE: /agree/i, fields: () => fields,
-    find: () => fields[0], flash: el => events.push(['flash', el.id])};
+    isSyntheticCaptcha: () => false, find: () => fields[0], flash: el => events.push(['flash', el.id])};
   window.__jobadabraPanelWritten = {start: () => ({update: list => events.push(['written', list.map(f => f.el.id)]), review: f => events.push(['review', f.el.id])})};
   window.__jobadabraPanelLearn = {start: () => ({reportMisses() {}, showMine() {}})};
   window.__jobadabraOverlay = {on: () => events.push(['overlay', true]), off: () => events.push(['overlay', false])};

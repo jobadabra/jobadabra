@@ -3,6 +3,10 @@
 // window.__jobadabraPanelForm (a content script has no imports). Guarded by app-core/test/panel-widgets, option-groups, control-marks, aria-hidden-select,
 // select-chosen and desktop/test/typed-match, extension-files (the knockout words agree with the app's).
 (() => {
+  // Why (7 Nov 2026): an employer can use the same question text; only our synthetic object identity may receive CAPTCHA display copy.
+  const syntheticCaptchas = new WeakSet();   // words-ok: private display identity, never page classification
+  /** Read private synthetic identity without changing canonical labels, matcher inputs or serialized field keys. */
+  const isSyntheticCaptcha = field => syntheticCaptchas.has(field);   // words-ok: private display identity, never page classification
   const SKIP = ['hidden', 'submit', 'button', 'reset', 'search', 'image'];
   // Questions a hiring system can be set to reject on by themselves (recruiters on r/recruiting, 2025-26: work authorisation, sponsorship, location or
   // office attendance, a required licence or language). Marked first, because a wrong or rushed answer here decides more than anything else on the form.
@@ -61,7 +65,9 @@
     for (const box of document.querySelectorAll('textarea[name$="captcha-response"], input[name="cf-turnstile-response"]')) {
       const frame = box.parentElement?.querySelector('iframe') || box.closest('div')?.querySelector('iframe');
       if (!frame || !visible(frame)) continue;
-      groups.set(box, {el: frame, label: 'Confirm you are not a robot', required: true, filled: !!String(box.value || '').trim(), ai: false, byUs: false});
+      const entry = {el: frame, label: 'Confirm you are not a robot', required: true, filled: !!String(box.value || '').trim(), ai: false, byUs: false};
+      syntheticCaptchas.add(entry);   // words-ok: private display identity, never page classification
+      groups.set(box, entry);
     }
     // Yes/No questions drawn as two toggle buttons (Ashby: aria-pressed, with a visually hidden checkbox no one sees): one field, filled when one of the two is pressed, required
     // as its title says; the checkbox inside the pair is that same question, never a second row (13 Oct 2026: each was listed twice; recorded yes-no-pair-counted-once-1).
@@ -163,5 +169,5 @@
     // The cursor goes into text fields only: a dropdown would open its menu, a box would look ticked-by-us.
     if (!['checkbox', 'radio', 'file'].includes(el.type) && el.getAttribute('role') !== 'combobox' && el.tagName !== 'SELECT') el.focus({preventScroll: true});
   }
-  window.__jobadabraPanelForm = {KNOCKOUT, AGREE, clean, norm, visible, question, fields, find, flash};
+  window.__jobadabraPanelForm = {KNOCKOUT, AGREE, clean, norm, visible, question, fields, find, flash, isSyntheticCaptcha};   // words-ok: private display identity, never page classification
 })();

@@ -3,6 +3,7 @@
 // with counts (pages, what was removed); {action: 'send', note} runs the gate once more and the uploader (lib/report-upload.js); {action: 'cancel'} drops it. The Settings switch "Show Report this form"
 // (default on) hides the button and refuses a recording. Sending goes through `uploader`: without one nothing can be sent and the button stays hidden. Owner values (name, e-mail, phone, place) come from
 // the app's own files and never leave. Guard: test/unit/extension/report-panel.test.js.
+import {displayText} from '../i18n/display-values.js';
 import {setVisitRoute} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {appProfileTexts, ownerValuesOf} from './owner-values.js';
@@ -40,9 +41,13 @@ export function registerReportHandlers({ipcMain, storage, uploader = null, texts
       if (!final.ok) { appLog('report', `a report was stopped by the last check on sending: ${where(final.blocked)}`); return refused(final.blocked.map(hit => hit.kind)); }
       const note = scrubNote(payload.note, values());
       if (!note.ok) return refused(note.blocked);
-      const sent = await uploader.send(final.record, {note: note.text}).catch(error => ({ok: false, error: String(error?.message || error).slice(0, 160)}));
+      let caught;
+      const sent = await uploader.send(final.record, {note: note.text}).catch(error => { caught = error; return {ok: false, error: String(error?.message || error).slice(0, 160)}; });
       appLog('report', sent.ok ? 'a report was sent' : `a report was not sent: ${sent.error}`);
-      return sent.ok ? {ok: true} : {ok: false, error: sent.error};
+      if (sent.ok) return {ok: true};
+      // Why (7 Nov 2026): diagnostics keep canonical errors; private typed metadata projects copy only at the UI reply boundary.
+      const error = displayText(caught || sent, sent.error);
+      return {ok: false, error: caught ? error.slice(0, 160) : error};
     }
     return {ok: false, refused: 'unknown'};
   };

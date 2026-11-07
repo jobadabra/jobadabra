@@ -160,6 +160,15 @@ if [ "$ship_push" = 0 ] && command -v python3 >/dev/null && [ -f "$repo/tools/ar
     block "$architecture"
   fi
 fi
+# Spacing comes from the scale: raw margin/padding/gap px in desktop/renderer/*.css may only shrink against the base (tools/spacing-scale.mjs; owner, 7 Nov 2026, "Measured check"); same
+# gating as the architecture check above (the PR's Fast checks run it with CI_GATES=1), old values never block.
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -f "$repo/tools/spacing-scale.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  if spacing="$(cd "$repo" && timed "design spacing" node tools/spacing-scale.mjs --base origin/main 2>&1)"; then
+    [ -z "$spacing" ] || printf '%s\n' "$spacing" >&2
+  else
+    block "$spacing"
+  fi
+fi
 # A list CI checks against the files it must cover (LOCK_PATHS, red-main CLASSIFIED) fails here in about a second, not ~10 min later on the PR (18 Oct 2026: three PRs red on one missing LOCK_PATHS entry): tools/registry-check.py.
 if command -v python3 >/dev/null && [ -f "$repo/tools/registry-check.py" ]; then
   registry="$(cd "$repo" && timed "registry lists" python3 tools/registry-check.py 2>&1)" || block "$registry"

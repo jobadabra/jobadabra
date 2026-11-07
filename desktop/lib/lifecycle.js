@@ -1,4 +1,5 @@
 // Testable Electron startup, activation, quit decisions and terminal shutdown; services are injected.
+import {activityText} from '../i18n/activity-notices.js';
 import * as quitDialog from './quit-dialog.js';
 import {NO_PLACE} from '../renderer/targets.js';
 
@@ -98,7 +99,7 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
       else app.quit();
       return;
     }
-    notify('Jobadabra will quit when done', dialog.detail, NO_PLACE.app, 'info');
+    notify(activityText('quitTitle'), dialog.detail, NO_PLACE.app, 'info');
     Promise.all([pipeline.whenIdle(), critical.whenDone()]).then(() => app.quit());
   };
   app.on('before-quit', beforeQuit);
