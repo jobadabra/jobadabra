@@ -61,7 +61,7 @@ export async function save(change = {}, {chosen = false} = {}) {
   await ready;
   // Why (2026-10-29, owner: "go ahead" with the switch; Gitar on #2471; 7 Nov 2026, #3363): every route that SAVES Full automation (Settings, the first-Apply choice) comes through saveApply, which asks the one confirmation and writes nothing on "Not now". The Jobs Apply dialog does not save: its pick is that batch's own mode and it asks the same confirmation again in that call (apply-dialog-model.js applyDialogPick, owner: "We don't want to change the settings from the Apply to jobs").
   const saved = await saveApply({change, chosen, current, confirm: askFullAutomation, write: patch => window.pilot.saveSettings(patch).catch(() => null)});
-  if (saved) current = saved;
+  if (saved) { current = saved; document.dispatchEvent(new CustomEvent('apply-saved', {detail: saved})); }   // an event, not an import of the Jobs page (a cycle): pages/jobs.js listens, so its rows say the saved mode
   draw();
   if (saved) offerBrowser($('ss-browser'), needsBrowser(saved));   // Why (2026-10-28, B follow-up 2): the offer was decided once at start-up, so choosing Background automation later showed none until a restart
   return saved ? current : null;
