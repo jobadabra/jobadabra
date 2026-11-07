@@ -126,3 +126,18 @@ test('delegated producer errors pass through unchanged after producer-owned loca
   }
   assert.deepEqual(s.writes,[]);
 });
+test('integrated move templates have seven-language parameter parity and preserve raw paths once',async t=>{
+  rig(t);const {rows}=await import('../../../i18n/catalogs/store-errors.js');
+  const {withDisplay}=await import('../../../i18n/store-errors.js'),{displayText}=await import('../../../i18n/display-values.js');
+  const params=text=>[...text.matchAll(/\{(\w+)\}/g)].map(match=>match[1]).sort();
+  const rawPath='/fictional/this Mac/{count}/原文',fields='preferred, acceptable';
+  for(const [key,values] of Object.entries(rows)){
+    assert.equal(values.length,SUPPORTED_LOCALES.length);assert.equal(values[0],null,'English comes from the canonical diagnostic');
+    for(const text of values.slice(1))assert.deepEqual(params(text),params(values[1]),key);
+    for(const [index,locale] of SUPPORTED_LOCALES.entries())for(const count of [0,1,2,5,20]){
+      setLocale(locale);const canonical='Canonical diagnostic '+rawPath,error=withDisplay(Error(canonical),'storeError.'+key,{count,path:rawPath,fields});
+      const shown=displayText(error,error.message);assert.equal(error.message,canonical);assert.equal(shown.split(rawPath).length,2,'raw path is interpolated once');assert.equal(JSON.stringify(error),'{}');
+      if(index===0)assert.equal(shown,canonical);else {assert.notEqual(shown,canonical);if(key==='locationsVerify')assert.ok(shown.includes(fields));else assert.ok(shown.includes(String(count)));}
+    }
+  }
+});
