@@ -3,6 +3,8 @@
 // Sends: the text, an optional contact the user typed, the app version and platform, the random install id, and (each only when the person left it on in the dialog) the window's
 // screenshot, the redacted logs, this screen's data and the Profile snapshot (lib/feedback-bundle.js, held by lib/feedback-handlers.js), plus the name of the page it was sent from. The platform is "win32 10.0.19045 x64".
 import os from 'node:os';
+import {feedbackText} from '../i18n/feedback-notices.js';
+import {number} from '../i18n/format.js';
 
 /** The platform line every feedback carries: "win32 10.0.19045 x64" (platform, OS version, architecture). Why (2 Nov 2026, owner): a tester's OS build is where a setup bug starts. */
 export const platformLine = () => `${process.platform} ${os.release()} ${process.arch}`;
@@ -22,17 +24,17 @@ export const MAX_CHARS = 8000;
  *  `storage` gives the install id. -> {ok: true, skipped?: [parts the site left out as too big]} | {ok: false, error: <words for the person>}; a 429, a bad status and being offline each have their own error. */
 export async function send({text, contact = '', screen = '', screenshot = '', logs = '', page = '', profile = ''}, {storage, version, platform = platformLine(), fetcher = globalThis.fetch, endpoint = ENDPOINT}) {
   const words = String(text || '').trim();
-  if (!words) return {ok: false, error: 'Write a few words first.'};
-  if (words.length > MAX_CHARS) return {ok: false, error: `Please keep it under ${MAX_CHARS.toLocaleString('en-US')} characters.`};
+  if (!words) return {ok: false, error: feedbackText('feedbackEmpty')};
+  if (words.length > MAX_CHARS) return {ok: false, error: feedbackText('feedbackLength', {limit: number(MAX_CHARS)})};
   try {
     const response = await fetcher(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({text: words, contact: String(contact || '').trim().slice(0, 200), install: installId(storage), version, platform,
         ...(screen ? {screen} : {}), ...(screenshot ? {screenshot} : {}), ...(logs ? {logs} : {}), ...(page ? {page} : {}), ...(profile ? {profile} : {})})});
-    if (response.status === 429) return {ok: false, error: 'That\'s a lot of feedback today: thank you! Try again tomorrow.'};
-    if (!response.ok) return {ok: false, error: `Couldn't send it (${response.status}). Try again in a moment.`};
+    if (response.status === 429) return {ok: false, error: feedbackText('feedbackRate')};
+    if (!response.ok) return {ok: false, error: feedbackText('feedbackHttp', {status: response.status})};
     const answer = await response.json().catch(() => ({}));
     return {ok: true, ...(answer.skipped?.length ? {skipped: answer.skipped} : {})};   // the site keeps the words even when a file is over its cap and says which part it skipped
   } catch (error) {
-    return {ok: false, error: `Couldn't send it: ${error.message}. Check your connection.`};
+    return {ok: false, error: feedbackText('feedbackNetwork', {error: error.message})};
   }
 }
