@@ -22,27 +22,26 @@ const QUEUED = {id: 'silent-fill', kind: 'form', url: 'https://jobs.e2e.test/app
 // The Acme Robotics form's job is in the list, as the e2e step's job was: its CV row then says which CV goes in (a job not listed gets "Add this job" instead).
 const demoJobs = JSON.parse(fs.readFileSync(new URL('../../demo/jobs.json', import.meta.url), 'utf8'));
 const ACME = {...JOBS[0], id: 99, code: 'acme', title: 'Cloud Engineering Manager', company: 'Acme Robotics', url: 'https://jobs.example/acme/sre'};
+const triageLayoutKit = () => ({triageLayout() {
+  const dialog = document.getElementById('triage-dialog'), field = document.getElementById('triage-n'), row = field.parentElement;
+  const d = dialog.getBoundingClientRect(), r = row.getBoundingClientRect(), f = field.getBoundingClientRect();
+  const actions = [...dialog.querySelectorAll('#triage-close, #triage-start')].map(button => button.getBoundingClientRect());
+  const hitsField = other => { const box = other.getBoundingClientRect(); return box.right > f.left && box.left < f.right && box.bottom > f.top && box.top < f.bottom; };
+  return {fieldFocused: document.activeElement === field, footerInset: d.bottom - Math.max(...actions.map(box => box.bottom)), buttonsInside: actions.every(box => box.left >= d.left && box.right <= d.right),
+    rowOverflow: row.scrollWidth > row.clientWidth, fieldInRow: f.left >= r.left && f.right <= r.right, fieldOverlap: [...row.children].some(other => other !== field && hitsField(other))};
+}});
 let popup, narrowPopup, strip, silent, rows, retry;
 
 before(() => {
   if (needsElectron.skip) return;
-  popup = probeWindow({files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+  popup = probeWindow({use: [triageLayoutKit], files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.go('jobs');
     await kit.until(() => (window.__jp.shared.allJobs || []).length >= 12, 'the twelve jobs to be listed');
     document.getElementById('triage-open').click();
     await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
     const read = () => ({count: document.getElementById('triage-count').textContent.trim().split(' · ')[0], start: document.getElementById('triage-start').textContent.trim(), disabled: document.getElementById('triage-start').disabled});
-    const field = document.getElementById('triage-n');
-    const dialog = document.getElementById('triage-dialog');
-    const dialogRect = dialog.getBoundingClientRect();
-    const row = field.parentElement;
-    const rowRect = row.getBoundingClientRect();
-    const fieldRect = field.getBoundingClientRect();
-    const actionRects = [...dialog.querySelectorAll('#triage-close, #triage-start')].map(button => button.getBoundingClientRect());
-    const layout = {fieldFocused: document.activeElement === field, footerInset: dialogRect.bottom - Math.max(...actionRects.map(rect => rect.bottom)), buttonsInside: actionRects.every(rect => rect.left >= dialogRect.left && rect.right <= dialogRect.right),
-      rowOverflow: row.scrollWidth > row.clientWidth, fieldInRow: fieldRect.left >= rowRect.left && fieldRect.right <= rowRect.right,
-      fieldOverlap: [...row.children].some(other => other !== field && other.getBoundingClientRect().right > fieldRect.left && other.getBoundingClientRect().left < fieldRect.right && other.getBoundingClientRect().bottom > fieldRect.top && other.getBoundingClientRect().top < fieldRect.bottom)};
+    const layout = kit.triageLayout();
     const ask = async n => {
       const field = document.getElementById('triage-n');
       field.value = String(n); field.dispatchEvent(new window.Event('input', {bubbles: true}));
@@ -51,22 +50,13 @@ before(() => {
     };
     return {listed: (window.__jp.shared.allJobs || []).length, fields: document.querySelectorAll('#triage-dialog input').length, layout, ten: await ask(10), three: await ask(3), fifty: await ask(50)};
   }});
-  narrowPopup = probeWindow({env: {JOBADABRA_SHOT_WIDTH: '320'}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+  narrowPopup = probeWindow({use: [triageLayoutKit], settings: {zoom: 0.8}, env: {JOBADABRA_SHOT_WIDTH: '320'}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.go('jobs');
     await kit.until(() => (window.__jp.shared.allJobs || []).length >= 12, 'the twelve jobs to be listed');
     document.getElementById('triage-open').click();
     await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
-    const dialog = document.getElementById('triage-dialog');
-    const field = document.getElementById('triage-n');
-    const dialogRect = dialog.getBoundingClientRect();
-    const row = field.parentElement;
-    const rowRect = row.getBoundingClientRect();
-    const fieldRect = field.getBoundingClientRect();
-    const actionRects = [...dialog.querySelectorAll('#triage-close, #triage-start')].map(button => button.getBoundingClientRect());
-    return {viewport: window.innerWidth, fieldFocused: document.activeElement === field, footerInset: dialogRect.bottom - Math.max(...actionRects.map(rect => rect.bottom)), buttonsInside: actionRects.every(rect => rect.left >= dialogRect.left && rect.right <= dialogRect.right),
-      rowOverflow: row.scrollWidth > row.clientWidth, fieldInRow: fieldRect.left >= rowRect.left && fieldRect.right <= rowRect.right,
-      fieldOverlap: [...row.children].some(other => other !== field && other.getBoundingClientRect().right > fieldRect.left && other.getBoundingClientRect().left < fieldRect.right && other.getBoundingClientRect().bottom > fieldRect.top && other.getBoundingClientRect().top < fieldRect.bottom)};
+    return {viewport: window.innerWidth, ...kit.triageLayout()};
   }});
   rows = probeWindow({files: {'jobs.json': {jobs: JOBS.map(job => ({...job, stage: null, status: 'unreviewed'})), total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
