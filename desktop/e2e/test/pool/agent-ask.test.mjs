@@ -51,3 +51,12 @@ test('a broker failure of the acting call goes to Claude at once and stays there
   const both = withFailover(codex, async () => { throw new Error('502 broker: claude down'); });
   await assert.rejects(both(input), /claude down/);
 });
+
+test('an acting call pinned to Claude still raises the capped alert (a night that moved to Claude); the judge\'s does not', async () => {
+  takeCapped();
+  const refused = async () => ({ok: false, status: 'capped', detail: 'broker: only-claude: ran-out'});
+  await assert.rejects(brokerAsk('mid', {only: 'claude', acting: true, ask: refused})(input), /capped/);
+  assert.ok(takeCapped(), 'the actor on Claude alone ends the night with the alert');
+  const {actorAskOf} = await import('../../lib/agent-ask.mjs');
+  assert.equal(typeof actorAskOf('small', 'claude'), 'function');
+});

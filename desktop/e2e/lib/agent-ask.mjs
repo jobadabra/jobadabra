@@ -10,13 +10,14 @@ export const MODELS = {small: 'claude-haiku-5-5', mid: 'claude-sonnet-5-5', larg
 // Why (3 Nov 2026, coordinator, the broker pane's change): the second opinion asks for one engine alone (`only`), so a busy Claude makes it wait and never answers it from Free AI; a refusal of such a call means the judge is unavailable (its note is held, lib/agent-judge.mjs),
 // not that the budget is spent, so it does not grey the step.
 /**
+ * `acting` (default: no engine named): the call is the actor's, so a budget refusal of it raises the capped alert; the second opinion and the reader name Claude alone and are not acting (pz 2/5, Gitar on #3453: a night that moved to Claude must still alert).
  * `ask({system, messages, schema})` on one tier -> {text, usage, ms, tier, engine}; throws `status detail` when the broker refuses (the loop then stops with "api: …"). `only`: an engine name that alone may answer ('claude'), else the broker's chain;
  * `ask` is the broker call (tests).
  */
-export const brokerAsk = (tier = 'small', {only = '', ask: call = askBroker} = {}) => async ({system, messages, schema, session, delta, endSession}) => {
+export const brokerAsk = (tier = 'small', {only = '', acting = !only, ask: call = askBroker} = {}) => async ({system, messages, schema, session, delta, endSession}) => {
   const kept = session && !only ? {session, ...(delta ? {delta} : {}), ...(endSession ? {endSession: true} : {})} : {};   // Why (5 Nov 2026, broker contract #409): a call that asks for one engine alone (Claude) keeps no Codex conversation
   const answer = await call({model: MODELS[tier] || MODELS.small, max_tokens: 1024, system, messages, output_config: {format: {type: 'json_schema', schema}}, ...(only ? {engine: only, only: true} : {}), ...kept});
-  if (!answer.ok) { if (answer.status === 'capped' && !only) noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
+  if (!answer.ok) { if (answer.status === 'capped' && acting) noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
   return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine, tokens: answer.tokens, session: answer.session};
 };
 
@@ -44,4 +45,4 @@ export function withFailover(primary, fallback) {
 const stripConversation = ({session, delta, endSession, ...args}) => args;   // a Claude call keeps no Codex conversation (brokerAsk drops these for `only` anyway; the loop's own calls must not depend on that)
 
 /** The actor's ask for a night: on one engine alone (`engine` set) the plain call; otherwise Codex first with Claude behind it (withFailover). */
-export const actorAskOf = (tier, engine) => (engine ? brokerAsk(tier, {only: engine}) : withFailover(brokerAsk(tier), brokerAsk(tier, {only: 'claude'})));
+export const actorAskOf = (tier, engine) => (engine ? brokerAsk(tier, {only: engine, acting: true}) : withFailover(brokerAsk(tier), brokerAsk(tier, {only: 'claude', acting: true})));
