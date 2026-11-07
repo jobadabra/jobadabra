@@ -137,8 +137,8 @@ test('Free AI setup callback projects only failures and keeps registration, succ
 
 test('setup catalogs keep all six translated diagnostic maps and the two UI-only English instructions with exact variables', async () => {
   const en = (await import('../../../i18n/catalogs/setup-notices/en.js')).default;
-  const keys = ['anthropicRejected', 'badCharacter', 'freeNotRegular', 'freeStartFailed', 'notionMissingToken', 'notionTimeout', 'openaiRejected'];
-  assert.deepEqual(Object.keys(en).sort(), ['anthropicRejected', 'openaiRejected']);
+  const keys = ['anthropicRejected', 'badCharacter', 'browserOpenFailed', 'freeNotRegular', 'freeStartFailed', 'notionMissingToken', 'notionTimeout', 'openaiRejected'];
+  assert.deepEqual(Object.keys(en).sort(), ['anthropicRejected', 'browserOpenFailed', 'openaiRejected']);
   const parameters = value => [...new Set([...value.matchAll(/\{([a-zA-Z][\w]*)\}/g)].map(match => match[1]))].sort();
   for (const locale of SUPPORTED_LOCALES.filter(l => l !== 'en')) {
     const catalog = (await import(`../../../i18n/catalogs/setup-notices/${locale}.js`)).default;
@@ -186,19 +186,17 @@ test('Notion authored failures localize at the returned setup boundary while can
     assert.equal(receive('notion-connect', new URLSearchParams({state: successState})), false, 'accepted exactly once');
     const unopened = await oauth.connect(() => {throw new Error('fictional browser failure');});
     assert.deepEqual(unopened, {ok: false, error: 'Your browser could not be opened.'});
-    assert.equal(displayText(unopened, unopened.error), locale === 'en' ? unopened.error : translate('linkedinNotice.browserOpenFailed'));
+    assert.equal(displayText(unopened, unopened.error), locale === 'en' ? unopened.error : text('browserOpenFailed'));
   }
 });
 
-test('reused LinkedIn browser-error catalog keeps seven-language keys and placeholders without duplicate setup copy', async () => {
-  const en = (await import('../../../i18n/catalogs/linkedin-notices/en.js')).default;
-  const keys = Object.keys(en).sort();
-  const params = value => [...new Set([...JSON.stringify(value).matchAll(/\{([a-zA-Z][\w]*)\}/g)].map(match => match[1]))].sort();
+test('standalone setup browser guidance has all seven translations without importing unrelated catalogs', async () => {
   for (const locale of SUPPORTED_LOCALES) {
-    const catalog = (await import(`../../../i18n/catalogs/linkedin-notices/${locale}.js`)).default;
-    assert.deepEqual(Object.keys(catalog).sort(), keys);
-    for (const key of keys) assert.deepEqual(params(catalog[key]), params(en[key]));
-    const setup = (await import(`../../../i18n/catalogs/setup-notices/${locale}.js`)).default;
-    assert.ok(!Object.hasOwn(setup, 'browserOpenFailed'));
+    const catalog = (await import(`../../../i18n/catalogs/setup-notices/${locale}.js`)).default;
+    setLocale(locale);
+    assert.equal(text('browserOpenFailed'), catalog.browserOpenFailed);
+    if (locale !== 'en') assert.notEqual(catalog.browserOpenFailed, 'Your browser could not be opened.');
   }
+  const source = fs.readFileSync(new URL('../../../lib/notion-oauth.js', import.meta.url), 'utf8');
+  assert.ok(!source.includes('linkedinNotice') && !source.includes('linkedin-notices'));
 });

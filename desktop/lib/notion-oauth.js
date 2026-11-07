@@ -3,13 +3,12 @@
 // person's own browser to this app's socket, where lib/oauth-handoff.js takes it for that state only. The website keeps nothing and nothing is polled (Why 3 Nov 2026: a poll gave the token to
 // whoever knew the id). Guarded by test/unit/main/notion-oauth.test.js.
 import '../i18n/setup-notices.js';
-import '../i18n/linkedin-notices.js';
 import {withDisplay} from '../i18n/display-values.js';
 import {begin, cancel as cancelFlow, fail} from './oauth-handoff.js';
 
 export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobadabra.top';
 const FLOW = 'notion-connect';
-const FAILURE_KEYS = {timeout: 'setupNotice.notionTimeout', open: 'linkedinNotice.browserOpenFailed'};
+const FAILURE_KEYS = {timeout: 'setupNotice.notionTimeout', open: 'setupNotice.browserOpenFailed'};
 
 // The page Notion copied the Jobadabra template into ("Use a template provided by the developer" on its
 // consent page; the connection's settings must offer it), as a plain 32-character id; null when the user picked

@@ -6,5 +6,6 @@ export default {
   "freeStartFailed": "Free AI nu a putut porni acum. Verifică conexiunea și încearcă din nou.",
   "freeNotRegular": "Aceasta nu este o instalare obișnuită, așa că Free AI nu este contactat.",
   "notionTimeout": "Notion nu a răspuns în 5 minute. Încearcă din nou sau folosește „Ai probleme? Folosește un token” de mai jos.",
-  "notionMissingToken": "Notion nu a trimis un token. Încearcă din nou."
+  "notionMissingToken": "Notion nu a trimis un token. Încearcă din nou.",
+  "browserOpenFailed": "Browserul nu a putut fi deschis."
 };

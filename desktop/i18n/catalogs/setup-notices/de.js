@@ -6,5 +6,6 @@ export default {
   "freeStartFailed": "Free AI konnte gerade nicht gestartet werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "freeNotRegular": "Dies ist keine reguläre Installation, daher wird Free AI nicht angefragt.",
   "notionTimeout": "Notion hat innerhalb von 5 Minuten nicht geantwortet. Versuchen Sie es erneut oder nutzen Sie unten „Probleme? Stattdessen ein Token verwenden“.",
-  "notionMissingToken": "Notion hat kein Token gesendet. Versuchen Sie es erneut."
+  "notionMissingToken": "Notion hat kein Token gesendet. Versuchen Sie es erneut.",
+  "browserOpenFailed": "Dein Browser konnte nicht geöffnet werden."
 };
