@@ -1,6 +1,7 @@
 // How the person wants to be told (Settings → Notifications, "Tell me by"): e-mail, app notifications, Telegram, any mix. Owns the choice (settings.notifyBy),
 // the address kept on our site (GET/PUT /api/account/email, site/src/account-email.js), the env the engine reads (JOBADABRA_NOTIFY, src/notify.py), and the one e-mail the app itself sends.
 // Guards: test/unit/main/notify-channel.test.js, test/unit/main/telegram-send.test.js.
+import {notificationFailure} from '../i18n/notification-notices.js';
 import {FREE_BASE, TRIAL_KEY} from './ai-free.js';
 import {wordingOf} from '../renderer/email-consent-words.js';
 import * as consent from './email-consent.js';
@@ -38,13 +39,15 @@ const WORDS = {
 export const SLOW_MS = 8000;
 export async function call(storage, method, path, body, fetcher) {   // exported for lib/mail-choices.js: one way to the site, one key, one time limit
   const key = installKey(storage);
-  if (!key) return {ok: false, error: 'No install key yet: open the app online once, then try again.'};
+  if (!key) return notificationFailure({ok: false, error: 'No install key yet: open the app online once, then try again.'}, 'keyMissing');
   const limit = new AbortController(), timer = setTimeout(() => limit.abort(), SLOW_MS);
   try {
     const response = await fetcher(`${BASE}${path}`, {method, signal: limit.signal, headers: {'x-api-key': key, ...(body ? {'content-type': 'application/json'} : {})}, ...(body ? {body: JSON.stringify(body)} : {})});
     const answer = await response.json().catch(() => ({}));
-    return answer.ok ? answer : {ok: false, error: WORDS[answer.error] || answer.error || 'The website did not accept it.', ...(answer.reason ? {reason: answer.reason} : {})};
-  } catch { return {ok: false, error: 'The website could not be reached. Try again when you are online.'}; } finally { clearTimeout(timer); }
+    if (answer.ok) return answer;
+    const result = {ok: false, error: WORDS[answer.error] || answer.error || 'The website did not accept it.', ...(answer.reason ? {reason: answer.reason} : {})};
+    return Object.hasOwn(WORDS, answer.error) ? notificationFailure(result, answer.error) : answer.error ? result : notificationFailure(result, 'notAccepted');
+  } catch { return notificationFailure({ok: false, error: 'The website could not be reached. Try again when you are online.'}, 'unreachable'); } finally { clearTimeout(timer); }
 }
 
 // What the window shows: the choice, the address and whether it is confirmed (asked of the site; the cached address when offline).
@@ -62,7 +65,7 @@ export async function state(storage, fetcher = globalThis.fetch) {
 export async function save(storage, {by, email, cadence, consentVia, consentGiven, consentWording}, fetcher = globalThis.fetch, now = new Date()) {
   const clean = String(email || '').trim().toLowerCase();
   const wasOn = channelsOf(storage).includes('email');   // before keepAddress: an address typed in this save is not e-mail having been on
-  if (Array.isArray(by) && by.includes('email') && !clean && !emailOf(storage)) return {ok: false, error: 'Enter your email address to be told by email.'};
+  if (Array.isArray(by) && by.includes('email') && !clean && !emailOf(storage)) return notificationFailure({ok: false, error: 'Enter your email address to be told by email.'}, 'needEmail');
   const digest = ['daily', 'weekly'].includes(cadence) ? cadence : null;   // how often the digest of everything but new matches comes
   if (clean && (clean !== emailOf(storage) || digest)) {
     const site = await call(storage, 'PUT', '/api/account/email', {email: clean, ...(digest ? {cadence: digest} : {})}, fetcher);
@@ -119,8 +122,11 @@ const RESEND_WORDS = {
 
 /** Sends the confirm mail again to the saved address (at most 1 an hour and 3 a day, the site decides). -> {ok} or {ok: false, error: words, code?: the site's reason} */
 export async function resend(storage, fetcher = globalThis.fetch) {
-  if (!emailOf(storage)) return {ok: false, error: RESEND_WORDS.no_address, code: 'no_address'};
+  if (!emailOf(storage)) return notificationFailure({ok: false, error: RESEND_WORDS.no_address, code: 'no_address'}, 'noAddress');
   const done = await call(storage, 'POST', '/api/account/email/resend', null, fetcher);
   if (done.ok) return {ok: true};
-  return RESEND_WORDS[done.error] ? {ok: false, error: RESEND_WORDS[done.error], code: done.error} : done;
+  const keys = {wait: 'resendWait', confirmed: 'resendConfirmed', stopped: 'resendStopped', no_address: 'noAddress', off: 'serviceOff', not_sent: 'notSent'};
+  if (!RESEND_WORDS[done.error]) return done;
+  const result = {ok: false, error: RESEND_WORDS[done.error], code: done.error};
+  return Object.hasOwn(keys, done.error) ? notificationFailure(result, keys[done.error]) : result;
 }

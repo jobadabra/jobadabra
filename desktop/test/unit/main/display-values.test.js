@@ -1,13 +1,39 @@
 // In-process display descriptors preserve diagnostic payloads and private values while resolving UI text at invocation time.
 import assert from 'node:assert/strict';
 import {test, afterEach} from 'node:test';
-import {displayText, withDisplay} from '../../../i18n/display-values.js';
+import {displayText, withDisplay, transferDisplay} from '../../../i18n/display-values.js';
 import {registerMessages, setLocale} from '../../../i18n/index.js';
 
 registerMessages('en', 'displayContract', {saved: 'Saved: {name}'});
 registerMessages('de', 'displayContract', {saved: 'Gespeichert: {name}'});
 registerMessages('ru', 'displayContract', {saved: 'Сохранено: {name}'});
 afterEach(() => setLocale('en'));
+
+test('an intentional result wrapper inherits private display metadata without changing either wire object', () => {
+  const source = Object.freeze({ok: false, error: 'canonical failure'});
+  const target = Object.freeze({...source, mode: 'mail'});
+  const sourceWire = JSON.stringify(source), targetWire = JSON.stringify(target);
+  withDisplay(source, 'displayContract.saved', {name: 'Fictional {name}'});
+  assert.equal(transferDisplay(source, target), target);
+  setLocale('de');
+  assert.equal(displayText(target, target.error), 'Gespeichert: Fictional {name}');
+  setLocale('ru');
+  assert.equal(displayText(target, target.error), 'Сохранено: Fictional {name}');
+  assert.equal(displayText(source, source.error), 'Сохранено: Fictional {name}');
+  assert.equal(JSON.stringify(source), sourceWire);
+  assert.equal(JSON.stringify(target), targetWire);
+  assert.deepEqual(Reflect.ownKeys(target), ['ok', 'error', 'mode']);
+});
+
+test('an untagged source leaves raw results and an existing target presentation intact', () => {
+  const source = Object.freeze({error: 'raw upstream detail'}), target = Object.freeze({...source});
+  assert.equal(transferDisplay(source, target), target);
+  assert.equal(displayText(target, target.error), source.error);
+  withDisplay(target, 'displayContract.saved', {name: 'Existing'});
+  transferDisplay(source, target);
+  setLocale('de');
+  assert.equal(displayText(target, target.error), 'Gespeichert: Existing');
+});
 
 test('a frozen failure keeps exact identity and wire payload while only its UI presentation localizes', () => {
   const value = Object.freeze({ok: false, error: 'canonical diagnostic', status: 503});

@@ -3,6 +3,7 @@
 // and the text it read there; it is applied only when a FRESH outline still has that block with that text (else nothing is lost: "changed
 // meanwhile, reload"). Never a whole-page write, so a Notion page's other blocks (📎 CV file, embeds) are never touched. Spec:
 // docs/superpowers/specs/2026-10-16-profile-tabs-mockups.md. Guarded by test/unit/main/text-outline.test.js.
+import {editNotice} from '../i18n/edit-notices.js';
 import * as store from './store/index.js';
 import * as sqliteStore from './store/sqlite.js';
 
@@ -76,16 +77,16 @@ export function registerTextOutlineHandlers({ipcMain, storage, DEMO, log, open =
   });
   ipcMain.handle('textEdit', async (_, name, changes) => {
     if (!known(name)) return {ok: false, error: `No text called ${name}`};
-    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_CHANGES) return {ok: false, error: 'Nothing to save.'};
+    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_CHANGES) return {ok: false, error: editNotice('nothingSave')};
     try {
       const it = opened(), page = it.page(name);
       const {saved, missing} = await applyEdits(page, await page.outline(), changes);
       log('store', 'text edited', {name: String(name), saved, missing: missing.length});   // how many, never what
-      if (missing.length) return {...await shape(it, name), ok: false, error: `Some lines changed meanwhile (${saved} saved). The tab shows the page as it is now.`};
+      if (missing.length) return {...await shape(it, name), ok: false, error: editNotice('outlineChanged', {count: saved})};
       return {...await shape(it, name), saved};
     } catch (error) {
       log('store', 'text not edited', {name: String(name), error: error.message});
-      return {ok: false, error: `Not saved: ${error.message}`};
+      return {ok: false, error: editNotice('notSaved', {error: error.message})};
     }
   });
 }

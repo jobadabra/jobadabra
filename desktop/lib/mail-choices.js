@@ -3,6 +3,8 @@
 // Owner, 5-6 Nov 2026: "each users sets his own emails" and "Only the person": the choice is final, and no Admin stop overrides it. The Mac never sends mail itself: it posts to our API (notify-channel.js).
 // Invariants: a row the person never chose shows (and acts) as the suggested default of their mode; a row they chose is never reset by a mode change; a failed save leaves the switch where it was and says so.
 // Guard: test/unit/main/mail-choices.test.js.
+import {notificationFailure} from '../i18n/notification-notices.js';
+import {transferDisplay} from '../i18n/display-values.js';
 import {osText} from '../i18n/platform.js';
 import {call, channelsOf, installKey} from './notify-channel.js';
 import {rowLine} from '../renderer/email-consent-words.js';
@@ -20,6 +22,10 @@ const WHERE = {
   always: osText('From Always on: on schedule, even with your Mac off.', process.platform),
 };
 const WORDS = {not_saved: 'Could not save it just now. The switch is back where it was; try again in a minute.', app_only: 'Only this app can change it.', no_address: 'Add your e-mail address first.', need_address: 'Add your e-mail address in Settings → Notifications first, then turn it on.', unauthorized: 'This install could not be recognised by the website. Try again in a minute.'};
+const WORD_KEYS = {not_saved: 'notSaved', app_only: 'appOnly', no_address: 'noAddress', need_address: 'needAddress', unauthorized: 'unauthorized'};
+// Follow the existing reason/error priority; only known authored fields acquire private display metadata.
+const reasonFailure = (result, reason, source) => Object.hasOwn(WORD_KEYS, reason) ? notificationFailure(result, WORD_KEYS[reason]) : result.error === source.error ? transferDisplay(source, result) : result;
+const passedFailure = (source, result) => source.error ? transferDisplay(source, result) : notificationFailure(result, 'notSaved');
 
 /** 'always' when Always on runs (our servers or the person's own GitHub), else 'mac'. The mode only picks which defaults show; it never changes a choice. */
 export function modeOf(storage) {
@@ -48,7 +54,7 @@ const mirror = (storage, rows) => {
 export async function read(storage, fetcher = globalThis.fetch) {
   const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
   const none = !answer.ok && answer.reason === 'no_address';
-  if (!answer.ok && !none) return {ok: false, error: WORDS[answer.reason] || answer.error || 'The website could not be reached.', reason: answer.reason || ''};
+  if (!answer.ok && !none) return reasonFailure({ok: false, error: WORDS[answer.reason] || answer.error || 'The website could not be reached.', reason: answer.reason || ''}, answer.reason, answer);
   const rows = none || !Array.isArray(answer.rows) ? [] : answer.rows, mode = modeOf(storage), going = emailing(storage);
   const news = none || !Array.isArray(answer.news) ? [] : answer.news.filter(item => NEWS.includes(item?.id) && typeof item.name === 'string').map(({id, name, when, on}) => ({id, name, when: String(when || ''), on: on === true}));   // the site's own answer: off when it holds none
   mirror(storage, rows);   // no address = no rows: the engine's off-list must not keep honouring an earlier address's choices
@@ -58,9 +64,9 @@ export async function read(storage, fetcher = globalThis.fetch) {
 /** One press: stores the person's choice for a row or a news mail, with the app's own key (the website refuses a repo's key). -> {ok} or {ok: false, error: words}. The mirror (app rows only: the engine never sends news) follows only a saved choice. */
 export async function set(storage, row, on, fetcher = globalThis.fetch) {
   if (!ROWS.includes(row) && !NEWS.includes(row) || typeof on !== 'boolean') return {ok: false, error: 'That e-mail is not one of the switches.'};
-  if (!/^JPF1\./.test(installKey(storage))) return {ok: false, error: 'No install key yet: open the app online once, then try again.'};
+  if (!/^JPF1\./.test(installKey(storage))) return notificationFailure({ok: false, error: 'No install key yet: open the app online once, then try again.'}, 'keyMissing');
   const answer = await call(storage, 'POST', '/api/mail/choices', {mail: row, on}, fetcher);
-  if (!answer.ok) return {ok: false, error: WORDS[answer.reason] || answer.error};
+  if (!answer.ok) return reasonFailure({ok: false, error: WORDS[answer.reason] || answer.error}, answer.reason, answer);
   if (NEWS.includes(row)) return {ok: true};
   mirror(storage, (storage.settings().mailRows || []).map(entry => (entry.id === row ? {...entry, choice: on ? 'on' : 'off'} : entry)));
   if (storage.settings().mailNote) storage.saveSettings({mailNote: ''});   // a saved press leaves the screen true to the site: an older refusal's words go
@@ -90,7 +96,7 @@ const likelyOn = (row, mode) => ['digest', 'mail'].includes(row.suggested?.[mode
  */
 async function writeUnchosen(storage, wantOn, fetcher, except = '') {
   const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
-  if (!answer.ok) return {ok: false, error: answer.error || WORDS[answer.reason] || 'The website could not be reached.', written: []};
+  if (!answer.ok) return reasonFailure({ok: false, error: answer.error || WORDS[answer.reason] || 'The website could not be reached.', written: []}, answer.error ? '' : answer.reason, answer);
   const mode = modeOf(storage), rows = Array.isArray(answer.rows) ? answer.rows : [];
   mirror(storage, rows);
   const todo = rows.filter(row => !row.choice && row.id !== except && ROWS.includes(row.id) && row.suggested?.[mode] !== 'hidden');
@@ -105,7 +111,7 @@ async function writeUnchosen(storage, wantOn, fetcher, except = '') {
 async function writeRows(storage, pairs, fetcher) {
   const results = await Promise.all(pairs.map(async ([id, on]) => ({id, done: await set(storage, id, on, fetcher)})));
   const written = results.filter(result => result.done.ok).map(result => result.id), failed = results.find(result => !result.done.ok);
-  return failed ? {...failed.done, written} : {ok: true, written};
+  return failed ? transferDisplay(failed.done, {...failed.done, written}) : {ok: true, written};
 }
 
 /**
@@ -135,7 +141,7 @@ async function alwaysOnNow(storage, fetcher, shown) {
   try {
     if (!shown || !/^JPF1\./.test(installKey(storage))) return {ok: true, written: []};
     const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
-    if (!answer.ok) return answer.reason === 'no_address' ? {ok: true, written: []} : {ok: false, error: answer.error || WORDS[answer.reason] || 'The website could not be reached.', written: []};
+    if (!answer.ok) return answer.reason === 'no_address' ? {ok: true, written: []} : reasonFailure({ok: false, error: answer.error || WORDS[answer.reason] || 'The website could not be reached.', written: []}, answer.error ? '' : answer.reason, answer);
     const rows = Array.isArray(answer.rows) ? answer.rows : [], pressed = storage.settings().mailRowsPressed || [], appOff = storage.settings().mailRowsAppOff || [];
     mirror(storage, rows);
     // Why (#3344, 6 Nov 2026): the site holds one 'off' for the person's press and for the app's own write; only this install knows which it wrote, so any other 'off' is the person's, turned off on another install.
@@ -144,7 +150,7 @@ async function alwaysOnNow(storage, fetcher, shown) {
     storage.saveSettings({mailRowsAppOff: (storage.settings().mailRowsAppOff || []).filter(id => !done.written.includes(id))});   // written on: no longer an off the app holds; read again, another path may have added rows while the writes ran
     storage.saveSettings({mailNote: done.ok ? '' : `Not every e-mail could be turned on just now: ${done.error || WORDS.not_saved}`});
     return done;
-  } catch { return {ok: false, error: WORDS.not_saved, written: []}; }
+  } catch { return notificationFailure({ok: false, error: WORDS.not_saved, written: []}, 'notSaved'); }
 }
 
 /**
@@ -170,9 +176,9 @@ function queued(job) {
 async function newsOn(storage, row, address, fetcher) {
   let addressSaved = false;
   if (!emailing(storage)) {
-    if (!address) return {ok: false, error: WORDS.need_address};
+    if (!address) return notificationFailure({ok: false, error: WORDS.need_address}, 'needAddress');
     const sent = await call(storage, 'PUT', '/api/account/email', {email: address}, fetcher);
-    if (!sent.ok) return {ok: false, error: sent.error || WORDS[sent.reason] || WORDS.not_saved};
+    if (!sent.ok) return reasonFailure({ok: false, error: sent.error || WORDS[sent.reason] || WORDS.not_saved}, sent.error ? '' : sent.reason, sent);
     addressSaved = true;
   }
   const done = await set(storage, row, true, fetcher);
@@ -183,15 +189,15 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
   if (NEWS.includes(row)) return newsOn(storage, row, address, fetcher);
   let addressSaved = false;
   if (!emailing(storage)) {
-    if (!address) return {ok: false, error: WORDS.need_address};
+    if (!address) return notificationFailure({ok: false, error: WORDS.need_address}, 'needAddress');
     const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
-    if (!saved.ok) return {ok: false, error: saved.error || WORDS.not_saved};
+    if (!saved.ok) return passedFailure(saved, {ok: false, error: saved.error || WORDS.not_saved});
     addressSaved = true;
     // Why (6 Nov 2026, owner): without Always on the other rows start off; with it everything starts on.
     const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);
     if (!others.ok) {   // Why (6 Nov 2026, review): a press that fails must leave nothing half-done: e-mail goes back off (and its consent is withdrawn), so a retry starts the whole block again
       await save({by: channelsOf(storage).filter(name => name !== 'email')}).catch(() => {});
-      return {ok: false, error: others.error || WORDS.not_saved};
+      return passedFailure(others, {ok: false, error: others.error || WORDS.not_saved});
     }
   }
   const done = await set(storage, row, true, fetcher);
@@ -203,7 +209,7 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
 export async function turnOnSuggested(storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) {
   if (!shown) return {ok: true, turned: []};
   const done = await writeUnchosen(storage, likelyOn, fetcher);
-  if (!done.ok) return {ok: false, error: done.error, turned: []};
+  if (!done.ok) return transferDisplay(done, {ok: false, error: done.error, turned: []});
   const mode = modeOf(storage), rows = storage.settings().mailRows || [];
   return {ok: true, turned: done.written.filter(id => likelyOn(rows.find(row => row.id === id) || {}, mode))};
 }

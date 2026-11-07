@@ -1,6 +1,7 @@
 // The setup's drafted strategy edited through the Strategy page's own cards: the same list edits (lib/strategy-edit.js) and the same Profile block
 // edits (lib/text-outline-handlers.js) the saved strategy gets, applied to the draft in memory and handed back. Nothing is written to the store, Notion
 // or disk here; the window keeps the draft (cacheDraftEdits). Guarded by test/unit/main/draft-edit.test.js.
+import {editNotice} from '../i18n/edit-notices.js';
 import {applyEdits as applyBlocks, MAX_CHANGES} from './text-outline-handlers.js';
 import * as md from './store/markdown-page.js';
 import {applyEdits, cleanEdits} from './strategy-edit.js';
@@ -40,11 +41,11 @@ export function registerDraftEditHandlers({ipcMain}) {
   });
   ipcMain.handle('draftTextOutline', async (_, markdown) => ({ok: true, items: md.outline(String(markdown || '')), store: 'draft', link: null}));
   ipcMain.handle('draftTextEdit', async (_, markdown, changes) => {
-    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_CHANGES) return {ok: false, error: 'Nothing to save.'};
+    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_CHANGES) return {ok: false, error: editNotice('nothingSave')};
     try {
       const done = await editDraftText(markdown, changes);
-      return {ok: !done.missing.length, ...(done.missing.length ? {error: 'Some lines changed meanwhile. The card shows the draft as it is now.'} : {}), markdown: done.markdown,
+      return {ok: !done.missing.length, ...(done.missing.length ? {error: editNotice('draftChanged')} : {}), markdown: done.markdown,
         items: md.outline(done.markdown), store: 'draft', link: null, saved: done.saved};
-    } catch (error) { return {ok: false, error: `Not changed: ${error.message}`}; }
+    } catch (error) { return {ok: false, error: editNotice('notChanged', {error: error.message})}; }
   });
 }
