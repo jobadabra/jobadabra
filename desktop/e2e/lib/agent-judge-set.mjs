@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {judgeNote, judgePrompt, judgeSchema} from './agent-judge.mjs';
 import {areaOfView, knowledgeFor} from './agent-knowledge.mjs';
-import {citedIds} from './agent-notes.mjs';
+import {holdingIds} from './agent-notes.mjs';
 
 export const RUNS = 3;
 
@@ -88,7 +88,7 @@ export async function askBatch({ask, notes, expectations, lessons, variant, runs
     for (let i = 0; i < runs; i++) {
       const opinion = await judgeNote({ask, note, image: note.image, knowledge});
       if (opinion.verdict === 'unavailable') throw new Error(`batch-1 exam stopped at note ${note.n} (${variant}, run ${i + 1}): ${opinion.reason}`);
-      row.verdicts.push(opinion.verdict); row.reasons.push(opinion.reason); row.cites.push(citedIds(opinion.reason, knowledge));
+      row.verdicts.push(opinion.verdict); row.reasons.push(opinion.reason); row.cites.push(holdingIds(note, opinion.reason, knowledge));
     }
     rows.push(row);
   }
@@ -105,7 +105,7 @@ export function scoreBatch(rows) {
   const runs = Math.max(0, ...rows.map(row => row.verdicts.length)), perRun = Array.from({length: runs}, (_, i) => ({falseHeld: fake.filter(row => heldIn(row, i)).length, realHeld: real.filter(row => heldIn(row, i)).length}));   // production asks once per note: a single run is what a night sees
   return {perRun, realTotal: real.length, falseTotal: fake.length, realFiled: real.filter(row => !held.includes(row)).length, falseHeld: fake.filter(row => held.includes(row)).length,
     realKeptByJudgeAlone: real.filter(row => !alone.includes(row)).length, falseDroppedByJudgeAlone: fake.filter(row => alone.includes(row)).length,
-    rows: rows.map(row => ({n: row.n, label: row.label, held: held.includes(row), droppedAlone: alone.includes(row), verdicts: row.verdicts, cites: [...new Set(row.cites.flat())]}))};
+    rows: rows.map(row => ({n: row.n, label: row.label, held: held.includes(row), droppedAlone: alone.includes(row), verdicts: row.verdicts, cites: [...new Set(row.cites.flat())], reasons: row.reasons}))};   // `reasons` kept so a rule change can be rescored from a run's file
 }
 
 /** The batch-1 table as markdown: per variant the production rule's counts and the judge-alone counts, then every note's outcome per variant. */

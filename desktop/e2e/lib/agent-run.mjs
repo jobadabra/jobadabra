@@ -6,7 +6,7 @@ import {explore, formatObservation, stepWords} from './explore.mjs';
 import {quotedWords, readScreen} from './agent-screen.mjs';
 import {CAP_REACHED} from './agent-tier.mjs';
 import {judgeNote} from './agent-judge.mjs';
-import {KINDS, SEVERITIES, TYPES, toFinding, validateNote, citedIds, joinSameElement} from './agent-notes.mjs';
+import {KINDS, SEVERITIES, TYPES, toFinding, validateNote, holdingIds, joinSameElement} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
 import {pointerLine} from './agent-chain.mjs';
 import {goalSteps, MIN_STEPS, STEP_TOKENS, stepCost} from './agent-steps.mjs';
@@ -111,7 +111,7 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
     const skipped = Boolean(judgeDown);
     const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || '', knowledge: knowledgeOf(note)});
     if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
-    Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason, judgeCites: citedIds(opinion.reason, knowledgeOf(note))});   // Why (7 Nov 2026, pz): a disagree that names a rule or closed verdict of the knowledge it was given is held (rankNotes); the ids are checked against that text here
+    Object.assign(note, {judge: opinion.verdict, judgeReason: opinion.reason, judgeCites: holdingIds(note, opinion.reason, knowledgeOf(note))});   // Why (7 Nov 2026, pz): a disagree holds a note only through a rule the note itself cited or a closed verdict (lib/agent-notes.mjs holdingIds), checked against the knowledge the judge was given
     if (!skipped) spent.calls++;   // a note that was not asked made no call (Gitar, #3094)
     spent.input += opinion.usage?.input_tokens || 0; spent.output += opinion.usage?.output_tokens || 0; spent.ms += opinion.ms || 0;
   }
