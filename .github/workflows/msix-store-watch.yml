@@ -1,11 +1,11 @@
 name: Release · Watch the Microsoft Store review
 run-name: Microsoft Store review check
 
-# Tells the owner on Telegram when Microsoft accepts (or refuses) the version msix-store.yml submitted, then sends the newest stable on at once (tools/msix-store-watch.mjs holds the rules).
-# Why (owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest"): certification takes hours to days, so no job waits for
+# Tells the owner on Telegram when Microsoft accepts (or refuses) the version msix-store.yml submitted, (tools/msix-store-watch.mjs holds the rules). It no longer sends the newest stable on: the next submission is the weekly one (msix-store-weekly.yml, 7 Nov 2026).
+# Why (owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): certification takes hours to days, so no job waits for
 # it (GitHub's 6 h cap); the Worker starts this check hourly (app-core/src/scheduler.js, minute 20) because GitHub's own cron barely fires. Ubuntu looks for a submitted version nobody was told about;
-# only then does a Windows job read Partner Center (msstore keeps its secret in the OS keyring, as in msix-store.yml). Nothing is submitted here: a newer stable is started as msix-store.yml, the one submit path.
-# State: tags msstore-submitted- / -announced- / -autosent- / -followed-X.Y.Z (the owner's rule: state in tags, not branches).
+# only then does a Windows job read Partner Center (msstore keeps its secret in the OS keyring, as in msix-store.yml). Nothing is submitted here: the one submit path is msix-store.yml, started weekly.
+# State: tags msstore-submitted- / -announced- / -followed-X.Y.Z (the owner's rule: state in tags, not branches).
 on:
   workflow_dispatch:
     inputs:
@@ -79,21 +79,20 @@ jobs:
         run: echo "::error::msstore printed no 'Submission Status' line (sign-in or API error above)."; exit 1
 
   tell:
-    name: Tell the owner, send the newest stable on
+    name: Tell the owner
     needs: [pending, check]
     if: ${{ !inputs.look_only && (needs.check.outputs.verdict == 'live' || needs.check.outputs.verdict == 'failed') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: write   # the claim tags (git refs)
-      actions: write    # start msix-store.yml for the newest stable
     steps:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: |
             tools/msix-store-watch.mjs
             desktop/e2e
-      - name: One message, then the newest stable's submit
+      - name: One message
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.pending.outputs.version }}   # the version the status was read for, never re-picked in the script

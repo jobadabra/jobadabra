@@ -223,8 +223,9 @@ class PromoteGuardTests(unittest.TestCase):
         done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.store.count('workflow run extension-store-publish.yml'), 1, self.store)
-        self.assertEqual(self.store.count('workflow run msix-store.yml'), 1, 'the Microsoft Store gets the same release')
-        self.assertEqual(self.store.count(f'tag={TAG}'), 2, self.store)
+        # 7 Nov 2026, owner: "To release less often on Microsoft store" · "Weekly, a fixed day": the Microsoft Store is started by msix-store-weekly.yml, never by a promotion.
+        self.assertEqual(self.store.count('workflow run msix-store.yml'), 0, 'a promotion no longer starts the Microsoft Store')
+        self.assertEqual(self.store.count(f'tag={TAG}'), 1, self.store)
 
     def test_the_summary_page_links_each_store_run(self):
         # 2 Nov 2026, owner on run 41484802919: "BUt where the publishing to Chrome web store, to microsoft store... is happening?" (each store is its own run).
@@ -232,14 +233,13 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn(f'Store publishes of {TAG}', self.summary)
         self.assertIn('**Chrome Web Store** → https://github.com/jobadabra/jobadabra/actions/runs/111', self.summary)
-        self.assertIn('**Microsoft Store** → https://github.com/jobadabra/jobadabra/actions/runs/222', self.summary)
+        self.assertNotIn('Microsoft Store', self.summary, 'its submission is the weekly run, not this promotion')
         self.assertIn('https://github.com/jobadabra/jobadabra/actions/runs/111', done.stdout, 'the log keeps gh\'s own line')
 
     def test_the_summary_page_says_when_a_store_did_not_start_or_gh_gave_no_link(self):
-        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'msix-store.yml'})
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'extension-store-publish.yml'})
         self.assertEqual(done.returncode, 4)
-        self.assertIn('**Chrome Web Store** → https://github.com/jobadabra/jobadabra/actions/runs/111', self.summary)
-        self.assertIn(f'**Microsoft Store** → ❌ did not start: `gh workflow run msix-store.yml -R jobadabra/jobadabra --ref main -f tag={TAG}`', self.summary)
+        self.assertIn(f'**Chrome Web Store** → ❌ did not start: `gh workflow run extension-store-publish.yml -R jobadabra/jobadabra --ref main -f tag={TAG}`', self.summary)
         done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'FAKE_NO_LINK': '1'})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('**Chrome Web Store** → started (no link from gh: Actions → extension-store-publish.yml)', self.summary)
@@ -252,7 +252,7 @@ class PromoteGuardTests(unittest.TestCase):
 
     # 31 Oct 2026, owner: "We should have this always, even if we go on the hot path". Both store publishes start on EVERY way a release becomes stable;
     # a start that fails never undoes the promotion, but it is no longer one echoed line in a green run.
-    STORES = {'extension-store-publish.yml': 'Chrome Web Store', 'msix-store.yml': 'Microsoft Store'}
+    STORES = {'extension-store-publish.yml': 'Chrome Web Store'}   # the Microsoft Store left this list on 7 Nov 2026 (msix-store-weekly.yml)
 
     def test_no_switch_skips_the_store_starts(self):
         # SKIP_E2E (the hot path), E2E_NO_START (the canary), E2E_ALREADY_GREEN (the release run), FRESH_E2E and no switch at all: all of them skip only the end-to-end gate.
@@ -267,7 +267,7 @@ class PromoteGuardTests(unittest.TestCase):
                 self.assertEqual(self.alert, '', 'a clean promotion sends no alert')
 
     def test_a_store_start_that_fails_is_loud_and_names_the_command_to_start_it_by_hand(self):
-        for failing in (['extension-store-publish.yml'], ['msix-store.yml'], ['extension-store-publish.yml', 'msix-store.yml']):
+        for failing in (['extension-store-publish.yml'],):
             with self.subTest(failing=failing):
                 done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': ' '.join(failing)})
                 self.assertEqual(done.returncode, 4, 'the job must end red: an echoed line in a green run is what hid it')
@@ -286,12 +286,12 @@ class PromoteGuardTests(unittest.TestCase):
                 self.assertEqual(self.alert.count('Start it by hand'), 1, 'one alert for the release, not one per store')
 
     def test_an_alert_that_cannot_be_sent_does_not_hide_the_failure(self):
-        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'msix-store.yml', 'FAKE_NODE_FAILS': '1'})
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'extension-store-publish.yml', 'FAKE_NODE_FAILS': '1'})
         self.assertEqual(done.returncode, 4)
         self.assertIn('::error', done.stdout)
 
     def test_a_dry_run_is_the_only_switch_that_starts_no_store(self):
-        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'DRY_RUN': '1', 'FAKE_FAIL': 'msix-store.yml'})
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'DRY_RUN': '1', 'FAKE_FAIL': 'extension-store-publish.yml'})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.store, '')
 
@@ -338,7 +338,7 @@ class PromoteGuardTests(unittest.TestCase):
                 self.assertIn('Stable:', done.stdout)
                 self.assertIn('feedback reporters not told', done.stderr, 'one log line')
                 self.assertIn(f'gh workflow run feedback-released.yml -R jobadabra/jobadabra --ref main -f tag={TAG}', done.stderr, 'with the command to start it by hand')
-                self.assertEqual(self.store.count('workflow run'), 2, 'the store publishes still start')
+                self.assertEqual(self.store.count('workflow run'), 1, 'the Chrome Web Store publish still starts')
                 if 'FAKE_NODE_FAILS' not in extra:
                     self.assertIn(f'{TAG} is stable, but the run that tells the feedback reporters did not start', self.alert, 'one Telegram note')
 

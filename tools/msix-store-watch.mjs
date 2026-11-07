@@ -1,14 +1,16 @@
-// Tells the owner on Telegram when Microsoft finishes reviewing a Store submission, and sends the newest stable on at once (owner, 5 Nov 2026: "when Microsoft accepts a new release version,
-// I'd like to get a message on telegram"; then "Auto-send newest": Store users catch up with no new release). Used by .github/workflows/msix-store-watch.yml; no AI, no new secret.
+// Tells the owner on Telegram when Microsoft finishes reviewing a Store submission (owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram").
+// Used by .github/workflows/msix-store-watch.yml; no AI, no new secret.
+// Why (7 Nov 2026, owner: "Weekly, a fixed day"): it no longer sends the newest stable on after a verdict (the 5 Nov "Auto-send newest"): the next submission is the weekly one (msix-store-weekly.yml),
+// from a stable that has run a day without a red; sending on at once made a submission after every review, whatever the day.
 //   node tools/msix-store-watch.mjs pending                     -> version=<newest submitted, not yet announced | ''> on $GITHUB_OUTPUT
 //   node tools/msix-store-watch.mjs decide <status.txt> <get.txt> -> verdict=live|failed|waiting|unknown, reason=<one line> on $GITHUB_OUTPUT
 //   node tools/msix-store-watch.mjs tell                        (env VERSION, VERDICT, REASON, GH_TOKEN, GITHUB_REPOSITORY, CI_ALERTS_TELEGRAM_*)
 //   node tools/msix-store-watch.mjs broken | recovered          (a failed check tells the owner once per broken streak; a green check ends the streak)
 // State is git tags (owner, 2 Nov 2026): msstore-submitted-X.Y.Z (written by msix-store.yml after a good publish), msstore-announced-X.Y.Z (the verdict message went out),
-// msstore-autosent-X.Y.Z (the watcher started that version's submit), msstore-followed-X.Y.Z (X's message AND the newest-stable step are both done: X is no longer pending). A claim is created
-// before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run never repeats a message or a submit; a failed send or dispatch releases its claim and X stays
-// pending, so the next hour retries just the part that failed. A runner that dies between a claim and its send loses that message (at most once); the 5-minute job cap and 15 s Telegram timeout make it rare.
-// Invariants: a refused version is never sent again by this tool; only a version newer than the finished one is auto-sent; nothing here submits anything itself, it starts msix-store.yml.
+// msstore-followed-X.Y.Z (X's message is out: X is no longer pending; msstore-autosent-X.Y.Z tags from before 7 Nov 2026 are left alone). A claim is created
+// before its action, atomically (GitHub refuses a ref that exists), so a restart or a second run never repeats a message; a failed send releases its claim and X stays
+// pending, so the next hour retries it. A runner that dies between a claim and its send loses that message (at most once); the 5-minute job cap and 15 s Telegram timeout make it rare.
+// Invariants: a refused version is never sent again by this tool; nothing here submits or starts anything.
 import fs from 'node:fs';
 import {delivered, send as sendAlert} from '../desktop/e2e/ci-alert.mjs';
 
@@ -52,16 +54,16 @@ export function reasonOf(getText, status = '') {
   return `Microsoft gave no reason in the API (status ${status || 'unknown'}); read it in Partner Center`;
 }
 
-/** The Telegram text: `kind` live | failed | autosent. */
-export function messageOf(kind, {version, reason = '', run = '', repo = '', next = ''}) {
+/** The Telegram text: `kind` live | failed. */
+export function messageOf(kind, {version, reason = '', run = '', repo = ''}) {
   if (kind === 'live') return `✅ Jobadabra ${version} is live in the Microsoft Store.\n${STORE_PAGE}`;
   if (kind === 'failed') {
-    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself. Once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
+    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself; the weekly run sends the next newer stable that passes. To retry this one once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
   }
-  return `📦 Sending Jobadabra ${next} to the Microsoft Store now (the newest stable, after ${version}). Microsoft's review takes hours; I will write again when it is accepted.\nRun: ${run}`;
+  throw new Error(`unknown message kind ${kind}`);
 }
 
-/** The GitHub API calls this tool makes, over `fetcher`: {tags(prefix), claim(name), release(name), stables(), dispatch(tag)}. */
+/** The GitHub API calls this tool makes, over `fetcher`: {tags(prefix), claim(name), release(name), releaseIfHeld(name)}. */
 export function github(env = process.env, fetcher = fetch) {
   const base = `${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}`;
   const call = (path, init = {}) => fetcher(`${base}/${path}`, {...init, headers: {Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', ...(init.body ? {'Content-Type': 'application/json'} : {})}, signal: AbortSignal.timeout(20000)});
@@ -92,17 +94,10 @@ export function github(env = process.env, fetcher = fetch) {
       if (/^reference does not exist/i.test(message)) return;
       if (!answer.ok) throw new Error(`release ${name}: GitHub ${answer.status}${message ? ` (${message})` : ''}`);
     },
-    /** Newest stable desktop release version, '' when none. */
-    async stables() {
-      const releases = await (await ok(await call('releases?per_page=50'), 'list releases')).json();
-      const found = releases.filter(r => !r.prerelease && !r.draft).map(r => /^desktop-v(\d+\.\d+\.\d+)$/.exec(r.tag_name)?.[1]).filter(Boolean);
-      return found.sort(compareVersions).pop() || '';
-    },
-    async dispatch(tag) { await ok(await call('actions/workflows/msix-store.yml/dispatches', {method: 'POST', body: JSON.stringify({ref: 'main', inputs: {tag}})}), 'start msix-store.yml'); },
   };
 }
 
-/** Submitted versions not yet followed up (message and newest-stable step both done), newest last. */
+/** Submitted versions not yet followed up (their message is out), newest last. */
 export async function pendingVersions(gh) {
   const [submitted, followed] = await Promise.all([gh.tags('msstore-submitted-'), gh.tags('msstore-followed-')]);
   return submitted.filter(v => !followed.includes(v)).sort(compareVersions);
@@ -126,9 +121,8 @@ async function announce(gh, version, text, env, sender, what) {
 }
 
 /**
- * The verdict for `env.VERSION` (the version the status read was made for, from the pending job; never re-picked here): one message, then (live, or a refusal of an older version than the
- * newest stable) the newest stable's submit is started once. Older versions still pending were finished before a newer one could be submitted: they get one honest note, no verdict.
- * Each part has its own claim; the version leaves "pending" only when both parts are done, so a failed dispatch is retried next hour without repeating the message.
+ * The verdict for `env.VERSION` (the version the status read was made for, from the pending job; never re-picked here): one message. Older versions still pending were finished before a newer one could be submitted: they get one honest note, no verdict.
+ * The message has its own claim; the version leaves "pending" once it is out.
  * Returns the lines to print. `deps` = {gh, sender} for tests.
  */
 export async function tell(env, deps = {}) {
@@ -144,16 +138,6 @@ export async function tell(env, deps = {}) {
   }
   if (await announce(gh, version, messageOf(verdict === 'live' ? 'live' : 'failed', {version, reason, run, repo: env.GITHUB_REPOSITORY}), env, sender, verdict)) out.push(`told the owner: ${version} ${verdict}`);
   else out.push(`${version} was already announced`);
-  const newest = await gh.stables();
-  const submitted = await gh.tags('msstore-submitted-');
-  if (!newest || compareVersions(newest, version) <= 0 || submitted.includes(newest)) out.push(`no newer stable to send (newest ${newest || 'none'})`);
-  else if (!await gh.claim(`msstore-autosent-${newest}`)) out.push(`${newest} was already sent on by the watcher`);
-  else {
-    try { await gh.dispatch(`desktop-v${newest}`); }
-    catch (error) { await gh.release(`msstore-autosent-${newest}`); throw new Error(`could not start the Store submit of ${newest}: ${error.message}; ${version} stays pending and it is tried again next hour`); }
-    out.push(`started the Store submit of ${newest}`);
-    await tellOwner(messageOf('autosent', {version, next: newest, run}), env, sender).catch(error => out.push(`the "sending ${newest}" note did not reach Telegram: ${error.message}`));
-  }
   for (const done of [...older, version]) await gh.claim(`msstore-followed-${done}`);
   return out;
 }

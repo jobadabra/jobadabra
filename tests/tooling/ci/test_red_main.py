@@ -19,6 +19,7 @@ CLASSIFIED = {
     'Extension · Chrome Web Store publish': 'ignored: started by tools/release-stable.sh on a stable release, a PR editing it, or by hand; never runs on a push to main',
     # Why (3 Nov 2026, owner: stable only): tells the feedback reporters; started by tools/release-stable.sh after a promotion, never a push or PR check.
     'Release · Tell the feedback reporters': 'ignored: started by tools/release-stable.sh once a build is stable, or by hand; never runs on a push to main',
+    'Release · Weekly Microsoft Store submission': 'ignored: started on Mondays by the Worker (and by hand); never runs on a push to main; a red run tells the owner itself (its alert job)',
     'Release · Watch the Microsoft Store review': 'ignored: started hourly by the Worker (and by hand); never runs on a push to main; a red run is its own finding (a status that cannot be read)',
     # Why (3 Nov 2026, owner: Send to AI on one feedback): started by the site when the owner clicks it (workflow_dispatch) and by a closed fd-ai/ pull request; never a push or PR check.
     'CI · AI fixer': 'ignored: started by hand (workflow_dispatch) for one item; never runs on a push to main',

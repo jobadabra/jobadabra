@@ -25,6 +25,9 @@ export const AGENT_SLOT = '04:40';
 // Six presses in a row took 26-29 min on 5-6 Nov 2026 (runs 41938128120, 42133678718; 33-44 min on 4 Nov), so 18 take about 80-85 min and it ends about 01:25: close to the 01:30 pass (6 Nov 2026, 4/5). TODO(AI): move this slot earlier or start the pass later if the two overlap (6 Nov 2026); the scout at about 02:30 and AGENT_SLOT come later.
 export const SEARCH_SLOT = '00:00';
 export const STORE_WATCH_MINUTE = 20;
+// The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
+// one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).
+export const STORE_WEEKLY = {day: 1, time: '07:00'};
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 /** The night pass due at this moment as "n/5", or '' when none. */
 export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
@@ -48,6 +51,7 @@ export function jobsFor(cron, now = new Date()) {
     // Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days, so an hourly look (minute 20) tells him within the hour;
     // it rides this trigger (no 4th trigger can be registered) and costs one Ubuntu minute unless a submitted version waits (msix-store-watch.yml).
     if (now.getUTCMinutes() === STORE_WATCH_MINUTE) jobs.push({workflow: 'msix-store-watch.yml'});
+    if (now.getUTCDay() === STORE_WEEKLY.day && hhmm(now) === STORE_WEEKLY.time) jobs.push({workflow: 'msix-store-weekly.yml'});
     return jobs;
   }
   if (cron === '40 */3 * * *') return [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}];
@@ -61,7 +65,7 @@ export function jobsFor(cron, now = new Date()) {
 export const LEGACY_NAMES = {'site-replays.yml': 'replay-offline.yml'};
 const isNotFound = error => /\b404\b/.test(String(error?.message));
 
-export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'search-personas.yml': 'Search check · nightly (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)'};
+export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'search-personas.yml': 'Search check · nightly (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)', 'msix-store-weekly.yml': 'Microsoft Store · weekly submission'};
 
 // dispatch(env, inputs, workflow) starts a workflow on main (index.js); notify(text) tells the owner when it could not, on Telegram; report(text) on GitHub, in the
 // watchdog's issue (watchdog.js), where the owner looks. Neither can reach anyone when the token is the problem: the GitHub-side watchdog covers that.
