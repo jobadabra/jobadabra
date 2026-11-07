@@ -36,6 +36,7 @@ test('an app that never finishes starting ends as a hang that says what it last 
 test('the smoke run starts its script from that state in both places a clock stood in for it, and the page marks the end of its start', () => {
   const window = fs.readFileSync(new URL('../../../lib/main-window.js', import.meta.url), 'utf8');
   assert.equal(window.match(/await whenBooted\(/g).length, 2, 'after the load and after the reload');
+  assert.equal(window.match(/try \{ await whenBooted\(/g).length, 2, 'each hang is reported and quits, never an unhandled rejection that leaves the run hanging');
   assert.doesNotMatch(window, /setTimeout\(async \(\) => \{/, 'no clock between the load and the script');
   assert.match(fs.readFileSync(new URL('../../../renderer/app.js', import.meta.url), 'utf8'), /^window\.__jp = /m, 'renderer/app.js sets window.__jp as the end of its start');
 });
