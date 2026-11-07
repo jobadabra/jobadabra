@@ -37,17 +37,13 @@ test('successful probe retains its result contract without failure diagnostics o
   t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});
   assert.deepEqual(probeWindow({script:()=>null,env:{DISPLAY:'private-display-value',XAUTHORITY:'private-authority-value'}}),{result:{fictional:'unchanged'},host:[],log:['fictional log']});assert.equal(calls,1);
 });
-test('the X server line counts processes and connected clients of the failed display only',()=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'x-now-')),proc=path.join(dir,'proc'),sockets=path.join(dir,'x11');
+test('the X server line is counts only: no environment, command line or display value from /proc reaches it',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'x-now-')),proc=path.join(dir,'proc');
   try{
-    fs.mkdirSync(path.join(proc,'net'),{recursive:true});fs.mkdirSync(path.join(proc,'self'));fs.mkdirSync(sockets);fs.writeFileSync(path.join(proc,'self','limits'),'Max open files            1024                 524288               files\n');
-    for(const [pid,comm] of [['11','Xvfb'],['12','electron'],['13','electron'],['14','bash']]){fs.mkdirSync(path.join(proc,pid));fs.writeFileSync(path.join(proc,pid,'comm'),comm+'\n');}
-    fs.mkdirSync(path.join(proc,'15'));   // a process that ended before its name was read
-    fs.writeFileSync(path.join(proc,'net','unix'),['Num RefCount Protocol Flags Type St Inode Path',
-      '0: 00000002 00000000 00010000 0001 01 1 /tmp/.X11-unix/X99','0: 00000003 00000000 00000000 0001 03 2 /tmp/.X11-unix/X99','0: 00000003 00000000 00000000 0001 03 3 /tmp/.X11-unix/X99',
-      '0: 00000003 00000000 00000000 0001 03 4 /tmp/.X11-unix/X100','0: 00000003 00000000 00000000 0001 03 5'].join('\n'));
-    assert.equal(xServerNow(':99',{proc,socketDir:sockets}),'X server now: socket file no, Xvfb 1, electron 2, xkbcomp 0, clients connected 2, open-files limit 1024');
-    fs.writeFileSync(path.join(sockets,'X99'),'');assert.match(xServerNow(':99.0',{proc,socketDir:sockets}),/socket file yes/);
-    assert.equal(xServerNow('private-display-value',{proc,socketDir:sockets}),'','a display with no number reports nothing');assert.equal(xServerNow(':99',{proc:path.join(dir,'none')}),'','no /proc (macOS, Windows) reports nothing');
+    fs.mkdirSync(path.join(proc,'net'),{recursive:true});fs.mkdirSync(path.join(proc,'self'));fs.mkdirSync(path.join(proc,'12'));fs.writeFileSync(path.join(proc,'net','unix'),'Num RefCount Protocol Flags Type St Inode Path\n');
+    fs.writeFileSync(path.join(proc,'12','comm'),'electron\n');fs.writeFileSync(path.join(proc,'12','environ'),'SECRET_TOKEN=private-secret-value');fs.writeFileSync(path.join(proc,'12','cmdline'),'electron --token=private-secret-value');
+    const line=xServerNow(':99',{proc,socketDir:dir});
+    assert.match(line,/^X server now: socket file (yes|no)(, [A-Za-z -]+ [a-z0-9]+)+$/);assert.ok(!line.includes('private-secret-value'),'process environment and command lines stay out');
+    assert.equal(xServerNow('private-display-value',{proc,socketDir:dir}),'','a display with no number reports nothing, and never echoes it');
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
