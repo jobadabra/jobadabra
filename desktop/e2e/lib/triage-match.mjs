@@ -82,6 +82,7 @@ export const fixedBefore = (finding, issues) => matchExisting(finding, (issues |
 // The commits a failed-step issue was seen failing on (its body and its "Seen again" comments).
 export const failedCommits = issue => new Set([commitOf(issue.body), ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => commitOf(comment.body))].filter(Boolean));
 export const flakyOn = (issue, sha7) => !!sha7 && /·\s*test-failure\s*·/.test(issue.body || '') && failedCommits(issue).has(sha7);
+/** The comment on an issue whose fix did not hold: takes the reopened issue (number, title with its `[auto-ui]` or `[AI persona]` tag) and the run's URL, returns the Markdown line; from the issue's own fields only, so it cannot fail. */
 export const regressionComment = (issue, runUrl) => `↩️ **Regression:** this looks like #${issue.number} ("${String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, '').slice(0, 80)}"), which a fix closed. The fix did not hold (${runUrl}).`;
 export const flakyComment = (sha7, runUrl, why = '') => `🎲 **Flaky:** this step failed and then passed on the same commit \`${sha7}\` (${runUrl})${why ? `, on ${why}` : ''}: the test's timing or environment, not a wrong value. Labelled \`flaky\`, ranked last, never offered to the fixer. (A wrong value that comes right on a rerun is labelled \`intermittent\` instead: lib/flaky-proof.mjs.)`;
 

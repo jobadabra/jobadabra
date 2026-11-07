@@ -1,5 +1,6 @@
 // The week's facts for the Finder's weekly self-review (finder-review.yml): per detector what it filed and how that ended, and the reasons behind every false
 // positive, test-harness issue, detector miss and fix a person had to take over. Claude reads them and proposes rule/prompt changes as one PR. Pure. 4 Oct 2026.
+// Job: report health
 import {classify, detectorOf} from './selfheal-stats.mjs';
 import {afterEpoch} from './stats-epoch.mjs';
 import {whyOf} from './verdict-comment.mjs';

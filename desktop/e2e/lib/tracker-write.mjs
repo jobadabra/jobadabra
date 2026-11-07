@@ -2,6 +2,7 @@
 // can see on its own now gets a row too: a planted bug no detector caught (a `detector-miss` issue) and a bug a person reported on GitHub that the Finder had not (a closed issue
 // without the `auto-ui` label). The row carries the replay command, so the miss can be walked again. One row per GitHub issue (found by its URL first); with no write token it does nothing.
 // Needs NOTION_BRAIN_WRITE_TOKEN (an integration with insert rights on the tracker) and BUG_TRACKER_DB; the read-only token of the stats cannot write. Pure but for the Notion call.
+// Job: report health
 import {parseReplay, replayCommand} from './replay.mjs';
 
 export const NOTION_VERSION = '2022-06-28';

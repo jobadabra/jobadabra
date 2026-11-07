@@ -3,6 +3,7 @@
 // and the verdict's "Why"), so the reviewer stops raising it in other words. The hand-written BY DESIGN list in lib/vision.mjs SYSTEM stays; this adds
 // to it without anyone editing a prompt. Read from GitHub at review time (GITHUB_TOKEN, issues: read); none readable: the review runs without them.
 // Guarded by test/review-lessons.test.mjs.
+// Job: report health
 export const LESSON_LABELS = ['source:ai-review', 'resolution:by-design'];
 const MAX_LESSONS = 12;
 
