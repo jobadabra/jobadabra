@@ -13,7 +13,7 @@ export function notifyEntries({state, hidden = new Set(), held = new Set()} = {}
   const actions = card.state === 'none' ? [{label: t('helperState.sendLink'), do: 'add_email'}, {label: t('helperState.useTelegram'), do: 'open_notifications'}]
     : card.resend ? [{label: t('helperState.resend'), do: 'resend_confirm'}, {label: t('helperState.changeAddress'), do: 'open_notifications'}] : [{label: t('helperState.openNotifications'), do: 'open_notifications'}];
   return [{kind: 'notify', home: 'focus', topic: 'profile', key: KEY, title: card.title, source: '', detail: card.detail, email: '', state: card.state, evidence: [],
-    answers: [t('helperState.notNow')], alsoJobs: true, actions}];
+    answers: ['Not now'], alsoJobs: true, actions}];
 }
 
 /** What Save sends for an address typed on the card: the channels the person already chose, plus e-mail. */

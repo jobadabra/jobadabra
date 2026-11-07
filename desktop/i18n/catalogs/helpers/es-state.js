@@ -17,7 +17,7 @@ export const messages = {
   "keepEditing": "Seguir editando",
   "saveQuestion": "¿Guardar los cambios?",
   "leaveDrafts": "{changes} en {area}. Sal sin guardarlos o guárdalos primero.",
-  "notifyAdd": "Recibir notificaciones por correo. Añade tu dirección abajo y actívalas.",
+  "notifyAddRest": "Añade tu dirección abajo y actívalas.",
   "notifySendingOff": "A {email}. El envío aún no está activado por nuestra parte: guardamos tu elección y empezará al activarse.",
   "notifyUnsubscribed": "Detuviste estos correos con un enlace. Actívalos con «Ajustes de correo» al pie de cualquiera de nuestros correos.",
   "notifyConfirmed": "A {email} (confirmado).",

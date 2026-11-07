@@ -17,7 +17,7 @@ export const messages = {
   "keepEditing": "Weiter bearbeiten",
   "saveQuestion": "Änderungen speichern?",
   "leaveDrafts": "{changes} auf {area}. Ohne Speichern verlassen oder zuerst speichern.",
-  "notifyAdd": "App-Mitteilungen per E-Mail erhalten. Füge unten deine Adresse hinzu und schalte es ein.",
+  "notifyAddRest": "Füge unten deine Adresse hinzu und schalte es ein.",
   "notifySendingOff": "An {email}. E-Mail ist bei uns noch nicht aktiviert. Deine Auswahl bleibt gespeichert; der Versand startet nach der Aktivierung.",
   "notifyUnsubscribed": "Du hast diese E-Mails über einen Link abbestellt. Aktiviere sie über „E-Mail-Einstellungen“ am Ende einer unserer E-Mails erneut.",
   "notifyConfirmed": "An {email} (bestätigt).",

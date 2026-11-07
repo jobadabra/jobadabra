@@ -144,3 +144,13 @@ test('translated yes/no labels preserve canonical answers and original form opti
     assert.deepEqual(texts(supplied), ['Yes', 'No']);
   } finally { setLocale('en'); }
 });
+
+test('native multi-select changes preserve all canonical picks without assigning its value', () => {
+  const options = ['First choice', 'Second choice', 'Third choice', 'Fourth choice', 'Fifth choice', 'Sixth choice', 'Seventh choice'];
+  const seen = [];
+  const node = answerControl({control: 'multi', options}, '', value => seen.push(value));
+  node.selectedOptions = [node.children[1], node.children[4]];
+  Object.defineProperty(node, 'value', {get: () => options[1], set: () => { throw new Error('assigning a multi-select value loses the other picks'); }, configurable: true});
+  fire(node, 'change');
+  assert.deepEqual(seen, ['Second choice, Fifth choice']);
+});

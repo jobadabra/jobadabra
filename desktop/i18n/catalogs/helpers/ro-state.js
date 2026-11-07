@@ -17,7 +17,7 @@ export const messages = {
   "keepEditing": "Continuă editarea",
   "saveQuestion": "Salvezi modificările?",
   "leaveDrafts": "{changes} pe {area}. Pleacă fără ele sau salvează-le mai întâi.",
-  "notifyAdd": "Primește notificări prin e-mail. Adaugă adresa mai jos, apoi activează-le.",
+  "notifyAddRest": "Adaugă adresa mai jos, apoi activează-le.",
   "notifySendingOff": "Către {email}. Trimiterea nu este încă activă la noi: alegerea se păstrează, iar e-mailurile pornesc la activare.",
   "notifyUnsubscribed": "Ai oprit aceste e-mailuri folosind un link din ele. Reactivează-le din „Setări e-mail”, la finalul oricărui e-mail de la noi.",
   "notifyConfirmed": "Către {email} (confirmat).",

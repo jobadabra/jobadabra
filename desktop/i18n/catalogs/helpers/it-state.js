@@ -17,7 +17,7 @@ export const messages = {
   "keepEditing": "Continua a modificare",
   "saveQuestion": "Salvare le modifiche?",
   "leaveDrafts": "{changes} su {area}. Esci senza salvarle o salvale prima.",
-  "notifyAdd": "Ricevi notifiche via email. Aggiungi l'indirizzo qui sotto, poi attivale.",
+  "notifyAddRest": "Aggiungi l'indirizzo qui sotto, poi attivale.",
   "notifySendingOff": "A {email}. L'invio non è ancora attivo da parte nostra: la scelta resta salvata e le email inizieranno all'attivazione.",
   "notifyUnsubscribed": "Hai interrotto queste email tramite il link al loro interno. Riattivale con «Impostazioni email» in fondo a una nostra email.",
   "notifyConfirmed": "A {email} (confermato).",

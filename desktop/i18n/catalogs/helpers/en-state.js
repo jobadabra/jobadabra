@@ -17,7 +17,7 @@ export const messages = {
   "keepEditing": "Keep editing",
   "saveQuestion": "Save your changes?",
   "leaveDrafts": "{changes} on {area}. Leave without them, or save them first.",
-  "notifyAdd": "E-mail me app notifications. Add your address below, then switch it on.",
+  "notifyAddRest": "Add your address below, then switch it on.",
   "notifySendingOff": "To {email}. Email is not switched on on our side yet: your choice is kept and mail starts when it is.",
   "notifyUnsubscribed": "You stopped these emails with the link in one of them. Turn them on again with \"Email settings\" at the bottom of any of our emails.",
   "notifyConfirmed": "To {email} (confirmed).",

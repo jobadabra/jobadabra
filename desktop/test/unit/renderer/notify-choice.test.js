@@ -104,3 +104,15 @@ test('the Email card in "Your setup" shows each state, and only when e-mail is c
   const settings = read('renderer/pages/settings.js');
   assert.match(settings, /emailSetupCard\(/, 'Overview draws it');
 });
+
+test('the displayed consent sentence matches the recorded wording in every display language', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {SETTINGS_LINE, wordingOf} = await import('../../../renderer/email-consent-words.js');
+  try {
+    for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+      setLocale(locale);
+      assert.equal(SETTINGS_LINE, wordingOf('settings'));
+      assert.ok(notes({email: '', by: []}).email.startsWith(`${SETTINGS_LINE} `), locale);
+    }
+  } finally { setLocale('en'); }
+});

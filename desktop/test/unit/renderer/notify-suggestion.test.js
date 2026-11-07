@@ -49,3 +49,12 @@ test('the e-mail the card saves keeps what the person already chose and adds e-m
 test('offline (the website did not answer): no card on a guess', () => {
   assert.deepEqual(notifyEntries({state: {...none, reached: false}}), []);
 });
+
+test('localized notification offers keep the canonical Not now action', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    const [entry] = notifyEntries({state: {reached: true, by: ['app'], email: ''}});
+    assert.deepEqual(entry.answers, ['Not now']);
+  } finally { setLocale('en'); }
+});

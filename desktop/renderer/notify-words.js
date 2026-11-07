@@ -4,11 +4,12 @@
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {date} from '../i18n/format.js';
+import {SETTINGS_LINE} from './email-consent-words.js';
 const NAMES = {email: 'Email', telegram: 'Telegram'};
 
 // The notes under the Email and Telegram switches and the card's message line. `error` is the last save's refusal: it stays until the next save (it was wiped by the refresh).
 export function notes(state, error = '') {
-  const email = !state.email ? t('helperState.notifyAdd')
+  const email = !state.email ? `${SETTINGS_LINE} ${t('helperState.notifyAddRest')}`
     : state.sending === false ? t('helperState.notifySendingOff', {email: state.email})
       : state.serviceOff ? t('helperState.notifyUnsubscribed')
         : state.confirmed ? t('helperState.notifyConfirmed', {email: state.email})

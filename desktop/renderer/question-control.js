@@ -15,41 +15,53 @@ const KIND_TEXT = {text: 'helperMore.kindText', long_text: 'helperMore.kindLong'
 const FEW = 3, SHORT = 18, FEW_PICKS = 6;
 const segmentedOk = (options, most) => options.length <= most && options.every(option => option.length <= SHORT);
 
+// Draw display labels separately from canonical options; native multi-select changes must never rewrite its selection through .value.
+function choiceControl(control, options, {read, set, change, ariaLabel, chips}) {
+  const label = option => control === 'yes_no' ? t(option === 'Yes' ? 'helperMore.answerYes' : 'helperMore.answerNo') : option;
+  if (control === 'yes_no' || (control === 'single' && segmentedOk(options, chips ? FEW_PICKS : FEW))) {
+    const isOn = option => option.toLowerCase() === read().toLowerCase();
+    return segmented(options, isOn, (option, group) => { set(isOn(option) ? '' : option); refresh(group, isOn); }, ariaLabel, label);
+  }
+  if (control === 'single') {
+    const node = Object.assign(el('select', ''), {ariaLabel}), current = read();
+    node.append(new Option(t('helperMore.choose'), ''));
+    // A saved answer outside the known options stays available exactly as written.
+    if (current && !options.some(option => option.toLowerCase() === current.toLowerCase())) node.append(new Option(current, current));
+    for (const option of options) node.append(new Option(option, option));
+    node.value = options.find(option => option.toLowerCase() === current.toLowerCase()) || current;
+    node.addEventListener('change', () => change(node.value));
+    return node;
+  }
+  if (segmentedOk(options, FEW_PICKS)) {
+    const isOn = option => picksOf(read(), options).includes(option);
+    return segmented(options, isOn, (option, group) => {
+      const picks = picksOf(read(), options);
+      set(joinPicks(options.filter(each => (each === option ? !picks.includes(each) : picks.includes(each)))));
+      refresh(group, isOn);
+    }, ariaLabel);
+  }
+  const node = Object.assign(el('select', ''), {multiple: true, ariaLabel, size: Math.min(6, options.length)});
+  const picks = picksOf(read(), options);
+  for (const option of options) node.append(new Option(option, option, false, picks.includes(option)));
+  node.addEventListener('change', () => change(joinPicks([...node.selectedOptions].map(option => option.value))));
+  return node;
+}
+
 // format: {control, options}; value: the saved answer ('' = none); onChange(value). -> the control node (its .value reads the current answer).
 export function answerControl(format, value, onChange, {placeholder = t('helperMore.yourAnswer'), ariaLabel = t('helperMore.answer'), chips = false} = {}) {
   const control = format?.control || 'text', options = format?.options || [];
   let current = String(value ?? '');
   const set = next => { current = next; node.value = next; onChange(next); };
+  const change = next => { current = next; onChange(next); };
   let node;
-  if (control === 'yes_no' || (control === 'single' && segmentedOk(options, chips ? FEW_PICKS : FEW))) {
-    const isOn = option => option.toLowerCase() === current.toLowerCase();
-    node = segmented(options, isOn, (option, group) => { set(isOn(option) ? '' : option); refresh(group, isOn); }, ariaLabel, control === 'yes_no' ? option => t(option === 'Yes' ? 'helperMore.answerYes' : 'helperMore.answerNo') : undefined);
-  } else if (control === 'single') {
-    node = Object.assign(el('select', ''), {ariaLabel});
-    node.append(new Option(t('helperMore.choose'), ''));
-    // An answer saved in other words (typed before the kind was known) stays as a choice: nothing is lost.
-    if (current && !options.some(option => option.toLowerCase() === current.toLowerCase())) node.append(new Option(current, current));
-    for (const option of options) node.append(new Option(option, option));
-    node.value = options.find(option => option.toLowerCase() === current.toLowerCase()) || current;
-    node.addEventListener('change', () => { current = node.value; onChange(current); });
-  } else if (control === 'multi' && segmentedOk(options, FEW_PICKS)) {
-    const isOn = option => picksOf(current, options).includes(option);
-    node = segmented(options, isOn, (option, group) => {
-      const picks = picksOf(current, options);
-      set(joinPicks(options.filter(each => (each === option ? !picks.includes(each) : picks.includes(each)))));
-      refresh(group, isOn);
-    }, ariaLabel);
-  } else if (control === 'multi') {
-    node = Object.assign(el('select', ''), {multiple: true, ariaLabel, size: Math.min(6, options.length)});
-    const picks = picksOf(current, options);
-    for (const option of options) node.append(new Option(option, option, false, picks.includes(option)));
-    node.addEventListener('change', () => { current = joinPicks([...node.selectedOptions].map(option => option.value)); onChange(current); });
+  if (['yes_no', 'single', 'multi'].includes(control)) {
+    node = choiceControl(control, options, {read: () => current, set, change, ariaLabel, chips});
   } else if (control === 'date') {
-    node = dateControl(format, current, next => { current = next; onChange(next); }, {ariaLabel});
+    node = dateControl(format, current, change, {ariaLabel});
   } else if (control === 'amount') {
-    node = amountControl(format, current, next => { current = next; onChange(next); }, {ariaLabel});
+    node = amountControl(format, current, change, {ariaLabel});
   } else if (COMPOSITE.includes(control)) {
-    node = compositeControl(control, format, current, next => { current = next; onChange(next); }, {ariaLabel, placeholder});
+    node = compositeControl(control, format, current, change, {ariaLabel, placeholder});
   } else if (control === 'textarea') {
     node = Object.assign(el('textarea', ''), {value: current, placeholder, ariaLabel, rows: 3});
     node.addEventListener('input', () => { current = node.value; onChange(current); });
