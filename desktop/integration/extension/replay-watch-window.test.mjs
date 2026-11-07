@@ -39,8 +39,8 @@ test('the panel\'s repeated report is not an act: it does not keep the window op
 test('only a pull request\'s page cases run the quick window; main, the daily run and a local run wait the whole window', async () => {
   const fs = await import('node:fs'), path = await import('node:path'), {windowMode} = await import('../../e2e/lib/page-replay.mjs');
   const flow = fs.readFileSync(path.join(import.meta.dirname, '../../../.github/workflows/page-cases.yml'), 'utf8');
-  assert.match(flow, /JP_REPLAY_WINDOW: \$\{\{ github\.event_name == 'pull_request' && 'quick' \|\| 'full' \}\}/);   // Only PRs choose quick; workflow callers keep the full window.
-  assert.match(flow, /workflow_call:/, 'main and scheduled callers use the reusable workflow');
+  assert.match(flow, /JP_REPLAY_WINDOW: \$\{\{ github\.event_name == 'pull_request' && 'quick' \|\| github\.event_name == 'workflow_dispatch' && inputs\.window \|\| 'full' \}\}/);   // a by-hand run picks its mode (default full) to measure PR seconds per case
+  assert.match(flow, /schedule:\s*\n\s*- cron:/, 'the daily full run');
   assert.ok(!/JP_REPLAY_WINDOW/.test(fs.readFileSync(path.join(import.meta.dirname, '../../../.github/workflows/build.yml'), 'utf8')), 'main sets no quick mode');
   const was = process.env.JP_REPLAY_WINDOW;
   try {
