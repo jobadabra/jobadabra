@@ -4,7 +4,7 @@
 // the choice. Not gated: the extension's own Fill in Chrome (the person is already looking at the form). Guard: test/guards/safety/apply-choice-gate.test.js.
 import {applyChosen} from '../renderer/apply-settings-model.js';
 
-export const APPLY_ACTIONS = Object.freeze(['apply', 'applyOne', 'applyWithClaude', 'sessionRestart', 'sessionReopen', 'sessionResume',
+export const APPLY_ACTIONS = Object.freeze(['apply', 'applyCheckConfirm', 'applyOne', 'applyWithClaude', 'sessionRestart', 'sessionReopen', 'sessionResume',
   'readySend', 'readyRun', 'readyOpen', 'readyAgain']);
 // A handler that starts a fill but is left out, and why (the class test reads this).
 export const NOT_GATED = Object.freeze({
@@ -23,7 +23,7 @@ export function guard(handle, getStorage, log = () => {}) {
 }
 
 // For the class test: what starts a fill inside a handler's body (an apply, a form tab, Claude, a Ready send or run).
-export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyRunner\.start|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;   // Why (27 Oct 2026, owner): the batch handler can inject the same runner boundary for mode-dispatch tests; keep it in the gated-fill scan. words-ok: own function names, not page words
+export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyRunner\.(start|openInChrome)|checkFirst\.confirm|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;   // Why (27 Oct 2026, owner; 7 Nov 2026, fa): the batch handler can inject the same runner boundary for mode-dispatch tests, and a checked Full automation batch starts its fills at confirm (checkFirst.confirm, applyRunner.openInChrome); keep them all in the gated-fill scan. words-ok: own function names, not page words
 
 // [[name, body]] of each `.handle('name', ...)` in a source file: strings and comments removed first (a word in a comment is not a call), the body
 // read up to the call's closing parenthesis.

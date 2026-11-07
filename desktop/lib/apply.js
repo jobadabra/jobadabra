@@ -318,6 +318,17 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
 }
 
 
+/**
+ * Opens the "In Chrome · you submit" jobs of a checked Full automation batch (spec 2026-11-07-full-automation-check-first) through the same opener as a Standard batch: a form session and a tab per job, the person submits.
+ * Takes the store and the jobs ({url, title, company, ...}); returns the Chrome answer with one outcome per job ('started', or 'not-started' with the reason). Nothing opens for an empty list.
+ */
+export async function openInChrome(storage, jobs, {open = openBrowser, focus = openFormTab, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
+  if (!jobs.length) return {ok: true, outcomes: []};
+  await releaseEndedRuns(release, jobs.map(job => job.url));
+  const result = openBatchInChrome(jobs, 0, {open, focus});
+  return {...result, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: result.ok ? 'started' : 'not-started', reason: result.ok ? '' : result.error}))};
+}
+
 /** The Apply-to-N batch in Chrome: a form session per job, then one launch with a tab for each job whose tab is not open yet. -> the start() answer. */
 function openBatchInChrome(chosen, drafted, {open, focus}) {
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.

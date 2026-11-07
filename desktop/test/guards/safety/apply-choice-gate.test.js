@@ -39,7 +39,7 @@ function registerAll(settings) {
 test('not chosen yet: every apply action answers "choose first" and starts nothing', async () => {
   const {handles, started} = registerAll({});
   const {id} = terminals.startForm({id: 's1', url: 'https://jobs.example.test/a', company: 'Acme'});
-  const args = {apply: [{n: 2, mode: 'chrome'}], applyOne: ['https://jobs.example.test/a', {}], applyWithClaude: ['https://jobs.example.test/a', {}],
+  const args = {apply: [{n: 2, mode: 'chrome'}], applyCheckConfirm: ['p1', []], applyOne: ['https://jobs.example.test/a', {}], applyWithClaude: ['https://jobs.example.test/a', {}],
     sessionRestart: [id], sessionReopen: [id, false], sessionResume: [id], readySend: [{}], readyRun: [{}], readyOpen: ['a1'], readyAgain: ['a1']};
   assert.deepEqual(Object.keys(args).sort(), [...APPLY_ACTIONS].sort(), 'each listed action is called below');
   for (const name of APPLY_ACTIONS) {

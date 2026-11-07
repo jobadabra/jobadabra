@@ -11,7 +11,7 @@ const walk = dir => fs.readdirSync(new URL(dir, root), {withFileTypes: true}).fl
   entry.isDirectory() ? walk(`${dir}${entry.name}/`) : entry.name.endsWith('.js') ? [`${dir}${entry.name}`] : []);
 
 // The channels a start button calls that can answer {ok: false, error} before anything runs -> how the window calls each (preload.cjs).
-const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'prepareKit', 'applyOne', 'apply', 'applyWithClaude', 'command', 'tailorTop', 'visitsRun',
+const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'prepareKit', 'applyOne', 'apply', 'applyCheckConfirm', 'applyWithClaude', 'command', 'tailorTop', 'visitsRun',
   'visitWithClaude', 'visitsWithClaude', 'rescoreOutdated', 'refreshLocations'].map(name => [name, new RegExp(`window\\.pilot\\.${name}\\(`)]));
 RUN_STARTS.ivReview = /(?:pilot\.interviews|\biv)\.review\(/;
 

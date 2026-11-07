@@ -27,6 +27,9 @@ export const MAX_BACKGROUND_SESSIONS = 10;
 const SKIPS = {NOT_ELIGIBLE: 'skipped', LIVE_AUTO: 'live'};   // the store's error codes that skip one job and keep the batch going
 const OUTCOME_STATUS = {NOT_ELIGIBLE: 'ineligible', LIVE_AUTO: 'already-queued'};
 const plural = (n, why) => `${n} job${n === 1 ? ' was' : 's were'} skipped: ${why}`;
+// A batch refused before any queue row: every job 'not-started' with the refusal as its reason (the one shape enqueue and canQueue answer with).
+const refusedFor = (jobs, error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: error}))});
+const BROWSER_MISSING = "Download Jobadabra's browser first: about 200 MB, only once.";
 const skippedWords = ({skipped, busy, live}) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
   + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '')
   + (live ? ` ${plural(live, live === 1 ? 'it is already queued for Full automation (stop or cancel it in Sessions first).' : 'they are already queued for Full automation (stop or cancel them in Sessions first).')}` : '');
@@ -152,13 +155,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    */
   async function enqueue(jobs, mode, batch = null, eligibility = null) {
     return serial(async () => {
-      // Why (7 Nov 2026, #3424, review): a preflight refusal has no queue row; distinguish it from a failed kit so the dialog says the selected job never started.
-      const refused = (error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: error}))});
+      // Why (7 Nov 2026, #3424, review): a preflight refusal has no queue row; distinguish it from a failed kit so the dialog says the selected job never started; canQueue answers the same through refusedFor (fa, #3564).
+      const refused = (error, extra = {}) => refusedFor(jobs, error, extra);
       const configured = batchSettings(config(), mode, batch);
       const {error} = configured;
       if (error) return refused(error);
       const chosen = eligibility ? {...configured.chosen, allowIneligible: eligibility.allowIneligible === true} : configured.chosen;
-      if (!browserOf().ready()) return refused("Download Jobadabra's browser first: about 200 MB, only once.", {code: 'BACKGROUND_BROWSER_MISSING'});   // before any store write, so nothing waits on a browser that is not there
+      if (!browserOf().ready()) return refused(BROWSER_MISSING, {code: 'BACKGROUND_BROWSER_MISSING'});   // before any store write, so nothing waits on a browser that is not there
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return refused(`At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`);
       const enrolled = [], outcomes = [];
@@ -187,6 +190,15 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, ...tally});
       return {ok: true, mode, sessions: enrolled, outcomes, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
     });
+  }
+  /**
+   * Whether `jobs` in `mode` (with `batch`, as enqueue takes them) could be queued now: {ok: true}, or the very refusal enqueue would answer (no Full automation confirmation, no browser), each job 'not-started'.
+   * Why (7 Nov 2026, spec 2026-11-07-full-automation-check-first): a Full automation batch is held for its form check first; a batch that could never queue is refused before the check, not after it.
+   */
+  function canQueue(mode, batch = null, jobs = []) {
+    const {error} = batchSettings(config(), mode, batch);
+    if (error) return refusedFor(jobs, error);
+    return browserOf().ready() ? {ok: true} : refusedFor(jobs, BROWSER_MISSING, {code: 'BACKGROUND_BROWSER_MISSING'});
   }
   // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
   async function stateForPoll(item) {
@@ -425,5 +437,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  return {enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

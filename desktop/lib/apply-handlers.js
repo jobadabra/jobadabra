@@ -24,6 +24,7 @@ import {extensionReady} from './extension-ready.js';
 import * as sitePassword from './site-password.js';
 import * as terminals from './terminals.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
+import {createCheckFirst} from './apply-check-first.js';
 import fs from 'node:fs';
 import {GOOGLE_KEYCHAIN, GOOGLE_SCOPES_KEYCHAIN} from './google-keys.js';
 import {log as appLog} from './log.js';
@@ -49,22 +50,41 @@ export function triageReadOrNull(read, url, log = appLog) {
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
 
 export function registerApplyHandlers(ctx) {
-  const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
+  const {DEMO, applyRunner = apply, background: givenBackground = null, storedCheck = async () => null, clock = Date.now, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
   // Why (7 Nov 2026, owner's 0.9.13 retest): old extension code filled the forms and nothing said so; a press that opens Chrome says it ('' when the copy is current or unknown). Not for the hidden browser: it carries its own copy.
   const withNote = result => (result?.ok ? {...result, extensionNote: staleNote()} : result);
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
-  const background = backgroundApplyFor(storage);
+  const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply triage (PR C2a): one form read in the hidden browser; the answer is the mode table's flags, or null when nothing was read. The demo has no hidden browser: it reads what settings.demoTriageReads names (lib/demo.js).
   ipcMain.handle('triageRead', (_, job) => (DEMO ? demoTriageRead(storage.settings(), String(job?.url || '')) : triageReadOrNull(background.triageRead, String(job?.url || ''))));   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
   ipcMain.handle('triageCancel', () => background.cancelTriage());
+  // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
+  // storedCheck(job): the check prepared with the job's kit, fresh, or null ([fa] 2/2 wires the kit's own reader).
+  const checkFirst = createCheckFirst({stored: storedCheck, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
+    enqueue: (jobs, mode, batch, eligibility) => background.enqueue(jobs, mode, batch, eligibility), openInChrome: jobs => applyRunner.openInChrome(storage, jobs), chromeBlocked: needExtension});
+  const holdForCheck = async (jobs, batch, eligibility) => {
+    const can = background.canQueue('auto', batch, jobs);   // the batch's own Full automation confirmation and the browser, refused before the check with enqueue's own answer
+    return can.ok ? await checkFirst.hold(jobs, {batch, eligibility}) : can;
+  };
+  ipcMain.handle('applyCheckRead', (_, plan, url) => checkFirst.readOne(plan, url));
+  ipcMain.handle('applyCheckConfirm', async (_, plan, autoUrls) => {
+    const blocked = needsNotion('apply') || await allowanceBlock();   // checked again: the answer may come many minutes after Start
+    if (blocked) { checkFirst.cancel(plan); return blocked; }
+    return withNote(await checkFirst.confirm(plan, Array.isArray(autoUrls) ? autoUrls : []));   // the In Chrome group opens Chrome tabs: the stale-extension note applies
+  });
+  ipcMain.handle('applyCheckCancel', async (_, plan) => {
+    const {held} = checkFirst.cancel(plan);
+    if (held && !DEMO) await background.cancelTriage();   // Why (7 Nov 2026, the owner's choice on the fa sketch): Cancel ends the whole batch, so its read in flight stops too; an ended or unknown batch stops nothing
+    return {ok: true};
+  });
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
     // Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs"; "we can choose a different apply mode every time, for every new batch"): a call with a `pick` (the dialog's card) runs
     // THIS batch in that mode and writes nothing to Settings; its Full-automation confirmation is the one this call carries (batchConfirmation). A call without a pick follows the saved mode, as before.
     const settings = fromSettings ? storage.settings() : null;   // read only for a Settings-driven call: a gate's call with no settings (extension-gate.test.js) never reaches it
     const picked = fromSettings && modeBuilt(options?.pick) ? options.pick : '';
-    const batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(options.autoConfirmedAt, settings) : ''};
+    const batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(options.autoConfirmedAt, settings, clock()) : ''};
     const applyMode = fromSettings ? picked || applyOf(settings).mode : '';
     const mode = fromSettings ? modeRunner(applyMode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
     // Why (2026-10-28, Background apply B): the hidden browser runs only the person's saved mode, never a runner name the window sends.
@@ -75,7 +95,7 @@ export function registerApplyHandlers(ctx) {
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
     const started = await applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
-      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => background.enqueue(jobs, which, batch, eligibility)});
+      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => (which === 'auto' && options?.checkFirst === true ? holdForCheck(jobs, batch, eligibility) : background.enqueue(jobs, which, batch, eligibility))});
     return hidden ? started : withNote(started);
   });
   ipcMain.handle('applyOne', async (_, url, details) => {
