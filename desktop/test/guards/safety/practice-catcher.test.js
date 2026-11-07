@@ -53,9 +53,16 @@ test('a Submit is caught once whether the script, the form\'s own POST, or both 
     assert.equal(rest.length, 0, 'the script and the post are one submission');
     assert.deepEqual([entry.host, entry.path, entry.posted, entry.postedTo], ['jobs.example.com', '/x/apply', true, '/envoyer']);
     assert.deepEqual(entry.fields, [['email', 'a@b.test'], ['pw', '[hidden]']]);
-    await askAt(server.port, 'jobs.example.com', '/other', {method: 'POST', body: 'a=1', type: 'application/x-www-form-urlencoded'});   // a post the script did not report is its own entry
+    await askAt(server.port, 'jobs.example.com', '/other', {method: 'POST', body: 'a=1&pw=hunter2', type: 'application/x-www-form-urlencoded'});   // a post the script did not report is its own entry
     assert.equal(server.caught().length, 2);
     assert.equal(fs.readFileSync(ledger, 'utf8').trim().split('\n').length, 2);
+    assert.deepEqual(server.caught()[1].fields.map(([name]) => name), ['a', 'pw']);
+    assert.equal(fs.readFileSync(ledger, 'utf8').includes('hunter2'), false, 'a value the script did not report is never written');
+    // the other order: the page's POST arrives first, the script's report completes the same entry
+    await askAt(server.port, 'jobs.example.com', '/late', {method: 'POST', body: 'e=1', type: 'application/x-www-form-urlencoded'});
+    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({page: 'https://jobs.example.com/y/apply', how: 'submit', fields: [['e', '1']]})});
+    assert.equal(server.caught().length, 3);
+    assert.deepEqual([server.caught()[2].path, server.caught()[2].how, server.caught()[2].fields], ['/y/apply', 'submit', [['e', '1']]]);
   } finally { await server.close(); }
 });
 

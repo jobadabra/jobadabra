@@ -32,7 +32,7 @@ const THANKS = '<!doctype html><meta charset="utf-8"><title>Application received
 
 /**
  * Start the practice server on 127.0.0.1 (a free port) for `cases`. Invariants: it listens on loopback only; a request for a host that is not a case's is
- * answered 404 and counted in strangers(), never forwarded; a password's value is never recorded. -> {port, hosts, hostRules(), caught(), strangers(), close()}.
+ * answered 404 and counted in strangers(), never forwarded; a password's value is never recorded (the script writes "[hidden]"; a POST nobody reported keeps names only). -> {port, hosts, hostRules(), caught(), strangers(), close()}.
  * ledgerFile: when given, every caught submission is also appended there as one JSON line.
  */
 export async function startPractice({cases, ledgerFile = ''}) {
@@ -41,7 +41,11 @@ export async function startPractice({cases, ledgerFile = ''}) {
   const hosts = [...new Set([...pages.keys()].map(k => k.split('/')[0]))];
   const caught = [];
   let strangers = 0;
-  const record = entry => { caught.push(entry); if (ledgerFile) fs.appendFileSync(ledgerFile, `${JSON.stringify(entry)}\n`); return entry; };
+  // The ledger file always holds the current list (an entry can be completed by the second report of the same Submit), written whole: it is a handful of lines.
+  const save = () => { if (ledgerFile) fs.writeFileSync(ledgerFile, caught.map(entry => JSON.stringify(entry)).join('\n') + '\n'); };
+  const record = entry => { caught.push(entry); save(); return entry; };
+  const fresh = entry => Date.now() - Date.parse(entry.at) < 5000;
+  const pathOf = page => { try { return new URL(page).pathname; } catch { return ''; } };
   const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-cert-'));
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=jp-practice', '-keyout', path.join(certDir, 'key.pem'), '-out', path.join(certDir, 'cert.pem')], {stdio: 'ignore'});
   const readBody = req => new Promise(resolve => { let text = ''; req.on('data', chunk => { if (text.length < BODY_CAP) text += chunk; }); req.on('end', () => resolve(text)); });
@@ -51,14 +55,19 @@ export async function startPractice({cases, ledgerFile = ''}) {
     if (!hosts.includes(host)) { strangers++; res.writeHead(404, {'content-type': 'text/plain'}).end('not a practice host'); return; }
     if (req.method === 'POST' && pathname === '/__caught') {
       let sent = {}; try { sent = JSON.parse(await readBody(req)); } catch { /* an empty entry */ }
-      record({at: new Date().toISOString(), host, path: (() => { try { return new URL(sent.page).pathname; } catch { return ''; } })(), how: String(sent.how || 'submit'), fields: Array.isArray(sent.fields) ? sent.fields : [], posted: false});
+      const fields = Array.isArray(sent.fields) ? sent.fields : [];
+      // The page's own POST can arrive before the script's report (the page leaves as it posts): that POST made a name-only entry; this report completes it.
+      const waiting = [...caught].reverse().find(entry => entry.host === host && entry.how === 'post' && fresh(entry));
+      if (waiting) { Object.assign(waiting, {how: String(sent.how || 'submit'), path: pathOf(sent.page) || waiting.path, fields}); save(); }
+      else record({at: new Date().toISOString(), host, path: pathOf(sent.page), how: String(sent.how || 'submit'), fields, posted: false});
       res.writeHead(204).end(); return;
     }
-    if (req.method === 'POST') {   // the form's own POST: it marks the script's entry for this submit, or is the entry when the script did not run
+    if (req.method === 'POST') {   // the form's own POST: it marks the script's entry for this submit, or is the entry when the script's report is missing or late
       const body = await readBody(req);
-      const recent = [...caught].reverse().find(e => e.host === host && !e.posted && Date.now() - Date.parse(e.at) < 5000);
-      if (recent) { recent.posted = true; recent.postedTo = pathname; }
-      else record({at: new Date().toISOString(), host, path: pathname, how: 'post', fields: [...new URLSearchParams(body)].map(([k, v]) => [k, v]), posted: true, postedTo: pathname});
+      const recent = [...caught].reverse().find(entry => entry.host === host && !entry.posted && fresh(entry));
+      if (recent) { recent.posted = true; recent.postedTo = pathname; save(); }
+      // Why (7 Nov 2026, Gitar on #3523): only the page in the browser knows a field is a password, so a POST nobody reported keeps the field names and no values.
+      else record({at: new Date().toISOString(), host, path: pathname, how: 'post', fields: [...new URLSearchParams(body)].map(([name]) => [name, '[not read: no script report]']), posted: true, postedTo: pathname});
       res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}).end(THANKS); return;
     }
     const html = pages.get(key(host, pathname));
