@@ -1,7 +1,10 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The tip ticker on the Application sessions page (owner, 2 Oct 2026): one line of fact or advice scrolls right to left
 // through a fixed frame, like the information boards in trains and buses, while the user applies. The pool is tips-pool.js.
 // Pure parts (atsOf, nextTip) are tested; the rest draws the frame and keeps which tips were shown (localStorage).
 import {el} from './components.js';
+import {tipText} from './tips-view.js';
 import {TIPS} from './tips-pool.js';
 
 // A tip that carries an IT example is marked `for: 'it'` in the pool and shown only to a candidate who is looking for IT work (renderer/audience.js, asked of the app once).
@@ -73,9 +76,9 @@ function advance(slot, {force = false} = {}) {
   if (!picked.tip) return;
   write(SEEN_KEY, picked.seen);
   const chip = slot.querySelector('.ss-tip-chip'), text = slot.querySelector('.ss-tip-text');
-  chip.textContent = {research: 'Fact', recruiters: 'Recruiters say', 'to-test': 'Worth trying'}[picked.tip.evidence] || 'Tip';
-  text.textContent = picked.tip.text;
-  slot.title = picked.tip.source ? `Source: ${picked.tip.source}` : picked.tip.evidence === 'recruiters' ? 'What recruiters report in Reddit threads (2025-26): firsthand, a few threads each, not a survey' : '';
+  chip.textContent = {research: t('helperGuide.fact'), recruiters: t('helperGuide.recruitersSay'), 'to-test': t('helperGuide.worthTrying')}[picked.tip.evidence] || t('helperGuide.tip');
+  text.textContent = tipText(picked.tip);
+  slot.title = picked.tip.source ? t('helperGuide.sourceLine', {source: picked.tip.source}) : picked.tip.evidence === 'recruiters' ? t('helperGuide.recruiterEvidence') : '';
   pace(text);
 }
 
@@ -90,7 +93,7 @@ function build(slot) {
   frame.append(text);
   const hide = el('button', 'ss-tip-hide', '×');
   hide.type = 'button';
-  hide.title = 'Hide tips';
+  hide.title = t('helperGuide.hideTips');
   hide.addEventListener('click', () => { write(HIDDEN_KEY, true); repaintAll(); });
   slot.dataset.guidance = 'tip';   // the UI Finder checks the words of guidance against who the candidate is (desktop/e2e/lib/uicheck.mjs)
   slot.replaceChildren(el('span', 'ss-tip-chip'), frame, hide);
@@ -105,7 +108,7 @@ function build(slot) {
 function paint(slot) {
   slot.classList.toggle('is-still', Boolean(still()));
   if (read(HIDDEN_KEY, false)) {
-    const show = el('button', 'ss-tip-show link-button', 'Show tips');
+    const show = el('button', 'ss-tip-show link-button', t('helperGuide.showTips'));
     show.type = 'button';
     show.addEventListener('click', () => { write(HIDDEN_KEY, false); repaintAll(); });
     clearInterval(TICK.get(slot));

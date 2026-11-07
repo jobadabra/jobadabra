@@ -113,3 +113,20 @@ test('derived log guidance translates while unknown engine lines remain original
     assert.equal(readableLog(['Visit: the job list of example.test is readable'])[0], '🌐 Найден список вакансий example.test');
   } finally { setLocale('en'); }
 });
+
+test('desktop tips translate without changing the extension pool or its evidence metadata', async () => {
+  const {TIPS} = await import('../../../renderer/tips-pool.js');
+  const {tipText} = await import('../../../renderer/tips-view.js');
+  const original = JSON.stringify(TIPS);
+  try {
+    for (const tip of TIPS) assert.equal(tipText(tip), tip.text, tip.id);
+    for (const locale of ['de', 'fr', 'it', 'es', 'ro', 'ru']) {
+      setLocale(locale);
+      for (const tip of TIPS) {
+        assert.ok(tipText(tip).length > 10, `${locale}.${tip.id}`);
+        assert.notEqual(tipText(tip), tip.text, `${locale}.${tip.id}`);
+      }
+    }
+    assert.equal(JSON.stringify(TIPS), original);
+  } finally { setLocale('en'); }
+});

@@ -69,3 +69,13 @@ import {messages as esGuide} from './catalogs/helpers/es-guide.js';
 import {messages as roGuide} from './catalogs/helpers/ro-guide.js';
 import {messages as ruGuide} from './catalogs/helpers/ru-guide.js';
 for (const [locale, messages] of Object.entries({en: enGuide, de: deGuide, fr: frGuide, it: itGuide, es: esGuide, ro: roGuide, ru: ruGuide})) registerMessages(locale, 'helperGuide', messages);
+
+// Desktop-only tips catalogs.
+import {messages as enTips} from './catalogs/helpers/en-tips.js';
+import {messages as deTips} from './catalogs/helpers/de-tips.js';
+import {messages as frTips} from './catalogs/helpers/fr-tips.js';
+import {messages as itTips} from './catalogs/helpers/it-tips.js';
+import {messages as esTips} from './catalogs/helpers/es-tips.js';
+import {messages as roTips} from './catalogs/helpers/ro-tips.js';
+import {messages as ruTips} from './catalogs/helpers/ru-tips.js';
+for (const [locale, messages] of Object.entries({en: enTips, de: deTips, fr: frTips, it: itTips, es: esTips, ro: roTips, ru: ruTips})) registerMessages(locale, 'helperTips', messages);

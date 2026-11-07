@@ -1,19 +1,21 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The first-launch menu tour: which stops, in which order, and whether it was seen. Never shown again once done or skipped. Guarded by test/unit/renderer/menu-reveal.test.js.
 export const STOPS = [
-  {id: 'focus', target: '.nav[data-view="focus"]', title: 'Focus', text: 'What needs you today, most important first.'},
-  {id: 'jobs', target: '.nav[data-view="jobs"]', title: 'Jobs', text: 'Your matches. Find jobs starts here.'},
-  {id: 'applying', target: '.nav[data-view="sessions"]', title: 'Applying', text: 'The forms the extension fills in for you. You press Submit.'},
-  {id: 'actions', target: '.nav[data-view="actions"]', title: 'Actions', text: 'Run a search, check Gmail, tailor CVs.'},
-  {id: 'more', target: '#nav-more-head', title: 'More', text: 'Pages that unlock as you go. Open it to see when.'},
-  // Why (fb 6/7, 5 Nov 2026, spec report-instead-of-leaving): the first thing a person who hits a problem should know is that telling us is one click; the promise is true since 1/7 (a receipt, then an answer within 24 hours).
-  {id: 'feedback', target: '#nav-feedback', title: 'Send feedback', text: 'Something wrong or missing? Tell us here. We read every report and write back within a day.'},
-  // Why (owner, 5 Nov 2026: "we should include also the theme icon (dark/light) in the virtual tour" and "the panel sidebar collapse/expand"): the two other buttons beside Send feedback were never explained.
-  {id: 'theme', target: '#theme-toggle', title: 'Light or dark', text: 'Switch the look of the app.'},
-  {id: 'collapse', target: '#rail-toggle', title: 'Menu size', text: 'Shrink the menu to icons, or open it again.'},
-  {id: 'palette', target: '#palette-hint', title: 'Search & commands', text: 'Type to find any page or command.'},   // owner, 5 Nov 2026: "and the search and commands"
-  // Why (owner, 5 Nov 2026: "we should present these 2 bars ... so that the user knows about them"): the two bars at the foot of the window; `above` puts the card over them (they run along the window's foot).
-  {id: 'sessions', target: '#sessions-dock', above: true, title: 'Application sessions', text: 'The forms the extension is filling in for you appear here, with a button to open each one.'},
-  {id: 'activity', target: '#activity', above: true, title: 'Last and next refresh', text: 'When Jobadabra last looked for jobs and when it looks next. Details opens the full history.'},
+  {id: 'focus', target: '.nav[data-view="focus"]', title: t('helperGuide.focusTitle'), text: t('helperGuide.tourFocus')},
+  {id: 'jobs', target: '.nav[data-view="jobs"]', title: t('helperGuide.jobsTitle'), text: t('helperGuide.tourJobs')},
+  {id: 'applying', target: '.nav[data-view="sessions"]', title: t('helpers.stageApplying'), text: t('helperGuide.tourApplying')},
+  {id: 'actions', target: '.nav[data-view="actions"]', title: t('helpers.actions'), text: t('helperGuide.tourActions')},
+  {id: 'more', target: '#nav-more-head', title: t('helperGuide.moreTitle'), text: t('helperGuide.tourMore')},
+  // Why (fb 6/7, 5 Nov 2026, spec report-instead-of-leaving): the translated tour still explains the one-click feedback path first when a problem happens, preserving the 1/7 receipt and reply-within-a-day promise.
+  {id: 'feedback', target: '#nav-feedback', title: t('helperGuide.sendFeedback'), text: t('helperGuide.tourFeedback')},
+  // Why (owner, 5 Nov 2026: "we should include also the theme icon (dark/light) in the virtual tour" and "the panel sidebar collapse/expand"): localized labels explain both existing buttons beside Send feedback; their targets and tour order stay the same.
+  {id: 'theme', target: '#theme-toggle', title: t('helperGuide.lightDark'), text: t('helperGuide.tourTheme')},
+  {id: 'collapse', target: '#rail-toggle', title: t('helperGuide.menuSize'), text: t('helperGuide.tourMenu')},
+  {id: 'palette', target: '#palette-hint', title: t('helperGuide.searchCommands'), text: t('helperGuide.tourPalette')},   // owner, 5 Nov 2026: "and the search and commands"
+  // Why (owner, 5 Nov 2026: "we should present these 2 bars ... so that the user knows about them"): the localized tour keeps both footer bars; `above` still places their cards over the bars along the window’s foot.
+  {id: 'sessions', target: '#sessions-dock', above: true, title: t('helperGuide.applicationSessions'), text: t('helperGuide.tourSessions')},
+  {id: 'activity', target: '#activity', above: true, title: t('helperGuide.lastNextRefresh'), text: t('helperGuide.tourRefresh')},
 ];
 /** Where the card goes: {top, left} in px for a stop whose box is `rect` ({top, right, height}), the sidebar's right edge `sidebarRight`, the card's size and the window's. Beside the menu and level with the stop (the menu's own buttons),
  *  or `above` the stop (the bars at the foot); never above 8px, never past the bottom or right edge. Why (code review of fb 6/7, 5 Nov 2026): the Send feedback stop at the foot of the sidebar ran past the window's bottom. */
