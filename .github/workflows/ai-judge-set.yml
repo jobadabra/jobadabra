@@ -19,7 +19,7 @@ jobs:
   exam:
     name: Judge exam
     runs-on: ubuntu-24.04
-    timeout-minutes: 60   # Why (7 Nov 2026, pz): the 66 calls of the tour set fit 30 minutes; with batch 1's 81 more the hang guard is doubled, not a measured need
+    timeout-minutes: 90   # Why (7 Nov 2026, pz; Gitar on #3555): the 66 calls of the tour set fit 30 minutes; batch 1 adds 108 (9 notes x 4 variants x 3 runs), so about 174 calls need about 80 minutes at that rate. A hang guard scaled by the call count, not a measured need: the first run measures it
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
