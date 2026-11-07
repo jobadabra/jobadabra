@@ -1,18 +1,22 @@
 [
  {
   "group": "Settings",
-  "label": "Experience sources: Add another CV version"
+  "label": "Developer options: Save"
  },
  {
-  "group": "Jobs",
-  "label": "Jobs filter: Inbound"
+  "group": "Profile",
+  "label": "Build a CV with the AI"
  },
  {
-  "group": "Strategy",
-  "label": "Job preferences"
+  "group": "Focus",
+  "label": "Suggestions"
  },
  {
   "group": "Settings",
-  "label": "Developer options: Save"
+  "label": "Experience sources: Add another CV version"
+ },
+ {
+  "group": "Actions",
+  "label": "Read this board"
  }
 ]

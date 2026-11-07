@@ -31,5 +31,14 @@
    "Settings: Available → Settings: Developer options: Save",
    "Settings: Developer options: Save → Actions: Recent runs"
   ]
+ },
+ {
+  "seed": 20261107,
+  "pairs": [
+   "start → Settings: Experience sources: Add another CV version",
+   "Settings: Experience sources: Add another CV version → Jobs: Jobs filter: Inbound",
+   "Jobs: Jobs filter: Inbound → Strategy: Job preferences",
+   "Strategy: Job preferences → Actions: Read this board"
+  ]
  }
 ]

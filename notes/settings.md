@@ -10,3 +10,4 @@
 - Your background: the session ended before this goal | seen 1× | first 2026-11-07 | last 2026-11-07 | commit d322977 | session 2026-11-07-20261107
 - Open Profile: CV: the session ended before this goal | seen 1× | first 2026-11-07 | last 2026-11-07 | commit d322977 | session 2026-11-07-20261107
 - Developer options: Save: I could not reach Developer options: Advanced is visible in Settings, but the available controls do not let me open it. | seen 1× | first 2026-11-07 | last 2026-11-07 | commit f48821c | session 2026-11-07-20261107
+- Experience sources: Add another CV version: I started Read my CV PDF, but it was still reading when I returned, so Add another CV version remained disabled and I could not add one. | seen 1× | first 2026-11-07 | last 2026-11-07 | commit fb11444 | session 2026-11-07-20261107
