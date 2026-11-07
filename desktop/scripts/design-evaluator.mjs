@@ -71,11 +71,28 @@ function lowContrast(win, el, style, text) {
   return ratio < (large ? 3 : 4.5) ? `${ratio.toFixed(2)} ${text.slice(0, 30)}` : '';
 }
 
-/** The clipped note when the text is cut by `overflow: hidden|clip` without an ellipsis or line clamp, or lies outside the window, else ''. */
+/**
+ * Whether text beyond the window's edge is still accounted for, so it is not a lost text: an ancestor's clip box ends before it (a carousel slide, off-screen by design),
+ * a scroll region of its own reaches it (a table in its wrapper), or the page's own scroller `main` holds it (that scroller is one "page scrolls sideways" hit in textHits).
+ * Why (7 Nov 2026, dv): the check counted every text past the edge, 132 hits at 380 px (a 475 px window, below the app's 640 minimum) that were tables in scroll wrappers, tooltip slides and one scrolling `main`.
+ */
+function reached(el, box) {
+  for (let node = el.parentElement; node && node !== el.ownerDocument.body; node = node.parentElement) {
+    const style = el.ownerDocument.defaultView.getComputedStyle(node);
+    if (style.overflowX === 'visible') continue;
+    const area = node.getBoundingClientRect();
+    if (box.left >= area.right - 1 || box.right <= area.left + 1) return true;
+    if (node.tagName === 'MAIN') return true;
+    if (['auto', 'scroll'].includes(style.overflowX) && node.scrollWidth > node.clientWidth + 1) return true;
+  }
+  return false;
+}
+
+/** The clipped note when the text is cut by `overflow: hidden|clip` without an ellipsis or line clamp, or lies outside the window with nothing to reach it, else ''. */
 function clippedNote(win, el, style, box, text) {
   const clamped = /^\d/.test(style.webkitLineClamp || '');
   if (['hidden', 'clip'].includes(style.overflowX) && style.textOverflow !== 'ellipsis' && !clamped && el.scrollWidth > el.clientWidth + 1) return text.slice(0, 40);
-  return box.right > win.innerWidth + 1 || box.left < -1 ? `outside the window: ${text.slice(0, 40)}` : '';
+  return (box.right > win.innerWidth + 1 || box.left < -1) && !reached(el, box) ? `outside the window: ${text.slice(0, 40)}` : '';
 }
 
 /** Ghost (a `button.ghost` or `button.link`), clipped and contrast over every visible element with its own text; the page scrolling sideways is clipped too. Returns the texts measured. */
@@ -95,6 +112,8 @@ function textHits(win, doc, add) {
   }
   const root = doc.documentElement;
   if (root.scrollWidth > win.innerWidth + 1) add('clipped', root, `page scrolls sideways ${root.scrollWidth} > ${win.innerWidth}`);
+  const page = doc.querySelector('main');   // the app shell scrolls inside `main`, so a page wider than the window shows there
+  if (page && page.scrollWidth > page.clientWidth + 1) add('clipped', page, `page scrolls sideways ${page.scrollWidth} > ${page.clientWidth}`);
   return texts;
 }
 
@@ -107,6 +126,6 @@ function evaluate(win, doc) {
   return {out, cards, texts};
 }
 
-const PARTS = [selectorOf, isVisible, cardHits, colorOf, mixColors, luminanceOf, backgroundOf, lowContrast, clippedNote, textHits, evaluate];
+const PARTS = [selectorOf, isVisible, cardHits, colorOf, mixColors, luminanceOf, backgroundOf, lowContrast, reached, clippedNote, textHits, evaluate];
 /** The expression for `shot.mjs --eval`: the constants, the functions' source and the call. */
 export const designEval = `(() => { const CARD = ${JSON.stringify(CARD)}, SCALE = ${JSON.stringify(SCALE)}; ${PARTS.map(part => part.toString()).join('\n')}\nreturn evaluate(window, document); })()`;

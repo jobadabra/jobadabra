@@ -1,0 +1,52 @@
+{
+  "digest.title": "Sélection d’offres",
+  "digest.new": {
+    "one": "{count} nouvelle offre",
+    "other": "{count} nouvelles offres"
+  },
+  "digest.page": "Offres {first}–{last} sur {total}",
+  "digest.noMore": "Il n’y a plus d’offres dans cette liste. Envoyez /today pour en obtenir une nouvelle.",
+  "digest.section.new": "Nouvelles depuis votre dernière recherche",
+  "digest.section.best": "Meilleures correspondances",
+  "digest.section.older": "Autres pistes à explorer",
+  "digest.preferred": "Dans vos lieux préférés",
+  "digest.outside": "En dehors de vos lieux préférés",
+  "digest.jobs": {
+    "one": "{count} offre",
+    "other": "{count} offres"
+  },
+  "digest.tap": "Touchez le numéro d’une offre pour la marquer comme postulée, l’enregistrer ou l’écarter.",
+  "digest.more": "Encore {count} avec ➕.",
+  "digest.next": "➕ {count} suivantes",
+  "job.locationMissing": "lieu non précisé",
+  "job.saved": "Enregistrée",
+  "job.fit": "Adéquation",
+  "job.check": "À vérifier",
+  "job.mode.onsite": "Sur site",
+  "job.mode.hybrid": "Hybride",
+  "job.mode.remote": "À distance",
+  "job.mode.remoteMaybe": "À distance ?",
+  "job.seniority.junior": "Junior",
+  "job.seniority.mid": "Intermédiaire",
+  "job.seniority.senior": "Senior",
+  "job.seniority.staff_principal": "Expert/Principal",
+  "job.seniority.lead_manager": "Responsable/Manager",
+  "job.language.English": "Anglais",
+  "job.language.German": "Allemand",
+  "job.language.French": "Français",
+  "job.language.Italian": "Italien",
+  "job.language.Spanish": "Espagnol",
+  "job.language.Portuguese": "Portugais",
+  "job.language.Dutch": "Néerlandais",
+  "job.language.required": "{language} requis",
+  "job.language.extra": "{language} +",
+  "job.language.otherRequired": "autre langue requise",
+  "job.signal.salary": "informations salariales",
+  "job.signal.recruiter": "Recruteur",
+  "job.signal.sponsorshipOffered": "parrainage de visa proposé",
+  "job.signal.sponsorshipNeeded": "parrainage de visa nécessaire",
+  "notification.subjectMore": {
+    "one": "{title} et {count} autre",
+    "other": "{title} et {count} autres"
+  }
+}

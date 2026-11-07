@@ -66,6 +66,33 @@ class ChannelTests(unittest.TestCase):
 
 
 class DeliveryTests(unittest.TestCase):
+    def test_end_user_locale_metadata_and_subject_connector_keep_raw_content(self):
+        from src import notification_language
+        raw = 'Fictional {count} Keychain ⌘K'
+        items = [(f'<b>{raw}</b>\nRaw provider text', None)] * 3
+        for locale in notification_language.LOCALES:
+            site = Site()
+            env = {**EMAIL, 'JOBADABRA_NOTIFICATION_LANGUAGE': locale}
+            self.assertTrue(notify._post(items, urlopen=site, env=env))
+            body = site.sent[0]['body']
+            self.assertEqual(body['language'], locale)
+            self.assertEqual(body['subject'], notification_language.render('notification.subjectMore', {'title': raw}, locale=locale, count=2))
+            self.assertEqual(body['html'], notify.SEPARATOR.join(item[0] for item in items))
+        with mock.patch.dict(os.environ, {'JOBADABRA_NOTIFICATION_LANGUAGE': 'ru'}, clear=True):
+            self.assertEqual(notify._subject(items), raw + ' and 2 more', 'generic formatter defaults English without reading user environment')
+
+    def test_no_language_or_unsupported_language_keeps_exact_english_subject_and_html(self):
+        items = [('<b>Canonical title</b>\nRaw body', None)] * 2
+        for value in (None, '', 'system', 'unsupported'):
+            site = Site()
+            env = dict(EMAIL)
+            if value is not None:
+                env['JOBADABRA_NOTIFICATION_LANGUAGE'] = value
+            self.assertTrue(notify._post(items, urlopen=site, env=env))
+            self.assertEqual(site.sent[0]['body']['language'], 'en')
+            self.assertEqual(site.sent[0]['body']['subject'], 'Canonical title and 1 more')
+            self.assertEqual(site.sent[0]['body']['html'], notify.SEPARATOR.join(item[0] for item in items))
+
     def test_new_matches_are_one_email_per_run_and_the_rest_goes_to_the_digest(self):
         site = Site()
 

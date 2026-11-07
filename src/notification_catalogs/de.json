@@ -1,0 +1,52 @@
+{
+  "digest.title": "Stellenübersicht",
+  "digest.new": {
+    "one": "{count} neu",
+    "other": "{count} neu"
+  },
+  "digest.page": "Stellen {first}–{last} von {total}",
+  "digest.noMore": "Keine weiteren Stellen in dieser Liste. Sende /today für eine neue Liste.",
+  "digest.section.new": "Neu seit deinem letzten Durchlauf",
+  "digest.section.best": "Beste Treffer",
+  "digest.section.older": "Weitere Möglichkeiten",
+  "digest.preferred": "An deinen bevorzugten Orten",
+  "digest.outside": "Außerhalb deiner bevorzugten Orte",
+  "digest.jobs": {
+    "one": "{count} Stelle",
+    "other": "{count} Stellen"
+  },
+  "digest.tap": "Tippe auf eine Stellennummer, um sie als beworben zu markieren, zu speichern oder zu verwerfen.",
+  "digest.more": "{count} weitere mit ➕.",
+  "digest.next": "➕ Weitere {count}",
+  "job.locationMissing": "Ort nicht angegeben",
+  "job.saved": "Gespeichert",
+  "job.fit": "Passung",
+  "job.check": "Prüfen",
+  "job.mode.onsite": "Vor Ort",
+  "job.mode.hybrid": "Hybrid",
+  "job.mode.remote": "Remote",
+  "job.mode.remoteMaybe": "Remote?",
+  "job.seniority.junior": "Junior",
+  "job.seniority.mid": "Mittlere Erfahrungsstufe",
+  "job.seniority.senior": "Senior",
+  "job.seniority.staff_principal": "Staff/Principal",
+  "job.seniority.lead_manager": "Leitung/Management",
+  "job.language.English": "Englisch",
+  "job.language.German": "Deutsch",
+  "job.language.French": "Französisch",
+  "job.language.Italian": "Italienisch",
+  "job.language.Spanish": "Spanisch",
+  "job.language.Portuguese": "Portugiesisch",
+  "job.language.Dutch": "Niederländisch",
+  "job.language.required": "{language} erforderlich",
+  "job.language.extra": "{language} +",
+  "job.language.otherRequired": "weitere Sprache erforderlich",
+  "job.signal.salary": "Gehaltsangaben",
+  "job.signal.recruiter": "Personalvermittlung",
+  "job.signal.sponsorshipOffered": "Visa-Unterstützung angeboten",
+  "job.signal.sponsorshipNeeded": "Visa-Unterstützung erforderlich",
+  "notification.subjectMore": {
+    "one": "{title} und {count} weitere",
+    "other": "{title} und {count} weitere"
+  }
+}

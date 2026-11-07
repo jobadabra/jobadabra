@@ -2,6 +2,8 @@
 // Why (5 Nov 2026, owner: "Direct check, ~5 s"; "for 'Always on: your GitHub' it shouldn't [work with free AI]"; "send a notification test… telegram or email, whatever the user built"): each is one cheap call from the app,
 // never a run in the person's repository. No secret is logged, returned or put in a sentence; a result is a state and a plain line.
 // Guarded by test/unit/main/always-on-test.test.js.
+import {notificationText} from '../i18n/user-notifications.js';
+import {notificationLanguage} from './notification-language.js';
 import * as ai from './ai/index.js';
 import {isFreeKey} from './ai-free.js';
 import * as channel from './notify-channel.js';
@@ -41,17 +43,16 @@ export async function aiCheck(storage, {fetcher = globalThis.fetch} = {}) {
   } catch { return failed(`${name} did not answer. Check your connection, then test again.`); }
 }
 
-const MESSAGE = 'Jobadabra test: this is how Always on will tell you about new matches.';
-
 /** One test message through every way the person set up (Telegram with their bot, e-mail through our site); the app's own notification and a way not set up are not tried. -> a state and a line naming each way that failed.
  *  Why (5 Nov 2026, hr: web #430): the site limits the test e-mail to once a day per address and says `earlier` when today's went already, so the app keeps no limit of its own. */
 export async function notifyCheck(storage, {fetcher = globalThis.fetch} = {}) {
   const ways = channel.channelsOf(storage).filter(name => name === 'email' || name === 'telegram');
   if (!ways.length) return failed('Nothing can reach you yet: no e-mail address or Telegram bot is set up.');
+  const locale = notificationLanguage(storage), message = notificationText(locale, 'testMessage');
   const lines = [];
   let said = '';
   if (ways.includes('telegram')) {
-    try { await telegram(storage.secret('TELEGRAM_BOT_TOKEN'), 'sendMessage', {chat_id: storage.settings().telegramChatId, text: MESSAGE}, timed(fetcher)); }
+    try { await telegram(storage.secret('TELEGRAM_BOT_TOKEN'), 'sendMessage', {chat_id: storage.settings().telegramChatId, text: message}, timed(fetcher)); }
     catch (error) { lines.push(`Telegram: ${String(error.message || 'did not answer').slice(0, 120)}. Check the bot in Settings → Connections.`); }
   }
   if (ways.includes('email')) {
@@ -60,7 +61,7 @@ export async function notifyCheck(storage, {fetcher = globalThis.fetch} = {}) {
     else if (!state?.reached) lines.push('E-mail: the website could not be reached. Test again when you are online.');
     else if (!state.confirmed) lines.push(`E-mail: ${state.email || 'your address'} is not confirmed yet, so the test e-mail would wait. Confirm it with the link in your first e-mail.`);
     else {
-      const sent = await channel.sendTest(storage, {subject: 'Jobadabra test', text: MESSAGE}, timed(fetcher));
+      const sent = await channel.sendTest(storage, {subject: notificationText(locale, 'testSubject'), text: message}, timed(fetcher));
       if (!sent.ok) lines.push(`E-mail: ${sent.error}`);
       else if (sent.earlier) said = 'A test e-mail already reached you today.';   // the site sent none now: said, not failed
     }

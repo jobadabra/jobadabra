@@ -1,5 +1,5 @@
 // Measures the design system on the screens a PR changes and prints the PR's "Design system" table (owner, 7 Nov 2026, "Measured check (Recommended)"):
-//   npm run design-check -- [--screens jobs,settings] [--widths 380,1100] [--base origin/main] [--parallel 4]
+//   npm run design-check -- [--screens jobs,settings] [--widths 640,1100] [--base origin/main] [--parallel 4]
 // For each screen, width and theme it renders the HEAD and the merge-base of --base with shot.mjs (demo data), runs the rules of design-evaluator.mjs in the window and
 // marks ❌ only what the base render does not have (design-table.mjs). Exit 1 when a cell is ❌. Paste the table into the PR body; the commit it names must be the PR head.
 // Screens default to all eight (shared CSS reaches every one); name the screens the change touches to be faster. Committed work only: the table names the commit.
@@ -17,7 +17,7 @@ const args = process.argv.slice(2);
 const option = (name, fallback) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : fallback; };
 const git = (...gitArgs) => execFileSync('git', ['-C', repo, ...gitArgs], {encoding: 'utf8'}).trim();
 const screens = option('screens', 'focus,jobs,session,actions,strategy,interviews,settings,profile').split(',');
-const widths = option('widths', '380,1100').split(',').map(Number);
+const widths = option('widths', '640,1100').split(',').map(Number);   // Why (7 Nov 2026, owner: "Yes, 640 (Recommended)"): 640 is the app's real minimum window (lib/main-window.js MIN_WIDTH), 380 drew a 475 px window no person can have
 const parallel = Number(option('parallel', 4));
 
 if (git('status', '--porcelain', '--', 'desktop', 'extension', 'src')) { console.error('design-check: commit your changes first; the table names the commit it was measured on'); process.exit(2); }
