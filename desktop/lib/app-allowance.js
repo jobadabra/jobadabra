@@ -1,6 +1,8 @@
 // The free allowance, the health line and visit scoring (moved out of main.js, 8 Oct 2026): where the user stands (the license state), the guard before new work starts,
 // scoring the jobs read in Chrome now, and the once-a-day health line with anonymous counts. The license, storage and telemetry are reached through getters.
 // Guards: the license, health-line and visit-scoring tests in desktop/test.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/allowance-notices.js';
 import * as pipeline from './pipeline.js';
 import * as terminals from './terminals.js';
 import * as viewCache from './view-cache.js';
@@ -51,10 +53,10 @@ export function createAppAllowance(ctx) {
   // Our AI cannot take a new step: Pro's credit gone, or a Free AI line reached (also for what the trial never stops, e.g. Check mail). -> the refusal or null.
   function aiBlock(state = licenseState()) {
     // Pro's credit is gone and our AI is the engine: no free fallback, top-up or own key (an application in progress finishes; this guards what starts new).
-    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return refuse('no AI credit', {ok: false, credit: true, error: 'Our AI needs AI credit. Top up, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
-    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return refuse('AI credit used up', {ok: false, credit: true, error: 'Your AI credit is used up. Top up, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
+    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return refuse('no AI credit', {ok: false, credit: true, error: t('helperMore.noCreditBlock')});
+    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return refuse('AI credit used up', {ok: false, credit: true, error: t('helperMore.creditUsed')});
     const cap = DEMO ? null : aiCaps.known();
-    if (cap) return refuse(`Free AI ${cap.capped} line reached`, {ok: false, credit: true, cap: cap.capped, resetsAt: cap.resetsAt, error: cap.message || 'Free AI is not available right now. Upgrade to Pro, or use your own AI key in Settings → Connections → AI.'});
+    if (cap) return refuse(`Free AI ${cap.capped} line reached`, {ok: false, credit: true, cap: cap.capped, resetsAt: cap.resetsAt, error: cap.message || t('allowanceNotice.unavailable')});
     return null;
   }
   function allowanceBlock() {
@@ -62,7 +64,7 @@ export function createAppAllowance(ctx) {
     if (ai) return ai;
     if (DEMO || !state.ended) return null;
     toWindow('allowance', state);
-    return refuse('trial over', {ok: false, allowance: true, error: 'The free trial is over. See Settings → Plan.'});
+    return refuse('trial over', {ok: false, allowance: true, error: t('allowanceNotice.trialOver')});
   }
   // The same guard for a press, after asking the site where Free AI stands (at most once a minute, ~2 s at worst; offline: the last answer).
   async function allowanceGate() {
