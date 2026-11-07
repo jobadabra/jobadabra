@@ -72,6 +72,7 @@ replies:
 | Rejection lesson | Text |  |
 | Reached via | Select | Options: `Email`, `LinkedIn`, `Phone`, `Other` |
 | Kit inputs | Text |  |
+| Apply readiness | Text | The job's apply-readiness check (compact JSON: when it was read, the posting date, the form read, the match of its questions); written by the app's Apply readiness step, read again only when the posting is reopened or a fill finds a different form |
 | Feedback status | Select | Options: `Not asked`, `Asked for feedback`, `Received feedback`, `Skipped` |
 | Employer feedback | Text |  |
 | Interview prep | Date | When the interview prep kit was built, with the time (🎤 Interview prep on the page; Focus → Prepare; a review of this job's interview after it marks the kit stale) |

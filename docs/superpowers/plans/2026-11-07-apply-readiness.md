@@ -1,6 +1,6 @@
 # Apply readiness: plan (5 PRs after the owner's yes)
 
-Spec: `docs/superpowers/specs/2026-11-07-apply-readiness-design.md`. Status: **awaiting owner yes**; nothing below is built. Each PR is titled `[ac] n/5 <what>`, carries the template's Plan progress block, and (UI PRs) its own side-by-side picture and the owner's yes before commit. A behaviour PR gets one fresh `/code-review` before ship.
+Spec: `docs/superpowers/specs/2026-11-07-apply-readiness-design.md`. Status: **approved 7 Nov 2026** (the owner chose 3 PRs: R1 the step and the store; R2 the callers, the guard and the names sweep (R2+R3 below); then L2c/L2d (R4, R5)); R1 is in build. Each PR is titled `[ac] n/5 <what>`, carries the template's Plan progress block, and (UI PRs) its own side-by-side picture and the owner's yes before commit. A behaviour PR gets one fresh `/code-review` before ship.
 
 L2b (#3563) is merged: it makes the match (`desktop/lib/triage-match.js`) the check's second half.
 

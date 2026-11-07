@@ -412,6 +412,9 @@
         "Kit inputs": {
           "type": "rich_text"
         },
+        "Apply readiness": {
+          "type": "rich_text"
+        },
         "Feedback status": {
           "type": "select",
           "options": [

@@ -1,6 +1,6 @@
 # Apply readiness: one step that gets a job ready to apply
 
-Verdict: **awaiting owner yes.** Today three separate paths draft a kit and a fourth (the form check, #3519) reads the form; the owner wants them to be ONE step, `applyReadiness(job)`, named "Apply readiness", run only when the person shows interest in applying. Sketch (colored, with the callers box, cost bars and decisions): https://claude.ai/artifact/WMU6BfMuEfreuEZqBDcLfM . **Nothing in this spec is built; the sketch and this file wait for the owner's yes.**
+Verdict: **approved by the owner on 7 Nov 2026** ("Yes, build it (Recommended)"; answers below), R1 in build. Today three separate paths draft a kit and a fourth (the form check, #3519) reads the form; the owner wants them to be ONE step, `applyReadiness(job)`, named "Apply readiness", run only when the person shows interest in applying. Sketch (colored, with the callers box, cost bars and decisions): https://claude.ai/artifact/WMU6BfMuEfreuEZqBDcLfM . R1 (the step and the store) is this spec's first PR; R2 waits for the Always on recommendation below.
 
 ## The owner's words (7 Nov 2026, relayed by the coordinator)
 - "Basically an job (single or batch) before the applying process starts in reality, we should have the check/practice prepared (alongside the application kit)."
@@ -28,6 +28,15 @@ Verdict: **awaiting owner yes.** Today three separate paths draft a kit and a fo
 - **Callers (every way in calls the step):** Apply on one job (`kit-handlers.js:72` IPC prepareKit and the fill's start); the batch (`apply.js:300`, `:354` draftMissing); Ready's night (`ready-handlers.js:146`); Check apply readiness (Jobs button, ⌘K, Actions card, the Settings → Automation → Schedules row); "Prepare top matches" becomes "Apply readiness on the top matches" (`job-actions-handlers.js:26`, this Mac; the engine's kits mode stays for Always on runs); the first-Apply popup (L2d); Full automation's hold (`apply-check-first.js`, `storedCheck(job)` wired by `fa`'s 2/2, reads the stored check). The three old paths are deleted, not wrapped.
 - **UI names:** feature, Schedules row, Actions card: "Apply readiness"; button and ⌘K: "Check apply readiness"; live dialog: "Checking apply readiness · 3 of 8"; one log tag. Sweep "See which jobs can apply automatically", "Check forms", "form check" in `desktop/renderer`, all 7 languages (`desktop/i18n/catalogs`), the palette, notifications, `docs/map`, and `docs/superpowers/specs/2026-10-30-apply-triage.md`.
 
+## The owner's answers (7 Nov 2026, relayed by the coordinator)
+1. Design: "Yes, build it (Recommended)": 3 PRs, R1 the step and the store, R2 the callers and the guard, then L2c/L2d (the names sweep rides with R2).
+2. Prepare top matches: "There should be no difference between Mac only and Always on. We should support "Apply readiness on the top matches" for Alwyas on, as well." One step and one result in both; no separate engine kit mode that skips the check. **Open, before R2 touches it:** how Always on with no Mac runs the check (the cloud run's own browser, or the Mac's hidden browser when it comes online), what it costs, one recommendation to the owner. R1 does not wait on this.
+3. Ready's night: "Yes, kit + check (Recommended)".
+4. Reposted posting is read again; a fill that finds a different form writes the new read (decision 3 of the sketch, unchanged).
+
+## How R1 reaches the store (found while building)
+The desktop never opens the tracker; it calls the engine's store CLI (`desktop/lib/store/engine.js` → `python -m src.stores call applications get|update`). So R1 adds no engine mode: `apply_readiness` is a field of `src/stores/base.py` APPLICATION_FIELDS (all adapters, the Notion column "Apply readiness"), the Jobs rows carry it (`src/desktop_jobs.py`), and `desktop/lib/apply-readiness.js` reads and writes it through that call. Freshness is the posting date (`posted_at`) the check was made for; a closed-then-open posting with the same date is not detected yet (TODO(AI) in the step). A simple form is stored only after its question match; an unreadable read is never stored.
+
 ## Acceptance criteria
 1. Pressing Apply on a job with no kit shows the check result before the fill starts; the kit and the check come from one call.
 2. Find jobs drafts no kit and reads no form (assert the engine args and the app's calls).
@@ -43,6 +52,6 @@ Verdict: **awaiting owner yes.** Today three separate paths draft a kit and a fo
 ## Progress
 - [x] L1 light read (#3548) and L2a three statuses (#3556) (proof: desktop/lib/triage-reader.js @f0b711f)
 - [x] L2b match (#3563, merged 7 Nov 2026) (proof: desktop/lib/triage-match.js @30ff290)
-- [ ] Owner's yes on the sketch (decisions: Prepare top matches as a caller; Ready's night also checks; repost rule; 5 PRs)
-- [ ] R1 the step and the store · [ ] R2 the paths become callers + the guard · [ ] L2c · [ ] L2d
+- [x] Owner's yes on the sketch (proof: none: the owner's answers are quoted above, relayed by the coordinator 7 Nov 2026)
+- [ ] R1 the step and the store (this PR: `desktop/lib/apply-readiness.js`, `src/stores/base.py`) · [ ] R2 the paths become callers + the guard · [ ] L2c · [ ] L2d
 - Plan: `docs/superpowers/plans/2026-11-07-apply-readiness.md`. `fa`'s Full automation hold (`2026-11-07-full-automation-check-first.md`) consumes `storedCheck(job)` from R1.

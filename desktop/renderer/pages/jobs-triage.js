@@ -78,7 +78,7 @@ function paint() {
 
 // One match for the whole check (L2b): the simple forms' required questions, asked of `match` once; a form it names gets its missing details on its read, and its line in the dialog is drawn again.
 async function matchChecked(jobs, match, rows) {
-  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length).map(({url, read}) => ({url, questions: read.questions}));
+  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length && !read.match).map(({url, read}) => ({url, questions: read.questions}));
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null});
   paint();
