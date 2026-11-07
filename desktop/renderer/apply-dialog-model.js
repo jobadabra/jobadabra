@@ -1,5 +1,5 @@
 // The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/unit/renderer/apply-dialog-mode.test.js.
-import {modeBuilt} from './apply-settings-model.js';
+import {dialogNeedsConfirm, modeBuilt} from './apply-settings-model.js';
 
 /** The count as a whole number of jobs from 1 to 10, or null for anything else (empty, 0, 11, 1.5). */
 export function validCount(value) {
@@ -13,19 +13,27 @@ export function applyButtonLabel(count) {
   return n ? `Apply to ${n} job${n === 1 ? '' : 's'}` : 'Apply to jobs';
 }
 
-/** A card pick: saved through Settings → Apply's writer (`save`), only for a built mode; the saved settings come back to draw. */
-export async function applyDialogSelectMode({mode, save}) {
-  if (!modeBuilt(mode)) return {ok: false};   // Why (28 Oct 2026, owner): a mode that does nothing yet can never be chosen or saved
-  const saved = await save({mode});
-  return saved?.apply ? {ok: true, settings: saved} : {ok: false, error: 'Could not save how Jobadabra applies. Try again.'};
+/**
+ * A card pick in Apply to jobs: THIS batch's mode, never saved (Settings → Apply is the person's own default, changed only there). Full automation asks its confirmation first (`confirm` resolves true only on its button);
+ * the stamp of that answer goes with Start, so it belongs to this call and to no later one. -> {ok: true, mode, autoConfirmedAt} | {ok: false} (a mode not built, or a declined confirmation: the pick stays where it was).
+ * Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs. We should let the user explicitly go and change that in the settings"): replaces the 28 Oct rule that a card pick is saved
+ * through Settings → Apply's writer, for this dialog only.
+ */
+export async function applyDialogPick({mode, settings, confirm, now = () => new Date()}) {
+  if (!modeBuilt(mode)) return {ok: false};   // Why (28 Oct 2026, owner): a mode that does nothing yet can never be chosen
+  if (!dialogNeedsConfirm(mode, settings)) return {ok: true, mode, autoConfirmedAt: ''};
+  return await confirm() ? {ok: true, mode, autoConfirmedAt: now().toISOString()} : {ok: false};
 }
 
-/** Start: a valid count goes to the main process, which reads the saved mode itself after the first-choice gate (lib/apply-handlers.js). */
-export async function applyDialogStart({count, cancelled = false, start}) {
+/**
+ * Start: a valid count goes to the main process with the dialog's pick (and its Full-automation confirmation), which runs the batch in that mode (lib/apply-handlers.js).
+ * Why (7 Nov 2026, #3363, code review): `chosen` is whether Settings → Apply was ever chosen. When not, the first-choice gate holds this call and replays it with the SAME arguments after the person's choice there, so a pick sent now would override what they just chose in the gate: it is not sent and the batch follows the gate's choice.
+ */
+export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', chosen = false, cancelled = false, start}) {
   if (cancelled) return {cancelled: true};
   const n = validCount(count);
   if (!n) return {ok: false, error: 'Choose between 1 and 10 jobs.'};
-  try { return await start({n, mode: 'settings'}); } catch (error) {
+  try { return await start({n, mode: 'settings', ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {})}); } catch (error) {
     // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
     const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
     return {ok: false, error: `Could not start applying: ${reason || 'something went wrong.'}${reason.endsWith('.') || !reason ? '' : '.'} Try again in a moment.`};

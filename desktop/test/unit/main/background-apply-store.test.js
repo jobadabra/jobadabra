@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundApplyStore} from '../../../lib/background-apply-store.js';
 
-const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', answers: 'facts', auto: {waitMin: 10}};
+const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', autoConfirmedAt: '2026-10-27T10:00:01Z', answers: 'facts', auto: {waitMin: 10}};
 const ready = {answer: 'ready', step: 'final', submitControl: 'Send my application', requiredComplete: true, factsOnly: true, safe: true, botCheck: false, signature: 'page-1'};
 function rig({now, realNow} = {}) {
   let time = Date.parse('2026-10-27T12:00:00Z'), id = 0, failed = false;
@@ -82,18 +82,37 @@ test('CAPTCHA preflight and runtime handoffs survive store recreation, solved ch
   }
 });
 
-test('the page proof, opt-in, eligibility and Stop cannot be bypassed', async () => {
+// Why (7 Nov 2026, owner, #3363): the item's own confirmation decides, not Settings at press time: an item queued without one is handed over, never pressed, whatever Settings says now.
+test('the page proof, the batch\'s own confirmation, eligibility and Stop cannot be bypassed', async () => {
   for (const kind of ['required', 'unsafe', 'optin', 'eligible', 'stop']) {
-    const r = rig(), {store, job, session} = await prepared(r);
+    const r = rig(), {store, job, session} = await prepared(r, r.add(), 'auto', kind === 'optin' ? {...config, autoConfirmedAt: ''} : config);
     r.advance(600000);
     let proof = {...ready}, current = structuredClone(config);
     if (kind === 'required') proof.requiredComplete = false;
     if (kind === 'unsafe') proof.safe = false;
-    if (kind === 'optin') current.chosenAt = '';
     if (kind === 'eligible') r.apps.get(job.url).stage = 'Applied';
     if (kind === 'stop') await store.handoff(job.url, session, 'owned-browser', 'stopped');
     assert.equal((await store.reserve(job.url, session, 'owned-browser', proof, current)).submit, false, kind);
   }
+});
+
+// Owner, 7 Nov 2026, #3363: "The batch should continue with the setting it was set once the batch has been started." A Settings change after the queue moves nothing; the item's own mode and confirmation press.
+test('a queued Full automation item reserves its press whatever Settings says now; one queued beside it in Fill never presses, and its confirmation is its own', async () => {
+  const r = rig(), auto = await prepared(r, r.add(), 'auto', {...config, auto: {...config.auto, waitMin: 0}});
+  const fill = await prepared(r, r.add('fill'), 'fill', {...config, mode: 'fill'});
+  const now = {mode: 'fill', chosenAt: '2026-11-07T10:00:00Z', autoConfirmedAt: '', auto: {waitMin: 0}};   // Settings changed to Fill after both were queued
+  assert.equal((await auto.store.reserve(auto.job.url, auto.session, 'owned-browser', ready, now)).submit, true, 'the batch keeps the mode it started with');
+  assert.equal((await fill.store.reserve(fill.job.url, fill.session, 'owned-browser', ready, {...now, mode: 'auto', autoConfirmedAt: '2026-11-07T10:00:00Z'})).submit, false, 'Settings turning to Full automation later does not turn a Fill item into one');
+});
+
+// Code review (7 Nov 2026, #3363): queue() answers a live item with the old one; an old Full automation item that can still press must not be answered for a batch naming Fill.
+test('a new batch in Fill for a job still queued for Full automation is refused; after Stop it starts afresh; the other direction is safe', async () => {
+  const r = rig(), full = await prepared(r, r.add(), 'auto');
+  await assert.rejects(() => full.store.queue(full.job.url, 'again', 'fill', {...config, mode: 'fill'}), error => error.code === 'LIVE_AUTO' && /already queued for Full automation/.test(error.message));
+  await full.store.handoff(full.job.url, full.session, 'owned-browser', 'stopped');
+  assert.equal((await full.store.queue(full.job.url, 'later', 'fill', {...config, mode: 'fill'})).mode, 'fill', 'stopped: the run ended, a new one starts in the batch\'s own mode');
+  const fill = await prepared(r, r.add('fill'), 'fill', {...config, mode: 'fill'});
+  assert.equal((await fill.store.queue(fill.job.url, 'again', 'auto', config)).mode, 'fill', 'an old Fill item stays Fill and never presses');
 });
 
 test('no user check holds a submit: unknown facts, a fit of 10, a full day and the same employer still reserve (the checks are gone)', async () => {

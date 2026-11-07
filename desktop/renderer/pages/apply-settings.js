@@ -57,7 +57,7 @@ export function draw(settings = current) {
 /** Saves a change of settings.apply and redraws; -> the saved settings, or null when the save failed (the last saved ones stay drawn). */
 export async function save(change = {}, {chosen = false} = {}) {
   await ready;
-  // Why (2026-10-29, owner: "go ahead" with the switch; Gitar on #2471): every route into Full automation (Settings, Jobs, the first-Apply dialog) comes through saveApply, which asks the one confirmation and writes nothing on "Not now".
+  // Why (2026-10-29, owner: "go ahead" with the switch; Gitar on #2471; 7 Nov 2026, #3363): every route that SAVES Full automation (Settings, the first-Apply choice) comes through saveApply, which asks the one confirmation and writes nothing on "Not now". The Jobs Apply dialog does not save: its pick is that batch's own mode and it asks the same confirmation again in that call (apply-dialog-model.js applyDialogPick, owner: "We don't want to change the settings from the Apply to jobs").
   const saved = await saveApply({change, chosen, current, confirm: askFullAutomation, write: patch => window.pilot.saveSettings(patch).catch(() => null)});
   if (saved) current = saved;
   draw();

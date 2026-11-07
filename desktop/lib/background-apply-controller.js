@@ -22,15 +22,33 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
-// What an Apply batch says about the jobs it did not start: not eligible (the store refused) and busy (the person already has a session open).
+// What an Apply batch says about the jobs it did not start: not eligible (the store refused), busy (the person already has the job open in Chrome) and live (still queued for Full automation, Gitar on #3409: skipped and said, never a refusal after earlier jobs of the batch were queued).
+const SKIPS = {NOT_ELIGIBLE: 'skipped', LIVE_AUTO: 'live'};   // the store's error codes that skip one job and keep the batch going
 const plural = (n, why) => `${n} job${n === 1 ? ' was' : 's were'} skipped: ${why}`;
-const skippedWords = (skipped, busy) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
-  + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '');
-const nothingStarted = (skipped, busy) => {
-  if (busy && !skipped) return busy === 1 ? 'This job already has an application session. Continue that session first.' : 'These jobs already have an application session. Continue those sessions first.';
-  if (skipped && !busy) return `${skipped === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`;
-  return `Nothing was started.${skippedWords(skipped, busy)}`;   // both kinds: say each count
+const skippedWords = ({skipped, busy, live}) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
+  + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '')
+  + (live ? ` ${plural(live, live === 1 ? 'it is already queued for Full automation (stop or cancel it in Sessions first).' : 'they are already queued for Full automation (stop or cancel them in Sessions first).')}` : '');
+const ONLY = {
+  busy: n => (n === 1 ? 'This job already has an application session. Continue that session first.' : 'These jobs already have an application session. Continue those sessions first.'),
+  skipped: n => `${n === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`,
+  live: n => `${n === 1 ? 'This job is' : 'These jobs are'} already queued for Full automation. Stop or cancel ${n === 1 ? 'it' : 'them'} in Sessions first.`,
 };
+const nothingStarted = tally => {
+  const kinds = Object.keys(ONLY).filter(kind => tally[kind]);
+  return kinds.length === 1 ? ONLY[kinds[0]](tally[kinds[0]]) : `Nothing was started.${skippedWords(tally)}`;   // several kinds: say each count
+};
+
+/**
+ * The mode and confirmation a batch is queued under, or the refusal. With `batch` ({autoConfirmedAt}) they are the call's own; without it, the saved Apply mode and its saved confirmation.
+ * Why (2026-10-29, owner: "go ahead" with the switch; 7 Nov 2026, #3363): Full automation runs only after the person confirmed it, in Settings → Apply or in this very call; the window's pick alone is not enough.
+ * The first-choice stamp (`chosenAt`) always comes from Settings: the gate in lib/apply-choice-gate.js stays in front of every batch.
+ */
+function batchSettings(saved, mode, batch) {
+  const chosen = batch ? {...saved, mode, autoConfirmedAt: mode === 'auto' ? batch.autoConfirmedAt || '' : ''} : saved;
+  if (mode === 'auto' && !chosen.autoConfirmedAt) return {error: batch ? 'Full automation is off until you confirm it: pick it again in Apply to jobs.' : 'Full automation is off until you confirm it in Settings → Apply.'};
+  if (chosen.mode !== mode || !chosen.chosenAt) return {error: 'Confirm the saved Apply mode first.'};
+  return {chosen};
+}
 
 /**
  * Runs `sweep` every `every` ms (default 30 s) and logs a failure instead of throwing; returns the function that stops it. `set` and `clear` are injectable so a test never waits for a clock.
@@ -121,38 +139,43 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     log('apply', 'an ended background run left the list: the job starts afresh', {session: old.id});
     return true;
   }
-  async function enqueue(jobs, mode) {
+  /**
+   * Queues a batch in the hidden browser. `mode` is 'fill' or 'auto'. `batch` ({autoConfirmedAt}) is the call's own pick from Apply to jobs: the batch runs in `mode` with the Full-automation
+   * confirmation given in THIS call; without it the batch follows the saved Apply mode and its saved confirmation. Invariant: a batch's mode and its confirmation come from the call, never from a past save;
+   * every queued item keeps them (store.queue), so a later batch or a Settings change never moves a running one.
+   * Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs"; "The batch should continue with the setting it was set once the batch has been started"): a pick in the dialog
+   * is that batch's mode only, never Settings'; the person's way to stop a running batch is Stop or Cancel all.
+   */
+  async function enqueue(jobs, mode, batch = null) {
     return serial(async () => {
-      // Why (2026-10-29, owner: "go ahead" with the switch): Full automation runs only after the person confirmed it in Settings → Apply; the window's pick is not enough.
-      if (mode === 'auto' && !config().autoConfirmedAt) return {ok: false, error: 'Full automation is off until you confirm it in Settings → Apply.'};
+      const {chosen, error} = batchSettings(config(), mode, batch);
+      if (error) return {ok: false, error};
       if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
-      const chosen = config();
-      if (chosen.mode !== mode || !chosen.chosenAt) return {ok: false, error: 'Confirm the saved Apply mode first.'};
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return {ok: false, error: `At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`};
       const enrolled = [];
-      let skipped = 0, busy = 0;
+      const tally = {skipped: 0, busy: 0, live: 0};
       for (const job of jobs) {
         const old = terminals.byUrl(job.url);
-        // Why (7 Nov 2026, owner screenshot: one open session blocked the whole batch): a job the person already has open in Chrome is skipped and said; the others still start.
-        if (old && !old.background) { busy++; continue; }
+        // Why (7 Nov 2026, owner screenshot: one open session blocked the whole batch): a job the person already has open in Chrome is skipped and said (counted as busy, next to skipped and live, #3363); the others still start.
+        if (old && !old.background) { tally.busy++; continue; }
         // Why (2026-10-28, owner screenshot): a job the store refuses as not eligible (its stage moved on since the list was read) is skipped and said, not a thrown error that reaches the window
         // as an IPC string; the other jobs still start. Any other failure (a write, a wrong mode) stops the batch with its own words.
         let state;
         // A new id each time: the store keeps an old run (its state and session) when that run still holds something for the person, and starts a new run under this id otherwise.
         try { state = await store.queue(job.url, uuid().slice(0, 8), mode, chosen); } catch (error) {
-          if (error?.code !== 'NOT_ELIGIBLE') return {ok: false, error: String(error?.message || error)};
-          skipped++; continue;
+          const kind = SKIPS[error?.code];   // Gitar on #3409: a live Full automation job is skipped and said like a not-eligible one, never a refusal after earlier jobs of the batch were queued
+          if (!kind) return {ok: false, error: String(error?.message || error)};
+          tally[kind]++; continue;
         }
         await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         begin(item, state); enrolled.push(item.id);
       }
-      if (!enrolled.length) return {ok: false, error: nothingStarted(skipped, busy)};   // nothing queued: no browser starts
+      if (!enrolled.length) return {ok: false, error: nothingStarted(tally)};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));
-      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, skipped, busy});
-      const skippedNote = skippedWords(skipped, busy);
-      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
+      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, ...tally});
+      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
     });
   }
   // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
@@ -165,8 +188,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!state || state.ok === false || state.session !== item.id) return null;   // a refusal or another run's state is never kept: the next poll reads again
     latest.set(item.id, state);
     if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
+    // Why (7 Nov 2026, owner, #3363: "The batch should continue with the setting it was set once the batch has been started"): a Settings change mid-batch no longer hands items over ('mode_changed' was here):
+    // each item keeps the mode and confirmation its batch started with (store.queue), and a change applies to the next batch. Stop and Cancel all still end a batch.
     const current = config();
-    if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
     return state.ok === false ? null : {state, current};
   }
   // Only an extension request can supply the e2e proof that it looked at this due job; app clock wakes are not evidence.
