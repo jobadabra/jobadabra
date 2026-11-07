@@ -21,5 +21,15 @@
    "Settings: Your data → Actions: Actions: More · 2",
    "Actions: Actions: More · 2 → Strategy: Job preferences"
   ]
+ },
+ {
+  "seed": 20261107,
+  "pairs": [
+   "start → Focus: Focus: History",
+   "Focus: Focus: History → Profile: Build a CV with the AI",
+   "Profile: Build a CV with the AI → Settings: Available",
+   "Settings: Available → Settings: Developer options: Save",
+   "Settings: Developer options: Save → Actions: Recent runs"
+  ]
  }
 ]
