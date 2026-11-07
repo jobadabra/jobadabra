@@ -10,7 +10,8 @@ class _Nearness:
         from ..ai.title_triage import _norm
         self.tops = (search.get('locations') or {}).get('top_tier') or []
         self.in_my_place, self.by_title = in_my_place, {}
-        self.initial = near_best(self.tops)
+        self.stamp = self._store_stamp()
+        self.current = near_best(self.tops)
         for job in asked:
             self.by_title.setdefault(_norm(job['title']), []).append(job)
 
@@ -18,14 +19,25 @@ class _Nearness:
         return min(((0 if self.in_my_place(job) else 1, near(job.get('location'))) for job in self.by_title.get(title, ())), default=(1, float('inf')))
 
     def __call__(self, title):
-        return self._key(title, self.initial)
+        return self._key(title, self.current)
+
+    @staticmethod
+    def _store_stamp():
+        from .. import geo
+        try:
+            saved = geo.STORE.stat()
+            return (saved.st_mtime_ns, saved.st_size, saved.st_ino)
+        except OSError:
+            return None
 
     def rank(self, titles):
-        """The nearest title of a waiting batch from one fresh reader-owned map snapshot; no model call."""
+        """Rank waiting titles from current geographic facts; parse the map again only when its file changed, with no model call."""
         from ..time_budget import near_best
-        # Why (7 Nov 2026, #2920): outside reader scopes geo.load returns a fresh dict; reread once per batch, never once per title.
-        near = near_best(self.tops)
-        return min(self._key(title, near) for title in titles)
+        # Why (7 Nov 2026, #2920): outside reader scopes geo.load parses a fresh dict; cache unchanged files while scoped map views still update in place.
+        stamp = self._store_stamp()
+        if stamp != self.stamp:
+            self.current, self.stamp = near_best(self.tops), stamp
+        return min(self._key(title, self.current) for title in titles)
 
 
 def nearness(asked, search, in_my_place):

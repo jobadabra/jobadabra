@@ -174,6 +174,21 @@ class TheSlotsKeepTheQueuesOrder(unittest.TestCase):
 
 
 class DelayedMapOrdering(unittest.TestCase):
+    def test_unchanged_geography_is_read_once_and_a_store_update_refreshes_priority(self):
+        from src.sources import feed_order
+        data = {'home': {'kind': 'city', 'cc': 'FR', 'lat': 45.75, 'lon': 4.85, 'r': 25}}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(geo, 'STORE', pathlib.Path(tmp) / 'geo.json'):
+            geo.STORE.write_text(json.dumps(data))
+            with mock.patch.object(geo, '_read', wraps=geo._read) as read:
+                key = feed_order.nearness([{'title': 'Near role', 'location': 'Near region'}], {'locations': {'top_tier': ['Home']}}, lambda job: True)
+                for _ in range(5):
+                    self.assertEqual(key.rank(['near role']), (0, float('inf')))
+                self.assertEqual(read.call_count, 1, 'unchanged map is parsed once, not for every queued batch/pop')
+                data['near region'] = {'kind': 'city', 'cc': 'FR', 'lat': 45.76, 'lon': 4.84, 'r': 25}
+                geo.STORE.write_text(json.dumps(data))
+                self.assertLess(key.rank(['near role'])[1], 2)
+                self.assertEqual(read.call_count, 2, 'new geographic facts trigger one new read')
+
     def test_a_failed_priority_refresh_fails_its_reader_without_stranding_other_work(self):
         asked = []
 
