@@ -8,7 +8,7 @@ Sorted (dv, 7 Nov 2026): clipped is the checker's, not the screens': all 132 are
 - [x] 1/5 Checker: text a clip or a scroller holds is not "lost"; `main` scrolling sideways is one hit (`design-evaluator.mjs` `reached`); the narrow width is 640 (proof: desktop/scripts/design-check.mjs @4917d27d)
 - [x] 2/5 Job logo initials reach AA in light (one token, `--logo-ink-l`) (proof: desktop/renderer/tokens.css)
 - [x] 3/5 The check counts one primary per ROW of a list of peer rows (Focus, suggestions), one per card elsewhere; screens keep today's look (owner, 7 Nov 2026: "One amber per row (Recommended)", reversing the first 3/5, #3492 closed) (proof: desktop/scripts/design-evaluator.mjs)
-- [ ] 4/5 No ghost/link buttons: History, Hide, Show more, full report, Technical log, Review setup, table company links
+- [x] 4/5 No ghost/link buttons: History, Hide, Show more, full report, Technical log, Review setup become the small secondary button; table company names plain dark links (owner, 7 Nov 2026: "Small buttons; names as links (Recommended)") (proof: desktop/renderer/index.html)
 - [ ] 5/5 Strategy cards' gap on the scale (`.review .card` 10px → 12px)
 - [x] Owner's decision, 7 Nov 2026 "Yes, 640 (Recommended)": the check's narrow width 380 → 640 (the real minimum window), in this PR (proof: desktop/scripts/design-check.mjs)
 

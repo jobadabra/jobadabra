@@ -2192,6 +2192,11 @@ body.is-demo > .app, body.is-demo > .wizard { height: auto; flex: 1; min-height:
 .iv-job { min-width: 180px; max-width: 260px; }
 /* A button's text is centred by default: a job name that wraps (no company, a long title) lined up in the middle of its cell. */
 .lib-who button.link { text-align: left; }
+/* The company name in a table cell: dark text, no border, underlined on hover or focus (owner, 7 Nov 2026, "names as links"). */
+.iv-name-link { color: var(--ink); font-size: var(--fs-md); font-weight: 600; text-decoration: none; cursor: pointer; }   /* the size a button had (button { font: 600 var(--fs-md) }): the name keeps its size */
+.iv-name-link:hover, .iv-name-link:focus-visible { text-decoration: underline; }
+/* "Review setup →" sits after a full stop: a gap, so the stop does not touch the button's border (owner, 7 Nov 2026). */
+#ov-review-setup { margin-left: var(--sp-2); }
 
 /* The AI engine chooser (pages/ai-engine.js): wizard AI step and Settings → Connections → AI. */
 .engine { display: flex; flex-direction: column; gap: var(--sp-4); }
