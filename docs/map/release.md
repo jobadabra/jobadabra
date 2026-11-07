@@ -16,6 +16,7 @@ updated: 2026-11-03
 - A stable build also tells the reporters whose fix it carries (`tools/feedback-released.mjs`). A bad release has a rollback path in RELEASE.md section 5.
 - Large optional parts (LibreOffice, transcription, Chromium) download on first use with progress and Cancel, never in the installer.
 - Tests, the pool, the twin and our sessions never submit an application, in any build.
+- Practice jobs (`npm run practice`, dev builds only) press Submit only into the local catcher on example names; never an employer, never the person's app ([docs/practice-jobs.md](../practice-jobs.md)).
 
 ## Key files
 - `.github/workflows/desktop.yml`: the one run per release (Build, E2E, Release, per platform lane); `e2e.yml` the gate suites; `canary-promote.yml`, `stable-canary.yml`, `release-guard.yml`.
