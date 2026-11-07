@@ -1,0 +1,28 @@
+{
+  "_comment": "Offline regression: an AI-named employer route visible only inside an open shadow root continues to the form.",
+  "origin": "hand-cut",
+  "shape": "a posting whose AI-named employer application link is inside an open shadow root and leads to the form",
+  "why": "A direct employer route can appear in the page sketch because it traverses open shadow roots. The Apply finder and click lookup must see the same listed control so this universal route continues to the form.",
+  "sample": "fictional job board and employer application",
+  "control": {
+    "build": "0.9.762",
+    "failed": "The AI-named employer link inside the open shadow root was not pressed, so the fictional form was not reached."
+  },
+  "rung": 2,
+  "pages": [
+    {"url": "https://board.example.test/jobs/route-1", "file": "posting.html"},
+    {"url": "https://employer.example.test/apply/route-1", "file": "form.html"}
+  ],
+  "ai": {
+    "/extension/page-kind": [
+      {"when": {"url": "https://employer.example.test/apply/route-1"}, "answer": {"ok": true, "kind": "form", "role": "form", "by": "ai", "confidence": 0.95, "rung": 2, "signal": "confident"}},
+      {"answer": {"ok": true, "kind": "posting", "role": "no-form", "by": "ai", "confidence": 0.95, "rung": 2, "signal": "confident", "applyButton": "visit employer website", "applyRoute": "", "applyBy": "form", "applyEmail": "", "accountStep": "", "registerControl": "", "signinControl": "", "accountButton": ""}}
+    ]
+  },
+  "expect": {
+    "told": ["pressed the Apply button"],
+    "filled": ["#first_name"],
+    "maxNewTabs": 0,
+    "seconds": 45
+  }
+}

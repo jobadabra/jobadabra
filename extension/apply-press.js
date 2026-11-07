@@ -2,7 +2,7 @@
 // learned phrases, or the one the page-kind AI named) and press it in this same tab. Part of the flow core with fill-flow.js (its invariant 1:
 // Apply is pressed once per tab and page, kept there by triedApply). Guards: extension-tab-pages.test.js, named-controls.test.js, the e2e rows (npm run flows).
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit):
-//  1. A control the AI named is pressed by its own text or not at all: never another route found by a phrase while the named one is visible but refused (desktop/test/unit/extension/named-controls.test.js).
+//  1. A control the AI named is pressed by its own text or not at all: never another route found by a phrase while the named one is visible but refused. Find and click in the same open shadow roots the sketch lists (desktop/test/unit/extension/named-controls.test.js; #3425 offline fixture).
 //  2. Never a Submit by another name: a control that submits a form with fields to fill, or that its own code names submit/save, is no candidate (desktop/test/unit/extension/extension-tab-pages.test.js).
 //  3. The press stays in this tab: a link, form or script window aimed elsewhere is pointed here; a sized pop-up (features given) is left to the page.
 import {api, settings} from './flow.js';
@@ -16,7 +16,11 @@ import {mayAct} from './stop-state.js';
 // The posting before its form: a page with no form and one "Apply" button (chosen by rule: tab-pages.js pickApplyButton).
 const PAGE_BUTTONS = 'a[href], button, [role="button"], input[type="button"]';
 function applyCandidates(tabId, listed = PAGE_BUTTONS) {   // listed: PAGE_BUTTONS for the phrase path, NAMED_BUTTONS (the page sketch's own list) when the AI named the control
-  return chrome.scripting.executeScript({target: {tabId}, func: selector => [...document.querySelectorAll(selector)].map((el, index) => {
+  return chrome.scripting.executeScript({target: {tabId}, func: selector => {
+    // Why (2026-11-07, #3425 offline fixture): the page sketch reads open shadow roots; a document-only button scan could not follow its named route.
+    // Keep in sync with the serialized click lookup below so AI candidate indexes resolve to the same node.
+    const all = () => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const host of root.querySelectorAll('*')) if (host.shadowRoot && !/^jobadabra/.test(host.id)) walk(host.shadowRoot); }; walk(document); return found; };
+    return all().map((el, index) => {
     if (el.closest('[id^=jobadabra], [id^=jobadabra]')) return null;   // never the extension's own UI; the index stays the page's (desktop/integration/extension/own-ui-not-read.test.mjs)
     const box = el.getBoundingClientRect(), style = getComputedStyle(el);
     return {index, tag: el.tagName.toLowerCase(), text: (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80),
@@ -34,7 +38,8 @@ function applyCandidates(tabId, listed = PAGE_BUTTONS) {   // listed: PAGE_BUTTO
         if (el.tagName === 'A' && !el.hasAttribute('href') && fields(el.closest('form'))) return true;
         return ['submit', 'image'].includes(el.type) && fields(el.form);
       })()};
-  }).filter(Boolean), args: [listed]}).then(rows => rows?.[0]?.result || []).catch(() => []);
+    }).filter(Boolean);
+  }, args: [listed]}).then(rows => rows?.[0]?.result || []).catch(() => []);
 }
 // The start-applying phrases the service has learned (extension/alias-schema.js, key apply_button), asked of the app which asks the site and
 // remembers: added to the built-in words, never replacing them. None, and the built-in words work alone.
@@ -74,7 +79,9 @@ export async function pressApply(tabId, phrases = [], named = '', want = '', noE
   if (!mayAct()) return {pressed: null, via: '', buttons: [], why: null};   // stopped by the person (stop.js): nothing is pressed
   notePress(tabId);   // right before the click: a tab this press opens joins the application, any other tab never does (tabs.js followOpener)
   const done = await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: (selector, index) => {   // MAIN: the page's own window.open, below
-    const el = document.querySelectorAll(selector)[index];
+    // Keep in sync with the serialized candidate lookup above so it clicks the node the AI named.
+    const all = () => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const host of root.querySelectorAll('*')) if (host.shadowRoot && !/^jobadabra/.test(host.id)) walk(host.shadowRoot); }; walk(document); return found; };
+    const el = all()[index];
     if (!el) return false;
     el.scrollIntoView({block: 'center'});
     // The next page in this same tab, the way the browser goes there itself (a form keeps what it posts, the page loads once):
