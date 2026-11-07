@@ -4,5 +4,5 @@ The PR's "Design checks" were six `- [x]` lines that `tools/pr-body.sh` counted;
 
 ## Progress
 - [x] 1/3 Spacing ratchet: raw outer-space, padding and gap values in the renderer CSS may only shrink against the base; the push hook runs it. (proof: tools/spacing-scale.mjs)
-- [ ] 2/3 Rendered evaluator in `npm run shot`: 380 and 1100 px, light and dark; prints the "Design system (measured on <sha>)" table (one primary button per card, no ghost/link button, no card in a card, nothing clipped, AA contrast, spacing on the scale).
+- [x] 2/3 `npm run design-check` renders the screens a PR changes at 380 and 1100 px, light and dark, against main's render and prints the "Design system (measured on <sha>)" table: spacing on the scale, one primary button per card, no ghost or link button, no card in a card, nothing clipped, AA contrast; ❌ only for a violation main does not have. (proof: desktop/scripts/design-check.mjs)
 - [ ] 3/3 `tools/pr-body.sh` checks the generated table (present, sha = HEAD, no ❌); the six tick boxes are deleted from `tools/pr-body-template.md`, `tools/pr-body-format.py` and `docs/rules/desktop-ui.md`.
