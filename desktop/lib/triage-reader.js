@@ -1,6 +1,6 @@
 // Apply triage (spec 2026-10-30-apply-triage, PR C2a): the queue of form reads that the hidden browser's extension takes one at a time. A read is not an application: no store row, no session, no saved mode.
 import {randomUUID} from 'node:crypto';
-import {readFromJudge} from './triage-read.js';
+import {readFromJudge, readFromLook} from './triage-read.js';
 
 /** The steps of one read, in order: the app marks `opening` when it hands the read out; the extension reports `judging` (the page is a form, the AI judges it) and `planning` (the saved answers are matched). */
 export const STEPS = ['opening', 'judging', 'planning'];
@@ -61,10 +61,11 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
     step: (id, step) => id === active && STEPS.slice(1).includes(step) && mark(id, step),
     /** True while a read is queued or out, so a real application is never started beside it. */
     busy: () => waiting.size > 0,
-    /** The extension's answer for the active read: {botCheck, loginWall, accountCreation} from the judge and allFactsSaved from the answer plan, or {unreadable: true} when the page never became a form. Returns false for any other id. */
+    /** The extension's answer for the active read: {simple, why} from the light look, or {botCheck, loginWall, accountCreation} from the judge and allFactsSaved from the answer plan, or {unreadable: true} when the page never became a form. Returns false for any other id. */
     report(id, payload = {}) {
       if (!active || id !== active) return false;
-      return finish(id, payload.unreadable === true ? null : readFromJudge(payload, {eligible: true, allFactsSaved: payload.allFactsSaved}), true);
+      if (payload.unreadable === true) return finish(id, null, true);
+      return finish(id, 'simple' in payload ? readFromLook(payload) : readFromJudge(payload, {eligible: true, allFactsSaved: payload.allFactsSaved}), true);   // the light read says `simple`; the judge-based read (kept for the demo and older extensions) says its flags
     },
     /** Resolves every queued and active read with null (Cancel, the app quitting). Returns how many it ended. */
     cancelAll: () => [...waiting.keys()].filter(id => finish(id, null)).length,

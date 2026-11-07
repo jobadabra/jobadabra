@@ -77,8 +77,9 @@ export async function readState(why, read, accepts, wait = {}) {
  */
 export async function runReadSteps(ctx) {
   const {page, proxy, forms} = ctx;
-  // Why (30 Oct 2026, owner): the stand-in leaves the submitter's Linux question unanswered; its details-only variant is covered entirely by the saved profile.
-  for (const [form, expected] of [[FORMS.submitter, 'You review and submit'], [autoFormOf(FORMS.submitter), 'Can apply automatically']]) {
+  // Why (7 Nov 2026, owner, #3519: "we don't need to go through normal flow of applying… just to understand if it's a simple form and can be submitted automatically"): a read only looks at the form, so it makes no answer plan and the
+  // "answers not saved" variant ("You review and submit") has no producer any more; the one step left proves a simple form reads "Can apply automatically" without the form judge.
+  for (const [form, expected] of [[autoFormOf(FORMS.submitter), 'Can apply automatically']]) {
     await ctx.run('"See which jobs can apply automatically" reads a job\'s form in the hidden browser: ' + expected + ', the tab closes, and nothing is filled or sent', async () => {
       const unlinked = linkRuntime(ctx.profile);
       if (unlinked) throw new Error(unlinked);
@@ -111,7 +112,7 @@ export async function runReadSteps(ctx) {
           .catch(async error => { throw new Error(`${error.message} | chips: ${JSON.stringify(await allChips(page))} | ${await describeHidden(ctx.profile)}`); });
         const chip = await chipOfRow(page, form.title);
         if (chip !== expected) throw new Error(`the fixture should read "${expected}", the chip says "${chip}"`);
-        if (asked < 1) throw new Error('the verdict never went through the form judge');
+        if (asked > 0) throw new Error('a read asked the form judge: it should only look at the form (extension/triage-look.js)');
         await readState('the read tab was never closed', async () => (await hiddenPages(ctx.profile)).filter(onHost(form.host)).map(tab => tab.url), open => !open.length);
         await watch.stop();
         assertReadUntyped(watch.seen);

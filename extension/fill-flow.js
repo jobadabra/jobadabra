@@ -10,7 +10,8 @@
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (app-core/test/form-ready.test.js).
 import {preparePage, readPage, askPage, correctPage, describePage} from './fill-flow-read.js';
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
-import {backgroundMayFill, backgroundPage, backgroundRead} from './background-apply.js';
+import {backgroundLook, backgroundMayFill, backgroundPage, backgroundRead} from './background-apply.js';
+import {lookAtForm} from './triage-look.js';
 import {PAGE_FILES, apiFor, clickCombos, settings} from './flow.js';
 import {decide} from './log.js';
 import {ownSpan} from './fill-span.js';
@@ -284,6 +285,8 @@ export async function consider(tab, jobUrl) {
    * pressed: pressPosting, afterApply, routeAfterApply, climbPosting, pressDigest, lookAtPosting (initial false and later press results);
    * lookAfterPress: pressPosting, routeAfterApply (initial null and the fresh post-press answer). Some assignments carry an unchanged value onward. */
   const step = {tab, jobUrl, key, live, gen, flow: fillFlowParts};
+  // Why (7 Nov 2026, owner, #3519): a triage read is not an application: it loads the page, reads its controls and reports (extension/triage-look.js), skipping the Apply press, the watch, the judge and the plan.
+  if (await ownSpan(tab.id, `consider ${tab.id}/${gen} backgroundLook`, () => backgroundLook(tab, () => lookAtForm(step, {prepare: preparePage, press: pressPosting})))) return;
   await ownSpan(tab.id, `consider ${tab.id}/${gen} preparePage`, () => preparePage(step));
   if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} readPage`, () => readPage(step))) return;
   if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} askPage`, () => askPage(step))) return;

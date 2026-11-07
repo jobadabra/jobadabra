@@ -18,3 +18,14 @@ export function readFromJudge(judged, {eligible = true, allFactsSaved = null} = 
     allFactsSaved: facts,
   };
 }
+
+/**
+ * The read flags from the light triage read's report ({simple, why}, extension/triage-look.js): the mode table's flags plus `simple` and `why`.
+ * Only the one named reason is true; the others are false, so a page needs exactly one thing from the person. No answer plan was made: allFactsSaved stays unknown.
+ * A report without a boolean `simple` is a read with no flags (unknown, the unsafe answer).
+ */
+export function readFromLook(report, {eligible = true} = {}) {
+  if (!report || typeof report.simple !== 'boolean') return {eligible, captcha: null, login: null, accountCreation: null, allFactsSaved: null};   // words-ok: the read's own flag names, not a page word list
+  const why = typeof report.why === 'string' ? report.why : '';
+  return {eligible, captcha: why === 'captcha' || why === 'check', login: why === 'login', accountCreation: why === 'account', allFactsSaved: null, simple: report.simple, why};   // words-ok: the read's own flag names, not a page word list
+}

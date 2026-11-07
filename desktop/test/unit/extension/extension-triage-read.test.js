@@ -173,3 +173,23 @@ test('a page that is a form posts judging before the judge is asked, and a bot c
   await backgroundRead({id: 7, url: 'https://jobs.example.test/a'}, {kind: {}, role: 'form'}).catch(() => {});
   assert.deepEqual(posted.filter(call => call.body.action === 'triage-step').map(call => call.body.step), ['judging']);
 });
+
+// #3519: the light look. A read tab reports the look's verdict and closes; any other tab is left alone and its look is never run.
+test('a read tab reports the look\'s verdict and is closed; a look that throws is reported unreadable', async t => {
+  const {posted, removed} = install(t);
+  const {backgroundLook} = await import('../../../../extension/background-apply.js');
+  assert.equal(await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async () => ({look: {role: 'form'}, simple: true, why: ''})), true);
+  assert.deepEqual(posted.map(call => [call.body.action, call.body.simple, call.body.why]), [['triage-read', true, '']]);
+  assert.equal(await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async () => { throw new Error('the page broke the look'); }), true);
+  assert.equal(posted[1].body.unreadable, true, 'the app never waits out its timeout for a look that failed');
+  assert.deepEqual(removed, [7, 7]);
+});
+
+test('a tab that is not a read never runs the look', async t => {
+  const {posted} = install(t, {mode: 'fill'});
+  const {backgroundLook} = await import('../../../../extension/background-apply.js');
+  let ran = false;
+  assert.equal(await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async () => { ran = true; return {simple: true}; }), false);
+  assert.equal(ran, false);
+  assert.deepEqual(posted, []);
+});

@@ -33,7 +33,7 @@ export const CHIPS = {
 export function chipOf(read) {
   if (!read) return {label: t('helperTail.notChecked'), tone: 'neutral', detail: ''};
   const {mode, reason} = modeOfRead(read);
-  const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts'}[reason];
+  const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts', captcha: 'triageCaptcha', check: 'triageCheck', 'a simple form': 'triageSimple', 'no form': 'triageNoForm', 'not a simple form': 'triageNotSimple'}[reason];
   return {...CHIPS[mode], detail: reasonKey ? t(`helperTail.${reasonKey}`) : reason};
 }
 

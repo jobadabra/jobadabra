@@ -155,3 +155,15 @@ test('a lost judging report never makes two steps count the same time, and the a
   await pending;
   assert.deepEqual(done, [{url: 'https://jobs.example/t5', outcome: 'read', totalMs: 8000, queueMs: 0, openMs: 3000, judgeMs: 0, planMs: 5000}]);
 });
+
+test('the light look\'s verdict reaches the window as the mode table flags, and a look that could not see the form reads as nothing', async () => {
+  const r = reader(), simple = r.read('https://jobs.example/simple');
+  r.report(r.take().id, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: ''});
+  assert.deepEqual(await simple, {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: ''});
+  const gated = r.read('https://jobs.example/gated');
+  r.report(r.take().id, {look: {role: 'account', fields: 2, files: 0, frames: 0}, simple: false, why: 'login'});
+  assert.equal((await gated).login, true);
+  const framed = r.read('https://jobs.example/frame');
+  r.report(r.take().id, {unreadable: true, why: 'frame', look: {role: 'form', fields: 0, files: 0, frames: 1}});
+  assert.equal(await framed, null);
+});

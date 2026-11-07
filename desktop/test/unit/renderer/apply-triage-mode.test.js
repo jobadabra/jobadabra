@@ -33,3 +33,13 @@ test('a missing flag is the unsafe answer, never the automatic one', () => {
 test('the captcha outranks the answers: a captcha form is never Background or Full automation', () => {
   assert.equal(modeOfRead({...clean, captcha: true, allFactsSaved: false}).mode, 'check');
 });
+
+test('the light look: a simple form is Full automation, anything else it named needs the person, and a captcha still outranks a simple flag', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null};
+  assert.deepEqual(modeOfRead({...look, simple: true, why: ''}), {mode: 'auto', reason: 'a simple form'});
+  assert.deepEqual(modeOfRead({...look, simple: false, why: 'no form'}), {mode: 'check', reason: 'no form'});
+  assert.deepEqual(modeOfRead({...look, captcha: true, simple: false, why: 'captcha'}), {mode: 'check', reason: 'captcha'});
+  assert.deepEqual(modeOfRead({...look, captcha: true, simple: true}), {mode: 'check', reason: 'captcha'});
+  assert.equal(modeOfRead({...look, eligible: false, simple: true}).mode, 'none', 'a job marked not eligible is never taken by a simple form');
+  assert.deepEqual(modeOfRead({eligible: true, captcha: null, login: null, accountCreation: null, allFactsSaved: null}).mode, 'check', 'an unknown look is the unsafe answer');
+});
