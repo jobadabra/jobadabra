@@ -93,7 +93,7 @@ export default {
   "panel.working": "in Arbeit",
   "panel.aiWaiting": "Die KI wartet in Jobadabra auf dich.",
   "panel.aiDone": "Die KI hat das Formular ausgefüllt. Prüfe es und sende es selbst ab.",
-  "panel.syntheticCaptcha": "Bestätigen Sie, dass Sie kein Roboter sind",
+  "panel.syntheticCaptcha": "Bestätige, dass du kein Roboter bist",   // words-ok: bundled UI wording, never page classification
   "panel.requiredField": "Ein Pflichtfeld",
   "panel.outlineComplete": "Gliederung: vervollständigen",
   "panel.drafted": "Für dich entworfen: prüfen",
