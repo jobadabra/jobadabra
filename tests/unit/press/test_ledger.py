@@ -7,6 +7,15 @@ import json
 import unittest
 
 from tests.unit.press import ledger
+# Every proof's module, imported here so the PR test picker (tools/affected-tests.py) sees what the ledger reaches: a change to any file a proof reaches runs it.
+from tests.unit.ai import (test_boards_asked_together, test_daily_search_phases, test_first_press_boards_early, test_score_floor,  # noqa: F401
+                           test_search_budget, test_step_pace_failures, test_title_one_pass, test_title_queue, test_title_triage_local,
+                           test_titles_with_places)
+from tests.unit.engine import test_score_first_from_start, test_scout_carry  # noqa: F401
+from tests.unit.press import test_ledger_scenarios  # noqa: F401
+from tests.unit.sources import (test_aggregators, test_boards_first, test_eures, test_eures_place_fragments, test_eures_titles_in_time,  # noqa: F401
+                                test_first_jobs, test_first_jobs_hub, test_first_jobs_slow_boards, test_first_press_order, test_index_place_rank,
+                                test_job_rank, test_read_budget, test_read_cut, test_three_minutes, test_titles_ai_first, test_unread_systems)
 
 
 def _run(proof):
@@ -52,6 +61,11 @@ class LedgerKept(unittest.TestCase):
     def test_every_fix_has_a_proof_and_says_what_the_person_gets(self):
         for fix in ledger.FIXES:
             self.assertTrue(fix.proofs and fix.gets and fix.since, fix.id)
+
+    def test_every_proof_module_is_imported_here_so_a_pr_reaching_it_runs_the_ledger(self):
+        imported = {value.__name__ for value in globals().values() if isinstance(value, type(unittest))}
+        wanted = {proof.split('::')[0][:-3].replace('/', '.') for fix in ledger.FIXES for proof in fix.proofs if not proof.startswith('desktop/')}
+        self.assertEqual(sorted(wanted - imported), [], 'import these proof modules at the top of this file (tools/affected-tests.py follows imports)')
 
     def test_the_lock_matches_the_ledger(self):
         kept = json.loads(ledger.LOCK.read_text())
