@@ -100,3 +100,16 @@ test('strategy and move summaries translate around original values, reasons and 
     assert.ok(text.includes('/Original Archive/backup'));
   } finally { setLocale('en'); }
 });
+
+test('derived log guidance translates while unknown engine lines remain original', async () => {
+  const {readableLog} = await import('../../../renderer/human-log.js');
+  try {
+    setLocale('de');
+    const lines = readableLog(['Checked: Original employer', 'Checked: Another employer', 'Scored 2 of 3 job(s)', 'Original provider failure']);
+    assert.equal(lines[0], '🏢 Auf Stellenbörsen gefundene Arbeitgeber geprüft: 2');
+    assert.equal(lines[1], '🎯 Stellen bewertet: 2 von 3');
+    assert.equal(lines[2], 'Original provider failure');
+    setLocale('ru');
+    assert.equal(readableLog(['Visit: the job list of example.test is readable'])[0], '🌐 Найден список вакансий example.test');
+  } finally { setLocale('en'); }
+});
