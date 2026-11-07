@@ -3,6 +3,7 @@
 // written for it until the person picks (resolveLocation). Both pages are copied and the backup runs before anything is written; every written list is
 // read back, else it throws with the copy's place. The Profile rows are never removed here: the old editors stay until crawl and scoring read the new
 // source (spec step c). Works on every store (lib/store). Guarded by test/unit/main/locations-store.test.js.
+import {withDisplay} from '../i18n/store-errors.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {t} from '../i18n/detail-notices.js';
@@ -66,7 +67,7 @@ export async function moveLocations(storage, {fetcher, ai = {}, deps = null, wri
   const copy = await copyFirst(storage, {fetcher, now, run});
   await write(storage, next, deps);
   const missing = readBack(storage, resolved);
-  if (missing.length) throw new Error(`Locations move: ${missing.join(', ')} did not save; the Profile is untouched (the copy is in ${copy.dir})`);
+  if (missing.length) throw withDisplay(new Error(`Locations move: ${missing.join(', ')} did not save; the Profile is untouched (the copy is in ${copy.dir})`), 'storeError.locationsVerify', {fields: missing.join(', '), path: copy.dir});
   return {moved: Object.keys(resolved).length, conflicts, copy};
 }
 

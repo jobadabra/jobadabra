@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {displayText} from '../../../i18n/display-values.js';
+import {setLocale, SUPPORTED_LOCALES} from '../../../i18n/index.js';
 import {createStorage} from '../../../lib/storage.js';
 import * as store from '../../../lib/store/index.js';
 import * as sections from '../../../lib/profile-sections.js';
@@ -111,7 +113,20 @@ test('a section that did not save stops the move before any original is removed'
   const {storage} = await ADAPTERS.sqlite();
   const before = await both(storage);
   const original = sections.save;
-  await assert.rejects(() => move(storage, {ai: ai(), copy: async () => ({dir: 'copy-dir'}), save: async () => []}), /did not save; nothing was removed/);
+  const raw = 'Fictional this Mac Keychain ⌘K {path}';
+  try {
+    for (const locale of SUPPORTED_LOCALES) {
+      setLocale(locale);
+      await assert.rejects(() => move(storage, {ai: ai(), copy: async () => ({dir: raw}), save: async () => []}), error => {
+        assert.match(error.message, /^Your details move: .* did not save; nothing was removed/);
+        const shown = displayText(error, error.message);
+        if (locale === 'en') assert.equal(shown, error.message);
+        else assert.notEqual(shown, error.message, locale);
+        assert.equal(shown.split(raw).length - 1, 1, 'the original copy path is inserted once unchanged');
+        return true;
+      });
+    }
+  } finally { setLocale('en'); }
   assert.equal(sections.save, original);
   assert.deepEqual(await both(storage), before, 'both pages as they were');
 });

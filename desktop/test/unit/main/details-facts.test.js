@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {withDisplay} from '../../../i18n/display-values.js';
+import {setLocale} from '../../../i18n/index.js';
 import {createStorage} from '../../../lib/storage.js';
 import {registerDetailsFactsHandlers} from '../../../lib/details-facts-handlers.js';
 import * as sections from '../../../lib/profile-sections.js';
@@ -30,12 +32,12 @@ test('one Save bar: Contact, then the fact sections; Discard redraws them', () =
   assert.match(drafts, /showFacts\(\{redraw: true\}\)/);
 });
 
-function harness(settings = {store: 'sqlite'}) {
+function harness(settings = {store: 'sqlite'}, services = {}) {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
   storage.saveSettings(settings);
   const handlers = {}, logged = [];
   registerDetailsFactsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO: false,
-    connected: () => true, needsNotion: () => null, log: (...line) => logged.push(line)});
+    connected: () => true, needsNotion: () => null, log: (...line) => logged.push(line), ...services});
   return {storage, handlers, logged};
 }
 
@@ -190,3 +192,28 @@ test('a move with no copy target under the test runner is refused: no real backu
   assert.match(await store.openStore(storage).page('answers').text(), /Notice period \| 3 months/, 'nothing moved');
 });
 
+
+test('actual Your details IPC localizes only the display copy of a tagged move failure', async t => {
+  const forbidden = [], calls = [];
+  t.mock.method(globalThis, 'fetch', () => { forbidden.push('network'); throw Error('No live service'); });
+  const raw = 'Fictional this Mac Keychain ⌘K {path}', canonical = 'canonical profile diagnostic';
+  const error = withDisplay(new Error(canonical), 'storeError.profileMissing', {count: 1, path: raw});
+  const client = {messages: {create: async request => {
+    const items = JSON.parse(request.messages[0].content); calls.push(items);
+    return {content: [{type: 'text', text: JSON.stringify({items: Array.isArray(items) ? items.map(({id}) => ({id, home: 'availability', topic: 'notice period', clarity: 'clear'})) : []})}]};
+  }}};
+  try {
+    setLocale('ru');
+    const {storage, handlers, logged} = harness({store: 'sqlite'}, {ai: () => ({client}), copy: async () => { throw error; }});
+    await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n');
+    const before = await store.openStore(storage).page('answers').text();
+    const got = await handlers.detailsFacts();
+    assert.ok(got.error.startsWith('Перенос ваших данных:'), got.error);
+    assert.equal(got.error.split(raw).length - 1, 1);
+    assert.equal(logged.find(line => line[1] === 'the facts move stopped')[2].error, canonical);
+    assert.equal(error.message, canonical);
+    assert.ok(calls.length > 0, 'the fixture AI judged the move');
+    assert.equal(await store.openStore(storage).page('answers').text(), before);
+    assert.deepEqual(forbidden, []);
+  } finally { setLocale('en'); }
+});

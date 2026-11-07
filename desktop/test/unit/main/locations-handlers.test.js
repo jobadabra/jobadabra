@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {withDisplay} from '../../../i18n/display-values.js';
+import {setLocale} from '../../../i18n/index.js';
 import {createStorage} from '../../../lib/storage.js';
 import * as store from '../../../lib/store/index.js';
 import {registerLocationsHandlers} from '../../../lib/locations-handlers.js';
@@ -14,14 +16,14 @@ const PROFILE = '## Hard constraints\n\n| Constraint | Value |\n|---|---|\n| Cou
 const SEARCH = {locations: {top_tier: [], country_wide: ['netherlands', 'germany'], abroad: []}};
 const GOOD = {client: {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({preferred: [], acceptable: ['Switzerland'], relocation: 'unspecified', destinations: []})}]})}}};
 
-async function harness({ai = () => ({}), DEMO = false, settings = {store: 'sqlite'}} = {}) {
+async function harness({ai = () => ({}), DEMO = false, settings = {store: 'sqlite'}, backup = () => ({file: 'backup.zip'})} = {}) {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-locw-')), {encrypt: v => v, decrypt: v => v});
   storage.saveSettings(settings);
   await store.openStore(storage).page('profile').write(PROFILE);
   storage.writeText('config/search.json', JSON.stringify(SEARCH));
   const handlers = {}, logged = [];
   registerLocationsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO, needsNotion: () => null,
-    settingsDeps: null, log: (...line) => logged.push(line), ai, backup: () => ({file: 'backup.zip'})});   // never the real backup folders
+    settingsDeps: null, log: (...line) => logged.push(line), ai, backup});   // never the real backup folders
   return {storage, handlers, logged};
 }
 
@@ -84,4 +86,22 @@ test('a pick and an Undo each close the running reads\' join: the reload after t
   undone.release();
   await Promise.all([began, after]);
   assert.equal(undone.runs(), 2, 'a read asked after the Undo did not join the one that began before it');
+});
+
+test('actual Locations IPC projects a tagged error after logging its canonical text', async t => {
+  const forbidden = [];
+  t.mock.method(globalThis, 'fetch', () => { forbidden.push('network'); throw Error('No live service'); });
+  const raw = 'Fictional this Mac Keychain ⌘K {path}', canonical = 'canonical Locations diagnostic';
+  const error = withDisplay(new Error(canonical), 'storeError.locationsVerify', {fields: 'acceptable', path: raw});
+  try {
+    setLocale('ru');
+    const {handlers, logged} = await harness({ai: () => GOOD, backup: () => { throw error; }});
+    const got = await handlers.locationsWhich();
+    assert.notEqual(got.error, canonical);
+    assert.ok(got.error.startsWith('Перенос мест:'), got.error);
+    assert.ok(got.error.includes(raw));
+    assert.equal(logged.find(line => line[1] === 'the Locations move stopped')[2].error, canonical);
+    assert.equal(error.message, canonical);
+    assert.deepEqual(forbidden, []);
+  } finally { setLocale('en'); }
 });

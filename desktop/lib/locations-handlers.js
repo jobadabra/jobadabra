@@ -1,6 +1,7 @@
 // Strategy → "Which locations are right?" over IPC (owner, 17 Oct 2026): the first read moves the Profile's places in once (lib/locations-store.js: copy and
 // backup first), then the screen lists each conflict and the person's pick is written and read back. A pick changes the search, so it says
 // "Your search changed". Registered by lib/search-tuning-handlers.js. Guarded by test/unit/main/locations-handlers.test.js and test/guards/rules/ipc.test.js.
+import {displayText} from '../i18n/display-values.js';
 import {moveLocations, recheckQueue, resolveLocation} from './locations-store.js';
 import {CHOICES, readSide} from './locations-move.js';
 import {claudeAi} from './question-ai.js';
@@ -24,7 +25,7 @@ export function registerLocationsHandlers({ipcMain, storage, DEMO, needsNotion, 
         const {moved, conflicts} = await moveLocations(storage, {ai, deps: settingsDeps?.(), ...(backup ? {backup} : {})});
         log('strategy', 'places moved into Locations', {moved, conflicts: conflicts.length});   // counts, never a place
         if (ai.client || ai.apiKey) storage.saveSettings({locationsMovedAt: new Date().toISOString()});   // judged once, not asked again
-      } catch (failed) { error = failed.message; log('strategy', 'the Locations move stopped', {error: failed.message}); }
+      } catch (failed) { error = displayText(failed, failed.message); log('strategy', 'the Locations move stopped', {error: failed.message}); }
     }
     else {
       try {   // a queue saved by an older build is read again: place names, never patterns; the same places in other words leave it
