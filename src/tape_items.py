@@ -28,7 +28,8 @@ def split(content):
 
 
 def parts(text, size):
-    """An answer's text -> (field, {n: part}) for n in 1..size: True/False for a list of numbers, the item's rows (without 'n') for rows; None for any other shape."""
+    """An answer's text -> (field, {n: part}) for n in 1..size: for a list of numbers its place in the list (0 = first) or False, the item's rows (without 'n')
+    for rows; None for any other shape. Why (Gitar on #3565): a list of numbers may be ranked (web_search's 'keep', best first), so each item keeps its rank."""
     try:
         answer = json.loads(text)
     except (TypeError, ValueError):
@@ -39,7 +40,10 @@ def parts(text, size):
     if not isinstance(value, list):
         return None
     if all(type(v) is int for v in value):
-        return field, {n: n in value for n in range(1, size + 1)}
+        rank = {}
+        for at, n in enumerate(value):
+            rank.setdefault(n, at)
+        return field, {n: rank.get(n, False) for n in range(1, size + 1)}
     if all(isinstance(v, dict) and type(v.get('n')) is int for v in value):
         rows = {n: [] for n in range(1, size + 1)}
         for v in value:
@@ -50,11 +54,11 @@ def parts(text, size):
 
 
 def join(field, items):
-    """The answer of a batch from its items' parts, in the batch's order -> text, or None when the parts are of two shapes.
-    An empty list was recorded as False ("not in the numbers"), so False beside rows means no row."""
-    if all(type(part) is bool for part in items):
-        return json.dumps({field: [n for n, part in enumerate(items, 1) if part]})
-    if any(part is True for part in items):
+    """The answer of a batch from its items' parts -> text, or None when the parts are of two shapes. Numbers come back in their recorded rank (items
+    of one recorded batch keep their order; ties by the batch's order). An empty list was recorded as False, so False beside rows means no row."""
+    if all(part is False or type(part) is int for part in items):
+        return json.dumps({field: [n for _, n in sorted((part, n) for n, part in enumerate(items, 1) if part is not False)]})
+    if any(type(part) is int for part in items):
         return None
     return json.dumps({field: [{'n': n, **row} for n, part in enumerate(items, 1) for row in (part or [])]}, ensure_ascii=False)
 

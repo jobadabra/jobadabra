@@ -34,8 +34,8 @@ class SplitTest(unittest.TestCase):
 
 
 class PartsTest(unittest.TestCase):
-    def test_a_list_of_numbers_becomes_one_yes_or_no_per_item(self):
-        self.assertEqual(tape_items.parts('{"fit": [1, 3]}', 3), ('fit', {1: True, 2: False, 3: True}))
+    def test_a_list_of_numbers_becomes_each_items_rank_or_no(self):
+        self.assertEqual(tape_items.parts('{"keep": [3, 1]}', 3), ('keep', {1: 1, 2: False, 3: 0}), 'a ranked answer keeps its order: 3 first')
 
     def test_rows_with_n_become_each_items_rows(self):
         field, got = tape_items.parts('{"locations": [{"n": 2, "answer": "best"}, {"n": 1, "answer": "out", "country": "FR"}]}', 2)
@@ -46,10 +46,10 @@ class PartsTest(unittest.TestCase):
             self.assertIsNone(tape_items.parts(text, 2), text)
 
     def test_join_renumbers_and_mixes_an_empty_numbers_part_with_rows(self):
-        self.assertEqual(json.loads(tape_items.join('fit', [False, True, True])), {'fit': [2, 3]})
+        self.assertEqual(json.loads(tape_items.join('keep', [False, 1, 0])), {'keep': [3, 2]}, 'the recorded best comes first')
         rows = json.loads(tape_items.join('locations', [[{'answer': 'best'}], False, [{'answer': 'in'}]]))
         self.assertEqual(rows, {'locations': [{'n': 1, 'answer': 'best'}, {'n': 3, 'answer': 'in'}]})
-        self.assertIsNone(tape_items.join('locations', [[{'answer': 'best'}], True]), 'a yes beside rows is two shapes')
+        self.assertIsNone(tape_items.join('locations', [[{'answer': 'best'}], 0]), 'a number beside rows is two shapes')
 
 
 class ReplayTest(unittest.TestCase):
@@ -87,6 +87,14 @@ class ReplayTest(unittest.TestCase):
                 self.client(asked, '').messages.create(**question(['Cook'], system='Other.'))
         self.assertEqual(len(asked), 1, 'nothing asked live on the replay')
         self.assertEqual((search_tape.counts['ai_rebuilt'], search_tape.counts['ai_missing']), (1, 2))
+
+    def test_a_ranked_answer_replays_in_its_recorded_order_in_any_batch_order(self):
+        asked = []
+        with self.mode('record'):
+            self.client(asked, '{"keep": [3, 1]}').messages.create(**question(['a.test', 'b.test', 'c.test']))
+        with self.mode('replay', JOBADABRA_TAPE_LIVE='0'):
+            answer = self.client(asked, '').messages.create(**question(['a.test', 'c.test']))
+        self.assertEqual(json.loads(answer.content[0].text), {'keep': [2, 1]}, 'c.test (now 2) was the recorded best')
 
     def test_without_the_switch_a_reordered_batch_misses_as_before(self):
         asked = []
