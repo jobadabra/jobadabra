@@ -21,7 +21,7 @@ async function rig(t, options = {}) {
   const deps = {
     displayText:(key,values)=>globalThis.__jobadabraFormatDisplayMessage(catalogs.en,catalogs.en,'en',key,values),
     isStopped: (...args) => { calls.push(['stopped', ...args]); return !!options.stopped || !!options.stopDuringWatch && named(calls, 'stopped').length > 1; }, backgroundMayFill: asyncRecord('mayFill', options.mayFill !== false),
-    backgroundPage: asyncRecord('backgroundPage', !!options.backgroundPage), restoreLostQuery: asyncRecord('restore', !!options.restored),
+    backgroundPage: asyncRecord('backgroundPage', !!options.backgroundPage), backgroundLook: asyncRecord('look', !!options.looked), restoreLostQuery: asyncRecord('restore', !!options.restored),
     pageKey: url => String(url).split('#')[0], openRead: record('openRead', options.moved ? 0 : 1), dropIfLate: (...args) => { calls.push(['late', ...args]); return options.late === true || named(calls, 'late').length === options.lateAt; },
     pageStill: asyncRecord('still', {}), closeConsentEverywhere: asyncRecord('close', options.banner || ''), expandSections: asyncRecord('expand'),
     pageShape: async (...args) => { calls.push(['shape', ...args]); return counts.length > 1 ? counts.shift() : counts[0]; },
@@ -95,7 +95,7 @@ const order = calls => calls.map(call => call[0]);
 const lines = calls => calls.filter(call => call[0] === 'decide').map(call => call[2]);
 const sayings = calls => calls.filter(call => call[0] === 'say');
 const named = (calls, name) => calls.filter(call => call[0] === name);
-const prefix = ['stopped', 'mayFill', 'page', 'restore', 'still', 'tab', 'openRead', 'close', 'expand', 'shape'];
+const prefix = ['stopped', 'mayFill', 'page', 'restore', 'still', 'tab', 'openRead', 'look', 'close', 'expand', 'shape'];
 
 for (const [name, options, expected] of [
   ['stopped', {stopped: true}, ['stopped']],
@@ -103,6 +103,7 @@ for (const [name, options, expected] of [
   ['already started', {started: true}, ['stopped', 'mayFill']],
   ['restored query', {restored: true}, ['stopped', 'mayFill', 'page', 'restore']],
   ['tab moved on', {moved: true}, ['stopped', 'mayFill', 'page', 'restore', 'still', 'tab', 'openRead']],
+  ['a triage read is looked at lightly and ends before the page is prepared or any Apply is pressed (#3519)', {looked: true}, ['stopped', 'mayFill', 'page', 'restore', 'still', 'tab', 'openRead', 'look']],
 ]) test(`consider exits: ${name}`, async t => {
   const r = await rig(t, options);
   assert.equal(await r.run(), undefined);
@@ -114,7 +115,7 @@ for (const [name, options, expected] of [
 test('popup closes and settles before sections expand and the page is read', async t => {
   const r = await rig(t, {banner: 'No thanks'});
   await r.run();
-  assert.deepEqual(order(r.calls).slice(0, 13), [...prefix.slice(0, 8), 'decide', 'say', 'still', 'expand', 'shape']);
+  assert.deepEqual(order(r.calls).slice(0, 14), [...prefix.slice(0, 9), 'decide', 'say', 'still', 'expand', 'shape']);
   assert.deepEqual(named(r.calls, 'close'), [['close', 7, {cookiesOnly: true}]]);
   assert.deepEqual(sayings(r.calls), [['say', 7, 'Closed a popup ("No thanks")'], ['say', 7, 'Reading this page…']]);
   assert.deepEqual(lines(r.calls), ['closed a popup', 'page kind: form', 'filling']);
@@ -173,7 +174,7 @@ test('no form: press refused, digest asked, state and dead end reported', async 
   const kind = {role: 'no-form', kind: 'posting', by: 'ai'};
   const r = await rig(t, {answers: [kind], counts: [{...shape, fields: 1}], ruled: 'no-form'});
   await r.run();
-  assert.deepEqual(order(r.calls).slice(0, 10), prefix);
+  assert.deepEqual(order(r.calls).slice(0, 11), prefix);
   assert.deepEqual(lines(r.calls), ['page kind: posting', 'no Apply button to press', 'no form on this page']);
   assert.deepEqual(named(r.calls, 'press'), [['press', 7, [], '', '', []]]);
   assert.deepEqual(named(r.calls, 'stall'), [['stall', tab, assertFunction(r.calls, 'stall'), '7 https://jobs.example.test/apply', kind]]);
@@ -213,7 +214,7 @@ test('nothing filled climbs the text and picture ladder before incomplete and af
 test('read refused then retried before any AI asks', async t => {
   const r = await rig(t, {counts: [null, null, shape]});
   await r.run();
-  assert.deepEqual(order(r.calls).slice(0, 13), [...prefix, 'shape', 'shape', 'settings']);
+  assert.deepEqual(order(r.calls).slice(0, 14), [...prefix, 'shape', 'shape', 'settings']);
   assert.deepEqual(lines(r.calls), ['page kind: form', 'filling']);
   assert.deepEqual(named(r.calls, 'fill').length, 1);
 });

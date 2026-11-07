@@ -13,6 +13,9 @@ export function modeOfRead(read) {
   if (read.captcha !== false) return {mode: 'check', reason: 'captcha'}; // words-ok: the read's own flag, not a page word list
   if (read.login !== false) return {mode: 'check', reason: 'login wall'}; // words-ok: the read's own flag, not a page word list
   if (read.accountCreation !== false) return {mode: 'check', reason: 'asks you to create an account'};
+  // Why (7 Nov 2026, owner, #3519: "to understand if it's a simple form and can be submitted automatically"): the light read has no answer plan, so its own verdict decides here: a simple form is auto, anything else it named needs the person.
+  if (read.simple === true) return {mode: 'auto', reason: 'a simple form'};
+  if (read.simple === false) return {mode: 'check', reason: read.why || 'not a simple form'};
   if (read.allFactsSaved !== true) return {mode: 'fill', reason: 'answers you have not saved'};
   return {mode: 'auto', reason: 'every answer is a saved fact'};
 }

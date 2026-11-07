@@ -63,6 +63,17 @@ async function reportRead(context, found) {
   await owned().closeSession(context.session).catch(() => false);
 }
 /**
+ * The light triage read (extension/triage-look.js): when this tab is a read, runs `look` (the page's verdict), reports it and closes the tab. Returns true when this tab is a read (the flow ends here), false for every other tab.
+ * Takes the tab and a function that looks at the page; a look that throws is reported unreadable, so the app never waits out its timeout for a page that broke the look; a look that returns null reports nothing.
+ */
+export async function backgroundLook(tab, look) {
+  const context = await backgroundContext(tab.id);
+  if (context?.mode !== 'read') return false;
+  const found = await Promise.resolve().then(look).catch(() => ({unreadable: true, why: 'unreadable'}));
+  if (found) await reportRead(context, found);   // null: the tab moved on, the page it moved to reports (extension/triage-look.js)
+  return true;
+}
+/**
  * A triage read's stop before the fill: a bot check is reported at once; a page that is neither a form nor an account page is reported as unreadable; a form or an account page goes to the
  * judge, whose answer comes back through backgroundFormReady. Takes the tab and the flow's step; returns true when this tab is a read (the flow ends here), false for every other tab.
  */
