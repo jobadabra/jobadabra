@@ -39,6 +39,7 @@ Each turn you answer with ONE JSON action and nothing else. action is click (con
 check_type and check_text or check_control) or done (summary). Fields the action does not use are "" (control: -1).`;
 
 // Runs in the page: what a person sees (the visible page's text, open dialogs and toasts) and the controls, each tagged data-explore=<index>.
+// clean-code-ok: Why (7 Nov 2026, pz): the function is evaluated in the page as one source (page.evaluate(observePage)), so it cannot call helpers from this module; the dropdown options and the non-English flag are two more branches of the one control loop
 export function observePage() {
   for (const old of document.querySelectorAll('[data-explore]')) old.removeAttribute('data-explore');
   const visible = el => { const box = el.getBoundingClientRect(); const style = getComputedStyle(el); return box.width > 2 && box.height > 2 && style.visibility !== 'hidden' && style.display !== 'none' && !el.closest('[hidden]'); };
