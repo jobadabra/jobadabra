@@ -32,6 +32,8 @@ class ScoreSearchLicence(unittest.TestCase):
                 return score_search.apply({'score': 20, 'tier': 'C', 'reason': 'Unrelated', 'gaps': [], 'search': part}, {'title': 'Captain'})
         self.assertEqual(applied(True)['score'], 45, 'the AI\'s own capped fit stands')
         self.assertEqual(applied(False)['score'], score_search.SEARCH_ROLE_FIT, 'no credential: the title check still lifts (Free AI rates real jobs low)')
+        for unknown in (None, 'true'):   # a missing or non-boolean answer is unknown, not a yes: the lift stays as it was before the field existed
+            self.assertEqual(applied(unknown)['score'], score_search.SEARCH_ROLE_FIT, repr(unknown))
 
     def test_the_answer_form_asks_for_the_boolean(self):
         self.assertIn('needs_credential', score_search.PART['required'])

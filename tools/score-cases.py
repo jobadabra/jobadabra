@@ -38,6 +38,8 @@ def failures(case, data):
         out.append(f"search fit {fit} above {want['fit_max']}")
     if want.get('gap') and not (data.get('search') or {}).get('cv_gap'):
         out.append('cv_gap empty')
+    if 'needs_credential' in want and (data.get('search') or {}).get('needs_credential') is not want['needs_credential']:
+        out.append(f"needs_credential {(data.get('search') or {}).get('needs_credential')!r}, wanted {want['needs_credential']!r}")
     return out
 
 
