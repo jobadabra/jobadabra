@@ -22,7 +22,7 @@ Tier 1: named affected unit/callback tests (at most about twelve files), fiction
 - [x] Pass named tests, catalog parity, lint and relevant source/Why gates. (proof: desktop/test/unit/main/settings-final-copy.test.js)
 ### 2. Open previews and obtain owner approval
 
-- [ ] Prepare and open fictional before/after light/dark previews; obtain owner publication approval.
+- [x] Prepare and open fictional before/after light/dark previews; obtain owner publication approval. (proof: none: owner chose “Yes; fix the 2 names next” via Coordinator27 on 7 November 2026; separate field-name follow-up)
 ### 3. Ship and supervise the PR
 
 - [ ] Ship own PR, resolve CI/review, report exact-head READY and retain merge watch.
