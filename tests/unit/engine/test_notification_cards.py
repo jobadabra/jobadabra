@@ -150,6 +150,12 @@ class NotificationCardsTests(unittest.TestCase):
                 self.assertIn(escape(info['source']), shown)
                 self.assertIn('$95.00', shown)
                 self.assertIn(notification_language.render('budget.title', locale=locale), shown)
+            original_render = notification_language.render
+            with mock.patch.object(notification_language, 'render', side_effect=lambda key, *args, **kwargs: 'Fictional <Budget> {count}' if key == 'budget.title' else original_render(key, *args, **kwargs)):
+                for locale in notification_language.LOCALES:
+                    shown, _ = notification_language.projection(sent[0], locale=locale)
+                    self.assertIn('Fictional &lt;Budget&gt; {count}', shown)
+            self.assertIn('AI budget', str(sent[0]))
 
 
     def test_actual_health_callback_keeps_check_details_and_one_read(self):
@@ -283,7 +289,8 @@ class NotificationCardsTests(unittest.TestCase):
             canonical = str(sent[0][0][0])
             self.assertIn('Marked applied', canonical)
             shown = sent[0][1].get('display_text', canonical)
-            self.assertIn(notification_language.render('apply.marked', locale=locale), shown)
+            self.assertEqual(shown, notification_language.render('apply.applied', {'title': escape(job['title']) + '\n' + escape(job['company']),
+                'link': notification_language.render('notice.app', locale=locale), 'next': notification_language.render('notice.nextStep', locale=locale)}, locale=locale))
             self.assertIn('Raw &lt;Role&gt; {count}', shown)
             self.assertIn('A&amp;B &lt;Labs&gt;', shown)
 

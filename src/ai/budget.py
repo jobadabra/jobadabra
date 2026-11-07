@@ -111,7 +111,7 @@ def alert_once(db, info, send, now=None):
         text = (f"💸 <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What happens next</b>\n"
                 "At 90% the optional AI steps pause so the essentials keep running.")
     text = cards.canonical(text, cards.words('budget.pause' if info['level'] == 'pause' else 'budget.warn',
-        {'pct': f"{info['pct']:.0%}", 'spent': f"{info['spent']:.2f}", 'budget': f"{info['budget']:.0f}", 'source': escape(info['source'])}))
+        {'title': cards.safe(cards.words('budget.title')), 'pct': f"{info['pct']:.0%}", 'spent': f"{info['spent']:.2f}", 'budget': f"{info['budget']:.0f}", 'source': escape(info['source'])}))
     if send(text) is False:   # Why (1 Nov 2026, #2908): a caller whose send was refused answers False (daily_search_reporting turns telegram.deliver's None into False); the alert then stays unsent and the next run tries again
         return False
     db.execute('INSERT OR IGNORE INTO budget_alerts VALUES (?, ?)', (month, info['level']))

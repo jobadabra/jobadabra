@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 import sys
 
 from .. import run_log, telegram, notification_cards as cards
+from .. import tgcard  # noqa: F401 — desktop/test/fixtures/engine_messages.py reaches mail.tgcard for its engine/parser contract fixtures.
 from ..sources.google import Google
 from ..sources.google_scopes import CALENDAR, GMAIL, PART_NAMES, WHAT_IT_LOSES, MissingScope
 from ..stores import open_stores
