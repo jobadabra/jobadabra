@@ -1,4 +1,5 @@
 // Explicit per-request end-user bot copy; context-free operator/CI callers always retain English.
+import {renderCopy} from './notification-copy.js';
 import en from './bot-copy/en.js';
 import de from './bot-copy/de.js';
 import fr from './bot-copy/fr.js';
@@ -13,14 +14,7 @@ const stages = {'Saved': 'stageSaved', 'Applied': 'stageApplied', 'Confirmation 
 /** Resolve only an explicit canonical end-user context; global process/display language never affects another user or an operator. */
 export const botLocale = context => Object.hasOwn(catalogs, context?.JOBADABRA_NOTIFICATION_LANGUAGE) ? context.JOBADABRA_NOTIFICATION_LANGUAGE : 'en';
 /** Render trusted authored copy before interpolation; callers retain their existing escaping for raw HTML/text values. */
-export function botText(context, key, variables = {}) {
-  const locale = botLocale(context), value = catalogs[locale][key] ?? en[key];
-  const count = Number(variables.count), form = Number.isFinite(count) ? new Intl.PluralRules(locale).select(count) : 'other';
-  const template = typeof value === 'string' ? value : value?.[form] ?? value?.other;
-  if (typeof template !== 'string') return key;
-  const shown = Number.isFinite(count) ? new Intl.NumberFormat(locale).format(count) : '';
-  return template.replace(/\{([a-zA-Z][\w]*)\}/g, (placeholder, name) => name === 'shown' ? shown : Object.hasOwn(variables, name) ? String(variables[name]) : placeholder);
-}
+export const botText = (context, key, variables = {}) => renderCopy(catalogs, botLocale(context), key, variables);
 /** Name only known canonical stages for display; an unknown supplied stage remains byte-for-byte raw content. */
 export const botStage = (context, stage) => Object.hasOwn(stages, stage) ? botText(context, stages[stage]) : stage;
 /** Assemble the six authored help sections for this request without changing command recognition. */

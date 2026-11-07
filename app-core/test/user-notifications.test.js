@@ -1,6 +1,7 @@
 // Actual bot entry points select explicit end-user languages without changing commands, callbacks, raw values or authorization.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {assertCatalogs} from './catalog-parity.js';
 import {handleCommand, handleUpdate, withActionRow, withOutcomeRows} from '../src/index.js';
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 const headings = ['Commands', 'Befehle', 'Commandes', 'Comandi', 'Comandos', 'Comenzi', 'Команды'];
@@ -105,19 +106,7 @@ test('interview and add entry points retain raw payloads and escape names once w
 });
 
 test('seven bot catalogs align keys and all named values in every plural form', async () => {
-  const english = (await import('../src/bot-copy/en.js')).default;
-  const names = value => [...new Set((String(value).match(/\{[A-Za-z][\w]*\}/g) || []))].sort();
-  for (const locale of locales) {
-    const messages = (await import(`../src/bot-copy/${locale}.js`)).default;
-    assert.deepEqual(Object.keys(messages).sort(), Object.keys(english).sort());
-    for (const [key, value] of Object.entries(messages)) {
-      const base = typeof english[key] === 'string' ? english[key] : english[key].other;
-      for (const form of typeof value === 'string' ? [value] : Object.values(value)) {
-        assert.deepEqual(names(form), names(base), `${locale}/${key}`); assert.ok(form.length > 0);
-      }
-      if (typeof value === 'object') for (const form of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) assert.ok(value[form], `${locale}/${key}/${form}`);
-    }
-  }
+  await assertCatalogs(locales, locale => import(`../src/bot-copy/${locale}.js`));
 });
 
 test('unknown inherited-property stage names remain original display values', async () => {

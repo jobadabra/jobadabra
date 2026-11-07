@@ -1,6 +1,7 @@
 // End-user notifications use each profile's explicit language while raw values and channel/time identities remain unchanged.
 import assert from 'node:assert/strict';
 import {test, afterEach} from 'node:test';
+import {assertCatalogs} from '../../../../app-core/test/catalog-parity.js';
 import {createWaitingMessage, WINDOW_MS} from '../../../lib/waiting-message.js';
 import {words} from '../../../lib/few-jobs.js';
 import {setLocale} from '../../../i18n/index.js';
@@ -138,15 +139,5 @@ test('actual waiting batches retain count plural categories and grouping across 
 });
 
 test('desktop catalogs align named interpolation and complete plural categories for every language', async () => {
-  const english = (await import('../../../i18n/catalogs/user-notifications/en.js')).default;
-  const names = value => [...new Set(String(value).match(/\{[A-Za-z][\w]*\}/g) || [])].sort();
-  for (const locale of locales) {
-    const messages = (await import(`../../../i18n/catalogs/user-notifications/${locale}.js`)).default;
-    assert.deepEqual(Object.keys(messages).sort(), Object.keys(english).sort());
-    for (const [key, value] of Object.entries(messages)) {
-      const base = typeof english[key] === 'string' ? english[key] : english[key].other;
-      for (const form of typeof value === 'string' ? [value] : Object.values(value)) assert.deepEqual(names(form), names(base), `${locale}/${key}`);
-      if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) assert.ok(value[category], `${locale}/${key}/${category}`);
-    }
-  }
+  await assertCatalogs(locales, locale => import(`../../../i18n/catalogs/user-notifications/${locale}.js`));
 });

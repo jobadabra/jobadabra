@@ -27,6 +27,7 @@ on:
       - 'app-core/src/extension.js'
       - 'app-core/src/github-fetch.js'
       - 'app-core/src/job-answers.js'
+      - 'app-core/src/notification-copy.js'
       - 'app-core/src/owner-guard.js'
       - 'app-core/src/pay-convert.js'
       - 'app-core/src/writing-rules.js'
