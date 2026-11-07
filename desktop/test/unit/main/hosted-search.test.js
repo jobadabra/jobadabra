@@ -1,5 +1,6 @@
 // Hosted Always on in the app (lib/hosted-search.js, lib/hosted-handlers.js, renderer/pages/hosted.js): the calls to the site with the install key, the config it pushes, the inbox merge,
 // delete on turn off, and the wizard step's place and words.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -62,7 +63,7 @@ test('the inbox goes to the engine\'s merge and the app remembers how far it rea
   const st = store({hostedSearch: {on: true, email: 'a@example.com', after: 4}});
   const s = site({'GET /api/hosted/inbox': {ok: true, matches: [{id: 5, job: 'j', title: 'T', url: 'https://a/1'}, {id: 7, job: 'k', title: 'U', url: 'https://a/2'}]}});
   const ran = [];
-  const done = await pullInbox(st, async args => { ran.push([...args]); assert.deepEqual(JSON.parse(fs.readFileSync(args[3], 'utf8')).map(m => m.id), [5, 7]); return {code: 0, stdout: 'hosted merge: 2 new matches added'}; }, {fetcher: s.fetcher});
+  const done = await pullInbox(st, async args => { ran.push([...args]); assert.deepEqual(JSON.parse(readScreenSource(args[3], 'utf8')).map(m => m.id), [5, 7]); return {code: 0, stdout: 'hosted merge: 2 new matches added'}; }, {fetcher: s.fetcher});
   assert.deepEqual([done.ok, done.added, state(st).after], [true, 2, 7]);
   assert.deepEqual(ran[0].slice(0, 3), ['src', 'hosted', '--merge']);
   assert.equal(s.calls[0].key, 'GET /api/hosted/inbox');
@@ -75,7 +76,7 @@ test('without a regular install key nothing is sent, and export writes the data 
   const st = store({hostedSearch: {on: true}}), s = site({'GET /api/hosted/export': {ok: true, inbox: [{title: 'T'}], config: null, stateTgzBase64: null}});
   const file = path.join(st.dir, 'out.json');
   assert.deepEqual(await exportTo(st, file, {fetcher: s.fetcher}), {ok: true, file});
-  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')).inbox, [{title: 'T'}]);
+  assert.deepEqual(JSON.parse(readScreenSource(file, 'utf8')).inbox, [{title: 'T'}]);
   assert.deepEqual(config(st).profile, 'My profile');
 });
 
@@ -87,7 +88,7 @@ test('Always on stays in Settings while setup ends after strategy with the share
   assert.equal(view.document.getElementById('finish').closest('.step').dataset.step, 'draft');
   await view.click('finish');
   assert.equal(view.settings.setupDone, true);
-  const page = fs.readFileSync(new URL('../../../renderer/pages/hosted.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/hosted.js', import.meta.url), 'utf8');
   assert.match(page, /export function init\(\) \{ mountCard\(\); mountChoice\(\); \}/);
   assert.match(page, /\$\('setting-cloud'\)\.after\(card\)/);
   assert.match(page, /window\.pilot\.hostedOn\(\{\}\)/, 'Settings retains the shared notification-address turn-on action');

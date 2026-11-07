@@ -1,6 +1,7 @@
 // The Applying page stays calm (owner, 27 Oct 2026: "here is too much yellow backgrounds"; option A of the sketch): colour = a state or the ONE
 // next action, never a fill for a whole list or card. Need rows are plain with a thin amber edge, their buttons outlined; the only amber fill
 // is the next-step card's one primary. Rule: docs/rules/desktop-ui.md "Colour marks, never fills a list".
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const renderer = path.join(here, '../../../renderer');
-const read = file => fs.readFileSync(path.join(renderer, file), 'utf8');
+const read = file => readScreenSource(path.join(renderer, file), 'utf8');
 
 // -> the renderer files that draw a need row's buttons (smallButton from session-needs.js), so a new one is checked too.
 const rowFiles = () => fs.readdirSync(path.join(renderer, 'pages')).filter(name => name.endsWith('.js'))

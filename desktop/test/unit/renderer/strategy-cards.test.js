@@ -2,8 +2,8 @@
 // card's draft and marks it "Unsaved"; one page bar, "Save strategy changes", saves each card's draft to its own home (lists → editTargets, goals →
 // editGoal) and discards them all; Esc closes the editor without dropping the draft. The class: every list the target cards edit belongs to one card.
 import '../../../i18n/screens-helpers.js';
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -88,7 +88,7 @@ test('Discard all drops every card\'s draft and writes nothing', () => {
 });
 
 test('class: every list and value the target cards edit belongs to exactly one card', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/pages/strategy-targets.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/strategy-targets.js', import.meta.url), 'utf8');
   const lists = [...source.matchAll(/\['(\w+)', '[^']*', 'Add [^']*'\]/g)].map(([, name]) => name);
   assert.ok(lists.length >= 12, `read the lists: ${lists}`);
   for (const name of [...lists, 'roles', 'remote', 'relocation', 'minScore']) {

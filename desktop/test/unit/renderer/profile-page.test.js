@@ -3,8 +3,6 @@
 // one "View source in Notion" sit in a quiet ⋯ menu; the assistant moved to Automation and the old password lives only in Credentials.
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {messages as pageDetails} from '../../../i18n/catalogs/pages/details.js';
-import {messages as pageCommon} from '../../../i18n/catalogs/pages/common.js';
 import fs from 'node:fs';
 import {test} from 'node:test';
 
@@ -39,20 +37,15 @@ test('the Profile bar names the 6 tabs as the tab strip does', () => {
   const tabs = [...page('profile').matchAll(/data-profile-tab="(\w+)"[^>]*>([^<]+)</g)].map(([, key, label]) => [key, label]);
   assert.equal(tabs.length, 6);
   const bar = read('pages/profile-save-bar.js');
-  for (const [key, label] of tabs) {
-    const expression = bar.match(new RegExp(`${key}: (t\\('([^']+)'\\)|'([^']+)')`));
-    assert.ok(expression, `${key}: localized tab label`);
-    const translated = expression[2] ? ({pagesDetails: pageDetails.en, pagesCommon: pageCommon.en})[expression[2].split('.')[0]][expression[2].split('.')[1]] : expression[3];
-    assert.equal(translated, label, `${key} → ${label}`);
-  }
+  for (const [key, label] of tabs) assert.match(bar, new RegExp(`${key}: '${label}'`), `${key} → ${label}`);
   assert.match(read('pages/settings.js'), /profileBar\(\)\.leave\(/, 'leaving Profile for another Settings page asks');
   assert.match(read('pages/profile.js'), /guardLeave\('settings', proceed =>[^\n]*profileBar\(\)\.leave\(proceed\)\)/, 'leaving the Settings view from Profile asks');
 });
 
 test('fix 10: Fill from my CV and the one View source in Notion are in a quiet ⋯ menu and in ⌘K; no orange link on the Contact card', () => {
   const menu = read('pages/profile-menu.js');
-  assert.match(menu, /label: t\('pagesDetails\.fillFromCv'\)/);
-  assert.match(menu, /if \(shared\.state\?\.notion\?\.NOTION_PROFILE_PAGE_ID\) items\.push\(\{label: t\('pagesDetails\.viewSource'\)/);
+  assert.match(menu, /label: 'Fill empty details from my CV'/);
+  assert.match(menu, /if \(shared\.state\?\.notion\?\.NOTION_PROFILE_PAGE_ID\) items\.push\(\{label: 'View source in Notion'/);
   assert.match(page('profile'), /<span id="profile-more"><\/span>/);
   assert.ok(!/id="contact-from-cv"|id="open-profile-details"/.test(html));
   const nav = read('pages/nav.js');

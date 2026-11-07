@@ -1,10 +1,10 @@
 // The Free card is its own full-width card under both engine families, in the wizard and in Settings (owner, 13 and 16 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 
-const read = rel => fs.readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+const read = rel => readScreenSource(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
 test('Free leads as one big card, then two small logo cards for Claude and OpenAI (owner, 16 Oct 2026)', () => {
   const src = read('../../../renderer/pages/ai-engine.js');

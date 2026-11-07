@@ -1,3 +1,4 @@
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -38,7 +39,7 @@ test('a recording is written chunk by chunk, transcribed with progress, saved to
   assert.throws(() => interviews.appendRecording(storage, id, new Uint8Array([4])), /Not recording/);
   const draft = interviews.get(storage, id);
   assert.deepEqual([draft.status, draft.seconds, draft.stereo], ['new', 61, true]);
-  assert.deepEqual([...fs.readFileSync(storage.path(`interviews/${id}/recording.webm`))], [1, 2, 3]);
+  assert.deepEqual([...readScreenSource(storage.path(`interviews/${id}/recording.webm`))], [1, 2, 3]);
 
   const calls = [], steps = [];
   const run = async (_storage, args, onLine) => {
@@ -131,7 +132,7 @@ test('a review runs the interview mode on the saved Notion row and returns its s
 });
 
 test('the library row links to its job: clickable Job cell, Open job/interview in Notion, Link a job when none', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
   assert.match(source, /openView\('jobs'\); showJobsIn\(/);
   assert.match(source, /Open interview in Notion/);
   assert.match(source, /Open job in Notion/);

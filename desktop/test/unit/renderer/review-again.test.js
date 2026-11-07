@@ -1,7 +1,7 @@
 // Interviews → ⋯ "Review again" (renderer/review-again.js): only on reviewed rows, with its cost in the label, busy
 // while it runs, a message for every outcome; and it goes through the first review's IPC (demo mode writes nothing).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {BUSY, LABEL, START, againItem, doneMessage} from '../../../renderer/review-again.js';
 import {mainSource} from '../../main-source.js';
@@ -50,7 +50,7 @@ test('a provider error is a sentence, not the API dump; a refused duplicate does
 });
 
 test('the first review and the insights refresh say a provider error as a sentence too', () => {
-  const page = fs.readFileSync(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
   assert.match(page, /import \{[^}]*\bhumanError\b[^}]*\} from '\.\.\/run-warnings\.js'/);
   assert.ok(page.includes(": humanError(result.error), result.ok ? 'ok' : 'error')"));
   assert.ok(page.includes("humanError(result.error || 'Could not refresh the insights')"));
@@ -58,7 +58,7 @@ test('the first review and the insights refresh say a provider error as a senten
 });
 
 test('the page wires it into the row menu through the same review IPC; demo mode writes nothing', () => {
-  const page = fs.readFileSync(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/interviews.js', import.meta.url), 'utf8');
   assert.match(page, /row\.overall \? \[\{again: true, run: \(\) => reviewAgainRow\(row\.id\)\}\]/);
   assert.match(page, /await iv\.review\(pageId, 'Review again'\)\.catch/);
   // Which button asked is carried into the app's log, so a second dispatch is attributable.
@@ -70,6 +70,6 @@ test('the page wires it into the row menu through the same review IPC; demo mode
   assert.match(main, /appLog\('dispatch', `refused \$\{caller\}/);
   assert.match(main, /ipcMain\.handle\('ivReview'/);                       // one handler, whatever asks for the review
   assert.match(main, /if \(DEMO\) return \{ok: true, summary: 'Reviewed \(demo\): nothing was written'\}/);  // demo writes nothing
-  const demo = JSON.parse(fs.readFileSync(new URL('../../../demo/interviews.json', import.meta.url), 'utf8'));
+  const demo = JSON.parse(readScreenSource(new URL('../../../demo/interviews.json', import.meta.url), 'utf8'));
   assert.ok(demo.saved.some(row => row.overall), 'demo data has a reviewed row, so the entry shows');
 });

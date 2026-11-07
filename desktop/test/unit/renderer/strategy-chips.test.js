@@ -1,7 +1,7 @@
 // Strategy's chips as read (owner, 17 Oct 2026: "One chip per meaning", "Did you mean…" flags, screenshot 1183): one chip per meaning in its first
 // entry's place, a Google Jobs place read as a place, and every chip list the AI reads drawn through the meanings and the typo lines (the class).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {MEANING_LISTS, meaningLabels} from '../../../renderer/chip-meanings.js';
 import {GROUPS, placeLabel as placeText, shownGroups} from '../../../renderer/match-groups.js';
@@ -9,7 +9,7 @@ import {GROUPS, placeLabel as placeText, shownGroups} from '../../../renderer/ma
 const [[, ANYWHERE], [, WHOLE_WORD]] = GROUPS;
 import {LISTS} from '../../../lib/list-meanings.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 
 test('the entries of one meaning become one chip, where the first of them stood; the rest stay as they are', () => {
   const groups = [{main: 'United States', others: ['USA', 'US']}];

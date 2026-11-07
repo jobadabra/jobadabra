@@ -1,4 +1,5 @@
 // Interview reminders (10 and 1 minute before) and matching a recording to the job whose interview time is close.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {mainSource} from '../../main-source.js';
 import {test} from 'node:test';
@@ -58,8 +59,7 @@ test('reminders are on unless switched off', () => {
 });
 
 test('the app wires it: a timer, the switch, the page toggle, the suggestion note, and a click opening Interviews', async () => {
-  const {readFileSync} = await import('node:fs');
-  const read = file => readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
   const main = mainSource(), preload = read('preload.cjs'), html = read('renderer/index.html'), page = read('renderer/pages/interviews.js');
   assert.match(main, /reminders\.due\(jobs, sent\)/);
   assert.match(main, /setInterval\(remind, 30000\)/);

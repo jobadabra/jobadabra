@@ -41,7 +41,7 @@ test('the Plan page: Free is the current plan, Pro is a card beside it, the card
   for (const text of INCLUDED) assert.ok(card.includes('INCLUDED'), text);   // only the decided list (plan-view.js), none of its own
   assert.match(card, /Join the Pro waitlist/);
   assert.match(card, /You're on the waitlist \(\$\{joined\}\)/);
-  assert.match(card, /We\\'ll e-mail you once when Pro opens\. Nothing else\./);
+  assert.match(card, /We(?:\\)?'ll e-mail you once when Pro opens\. Nothing else\./);
 });
 
 test('payments are off: one switch, and the button joins the waitlist', () => {

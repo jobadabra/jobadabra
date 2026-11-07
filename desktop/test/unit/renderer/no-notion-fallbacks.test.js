@@ -1,10 +1,10 @@
 // Actions keyed on a Notion page, on a store without pages (9 Oct 2026 sweep): each falls back to the app's own view instead of doing
 // nothing or opening something else. Read from the source (these pages need a window); the parity scan covers the Notion side.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
 
 test('Interviews find their job by the store\'s id too', () => {
   // The matching itself is pure and tested on a SQLite-shaped list: test/unit/renderer/jobs-view-interview.test.js.

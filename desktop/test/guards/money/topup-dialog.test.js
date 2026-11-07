@@ -1,6 +1,7 @@
 // The top-up dialog (renderer/pages/topup-dialog.js; owner, 26 Oct 2026: "Blocking, but showing a topup popup/dialog ... a smaller button/option to topup using promo code";
 // 27 Oct 2026: "If they're free tier, they should upgrade to pro. Otherwise, they just need to topup"): its words per case, a credit code's answer, and the class: every
 // refusal for AI credit or a Free AI line opens it (the pop-up path, the Find jobs card, a line found in the background), never a toast or Settings alone.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -8,7 +9,7 @@ import {TOP_UP, UPGRADE, redeemWords, topupWords} from '../../../renderer/plan-v
 import {createPlan} from '../../../lib/plan.js';
 import {strictSetSecret} from '../../strict-set-secret.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const NOW = Date.parse('2026-10-27T20:48:00.000Z');
 
 test('Pro with no credit tops up; the free tier at a line upgrades to Pro, hears when it opens again and may wait', () => {

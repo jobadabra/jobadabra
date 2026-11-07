@@ -1,7 +1,7 @@
 // "Read this board" (owner, 16 Oct 2026): a job list behind a login read through a tab the app opens in the person's own Chrome and holds for their Read.
 // The app opens it with #jp-board-<ticket>, runs no clock while the person signs in, and never reads before they press Read. Fixture addresses only.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {BOARD_WAIT_MS, boardSite, done, runAll, stepOf, waitingFor} from '../../../lib/visits.js';
 import {popupMode, readTabs} from '../../../../extension/tab-pages.js';
@@ -49,21 +49,21 @@ test('a read board is claimed only by its board mark: its tab is found by ticket
 
 // The class: every place the extension matches a read mark knows the board mark (a mark one list misses is a tab that is read, or not told about, wrongly).
 test('every read-mark pattern in the extension and the app knows #jp-board', () => {
-  const background = fs.readFileSync(new URL('../../../../extension/background.js', import.meta.url), 'utf8');
+  const background = readScreenSource(new URL('../../../../extension/background.js', import.meta.url), 'utf8');
   const marked = background.split('\n').filter(line => /#jp-(read|\(\?:read|\(read)/.test(line) && /\.test\(|\.exec\(/.test(line));
   assert.ok(marked.length >= 3, 'the mark patterns in background.js were found');
   for (const line of marked) assert.match(line, /board|#jp-read\(-filter\)\?\(-\[a-z0-9\]\{4,16\}\)\?\$\|#jp-posting/, line.trim().slice(0, 100));   // the one that reads by itself deliberately has no board
-  const visit = fs.readFileSync(new URL('../../../../extension/visit.js', import.meta.url), 'utf8');
+  const visit = readScreenSource(new URL('../../../../extension/visit.js', import.meta.url), 'utf8');
   assert.match(visit, /export const MARK = \/#\(jp-read\(-filter\)\?\|jp-board\)/);
   assert.match(visit, /found\[1\] === 'jp-board'/, 'autoRead never starts a board by itself');
-  assert.match(fs.readFileSync(new URL('../../../lib/visits.js', import.meta.url), 'utf8'), /'jp-board'/);
+  assert.match(readScreenSource(new URL('../../../lib/visits.js', import.meta.url), 'utf8'), /'jp-board'/);
 });
 
 test('the card is in ⌘K and off while a read runs, and its dialog never asks for a password', () => {
-  const card = fs.readFileSync(new URL('../../../renderer/pages/actions-board.js', import.meta.url), 'utf8');
+  const card = readScreenSource(new URL('../../../renderer/pages/actions-board.js', import.meta.url), 'utf8');
   assert.match(card, /data-palette|dataset\.palette = 'board'/);
-  assert.match(fs.readFileSync(new URL('../../../renderer/pages/activity-basics.js', import.meta.url), 'utf8'), /\['visits', '#visits-run', '#visits-at-once', '#board-run'\]/);
-  assert.match(fs.readFileSync(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8'), /board: '/);
+  assert.match(readScreenSource(new URL('../../../renderer/pages/activity-basics.js', import.meta.url), 'utf8'), /\['visits', '#visits-run', '#visits-at-once', '#board-run'\]/);
+  assert.match(readScreenSource(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8'), /board: '/);
   assert.doesNotMatch(card, /type: 'password'|type="password"/);
 });
 
@@ -95,7 +95,7 @@ test('startBoard refuses a tab that is not a board the app opened, and starts on
 // 17 Oct 2026 (owner: "fix UI on this popup. Add more spacing"): one left edge, a labelled field, short steps, and a readable disabled button.
 test('the board dialog has the subtitle under the head, a labelled field, numbered steps and the password line', async () => {
   const {readFile} = await import('node:fs/promises');
-  const page = await readFile(new URL('../../../renderer/pages/actions-board.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/actions-board.js', import.meta.url), 'utf8');
   assert.match(page, /label\.htmlFor = 'board-url'/, 'the field has a visible label');
   assert.match(page, /el\('ol', 'board-steps/, 'the steps are a list');
   assert.match(page, /never types your password/);

@@ -1,7 +1,7 @@
 // Strategy → Main goals words (owner, 18 Oct 2026, decisions 1 and 2): the salary says its currency and period, or is shown as written with the way to
 // pick them; Languages and Work eligibility are Your details' lines exactly as recorded (label and value, nothing inferred); the four tiles in order.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {detailsLine, salaryWords} from '../../../renderer/strategy-parts.js';
 
@@ -49,7 +49,7 @@ test('From Your details: the answers as recorded, nothing wider; the forms the c
 });
 
 test('the four tiles in order, Target level among them (not under Advanced), and no editable copy of Your details\' facts', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/pages/main-goals.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/main-goals.js', import.meta.url), 'utf8');
   const tiles = [...source.match(/const TILES = \[(.*)\];/)[1].matchAll(/'([^']+)'\]/g)].map(([, label]) => label);
   assert.deepEqual(tiles, ['Target roles', 'Target level', 'Work mode', 'Minimum salary']);
   assert.doesNotMatch(source, /editGoal\(|goalEdits\[('languages'|'eligibility')/, 'Languages and Work eligibility are never edited here');

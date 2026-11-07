@@ -4,6 +4,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {cleanTop, CLEAN_TOP, liveTop, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../../../renderer/run-result-card.js';
 import {runPill} from '../../../renderer/run-status.js';
@@ -85,7 +86,9 @@ test('nothing is said twice: the header leaves the reason to the top, the bottom
   assert.match(render, /if \(headline\) headline\.hidden = top\.clean;/, 'a finding\'s headline is the top\'s title, not said again in its card');
   const mail = read('pages/activity-mail.js');
   assert.match(mail, /if \(target\.id === 'activity-card'\) \{[\s\S]*?\n  \} else box\.prepend\(status\);/, 'a Gmail check\'s counts are the top\'s, not a strip under it');
-  assert.match(card, /if \(target\.id !== 'activity-card'\) stats\.append\(stat\(card\.fresh \?\? 0, `new employer/, 'the employers added are the top\'s');
+  assert.match(card, /if \(target\.id !== 'activity-card'\) stats\.append\(stat\(card\.fresh \?\? 0, 'new employers added'/, 'the employers added are the top\'s');
+  const rawCard = readFileSync(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  assert.match(rawCard, /stat\(card\.fresh \?\? 0, t\('pagesDynamicActivity\.m37', \{count: card\.fresh \?\? 0\}\)\)/, 'employer plural selection uses the same count');
   assert.match(mail, /counts\.filter\(\(\{value\}\) => Number\(value\) !== 0\)/, 'a count of 0 is never said ("0 updates recorded")');
   assert.match(mail, /if \(!box\.childElementCount \|\| only\) \{ target\.replaceChildren\(\); return \{empty: true, title, summary: only/,
     'a check that changed nothing says it once, under the top\'s title, with no bottom of one line');

@@ -1,5 +1,7 @@
 // Shared mounted wizard fixture: real navigation, strategy save and finish, with fictional IPC and no browser or real data.
 import fs from 'node:fs';
+import '../i18n/screens-pages.js';
+import {t} from '../i18n/index.js';
 import vm from 'node:vm';
 import {install} from './tiny-dom.js';
 import {ownKeys} from '../renderer/ai-engine-view.js';   // the real one, so the fixture keeps the Free AI token rule (review of #3014)
@@ -52,7 +54,7 @@ export function wizardFixture() {
   const cached = {answers: {anything_else: ''}, draft: {summary: 'Fictional strategy'}};
   window.pilot = {saveSettings: async patch => Object.assign(settings, patch), saveStrategy: async draft => { saves.push(draft); settings.setupDone = true; return {ok: true}; }, state: async () => state,
     cachedDraft: async () => cached, cacheDraftEdits: async edits => Object.assign(cached.draft, edits)};
-  const context = {document, window, el, $, show: (node, on = true) => { node.hidden = !on; },
+  const context = {t, document, window, el, $, show: (node, on = true) => { node.hidden = !on; },
     shared: {state, draft: {}}, STEPS: [...read('pages/core.js').match(/STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]),
     hideCards() {}, refreshCv() {}, mountEngine: () => ({picked: () => null, status: () => null}), canContinue: () => false, ownKeys, setTimeout: fn => fn(), clearTimeout() {}, saveState: {},
     message() {}, byStore: (_, local) => local, osText: text => text, loadJobs() {}, openView: name => opened.push(name),

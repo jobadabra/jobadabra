@@ -1,7 +1,7 @@
 // The person card says why each left control is left (spec fill-ladder, E): the panel sends fixed cause words, the app turns them into a reason class and an ending
 // (shared/ladder/control-ending.js), the card's row says it in plain words (renderer/reason-words.js). Fixed words only: a stray word from a page becomes "unknown".
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import * as review from '../../../lib/review.js';
 import {REASONS} from '../../../shared/ladder/control-ending.js';
@@ -28,7 +28,7 @@ test('every reason class has words on the card, and the row and the form list re
   assert.equal(reasonFor(state, 'C'), 'The site did not keep the answer after 3 tries.');
   assert.equal(reasonFor(state, 'a', (x, y) => x.toLowerCase() === y.toLowerCase()), REASON_WORDS.no_answer, 'a reworded label is the same question');
   assert.equal(reasonFor(state, 'Z'), '', 'no reason known: the card keeps its old line');
-  const read = file => fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
   assert.match(read('session-needs.js'), /reasonFor\(reviewStates\.get\(item\.id\), label, sameQuestion\) \|\| 'This section is still empty in the form\.'/);
   assert.match(read('session-form-card.js'), /li\.title = reasonFor\(state, label\)/);
 });
