@@ -1,6 +1,9 @@
 // The words of "Let the Claude or ChatGPT desktop app answer your questions" (owner, 2 Nov 2026): the banner, the instruction that is copied, and what a press says afterwards. One file for every surface
 // (the What we learned drawer and page, the Focus and Jobs rows, ⌘K), free of the DOM so test/unit/renderer/desktop-ai.test.js checks them. The detection and the launch are lib/desktop-ai.js.
 // Why (2 Nov 2026, owner): a friend's Claude Desktop answered the questions queue on its own on a Windows PC; we offer it, with a copied instruction and a button, instead of leaving it to chance.
+import '../i18n/screens-helpers.js';
+import {t, getLocale} from '../i18n/index.js';
+import {date} from '../i18n/format.js';
 export const KEY = 'desktop-ai:answer';   // the Suggestions answer key: Not now hides it 14 days like every other card (lib/suggestion-answers.js)
 export const NAMES = {claude: 'Claude', openai: 'ChatGPT'};
 
@@ -22,16 +25,16 @@ const paste = platform => (platform === 'darwin' ? '⌘V' : 'Ctrl+V');
 export function words(family, platform = 'darwin') {
   const name = NAMES[family] || NAMES.claude;
   return {
-    title: `Let ${name} answer your questions`,
-    lead: `You have the ${name} app. Copy an instruction, paste it there, and ${name} answers from your CV and details. Its answers go through the same checks as yours, and you can look them over here.`,
-    button: `Copy the instruction and open ${name}`,
-    notNow: 'Not now',
-    gone: `${name} is not on this computer any more. Nothing was copied.`,
-    failed: 'Could not copy the instruction. Try again.',
-    short: `Let ${name} answer your questions`,
+    title: t('helperMore.letAppAnswer', {name}),
+    lead: t('helperMore.appAnswerLead', {name}),
+    button: t('helperMore.copyOpenApp', {name}),
+    notNow: t('helperState.notNow'),
+    gone: t('helperMore.appGone', {name}),
+    failed: t('helperMore.cannotCopyInstruction'),
+    short: t('helperMore.letAppAnswer', {name}),
     done: opened => (opened
-      ? `Copied, and ${name} is open. Paste it in a new chat with ${paste(platform)} and send.`
-      : `Copied. Open ${name} yourself, paste it in a new chat with ${paste(platform)} and send.`),
+      ? t('helperMore.copiedAppOpen', {name, paste: paste(platform)})
+      : t('helperMore.copiedOpenYourself', {name, paste: paste(platform)})),
   };
 }
 
@@ -44,45 +47,45 @@ export function connectWords(family = 'claude') {
   const name = NAMES[family] || NAMES.claude, company = family === 'openai' ? 'OpenAI' : 'Anthropic';
   return {
     name,
-    connect: `Connect ${name}`,
-    waiting: `Waiting for ${name}. In its window, read what it asks and press Install.`,
-    notOpened: `The helper file is ready but ${name} did not open it. Open ${name}, then Settings, Extensions, Advanced settings, Install Extension, and choose the file.`,
-    failed: `Could not prepare the connection. Try again.`,
-    connected: used => `${name} is connected · ${used ? `Last used ${used}` : 'Not used yet'}`,
-    disconnect: 'Disconnect',
-    connectedLead: `Ask ${name} to answer your open questions. Its answers appear here marked New, and every change is listed under Changes by ${name}.`,
-    disconnected: `${name} is disconnected. It can no longer read or change anything here.`,
-    cardTitle: `${name} desktop app`,
-    states: {off: 'Not connected', waiting: 'Waiting for install', connected: 'Connected'},
+    connect: t('helperMore.connectApp', {name}),
+    waiting: t('helperMore.waitingApp', {name}),
+    notOpened: t('helperMore.appDidNotOpen', {name}),
+    failed: t('helperMore.prepareConnectionFailed'),
+    connected: used => t('helperMore.appConnected', {name, used: used ? t('helperMore.lastUsed', {time: used}) : t('helperMore.notUsedYet')}),
+    disconnect: t('helperMore.disconnect'),
+    connectedLead: t('helperMore.appConnectedLead', {name}),
+    disconnected: t('helperMore.appDisconnected', {name}),
+    cardTitle: t('helperMore.appDesktop', {name}),
+    states: {off: t('helpers.notConnected'), waiting: t('helperMore.waitingInstall'), connected: t('helpers.connected')},
     cardLine: {
-      off: `Connect it so ${name} can read your open questions and help answer them. You stay in charge: every change is listed and can be undone.`,
-      waiting: `Connecting. The file is valid for 10 minutes.`,
-      connected: `${name} can read your questions, answers, CV details and job list, and answer open questions. It cannot submit anything.`,
+      off: t('helperMore.connectReadQuestions', {name}),
+      waiting: t('helperMore.connectionValid'),
+      connected: t('helperMore.appCanRead', {name}),
     },
     privacy: {
-      title: `What this shares with ${name}`,
-      text: `When you ask ${name} to help, it reads your questions, answers, CV details and job list from this app, and that text is sent to ${company} as part of your chat, under their terms and your settings with them. `
-        + `It never sees your passwords, keys or your LinkedIn session, never reads job posting texts, and never submits anything. Everything it changes is listed under Changes by ${name} and can be undone. Disconnect any time.`,
-      connect: `Connect ${name}`,
-      cancel: 'Not now',
-      tools: 'See every tool it can use',
+      title: t('helperMore.sharedWithApp', {name}),
+      text: t('helperMore.appPrivacy', {name, company}),
+      connect: t('helperMore.connectApp', {name}),
+      cancel: t('helperState.notNow'),
+      tools: t('helperMore.seeTools'),
     },
     changes: {
-      title: `Changes by ${name}`,
-      none: `${name} has not changed anything yet.`,
-      undo: 'Undo',
-      undone: 'Undone',
-      arrow: (before, after) => `${before || 'open'} → ${after}`,
-      dismissed: 'Set aside',
-      undoFailed: 'Could not undo that.',
+      title: t('helperMore.changesBy', {name}),
+      none: t('helperMore.noAppChanges', {name}),
+      undo: t('helpers.undo'),
+      undone: t('helperMore.undone'),
+      arrow: (before, after) => `${before || t('helperMore.openState')} → ${after}`,
+      dismissed: t('helperMore.setAside'),
+      undoFailed: t('helperMore.undoFailed'),
     },
   };
 }
 
 /** "14:02" for today, "2 Nov, 14:02" for another day, '' for nothing: the time of a use or a change. `locale` and `now` are injectable so the test does not depend on the machine. */
-export function whenText(iso, now = new Date(), locale = 'en-GB') {
+export function whenText(iso, now = new Date(), locale = null) {
   const at = new Date(iso);
   if (!iso || Number.isNaN(at.getTime())) return '';
-  const time = at.toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'});
-  return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString(locale, {day: 'numeric', month: 'short'})}, ${time}`;
+  const format = options => locale || getLocale() === 'en' ? new Intl.DateTimeFormat(locale || 'en-GB', options).format(at) : date(at, options);
+  const time = format({hour: '2-digit', minute: '2-digit'});
+  return at.toDateString() === now.toDateString() ? time : `${format({day: 'numeric', month: 'short'})}, ${time}`;
 }

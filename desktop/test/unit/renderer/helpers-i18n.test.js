@@ -110,7 +110,8 @@ test('AI install guidance translates copy while preserving executable commands a
 });
 
 test('helper state catalogs have complete keys and matching interpolation in every plural branch', async () => {
-  const stateCatalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}-state.js`, root));
+  for (const suffix of ['state', 'more']) {
+  const stateCatalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}-${suffix}.js`, root));
   const {messages: english} = await stateCatalog('en');
   const branches = value => typeof value === 'string' ? [value] : Object.values(value);
   for (const locale of locales) {
@@ -124,6 +125,7 @@ test('helper state catalogs have complete keys and matching interpolation in eve
       }
       if (typeof value === 'object') assert.equal(typeof value.other, 'string', `${locale}.${key}.other`);
     }
+  }
   }
 });
 
@@ -148,4 +150,34 @@ test('a localized session keeps active counts and account identifiers independen
   const {execFileSync} = await import('node:child_process');
   const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {sessionState,dockCounts}=await import('./renderer/session-state.js'); const items=[{status:'running',kind:'claude',live:true},{status:'done',kind:'form',endedAt:'2026-11-07'}]; console.log(JSON.stringify({label:sessionState(items[0])[0],counts:dockCounts(items)}));"], {cwd: root, encoding: 'utf8'});
   assert.deepEqual(JSON.parse(output), {label: 'Bewerbung läuft', counts: {active: 2, waiting: 0}});
+});
+
+test('apply-mode labels translate without changing persisted mode ids, runners or answer choices', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('it'); const {MODES,applyPatch,applyOf}=await import('./renderer/apply-settings-model.js'); console.log(JSON.stringify({title:MODES[0].title,id:MODES[0].id,runner:MODES[0].runner,saved:applyOf(applyPatch({}, {mode:'fill',answers:'facts'}))}));"], {cwd: root, encoding: 'utf8'});
+  const value = JSON.parse(output);
+  assert.equal(value.title, 'Automazione standard');
+  assert.equal(value.id, 'check');
+  assert.equal(value.runner, 'chrome');
+  assert.equal(value.saved.mode, 'fill');
+  assert.equal(value.saved.answers, 'facts');
+});
+
+test('AI engine chooser localizes descriptions while keeping engine ids, fallback settings and billing ids stable', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('ro'); const {TEXT,chosen,billingLabel,ENGINE_CHOICES}=await import('./renderer/ai-engine-view.js'); console.log(JSON.stringify({title:TEXT.title,choice:chosen({aiEngine:'codex'}),billing:billingLabel({billing:'ChatGPT plan'}),ids:ENGINE_CHOICES.map(item=>item[0])}));"], {cwd: root, encoding: 'utf8'});
+  assert.deepEqual(JSON.parse(output), {title: 'Motor de execuție', choice: 'codex', billing: 'Codex · planul tău', ids: ['free','family-claude','family-openai','cli','codex']});
+});
+
+test('desktop assistant display translates while its copied instruction stays canonical', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {words,connectWords,instruction,KEY} = await import('../../../renderer/desktop-ai-words.js');
+  try {
+    setLocale('fr');
+    assert.equal(words('openai').title, 'Laissez ChatGPT répondre à vos questions');
+    assert.equal(connectWords('openai').connect, 'Connecter ChatGPT');
+    assert.match(connectWords('openai').privacy.text, /OpenAI/);
+    assert.match(instruction(true), /Never press Submit on any job\. Do not change Settings\./);
+    assert.equal(KEY, 'desktop-ai:answer');
+  } finally { setLocale('en'); }
 });

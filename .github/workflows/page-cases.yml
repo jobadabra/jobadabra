@@ -157,6 +157,13 @@ on:
       - 'desktop/i18n/catalogs/helpers/ru-state.js'
       - 'desktop/i18n/catalogs/helpers/ru.js'
       - 'desktop/i18n/screens-helpers.js'
+      - 'desktop/i18n/catalogs/helpers/de-more.js'
+      - 'desktop/i18n/catalogs/helpers/en-more.js'
+      - 'desktop/i18n/catalogs/helpers/es-more.js'
+      - 'desktop/i18n/catalogs/helpers/fr-more.js'
+      - 'desktop/i18n/catalogs/helpers/it-more.js'
+      - 'desktop/i18n/catalogs/helpers/ro-more.js'
+      - 'desktop/i18n/catalogs/helpers/ru-more.js'
   workflow_dispatch:
     inputs:
       window:
