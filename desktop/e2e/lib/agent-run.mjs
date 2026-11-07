@@ -109,7 +109,7 @@ const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== '
 /**
  * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
- * `failover()` (optional; lib/agent-ask.mjs withFailover's): once it names a reason, a step is sized at Claude's price and the goal it happened on says so in its summary.
+ * `failover()` (optional; lib/agent-ask.mjs withFailover's): once it names a reason, a step is sized at Claude's price and the goal it happened on carries the reason as `failover` (never in its summary).
  * `meter` (optional): {usable(), actorUsed(), stepTokens}, the run's token meter: each goal's steps come from what `usable()` leaves and what a step costs (lib/agent-steps.mjs), and a goal the budget cannot fund is not started (`unfunded`). Without it every goal gets its share of `maxSteps`.
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
