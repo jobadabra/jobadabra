@@ -1,8 +1,6 @@
 // The light triage read (#3519): load the page, read its controls, ask the page kind once (kept per page shape), report a verdict. Replaces the whole apply journey for a read tab.
 // Why (7 Nov 2026, owner: "we don't need to go through normal flow of applying… Load the page and read form controls… a more simpler/faster flow specifically for form triaging", "for that it would be 5 seconds"):
 // no Apply press, no 20 s watch for a missing form, no form judge (~49 s) and no answer plan (~15 s); one settle of at most 3 s. The judgment stays the AI's (askKind); the counts only AND with it (triage-verdict.js).
-import {preparePage} from './fill-flow-read.js';
-import {pressPosting} from './fill-flow-steps.js';
 import {pageShape} from './page-reads.js';
 import {pageStill} from './page-still.js';
 import {brokenOf} from './ladder/site-broken.js';
@@ -29,11 +27,11 @@ async function countsOf(tabId, {shape, still, now, wait}) {
 /**
  * What the read tab shows, for the app: {look, simple, why}, {unreadable: true, why}, or null when this look must not report (the tab moved on: the page it moved to is read by its own look).
  * `step` is the flow's step ({tab, gen, flow}); the page-kind ask is the flow's own askKind. A posting whose application is a form behind its Apply button gets that button pressed once (owner, 7 Nov 2026: "Press Apply
- * once, then read", because most of his jobs open a posting first); nothing else is pressed, filled or typed. `parts` replaces the page reads and waits in a test: {prepare, shape, still, now, press, wait}.
+ * once, then read", because most of his jobs open a posting first); nothing else is pressed, filled or typed. `parts` = {prepare, press} (the flow's preparePage and pressPosting, passed in by fill-flow.js: importing them here would make a cycle through account-step.js) and, in a test, {shape, still, now, wait}.
  */
 export async function lookAtForm(step, parts = {}) {
   const {tab} = step, {askKind, late} = step.flow;
-  const {prepare = preparePage, shape = pageShape, still = pageStill, now = Date.now, press = pressPosting, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = parts;
+  const {prepare, press, shape = pageShape, still = pageStill, now = Date.now, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = parts;
   const gone = what => late(tab, step.gen, what);
   await prepare(step);   // a cookie popup closed and collapsed sections opened, as a person would, before the controls are counted
   let counts = await countsOf(tab.id, {shape, still, now, wait});
