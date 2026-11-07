@@ -121,6 +121,14 @@ test('only "already exists" means a held claim: a refused tag creation is an err
   await assert.rejects(github(env, answer(422, 'Repository rule violations found: creations being restricted')).claim('msstore-announced-1.0.0'), /GitHub 422/);
 });
 
+test('a green check clears a streak that was never started: GitHub\'s 422 "Reference does not exist" is not an error (7 Nov 2026: the watcher was red every hour)', async () => {
+  const answer = (status, message) => async () => ({ok: status < 400, status, json: async () => ({message})});   // 422 + this message = what gh api returned for a missing tag
+  const env = {GITHUB_REPOSITORY: 'o/r', GITHUB_SHA: 'abc', GH_TOKEN: 't'};
+  assert.deepEqual(await recovered(env, {gh: github(env, answer(422, 'Reference does not exist'))}), ['broken streak cleared']);
+  assert.deepEqual(await recovered(env, {gh: github(env, answer(204, ''))}), ['broken streak cleared']);
+  await assert.rejects(recovered(env, {gh: github(env, answer(422, 'Repository rule violations found: deletions being restricted'))}), /GitHub 422/);
+});
+
 test('a failing check tells the owner once per broken streak; a green check ends the streak; a refused send is retried', async () => {
   const w = world();
   w.gh.releaseIfHeld = async name => { w.tags.delete(name); };

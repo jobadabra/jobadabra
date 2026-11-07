@@ -80,8 +80,17 @@ export function github(env = process.env, fetcher = fetch) {
       return true;
     },
     async release(name) { await ok(await call(`git/refs/tags/${name}`, {method: 'DELETE'}), `release ${name}`); },
-    /** Releases a claim that may not exist: 404 is fine. */
-    async releaseIfHeld(name) { const answer = await call(`git/refs/tags/${name}`, {method: 'DELETE'}); if (answer.status !== 404) await ok(answer, `release ${name}`); },
+    /**
+     * Releases a claim that may not exist: a missing tag is fine.
+     * Why (7 Nov 2026, msix-store-watch.yml red every hour): GitHub answers a DELETE of a tag that is not there with 422 "Reference does not exist", never 404 (measured with gh api);
+     * only that message is read as "not held", so a refused delete (a tag ruleset) still shows.
+     */
+    async releaseIfHeld(name) {
+      const answer = await call(`git/refs/tags/${name}`, {method: 'DELETE'});
+      if (answer.status === 404) return;
+      if (answer.status === 422 && /does not exist/i.test(String((await answer.json().catch(() => ({}))).message))) return;
+      await ok(answer, `release ${name}`);
+    },
     /** Newest stable desktop release version, '' when none. */
     async stables() {
       const releases = await (await ok(await call('releases?per_page=50'), 'list releases')).json();
