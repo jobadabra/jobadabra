@@ -11,7 +11,8 @@ export function practiceView({job}, redraw) {
   const have = cache.get(job.url);
   if (have === undefined) {
     cache.set(job.url, 'loading');
-    window.pilot.practiceCaught(job.url).then(entries => { cache.set(job.url, Array.isArray(entries) ? entries : []); redraw(); }, () => cache.set(job.url, []));
+    const settle = entries => { cache.set(job.url, Array.isArray(entries) ? entries : []); redraw(); };   // a failed read redraws too: the skeleton must not stay up
+    window.pilot.practiceCaught(job.url).then(settle, () => settle([]));
   }
   if (have === undefined || have === 'loading') return skeleton();   // not "nothing caught" while the ledger is still being read
   const entries = Array.isArray(have) ? have : [];
