@@ -23,14 +23,18 @@ export const isWebSearch = tool => String(tool?.type || '').startsWith('web_sear
 
 const text = content => (typeof content === 'string' ? content : (content || []).filter(part => part.type !== 'image').map(part => part.text ?? '').join('\n'));
 
-/** A Messages request -> the broker's body: {tier, prompt, schema?, images?, search?: true, engine?, only?: true}. One system text, the turns in order, the pictures as base64; `session`/`delta`/`endSession` keep one Codex conversation (the broker's contract, jobadabra-web #409); `engine` names this call's own first choice and `only: true` makes it the whole chain (the broker refuses `only` without an engine). */
+// Why (7 Nov 2026, work board draft on broker calls being ~5x slower than the plan path): the engine asks for `output_config.effort: 'low'` (src/ai/decide.py, enrich.py; Haiku 5.5 always) and the plan paths honour it, but this translation dropped it, so every relay call ran at Codex's default effort: 11.6 s p50 for a call run alone against 1.9 s on the plan path (1,680 broker calls, 24 h). The values are the broker's own (jobadabra-web workers/ai-broker/lib/tiers.mjs EFFORTS); any other value (Anthropic's 'max') is not sent, the call keeps the broker's default.
+const BROKER_EFFORTS = ['low', 'medium', 'high', 'xhigh'];
+
+/** A Messages request -> the broker's body: {tier, effort?, prompt, schema?, images?, search?: true, engine?, only?: true}. One system text, the turns in order, the pictures as base64; `session`/`delta`/`endSession` keep one Codex conversation (the broker's contract, jobadabra-web #409); `engine` names this call's own first choice and `only: true` makes it the whole chain (the broker refuses `only` without an engine). */
 export function toBrokerCall(body) {
   const system = Array.isArray(body.system) ? body.system.map(block => block.text).join('\n\n') : body.system || '';
   const turns = body.messages.map(message => `${message.role === 'assistant' ? 'You' : 'User'}:\n${text(message.content)}`).join('\n\n');
   const images = body.messages.flatMap(message => (Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image')).map((part, i) => ({name: `image${i}.${String(part.source?.media_type || 'image/png').split('/')[1]}`, base64: part.source?.data}));   // numbered across all turns, so two pictures never share a name
   const schema = body.output_config?.format?.schema;
   const search = body.tools?.some(isWebSearch);
-  return {tier: tierOf(body.model), ...(search ? {search: true} : {}), ...(body.engine ? {engine: body.engine, ...(body.only ? {only: true} : {})} : {}), ...(body.session ? {session: body.session, ...(body.delta ? {delta: body.delta} : {}), ...(body.endSession ? {endSession: true} : {})} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
+  const effort = BROKER_EFFORTS.includes(body.output_config?.effort) ? body.output_config.effort : null;
+  return {tier: tierOf(body.model), ...(effort ? {effort} : {}), ...(search ? {search: true} : {}), ...(body.engine ? {engine: body.engine, ...(body.only ? {only: true} : {})} : {}), ...(body.session ? {session: body.session, ...(body.delta ? {delta: body.delta} : {}), ...(body.endSession ? {endSession: true} : {})} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
 }
 
 /** This run's OIDC token for the broker (the workflow needs `permissions: id-token: write`), or null outside such a job. */

@@ -44,6 +44,17 @@ test('a Messages request becomes one broker call: system, turns, schema, picture
   assert.deepEqual(call.images, [{name: 'image0.png', base64: 'AAAA'}]);
 });
 
+// Why (7 Nov 2026): the engine's title/score calls ask for low effort and the relay ran them at Codex's default (11.6 s p50 alone against 1.9 s on the plan path); this plays that request.
+test('the effort a Messages request asks for reaches the broker, only when the broker accepts it', () => {
+  const ask = output_config => toBrokerCall({model: 'claude-haiku-5-5', output_config, messages: [{role: 'user', content: 'Score this title.'}]});
+  const schema = {type: 'object'};
+  assert.equal(ask({format: {type: 'json_schema', schema}, effort: 'low'}).effort, 'low', "the engine's low effort is sent");
+  for (const effort of ['medium', 'high', 'xhigh']) assert.equal(ask({effort}).effort, effort);
+  for (const effort of ['max', 'LOW', '', 'constructor', 7, null]) assert.equal(Object.hasOwn(ask({effort}), 'effort'), false, `${effort} is not the broker's value, so it is not sent`);
+  assert.equal(Object.hasOwn(ask({format: {schema}}), 'effort'), false, 'no effort asked: the call stays as before');
+  assert.equal(Object.hasOwn(toBrokerCall({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'x'}]}), 'effort'), false, 'no output_config at all');
+});
+
 const env = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://gh.example/token?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'rt', CODEX_BROKER_URL: 'https://broker.example'};
 const fake = reply => async (url, init) => (String(url).startsWith('https://gh.example') ? new Response(JSON.stringify({value: 'jwt-for-run'})) : reply(url, init));
 
