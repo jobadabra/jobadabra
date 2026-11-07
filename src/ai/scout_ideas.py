@@ -147,9 +147,10 @@ def found_examples(db, limit=25):
 def strategy_terms(search):
     """The owner's roles and places as plain words (src/notion/search_settings.terms), no regex."""
     from ..notion.search_settings import terms
+    from ..places import plain_words
     places = search.get('locations') or {}
     return {'roles': terms(search.get('role_keywords'))[:20],
-            'places': {name: terms(places.get(name))[:25] for name in ('top_tier', 'country_wide', 'abroad')}}
+            'places': {name: plain_words(places.get(name))[:25] for name in ('top_tier', 'country_wide', 'abroad')}}
 
 
 def payload(db, search):

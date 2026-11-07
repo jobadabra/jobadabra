@@ -190,7 +190,7 @@ import src.desktop
     def test_visit_context_and_jobpages(self):
         terms = self.patch('src.notion.search_settings.terms', side_effect=lambda values: list(values or []))
         self.call('visit-context', {'role_words': ['sre'], 'places_first': ['zurich'], 'places_also': ['bern'], 'title_words_ruled_out': ['sales']}, str(self.page))
-        self.assertEqual(terms.call_args_list, [mock.call(['sre']), mock.call(['zurich']), mock.call(['bern']), mock.call(['sales'])])
+        self.assertEqual(terms.call_args_list, [mock.call(['sre']), mock.call(['sales'])])   # the places go through places.plain_words (#2920), the role words through terms()
         self.config.assert_called_with(matching=False)
         me = self.patch('src.employer_index.me_now', return_value={'countries': ['CH']})
         find = self.patch('src.sources.visits.find_job_pages', return_value=VALUE)

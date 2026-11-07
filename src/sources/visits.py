@@ -151,7 +151,8 @@ def relevant(items, search, client=None, label='Visit list', failed=None, unsure
     from ..notion.search_settings import terms
     search = search or load_search_config(matching=False)
     roles = terms(search.get('role_keywords'))[:40]
-    places = terms([*(search.get('locations') or {}).get('top_tier', []), *(search.get('locations') or {}).get('country_wide', [])])[:12]
+    from ..places import place_words
+    places = place_words(search, ('top_tier', 'country_wide'))[:12]
     if not items or not roles:
         return items
     key = hashlib.sha256(json.dumps([sorted(i['url'] for i in items), sorted(roles), places, RELEVANT_VERSION, unsure], ensure_ascii=False).encode()).hexdigest()[:12]

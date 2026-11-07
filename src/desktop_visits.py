@@ -44,10 +44,11 @@ def _set_description(db, args):
 def _visit_context(db, args):
     from .notion.search_settings import terms
     from .paths import load_search_config
+    from .places import plain_words
     search = load_search_config(matching=False)
     places = search.get('locations') or {}
-    return {'role_words': terms(search.get('role_keywords'))[:10], 'places_first': terms(places.get('top_tier'))[:6],
-                      'places_also': terms((places.get('country_wide') or []) + (places.get('abroad') or []))[:6],
+    return {'role_words': terms(search.get('role_keywords'))[:10], 'places_first': plain_words(places.get('top_tier'))[:6],
+                      'places_also': plain_words((places.get('country_wide') or []) + (places.get('abroad') or []))[:6],
                       'title_words_ruled_out': terms(search.get('title_exclude_keywords'))[:12]}, False
 
 

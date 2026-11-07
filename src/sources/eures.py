@@ -210,7 +210,7 @@ def eures(search, get=None, client=None):
     Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that times out, or fails after jobs were read, ends the read with them and CUT set;
     a failure with nothing read raises, so the source is reported as failed. A refusal (401/403) or a slow-down past host_pace's own wait (Busy) ends the read: it asks nothing again."""
     from . import aggregators
-    from ..notion.search_settings import readable, terms
+    from ..places import place_words
     get = get or aggregators._get
     began = time.monotonic()
     CUT[0] = False
@@ -218,13 +218,13 @@ def eures(search, get=None, client=None):
     if out_of_time(began):   # started past its share: nothing is asked, not even the region question (gitar-bot, #2251)
         CUT[0] = True
         return []
-    places = [readable(str(p)) for group in ('top_tier', 'country_wide', 'abroad') for p in terms((search.get('locations') or {}).get(group))[:6]]
+    places = place_words(search, per_group=6)   # the one reading of the place fragments (src/places.py): a letter choice (krak[oó]w) is its spellings, not dropped (#2920)
     wanted = regions(places, client)
     areas = _areas(wanted, places)
     # Why (5 Nov 2026, #2918): the clock counts pages, not the AI wait. Two queued AI answers took 36 s of an 18.75 s share (135 s press), so a read asked no page and listed 0 jobs;
     # stop_at still ends it before the AI steps' share, so the press keeps its deadline.
     began = time.monotonic()
-    anywhere = {geo.norm(readable(str(p))) for p in terms((search.get('locations') or {}).get('country_wide'))[:6]}
+    anywhere = {geo.norm(word) for word in place_words(search, ('country_wide',), 6)}
     words = _words(search)
     seen = set()
     try:
