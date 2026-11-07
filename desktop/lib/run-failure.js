@@ -1,8 +1,8 @@
 // What a finished engine run reports as failed (a pure move out of telemetry-handlers.js so the ask gate can use the same verdict without that file's imports).
 /** The engine's exit code for one job it stopped on purpose, its reason the last ⚠️ line (src/ai/kit.py JOB_STOPPED): not a failed run. */
 export const JOB_STOPPED = 3;
-// Why (7 Nov 2026, Sentry 4Z, 4Y): a job that died on a failed name lookup or an unreachable network was reported as a failed run for every user who went offline. The error line is the engine's own exception text; the Linux/macOS words count only after their [Errno n], so a job title or message that merely contains them is still a failure.
-const OFFLINE = /getaddrinfo failed|\[(?:Errno|WinError) (?:10050|10051|10065|11001|11002|11004)\]|\[Errno -?\d+\] (?:Name or service not known|Temporary failure in name resolution|Network is unreachable|No route to host)/i;
+// Why (7 Nov 2026, Sentry 4Z, 4Y): a job that died on a failed name lookup or an unreachable network was reported as a failed run for every user who went offline. The error line is the engine's own exception text; the words (Linux, macOS, getaddrinfo) count only after their [Errno n], so a job title or message that merely contains them is still a failure.
+const OFFLINE = /\[(?:Errno|WinError) (?:10050|10051|10065|11001|11002|11004)\]|\[Errno -?\d+\] (?:getaddrinfo failed|Name or service not known|Temporary failure in name resolution|nodename nor servname provided|Network is unreachable|No route to host)/i;
 const ZERO_COUNT = /\b0 (?:failed|skipped)\b/gi;   // "0 failed" is a count, not an error line (src/warning_lines.py ZERO, the same rule)
 // What a run that did not end with 0 reports as failed, or null for a run the person or the app ended on purpose.
 // Design (se, 4 Nov 2026; the 20 Oct fix came back as Sentry APP-4X, 3D and 7 Windows ones): a run ends in one of four ways, and only two of them are failures.
