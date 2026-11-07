@@ -69,7 +69,7 @@ export function renderInsightCard(insight, target = $('activity-card')) {
 export function renderInterviewCard(review, target = $('activity-card')) {
   const box = el('div', 'insight-card');
   box.dataset.guidance = 'interview';   // the UI Finder checks its words against who the candidate is
-  box.append(cardHead(`Interview · ${review.round}`, review.title || t('pagesActivity.interviewReview'), {subtitles: [review.summary]}));
+  box.append(cardHead(t('pagesShortActivity.m11', {"round": review.round}), review.title || t('pagesActivity.interviewReview'), {subtitles: [review.summary]}));
   for (const section of review.sections) {
     const node = el('section', 'insight-section');
     node.append(el('h4', '', `${section.icon} ${section.label}`.trim()));
@@ -99,7 +99,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
   // Some failed: the heading says how many of how many; the jobs that failed get a row each, as their log lines name them.
   const {done = kits.jobs.length, total = kits.jobs.length, failed = []} = kits.outcome || {};
   const noun = cvs ? 'CV' : 'application';
-  const head = cardHead(cvs ? t('pagesExtraCommon.tailoredDocuments') : t('pagesCommon.applications'), total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
+  const head = cardHead(cvs ? t('pagesExtraCommon.tailoredDocuments') : t('pagesCommon.applications'), total > done ? t('pagesShortActivity.m12', {"done": done, "plural": plural(total, noun)}) : t('pagesShortActivity.m13', {"plural": plural(kits.jobs.length, noun)}),
     {subtitles: [total > done ? t('pagesDynamicActivity.m10', {"plural": plural(total - done, noun), "value2": cvs ? t('pagesDynamicActivity.tailored') : t('pagesDynamicActivity.drafted'), "value3": failed.length ? '.' : t('pagesDynamicActivity.notRecorded')})
       : kits.subtitle]});   // partial: the line above says it, with the counts
   // One row per job (the shared .item-rows): its title (the posting opens from it) and company, then the one action, aligned.

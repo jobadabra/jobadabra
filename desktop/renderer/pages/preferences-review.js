@@ -42,7 +42,7 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
   for (const row of rows) {
     const field = FIELDS.find(each => each.key === row.key), line = el('div', 'pref-review-row span-all');
     line.dataset.field = row.key;
-    const yes = Object.assign(el('button', 'primary small', t('pagesProfileMore.accept')), {type: 'button', ariaLabel: `Accept ${field.label}`});
+    const yes = Object.assign(el('button', 'primary small', t('pagesProfileMore.accept')), {type: 'button', ariaLabel: t('pagesShortReady.m264', {"label": field.label})});
     yes.addEventListener('click', () => { accept(row); redraw(); });
     const no = Object.assign(el('button', 'secondary small', t('pagesProfileMore.keepMine')), {type: 'button', ariaLabel: t('pagesDynamicProfileReady.m295', {"label": field.label})});
     no.addEventListener('click', () => { skipped.add(`${state.key}:${row.key}`); remember(skipped); redraw(); });

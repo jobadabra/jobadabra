@@ -36,9 +36,9 @@ function paintCount() {
   const picked = pickForTriage(shared.allJobs || [], choiceNow());
   const {text, measured} = estimateOf(picked.length, timings);
   const wanted = choiceNow().n, jobsWord = picked.length === 1 ? 'job' : 'jobs';
-  const line = !picked.length ? 'Every job with a link is checked already.' : `${picked.length} ${jobsWord}${picked.length < wanted ? ' not checked yet' : ''}${text ? ` · ${text}${measured ? '' : ' (a guess until you check once)'}` : ''}`;
+  const line = !picked.length ? t('pagesAuditPunct.a39') : `${picked.length} ${jobsWord}${picked.length < wanted ? t('pagesAuditSecond.a117') : ''}${text ? ` · ${text}${measured ? '' : t('pagesAuditSecond.a118')}` : ''}`;
   if ($('triage-count')) $('triage-count').textContent = line;
-  if ($('triage-start')) $('triage-start').textContent = `Check ${picked.length} ${picked.length === 1 ? 'job' : 'jobs'}`;
+  if ($('triage-start')) $('triage-start').textContent = t('pagesShortJobs.m202', {"length": picked.length, count: picked.length});
   if ($('triage-start')) $('triage-start').disabled = picked.length === 0 || running;
 }
 
@@ -61,7 +61,7 @@ export async function runTriage(jobs, read) {
       if (result) { setRead(job.url, result); rememberTiming((Date.now() - started) / 1000); done += 1; }   // only a real read counts as read, and as a timing
       seen += 1;
       if (bar) bar.style.width = `${Math.round((seen / jobs.length) * 100)}%`;
-      if (words) words.textContent = `${seen} of ${jobs.length}`;
+      if (words) words.textContent = t('pagesShortJobs.m203', {"seen": seen, "length": jobs.length});
     }
   } finally {
     running = false;
@@ -87,7 +87,7 @@ export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () 
     $('triage-progress').hidden = true;
     paintCount();
     rerender();
-    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : 'No form could be read. The hidden browser has to be downloaded first, and no application can be open.', null, done ? 'good' : 'info');
+    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : t('pagesAuditSecond.a119'), null, done ? 'good' : 'info');
   });
   paintCount();
 }

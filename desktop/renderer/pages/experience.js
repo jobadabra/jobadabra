@@ -19,7 +19,7 @@ export function sourceRow(source) {
   const name = el('b', '', source.name);
   name.append(' ', source.reference ? pill(t('pagesEmployers.reference'), 'info') : source.stale ? pill(t('pagesEmployers.needsMatching'), 'warn', {title: t('pagesEmployers.mainChanged')}) : pill(source.added ? `+${plural(source.added, 'detail')}` : t('pagesProfile.nothingNew'), source.added ? 'good' : 'neutral'));
   words.append(name);
-  const meta = source.reference ? t('pagesDynamicExperience.m141', {"plural": plural(source.roles, 'job role')}) : `${plural(source.roles, 'job role')} · added ${runWhen(source.addedAt)}`;
+  const meta = source.reference ? t('pagesDynamicExperience.m141', {"plural": plural(source.roles, 'job role')}) : t('pagesShortActivity.m122', {"plural": plural(source.roles, 'job role'), "when": runWhen(source.addedAt)});
   words.append(el('span', 'muted', meta));
   row.append(tile(source.reference ? 'file' : source.kind === 'linkedin' ? 'link' : 'layers', source.reference ? 'info' : 'signal'), words);
   return row;
@@ -57,7 +57,7 @@ export function roleBlock(role) {
 export function sourcesSummary(view) {
   if (!view?.main) return t('pagesFieldsStatus.mainNotRead');
   const cvs = view.sources.filter(source => source.kind !== 'linkedin').length;
-  return ['Main CV', ...(view.sources.some(source => source.kind === 'linkedin') ? ['LinkedIn'] : []), ...(cvs ? [t('pagesDynamicExperience.m146', {"cvs": cvs, count: cvs})] : [])].join(' + ');
+  return [t('pagesCommon.mainCv'), ...(view.sources.some(source => source.kind === 'linkedin') ? ['LinkedIn'] : []), ...(cvs ? [t('pagesDynamicExperience.m146', {"cvs": cvs, count: cvs})] : [])].join(' + ');
 }
 
 // Roles another version has and the main CV does not: listed, never added (a tailored CV keeps the main CV's jobs). Stale matches are left out.
@@ -94,11 +94,11 @@ export function versionsBlock(rows, count) {
 // What an add, a removal or a match again did to the profile, in plain words. A removal only stops offering what came from that version:
 // tailoring reads the other versions at use time (withExtras), so nothing was copied into the main CV and nothing is left behind.
 export function changeLines(answer) {
-  const c = answer.changes || {}, lines = [], list = items => items.slice(0, 8).join(', ') + (items.length > 8 ? `, +${items.length - 8} more` : '');
+  const c = answer.changes || {}, lines = [], list = items => items.slice(0, 8).join(', ') + (items.length > 8 ? t('pagesShortActivity.m123', {"value1": items.length - 8}) : '');
   const done = (answer.results || []).filter(r => r.ok).map(r => r.name), failed = (answer.results || []).filter(r => !r.ok);
-  if (done.length) lines.push([`Added ${done.length === 1 ? `“${done[0]}”` : plural(done.length, 'version')}`, 'good']);
+  if (done.length) lines.push([t('pagesShortActivity.m124', {"value1": done.length === 1 ? `“${done[0]}”` : plural(done.length, 'version')}), 'good']);
   for (const r of failed) lines.push([t('pagesDynamicExperience.m147', {"name": r.name, "plainError": plainError(r.error)}), 'bad']);
-  if (answer.removed) lines.push([`Removed “${answer.removed}”`, 'neutral']);
+  if (answer.removed) lines.push([t('pagesShortActivity.m125', {"removed": answer.removed}), 'neutral']);
   if (c.details > 0) lines.push([t('pagesDynamicExperience.m148', {"plural": plural(c.details, 'more detail')}), 'good']);
   if (c.details < 0) lines.push([t('pagesDynamicExperience.m149', {"plural": plural(-c.details, 'detail')}), 'neutral']);
   if (c.skillsAdded?.length) lines.push([t('pagesDynamicExperience.m150', {"list": list(c.skillsAdded)}), 'good']);
@@ -182,9 +182,9 @@ export function addedBlock(items, remove) {
 // The words for one live step from the app (experienceStep): which file of how many, and what it is doing now.
 export function stepText({what, name, index, total}) {
   const of = total > 1 ? t('pagesDynamicExperience.position', {index, total}) : '';
-  if (what === 'reading') return `Reading “${name}”${of}…`;
+  if (what === 'reading') return t('pagesShortActivity.m126', {"name": name, "of": of});
   if (what === 'comparing') return t('pagesDynamicExperience.m157', {"name": name, "of": of});
-  if (what === 'done') return `Finished “${name}”${of}`;
+  if (what === 'done') return t('pagesShortActivity.m127', {"name": name, "of": of});
   return t('pagesDynamicExperience.m158', {"name": name, "of": of});
 }
 

@@ -16,7 +16,7 @@ const SHOWN = 10;   // a long crawl list (70 places abroad) shows its first plac
 export const sideText = (places, mode) => {
   if (!places?.length) return MODE_WORDS[mode] || t('pagesStrategy.nothingSet');
   const names = [...new Set(places.map(name => (name === name.toLowerCase() ? titleCase(name) : name)))];   // a pattern's lowercase name, never the person's own words
-  return names.length > SHOWN ? `${names.slice(0, SHOWN).join(', ')} + ${names.length - SHOWN} more` : names.join(', ');
+  return names.length > SHOWN ? t('pagesShortJobs.m218', {"value1": names.slice(0, SHOWN).join(', '), "value2": names.length - SHOWN}) : names.join(', ');
 };
 // What only one side has, from the same-meaning check (lib/locations-same.js), in the same words.
 export const differs = conflict => [[t('pagesExtraLabels.onlyStrategy'), conflict.onlyStrategy], [t('pagesExtraLabels.onlyProfile'), conflict.onlyProfile]]
@@ -40,7 +40,7 @@ function sideChips(places, mode, only, tone) {
   const chipOf = name => chip(name, {tone: alone.has(name.toLowerCase()) ? tone : ''});
   box.append(...names.slice(0, SHOWN).map(chipOf));
   if (names.length > SHOWN) {
-    const more = Object.assign(el('button', 'link chip-more', `+${names.length - SHOWN} more`), {type: 'button'});
+    const more = Object.assign(el('button', 'link chip-more', t('pagesShortJobs.m219', {"value1": names.length - SHOWN})), {type: 'button'});
     more.addEventListener('click', () => more.replaceWith(...names.slice(SHOWN).map(chipOf)));
     box.append(more);
   }
@@ -62,7 +62,7 @@ function row(conflict) {
   const option = (side, label, places, mode, only, tone, use) => {
     const card = el('div', `which-option tone-${tone}`);
     card.dataset.side = side;
-    card.append(el('span', 'which-side', label), sideChips(places, mode, only, tone), button(`Use ${label}'s`, 'secondary which-use', use));
+    card.append(el('span', 'which-side', label), sideChips(places, mode, only, tone), button(t('pagesShortJobs.m221', {"label": label}), 'secondary which-use', use));
     return card;
   };
   const options = el('div', 'which-options');
@@ -70,7 +70,7 @@ function row(conflict) {
     option('profile', t('pagesCommon.profile'), conflict.profile, conflict.profileMode, conflict.onlyProfile, 'teal', go('profile')));
   // The other ways out: one quiet "Choose…" menu beside the two boxes, never a line of links under them (owner: no lone line under a list).
   const typed = Object.assign(el('input', 'add'), {placeholder: t('pagesStrategy.placesComma'), hidden: true});
-  typed.setAttribute('aria-label', `${KIND_NAMES[conflict.kind] || conflict.kind}: places`);
+  typed.setAttribute('aria-label', t('pagesShortJobs.m222', {"value1": KIND_NAMES[conflict.kind] || conflict.kind}));
   const save = button(t('pagesStrategy.savePlaces'), 'secondary small-btn', go('choose', () => typed.value.split(/\s*,\s*/).filter(Boolean)));
   save.hidden = true;
   const choose = button(t('pagesStrategy.choose'), 'secondary which-choose', event => openMenu(event.currentTarget, [

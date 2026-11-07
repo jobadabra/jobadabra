@@ -228,7 +228,7 @@ export async function init() {
     cvReadBlocked = !result.ok && isSpendingLimit(humanError(result.error));
     show($('cv-limit-link'), cvReadBlocked);
     shared.cvReadFailed = !result.ok;
-    $('cv-message').textContent = result.ok ? `Done${costText(result.usd, usd => ` (${dollars(usd)})`)}.` : cvError(result.error, 'read');
+    $('cv-message').textContent = result.ok ? t('pagesShortReady.m266', {"costText": costText(result.usd, usd => ` (${dollars(usd)})`)}) : cvError(result.error, 'read');
     loadCvSetting();
   };
   $('cv-limit-link').addEventListener('click', event => {

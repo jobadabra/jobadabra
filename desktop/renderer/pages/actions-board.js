@@ -58,7 +58,7 @@ export function boardDialog() {
   known.id = 'board-known';
   const hint = el('p', 'muted small field-hint', t('pagesActivity.tabChrome'));
   const steps = el('ol', 'board-steps muted small', '');
-  for (const text of ['Sign in yourself if Chrome asks.', 'Press Read in the Jobadabra extension.', 'Choose "Filter for my search, then read" or "Read the jobs as they are".']) steps.append(el('li', '', text));
+  for (const text of [t('pagesAuditFirst.a0'), t('pagesAuditFirst.a1'), t('pagesAuditFirst.a2')]) steps.append(el('li', '', text));
   const never = el('p', 'muted small', t('pagesActivity.neverPassword'));
   const message = el('p', 'message', '');
   message.id = 'board-message';
@@ -100,7 +100,7 @@ export function initBoard({answer}) {
     const result = await window.pilot.visitsRun({board: field.value.trim()}).catch(error => ({text: `⚠️ ${error.message}`}));
     if (result?.started) { refreshActivity(); show($('command-answer'), false); return; }
     release(button);
-    answer(result?.text || result?.error || 'Done.');
+    answer(result?.text || result?.error || t('pagesAuditFirst.a3'));
   };
   $('board-start').addEventListener('click', start);
   field.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); start(); } });

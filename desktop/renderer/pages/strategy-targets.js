@@ -40,12 +40,12 @@ export const CARD_TONE = {roles: 'violet', places: 'teal', stack: 'info', langua
 export const TARGET_CARDS = [
   ['places', 'pin', t('pagesStrategy.locations'), [['places', t('pagesCommon.preferredPlaces'), t('pagesFinalLabels.addCity')], ['country', t('pagesCommon.acceptablePlaces'), t('pagesFinalLabels.addCountry')],
     ['abroad', t('pagesStrategyMore.relocatePlaces'), t('pagesFinalLabels.addCityAbroad')], ['rights', t('pagesFinalLabels.rightsHelp'), t('pagesFinalLabels.addCountryEu')]]],
-  ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', 'Key skills and tools you want in jobs.', t('pagesFinalLabels.addSkill')]]],
+  ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', t('pagesAuditThird.a214'), t('pagesFinalLabels.addSkill')]]],
   ['languages', 'shield', t('pagesStrategy.exclusions'), [['languages', t('pagesStrategyMore.languageExclusions'), t('pagesFinalLabels.addLanguage')]]],
   // What only the ⚙️ Search settings page had (P8, 9 Oct 2026), so every store edits it here (lib/strategy-edit.js), with the level and the digest's minimum.
   ['search', 'search', t('pagesStrategy.moreSearch'), [['titleSkip', t('pagesFinalLabels.skipTitles'), t('pagesFinalLabels.addWord')], ['skip', t('pagesFinalLabels.skipCompanies'), t('pagesFinalLabels.addCompany')], ['remoteSkip', t('pagesFinalLabels.remoteSkip'), t('pagesFinalLabels.addRegion')],
     ['finders', t('pagesFinalLabels.finders'), t('pagesFinalLabels.addWord')], ['gqueries', t('pagesFinalLabels.googleSearches'), t('pagesFinalLabels.addSearch')],
-    ['gplaces', t('pagesFinalLabels.googlePlacesHelp'), 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
+    ['gplaces', t('pagesFinalLabels.googlePlacesHelp'), t('pagesAuditThird.a215')]]],
 ];
 export const TARGET_LISTS = ['roles', ...TARGET_CARDS.flatMap(([, , , lists]) => lists.map(([name]) => name))];
 export {shownLists};
@@ -76,8 +76,8 @@ export function listChips(name, placeholder) {
     if (searched.has(entry)) { pill.title = t('pagesStrategyMore.searchedBoards'); pill.append(icon('search')); }
     pill.append(el('span', '', name === 'gplaces' ? placeLabel(entry.label) : AS_TYPED.has(name) ? entry.label : titleCase(shownWord(entry.label))));
     if (editing) {
-      const remove = Object.assign(document.createElement('button'), {type: 'button', className: 'x', textContent: '×', title: `Remove ${shownWord(entry.label)}`});
-      remove.setAttribute('aria-label', `Remove ${shownWord(entry.label)}`);
+      const remove = Object.assign(document.createElement('button'), {type: 'button', className: 'x', textContent: '×', title: t('pagesShortSettings.m361', {"shownWord": shownWord(entry.label)})});
+      remove.setAttribute('aria-label', t('pagesShortSettings.m362', {"shownWord": shownWord(entry.label)}));
       remove.addEventListener('click', () => {
         if (entry.added) edit.add = edit.add.filter(word => word !== entry.label); else edit.remove.push(entry.fragment);
         redrawCards();
@@ -146,7 +146,7 @@ function levelChoice() {
     openCard('goals');
     document.querySelector('#strategy-main-goals .card')?.scrollIntoView({block: 'start'});
   });
-  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || t('pagesCommon.any')), el('span', 'muted small', ' · from your Target level · '), change);
+  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || t('pagesCommon.any')), el('span', 'muted small', t('pagesAuditThird.a216')), change);
   return line;
 }
 // The digest's minimum fit score (Search settings "Minimum fit score for the digest"; the engine's default is 50).
@@ -163,8 +163,8 @@ function minScoreInput() {
   });
   return input;
 }
-const LEADS = {places: 'Where you want to work.', stack: 'Key skills and tools you want in jobs.',
-  languages: 'A job that requires one is hidden; one that only prefers it ranks lower.'};
+const LEADS = {places: t('pagesAuditThird.a217'), stack: t('pagesAuditThird.a214'),
+  languages: t('pagesAuditThird.a218')};
 function targetCard([key, glyph, title, lists]) {
   const open = isOpen(key), card = el('section', `card${open ? ' is-editing' : ''}`);
   card.dataset.list = key;
@@ -215,7 +215,7 @@ async function fixTypo(name, entry, suggestion, button) {
   const edits = {[name]: {add: [suggestion], remove: stored ? [stored.fragment] : []}};
   const result = await withSaveProgress(words => { button.textContent = words; }, () => sink.editTargets(edits)).catch(error => ({ok: false, error: error.message}));
   if (!result.ok) { toastMessage(t('pagesStrategyMore.notFixed'), result.error || t('pagesCommon.tryAgain'), {card: 'strategy-advanced'}, 'bad'); renderTargets(); return; }
-  toastMessage({title: `"${suggestion}" saved ✓`, body: 'Refresh your jobs to search with it.', action: refreshAction, target: {card: 'strategy-advanced'}, tone: 'good'});
+  toastMessage({title: t('pagesShortSettings.m365', {"suggestion": suggestion}), body: t('pagesAuditThird.a219'), action: refreshAction, target: {card: 'strategy-advanced'}, tone: 'good'});
   await reloadTargets();
 }
 async function keepTypo(entry) {
@@ -237,7 +237,7 @@ const VIEWS = {
     const preferred = places.length ? withHints('places', chipsOf) : none(t('pagesCommon.none'));
     preferred.title = t('pagesStrategyMore.rankedFirst');
     return [readRows([{icon: 'pin', label: t('pagesCommon.preferredPlaces'), value: preferred},
-      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none('None selected')},
+      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesFinalLabels.noneSelected'))},
       mode === 'yes' && abroad.length ? {icon: 'send', label: t('pagesStrategyMore.relocatePlaces'), value: folded(abroad.map(entry => entry.label), 10, t('pagesCommon.showAll'))}
         : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
       {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},
@@ -326,8 +326,8 @@ export function renderStrategy(data) {
     return button;
   };
   const jobsBy = kind => () => { openView('jobs'); if (kind) document.querySelector(`[data-stat="${kind}"]`)?.click(); };
-  $('strategy-glance').replaceChildren(glance('file', data.counts.matches, 'scored matches', jobsBy('total'), 'info'),
-    glance('layers', data.counts.saved, 'saved jobs', () => { openView('jobs'); setFilters(['saved']); }, 'violet'), glance('send', data.counts.sent, 'applications sent', jobsBy('applied'), 'signal'));
+  $('strategy-glance').replaceChildren(glance('file', data.counts.matches, t('pagesAuditThird.a220'), jobsBy('total'), 'info'),
+    glance('layers', data.counts.saved, t('pagesAuditThird.a221'), () => { openView('jobs'); setFilters(['saved']); }, 'violet'), glance('send', data.counts.sent, t('pagesAuditThird.a222'), jobsBy('applied'), 'signal'));
   show($('strategy-insight'), !!data.insight);
   if (data.insight) {
     $('strategy-insight-text').textContent = data.insight.action || data.insight.headline;

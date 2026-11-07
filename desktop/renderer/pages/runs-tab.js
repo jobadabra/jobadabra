@@ -64,7 +64,7 @@ export function actionsShown() { if (tab === 'runs') mountGrid($('actions-runs-b
 
 // The three filter buttons, with what each keeps now.
 export function drawFilters() {
-  $('activity-filter').textContent = listFilter.kind ? `Task: ${KIND[listFilter.kind]?.name || listFilter.kind}` : t('pagesFocusReports.anyTask');
+  $('activity-filter').textContent = listFilter.kind ? t('pagesShortReady.m302', {"value1": KIND[listFilter.kind]?.name || listFilter.kind}) : t('pagesFocusReports.anyTask');
   $('activity-filter-status').textContent = labelOf(STATUS, listFilter.status);
   $('activity-filter-date').textContent = labelOf(DATES, listFilter.date);
   for (const [id, on] of [['activity-filter', listFilter.kind], ['activity-filter-status', listFilter.status], ['activity-filter-date', listFilter.date]]) $(id).classList.toggle('is-active', !!on);

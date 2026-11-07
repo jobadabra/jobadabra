@@ -39,7 +39,7 @@ function card(job) {
   const body = el('div', 'focus-body'), parts = rowModel(job);
   body.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
-  if (nextStepOf(job)) body.append(el('div', 'muted small', `Next: ${nextStepOf(job)}`));
+  if (nextStepOf(job)) body.append(el('div', 'muted small', t('pagesShortJobs.m172', {"nextStepOf": nextStepOf(job)})));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
     .map(stage => ({label: stageLabel(stage), run: () => moveJob(job, stage)}));

@@ -39,7 +39,7 @@ export async function loadExperienceProfile(tab = 'experience') {
   await swr('profile-parts', () => window.pilot.textOutline('profile'), {
     loading: () => box.replaceChildren(loadingCard(t('pagesCommon.readingProfile'))),
     paint: (result, kept) => { if (kept || !editing.size) { setParts(tab, result.items); draw(tab); if (tab === 'experience') splitGaps(tab); } },   // a refresh never redraws a card under edit
-    fail: result => message(messageId, t('pagesDynamicExperience.m138', {"value1": result?.error || 'try again'}), 'error'),
+    fail: result => message(messageId, t('pagesDynamicExperience.m138', {"value1": result?.error || t('pagesAuditFirst.a67')}), 'error'),
   });
 }
 
@@ -157,7 +157,7 @@ function body(key, part) {
     tip.append(icon('info'));
     tip.setAttribute('title', words);
     tip.setAttribute('role', 'img');
-    tip.setAttribute('aria-label', `Note: ${words}`);
+    tip.setAttribute('aria-label', t('pagesShortActivity.m120', {"words": words}));
     const last = box.children.at?.(-1) ?? box.children[box.children.length - 1];
     (last || box).append(tip);
   }

@@ -19,7 +19,7 @@ export {exportState};
 export async function exportJobs(options) {
   const answer = await window.pilot.exportJobs(options);
   if (answer?.pro) openProGate();
-  else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file, NO_PLACE.outside, 'good');
+  else if (answer?.ok) toastMessage(t('pagesShortJobs.m174', {"plural": plural(answer.count)}), answer.file, NO_PLACE.outside, 'good');
   else if (answer?.error) toastMessage(t('pagesJobs.saveListFailed'), answer.error, {view: 'jobs'}, 'bad');
 }
 
@@ -36,8 +36,8 @@ export function wireExport() {
     if (exportState(shared.licenseState || {}) === 'locked') return openProGate();
     const shown = jobsState.visible || [], all = shared.allJobs || [];
     openMenu(event.currentTarget, [
-      {label: `These ${plural(shown.length)}`, detail: t('pagesControlStatus.listShows'), disabled: !shown.length, run: () => exportJobs({urls: shown.map(job => job.url)})},
-      {label: `All ${plural(all.length)}`, detail: t('pagesControlStatus.everyJob'), disabled: !all.length, run: () => exportJobs({all: true})},
+      {label: t('pagesShortJobs.m175', {"plural": plural(shown.length)}), detail: t('pagesControlStatus.listShows'), disabled: !shown.length, run: () => exportJobs({urls: shown.map(job => job.url)})},
+      {label: t('pagesShortJobs.m176', {"plural": plural(all.length)}), detail: t('pagesControlStatus.everyJob'), disabled: !all.length, run: () => exportJobs({all: true})},
     ]);
   });
 }

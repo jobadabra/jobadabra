@@ -104,7 +104,7 @@ export function renderDock() {
   }
   const {active: running, waiting} = dockCounts(sessionList, closedForm);
   // Two pills: how many are active (blue), how many wait for you (amber).
-  $('sd-summary').replaceChildren(pill(`${running} active`, 'info'), ...(waiting ? [pill(`${waiting} need${waiting === 1 ? 's' : ''} input`, 'warn')] : []));
+  $('sd-summary').replaceChildren(pill(t('pagesShortSettings.m325', {"running": running}), 'info'), ...(waiting ? [pill(t('pagesShortSettings.m326', {"waiting": waiting, count: waiting}), 'warn')] : []));
   $('sd-toggle').setAttribute('aria-expanded', shared.dockOpen);
   $('sessions-dock').classList.toggle('is-closed', !shared.dockOpen);
   const shown = [...(live.length ? live : sessionList)].sort((a, b) => dockOrder(a, closedForm) - dockOrder(b, closedForm)).slice(0, 3);

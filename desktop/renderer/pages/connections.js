@@ -75,7 +75,7 @@ function updateRepo() {
   if (!shared.state.settings.cloud?.repo) return;
   clearTimeout(repoTimer);
   repoTimer = setTimeout(async () => {
-    saveState(`Updating ${shared.state.settings.cloud.repo}…`);
+    saveState(t('pagesShortActivity.m83', {"repo": shared.state.settings.cloud.repo}));
     const result = await window.pilot.cloudConnect();
     saveState('');
     if (result.ok) savedToast(t('pagesConnections.githubUpdated'), t('pagesDynamicSetup.m81', {"repo": result.repo}));
@@ -184,7 +184,7 @@ export async function showGoogle() {
   const google = await window.pilot.googleStatus().catch(() => ({connected: false}));
   const left = google.connected ? google.scopes?.missing || [] : [];
   googleOnly = left.length === 1 ? left[0] : undefined;
-  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected${google.email ? ` as ${google.email}` : ''}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? t('pagesConnections.signInExpired') : t('pagesCommon.notConnected');
+  $('google-status').textContent = google.connected ? t('pagesShortActivity.m87', {"value1": left.length ? '⚠' : '✓', "value2": google.email ? t('pagesShortActivity.m88', {"email": google.email}) : '', "value3": left.length ? `. ${google.scopes.say}` : ''}) : google.error ? t('pagesConnections.signInExpired') : t('pagesCommon.notConnected');
   $('google-status').classList.toggle('on', !!google.connected);
   $('google-connect').textContent = google.connected ? t('pagesConnections.reconnect') : t('pagesConnections.connectGoogle');
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").
@@ -244,7 +244,7 @@ export async function init() {
     shared.state = await window.pilot.state();
     showRunMode();
     showCloud();
-    savedToast(t('pagesConnections.localRuns'), 'Always on is off. Your GitHub repository stays there.');
+    savedToast(t('pagesConnections.localRuns'), t('pagesAuditFirst.a47'));
   }));
   $('run-mode-more').addEventListener('click', () => openSetting('cloud'));
   document.querySelectorAll('[data-schedule]').forEach(select => select.addEventListener('change', () => { saveSchedule(select); showScheduleState(); }));

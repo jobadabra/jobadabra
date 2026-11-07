@@ -19,7 +19,7 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
     undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
     undo.setAttribute('aria-label', t('pagesDynamicSessionReports.m378', {"title": entry.title, "value": entry.value}));
     undo.addEventListener('click', press(entry, undo));
-    return makeRow({words: `${entry.title}: ${entry.value}`, detail: 'Set aside when you picked the other value. Kept, not deleted.', button: undo, id: entry.id});
+    return makeRow({words: `${entry.title}: ${entry.value}`, detail: t('pagesAuditThird.a200'), button: undo, id: entry.id});
   });
   const rows = entries.map(entry => {
     const row = el('div', 'chip-row');

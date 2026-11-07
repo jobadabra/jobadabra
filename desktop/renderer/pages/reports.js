@@ -39,7 +39,7 @@ function weeklyTab() {
   newer.addEventListener('click', () => { state.week--; draw(); });
   nav.append(older, newer);
   const head = el('div', 'job-panel-head');
-  head.append(el('p', 'muted small', [dayLabel(week.day), week.confidence && `${week.confidence} confidence`].filter(Boolean).join(' · ')), nav);
+  head.append(el('p', 'muted small', [dayLabel(week.day), week.confidence && t('pagesShortReady.m296', {"confidence": week.confidence})].filter(Boolean).join(' · ')), nav);
   // The card Recent activity draws for this report, then the report's other sections in the same shape.
   const {weekly, extra} = weeklyCardOf(week);
   const card = weeklyCard(weekly);
@@ -72,7 +72,7 @@ function feedbackChoice(item) {
     button.setAttribute('aria-pressed', String(item.feedback === value));
     button.addEventListener('click', async () => {
       const done = await window.pilot.insightFeedback(item.id, value).catch(error => ({ok: false, error: error.message}));
-      if (!done.ok) { $('reports-state').textContent = plainError(t('pagesDynamicSessionReports.m324', {"value1": done.error || 'try again'})); return; }
+      if (!done.ok) { $('reports-state').textContent = plainError(t('pagesDynamicSessionReports.m324', {"value1": done.error || t('pagesAuditFirst.a67')})); return; }
       const row = state.insights.find(each => each.id === item.id);
       if (row) row.fields = {...row.fields, feedback: value};
       $('reports-state').textContent = t('pagesFocusReports.feedbackSaved');
@@ -90,7 +90,7 @@ function insightsTab() {
     const box = el('section', 'card iv-moments-group reports-insight');   // one card per insight (#reports-body is then plain, see draw)
     const head = el('h3', '', item.title);
     head.prepend(pill(item.category || t('pagesActivity.insight'), item.category === 'Process' ? 'warn' : 'info'), ' ');
-    box.append(el('p', 'muted small', [dayLabel(item.day), item.confidence && `${item.confidence} confidence`].filter(Boolean).join(' · ')), head);
+    box.append(el('p', 'muted small', [dayLabel(item.day), item.confidence && t('pagesShortReady.m297', {"confidence": item.confidence})].filter(Boolean).join(' · ')), head);
     // A process issue's own page (its action, "Supported hypothesis", the quotes); a daily insight's evidence and next step.
     if (item.groups.length) box.append(...item.groups.map(part => group(part.title, part.lines)));
     else box.append(...item.evidence.map(line => el('div', 'iv-moment', line)), ...(item.action ? [el('div', 'iv-moment', el('b', '', `👉 ${item.action}`))] : []));
@@ -156,7 +156,7 @@ export async function loadReports(tab = state.tab) {
   draw();
   const result = await window.pilot.reportsInsights().catch(error => ({ok: false, error: error.message}));
   state.insights = result.ok ? result.insights : state.insights;
-  state.error = result.ok ? '' : result.error || 'try again';
+  state.error = result.ok ? '' : result.error || t('pagesAuditFirst.a67');
   $('reports-state').textContent = result.ok ? t('pagesFocusReports.updatedNow') : '';
   if (!['fills', 'funnel', 'searches'].includes(state.tab)) draw();
 }

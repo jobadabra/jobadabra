@@ -13,7 +13,7 @@ test('every choice has a button, "separate" only in the Choose… menu, and noth
   // Owner, 18 Oct 2026: no winner: the two sides are equal boxes, each with its own Use button in its colour; the other ways out are one quiet menu.
   assert.match(screen, /option\('strategy', t\('pagesExtraLabels\.strategy'\),[^\n]*'violet', go\('strategy'\)\)/);
   assert.match(screen, /option\('profile', t\('pagesCommon\.profile'\),[^\n]*'teal', go\('profile'\)\)/);
-  assert.match(screen, /button\(`Use \$\{label\}'s`, 'secondary which-use', use\)/);
+  assert.match(screen, /pagesShortJobs\.m221/);
   assert.match(screen, /openMenu\(event\.currentTarget, \[[\s\S]*pagesStrategy\.otherPlaces[\s\S]*go\('separate'\)/);
   assert.doesNotMatch(screen, /autofocus|is-active|primary/);   // no button looks like the recommended one
 });

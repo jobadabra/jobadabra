@@ -43,7 +43,7 @@ export function renderOnboarding({funnel} = {}) {
   }
   show($('focus-onboarding'), state.show);
   if (!state.show) return false;
-  $('onboarding-count').replaceChildren(pill(`${state.doneCount} of ${state.steps.length}`, 'neutral'));
+  $('onboarding-count').replaceChildren(pill(t('pagesShortJobs.m134', {"doneCount": state.doneCount, "length": state.steps.length}), 'neutral'));
   const nextAt = state.steps.indexOf(state.next) + 1;
   $('onboarding-list').replaceChildren(...state.steps.map((step, i) => {
     const isNext = step === state.next;

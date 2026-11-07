@@ -13,20 +13,20 @@ let permissionKind = 'screen';
 export async function showPermission(noCallAudio = false) {
   const access = await iv.access();
   // npm start: macOS may list the terminal that started the app instead of Electron.
-  const who = access.dev ? 'your terminal app (e.g. <b>iTerm</b>; quit and reopen it)' : '<b>Jobadabra</b> (+ to add it)';
+  const who = access.dev ? t('pagesAuditPunct.a23') : t('pagesAuditPunct.a24');
   let text = '';
   if (access.microphone === 'denied' || access.microphone === 'restricted') {
     permissionKind = 'microphone';
-    text = `🎙️ <b>Allow the microphone</b>: Privacy &amp; Security → Microphone → ${who}, then restart.`;
+    text = t('pagesShortJobs.m156', {"who": who});
   } else if (await iv.tapAvailable()) {
     // AudioTee: only "System Audio Recording Only" is needed; shown when a recording hears no call audio.
     if (noCallAudio) {
       permissionKind = 'screen';
-      text = `🔊 <b>No call audio yet</b>: Privacy &amp; Security → Screen &amp; System Audio Recording → <b>System Audio Recording Only</b> → ${who}, then restart.`;
+      text = t('pagesShortJobs.m157', {"who": who});
     }
   } else if (access.screen !== 'granted' || noCallAudio) {
     permissionKind = 'screen';
-    text = `🔊 <b>Allow the call's audio</b>: Privacy &amp; Security → Screen &amp; System Audio Recording → <b>top list</b> (not "System Audio Recording Only") → ${who}, then restart.`;
+    text = t('pagesShortJobs.m158', {"who": who});
   }
   $('iv-permission-text').innerHTML = text;
   show($('iv-permission'), !!text);

@@ -22,7 +22,7 @@ export function skeletonRows(n = 3) {
 }
 export function agoText(at) {
   const minutes = Math.max(0, Math.round((Date.now() - Date.parse(at)) / 60000));
-  return minutes < 1 ? t('pagesControlStatus.justNow') : minutes < 60 ? t('pagesDynamicFocusInterviews.m196', {"minutes": minutes}) : `${Math.round(minutes / 60)} h ago`;
+  return minutes < 1 ? t('pagesControlStatus.justNow') : minutes < 60 ? t('pagesDynamicFocusInterviews.m196', {"minutes": minutes}) : t('pagesShortJobs.m152', {"value1": Math.round(minutes / 60)});
 }
 // View supporting moments: the quotes behind each pattern; a name opens that interview in the library.
 export function showMoments(view, showRow, title = '') {
@@ -67,13 +67,13 @@ function drawPractice() {
   const step = practice.current(session);
   if (!step) {
     const {done, skipped, total} = practice.summary(session);
-    body.replaceChildren(el('h3', '', done === total ? t('pagesJobs.allDone') : `${done} of ${total} practised`),
+    body.replaceChildren(el('h3', '', done === total ? t('pagesJobs.allDone') : t('pagesShortJobs.m153', {"done": done, "total": total})),
       el('p', 'muted', skipped ? t('pagesDynamicFocusInterviews.m197', {"skipped": skipped}) : t('pagesInterviews.practiceTicked')));
     foot.replaceChildren(button(t('pagesCommon.close'), 'primary', () => $('practice-dialog').close()));
     return;
   }
   const time = el('div', `iv-practice-clock${session.remaining === 0 ? ' is-over' : ''}`, session.remaining === 0 ? t('pagesJobs.timeUp') : practice.clock(session.remaining));
-  body.replaceChildren(el('p', 'muted small', `Step ${session.index + 1} of ${session.steps.length}`), el('h3', '', step.title),
+  body.replaceChildren(el('p', 'muted small', t('pagesShortJobs.m155', {"value1": session.index + 1, "length": session.steps.length})), el('h3', '', step.title),
     ...(step.detail ? [el('p', 'muted', step.detail)] : []), el('p', '', t('pagesInterviews.answerAloud')), time);
   const go = button(session.running ? t('pagesSession.pause') : session.remaining === practice.STEP_SECONDS ? t('pagesJobs.startClock') : t('pagesJobs.resume'), 'secondary', () => { session = practice.toggle(session); drawPractice(); });
   foot.replaceChildren(go, button(t('pagesCommon.skip'), 'ghost', () => { session = practice.finishStep(session, 'skipped'); drawPractice(); }),

@@ -43,14 +43,14 @@ function nameCell(row) {
 function activeSwitch(row) {
   const label = Object.assign(el('label', 'switch'), {title: row.active ? t('pagesEmployers.activeHelp') : t('pagesEmployers.pausedHelp')});
   const input = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.active});
-  input.setAttribute('aria-label', `${row.name}: active`);
+  input.setAttribute('aria-label', t('pagesShortActivity.m117', {"name": row.name}));
   input.addEventListener('change', async () => {
     input.disabled = true;
     const done = await window.pilot.employerActive(row.name, input.checked);
     input.disabled = false;
     if (!done?.ok) { input.checked = !!row.active; message('emp-message', done?.error || t('pagesDynamicCvData.m135', {"storeName": storeName()}), 'error'); return; }
     row.active = input.checked;
-    message('emp-message', `${row.name} is ${row.active ? t('pagesEmployers.activeNext') : t('pagesEmployers.pausedSkip')}.`, 'ok');
+    message('emp-message', t('pagesShortActivity.m118', {"name": row.name, "value2": row.active ? t('pagesEmployers.activeNext') : t('pagesEmployers.pausedSkip')}), 'ok');
     render();
   });
   label.append(input, el('span', '', ''));
@@ -84,7 +84,7 @@ function rowOf(row) {
   const cell = (...children) => { const td = el('td', ''); td.append(...children); tr.append(td); return td; };
   cell(nameCell(row));
   const kind = el('div', '');
-  kind.append(pill(row.kind || t('pagesEmployers.employer'), row.kind === 'Job board' ? 'violet' : 'neutral'));
+  kind.append(pill(row.kind === 'Job board' ? t('pagesFieldsStatus.jobBoard') : row.kind || t('pagesEmployers.employer'), row.kind === 'Job board' ? 'violet' : 'neutral'));
   if (row.tier === 'Tier 1') kind.append(' ', pill(t('pagesEmployers.tier'), 'signal'));
   cell(kind);
   const feed = el('div', '');

@@ -35,7 +35,7 @@ function drawMore() {
   const locked = reveal.stillLocked(menu);
   more.draw(locked.length);
   $('nav-more-list').replaceChildren(...locked.map(page => {
-    const row = Object.assign(document.createElement('button'), {className: 'nav-locked', type: 'button', title: `${page.label}: opens ${page.when}`});
+    const row = Object.assign(document.createElement('button'), {className: 'nav-locked', type: 'button', title: t('pagesShortReady.m234', {"label": page.label, "when": page.when})});
     const words = Object.assign(document.createElement('span'), {className: 'nav-locked-words'});
     words.append(page.label, Object.assign(document.createElement('small'), {textContent: page.when}));
     row.append(icon(page.icon), words);

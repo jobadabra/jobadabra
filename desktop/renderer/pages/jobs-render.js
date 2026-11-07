@@ -131,7 +131,7 @@ export function renderJobs() {
     if (skills.length > 3) chips.append(tag(`+${skills.length - 3}`, {title: skills.slice(3).join(', ')}));
     // A section of the job's page (kit, rejection review): Notion's page when the store has one, else the job's page here (pages/job-panel.js).
     const openPage = (tab, event) => (job.notion_url ? window.pilot.openNotion(job.notion_url, event?.metaKey) : openJobPanel(job, tab));
-    if (job.tailored && job.code) chips.append(tag('📄 Tailored CV', {title: t('pagesActivity.cvHighlighted'),
+    if (job.tailored && job.code) chips.append(tag(t('pagesAuditPunct.a31'), {title: t('pagesActivity.cvHighlighted'),
       onClick: () => window.pilot.openTailoredCv(job.code)}));
     if (parts.rejection) chips.append(tag(`🔎 ${parts.rejection}`, {title: job.rejection_lesson || t('pagesJobs.whyRejected'),
       onClick: event => openPage('review', event)}));
@@ -209,8 +209,8 @@ export function renderJobs() {
         const started = claudeStarted.has(pageKey(job.url));
         menu.push({icon: 'bot', label: started ? t('pagesJobs.claudeApplying') : t('pagesJobs.applyClaude'), disabled: started,
           title: started ? t('pagesJobsHelp.claudeWindow') :
-            'For pages the extension can\'t fill alone: Claude opens the posting in Chrome, follows Apply to the employer\'s site, creates an account there ' +
-            'if it asks (password saved in your Keychain) and fills every page for you. You solve CAPTCHAs, tick the terms and submit.',
+            t('pagesAuditSecond.a109') +
+            t('pagesAuditPunct.a32'),
           run: async () => {
             const result = await window.pilot.applyWithClaude(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
             if (result.cancelled) return;
@@ -260,7 +260,7 @@ export function renderJobs() {
       // Claude reads the posting, what was sent, the timeline and any interview reviews: presentation, hard skills,
       // soft skills, or a different profile (nothing to improve). Written on the job's Notion page.
       menu.push({icon: 'search', label: job.rejection ? t('pagesJobs.reviewRejection') : t('pagesJobs.whyMe'),
-        title: ai('{AI} reviews this application: presentation, hard skills, soft skills, or not on you (~20 s)'),
+        title: ai(t('pagesAuditPunct.a33')),
         run: () => background(t('pagesFinalLabels.reviewingRejection'), async () => {
           const result = await window.pilot.reviewRejection(job.url);
           toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), result.text, jobPlace(job), result.ok ? 'good' : 'bad');
@@ -269,7 +269,7 @@ export function renderJobs() {
     }
     if (job.code) {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).
-      const tailorNow = () => background('✂️ Tailoring CV…', async () => {
+      const tailorNow = () => background(t('pagesAuditPunct.a34'), async () => {
         const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, job.url);
         if (result.ok) job.tailored = true; else toastMessage(t('pagesJobs.tailorFailed'), result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad');
       });
@@ -324,7 +324,7 @@ export function renderJobs() {
     // A dismissed job can go for good (owner, 7 Oct 2026): its Notion pages to the trash (30 days there), and no search brings it back.
     else menu.push({icon: 'trash', label: t('pagesCommon.delete'), danger: true, title: byStore(t('pagesJobsFinal.deleteNotion'), t('pagesJobsFinal.deleteForever')),
       run: async () => {
-        if (!confirm(`Delete "${job.title}" at ${job.company}?\n\n${byStore(t('pagesJobsFinal.notionTrashHelp'), t('pagesJobsFinal.localDeleteHelp'))}`)) return;
+        if (!confirm(t('pagesShortJobs.m194', {"title": job.title, "company": job.company, "byStore": byStore(t('pagesJobsFinal.notionTrashHelp'), t('pagesJobsFinal.localDeleteHelp'))}))) return;
         const result = await onEveryCopy(job, url => window.pilot.deleteJob(url));
         if (!result?.ok) { toastMessage(t('pagesJobsFinal.notDeleted'), result?.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
         const left = shared.allJobs.filter(other => other !== job);
@@ -367,26 +367,26 @@ export function renderJobs() {
   const plural = count => countedLabel('job', count);
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
   const notLoaded = Math.max(0, (jobsState.lastJobsData?.total ?? 0) - shared.allJobs.length);
-  $('jobs-count').textContent = (statLabel ? `${rows.length} of ${plural(shared.allJobs.length)}` : plural(rows.length)) +
+  $('jobs-count').textContent = (statLabel ? t('pagesShortJobs.m195', {"length": rows.length, "plural": plural(shared.allJobs.length)}) : plural(rows.length)) +
     (notLoaded ? t('pagesDynamicJobs.m238', {"notLoaded": notLoaded}) : '');
   show($('jobs-more'), notLoaded > 0);
-  $('jobs-more').textContent = `Show ${Math.min(notLoaded, MORE)} more`;
+  $('jobs-more').textContent = t('pagesShortJobs.m196', {"value1": Math.min(notLoaded, MORE)});
   show($('jobs-filter'), !!statLabel);
-  $('jobs-filter-text').textContent = statLabel ? `Showing: ${statLabel}` : '';
+  $('jobs-filter-text').textContent = statLabel ? t('pagesShortJobs.m197', {"statLabel": statLabel}) : '';
   show($('jobs-filter-back'), jobsState.statFilter?.from === 'focus');
   // A filter from another page (a Focus funnel step) is none of the boxes: they're greyed out until it's cleared.
   document.querySelectorAll('.stat-cards').forEach(cards => cards.classList.toggle('is-dimmed', !!jobsState.statFilter?.urls));
   document.querySelectorAll('[data-stat]').forEach(card => card.setAttribute('aria-pressed', String(statPressed(card.dataset.stat, jobsState.statFilter, filter))));
   if (jobsState.jobsLoading && !shared.allJobs.length) { show($('jobs-empty'), false); showLoading(); return; }  // still loading, not empty
   show($('jobs-empty'), rows.length === 0 && !document.body.dataset.findCard?.match(/^(empty|searching|failed)$/));   // the Find jobs card on top says it
-  const emptyFor = {open: 'No new matches yet.', saved: 'No saved jobs yet. On any job, <b>⋯ → Save</b> keeps it here for later.',
-    applied: 'No applications yet. Apply from a job, or add one you sent elsewhere with <b>+ Add</b>',
-    dismissed: 'No dismissed jobs.', inbound: 'Nothing found you yet. A recruiter\'s message you log (<b>+ Add</b> → message or update) shows here.'};
-  $('jobs-empty').innerHTML = !shared.allJobs.length ? ($('refresh').disabled ? 'Searching now: the jobs appear here as they are found.'
-      : ("No jobs here yet. Click <button type=\"button\" class=\"link\" data-refresh-jobs><b>" + t('pagesCommon.findJobs') + "</b></button>."))
-    : anyStatus ? 'That job isn\'t in your list: not found by a search yet, or hidden by your language or company filters.'
+  const emptyFor = {open: t('pagesAuditSecond.a111'), saved: t('pagesAuditPunct.a35'),
+    applied: t('pagesAuditPunct.a36'),
+    dismissed: t('pagesAuditSecond.a112'), inbound: t('pagesAuditPunct.a37')};
+  $('jobs-empty').innerHTML = !shared.allJobs.length ? ($('refresh').disabled ? t('pagesAuditSecond.a113')
+      : (t('pagesAuditPunct.a38') + t('pagesCommon.findJobs') + "</b></button>."))
+    : anyStatus ? t('pagesAuditSecond.a114')
     : !text && !jobsState.statFilter && emptyFor[filter] ? emptyFor[filter]
-    : text || jobsState.statFilter || filter !== 'all' ? 'No job matches this filter.' : 'No open jobs right now.';
+    : text || jobsState.statFilter || filter !== 'all' ? t('pagesAuditSecond.a115') : t('pagesAuditSecond.a116');
   // The board shows applications only (rows with a Stage); the stage filters ticked, a counter and the words narrow it.
   const onBoard = boardIds(filters);   // the ticked filters that name a stage; none: every application
   paintViews((counted || shared.allJobs).filter(job => columnOf(job) && (counted || !onBoard.length || inFilters(job, onBoard, now)) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)

@@ -9,7 +9,7 @@ import {install} from '../../tiny-dom.js';
 const root = new URL('../../../', import.meta.url);
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 // These small phrases have the same correct spelling in English and the named language.
-const sameSpelling = new Set(['dynamic-profile-ready.js/fr/page','status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
+const sameSpelling = new Set(['short-settings.js/ro/m325','short-settings.js/fr/m322', 'short-settings.js/fr/m355', 'short-settings.js/fr/m359','short-ready.js/de/m293','short-jobs.js/fr/m141','short-jobs.js/de/m184', 'short-jobs.js/fr/m200','short-activity.js/fr/m4', 'short-activity.js/es/m4','dynamic-profile-ready.js/fr/page','status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
 const parameters = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
 test('page catalogs provide seven real translations with matching interpolation', async () => {
@@ -150,4 +150,16 @@ test('stage display labels preserve stored and unknown stages', async () => {
     setLocale('en');
     assert.equal(stageName('Kit ready'), 'Saved');
   } finally { setLocale('en'); }
+});
+
+test('every explicit page catalog reference resolves in English', () => {
+  setLocale('en');
+  const dir = new URL('renderer/pages/', root);
+  for (const file of fs.readdirSync(dir).filter(file => file.endsWith('.js'))) {
+    if (['core.js', 'shared.js', 'nav.js', 'startup.js', 'language.js'].includes(file)) continue;
+    const source = fs.readFileSync(new URL(file, dir), 'utf8');
+    for (const [, key] of source.matchAll(/['"](pages[A-Z][\w]*\.[\w]+)['"]/g)) {
+      assert.notEqual(t(key), key, `${file}: ${key}`);
+    }
+  }
 });

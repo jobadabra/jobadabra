@@ -176,7 +176,7 @@ const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; 
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
 // Most severe first (suggestions.js SEVERITY): Cover letter, then the old scores, the details, what we learned.
 const rowsNow = () => bySeverity(drawerRows([...rescoreEntries({count: knownOutdated().count, running: rescoring()}), ...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys}));
-const FIELD_HINT = 'We e-mail you a link to confirm it. Nothing is sent until you press it.';   // Why (2 Nov 2026): not Always on's hint "We send the daily matches here": this card promises no matches
+const FIELD_HINT = t('pagesAuditPunct.a22');   // Why (2 Nov 2026): not Always on's hint "We send the daily matches here": this card promises no matches
 let notifyContext = {state: null};
 const notifyDraft = {};
 // Read with the Focus load and again after Notifications saved (`notify-changed`): the website says whether the address is confirmed.

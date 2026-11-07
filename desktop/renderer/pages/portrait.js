@@ -79,7 +79,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const showLetter = view === 'letter' && status.letter?.length > 0;
   const line = el('header', 'portrait-masthead'), cited = new Set(status.sections.flatMap(section => section.statements.flatMap(each => each.evidence)));
   const title = el('div', 'portrait-title');
-  title.append(el('h2', '', t('pagesDetails.yourPortrait')), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
+  title.append(el('h2', '', t('pagesDetails.yourPortrait')), el('span', 'muted small', t('pagesShortReady.m262', {"updated": status.updated, "size": cited.size})));
   line.append(title);
   if (status.state === 'outdated') line.append(note ? pill(t('pagesProfileMore.notUpdated'), 'bad', {title: note}) : pill(t('pagesProfileMore.updatingSoon'), 'info'));   // a note says why it is not (the AI key was refused)
   if (status.letter?.length) line.append(viewSwitch(showLetter ? 'letter' : 'structured', onView));
@@ -90,14 +90,14 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const tabs = new Map();
   for (const id of cited) { const info = status.evidence[id]; if (info) tabs.set(info.tab, (tabs.get(info.tab) || 0) + 1); }
   const built = el('footer', 'portrait-built');
-  built.append(el('span', 'portrait-label', t('pagesProfileMore.builtFrom')), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: `Open ${PROFILE_TABS[tab] || tab}`, onClick: () => open(tab)})));
+  built.append(el('span', 'portrait-label', t('pagesProfileMore.builtFrom')), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: t('pagesShortReady.m263', {"value1": PROFILE_TABS[tab] || tab}), onClick: () => open(tab)})));
   sheet.append(built);
   box.append(sheet);
   return box;
 }
 
-const KEY_REFUSED = 'Your AI key was refused, so the portrait cannot be written. Paste a working key in Settings → Connections → AI, then open this tab again.';
-const REASONS = {no_ai: 'Choose your AI in Settings → Connections → AI, then open this tab again.', failed: 'The writer could not run just now. Open this tab again to retry.'};
+const KEY_REFUSED = t('pagesAuditThird.a143');
+const REASONS = {no_ai: t('pagesAuditThird.a144'), failed: t('pagesAuditThird.a145')};
 let view = 'structured', last = null, loaded = false;
 try { view = localStorage.getItem('portraitView') === 'letter' ? 'letter' : 'structured'; } catch { /* storage blocked: the default view */ }
 function draw(status, note = '') {

@@ -31,8 +31,8 @@ function finish() {
 
 function progressLine({found, total, building, waitingPage, template, moving}) {
   if (moving) return t('pagesExtraLabels.movingStrategy');
-  if (building) return 'Connected ✓ Building your Jobadabra workspace in Notion (databases, columns, pages)… about a minute.';
-  if (waitingPage) return 'Waiting for Notion to share an empty page for your new Jobadabra workspace with the app…';
+  if (building) return t('pagesAuditSecond.a137');
+  if (waitingPage) return t('pagesAuditPunct.a42');
   return template ? t('pagesDynamicProfileReady.m280', {"found": found, "total": total})
     : t('pagesDynamicProfileReady.m281', {"found": found, "total": total});
 }
@@ -43,7 +43,7 @@ function setMode(box) {
   box.mode = connectMode({store: shared.state?.store, connected: !!shared.state?.store?.notionConnected || notionConnected()});
   box.sent = box.mode === 'move';   // a move-only prompt is no connect to report
   const why = shared.state?.notionReasons?.[box.reason];
-  const words = box.mode !== 'move' ? reasonText(box.reason) : why && box.reason !== 'move' ? `Needed ${why}.` : '';
+  const words = box.mode !== 'move' ? reasonText(box.reason) : why && box.reason !== 'move' ? t('pagesShortReady.m245', {"why": why}) : '';
   $('notion-connect-title').textContent = box.mode === 'move' ? t('pagesStrategy.moveNotion') : GATE_TITLE;   // about Notion
   $('notion-connect-reason').textContent = words;
   show($('notion-connect-reason'), !!words);
@@ -114,11 +114,11 @@ async function connect() {
   if (box.mode === 'connect-move' && moveAfterConnect(result)) { await move(box); return; }
   // Where the data lives now (lib/store-handlers.js startOnNotionIfEmpty): nothing on this Mac yet → Notion from now on; data here → it stays
   // until "Move my data to Notion" (Settings → Data & backup).
-  const where = result.startedOnNotion ? ' Your jobs and applications live in Notion from now on.'
-    : moveAfterConnect(result) ? ' Your data is still on this Mac: Settings → Data & backup → Move my data to Notion.' : '';
+  const where = result.startedOnNotion ? t('pagesAuditSecond.a138')
+    : moveAfterConnect(result) ? t('pagesAuditSecond.a139') : '';
   message('notion-connect-message', result.kept
     ? t('pagesDynamicProfileReady.m282', {"kept": result.kept, "where": where})
-    : `Connected ✓${where}`, 'ok');
+    : t('pagesShortReady.m246', {"where": where}), 'ok');
   setTimeout(() => { $('notion-connect-dialog').close(); box.then?.(); }, result.kept || where ? 4000 : 900);
 }
 
@@ -194,7 +194,7 @@ export function init() {
   });
   // A move this prompt runs: its progress here (data.js shows the same in Settings → Your data).
   window.pilot.onStoreMoveProgress(({entity, done, total} = {}) => {
-    if (current?.moving && $('notion-connect-dialog').open) message('notion-connect-message', `Moving ${MOVE_WORDS[entity] || entity}… ${done} of ${total}`, 'waiting');
+    if (current?.moving && $('notion-connect-dialog').open) message('notion-connect-message', t('pagesShortReady.m251', {"value1": MOVE_WORDS[entity] || entity, "done": done, "total": total}), 'waiting');
   });
   // An action that runs off this Mac (Always on, Telegram buttons while it is off) while the data is here (preload.cjs): the move, then the action again.
   window.addEventListener('pilot-needs-move', () => {

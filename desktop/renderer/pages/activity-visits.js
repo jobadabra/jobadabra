@@ -115,11 +115,11 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
   // The reading works, said first; how many reach Jobs beside it (owner). How many reach Jobs, said plainly (owner, 7 Oct 2026: "Read 5 jobs, but
   // my Jobs count never grows"): only those with your role words and places. Postings only your browser could open (lib/visits.js readPostings):
   // how many were read, said under the sites' line; scored with them above.
-  const head = cardHead(t('pagesExtraCommon.sitesOnlyYou'), onlyPostings ? t('pagesDynamicActivity.m47', {"read": card.postings.read, "plural": plural(card.postings.asked, 'job')}) : card.fits === null ? `Read ${card.read} of ${plural(card.total, 'site')} · ${plural(card.jobs, 'job')} (${card.fresh} new)`
-    : t('pagesDynamicActivity.m48', {"plural": plural(card.jobs, 'job'), "fits": card.fits}), {subtitles: [card.fits === null ? 'Your next jobs check filters and scores them like any other.'
-    : `From ${card.read} of ${plural(card.total, 'site')}. ` + (card.fits && card.listed !== null && card.listed !== undefined
+  const head = cardHead(t('pagesExtraCommon.sitesOnlyYou'), onlyPostings ? t('pagesDynamicActivity.m47', {"read": card.postings.read, "plural": plural(card.postings.asked, 'job')}) : card.fits === null ? t('pagesShortActivity.m55', {"read": card.read, "plural": plural(card.total, 'site'), "plural3": plural(card.jobs, 'job'), "fresh": card.fresh})
+    : t('pagesDynamicActivity.m48', {"plural": plural(card.jobs, 'job'), "fits": card.fits}), {subtitles: [card.fits === null ? t('pagesAuditFirst.a23')
+    : t('pagesShortActivity.m56', {"read": card.read, "plural": plural(card.total, 'site')}) + (card.fits && card.listed !== null && card.listed !== undefined
       ? t('pagesDynamicActivity.m49', {"plural": plural(card.listed, 'job'), "value2": card.listed < card.fits ? t('pagesDynamicActivity.othersNotAdded') : ''})
-      : card.fits ? (card.fits === 1 ? 'The matching one is being scored now (about a minute, first in line): if it fits your profile, it joins your Jobs list.' : 'The matching ones are being scored now (about a minute, first in line): those that fit your profile join your Jobs list.')
+      : card.fits ? (card.fits === 1 ? t('pagesAuditFirst.a24') : t('pagesAuditFirst.a25'))
       : t('pagesActivityMore.noneMatch')),
     card.postings && !onlyPostings && t('pagesDynamicActivity.m50', {"read": card.postings.read, "asked": card.postings.asked})]});
   // Two or more stopped sites: one Claude session reads them all, in turn (owner, 7 Oct 2026: "a 'Read the failed sites with Claude' button").

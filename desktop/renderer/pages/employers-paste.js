@@ -31,7 +31,7 @@ function dialog() {
   cancel.addEventListener('click', shut);
   go.addEventListener('click', async () => {
     go.disabled = true;
-    const result = await window.pilot.employersFromPage(field.value).catch(() => ({ok: false, error: 'That did not work. Try again in a moment.'}));
+    const result = await window.pilot.employersFromPage(field.value).catch(() => ({ok: false, error: t('pagesAuditFirst.a66')}));
     go.disabled = false;
     if (!result?.ok) { message('emp-paste-message', result?.error || t('pagesCommon.didNotWork'), 'error'); return; }
     field.value = '';

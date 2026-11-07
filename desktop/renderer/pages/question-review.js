@@ -28,10 +28,10 @@ export {shortTitle};
 const DRAFTS = 'questionDrafts';
 // Each drawer's words (owner's sketch, 28 Oct 2026).
 export const DRAWERS = {
-  details: {title: t('pagesProfileMore.fillDetails'), lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
-    done: t('pagesExtraLabels.detailsComplete'), doneText: 'A detail shows here when a form asks for one you have not given.'},
-  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
-    done: t('pagesExtraLabels.nothingCheck'), doneText: 'A question shows here when a form asks something your answers do not cover.'},
+  details: {title: t('pagesProfileMore.fillDetails'), lead: t('pagesAuditThird.a146'), skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
+    done: t('pagesExtraLabels.detailsComplete'), doneText: t('pagesAuditThird.a147')},
+  learned: {title: t('pagesCommon.learned'), lead: t('pagesAuditThird.a148'), skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
+    done: t('pagesExtraLabels.nothingCheck'), doneText: t('pagesAuditThird.a149')},
 };
 const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
 const drafts = new Map();
@@ -86,7 +86,7 @@ function dismissAction(q, mine) {
   };
   if (q.dismissed) return [make('qr-bring-back', t('pagesExtraLabels.bringQuestion'), 'undo', t('pagesProfileMore.askedAgain'), false)];
   const pick = mine && ['which', 'conflict', 'where'].includes(mine.kind);
-  return pick || state.aside ? [] : [make('qr-dismiss', t('pagesExtraLabels.dismissQuestion'), 'close', 'Never asked again, not counted. Bring it back from the list of questions.', true)];
+  return pick || state.aside ? [] : [make('qr-dismiss', t('pagesExtraLabels.dismissQuestion'), 'close', t('pagesAuditThird.a150'), true)];
 }
 
 function question(q) {
@@ -177,8 +177,8 @@ async function dismiss(q, on) {
   draw();
   const result = await window.pilot.dismissQuestion(q.key, q.question, on).catch(error => ({ok: false, error: error.message}));
   state.busy = false;
-  if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
-  state.saved = on ? '✓ Dismissed: it will not be asked or counted. Bring it back from the list of questions.' : '✓ Brought back: it is asked again.';
+  if (!result?.ok) { state.error = result?.error || t('pagesAuditThird.a151'); draw(); return; }
+  state.saved = on ? t('pagesAuditThird.a152') : t('pagesAuditThird.a153');
   if (on) { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
   else { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   draw();
@@ -195,7 +195,7 @@ async function answer(q, value) {
   draw();
   const result = await window.pilot.answerQuestion(q.key, value, markFor(q.format), ...(q.also?.length ? [{also: alsoKeys(q)}] : [])).catch(error => ({ok: false, error: error.message}));
   state.busy = false;
-  if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
+  if (!result?.ok) { state.error = result?.error || t('pagesAuditThird.a151'); draw(); return; }
   drafts.delete(q.key);
   keepDrafts();
   state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
@@ -223,7 +223,7 @@ export function draw() {
       const back = Object.assign(el('button', 'secondary with-icon qr-dismiss'), {type: 'button', title: t('pagesProfileMore.askedAgain')});
       back.append(icon('undo'), el('span', '', t('pagesProfileMore.bringBack')));
       back.addEventListener('click', () => dismiss(gone, false));
-      body.append(el('p', 'muted small qr-dismissed-row', `Dismissed: ${shortTitle(gone.question, 80)}`), back);
+      body.append(el('p', 'muted small qr-dismissed-row', t('pagesFinalCopy.dismissed', {question: shortTitle(gone.question, 80)})), back);
     }
     if (state.saved) body.append(el('p', 'muted small qr-saved', state.saved));
     const foot = el('footer', 'jd-foot qr-foot', button(t('pagesCommon.close'), closeQuestionReview, 'secondary'));

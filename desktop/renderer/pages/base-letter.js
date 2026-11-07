@@ -27,7 +27,7 @@ let openAi = () => {};                   // Settings → Connections → AI, pas
 // Why (28 Oct 2026, owner's shot): the card said "Approved · Today 19:40" while a new draft was being written over it.
 export function statePill(status, {drafting: busy = false} = {}) {
   if (busy) return pill(t('pagesCommon.writing'), 'info');
-  if (status.state === 'approved') return pill(`Approved${status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}`, 'good');
+  if (status.state === 'approved') return pill(t('pagesShortActivity.m74', {"value1": status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}), 'good');
   if (status.state === 'draft') return pill(t('pagesLettersData.draftApprove'), 'warn');
   return pill(t('pagesLettersData.notCreated'));
 }
@@ -108,7 +108,7 @@ async function act(button, working, run, {drafts = false} = {}) {
       paint();
       const first = !editor.value.trim();
       stop = aiWriting(editor, {title: first ? t('pagesLettersData.firstDraft') : t('pagesLettersData.newDraft'),
-        note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
+        note: first ? t('pagesAuditFirst.a32') : t('pagesAuditFirst.a33')});
     } else message('letter-message', working);
     result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
   } catch (error) { result = {ok: false, error: error.message}; }
@@ -150,7 +150,7 @@ export function initLetter({openAiSettings} = {}) {
     reveal: () => $('letter-text').focus()});
   $('letter-approve').addEventListener('click', async () => {
     const result = await act($('letter-approve'), t('pagesExtraCommon.makingPdf'), () => window.pilot.coverLetterApprove($('letter-text').value));
-    const words = 'Approved ✓ Used when a job has no usable tailored letter.';
+    const words = t('pagesAuditFirst.a34');
     message('letter-message', result.ok ? words : result.error, result.ok ? 'ok' : 'error');
   });
   $('letter-pdf').addEventListener('click', () => window.pilot.coverLetterOpen());

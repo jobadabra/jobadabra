@@ -114,11 +114,11 @@ export function render() {
   $('cal-today').disabled = month.year === now.getFullYear() && month.month === now.getMonth();
   $('cal-title').textContent = monthName(month);
   const weeks = cal.monthGrid(month.year, month.month, list, today);
-  const head = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => el('span', 'cal-dow', day));
+  const head = [t('pagesAuditFirst.a37'), t('pagesAuditFirst.a38'), t('pagesAuditFirst.a39'), t('pagesAuditFirst.a40'), t('pagesAuditFirst.a41'), t('pagesAuditFirst.a42'), t('pagesAuditFirst.a43')].map(day => el('span', 'cal-dow', day));
   const cells = weeks.flat().map((cell, i) => {
     const node = el('div', `cal-cell${cell.inMonth ? '' : ' out'}${cell.today ? ' today' : ''}${i % 7 > 4 ? ' weekend' : ''}`);
     node.append(el('span', 'cal-num', cell.num), ...cell.meetings.slice(0, 3).map(chip));
-    if (cell.meetings.length > 3) node.append(el('span', 'muted small', `+${cell.meetings.length - 3} more`));
+    if (cell.meetings.length > 3) node.append(el('span', 'muted small', t('pagesShortActivity.m79', {"value1": cell.meetings.length - 3})));
     return node;
   });
   $('cal-grid').replaceChildren(...head, ...cells);
@@ -129,7 +129,7 @@ export function render() {
   $('cal-past-count').textContent = past.length || '';
   $('cal-past-count').hidden = !past.length;
   $('cal-past-foot').hidden = past.length <= 20;
-  $('cal-past-shown').textContent = `Showing ${Math.min(pastShown, past.length)} of ${past.length}`;
+  $('cal-past-shown').textContent = t('pagesShortActivity.m80', {"value1": Math.min(pastShown, past.length), "length": past.length});
   $('cal-past-more').hidden = pastShown >= past.length;
 }
 
@@ -166,7 +166,7 @@ export async function loadCalendar() {
     if (jobsOk && recordingsOk) {
       phase = 'ready'; failure = ''; savedAt = '';
       const still = new Set(cal.meetings(calJobs, recordings, {zone: ZONE}).map(m => m.id)); for (const id of [...gone.keys()]) if (!still.has(id)) gone.delete(id);
-    } else if (jobsOk === null || recordingsOk === null) { phase = 'failed'; failure = error || 'Try again in a moment; the reason is in the app log.'; }
+    } else if (jobsOk === null || recordingsOk === null) { phase = 'failed'; failure = error || t('pagesAuditFirst.a44'); }
     else phase = 'updating';
     openOnNext();
     render();

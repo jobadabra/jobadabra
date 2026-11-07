@@ -41,8 +41,8 @@ export function renderTalking(narrowed = false) {
     const top = el('div', 'focus-top');
     top.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), pill(stageLabel(job.stage) || t('pagesJobsFinal.recruiterLead'), 'info', {dot: true}));
     const meta = el('div', 'focus-meta muted small');
-    const who = [job.company, job.via && job.via !== job.company ? `via ${job.via}` : ''].filter(Boolean).join(' ');
-    [who, mixed ? (isInbound(job) ? t('pagesControlStatus.inbound') : t('pagesControlStatus.outbound')) : '', nextStepOf(job) ? `Next: ${nextStepOf(job)}` : ''].filter(Boolean).forEach((part, i) => {
+    const who = [job.company, job.via && job.via !== job.company ? t('pagesShortJobs.m200', {"via": job.via}) : ''].filter(Boolean).join(' ');
+    [who, mixed ? (isInbound(job) ? t('pagesControlStatus.inbound') : t('pagesControlStatus.outbound')) : '', nextStepOf(job) ? t('pagesShortJobs.m201', {"nextStepOf": nextStepOf(job)}) : ''].filter(Boolean).forEach((part, i) => {
       if (i) meta.append(el('span', 'sep', '·'));
       meta.append(el('span', '', part));
     });

@@ -51,8 +51,8 @@ export function showDraftIntro() {
   show($('draft-loading'), false); show($('draft-view'), false); show($('draft-error'), false); show($('draft-stale'), false);
   $('draft-title').textContent = t('pagesCommon.yourStrategy'); show($('draft-subtitle'), false); show($('draft-cost'), false);
   $('goals-cost-text').textContent = ai(shared.state.settings.setupDone
-    ? 'Rebuilding reads your CV and your note with {AI:main}: once. Nothing in your strategy changes until you review the result and pick what to apply.'
-    : 'Building reads your CV and your note with {AI:main}: once. Nothing is saved until you review the result.');
+    ? t('pagesAuditPunct.a68')
+    : t('pagesAuditPunct.a69'));
 }
 export function renderDraft() {
   placeNote('review');
@@ -133,7 +133,7 @@ async function openRebuildReview() {
     const picked = result.groups.filter(group => boxes[group.id].checked);
     $('replace-go').disabled = !picked.length;
     const uses = picked.some(group => group.cost === 'Uses AI');
-    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? t('pagesMisc.oldScores') : t('pagesMisc.noRescoring')}.` : t('pagesProfile.nothingSelected');
+    $('rebuild-total').textContent = picked.length ? t('pagesShortSettings.m348', {"length": picked.length, "length2": result.groups.length, "value3": uses ? t('pagesMisc.oldScores') : t('pagesMisc.noRescoring')}) : t('pagesProfile.nothingSelected');
   };
   $('rebuild-groups').replaceChildren(...result.groups.map(group => {
     const box = el('label', 'review-group inline-label');
@@ -142,9 +142,9 @@ async function openRebuildReview() {
     boxes[group.id] = check;
     const text = el('span', 'review-text');
     const head = el('span', 'review-head');
-    head.append(el('b', '', group.title), pill(group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
+    head.append(el('b', '', group.title), pill(group.cost === 'Uses AI' ? t('pagesFinalLabels.usesAi') : group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
     const list = el('ul', 'review-changes');
-    list.append(...group.changes.slice(0, 8).map(change => el('li', '', change)), ...(group.changes.length > 8 ? [el('li', 'muted', `+ ${group.changes.length - 8} more`)] : []));
+    list.append(...group.changes.slice(0, 8).map(change => el('li', '', change)), ...(group.changes.length > 8 ? [el('li', 'muted', t('pagesShortSettings.m349', {"value1": group.changes.length - 8}))] : []));
     text.append(head, list, el('span', 'muted small', group.impact));
     if (group.linked) text.append(el('span', 'small review-linked', t('pagesMisc.locationsTogether')));
     box.append(check, text);

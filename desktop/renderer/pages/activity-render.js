@@ -110,14 +110,14 @@ export function renderActivity(fresh) {
   const lastMail = runs.find(run => kindOf(run) === 'mail');
   $('activity').dataset.state = barState(running, lastSearch || lastMail || last);
   const liveLines = running ? shared.logLines : null;
-  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? t('pagesExtraCommon.notChecked') : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
+  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? t('pagesExtraCommon.notChecked') : t('pagesShortActivity.m35', {"when": clockTime(lastMail.endedAt || lastMail.startedAt), "outcome": outcome(lastMail)})}`
     : gmailConnected() === false ? t('pagesExtraCommon.gmailNotChecked')   // #541: no "due now" for a check that cannot run
     : nextMailAt ? t('pagesDynamicActivity.m22', {"nextWords": nextWords(nextMailAt)}) : '';
   if (running) {
     const kind = KIND[kindOf(running)];
     const next = (data.queued || []).length;
     $('activity-title').textContent = kindOf(running) === 'search' ? t('pagesDynamicActivity.m23', {"value1": running.where === 'github' ? t('pagesDynamicActivity.onGithub') : '', "value2": next ? t('pagesDynamicActivity.queued', {next}) : ''})
-      : `${kind.icon} ${kind.name} running (${WHO[running.trigger] || running.trigger}${running.where === 'github' ? ', on GitHub' : ''})${next ? ` · ${next} queued` : ''}`;
+      : t('pagesShortActivity.m36', {"icon": kind.icon, "name": kind.name, "value3": WHO[running.trigger] || running.trigger, "value4": running.where === 'github' ? t('pagesShortActivity.onGithub') : '', "value5": next ? t('pagesShortActivity.m37', {"next": next}) : ''});
     $('activity-step').textContent = stepWords(running.step) || t('pagesCommon.starting');
     barLabel();
     $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString())].filter(Boolean).join(' · ');
@@ -244,7 +244,7 @@ export function renderActivity(fresh) {
         setTimeout(() => read(tries + 1), 5000);
       } else {
         readingPages.delete(pageId);
-        runDetails.set(pageId, empty ? (hasLog ? {} : {log: [byStore('This run left no log on its Notion page.', 'This run left no log.')]}) : detail);
+        runDetails.set(pageId, empty ? (hasLog ? {} : {log: [byStore(t('pagesAuditFirst.a16'), t('pagesAuditFirst.a17'))]}) : detail);
       }
       renderActivity(lastActivity);
     }).catch(error => { readTrace.push(`${pageId} read failed: ${error?.message || error}`); console.error('activity: a run page was not shown', pageId, error); readingPages.delete(pageId); renderActivity(lastActivity); });
@@ -282,16 +282,16 @@ export function renderActivity(fresh) {
   const said = run && !run.live && !hasCard && !boxSaysIt ? capital(String(outcome(run)).replace(new RegExp(`^${kind?.name || ''}:\\s*`, 'i'), '')) : '';
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
-  const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => `AI ${dollars(usd)}`));
+  const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => t('pagesShortActivity.m42', {"dollars": dollars(usd)})));
   const queued = queueWords(run, data, kindName => KIND[kindName]?.name || t('pagesExtraCommon.currentTask'));
   show($('activity-unqueue'), !!run?.waiting && !!run.id);
   $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';
   // The run's result in one line goes in its card's top when that top is drawn (subLine(false)): the header says it only when no top does.
   const subLine = withSaid => (!run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
     run.note,
-    run.live ? (run.startedAt ? `Started ${hhmm(Date.parse(run.startedAt))}` : '') : withSaid && said,   // the step is the card's top (one fact, once)
-    !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
-    !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
+    run.live ? (run.startedAt ? t('pagesShortActivity.m43', {"hhmm": hhmm(Date.parse(run.startedAt))}) : '') : withSaid && said,   // the step is the card's top (one fact, once)
+    !run.live && t('pagesShortActivity.m44', {"hhmm": hhmm(Date.parse(run.endedAt || run.startedAt))}),
+    !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : t('pagesShortActivity.m45', {"value1": Math.round(seconds / 60)})),
     cost,
     run.where === 'github' ? t('pagesExtraCommon.inCloud') : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
     !run.live && run.telegram && t('pagesExtraCommon.sentTelegram'),
@@ -396,8 +396,8 @@ export function renderActivity(fresh) {
   show($('log-copy'), !noLog);   // nothing to copy on "No log available"
   const log = $('log');
   const text = readable.join('\n') || (githubLive
-    ? (run.url ? 'This run is on GitHub. Its log is copied here when it finishes.' : t('pagesExtraCommon.startingGithub'))
-    : (run?.live ? 'Nothing to show yet.' : 'No log for this run.'));
+    ? (run.url ? t('pagesAuditFirst.a18') : t('pagesExtraCommon.startingGithub'))
+    : (run?.live ? t('pagesAuditFirst.a19') : t('pagesAuditFirst.a20')));
   if (log.textContent !== text) {
     const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
     log.replaceChildren(...linked(text));

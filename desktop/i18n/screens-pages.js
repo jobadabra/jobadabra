@@ -43,6 +43,15 @@ import {messages as dynamicJobs} from './catalogs/pages/dynamic-jobs.js';
 import {messages as dynamicProfileReady} from './catalogs/pages/dynamic-profile-ready.js';
 import {messages as dynamicSessionReports} from './catalogs/pages/dynamic-session-reports.js';
 import {messages as dynamicStrategy} from './catalogs/pages/dynamic-strategy.js';
+import {messages as auditfirst} from './catalogs/pages/audit-first.js';
+import {messages as auditsecond} from './catalogs/pages/audit-second.js';
+import {messages as auditthird} from './catalogs/pages/audit-third.js';
+import {messages as shortActivity} from './catalogs/pages/short-activity.js';
+import {messages as shortJobs} from './catalogs/pages/short-jobs.js';
+import {messages as shortReady} from './catalogs/pages/short-ready.js';
+import {messages as shortSettings} from './catalogs/pages/short-settings.js';
+import {messages as auditpunct} from './catalogs/pages/audit-punct.js';
+import {messages as finalCopy} from './catalogs/pages/final-copy.js';
 import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
@@ -89,3 +98,12 @@ for (const [locale, messages] of Object.entries(dynamicJobs)) registerMessages(l
 for (const [locale, messages] of Object.entries(dynamicProfileReady)) registerMessages(locale, 'pagesDynamicProfileReady', messages);
 for (const [locale, messages] of Object.entries(dynamicSessionReports)) registerMessages(locale, 'pagesDynamicSessionReports', messages);
 for (const [locale, messages] of Object.entries(dynamicStrategy)) registerMessages(locale, 'pagesDynamicStrategy', messages);
+for (const [locale, messages] of Object.entries(auditfirst)) registerMessages(locale, 'pagesAuditFirst', messages);
+for (const [locale, messages] of Object.entries(auditsecond)) registerMessages(locale, 'pagesAuditSecond', messages);
+for (const [locale, messages] of Object.entries(auditthird)) registerMessages(locale, 'pagesAuditThird', messages);
+for (const [locale, messages] of Object.entries(shortActivity)) registerMessages(locale, 'pagesShortActivity', messages);
+for (const [locale, messages] of Object.entries(shortJobs)) registerMessages(locale, 'pagesShortJobs', messages);
+for (const [locale, messages] of Object.entries(shortReady)) registerMessages(locale, 'pagesShortReady', messages);
+for (const [locale, messages] of Object.entries(shortSettings)) registerMessages(locale, 'pagesShortSettings', messages);
+for (const [locale, messages] of Object.entries(auditpunct)) registerMessages(locale, 'pagesAuditPunct', messages);
+for (const [locale, messages] of Object.entries(finalCopy)) registerMessages(locale, 'pagesFinalCopy', messages);

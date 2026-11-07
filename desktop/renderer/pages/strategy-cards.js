@@ -91,7 +91,7 @@ export function strategyBar(deps) {
   if (bar) return bar;
   redraw = deps.redraw;
   bar = pageSaveBar({host: $('strategy-bar-host'), tabs: {'strategy-yours': t('pagesCommon.yourStrategy')}, tabButton: key => document.querySelector(`.strategy-tabs [data-tab="${key}"]`),
-    openTab: showTab, area: t('pagesExtraLabels.strategy'), saveLabel: t('pagesFinalLabels.saveStrategy'), words: 'Applies to future searches.', savedWords: 'Saved ✓ Refresh your jobs to search with it.'});
+    openTab: showTab, area: t('pagesExtraLabels.strategy'), saveLabel: t('pagesFinalLabels.saveStrategy'), words: t('pagesAuditThird.a204'), savedWords: t('pagesAuditThird.a205')});
   const reloadSoon = () => { clearTimeout(reloading); reloading = setTimeout(deps.reload, 50); };
   for (const [key, card] of Object.entries(CARDS)) {
     if (card.own) continue;
@@ -110,12 +110,12 @@ export function strategyBar(deps) {
         const lists = edits();
         if (Object.keys(lists).length) {
           const result = await sink.editTargets(lists).catch(error => ({ok: false, error: error.message}));
-          if (!result?.ok) return {ok: false, error: result?.error || 'try again'};
+          if (!result?.ok) return {ok: false, error: result?.error || t('pagesAuditFirst.a67')};
           forget(names);
         }
         for (const goal of (card.goals || []).filter(each => each in drafts().goalEdits)) {
           const result = await sink.editGoal(goal, drafts().goalEdits[goal]).catch(error => ({ok: false, error: error.message}));
-          if (!result?.ok) return {ok: false, field: GOAL_LABELS[goal], error: result?.error || 'try again'};
+          if (!result?.ok) return {ok: false, field: GOAL_LABELS[goal], error: result?.error || t('pagesAuditFirst.a67')};
           delete drafts().goalEdits[goal];
         }
         if (isOpen(key)) strategyState.editing = '';

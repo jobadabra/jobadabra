@@ -36,14 +36,14 @@ export async function loadStrategy() {
     // The saved copy draws the page at once, but not its alerts about what changes: "Your Profile is empty" and "N scores kept" came back
     // for a few seconds after every refresh, from a copy older than the rebuild that cleared them (7 Oct 2026). The fresh read shows them.
     renderStrategy({...saved.result, profile_empty: false, previous: 0, outdated: null});
-    $('strategy-synced').textContent = `Saved ${savedAgo(saved.at)} · updating…`;
+    $('strategy-synced').textContent = t('pagesShortSettings.m368', {"savedAgo": savedAgo(saved.at)});
   } else if (!strategyState.strategyShown) strategySkeleton();
   const data = await window.pilot.strategyData().catch(error => ({ok: false, error: error.message}));
   if (!data.ok) { $('strategy-view-loading')?.remove(); message('strategy-load', data.error, 'error'); return; }
   message('strategy-load', '');
   $('strategy-view-loading')?.remove();
   renderStrategy(data);
-  $('strategy-synced').textContent = `Synced ${displayDate(new Date(), {hour: '2-digit', minute: '2-digit'})}`;
+  $('strategy-synced').textContent = t('pagesShortSettings.m369', {"when": displayDate(new Date(), {hour: '2-digit', minute: '2-digit'})});
 }
 // First load: every card in its final shape, greyed (the same rows, icons and chips), and a pill in the header.
 function strategySkeleton() {

@@ -88,7 +88,7 @@ function mailCardRow({company, role = '', lines = [], tag = null, summary = '', 
   // "Email details" closes every card, the same everywhere; a card the run kept without its email (an update from this Mac's
   // log, a calendar event, a reminder) says so instead of leaving the fold out.
   card.append(fold(`details:${subjectKey(details || company)}:${subjectKey(role)}`, t('pagesStatus.emailDetails'),
-    el('p', 'mail-fold-text', details ? `Subject: ${details}` : noDetails || t('pagesActivity.noEmail')), 'mail-fold mail-email-details'));
+    el('p', 'mail-fold-text', details ? t('pagesShortActivity.m20', {"details": details}) : noDetails || t('pagesActivity.noEmail')), 'mail-fold mail-email-details'));
   return card;
 }
 
@@ -113,7 +113,7 @@ function mailSections(box, report, pending = [], answered = null) {
   }
   if (meeting && !meetingShown) {   // the day-before reminder: the interview was recorded by an earlier check
     cards.push(mailCardRow({company: meeting.company, role: meeting.title, lines: [t('pagesExtraCommon.alreadyRecorded')], tag: pill(t('pagesStatus.reminder'), 'neutral'), panel: meetingPanel(),
-      noDetails: 'A reminder from your calendar: no new email. The interview was recorded by an earlier check.'}));
+      noDetails: t('pagesAuditFirst.a11')}));
   }
   if (!cards.length && !(found > 0)) return 0;
   if (!cards.length) { box.append(el('p', 'muted mail-nochange', mailNoCards(report))); return 0; }
@@ -148,7 +148,7 @@ function emailCard(result, pending, answered, meetingPanel) {
     tag, summary: interviewHere ? '' : said, changes: update && !update.question ? update.changes : changeOf(email?.changes),
     panel: review ? assessmentPanel(review) : meetingPanel ? meetingPanel() : interviewHere ? interviewHere()
       : asked ? questionPanel(asked, subjectKey(email.subject), email.subject, {noun, company: result.company}) : null,
-    details: email?.subject && result.company ? email.subject : '', noDetails: email?.subject ? 'The subject is the title above.' : ''});
+    details: email?.subject && result.company ? email.subject : '', noDetails: email?.subject ? t('pagesAuditFirst.a12') : ''});
   return {card, waiting: asked && !asked.answered ? 1 : 0};
 }
 // What the email itself is, while its job is the question: the engine's question line says it ("<mark> Interview · Blockdaemon —
@@ -199,7 +199,7 @@ function updateCard(update, pending, answered, meetingPanel) {
     summary: meetingPanel || /^Interview/.test(update.summary) ? '' : update.when || '', changes: update.changes,
     panel: meetingPanel ? meetingPanel() : /^Interview/.test(update.summary)
       ? interviewPanel({interview: {when: update.when || '', company, title: role.join(' — '), where: '', summary: '', people: []}, topics: [], nextSteps: [], consent: '', url: ''}) : null,
-    noDetails: 'This run recorded the update without listing its email (a run on this Mac, or a calendar event).'}), waiting: 0};
+    noDetails: t('pagesAuditFirst.a13')}), waiting: 0};
 }
 
 // The AI's reading of a rejection: its verdict and one line on what the role wanted, marked as a guess; the role-vs-you
@@ -209,7 +209,7 @@ function assessmentPanel(review) {
   const words = el('div', 'mail-ai-words');
   const top = el('div', 'mail-ai-top');
   // The AI's own rating of how sure it is that this is the reason (src/ai/rejection.py: "low" when the evidence is thin).
-  top.append(el('b', '', VERDICT_TITLE[review.verdict] || review.verdict), pill(`${review.confidence.replace(/^./, c => c.toUpperCase())} confidence`, 'warn',
+  top.append(el('b', '', VERDICT_TITLE[review.verdict] || review.verdict), pill(t('pagesShortActivity.m22', {"value1": review.confidence.replace(/^./, c => c.toUpperCase())}), 'warn',
     {title: t('pagesActivity.confidence')}));
   words.append(top, el('p', '', review.focus || review.summary));
   // "AI assessment ⌄" (the mockup's label) opens the comparison under the verdict: what the role wanted, what you bring.
@@ -242,7 +242,7 @@ function interviewPanel(report) {
   words.append(el('b', '', interview.when ? interview.when.replace(/\s+(\d{1,2}:\d{2})$/, ' · $1') : [interview.title, interview.company].filter(Boolean).join(' · ')));
   const line = [interview.where, interview.summary].filter(Boolean).join(' · ');
   if (line) words.append(el('p', '', line));
-  if (interview.people.length) words.append(el('p', '', `Participants: ${interview.people.join(' · ')}`));
+  if (interview.people.length) words.append(el('p', '', t('pagesShortActivity.m24', {"value1": interview.people.join(' · ')})));
   when.append(tile, words);
   // The call to action: the interview's prep kit, built or opened from here as Focus does (focus.js prepAction).
   const side = el('div', 'mail-meeting-side');
@@ -299,7 +299,7 @@ function jobPrep(company, title) {
   if (kitBuilding.has(id)) return {label: t('pagesStatus.building'), busy: true, run: () => {}};
   // A ready kit opens where it is: its Notion page, else the job's page here on its Prep tab (never offered as a new build, $0.04).
   if (kitReady.has(id)) return {label: t('pagesStatus.openPrep'), run: event => (found.notion_url ? window.pilot.openNotion(found.notion_url, event?.metaKey) : (openView('jobs'), openJobPanel(found, 'prep')))};
-  return {label: t('pagesCommon.prepareInterview'), title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
+  return {label: t('pagesCommon.prepareInterview'), title: ai(t('pagesAuditPunct.a8')), run: () => {
     openPrep({page_id: id, company: found.company || found.via, job: found.title, notion_url: found.notion_url, url: found.url, badge: ''});
     kitBuilding.add(id);
     document.dispatchEvent(new Event('focus-rendered'));
@@ -326,7 +326,7 @@ function questionState(email, pending, answered) {
   if (done) return {answered: true, job: done.job, role: done.job.split(/\s+—\s+/).slice(1).join(' — ') || done.job};
   return answered ? {answered: true, job: '', unknown: true} : {};   // Focus read, no record of it: answered before the app kept the job
 }
-const QUESTION = 'Which job is this email about?';
+const QUESTION = t('pagesReadyReports.whichJob');
 // The job you chose, in full ("Alpenglow Logistics — Platform Engineer"), opening its Notion page, or its posting without one.
 function jobLink(job, tagName = 'p') {
   const [company, ...title] = job.split(/\s+—\s+/);

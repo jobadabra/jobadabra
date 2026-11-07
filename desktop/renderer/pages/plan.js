@@ -60,7 +60,7 @@ function render(view) {
   }
   const row = el('div', 'inline', '');
   for (const top of view.topups) {
-    const button = el('button', 'secondary', `Add ${top.price}`);
+    const button = el('button', 'secondary', t('pagesShortReady.m259', {"price": top.price}));
     button.title = t('pagesDynamicProfileReady.m289', {"price": top.price, "value2": top.adds || t('pagesPlans.aiCredit')});
     button.addEventListener('click', () => buy(top.kind));
     row.append(button);

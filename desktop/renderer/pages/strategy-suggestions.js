@@ -26,7 +26,7 @@ import {RUN, answerEntry, answered, homeSuggestions} from './focus-suggestions.j
 import {bone, loadFocus} from './focus.js';
 import {moveOldAside} from '../ideas-aside.js';
 // Where else the change shows: Notion's ⚙️ Search settings page, only while Notion holds the data (on this Mac they are the app's own).
-const alsoInSettings = () => byStore(' (also in your Search settings in Notion)', '');
+const alsoInSettings = () => byStore(t('pagesAuditThird.a206'), '');
 
 // ---------- Suggestions: one row per kind (owner mockup, 7 Oct 2026: five banners pushed your own settings below the fold) ----------
 // The engine's coverage verdict (src/coverage.py, read after the strategy: a Python start) and the roles from your Profile (src/ai/role_ideas.py)
@@ -104,9 +104,9 @@ export function drawImprove() {
   const {top} = improveWords(briefs[kinds[0]]);
   const words = el('div', 'notice-words'), title = el('b'), count = el('span');
   Object.assign(count.dataset, {countOf: SUGGESTIONS, countOne: 'suggestion'});
-  title.append(count, ' to improve your search');
+  title.append(count, t('pagesAuditThird.a207'));
   words.append(title);
-  if (top) box.title = `Top: ${top}`;   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
+  if (top) box.title = t('pagesShortSettings.m350', {"top": top});   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
   const go = el('button', 'secondary item-action', t('pagesStrategyMore.reviewSuggestions'));
   go.type = 'button';
   go.addEventListener('click', () => showTab('strategy-suggestions'));
@@ -217,8 +217,8 @@ const rowKeys = () => [...Object.values(strategyState.shownVerdict?.keys || {}),
 const answeredKeys = () => rowKeys().filter(answered).join('\n');
 let answeredShown = '';
 const repaint = () => (strategyState.shownVerdict ? paintCoverage(strategyState.shownVerdict) : shownIdeas && paintIdeas(shownIdeas));
-const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', 'Hidden for 14 days, then shown again if it still holds. Your settings do not change.'],
-  ['close', 'Not true', 'Never shown again for this suggestion; a new one can still come.']].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
+const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', t('pagesAuditThird.a208')],
+  ['close', 'Not true', t('pagesAuditThird.a209')]].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
   run: () => { adviceEvent('dismissed', advice, 'strategy'); answerEntry({key, title, aside}, state); repaint(); }})) : []);
 // One option done, from Strategy or from Focus's one press (where): a change to your search (a role word, a place, a filter removed) is saved to
 // Search settings, said, and both pages read again; a site opens in your Chrome. action: {kind, value, note?} (coverage-actions.js runAction).
@@ -260,7 +260,7 @@ export async function changeSearch(action, button, where = 'strategy') {
 const press = action => button => changeSearch(action, button);
 
 export const refreshAction = {label: t('pagesCommon.findJobs'), run: () => startSearch()};
-const LIST_WORDS = {roles: 'roles', places: 'places', languages: 'excluded languages'};
+const LIST_WORDS = {roles: 'roles', places: 'places', languages: t('pagesAuditThird.a210')};
 // A row is drawn while its key is not answered (a verdict kept from before its keys draws every row, without the answers, until the fresh one).
 const unanswered = (card, key) => (card && !(key && answered(key)) ? card : null);
 const paintCoverage = verdict => {
@@ -308,7 +308,7 @@ const paintCoverage = verdict => {
     const TINTS = ['info', 'teal', 'violet', 'good'];
     const company = (site, i) => {
       const line = el('div', 'site-row'), words = el('div', 'site-words'), name = el('div', 'site-name'), links = el('div', 'site-links');
-      name.append(el('b', '', site.name), ...(site.pages.length > 1 ? [pill(`${site.pages.length} destinations`)] : []));
+      name.append(el('b', '', site.name), ...(site.pages.length > 1 ? [pill(t('pagesShortSettings.m355', {"length": site.pages.length}))] : []));
       links.append(...site.pages.map(page => {
         const link = el('button', 'link', hostOf(page.url) || page.url);
         Object.assign(link, {type: 'button', title: page.title});
@@ -333,21 +333,21 @@ const paintCoverage = verdict => {
       list.push(all);
     }
     rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: t('pagesCommon.browseManually'), count: sites.length,
-      summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
+      summary: t('pagesAuditThird.a211'), text: '', body: list,
       brief: {title: t('pagesDynamicStrategy.m412', {"length": sites.length, count: sites.length}), text: t('pagesStrategyMore.useExtension'), cta: t('pagesStrategyMore.viewSites')},
       menu: answerItems('visit', keys.visits, t('pagesCommon.browseManually'))});
   } else rows.visits = null;
   // Employers where people like you got interviews (shared pool): an option shows that employer's jobs in the Jobs list.
   const forYou = unanswered(employersCard(verdict), keys.foryou);
   rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: t('pagesStrategyMore.employersLikeYou'),
-    summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), text: forYou.text,
+    summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? t('pagesShortSettings.m357', {"value1": forYou.chips.length - 3}) : ''), text: forYou.text,
     options: forYou.chips.map(chip => ({label: chip.label, button: t('pagesFinalLabels.seeJobs'), preview: chip.title, run: () => {
       adviceEvent('taken', 'employer', 'strategy');
       openView('jobs');
       const box = $('filter-text');
       if (box) { box.value = chip.company; box.dispatchEvent(new Event('input', {bubbles: true})); }
     }})),
-    brief: {title: t('pagesStrategyMore.employersLikeYou'), text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: t('pagesStrategyMore.seeEmployers')},
+    brief: {title: t('pagesStrategyMore.employersLikeYou'), text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? t('pagesShortSettings.m358', {"value1": forYou.chips.length - 3}) : ''), cta: t('pagesStrategyMore.seeEmployers')},
     menu: answerItems('employer', keys.foryou, t('pagesStrategyMore.employersLikeYou'))});
   if (shownIdeas) paintIdeas(shownIdeas);   // drawn before this check answered: its "your role words catch" line comes now
   drawSuggestions();
@@ -404,12 +404,12 @@ function paintIdeas(ideas) {
   const {open, empty} = byOpenings(card.chips);
   const top = open[0];
   rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: t('pagesStrategyMore.relatedRoles'), count: card.chips.length,
-    note: open.length ? '' : 'No current openings found in your selected locations.',
+    note: open.length ? '' : t('pagesAuditThird.a212'),
     summary: card.narrow || (top ? t('pagesDynamicStrategy.m416', {"value1": plain(top.label).replace(/ · \d+$/, ''), "count": top.count, "value4": open.length > 1 ? t('pagesDynamicStrategy.andMore', {count: open.length - 1}) : ''})
       : t('pagesDynamicStrategy.m417', {"length": empty.length, count: empty.length})),
     text: t('pagesStrategyMore.roleFuture'), options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
     hiddenLabel: t('pagesFinalLabels.noOpeningsRoles'),
-    brief: {title: t('pagesStrategyMore.relatedRoles'), text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? t('pagesDynamicStrategy.m418', {"length": open.length}) : ', no current openings in your places'}`, cta: t('pagesStrategyMore.reviewRoles')},
+    brief: {title: t('pagesStrategyMore.relatedRoles'), text: t('pagesShortSettings.m359', {"length": card.chips.length, "value3": open.length ? t('pagesDynamicStrategy.m418', {"length": open.length}) : t('pagesAuditThird.a213'), count: card.chips.length}), cta: t('pagesStrategyMore.reviewRoles')},
     menu: answerItems('ideas', ideasKey, t('pagesStrategyMore.relatedRoles'), card.chips.map(chip => chip.term))});
   drawSuggestions();
 }

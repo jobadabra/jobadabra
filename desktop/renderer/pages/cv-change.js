@@ -44,7 +44,7 @@ export async function openCvChange() {
     $('cv-impact').textContent = t('pagesDynamicCvData.m106', {"scored": data.scored}) +
       `${data.counts?.kits ? t('pagesDynamicCvData.m107', {"kits": data.counts.kits}) : ''}.`;
   }).catch(() => {});
-  $('cv-dialog-name').textContent = change.name || 'your CV';
+  $('cv-dialog-name').textContent = change.name || t('pagesFinalCopy.yourCv');
   $('cv-dialog-sub').textContent = change.previous === change.name ? t('pagesLettersData.newSameName') : t('pagesDynamicCvData.m108', {"value1": change.previous ? t('pagesDynamicCvData.replaces', {name: change.previous}) : ''});
   show($('cv-verdict'), false);
   show($('cv-profile-text'), true);
@@ -104,7 +104,7 @@ export async function init() {
     const button = $('cv-compare');
     button.disabled = true;
     button.classList.add('busy');
-    message('cv-review-message', ai('{AI} is comparing your CVs with your Profile… (about 30 s)'), 'waiting');
+    message('cv-review-message', ai(t('pagesAuditPunct.a15')), 'waiting');
     const result = await window.pilot.cvReview();
     button.disabled = false;
     button.classList.remove('busy');
@@ -118,7 +118,7 @@ export async function init() {
       setVerdict('info', t('pagesDynamicCvData.m113', {"length": cvSuggestions.length, count: cvSuggestions.length}), t('pagesDynamicCvData.m114', {"summary": result.summary}));
       setPill('cv-profile-pill', t('pagesDynamicCvData.m115', {"length": cvSuggestions.length}), 'warn');
     } else {
-      setVerdict('good', t('pagesFieldsStatus.noProfileEdits'), 'Your new CV matches the previous one in substance.\nRoles, dates, titles, skills, achievements and contact details are unchanged.');
+      setVerdict('good', t('pagesFieldsStatus.noProfileEdits'), t('pagesAuditPunct.a16'));
       setPill('cv-profile-pill', t('pagesFieldsStatus.unchanged'), 'neutral');
     }
     const label = {update: [t('pagesCommon.update'), 'info'], add: [t('pagesCommon.add'), 'good'], remove: [t('pagesCommon.remove'), 'bad']};
@@ -132,7 +132,7 @@ export async function init() {
       body.append(pill(label[s.kind][0], label[s.kind][1]), ' ');
       if (s.kind !== 'add') body.append(el('s', 'muted', s.block.text), s.kind === 'update' ? ' → ' : '');
       if (s.kind !== 'remove') body.append(el('b', '', s.text));
-      if (s.kind === 'add') body.append(el('span', 'muted', ` (after “${s.block.text.slice(0, 60)}”)`));
+      if (s.kind === 'add') body.append(el('span', 'muted', t('pagesShortActivity.m101', {"value1": s.block.text.slice(0, 60)})));
       body.append(el('div', 'muted small', s.why));
       row.append(box, body);
       return row;
@@ -149,14 +149,14 @@ export async function init() {
     if (!result.ok) return message('cv-review-message', result.error, 'error');
     message('cv-review-message', result.failed.length ? t('pagesDynamicCvData.m116', {"applied": result.applied, "value2": result.failed.join('; ')})
       : t('pagesDynamicCvData.m117', {"applied": result.applied, "byStore": byStore(t('pagesDynamicCvData.inNotion'), ''), count: result.applied}), result.failed.length ? 'error' : 'ok');
-    if (!result.failed.length) { $('cv-suggestions').replaceChildren(); show($('cv-apply-row'), false); setPill('cv-profile-pill', '✓ Updated', 'good'); setVerdict('good', t('pagesFieldsStatus.profileUpdated'), byStore('Your selected changes are saved in Notion.', 'Your selected changes are saved.')); }
+    if (!result.failed.length) { $('cv-suggestions').replaceChildren(); show($('cv-apply-row'), false); setPill('cv-profile-pill', '✓ Updated', 'good'); setVerdict('good', t('pagesFieldsStatus.profileUpdated'), byStore(t('pagesAuditFirst.a50'), t('pagesAuditFirst.a51'))); }
   });
   $('cv-base-read').addEventListener('click', async () => {
     const button = $('cv-base-read');
     button.disabled = true;
     button.textContent = t('pagesProfile.readingCv');
     const result = await window.pilot.importCv();
-    button.textContent = result.ok ? `✓ Done${costText(result.usd, usd => ` (${dollars(usd)})`)}` : t('pagesCommon.retry');
+    button.textContent = result.ok ? t('pagesShortActivity.m102', {"costText": costText(result.usd, usd => ` (${dollars(usd)})`)}) : t('pagesCommon.retry');
     button.disabled = !!result.ok;
     if (result.ok) setPill('cv-base-pill', '✓ Updated', 'good');
     loadCvSetting();

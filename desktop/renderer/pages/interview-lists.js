@@ -32,7 +32,7 @@ export const jobUrlOf = (select, input) => (select.value === PASTE ? (/^https?:\
 
 export function renderDrafts(drafts, env) {
   show($('iv-drafts-block'), drafts.length > 0);
-  $('iv-unsaved').textContent = `${drafts.length} unsaved`;
+  $('iv-unsaved').textContent = t('pagesShortJobs.m147', {"length": drafts.length});
   // Status: words for the meta line, and a pill.
   const STATUS = {new: t('pagesControlStatus.notTranscribed'), recording: t('pagesControlStatus.recordingDots'), transcribing: t('pagesControlStatus.transcribingDots'), stopped: t('pagesControlStatus.stoppedTranscribe'),
     failed: t('pagesCommon.failed'), ready: t('pagesControlStatus.transcriptReady')};
@@ -43,7 +43,7 @@ export function renderDrafts(drafts, env) {
     const text = el('div', 'iv-draft-text');
     const when = displayDate(new Date(draft.createdAt), {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
     const meta = el('div', 'muted small');
-    const parts = [when, draft.seconds ? `${Math.max(1, Math.round(draft.seconds / 60))} min` : '', STATUS[draft.status] || draft.status,
+    const parts = [when, draft.seconds ? t('pagesShortJobs.m149', {"value1": Math.max(1, Math.round(draft.seconds / 60))}) : '', STATUS[draft.status] || draft.status,
       draft.pageUrl ? t('pagesControlStatus.transcriptNotion') : t('pagesControlStatus.storedLocal')].filter(Boolean);   // about Notion
     meta.textContent = parts.join('  ·  ');
     text.append(el('b', '', draft.title), meta);
@@ -61,7 +61,7 @@ export function renderDrafts(drafts, env) {
     menu.push({label: osText(t('pagesFieldsStatus.showFinder')), run: () => iv.recordings(), title: t('pagesInterviews.recordingsLocal')});
     if (!busy) {
       menu.push('-', {label: draft.pageId ? byStore(t('pagesInterviews.deleteBoth'), t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
-        if (!confirm(draft.pageId ? `Delete "${draft.title}"${byStore(' on this Mac and in Notion', '')}?` : t('pagesDynamicFocusInterviews.m195', {"title": draft.title}))) return;
+        if (!confirm(draft.pageId ? t('pagesShortJobs.m150', {"title": draft.title, "byStore": byStore(t('pagesAuditSecond.a92'), '')}) : t('pagesDynamicFocusInterviews.m195', {"title": draft.title}))) return;
         await iv.discard(draft.id);
         if (env.openId() === draft.id) env.closeEditor();
         renderDrafts(await iv.drafts(), env);

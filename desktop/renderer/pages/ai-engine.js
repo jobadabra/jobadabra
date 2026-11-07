@@ -53,7 +53,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     free.classList.add('is-single');
     // The engine cards of the open family (API key / its own CLI), only once a family is open.
     const cards = family ? choiceCards(FAMILY_CARDS[family].map(id => ({id, icon: ICONS[id], title: TEXT[id].title, text: context === 'settings' ? TEXT[id].short : TEXT[id].text,
-      note: id === CLI_OF[family] && status && ['app-only', 'nothing', 'elsewhere', 'broken'].includes(status.state) ? `Needs ${FAMILY[family].cli}` : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
+      note: id === CLI_OF[family] && status && ['app-only', 'nothing', 'elsewhere', 'broken'].includes(status.state) ? t('pagesShortActivity.m63', {"cli": FAMILY[family].cli}) : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
     // Settings: the key box under the chooser shows only for the API key card of the open family (owner, 16 Oct 2026: hide technical details until asked).
     if (context === 'settings') for (const foot of document.querySelectorAll('#setting-ai [data-family]')) foot.hidden = selection({picked, family}).keyBox !== API_OF[foot.dataset.family] || foot.dataset.family !== family;
     const head = el('div', 'engine-head');
@@ -72,7 +72,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   };
   // One readiness state, drawn from lib/plan-readiness.js (the status carries it): the words and the one next step are renderer/ai-plan-guide.js.
   const stateOf = found => found.state || (found.installed ? (found.authenticated ? 'ready' : 'sign-in') : 'nothing');
-  const RUNNING = {install: f => ({title: `Installing ${CLI[f].short}…`, text: t('pagesActivityMore.minuteDone')}),
+  const RUNNING = {install: f => ({title: t('pagesShortActivity.m64', {"short": CLI[f].short}), text: t('pagesActivityMore.minuteDone')}),
     'install-git': () => ({title: t('pagesActivityMore.installGit'), text: t('pagesActivityMore.windowsAllow')}),
     'sign-in': () => ({title: t('pagesActivityMore.waitingSignIn'), text: t('pagesActivityMore.finishSignIn')})};
   const planBlock = found => {
@@ -101,7 +101,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     render(); onChange(picked);
     if (outcome.check && family === which) check();   // it appeared (or Git was added): one real check decides signed in or not
   }
-  const REFUSED = {'not-the-cli': file => t('pagesDynamicSetup.m56', {"file": file, "file2": file}), 'did-not-start': () => 'That file did not start. Choose another one.'};
+  const REFUSED = {'not-the-cli': file => t('pagesDynamicSetup.m56', {"file": file, "file2": file}), 'did-not-start': () => t('pagesAuditFirst.a28')};
   async function act(id) {
     const which = family;
     problem = ''; copied = false;

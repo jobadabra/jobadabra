@@ -17,7 +17,7 @@ export function progressChart(days, target) {
   const bars = days.map((day, i) => {
     const date = new Date(`${day.day}T12:00:00`);
     const column = el('div', `focus-chart-col${i === days.length - 1 ? ' is-today' : ''}${day.applied >= target ? ' is-met' : ''}`);
-    column.title = `${displayDate(date, {weekday: 'short', day: 'numeric', month: 'short'})}: ${day.applied} application${day.applied === 1 ? '' : 's'}`;
+    column.title = t('pagesShortJobs.m131', {"when": displayDate(date, {weekday: 'short', day: 'numeric', month: 'short'}), "applied": day.applied, count: day.applied});
     const bar = el('span', 'focus-chart-bar');
     bar.style.height = `${Math.round(100 * day.applied / top)}%`;
     const slot = el('div', 'focus-chart-slot');
@@ -27,7 +27,7 @@ export function progressChart(days, target) {
   });
   const goal = el('div', 'focus-chart-goal');
   goal.style.bottom = `calc(14px + (100% - 14px) * ${target / top})`;  // above the day letters (14 px)
-  goal.title = `Target: ${target} a day`;
+  goal.title = t('pagesShortJobs.m133', {"target": target});
   const plot = el('div', 'focus-chart-plot');
   plot.append(goal, ...bars);
   chart.replaceChildren(plot);

@@ -141,12 +141,12 @@ async function loadFocusOnce() {
   $('focus-of').textContent = t('pagesDynamicFocusInterviews.m176', {"target": setting.target});
   if (!focusShown) {  // the last good Focus at once (lib/view-cache.js), else the skeleton; the fresh one follows
     const saved = await window.pilot.cached('focus');
-    if (saved?.result?.focus) { renderFocus(saved.result.focus); focusStatus(`Saved ${savedAgo(saved.at)} · updating…`, true); }
+    if (saved?.result?.focus) { renderFocus(saved.result.focus); focusStatus(t('pagesShortJobs.m139', {"savedAgo": savedAgo(saved.at)}), true); }
     else focusSkeleton();
   }
   const result = await window.pilot.focus();
   if (!result.ok) {
-    focusStatus(result.error || byStore('Could not read your Notion.', 'Could not read your data.'));
+    focusStatus(result.error || byStore(t('pagesAuditSecond.a83'), t('pagesAuditSecond.a84')));
     if (!focusShown) $('focus-list').replaceChildren();
     return;
   }
@@ -257,7 +257,7 @@ async function loadHistory() {
   list.replaceChildren(el('li', 'muted small', byStore(t('pagesFocusReports.loadingNotion'), t('pagesCommon.loading'))));
   const {ok, items = [], error} = await window.pilot.focusHistory().catch(failure => ({ok: false, error: failure.message}));
   if (!historyShown) return;
-  if (!ok) { list.replaceChildren(el('li', 'message error', t('pagesDynamicFocusInterviews.m179', {"value1": error || 'try again'}))); return; }
+  if (!ok) { list.replaceChildren(el('li', 'message error', t('pagesDynamicFocusInterviews.m179', {"value1": error || t('pagesAuditFirst.a67')}))); return; }
   if (!items.length) { list.replaceChildren(el('li', 'muted', t('pagesFocusReports.noResolved'))); return; }
   const rows = [];
   let day = '';
@@ -322,7 +322,7 @@ function renderFocus(data) {
   const all = hideSettled(data.items), items = upNext(all);
   window.dispatchEvent(new Event('focus-updated'));
   focusShown = true;
-  $('focus-count-note').replaceChildren(pill(`${items.length} action${items.length === 1 ? '' : 's'}`, 'neutral'));
+  $('focus-count-note').replaceChildren(pill(t('pagesShortJobs.m141', {"length": items.length, count: items.length}), 'neutral'));
   $('focus-list').replaceChildren(...items.map(focusCard));
   show($('focus-empty'), !items.length && !historyShown);
   renderFocusSuggestions({entries: data.suggestions, hidden: data.suggestions_hidden, items: all, card: focusCard});
@@ -408,7 +408,7 @@ export async function init() {
     if (document.querySelector('.view[data-view="focus"]')?.classList.contains('focus-started')) openView('focus', {fromHistory: true});
   });
   setInterval(() => {  // "Updated 3 min ago" stays true while the page is open
-    if (focusUpdatedAt && !focusLoading) focusStatus(`Updated ${savedAgo(new Date(focusUpdatedAt).toISOString())}`);
+    if (focusUpdatedAt && !focusLoading) focusStatus(t('pagesShortJobs.m142', {"savedAgo": savedAgo(new Date(focusUpdatedAt).toISOString())}));
   }, 60000);
   $('focus-funnel-notion').addEventListener('click', event => {
     event.preventDefault();
@@ -436,6 +436,6 @@ export async function init() {
   window.addEventListener('pilot-outdated', () => {
     if (shared.outdatedShown) return;
     shared.outdatedShown = true;
-    toastMessage({title: t('pagesFocusReports.updated'), body: 'Restart it to finish the update: some buttons won\'t work until then.', action: {label: t('pagesFocusReports.restart'), run: relaunch}, target: NO_PLACE.app, tone: 'warn'});
+    toastMessage({title: t('pagesFocusReports.updated'), body: t('pagesAuditSecond.a86'), action: {label: t('pagesFocusReports.restart'), run: relaunch}, target: NO_PLACE.app, tone: 'warn'});
   });
 }

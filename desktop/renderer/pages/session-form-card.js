@@ -34,7 +34,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
   show($('ss-before-knock'), !submitted && knockouts.length > 0);
   if (knockouts.length) {
     $('ss-before-knock-title').textContent = t('pagesDynamicSessionReports.m336', {"length": knockouts.length, count: knockouts.length});
-    $('ss-before-knock-list').textContent = `Answer ${knockouts.length === 1 ? 'it' : 'them'} yourself, truthfully: ${knockouts.slice(0, 3).map(label => label.replace(/\s*\*\s*$/, '')).join(' · ')}${knockouts.length > 3 ? ' …' : ''}`;
+    $('ss-before-knock-list').textContent = t('pagesShortSettings.m303', {"value2": knockouts.slice(0, 3).map(label => label.replace(/\s*\*\s*$/, '')).join(' · '), "value3": knockouts.length > 3 ? ' …' : '', count: knockouts.length});
   }
   const job = shared.allJobs.find(candidate => fullKey(candidate.url) === fullKey(item.url));
   show($('ss-before-cv'), false);
@@ -102,7 +102,7 @@ export function showFormCard(item, state) {
   $('ss-form-pill').replaceChildren(account ? pill(account.pill.text, account.pill.tone, {dot: true, title: t('pagesSessionStates.accountStep')}) : isSubmitted(item) ? pill(t('pagesSession.submitted'), 'good', {dot: true})
     : state.ready ? pill(t('pagesSessionStates.readySubmit'), 'good', {dot: true})
     : state.needs && !state.left ? pill(t('pagesDynamicSessionReports.m337', {"value1": state.needs === '1' ? t('pagesSessionStates.seeForm') : state.needs}), 'warn', {title: t('pagesSessionStates.onlyYou')})   // the AI's veto (a consent link, a picklist the count cannot see)
-    : pill(`${state.left} remaining`, 'warn', {title: t('pagesDynamicSessionReports.m338', {"value1": state.total - state.left, "total": state.total})}));
+    : pill(t('pagesShortSettings.m304', {"left": state.left}), 'warn', {title: t('pagesDynamicSessionReports.m338', {"value1": state.total - state.left, "total": state.total})}));
   const count = $('ss-form-count');
   count.replaceChildren(el('b', '', String(done)), el('span', '', account ? account.count : t('pagesDynamicSessionReports.m339', {"total": state.total})));
   $('ss-form-bar').style.width = `${Math.round(100 * done / state.total)}%`;
@@ -114,7 +114,7 @@ export function showFormCard(item, state) {
   const start = filled.find(field => field.at)?.at || 0;
   $('ss-form-more').hidden = !filled.length && !left.length;
   const leftCount = Math.max(left.length, state.left);
-  const leftText = leftCount ? `${leftCount} ${item.status === 'running' ? 'to go' : 'left'}` : '';
+  const leftText = leftCount ? `${leftCount} ${item.status === 'running' ? t('pagesAuditThird.a178') : 'left'}` : '';
   $('ss-form-summary').textContent = filled.length ? t('pagesDynamicSessionReports.m340', {"length": filled.length, "value3": leftText ? t('pagesDynamicSessionReports.andFields', {fields: leftText}) : '', count: filled.length})
     : t('pagesDynamicSessionReports.m341', {"leftText": leftText});
   // Who filled it: you (after the fill was over) or the fill (Claude, the extension); the time only when the app saw it.
@@ -127,7 +127,7 @@ export function showFormCard(item, state) {
     return li;
   };
   $('ss-form-fields').replaceChildren(
-    ...left.map((label, index) => { const li = row('is-left', '', '○', label, account && index === 0 && state.needs ? 'for you' : ''); li.title = reasonFor(state, label) || ''; return li; }),   // why the fill left it (reason-words.js)
+    ...left.map((label, index) => { const li = row('is-left', '', '○', label, account && index === 0 && state.needs ? t('pagesAuditThird.a179') : ''); li.title = reasonFor(state, label) || ''; return li; }),   // why the fill left it (reason-words.js)
     ...filled.map(field => row(field.by === 'you' ? 'is-filled is-yours' : 'is-filled', field.at ? clock(Math.max(0, field.at - start)) : '', '✓', field.label,
       field.by === 'you' ? 'you' : '')));
 }

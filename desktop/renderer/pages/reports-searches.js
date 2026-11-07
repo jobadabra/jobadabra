@@ -26,7 +26,7 @@ function widget(card) {
   box.dataset.card = card.id;
   if (card.kind === 'fold') {
     const fold = el('details', 'rs-fold'), summary = el('summary', '');
-    summary.append(el('b', '', card.title), el('span', 'muted small', `${card.lines.length} line${card.lines.length === 1 ? '' : 's'}`));
+    summary.append(el('b', '', card.title), el('span', 'muted small', t('pagesShortReady.m289', {"length": card.lines.length, count: card.lines.length})));
     const list = el('ul', 'insight-evidence');
     list.append(...card.lines.map(text => el('li', card.mono ? 'mono' : '', text)));
     fold.append(summary, list);
@@ -40,7 +40,7 @@ function widget(card) {
       const row = el('div', 'rs-step'), bar = el('span', 'bar'), fill = el('span', '');
       fill.style.width = `${step.share}%`;
       bar.append(fill);
-      row.append(liveDot('done'), el('b', '', step.label), el('span', 'muted small', `at ${step.at}`), bar, el('span', 'rs-took', step.took));
+      row.append(liveDot('done'), el('b', '', step.label), el('span', 'muted small', t('pagesShortReady.m290', {"at": step.at})), bar, el('span', 'rs-took', step.took));
       rows.append(row);
     }
     box.append(rows);
@@ -60,7 +60,7 @@ function widget(card) {
     const rows = el('div', 'rs-board-rows');
     for (const row of card.rows) {
       const line = el('div', 'rs-board');
-      line.append(tile('globe', 'info'), el('b', '', row.name), chip(`${row.jobs} jobs`), chip(`${row.relevant} relevant`, {tone: row.relevant === '0' ? '' : 'good'}));
+      line.append(tile('globe', 'info'), el('b', '', row.name), chip(t('pagesShortReady.m292', {"jobs": row.jobs})), chip(t('pagesShortReady.m293', {"relevant": row.relevant}), {tone: row.relevant === '0' ? '' : 'good'}));
       rows.append(line);
     }
     box.append(rows);
@@ -92,7 +92,7 @@ function listView() {
     head.append(el('b', '', run.name), pill(label(run.outcome), run.tone, {dot: true}));
     words.append(head, el('span', 'muted small', `${runWhen(run.at)} · ${metaOf(run)}`));
     const open = Object.assign(el('button', 'secondary', t('pagesFocusReports.fullReport')), {type: 'button', title: t('pagesFocusReports.openReport')});
-    const number = el('div', 'rs-run-number'); number.append(el('b', '', run.added === null ? '–' : String(run.added)), el('span', 'muted small', 'added'));
+    const number = el('div', 'rs-run-number'); number.append(el('b', '', run.added === null ? '–' : String(run.added)), el('span', 'muted small', t('pagesProfile.added')));
     card.append(tile(run.outcome === 'Failed' ? 'alert' : 'search', run.tone === 'neutral' ? 'neutral' : run.tone), words, number, open);
     card.dataset.id = run.id;
     card.addEventListener('click', () => openRun(run.id));

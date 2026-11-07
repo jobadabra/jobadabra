@@ -72,15 +72,15 @@ export function withFewJobsHelp(runId) {
   // card that is on screen, not in one already replaced.
   const showAsking = () => {
     const line = el('p', 'run-card-asking');
-    line.append(el('span', 'spinner small'), ai('{AI} is reading this search\'s counts…'));
+    line.append(el('span', 'spinner small'), ai(t('pagesAuditPunct.a5')));
     answer.replaceChildren(line);
   };
   const explain = el('button', 'link with-icon', icon('sparkle'));
   explain.append(t('pagesActivity.understandAi'));
-  explain.title = ai('{AI} reads the counts of this search (never your CV) and says why it found few jobs, and what to do first');
+  explain.title = ai(t('pagesAuditPunct.a6'));
   keepButton('explain', explain);
   const settle = result => {
-    if (!result?.ok) { answer.textContent = plainError(result?.error || ai('{AI} could not answer now.')); return; }
+    if (!result?.ok) { answer.textContent = plainError(result?.error || ai(t('pagesAuditPunct.a7'))); return; }
     showAnswer(result);
   };
   if (kept.explained) showAnswer(kept.explained);
@@ -124,7 +124,7 @@ export function withFewJobsHelp(runId) {
     if (groups?.visits?.length) {
       // One row, handed to Find jobs using your browser (owner, 7 Oct 2026: "pass them to Find jobs using your browser"): the extension reads them all in Chrome, a few at a time.
       const names = groups.siteNames;
-      const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
+      const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? t('pagesShortActivity.m18', {"value1": names.length - 2}) : '');
       adviceEvent('shown', 'visit', 'few-jobs');
       // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js).
       const read = wand(Object.assign(el('button', 'secondary', t('pagesActivity.readChrome')), {type: 'button', title: t('pagesActivity.readTwo')}));

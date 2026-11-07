@@ -26,9 +26,9 @@ export function paint(card, state, names, act) {
   if (night) {
     const ready = jobs.filter(readyToSubmit).length, needs = jobs.filter(job => ['partial', 'wall'].includes(job.state)).length;
     if (night.night) summary.append(el('span', 'muted', t('pagesDynamicProfileReady.m308', {"night": night.night})));
-    summary.append(pill(`${jobs.length} form${jobs.length === 1 ? '' : 's'}`, 'neutral'));
-    if (ready) summary.append(pill(`${ready} ready`, 'good'));
-    if (needs) summary.append(pill(`${needs} need${needs === 1 ? 's' : ''} you`, 'warn'));
+    summary.append(pill(t('pagesShortReady.m269', {"length": jobs.length, count: jobs.length}), 'neutral'));
+    if (ready) summary.append(pill(t('pagesShortReady.m270', {"ready": ready}), 'good'));
+    if (needs) summary.append(pill(t('pagesShortReady.m271', {"needs": needs, count: needs}), 'warn'));
     const spent = costText(night.costUsd, usd => t('pagesDynamicProfileReady.m309', {"dollars": dollars(usd)}));
     if (spent) summary.append(pill(spent, 'neutral'));
     if (night.aiStopped) summary.append(Object.assign(pill(t('pagesProfileMore.aiStopped'), 'warn'), {title: t('pagesProfileMore.aiNightStopped')}));
@@ -36,9 +36,9 @@ export function paint(card, state, names, act) {
   // The forms the night works on now: how many fill and wait, and one Stop for all of them (owner, 18 Oct 2026: Stop for the whole night).
   const lives = jobs.map(job => liveOf(job, night?.state, state.pending?.has(job.job), night?.why));
   const badged = badge => lives.filter(live => live?.badge === badge).length, stuck = badged('stuck'), waiting = badged('waiting'), filling = lives.filter(live => live && !['waiting', 'stuck'].includes(live.badge)).length;
-  if (filling) summary.append(pill(`${filling} filling`, 'info', {dot: true}));
-  if (stuck) summary.append(pill(`${stuck} stuck`, 'warn'));
-  if (waiting) summary.append(pill(`${waiting} waiting`, 'neutral'));
+  if (filling) summary.append(pill(t('pagesShortReady.m272', {"filling": filling}), 'info', {dot: true}));
+  if (stuck) summary.append(pill(t('pagesShortReady.m273', {"stuck": stuck}), 'warn'));
+  if (waiting) summary.append(pill(t('pagesShortReady.m274', {"waiting": waiting}), 'neutral'));
   if (filling + waiting + stuck) summary.append(act.stopAll());
   body.append(summary);
   // The card's own bar only for a whole night's Fill now (and its first seconds, before the rows show it); each row has its own bar.
@@ -65,10 +65,10 @@ export function paint(card, state, names, act) {
   if (jobs.length) body.append(rows);
   const next = el('div', 'ready-summary');
   next.append(el('span', 'muted', t('pagesReadyReports.tonight')));
-  const count = pill(`${tonight.length} ready`, tonight.length ? 'good' : 'warn');
+  const count = pill(t('pagesShortReady.m275', {"length": tonight.length}), tonight.length ? 'good' : 'warn');
   count.title = tonight.length ? t('pagesDynamicProfileReady.m310', {"minFit": state.settings.minFit, "perNight": state.settings.perNight}) : t('pagesReadyReports.nothingReady');
   next.append(count);
-  if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${displayDate(new Date(state.sent.at), {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
+  if (state.sent) next.append(Object.assign(pill(t('pagesShortReady.m276', {"count": state.sent.count, "when": displayDate(new Date(state.sent.at), {hour: '2-digit', minute: '2-digit', hour12: false})}), 'info'),
     {title: t('pagesReadyReports.resentAuto')}));
   if (!tonight.length) next.append(el('span', 'muted', t('pagesReadyReports.prepareBest')));
   body.append(next);
@@ -95,7 +95,7 @@ export function blocked(card, why, retry) {
   again.addEventListener('click', () => { again.disabled = true; again.textContent = t('pagesCommon.checking'); retry(); });
   body.textContent = '';
   const status = el('div', 'ready-status');
-  status.append(pill(t('pagesReadyReports.unavailable'), 'warn'), el('span', 'muted', `${why || t('pagesReadyReports.serverNoAnswer')} · checked ${checked}`), ...(why === OUTDATED_LINE ? [restartButton()] : []), again);
+  status.append(pill(t('pagesReadyReports.unavailable'), 'warn'), el('span', 'muted', t('pagesShortReady.m277', {"value1": why || t('pagesReadyReports.serverNoAnswer'), "checked": checked})), ...(why === OUTDATED_LINE ? [restartButton()] : []), again);
   body.append(status);
   for (const button of card.querySelectorAll('.task-body button')) { button.disabled = true; button.title = why || ''; }
 }
@@ -170,20 +170,20 @@ export async function initReadyCard() {
     button.setAttribute('aria-label', name);
     return button;
   };
-  const open = code => { const button = iconButton('external', t('pagesSession.openBrowser'), 'the real page in your own Chrome, filled as the night left it', 'browser', t('pagesCommon.openChrome'));
-    button.addEventListener('click', async () => { button.disabled = true; say('Opening the filled form in your browser…');
+  const open = code => { const button = iconButton('external', t('pagesSession.openBrowser'), t('pagesAuditPunct.a44'), 'browser', t('pagesCommon.openChrome'));
+    button.addEventListener('click', async () => { button.disabled = true; say(t('pagesExtraLabels.openingFilled'));
       const result = await window.pilot.readyOpen(code).catch(error => ({ok: false, error: errorLine(error)}));
       if (result.cancelled) { button.disabled = false; return; }   // Not now in the first-Apply dialog (pages/apply-choice.js)
       if (result.ok) import('./jobs.js').then(jobs => jobs.startedApplying()).catch(() => {});   // the job is Applying now: the Jobs list is read again (loaded on use: the card also runs without the Jobs page)
-      button.disabled = false; say(result.ok ? 'Opened in your browser: check it, solve a bot check if there is one, and press Submit there yourself.' : (result.error || 'Could not open it.'), result.ok ? 'good' : 'bad'); });
+      button.disabled = false; say(result.ok ? t('pagesAuditThird.a154') : (result.error || t('pagesAuditThird.a155')), result.ok ? 'good' : 'bad'); });
     return button; };
-  const act = {open, live: code => { const button = iconButton('pulse', t('pagesExtraLabels.openLive'), 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },
-    watch: code => { const button = iconButton('eye', t('pagesReadyReports.watch'), 'the video of the server filling this form tonight (3 minutes at most)', 'watch');
+  const act = {open, live: code => { const button = iconButton('pulse', t('pagesExtraLabels.openLive'), t('pagesAuditThird.a156'), 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || t('pagesAuditThird.a155'), 'bad'); }); return button; },
+    watch: code => { const button = iconButton('eye', t('pagesReadyReports.watch'), t('pagesAuditThird.a157'), 'watch');
       button.addEventListener('click', () => watchFill(button, code)); return button; },
-    again: code => { const button = iconButton('refresh', t('pagesReadyReports.fillAgain'), 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
+    again: code => { const button = iconButton('refresh', t('pagesReadyReports.fillAgain'), t('pagesAuditThird.a158'), 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
     stop: code => { const button = el('button', 'secondary ready-stop', t('pagesCommon.stop')); button.type = 'button'; button.title = t('pagesReadyReports.stopForm'); button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
     stopAll: () => { const button = el('button', 'secondary ready-stop-all', t('pagesReadyReports.stopAll')); button.type = 'button'; button.title = t('pagesReadyReports.stopNight'); button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
-    done: code => { const button = iconButton('check', t('pagesCommon.done'), 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
+    done: code => { const button = iconButton('check', t('pagesCommon.done'), t('pagesAuditThird.a159'), 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
   // What just happened, as a badge and its line (owner, 18 Oct 2026: the status lines "should be shown as badges").
   const LABEL = {info: t('pagesCommon.working'), good: t('pagesCommon.done'), warn: t('pagesCommon.note'), bad: t('pagesExtraLabels.problem')};
   const say = (text, tone = 'info') => {
@@ -195,19 +195,19 @@ export async function initReadyCard() {
   };
   // The night's video of one form, in a popup (pages/ready-video.js).
   const watchFill = async (button, code) => {
-    button.disabled = true; say('Loading the video of this form\'s fill…');
+    button.disabled = true; say(t('pagesExtraLabels.loadingVideo'));
     const result = await window.pilot.readyVideo(code).catch(error => ({ok: false, error: errorLine(error)}));
     button.disabled = false;
-    if (!result.ok) return say(result.error || 'Could not load the video.', 'bad');
+    if (!result.ok) return say(result.error || t('pagesAuditThird.a160'), 'bad');
     say(''); showFillVideo(result.bytes, names[code] || code);
   };
   // Fill tonight: sends tonight's list for the night's fill time; asks before replacing forms of this night still waiting for you.
   const sendTonight = async (options = {}) => {
-    send.disabled = true; say('Handing tonight\'s jobs to the server to fill (nothing is submitted)…');
+    send.disabled = true; say(t('pagesExtraLabels.handingNight'));
     const result = await window.pilot.readySend(options).catch(error => ({ok: false, error: errorLine(error)}));
-    if (result.cancelled) { say('Not sent: nothing changed on the server.'); return refresh(); }
-    if (result.ask) { if (await confirmFill(result.ask)) return sendTonight({confirmed: true}); say('Not sent: nothing changed on the server.'); return refresh(); }
-    say(result.ok ? `${result.queued} job${result.queued === 1 ? '' : 's'} will be filled on the server for the night of ${result.night}, not submitted${result.skipped?.length ? ` · ${result.skipped.length} left out (${result.skipped[0].why})` : ''}.` : (result.error || 'Could not send.'),
+    if (result.cancelled) { say(t('pagesAuditThird.a161')); return refresh(); }
+    if (result.ask) { if (await confirmFill(result.ask)) return sendTonight({confirmed: true}); say(t('pagesAuditThird.a161')); return refresh(); }
+    say(result.ok ? t('pagesShortReady.m279', {"queued": result.queued, "night": result.night, "value4": result.skipped?.length ? t('pagesShortReady.m280', {"length": result.skipped.length, "why": result.skipped[0].why}) : '', count: result.queued}) : (result.error || t('pagesAuditThird.a162')),
       result.ok ? 'good' : result.nothing ? 'warn' : 'bad');
     refresh();
   };
@@ -217,14 +217,14 @@ export async function initReadyCard() {
   const fillNow = async (options = {}, preparing = false) => {
     phase = preparing ? 'preparing' : 'sending'; phaseError = ''; say(''); repaint();
     const result = await window.pilot.readyRun(options).catch(error => ({ok: false, error: errorLine(error)}));
-    if (result.cancelled) { phase = 'idle'; repaint(); return say('Not started: nothing was sent.'); }
+    if (result.cancelled) { phase = 'idle'; repaint(); return say(t('pagesAuditThird.a163')); }
     if (result.ask) {
       if (await confirmFill(result.ask)) return fillNow({...options, again: result.ask.again, confirmed: true}, preparing);
-      phase = 'idle'; repaint(); return say('Not started: nothing was sent.');
+      phase = 'idle'; repaint(); return say(t('pagesAuditThird.a163'));
     }
-    if (!result.ok) { phase = 'idle'; repaint(); return say(result.error || 'Could not start.', result.nothing ? 'warn' : 'bad'); }
+    if (!result.ok) { phase = 'idle'; repaint(); return say(result.error || t('pagesAuditThird.a164'), result.nothing ? 'warn' : 'bad'); }
     phase = 'started'; started = true; wholeNight = true;
-    say(result.queued ? `${result.queued} job${result.queued === 1 ? '' : 's'} sent: the server is filling ${result.queued === 1 ? 'it' : 'them'} now. Nothing is submitted.` : 'Filling started on the server. Nothing is submitted.', 'good');
+    say(result.queued ? t('pagesShortReady.m281', {"queued": result.queued, count: result.queued}) : t('pagesAuditThird.a165'), 'good');
     refresh();
   };
   // Fill now asks how many first (renderer/pages/ready-pick.js); without the popup's list (an older app, no job read yet) it fills tonight's ready jobs as before.
@@ -239,20 +239,20 @@ export async function initReadyCard() {
   // ("sending"), then waiting or filling with its own bar; a night already running takes it at the end of its line.
   const fillAgain = async code => {
     const name = names[code] || t('pagesExtraLabels.thisForm');
-    if (!await confirmFill({again: true, jobs: [{code, name}], replaces: 0, note: 'The night\'s other forms keep what was filled; Open in my browser still works for them.'})) return say('Not started: nothing changed on the server.');
+    if (!await confirmFill({again: true, jobs: [{code, name}], replaces: 0, note: t('pagesAuditThird.a166')})) return say(t('pagesAuditThird.a167'));
     pending.add(code); say(''); repaint();
     const result = await window.pilot.readyAgain(code).catch(error => ({ok: false, error: errorLine(error)}));
     pending.delete(code);
-    if (result.cancelled) { repaint(); return say('Not started: nothing changed on the server.'); }
-    if (!result.ok) { repaint(); return say(result.error || 'Could not start.', 'bad'); }
+    if (result.cancelled) { repaint(); return say(t('pagesAuditThird.a167')); }
+    if (!result.ok) { repaint(); return say(result.error || t('pagesAuditThird.a164'), 'bad'); }
     started = true;
-    say(result.joined ? `${name}: added to the night's line; it fills after the form filling now. Nothing is submitted.` : `${name}: the server is filling it again now. Nothing is submitted.`, 'good');
+    say(result.joined ? t('pagesShortReady.m282', {"name": name}) : t('pagesShortReady.m283', {"name": name}), 'good');
     refresh();
   };
   // Stop (owner, 18 Oct 2026: "a stop button once a row started"): one form, or every form of the night; each goes back to how it was before the press.
   const stopFill = async (code = null) => {
     const result = await window.pilot.readyStop(code).catch(error => ({ok: false, error: errorLine(error)}));
-    say(result.ok ? `${code ? names[code] || 'This form' : `${result.stopped} form${result.stopped === 1 ? '' : 's'}`}: stopped; back to how ${code || result.stopped === 1 ? 'it was' : 'they were'} before.` : (result.error || 'Could not stop it.'), result.ok ? 'good' : 'bad');
+    say(result.ok ? t('pagesShortReady.m284', {"value1": code ? names[code] || t('pagesExtraLabels.thisForm') : t('pagesShortReady.m285', {stopped: result.stopped, count: result.stopped})}) : (result.error || t('pagesAuditThird.a170')), result.ok ? 'good' : 'bad');
     refresh();
   };
   await refresh();

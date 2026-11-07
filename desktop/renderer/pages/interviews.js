@@ -81,7 +81,7 @@ async function openDraft(id) {
   if (draft.status === 'failed') message('iv-message', draft.error || t('pagesJobs.transcribeFailed'), 'error');
   if (draft.status === 'ready') {
     $('iv-text').value = await iv.transcript(id);
-    jobOptions($('iv-job'), draft.jobUrl || draft.suggestedJobUrl, ai('Let {AI} find the job when reviewing'));
+    jobOptions($('iv-job'), draft.jobUrl || draft.suggestedJobUrl, ai(t('pagesAuditPunct.a25')));
     // A job matched by time to a calendar interview: shown as a suggestion; saving confirms it, changing the job replaces it.
     const suggested = !draft.jobUrl && draft.suggestedJobUrl;
     show($('iv-suggest'), !!suggested);
@@ -106,7 +106,7 @@ function saveOpenDraft() {
 // No page to open (the data on this Mac): the review in the app (renderer/interview-review-view.js).
 async function openReview(id) {
   const record = await window.pilot.ivRecord(id);
-  if (!record || record.error) { message('iv-message', t('pagesDynamicFocusInterviews.m200', {"value1": record?.error || 'not found'}), 'error'); return; }
+  if (!record || record.error) { message('iv-message', t('pagesDynamicFocusInterviews.m200', {"value1": record?.error || t('pagesAuditSecond.a93')}), 'error'); return; }
   showReview(record, {$, el, pill});
 }
 async function saveToNotion(andReview) {
@@ -147,7 +147,7 @@ async function showSavedLoading() {
     ivInsight = saved.result.insight || null;
     insightFresh = false;  // from this Mac's cache: the card says it's the saved copy
     renderAll();
-    $('iv-lib-stats').textContent = `${savedTo()} · saved ${agoText(saved.at)}, updating…`;
+    $('iv-lib-stats').textContent = t('pagesShortJobs.m160', {"savedTo": savedTo(), "agoText": agoText(saved.at)});
     return saved.at;
   }
   $('iv-saved').replaceChildren(...skeletonRows());
@@ -318,14 +318,14 @@ function renderSaved() {
     // Interview: the round (or the interview's own title), and the next step.
     const who = el('div', '');
     who.append(el('b', '', row.round || row.title));
-    who.append(el('div', 'muted small', row.next_step ? `Next: ${row.next_step}` : t('pagesInterviews.noNextStep')));
+    who.append(el('div', 'muted small', row.next_step ? t('pagesShortJobs.m162', {"next_step": row.next_step}) : t('pagesInterviews.noNextStep')));
     // Change job…: the job picker, shown on the row when asked for from the menu.
     const picker = el('div', 'iv-picker');
     picker.hidden = true;
     const select = document.createElement('select');
     jobOptions(select, job?.url || '', row.application?.[0] && !job ? byStore(t('pagesControlStatus.linkedNotion'), t('pagesControlStatus.linkedNotListed')) : t('pagesControlStatus.noJobLinked'));
     if (row.application?.[0] && !job) select.value = '';
-    const pasted = Object.assign(document.createElement('input'), {type: 'url', placeholder: 'https://… then Enter', hidden: true});
+    const pasted = Object.assign(document.createElement('input'), {type: 'url', placeholder: t('pagesFinalCopy.urlEnter'), hidden: true});
     const relink = async url => {
       select.disabled = pasted.disabled = true;
       message('iv-message', t('pagesDynamicFocusInterviews.m208', {"storeName": storeName()}));
@@ -364,7 +364,7 @@ function renderSaved() {
       main.addEventListener('click', event => (row.url ? window.pilot.openNotion(row.url, event.metaKey) : openReview(row.id)));
     } else {
       main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? t('pagesJobs.reviewing') : t('pagesCommon.review')), {disabled: reviewing.has(row.id),
-        title: ai(byStore('{AI:big} reviews it question by question; the review is added to the Notion page', '{AI:big} reviews it question by question; the review is saved with it'))});
+        title: ai(byStore(t('pagesAuditPunct.a28'), t('pagesAuditPunct.a29')))});
       main.addEventListener('click', () => reviewRow(row.id));
     }
     const menu = [
@@ -378,7 +378,7 @@ function renderSaved() {
           t('pagesDynamicFocusInterviews.m212', {"title": row.title}))))) return;
         const done = await iv.remove(row.id);
         message('iv-message', done.ok ? osText(byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
-          `Deleted "${row.title}"${done.removed ? ' and its recording' : ''}.`))
+          t('pagesShortJobs.m163', {"title": row.title, "value2": done.removed ? t('pagesAuditSecond.a94') : ''})))
           : done.error, done.ok ? 'ok' : 'error');
         readAgain();
       }},
@@ -395,7 +395,7 @@ async function reviewRow(pageId, why = 'Review') {
   if (!aiReady()) { message('iv-message', t('pagesInterviews.aiReviews'), 'error'); return; }
   if (reviewing.has(pageId)) return;  // already asked for: a second press must not spend a second review (1 Oct 2026)
   reviewing.add(pageId);
-  message('iv-message', ai('{AI} is reviewing the interview (about a minute)…'));
+  message('iv-message', ai(t('pagesAuditPunct.a30')));
   readAgain();
   const result = await iv.review(pageId, why);
   if (result.ok && result.cloud) pendingReviews.add(pageId);  // GitHub reviews it: keep "Reviewing…" until it lands

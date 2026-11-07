@@ -173,17 +173,17 @@ export function renderNextStep(item) {
     : review ? t('pagesSession.reviewFilled')
     : asking ? ask || (item.stage === 'account' ? t('pagesSession.accountInput') : t('pagesSession.applicationInput'))
     : open ? t('pagesSession.completeChrome')
-    : running ? ai('{AI} is filling the application') : item.status === 'failed' ? t('pagesSession.sessionStopped') : t('pagesSession.sessionEnded');
+    : running ? ai(t('pagesAuditPunct.a55')) : item.status === 'failed' ? t('pagesSession.sessionStopped') : t('pagesSession.sessionEnded');
   // Its state, after the title: finished (when), waiting (since when) or working (for how long).
   const since = item.needsYouSince || item.endedAt || item.startedAt;
   const state = $('ss-next-state');
   state.textContent = submitted ? t('pagesDynamicSessionReports.m365', {"hhmmOf": hhmmOf(since)})
-    : stuck ? (item.stuck === 'account' ? accountProgress(reviewStates.get(item.id)) : INFORM_STUCK.includes(item.stuck) ? '' : '· nothing filled yet')
-    : review ? (item.kind === 'form' || item.inChrome ? t('pagesDynamicSessionReports.m366', {"hhmmOf": hhmmOf(since)}) : ai(t('pagesDynamicSessionReports.m367', {"hhmmOf": hhmmOf(since)}))) : asking ? (isLive(item) ? t('pagesDynamicSessionReports.m368', {"hhmmOf": hhmmOf(since)}) : ai('· {AI} closed with the app'))
-    : running ? '· working' : t('pagesDynamicSessionReports.m369', {"hhmmOf": hhmmOf(since)});
+    : stuck ? (item.stuck === 'account' ? accountProgress(reviewStates.get(item.id)) : INFORM_STUCK.includes(item.stuck) ? '' : t('pagesAuditThird.a187'))
+    : review ? (item.kind === 'form' || item.inChrome ? t('pagesDynamicSessionReports.m366', {"hhmmOf": hhmmOf(since)}) : ai(t('pagesDynamicSessionReports.m367', {"hhmmOf": hhmmOf(since)}))) : asking ? (isLive(item) ? t('pagesDynamicSessionReports.m368', {"hhmmOf": hhmmOf(since)}) : ai(t('pagesAuditPunct.a56')))
+    : running ? t('pagesFinalCopy.working') : t('pagesDynamicSessionReports.m369', {"hhmmOf": hhmmOf(since)});
   const stage = sessionStage(item, review);
   $('ss-stage').replaceChildren(...(stage ? [pill(stage.text, stage.tone, {dot: true})] : []));
-  if (running) ticking(state, '· working for ', item.startedAt); else { delete state.dataset.since; delete state.dataset.prefix; }
+  if (running) ticking(state, t('pagesAuditThird.a188'), item.startedAt); else { delete state.dataset.since; delete state.dataset.prefix; }
   // What to read: one line when the form is ready (Claude's words one click away), else Claude's own text.
   const said = intro.filter(line => line.replace(/\*/g, '') !== ask && !isDevTalk(line));
   $('ss-question').replaceChildren(...(submitted ? [el('p', 'rich-p', t('pagesDynamicSessionReports.m370', {"storeName": storeName()}))]
@@ -196,7 +196,7 @@ export function renderNextStep(item) {
       : item.stuck === 'incomplete' ? t('pagesSessionHelp.nothingFilledHelp')
       : t('pagesSessionHelp.noFormHelp')),
       // The next press, in the AI's own words (e.g. 'Solve the check, then press "Créer un compte"'): what is left for you on this page.
-      ...(['account', 'incomplete'].includes(item.stuck) && item.accountNeeds ? [el('p', 'rich-p', el('b', '', 'Left for you: '), item.accountNeeds)] : [])]
+      ...(['account', 'incomplete'].includes(item.stuck) && item.accountNeeds ? [el('p', 'rich-p', el('b', '', t('pagesAuditThird.a189')), item.accountNeeds)] : [])]
     : stopped ? [el('p', 'rich-p', t('pagesSessionHelp.stoppedHelp'))]
     : gone && asking ? [el('p', 'rich-p', t('pagesSessionHelp.closedQuestion'))]
     : gone ? [el('p', 'rich-p', item.kind === 'form' ? t('pagesSessionHelp.closedFormHelp') : t('pagesSessionHelp.closedFilledHelp'))]
@@ -206,7 +206,7 @@ export function renderNextStep(item) {
       // Claude listed what it needs: its first sentence for context, then each thing as a line, then where to answer.
       // Why Claude stopped stays in sight here (owner, 12 Oct 2026: it was folded away); each thing it needs is a row of the card below, with its answer box.
       ? [...(said.length ? richText(said.join('\n')) : []), ...(isLive(item) ? [answerHint()] : [])]
-      : [...(said.length ? richText(said.join('\n')) : [el('p', 'rich-p', ai('{AI} is waiting for you.'))]), ...(isLive(item) ? [answerHint()] : [])])
+      : [...(said.length ? richText(said.join('\n')) : [el('p', 'rich-p', ai(t('pagesAuditPunct.a57')))]), ...(isLive(item) ? [answerHint()] : [])])
     : [Object.assign(el('p', 'rich-p muted', (running && latestStep(sessionTail[item.id] || '')) || item.note || ''), {id: running ? 'ss-step' : ''})]));
   const full = $('ss-full');
   full.replaceChildren(...(review && item.question ? richText(item.question) : []));
@@ -216,7 +216,7 @@ export function renderNextStep(item) {
   const record = accountRecordLine(item);   // "Account created on X · terms accepted: '…' · code from your email" (session-state.js)
   if (record) $('ss-question').append(el('p', 'muted small', record));
   const toggle = $('ss-full-toggle');
-  const label = () => { toggle.textContent = ai(full.hidden ? '{AI}\'s full report ▾' : '{AI}\'s full report ▴'); };
+  const label = () => { toggle.textContent = ai(full.hidden ? t('pagesAuditPunct.a58') : t('pagesAuditPunct.a59')); };
   show(toggle, !!(review && item.question));
   label();
   toggle.onclick = () => { full.hidden = !full.hidden; label(); };
@@ -248,8 +248,8 @@ export function renderNextStep(item) {
       if (result?.went === 'none') { await reopenClosedTab(item, event.currentTarget); return; }   // no tab to bring forward: open the form again
       panelDead.add(item.id);
       renderSessionPage();
-      toastMessage(t('pagesSession.formTabMissing'), osText('The form\'s page didn\'t answer, so the extension isn\'t attached to it. '
-        + 'Press Reload the tab — or ⌘R in that tab — then try again.'), sessionPlace(item), 'bad');
+      toastMessage(t('pagesSession.formTabMissing'), osText(t('pagesAuditPunct.a60')
+        + t('pagesAuditThird.a190')), sessionPlace(item), 'bad');
     }, 'link'));
     // A form page whose panel died (the extension was uninstalled and installed again) can't answer the app: reload
     // that tab, which is what puts the extension back onto it — then the focus handshake works again. Offered only
@@ -268,16 +268,16 @@ export function renderNextStep(item) {
           t('pagesSessionHelp.reloadExtensionHelp'), {card: 'extension'}, 'warn');
         return;
       }
-      const why = {permission: 'macOS won\'t let Jobadabra control Chrome: System Settings → Privacy & Security → Automation → Jobadabra → Google Chrome. Or press ⌘R in that tab.',
+      const why = {permission: t('pagesAuditPunct.a61'),
         // Chrome running with no windows means an automation's headless Chrome holds the scripting connection, not
         // the window the user is working in: say so, rather than "no tab matches" about a tab that is right there.
-        'no-window': osText('Chrome answered with no windows: a background Chrome (an automation\'s) holds the scripting connection, not the window you use. Press ⌘R in the tab you are reviewing.'),
-        'no-tab': osText('No Chrome tab matches this job. If you apply in another browser or Chrome window, press ⌘R in its tab.'),
-        'no-chrome': 'Google Chrome isn\'t running.',
+        'no-window': osText(t('pagesAuditThird.a191')),
+        'no-tab': osText(t('pagesAuditThird.a192')),
+        'no-chrome': t('pagesAuditThird.a193'),
         // Chrome's scripting is macOS-only. Saying "Chrome isn't running" on Windows would be untrue, and the
         // generic advice names ⌘R, which isn't a key there.
-        manual: 'Reloading a Chrome tab can only be asked of a Mac: press Ctrl+R in the form\'s tab.'}[result?.result];
-      toastMessage(t('pagesSession.reloadFailed'), why || osText('Press ⌘R in the form\'s tab instead.'), sessionPlace(item), 'bad');
+        manual: t('pagesAuditThird.a194')}[result?.result];
+      toastMessage(t('pagesSession.reloadFailed'), why || osText(t('pagesAuditThird.a195')), sessionPlace(item), 'bad');
     }, 'refresh'));
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
     if (live) actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));
@@ -344,7 +344,7 @@ function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) 
   const empty = gone ? [] : emptyFields(item, needs);   // a closed tab has no empty fields to open
   show($('ss-needs-card'), needs.length + empty.length > 0 && !gone);   // a closed tab's rows are stale: Reopen form asks what to keep
   $('ss-needs-title').textContent = t('pagesSession.needsAttention');
-  $('ss-needs-sub').textContent = review ? t('pagesSession.checkBeforeSubmit') : asking ? ai('What {AI} needs from you to carry on.') : t('pagesSession.completeItems');
+  $('ss-needs-sub').textContent = review ? t('pagesSession.checkBeforeSubmit') : asking ? ai(t('pagesAuditPunct.a62')) : t('pagesSession.completeItems');
   $('ss-needs').replaceChildren(...needs.map(need => (need.kind === 'ask' ? askRow(need, item) : needRow(need, item))), ...empty.map(label => emptyRow(label, item)));
   watchAgreements(item, needs.filter(need => need.kind === 'agree' || need.kind === 'ask'));
   applyFormStates(item);
@@ -358,7 +358,7 @@ function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) 
     ...done.filter(section => !(listed && /^filled$/i.test(section.label || ''))).map(section => {
       // "**Filled:**" with its details on the bullets under it: the line shows the first of them (+ how many more);
       // the list is one click away.
-      const extra = !section.text && section.items.length > 1 ? ` (+${section.items.length - 1} more)` : '';
+      const extra = !section.text && section.items.length > 1 ? t('pagesShortSettings.m321', {"value1": section.items.length - 1}) : '';
       const lead = firstLine(section.text || section.items[0] || '') + extra;
       return {short: section.label ? `**${section.label}:** ${lead}`.trim() : lead, problem: section.label === 'Problems' || PROBLEM.test(section.text),
         more: section.text ? [section.text.slice(firstLine(section.text).length).trim(), ...section.items.map(line => `- ${line}`)].filter(Boolean).join('\n')
@@ -384,7 +384,7 @@ function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) 
     const capital = audit.charAt(0).toUpperCase() + audit.slice(1);
     const summary = firstLine(capital, 160), rest = capital.slice(summary.length).trim();
     const fixes = (audit.match(/\b(?:corrected|removed|fixed|by hand)\b/gi) || []).length;
-    $('ss-audit-pill').replaceChildren(...(fixes ? [pill(`${fixes} correction${fixes === 1 ? '' : 's'}`, 'warn', {dot: true})] : [pill(t('pagesSession.checked'), 'good', {dot: true})]));
+    $('ss-audit-pill').replaceChildren(...(fixes ? [pill(t('pagesShortSettings.m322', {"fixes": fixes, count: fixes}), 'warn', {dot: true})] : [pill(t('pagesSession.checked'), 'good', {dot: true})]));
     $('ss-audit-summary').replaceChildren(...richText(summary).flatMap(node => [...node.childNodes]));
     $('ss-audit-detail').replaceChildren(...richText(rest));
     show($('ss-audit-more'), !!rest);

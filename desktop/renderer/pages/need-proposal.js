@@ -73,7 +73,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   }
   if (tried) {
     input.disabled = true;
-    note.textContent = tried.kept ? t('pagesStrategy.filledRemembered') : `Filled in the form (not remembered: ${storeName()} didn't answer)`;
+    note.textContent = tried.kept ? t('pagesStrategy.filledRemembered') : t('pagesFinalCopy.filledUnremembered', {store: storeName()});
     li.classList.add('is-done');
     return li;
   }

@@ -2,8 +2,8 @@
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-const WORDS = {prepared: ['complete', 'good'], partial: [t('pagesExtraCommon.needsYou'), 'warn'], wall: [t('pagesExtraLabels.wall'), 'warn'], 'no-form': [t('pagesExtraLabels.noForm'), 'neutral'], closed: [t('pagesExtraLabels.jobClosed'), 'neutral'], failed: [t('pagesExtraLabels.fillFailed'), 'bad'], queued: ['waiting', 'info'],
-  filling: ['filling', 'info'], stopped: ['stopped', 'neutral']};
+const WORDS = {prepared: [t('pagesFinalCopy.complete'), 'good'], partial: [t('pagesExtraCommon.needsYou'), 'warn'], wall: [t('pagesExtraLabels.wall'), 'warn'], 'no-form': [t('pagesExtraLabels.noForm'), 'neutral'], closed: [t('pagesExtraLabels.jobClosed'), 'neutral'], failed: [t('pagesExtraLabels.fillFailed'), 'bad'], queued: [t('pagesFinalCopy.waiting'), 'info'],
+  filling: [t('pagesFinalCopy.filling'), 'info'], stopped: [t('pagesFinalCopy.stopped'), 'neutral']};
 
 // The one rule for "ready to submit" (owner, 19 Oct 2026): a form the night filled completely and you have not submitted or deleted. The card's count, the Jobs list's chip,
 // filter and button all read it. Guard: test/unit/renderer/ready-to-submit.test.js.
@@ -11,8 +11,8 @@ export const READY_LABEL = t('pagesSessionStates.readySubmit');
 export const readyToSubmit = row => !!row && row.state === 'prepared' && !row.cleared_at && !row.submitted_at;
 
 export function rowOf(job) {
-  const [text, tone] = WORDS[job.state] || ['waiting', 'info'];
-  const left = job.state === 'partial' && job.left_empty ? ` · ${job.left_empty} left` : '';
+  const [text, tone] = WORDS[job.state] || [t('pagesFinalCopy.waiting'), 'info'];
+  const left = job.state === 'partial' && job.left_empty ? t('pagesShortReady.m286', {"left_empty": job.left_empty}) : '';
   const wall = ['wall', 'failed'].includes(job.state) && job.wall && job.wall !== 'error' ? ` · ${job.wall}` : '';   // a failed night says why ("the night could not start")
   return {text: `${text}${left}${wall}`, tone, done: !!job.cleared_at, submitted: !!job.submitted_at};
 }

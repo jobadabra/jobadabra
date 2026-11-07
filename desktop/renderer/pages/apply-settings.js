@@ -29,7 +29,7 @@ export function modeCards(selected, onPick, {busy = false} = {}) {
 
 // The one Full automation setting: the optional wait before a submit (owner, 29 Oct 2026: remove all checks), a number as a short field.
 export const CHECKS = [
-  {key: 'waitMin', before: t('pagesExtraCommon.wait'), after: 'minutes before sending, with Stop', min: 0, max: 120},
+  {key: 'waitMin', before: t('pagesExtraCommon.wait'), after: t('pagesAuditFirst.a31'), min: 0, max: 120},
 ];
 const el = (tag, cls = '', text = '') => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text ? {textContent: text} : {});
 

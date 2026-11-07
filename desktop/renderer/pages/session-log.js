@@ -120,9 +120,9 @@ export function renderSessionPage() {
     const opened = tab.tabAt ? displayDate(new Date(tab.tabAt), {hour: '2-digit', minute: '2-digit'}) : '';
     // Unknown while Chrome is checked or silent: its last address, never "open for" a tab nobody can see (owner, 8 Oct 2026).
     const unknown = checkingTab(item) || waitingChrome(item) || silentChrome(item) || tabLost(item);
-    line.append(formGone(item) ? 'Chrome tab (closed): ' : unknown ? 'Chrome tab (last seen): ' : 'Chrome tab: ', link);
-    if (opened) line.append(` · opened ${opened}`);
-    if (opened && !formGone(item) && !unknown) line.append(ticking(el('span'), ' · open for ', new Date(tab.tabAt).toISOString()));
+    line.append(formGone(item) ? t('pagesAuditThird.a180') : unknown ? t('pagesAuditThird.a181') : t('pagesAuditThird.a182'), link);
+    if (opened) line.append(t('pagesShortSettings.m309', {"opened": opened}));
+    if (opened && !formGone(item) && !unknown) line.append(ticking(el('span'), t('pagesAuditThird.a183'), new Date(tab.tabAt).toISOString()));
     words.append(line);
   }
   const view = Object.assign(el('a', 'link small', t('pagesSessionStates.viewJob')), {href: '#'});
@@ -149,7 +149,7 @@ export function renderSessionPage() {
   $('ss-offline').querySelector('span').textContent = isSubmitted(item)
     ? t('pagesDynamicSessionReports.m345', {"storeName": storeName()})
     : item.resumable
-    ? (resumeOffered() ? ai('{AI} isn\'t running. This is its conversation; resume it to answer or ask for more.') : t('pagesSessionStates.conversationReference'))
+    ? (resumeOffered() ? ai(t('pagesAuditPunct.a52')) : t('pagesSessionStates.conversationReference'))
     : t('pagesSessionStates.endedNew');
   openLog(logChoice[item.id] ?? item.status === 'running', false);
 }
@@ -217,7 +217,7 @@ function renderTranscript(talk) {
     if (entry.kind === 'steps') {
       const fold = el('details', 'ss-tr-steps');
       const count = entry.count || entry.steps.length;
-      fold.append(el('summary', '', `${count} step${count === 1 ? '' : 's'} · ${entry.steps.at(-1)}`));
+      fold.append(el('summary', '', t('pagesShortSettings.m310', {"count": count, "value3": entry.steps.at(-1)})));
       const list = el('ul');
       list.append(...entry.steps.map(text => el('li', '', text)));
       fold.append(list);

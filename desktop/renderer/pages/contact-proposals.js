@@ -50,7 +50,7 @@ function askToFill(list) {
     return node;
   })();
   const rows = el('ul', 'tune-list');
-  for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : ' (check it)'}`));
+  for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : t('pagesAuditFirst.a48')}`));
   const foot = el('div', 'dialog-foot');
   for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', t('pagesFieldsStatus.fillThem')]]) foot.append(Object.assign(el('button', cls, label), {value}));
   const form = el('form');
@@ -147,6 +147,6 @@ export async function nudgeMissingDetails() {
   nudged = true;
   const fromCv = (result?.proposals || []).filter(item => missing.includes(item.field)).length;
   toastMessage({title: t('pagesLettersData.formsAskDetails'),
-    body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? t('pagesDynamicCvData.m103', {"fromCv": fromCv}) : ' Add them once in your Profile.'}`,
+    body: t('pagesShortActivity.m97', {"value1": missing.map(key => USUAL[key]).join(', '), "value2": fromCv ? t('pagesDynamicCvData.m103', {"fromCv": fromCv}) : t('pagesAuditFirst.a49')}),
     target: {view: 'settings', section: 'profile'}, tone: 'warn'});
 }

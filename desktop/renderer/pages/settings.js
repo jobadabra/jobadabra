@@ -240,7 +240,7 @@ function renderKnown() {
   $('ov-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   const chosen = kind => document.querySelector(`[data-schedule="${kind}"]`)?.selectedOptions[0]?.textContent || '';
   $('ov-search').textContent = chosen('search') || '—';
-  $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? `On — GitHub ${shared.state.settings.cloud.repo}` : t('pagesSetup.offOpen');
+  $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? t('pagesShortSettings.m336', {"repo": shared.state.settings.cloud.repo}) : t('pagesSetup.offOpen');
   if (!$('ov-contact').firstChild) $('ov-contact').replaceChildren(stateLine(false, '', true));
   if (!$('ov-backup').textContent) $('ov-backup').replaceChildren(stateLine(false, '', true));
 }
@@ -251,7 +251,7 @@ function renderContact(contact) {
     $('ov-contact').replaceChildren(line);
     return;
   }
-  const needed = {first_name: t('pagesFinalLabels.firstName'), last_name: t('pagesFinalLabels.lastName'), email: 'email', phone: 'phone'};
+  const needed = {first_name: t('pagesFinalLabels.firstName'), last_name: t('pagesFinalLabels.lastName'), email: t('pagesCommon.email'), phone: t('pagesStatus.phone')};
   const gaps = Object.keys(needed).filter(key => !contact[key]).map(key => needed[key]);
   const line = el('span', `service-state${gaps.length ? '' : ' is-on'}`);
   line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? t('pagesSetup.missing', {details: gaps.join(', ')}) : t('pagesCommon.complete')));
@@ -272,7 +272,7 @@ export function showRunMode() {
 function renderDiagnostics({on, detail, checking}) {
   const version = document.querySelector('[data-version]')?.textContent?.trim();
   $('diag-app').replaceChildren(stateLine(true, version));
-  $('diag-app').firstChild.lastChild.textContent = `Running${version ? ` · ${version}` : ''}`;
+  $('diag-app').firstChild.lastChild.textContent = t('pagesShortSettings.m338', {"value1": version ? ` · ${version}` : ''});
   $('diag-ext').replaceChildren(stateLine(on.extension, detail.extension, checking?.extension));
   $('diag-search').textContent = $('last-search').textContent;
 }

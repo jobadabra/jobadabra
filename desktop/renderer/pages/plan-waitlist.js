@@ -36,7 +36,7 @@ function dialog() {
   join.addEventListener('click', async () => {
     join.disabled = true;
     message('pro-waitlist-message', t('pagesPlans.addingYou'));
-    const result = await window.pilot.proWaitlistJoin(field.value).catch(() => ({ok: false, error: 'That did not work. Try again in a moment.'}));
+    const result = await window.pilot.proWaitlistJoin(field.value).catch(() => ({ok: false, error: t('pagesAuditFirst.a66')}));
     join.disabled = false;
     if (!result.ok) { message('pro-waitlist-message', result.error, 'error'); return; }
     if (shared.state?.settings) shared.state.settings.proWaitlist = {email: result.email};
@@ -65,7 +65,7 @@ export function showProCard(state = {}) {
   show(card, showsProWaitlist(state));
   if (card.hidden) return;
   const joined = shared.state?.settings?.proWaitlist?.email;
-  $('pro-waitlist-pill').textContent = `from ${PRO_PRICE}`;
+  $('pro-waitlist-pill').textContent = t('pagesShortReady.m257', {"PRO_PRICE": PRO_PRICE});
   const body = $('pro-waitlist-body');
   body.replaceChildren(el('p', 'panel-lead', el('span', 'ui-pill tone-good', BADGE)), el('ul', 'plan-list', ''));
   body.lastChild.append(...PRO_FEATURES.map(text => el('li', '', text)));

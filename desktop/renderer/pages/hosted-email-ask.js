@@ -1,6 +1,8 @@
 // Always on's one more ask for e-mail (owner, 5 Nov 2026: skipped in the CV step → "asked once more when the user turns on Always on; never again after that"; "Let it be on by default").
 // The first "Turn on Always on" press with no consent and an address from the CV shows the CV step's switch row inside the card, ON, and stops there; the next press answers it
 // (on = the consent, given 'default' or 'switched'; off = nothing sent) and goes on as before. Stored by lib/email-consent.js. Guard: test/unit/main/email-consent.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {$, message, show} from './core.js';
 import {FAILED, REST, WHAT} from '../email-consent-words.js';
@@ -12,7 +14,7 @@ let touched = false, busy = false;   // busy: a press is being answered (a quick
 function build(card, address) {
   const input = el('input'); input.type = 'checkbox'; input.id = 'hosted-email-consent';
   const knob = el('span', 'switch', input); knob.append(el('span'));   // el() takes one content: the rest are appended
-  const note = el('span', 'muted small', 'To '); note.append(el('b', '', address), `. ${REST}`);
+  const note = el('span', 'muted small', t('pagesAuditSecond.a90')); note.append(el('b', '', address), `. ${REST}`);
   const words = el('span'); words.append(el('span', 'cv-consent-title', WHAT), note);
   const block = el('label', 'switch-row cv-consent'); block.append(knob, words);   // one label: the whole row is the switch, and its words are the input's name
   block.id = 'hosted-email-ask';

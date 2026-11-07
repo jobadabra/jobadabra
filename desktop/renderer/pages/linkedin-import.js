@@ -15,7 +15,7 @@ const SECTIONS = [['positions', t('pagesStatus.positions')], ['education', t('pa
 const DOMAIN_WORDS = {PROFILE: t('pagesCommon.profile'), POSITIONS: t('pagesStatus.positions'), EDUCATION: t('pagesStatus.education'), SKILLS: t('pagesStatus.skills'), LANGUAGES: t('pagesStatus.languages')};
 const DETAIL_WORDS = {first_name: t('pagesStatus.firstName'), last_name: t('pagesStatus.lastName'), location: t('pagesCommon.location'), street: t('pagesStatus.street'), postal_code: t('pagesStatus.postalCode'), website: t('pagesFieldsStatus.website')};
 const CHIPS = {new: ['new', 'info'], 'new-bullets': [t('pagesExtraLabels.newBullets'), 'info'], differs: [t('pagesLinkedinServices.differs'), 'warn']};
-const EU_NOTE = 'For LinkedIn members in the EU, EEA and Switzerland. Elsewhere, use your LinkedIn data file.';
+const EU_NOTE = t('pagesAuditSecond.a130');
 const plural = (n, word) => countedLabel(word, n);
 
 let dialog = null, view = {connected: false}, review = null, onDone = () => {};
@@ -78,7 +78,7 @@ function onStep(step) {
   if (!dialog || !running) return;
   if (step.what === 'waiting') progress.lines = [t('pagesFinalLabels.linkedinWait')];
   else if (step.what === 'reading') progress.lines = [t('pagesFinalLabels.signedIn'), t('pagesExtraLabels.readingProfile')];
-  else if (step.what === 'domain') { progress.domains[step.domain] = step.status; progress.lines = [t('pagesFinalLabels.signedIn'), ...Object.entries(progress.domains).map(([d, s]) => `${DOMAIN_WORDS[d] || d}: ${s === 'ok' ? 'read' : s === 'pending' ? t('pagesExtraLabels.linkedinPreparing') : 'stopped'}`)]; }
+  else if (step.what === 'domain') { progress.domains[step.domain] = step.status; progress.lines = [t('pagesFinalLabels.signedIn'), ...Object.entries(progress.domains).map(([d, s]) => `${DOMAIN_WORDS[d] || d}: ${s === 'ok' ? t('pagesFinalCopy.readDone') : s === 'pending' ? t('pagesExtraLabels.linkedinPreparing') : 'stopped'}`)]; }
   else if (step.what === 'comparing') progress.lines = [t('pagesExtraLabels.read'), t('pagesExtraLabels.compareCv')];
   working(progress.lines);
 }
@@ -91,7 +91,7 @@ async function run(update) {
   const answer = await window.pilot.linkedinImportRun({update}).catch(error => ({ok: false, error: error.message}));
   if (!dialog || mine !== runId) return;
   running = false;
-  if (!answer.ok) return failed(answer.error || 'LinkedIn did not answer. Try again.', answer.stopped);
+  if (!answer.ok) return failed(answer.error || t('pagesAuditSecond.a131'), answer.stopped);
   review = answer.review;
   sheet(answer);
 }
@@ -111,12 +111,12 @@ function row(item) {
     words.append(el('b', '', DETAIL_WORDS[item.field] || item.field));
     if (item.chip === 'differs') {
       const two = el('span', 'li-two');
-      two.append(el('span', '', `Yours: ${item.current}`), el('span', '', `LinkedIn: ${item.linkedin}`));
+      two.append(el('span', '', t('pagesShortJobs.m215', {"current": item.current})), el('span', '', t('pagesShortJobs.m216', {"linkedin": item.linkedin})));
       words.append(two);
     } else words.append(el('span', 'muted small', item.linkedin));
   } else {
     words.append(el('b', '', item.label));
-    const sub = item.chip === 'new-bullets' ? plural(item.newBullets, 'new bullet') + ' beside your CV\'s' : item.sub;
+    const sub = item.chip === 'new-bullets' ? plural(item.newBullets, 'new bullet') + t('pagesAuditSecond.a132') : item.sub;
     if (sub) words.append(el('span', 'muted small', sub));
   }
   const [text, tone] = CHIPS[item.chip] || ['new', 'info'];
@@ -143,7 +143,7 @@ function sheet(answer) {
   if (!body.querySelector('.li-group')) body.append(el('p', 'muted', t('pagesLinkedinServices.alreadyHave')));
   body.append(el('p', 'message', ''));
   const add = button(t('pagesCommon.add'), 'primary', apply);
-  const count = () => { const n = body.querySelectorAll('input:checked').length; add.textContent = n ? `Add ${n} selected` : t('pagesCommon.add'); add.disabled = !n; };
+  const count = () => { const n = body.querySelectorAll('input:checked').length; add.textContent = n ? t('pagesShortJobs.m217', {"n": n}) : t('pagesCommon.add'); add.disabled = !n; };
   body.addEventListener('change', count); count();
   setFoot(button(t('pagesCommon.cancel'), 'secondary', close), add);
 }
@@ -167,7 +167,7 @@ async function apply(event) {
 async function buildMainCv(answer) {
   const details = answer.details ? t('pagesDynamicProfileReady.m261', {"plural": plural(answer.details, 'detail line')}) : '';
   const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button(t('pagesCommon.done'), 'primary', () => { dialog.close(); onDone(); })); };
-  if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Start the LinkedIn import again to choose positions.');
+  if (!answer.cv?.jobs?.length) return done(t('pagesAuditSecond.a133'));
   const mine = runId, shown = dialog;
   bodyOf().replaceChildren(el('p', 'muted', t('pagesLinkedinServices.makingCv')));
   setFoot();

@@ -28,7 +28,7 @@ export const rescoring = () => running;
 
 /** Whether a Find jobs search runs now (the one <body data-find-card> state, pages/jobs-find.js searchingNow, read here so this module stays light). */
 const searching = () => document.body.dataset.findCard === 'searching';
-const WAIT = [t('pagesExtraLabels.rescoreWaits'), 'Jobs are being found right now: one run at a time. Press Re-score again when it ends.', {view: 'jobs'}, 'warn'];
+const WAIT = [t('pagesExtraLabels.rescoreWaits'), t('pagesAuditThird.a176'), {view: 'jobs'}, 'warn'];
 
 /**
  * Re-score every outdated job once: queue them (engine), then a re-score run (engine mode rescore, never a Find jobs search) scores up to 60 now; the rest stay marked Old score for the next press (its row says "Re-scoring N older scores").
@@ -50,7 +50,7 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
     // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
     if (refusal(await Promise.race([searching, new Promise(resolve => setTimeout(resolve, 1500))]))) return;
     toast({title: t('pagesFocusReports.rescoring'), body: t('pagesDynamicSessionReports.m327', {"jobs": jobs(result.queued), "value2": result.queued > 60 ? t('pagesDynamicSessionReports.rescoreRest') : ''}) +
-      'It shows in Recent activity as "Re-scoring".', target: null, tone: 'info'});
+      t('pagesAuditThird.a177'), target: null, tone: 'info'});
     await searching;
   } finally {
     running = null;
@@ -65,7 +65,7 @@ export function confirmRescore(count, how) {
   if (running) return;
   if (searching()) { how.toast(...WAIT); return; }   // asked before the dialog: nobody confirms a start that would be refused
   const dialog = $('rescore-dialog');
-  $('rescore-title').textContent = `Re-score ${jobs(count)}?`;
+  $('rescore-title').textContent = t('pagesShortReady.m298', {"jobs": jobs(count)});
   $('rescore-lead').textContent = dialogLead(count);
   $('rescore-go').textContent = pressLabel(count);
   dialog.returnValue = '';

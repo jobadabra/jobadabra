@@ -24,7 +24,7 @@ export function folded(labels, keep, more) {
   const box = chipsOf(labels.slice(0, keep));
   if (labels.length <= keep) return box;
   // "+N more", opening in place (owner, 18 Oct 2026: long lists show their first chips and "+N more"); `more` names it for the screen reader.
-  const rest = labels.slice(keep), toggle = el('button', 'link chip-more', `+${rest.length} more`);
+  const rest = labels.slice(keep), toggle = el('button', 'link chip-more', t('pagesShortSettings.m347', {"length": rest.length}));
   toggle.type = 'button';
   toggle.title = more;
   toggle.setAttribute('aria-expanded', 'false');

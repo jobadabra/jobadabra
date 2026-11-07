@@ -13,7 +13,7 @@ import './feedback-screens.js';   // registers each page's data
 import {drawTester, readTester} from './app-feedback-tester.js';
 
 let prepared = {shot: null, logs: null, page: null, profile: null, identity: null, tester: null};
-const PAGE_NOTE = "Its rows or questions with their ids, states and filters, so the problem can be reproduced. Never a job posting's text.";
+const PAGE_NOTE = t('pagesAuditFirst.a29');
 const EMPTY = {shot: null, logs: null, page: null, profile: null, identity: null, tester: null};
 
 // One state: the checkbox. The thumbnail shows while it is on and a picture exists; the × turns it off.
@@ -122,7 +122,7 @@ export async function init() {
     drawCount();
     prepared = {...EMPTY};
     $('app-feedback-dialog').close();
-    const left = result.skipped?.length ? t('pagesDynamicSetup.m61', {"value1": result.skipped.join(' and the ')}) : '';
+    const left = result.skipped?.length ? t('pagesDynamicSetup.m61', {"value1": result.skipped.join(t('pagesAuditFirst.a30'))}) : '';
     toastMessage(t('pagesCommon.thanks'), t('pagesDynamicSetup.m62', {"left": left}), NO_PLACE.done, 'good');
   });
 }

@@ -126,7 +126,7 @@ export async function init() {
   $('activity-warnings-more').addEventListener('click', () => {
     const open = $('activity-warnings-list').hidden;
     show($('activity-warnings-list'), open);
-    $('activity-warnings-more').textContent = open ? t('pagesCommon.hideDetails') : `View ${$('activity-warnings-list').children.length} details`;
+    $('activity-warnings-more').textContent = open ? t('pagesCommon.hideDetails') : t('pagesShortActivity.m60', {"length": $('activity-warnings-list').children.length});
   });
   $('activity-report').addEventListener('click', () => {
     const run = lastActivity?.runs?.find(each => each.id === detailRunId);

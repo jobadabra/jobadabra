@@ -11,7 +11,7 @@ import {profileBar} from './profile-save-bar.js';
 import {input, labelled} from './form-controls.js';
 export {STYLE_HEADING, isStyle} from '../writing-preferences-model.js';
 
-const DEFAULT = 'No preferences yet: letters use a short, direct default (130–170 words).';
+const DEFAULT = t('pagesAuditSecond.a122');
 const card = () => document.getElementById('setting-letter-style');
 let saved = [];              // the rules as last read
 const typed = new Map();     // rule index (or 'add') → the text as edited
@@ -50,7 +50,7 @@ export async function loadLetterStyle() {
     source = profileBar().register({id: 'letter-style', tab: 'letter', label: t('pagesJobsFinal.writingPrefs'), count: changes,
       save: async () => {
         const result = await window.pilot.letterStyleSave(drafted(), saved).catch(error => ({ok: false, error: error.message}));
-        if (!result?.ok) return {ok: false, error: result?.error || 'The writing preferences were not saved.'};
+        if (!result?.ok) return {ok: false, error: result?.error || t('pagesAuditSecond.a123')};
         saved = result.lines; typed.clear(); setEditing(card(), false); draw();
         return {ok: true};
       },

@@ -188,7 +188,7 @@ function drawCard(item) {
   if (card.live) checkPage(v, card.kind);   // a queued job has no page yet: nothing to ask main for
   drawStage(v);
   v.filling.hidden = !card.filling;
-  v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));
+  v.filling.replaceChildren(el('span', 'spinner'), el('span', '', t('pagesShortSettings.m306', {"filling": card.filling})));
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,
     style: `left:${box.x * 100}%;top:${box.y * 100}%;width:${box.w * 100}%;height:${box.h * 100}%`})));
   $('ss-question').replaceChildren(...(card.live ? [v.root] : []), el('p', 'rich-p muted small', card.note));

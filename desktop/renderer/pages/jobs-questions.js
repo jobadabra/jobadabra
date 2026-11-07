@@ -51,7 +51,7 @@ async function readQuestions({force}) {
 }
 
 // "N missing" / "N to check": the one count of each drawer, on its row (question-entries.js) and its Profile tab (index.html #tab-count-details, #tab-count-answers).
-export const countText = {details: n => `${n} missing`, learned: n => t('pagesDynamicJobs.m230', {"n": n})};
+export const countText = {details: n => t('pagesShortJobs.m189', {"n": n}), learned: n => t('pagesDynamicJobs.m230', {"n": n})};
 function drawCount(id, n, text) {
   if ($(id)) $(id).textContent = n ? text(n) : '';
   if ($(id)) show($(id), n > 0);   // a window without it (another page's test harness) is left alone

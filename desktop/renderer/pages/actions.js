@@ -57,7 +57,7 @@ export async function runCommand(command, button = null) {
   const refused = refusal(result);   // no AI credit, trial over, Notion (renderer/refusal.js): said here, never taken for a started task
   if (task && !refused && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // a started task keeps its button off until it ends (syncRunButtons)
   release(button);  // its row, then its result, show in Recent activity
-  const text = refused ? `⚠️ ${refused.text}` : (result.text || result.error || '') + (result.telegram ? '\n\n(Also sent to Telegram.)' : '');
+  const text = refused ? `⚠️ ${refused.text}` : (result.text || result.error || '') + (result.telegram ? t('pagesAuditPunct.a0') : '');
   answer(text);
   return {text};
 }
@@ -72,7 +72,7 @@ export async function startTailor() {
   const result = await window.pilot.tailorTop(count).catch(error => ({text: `⚠️ ${error.message}`}));
   if (result?.started) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // the Actions page keeps Run off while the task runs, and on again when it ends
   release(button);
-  const text = result?.text || result?.error || 'Done.';
+  const text = result?.text || result?.error || t('pagesAuditFirst.a3');
   answer(text);
   return {text};
 }
@@ -134,13 +134,13 @@ export async function init() {
     if (visitsLoading) return;   // 7 Oct 2026: a click while loading said "No sites to read yet · Read 0 sites"
     const ticked = visitBoxes().filter(box => box.checked).length, all = visitBoxes().length;
     const jobs = unreadBoxes().filter(box => box.checked).length, unread = unreadBoxes().length;
-    $('visits-lead').textContent = all ? `${plural(all, 'site')} · ${ticked} selected (${visitsAgain ? t('pagesActivity.notFinished') : t('pagesActivity.notReadWeek')})` : t('pagesActivity.noSites');
+    $('visits-lead').textContent = all ? t('pagesShortActivity.m0', {"plural": plural(all, 'site'), "ticked": ticked, "value3": visitsAgain ? t('pagesActivity.notFinished') : t('pagesActivity.notReadWeek')}) : t('pagesActivity.noSites');
     // Two tabs when there are jobs we couldn't read, each with its count ticked of all; else the sites alone, no tabs.
     $('visits-sites-count').textContent = `${ticked}/${all}`;
     $('visits-unread-count').textContent = `${jobs}/${unread}`;
     $('visits-tabs').hidden = !unread;
     if (!unread && visitsTab !== 'visits-sites') showVisitsTab('visits-sites');
-    $('visits-start').textContent = jobs ? `Read ${ticked ? `${plural(ticked, 'site')}, ` : ''}${plural(jobs, 'job')}` : `Read ${plural(ticked, 'site')}`;
+    $('visits-start').textContent = jobs ? t('pagesShortActivity.m1', {"value1": ticked ? `${plural(ticked, 'site')}, ` : '', "plural": plural(jobs, 'job')}) : t('pagesShortActivity.m2', {"plural": plural(ticked, 'site')});
     $('visits-start').disabled = !ticked && !jobs;
   };
   const paintVisits = async () => {
@@ -150,7 +150,7 @@ export async function init() {
     // While the list loads (Claude picks the sites that suit your roles, ~5 s): the Jobs list's loading look in the empty list, not a blank
     // dialog (owner, 8 Oct 2026). The list it replaces is not kept: it may be another run's.
     const loading = el('li', 'list-loading');
-    loading.append(el('span', 'spinner'), el('div', '', t('pagesActivity.findingSites')), el('div', 'muted small', ai('{AI} checks which suit your roles, a few seconds')));
+    loading.append(el('span', 'spinner'), el('div', '', t('pagesActivity.findingSites')), el('div', 'muted small', ai(t('pagesAuditPunct.a3'))));
     $('visits-sites').replaceChildren(loading);
     $('visits-tabs').hidden = true;
     showVisitsTab('visits-sites');
@@ -171,7 +171,7 @@ export async function init() {
     $('visits-sites').replaceChildren(...ordered.map(site => visitRow({value: site.url,
       ticked: tickedSite(site),
       name: site.kind === 'portal' ? t('pagesDynamicActivity.m0', {"name": site.name}) : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
-      note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : t('pagesExtraCommon.neverRead'), title: site.note,
+      note: site.last_read ? t('pagesShortActivity.m3', {"value1": site.last_read.slice(0, 10)}) : t('pagesExtraCommon.neverRead'), title: site.note,
       drop: t('pagesCommon.remove'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsHide(site.url)})));
     // Jobs in your places whose posting only your browser can open: ticked (not on Run again of a run, which is about its sites); Dismiss: not offered again.
     // A site that asked us to slow down (429) waits for its next try, unticked: a browser read now would be asked the same (owner, 20 Oct 2026).
@@ -202,7 +202,7 @@ export async function init() {
     const result = await window.pilot.visitsRun({urls, postings, atOnce, filter}).catch(error => ({text: `⚠️ ${error.message}`}));
     if (result?.started) { refreshActivity(); show($('command-answer'), false); return; }
     release(button);
-    answer(result?.text || result?.error || 'Done.');
+    answer(result?.text || result?.error || t('pagesAuditFirst.a3'));
   });
   initBoard({answer});   // Read this board: its card and dialog (actions-board.js)
   initFocusCheck();   // a captcha held in the hidden window: one line + Show the check (focus-check.js)

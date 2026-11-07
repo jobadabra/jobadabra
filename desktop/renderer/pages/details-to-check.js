@@ -9,7 +9,7 @@ import {showOnTab} from './tab-part.js';
 import {setAsideRows} from './set-aside.js';
 
 // The card's lead in index.html says what Review does; with nothing to review it says what else is here.
-const LEAD_NONE = 'Nothing waits for you. What was changed on your behalf is listed here, with Undo.';
+const LEAD_NONE = t('pagesAuditFirst.a62');
 const $ = id => document.getElementById(id);
 
 // One quiet row: an icon, the words (a line, then a muted one) and a solid Undo-style button at the right. Rows share dividers; never a box inside the card.
@@ -26,12 +26,12 @@ export function noteRow({words, detail = '', button = null, id = ''}) {
 export function tidiedRow(tidied, onUndo) {
   if (!tidied) return null;
   const eligibility = tidied.eligibility || 0, rest = tidied.changed - eligibility;
-  const words = [rest ? t('pagesDynamicCvData.m134', {"rest": rest}) : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
+  const words = [rest ? t('pagesDynamicCvData.m134', {"rest": rest}) : '', eligibility ? t('pagesAuditFirst.a63') : ''].filter(Boolean).join(' ');
   const undo = Object.assign(el('button', 'secondary small-btn with-icon', ''), {type: 'button'});
   undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
   undo.setAttribute('aria-label', t('pagesProfile.undoChange'));
   undo.addEventListener('click', () => onUndo(undo));
-  return noteRow({words, detail: 'The words you saved are kept, and the copy from before is backed up.', button: undo});
+  return noteRow({words, detail: t('pagesAuditFirst.a64'), button: undo});
 }
 
 // state: {count, aside, tidied}; hooks: {onReview, onUndoTidy(button), onChange (reload after an Undo), showError(text)}.

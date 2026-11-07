@@ -24,7 +24,7 @@ function renderShots() {
     const remove = el('button', 'soft-button', t('pagesCommon.remove'));
     remove.type = 'button';
     remove.addEventListener('click', () => { leadShots.splice(i, 1); renderShots(); });
-    box.append(Object.assign(document.createElement('img'), {src: `data:${shot.type};base64,${shot.data}`, alt: `Screenshot ${i + 1}`}),
+    box.append(Object.assign(document.createElement('img'), {src: `data:${shot.type};base64,${shot.data}`, alt: t('pagesShortJobs.m184', {"value1": i + 1})}),
       el('span', 'attachment-name', `${leadShots.length > 1 ? `${i + 1}. ` : ''}${shot.name}`), remove);
     return box;
   }));
@@ -32,7 +32,7 @@ function renderShots() {
   $('lead-shot-add').disabled = $('lead-shot-paste').disabled = leadShots.length >= MAX_SHOTS;
 }
 function setLeadShot(shot) {
-  if (leadShots.length >= MAX_SHOTS) { leadResult('info', t('pagesDynamicJobs.m225', {"MAX_SHOTS": MAX_SHOTS}), 'Remove one to add another.'); return; }
+  if (leadShots.length >= MAX_SHOTS) { leadResult('info', t('pagesDynamicJobs.m225', {"MAX_SHOTS": MAX_SHOTS}), t('pagesAuditSecond.a102')); return; }
   leadShots.push(shot);
   renderShots();
 }
@@ -270,8 +270,8 @@ export function wireLead() {
   $('lead-shot-paste').addEventListener('click', async () => {
     const shot = await window.pilot.clipboardImage();
     if (shot) setLeadShot(shot); else leadResult('info', t('pagesControlStatus.noClipboardImage'),
-      osPick('Copy a screenshot first (⇧⌘4, then Ctrl-click to copy it), or use Add screenshot.',
-        'Copy a screenshot first (Win+Shift+S saves one to the clipboard), or use Add screenshot.'));
+      osPick(t('pagesAuditSecond.a103'),
+        t('pagesAuditSecond.a104')));
   });
   $('lead-dialog').addEventListener('paste', event => {
     const files = [...(event.clipboardData?.files || [])].filter(f => /^image\//.test(f.type));
@@ -331,16 +331,16 @@ export function wireLead() {
     const text = $('lead-text').value.trim();
     leadResult('', '');
     if (!leadProposal) {  // step 1: Claude reads it; nothing is written yet
-      if (!leadShots.length && text.length < 40) { leadResult('warn', t('pagesControlStatus.nothingLog'), 'Paste the whole message, or add a screenshot of it.'); return; }
-      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', t('pagesControlStatus.whichJob'), 'Choose the job, or tick "Find the job automatically".'); return; }
-      const proposal = await working(leadShots.length > 1 ? `Sending ${leadShots.length} screenshots` : t('pagesControlStatus.startingEngine'),
+      if (!leadShots.length && text.length < 40) { leadResult('warn', t('pagesControlStatus.nothingLog'), t('pagesAuditSecond.a105')); return; }
+      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', t('pagesControlStatus.whichJob'), t('pagesAuditSecond.a106')); return; }
+      const proposal = await working(leadShots.length > 1 ? t('pagesShortJobs.m187', {"length": leadShots.length}) : t('pagesControlStatus.startingEngine'),
         () => window.pilot.proposeLead(text, leadShots, leadTarget()));
       if (!proposal.ok) {
         const said = String(proposal.text || '').replace(/^\S+\s/, '');  // without the leading emoji
         const notJob = /doesn't look like a message about a job/.test(said);
         const unsure = /can't tell which company and role/.test(said);
         leadResult('warn', notJob ? t('pagesControlStatus.noActivity') : unsure ? t('pagesControlStatus.whichJob') : t('pagesControlStatus.logFailed'),
-          notJob ? 'This looks like something other than a job (e.g. a services pitch), so nothing was added.' : said, notJob || unsure);
+          notJob ? t('pagesAuditSecond.a107') : said, notJob || unsure);
         return;
       }
       showConfirm(proposal);
@@ -349,7 +349,7 @@ export function wireLead() {
     // Step 2: only once every marked detail is confirmed, then it's written with your answers.
     const left = confirmStep.pending(leadProposal, leadState, localDay());
     if (left.length) {
-      leadResult('warn', confirmStep.saveLabel(left), 'The marked details were guessed or missing: confirm or fill them in first.');
+      leadResult('warn', confirmStep.saveLabel(left), t('pagesAuditSecond.a108'));
       document.querySelector(`#lead-confirm .lead-field[data-field="${left[0].name}"]`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
       return;
     }

@@ -44,7 +44,7 @@ function chips(view, field, bind) {
   const list = el('div', 'chip-list');
   for (const [i, chip] of chipsOf(bind.text()).entries()) {
     const node = el('span', 'chip removable', chip);
-    const x = Object.assign(el('button', 'x', '×'), {type: 'button', ariaLabel: `Remove ${chip}`});
+    const x = Object.assign(el('button', 'x', '×'), {type: 'button', ariaLabel: t('pagesShortJobs.m165', {"chip": chip})});
     x.addEventListener('click', () => { const next = chipsOf(bind.text()); next.splice(i, 1); bind.set(chipsText(next)); view.redraw(); });
     node.append(x);
     list.append(node);
@@ -185,7 +185,7 @@ function draw(view, into) {
 }
 
 // ---------- The card as read: each side's fields as label/value rows, its other rules on one line; drafts shown as they will be saved.
-const LEAD = 'What a job must have, and what ranks it higher. Scoring reads them.';
+const LEAD = t('pagesAuditSecond.a95');
 const readText = (field, item) => String(typed.get(field.key) ?? item?.value ?? '').replace(/\*\*/g, '').trim();
 function readValue(field, item) {
   const text = readText(field, item);
@@ -206,7 +206,7 @@ function readSide(read, key) {
   // No heading per side (owner, 18 Oct 2026: "Either we're fully inline, either we're fully on the new line"): the row labels say which side.
   const open = rows.filter(row => row.any);
   if (open.length > 1) rows.splice(rows.indexOf(open[0]), 0, {icon: group.icon, label: key === 'must' ? t('pagesJobs.mustHaves') : t('pagesJobs.preferences'),
-    value: el('span', 'muted', `Any ${open.map(row => row.label.toLowerCase()).join(', ')}`)});
+    value: el('span', 'muted', t('pagesShortJobs.m170', {"value1": open.map(row => row.label.toLowerCase()).join(', ')}))});
   for (const row of open.length > 1 ? open : []) rows.splice(rows.indexOf(row), 1);
   const box = el('section', 'pref-read');
   box.dataset.side = key;
@@ -237,7 +237,7 @@ const drawn = fields => Object.fromEntries(Object.entries(fields).filter(([key])
 export async function loadPreferences() {
   const node = document.getElementById('preferences-body');
   if (!node) return;
-  if (!tab || tab.node !== node) tab = {...outlineTab('preferences', [TEXT], node, draw, {onReset: () => { typed.clear(); handled.clear(); noteDraft = null; }, words: 'Future searches and scores use them once you save.',
+  if (!tab || tab.node !== node) tab = {...outlineTab('preferences', [TEXT], node, draw, {onReset: () => { typed.clear(); handled.clear(); noteDraft = null; }, words: t('pagesAuditSecond.a96'),
     bar: barFor(), tab: 'strategy-yours', label: t('pagesCommon.jobPreferences')}), node};
   review.asked = false;
   await tab.load();

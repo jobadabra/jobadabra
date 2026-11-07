@@ -34,8 +34,8 @@ const goalNow = key => (key in (strategyState.goalEdits || {}) ? strategyState.g
 // Target roles as read: the role families' first titles, the draft included, "+N more" for the rest.
 function rolesValue() {
   const titles = roleFamilies(draftEntries('roles')).flatMap(family => family.entries.map(entry => titleCase(entry.label)));
-  if (!titles.length) return {text: '', note: 'No roles yet: Edit to add one.'};
-  return {text: titles.slice(0, 3).join(' · '), more: titles.length > 3 ? `+${titles.length - 3} more` : '', title: titles.join(', ')};
+  if (!titles.length) return {text: '', note: t('pagesAuditSecond.a135')};
+  return {text: titles.slice(0, 3).join(' · '), more: titles.length > 3 ? t('pagesShortReady.m231', {"value1": titles.length - 3}) : '', title: titles.join(', ')};
 }
 function tileValue(key) {
   if (key === 'roles') return rolesValue();

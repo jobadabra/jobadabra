@@ -85,7 +85,7 @@ export async function loadJobs() {
     // The last good list at once (lib/view-cache.js), then the fresh one from Notion replaces it.
     if (!shared.allJobs.length) {
       const saved = await window.pilot.cached('jobs');
-      if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += ` · saved ${savedAgo(saved.at)}, updating…`; jobsState.jobsLoading = true; }
+      if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += t('pagesShortJobs.m204', {"savedAgo": savedAgo(saved.at)}); jobsState.jobsLoading = true; }
     }
     const fresh = await writes.read();
     if (fresh) { showOutdatedJobs(false); showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
@@ -116,7 +116,7 @@ async function askAboutLeftOpen() {
   leftOpenAsked = true;
   if (!open.length) return;
   const answer = await window.pilot.sessionsLeftOpen(open.map(item => item.id));
-  if (answer?.kept) toastMessage(`${answer.kept} application${answer.kept === 1 ? '' : 's'} restored`,
+  if (answer?.kept) toastMessage(t('pagesShortJobs.m205', {"kept": answer.kept, count: answer.kept}),
     t('pagesDynamicJobs.m242', {count: answer.kept}), {view: 'sessions'}, 'good');
 }
 let jobsLimit = 200;
@@ -171,8 +171,8 @@ export function showJobsData(data) {
     document.dispatchEvent(new Event('menu:refresh'));   // pages/nav.js: Interviews appears with the first application
         // Total / high fit / new / companies count job matches; opportunities that found you are "In conversation".
     const count = jobCounts(data);   // one definition for every count (jobs-view.js), the Find jobs card's too
-    $('jobs-stats').textContent = `${count.total} matches` +
-      (count.week ? t('pagesDynamicJobs.m244', {"week": count.week}) : '') + (data.filtered ? ` · ${data.filtered} hidden` : '') +
+    $('jobs-stats').textContent = t('pagesShortJobs.m206', {"total": count.total}) +
+      (count.week ? t('pagesDynamicJobs.m244', {"week": count.week}) : '') + (data.filtered ? t('pagesShortJobs.m207', {"filtered": data.filtered}) : '') +
       // Found but not checked yet (the engine: not scored): the next refreshes take them, a batch at a time, best places first (src/daily.py).
       (data.waiting ? t('pagesDynamicJobs.m245', {"waiting": data.waiting}) : '') +
       (data.stale ? t('pagesJobsFinal.notionUnreachable') : '');   // about Notion

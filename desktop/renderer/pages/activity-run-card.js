@@ -137,7 +137,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     more = el('div', 'run-card-foot');
     const rest = card.items.length - 5;
     if (rest > 0) {
-      const toggle = el('button', 'link', all ? t('pagesStatus.showLess') : `+${rest} more`);
+      const toggle = el('button', 'link', all ? t('pagesStatus.showLess') : t('pagesShortActivity.m50', {"rest": rest}));
       toggle.addEventListener('click', () => { expandedCard = all ? '' : card.items.map(item => item.company).join('|'); renderRunCard(card, run, target); });
       more.append(toggle);
     }

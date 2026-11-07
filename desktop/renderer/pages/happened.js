@@ -13,7 +13,7 @@ import {toastMessage} from './startup.js';
 import {storeName} from '../store-words.js';
 
 let current = null;  // {item, answer: 'yes' | 'no'}
-const who = item => item.company || item.via || 'the recruiter';
+const who = item => item.company || item.via || t('pagesAuditSecond.a88');
 
 export function openHappened(item, answer) {
   current = {item, answer};
@@ -72,7 +72,7 @@ async function save() {
 // Give up on an interview (Up next ⋯, or the ✕ on a calendar event): after a confirmation, an "Interview cancelled" event
 // in Notion and the Next interview cleared; the job's stage stays. onConfirmed runs as soon as the user says yes, onDone once Notion has it, onFail if it refused.
 export async function dismissInterview({page_id, company, via}, {onConfirmed = () => {}, onDone = () => {}, onFail = () => {}} = {}) {
-  const name = company || via || 'this recruiter';
+  const name = company || via || t('pagesAuditSecond.a89');
   if (!confirm(t('pagesDynamicFocusInterviews.m191', {"name": name, "storeName": storeName()}))) return false;
   onConfirmed();   // the row leaves the list at once; Notion takes seconds
   const result = await window.pilot.interviewHappened(page_id, 'cancelled', {}).catch(error => ({ok: false, error: error.message}));

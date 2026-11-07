@@ -63,15 +63,15 @@ export async function init() {
     $('store-keep').disabled = true;
     const result = await window.pilot.keepOnThisMac();
     $('store-keep').disabled = false;
-    if (!result?.ok) { say(result?.error || 'Not changed.', 'error'); return; }
-    say('Your data is kept on this Mac ✓', 'ok');
+    if (!result?.ok) { say(result?.error || t('pagesAuditFirst.a52'), 'error'); return; }
+    say(t('pagesFieldsStatus.localData'), 'ok');
     shared.state = await window.pilot.state();
     showStore();
   });
   $('store-connect').addEventListener('click', () => openNotionConnect({reason: 'none', where: 'settings', from: 'settings', then: () => showStore()}));
   // The move (lib/store-move.js): its progress as it copies, then what moved and which texts Notion already had (kept there, this Mac's in the archive).
   window.pilot.onStoreMoveProgress(({entity, done, total} = {}) =>
-    say(`Moving ${MOVE_WORDS[entity] || entity}… ${done} of ${total}`, 'waiting'));
+    say(t('pagesShortActivity.m105', {"value1": MOVE_WORDS[entity] || entity, "done": done, "total": total}), 'waiting'));
   // "Move my data to Notion": the same prompt as every connect (pages/notion-connect.js, "Connect and move" or "Move to Notion"); its result lands here.
   $('store-move').addEventListener('click', () => openNotionConnect({reason: 'move', where: 'settings', from: 'settings', then: async result => {
     if (!result?.ok) { say(result?.text || result?.error || t('pagesStrategy.notMoved'), 'error'); return; }
@@ -120,7 +120,7 @@ export async function init() {
     // A rejected clear (an IPC error, a thrown write) still ends the wait: the toast says it, and the Clear button comes back (Gitar on #2466).
     let result;
     try {
-      result = await whileBusy($('busy-dialog'), {title: t('pagesLettersData.backupClear'), note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
+      result = await whileBusy($('busy-dialog'), {title: t('pagesLettersData.backupClear'), note: t('pagesAuditFirst.a53')}, () => window.pilot.clearJobs());
     } catch (error) { result = {ok: false, error: error?.message || String(error)}; }
     finally { $('clear-jobs-go').disabled = false; show(clearBox, false); show($('clear-jobs'), true); }
     if (!result?.ok) { toastMessage(t('pagesProfile.listNotCleared'), result?.error || t('pagesProfile.nothingChanged'), {card: 'data'}, 'bad'); return; }
@@ -144,7 +144,7 @@ export async function init() {
     const typed = $('reset-confirm').value.trim(), unlocked = !$('reset-confirm').disabled;
     const left = WORD.length - typed.length;
     const ready = unlocked && typed === WORD;
-    const hint = !unlocked ? 'Save a copy or skip it in step 1 first.' : ready ? '✓ Ready' : !typed ? t('pagesDynamicCvData.m125', {"WORD": WORD})
+    const hint = !unlocked ? t('pagesAuditFirst.a54') : ready ? '✓ Ready' : !typed ? t('pagesDynamicCvData.m125', {"WORD": WORD})
       : WORD.startsWith(typed) ? t('pagesDynamicCvData.m126', {"left": left, count: left}) : t('pagesDynamicCvData.m127', {"WORD": WORD});
     $('reset-go').disabled = !ready;
     $('reset-go').title = ready ? '' : hint;
@@ -159,7 +159,7 @@ export async function init() {
   };
   $('reset-export').addEventListener('click', async () => {
     const result = await window.pilot.exportProfile({keys: false, accounts: $('reset-export-accounts').checked});
-    if (result?.ok) allowReset(`✓ Saved: ${result.file.split(/[\\/]/).pop()}`, 'tone-good');
+    if (result?.ok) allowReset(t('pagesShortActivity.m107', {"value1": result.file.split(/[\\/]/).pop()}), 'tone-good');
     else if (result?.error) message('reset-message', t('pagesDynamicCvData.m129', {"error": result.error}), 'error');
   });
   $('reset-skip-export').addEventListener('click', () => allowReset('✓ Skipped', ''));
@@ -176,8 +176,8 @@ export async function init() {
     else if (done?.imported) toastMessage(t('pagesProfile.imported'), t('pagesDynamicCvData.m131', {"backup": done.backup}), {card: 'data'}, 'good');
     // The backup's Profile and tracking are in its Notion workspace (lib/reset.js notionLeftBehind): say which one to connect, before a new one is made.
     if (done?.imported && done.notionElsewhere) toastMessage({title: t('pagesProfile.connectSame'),
-      body: 'Your Profile and job tracking are in the Notion workspace this backup used. Connect that workspace and pick your existing Jobadabra page: '
-        + 'a new workspace starts with an empty Profile.', target: {view: 'settings', section: 'connections'}, tone: 'warn'});
+      body: t('pagesAuditFirst.a55')
+        + t('pagesAuditFirst.a56'), target: {view: 'settings', section: 'connections'}, tone: 'warn'});
     else if (done?.deleted) toastMessage(t('pagesProfile.reset'), t('pagesLettersData.previousDeleted'), {card: 'data'}, 'info');
   });
 }

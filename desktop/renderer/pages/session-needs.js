@@ -113,7 +113,7 @@ export function updateNeedsCount() {
   const check = open.filter(li => li.classList.contains('is-confirm')).length, form = open.length - check;
   const detail = [form && t('pagesDynamicSessionReports.m347', {"form": form}), check && t('pagesDynamicSessionReports.m348', {"check": check})].filter(Boolean).join(' · ');
   $('ss-needs-count').replaceChildren(open.length
-    ? pill(`${open.length} action${open.length === 1 ? '' : 's'} remaining`, 'neutral', {title: detail})
+    ? pill(t('pagesShortSettings.m312', {"length": open.length, count: open.length}), 'neutral', {title: detail})
     : pill(t('pagesSession.allHandled'), 'good', {dot: true}));
   // The open rows are the numbered list you work through, in order.
   open.forEach((li, i) => { const number = li.querySelector('.ss-need-num'); if (number) number.textContent = String(i + 1); });
@@ -200,7 +200,7 @@ export function emptyFields(item, needs) {
   return left;
 }
 // Text we drafted from the person's facts and they have not read yet: its own words, in place of a reason it was left (extension/panel-written.js).
-const draftNote = (state, label) => { const draft = (state?.drafts || []).find(one => sameQuestion(one.label, label)); return draft ? (draft.outline ? 'Outline for you: add your own details in the form (the lines starting with • Add:).' : 'Drafted for you: read it in the form, edit it or keep it. Review my answer is beside the box.') : ''; };
+const draftNote = (state, label) => { const draft = (state?.drafts || []).find(one => sameQuestion(one.label, label)); return draft ? (draft.outline ? t('pagesAuditThird.a184') : t('pagesAuditThird.a185')) : ''; };
 export function emptyRow(label, item) {
   const proposal = proposalFor(item, label); if (proposal) return markKnockout(proposedRow(item, label, proposal), item, label);   // its answer, back (need-proposal.js)
   const li = el('li', 'ss-need is-empty'), body = el('div', 'ss-need-body'), actions = el('div', 'ss-need-actions');
@@ -286,7 +286,7 @@ export function needRow(need, item) {
   const name = need.label ? unbold(need.label) : `"${title}"`;
   const reply = need.kind !== 'agree' && replyOf(title);
   if (reply && resumeOffered()) {   // "Reply ok, and I'll click Create an account" (a reply to Claude: only with Claude help on, claude-help.js): one button that sends it, not a field to review
-    actions.append(smallButton(`Reply "${reply}"`, 'secondary is-answer', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
+    actions.append(smallButton(t('pagesShortSettings.m315', {"reply": reply}), 'secondary is-answer', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
     li.append(badge(), body, actions);
     if (handled.has(key)) doneRow(li, key, handled.get(key));
     return li;
@@ -355,7 +355,7 @@ function savedLine(question) {
     line.replaceWith(savedLine(question));
   });
   forget.title = t('pagesSession.onlyAnswer');
-  line.append('Saved for future forms ', forget);
+  line.append(t('pagesAuditThird.a186'), forget);
   return line;
 }
 export function askRow(need, item) {

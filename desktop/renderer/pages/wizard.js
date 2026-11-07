@@ -60,7 +60,7 @@ async function saveOpenAiKey() {
 
 /** Derive every label from the visible sidebar order; no step owns a fixed number or total. */
 export function setupStepLabels(steps) {
-  return steps.map((key, index) => ({key, eyebrow: `Step ${index + 1} of ${steps.length}`, reference: `step ${index + 1}`}));
+  return steps.map((key, index) => ({key, eyebrow: t('pagesShortSettings.m374', {"value1": index + 1, "length": steps.length}), reference: t('pagesShortSettings.m375', {"value1": index + 1})}));
 }
 
 // Why (30 Oct 2026, owner): labels must follow the visible sidebar as entries are added or hidden.
@@ -185,7 +185,7 @@ export async function init() {
       const name = li.dataset.saveStep, value = saveState[name];
       li.className = value === 1 ? 'done' : value !== undefined ? 'now' : '';
       const count = li.querySelector('.count');
-      if (count) count.textContent = name === step && total && !finished ? `· ${done} of ${total} blocks` : saveState[`${name}:note`] ? `· ${saveState[`${name}:note`]}` : '';
+      if (count) count.textContent = name === step && total && !finished ? t('pagesShortSettings.m380', {"done": done, "total": total}) : saveState[`${name}:note`] ? `· ${saveState[`${name}:note`]}` : '';
     });
     const percent = Object.entries(SAVE_STEPS).reduce((sum, [name, share]) => sum + share * (saveState[name] || 0), 0);
     $('save-bar').style.width = `${Math.max(3, Math.round(percent))}%`;

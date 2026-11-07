@@ -50,11 +50,11 @@ registerOverlay('activity', {close: () => openActivity(false), open: () => openA
 let announced = null;  // {running: id of the run announced as started, done: ids of finished runs already seen}
 export function announceRuns({running, runs}) {
   if (!announced) { announced = {running: running?.id ?? null, done: new Set(runs.map(run => run.id))}; return; }
-  const where = run => run.source === 'github' ? ' · on GitHub' : '';
+  const where = run => run.source === 'github' ? t('pagesAuditPunct.a10') : '';
   if (running && running.id !== announced.running) {
     announced.running = running.id;
     const kind = KIND[kindOf(running)] || KIND.search;
-    if (running.trigger === 'schedule') toastMessage({title: `${kind.icon} ${kind.name} started`, body: `Scheduled${where(running)}`, target: {activity: true}, tone: 'info'});
+    if (running.trigger === 'schedule') toastMessage({title: t('pagesShortActivity.m27', {"icon": kind.icon, "name": kind.name}), body: t('pagesShortActivity.m28', {"where": where(running)}), target: {activity: true}, tone: 'info'});
   }
   for (const run of runs.filter(r => !announced.done.has(r.id))) {
     announced.done.add(run.id);
@@ -69,7 +69,7 @@ export function refreshCv() {
   const {cvName, cvAddedAt} = shared.state.settings, kinds = CV_FILES.label;
   show($('cv-file'), !!cvName);
   $('cv-name').textContent = cvName || t('pagesStatus.noCv');
-  $('cv-meta').textContent = cvName && cvAddedAt ? `Added ${displayDate(new Date(cvAddedAt), {day: 'numeric', month: 'short'})}` : '';
+  $('cv-meta').textContent = cvName && cvAddedAt ? t('pagesShortActivity.m29', {"when": displayDate(new Date(cvAddedAt), {day: 'numeric', month: 'short'})}) : '';
   $('cv-choose').classList.toggle('primary', !cvName);   // chosen: Replace is quiet, Continue is the one primary
   $('cv-choose').classList.toggle('secondary', !!cvName);
   $('cv-choose-label').textContent = cvName ? t('pagesStatus.replaceCv') : t('pagesDynamicActivity.m17', {"kinds": kinds});

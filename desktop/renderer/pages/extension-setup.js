@@ -24,11 +24,11 @@ function showStray(entry) {
 // ---------- Chrome extension: is it installed (the browser says so at once), and is it awake (its report)? ----------
 // What the card says in each state: the pill is the state, this is the sentence that explains it.
 const EXT_LINE = {
-  connected: 'Connected: it fills application forms with your details and CV.',
-  closed: 'Installed in Chrome. Chrome isn\'t running, so it can\'t reach this app: open it and it reports within 30 seconds.',
-  idle: 'Installed in Chrome, connecting to this app. If it stays amber, press Connect the extension below and then Connect to the Jobadabra app.',
-  off: 'Installed in Chrome but turned off: switch it back on in chrome://extensions.',
-  absent: 'Not installed in Chrome yet: Add to Chrome below takes a minute.',
+  connected: t('pagesAuditSecond.a69'),
+  closed: t('pagesAuditSecond.a70'),
+  idle: t('pagesAuditSecond.a71'),
+  off: t('pagesAuditSecond.a72'),
+  absent: t('pagesAuditSecond.a73'),
   checking: t('pagesFieldsStatus.lookingChrome'),
 };
 let browserApp = 'Google Chrome';  // the browser the extension is (or will be) installed in, from the app
@@ -82,8 +82,8 @@ export function bindExtension() {
       const result = await window.pilot.extensionStore().catch(() => null);
       button.disabled = false;
       toastMessage(result?.opened ? t('pagesConnections.storeOpened') : t('pagesConnections.chromeFailed'),
-        inBrowser(result?.opened ? 'Press Add to Chrome there. It connects to this app by itself within 30 seconds.'
-          : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
+        inBrowser(result?.opened ? t('pagesAuditSecond.a75')
+          : t('pagesAuditSecond.a76'), browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-stray-quit').addEventListener('click', async event => {
@@ -99,8 +99,8 @@ export function bindExtension() {
   $('ext-open-page').addEventListener('click', async () => {
     const result = await window.pilot.extensionPage().catch(() => null);
     message('ext-message', inBrowser(result?.opened
-      ? osText('Asked Chrome to open its extensions page. If nothing appears: chrome://extensions is on your clipboard (⌘L, ⌘V, ⏎).')
-      : osText('chrome://extensions is on your clipboard: in Chrome press ⌘L, then ⌘V and ⏎.'), browserApp), result?.opened ? 'ok' : 'error');
+      ? osText(t('pagesAuditSecond.a77'))
+      : osText(t('pagesAuditPunct.a20')), browserApp), result?.opened ? 'ok' : 'error');
   });
   // The folder in front of the user and its path on the clipboard. The Mac's dialog takes ⌘⇧G (Go to Folder), ⌘V,
   // Return; the PC's has no such shortcut, so it gets its own sentence. Bound by attribute, so the setup wizard's
@@ -111,14 +111,14 @@ export function bindExtension() {
       const result = await window.pilot.extensionShow().catch(() => null);
       button.disabled = false;
       toastMessage(result?.opened ? t('pagesConnections.folderOpened') : t('pagesConnections.folderFailed'),
-        inBrowser(result?.opened ? osPick('Its path is on your clipboard: in Chrome press Load unpacked, then ⌘⇧G, ⌘V, Return.',
-          'Its path is on your clipboard: in Chrome press Load unpacked, paste it into the folder box (Ctrl+V), and press Enter.')
-          : 'Open the extension folder by hand, then press Load unpacked in Chrome.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
+        inBrowser(result?.opened ? osPick(t('pagesAuditSecond.a78'),
+          t('pagesAuditSecond.a79'))
+          : t('pagesAuditSecond.a80'), browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-connect').addEventListener('click', async () => {
     const result = await window.pilot.extensionOptions().catch(() => null);
     message('ext-message', result?.opened ? t('pagesConnections.extensionConnect')
-      : inBrowser('Couldn\'t open the extension\'s settings page. Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.', browserApp), result?.opened ? 'ok' : 'error');
+      : inBrowser(t('pagesAuditSecond.a81'), browserApp), result?.opened ? 'ok' : 'error');
   });
 }

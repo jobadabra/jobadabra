@@ -18,14 +18,14 @@ const tiles = async () => {
   const row = el('div', 'inline topup-packs', '');
   if (offers.length) {
     for (const offer of offers) {
-      const buy = el('button', 'secondary', `Add €${offer.price}`);
+      const buy = el('button', 'secondary', t('pagesShortSettings.m370', {"price": offer.price}));
       buy.type = 'button';
       buy.addEventListener('click', () => window.pilot.planCheckout(offer.id));
       row.append(buy);
     }
     return {parts: [row], paying: true};
   }
-  for (const euros of PACKS) { const off = el('button', 'secondary', `Add €${euros}`); Object.assign(off, {type: 'button', disabled: true}); row.append(off); }
+  for (const euros of PACKS) { const off = el('button', 'secondary', t('pagesShortSettings.m371', {"euros": euros})); Object.assign(off, {type: 'button', disabled: true}); row.append(off); }
   return {parts: [row, el('p', 'muted small', t('pagesMisc.topupLater'))], paying: false};
 };
 
@@ -55,7 +55,7 @@ export async function openTopupDialog(why = {}, {action = '', retry = null} = {}
       const result = await window.pilot.planRedeem(field.value.trim()).catch(() => ({ok: false, error: 'offline'}));
       go.disabled = false;
       const again = result.ok && retry && action;
-      answer.textContent = `${result.ok ? '✓ ' : ''}${redeemWords(result)}${again ? ` Starting ${action}…` : ''}`;
+      answer.textContent = `${result.ok ? '✓ ' : ''}${redeemWords(result)}${again ? t('pagesShortSettings.m372', {"action": action}) : ''}`;
       answer.className = `message ${result.ok ? 'ok' : 'error'}`;
       if (result.ok) setTimeout(() => { close(); if (again) retry(); }, 1200);
     };

@@ -49,7 +49,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   $('activity-warnings-fix').dataset.go = '';
   show($('activity-warnings-progress'), !!going);
   if (going) {
-    $('activity-warnings-count').textContent = going.count ? `${displayNumber(going.count.done)} of ${displayNumber(going.count.total)} · ${going.count.percent}%` : '';
+    $('activity-warnings-count').textContent = going.count ? t('pagesShortActivity.m47', {"displayNumber": displayNumber(going.count.done), "displayNumber2": displayNumber(going.count.total), "percent": going.count.percent}) : '';
     const bar = $('activity-warnings-progress').querySelector('.bar');
     bar.classList.toggle('is-sliding', !going.count);
     bar.firstElementChild.style.width = going.count ? `${going.count.percent}%` : '';
@@ -79,9 +79,9 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   }
   if (problem) {
     // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
-    $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
+    $('activity-warnings-title').textContent = limited ? t('pagesShortActivity.m48', {"plural": plural(limited, 'job'), count: limited})
       : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? t('pagesStatus.runningWarnings') : t('pagesDynamicActivity.m32', {"value1": WARN_NOUN[kindOf(run)] || t('pagesCommon.run')});
-    const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
+    const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : t('pagesAuditFirst.a21');
     $('activity-warnings-summary').textContent = summary;
     show($('activity-warnings-hint'), !!head?.hint);
     $('activity-warnings-hint').textContent = head?.hint || '';
@@ -110,7 +110,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
     $('activity-warnings-list').dataset.for = String(run?.id);
     show($('activity-warnings-list'), listShown);
     show($('activity-warnings-more'), grouped.length > 1);
-    $('activity-warnings-more').textContent = listShown ? t('pagesCommon.hideDetails') : `View ${grouped.length} detail${grouped.length === 1 ? '' : 's'}`;
+    $('activity-warnings-more').textContent = listShown ? t('pagesCommon.hideDetails') : t('pagesShortActivity.m49', {"length": grouped.length, count: grouped.length});
     $('activity-warnings-list').replaceChildren(...grouped.map(text => el('li', '', text)));
     // Folded away: the headline stays, the rest hides (the chevron turns).
     $('activity-warnings').classList.toggle('is-folded', folded);

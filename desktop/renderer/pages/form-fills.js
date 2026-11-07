@@ -54,7 +54,7 @@ function listView() {
     name.append(open);
     if (s.company) name.append(el('div', 'muted small', s.company));
     const row = tr(el('span', 'muted', s.at ? runWhen(s.at) : ''), name, el('span', '', s.agent), pill(s.outcome, s.tone, {dot: true}),
-      el('span', '', s.fields === null ? '–' : `${s.fields}${s.left ? ` · ${s.left} left` : ''}`), el('span', 'muted', s.minutes === null ? '–' : `${s.minutes} min`));
+      el('span', '', s.fields === null ? '–' : `${s.fields}${s.left ? t('pagesShortJobs.m143', {"left": s.left}) : ''}`), el('span', 'muted', s.minutes === null ? '–' : t('pagesShortJobs.m144', {"minutes": s.minutes})));
     row.dataset.id = run.id;
     return row;
   });
@@ -83,7 +83,7 @@ function detailView(run) {
   }
   const backLine = el('div', ''); backLine.append(back);   // a line of its own: a grid cell would stretch the button
   box.append(backLine, head);
-  const figures = [s.minutes !== null && [t('pagesFieldsStatus.time'), `${s.minutes} min`], s.fields !== null && [t('pagesFieldsStatus.fields'), String(s.fields)],
+  const figures = [s.minutes !== null && [t('pagesFieldsStatus.time'), t('pagesShortJobs.m145', {"minutes": s.minutes})], s.fields !== null && [t('pagesFieldsStatus.fields'), String(s.fields)],
     s.fields !== null && [t('pagesFieldsStatus.requiredLeft'), String(s.left || 0)], ...sessionNumbers(run)].filter(Boolean);
   if (figures.length) box.append(numbers(figures));
   const fields = fieldRows(run);

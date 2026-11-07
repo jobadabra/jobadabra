@@ -26,7 +26,7 @@ export async function showStatusCard() {
     ['🔎', t('pagesCommon.lastRefresh'), lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : t('pagesExtraLabels.noneYet')],
     ['⏭', t('pagesExtraLabels.nextRefresh'), nextSearchAt ? nextWords(nextSearchAt) : t('pagesExtraLabels.onlyAsk')],
     ['📧', t('pagesExtraLabels.lastGmail'), lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : t('pagesExtraLabels.noneYet')],
-    ['⏭', t('pagesExtraLabels.nextGmail'), nextMailAt ? nextWords(nextMailAt) : 'off'],
+    ['⏭', t('pagesExtraLabels.nextGmail'), nextMailAt ? nextWords(nextMailAt) : t('pagesDynamicSetup.off')],
   ].filter(Boolean);
   const card = $('status-card');
   card.replaceChildren(el('h2', '', t('pagesFocusReports.status')), ...rows.map(([glyph, label, value]) => {
@@ -91,7 +91,7 @@ export function renderActionsPage(data) {
   if (running) {
     const kind = kindOf(running);
     $('run-banner-title').textContent = t('pagesDynamicSessionReports.m330', {"value1": TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask')});
-    $('run-banner-step').textContent = `Started ${displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
+    $('run-banner-step').textContent = t('pagesShortReady.m301', {"when": displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'}), "value2": stepWords(running.step) || t('pagesCommon.starting')});
     // Waiting on the person (Find jobs using your browser: the one-time Allow in Chrome): the one action, as a primary button, not text only (owner, 7 Oct 2026).
     const waitsOnYou = /^⏳ Waiting for you in Chrome/.test(String(running.step ?? ''));
     $('run-banner-act').hidden = !waitsOnYou;

@@ -31,16 +31,16 @@ async function read({keepScroll = false} = {}) {
   let result, stats;
   if (query) {
     result = await window.pilot.logs.search(log, query, {day}).catch(error => ({lines: [], error}));
-    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? 'today' : `on ${dayLabel(day)}`;
-    stats = result.lines.length ? `${result.lines.length}${result.more ? ' newest' : ''} line${result.lines.length === 1 ? '' : 's'} with "${query}" ${where}${result.more ? ' (more are older: narrow the search)' : ''}`
-      : `No line with "${query}" ${where}.`;
+    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? 'today' : t('pagesShortReady.m225', {"dayLabel": dayLabel(day)});
+    stats = result.lines.length ? t('pagesShortReady.m226', {"length": result.lines.length, "value2": result.more ? t('pagesShortReady.newest') : '', "query": query, "where": where, "value6": result.more ? t('pagesShortReady.older') : '', count: result.lines.length})
+      : t('pagesShortReady.m227', {"query": query, "where": where});
   } else {
     result = await pages(shown).catch(error => ({lines: [], more: false, error}));
     const when = (day || 'today') === 'today' ? 'today' : dayLabel(day);
-    stats = result.lines.length ? `The newest ${result.lines.length} line${result.lines.length === 1 ? '' : 's'} of ${when}` : `Nothing written ${when === 'today' ? 'today' : t('pagesExtraLabels.thatDay')} yet.`;
+    stats = result.lines.length ? t('pagesShortReady.m228', {"length": result.lines.length, "when": when, count: result.lines.length}) : t('pagesShortReady.m229', {"value1": when === 'today' ? t('pagesCommon.today') : t('pagesExtraLabels.thatDay')});
   }
   if (ticket !== reading) return;   // a newer read (another tab, day or search) already answered
-  if (result.error) stats = `Couldn't read this log: ${result.error.message || result.error}`;
+  if (result.error) stats = t('pagesShortReady.m230', {"value1": result.error.message || result.error});
   $('logs-stats').textContent = stats;
   show($('logs-more'), !query && !!result.more);
   box.textContent = result.lines.join('\n');
