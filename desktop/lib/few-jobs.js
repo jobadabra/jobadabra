@@ -1,6 +1,7 @@
 // "Few new jobs" nudge (owner, 7 Oct 2026: "popup a dialog/button to recommend more methods if the last Search for new jobs found 0 or close"):
 // after a finished jobs check with fewer than FEW new jobs (STREAK checks in a row), once per such check: a notification and
 // an in-app prompt that open that run's "Few new jobs" box, a dot on Strategy, and one Telegram line at most once a week.
+import {notificationText} from '../i18n/user-notifications.js';
 import {parseDigest} from '../renderer/run-cards.js';
 
 export const FEW = 3;
@@ -31,9 +32,9 @@ export function due(found, settings = {}, now = Date.now()) {
   return {notify: true, telegram: !settings.fewJobsTelegramAt || now - settings.fewJobsTelegramAt >= TELEGRAM_EVERY_MS};
 }
 
-export const words = found => ({
-  title: 'Few new jobs: ways to find more',
-  body: `The last check found ${found.counts[0]} new job${found.counts[0] === 1 ? '' : 's'}. See what would bring more, easiest first.`,
-  telegram: `🔎 Your last job check found ${found.counts[0]} new job${found.counts[0] === 1 ? '' : 's'}. Open Jobadabra → Strategy: a filter to loosen, words or places to add, `
-    + 'job sources to connect, and sites only you can open.',
+/** Format only authored nudge copy for an explicit end-user language; source counts and run identity remain unchanged. */
+export const words = (found, locale = 'en') => ({
+  title: notificationText(locale, 'fewTitle'),
+  body: notificationText(locale, 'fewBody', {count: found.counts[0]}),
+  telegram: notificationText(locale, 'fewTelegram', {count: found.counts[0]}),
 });

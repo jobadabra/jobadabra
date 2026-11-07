@@ -35,6 +35,7 @@ on:
       - '.claude/skills/ui-look-and-feel/SKILL.md'
       - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
       - 'app-core/src/**'   # identity-rule.test.js, site-routes.test.js
+      - 'app-core/test/catalog-parity.js'   # notification catalog tests share the parity assertion
       - 'app-core/test/helpers/panel.js'   # the panel tests load the panel scripts through readPanel
       - 'tests/fixtures/audience_cases.json'   # audience.test.js
       - 'tests/fixtures/swiss_cases.json'

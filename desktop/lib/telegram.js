@@ -1,6 +1,8 @@
 // Telegram from the desktop app: the user's own bot (made with @BotFather), no webhook, no Cloudflare.
 // The app long-polls Telegram for button taps and commands while it runs, and handles them with the
 // Worker's own code (app-core/src/index.js handleUpdate); its "dispatch" runs the pipeline locally.
+import {botText, botLocale} from '../shared/app-core/bot-copy.js';
+import {notificationLanguage} from './notification-language.js';
 import {handleAdd, handleCommand, handleUpdate} from '../shared/app-core/index.js';
 import * as github from './github.js';
 import * as pipeline from './pipeline.js';
@@ -19,7 +21,7 @@ export async function api(token, method, body = {}, fetcher = globalThis.fetch) 
 }
 
 // Wait (up to `seconds`) for the user to press Start in their bot; returns the chat to send to.
-export async function pair(token, seconds = 120, fetcher) {
+export async function pair(token, seconds = 120, fetcher, locale = 'en') {
   const bot = await api(token, 'getMe', {}, fetcher);
   let offset;
   const until = Date.now() + seconds * 1000;
@@ -37,7 +39,7 @@ export async function pair(token, seconds = 120, fetcher) {
       if (message?.chat?.type === 'private' && /^\/start\b/.test(message.text || '')) {
         await api(token, 'getUpdates', {offset, timeout: 0}, fetcher); // don't handle this /start again later
         await api(token, 'sendMessage', {chat_id: message.chat.id, parse_mode: 'HTML',
-          text: '✈️ <b>Jobadabra is connected.</b> New matches arrive here after each search. Send /help for commands.'}, fetcher);
+          text: botText({JOBADABRA_NOTIFICATION_LANGUAGE: locale}, 'connected')}, fetcher);
         return {chatId: String(message.chat.id), username: bot.username};
       }
     }
@@ -66,10 +68,12 @@ export function localDispatch(storage, onLine = () => {}) {
 
 export function telegramEnv(storage, onLine, note = () => {}) {
   const settings = storage.settings();
+  const context = {JOBADABRA_NOTIFICATION_LANGUAGE: notificationLanguage(storage)};
   // Notion only when it is the store (lib/store); with the data on this Mac the bot reads and writes it through env.store.
   const onNotion = notionGate.onNotion(storage);
   const ids = onNotion ? settings.notionIds || {} : {};
   return {
+    ...context,
     ...(!onNotion ? {store: telegramStore(storage)} : {}),
     TELEGRAM_BOT_TOKEN: storage.secret('TELEGRAM_BOT_TOKEN'),
     OWNER_CHAT_ID: settings.telegramChatId,
@@ -81,9 +85,9 @@ export function telegramEnv(storage, onLine, note = () => {}) {
     dispatch: settings.cloud?.repo ? github.cloudDispatch(storage, onLine, {note}) : localDispatch(storage, onLine),
     status: () => {
       const s = storage.settings();
-      if (s.cloud?.repo) return `☁️ Always on: Jobadabra runs from your GitHub repo ${s.cloud.repo} on your schedule, even with your computer off.`;
-      return s.lastSearchAt ? `🖥️ Last search from the Jobadabra app: ${new Date(s.lastSearchAt).toLocaleString()}` +
-        `${s.lastSearchOk === false ? ' (with problems)' : ''}. Next one on your schedule while the app is open.` : '🖥️ No search yet.';
+      if (s.cloud?.repo) return botText(context, 'cloudStatus', {repo: s.cloud.repo});
+      return s.lastSearchAt ? botText(context, 'localStatus', {when: botLocale(context) === 'en' ? new Date(s.lastSearchAt).toLocaleString() : new Date(s.lastSearchAt).toLocaleString(botLocale(context)),
+        problem: s.lastSearchOk === false ? botText(context, 'withProblems') : ''}) : botText(context, 'noSearch');
     },
   };
 }
