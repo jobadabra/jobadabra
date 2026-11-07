@@ -9,6 +9,7 @@ import {log as appLog} from './log.js';
 import {watchWindow} from './window-log.js';
 import {captureQuery} from './e2e-hidden.js';
 import {guardUnsaved} from './unsaved-guard.js';
+import {whenBooted} from './smoke-boot.js';
 import {createWindowSeen} from './window-seen.js';
 
 // The narrowest window: about half of a 14-inch MacBook's screen (1352–1512 px), so Jobadabra and Chrome fit side by side (owner, 9 Oct 2026).
@@ -82,7 +83,14 @@ export function createMainWindow(ctx) {
     }
     // Smoke test (JOBADABRA_SMOKE=<png path>): render hidden, save a screenshot, quit.
     if (process.env.JOBADABRA_SMOKE) {
-      win.window.webContents.once('did-finish-load', () => setTimeout(async () => {
+      win.window.webContents.once('did-finish-load', async () => {
+        // Why (7 Nov 2026, #3409 app (Linux) red on code it did not touch): the script used to start 1.5 s after the load, a clock standing in for "the app has started"; it starts when renderer/app.js
+        // says it has (smoke-boot.js). A picture still gets its short settle (the paint after the last init), a state read does not.
+        try { await whenBooted(win.window.webContents); } catch (error) {
+          fs.writeFileSync(`${process.env.JOBADABRA_SMOKE}.json`, JSON.stringify({error: error.message}));
+          app.quit(); return;
+        }
+        if (!process.env.JOBADABRA_SMOKE_NO_PICTURE) await new Promise(resolve => setTimeout(resolve, 1500));
         // JOBADABRA_SMOKE_JS: clicks to run first, e.g. to screenshot a later wizard step.
         if (process.env.JOBADABRA_SMOKE_JS) {
           await win.window.webContents.executeJavaScript(process.env.JOBADABRA_SMOKE_JS);
@@ -91,7 +99,10 @@ export function createMainWindow(ctx) {
         // JOBADABRA_SMOKE_RELOAD_JS: reload the window (⌘R), then run these steps (a bug that shows only after a reload).
         if (process.env.JOBADABRA_SMOKE_RELOAD_JS) {
           await new Promise(resolve => { win.window.webContents.once('did-finish-load', resolve); win.window.webContents.reload(); });
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          try { await whenBooted(win.window.webContents); } catch (error) {   // the reloaded app, started again (a state, not 1.5 s); a hang is reported like the first start's (Gitar on #3419)
+            fs.writeFileSync(`${process.env.JOBADABRA_SMOKE}.json`, JSON.stringify({error: `after the reload: ${error.message}`}));
+            app.quit(); return;
+          }
           await win.window.webContents.executeJavaScript(process.env.JOBADABRA_SMOKE_RELOAD_JS);
           await new Promise(resolve => setTimeout(resolve, 400));
         }
@@ -127,7 +138,7 @@ export function createMainWindow(ctx) {
         if (rect) { const zoom = win.window.webContents.getZoomFactor(); for (const key of Object.keys(rect)) rect[key] = Math.round(rect[key] * zoom); }
         fs.writeFileSync(process.env.JOBADABRA_SMOKE, (await (rect ? win.window.webContents.capturePage(rect) : win.window.webContents.capturePage())).toPNG());
         app.quit();
-      }, 1500));
+      });
     }
     // Links open in the user's browser, never inside the app.
     win.window.webContents.setWindowOpenHandler(({url}) => { shell.openExternal(url); return {action: 'deny'}; });

@@ -46,12 +46,20 @@ before(() => {
     await section_(out, 'questions', async () => {
       await kit.select(at['gmail--7-emails-3-which-job-questions-open']);
       const count = kit.text('#activity-warnings');
+      const {jobsState} = await import('./pages/jobs-state.js');
       for (const [answered, choice] of ['tracked', 'new', 'none'].entries()) {
+        // The picker snapshots the loaded jobs: opening before startup's read lands disables "tracked" and its click would silently leave "new" selected.
+        await kit.until(() => jobsState.jobsRead && !jobsState.jobsLoading, 'the job list to finish loading before the picker opens');
         // The next question is asked only once the card has drawn the previous answer (the picker closes before the save is shown).
         await kit.until(() => document.querySelectorAll('.mail-question-go').length === 3 - answered, `${3 - answered} open questions`);
         document.querySelector('.mail-question-go').click();
         await kit.until(() => document.getElementById('reassign-dialog').open, 'the job picker');
-        document.querySelector(`#reassign-choices [value=${choice}]`).click();
+        const option = await kit.until(() => {
+          const input = document.querySelector(`#reassign-choices [value=${choice}]`);
+          return input && !input.disabled && input;
+        }, `the ${choice} answer to be available`);
+        option.click();
+        if (!option.checked) throw new Error(`the ${choice} answer was not selected`);
         document.getElementById('reassign-save').click();
         await kit.until(() => !document.getElementById('reassign-dialog').open, 'the picker to close');
       }
