@@ -103,9 +103,10 @@ export function renderDock() {
     $('sd-cards').replaceChildren(el('p', 'muted sd-empty', empty.text));
     return;
   }
-  const {active: running, waiting} = dockCounts(sessionList, closedForm);
-  // Two pills: how many are active (blue), how many wait for you (amber).
-  $('sd-summary').replaceChildren(pill(t('pagesShortSettings.m325', {"running": running}), 'info'), ...(waiting ? [pill(t('pagesShortSettings.m326', {"waiting": waiting, count: waiting}), 'warn')] : []));
+  const {active: running, needs, waiting} = dockCounts(sessionList, closedForm);
+  // Pills that add up (#3377, owner 7 Nov 2026): active (blue), need input (amber), waiting (grey: queued, or its Chrome tab closed); dockBucket gives each session one.
+  $('sd-summary').replaceChildren(pill(t('pagesShortSettings.m325', {"running": running}), 'info'), ...(needs ? [pill(t('pagesShortSettings.m326', {"waiting": needs, count: needs}), 'warn')] : []),
+    ...(waiting ? [pill(t('pagesSessionStates.dockWaiting', {count: waiting}), 'neutral')] : []));
   $('sd-toggle').setAttribute('aria-expanded', shared.dockOpen);
   $('sessions-dock').classList.toggle('is-closed', !shared.dockOpen);
   const shown = [...(live.length ? live : sessionList)].sort((a, b) => dockOrder(a, closedForm) - dockOrder(b, closedForm)).slice(0, 3);

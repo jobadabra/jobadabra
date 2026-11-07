@@ -32,7 +32,7 @@ test('the dock counts a filling hidden-browser job as active, a queued one as wa
   const {dockCounts, dockOrder, tabClosed} = await import('../../../renderer/session-state.js');
   const filling = {id: 'g', kind: 'form', status: 'running', startedAt: '2026-10-28T16:00:00Z', background: {state: 'filling'}};
   const queued = {id: 'a', kind: 'form', status: 'running', startedAt: '2026-10-28T16:00:00Z', background: {state: 'queued'}};
-  assert.equal(dockCounts([filling, queued]).active, 1, 'only the one that fills is active');
+  assert.deepEqual(dockCounts([filling, queued]), {active: 1, needs: 0, waiting: 1}, 'the one that fills is active, the queued one waits');
   const forms = {known: true, ids: [], unsure: []};
   assert.equal(tabClosed(filling, forms, true, Date.parse('2026-10-28T20:00:00Z')), false, 'a hidden-browser session has no Chrome tab to lose');
   assert.equal(tabClosed({...filling, background: undefined}, forms, true), true, 'a Chrome session still reads closed');

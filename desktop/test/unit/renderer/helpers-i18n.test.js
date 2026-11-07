@@ -152,7 +152,7 @@ test('page step display is localized while canonical journal lines stay unchange
 test('a localized session keeps active counts and account identifiers independent of displayed words', async () => {
   const {execFileSync} = await import('node:child_process');
   const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {sessionState,dockCounts}=await import('./renderer/session-state.js'); const items=[{status:'running',kind:'claude',live:true},{status:'done',kind:'form',endedAt:'2026-11-07'}]; console.log(JSON.stringify({label:sessionState(items[0])[0],counts:dockCounts(items)}));"], {cwd: root, encoding: 'utf8'});
-  assert.deepEqual(JSON.parse(output), {label: 'Bewerbung läuft', counts: {active: 2, waiting: 0}});
+  assert.deepEqual(JSON.parse(output), {label: 'Bewerbung läuft', counts: {active: 2, needs: 0, waiting: 0}});
 });
 
 test('apply-mode labels translate without changing persisted mode ids, runners or answer choices', async () => {

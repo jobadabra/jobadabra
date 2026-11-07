@@ -1,6 +1,7 @@
 // Reusable dynamic page labels in all seven supported display languages.
 const locales = ["en","de","fr","it","es","ro","ru"];
 const rows = {
+  dockWaiting: ["{count} waiting","{count} wartend","{count} en attente","{count} in attesa","{count} en espera","{count} în așteptare","{count} ожидают"],
   notRemoved: ["Not removed","Nicht entfernt","Non retiré","Non rimosso","Sin quitar","Neeliminat","Не удалено"],
   notCancelled: ["Not cancelled","Nicht abgebrochen","Non annulé","Non annullato","Sin cancelar","Neanulat","Не отменено"],
   cancelled: ["Application cancelled","Bewerbung abgebrochen","Candidature annulée","Candidatura annullata","Solicitud cancelada","Candidatură anulată","Отклик отменён"],

@@ -12,7 +12,7 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {followFilter, searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {band, byStat, isStuck, fitTooltip, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
+import {band, byStat, isStuck, fitTooltip, newOfTotal, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {openSession} from './session-log.js';
@@ -58,7 +58,6 @@ const claudeStarted = new Set();
 document.addEventListener('sessions-loaded', () => renderStuck());
 
 const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
-// clean-code-ok: Why (31 Oct 2026): the 252 complexity is the whole Jobs row draw, unchanged; this PR adds two lines to it (hold and restore the open ⋯ menu); splitting the draw is its own refactor.
 /**
  * Settings → Apply saved a mode: remember it for the rows and redraw them, so every Apply button names the mode a press will use.
  * Why (#3437, Gitar review): setting the state alone left the rows on the old label until an unrelated redraw.
@@ -70,6 +69,18 @@ export function applySaved(saved) {
   renderJobs();
 }
 
+/**
+ * The words of the list bar: "12 new of 13 matches" on the plain New matches list (newOfTotal), "4 of 195 jobs" under a counter, else the plain count, then how many rows the engine left out.
+ * @param {{split: ?{new: number, total: number}, statLabel: string, shown: number, all: number, notLoaded: number}} bar the split newOfTotal gave, the counter's name, the rows drawn, every loaded job, the rows not loaded
+ * @returns {string}
+ */
+function listBarText({split, statLabel, shown, all, notLoaded}) {
+  const plural = count => countedLabel('job', count);
+  const head = split ? t('pagesJobsHelp.newOfTotal', split) : statLabel ? t('pagesShortJobs.m195', {"length": shown, "plural": plural(all)}) : plural(shown);
+  return head + (notLoaded ? t('pagesDynamicJobs.m238', {"notLoaded": notLoaded}) : '');
+}
+
+// clean-code-ok: Why (31 Oct 2026): the 252 complexity is the whole Jobs row draw, unchanged; this PR adds two lines to it (hold and restore the open ⋯ menu); splitting the draw is its own refactor.
 export function renderJobs() {
   const restoreMenu = holdMenu(document.querySelector('.view[data-view="jobs"]'), 'url');   // Why (31 Oct 2026, owner): an open ⋯ menu survives the redraw a sessions update causes; only a menu on this page
   const filters = jobsState.filters;
@@ -376,11 +387,9 @@ export function renderJobs() {
   const statLabel = jobsState.statFilter?.label || {applied: t('pagesExtraCommon.applied'), waiting: t('pagesControlStatus.waitingReply'), interviews: t('pagesControlStatus.inProcess'), closed: t('pagesControlStatus.closed'),
     stuck: t('pagesControlStatus.stillApplying'), high: t('pagesControlStatus.highFit'), companies: t('pagesControlStatus.oneCompany')}[jobsState.statFilter];
   renderStuck();
-  const plural = count => countedLabel('job', count);
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
   const notLoaded = Math.max(0, (jobsState.lastJobsData?.total ?? 0) - shared.allJobs.length);
-  $('jobs-count').textContent = (statLabel ? t('pagesShortJobs.m195', {"length": rows.length, "plural": plural(shared.allJobs.length)}) : plural(rows.length)) +
-    (notLoaded ? t('pagesDynamicJobs.m238', {"notLoaded": notLoaded}) : '');
+  $('jobs-count').textContent = listBarText({split: newOfTotal({filter, statFilter: jobsState.statFilter, text, shown: rows.length, data: jobsState.lastJobsData}), statLabel, shown: rows.length, all: shared.allJobs.length, notLoaded});
   show($('jobs-more'), notLoaded > 0);
   $('jobs-more').textContent = t('pagesShortJobs.m196', {"value1": Math.min(notLoaded, MORE)});
   show($('jobs-filter'), !!statLabel);

@@ -36,6 +36,20 @@ export function jobCounts(data, now = Date.now()) {
   return {...count, anyJob: loaded.length > 0, scored: matched.filter(job => job.fit != null).length + (data?.scored_beyond || 0)};
 }
 
+/**
+ * What the list bar says when New matches is the whole list: {new, total} for "12 new of 13 matches", or null when the plain count already says it.
+ * Why (#3377, owner 7 Nov 2026: "Words say it"): the header's Total matches counts saved and dismissed matches too (jobCounts), the list opens on the unreviewed ones only, so
+ * "13 matches" over "12 jobs" read as a mistake; the numbers stay, the words name each set. Only on the plain New matches list (no counter, no search words).
+ * @param {{filter: string, statFilter: *, text: string, shown: number, data: object}} view the sole ticked filter, the counter clicked, the search words, the rows drawn, the jobs the engine sent
+ * @returns {{new: number, total: number}|null}
+ */
+export function newOfTotal({filter, statFilter, text, shown, data}) {
+  if (filter !== 'open' || statFilter || text || !data) return null;
+  if (data.total != null && data.total > (data.jobs || []).length) return null;   // a cut list (the engine sends the best rows): the rows left out may be new too, so no split
+  const {total} = jobCounts(data);
+  return total > shown ? {new: shown, total} : null;   // equal: the plain count says it; fewer (a list not yet reloaded): never "12 new of 11"
+}
+
 // Applications right now, by their Notion Stage, with the same stage sets as the Focus funnel (src/notion/funnel.py):
 // sent = an outcome stage (not "Applying", a form still being filled); ended = rejected, withdrawn, no answer;
 // in process = screening (Screening, Interview scheduled: often a screening call) or interviews (Interviewing, Offer).

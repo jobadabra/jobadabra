@@ -1018,6 +1018,12 @@ main { min-width: 0; }
 .list-bar { flex-wrap: wrap; gap: 8px; }
 .stat > div { min-width: 0; }
 .stat > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Why (#3377, owner 7 Nov 2026: "not responsive", "eventaully make it full row"): the counters stayed four to a row at any width and cut their labels ("Total matche"). Under 900 px
+   they take as many 180 px columns as fit (two in the narrowest window, one full row when only one fits) and a label wraps instead of being cut. Wide layout unchanged. */
+@media (max-width: 900px) {
+  .stat-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+  .stat > div span { white-space: normal; overflow-wrap: anywhere; }
+}
 
 /* The sidebar as an icon rail (class .app.rail, set by sidebar-rail.js: under 1180 px, or when the menu was collapsed with its button):
    labels become tooltips (title), the footer notes are hidden. */
@@ -1230,7 +1236,9 @@ main { min-width: 0; }
   background: var(--dock-bg);
   padding: var(--sp-3) var(--sp-5) var(--sp-4); box-shadow: 0 -12px 32px rgb(var(--shadow-rgb) / .16); }
 .sessions-dock .sd-title b { font-size: var(--fs-lg); }
-.sessions-dock #sd-summary { display: inline-flex; gap: var(--sp-2); }
+/* Why (#3377, owner 7 Nov 2026 "Pills add up"): the dock now has up to three pills (active, need input, waiting); at the narrowest window (640 px) they wrap under the title instead of leaving the card. */
+.sessions-dock #sd-summary { display: inline-flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sessions-dock .sd-link { flex-wrap: wrap; row-gap: var(--sp-1); }
 .sessions-dock.is-closed { padding-bottom: var(--sp-2); }
 .sessions-dock.is-closed .sd-cards { display: none; }
 .sd-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }

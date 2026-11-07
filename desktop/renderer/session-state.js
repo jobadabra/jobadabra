@@ -55,14 +55,41 @@ export const sessionState = (item, formReady = false) => (item?.outcome === 'sub
   : sessionReview(item, formReady) ? (formReady ? SESSION_STATE.submit : SESSION_STATE.done)
     // Claude ended without saying the form is ready: what it left for you if it listed something, else just ended (never "ready").
     : item.status === 'done' ? (leftForYou(item) ? [t('helperState.needsYou'), 'warn'] : SESSION_STATE.ended) : SESSION_STATE[item.status] || SESSION_STATE.ended);
-// The dock's two pills and its card order, from the same state the sessions list shows: a form whose Chrome tab was closed
-// (`gone`) is neither active nor waiting, and sorts last, so an open form is never hidden behind closed ones (2 Oct 2026:
-// the dock said "Form open" for two closed forms and left out the one that was open).
+// The dock's pills (dockBucket below) and its card order, from the same state the sessions list shows: a form whose Chrome tab was closed (`gone`) is not active, is counted
+// as waiting, and sorts last, so an open form is never hidden behind closed ones (2 Oct 2026: the dock said "Form open" for two closed forms and left out the one that was open).
 const WORKING = [t('helpers.stageApplying'), t('helperState.formOpen'), t('helperState.readySubmit'), t('helperState.filling'), t('helperState.submittingSoon'), t('helperState.submitting')];   // a queued hidden-browser job ("Queued") only waits: not active
-export const dockCounts = (items, gone = () => false) => ({
-  active: items.filter(item => !gone(item) && WORKING.includes((backgroundStatus(item) || sessionState(item))[0])).length,
-  waiting: items.filter(item => !gone(item) && item.status === 'input').length,
-});
+// A hidden-browser job in one of these states is the person's to act on: its label is the amber "Ready for review" / "Needs you", though its session status is not 'input'
+// (lib/terminals.js sets 'input' only for an asked question; background-apply-controller.js reports "Form filled…" as done and a hand-over as a plain note).
+const BACKGROUND_NEEDS_YOU = new Set(['ready_for_review', 'needs_user_handoff', 'manual_submit_required']);
+/**
+ * The one dock bucket of a session: 'needs' (the person acts: a question, a form to review, a hand-over), 'waiting' (nothing runs now: a hidden job queued for its turn, a form whose Chrome tab
+ * was closed), 'active' (working), or null (finished: submitted, ended, failed).
+ * Design (#3377, owner 7 Nov 2026: "Pills add up"): every session still going is in exactly one bucket, so the dock's pills always add up to the sessions it lists; before, a hidden
+ * "Ready for review", a hand-over, a queued job and a closed-tab form were in neither pill ("1 active" beside 3 sessions).
+ * @param {object} item a session of the list
+ * @param {(item: object) => boolean} gone whether the item's Chrome tab was closed
+ * @returns {'needs'|'waiting'|'active'|null}
+ */
+export function dockBucket(item, gone = () => false) {
+  if (isSubmitted(item) || item.background?.state === 'receipt_confirmed' || (item.endedAt && !['done', 'input'].includes(item.status))) return null;
+  if (gone(item)) return 'waiting';
+  if (item.status === 'input' || BACKGROUND_NEEDS_YOU.has(item.background?.state)) return 'needs';
+  if (item.background?.state === 'queued') return 'waiting';
+  // What is left reads its own label's tone, the one the list shows (a session's state, never a word list): amber is the person's, blue or a working word is in progress, the rest (ended, closed) is in none.
+  const [label, tone] = backgroundStatus(item) || sessionState(item);
+  return tone === 'warn' ? 'needs' : WORKING.includes(label) || tone === 'info' ? 'active' : null;
+}
+/**
+ * How many sessions are in each dock pill: {active, needs, waiting}, one bucket per session still going (dockBucket); the three add up to the sessions the dock lists.
+ * @param {object[]} items the sessions of the list
+ * @param {(item: object) => boolean} gone whether an item's Chrome tab was closed (pages/sessions.js closedForm)
+ * @returns {{active: number, needs: number, waiting: number}}
+ */
+export const dockCounts = (items, gone = () => false) => {
+  const count = {active: 0, needs: 0, waiting: 0};
+  for (const item of items) { const bucket = dockBucket(item, gone); if (bucket) count[bucket]++; }
+  return count;
+};
 // Applying in the menu: the number is every card the Applying list shows, whatever its state (owner, 8 Oct 2026: it said 2
 // with 4 cards, counting only the ones that needed you). The colour is the most urgent: amber needs you, blue working,
 // green all ready to submit, else grey. `urgency`: 0-1 needs you, 2 working, 3 ready to submit.
