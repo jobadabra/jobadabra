@@ -184,10 +184,15 @@ def over(step='score', now=None, key=None):
     return _over(step, now)
 
 
+def _stop(step):
+    """When `step` starts no new call: the run's end minus what the later steps keep (reserve) and the TAIL. One line, drawn here, for over() and for the rounds that fit before it."""
+    return min(DEADLINE - reserve(step), end() - part(TAIL))
+
+
 def _over(step, now):
     if DEADLINE is None:
         return False
-    return (now if now is not None else time.monotonic()) >= min(DEADLINE - reserve(step), end() - part(TAIL))
+    return (now if now is not None else time.monotonic()) >= _stop(step)
 
 
 # Each step's share of the time left when it starts: title sorting least (a backlog that shrinks to a few dozen titles a day), scoring all
@@ -235,13 +240,22 @@ def _batch(step, wanted, now, say):
     return n
 
 
-def in_calls(step, wanted, size, parallel, now=None, noun='location(s)'):
+def in_calls(step, wanted, size, parallel, now=None, noun='location(s)', stop=None):
+    """How many of `wanted` items the step takes in rounds of `parallel` calls of `size`: its share of the time left. `stop`: a step whose stop (over) a first round must end by:
+    one round that fits (now + this computer's measured round time <= that stop) is taken whatever the share says."""
     if now is None:
-        return budget_tape.decide('in_calls', [step, wanted, size, parallel], lambda: _in_calls(step, wanted, size, parallel, None, noun))
-    return _in_calls(step, wanted, size, parallel, now, noun)
+        return budget_tape.decide('in_calls', [step, wanted, size, parallel, *([stop] if stop else [])], lambda: _in_calls(step, wanted, size, parallel, None, noun, stop))
+    return _in_calls(step, wanted, size, parallel, now, noun, stop)
 
 
-def _in_calls(step, wanted, size, parallel, now, noun):
+def _round_fits(stop, step, now):
+    """One round of `step`'s calls, started now, ends by `stop`'s stop (over): now + this computer's measured round time (_paces).
+    Why (#2920, 7 Nov 2026, p7 Dublin nurse): the share alone refused a round that fitted (20 s at 0.2 of 115 s left, a 25 s round and 51 s to the stop), and 104 titles waited."""
+    pace = max(0.5, _paces().get(step, PACE[step]))
+    return (now if now is not None else time.monotonic()) + pace <= _stop(stop)
+
+
+def _in_calls(step, wanted, size, parallel, now, noun, stop=None):
     """How many of `wanted` items a step that answers `size` items a call, `parallel` calls at once, takes: its share of the time left
     over its measured time per round of calls (7 Oct 2026: placing locations was paced per location, at least 0.5 s each, so a refresh
     asked 32 of 1,500 locations in one call when Haiku answers 60 a call in ~6 s, two at a time)."""
@@ -249,6 +263,8 @@ def _in_calls(step, wanted, size, parallel, now, noun):
         return wanted
     per_round = size * max(1, parallel)
     rounds = _batch(step, -(-wanted // per_round), now, False)
+    if stop and not rounds and _round_fits(stop, step, now):
+        rounds = 1
     # No round when its share does not cover one (26 Oct 2026, #2064 measured: a floor of one round per call put a place round in the board
     # loop for each board; scoring started at 116 s instead of 55 s and a search scored 8 jobs instead of 28)
     n = min(wanted, rounds * per_round)

@@ -111,8 +111,7 @@ def triage(jobs):
     nearness, land = feed_order.nearness(asked, _SEARCH, in_my_place), feed_order.handing(asked, wanted_location)
     try:
         from ..ai import title_triage
-        _triaged().update(title_triage.decide(here, _SEARCH, local=True, nearness=nearness, land=land) if here else {})
-        _triaged().update(title_triage.decide(titles, _SEARCH, nearness=nearness, land=land))
+        _triaged().update(title_triage.decide(titles, _SEARCH, local=here, nearness=nearness, land=land))   # one pass: your places' titles first in the same call (#2920, p7: two passes left 104 titles unjudged)
     except Exception as error:  # noqa: BLE001 — not sorted this run: the exact words only, said
         print(f'Warning: job titles not sorted by {providers.who()} ({reason(error)}): asked again next run, role-word hits only shown meanwhile')
         detail('sources', error)
