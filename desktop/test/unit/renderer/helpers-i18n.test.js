@@ -181,3 +181,26 @@ test('desktop assistant display translates while its copied instruction stays ca
     assert.equal(KEY, 'desktop-ai:answer');
   } finally { setLocale('en'); }
 });
+
+test('credit display localizes around the unchanged shared estimate', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {applicationsFor} = await import('../../../renderer/credit-buys.js');
+  const {buysWords} = await import('../../../renderer/credit-buys-view.js');
+  try {
+    setLocale('ro');
+    assert.equal(buysWords(10), `aproximativ ${applicationsFor(10)} de candidaturi`);
+    assert.equal(buysWords(0), '');
+  } finally { setLocale('en'); }
+});
+
+test('plan and Always on copy translate without altering caps, availability or account choices', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {topupWords}=await import('./renderer/plan-view.js'); const {choices,running}=await import('./renderer/always-on-choice-words.js'); const c=choices({open:false,now:'ours'}); console.log(JSON.stringify({cap:topupWords({cap:'day'}),ids:c.map(item=>item.id),title:c[0].title,disabled:c[0].disabled,running:running({hostedOn:true,cloudRepo:'example/repo'})}));"], {cwd: root, encoding: 'utf8'});
+  const value = JSON.parse(output);
+  assert.equal(value.cap.primary, 'Zu Pro wechseln');
+  assert.equal(value.cap.pro, false);
+  assert.equal(value.disabled, false);
+  assert.deepEqual(value.ids, ['ours','own']);
+  assert.equal(value.title, 'Auf unseren Servern');
+  assert.equal(value.running, 'both');
+});
