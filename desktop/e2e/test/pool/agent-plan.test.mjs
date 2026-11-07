@@ -18,10 +18,10 @@ test('the same seed gives the same plan and the same person; another seed does n
   assert.deepEqual(makePersona(7), plan.persona);
 });
 
-test('a plan has 6 to 10 goals, each move once, numbered, with its pair', () => {
+test('a plan has 3 to 4 goals (what a night\'s budget pays for), each move once, numbered, with its pair', () => {
   for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
     const {goals} = planSession({seed, moves: MOVES});
-    assert.ok(goals.length >= 6 && goals.length <= 10, `seed ${seed}: ${goals.length} goals`);
+    assert.ok(goals.length >= 3 && goals.length <= 4, `seed ${seed}: ${goals.length} goals`);
     assert.equal(new Set(goals.map(goal => `${goal.group}: ${goal.label}`)).size, goals.length, 'a move twice');
     assert.deepEqual(goals.map(goal => goal.n), goals.map((_, i) => i + 1));
     assert.deepEqual(goals.map(goal => goal.pair), pairsOf(goals));

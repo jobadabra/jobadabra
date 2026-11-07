@@ -5,6 +5,7 @@
 // order count as new. At least half of a day's pairs must be unseen in the last 7 sessions; an area whose code changed since the last session always gets a goal.
 import {makePersona} from './agent-persona.mjs';
 import {sequence} from './seeded-random.mjs';
+import {MAX_GOALS, MIN_GOALS} from './agent-steps.mjs';
 
 /** How many past sessions "seen before" looks back over. */
 export const WINDOW = 7;
@@ -52,18 +53,20 @@ function draw(moves, changed, count, next, pending = []) {
 }
 
 /**
- * The day's plan. `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
+ * The day's plan. `max`: the most goals the run can pay for (lib/agent-steps.mjs goalCountFor), a hard ceiling: pending goals take its slots first, then one goal per changed area; a changed area with no slot is returned in `deferred` for the next night's queue, never planned beyond the budget (default 10, the old ceiling).
+ * `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
  * Draws up to TRIES orders from the seed and keeps the one with the most new pairs (the first to reach MIN_NEW wins), so it is replayable and honest: `newShare` is reported even when the
- * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas}.
+ * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas, deferred: [{group, label}]}.
  */
-export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, minNew = MIN_NEW}) {
-  const next = rng(seed), targetCount = Math.min(count ?? 6 + Math.floor(next() * 5), moves.length);
+export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, max = 10, minNew = MIN_NEW}) {
+  // Why (7 Nov 2026, pz): a seeded 3 to 4 goals (MIN_GOALS..MAX_GOALS, was 6-10) and never more than `max`; 31 runs left 43 of 122 goals unstarted because the plan outgrew what the 250k cap pays for.
+  const next = rng(seed), targetCount = Math.min(count ?? MIN_GOALS + Math.floor(next() * (MAX_GOALS - MIN_GOALS + 1)), moves.length, max);
   const current = new Map(moves.map(move => [moveKey(move), move]));
   const priority = [...new Map(pending.filter(goal => current.has(moveKey(goal))).map(goal => [moveKey(goal), current.get(moveKey(goal))])).values()];
   const changedAreas = [...new Set(changed)].filter(group => moves.some(move => move.group === group));
   // Why (7 Nov 2026, independent review of #3434): reserving all changed slots first could evict the entire pending queue. One representative per required area fits within the existing ten-goal ceiling and the unchanged run budget.
   const required = new Set([...priority.map(goal => goal.group), ...changedAreas]);
-  const goalCount = Math.min(moves.length, Math.max(targetCount, Math.min(10, required.size)));
+  const goalCount = Math.min(moves.length, max, Math.max(targetCount, Math.min(10, required.size)));
   const areas = changedAreas.slice(0, goalCount);
   let best = null;
   for (let attempt = 0; attempt < TRIES; attempt++) {
@@ -72,7 +75,8 @@ export function planSession({seed, moves, coverage = [], changed = [], pending =
     if (share >= minNew) break;
   }
   const goals = best.order.map((move, i) => ({n: i + 1, group: move.group, label: move.label, pair: best.pairs[i]}));
-  return {seed, persona: makePersona(seed), goals, newShare: Number(best.share.toFixed(3)), changedAreas: areas};
+  const deferred = changedAreas.filter(group => !goals.some(goal => goal.group === group)).map(group => { const {label} = moves.find(move => move.group === group); return {group, label}; });   // Why (7 Nov 2026, pz): "an area whose code changed always gets a goal" now means a goal tonight or a place in the queue; a night that works every goal moves the changed-since checkpoint past the area.
+  return {seed, persona: makePersona(seed), goals, newShare: Number(best.share.toFixed(3)), changedAreas: areas, deferred};
 }
 
 /** The next night's queue: interrupted goals, unstarted goals, older deferred goals, then actor-declared blockers. Fresh fictional state is used next night; only identities carry over. */
@@ -84,6 +88,9 @@ export function pendingGoals(session, previous = []) {
   const blockers = rows.filter(goal => goal.verdict === 'could-not-finish' && completed.has(goal.n));
   return [...new Map([...interrupted, ...unstarted, ...deferred, ...blockers].map(({group, label}) => [moveKey({group, label}), {group, label}])).values()];
 }
+
+/** The queue to write after a session: `pending` (what tonight started with) and the changed areas the plan had no slot for, then what pendingGoals keeps of them. A named or chained plan has no `deferred`. */
+export const queueAfter = (session, pending, plan) => pendingGoals(session, [...pending, ...(plan.deferred || [])]);
 
 /** What a finished session adds to the coverage record: the pairs it walked, keeping the last WINDOW sessions. */
 export function recordSession(coverage, {seed, goals}) {
