@@ -73,11 +73,15 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   // application not finished yet (filling, queued, waiting on the person, ready) is cancelled the one way Cancel application does it, after one question. The Stop
   // switch is not pressed: closing each tab ends its work, and a Stop would hold the next batch for STOP_ASK_MS (lib/server-hooks.js). Stop stays in ⌘K and ⋯.
   checkedSessions.handle('sessionsCancelAll', async () => {
-    const open = cancellable(terminals.list());
+    const open = cancellable(terminals.list()).filter(item => !item.cancelling);   // a second press while the first works asks and cancels nothing twice
     if (!open.length) return {ok: true, count: 0};
     if (!await ask(quitDialog.cancelAll(open))) return {ok: false, cancelled: true};
+    // Why (7 Nov 2026, owner: "Cancel all gives no feedback while it works… only a greyed button and the old list still showing"): the store is written one job at a time, so the last
+    // row leaves seconds after the yes. Every row says "Cancelling…" from the yes (the window reads it in the session list) and leaves, or goes back to its state, at its own end.
+    for (const old of open) terminals.setCancelling(old.id, true);
     // All at once: a tab that does not answer costs its own wait, not every later one's (review of [ap] 3/7). A throw is that application's failure only.
-    const results = await Promise.all(open.map(old => cancelOne(old.id).catch(error => ({ok: false, error: String(error?.message || error)}))));
+    const results = await Promise.all(open.map(old => cancelOne(old.id).catch(error => ({ok: false, error: String(error?.message || error)}))
+      .then(result => { if (!result.ok || result.skipped) terminals.setCancelling(old.id, false); return result; })));   // a refused or skipped one stops saying "Cancelling…" at its own end
     const failed = open.filter((_, i) => !results[i].ok).map(old => old.company || old.id);
     const count = results.filter(result => result.ok && !result.skipped).length;
     appLog('sessions', 'Cancel all applications', {asked: open.length, cancelled: count, failed: failed.length});

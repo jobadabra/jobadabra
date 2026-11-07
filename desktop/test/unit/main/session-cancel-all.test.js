@@ -98,3 +98,26 @@ test('the single Cancel application refuses a job that is being sent: its reply 
   assert.equal(s.dialogs.length, 0);
   assert.ok(terminals.get('sending'));
 });
+
+// Owner, 7 Nov 2026 (Claude Desktop run, item 7): "Cancel all gives no feedback while it works. It takes about 8 seconds, with only a greyed button and the old list still showing."
+// After the yes, every application being cancelled says so until its own end; the store is written one job at a time, so the rows leave one by one.
+test('after the yes each application reads "cancelling" until its own end; a refused one stops saying it and stays', async () => {
+  const seen = [];
+  const s = setup({unapply: async url => {
+    seen.push(terminals.list().filter(item => item.cancelling).map(item => item.id).sort());
+    return url.endsWith('/2') ? {ok: false, error: 'offline'} : {ok: true};
+  }});
+  assert.deepEqual(terminals.list().filter(item => item.cancelling), [], 'nothing reads cancelling before the question is answered');
+  await s.cancelAll();
+  assert.deepEqual(seen[0], ['chrome', 'hidden', 'waiting'], 'all three read cancelling when the first store write starts, not only the one being written');
+  assert.ok(seen.every(ids => ids.length >= 1), 'an application that has ended no longer reads cancelling');
+  assert.ok(seen.at(-1).length < 3, 'the rows that have ended are gone from it');
+  assert.deepEqual(terminals.list().filter(item => item.cancelling), [], 'nothing keeps saying cancelling after the call');
+  assert.equal(terminals.get('hidden')?.cancelling, false, 'the refused one is back to its own state');
+});
+
+test('"Keep them" marks nothing as cancelling', async () => {
+  const s = setup({choice: 1, whileAsked: () => assert.deepEqual(terminals.list().filter(item => item.cancelling), [])});
+  await s.cancelAll();
+  assert.deepEqual(terminals.list().filter(item => item.cancelling), []);
+});

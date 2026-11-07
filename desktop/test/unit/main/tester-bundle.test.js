@@ -9,10 +9,14 @@ import {testerLogs, testerReport, testerState, uploadBundle, windowLines} from '
 
 const AT = new Date('2026-11-07T10:00:00Z');
 
-test('only the lines within five minutes of the capture are kept, oldest first; a wrapped line with no time is dropped', () => {
+test('only the lines within five minutes of the capture are kept, oldest first; an untimed line takes the time of the line above it', () => {
   const lines = ['2026-11-07T09:54:59.000Z [x] too early', '2026-11-07T09:55:01.000Z [x] in', 'continuation', '2026-11-07T10:05:00.000Z [x] edge', '2026-11-07T10:05:01.000Z [x] too late'];
-  assert.deepEqual(windowLines(lines, AT), [lines[1], lines[3]]);
+  assert.deepEqual(windowLines(lines, AT), [lines[1], lines[2], lines[3]]);
   assert.deepEqual(windowLines(lines, 'not a date'), []);
+  // engine.log's real shape: timed run markers with the engine's raw, untimed output between them
+  const engine = ['2026-11-07T09:00:00.000Z ---- python -m old', 'old output', '2026-11-07T09:00:09.000Z ---- exit 0', '2026-11-07T09:58:00.000Z ---- python -m run', 'raw line one', 'raw line two', '2026-11-07T09:58:30.000Z ---- exit 1'];
+  assert.deepEqual(windowLines(engine, AT), engine.slice(3));
+  assert.deepEqual(windowLines(['no time yet', '2026-11-07T10:00:00.000Z x'], AT), ['2026-11-07T10:00:00.000Z x']);
 });
 
 test('the logs text is redacted, holds the window of both logs, and stays under the cap by dropping the oldest', () => {
