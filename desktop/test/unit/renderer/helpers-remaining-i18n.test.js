@@ -187,3 +187,16 @@ test('a localized task title still receives the hint for its canonical run kind'
     assert.equal(aiLimitHead({kind: 'search', ok: false, problem: 'AI limit reached'}, 'Stellen suchen').hint, t('helperState.increaseSearch'));
   } finally { setLocale('en'); }
 });
+
+test('relocation display translates the yes prefix without changing the place value', async () => {
+  const {relocationWords} = await import('../../../renderer/locations-model.js');
+  try { setLocale('de'); assert.equal(relocationWords('yes', [{label: 'Original place'}]), 'Ja · Original Place'); }
+  finally { setLocale('en'); }
+});
+
+test('find counts use localized position wording while their numeric data remains unchanged', async () => {
+  const {countText} = await import('../../../renderer/find-bar.js');
+  const result = {active: 1, total: 2};
+  try { setLocale('de'); assert.equal(countText(result, 'x'), '1 von 2'); assert.deepEqual(result, {active: 1, total: 2}); }
+  finally { setLocale('en'); }
+});

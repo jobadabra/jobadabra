@@ -12,7 +12,7 @@ export const relocationNow = (data, edits) => edits?.relocation?.set || data?.re
 
 export function relocationWords(mode, abroad) {
   const places = labels(abroad);
-  if (mode === 'yes') return places.length ? `Yes · ${places.join(', ')}` : t('helperMore.answerYes');
+  if (mode === 'yes') return places.length ? `${t('helperMore.answerYes')} · ${places.join(', ')}` : t('helperMore.answerYes');
   return RELOCATION.find(([value]) => value === mode)?.[1] || t('helperTail.notSpecified');
 }
 

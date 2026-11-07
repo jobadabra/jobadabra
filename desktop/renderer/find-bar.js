@@ -23,5 +23,5 @@ export function step(index, total, how) {
 // The count by the box: "3 of 12", "No matches", or nothing before a search.
 export function countText(result, text) {
   if (!result || !String(text || '').trim()) return '';
-  return result.total ? `${result.active} of ${result.total}` : t('helperTail.noMatches');
+  return result.total ? t('helpers.position', {index: result.active, total: result.total}) : t('helperTail.noMatches');
 }
