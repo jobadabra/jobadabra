@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {registerReportHandlers, reportFormOn} from '../../../lib/report-handlers.js';
+import {catalogs} from '../../../../extension/i18n.js';
 import {PANEL_FILES} from '../../../../extension/panel-files.js';
 import {visitMore} from '../../../lib/server-hooks.js';
 
@@ -94,7 +95,8 @@ test('no panel button is a silent no-op: a click handler never calls a window ho
     const lines = code(file).split('\n').filter(line => /onclick|addEventListener\('click'/.test(line));
     for (const line of lines) assert.doesNotMatch(line, /__jobadabra\w+\?\.\(/, `${file}: a button that calls a missing hook does nothing, silently: ${line.trim().slice(0, 80)}`);
   }
-  assert.match(code('extension/review.js'), /__jobadabraReport\.open\(\);\s*else note\('Report could not open/, 'a missing popup says so in the panel');
+  assert.match(code('extension/review.js'), /__jobadabraReport\.open\(\);\s*else note\(t\('report\.unavailable','Report could not open/, 'a missing popup says so in the panel');
+  assert.equal(catalogs.en['report.unavailable'],'Report could not open on this page. Reload the page and try again.');
   assert.deepEqual(PANEL_FILES.slice(-2), ['panel-report.js', 'review.js'], 'the popup script is injected before the panel that mounts it');
 });
 
