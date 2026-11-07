@@ -43,9 +43,6 @@ export const messages = {
   "putBack": "{skill}: ripristina",
   "reviewedCount": "Verificato · {count}",
   "profileNotes": "Note nel profilo · {count}",
-  "splitParagraph": {
-    "one": "Un paragrafo diviso in un elenco. ",
-    "other": "Un paragrafo diviso in {count} elenchi. "
-  },
+  "splitParagraph": {"one":"Un paragrafo diviso in un elenco. ","other":"Un paragrafo diviso in {count} elenchi. ","many":"Un paragrafo diviso in {count} elenchi. "},
   "putGapsBack": "Ripristina il paragrafo delle lacune CV"
 };

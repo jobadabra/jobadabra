@@ -3,6 +3,7 @@
 // Invariants: the strip draws nothing while there is no change; it imports no page (the answers page hands in what to redraw after an Undo), so it adds no import cycle.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {historyReason} from '../../i18n/history-labels.js';
 import {el} from '../components.js';
 import {connectWords, whenText} from '../desktop-ai-words.js';
 import {plainError} from '../run-warnings.js';
@@ -16,7 +17,7 @@ export function changeRow(change, link, onUndo, now = new Date()) {
   const dismissed = change.tool === 'dismiss_question';
   const when = whenText(change.at, now), line = [dismissed ? link.changes.dismissed : link.changes.arrow(change.before, change.after), when].filter(Boolean).join(' · ');
   what.append(el('b', '', change.question || t('pagesMisc.aQuestion')), el('span', 'muted small', line));
-  if (change.why && !change.undone) what.append(el('span', 'muted small', change.why));
+  if (change.why && !change.undone) what.append(el('span', 'muted small', historyReason(change.why)));
   const note = el('span', 'muted small');
   note.setAttribute('role', 'status');
   const side = el('div', 'qa-change-side');

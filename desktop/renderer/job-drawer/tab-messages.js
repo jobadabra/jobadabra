@@ -4,6 +4,8 @@
 // below. Words and data: renderer/job-page-view.js messagesOf, gmailUrl.
 import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
+import {messageHeading} from '../../i18n/message-labels.js';
+import {stageText} from '../jobs-board-rules.js';
 import {el} from '../components.js';
 import {messagesOf, waitingEmails} from '../job-page-view.js';
 import {gmailConnected} from '../pages/activity-basics.js';
@@ -37,7 +39,7 @@ function emailCard(email, first) {
   if (email.from) body.push(el('p', 'muted small', t('helpers.from', {name: email.from})));
   body.push(el('p', '', email.text || t('helpers.noSummary')));
   body.push(button(t('helpers.openGmail'), () => window.pilot.openExternal(email.url), 'soft-button'));
-  return foldCard({title: email.title, tag: email.outcome, when: email.when, open: first}, ...body);
+  return foldCard({title: email.title, tag: stageText(email.outcome), when: email.when, open: first}, ...body);
 }
 
 // An email the Gmail check could not place for certain, which it would put on this job: your answer places it (the Focus question, here).
@@ -51,7 +53,7 @@ function waitingCard(email, job, reload) {
   return stateCard({icon: 'alert', tone: 'warn', title: t('helpers.emailBelongs'), text: t('helpers.emailUnlinked', {subject: `“${email.subject}”${email.note ? `: ${email.note}` : ''}`}), actions: [link, other]});
 }
 
-const noteCard = (note, first) => foldCard({iconName: 'chat', title: note.title, open: first}, ...note.lines.map(lineView));
+const noteCard = (note, first) => foldCard({iconName: 'chat', title: messageHeading(note.title), open: first}, ...note.lines.map(lineView));
 
 export function messagesTab({job, page, parts, close, reload}, redraw) {
   const {emails, notes, counts} = messagesOf(parts, page?.events);

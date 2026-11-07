@@ -1,5 +1,6 @@
 // Counted page nouns use native plural forms; numbers are supplied already formatted.
 const rows = {
+  "suggestion": ["suggestion~suggestions", "Vorschlag~Vorschläge", "suggestion~suggestions", "suggerimento~suggerimenti", "sugerencia~sugerencias", "sugestie~sugestii~de sugestii", "предложение~предложения~предложений~предложения"],
   "form": ["form~forms", "Formular~Formulare", "formulaire~formulaires", "modulo~moduli", "formulario~formularios", "formular~formulare~de formulare", "форма~формы~форм~формы"],
   "job": ["job~jobs", "Stelle~Stellen", "offre~offres", "offerta~offerte", "empleo~empleos", "job~joburi~de joburi", "вакансия~вакансии~вакансий~вакансии"],
   "site": ["site~sites", "Website~Websites", "site~sites", "sito~siti", "sitio~sitios", "site~site-uri~de site-uri", "сайт~сайта~сайтов~сайта"],
@@ -25,4 +26,9 @@ const rows = {
 };
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 const categories = locale => locale === 'ru' ? ['one', 'few', 'many', 'other'] : locale === 'ro' ? ['one', 'few', 'other'] : ['one', 'other'];
-export const messages = Object.fromEntries(locales.map((locale, index) => [locale, Object.fromEntries(Object.entries(rows).map(([key, translations]) => [key.replaceAll(' ', '_'), Object.fromEntries(translations[index].split('~').map((word, form) => [categories(locale)[form], `{shown} ${word}`]))]))]));
+export const messages = Object.fromEntries(locales.map((locale, index) => [locale, Object.fromEntries(Object.entries(rows).map(([key, translations]) => {
+  const forms = Object.fromEntries(translations[index].split('~').map((word, form) => [categories(locale)[form], `{shown} ${word}`]));
+  // Romance languages use the ordinary plural wording for the million-count category too.
+  if (['fr', 'it', 'es'].includes(locale)) forms.many = forms.other;
+  return [key.replaceAll(' ', '_'), forms];
+}))]));

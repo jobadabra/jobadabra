@@ -236,100 +236,28 @@ export const messages = {
   "placeRowSub": "{jobs} fuera de tus ubicaciones seleccionadas",
   "roleRowSub": "{jobs} en tus zonas que tus términos omiten",
   "filterRowSub": "{jobs} ocultas por este filtro",
-  "issues": {
-    "one": "{count} problema",
-    "other": "{count} problemas"
-  },
-  "contentSuggestions": {
-    "one": "{count} sugerencia de contenido",
-    "other": "{count} sugerencias de contenido"
-  },
-  "pages": {
-    "one": "{count} página",
-    "other": "{count} páginas"
-  },
-  "searchesNewest": {
-    "one": "{count} búsqueda, más reciente primero",
-    "other": "{count} búsquedas, más recientes primero"
-  },
-  "boardsRead": {
-    "one": "{shown} portal leído",
-    "other": "{shown} portales leídos"
-  },
-  "problems": {
-    "one": "{count} problema",
-    "other": "{count} problemas"
-  },
-  "openPostings": {
-    "one": "{shown} oferta abierta",
-    "other": "{shown} ofertas abiertas"
-  },
-  "openRoles": {
-    "one": "{shown} puesto abierto",
-    "other": "{shown} puestos abiertos"
-  },
-  "excludedJobs": {
-    "one": "{shown} oferta con este término excluido en el título",
-    "other": "{shown} ofertas con este término excluido en el título"
-  },
-  "languageHidden": {
-    "one": "{shown} oferta oculta porque requiere {language}",
-    "other": "{shown} ofertas ocultas porque requieren {language}"
-  },
-  "peerInterviews": {
-    "one": "{shown} entrevista",
-    "other": "{shown} entrevistas"
-  },
-  "openJobs": {
-    "one": "{shown} oferta abierta",
-    "other": "{shown} ofertas abiertas"
-  },
-  "matchingRoles": {
-    "one": "{count} puesto compatible",
-    "other": "{count} puestos compatibles"
-  },
-  "postings": {
-    "one": "{count} oferta",
-    "other": "{count} ofertas"
-  },
-  "matchingJobs": {
-    "one": "{count} oferta compatible",
-    "other": "{count} ofertas compatibles"
-  },
-  "runwaySearches": {
-    "one": "búsqueda",
-    "other": "{count} búsquedas"
-  },
-  "employerBoards": {
-    "one": "{count} portal de empleo",
-    "other": "{count} portales de empleo"
-  },
-  "toCheck": {
-    "one": "{count} por revisar",
-    "other": "{count} por revisar"
-  },
-  "detailsMissing": {
-    "one": "Faltan {count} datos",
-    "other": "Faltan {count} datos"
-  },
-  "missingCount": {
-    "one": "Faltan {count}",
-    "other": "Faltan {count}"
-  },
-  "searchSuggestions": {
-    "one": "{count} sugerencia de búsqueda",
-    "other": "{count} sugerencias de búsqueda"
-  },
-  "cvSkills": {
-    "one": "{count} habilidad para usar en el CV",
-    "other": "{count} habilidades para usar en el CV"
-  },
-  "bankOnly": {
-    "one": "{names} solo está en tu banco de experiencia",
-    "other": "{names} solo están en tu banco de experiencia"
-  },
-  "noteCount": {
-    "one": "{count} nota",
-    "other": "{count} notas"
-  }
+  "issues": {"one":"{count} problema","other":"{count} problemas","many":"{count} problemas"},
+  "contentSuggestions": {"one":"{count} sugerencia de contenido","other":"{count} sugerencias de contenido","many":"{count} sugerencias de contenido"},
+  "pages": {"one":"{count} página","other":"{count} páginas","many":"{count} páginas"},
+  "searchesNewest": {"one":"{count} búsqueda, más reciente primero","other":"{count} búsquedas, más recientes primero","many":"{count} búsquedas, más recientes primero"},
+  "boardsRead": {"one":"{shown} portal leído","other":"{shown} portales leídos","many":"{shown} portales leídos"},
+  "problems": {"one":"{count} problema","other":"{count} problemas","many":"{count} problemas"},
+  "openPostings": {"one":"{shown} oferta abierta","other":"{shown} ofertas abiertas","many":"{shown} ofertas abiertas"},
+  "openRoles": {"one":"{shown} puesto abierto","other":"{shown} puestos abiertos","many":"{shown} puestos abiertos"},
+  "excludedJobs": {"one":"{shown} oferta con este término excluido en el título","other":"{shown} ofertas con este término excluido en el título","many":"{shown} ofertas con este término excluido en el título"},
+  "languageHidden": {"one":"{shown} oferta oculta porque requiere {language}","other":"{shown} ofertas ocultas porque requieren {language}","many":"{shown} ofertas ocultas porque requieren {language}"},
+  "peerInterviews": {"one":"{shown} entrevista","other":"{shown} entrevistas","many":"{shown} entrevistas"},
+  "openJobs": {"one":"{shown} oferta abierta","other":"{shown} ofertas abiertas","many":"{shown} ofertas abiertas"},
+  "matchingRoles": {"one":"{count} puesto compatible","other":"{count} puestos compatibles","many":"{count} puestos compatibles"},
+  "postings": {"one":"{count} oferta","other":"{count} ofertas","many":"{count} ofertas"},
+  "matchingJobs": {"one":"{count} oferta compatible","other":"{count} ofertas compatibles","many":"{count} ofertas compatibles"},
+  "runwaySearches": {"one":"búsqueda","other":"{count} búsquedas","many":"{count} búsquedas"},
+  "employerBoards": {"one":"{count} portal de empleo","other":"{count} portales de empleo","many":"{count} portales de empleo"},
+  "toCheck": {"one":"{count} por revisar","other":"{count} por revisar","many":"{count} por revisar"},
+  "detailsMissing": {"one":"Faltan {count} datos","other":"Faltan {count} datos","many":"Faltan {count} datos"},
+  "missingCount": {"one":"Faltan {count}","other":"Faltan {count}","many":"Faltan {count}"},
+  "searchSuggestions": {"one":"{count} sugerencia de búsqueda","other":"{count} sugerencias de búsqueda","many":"{count} sugerencias de búsqueda"},
+  "cvSkills": {"one":"{count} habilidad para usar en el CV","other":"{count} habilidades para usar en el CV","many":"{count} habilidades para usar en el CV"},
+  "bankOnly": {"one":"{names} solo está en tu banco de experiencia","other":"{names} solo están en tu banco de experiencia","many":"{names} solo están en tu banco de experiencia"},
+  "noteCount": {"one":"{count} nota","other":"{count} notas","many":"{count} notas"}
 };

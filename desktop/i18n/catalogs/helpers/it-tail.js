@@ -161,72 +161,21 @@ export const messages = {
   "notMyTech": "Non le mie tecnologie",
   "notMyRole": "Non il mio tipo di ruolo",
   "company": "Azienda",
-  "aboutMinutes": {
-    "one": "circa {count} minuto",
-    "other": "circa {count} minuti"
-  },
-  "cancelling": {
-    "one": "Annullamento di {count} candidatura…",
-    "other": "Annullamento di {count} candidature…"
-  },
-  "emailsReviewed": {
-    "one": "{count} email esaminata.",
-    "other": "{count} email esaminate."
-  },
-  "recordsChanged": {
-    "one": "{count} candidatura modificata.",
-    "other": "{count} candidature modificate."
-  },
-  "updateLabel": {
-    "one": "aggiornamento registrato",
-    "other": "aggiornamenti registrati"
-  },
-  "newEmailLabel": {
-    "one": "nuova email",
-    "other": "nuove email"
-  },
-  "emailLabel": {
-    "one": "email esaminata",
-    "other": "email esaminate"
-  },
-  "unlistedUpdates": {
-    "one": "{count} aggiornamento registrato, senza dettagli conservati.",
-    "other": "{count} aggiornamenti registrati, senza dettagli conservati."
-  },
-  "formFills": {
-    "one": "{count} compilazione",
-    "other": "{count} compilazioni"
-  },
-  "needsInput": {
-    "one": "{count} richiede una risposta",
-    "other": "{count} richiedono una risposta"
-  },
-  "fields": {
-    "one": "{count} campi",
-    "other": "{count} campi"
-  },
-  "suggestionsForSearch": {
-    "one": "{count} suggerimento per la ricerca",
-    "other": "{count} suggerimenti per la ricerca"
-  },
-  "urgentCount": {
-    "one": "{count} urgente",
-    "other": "{count} urgenti"
-  },
-  "warningCount": {
-    "one": "{count} avviso",
-    "other": "{count} avvisi"
-  },
-  "infoCount": {
-    "one": "{count} informazione",
-    "other": "{count} informazioni"
-  },
-  "oldScoreCount": {
-    "one": "{count} valutazione precedente",
-    "other": "{count} valutazioni precedenti"
-  },
-  "foldItems": {
-    "one": "{count} elemento",
-    "other": "{count} elementi"
-  }
+  "aboutMinutes": {"one":"circa {count} minuto","other":"circa {count} minuti","many":"circa {count} minuti"},
+  "cancelling": {"one":"Annullamento di {count} candidatura…","other":"Annullamento di {count} candidature…","many":"Annullamento di {count} candidature…"},
+  "emailsReviewed": {"one":"{count} email esaminata.","other":"{count} email esaminate.","many":"{count} email esaminate."},
+  "recordsChanged": {"one":"{count} candidatura modificata.","other":"{count} candidature modificate.","many":"{count} candidature modificate."},
+  "updateLabel": {"one":"aggiornamento registrato","other":"aggiornamenti registrati","many":"aggiornamenti registrati"},
+  "newEmailLabel": {"one":"nuova email","other":"nuove email","many":"nuove email"},
+  "emailLabel": {"one":"email esaminata","other":"email esaminate","many":"email esaminate"},
+  "unlistedUpdates": {"one":"{count} aggiornamento registrato, senza dettagli conservati.","other":"{count} aggiornamenti registrati, senza dettagli conservati.","many":"{count} aggiornamenti registrati, senza dettagli conservati."},
+  "formFills": {"one":"{count} compilazione","other":"{count} compilazioni","many":"{count} compilazioni"},
+  "needsInput": {"one":"{count} richiede una risposta","other":"{count} richiedono una risposta","many":"{count} richiedono una risposta"},
+  "fields": {"one":"{count} campi","other":"{count} campi","many":"{count} campi"},
+  "suggestionsForSearch": {"one":"{count} suggerimento per la ricerca","other":"{count} suggerimenti per la ricerca","many":"{count} suggerimenti per la ricerca"},
+  "urgentCount": {"one":"{count} urgente","other":"{count} urgenti","many":"{count} urgenti"},
+  "warningCount": {"one":"{count} avviso","other":"{count} avvisi","many":"{count} avvisi"},
+  "infoCount": {"one":"{count} informazione","other":"{count} informazioni","many":"{count} informazioni"},
+  "oldScoreCount": {"one":"{count} valutazione precedente","other":"{count} valutazioni precedenti","many":"{count} valutazioni precedenti"},
+  "foldItems": {"one":"{count} elemento","other":"{count} elementi","many":"{count} elementi"}
 };

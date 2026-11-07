@@ -132,6 +132,10 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 - [ ] Translate extension UI in seven languages and add inherited Language setting in options. The inherited setting and initial catalog migration landed at 2171e3c2b08d3593e4745897bd8a81fb1fe39fec; the final audit found remaining authored banner/reason/error paths, so full UI coverage is not complete.
 - [x] Verify inheritance, explicit override, offline fallback and previews; supervise extension PR (proof: desktop/test/unit/extension/extension-i18n.test.js @317c3376faf389d6c429ee9aab4a7fdfd22c12bf).
 
+### 4. Final integrated desktop check
+
+Final integrated desktop check (mlf): [measured report](2026-11-07-desktop-language-integrated-check.md). The prepared branch includes the owner-merged field-name follow-up [#3566](https://github.com/jobadabra/jobadabra/pull/3566). The audit covers 108 catalog groups with 7,109 keys in each locale, zero key/parameter/plural gaps and zero unreviewed English copies (245 reviewed shared spellings; 83 explicit English canonical-source inheritance slots). There are 176 primary/settings baseline renders, 64 deeper-tab renders and 88 targeted verification renders, all fictional DE/RU light/dark data, including narrow windows. Confirmed counter, enum, message, history and older demo-recipe gaps have one prepared fix with 238 focused tests and two actual localized window contracts passing. Owner preview approval, publication/READY and the Notion evidence update remain pending; no whole-app completion box is ticked on an unpublished patch.
+
 ## Final coverage audit and follow-ups
 
 See [the final coverage record](2026-11-07-localization-final-coverage.md) for the confirmed remaining display paths and ownership. Catalog key parity is not whole-app coverage. The original checklist is 6/10 completed milestones after reopening the extension migration box on new source evidence; this is not a percentage of translated strings or screens. No completed implementation was removed.

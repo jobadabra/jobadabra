@@ -207,9 +207,7 @@ export const messages = {
   "insightDisclaimer": "Diese Erkenntnisse sind Vorschläge aus wenigen Gesprächen und möglicherweise nicht abschließend.",
   "interview": "Vorstellungsgespräch",
   "noInsights": "Noch keine Erkenntnisse",
-  "reviewedBasis": {
-    "other": "Ausgewertete Gespräche: {count} · Aktualisieren, um sie gemeinsam zu lesen"
-  },
+  "reviewedBasis": "Ausgewertete Gespräche: {count} · Aktualisieren, um sie gemeinsam zu lesen",
   "basedInterviews": "Basierend auf: {interviews}",
   "updatedLower": "aktualisiert {when}",
   "updatedUpper": "Aktualisiert {when}",

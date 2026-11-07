@@ -43,9 +43,6 @@ export const messages = {
   "putBack": "{skill}: pune înapoi",
   "reviewedCount": "Verificat · {count}",
   "profileNotes": "Note din profil · {count}",
-  "splitParagraph": {
-    "one": "Un paragraf împărțit într-o listă. ",
-    "other": "Liste create dintr-un paragraf: {count}. "
-  },
+  "splitParagraph": {"one":"Un paragraf împărțit într-o listă. ","other":"Liste create dintr-un paragraf: {count}. ","few":"Liste create dintr-un paragraf: {count}. "},
   "putGapsBack": "Restabilește paragraful competențelor de verificat"
 };

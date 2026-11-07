@@ -448,7 +448,7 @@ body[data-rescoring] #find-card { display: none; }
 .fit-cell.is-stale .fit-label { display: block; color: var(--muted); }   /* a stale score keeps a short muted chip under its ring */
 body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, #jobs-unscored, #jobs-count, #jobs-more, #jobs-stuck, #jobs-filter) { display: none !important; }
 .job-list-head, .job-row { display: grid; grid-template-columns: 62px minmax(0, 2.2fr) minmax(0, 1.15fr) minmax(0, 1.25fr) 120px 208px; gap: 14px; align-items: start; }
-.job-list-head > span:last-child { text-align: end; }
+/* Why (7 Nov 2026): long translated column headings must stay within their own column. */ .job-list-head > span { min-width: 0; overflow-wrap: anywhere; } .job-list-head > span:last-child { text-align: end; }
 .job-list-head { padding: 0 14px 6px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .job-list { display: grid; gap: 8px; }
 .job-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; transition: border-color .15s, box-shadow .15s; }

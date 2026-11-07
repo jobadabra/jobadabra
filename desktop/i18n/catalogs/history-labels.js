@@ -1,0 +1,5 @@
+// Fixed app-authored undo explanations translate around unchanged historical questions and answers.
+export const rows = {
+  moved: ['It moved to Your details; change it there.', 'Die Antwort wurde in Deine Angaben verschoben; ändere sie dort.', 'La réponse a été déplacée dans Vos informations ; modifiez-la là-bas.', 'La risposta è stata spostata in I tuoi dati; modificala lì.', 'La respuesta se trasladó a Tus datos; cámbiala allí.', 'Răspunsul a fost mutat în Datele tale; modifică-l acolo.', 'Ответ перенесён в Ваши сведения; измените его там.'],
+  tooLong: ['This answer is too long to undo here; change it in Jobadabra.', 'Diese Antwort ist zu lang, um sie hier rückgängig zu machen; ändere sie in Jobadabra.', 'Cette réponse est trop longue pour être annulée ici ; modifiez-la dans Jobadabra.', 'Questa risposta è troppo lunga per essere annullata qui; modificala in Jobadabra.', 'Esta respuesta es demasiado larga para deshacerla aquí; cámbiala en Jobadabra.', 'Acest răspuns este prea lung pentru a fi anulat aici; modifică-l în Jobadabra.', 'Этот ответ слишком длинный для отмены здесь; измените его в Jobadabra.'],
+};

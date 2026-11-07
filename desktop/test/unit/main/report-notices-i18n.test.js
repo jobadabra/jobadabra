@@ -6,8 +6,9 @@ const catalogs = Object.fromEntries(await Promise.all(SUPPORTED_LOCALES.map(asyn
 const params = text => [...text.matchAll(/\{([A-Za-z][\w]*)\}/g)].map(match => match[1]).sort();
 
 test('English has no duplicated diagnostic templates and six locales align all five display notices', () => {
-  assert.deepEqual(catalogs.en, {});
   const keys = ['dailyLimit', 'noToken', 'notAccepted', 'notRegular', 'tooLarge'];
+  assert.deepEqual(Object.keys(catalogs.en).sort(), keys);
+  assert.ok(Object.values(catalogs.en).every(value => value === null), 'English explicitly inherits canonical diagnostics without duplicating templates');
   for (const locale of SUPPORTED_LOCALES.filter(locale => locale !== 'en')) {
     assert.deepEqual(Object.keys(catalogs[locale]).sort(), keys, locale);
     for (const key of keys) {

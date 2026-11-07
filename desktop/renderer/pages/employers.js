@@ -4,6 +4,7 @@
 // Logic without a window: renderer/employers-view.js. Guarded by test/unit/renderer/employers-view.test.js, test/unit/main/employers-handlers.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {employerLabel} from '../../i18n/employer-labels.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
 import {byStore, storeName} from '../store-words.js';
@@ -84,14 +85,14 @@ function rowOf(row) {
   const cell = (...children) => { const td = el('td', ''); td.append(...children); tr.append(td); return td; };
   cell(nameCell(row));
   const kind = el('div', '');
-  kind.append(pill(row.kind === 'Job board' ? t('pagesFieldsStatus.jobBoard') : row.kind || t('pagesEmployers.employer'), row.kind === 'Job board' ? 'violet' : 'neutral'));
+  kind.append(pill(row.kind === 'Job board' ? t('pagesFieldsStatus.jobBoard') : employerLabel(row.kind) || t('pagesEmployers.employer'), row.kind === 'Job board' ? 'violet' : 'neutral'));
   if (row.tier === 'Tier 1') kind.append(' ', pill(t('pagesEmployers.tier'), 'signal'));
   cell(kind);
   const feed = el('div', '');
   if (row.feed_status) {
     const chip = Object.assign(el('span', 'tip'), {tabIndex: 0});
     chip.dataset.tip = feedHelp(row.feed_status);
-    chip.append(pill(row.feed_status, feedTone(row.feed_status), {dot: true}));
+    chip.append(pill(employerLabel(row.feed_status), feedTone(row.feed_status), {dot: true}));
     feed.append(chip);
   }
   const name = feedName(row);
@@ -101,7 +102,7 @@ function rowOf(row) {
   const quality = el('span', none ? '' : 'tip', none ? '–' : String(row.quality));
   if (!none) { quality.tabIndex = 0; quality.dataset.tip = qualityHelp(row); }
   cell(quality);
-  cell(el('span', 'muted is-nowrap', row.origin || '–'));   // "Find employers" on one line
+  cell(el('span', 'muted is-nowrap', employerLabel(row.origin) || '–'));
   cell(el('span', 'muted', day(row.checked) || '–'));
   cell(activeSwitch(row));
   return opened.has(row.id) ? [tr, detailRow(row)] : [tr];
@@ -137,7 +138,7 @@ export async function loadEmployers() {
   rows = answer?.employers || [];
   message('emp-message', '');
   const select = $('emp-feed'), keep = select.value;
-  select.replaceChildren(el('option', '', t('pagesEmployers.anyFeed')), ...feedStatuses(rows).map(status => el('option', '', status)));
+  select.replaceChildren(el('option', '', t('pagesEmployers.anyFeed')), ...feedStatuses(rows).map(status => Object.assign(el('option', '', employerLabel(status)), {value: status})));
   select.firstChild.value = '';
   select.value = feedStatuses(rows).includes(keep) ? keep : '';
   render();
