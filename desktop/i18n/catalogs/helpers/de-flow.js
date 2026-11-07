@@ -291,6 +291,22 @@ export const messages = {
   "emailLinkNew": "Diese E-Mail wird mit der neuen Stelle verknüpft.",
   "emailCreateLink": "Stelle erstellen und E-Mail verknüpfen",
   "emailOutside": "Diese E-Mail bleibt außerhalb Ihrer Bewerbungen.",
+  "applyJobs": "Auf Stellen bewerben",
+  "applySaveFailed": "Bewerbungsmodus konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+  "applyCountBounds": "Wählen Sie zwischen 1 und 10 Stellen.",
+  "applyStartFailed": "Bewerbung konnte nicht gestartet werden: {reason} Versuchen Sie es gleich erneut.",
+  "somethingWrong": "Etwas ist schiefgegangen.",
+  "applyingStarted": "Bewerbung gestartet",
+  "applyStartFallback": "Bewerbung konnte nicht gestartet werden. Versuchen Sie es gleich erneut.",
+  "claudeAlready": "Claude hat diese Bewerbung bereits bearbeitet",
+  "claudeStartFailed": "Claude konnte nicht starten",
+  "claudeOpenSession": "Öffnen Sie die Sitzung zum Fortfahren oder füllen Sie die Seite selbst fertig aus.",
+  "claudeConsent": "Claude klickt und tippt in diesem Tab ohne Rückfrage bei jedem Schritt. Absenden drückt es nie.",
+  "claudeAlways": "Claude immer fertigstellen lassen, wenn ich nicht weiterkomme",
+  "claudeStopsSubmit": "Claude arbeitet in diesem Tab und stoppt vor dem Absenden.",
+  "claudeFinish": "Claude diese Seite fertigstellen lassen",
+  "myself": "Ich mache es selbst",
+  "continue": "Weiter",
   "interviewsCount": {
     "one": "{count} Vorstellungsgespräch",
     "other": "{count} Vorstellungsgespräche"
@@ -306,5 +322,9 @@ export const messages = {
   "scoresOld": {
     "one": "{jobs} wurde mit früheren Sucheinstellungen bewertet.",
     "other": "{jobs} wurden mit früheren Sucheinstellungen bewertet."
+  },
+  "applyCount": {
+    "one": "Auf {count} Stelle bewerben",
+    "other": "Auf {count} Stellen bewerben"
   }
 };

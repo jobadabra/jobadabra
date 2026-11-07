@@ -292,6 +292,22 @@ export const messages = {
   "emailLinkNew": "This email will be linked to the new job.",
   "emailCreateLink": "Create job & link email",
   "emailOutside": "This email stays out of your applications.",
+  "applyJobs": "Apply to jobs",
+  "applySaveFailed": "Could not save how Jobadabra applies. Try again.",
+  "applyCountBounds": "Choose between 1 and 10 jobs.",
+  "applyStartFailed": "Could not start applying: {reason} Try again in a moment.",
+  "somethingWrong": "something went wrong.",
+  "applyingStarted": "Applying started",
+  "applyStartFallback": "Could not start applying. Try again in a moment.",
+  "claudeAlready": "Claude already worked on this application",
+  "claudeStartFailed": "Claude could not start",
+  "claudeOpenSession": "Open its session to continue, or finish the page yourself.",
+  "claudeConsent": "Claude will click and type in this tab without asking each step. It never presses Submit.",
+  "claudeAlways": "Always let Claude finish when I'm stuck",
+  "claudeStopsSubmit": "Claude works in this tab and stops before Submit.",
+  "claudeFinish": "Let Claude finish this page",
+  "myself": "I'll do it myself",
+  "continue": "Continue",
   "interviewsCount": {
     "one": "{count} interview",
     "other": "{count} interviews"
@@ -307,5 +323,9 @@ export const messages = {
   "scoresOld": {
     "one": "{jobs} was scored using previous search settings.",
     "other": "{jobs} were scored using previous search settings."
+  },
+  "applyCount": {
+    "one": "Apply to {count} job",
+    "other": "Apply to {count} jobs"
   }
 };

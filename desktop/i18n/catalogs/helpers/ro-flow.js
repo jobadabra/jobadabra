@@ -292,6 +292,22 @@ export const messages = {
   "emailLinkNew": "Acest e-mail va fi legat de oferta nouă.",
   "emailCreateLink": "Creează oferta și leagă e-mailul",
   "emailOutside": "Acest e-mail rămâne în afara candidaturilor.",
+  "applyJobs": "Candidează la oferte",
+  "applySaveFailed": "Nu s-a putut salva modul de candidatură. Reîncearcă.",
+  "applyCountBounds": "Alege între 1 și 10 oferte.",
+  "applyStartFailed": "Nu s-a putut începe: {reason} Reîncearcă în câteva clipe.",
+  "somethingWrong": "ceva nu a mers bine.",
+  "applyingStarted": "Candidaturile au început",
+  "applyStartFallback": "Nu s-a putut începe. Reîncearcă în câteva clipe.",
+  "claudeAlready": "Claude a lucrat deja la această candidatură",
+  "claudeStartFailed": "Claude nu a putut porni",
+  "claudeOpenSession": "Deschide sesiunea pentru a continua sau termină pagina personal.",
+  "claudeConsent": "Claude va apăsa și scrie în această filă fără să întrebe la fiecare pas. Nu apasă niciodată Trimite.",
+  "claudeAlways": "Lasă mereu Claude să termine când mă blochez",
+  "claudeStopsSubmit": "Claude lucrează în această filă și se oprește înainte de Trimite.",
+  "claudeFinish": "Lasă Claude să termine pagina",
+  "myself": "O fac personal",
+  "continue": "Continuă",
   "interviewsCount": {
     "one": "{count} interviu",
     "few": "{count} interviuri",
@@ -310,5 +326,10 @@ export const messages = {
   "scoresOld": {
     "one": "{jobs} a fost evaluată cu setările de căutare anterioare.",
     "other": "{jobs} au fost evaluate cu setările de căutare anterioare."
+  },
+  "applyCount": {
+    "one": "Candidează la {count} ofertă",
+    "few": "Candidează la {count} oferte",
+    "other": "Candidează la {count} de oferte"
   }
 };

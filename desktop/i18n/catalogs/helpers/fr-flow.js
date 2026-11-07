@@ -291,6 +291,22 @@ export const messages = {
   "emailLinkNew": "Cet e-mail sera lié à la nouvelle offre.",
   "emailCreateLink": "Créer l’offre et lier l’e-mail",
   "emailOutside": "Cet e-mail reste hors de vos candidatures.",
+  "applyJobs": "Postuler aux offres",
+  "applySaveFailed": "Impossible d’enregistrer le mode de candidature. Réessayez.",
+  "applyCountBounds": "Choisissez entre 1 et 10 offres.",
+  "applyStartFailed": "Impossible de commencer : {reason} Réessayez dans un instant.",
+  "somethingWrong": "un problème est survenu.",
+  "applyingStarted": "Candidatures démarrées",
+  "applyStartFallback": "Impossible de commencer. Réessayez dans un instant.",
+  "claudeAlready": "Claude a déjà travaillé sur cette candidature",
+  "claudeStartFailed": "Claude n’a pas pu démarrer",
+  "claudeOpenSession": "Ouvrez sa session pour continuer ou terminez la page vous-même.",
+  "claudeConsent": "Claude cliquera et saisira dans cet onglet sans demander à chaque étape. Il ne clique jamais sur Envoyer.",
+  "claudeAlways": "Toujours laisser Claude terminer si je suis bloqué",
+  "claudeStopsSubmit": "Claude travaille dans cet onglet et s’arrête avant l’envoi.",
+  "claudeFinish": "Laisser Claude terminer cette page",
+  "myself": "Je le fais moi-même",
+  "continue": "Continuer",
   "interviewsCount": {
     "one": "{count} entretien",
     "other": "{count} entretiens"
@@ -306,5 +322,9 @@ export const messages = {
   "scoresOld": {
     "one": "{jobs} a été évaluée avec les anciens paramètres de recherche.",
     "other": "{jobs} ont été évaluées avec les anciens paramètres de recherche."
+  },
+  "applyCount": {
+    "one": "Postuler à {count} offre",
+    "other": "Postuler à {count} offres"
   }
 };

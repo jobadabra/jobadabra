@@ -291,6 +291,22 @@ export const messages = {
   "emailLinkNew": "Este correo se vinculará a la nueva oferta.",
   "emailCreateLink": "Crear oferta y vincular correo",
   "emailOutside": "Este correo queda fuera de tus candidaturas.",
+  "applyJobs": "Postular a ofertas",
+  "applySaveFailed": "No se pudo guardar el modo de candidatura. Reintenta.",
+  "applyCountBounds": "Elige entre 1 y 10 ofertas.",
+  "applyStartFailed": "No se pudo empezar: {reason} Reintenta en un momento.",
+  "somethingWrong": "algo salió mal.",
+  "applyingStarted": "Candidaturas iniciadas",
+  "applyStartFallback": "No se pudo empezar. Reintenta en un momento.",
+  "claudeAlready": "Claude ya trabajó en esta candidatura",
+  "claudeStartFailed": "Claude no pudo empezar",
+  "claudeOpenSession": "Abre su sesión para continuar o termina la página tú mismo.",
+  "claudeConsent": "Claude hará clic y escribirá en esta pestaña sin preguntar en cada paso. Nunca pulsa Enviar.",
+  "claudeAlways": "Dejar siempre que Claude termine cuando me atasque",
+  "claudeStopsSubmit": "Claude trabaja en esta pestaña y se detiene antes de Enviar.",
+  "claudeFinish": "Dejar que Claude termine esta página",
+  "myself": "Lo haré yo mismo",
+  "continue": "Continuar",
   "interviewsCount": {
     "one": "{count} entrevista",
     "other": "{count} entrevistas"
@@ -306,5 +322,9 @@ export const messages = {
   "scoresOld": {
     "one": "{jobs} se evaluó con los ajustes de búsqueda anteriores.",
     "other": "{jobs} se evaluaron con los ajustes de búsqueda anteriores."
+  },
+  "applyCount": {
+    "one": "Postular a {count} oferta",
+    "other": "Postular a {count} ofertas"
   }
 };
