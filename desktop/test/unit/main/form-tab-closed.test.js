@@ -9,21 +9,36 @@ import {registerSessionHandlers} from '../../../lib/session-handlers.js';
 const URL = 'https://jobs.example.test/engineer';
 const here = path.resolve(import.meta.dirname, '../../..');
 
-function setup({choice = null, tab = 'none'} = {}) {
+function setup({choice = null, tab = 'eventual', ackAfter = 0, priorTab = '', launchError = ''} = {}) {
   terminals._reset();
   terminals.usePty(async () => ({spawn: () => ({onData: () => {}, onExit: () => {}, write: () => {}, resize: () => {}, kill: () => {}})}));
   const handles = new Map(), calls = [], logs = [], dialogs = [];
   let states = [];
+  let openedCount = 0, eventualAfter = 0, elapsed = 0, boundTab = priorTab;
   registerSessionHandlers({ipcMain: {handle: (name, fn) => handles.set(name, fn)}, appLog: (area, message) => logs.push(`${area}: ${message}`),
     storage: {}, getWindow: () => null, here, DEMO: false, nativeImage: {createFromPath: () => ({})},
     dialog: {showMessageBox: async (_window, options) => { dialogs.push(options); return {response: choice}; }},
-    apply: {openOne: url => { calls.push(`open ${url}`); return {ok: true}; },
+    apply: {openOne: url => {
+      calls.push(`open ${url}`); openedCount++;
+      if (launchError) return {ok: false, error: launchError};
+      if (tab === 'eventual' && ackAfter === 0) boundTab = 'tab-5';
+      return {ok: true};
+    },
       applyOne: async (_storage, url) => { calls.push(`chrome ${url}`); return {ok: true}; },
       claudeOne: async (_storage, url) => { calls.push(`claude ${url}`); return {ok: true}; }},
-    focusTab: async ({id}) => { calls.push(`look ${id}`); return tab; },   // never Chrome itself: the scripting is a fake
-    review: {forget: id => calls.push(`forget ${id}`), tabOf: () => '', allStates: () => states}, pipeline: {}, server: {}, notion: {}, claudeConsent: async () => true});
+    focusTab: async ({id}) => {
+      calls.push(`look ${id}`);
+      if (tab === 'tab') return 'tab';
+      if (tab !== 'eventual') return 'none';
+      return openedCount > eventualAfter ? 'tab' : 'none';
+    }, verifyOpenedTab: true, pause: async ms => {
+      elapsed += ms;
+      if (tab === 'delayed' && openedCount && elapsed >= ackAfter) boundTab = 'tab-5';
+    },   // pinned timer, no real wait or browser
+    review: {forget: id => calls.push(`forget ${id}`), tabOf: () => boundTab, allStates: () => states}, pipeline: {}, server: {}, notion: {}, claudeConsent: async () => true});
   const reopen = (id, stale) => handles.get('sessionReopen')({}, id, stale);
-  return {reopen, calls, logs, dialogs, setStates: next => { states = next; }};
+  return {reopen, calls, logs, dialogs, elapsed: () => elapsed, setStates: next => { states = next; },
+    setTab: next => { tab = next; ackAfter = 0; boundTab = ''; eventualAfter = openedCount; }};
 }
 
 test('nothing from the closed tab on the page: the form reopens without a question', async () => {
@@ -68,7 +83,65 @@ test('every caller of the form-tab lookup reopens a closed tab through reopenClo
   assert.ok(callers >= 3, `expected Open in Chrome, Open filled form and Review in form, found ${callers}`);
 });
 
+test('Reopen form reports an error when Chrome never exposes the newly opened tab', async () => {
+  const s = setup({tab: 'none'});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  const result = await s.reopen(id, false);
+  assert.equal(result.ok, false, 'a successful launcher call is not proof that Chrome opened a form tab');
+  assert.match(result.error, /Chrome|extension|form tab/i);
+  assert.ok(s.logs.some(line => line.includes('extension did not confirm the reopened form tab')));
+  assert.ok(!s.logs.some(line => line.includes('reopened the form with the fill mark')));
+  s.setTab('eventual');
+  assert.deepEqual(await s.reopen(id, false), {ok: true, reset: false}, 'a failed launch can be retried immediately');
+  assert.equal(s.calls.filter(call => call.startsWith('open ')).length, 2);
+});
+
+test('Reopen form does not accept a stale extension binding as acknowledgement', async () => {
+  const s = setup({tab: 'none', priorTab: 'old-tab'});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  const result = await s.reopen(id, false);
+  assert.equal(result.ok, false, 'the old tab id cannot prove this launch opened a new tab');
+  assert.equal(s.elapsed(), 20000, 'waits through the regular tab acknowledgement window');
+});
+
+test('Reopen form waits for a delayed read-only extension acknowledgement', async () => {
+  const s = setup({tab: 'delayed', ackAfter: 2500});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  assert.deepEqual(await s.reopen(id, false), {ok: true, reset: false});
+  assert.equal(s.elapsed(), 2500, 'the tab can bind after a cold Chrome start without a focus probe');
+  assert.equal(s.calls.filter(call => call.startsWith('look ')).length, 1, 'only the initial existing-tab check focuses');
+});
+
 // Owner, 15 Oct 2026: the live tab had been redirected to the employer's own host; the app looked by the original address, said "gone" and opened a new tab (twice).
+test('a second press waits for the same delayed extension acknowledgement', async () => {
+  const s = setup({tab: 'delayed', ackAfter: 2500});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  const first = s.reopen(id, false);
+  await Promise.resolve();
+  const second = s.reopen(id, false);
+  assert.deepEqual(await Promise.all([first, second]), [{ok: true, reset: false}, {ok: true, reset: false}]);
+  assert.equal(s.elapsed(), 2500, 'both callers await one acknowledgement window');
+  assert.equal(s.calls.filter(call => call.startsWith('open ')).length, 1);
+});
+
+test('a pending acknowledgement still shares one launch after the duplicate throttle expires', async t => {
+  const s = setup({tab: 'delayed', ackAfter: 19000});
+  t.mock.method(Date, 'now', () => 100000 + s.elapsed());
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  const first = s.reopen(id, false);
+  while (s.elapsed() < 16000) await Promise.resolve();
+  const second = s.reopen(id, false);
+  assert.deepEqual(await Promise.all([first, second]), [{ok: true, reset: false}, {ok: true, reset: false}]);
+  assert.equal(s.calls.filter(call => call.startsWith('open ')).length, 1);
+});
+
+test('an immediate launcher refusal stays an error on an immediate retry', async () => {
+  const s = setup({tab: 'none', launchError: 'Browser launch refused'});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  for (let press = 0; press < 2; press++) assert.deepEqual(await s.reopen(id, false), {ok: false, error: 'Browser launch refused'});
+  assert.equal(s.calls.filter(call => call.startsWith('open ')).length, 2);
+});
+
 test('a tab that still carries the fill mark (even on another host) is focused, not reopened', async () => {
   const s = setup({tab: 'tab'});
   const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});

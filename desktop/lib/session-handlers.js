@@ -26,6 +26,7 @@ import {demoPath} from './demo.js';
 import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 import {beingSent, cancellable} from '../renderer/session-state.js';
 import * as journal from './session-journal.js';
+import {WINDOW_MS} from './tab-expect.js';
 
 /** -> the session listener for terminals.onChange: each change also writes the live step log, and a new step of the log tells the window ('journal': the Sessions page redraws if shown). */
 export function watchSessions(toWindow) {
@@ -36,10 +37,14 @@ export function watchSessions(toWindow) {
   };
 }
 const REOPEN_MS = 15 * 1000;
+// Why (7 Nov 2026, #3407): a cold Chrome can take time to report its form tab; wait for the same window the tab tracker uses.
+const OPEN_ACK_INTERVAL_MS = 500;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
-  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage), keepHandoff = keepForJob}) {
+  closeTab = closeFormTab, focusTab = openFormTab, verifyOpenedTab = !DEMO && process.platform === 'darwin',
+  pause = ms => new Promise(resolve => setTimeout(resolve, ms)), background = () => backgroundApplyFor(storage), keepHandoff = keepForJob}) {
   const reopenedAt = new Map();   // session id -> when Reopen last opened its form: a second press inside REOPEN_MS opens nothing
+  const reopening = new Map();   // session id -> the pending extension acknowledgement shared with a second press
   const checkedSessions = sessionIpc(ipcMain, appLog);
   // Store writes one at a time: each is its own engine process, and Cancel all closes many tabs at once (SQLite locks, Notion's rate limit).
   let storeTail = Promise.resolve();
@@ -175,6 +180,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     const old = terminals.get(String(id));
     if (!old) return {ok: false, error: 'This session is no longer in the list.'};
     if (old.background) return openInChrome(old);
+    if (reopening.has(old.id)) return reopening.get(old.id);
     // No question (owner, 8 Oct 2026): the card already says Reopen fills the form again from your kit, so what the page held
     // from the closed tab is cleared and the form opens in a new tab. Claude is never started here; Start again is for that.
     // The tab may still be open under another address (redirected to the employer's own site, 15 Oct 2026: two presses opened two new tabs): its fill mark
@@ -183,15 +189,37 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     const stopped = old.stuck === 'stopped';
     const live = stopped ? 'none' : await focusTab({id: old.id, boundTab: review.tabOf(old.id)}).catch(() => 'none');
     if (live === 'tab') { appLog('review', `tab gone ${old.id}: its tab is open (marked), focused it instead of reopening`, {kind: old.kind}); return {ok: true, reset: false, focused: true}; }
-    if (Date.now() - (reopenedAt.get(old.id) || 0) < REOPEN_MS) { appLog('review', `tab gone ${old.id}: reopen pressed again while the form opens, nothing more opened`); return {ok: true, reset: false, focused: false}; }
+    if (Date.now() - (reopenedAt.get(old.id) || 0) < REOPEN_MS) {
+      appLog('review', `tab gone ${old.id}: reopen pressed again while the form opens, nothing more opened`);
+      return reopening.get(old.id) || {ok: true, reset: false, focused: false};
+    }
     const reset = !!stale || stopped;
     if (reset) { review.forget(old.id); terminals.clearStuck(old.id); }
     appLog('review', `tab gone ${old.id}: ${reset ? 'cleared the closed tab\'s state, reopening' : 'nothing to clear, reopening'}`, {kind: old.kind});
     reopenedAt.set(old.id, Date.now());
     // From the first step, the job posting (owner, 16 Oct 2026: a form's saved address lost its site session and showed an error): its Apply leads to the form again.
+    const priorTab = String(review.tabOf(old.id) || '');
     const opened = apply.openOne(old.url, {session: old.id, reuse: true});   // the same session: its new tab carries its id
-    appLog('review', `tab gone ${old.id}: ${opened.ok ? 'reopened the form with the fill mark' : 'could not reopen'}`, {reset, error: opened.error || ''});
-    return opened.ok ? {ok: true, reset} : {ok: false, error: opened.error};
+    if (!opened.ok) { reopenedAt.delete(old.id); appLog('review', `tab gone ${old.id}: could not reopen`, {reset, error: opened.error || ''}); return {ok: false, error: opened.error}; }
+    appLog('review', `tab gone ${old.id}: asked the browser to reopen the form`, {reset});
+    if (!verifyOpenedTab) return {ok: true, reset};
+    const confirmation = (async () => {
+      for (let elapsed = 0; elapsed <= WINDOW_MS; elapsed += OPEN_ACK_INTERVAL_MS) {
+        const boundTab = String(review.tabOf(old.id) || '');
+        if (boundTab && boundTab !== priorTab) {
+          appLog('review', `tab gone ${old.id}: extension confirmed the reopened form tab`, {reset});
+          return {ok: true, reset};
+        }
+        if (elapsed < WINDOW_MS) await pause(OPEN_ACK_INTERVAL_MS);
+      }
+      const error = 'Jobadabra did not confirm the form tab in Chrome. Check that Chrome is open and the extension is active, then try again.';
+      reopenedAt.delete(old.id);
+      appLog('review', `tab gone ${old.id}: the extension did not confirm the reopened form tab`, {reset});
+      return {ok: false, error};
+    })();
+    reopening.set(old.id, confirmation);
+    try { return await confirmation; }
+    finally { if (reopening.get(old.id) === confirmation) reopening.delete(old.id); }
   });
   // Apply with Claude sessions inside the app (lib/terminals.js): the dock, the session page and its terminal.
   // Demo mode: fictional sessions (demo/sessions.json) for screenshots; nothing runs.
