@@ -56,7 +56,7 @@ export async function runTriageCancelSteps(ctx, {urls}) {
 
       for (const completed of [1, 2]) {
         held.release(addresses[completed - 1]);
-        const state = await waitOn(seen, `the bar never reached ${completed} of ${jobs.length} while the next read was held`, async () => ({screen: await screenOf(page, addresses), reads: [...held.reads]}), state => state.screen.text === `${completed} of ${jobs.length}` && state.reads.includes(addresses[completed]));
+        const state = await waitOn(seen, `the dialog never named job ${completed + 1} of ${jobs.length} while its read was held`, async () => ({screen: await screenOf(page, addresses), reads: [...held.reads]}), state => state.screen.text.startsWith(`Checking ${completed + 1} of ${jobs.length}`) && state.reads.includes(addresses[completed]));
         const width = `${Math.round(completed / jobs.length * 100)}%`;
         if (!state.screen.shown || state.screen.width !== width) throw new Error(`after ${completed} real reads the bar should show ${width}: ${JSON.stringify(state)}`);
         console.log(`  triage progress: ${state.screen.text}, bar ${state.screen.width}`);

@@ -27,44 +27,82 @@ let timings = [];
 try { timings = (JSON.parse(localStorage.getItem(TIMINGS_KEY) || '[]') || []).filter(Number.isFinite).slice(-KEEP_TIMINGS); } catch { timings = []; }
 const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_TIMINGS); try { localStorage.setItem(TIMINGS_KEY, JSON.stringify(timings)); } catch { /* no storage: this session only */ } };
 
-let cancelled = false, running = false;   // one run at a time: a second Start while one runs does nothing
+// Design (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates of what's going on"): the dialog has ONE owner of what it shows, `state`, and ONE painter, `paint()`.
+//   idle     -> the count is editable, its line says how many and how long, the footer is Close + "Check N jobs".
+//   running  -> the count is read-only, the line is replaced by the job being read (its number, company and a seconds counter that ticks) and the jobs finished so far with their chips,
+//               the footer is Close + Stop (no Check, no second Cancel). Close hides the dialog and the run goes on; opening it again shows the same state.
+//   stopping -> Stop is pressed: the same view says "Stopping…" and Stop is disabled until the read in flight has ended.
+//   done     -> back to idle; the rows' chips and the toast say what was read.
+const state = {picking: false, running: false, stopping: false, total: 0, seen: 0, job: null, startedAt: 0};
+let cancelled = false, ticker = null;   // one run at a time: a second Start while one runs does nothing
 
 // The popup's one choice: the first N best matching jobs not checked before (owner, 30 Oct 2026), N from the one field.
 const choiceNow = () => ({n: Math.max(1, Math.floor(Number($('triage-n')?.value) || 10)), isChecked: job => readOf(job.url) !== null});
+const busy = () => state.picking || state.running;
+const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
-function paintCount() {
-  const picked = pickForTriage(shared.allJobs || [], choiceNow());
-  const {text, measured} = estimateOf(picked.length, timings);
-  const wanted = choiceNow().n, jobsWord = picked.length === 1 ? 'job' : 'jobs';
-  const line = !picked.length ? t('pagesAuditPunct.a39') : `${picked.length} ${jobsWord}${picked.length < wanted ? t('pagesAuditSecond.a117') : ''}${text ? ` · ${text}${measured ? '' : t('pagesAuditSecond.a118')}` : ''}`;
-  if ($('triage-count')) $('triage-count').textContent = line;
-  if ($('triage-start')) $('triage-start').textContent = t('pagesShortJobs.m202', {"length": picked.length, count: picked.length});
-  if ($('triage-start')) $('triage-start').disabled = picked.length === 0 || running;
+// One finished job on the list: who it was and the chip of what its read said (a read that gave nothing says "Not checked", like its row).
+function resultRow(job, read) {
+  const li = document.createElement('li'), who = document.createElement('span');
+  who.className = 'triage-who';
+  who.textContent = [job.company, job.title].filter(Boolean).join(' · ');
+  const {label, tone, detail} = chipOf(read);
+  li.append(who, chip(label, {tone, title: detail || label}));   // the word only; the reason is its tooltip, so a row stays one line
+  return li;
+}
+
+/** Draws the dialog from `state`: the only function that shows or hides its parts. Takes nothing; safe to call at any time. */
+function paint() {
+  const on = busy(), set = (id, fn) => { const el = $(id); if (el) fn(el); };
+  set('triage-progress', el => { el.hidden = !state.running; });
+  set('triage-count', el => { el.hidden = state.running; });
+  set('triage-n', el => { el.disabled = on; });
+  set('triage-start', el => { el.hidden = state.running; });
+  set('triage-cancel', el => { el.hidden = !state.running; el.disabled = state.stopping; });
+  if (!state.running) {   // idle, or picking the fresh list (Check stays visible but disabled, as before, so the dialog is never a bare body)
+    const picked = pickForTriage(shared.allJobs || [], choiceNow());
+    const {text, measured} = estimateOf(picked.length, timings);
+    const wanted = choiceNow().n, jobsWord = picked.length === 1 ? 'job' : 'jobs';
+    set('triage-count', el => { el.textContent = !picked.length ? t('pagesAuditPunct.a39') : `${picked.length} ${jobsWord}${picked.length < wanted ? t('pagesAuditSecond.a117') : ''}${text ? ` · ${text}${measured ? '' : t('pagesAuditSecond.a118')}` : ''}`; });
+    set('triage-start', el => { el.textContent = t('pagesShortJobs.m202', {"length": picked.length, count: picked.length}); el.disabled = picked.length === 0 || on; });
+    return;
+  }
+  const words = state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.company].filter(Boolean).join(' · ');
+  set('triage-progress-text', el => { el.textContent = words; el.title = state.job?.title || ''; });
+  set('triage-elapsed', el => { el.textContent = state.stopping ? '' : clock(Date.now() - state.startedAt); });
+  set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0));
+  set('triage-bar', el => { el.style.width = state.seen === 0 ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
 }
 
 /**
- * Runs the checks on the picked jobs, one at a time, through `read(job)` (PR C's hidden-browser read). The bar moves per job; Cancel stops
- * before the next one. Resolves with how many were read.
+ * Runs the checks on the picked jobs, one at a time, through `read(job)` (the hidden-browser read). The dialog names the job in flight from the first moment, counts its seconds, and lists
+ * each finished job's result as it lands; Stop ends before the next one. Resolves with how many were read.
  */
 export async function runTriage(jobs, read) {
-  if (running) return 0;
-  running = true;
+  if (state.running) return 0;
+  Object.assign(state, {picking: false, running: true, stopping: false, total: jobs.length, seen: 0, job: null});
   cancelled = false;
-  const bar = $('triage-bar'), words = $('triage-progress-text');
-  $('triage-progress').hidden = false;
-  let done = 0, seen = 0;
+  $('triage-results')?.replaceChildren();
+  ticker = setInterval(paint, 1000);   // Why (#3519): one read takes about a minute; the seconds are the proof it is alive between its steps
+  let done = 0;
   try {
     for (const job of jobs) {
       if (cancelled) break;
+      Object.assign(state, {job, startedAt: Date.now()});
+      paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
       if (result) { setRead(job.url, result); rememberTiming((Date.now() - started) / 1000); done += 1; }   // only a real read counts as read, and as a timing
-      seen += 1;
-      if (bar) bar.style.width = `${Math.round((seen / jobs.length) * 100)}%`;
-      if (words) words.textContent = t('pagesShortJobs.m203', {"seen": seen, "length": jobs.length});
+      if (cancelled && !result) break;   // a read Stop cut short is not a result
+      state.seen += 1;
+      $('triage-results')?.append(resultRow(job, result));
+      $('triage-results')?.lastElementChild?.scrollIntoView({block: 'nearest'});
+      paint();
     }
   } finally {
-    running = false;
+    clearInterval(ticker);
+    Object.assign(state, {running: false, stopping: false, job: null});
+    paint();
   }
   return done;
 }
@@ -76,18 +114,23 @@ const notYetRead = async () => null;
 export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () => {}, toast = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
-  $('triage-open').addEventListener('click', () => { paintCount(); dialog.showModal(); });
+  $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());
-  $('triage-n').addEventListener('input', paintCount);
-  $('triage-cancel').addEventListener('click', () => { cancelled = true; cancel(); });
+  $('triage-n').addEventListener('input', paint);
+  $('triage-cancel').addEventListener('click', () => { if (!state.running) return; cancelled = true; state.stopping = true; paint(); cancel(); });
   $('triage-start').addEventListener('click', async () => {
-    $('triage-start').disabled = true;
-    const jobs = await pickWhenFresh(() => shared.allJobs || [], listReady, choiceNow());   // never the kept copy painted before the fresh read (jobs-state.js)
-    const done = await runTriage(jobs, read);
-    $('triage-progress').hidden = true;
-    paintCount();
+    if (busy()) return;
+    state.picking = true; paint();
+    let jobs = [], done = 0;
+    try {
+      jobs = await pickWhenFresh(() => shared.allJobs || [], listReady, choiceNow());   // never the kept copy painted before the fresh read (jobs-state.js)
+      done = await runTriage(jobs, read);
+    } finally {
+      state.picking = false;
+      paint();
+    }
     rerender();
     toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : t('pagesAuditSecond.a119'), null, done ? 'good' : 'info');
   });
-  paintCount();
+  paint();
 }

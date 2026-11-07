@@ -1,0 +1,103 @@
+/* global document, window */
+// "See which jobs can apply automatically" while it runs, layer 2 (#3519): the demo window on fictional jobs whose form read is held by the test, so every press follows a state, never a delay.
+// The owner's scenario (7 Nov 2026, two screenshots): press Check 10 jobs -> an empty grey bar, no words, an inline Cancel AND Close AND a greyed Check, the number still an input.
+// Expected: at once "Checking 1 of N · <company>", a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
+// The read is the page's own `runTriage` fed a held read (the preload bridge is frozen, so a test cannot replace window.pilot.triageRead); Stop is the real wired button.
+// Job: serve stored answers
+import assert from 'node:assert/strict';
+import {before, test} from 'node:test';
+import {needsElectron} from '../../test/needs-electron.js';
+import {probeWindow} from './window-probe.js';
+
+const live = {skip: needsElectron.skip};
+const COMPANIES = ['Alder Works', 'Birch Labs', 'Cedar Group'];
+const JOBS = COMPANIES.map((company, index) => ({id: index + 1, code: `r${index + 1}`, title: `Running Engineer ${index + 1}`, company, stage: null, location: 'Zurich', work_mode: 'Hybrid',
+  url: `https://jobs.triage-running.example/roles/${index + 1}`, posted_at: '2099-01-01', first_seen_at: '2099-01-01', status: 'unreviewed', fit: 90 - index, reason: 'A fictional match.', rank: 100 - index, skills: []}));
+let screen;
+
+before(() => {
+  if (needsElectron.skip) return;
+  screen = probeWindow({files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
+    await kit.go('jobs');
+    await kit.until(() => (window.__jp.shared.allJobs || []).length >= 3, 'the three jobs to be listed');
+    const {runTriage} = await import('./pages/jobs-triage.js');
+    const shown = element => !!element && !element.hidden && element.offsetParent !== null;
+    const look = () => {
+      const dialog = document.getElementById('triage-dialog'), field = document.getElementById('triage-n');
+      return {
+        footer: [...dialog.querySelectorAll('.dialog-foot button')].filter(shown).map(button => button.textContent.trim()),
+        inline: [...dialog.querySelectorAll('#triage-progress button')].filter(shown).length,
+        elapsed: document.getElementById('triage-elapsed').textContent.trim(), results: [...document.querySelectorAll('#triage-results li')].map(li => li.textContent.trim()),
+        words: shown(document.getElementById('triage-progress')) ? document.getElementById('triage-progress-text').textContent.trim() : '',
+        width: document.getElementById('triage-bar').style.width, sliding: document.querySelector('#triage-progress .bar')?.classList.contains('is-sliding') === true,
+        fieldLocked: field.disabled || field.readOnly, stopDisabled: document.getElementById('triage-cancel').disabled,
+        count: shown(document.getElementById('triage-count')),
+      };
+    };
+    document.getElementById('triage-open').click();
+    await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
+    await kit.until(() => document.getElementById('triage-start').textContent.trim() === 'Check 3 jobs', 'the popup to offer Check 3 jobs');
+    const idle = look();
+    const jobs = (window.__jp.shared.allJobs || []).slice(0, 3), gates = new Map();
+    const read = job => new Promise(release => gates.set(job.url, release));
+    const run = runTriage(jobs, read);
+    const first = await kit.until(() => { const now = look(); return now.words ? now : ''; }, 'words on the progress while the first read is held');
+    // The owner's case: the first read is still held and the dialog must still change by itself (the seconds), not only when a read ends.
+    const ticked = await kit.until(() => { const now = look(); return now.elapsed !== first.elapsed ? now : ''; }, 'the seconds to move while the first read is held');
+    gates.get(jobs[0].url)({eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true});
+    const second = await kit.until(() => { const now = look(); return /2 of 3/.test(now.words) ? now : ''; }, 'the second job to be named while its read is held');
+    document.getElementById('triage-cancel').click();
+    const stopping = await kit.until(() => { const now = look(); return now.stopDisabled ? now : ''; }, 'Stop to say it is stopping');
+    gates.get(jobs[1].url)(null);
+    const done = await run;
+    const after = await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog to come back');
+    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length};
+  }});
+});
+
+test('the moment a check starts the dialog says which job it is reading, with a bar that is moving', live, () => {
+  const {first} = screen.result;
+  assert.match(first.words, /^Checking 1 of 3 · Alder Works$/);
+  assert.equal(first.sliding, true, 'before the first read ends the bar slides, so a running check never looks still');
+});
+
+test('while the first read is still held the dialog keeps changing by itself: the seconds count up and the words stay', live, () => {
+  const {first, ticked} = screen.result;
+  assert.match(first.elapsed, /^\d+:\d\d$/);
+  assert.notEqual(ticked.elapsed, first.elapsed);
+  assert.equal(ticked.words, first.words);
+  assert.deepEqual(first.results, [], 'nothing finished yet');
+});
+
+test('after one read the bar shows its share and names the next job', live, () => {
+  const {second} = screen.result;
+  assert.match(second.words, /^Checking 2 of 3 · Birch Labs$/);
+  assert.equal(second.width, '33%');
+  assert.equal(second.sliding, false);
+  assert.equal(second.results.length, 1, 'the finished job is listed as soon as it lands');
+  assert.match(second.results[0], /^Alder Works · Running Engineer 1/);
+});
+
+test('while it runs there is one footer: Close and Stop, no stale Check, no inline Cancel, and the count cannot be edited', live, () => {
+  const {idle, first, second} = screen.result;
+  assert.deepEqual(idle.footer, ['Close', 'Check 3 jobs']);
+  for (const state of [first, second]) {
+    assert.deepEqual(state.footer, ['Close', 'Stop']);
+    assert.equal(state.inline, 0, 'no second Cancel inside the progress');
+    assert.equal(state.fieldLocked, true, 'the count is read-only while the check runs');
+    assert.equal(state.count, false, 'the "about N minutes" guess gives way to the progress');
+  }
+  assert.equal(idle.fieldLocked, false);
+});
+
+test('Stop says it is stopping, reads nothing more, and the idle dialog comes back with Check', live, () => {
+  const {stopping, done, after, gated} = screen.result;
+  assert.match(stopping.words, /^Stopping/);
+  assert.equal(stopping.stopDisabled, true);
+  assert.equal(done, 1, 'only the one finished read counts');
+  assert.equal(gated, 2, 'the third job was never read');
+  assert.deepEqual(after.footer, ['Close', 'Check 2 jobs'], 'the one job read is no longer offered');
+  assert.equal(after.fieldLocked, false);
+  assert.equal(after.inline, 0);
+});
