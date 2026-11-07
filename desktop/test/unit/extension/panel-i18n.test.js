@@ -111,3 +111,9 @@ test('the app-authored AI tooltip is localized while original employer title and
   assert.equal(field.title,'Employer tooltip {count}');
   assert.equal(field.value,'Fictional Candidate <keep>');
 });
+
+test('a missing shared formatter leaves the panel helper absent for the existing hard-helper guard', () => {
+  const context=vm.createContext({chrome:{runtime:{sendMessage(){throw Error('No request before dependencies exist');}}}});context.window=context;
+  vm.runInContext(source('panel-i18n.js'),context);
+  assert.equal(context.__jobadabraPanelI18n,undefined);
+});

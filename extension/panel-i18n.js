@@ -1,6 +1,6 @@
 // Display-only bridge for injected extension panels; fetches trusted bundled words and never reads the employer DOM or applicant values.
 (() => {
-  if (window.__jobadabraPanelI18n) return;
+  if (window.__jobadabraPanelI18n || typeof globalThis.__jobadabraFormatDisplayMessage !== 'function') return;
   let bundle = {locale:'en',messages:{},english:{}};
   const listeners = new Set(), roots = new Set();
   let steps = new Map();
