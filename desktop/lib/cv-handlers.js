@@ -1,6 +1,7 @@
 // The CV and cover-letter IPC (moved out of main.js, 8 Oct 2026): the CV match on a job, which CV a job uses, the base CV's status and
 // check, viewing it, the cover letter's draft, approval and PDF, and the CV folder. main.js passes in the services they share.
 // Guards: the cv, cv-check, cover-letter and match-check tests in desktop/test.
+import {cvNotice} from '../i18n/cv-notices.js';
 import * as atUpload from './cv-import-at-upload.js';
 import * as claudeCode from './claude-code.js';
 import * as contactDetails from './contact.js';
@@ -29,11 +30,11 @@ export function registerCvAndLettersHandlers(ctx) {
   ipcMain.handle('matchSaved', (_, code) => { if (DEMO) return demo.matchSaved; const cv = cvlib.baseCv(storage); return cv ? matchCheck.saved(storage, String(code), cv) : null; });
   ipcMain.handle('matchCheck', async (_, code) => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
+    if (!key && !ai) return {ok: false, error: cvNotice('chooseAi')};
     try {
       let cost = 0;
       if (!cvlib.baseCv(storage)) {
-        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) in Settings first.'};
+        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: cvNotice('addCvSettings')};
         cost += (await atUpload.ensure(storage, {client: ai, key, look: keepLook})).usd || 0;
       }
       const job = await pipeline.posting(storage, String(code));
@@ -66,20 +67,20 @@ export function registerCvAndLettersHandlers(ctx) {
   const billingNow = () => claudeCode.client(storage)?.billing || (storage.secret('ANTHROPIC_API_KEY') ? 'api' : '');
   ipcMain.handle('cvCheckStatus', () => (DEMO ? {...demo.cvCheck, billing: 'api'} : {...(cvCheck.saved(storage) || {}), billing: billingNow()}));
   ipcMain.handle('cvCheckRun', async () => {
-    if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) in Settings first.'};
+    if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: cvNotice('addCvSettings')};
     let probe;
     try {
       probe = await cvLook.probeWindow(BrowserWindow, storage.path('cv.pdf'));
       const result = cvCheck.withSections(cvCheck.analyse(await probe.scan()), cvCheck.saved(storage)?.ai?.sections);   // headings the review found in any language
       appLog('cv', 'parser check', {score: result.score, pages: result.pages, issues: result.checks.filter(c => c.status !== 'pass').map(c => c.id)});
       return {ok: true, ...cvCheck.save(storage, {ats: result}), billing: billingNow()};
-    } catch (error) { return {ok: false, error: `The CV could not be read: ${error.message}`}; } finally { probe?.close(); }
+    } catch (error) { return {ok: false, error: cvNotice('readFailed', {error: error.message})}; } finally { probe?.close(); }
   });
   ipcMain.handle('cvCheckAi', async () => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
+    if (!key && !ai) return {ok: false, error: cvNotice('chooseAi')};
     const ats = cvCheck.saved(storage)?.ats;
-    if (!ats) return {ok: false, error: 'Check the CV first.'};
+    if (!ats) return {ok: false, error: cvNotice('checkFirst')};
     try {
       const {profile} = await strategy.profileTexts(storage).catch(() => ({profile: ''}));
       const result = await cvCheck.review(storage, key, ats.text, {client: ai, profile});
@@ -93,13 +94,13 @@ export function registerCvAndLettersHandlers(ctx) {
     file: DEMO ? demo.cvFile : fileOf()}));
   handleImportant('importCv', 'Saving your CV', async () => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
-    if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) first.'};
+    if (!key && !ai) return {ok: false, error: cvNotice('chooseAi')};
+    if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: cvNotice('addCv')};
     try { return {ok: true, usd: (await atUpload.ensure(storage, {client: ai, key, look: keepLook, force: true})).usd || 0}; } catch (error) { return {ok: false, error: error.message}; }
   });
   ipcMain.handle('viewBaseCv', async () => {
     const base = cvlib.baseCv(storage);
-    if (!base) return {ok: false, error: 'No base CV yet.'};
+    if (!base) return {ok: false, error: cvNotice('noBase')};
     const {pdf, overflow} = await printPdf(cvlib.writeHtml(storage, base, 'base.html'));
     const target = path.join(cvlib.dir(storage), 'base.pdf');
     writePrivate(target, pdf);
@@ -121,10 +122,10 @@ export function registerCvAndLettersHandlers(ctx) {
     if (DEMO) return {ok: false, error: demo.TEXT}; // demo setup must never reach an account or paid model
 
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
+    if (!key && !ai) return {ok: false, error: cvNotice('chooseAi')};
     try {
       if (!cvlib.baseCv(storage)) {
-        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) first.'};
+        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: cvNotice('addCv')};
         await atUpload.ensure(storage, {client: ai, key, look: keepLook});
       }
       const contact = await contactDetails.read(storage).catch(() => ({}));
@@ -141,7 +142,7 @@ export function registerCvAndLettersHandlers(ctx) {
     try {
       if (typeof text === 'string') letters.edit(storage, text);
       const record = letters.load(storage);
-      if (!record?.text) return {ok: false, error: 'Write or generate a letter first.'};
+      if (!record?.text) return {ok: false, error: cvNotice('letterFirst')};
       const contact = await contactDetails.read(storage).catch(() => ({}));
       fs.mkdirSync(letters.dir(storage), {recursive: true});
       const page = path.join(letters.dir(storage), 'letter.html');
