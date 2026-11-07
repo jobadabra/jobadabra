@@ -260,7 +260,7 @@ test('job displays translate while stage identifiers, filters and unknown postin
 
 test('interview display preserves review parsing, transcript content and preparation action ids', async () => {
   const {execFileSync} = await import('node:child_process');
-  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {reviewParts}=await import('./renderer/interview-review-view.js'); const {prepCard}=await import('./renderer/prep-card.js'); console.log(JSON.stringify({review:reviewParts({review:'## Questions\n- ✅ [Team] Why? — My own answer\n## Original heading\nOriginal review',transcript:'My original transcript'}),prep:prepCard({prep_at:'2026-11-06',prep_stale:true,prep_why:'booked',prep_since:'2026-11-07'},'2026-11-07'),ready:prepCard({prep_at:'2026-11-07'},'2026-11-07')}));"], {cwd: root, encoding: 'utf8'});
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {reviewParts}=await import('./renderer/interview-review-view.js'); const {prepCard}=await import('./renderer/prep-card.js'); console.log(JSON.stringify({review:reviewParts({review:['## Questions','- ✅ [Team] Why? — My own answer','## Original heading','Original review'].join(String.fromCharCode(10)),transcript:'My original transcript'}),prep:prepCard({prep_at:'2026-11-06',prep_stale:true,prep_why:'booked',prep_since:'2026-11-07'},'2026-11-07'),ready:prepCard({prep_at:'2026-11-07'},'2026-11-07')}));"], {cwd: root, encoding: 'utf8'});
   const value = JSON.parse(output);
   assert.equal(value.review.questions[0].verdict, 'Stark');
   assert.equal(value.review.questions[0].answer, 'My own answer');
