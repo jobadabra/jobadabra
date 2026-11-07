@@ -22,24 +22,41 @@ const QUEUED = {id: 'silent-fill', kind: 'form', url: 'https://jobs.e2e.test/app
 // The Acme Robotics form's job is in the list, as the e2e step's job was: its CV row then says which CV goes in (a job not listed gets "Add this job" instead).
 const demoJobs = JSON.parse(fs.readFileSync(new URL('../../demo/jobs.json', import.meta.url), 'utf8'));
 const ACME = {...JOBS[0], id: 99, code: 'acme', title: 'Cloud Engineering Manager', company: 'Acme Robotics', url: 'https://jobs.example/acme/sre'};
-let popup, strip, silent, rows, retry;
+const triageLayoutKit = () => ({triageLayout() {
+  const dialog = document.getElementById('triage-dialog'), field = document.getElementById('triage-n'), row = field.parentElement;
+  const d = dialog.getBoundingClientRect(), r = row.getBoundingClientRect(), f = field.getBoundingClientRect();
+  const actions = [...dialog.querySelectorAll('#triage-close, #triage-start')].map(button => button.getBoundingClientRect());
+  const hitsField = other => { const box = other.getBoundingClientRect(); return box.right > f.left && box.left < f.right && box.bottom > f.top && box.top < f.bottom; };
+  return {fieldFocused: document.activeElement === field, footerInset: d.bottom - Math.max(...actions.map(box => box.bottom)), buttonsInside: actions.every(box => box.left >= d.left && box.right <= d.right),
+    rowOverflow: row.scrollWidth > row.clientWidth, fieldInRow: f.left >= r.left && f.right <= r.right, fieldOverlap: [...row.children].some(other => other !== field && hitsField(other))};
+}});
+let popup, narrowPopup, strip, silent, rows, retry;
 
 before(() => {
   if (needsElectron.skip) return;
-  popup = probeWindow({files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+  popup = probeWindow({use: [triageLayoutKit], files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.go('jobs');
     await kit.until(() => (window.__jp.shared.allJobs || []).length >= 12, 'the twelve jobs to be listed');
     document.getElementById('triage-open').click();
     await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
     const read = () => ({count: document.getElementById('triage-count').textContent.trim().split(' · ')[0], start: document.getElementById('triage-start').textContent.trim(), disabled: document.getElementById('triage-start').disabled});
+    const layout = kit.triageLayout();
     const ask = async n => {
       const field = document.getElementById('triage-n');
       field.value = String(n); field.dispatchEvent(new window.Event('input', {bubbles: true}));
       await kit.until(() => document.getElementById('triage-start').textContent.trim() !== '' && read().count !== '', 'the popup to say how many');
       return read();
     };
-    return {listed: (window.__jp.shared.allJobs || []).length, fields: document.querySelectorAll('#triage-dialog input').length, ten: await ask(10), three: await ask(3), fifty: await ask(50)};
+    return {listed: (window.__jp.shared.allJobs || []).length, fields: document.querySelectorAll('#triage-dialog input').length, layout, ten: await ask(10), three: await ask(3), fifty: await ask(50)};
+  }});
+  narrowPopup = probeWindow({use: [triageLayoutKit], settings: {zoom: 0.8}, env: {JOBADABRA_SHOT_WIDTH: '320'}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
+    await kit.go('jobs');
+    await kit.until(() => (window.__jp.shared.allJobs || []).length >= 12, 'the twelve jobs to be listed');
+    document.getElementById('triage-open').click();
+    await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
+    return {viewport: window.innerWidth, ...kit.triageLayout()};
   }});
   rows = probeWindow({files: {'jobs.json': {jobs: JOBS.map(job => ({...job, stage: null, status: 'unreviewed'})), total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
@@ -87,12 +104,29 @@ before(() => {
 });
 
 test('the Jobs popup has one field, the first N best matching jobs not checked before, and says how many', live, () => {
-  const {listed, fields, ten, three, fifty} = popup.result;
+  const {listed, fields, layout, ten, three, fifty} = popup.result;
   assert.equal(listed, 12);
   assert.equal(fields, 1, 'the popup has more than one field');
+  assert.equal(layout.fieldFocused, true, 'opening the popup focuses the number field');
+  assert.ok(layout.footerInset >= 12, `the Check button is ${layout.footerInset}px from the dialog bottom`);
+  assert.equal(layout.buttonsInside, true, 'the footer buttons stay inside the dialog');
+  assert.equal(layout.rowOverflow, false, 'the count row fits inside the dialog');
+  assert.equal(layout.fieldInRow, true, 'the number field stays inside its row');
+  assert.equal(layout.fieldOverlap, false, 'the number field does not overlap either label');
   assert.deepEqual([ten.count, ten.start], ['10 jobs', 'Check 10 jobs']);
   assert.deepEqual([three.count, three.start], ['3 jobs', 'Check 3 jobs']);
   assert.deepEqual([fifty.count, fifty.start], ['12 jobs not checked yet', 'Check 12 jobs'], 'asking for more than there are says so');
+});
+
+test('the Jobs popup keeps its number row and footer contained at a narrow window width', live, () => {
+  const {viewport, fieldFocused, footerInset, buttonsInside, rowOverflow, fieldInRow, fieldOverlap} = narrowPopup.result;
+  assert.equal(viewport, 400, 'the fixture opens at the narrow 320-DIP window width with the app zoom');
+  assert.equal(fieldFocused, true, 'opening the popup focuses the number field');
+  assert.ok(footerInset >= 12, `the Check button is ${footerInset}px from the dialog bottom`);
+  assert.equal(buttonsInside, true, 'the footer buttons stay inside the dialog');
+  assert.equal(rowOverflow, false, 'the number row fits inside the dialog');
+  assert.equal(fieldInRow, true, 'the number field stays inside its row');
+  assert.equal(fieldOverlap, false, 'the number field does not overlap either label');
 });
 
 test('the session page says it too: "Before you submit" counts the knockout question that is still the person\'s, and says which CV goes in', live, () => {
