@@ -1,5 +1,6 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
 import {claudeConsentOptions, claudeOffText, stuckSessionNotice} from './lib/native-notices.js';
+import {initializeStartupLocale} from './lib/locale-startup.js';
 import {ownSecretsPresent} from './lib/secrets.js'; import {registerLocaleHandlers} from './lib/locale-handlers.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
@@ -384,6 +385,7 @@ app.commandLine.appendSwitch('enable-features', 'MacLoopbackAudioForScreenShare,
 installCrashMonitors({getTelemetry: () => telemetry, getStorage: () => storage});   // lib/crash-monitors.js
 startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(), createWindow, start: () => {
   // Why (31 Oct 2026, #2729 red on sonarjs: start() may not grow): one check for both quits; moving to Applications (Electron quits and opens the moved copy), or a Store copy's private data going to the real folder first (lib/store-data-copy.js)
+  initializeStartupLocale({app});
   if (quitBeforeStart({app, dialog, offerMove, appLog})) return false;
   buildMenu();
   app.setAboutPanelOptions({applicationName: 'Jobadabra', applicationVersion: app.getVersion(),

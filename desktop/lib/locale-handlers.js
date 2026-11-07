@@ -1,13 +1,17 @@
 // Narrow display-language IPC follows local appearance preferences without writing profile or application data.
 import {SUPPORTED_LOCALES, resolveLocale, setLocale} from '../i18n/index.js';
 
+/** Resolve the same saved appearance choice for early native prompts and the later locale IPC. */
+export function localeView(app, settings = {}) {
+  const saved = settings?.displayLanguage;
+  const choice = saved === 'system' || SUPPORTED_LOCALES.includes(saved) ? saved : 'en';
+  const preferred = choice === 'system' ? app.getPreferredSystemLanguages?.() || [app.getLocale?.() || 'en'] : [];
+  return {choice, locale: resolveLocale(choice, preferred), supported: [...SUPPORTED_LOCALES]};
+}
+
 /** Register validated locale read/write handlers and establish the main process locale from saved settings. */
 export function registerLocaleHandlers({ipcMain, app, storage, onChange = () => {}}) {
-  const view = () => {
-    const saved = storage.settings().displayLanguage;
-    const choice = saved === 'system' || SUPPORTED_LOCALES.includes(saved) ? saved : 'en';
-    return {choice, locale: resolveLocale(choice, app.getPreferredSystemLanguages?.() || [app.getLocale?.() || 'en']), supported: [...SUPPORTED_LOCALES]};
-  };
+  const view = () => localeView(app, storage.settings());
   setLocale(view().locale);
   ipcMain.handle('locale', () => view());
   ipcMain.handle('setLocale', (_, choice) => {
