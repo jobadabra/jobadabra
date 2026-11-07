@@ -112,7 +112,7 @@ def visits_entry(verdict):
     return _search_entry('visits', keys(verdict)['visits'], text('focusCards.search.m020', '{value} {value2} only you can open', {'value': len(names), 'value2': _s(len(names), 'site')}),
                          join("", [' · '.join(names[:3]), text('focusCards.search.m019', ' and {value} more', {'value': len(names) - 3}) if len(names) > 3 else '']),
                          [f"{v['name']}: {v['why']}" for _, v in found],
-                         # Why (#2350): its own do: the read starts AI work in Chrome, so its button carries the wand and no probe presses it.
+                         # Why (#2350; 7 Nov 2026): only the label gets display copy; read_site still starts AI work in Chrome, carries the wand and is never pressed by a probe.
                          {'label': text('focusCards.search.m021', 'Read {name}', {'name': name}), 'do': 'read_site', 'kind': 'visit', 'value': top['url']}, len(names))
 
 
