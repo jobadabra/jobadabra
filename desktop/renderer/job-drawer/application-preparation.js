@@ -1,5 +1,6 @@
 // Application → Preparation: what the app drafted for the application: the kit (check before sending, lead with, form answers:
 // each copyable) and the interview preparation. The cover letter and the tailored CV are in the Documents tab (tab-documents.js). Not drafted yet: a state card.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {checkPill} from '../no-mark.js';
 import {allAnswers} from '../job-page-view.js';
@@ -13,10 +14,10 @@ function kitView(kit) {
   const parts = [];
   if (kit.intro) parts.push(el('p', 'muted small', kit.intro));
   if (kit.ineligible) parts.push(el('div', 'callout tone-bad', `Not eligible: ${kit.ineligible}`));
-  if (kit.check.length) parts.push(group('⚠️ Check before sending', kit.check));
-  if (kit.lead.length) parts.push(group('💡 Lead with', kit.lead));
+  if (kit.check.length) parts.push(group(t('helpers.checkSending'), kit.check));
+  if (kit.lead.length) parts.push(group(t('helpers.leadWith'), kit.lead));
   if (kit.answers.length) {
-    parts.push(group('🧾 Form answers', kit.answers.map(item => {
+    parts.push(group(t('helpers.formAnswers'), kit.answers.map(item => {
       // Copy on the question's line, as the cover letter's is on its heading: one place for every Copy in the kit.
       const row = el('div', 'iv-moment');
       const line = el('div', 'job-panel-line');
@@ -25,16 +26,16 @@ function kitView(kit) {
       line.append(title, copyButton(item.answer));
       row.append(line, el('div', '', item.answer || '—'));
       return row;
-    }), copyButton(allAnswers(kit.answers), 'Copy all')));
+    }), copyButton(allAnswers(kit.answers), t('helpers.copyAll'))));
   }
   return parts;
 }
 
 export function preparationView({job, parts}) {
   const nodes = [...(parts.kit ? kitView(parts.kit) : []),
-    ...parts.groups.prep.map(part => group(part.title || '🎤 Interview preparation', part.lines)), ...jobQuestionsView(job)];
+    ...parts.groups.prep.map(part => group(part.title || t('helpers.interviewPrep'), part.lines)), ...jobQuestionsView(job)];
   const filled = nodes.length > 0 && (parts.has.application || parts.groups.prep.length > 0);
-  if (!filled) return [stateCard({icon: 'file', title: 'Not prepared', text: 'Apply prepares it: what to check, what to lead with and the form\'s answers. It shows here. The CV and cover letter are under Documents.'})];
+  if (!filled) return [stateCard({icon: 'file', title: t('helpers.notPrepared'), text: t('helpers.notPreparedText')})];
   // The kit was written by the engine now in charge: on Free AI, a one-time hint that an own key writes stronger (own-key-hint.js).
   const hint = parts.kit && ownKeyHint(shared.state, {openSettings: () => import('../pages/settings.js').then(({openSetting}) => openSetting('ai'))});
   return hint ? [...nodes, hint] : nodes;

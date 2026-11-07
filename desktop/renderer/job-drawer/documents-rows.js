@@ -1,10 +1,11 @@
 // The Documents tab's row grid: one label → value row per fact (owner's rule, 18 Oct 2026: no caption lines above or below a button row), the
 // cards' buttons (one primary, the rest the same secondary) and the letter's inset text panel. Guarded by test/unit/renderer/job-documents.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 
 // rows([[label, [nodes or text]]], {top: [labels that sit at the top of a tall value]}) → dl.summary-rows.
-export function rows(pairs, {top = ['Text']} = {}) {
+export function rows(pairs, {top = [t('helpers.text')]} = {}) {
   const list = el('dl', 'summary-rows is-compact doc-rows');
   for (const [label, value] of pairs) {
     const cell = el('dd', 'doc-value');
@@ -23,9 +24,9 @@ export function docButton(label, run, primary = false) {
   return node;
 }
 
-export function docCopy(text, label = 'Copy', primary = false) {
-  const node = docButton(label, () => navigator.clipboard.writeText(text).then(() => { node.textContent = 'Copied ✓'; setTimeout(() => { node.textContent = label; }, 1500); }), primary);
-  node.title = 'Copy to the clipboard';
+export function docCopy(text, label = t('helpers.copy'), primary = false) {
+  const node = docButton(label, () => navigator.clipboard.writeText(text).then(() => { node.textContent = t('helpers.copied'); setTimeout(() => { node.textContent = label; }, 1500); }), primary);
+  node.title = t('helpers.copyClipboard');
   return node;
 }
 

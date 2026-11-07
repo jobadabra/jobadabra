@@ -2,6 +2,7 @@
 // from and what it said, and the way to its detail ("View message" in Messages, "View snapshot" in Application, "Open interviews"). One plain list, no filter (owner, 21 Oct 2026: messages have their own tab);
 // "Add note" at its end opens the Log box on this job. The newest part of the line is
 // the job's own events; the oldest entry is when the search found it. Data: renderer/job-page-view.js timelineOf. Replaces History.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {timelineOf} from '../job-page-view.js';
@@ -10,7 +11,7 @@ import {button, stateCard} from './parts.js';
 import {showSubmitted} from './tab-application.js';
 
 const ICONS = {'Job discovered': 'search', Applied: 'file', 'Confirmation received': 'check-circle', 'Interview scheduled': 'calendar', Rejected: 'close', Offer: 'check-circle'};
-const LINKS = {messages: ['View message →', 'messages'], interviews: ['Open interviews →', 'interviews'], snapshot: ['View snapshot →', 'application']};
+const LINKS = {messages: [t('helpers.viewMessage'), 'messages'], interviews: [t('helpers.interviewsArrow'), 'interviews'], snapshot: [t('helpers.viewSnapshot'), 'application']};
 
 function entry(item, {job, pick}) {
   const row = el('li', 'jd-event');
@@ -30,8 +31,8 @@ function entry(item, {job, pick}) {
 
 export function timelineTab({job, page, parts, pick}) {
   const items = timelineOf(page?.events, job, page?.match, parts);
-  const add = button('Add note', () => openLogFor(job.url, job.title), 'soft-button');
-  if (!items.length) return [stateCard({icon: 'clock', title: 'Nothing has happened yet', text: 'Status changes, interviews and messages are listed here as they come.', actions: [add]})];
+  const add = button(t('helpers.addNote'), () => openLogFor(job.url, job.title), 'soft-button');
+  if (!items.length) return [stateCard({icon: 'clock', title: t('helpers.nothingHappened'), text: t('helpers.timelineEmpty'), actions: [add]})];
   const list = el('ol', 'jd-timeline');
   list.append(...items.map(item => entry(item, {job, pick})));
   const foot = el('div', 'jd-timeline-foot');

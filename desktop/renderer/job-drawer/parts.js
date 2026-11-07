@@ -1,6 +1,7 @@
 // The parts every tab of the job drawer is built from (pages/job-panel.js, job-drawer/tab-*.js): a titled group of lines, a copy button,
 // the state card (empty, loading, failed, notice: one component, so every tab says "nothing yet" the same way), the key-facts grid and
 // the loading skeleton. DOM builders only; the words come from renderer/job-page-view.js. Guarded by test/unit/renderer/job-drawer.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 
@@ -10,10 +11,10 @@ export function button(label, run, className = 'soft-button') {
   return node;
 }
 
-export function copyButton(text, label = 'Copy') {
-  const node = Object.assign(el('button', 'link', label), {type: 'button', title: 'Copy to the clipboard'});
+export function copyButton(text, label = t('helpers.copy')) {
+  const node = Object.assign(el('button', 'link', label), {type: 'button', title: t('helpers.copyClipboard')});
   node.addEventListener('click', () => navigator.clipboard.writeText(text).then(() => {
-    node.textContent = 'Copied ✓';
+    node.textContent = t('helpers.copied');
     setTimeout(() => { node.textContent = label; }, 1500);
   }));
   return node;
@@ -148,7 +149,7 @@ export function sourceCard(words, original) {
   const mark = el('span', 'jd-strip-icon');
   mark.append(icon('file'));
   const text = el('div', 'jd-tile-words');
-  text.append(el('span', 'muted small', 'Source'), el('b', '', words));
+  text.append(el('span', 'muted small', t('helpers.source')), el('b', '', words));
   box.append(mark, text, original);
   return box;
 }
@@ -172,5 +173,5 @@ export function foldCard({iconName = 'mail', title, tag: pillText = '', when = '
 }
 
 // A posting the last search no longer listed (page.match.status "Not seen"): not proof it closed, and what the app saved is kept.
-export const closedCard = () => stateCard({icon: 'alert', tone: 'warn', title: 'Not seen in the last search',
-  text: 'The posting may have closed or moved. What the app saved about it (its facts, score and text) is kept.'});
+export const closedCard = () => stateCard({icon: 'alert', tone: 'warn', title: t('helpers.notSeenSearch'),
+  text: t('helpers.postingKept')});
