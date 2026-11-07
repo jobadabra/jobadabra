@@ -136,7 +136,7 @@ export const toClose = (issues, matched, runUrl, cleared) => issues.filter(issue
 // them: the check only knew screenshot reviews, so a fixed probe finding stayed open until a pull request named it.
 export const probeTarget = issue => {
   if (!(issue.labels || []).some(item => (item.name || item) === 'source:interaction-probe')) return null;
-  const view = /^\[auto-ui\] ([^:]+):/.exec(issue.title || '')?.[1], control = /"([^"]+)"\s*$/.exec(issue.title || '')?.[1];
+  const view = /^\[(?:auto-ui|AI persona)\] ([^:]+):/.exec(issue.title || '')?.[1], control = /"([^"]+)"\s*$/.exec(issue.title || '')?.[1];
   return view && control ? {view, control} : null;
 };
 export const probeCleared = (issue, pressed) => { const target = probeTarget(issue); return !!target && pressed.some(row => row.view === target.view && row.control === target.control); };

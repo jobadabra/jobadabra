@@ -11,7 +11,7 @@ export function sampleVerdicts({issues = [], register = [], now = Date.now(), da
   const since = now - days * 86400000, pool = [];
   for (const issue of issues) for (const comment of issue.comments || []) {
     const word = MARK.exec(String(comment.body || ''))?.[1];
-    if (word && Date.parse(comment.createdAt || 0) >= since) pool.push({key: `i${issue.number}`, word, what: String(issue.title || '').replace(/^\[auto-ui\] /, ''), why: whyOf(comment.body).slice(0, 300), where: `#${issue.number}`});
+    if (word && Date.parse(comment.createdAt || 0) >= since) pool.push({key: `i${issue.number}`, word, what: String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, ''), why: whyOf(comment.body).slice(0, 300), where: `#${issue.number}`});
   }
   for (const item of register) if (Date.parse(item.date || 0) >= since - 86400000) pool.push({key: `r${item.id}`, word: item.word, what: `${item.view}: ${item.title}`, why: String(item.why || '').slice(0, 300), where: 'not filed (noise register)'});
   const out = [];

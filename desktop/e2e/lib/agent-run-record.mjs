@@ -13,7 +13,7 @@ function numbered(notes) {
 }
 
 /**
- * run.json for the store. `session`: what runSession returned; `meta`: {run (GitHub run id), at (ISO), kind ('night'|'replay'), commit, plan}; `video`: agent-video.json's {secs, bytes, startedAt} or null.
+ * run.json for the store. `session`: what runSession returned; `meta`: {run (GitHub run id), at (ISO), kind ('night'|'replay'|'lane'), commit, plan}; `video`: agent-video.json's {secs, bytes, startedAt} or null.
  * -> a plain object: notes carry `shot` (the number of their picture, 0 = none), `videoSec`, `control` (the pressed control's box in the window), `judge`, `filed` and the last steps of their trail; no base64 anywhere.
  */
 export function runRecord(session, meta, video = null) {

@@ -3,6 +3,7 @@
 // and the verdict's "Why"), so the reviewer stops raising it in other words. The hand-written BY DESIGN list in lib/vision.mjs SYSTEM stays; this adds
 // to it without anyone editing a prompt. Read from GitHub at review time (GITHUB_TOKEN, issues: read); none readable: the review runs without them.
 // Guarded by test/review-lessons.test.mjs.
+// Job: report health
 export const LESSON_LABELS = ['source:ai-review', 'resolution:by-design'];
 const MAX_LESSONS = 12;
 
@@ -10,7 +11,7 @@ const MAX_LESSONS = 12;
 export function lessonFromIssue(issue, comments = []) {
   const view = String(issue.body || '').match(/Page `([^`]+)`/)?.[1];
   if (!view) return null;
-  const title = String(issue.title || '').replace(/^\[auto-ui\]\s*[^:]*:\s*/, '').trim().slice(0, 120);
+  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 120);
   let why = '';
   for (const comment of comments) {
     const said = String(comment.body || '').match(/###[^\n]*\bWhy\b[^\n]*\n+([\s\S]*?)(?=\n###|\n<sub>|$)/);

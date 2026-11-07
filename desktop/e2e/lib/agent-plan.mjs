@@ -50,6 +50,40 @@ export const languageDue = coverage => !coverage.slice(-(LANGUAGE_EVERY - 1)).so
 /** The night's language: the seed picks one of the six other languages, replayable from the seed. */
 export const languageOf = seed => { const codes = Object.keys(OTHER_LANGUAGES); return codes[Math.floor(rng(Number(seed) + 11)() * codes.length)]; };
 
+/** The most lanes a batch can start: the move pool is split in this many parts, so each part holds a quarter of it (lanePool says when a part is too small to plan from). */
+export const MAX_LANES = 4;
+
+/** The lane a dispatch asked for: '' = 0 (a night), else a whole number 1..MAX_LANES; anything else throws before the app is seeded. */
+export function laneOf(raw = '') {
+  if (raw === '' || raw === undefined) return 0;
+  const lane = /^\d+$/.test(String(raw)) ? Number(raw) : 0;
+  if (lane < 1 || lane > MAX_LANES) throw new Error(`AGENT_LANE must be empty or a whole number from 1 to ${MAX_LANES}, got "${raw}"`);
+  return lane;
+}
+
+/** A lane's own seed (the batch seed + its number): its order, person, data shape and language differ from the other lanes'; lane 0 is a night and keeps the seed. */
+export const laneSeed = (seed, lane = 0) => Number(seed) + lane;
+
+/** A 32-bit mix of a text (murmur3's finalizer over FNV-1a): every bit of the text moves every bit of the result, so `% n` splits evenly. */
+const mix = text => {
+  let h = 2166136261;
+  for (const char of text) h = Math.imul(h ^ char.charCodeAt(0), 16777619);
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return h >>> 0;
+};
+
+/**
+ * Lane n's part of the move pool: the moves whose own key, mixed with the batch seed, falls in part n of MAX_LANES. A move's part depends on that move and the seed ONLY, so two lanes of one seed never share a goal
+ * even when their palettes differ by a move (each lane seeds its own data shape, which can show or hide a ⌘K entry), and the batch needs no list of its lanes. Throws when the part holds fewer than MIN_GOALS moves,
+ * so a thin plan never runs. Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time, each one on different paths/goals"; code review: slicing a shuffled list by index put 196 of 200 seeds in
+ * two lanes' goals once their pools differed by one move): lanes drawn from one pool by their own seeds, or cut by position, would overlap.
+ */
+export function lanePool(moves, seed, lane) {
+  const part = moves.filter(move => mix(`${seed}|${moveKey(move)}`) % MAX_LANES === lane - 1);
+  if (part.length < MIN_GOALS) throw new Error(`lane ${lane}: ${part.length} of the pool's ${moves.length} moves fall to this lane with seed ${seed}, fewer than ${MIN_GOALS}: start the batch with another seed`);
+  return part;
+}
+
 /** One goal order: `must` moves are in it (shuffled with the rest, not first), pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */
 function draw(moves, changed, count, next, pending = [], must = []) {
   const forced = shuffle(moves.filter(move => changed.includes(move.group)), next);
@@ -64,11 +98,12 @@ function draw(moves, changed, count, next, pending = [], must = []) {
 
 /**
  * The day's plan. `max`: the most goals the run can pay for (lib/agent-steps.mjs goalCountFor), a hard ceiling: pending goals take its slots first, then one goal per changed area; a changed area with no slot is returned in `deferred` for the next night's queue, never planned beyond the budget (default 10, the old ceiling).
- * `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
+ * `lane`: 0 for a night, n for lane n of a parallel batch (the goals come from that lane's own slice of the pool, `lanePool`; `seed` is the batch's). `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
  * Draws up to TRIES orders from the seed and keeps the one with the most new pairs (the first to reach MIN_NEW wins), so it is replayable and honest: `newShare` is reported even when the
  * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas, deferred: [{group, label}]}.
  */
-export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, max = 10, minNew = MIN_NEW}) {
+export function planSession({seed: base, moves: all, lane = 0, coverage = [], changed = [], pending = [], count, max = 10, minNew = MIN_NEW}) {
+  const moves = lane ? lanePool(all, base, lane) : all, seed = laneSeed(base, lane);
   // Why (7 Nov 2026, pz): a seeded 3 to 4 goals (MIN_GOALS..MAX_GOALS, was 6-10) and never more than `max`; 31 runs left 43 of 122 goals unstarted because the plan outgrew what the 250k cap pays for.
   const next = rng(seed), targetCount = Math.min(count ?? MIN_GOALS + Math.floor(next() * (MAX_GOALS - MIN_GOALS + 1)), moves.length, max);
   const current = new Map(moves.map(move => [moveKey(move), move]));

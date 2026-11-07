@@ -2,6 +2,7 @@
 // can see on its own now gets a row too: a planted bug no detector caught (a `detector-miss` issue) and a bug a person reported on GitHub that the Finder had not (a closed issue
 // without the `auto-ui` label). The row carries the replay command, so the miss can be walked again. One row per GitHub issue (found by its URL first); with no write token it does nothing.
 // Needs NOTION_BRAIN_WRITE_TOKEN (an integration with insert rights on the tracker) and BUG_TRACKER_DB; the read-only token of the stats cannot write. Pure but for the Notion call.
+// Job: report health
 import {parseReplay, replayCommand} from './replay.mjs';
 
 export const NOTION_VERSION = '2022-06-28';
@@ -18,7 +19,7 @@ export function trackerRow(issue) {
   if (labels.some(name => NOT_A_BUG.has(name))) return null;
   const miss = labels.includes('kind:detector-miss');
   if (labels.includes('auto-ui') && !miss) return null;   // the Finder found it itself
-  const title = String(issue.title || '').replace(/^\[auto-ui\]\s*[^:]*:\s*/, '').trim().slice(0, 150) || `Issue #${issue.number}`;
+  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 150) || `Issue #${issue.number}`;
   const severity = SEVERITY[(labels.find(name => name.startsWith('severity:')) || '').slice(9)] || 'Medium';
   const area = miss ? 'e2e harness' : AREAS.find(([pattern]) => pattern.test(`${issue.title} ${labels.join(' ')}`))?.[1] || '';
   const replay = parseReplay(issue.body);

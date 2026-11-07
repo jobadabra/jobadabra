@@ -179,25 +179,25 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   const failedSuites = new Set([...suiteFailures.map(item => item.suite), ...skipped.map(item => item.suite)]);
   // A sidebar / brand / badge issue lives in the app's chrome, which every page photograph checks (view 'app-chrome') but which has no photograph of its own, so the "reviewed
   // again" test above can never see it: it is cleared when the layout check ran in this run and found nothing in the chrome (the narrow-window pass counts: it is a warning, not silence).
-  const chromeIssue = issue => /^\[auto-ui\] (app-chrome|failure-screenshot):/.test(issue.title || '') && /sidebar|brand|badge|icon|nav/i.test(issue.title || '');
+  const chromeIssue = issue => /^\[(?:auto-ui|AI persona)\] (app-chrome|failure-screenshot):/.test(issue.title || '') && /sidebar|brand|badge|icon|nav/i.test(issue.title || '');
   const chromeCleared = issue => chromeIssue(issue) && found['ui-findings.json'].length > 0 && !findings.some(finding => finding.view === 'app-chrome');
   const suiteCleared = issue => { const suite = suiteOfIssue(issue); return !!suite && ranSuites.has(suite) && !failedSuites.has(suite); };
   // A window error of a whole suite (view "<suite>-journey", lib/journey.mjs) is cleared when that suite ran again and the error did not come back (it is not matched).
   // An accessibility rule (view "a11y") is cleared when a suite of this run checked pages with axe and that rule was not among its violations.
   const a11yRuns = found['a11y.json'].map(file => read(file)).filter(data => data?.checked > 0);
-  const a11yCleared = issue => { const rule = /^\[auto-ui\] a11y: a11y on a11y: ([\w-]+)/.exec(issue.title || '')?.[1]; return !!rule && a11yRuns.length > 0 && !a11yRuns.some(data => (data.rules || []).includes(rule)); };
-  const journeyCleared = issue => { const suite = /^\[auto-ui\] ([\w-]+)-journey:/.exec(issue.title || '')?.[1]; return !!suite && ranSuites.has(suite); };
+  const a11yCleared = issue => { const rule = /^\[(?:auto-ui|AI persona)\] a11y: a11y on a11y: ([\w-]+)/.exec(issue.title || '')?.[1]; return !!rule && a11yRuns.length > 0 && !a11yRuns.some(data => (data.rules || []).includes(rule)); };
+  const journeyCleared = issue => { const suite = /^\[(?:auto-ui|AI persona)\] ([\w-]+)-journey:/.exec(issue.title || '')?.[1]; return !!suite && ranSuites.has(suite); };
   // The probe's own results: every control it pressed in this run, flagged or not (a flagged one is matched above, so a row here for an unmatched issue means "pressed, fine").
   const pressed = found['interactions.json'].flatMap(file => { const rows = read(file); return Array.isArray(rows) ? rows : []; });
   const clearedNow = issue => {
     if (suiteCleared(issue) || chromeCleared(issue) || probeCleared(issue, pressed) || journeyCleared(issue) || a11yCleared(issue)) return true;
-    const view = /^\[auto-ui\] ([^:]+):/.exec(issue.title || '')?.[1] || '';
+    const view = /^\[(?:auto-ui|AI persona)\] ([^:]+):/.exec(issue.title || '')?.[1] || '';
     const source = /found by (the AI screenshot review|the layout check)/.exec(issue.body || '')?.[1];
     return source === 'the AI screenshot review' ? reviewed.ai.has(view) : source === 'the layout check' ? reviewed.layout.has(view) : false;
   };
   const gone = issues.filter(issue => issue.state === 'OPEN' && !matched.has(issue.number) && !(issue.labels || []).some(item => (item.name || item) === NOT_SEEN)
     && !(issue.comments || []).some(comment => (comment.body || '').includes(runUrl))).map(issue => {
-    const view = /^\[auto-ui\] ([^:]+):/.exec(issue.title || '')?.[1] || '';
+    const view = /^\[(?:auto-ui|AI persona)\] ([^:]+):/.exec(issue.title || '')?.[1] || '';
     if (suiteCleared(issue) || chromeCleared(issue) || probeCleared(issue, pressed) || journeyCleared(issue) || a11yCleared(issue)) return {issue, view, dir: ''};   // a failed step's issue: its whole suite ran again and nothing failed in it; or a chrome issue the layout check no longer sees
     const source = /found by (the AI screenshot review|the layout check)/.exec(issue.body || '')?.[1];
     const seen = source === 'the AI screenshot review' ? reviewed.ai : source === 'the layout check' ? reviewed.layout : new Set();

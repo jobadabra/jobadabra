@@ -27,8 +27,9 @@ permissions:
   actions: read
   id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
+# Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time"): a group keeps one running and one pending run and cancels an older pending one, so four lanes ending together would lose two filings for good. A lane's findings run is its own group (never cancelled); the wait step below keeps two filings from running at once.
 concurrency:
-  group: ui-findings
+  group: ui-findings${{ startsWith(github.event.workflow_run.display_title, 'AI user agent · lane') && format('-lane-{0}', github.event.workflow_run.id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +38,7 @@ jobs:
     # The daily stable canary (stable-canary.yml) names its runs "Stable canary …": it alarms by itself and never files into the backlog.
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event != 'push' && !startsWith(github.event.workflow_run.display_title, 'Stable canary') && !startsWith(github.event.workflow_run.display_title, 'Mutant') && !startsWith(github.event.workflow_run.display_title, 'Night burn-in') && !startsWith(github.event.workflow_run.display_title, 'Bisect '))   # a bisect step tests an old commit on purpose (gate G2b)   # a mutation test breaks the app on purpose: never filed
     runs-on: ubuntu-24.04
-    timeout-minutes: 35   # 15 for filing, up to 15 more for judging before filing (its own step limit below)
+    timeout-minutes: ${{ startsWith(github.event.workflow_run.display_title, 'AI user agent · lane') && 60 || 35 }}   # 15 for filing, up to 15 more for judging before filing (its own step limit below); a lane may first wait up to 25 for an earlier filing (pz, 7 Nov 2026)
     # The release run tested both platforms in one run: Mac + Linux first, then Windows, one after the other (both write issues). Any other run: one platform.
     strategy:
       max-parallel: 1
@@ -61,6 +62,17 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      # Why (7 Nov 2026, pz): the Finder reads the open issues once, then files; two filings at the same time could open the same issue twice. A lane waits while an EARLIER run of this workflow is in progress (by run id, so the waiting ends and none cancels another); after 25 minutes it files anyway.
+      - name: A lane's findings wait for an earlier filing to end
+        if: startsWith(github.event.workflow_run.display_title, 'AI user agent · lane')
+        timeout-minutes: 27   # the loop below stops at 25 minutes by the clock, so its own message prints before this limit
+        run: |
+          while [ "$SECONDS" -lt 1500 ]; do
+            earlier=$(gh run list --repo "$REPO" --workflow ui-findings.yml --status in_progress --limit 50 --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length") || earlier=0   # a failed read (502, rate limit) must not fail the filing
+            if [ "$earlier" = 0 ]; then exit 0; fi
+            echo "$earlier earlier filing(s) still running: waiting"; sleep 10
+          done
+          echo "::warning::An earlier filing was still running after 25 minutes: filing now"
       - name: Download the run's screenshots and findings (or plant one, for a dry run)
         run: |
           mkdir -p e2e-artifacts

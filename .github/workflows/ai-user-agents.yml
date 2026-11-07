@@ -4,8 +4,8 @@ name: CI · AI user agent
 # The Worker starts it once a day (app-core/src/scheduler.js AGENT_SLOT, 04:40 UTC); a person can start it any time. One person-like session on the real app, through the AI broker (Codex, then Claude, then Free AI), sized from who answers
 # (desktop/e2e/agent-nightly.mjs): Codex out = half a session, a broker that refuses = no session and the reason in the summary. It files what it can argue is a bug (ui-findings.yml reads this run like an e2e run, detector "AI user agent"),
 # keeps its notes on the `agent-memory` branch, and writes the cost line in the job summary. It is a measurement: it gates nothing, and a pause is the repository variable AI_USER_AGENT = off.
-# Why (3 Nov 2026, AI user agents 7/12, 8/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own; the run-name tells a nightly, a replay and a hand run apart.
-run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || (inputs.plan != '' && format('AI user agent · replay {0}', inputs.plan) || 'AI user agent · by hand') }}
+# Why (3 Nov 2026, AI user agents 7/12, 8/12): its own workflow, not an e2e.yml suite, so Actions and the broker's per-workflow tally show it as one line of its own; the run-name tells a nightly, a replay, a lane (7 Nov 2026, pz: "AI user agent · lane n") and a hand run apart.
+run-name: ${{ inputs.scheduled && 'AI user agent · nightly (Worker cron)' || (inputs.lane != '' && format('AI user agent · lane {0}', inputs.lane) || inputs.plan != '' && format('AI user agent · replay {0}', inputs.plan) || 'AI user agent · by hand') }}
 
 on:
   workflow_dispatch:
@@ -45,6 +45,9 @@ on:
       chain_from:
         description: 'Set by a chain itself: the run id of the link before this one (its artifact holds the snapshot and the summary)'
         required: false
+      lane:
+        description: 'Parallel lane 1-4: its own concurrency group, so lanes run at the same time; each draws goals from its own part of the move pool, split by the seed (no goal in two lanes of one seed; the seed is required and shared by the batch), tests this commit and FILES its findings like a night, and never reads or pushes the nights'' memory. Start the lanes of a batch with one seed'
+        required: false
       video:
         description: 'Record this manual session (14 days; untick to disable). Scheduled sessions keep recording off.'
         type: boolean
@@ -56,9 +59,10 @@ permissions:
   actions: write   # the chain starts its next link (workflow_dispatch) when it goes on
   id-token: write   # GitHub's per-run token the AI broker checks (desktop/e2e/lib/broker-client.mjs)
 
+# Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time"): a lane has its own group per lane number, so up to 4 lanes of one batch run together (one lane number twice still queues); a lane is no replay, so it files. Before: only a replay had its own group and replays file nothing, so parallel runs found bugs and never filed them.
 # Why (3 Nov 2026, code review on 8/12): a group keeps one running and one pending run and cancels an older pending one, so replays dispatched one after another would cancel each other and a replay could cancel the pending nightly (the watchdog would then report a missing start); a replay has its own group per run.
 concurrency:
-  group: ai-user-agent${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && format('-replay-{0}', github.run_id) || '' }}
+  group: ai-user-agent${{ inputs.lane != '' && format('-lane-{0}', inputs.lane) || (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && format('-replay-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -68,7 +72,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      IS_REPLAY: ${{ (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch, an engine or a chain link measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory. The concurrency group above cannot read this env and repeats the same expression
+      IS_REPLAY: ${{ inputs.lane == '' && (inputs.plan != '' || inputs.app_ref != '' || inputs.rules_off != '' || inputs.shape != '' || inputs.tier != '' || inputs.screen != '' || inputs.chain_links != '' || inputs.chain_from != '' || inputs.engine != '') && '1' || '' }}   # Why (5 Nov 2026, Gitar on #3212): "is this a replay" was written in six places that disagreed; a run that sets a plan, an app commit, rules off, a shape, a tier, the screen reader switch, an engine or a chain link measures one state, so it is labelled, concurrency-separated, uploaded apart and never reads or pushes the nights' memory, so a lane is no replay and `IS_REPLAY` stays empty for it (7 Nov 2026, pz). The concurrency group above cannot read this env and repeats the same expression (7 Nov 2026, pz: a lane, set by `lane`, is none of these: it tests this commit, files and reads no memory, so every replay input but tier, seed, shape, screen and video is refused in the first step)
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/agent
       E2E_STORE: sqlite
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token the Free AI meter reads (lib/ai-cap.mjs), as in e2e.yml's suite job (tests/tooling/ci/test_ci_free_ai.py)
@@ -79,6 +83,17 @@ jobs:
       AGENT_ENGINE: ${{ inputs.engine }}   # Why (5 Nov 2026, owner: "Try Claude on one night"): both the ping (prepare) and the actor (the session) read the same two values
       AGENT_CLAUDE_ON: ${{ vars.AI_USER_AGENT_CLAUDE_ON }}
     steps:
+      # Why (7 Nov 2026, pz): a lane files what it finds, and a bug found on an OLD app commit or under a named plan or with rules taken out is not one to file (the reason a replay files nothing), so those inputs fail the lane at once, before the runner is spent. Why (code review, same day): the lane number is checked HERE, not only in the suite after the install, because it names the concurrency group (" 1" and "1" would be two groups for one lane, "9" a lane that fails after ten minutes); and the batch's goals are split by the seed, which must therefore be given: a default seed (today's date) would split a batch that crosses midnight UTC two ways.
+      - name: A lane has a number, the batch's seed, and tests this commit's app under the seeded goals only
+        if: inputs.lane != ''
+        env:
+          LANE: ${{ inputs.lane }}
+          SEED: ${{ inputs.seed }}
+          REPLAY_INPUTS: ${{ inputs.plan }}${{ inputs.app_ref }}${{ inputs.rules_off }}${{ inputs.chain_links }}${{ inputs.chain_from }}${{ inputs.engine }}${{ inputs.scheduled && 'scheduled' || '' }}
+        run: |
+          [[ "$LANE" =~ ^[1-4]$ ]] || { echo "lane must be a whole number from 1 to 4, got: '$LANE'" >&2; exit 1; }
+          [[ "$SEED" =~ ^[0-9]+$ ]] || { echo "the lanes of a batch share one seed (digits only): set seed, got: '$SEED'" >&2; exit 1; }
+          [ -z "$REPLAY_INPUTS" ] || { echo "A lane files its findings, so it takes no plan, app_ref, rules_off, chain, engine or scheduled input (those make a replay, which files nothing). Use tier, seed, shape, screen and video only." >&2; exit 1; }
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -175,13 +190,14 @@ jobs:
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_SHAPE: ${{ inputs.shape }}
           AGENT_TIER: ${{ inputs.tier }}
+          AGENT_LANE: ${{ inputs.lane }}
           AGENT_SCREEN: ${{ inputs.screen }}
           AGENT_CHAIN_LINKS: ${{ inputs.chain_links }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
-          AGENT_KIND: ${{ env.IS_REPLAY && 'replay' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input)
+          AGENT_KIND: ${{ env.IS_REPLAY && 'replay' || inputs.lane != '' && 'lane' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists nights, lanes and replays and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input); a lane (7 Nov 2026, pz) is a third kind, 'lane': it files like a night but is not one, so the night's goal rate never mixes with the lanes' (the Admin page still draws it as a night until it learns the chip)
           AGENT_VIDEO: ${{ inputs.video && !inputs.scheduled && '1' || '' }}   # Why (7 Nov 2026, owner): manual investigations record by default; scheduled nights retain their existing storage cost
-          AGENT_MEMORY_DIR: ${{ !env.IS_REPLAY && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
-          AGENT_CHANGED_LOG: ${{ !env.IS_REPLAY && steps.prepare.outputs.changed_log || '' }}   # same replay condition as the memory: no earlier night, no "changed since"
+          AGENT_MEMORY_DIR: ${{ !env.IS_REPLAY && inputs.lane == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay or a lane knows no earlier night (a lane would otherwise plan against the night's coverage), so its runs compare
+          AGENT_CHANGED_LOG: ${{ !env.IS_REPLAY && inputs.lane == '' && steps.prepare.outputs.changed_log || '' }}   # same replay-or-lane condition as the memory: no earlier night, no "changed since"
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
           E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
           E2E_AGENT_STEPS: ${{ steps.prepare.outputs.steps }}
@@ -220,7 +236,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the night's notes on the agent-memory branch
-        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success' && !env.IS_REPLAY
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.artifact_scan.outcome == 'success' && !env.IS_REPLAY && inputs.lane == ''   # a lane never writes the night's memory (pz, 7 Nov 2026)
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: node agent-nightly.mjs publish

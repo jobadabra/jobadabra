@@ -1,5 +1,6 @@
 // The week's facts for the Finder's weekly self-review (finder-review.yml): per detector what it filed and how that ended, and the reasons behind every false
 // positive, test-harness issue, detector miss and fix a person had to take over. Claude reads them and proposes rule/prompt changes as one PR. Pure. 4 Oct 2026.
+// Job: report health
 import {classify, detectorOf} from './selfheal-stats.mjs';
 import {afterEpoch} from './stats-epoch.mjs';
 import {whyOf} from './verdict-comment.mjs';
@@ -18,7 +19,7 @@ export function reasonOf(issue) {
 }
 
 const inWeek = (issue, since) => [issue.createdAt, issue.closedAt].some(date => date && Date.parse(date) >= since);
-const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${oneLine(issue.title, 90).replace(/^\[auto-ui\]\s*/, '')}`;
+const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${oneLine(issue.title, 90).replace(/^\[(?:auto-ui|AI persona)\]\s*/, '')}`;
 
 export function weekFacts(issues, {now = Date.now(), days = 7, cap = 40} = {}) {
   const since = now - days * 86400000;

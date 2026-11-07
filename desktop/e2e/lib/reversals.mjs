@@ -1,6 +1,7 @@
 // Learning from the owner's corrections (5 Oct 2026). When a person REVERSES the loop's judgement (reopens an issue it closed as noise, removes `confirmed`,
 // or closes a confirmed issue as not planned), that case is a lesson the judge did not have: it is given to the verdict pass, the judgement before filing and
 // the weekly self-review as an example, with the person's own words. Only people count: the loop's own label and close events are not corrections. Pure.
+// Job: report health
 import {whyOf} from './verdict-comment.mjs';
 
 const BOT = /\[bot\]$|^github-actions$/;
@@ -22,7 +23,7 @@ export function reversalsFrom(events, issues = {}) {
     const full = issues[event.issue.number] || event.issue;
     const said = (Array.isArray(full.comments) ? full.comments : []).filter(   // an event's own issue carries a comment COUNT, not the comments
       comment => comment.author && !BOT.test(comment.author.login || '') && ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.authorAssociation)).at(-1);
-    out.push({number: event.issue.number, title: String(event.issue.title || '').replace(/^\[auto-ui\] /, '').slice(0, 100), was, now, words: said ? whyOf(said.body).replace(/\s+/g, ' ').slice(0, 300) : '', at: event.created_at});
+    out.push({number: event.issue.number, title: String(event.issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, '').slice(0, 100), was, now, words: said ? whyOf(said.body).replace(/\s+/g, ' ').slice(0, 300) : '', at: event.created_at});
   }
   return out;
 }

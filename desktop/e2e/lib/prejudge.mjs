@@ -6,6 +6,7 @@
 import {checkEvidence, parse, verdictComment} from './verdict-comment.mjs';
 import {FALSE_POSITIVE, labelFor} from './triage.mjs';
 import {matchLearned} from './signatures.mjs';
+import {issueTitle} from './triage-findings.mjs';
 
 // Why (1 Nov 2026, owner via mac-07, "Check the silent detectors"): every new finding is judged before the 3-new-issues cap (triage.mjs), so noise never takes a real one's slot;
 // 10 covers the most a recent run raised (run 41314669803: 3 + 7 cut). Still one session per run, on the Codex plan since 9efe1ea (no price per finding).
@@ -73,7 +74,7 @@ export const wordOf = raw => { const {word} = parse(raw); return ['real', 'false
 // noise judged before filing vanished from every place that measures noise (5 Oct 2026): the breaker could never trip again.
 export const asIssues = entries => entries.map(item => {
   const at = `${item.date || '1970-01-01'}T12:00:00Z`, word = item.word === 'harness' ? 'harness' : 'false-positive';
-  return {number: 0, prejudged: true, state: 'CLOSED', stateReason: 'NOT_PLANNED', createdAt: at, closedAt: at, title: `[auto-ui] ${item.view}: ${item.title}`,
+  return {number: 0, prejudged: true, state: 'CLOSED', stateReason: 'NOT_PLANNED', createdAt: at, closedAt: at, title: issueTitle(item),
     body: `**MEDIUM** · ${item.kind} · found by the register\n\n### What was found\n${item.detail || ''}\n`,
     labels: [{name: 'auto-ui'}, {name: FALSE_POSITIVE}, {name: labelFor(item.id)}, {name: `source:${item.source || 'other'}`}, {name: `kind:${item.kind}`}, ...(word === 'harness' ? [{name: 'harness'}] : [])],
     comments: [{body: verdictComment(`${word}\nWhy: ${item.why || ''}`), createdAt: at, author: {login: 'github-actions'}}]};

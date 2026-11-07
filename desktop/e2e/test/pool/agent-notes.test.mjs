@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {agentLabels, MAX_FILED, rankNotes, toFinding, validateNote} from '../../lib/agent-notes.mjs';
 import {judgeNote, judgePrompt} from '../../lib/agent-judge.mjs';
 import {GOAL_VERDICTS, summarizeSession, summaryMarkdown} from '../../lib/agent-session.mjs';
-import {normalize} from '../../lib/triage-findings.mjs';
+import {issueTitle, normalize} from '../../lib/triage-findings.mjs';
+import {regressionComment} from '../../lib/triage-match.mjs';
 import {agentBlock, issueBody, labelsFor} from '../../lib/triage-issues.mjs';
 import {DETECTORS} from '../../lib/selfheal-stats.mjs';
 
@@ -122,4 +123,17 @@ test('a persona issue carries the evidence bundle block; a repeat on another nig
   assert.equal(first.id, again.id, 'the same note on another night joins the first issue (fp: label)');
   assert.ok(!/Evidence bundle/.test(issueBody(local, 'https://github.com/x/y/actions/runs/1', {})), 'a local run has no private page to name');
   assert.deepEqual(normalize({ui: [toFinding({...note, severity: 'low'}, {session: {run: '42327808352'}})]}), [], 'low is not filed');
+});
+
+// Owner, 7 Nov 2026, via mac-50: "'[AI persona]' prefix (Recommended)": persona issues say so in the title, other finders keep '[auto-ui]', source:ai-user-agent stays the filter.
+test('a persona finding is titled [AI persona], every other finder [auto-ui], and a reader takes the view out of both', () => {
+  const persona = {view: 'jobs', source: 'ai-user-agent', title: 'Applied tile shows 1 while Total matches is 0'}, finder = {view: 'jobs', source: 'ui-review', title: 'Applied tile is clipped'};
+  assert.equal(issueTitle(persona), '[AI persona] jobs: Applied tile shows 1 while Total matches is 0');
+  assert.equal(issueTitle(finder), '[auto-ui] jobs: Applied tile is clipped');
+  assert.ok(issueTitle({...persona, title: 'x'.repeat(200)}).length <= 120);
+  assert.ok(labelsFor({...persona, kind: 'wrong-result', severity: 'medium'}).includes('source:ai-user-agent'), 'the label stays the filter');
+  for (const issue of [persona, finder]) {
+    const said = regressionComment({number: 9, title: issueTitle(issue)}, 'run');
+    assert.ok(said.includes('("jobs: ') && !said.includes('[AI persona]') && !said.includes('[auto-ui]'), `the tag is cut from the title: ${said}`);
+  }
 });
