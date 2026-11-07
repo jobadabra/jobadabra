@@ -45,10 +45,14 @@ function whatOf(hits) {
   return (labels.slice(0, 3).join('; ') + (labels.length > 3 ? ` +${labels.length - 3}` : '')).replaceAll('|', '/');
 }
 
+/** The rule's column name for a hit: a primary-button finding inside a list row (#3500: one per row of peer rows) is "1 primary / row", else the rule's own name. */
+const nameOf = (hit, name) => (hit.rule === 'primary' && /^li(?![\w-])/.test(hit.at) ? '1 primary / row' : name);
+
 /**
  * The report, one verdict for the whole PR (owner, 7 Nov 2026: "In the PR body, let's make it one green per column. I don't want to see 100 checkboxes"; chosen "Verdict + only what fails"):
  * all passing is one line, plus "vs main:" for the rules whose count changed; a failure is a table of only the failing rule x screen cells, each with its count and what it is.
- * `runs` is a list of {screen, width, theme, base, head}; light and dark of one screen and width share a cell, and the same hit in both counts once.
+ * `runs` is a list of {screen, width, theme, base, head}; light and dark of one screen and width share a cell. A cell's count is its worst theme's new hits (the same hit in both themes counts once,
+ * two new hits on one selector count twice), and the verdict counts failing cells: the owner's preview read "2 new problems" over a table of 2 rows.
  * Why (7 Nov 2026): tools/design-table-check.py reads the first line (the sha, then ✅ or ⛔); keep the two in step.
  * @param {{screen: string, width: number, theme: string, base: object[], head: object[]}[]} runs every measured render
  * @param {string} sha the head commit the report was measured on
@@ -57,22 +61,23 @@ function whatOf(hits) {
 export function renderReport(runs, sha) {
   const columns = [...new Set(runs.map(run => `${run.screen} ${run.width}`))];
   const rows = [];
-  for (const [rule, name] of RULES) {
+  for (const [rule, ruleName] of RULES) {
     for (const column of columns) {
       const fresh = runs.filter(run => `${run.screen} ${run.width}` === column)
-        .flatMap(run => newHits(run.base, run.head).filter(hit => hit.rule === rule).map(hit => ({...hit, theme: run.theme})));
-      const distinct = new Set(fresh.map(hit => `${hit.at}|${hit.note}`)).size;
-      if (distinct) rows.push({name, column, distinct, what: whatOf(fresh)});
+        .map(run => newHits(run.base, run.head).filter(hit => hit.rule === rule).map(hit => ({...hit, theme: run.theme})));
+      for (const name of new Set(fresh.flat().map(hit => nameOf(hit, ruleName)))) {
+        const mine = fresh.map(hits => hits.filter(hit => nameOf(hit, ruleName) === name));
+        rows.push({name, column, count: Math.max(...mine.map(hits => hits.length)), what: whatOf(mine.flat())});
+      }
     }
   }
-  const problems = rows.reduce((sum, row) => sum + row.distinct, 0);
   const count = (side, rule) => runs.reduce((sum, run) => sum + run[side].filter(hit => hit.rule === rule).length, 0);
   const moved = RULES.map(([rule]) => [rule, count('base', rule), count('head', rule)]).filter(([, before, after]) => before !== after)
     .map(([rule, before, after]) => `${rule} ${before} → ${after} ${after < before ? '▼' : '▲'}${Math.abs(after - before)}`);
   const title = `**Design system (measured on ${sha})**`;
-  const verdict = problems ? `⛔ ${plural(problems, 'new problem')}` : `✅ all ${RULES.length} rules pass on ${plural(columns.length, 'screen')}`;
+  const verdict = rows.length ? `⛔ ${plural(rows.length, 'new problem')}` : `✅ all ${RULES.length} rules pass on ${plural(columns.length, 'screen')}`;
   const lines = [`${title} ${verdict}`];
   if (moved.length) lines.push(`vs main: ${moved.join(' · ')}`);
-  if (problems) lines.push('', '| Rule | Screen | New | What |', '|---|---|---|---|', ...rows.map(row => `| ${row.name} | ${row.column} | +${row.distinct} | ${row.what} |`));
-  return {report: lines.join('\n'), failed: problems > 0};
+  if (rows.length) lines.push('', '| Rule | Screen | New | What |', '|---|---|---|---|', ...rows.map(row => `| ${row.name} | ${row.column} | +${row.count} | ${row.what} |`));
+  return {report: lines.join('\n'), failed: rows.length > 0};
 }

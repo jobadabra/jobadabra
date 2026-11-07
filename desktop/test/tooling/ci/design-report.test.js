@@ -32,13 +32,23 @@ test('two new problems give a verdict of 2 and a table of exactly 2 rows, each w
   const {report, failed} = renderReport(runs, 'abc1234');
   assert.equal(failed, true);
   const lines = report.split('\n');
-  assert.equal(lines[0], '**Design system (measured on abc1234)** ⛔ 4 new problems');
+  assert.equal(lines[0], '**Design system (measured on abc1234)** ⛔ 2 new problems');   // failing cells, as the owner's preview: 2 rows, +3 and +1
   assert.equal(lines[1], 'vs main: spacing 0 → 6 ▲6 · primary 0 → 1 ▲1');   // counts are per render: 3 hits x light and dark
   const rows = lines.filter(l => l.startsWith('| ') && !l.startsWith('| Rule'));
   assert.deepEqual(rows, [
     '| Spacing scale | jobs 640 | +3 | `div.card` gap 13px; `div.card` gap 7px; `div.row` gap 22px |',
     '| 1 primary / card | focus 1100 | +1 | `section#up-next` 2 primary buttons (light) |',
   ]);
+});
+
+test('a primary finding inside a list row is named per row, and two new hits on one selector count twice', () => {
+  const rows = [hit('primary', 'li.job-row', '2 primary buttons'), hit('primary', 'section.card', '2 primary buttons')];
+  const tiles = [hit('clipped', 'span.tile', 'cut'), hit('clipped', 'span.tile', 'cut')];
+  const {report} = renderReport([run('jobs', 640, 'light', [], [...rows, ...tiles]), run('jobs', 640, 'dark', [], [])], 'abc1234');
+  assert.equal(report.split('\n')[0], '**Design system (measured on abc1234)** ⛔ 3 new problems');
+  assert.match(report, /^\| 1 primary \/ card \| jobs 640 \| \+1 \| `section.card` 2 primary buttons \(light\) \|$/m);
+  assert.match(report, /^\| 1 primary \/ row \| jobs 640 \| \+1 \| `li.job-row` 2 primary buttons \(light\) \|$/m);
+  assert.match(report, /^\| Nothing clipped \| jobs 640 \| \+2 \| `span.tile` cut \(light\) \|$/m);
 });
 
 test('a problem the base render already has is not new, and a pipe in a note cannot split the row', () => {

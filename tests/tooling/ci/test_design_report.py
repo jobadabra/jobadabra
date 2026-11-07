@@ -20,6 +20,16 @@ def load(name, file):
 
 
 GREEN = '**Design system (measured on {sha})** ✅ all 6 rules pass on 12 screens\nvs main: ghost 40 → 31 ▼9'
+OLD_GRID = '''**Design system (measured on {sha})**
+
+| Rule | jobs 640 | jobs 1100 |
+|---|---|---|
+| Spacing scale | ✅ | ✅ |
+| 1 primary / card | ✅ | ✅ |
+| No ghost button | ✅ | {cell} |
+| No card in card | ✅ | ✅ |
+| Nothing clipped | ✅ | ✅ |
+| Contrast AA (L/D) | ✅ | ✅ |'''
 RED = '''**Design system (measured on {sha})** ⛔ 2 new problems
 vs main: spacing 64 → 67 ▲3
 
@@ -63,10 +73,20 @@ class DesignReport(unittest.TestCase):
 
     def test_no_report_no_verdict_and_a_report_on_another_change_are_refused(self):
         self.assertIn('no "Design system', self.check.problem('main', 'nothing here'))
-        self.assertIn('no verdict', self.check.problem('main', f'**Design system (measured on {self.sha})**\n| Rule | jobs 640 |'))
-        self.assertIn('all 6 rules', self.check.problem('main', f'**Design system (measured on {self.sha})** ✅ all 5 rules pass on 2 screens'))
+        self.assertIn('no row for', self.check.problem('main', f'**Design system (measured on {self.sha})**\n| Rule | jobs 640 |'))   # a title with no verdict is the old grid, and this one has no rows
+        self.assertIn('no verdict', self.check.problem('main', f'**Design system (measured on {self.sha})** looks fine'))
         base = subprocess.run(['git', 'rev-parse', '--short', 'main'], capture_output=True, text=True).stdout.strip()
         self.assertIn('has changed since', self.check.problem('main', GREEN.format(sha=base)))
+
+    def test_a_green_report_does_not_repeat_the_number_of_rules(self):
+        self.assertIsNone(self.check.problem('main', f'**Design system (measured on {self.sha})** ✅ all 7 rules pass on 1 screen'))
+
+    def test_the_old_grid_is_still_read_for_the_prs_that_carry_it(self):
+        self.assertIsNone(self.check.problem('main', OLD_GRID.format(sha=self.sha, cell='✅')))
+        self.assertIn('No ghost button', self.check.problem('main', OLD_GRID.format(sha=self.sha, cell='❌ `button.x` Skip (light)')))
+        self.assertIn('no row for', self.check.problem('main', OLD_GRID.format(sha=self.sha, cell='✅').replace('| No ghost button | ✅ | ✅ |\n', '')))
+        laid = self.format.lay_out('🎨 x\n\n' + OLD_GRID.format(sha=self.sha, cell='✅') + '\n')
+        self.assertIsNone(self.check.problem('main', laid), laid)
 
     def test_the_formatter_keeps_the_sha_and_verdict_the_reader_needs_in_both_forms(self):
         for form, verdict in ((GREEN, '✅ all 6 rules pass on 12 screens'), (RED, '⛔ 2 new problems')):
