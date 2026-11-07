@@ -6,7 +6,7 @@ import os
 import random
 import re
 
-from . import store, tgcard
+from . import store, tgcard, notification_language
 from .ai import enrich, score, score_search
 from .notion import client as notion
 from .paths import CONFIG, keyword_regex, load_search_config, place_regex
@@ -190,31 +190,47 @@ def _salary(text):
     return None
 
 
-def _ai_badges(ai, job=None):
-    """Signals worth an emoji; everything else stays plain text."""
+def _badge_facts(ai, job=None):
+    """Freeze typed authored signal choices and raw salary/language facts, without retaining the AI/job objects."""
     badges = []
     if ai['english_is_enough']['value'] == 'yes':
-        badges.append('🇬🇧 English')
+        badges.append(('🇬🇧 ', 'job.language.English', ()))
     for lang in ai['languages']:
         if lang['language'] == 'Other':
             if lang['level'] == 'required':
-                badges.append('⚠️ other language required')
+                badges.append(('⚠️ ', 'job.language.otherRequired', ()))
         elif lang['language'] != 'English':
-            suffix = ' required' if lang['level'] == 'required' else ' +'
-            badges.append(f"{LANGUAGE_FLAGS[lang['language']]} {lang['language']}{suffix}")
+            key = 'job.language.required' if lang['level'] == 'required' else 'job.language.extra'
+            badges.append((LANGUAGE_FLAGS[lang['language']] + ' ', key, (('language', lang['language']),)))
     salary = _salary(ai['salary']['text']) if ai['salary']['stated'] else None
     if salary:
-        badges.append(f"💰 {escape(salary)}")
+        badges.append(('💰 ', '', (('raw', salary),)))
     elif ai['salary']['stated']:
-        badges.append('💰 salary info')
+        badges.append(('💰 ', 'job.signal.salary', ()))
     if ai['employer_type']['value'] == 'recruiter':
-        badges.append('👤 Recruiter')
+        badges.append(('👤 ', 'job.signal.recruiter', ()))
     sponsorship = ai.get('visa_sponsorship', {}).get('value')
     if sponsorship == 'offered':
-        badges.append('🛂 sponsorship offered')
+        badges.append(('🛂 ', 'job.signal.sponsorshipOffered', ()))
     elif sponsorship == 'not_offered' or (job and needs_sponsorship(job)):
-        badges.append('🔴 visa sponsorship needed')
-    return badges
+        badges.append(('🔴 ', 'job.signal.sponsorshipNeeded', ()))
+    return tuple(badges)
+
+
+def _render_badges(badges, locale):
+    """Render only known signal keys; raw salary text is escaped once as in the canonical formatter."""
+    shown = []
+    for prefix, key, pairs in badges:
+        values = dict(pairs)
+        if 'language' in values:
+            values['language'] = notification_language.render('job.language.' + values['language'], locale=locale)
+        shown.append(prefix + escape(notification_language.render(key, values, locale=locale) if key else values['raw']))
+    return shown
+
+
+def _ai_badges(ai, job=None):
+    """Preserve the canonical badge contract used by the persona rules and existing digest callers."""
+    return _render_badges(_badge_facts(ai, job), 'en')
 
 
 def rank_jobs(jobs, rng):
@@ -249,34 +265,41 @@ def _plain_badge(text):
     return re.sub(r'^[^\w(]+', '', unescape(text)).strip()
 
 
-def _job_block(index, job):
-    """One job in the card layout (src/tgcard.py): the numbered, linked title as the bold heading; company · location · seniority · work mode;
-    then `Fit:` (score and why) and `Check:` (language, visa, salary) as facts. No italics, no emoji."""
-    title = escape(short_title(job['title']))
-    if job.get('url'):
-        title = f'<a href="{escape(job["url"], quote=True)}">{title}</a>'
-    facts = [escape(short_company(job['company'])), escape(job.get('location') or 'location not stated')]
-    ai = job.get('ai')
-    if ai and ai['seniority']['value'] in SENIORITY_LABELS:
-        facts.append(SENIORITY_LABELS[ai['seniority']['value']])
-    mode = MODE_LABELS.get(ai['work_mode']['value'] if ai else '')
-    if not mode:
-        badge = _work_mode_badge(job.get('work_mode'))
-        mode = {'🔀 Hybrid': '🏠 Hybrid'}.get(badge, badge)
-    if mode:
-        facts.append(_plain_badge(mode))
-    if job.get('saved'):
-        facts.append('Saved')
-    lines = [' · '.join(facts)]
-    fit = job.get('fit')
+def _job_facts(index, job):
+    """Capture immutable existing render facts only; no store, live job dictionary or AI object enters the snapshot."""
+    ai, fit = job.get('ai'), job.get('fit')
+    seniority = ai['seniority']['value'] if ai and ai['seniority']['value'] in SENIORITY_LABELS else ''
+    mode = MODE_LABELS.get(ai['work_mode']['value'] if ai else '') or _work_mode_badge(job.get('work_mode'))
+    # Only the formatter's finite authored badge constants are mapped; raw employer wording is never searched or replaced.
+    modes = {MODE_LABELS['onsite']: 'onsite', MODE_LABELS['hybrid']: 'hybrid', MODE_LABELS['remote']: 'remote',
+             WORK_MODE_BADGES['Hybrid']: 'hybrid', WORK_MODE_BADGES['Remote mentioned']: 'remoteMaybe'}
+    badges = _badge_facts(ai, job) if ai else (('🔴 ', 'job.signal.sponsorshipNeeded', ()),) if needs_sponsorship(job) else ()
+    return (index, short_title(job['title']), job.get('url') or '', short_company(job['company']), job.get('location') or '',
+            seniority, modes.get(mode, ''), bool(job.get('saved')), (fit['score'], (fit.get('reason') or '')[:110]) if fit else (), badges)
+
+
+def _render_job(facts, locale):
+    """Pure rendering from frozen values: existing escaping, source values and numbered link identity stay intact."""
+    index, title, url, company, location, seniority, mode, saved, fit, badges = facts
+    word = lambda key: notification_language.render(key, locale=locale)
+    title = escape(title)
+    if url:
+        title = f'<a href="{escape(url, quote=True)}">{title}</a>'
+    summary = [escape(company), escape(location or word('job.locationMissing'))]
+    summary += [word('job.seniority.' + seniority)] if seniority else []
+    summary += [word('job.mode.' + mode)] if mode else []
+    summary += [word('job.saved')] if saved else []
+    lines = [' · '.join(summary)]
     if fit:
-        why = f" · {fit['reason'][:110]}" if fit.get('reason') else ''
-        lines.append(tgcard.fact('Fit', f"{fit['score']}/100{why}"))
-    # The visa flag is a rule on your places and work rights, not an AI finding: it shows without AI facts too.
-    signals = _ai_badges(ai, job) if ai else (['🔴 visa sponsorship needed'] if needs_sponsorship(job) else [])
-    if signals:
-        lines.append(tgcard.fact('Check', ' · '.join(_plain_badge(item) for item in signals)))
+        lines.append(tgcard.fact(word('job.fit'), f"{fit[0]}/100" + (f' · {fit[1]}' if fit[1] else '')))
+    if badges:
+        lines.append(tgcard.fact(word('job.check'), ' · '.join(_plain_badge(item) for item in _render_badges(badges, locale))))
     return tgcard.block(f'{index}. {title}', *lines)
+
+
+def _job_block(index, job):
+    """Keep the original canonical English helper used by existing persona and digest-format checks."""
+    return _render_job(_job_facts(index, job), 'en')
 
 
 def _keyboard(entries):
@@ -406,48 +429,59 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
     first = (page - 1) * PAGE_SIZE
     shown = ranked[first:first + PAGE_SIZE]
 
-    if page == 1:
-        # One number (owner, 24 Oct 2026: run results show one number): the jobs new since the last digest. No "Top N of total" and no pipeline counts block.
-        header = tgcard.card('Job digest', f"{len(new)} new", emoji='✈️')
-    elif shown:
-        header = tgcard.card('Job digest', f"Jobs {first + 1}–{first + len(shown)} of {len(ranked)}", emoji='✈️')
-    else:
-        return [tgcard.card('Job digest', 'No more jobs in this list. Send /today for a fresh one.', emoji='✈️')], len(new), [None]
-
-    SECTION_LABELS = {'new': 'New since your last run', 'best': 'Best matches', 'older': 'More to explore'}
+    SECTION_LABELS = ('new', 'best', 'older')
     # One heading per group, jobs in the order they are listed: why they are listed first (new, best, more), your places before elsewhere. The ranking mixes the two
     # (a 62 outside your places sits between two 58s inside them), and a heading per change of group printed "In your preferred locations · 3 jobs" three times
     # with the same count (5 Oct 2026). The sort is stable: inside a group the ranking stays.
-    shown = sorted(shown, key=lambda entry: (list(SECTION_LABELS).index(entry[0]), 0 if in_places(entry[1]) else 1))
+    shown = sorted(shown, key=lambda entry: (SECTION_LABELS.index(entry[0]), 0 if in_places(entry[1]) else 1))
     group_sizes = {}
     for kind, job in shown:
         key = (kind, in_places(job))
         group_sizes[key] = group_sizes.get(key, 0) + 1
-    blocks, entries, section = [header], [], None
+    rows, entries = [], []
     for offset, (kind, job) in enumerate(shown):
-        index = first + offset + 1
-        # One heading per run of jobs: where they are (your places or elsewhere), then why they are listed.
-        key = (kind, in_places(job))
-        if key != section:
-            section = key
-            # The one emoji in the digest besides its title: it makes the two groups easy to tell apart at a glance (owner, 5 Oct 2026).
-            place = '📍 <b>In your preferred locations</b>' if key[1] else '🌍 <b>Outside your preferred locations</b>'
-            count = group_sizes[key]
-            blocks.append(f"{place}\n{SECTION_LABELS[kind]} · {count} {'job' if count == 1 else 'jobs'}")
-        blocks.append(_job_block(index, job))
+        index, place = first + offset + 1, in_places(job)
+        rows.append((kind, place, group_sizes[kind, place], _job_facts(index, job)))
         if shown_ids is not None:
             shown_ids.append(job['id'])
         if job.get('url'):
             entries.append((index, notion.job_code(job['url'])))
     remaining = len(ranked) - (first + len(shown))
-    blocks.append('Tap a job number to mark it applied, save or dismiss it.' + (f' {remaining} more with ➕.' if remaining else ''))
-    text = '\n\n'.join(blocks)
+    snapshot = (page, first, len(new), len(ranked), tuple(rows), tuple(entries), remaining, min(PAGE_SIZE, remaining), seed)
+    text, keyboard = _render_digest_snapshot(snapshot, 'en')
+    return [notification_language.projected_text(text, snapshot, _render_digest_snapshot)], len(new), [keyboard]
+
+
+def _render_digest_snapshot(snapshot, locale):
+    """Render one captured page without reading stores, scoring, ranking or mutable source objects again."""
+    page, first, new_count, total, rows, entries, remaining, next_count, seed = snapshot
+    word = lambda key, values=None, count=None: notification_language.render(key, values, locale=locale, count=count)
+    if page == 1:
+        # One number (owner, 24 Oct 2026: run results show one number): the jobs new since the last digest. No "Top N of total" and no pipeline counts block.
+        subtitle = word('digest.new', count=new_count)
+    elif rows:
+        subtitle = word('digest.page', {'first': first + 1, 'last': first + len(rows), 'total': total})
+    else:
+        return tgcard.card(word('digest.title'), word('digest.noMore'), emoji='✈️'), None
+    blocks, section = [tgcard.card(word('digest.title'), subtitle, emoji='✈️')], None
+    for kind, place, count, facts in rows:
+        if (kind, place) != section:
+            section = (kind, place)
+            # The one emoji in the digest besides its title: it makes the two groups easy to tell apart at a glance (owner, 5 Oct 2026).
+            heading = ('📍 ' if place else '🌍 ') + '<b>' + escape(word('digest.preferred' if place else 'digest.outside')) + '</b>'
+            blocks.append(heading + '\n' + word('digest.section.' + kind) + ' · ' + word('digest.jobs', count=count))
+        blocks.append(_render_job(facts, locale))
+    blocks.append(word('digest.tap') + (' ' + word('digest.more', count=remaining) if remaining else ''))
     keyboard = _keyboard(entries)
     if remaining:
         keyboard = keyboard or {'inline_keyboard': []}
-        keyboard['inline_keyboard'].append(
-            [{'text': f'➕ Next {min(PAGE_SIZE, remaining)}', 'callback_data': f'more:{seed}:{page + 1}'}])
-    return [text], len(new), [keyboard]
+        keyboard['inline_keyboard'].append([{'text': word('digest.next', count=next_count), 'callback_data': f'more:{seed}:{page + 1}'}])
+    return '\n\n'.join(blocks), keyboard
+
+
+def notification_projection(message, keyboard, locale='en'):
+    """Explicit end-user view only: known immutable snapshots localize; ordinary canonical strings stay untouched."""
+    return notification_language.projection(message, locale=locale) or (message, keyboard)
 
 
 def format_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=None, saved_urls=frozenset()):

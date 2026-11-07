@@ -19,6 +19,7 @@ import urllib.error
 import urllib.request
 
 from .sources.ats import USER_AGENT
+from . import notification_language
 
 SITE = 'https://www.jobadabra.top'
 MAX_HTML = 18000   # the site keeps 20000 characters
@@ -57,10 +58,10 @@ def _plain(html):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', html or '')).strip()
 
 
-def _subject(items):
+def _subject(items, locale='en'):
     first = re.search(r'<b>(.*?)</b>', items[0][0], re.S)
     title = _plain(first.group(1) if first else items[0][0])[:100] or 'Jobadabra'
-    return title if len(items) == 1 else f'{title} and {len(items) - 1} more'
+    return title if len(items) == 1 else notification_language.render('notification.subjectMore', {'title': title}, locale=locale, count=len(items) - 1)
 
 
 def _buttons(markup):
@@ -117,7 +118,9 @@ def _post(items, urlopen=None, env=None, kind='matches', mail=''):
         return False
     html = SEPARATOR.join(item[0] for item in items)[:MAX_HTML]
     buttons = [b for item in items for b in _buttons(item[1])][:6]
-    body = json.dumps({'subject': _subject(items), 'html': html, 'buttons': buttons, **({'kind': 'activity'} if kind in ('activity', 'weekly') else {}), **({'mail': mail} if mail else {})}).encode()
+    # Why (7 Nov 2026, end-user language design): this install-authenticated mail path supplies explicit delivery context; titles/body and canonical diagnostics are never globally translated.
+    locale = notification_language.language(env)
+    body = json.dumps({'language': locale, 'subject': _subject(items, locale), 'html': html, 'buttons': buttons, **({'kind': 'activity'} if kind in ('activity', 'weekly') else {}), **({'mail': mail} if mail else {})}).encode()
     request = urllib.request.Request(f'{base}/api/notify/email', data=body, method='POST', headers={'x-api-key': key, 'content-type': 'application/json', 'User-Agent': USER_AGENT})   # Why (5 Nov 2026, hr 6/6 try 5): Cloudflare answers urllib's own agent with 403 1010 before our Worker sees the call
     try:
         with urlopen(request, timeout=20) as response:
