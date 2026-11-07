@@ -56,8 +56,9 @@ before(() => {
 // Gitar on #3556: the toast of a run with a read that could not be made (words and warn tone) was never asserted. The same five jobs, one read unreadable, through the real Start button.
 before(() => {
   if (needsElectron.skip) return;
-  const reads = Object.fromEntries(CASES.map((item, index) => [item.url, index === 4 ? {unreadable: true, why: 'timeout'} : item.read]));
-  unread = probeWindow({settings: {demoTriageReads: reads}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+  const reads = Object.fromEntries(CASES.map((item, index) => [item.url, index === 4 ? {unreadable: true, why: 'timeout'} : index === 0 ? {...item.read, simple: true, why: '', questions: ['Start date']} : item.read]));
+  const match = {[CASES[0].url]: {missing: [{kind: 'detail', label: 'Notice period'}], unjudged: 0}};   // L2b: the demo's one match says the first form lacks a detail
+  unread = probeWindow({settings: {demoTriageReads: reads, demoTriageMatch: match}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.go('jobs');
     await kit.until(() => document.querySelectorAll('article.job-row').length >= 5, 'the five job rows');
@@ -71,7 +72,8 @@ before(() => {
     await kit.until(() => document.getElementById('triage-progress')?.hidden === true && document.querySelectorAll('#triage-results li').length === 5, 'all five results');
     const row = [...document.querySelectorAll('article.job-row')].find(one => one.dataset.url === 'https://jobs.triage-chip.example/roles/5');
     const value = row.querySelector('.role > .chip-tag .chip-value');
-    return {toast: toast.textContent.replace(/\s+/g, ' ').trim(), warn: toast.classList.contains('tone-warn'), label: value?.textContent.trim(), reason: value?.closest('.chip-tag')?.getAttribute('title')};
+    const first = [...document.querySelectorAll('article.job-row')].find(one => one.dataset.url === 'https://jobs.triage-chip.example/roles/1')?.querySelector('.role > .chip-tag .chip-value');
+    return {toast: toast.textContent.replace(/\s+/g, ' ').trim(), warn: toast.classList.contains('tone-warn'), label: value?.textContent.trim(), reason: value?.closest('.chip-tag')?.getAttribute('title'), firstLabel: first?.textContent.trim(), firstReason: first?.closest('.chip-tag')?.getAttribute('title')};
   }});
 });
 
@@ -80,6 +82,11 @@ test('a check where one read could not be made says so in a warn pop-up, and tha
   assert.equal(unread.result.warn, true, 'the pop-up is the warn tone, not the plain one');
   assert.equal(unread.result.label, 'Couldn\'t read');
   assert.equal(unread.result.reason, 'took too long');
+});
+
+test('through the real Start the simple form whose required question lacks a saved detail says which (the demo\'s one match)', live, () => {
+  assert.equal(unread.result.firstLabel, 'Simple form');
+  assert.equal(unread.result.firstReason, 'needs your details: Notice period');
 });
 
 test('every combination of the reader\'s flags reaches a chip, and every chip is reachable by a verdict (the pure half of the old step)', () => {

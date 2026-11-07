@@ -9,19 +9,19 @@ const FORM = {fields: 4, textareas: 1, files: 1, anyFiles: 1, passwords: 0, choi
 const EMPTY = {fields: 0, textareas: 0, files: 0, anyFiles: 0, passwords: 0, choices: 0, nodes: 40, frames: 0, status: 200};
 
 // A read whose page shows `shapes` one after the other and whose page-kind answer is `kind`; every call is written down.
-function run({shapes, kind, kinds = [kind], ms = 0, pressed = true, navigates = false, lateAt = 0}) {
+function run({shapes, kind, kinds = [kind], ms = 0, pressed = true, navigates = false, lateAt = 0, controls = [], sketch = null}) {
   const calls = [];
   let at = 0, shown = 0, asked = 0, lates = 0;
   const step = {tab: {id: 7, url: 'https://jobs.example.test/apply'}, gen: 3, flow: {askKind: async () => { calls.push('askKind'); return kinds[Math.min(asked++, kinds.length - 1)]; }, late: () => ++lates === lateAt}};
   const parts = {prepare: async () => { calls.push('prepare'); }, shape: async () => { calls.push('shape'); return shapes[Math.min(shown++, shapes.length - 1)]; },
     still: async (_tab, {maxMs}) => { calls.push(`still ${maxMs}`); at += ms; }, now: () => at, wait: async () => { calls.push('wait'); },
-    press: async s => { calls.push('press'); s.pressed = pressed; return !navigates; }};
+    press: async s => { calls.push('press'); s.pressed = pressed; return !navigates; }, labels: async () => {}, sketch: sketch || (async () => ({controls}))};
   return lookAtForm(step, parts).then(report => ({report, calls}));
 }
 
 test('a form page is read once, asked once and reported simple, with nothing pressed or watched', async () => {
   const {report, calls} = await run({shapes: [FORM], kind: {role: 'form', botCheck: false}});
-  assert.deepEqual(report, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: ''});
+  assert.deepEqual(report, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: '', questions: []});
   assert.deepEqual(calls, ['prepare', 'shape', 'askKind']);
 });
 
@@ -61,7 +61,7 @@ const POSTING = {role: 'no-form', kind: 'posting', applyBy: 'form', applyButton:
 
 test('a posting gets its Apply pressed once, then the form that came is read and asked: a simple form behind Apply', async () => {
   const {report, calls} = await run({shapes: [EMPTY, FORM], kinds: [POSTING, {role: 'form', botCheck: false}], pressed: true});
-  assert.deepEqual(report, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: ''});
+  assert.deepEqual(report, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: '', questions: []});
   assert.equal(calls.filter(call => call === 'press').length, 1);
   assert.equal(calls.filter(call => call === 'askKind').length, 2);
 });
@@ -93,4 +93,24 @@ test('a page that refuses its first read is looked at again before it is called 
   const {report, calls} = await run({shapes: [null, null, FORM], kind: {role: 'form', botCheck: false}});
   assert.equal(report.simple, true);
   assert.equal(calls.filter(call => call === 'shape').length, 3);
+});
+
+// L2b (owner 7 Nov 2026): a simple form also reports the words of its required typed questions, for the app's one match against saved details.
+test('a simple form reports its required typed questions: not optional ones, not radio or checkbox options, not files, each once', async () => {
+  const controls = [{type: 'text', label: 'First name', required: true}, {type: 'text', label: 'Nickname', required: false}, {type: 'radio', label: 'Yes', required: true}, {type: 'checkbox', label: 'I agree', required: true},
+    {type: 'file', label: 'CV', required: true}, {type: 'select', label: 'Notice period', required: true}, {type: 'text', label: 'First name', required: true}, {type: 'textarea', label: '  ', required: true}];
+  const {report} = await run({shapes: [FORM], kind: {role: 'form', botCheck: false}, controls});
+  assert.deepEqual(report.questions, ['First name', 'Notice period']);
+});
+
+test('a page that refuses the question read is still a simple form, with questions null (its answers are not checked, never an empty list)', async () => {
+  const {report} = await run({shapes: [FORM], kind: {role: 'form', botCheck: false}, sketch: async () => { throw new Error('no tab'); }});
+  assert.equal(report.simple, true);
+  assert.equal(report.questions, null);
+});
+
+test('a form that is not simple reports no questions (nothing to match)', async () => {
+  const {report} = await run({shapes: [FORM], kind: {role: 'form', botCheck: true}, controls: [{type: 'text', label: 'First name', required: true}]});
+  assert.equal(report.simple, false);
+  assert.equal('questions' in report, false);
 });

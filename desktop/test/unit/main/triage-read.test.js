@@ -33,3 +33,15 @@ test('the light look names exactly one thing the person must do, or none for a s
 test('a look without a verdict reads nothing: every flag unknown, never a simple form', () => {
   for (const report of [null, {}, {simple: 'yes'}]) assert.deepEqual(readFromLook(report), {eligible: true, captcha: null, login: null, accountCreation: null, allFactsSaved: null});
 });
+
+test('a simple look carries its required questions (trimmed, strings only, at most 30); a form that is not simple carries none', () => {
+  const many = Array.from({length: 40}, (_, i) => `Question ${i}`);
+  assert.deepEqual(readFromLook({simple: true, why: '', questions: ['  Notice period ', '', 7, null, 'Phone']}).questions, ['Notice period', 'Phone']);
+  assert.equal(readFromLook({simple: true, why: '', questions: many}).questions.length, 30);
+  assert.equal('questions' in readFromLook({simple: true, why: ''}), false, 'an older extension sends none');
+  assert.equal('questions' in readFromLook({simple: false, why: 'login', questions: ['Phone']}), false);
+});
+
+test('a page that refused the label read sends questions null, kept as null (answers not checked), never an empty list', () => {
+  assert.equal(readFromLook({simple: true, why: '', questions: null}).questions, null);
+});

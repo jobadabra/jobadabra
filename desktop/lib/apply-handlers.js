@@ -39,7 +39,8 @@ import {ownSecretHints} from './secrets.js';
 import {withAccounts, withCompanies, withoutHost} from './site-accounts.js';
 import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
-import {demoFormsOpen, demoPath, demoTriageRead} from './demo.js';
+import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead} from './demo.js';
+import {matchReads} from './triage-match.js';
 import {applyOf, batchConfirmation, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 
 /** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
@@ -58,6 +59,11 @@ export function registerApplyHandlers(ctx) {
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply triage (PR C2a): one form read in the hidden browser; the answer is the mode table's flags, or null when nothing was read. The demo has no hidden browser: it reads what settings.demoTriageReads names (lib/demo.js).
   ipcMain.handle('triageRead', (_, job) => (DEMO ? demoTriageRead(storage.settings(), String(job?.url || '')) : triageReadOrNull(background.triageRead, String(job?.url || ''))));   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
+  // L2b: the check's simple forms' required questions matched against Your details in one go: {url: {missing, unjudged}}. The demo names its answer in settings.demoTriageMatch (lib/demo.js).
+  ipcMain.handle('triageMatch', (_, reads) => {
+    const asked = (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
+    return DEMO ? demoTriageMatch(storage.settings(), asked) : matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });
+  });
   ipcMain.handle('triageCancel', () => background.cancelTriage());
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
   // storedCheck(job): the check prepared with the job's kit, fresh, or null ([fa] 2/2 wires the kit's own reader).

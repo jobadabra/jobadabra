@@ -27,5 +27,7 @@ export function readFromJudge(judged, {eligible = true, allFactsSaved = null} = 
 export function readFromLook(report, {eligible = true} = {}) {
   if (!report || typeof report.simple !== 'boolean') return {eligible, captcha: null, login: null, accountCreation: null, allFactsSaved: null};   // words-ok: the read's own flag names, not a page word list
   const why = typeof report.why === 'string' ? report.why : '';
-  return {eligible, captcha: why === 'captcha' || why === 'check', login: why === 'login', accountCreation: why === 'account', allFactsSaved: null, simple: report.simple, why};   // words-ok: the read's own flag names, not a page word list
+  const read = {eligible, captcha: why === 'captcha' || why === 'check', login: why === 'login', accountCreation: why === 'account', allFactsSaved: null, simple: report.simple, why};   // words-ok: the read's own flag names, not a page word list
+  if (report.simple === true && 'questions' in report) read.questions = Array.isArray(report.questions) ? report.questions.filter(label => typeof label === 'string' && label.trim()).map(label => label.trim().slice(0, 120)).slice(0, 30) : null;   // null: the page refused the question read   // L2b: the required questions, for the one match
+  return read;
 }
