@@ -162,7 +162,7 @@ export async function answer(storage, questionKey, value, fetcher, mark = null, 
   const block = open ? null : (await page.blocks()).find(b => b.id === questionKey);
   if (!open && (!block || !block.text.includes('❓'))) return {ok: false, error: 'Already answered'};
   const question = open ? unmarked(splitMark(open.cells[0]).text.replace(/❓/g, '')) : parseLine(block).question;
-  const home = value ? (chosen || await homeOf(question, value, ai)) : '';   // chosen: a place the caller decided (lib/question-answer.js), no AI call
+  const home = value ? (chosen || await homeOf(question, value, ai, mark)) : '';   // chosen: a place the caller decided (lib/question-answer.js), no AI call
   if (home && await writeHome(storage, home, question, value, fetcher)) {
     await page.remove(open ? {id: open.row.id, text: open.cells[0]} : block);
     return {ok: true, home, homeName: HOME_NAMES[home]};

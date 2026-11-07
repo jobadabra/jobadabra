@@ -113,6 +113,9 @@ function suggestionRow(zone, value, saved) {
 // "N missing": Fill your details' items, counted from the drawer's own list (read once when Jobs has not read it yet), Review opens it at the first.
 let last = {aside: [], tidied: null}, queueAsked = false;
 document.addEventListener?.('questions-read', () => drawWhich(last.aside, last.tidied));
+// Why (7 Nov 2026, #3515, AI persona run 42397491150): an answer saved from a drawer lands on a Your details line, but the sections were read once when Profile opened, so Availability & compensation kept
+// showing the lines from before the answer. A saved answer reads them again (the local lines, no AI; unsaved edits stay: paintFacts).
+document.addEventListener?.('question-answered', () => { showFacts().catch(() => {}); });
 function drawWhich(aside = [], tidied = null) {
   last = {aside, tidied};
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().then(() => drawWhich(last.aside, last.tidied)).catch(() => {}); }

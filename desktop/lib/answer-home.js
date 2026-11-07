@@ -1,17 +1,30 @@
 // Answer once is an inbox (owner, 17 Oct 2026): each answer goes to its one home. A fact of Your details (right to work, notice, the salary you
 // state, a language) becomes a line of that section (lib/profile-sections.js); anything else stays a standard answer (lib/questions.js). The AI
-// picks only the home (lib/profile-move.js judge, the move's own words), never the value; no AI or a failed call: it stays a standard answer.
+// picks only the home (lib/profile-move.js judge, the move's own words), never the value; no AI or a failed call: it stays a standard answer, except a question that is a fact's own label (factHomeOf).
 // A line already there with the same label is replaced (the newer answer wins: you just typed it). Guarded by test/unit/main/answer-home.test.js.
 import * as sections from './profile-sections.js';
 import {judge} from './profile-move.js';
 import {COMPOSITE} from '../renderer/question-kind.js';
+import {CATALOG} from './fact-catalog.js';
 
 const same = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 export const HOME_NAMES = Object.fromEntries(Object.entries(sections.SECTIONS).map(([key, heading]) => [key, `Your details → ${heading}`]));
 
-// -> a section key, or '' (a standard answer).
-export async function homeOf(question, value, ai = {}) {
-  if (!question || !value || !(ai.client || ai.apiKey)) return '';
+/**
+ * A question that is the very label of a Your details fact ("Notice period") and was answered with that fact's own control (the mark's kind = the catalogue's kind: a duration box) lives on that fact's
+ * line: the catalogue's label is the name a line is saved under and matched by (lib/fact-catalog.js) and the control returns an exact value, so this is an identity, not a judgment, and costs no AI call.
+ * A text box (a sentence may be prose, which never moves) and a zone (fixed statuses) are left to the AI's word.
+ * Why (7 Nov 2026, #3515, AI persona run 42397491150): with no AI the answer stayed on the answers page, and Availability & compensation, which promises the notice period, never showed what the person saved.
+ * -> a section key, or ''.
+ */
+export const factHomeOf = (question, mark) => CATALOG.find(fact => fact.kind !== 'per_country' && fact.kind !== 'text' && mark?.kind === fact.kind && same(fact.label) === same(question))?.home || '';
+
+// -> a section key, or '' (a standard answer). mark: the kind the answer was given with (lib/questions.js answer).
+export async function homeOf(question, value, ai = {}, mark = null) {
+  if (!question || !value) return '';
+  const own = factHomeOf(question, mark);
+  if (own) return own;
+  if (!(ai.client || ai.apiKey)) return '';
   try {
     const said = (await judge([{id: 'q', label: question, value}], ai)).get('q');
     return said?.clarity !== 'prose' && sections.SECTIONS[said?.home] ? said.home : '';   // prose never moves (3 Nov 2026)
