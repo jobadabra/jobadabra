@@ -6,7 +6,7 @@
 /** Tokens one actor step costs, by how the engine answers: a Codex conversation adds only the newest turn (0.6-1.0k measured, #3264); any other engine sends the whole prompt (6.6-9.2k measured on Claude, run 42163935942). */
 export const STEP_TOKENS = {resumed: 1_000, stateless: 9_000};
 export const TARGET_STEPS = 10;   // a goal that is funded gets about this many steps before the next goal is funded; fewer funded goals with room beat many goals of one or two steps
-export const MIN_STEPS = 6;       // the least a goal can show anything in (MIN_STEPS_PER_GOAL of lib/agent-run.mjs)
+export const MIN_STEPS = 6;       // the least a goal can show anything in; the one owner, lib/agent-run.mjs imports it for the floor of a goal's share and its log (Gitar on #3398)
 export const MIN_CALIBRATION_CALLS = 3;   // the measured cost per step replaces the engine's default after this many actor calls
 
 /**

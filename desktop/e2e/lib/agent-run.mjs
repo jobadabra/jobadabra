@@ -9,9 +9,8 @@ import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
 import {pointerLine} from './agent-chain.mjs';
-import {goalSteps, stepCost} from './agent-steps.mjs';
+import {goalSteps, MIN_STEPS, stepCost} from './agent-steps.mjs';
 
-const MIN_STEPS_PER_GOAL = 6;
 const choice = values => ({type: 'string', enum: ['', ...values]});
 
 // Why (3 Nov 2026, AI user agents 7/12): in its first real session the agent ended a goal as could-not-finish for the Focus page after pressing More actions, never using the go action it was offered; the prompt now says what go is for.
@@ -101,7 +100,7 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
  */
 export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
-  const perGoal = Math.max(MIN_STEPS_PER_GOAL, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
+  const perGoal = Math.max(MIN_STEPS, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [], unfunded = [];
   let stoppedByBroker = '', actorCalls = 0;
   for (const goal of plan.goals) {
@@ -112,7 +111,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     if (meter) {   // Why (7 Nov 2026, #3378): the steps of a goal are what the token meter can pay for on this engine, so a night never plans goals its cap refuses
       const left = plan.goals.length - results.length - unfunded.length;
       const next = goalSteps({left: meter.usable(), cost: stepCost({used: meter.actorUsed(), calls: actorCalls, fallback: meter.stepTokens}), goalsLeft: left, maxPerGoal: perGoal});
-      if (!next.steps) { unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS_PER_GOAL} steps`); break; }
+      if (!next.steps) { unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
       steps = next.steps;
       log(`  goal ${goal.n}: ${steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
     }
