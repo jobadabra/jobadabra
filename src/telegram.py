@@ -51,16 +51,19 @@ def api_base():
     return override.rstrip('/') if os.environ.get('JOBADABRA_E2E') and override else 'https://api.telegram.org'
 
 
-def send(text, token, chat_id, reply_markup=None, urgent=False, kind='activity'):
+def send(text, token, chat_id, reply_markup=None, urgent=False, kind='activity', *, display_text=None, display_reply_markup=None):
     """Deliver a message by the chosen channels: Telegram (when there is a token) and/or e-mail (kind 'matches' = the run's one new-matches e-mail, 'weekly' = the weekly report, 'activity' = the digest, urgent = at once; src/notify.py)."""
     MESSAGES.append(text)
-    notify.queue(text, reply_markup, urgent, kind)
+    # Why (7 Nov 2026, end-user language design): only an explicit producer projection localizes delivery; stored messages and unprojected operational calls stay canonical.
+    outbound_text = text if display_text is None else display_text
+    outbound_markup = reply_markup if display_reply_markup is None else display_reply_markup
+    notify.queue(outbound_text, outbound_markup, urgent, kind)
     if not (token and chat_id) or not notify.wants_telegram():
         return {'ok': True, 'channel': 'email'}
     endpoint = f"{api_base()}/bot{token}/sendMessage"
-    fields = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': 'true'}
-    if reply_markup:
-        fields['reply_markup'] = json.dumps(reply_markup)
+    fields = {'chat_id': chat_id, 'text': outbound_text, 'parse_mode': 'HTML', 'disable_web_page_preview': 'true'}
+    if outbound_markup:
+        fields['reply_markup'] = json.dumps(outbound_markup)
     body = urllib.parse.urlencode(fields).encode()
     request = urllib.request.Request(endpoint, data=body, method='POST')
     with urllib.request.urlopen(request, timeout=20) as response:

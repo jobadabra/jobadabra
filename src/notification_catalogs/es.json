@@ -1,0 +1,52 @@
+{
+  "digest.title": "Resumen de ofertas",
+  "digest.new": {
+    "one": "{count} nueva",
+    "other": "{count} nuevas"
+  },
+  "digest.page": "Ofertas {first}–{last} de {total}",
+  "digest.noMore": "No hay más ofertas en esta lista. Envía /today para obtener una nueva.",
+  "digest.section.new": "Nuevas desde tu última búsqueda",
+  "digest.section.best": "Mejores coincidencias",
+  "digest.section.older": "Más oportunidades",
+  "digest.preferred": "En tus ubicaciones preferidas",
+  "digest.outside": "Fuera de tus ubicaciones preferidas",
+  "digest.jobs": {
+    "one": "{count} oferta",
+    "other": "{count} ofertas"
+  },
+  "digest.tap": "Pulsa el número de una oferta para marcarla como solicitada, guardarla o descartarla.",
+  "digest.more": "{count} más con ➕.",
+  "digest.next": "➕ Siguientes {count}",
+  "job.locationMissing": "ubicación no indicada",
+  "job.saved": "Guardada",
+  "job.fit": "Compatibilidad",
+  "job.check": "Por comprobar",
+  "job.mode.onsite": "Presencial",
+  "job.mode.hybrid": "Híbrido",
+  "job.mode.remote": "Remoto",
+  "job.mode.remoteMaybe": "¿Remoto?",
+  "job.seniority.junior": "Júnior",
+  "job.seniority.mid": "Intermedio",
+  "job.seniority.senior": "Sénior",
+  "job.seniority.staff_principal": "Experto/Principal",
+  "job.seniority.lead_manager": "Responsable/Gerente",
+  "job.language.English": "Inglés",
+  "job.language.German": "Alemán",
+  "job.language.French": "Francés",
+  "job.language.Italian": "Italiano",
+  "job.language.Spanish": "Español",
+  "job.language.Portuguese": "Portugués",
+  "job.language.Dutch": "Neerlandés",
+  "job.language.required": "{language} obligatorio",
+  "job.language.extra": "{language} +",
+  "job.language.otherRequired": "otro idioma obligatorio",
+  "job.signal.salary": "información salarial",
+  "job.signal.recruiter": "Reclutador",
+  "job.signal.sponsorshipOffered": "patrocinio de visado ofrecido",
+  "job.signal.sponsorshipNeeded": "patrocinio de visado necesario",
+  "notification.subjectMore": {
+    "one": "{title} y {count} más",
+    "other": "{title} y {count} más"
+  }
+}

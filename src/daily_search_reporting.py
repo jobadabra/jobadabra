@@ -2,7 +2,7 @@
 import json
 import sys
 from datetime import timezone
-from . import digest, doctor, features, ledger_store, notify, store, telegram
+from . import digest, doctor, features, ledger_store, notify, store, telegram, notification_language
 from .ai import budget, insights, interviews
 from .notion import funnel
 from .daily_helpers import digest_note
@@ -87,10 +87,12 @@ def deliver_digest(args, run, imported, messages, new_count, keyboards, shown_id
 
 # Send messages and flush email, returning the original refusal words.
 def send_messages(messages, keyboards, token, chat_id):
+    locale = notification_language.language()
     refused = None
     for message, keyboard in zip(messages, keyboards):
         try:
-            telegram.send(message, token, chat_id, keyboard, kind='matches')
+            display = digest.notification_projection(message, keyboard, locale)
+            telegram.send(message, token, chat_id, keyboard, kind='matches', display_text=display[0], display_reply_markup=display[1])
         except Exception as error:  # a blocked bot, a removed chat, no network: the run says so in words, it does not crash
             refused = telegram.failure_words(error)
             break

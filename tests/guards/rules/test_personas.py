@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import digest, tz
+from src import digest, tz, notification_language
 from src.paths import keyword_regex
 from src.sources import google_jobs
 
@@ -80,7 +80,7 @@ class WordingIsNotSwiss(unittest.TestCase):
             self.assertTrue(digest.in_places(job('Austin, TX')))
             self.assertFalse(digest.in_places(job('Zurich, Switzerland')))
         source = Path(digest.__file__).read_text(encoding='utf-8')
-        self.assertIn('Outside your preferred locations', source)
+        self.assertEqual(notification_language.render('digest.outside'), 'Outside your preferred locations')
         self.assertNotRegex(source.replace('Zürich Versicherungs', ''), r'🇨🇭|Swiss')
 
     def test_salary_follows_the_posting(self):
