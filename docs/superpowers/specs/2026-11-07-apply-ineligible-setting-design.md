@@ -11,12 +11,13 @@ Automatic Apply pickers skip a kit whose explicit eligibility verdict is false. 
 - With the setting off, automatic pickers continue to skip explicit `eligible: false` kits. With it on, they may select them.
 - The setting only overrides an explicit false verdict. Unknown eligibility remains distinct and retains each path's existing behavior; the opt-in never turns unknown into true.
 - Stage/startability checks, already-started deduplication, background page proof, and Full automation confirmation remain required.
-- The setting changes picker selection and the existing Full automation kit-eligibility check. Submission authorization, mode confirmation, background page proof, and consent handling stay unchanged.
+- The setting changes picker selection and the existing Full automation kit-eligibility check, as explicitly authorized by the owner: "eligibility policy affects selection AND existing Full-auto eligibility check, while submission authorization/page proof stay unchanged" (7 Nov 2026).
+- Full automation's separate user confirmation and one-shot submit authorization, background page proof, and consent handling stay unchanged.
 
 ## Constraints and non-goals
 
 - One persisted setting, no per-mode switches or extra confirmation.
-- No automatic eligibility verdict changes or invented facts. Submission authorization and page-proof rules do not change.
+- No automatic eligibility verdict changes or invented facts. Only the kit-eligibility verdict gate follows this opt-in; Full automation confirmation, one-shot submit authorization and page-proof rules do not change.
 - No bypass of stage state or existing-session protections.
 
 ## Acceptance checks
