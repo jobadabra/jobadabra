@@ -5,13 +5,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {test} from 'node:test';
+import {mock, test} from 'node:test';
 import {createStorage} from '../../../lib/storage.js';
 import * as store from '../../../lib/store/index.js';
 import * as sections from '../../../lib/profile-sections.js';
 import * as contactDetails from '../../../lib/contact.js';
 import {hashOf} from '../../../lib/cv-check.js';
 import * as review from '../../../lib/details-review.js';
+import * as cvQueue from '../../../lib/cv-queue.js';
 import {openShown} from '../../../lib/question-lists.js';
 
 import {fakeNotion} from '../../fake-notion.js';
@@ -50,13 +51,15 @@ const seedCv = storage => {
   storage.writeText('cv/fact-proposals.json', JSON.stringify({cv: hashOf(storage), proposals: [{id: 'languages', value: 'Romanian (native), English', how: 'inferred', reason: 'Written in Romanian'}]}));
   return storage;
 };
+// Why (7 Nov 2026, ts 5/7): 52 calls in this file went to the real api.notion.com because `pending` dropped its fetcher on the way down (20 s of the file's 20 s); the sqlite store needs no network, so its fetcher throws and the next dropped one is red at once.
+const networkOff = () => { throw new Error('a unit test must not reach the network (details-review.test.js)'); };
 const ADAPTERS = {
   sqlite: async () => {
     const storage = seedCv(fresh({store: 'sqlite', telemetry: false, ...SETTINGS}));
     const opened = store.openStore(storage);
     await opened.page('profile').write(markdown(PROFILE));
     await opened.page('answers').write(markdown(ANSWERS));
-    return {storage, fetcher: undefined};
+    return {storage, fetcher: networkOff};
   },
   notion: async () => {
     const pages = {profile: fakeNotion(PROFILE, {prefix: 'P'}), answers: fakeNotion(ANSWERS, {prefix: 'A'})};
@@ -208,4 +211,17 @@ test('the template\'s ❓ zones: none asked before Nationality; with Nationality
   assert.deepEqual(await zonesAsked(), []);
   await store.openStore(storage).page('profile').write(page('Romania'));
   assert.deepEqual((await zonesAsked()).sort(), ['United Kingdom', 'United States']);
+});
+
+test('the CV read of an install without one reads the contact through the fetcher it is given, and through the real fetch when it is given none (the default is unchanged)', async () => {
+  const make = () => { const storage = fresh({store: 'notion', telemetry: false, notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_ANSWERS_PAGE_ID: 'answers'}}); storage.setSecret('NOTION_TOKEN', 'secret'); return seedCv(storage); };
+  const refuse = async () => ({ok: false, status: 401, json: async () => ({}), text: async () => ''});
+  const real = mock.method(globalThis, 'fetch', refuse), given = mock.fn(refuse);
+  try {
+    await cvQueue.readOnce(make(), {client: {}, fetcher: given});
+    assert.ok(given.mock.callCount() > 0, 'the fetcher it was given is used');
+    assert.equal(real.mock.callCount(), 0, 'and the real fetch is not');
+    await cvQueue.readOnce(make(), {client: {}});
+    assert.ok(real.mock.callCount() > 0, 'with none given, the real fetch is still the default');
+  } finally { real.mock.restore(); }
 });

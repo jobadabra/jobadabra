@@ -108,12 +108,12 @@ export async function answer(storage, ref, value, {fetcher, save} = {}) {
 
 // An install whose CV was never read for its details (it was set up before the wizard step): the same read the setup runs, once per CV file, when the queue opens
 // and a contact detail is empty. Sure values are saved, the rest becomes items above. -> true when it ran.
-export async function readOnce(storage, {client, log = () => {}, contactSaved = () => {}} = {}) {
+export async function readOnce(storage, {client, log = () => {}, contactSaved = () => {}, fetcher} = {}) {
   const cv = hashOf(storage);
   if (!client || !cv || storage.settings().cvQueueRead === cv) return false;
   storage.saveSettings({cvQueueRead: cv});   // before the call: a failed read is not repeated on every list
-  const contact = await contactDetails.read(storage).catch(() => ({}));
+  const contact = await contactDetails.read(storage, fetcher).catch(() => ({}));
   if (!fromCv.emptyFields(contact).length) return false;
-  await detailsFromCvAtSetup(storage, {client, log, contactSaved});
+  await detailsFromCvAtSetup(storage, {client, log, contactSaved, fetcher});
   return true;
 }

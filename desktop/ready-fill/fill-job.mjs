@@ -22,13 +22,13 @@ export function classify({outcome, panel, role, stuck = null}) {
 export const humanCheckIn = page => page.evaluate(() => !!document.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], iframe[src*="challenges.cloudflare"], [data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile')).catch(() => false);
 
 // The app's "Apply" marks the tab with the address hash; the extension may start the fill by itself, and the person's click on Fill is the other way. Never both: a second pass only repeats the first.
-async function pressFill(page, standIn, address, seconds = 25) {
+async function pressFill(page, standIn, address, seconds = 25, settleMs = 3000) {
   await page.evaluate(() => { location.hash = 'jobpilotto-fill'; }).catch(() => {});
   for (let waited = 0; waited < 8 && !standIn.started(address); waited++) await wait(1000);
   if (standIn.started(address)) return true;   // it started on its own
   const ready = await page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: seconds * 1000}).then(() => true, () => false);
   if (!ready) return false;
-  await wait(3000);   // the panel settles its buttons
+  await wait(settleMs);   // the panel settles its buttons
   return page.evaluate(pattern => {
     const buttons = [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].filter(button => !button.disabled);
     const pick = buttons.find(button => new RegExp(pattern, 'i').test((button.textContent || '').trim()));
@@ -37,24 +37,25 @@ async function pressFill(page, standIn, address, seconds = 25) {
   }, FILL_BUTTON.source).catch(() => false);
 }
 
+// Why (7 Nov 2026, ts 5/7, owner: "windows unit tests are still very slow"): settleMs is the two settle waits (the panel's buttons, the record at the fill's end), 3 s each; ready-fill-line.test.js spent 3 s per form (15 s a file) on them with a stand-in that has settled already, so a test passes 0. A night never does.
 // context: the night's Playwright context; standIn: createStandIn(); job: {id, url}. -> the outcome plus the tab and the fill's video ({path, bytes, secs} or null).
 // record(page): starts the fill's video (Watch the fill, owner 18 Oct 2026: every form the night opens, 3 minutes at most); it stops once the outcome is read, before the tab is held.
 // onStep(step, n): the live line (site src/ready-line.js STEPS); it answers true when the owner stopped this form: the fill ends at once with {stopped}, its tab closed by the caller.
-export async function fillJob({context, standIn, job, fillSeconds = 120, record = page => startFillVideo(page), onStep = async () => false}) {
+export async function fillJob({context, standIn, job, fillSeconds = 120, record = page => startFillVideo(page), onStep = async () => false, settleMs = 3000}) {
   const started = Date.now(), page = await context.newPage();
   const recording = await Promise.resolve().then(() => record(page)).catch(() => null), video = async () => (await recording?.stop().catch(() => null)) || null;
   const stopped = async () => ({page, stopped: true, state: 'stopped', filled: 0, left: 0, humanCheck: false, ms: Date.now() - started, video: await video()});
   if (await onStep('opening')) return stopped();
   try { await page.goto(formUrl(job.url), {waitUntil: 'domcontentloaded', timeout: 30000}); } catch { return {page, state: 'failed', wall: 'unreachable', filled: 0, left: 0, humanCheck: false, ms: Date.now() - started, video: await video()}; }
   if (await onStep('form')) return stopped();
-  const panel = await pressFill(page, standIn, job.url);
+  const panel = await pressFill(page, standIn, job.url, undefined, settleMs);
   for (let waited = 0; panel && waited < fillSeconds && !standIn.outcome(job.url); waited++) {
     await wait(1000);
     const asked = standIn.answered?.() || 0;
     if (waited % 5 === 4 && await onStep(asked ? 'answering' : 'filling', asked || null)) return stopped();   // every 5 s: the line moves, and a Stop is heard
   }
   if (await onStep('reading')) return stopped();
-  await wait(3000);   // the record is written once, at the fill's end; the page settles and a later pass or update may follow
+  await wait(settleMs);   // the record is written once, at the fill's end; the page settles and a later pass or update may follow
   const outcome = standIn.outcome(job.url), verdict = classify({outcome, panel, role: standIn.role(job.url), stuck: standIn.stuck?.(job.url) ?? null});
   return {page, ...verdict, filled: outcome?.filled || 0, left: outcome?.left || 0, humanCheck: await humanCheckIn(page), ms: Date.now() - started, video: await video()};
 }
