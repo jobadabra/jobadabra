@@ -1,8 +1,9 @@
 """Replays the fit score's fixed case set (tests/fixtures/score-cases.json) through the app's own score._score_once on the person's Claude plan ($0, never an API key).
 
-Usage: python3 tools/score-cases.py [--runs 3] [--model claude-sonnet-5-5] [--lift]
+Usage: python3 tools/score-cases.py [--runs 3] [--model claude-sonnet-5-5] [--no-lift]
 Prints one line per case and run (pass, or what failed, with the score and the AI's own fit to the search), then the totals. Exit 1 when any case failed.
---lift: also let the title check raise a career change's fit to SEARCH_ROLE_FIT (score_search.apply); off by default, so the line measures the prompt alone.
+The title check answers yes for every posting (the worst case for the lift to SEARCH_ROLE_FIT in score_search.apply), so a score is what the app would show.
+--no-lift: the title check answers no, so the line measures the prompt alone (how 1/2 was measured).
 The profile is the golden fictional candidate (desktop/e2e/fixtures/golden/candidate.txt); a case's search roles stand in for the person's search.
 """
 import argparse
@@ -37,6 +38,8 @@ def failures(case, data):
         out.append(f"search fit {fit} above {want['fit_max']}")
     if want.get('gap') and not (data.get('search') or {}).get('cv_gap'):
         out.append('cv_gap empty')
+    if 'needs_credential' in want and (data.get('search') or {}).get('needs_credential') is not want['needs_credential']:
+        out.append(f"needs_credential {(data.get('search') or {}).get('needs_credential')!r}, wanted {want['needs_credential']!r}")
     return out
 
 
@@ -52,15 +55,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--runs', type=int, default=3)
     parser.add_argument('--model', default=score.DEFAULT_MODEL)
-    parser.add_argument('--lift', action='store_true')
+    parser.add_argument('--no-lift', action='store_true')
     args = parser.parse_args()
     fixture = json.loads((ROOT / 'tests' / 'fixtures' / 'score-cases.json').read_text(encoding='utf-8'))
     profile = (GOLDEN / 'candidate.txt').read_text(encoding='utf-8')
     client = engine.client(action='score')
     lock_roles = {}
     score_search._roles = lambda search=None: lock_roles.get('roles', [])
-    if not args.lift:
-        score_search._search_role = lambda job: False
+    score_search._search_role = lambda job: not args.no_lift   # the AI's title check, stubbed: no call, no store
 
     def one(task):
         case, run = task
@@ -78,7 +80,7 @@ def main():
     for case_id, run, failed, seen in results:
         print(f"{'pass' if not failed else 'FAIL'} {case_id} run {run} ({seen}){'' if not failed else ': ' + '; '.join(failed)}", flush=True)
     passed = sum(1 for _, _, failed, _ in results if not failed)
-    print(f"{passed} of {len(results)} passed{' (with the title lift)' if args.lift else ''}", flush=True)
+    print(f"{passed} of {len(results)} passed{' (prompt alone, no title lift)' if args.no_lift else ' (title check says yes)'}", flush=True)
     return 0 if passed == len(results) else 1
 
 

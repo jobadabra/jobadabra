@@ -18,7 +18,8 @@
    "expect": {
     "score_max": 49,
     "fit_max": 49,
-    "gap": true
+    "gap": true,
+    "needs_credential": true
    }
   },
   {
@@ -35,7 +36,8 @@
     "description": "Become an airline first officer without any flying experience. We select candidates from any background, pay for the whole training (private licence to CPL/IR and the A320 type rating) and employ you on completion. You need: age 18 to 35, class 1 medical, fluent English, good maths, a degree or equivalent work experience. Training starts every March in Zurich."
    },
    "expect": {
-    "score_min": 50
+    "score_min": 50,
+    "needs_credential": false
    }
   },
   {
@@ -73,7 +75,8 @@
     "description": "Own the reliability of a Kubernetes platform on AWS: SLOs, incident response, observability with Datadog. We write our infrastructure in Pulumi (TypeScript) and expect you to work in it daily. Senior role, hybrid in Zurich, English working language. 7+ years of experience running production systems."
    },
    "expect": {
-    "score_min": 55
+    "score_min": 55,
+    "needs_credential": false
    }
   },
   {
@@ -89,7 +92,8 @@
     "description": "Own the reliability of a Kubernetes platform on AWS: SLOs, incident response, Terraform, Datadog. An AWS Certified DevOps Professional certificate is a plus, not a requirement. Senior role, hybrid in Zurich, English working language. 7+ years of experience running production systems."
    },
    "expect": {
-    "score_min": 65
+    "score_min": 65,
+    "needs_credential": false
    }
   }
  ]
