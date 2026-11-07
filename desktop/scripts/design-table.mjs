@@ -14,18 +14,20 @@ export const RULES = [
 const keyOf = hit => `${hit.rule}|${hit.at}`;
 
 /**
- * What a render has that the base render does not: per hit, one entry for each rule + selector (a selector repeated in one render counts once).
+ * What a render has that the base render does not: per rule + selector, the head's hits beyond the base's count (a selector is short: tag#id or tag.class.class, so
+ * a second clipped `span.tile` on a screen that had one is a new hit, never hidden by the old one).
  * @param {{rule: string, at: string, note: string}[]} base hits of the base render
  * @param {{rule: string, at: string, note: string}[]} head hits of the head render
- * @returns {{rule: string, at: string, note: string}[]} the new hits
+ * @returns {{rule: string, at: string, note: string}[]} the new hits (the head's last ones for a key that grew)
  */
 export function newHits(base, head) {
-  const known = new Set(base.map(keyOf)), seen = new Set(), fresh = [];
+  const left = new Map();
+  for (const hit of base) left.set(keyOf(hit), (left.get(keyOf(hit)) || 0) + 1);
+  const fresh = [];
   for (const hit of head) {
     const key = keyOf(hit);
-    if (known.has(key) || seen.has(key)) continue;
-    seen.add(key);
-    fresh.push(hit);
+    if (left.get(key) > 0) left.set(key, left.get(key) - 1);
+    else fresh.push(hit);
   }
   return fresh;
 }
@@ -50,7 +52,7 @@ export function renderTable(runs, sha) {
     const hits = runs.flatMap(run => run.base.filter(hit => hit.rule === rule));
     return [rule, {hits: hits.length, distinct: new Set(hits.map(hit => hit.at)).size}];
   }));
-  const table = [`### 🎨 Design system (measured on ${sha})`, '',
+  const table = [`**Design system (measured on ${sha})**`, '',
     `| Rule | ${columns.join(' | ')} |`, `|---|${columns.map(() => '---').join('|')}|`, ...rows].join('\n');
   return {table, failed, baseline};
 }

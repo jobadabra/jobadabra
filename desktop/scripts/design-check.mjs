@@ -30,10 +30,11 @@ const baseTree = path.join(baseRoot, 'tree');
 git('worktree', 'add', '--detach', '--quiet', baseTree, baseCommit);
 const cleanup = () => { try { git('worktree', 'remove', '--force', baseTree); } catch { /* already gone */ } fs.rmSync(baseRoot, {recursive: true, force: true}); };
 process.on('exit', cleanup);
-for (const name of ['node_modules', 'shared']) {   // a post-checkout hook may already have linked them
-  const link = path.join(baseTree, 'desktop', name);
-  if (!fs.existsSync(link)) fs.symlinkSync(fs.realpathSync(path.join(desktop, name)), link);
-}
+for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) process.on(signal, () => process.exit(code));   // Ctrl+C in a 64-render run must not leave the worktree behind
+// node_modules is the head's (git-ignored, the same packages); each tree stages its own shared/ like `npm run shot` does, so the base is drawn with the base's code.
+const modules = path.join(baseTree, 'desktop', 'node_modules');
+if (!fs.existsSync(modules)) fs.symlinkSync(fs.realpathSync(path.join(desktop, 'node_modules')), modules);   // a post-checkout hook may already have linked it
+for (const root of [repo, baseTree]) execFileSync('node', ['scripts/stage.mjs'], {cwd: path.join(root, 'desktop'), stdio: 'ignore'});
 
 const measure = (root, screen, width, theme) => new Promise((resolve, reject) => {
   const child = spawn('node', ['scripts/shot.mjs', screen, '--width', String(width), '--theme', theme, '--no-picture', '--eval', designEval], {cwd: path.join(root, 'desktop')});
