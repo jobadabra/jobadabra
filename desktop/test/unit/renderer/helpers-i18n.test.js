@@ -284,3 +284,18 @@ test('insight counts use Russian plural forms while generated titles and quotes 
   assert.equal(value.insight.moments[0].quotes[0].quote, 'Original quote');
   assert.equal(value.insight.chip.level, 'high');
 });
+
+test('re-score wording localizes counts without changing its sixty-job batch promise', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {jobs,noticeTitle,pressLabel,dialogLead} = await import('../../../renderer/rescore-words.js');
+  try {
+    setLocale('ro');
+    assert.equal(jobs(1), '1 ofertă');
+    assert.equal(jobs(3), '3 oferte');
+    assert.equal(jobs(20), '20 de oferte');
+    assert.match(noticeTitle(1), /a fost evaluată/);
+    assert.equal(pressLabel(100), 'Reevaluează 60 acum');
+    assert.match(dialogLead(100), /pentru restul/);
+    assert.doesNotMatch(dialogLead(12), /pentru restul/);
+  } finally { setLocale('en'); }
+});

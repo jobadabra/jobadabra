@@ -243,6 +243,31 @@ export const messages = {
   "minutesAgo": "il y a {count} min",
   "hoursAgoSpaced": "il y a {count} h",
   "daysAgoFull": "il y a {count} jours",
+  "rescoreMethod": "{jobs} : ancienne méthode d’évaluation",
+  "rescorePlaces": "{jobs} : lieux différents de vos choix actuels",
+  "rescoreChanged": "{jobs} : offre ou profil modifié depuis l’évaluation",
+  "rescoreLead": "Elles sont réévaluées une fois par l’IA avec vos paramètres actuels. La réévaluation commence pour 60 offres maximum{rest}. La recherche de nouvelles offres ne les réévalue jamais. Coût : non calculé. Vos candidatures et étapes restent inchangées.",
+  "rescoreRest": " ; cliquez à nouveau sur Réévaluer pour le reste",
+  "rescoreCallHint": "Les anciennes évaluations restent marquées dans la liste jusqu’à leur remplacement.",
+  "rescore60": "Réévaluer 60 offres maintenant",
+  "rescoreCount": "Réévaluer {count}",
+  "rescoring": "Réévaluation : {jobs}",
+  "rescoringLead": "Jusqu’à 60 par réévaluation ; relancez pour le reste. Les anciennes évaluations restent jusqu’à leur remplacement. Suivez dans Activité récente.",
+  "oldScore": "Ancienne évaluation",
+  "oldScoreTip": "Évaluée avec les anciens paramètres. Réévaluez pour actualiser.",
+  "scoreFirst": "Évaluer d’abord",
+  "scoreFirstLead": "{notice} Les nouvelles offres seraient classées face aux anciennes évaluations. {lead}",
+  "findWithoutRescore": "Chercher sans réévaluer",
+  "reviewAgainLabel": "Analyser à nouveau · actualise l’offre",
+  "reviewingAgain": "Nouvelle analyse…",
+  "reviewAgainTip": "{AI} réanalyse la transcription (un appel à {AI:big}) : remplace l’analyse et remplit les champs vides avec les faits de l’entretien (salaire, contrat, visa…). Étape et champs remplis restent inchangés.",
+  "reviewAgainBusy": "{AI} analyse à nouveau cet entretien",
+  "reviewAgainStart": "{AI} analyse à nouveau l’entretien (environ une minute)…",
+  "reviewAgainFailed": "Nouvelle analyse échouée : {error}. L’offre n’a pas été modifiée.",
+  "noAnswer": "aucune réponse",
+  "reviewAgainCloud": "Nouvelle analyse sur GitHub : elle remplacera l’ancienne sur la page Notion dans quelques minutes.",
+  "reviewReplacedNotion": "L’analyse de la page Notion a été remplacée.",
+  "reviewReplaced": "L’analyse a été remplacée.",
   "interviewsCount": {
     "one": "{count} entretien",
     "other": "{count} entretiens"
@@ -250,5 +275,13 @@ export const messages = {
   "quoteCount": {
     "one": "{count} citation",
     "other": "{count} citations"
+  },
+  "jobsCount": {
+    "one": "{count} offre",
+    "other": "{count} offres"
+  },
+  "scoresOld": {
+    "one": "{jobs} a été évaluée avec les anciens paramètres de recherche.",
+    "other": "{jobs} ont été évaluées avec les anciens paramètres de recherche."
   }
 };

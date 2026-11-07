@@ -244,6 +244,31 @@ export const messages = {
   "minutesAgo": "{count} min ago",
   "hoursAgoSpaced": "{count} h ago",
   "daysAgoFull": "{count} days ago",
+  "rescoreMethod": "{jobs}: an older way of scoring",
+  "rescorePlaces": "{jobs}: other places than your current ones",
+  "rescoreChanged": "{jobs}: the posting or your Profile changed since the score",
+  "rescoreLead": "They are scored again with your current settings, with AI, once. A re-score starts now and scores up to 60 of them{rest}. Finding new jobs never re-scores them. Cost: not calculated. Your applications and their stages are not changed.",
+  "rescoreRest": "; press Re-score again for the rest",
+  "rescoreCallHint": "Your old scores stay on the list, marked, until each new one arrives.",
+  "rescore60": "Re-score 60 now",
+  "rescoreCount": "Re-score {count}",
+  "rescoring": "Re-scoring {jobs}",
+  "rescoringLead": "Up to 60 in this re-score; press Re-score again for the rest. Your old scores stay until each new one arrives. Follow it in Recent activity.",
+  "oldScore": "Old score",
+  "oldScoreTip": "Scored using previous search settings. Re-score to update it.",
+  "scoreFirst": "Score first",
+  "scoreFirstLead": "{notice} New jobs would be ranked against old scores. {lead}",
+  "findWithoutRescore": "Find jobs without re-scoring",
+  "reviewAgainLabel": "Review again · updates the job",
+  "reviewingAgain": "Reviewing again…",
+  "reviewAgainTip": "{AI} reviews the saved transcript again (one {AI:big} call): the review is replaced and the call's facts (salary, contract, visa…) fill the job's empty fields. Stage and filled fields are left as they are.",
+  "reviewAgainBusy": "{AI} is reviewing this interview again",
+  "reviewAgainStart": "{AI} is reviewing the interview again (about a minute)…",
+  "reviewAgainFailed": "Review again failed: {error}. The job was not changed.",
+  "noAnswer": "no answer",
+  "reviewAgainCloud": "Reviewing again on GitHub: the new review replaces the old one on the Notion page in a few minutes.",
+  "reviewReplacedNotion": "The review on the Notion page was replaced.",
+  "reviewReplaced": "The review was replaced.",
   "interviewsCount": {
     "one": "{count} interview",
     "other": "{count} interviews"
@@ -251,5 +276,13 @@ export const messages = {
   "quoteCount": {
     "one": "{count} quote",
     "other": "{count} quotes"
+  },
+  "jobsCount": {
+    "one": "{count} job",
+    "other": "{count} jobs"
+  },
+  "scoresOld": {
+    "one": "{jobs} was scored using previous search settings.",
+    "other": "{jobs} were scored using previous search settings."
   }
 };

@@ -244,6 +244,31 @@ export const messages = {
   "minutesAgo": "acum {count} min",
   "hoursAgoSpaced": "acum {count} h",
   "daysAgoFull": "acum {count} zile",
+  "rescoreMethod": "{jobs}: metodă veche de evaluare",
+  "rescorePlaces": "{jobs}: alte locuri decât cele actuale",
+  "rescoreChanged": "{jobs}: anunțul sau profilul s-a schimbat după evaluare",
+  "rescoreLead": "Sunt reevaluate o dată cu IA și setările actuale. Reevaluarea începe acum pentru cel mult 60 de oferte{rest}. Căutarea de oferte noi nu le reevaluează. Cost: necalculat. Candidaturile și etapele nu se schimbă.",
+  "rescoreRest": "; apasă din nou Reevaluează pentru restul",
+  "rescoreCallHint": "Scorurile vechi rămân marcate în listă până sosesc cele noi.",
+  "rescore60": "Reevaluează 60 acum",
+  "rescoreCount": "Reevaluează {count}",
+  "rescoring": "Reevaluare: {jobs}",
+  "rescoringLead": "Cel mult 60 per reevaluare; repetă pentru restul. Scorurile vechi rămân până la înlocuire. Urmărește în Activitate recentă.",
+  "oldScore": "Scor vechi",
+  "oldScoreTip": "Evaluată cu setările anterioare. Reevaluează pentru actualizare.",
+  "scoreFirst": "Evaluează întâi",
+  "scoreFirstLead": "{notice} Ofertele noi ar fi comparate cu scoruri vechi. {lead}",
+  "findWithoutRescore": "Caută fără reevaluare",
+  "reviewAgainLabel": "Evaluează din nou · actualizează oferta",
+  "reviewingAgain": "Se reevaluează…",
+  "reviewAgainTip": "{AI} reevaluează transcrierea (un apel {AI:big}): înlocuiește evaluarea și completează câmpurile goale cu date din discuție (salariu, contract, viză…). Etapa și câmpurile completate nu se schimbă.",
+  "reviewAgainBusy": "{AI} reevaluează acest interviu",
+  "reviewAgainStart": "{AI} reevaluează interviul (aproximativ un minut)…",
+  "reviewAgainFailed": "Reevaluarea a eșuat: {error}. Oferta nu s-a schimbat.",
+  "noAnswer": "fără răspuns",
+  "reviewAgainCloud": "Reevaluare pe GitHub: va înlocui evaluarea veche pe pagina Notion în câteva minute.",
+  "reviewReplacedNotion": "Evaluarea de pe pagina Notion a fost înlocuită.",
+  "reviewReplaced": "Evaluarea a fost înlocuită.",
   "interviewsCount": {
     "one": "{count} interviu",
     "few": "{count} interviuri",
@@ -253,5 +278,14 @@ export const messages = {
     "one": "{count} citat",
     "few": "{count} citate",
     "other": "{count} de citate"
+  },
+  "jobsCount": {
+    "one": "{count} ofertă",
+    "few": "{count} oferte",
+    "other": "{count} de oferte"
+  },
+  "scoresOld": {
+    "one": "{jobs} a fost evaluată cu setările de căutare anterioare.",
+    "other": "{jobs} au fost evaluate cu setările de căutare anterioare."
   }
 };

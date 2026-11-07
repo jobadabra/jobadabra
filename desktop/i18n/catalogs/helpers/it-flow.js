@@ -243,6 +243,31 @@ export const messages = {
   "minutesAgo": "{count} min fa",
   "hoursAgoSpaced": "{count} h fa",
   "daysAgoFull": "{count} giorni fa",
+  "rescoreMethod": "{jobs}: metodo di valutazione precedente",
+  "rescorePlaces": "{jobs}: luoghi diversi da quelli attuali",
+  "rescoreChanged": "{jobs}: annuncio o profilo cambiato dopo la valutazione",
+  "rescoreLead": "Sono rivalutate una volta con l’IA e le impostazioni attuali. La rivalutazione parte ora per un massimo di 60 offerte{rest}. La ricerca di nuove offerte non le rivaluta mai. Costo: non calcolato. Candidature e fasi restano invariate.",
+  "rescoreRest": "; premi di nuovo Rivaluta per le altre",
+  "rescoreCallHint": "Le vecchie valutazioni restano segnate nell’elenco finché arrivano le nuove.",
+  "rescore60": "Rivaluta 60 ora",
+  "rescoreCount": "Rivaluta {count}",
+  "rescoring": "Rivalutazione: {jobs}",
+  "rescoringLead": "Fino a 60 per rivalutazione; ripeti per le altre. Le vecchie valutazioni restano fino alla sostituzione. Segui in Attività recente.",
+  "oldScore": "Vecchia valutazione",
+  "oldScoreTip": "Valutata con le impostazioni precedenti. Rivaluta per aggiornare.",
+  "scoreFirst": "Valuta prima",
+  "scoreFirstLead": "{notice} Le nuove offerte verrebbero confrontate con vecchie valutazioni. {lead}",
+  "findWithoutRescore": "Cerca senza rivalutare",
+  "reviewAgainLabel": "Valuta di nuovo · aggiorna l’offerta",
+  "reviewingAgain": "Nuova valutazione…",
+  "reviewAgainTip": "{AI} rivaluta la trascrizione (una chiamata a {AI:big}): sostituisce la valutazione e compila i campi vuoti con i fatti del colloquio (stipendio, contratto, visto…). Fase e campi compilati restano invariati.",
+  "reviewAgainBusy": "{AI} sta rivalutando questo colloquio",
+  "reviewAgainStart": "{AI} rivaluta il colloquio (circa un minuto)…",
+  "reviewAgainFailed": "Nuova valutazione non riuscita: {error}. L’offerta non è cambiata.",
+  "noAnswer": "nessuna risposta",
+  "reviewAgainCloud": "Nuova valutazione su GitHub: sostituirà la precedente nella pagina Notion tra pochi minuti.",
+  "reviewReplacedNotion": "La valutazione sulla pagina Notion è stata sostituita.",
+  "reviewReplaced": "La valutazione è stata sostituita.",
   "interviewsCount": {
     "one": "{count} colloquio",
     "other": "{count} colloqui"
@@ -250,5 +275,13 @@ export const messages = {
   "quoteCount": {
     "one": "{count} citazione",
     "other": "{count} citazioni"
+  },
+  "jobsCount": {
+    "one": "{count} offerta",
+    "other": "{count} offerte"
+  },
+  "scoresOld": {
+    "one": "{jobs} è stata valutata con le impostazioni di ricerca precedenti.",
+    "other": "{jobs} sono state valutate con le impostazioni di ricerca precedenti."
   }
 };

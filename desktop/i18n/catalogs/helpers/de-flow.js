@@ -243,6 +243,31 @@ export const messages = {
   "minutesAgo": "vor {count} Min.",
   "hoursAgoSpaced": "vor {count} Std.",
   "daysAgoFull": "vor {count} Tagen",
+  "rescoreMethod": "{jobs}: ältere Bewertungsmethode",
+  "rescorePlaces": "{jobs}: andere Orte als Ihre aktuellen",
+  "rescoreChanged": "{jobs}: Ausschreibung oder Profil seit der Bewertung geändert",
+  "rescoreLead": "Sie werden einmalig mit KI und Ihren aktuellen Einstellungen neu bewertet. Die Neubewertung startet jetzt für bis zu 60 Stellen{rest}. Die Stellensuche bewertet sie nie neu. Kosten: nicht berechnet. Bewerbungen und Phasen bleiben unverändert.",
+  "rescoreRest": "; für den Rest erneut Neu bewerten drücken",
+  "rescoreCallHint": "Alte Bewertungen bleiben markiert in der Liste, bis die neuen eintreffen.",
+  "rescore60": "Jetzt 60 neu bewerten",
+  "rescoreCount": "{count} neu bewerten",
+  "rescoring": "Neubewertung: {jobs}",
+  "rescoringLead": "Bis zu 60 pro Neubewertung; für den Rest erneut Neu bewerten drücken. Alte Bewertungen bleiben bis zur Ersetzung. Unter Letzte Aktivitäten verfolgen.",
+  "oldScore": "Alte Bewertung",
+  "oldScoreTip": "Mit früheren Sucheinstellungen bewertet. Zum Aktualisieren neu bewerten.",
+  "scoreFirst": "Zuerst bewerten",
+  "scoreFirstLead": "{notice} Neue Stellen würden mit alten Bewertungen verglichen. {lead}",
+  "findWithoutRescore": "Stellen ohne Neubewertung suchen",
+  "reviewAgainLabel": "Erneut auswerten · aktualisiert die Stelle",
+  "reviewingAgain": "Wird erneut ausgewertet…",
+  "reviewAgainTip": "{AI} wertet das Transkript erneut aus (ein Aufruf von {AI:big}): ersetzt die Auswertung und füllt leere Stellenfelder mit Gesprächsfakten (Gehalt, Vertrag, Visum…). Phase und ausgefüllte Felder bleiben erhalten.",
+  "reviewAgainBusy": "{AI} wertet dieses Gespräch erneut aus",
+  "reviewAgainStart": "{AI} wertet das Gespräch erneut aus (etwa eine Minute)…",
+  "reviewAgainFailed": "Erneute Auswertung fehlgeschlagen: {error}. Die Stelle wurde nicht geändert.",
+  "noAnswer": "keine Antwort",
+  "reviewAgainCloud": "Erneute Auswertung auf GitHub: Die neue ersetzt in wenigen Minuten die alte auf der Notion-Seite.",
+  "reviewReplacedNotion": "Die Auswertung auf der Notion-Seite wurde ersetzt.",
+  "reviewReplaced": "Die Auswertung wurde ersetzt.",
   "interviewsCount": {
     "one": "{count} Vorstellungsgespräch",
     "other": "{count} Vorstellungsgespräche"
@@ -250,5 +275,13 @@ export const messages = {
   "quoteCount": {
     "one": "{count} Zitat",
     "other": "{count} Zitate"
+  },
+  "jobsCount": {
+    "one": "{count} Stelle",
+    "other": "{count} Stellen"
+  },
+  "scoresOld": {
+    "one": "{jobs} wurde mit früheren Sucheinstellungen bewertet.",
+    "other": "{jobs} wurden mit früheren Sucheinstellungen bewertet."
   }
 };

@@ -243,6 +243,31 @@ export const messages = {
   "minutesAgo": "hace {count} min",
   "hoursAgoSpaced": "hace {count} h",
   "daysAgoFull": "hace {count} días",
+  "rescoreMethod": "{jobs}: método de evaluación anterior",
+  "rescorePlaces": "{jobs}: lugares distintos de los actuales",
+  "rescoreChanged": "{jobs}: oferta o perfil cambiado desde la evaluación",
+  "rescoreLead": "Se evalúan de nuevo una vez con IA y tus ajustes actuales. Empieza ahora para un máximo de 60 ofertas{rest}. Buscar ofertas nuevas nunca las reevalúa. Coste: no calculado. Tus candidaturas y etapas no cambian.",
+  "rescoreRest": "; pulsa Reevaluar otra vez para las demás",
+  "rescoreCallHint": "Las evaluaciones antiguas siguen marcadas en la lista hasta que llegan las nuevas.",
+  "rescore60": "Reevaluar 60 ahora",
+  "rescoreCount": "Reevaluar {count}",
+  "rescoring": "Reevaluando: {jobs}",
+  "rescoringLead": "Hasta 60 por reevaluación; repite para las demás. Las antiguas quedan hasta ser sustituidas. Sigue en Actividad reciente.",
+  "oldScore": "Evaluación antigua",
+  "oldScoreTip": "Evaluada con ajustes anteriores. Reevalúa para actualizar.",
+  "scoreFirst": "Evaluar primero",
+  "scoreFirstLead": "{notice} Las ofertas nuevas se compararían con evaluaciones antiguas. {lead}",
+  "findWithoutRescore": "Buscar sin reevaluar",
+  "reviewAgainLabel": "Evaluar de nuevo · actualiza la oferta",
+  "reviewingAgain": "Evaluando de nuevo…",
+  "reviewAgainTip": "{AI} reevalúa la transcripción (una llamada a {AI:big}): sustituye la evaluación y rellena campos vacíos con datos de la llamada (salario, contrato, visado…). La etapa y los campos completados no cambian.",
+  "reviewAgainBusy": "{AI} está evaluando de nuevo esta entrevista",
+  "reviewAgainStart": "{AI} evalúa de nuevo la entrevista (aproximadamente un minuto)…",
+  "reviewAgainFailed": "Falló la nueva evaluación: {error}. La oferta no cambió.",
+  "noAnswer": "sin respuesta",
+  "reviewAgainCloud": "Nueva evaluación en GitHub: sustituirá la anterior en la página Notion en unos minutos.",
+  "reviewReplacedNotion": "Se sustituyó la evaluación de la página Notion.",
+  "reviewReplaced": "La evaluación fue sustituida.",
   "interviewsCount": {
     "one": "{count} entrevista",
     "other": "{count} entrevistas"
@@ -250,5 +275,13 @@ export const messages = {
   "quoteCount": {
     "one": "{count} cita",
     "other": "{count} citas"
+  },
+  "jobsCount": {
+    "one": "{count} oferta",
+    "other": "{count} ofertas"
+  },
+  "scoresOld": {
+    "one": "{jobs} se evaluó con los ajustes de búsqueda anteriores.",
+    "other": "{jobs} se evaluaron con los ajustes de búsqueda anteriores."
   }
 };
