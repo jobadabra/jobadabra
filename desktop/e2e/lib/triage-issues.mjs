@@ -81,7 +81,7 @@ export function issueBody(finding, runUrl, evidence = {}) {
 export const labelsFor = (finding, suite = '') => [`severity:${finding.severity}`, `kind:${finding.kind}`, `view:${finding.view}`.slice(0, 50), ...(suite ? [`suite:${suite}`.slice(0, 50)] : []),
   `source:${finding.source}`, ...(finding.agent ? agentLabels(finding.agent) : [])];
 
-/** The sections only an AI user agent's issue has: what it expected (the knowledge entry or UX principle its argument rests on, lib/agent-notes.mjs) and who found it. Empty for every other detector. */
+/** The argued-finding sections: what it expected (the knowledge entry or UX principle the argument rests on, lib/agent-notes.mjs), who found it (an AI user agent only) and the private evidence bundle (the AI persona's notes and the twin's tester bugs, evidenceBundle). Empty for every other detector. */
 export const agentSections = finding => [...(finding.expected ? ['', '### What it expected', finding.expected] : []), ...(finding.agent ? ['', '### Who found it', agentBlock(finding.agent)] : []), ...(finding.evidence ? ['', evidenceBundle(finding.evidence)] : [])];
 
 /**
