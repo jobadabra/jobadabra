@@ -2,7 +2,7 @@
 // Owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram", (5 Nov 2026). Since 7 Nov 2026 (owner: "Weekly, a fixed day") the watcher only reports; the weekly run submits. GitHub tags, msstore's text and Telegram are fakes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {broken, compareVersions, decide, github, recovered, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
+import {broken, decide, github, recovered, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
 
 // What `msstore submission status` printed in runs 41463009597 (Pending) and 41642087630 (Last Published), ANSI colours kept.
 const PENDING = 'Retrieving submission status\nFound \x1b[38;5;2mPending Submission\x1b[0m.\nSubmission Status = \x1b[38;5;2mCertification\x1b[0m\n';
