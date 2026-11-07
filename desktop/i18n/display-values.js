@@ -10,6 +10,13 @@ export function withDisplay(value, key, variables = {}) {
   return value;
 }
 
+/** Carry known private metadata to an intentional result wrapper; keep both wire objects unchanged and return the same target. */
+export function transferDisplay(source, target) {
+  const presentation = presentations.get(source);
+  if (presentation) presentations.set(target, presentation);
+  return target;
+}
+
 /** Resolve attached UI copy at invocation time; untagged objects or missing bundled keys keep the exact caller-supplied fallback. */
 export function displayText(value, fallback) {
   const presentation = presentations.get(value);
