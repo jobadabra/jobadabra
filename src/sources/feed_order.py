@@ -2,20 +2,35 @@
 a landed batch go (scoring, as the batch lands). Moved out of feeds.py for the 500-line rule; both take what they need from it, so this file imports nothing of it."""
 
 
-def nearness(asked, search, in_my_place):
-    """title -> (0 in your places else 1, km from the job's place to your nearest best place): the key the one title queue orders batches by; a title several jobs
-    share takes its nearest job's. Geo's kept answers only, no call; a place never placed is last (time_budget.near_best)."""
-    from ..time_budget import near_best
-    from ..ai.title_triage import _norm
-    near = near_best((search.get('locations') or {}).get('top_tier') or [])
-    by_title = {}
-    for job in asked:
-        by_title.setdefault(_norm(job['title']), []).append(job)
+class _Nearness:
+    """One reader's title jobs; initial sorting uses one map snapshot, waiting batch ranks take a fresh snapshot."""
 
-    def key(title):
-        # Why (7 Nov 2026, #2920): the map may learn a reader's locations after its jobs reach sorting; the reader's shared map view updates in place, so recompute distance without rereading the map per title.
-        return min(((0 if in_my_place(job) else 1, near(job.get('location'))) for job in by_title.get(title, ())), default=(1, float('inf')))
-    return key
+    def __init__(self, asked, search, in_my_place):
+        from ..time_budget import near_best
+        from ..ai.title_triage import _norm
+        self.tops = (search.get('locations') or {}).get('top_tier') or []
+        self.in_my_place, self.by_title = in_my_place, {}
+        self.initial = near_best(self.tops)
+        for job in asked:
+            self.by_title.setdefault(_norm(job['title']), []).append(job)
+
+    def _key(self, title, near):
+        return min(((0 if self.in_my_place(job) else 1, near(job.get('location'))) for job in self.by_title.get(title, ())), default=(1, float('inf')))
+
+    def __call__(self, title):
+        return self._key(title, self.initial)
+
+    def rank(self, titles):
+        """The nearest title of a waiting batch from one fresh reader-owned map snapshot; no model call."""
+        from ..time_budget import near_best
+        # Why (7 Nov 2026, #2920): outside reader scopes geo.load returns a fresh dict; reread once per batch, never once per title.
+        near = near_best(self.tops)
+        return min(self._key(title, near) for title in titles)
+
+
+def nearness(asked, search, in_my_place):
+    """Callable title priority for initial sorting, with rank(titles) for refreshing waiting batches from current geographic facts."""
+    return _Nearness(asked, search, in_my_place)
 
 
 def handing(asked, wanted_location):

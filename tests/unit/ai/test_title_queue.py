@@ -252,9 +252,10 @@ class DelayedMapOrdering(unittest.TestCase):
                                    usage=SimpleNamespace(input_tokens=1, output_tokens=1))
 
         model = SimpleNamespace(messages=SimpleNamespace(create=create))
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(geo, 'load', return_value=data), \
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(geo, 'STORE', pathlib.Path(tmp) / 'geo.json'), \
                 mock.patch.object(title_triage, 'STORE', pathlib.Path(tmp) / 'titles.json'), mock.patch.object(engine, 'PARALLEL', 1), \
                 mock.patch.object(time_budget, 'DEADLINE', None), mock.patch.object(title_queue.heapq, 'heappush', side_effect=push):
+            geo.STORE.write_text(json.dumps(data))
             key = feed_order.nearness(jobs, search, lambda job: True)
             try:
                 busy = threading.Thread(target=run, args=(['busy'],))
@@ -267,6 +268,7 @@ class DelayedMapOrdering(unittest.TestCase):
                     waiting.start()
                     self.assertTrue(queued.wait(10), 'positive control: both reader batches are queued')
                     data['near region'] = point(45.76, 4.84)
+                    geo.STORE.write_text(json.dumps(data))
                     release.set()
                     for thread in threads:
                         thread.join(10)
