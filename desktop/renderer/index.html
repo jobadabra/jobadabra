@@ -2328,11 +2328,11 @@
     <label class="triage-n inline-label"><span data-i18n="screenStaticDialogsTwo.text796" data-i18n-slot>First</span> <input id="triage-n" type="number" min="1" max="50" step="1" value="10"> <span data-i18n="screenStaticDialogsTwo.text797" data-i18n-slot>best matching jobs</span></label>
     <p class="muted small" id="triage-count"></p>
     <div id="triage-progress" class="triage-progress" hidden>
-      <div class="triage-bar"><i id="triage-bar"></i></div>
-      <span class="muted small" id="triage-progress-text"></span>
-      <button type="button" class="secondary" id="triage-cancel" data-i18n="screenCommon.cancel">Cancel</button>
+      <div class="bar is-sliding" id="triage-track"><span id="triage-bar"></span></div>
+      <p class="triage-now"><span id="triage-progress-text"></span> <span class="muted" id="triage-elapsed"></span></p>
+      <ul class="triage-results" id="triage-results"></ul>
     </div>
-    <div class="dialog-foot triage-foot"><button type="button" class="secondary" id="triage-close" data-i18n="screenCommon.close">Close</button><button type="button" class="primary" id="triage-start" data-i18n="screenStaticDialogsTwo.text798">Check jobs</button></div>
+    <div class="dialog-foot triage-foot"><button type="button" class="secondary" id="triage-close" data-i18n="screenCommon.close">Close</button><button type="button" class="secondary" id="triage-cancel" data-i18n="screenCommon.stop" hidden>Stop</button><button type="button" class="primary" id="triage-start" data-i18n="screenStaticDialogsTwo.text798">Check jobs</button></div>
   </form>
 </dialog>
 <dialog id="busy-dialog" class="panel-dialog busy-dialog" aria-live="polite">

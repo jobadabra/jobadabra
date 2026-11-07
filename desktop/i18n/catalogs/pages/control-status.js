@@ -75,6 +75,7 @@ const rows = {
   inbound: ["Inbound","Eingehend","Entrant","In entrata","Entrante","Primit","Входящие"],
   outbound: ["Outbound","Ausgehend","Sortant","In uscita","Saliente","Trimis","Исходящие"],
   checkedJobs: ["Checked your jobs","Deine Stellen geprüft","Vos offres vérifiées","Offerte verificate","Empleos comprobados","Joburile verificate","Вакансии проверены"],
+  stoppingDots: ["Stopping…","Wird gestoppt…","Arrêt…","Interruzione…","Deteniendo…","Se oprește…","Останавливаю…"],
   nothingChecked: ["Nothing was checked","Nichts geprüft","Rien n’a été vérifié","Nulla verificato","No se comprobó nada","Nu s-a verificat nimic","Ничего не проверено"],
 };
 

@@ -77,14 +77,14 @@ Shorten your own unpushed commits: git commit --amend (last one). If the amend i
 esac
 
 # Every fix leaves a permanent check (3 Oct 2026: the method with the best record is the scripted check, and a bug fixed without one can come back
-# unnoticed). A commit whose message says "Fixes #N" (or Closes/Resolves) must also change a test: tests/, desktop/test/, desktop/e2e/test/ or an e2e
+# unnoticed). A commit whose message says "Fixes #N" (or Closes/Resolves) must also change a test: tests/, desktop/test/, desktop/integration/, desktop/e2e/test/ or an e2e
 # suite step. A fix that truly cannot have one says why in a "No-test: <reason>" line of its message.
 untested=""
 for sha in $(git -C "$repo" log origin/main..HEAD --no-merges --format='%H' 2>/dev/null); do
   message="$(git -C "$repo" log -1 --format='%B' "$sha")"
   echo "$message" | grep -qiE '\b(fix(es|ed)?|close[sd]?|resolve[sd]?)\b:?[[:space:]]+#[0-9]+' || continue
   echo "$message" | grep -qiE '^No-test:[[:space:]]*[^[:space:]]' && continue
-  git -C "$repo" show --name-only --format='' "$sha" | grep -qE '^(tests/|desktop/test/|desktop/e2e/test/|desktop/e2e/suites/)' && continue
+  git -C "$repo" show --name-only --format='' "$sha" | grep -qE '^(tests/|desktop/test/|desktop/integration/|desktop/e2e/test/|desktop/e2e/suites/)' && continue
   untested="$untested$(git -C "$repo" log -1 --format='%h %s' "$sha")"$'\n'
 done
 if [ -n "$untested" ]; then

@@ -2645,9 +2645,13 @@ details.qa-section { margin-top: var(--sp-3); }
 .triage-dialog .triage-n { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
 .triage-dialog .triage-n input { box-sizing: border-box; width: 64px; min-width: 0; font-variant-numeric: tabular-nums; }
 .triage-dialog .triage-foot { flex-wrap: wrap; }
-.triage-progress { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.triage-bar { flex: 1 1 200px; height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
-.triage-bar i { display: block; height: 100%; width: 0; background: var(--amber); }
+.triage-progress { display: grid; gap: var(--sp-2); }
+.triage-now { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.triage-results { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); max-height: 9.5rem; overflow-y: auto; font-size: var(--fs-sm); }
+.triage-results:empty { display: none; }
+.triage-results li { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.triage-results li > .chip-tag { flex: none; }
+.triage-results .triage-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Why (2026-10-30, owner: Export's icon sat high): every toolbar button is a flex row, so its icon, label and Pro pill share one centre line (an inline icon sat 1 px low next to the label, and `vertical-align: middle` put it lower still beside the taller pill); one rule for the class, not one per button id. */
 .toolbar > button.secondary { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .toolbar > button.secondary .icon { flex: none; }
