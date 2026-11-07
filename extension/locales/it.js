@@ -93,6 +93,7 @@ export default {
   "panel.working": "in corso",
   "panel.aiWaiting": "L’IA ti aspetta in Jobadabra.",
   "panel.aiDone": "L’IA ha compilato il modulo. Controllalo e invialo personalmente.",
+  "panel.syntheticCaptcha": "Conferma di non essere un robot",
   "panel.requiredField": "Un campo obbligatorio",
   "panel.outlineComplete": "Schema: da completare",
   "panel.drafted": "Bozza per te: da controllare",

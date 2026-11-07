@@ -95,6 +95,7 @@ export default {
   "panel.working": "în lucru",
   "panel.aiWaiting": "AI te așteaptă în Jobadabra.",
   "panel.aiDone": "AI a completat formularul. Verifică-l, apoi trimite-l tu.",
+  "panel.syntheticCaptcha": "Confirmă că nu ești un robot",
   "panel.requiredField": "Un câmp obligatoriu",
   "panel.outlineComplete": "Schiță: completeaz-o",
   "panel.drafted": "Ciornă pentru tine: verific-o",

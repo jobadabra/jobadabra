@@ -93,6 +93,7 @@ export default {
   "panel.working": "working",
   "panel.aiWaiting": "AI is waiting for you in Jobadabra.",
   "panel.aiDone": "AI filled this form. Review it, then submit it yourself.",
+  "panel.syntheticCaptcha": "Confirm you are not a robot",
   "panel.requiredField": "A required field",
   "panel.outlineComplete": "Outline: complete it",
   "panel.drafted": "Drafted for you: review",
