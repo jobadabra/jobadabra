@@ -73,12 +73,16 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const readBack = `(() => { const before = JSON.parse(sessionStorage.getItem('__probeBefore')); if (before?.__error) throw new Error(before.__error); return before; })()`;
     const code = after ? `(() => { const before = JSON.parse(sessionStorage.getItem('__probeBefore')); if (before?.__error) throw new Error(before.__error); return (${after.toString()})(${helpers}, before); })()` : keep ? readBack : `(${script.toString()})(${helpers})`;
     const first = after || keep ? park : '';
-    // Why (2 Nov 2026, flaky on the clock): the Focus seed counts days in Zurich time (e2e/lib/focus-data.mjs) and the app in the computer's zone; the e2e launcher pinned TZ (e2e/lib/app.mjs zoneOf), the move to integration dropped it, so a UTC runner failed Focus's 14-day count from 23:00 to 24:00 UTC. A test that needs another zone passes TZ in `env`, which comes last.
-    const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: {
+    // Why (7 Nov 2026, preserving the 2 Nov timezone fix): pin the Focus seed to Zurich, with caller overrides last; retain the exact child environment privately so failed-launch diagnostics expose presence flags only.
+    const launchEnv = {
       ...process.env, TZ: ZONE, JOBADABRA_DEMO: '1', JOBADABRA_DEMO_DIR: folder, JOBADABRA_USER_DATA: folder, JOBADABRA_SMOKE: out, ...(keep ? {} : {JOBADABRA_SMOKE_NO_PICTURE: '1'}), JOBADABRA_E2E_OPEN_DIR: folder,
-      JOBADABRA_SMOKE_EVAL: code, ...(after ? {JOBADABRA_SMOKE_JS: first, JOBADABRA_SMOKE_RELOAD_JS: '0'} : keep ? {JOBADABRA_SMOKE_JS: first} : {}), JOBADABRA_E2E_RUNNER_PID: String(process.pid), ...env}});
+      JOBADABRA_SMOKE_EVAL: code, ...(after ? {JOBADABRA_SMOKE_JS: first, JOBADABRA_SMOKE_RELOAD_JS: '0'} : keep ? {JOBADABRA_SMOKE_JS: first} : {}), JOBADABRA_E2E_RUNNER_PID: String(process.pid), ...env};
+    const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: launchEnv});
     const answer = `${out}.json`;
-    if (!fs.existsSync(answer)) throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}): ${(run.stderr || run.stdout || '').slice(-600)}`);
+    if (!fs.existsSync(answer)) {
+      const authorityPresent = Boolean(launchEnv.XAUTHORITY && fs.existsSync(launchEnv.XAUTHORITY));
+      throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}): ${run.stderr || (run.stdout || '').slice(-600)}`);
+    }
     const value = JSON.parse(fs.readFileSync(answer, 'utf8'));
     if (value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.error === 'string') throw new Error(value.error);
     if (keep) keepPicture(out, process.env.E2E_SHOTS_DIR, picture);

@@ -1,6 +1,7 @@
 // Settings → Profile → Your details' fact sections over IPC (lib/profile-sections.js): read them (the facts move in on the first open and again
 // when new fact answers wait: lib/profile-move.js moveDue, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
 // lib/contact-handlers.js. Guarded by test/unit/main/details-facts.test.js and test/guards/rules/ipc.test.js.
+import {displayText} from '../i18n/display-values.js';
 import * as sections from './profile-sections.js';
 import {move, moveDue, openConflicts, resolve} from './profile-move.js';
 import {judgeNew} from './details-review.js';
@@ -47,7 +48,7 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       try {
         const {moved, conflicts} = await move(storage, {ai: ai(), ...(copy ? {copy} : {})});   // Why (B2c): a test's copy reaches the move too, never the real backup folder
         log('profile', 'facts moved into Your details', {moved, conflicts: conflicts.length});   // counts, never a value
-      } catch (failed) { error = failed.message; log('profile', 'the facts move stopped', {error: failed.message}); }
+      } catch (failed) { error = displayText(failed, failed.message); log('profile', 'the facts move stopped', {error: failed.message}); }
     }
     try {
       const tidy = await kinds.tidy(storage, {ai: ai(), ...(copy ? {copy} : {})}).catch(failed => { error = error || failed.message; log('profile', 'the kinds tidy stopped', {error: failed.message}); return {changed: 0}; });

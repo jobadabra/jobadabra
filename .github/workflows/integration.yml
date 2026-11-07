@@ -153,12 +153,14 @@ jobs:
           # One command string, not an exported shell function: `export -f` does not reach the shell xvfb-run starts (exit 127 "run: command not found" on the first run).
           TESTS: node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' bash -c "$TESTS"; else bash -c "$TESTS"; fi
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --error-file "$RUNNER_TEMP/xvfb-app.log" --server-args='-screen 0 1440x900x24' bash -c "$TESTS"; else bash -c "$TESTS"; fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: integration-results-app-${{ matrix.os }}
-          path: ${{ runner.temp }}/integration-results.json
+          path: |
+            ${{ runner.temp }}/integration-results.json
+            ${{ runner.temp }}/xvfb-app.log
           retention-days: 35
 
   store:
