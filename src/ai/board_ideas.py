@@ -6,7 +6,6 @@ address on the board's own host, the {role} placeholder, not a portal the visit 
 levels.fyi) and not one of the boards with their own reader (jobs.ch, SwissDevJobs, TechTree). Tests: tests/unit/ai/test_board_ideas.py."""
 import hashlib
 import json
-import os
 import re
 import threading
 import urllib.parse
@@ -93,12 +92,11 @@ def load():
 
 
 def save(data):
+    from ..paths import write_whole
     file = _store()
     file.parent.mkdir(parents=True, exist_ok=True)
     # Why (#2920): written whole or not at all: a reader that met a half-written file read {} and saved it back over the boards' history.
-    temp = file.with_name(f'{file.name}.{os.getpid()}.{threading.get_ident()}.tmp')
-    temp.write_text(json.dumps(data, ensure_ascii=False, indent=1))
-    os.replace(temp, file)
+    write_whole(file, json.dumps(data, ensure_ascii=False, indent=1))
 
 
 SLICE = 5   # countries per proposal call; a region's countries are split into equal slices, each asked (26 Oct 2026: Europe = its first 5 only)
