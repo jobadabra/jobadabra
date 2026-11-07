@@ -164,7 +164,7 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertFalse(self.check.pick_gap('desktop', 'all', glob), 'main runs everything by glob: no pick, no gap')
 
     def test_the_windows_plan_counts_what_a_change_reaches(self):
-        # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file with nothing to compare is all (a real scripts-only edit is not: the tests below).
+        # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a lock file is all (a package.json is all only when its dependencies changed: the tests below).
         import contextlib, io, os
         def plan(changed):
             out = io.StringIO()
@@ -173,7 +173,7 @@ class PrDesktopPicks(unittest.TestCase):
             return out.getvalue().strip()
         self.assertEqual(plan('docs/rules/change-loop.md'), '0')
         self.assertGreater(int(plan('tools/fixer/loop.mjs')), 0)   # not 0: the fixer's tests reach it (it was "over 100" only while every guard ran for every change; 34 on 7 Nov 2026)
-        self.assertEqual(plan('desktop/package.json'), 'all')
+        self.assertEqual(plan('desktop/package-lock.json'), 'all')   # the lock file: 'all' whatever this checkout holds (a package.json's verdict reads git; its tests are below; Gitar on ts 4/5)
 
     def test_a_package_json_runs_everything_only_when_more_than_its_scripts_changed(self):
         # 7 Nov 2026, owner: "windows tests still takes a lot of time" (ts 4/4): #3475 added one script line to desktop/package.json and ran all 1068 desktop tests for 4m29s.
