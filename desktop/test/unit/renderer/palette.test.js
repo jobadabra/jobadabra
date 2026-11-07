@@ -87,3 +87,9 @@ test('a card\'s own words count as its name; a card named whole folds every part
   assert.deepEqual(shown(list, 'notion'), ['Settings → Connections → Notion']);
   assert.deepEqual(shown(list, 'notion job matches'), ['Notion: Job matches']);
 });
+
+test('localized commands keep Cyrillic letters when matching labels', () => {
+  const commands = [{label: 'Найти вакансии'}, {label: 'Настройки'}, {label: 'Проверить почту'}];
+  assert.deepEqual(rank(commands, 'вакан'), [commands[0]]);
+  assert.deepEqual(rank(commands, 'почту'), [commands[2]]);
+});

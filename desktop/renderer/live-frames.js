@@ -7,6 +7,8 @@
  * Hypothesis, not yet measured on the owner's Mac: a busy window falls behind setting each one. A stale picture is worth nothing, so only the newest is painted; createLagMeter's log line confirms or refutes this.
  * Invariants: at most one paint is scheduled at a time; a paint always shows the last picture pushed before it; no picture, no paint.
  */
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export function createFramePacer(paint, schedule = requestAnimationFrame) {
   let newest = null, scheduled = false;
   const run = () => {
@@ -48,7 +50,7 @@ export function createLagMeter(now = Date.now) {
 }
 
 /**
- * What the live stage shows for the view's state (renderer/live-view-state.js). {kind: picture|off|closed|waiting, title, text, action: 'Watch live'|''}.
+ * What the live stage shows for the view's state (renderer/live-view-state.js). {kind: picture|off|closed|waiting, title, text, action: t('helperFlow.watchLive')|''}.
  * `kind`: hidden|opening|showing|closed; `note`: why the last ask failed or why the page is closed; `input`: the card takes clicks and keys.
  * Why (2026-10-28, owner screenshot: a broken image icon with its alt text where the live page should be): the image exists before any picture does, so the stage decides what to draw.
  * Why (5 Nov 2026, owner: the preview "should not show by default, only on request", and "Try again" for ever; spec 2026-11-05-applying-redesign, decision 4): nothing streams until
@@ -56,8 +58,8 @@ export function createLagMeter(now = Date.now) {
  */
 export function stageState({kind = 'hidden', note = '', input = false} = {}) {
   if (kind === 'showing') return {kind: 'picture'};
-  if (kind === 'closed') return {kind: 'closed', title: 'The page is closed', text: note, action: ''};
-  if (kind === 'opening') return {kind: 'waiting', title: 'Opening the page…', text: 'The picture appears as soon as the page answers.', action: ''};
-  const lead = input ? 'It is open in Jobadabra\'s browser: show it to review it, click and type in it.' : 'The form fills in Jobadabra\'s hidden browser.';
-  return {kind: 'off', title: 'The page is hidden', text: note || `${lead} The picture shows only when you ask, so your Mac stays fast.`, action: 'Watch live'};
+  if (kind === 'closed') return {kind: 'closed', title: t('helperFlow.liveClosed'), text: note, action: ''};
+  if (kind === 'opening') return {kind: 'waiting', title: t('helperFlow.liveOpening'), text: t('helperFlow.livePictureSoon'), action: ''};
+  const lead = input ? t('helperFlow.liveOpenLead') : t('helperFlow.liveHiddenLead');
+  return {kind: 'off', title: t('helperFlow.liveHidden'), text: note || t('helperFlow.livePictureOnRequest', {lead}), action: t('helperFlow.watchLive')};
 }
