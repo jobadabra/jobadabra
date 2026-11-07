@@ -23,14 +23,48 @@ function sections(markdown, skipFormOnly = false) {
   }
   return found;
 }
+const SECTION_NAMES = new Map([
+  ["Summary", ["fieldSummary", ""]],
+  ["Availability", ["fieldAvailability", ""]],
+  ["Targets", ["fieldTargets", ""]],
+  ["Strengths", ["fieldStrengths", ""]],
+  ["Education", ["fieldEducation", ""]],
+  ["Experience", ["fieldExperience", ""]],
+  ["Deal-breakers", ["fieldDealBreakers", ""]],
+  ["Hard constraints", ["fieldHardConstraints", ""]],
+  ["Compensation", ["fieldCompensation", ""]],
+  ["Preferences (soft, used for ranking)", ["fieldPreferences", ""]],
+  ["Core skills", ["fieldCoreSkills", ""]],
+  ["Work eligibility", ["fieldWorkEligibility", ""]],
+  ["Availability & compensation", ["fieldAvailabilityCompensation", ""]],
+  ["Languages", ["fieldLanguages", ""]],
+  ["Common questions", ["fieldCommonQuestions", ""]],
+  ["Cover letter style", ["fieldCoverLetterStyle", ""]],
+  ["Availability and pay", ["fieldAvailabilityPay", ""]],
+  ["Eligibility", ["fieldEligibility", ""]],
+  ["Form-filling time", ["fieldFormTime", ""]],
+  ["Possible CV gaps", ["fieldCvGaps", ""]],
+  ["Summary (from CV)", ["fieldCvSummary", ""]],
+  ["Standard answers", ["fieldStandardAnswers", ""]],
+  ["🛂 Work eligibility", ["fieldWorkEligibility", "🛂 "]],
+  ["💶 Availability & compensation", ["fieldAvailabilityCompensation", "💶 "]],
+  ["🗣️ Languages", ["fieldLanguages", "🗣️ "]],
+  ["❓ Possible CV gaps", ["fieldCvGaps", "❓ "]],
+]);
+// Why (7 Nov 2026, owner): known template field names translate only in rebuild display; canonical Markdown and unrecognized headings stay raw.
+function sectionName(name) {
+  if (!name) return words('sectionIntro');
+  const known = SECTION_NAMES.get(name);
+  return known ? known[1] + words(known[0]) : name;
+}
 function sectionChanges(before, after, skipFormOnly) {
   const old = sections(before, skipFormOnly), next = sections(after, skipFormOnly);
   const changes = [];
   for (const [name, lines] of next) {
-    if (!old.has(name)) displayNote(changes, `+ ${name || 'Intro'} (new section)`, () => words('sectionNew', {name: name || words('sectionIntro')}));
-    else if (old.get(name).join('\n') !== lines.join('\n')) displayNote(changes, `~ ${name || 'Intro'}`, () => words('sectionChanged', {name: name || words('sectionIntro')}));
+    if (!old.has(name)) displayNote(changes, `+ ${name || 'Intro'} (new section)`, () => words('sectionNew', {name: sectionName(name)}));
+    else if (old.get(name).join('\n') !== lines.join('\n')) displayNote(changes, `~ ${name || 'Intro'}`, () => words('sectionChanged', {name: sectionName(name)}));
   }
-  for (const name of old.keys()) if (!next.has(name)) displayNote(changes, `− ${name || 'Intro'} (removed)`, () => words('sectionRemoved', {name: name || words('sectionIntro')}));
+  for (const name of old.keys()) if (!next.has(name)) displayNote(changes, `− ${name || 'Intro'} (removed)`, () => words('sectionRemoved', {name: sectionName(name)}));
   return changes;
 }
 function listChanges(label, before = [], after = [], displayKey) {
