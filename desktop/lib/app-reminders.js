@@ -8,6 +8,7 @@ import * as terminals from './terminals.js';
 import {askResume} from './resume-queue.js';
 import {log as appLog} from './log.js';
 import {shouldNotify} from './needs-you.js';
+import {focusReminderTitle, sessionInputNotice} from './native-notices.js';
 
 export function createAppReminders(ctx) {
   const {FOCUS_HOURS, Notification, dialog, log, notify, skippedLoops, getStorage, targets, toWindow, getWindow} = ctx;
@@ -26,7 +27,7 @@ export function createAppReminders(ctx) {
     getStorage().saveSettings({lastFocusReminder: key});
     const text = await pipeline.focusReminder(getStorage(), true);
     appLog('focus', `reminder ${key}: ${text ? 'sent' : 'nothing worth saying'}`, {chars: text.length});
-    if (text) notify('Focus: what to do next', text, {view: 'focus'}, 'info');
+    if (text) notify(focusReminderTitle(), text, {view: 'focus'}, 'info');
   }
 
 
@@ -67,14 +68,14 @@ export function createAppReminders(ctx) {
   const needsYouSeen = new Map();  // session id -> the last question announced (lib/needs-you.js)
   function sessionNeedsYou(session) {
     const what = terminals.label(session);
-    const text = session.brief || 'Claude needs your input';  // one plain sentence; the whole message is on the session page
+    const {title, body: text} = sessionInputNotice({title: what, brief: session.brief});  // one plain sentence; raw session prose stays unchanged
     if (!shouldNotify(needsYouSeen, session.id, text)) return;  // the card says it; no new ping for the same question
     if (!process.env.JOBADABRA_SMOKE && Notification.isSupported()) {
-      const note = new Notification({title: `Needs your input · ${what}`, body: text});
+      const note = new Notification({title, body: text});
       note.on('click', () => { getWindow()?.show(); getWindow()?.focus(); toWindow('session', 'open', {id: session.id}); });
       note.show();
     }
-    toWindow('toast', {title: `Needs your input · ${what}`, body: text, target: targets.clean({view: 'sessions', session: session.id}), tone: 'warn'});   // a click opens its card
+    toWindow('toast', {title, body: text, target: targets.clean({view: 'sessions', session: session.id}), tone: 'warn'});   // a click opens its card
     // Not on Telegram: a session waiting for you is answered in the app, and the pings added noise (1 Oct 2026).
   }
   return {skipUntilNotion, focusReminder, resumeQueue, sessionNeedsYou};

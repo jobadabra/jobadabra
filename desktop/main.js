@@ -1,4 +1,5 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
+import {claudeConsentOptions, claudeOffText, stuckSessionNotice} from './lib/native-notices.js';
 import {ownSecretsPresent} from './lib/secrets.js'; import {registerLocaleHandlers} from './lib/locale-handlers.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
@@ -355,22 +356,17 @@ const startClaude = async (url, details = null) => !claudeFamily(storage) ? {ok:
     if (result?.ok) { track('apply_started', {how: 'claude'}); handOverForms(url); } else terminals.dropForm(String(url).split('#')[0]);
     return result;
   })
-  : {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
+  : {ok: false, error: claudeOffText()};
 // The Applying flows' decisions (stuck → hand-over, the stage from each report, the hand-over's tab): lib/session-flow.js, unit-tested.
 let sessionFlow = null;
 const flow = () => (sessionFlow ||= createSessionFlow({terminals, review, apply, appLog, toWindow, startClaude,
   claudeAllowed: () => takeoverOffered(storage),
-  offerNotice: ({id, company}) => notify(`Stuck${company ? ` · ${company}` : ''}`, 'The extension cannot finish this page. Claude can: open the session to choose.', {view: 'sessions', session: id}, 'warn'), closeTab: session => closeSessionTab({review, closeTab: closeFormTab}, session)}));
+  offerNotice: ({id, company}) => { const {title, body} = stuckSessionNotice({company}); notify(title, body, {view: 'sessions', session: id}, 'warn'); }, closeTab: session => closeSessionTab({review, closeTab: closeFormTab}, session)}));
 const handOverForms = url => flow().handOver(url);
 async function claudeConsent() {
   if (!claudeFamily(storage)) return false;   // an OpenAI engine: no Claude feature, and no question about one
   if (storage.settings().claudeConsent) return true;
-  const {response} = await dialog.showMessageBox(window, {type: 'warning', buttons: ['Allow', 'Cancel'], defaultId: 1, cancelId: 1,
-    message: 'Let Claude work without asking before each step?',
-    detail: 'Apply with Claude opens a Claude Code window per job that browses, signs up on the employer\'s site and fills the form ' +
-      'without asking you to approve each action, so it can work on its own. It never clicks Submit: you review and submit yourself. ' +
-      'Any other command it decides to run also runs without asking, so watch its window while it works.\n\n' +
-      'It uses your own Claude account and plan. You can turn this off in Settings.'});
+  const {response} = await dialog.showMessageBox(window, claudeConsentOptions());
   if (response !== 0) return false;
   storage.saveSettings({claudeConsent: new Date().toISOString()});
   return true;
