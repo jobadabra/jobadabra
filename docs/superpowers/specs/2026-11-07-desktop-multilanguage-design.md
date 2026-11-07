@@ -1,6 +1,6 @@
 # Desktop multi-language
 
-Status: approved by the owner on 7 November 2026. Latest UX clarification: start in English; flagged dropdown in a full-row card directly below the Welcome card; no additional wizard step; later switch in Settings → Overview. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. This phase covers the desktop app only.
+Status: approved by the owner on 7 November 2026. Latest UX clarification: start in English; flagged dropdown in a full-row card directly below the Welcome card; no additional wizard step; later switch in Settings → Overview. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. Desktop remains the first delivery phase. Owner expanded the scope on 7 November to include extension UI, with an inherited Language setting in extension options.
 
 ## Intent
 
@@ -35,7 +35,7 @@ The worker's design review identified packaging inclusion, HTML ownership, early
 
 ## Non-goals and boundaries
 
-Emails, Telegram, the website, store listings, extension UI, and external web pages are outside this change. Do not change the application form filling engine, submission policy, store schemas, scoring, or search language preferences.
+Emails, Telegram, the website, store listings, and external web pages are outside this change. Extension UI is an authorized follow-up after the desktop work, as specified below. Do not change the application form filling engine, submission policy, store schemas, scoring, or search language preferences.
 
 Do not translate or rewrite personal data, CV contents, job postings/titles, employer names, URLs, saved answers, generated application documents, raw technical logs, or third-party error details. Translate the app's surrounding explanation instead. The display language is separate from the language used to draft applications. Generated analysis prose retains its existing behavior in this phase; translating or regenerating stored AI output is a separate product decision.
 
@@ -92,6 +92,16 @@ Use one branch/worktree per pull request and the project's ship script. Only the
 
 Ownership: the coordinator owns bootstrap/app.js, pages/shared.js, pages/core.js, os.js, i18n runtime and common/formatting/native namespaces, IPC, packaging, and native lib files. The coordinator mounts selector markup in pages/language.js in the foundation PR; the only foundation edit to index.html is the bootstrap script entrypoint. After that foundation is available, the worker alone owns index.html and renderer page/drawer/component migration, including screen catalog namespaces; it does not edit the coordinator-owned files. Screen-specific date/number calls belong to the worker; shared formatter runtime belongs to the coordinator. Before worker implementation, publish exact exports and namespace conventions in the brief. Shared dependencies wait for foundation PR rather than colliding on a file. Do not ask workers to maintain conflicting copies of the runtime or catalogs. A worker owns and ships its own PR; the coordinator reviews and sends corrections back.
 
+## Extension follow-up (owner scope update, 7 November 2026)
+
+The Chrome extension must support the same seven display languages, including its options/settings, popup and app-authored panel text. Desktop stays the priority. Preserve employer pages, form labels, applicant answers, generated documents, raw technical errors and all form-filling/submission behavior.
+
+Add a Language setting to extension options. The coordinator's implementation choice is a default **Follow desktop app** option plus the seven explicit language overrides with native names and flags. A desktop preference change updates the effective extension language while following; an explicit override remains unchanged. This preference changes UI display only, never application answer language.
+
+Use the existing authenticated desktop connection to convey the effective display locale; validate supported locales. Retain only the last known effective locale as a rebuildable cache for disconnected UI, falling back to English for an unpaired install. Do not expose other desktop settings or add a separate data sync. Never invent a new network endpoint until the existing pairing/state response has been audited. Extension UI must remain usable with older desktop versions that omit the locale.
+
+Deliver through a separate follow-up PR after the original six desktop PRs, with a file-level inventory and focused tests for inherited locale changes, explicit override, missing/invalid desktop locale, disconnected fallback, catalog parity, and preservation of user/employer content. Render options and a representative extension panel with fictional data before declaring complete. Do not change extension/manifest.json version; the build stamps it.
+
 ## Verification
 
 Tier 1 for display localization. Run named unit tests for resolution/fallback, interpolation, Russian/Romanian plurals, formatting, persistence/validation, startup selection, and modified native menu/dialog behavior. Test user-provided strings are preserved. Keep English compatibility assertions and add locale cases; do not weaken old behavior checks to make translations pass.
@@ -115,3 +125,9 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 - [ ] Migrate all desktop screen text and seven catalogs.
 - [ ] Translate app-owned native desktop text and finish formatting.
 - [ ] Verify coverage, previews, and focused tests; open and supervise PRs.
+
+### 3. Extension follow-up
+
+- [ ] Audit extension UI surfaces and desktop locale transport.
+- [ ] Translate extension UI in seven languages and add inherited Language setting in options.
+- [ ] Verify inheritance, explicit override, offline fallback and previews; supervise extension PR.

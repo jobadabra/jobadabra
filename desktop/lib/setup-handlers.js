@@ -1,6 +1,7 @@
 // The setup and settings IPC (moved out of main.js, 8 Oct 2026): connecting Notion (the sign-in and its gate), saving settings, the contact details and
 // secrets, the AI engine (Claude Code or a key), Free AI, choosing and changing the CV. main.js passes in the services they share.
 // Guards: the notion-oauth, settings, claude-code and cv tests in desktop/test.
+import {t} from '../i18n/native.js';
 import * as aiFree from './ai-free.js';
 import * as claudeCode from './claude-code.js';
 import * as atUpload from './cv-import-at-upload.js';
@@ -110,7 +111,7 @@ export function registerSetupHandlers(ctx) {
     }
   });
   ipcMain.handle('chooseCv', async () => {
-    const picked = await dialog.showOpenDialog(getWindow(), {title: 'Choose your CV', filters: [{name: CV_FILES.label, extensions: CV_FILES.extensions}], properties: ['openFile']});
+    const picked = await dialog.showOpenDialog(getWindow(), {title: t('native.chooseCv'), filters: [{name: t('native.cvFilter'), extensions: CV_FILES.extensions}], properties: ['openFile']});
     if (picked.canceled || !picked.filePaths[0]) return null;
     // The file is set at once; the CV is read into cv.json in the background (lib/cv-import-at-upload.js), once per file.
     // A Word CV is kept as cv.docx and drawn to cv.pdf first, LibreOffice fetched on first use (lib/cv-docx.js).

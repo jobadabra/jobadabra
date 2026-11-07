@@ -1,6 +1,7 @@
 // The system IPC (moved out of main.js, 8 Oct 2026): the microphone and screen permissions, relaunching the app, resetting the profile, backups
 // (now, folder, status) and exporting or importing the whole profile. main.js passes in the services they share. Guards: the reset, backup and
 // import tests in desktop/test.
+import {t} from '../i18n/native.js';
 import * as backup from './backup.js';
 import * as contactDetails from './contact.js';
 import * as pipeline from './pipeline.js';
@@ -28,11 +29,8 @@ export function registerSystemHandlers(ctx) {
   // Danger zone: a last native confirmation, then restart; the folder goes at the next start (lib/reset.js).
   // A reset only clears this Mac and never calls Notion (owner, 16 Oct 2026); connecting Notion later is the normal first-time flow.
   handleImportant('resetProfile', 'Resetting this computer', async () => {
-    const answer = dialog.showMessageBoxSync(getWindow(), {type: 'warning', buttons: ['Cancel', 'Reset and restart'], defaultId: 0, cancelId: 0,
-      message: 'Reset Jobadabra on this computer?',
-      detail: 'Your keys, CV, tailored CVs, recordings, interview drafts, job list, settings and this profile\'s job-site accounts on this computer are deleted for good, '
-        + 'and Jobadabra restarts at the setup. To get them back, import the export you saved first (the accounts only if you ticked them). '
-        + 'Your Notion workspace is not touched, and neither is your GitHub repo. Your Gmail sign-in is disconnected, so the next setup starts clean.'});   // about Notion
+    const answer = dialog.showMessageBoxSync(getWindow(), {type: 'warning', buttons: [t('native.cancel'), t('native.resetButton')], defaultId: 0, cancelId: 0,
+      message: t('native.resetTitle'), detail: t('native.resetDetail')});   // about Notion
     if (answer !== 1) return {ok: false};
     // The Gmail sign-in lives in the Keychain, outside the data folder: forgotten too, or the fresh setup shows the old account (9 Oct 2026).
     if (!DEMO) {
@@ -73,8 +71,8 @@ export function registerSystemHandlers(ctx) {
     const contact = await Promise.race([contactDetails.read(storage).catch(() => ({})), new Promise(done => setTimeout(() => done({}), 3000))]);
     const role = (() => { try { return titlesOf(JSON.parse(storage.readText('config/search.json') || '{}'))[0] || ''; } catch { return ''; } })();
     const name = contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' ');
-    const picked = await dialog.showSaveDialog(getWindow(), {title: 'Export your Jobadabra data',
-      defaultPath: path.join(app.getPath('documents'), reset.exportName({name, role})), filters: [{name: 'Jobadabra export', extensions: ['gz']}]});
+    const picked = await dialog.showSaveDialog(getWindow(), {title: t('native.exportData'),
+      defaultPath: path.join(app.getPath('documents'), reset.exportName({name, role})), filters: [{name: t('native.exportFilter'), extensions: ['gz']}]});
     if (picked.canceled || !picked.filePath) return {ok: false};
     // Why (3 Nov 2026, desktop AI MCP spec): the desktop AI pairing is bound to this PC's Keychain/DPAPI bridge entry; a restored hash would show "connected" with no bridge.
     const secrets = keys ? Object.fromEntries(SECRET_NAMES.filter(name => !name.startsWith('DESKTOP_AI_')).map(name => [name, storage.secret(name)]).filter(([, value]) => value)) : null;
@@ -92,12 +90,11 @@ export function registerSystemHandlers(ctx) {
   });
   // Import: the file replaces this computer's data (which is kept as a backup), at a restart.
   ipcMain.handle('importProfile', async () => {
-    const picked = await dialog.showOpenDialog(getWindow(), {title: 'Import Jobadabra data', properties: ['openFile'],
-      filters: [{name: 'Jobadabra export', extensions: ['gz', 'tgz']}]});
+    const picked = await dialog.showOpenDialog(getWindow(), {title: t('native.importData'), properties: ['openFile'],
+      filters: [{name: t('native.exportFilter'), extensions: ['gz', 'tgz']}]});
     if (picked.canceled || !picked.filePaths[0]) return {ok: false};
-    const answer = dialog.showMessageBoxSync(getWindow(), {type: 'warning', buttons: ['Cancel', 'Import and restart'], defaultId: 0, cancelId: 0,
-      message: 'Replace this computer\'s Jobadabra data with the export?',
-      detail: 'Your current data here is moved to a backup folder first, then Jobadabra restarts with the imported data. Your Notion workspace is not changed.'});
+    const answer = dialog.showMessageBoxSync(getWindow(), {type: 'warning', buttons: [t('native.cancel'), t('native.importButton')], defaultId: 0, cancelId: 0,
+      message: t('native.importTitle'), detail: t('native.importDetail')});
     if (answer !== 1) return {ok: false};
     try { await dataJob.run('import', options => reset.stageImport(storage.dir, picked.filePaths[0], options)); }
     catch (error) { return error.code === 'cancelled' ? {ok: false, cancelled: true} : {ok: false, error: error.message}; }

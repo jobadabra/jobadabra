@@ -1,5 +1,6 @@
 // The "Export job list" IPC (Pro): checks the licence in the main process (the window's lock is only a hint), reads the jobs through the store (SQLite or Notion,
 // lib/pipeline-commands.js jobs), asks where to save and writes the file. Never touches anything but the file the person picked. Guard: test/unit/main/jobs-export.test.js.
+import {t} from '../i18n/native.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as pipeline from './pipeline.js';
@@ -11,8 +12,8 @@ export function registerJobsExportHandlers({DEMO, app, dialog, getWindow, ipcMai
   ipcMain.handle('exportJobs', async (_, options = {}) => {
     if (!canExport(licenseState())) return {ok: false, pro: true, error: 'Export is part of Pro.'};
     if (DEMO) return {ok: false, error: 'Demo mode: nothing is saved.'};
-    const picked = await dialog.showSaveDialog(getWindow(), {title: 'Export your job list', defaultPath: path.join(app.getPath('documents'), `${fileName()}.csv`),
-      filters: [{name: FORMATS.csv, extensions: ['csv']}, {name: FORMATS.json, extensions: ['json']}]});
+    const picked = await dialog.showSaveDialog(getWindow(), {title: t('native.exportJobs'), defaultPath: path.join(app.getPath('documents'), `${fileName()}.csv`),
+      filters: [{name: t('native.csvFilter'), extensions: ['csv']}, {name: FORMATS.json, extensions: ['json']}]});
     if (picked.canceled || !picked.filePath) return {ok: false};
     try {
       const jobs = chosen((await readJobs(storage)).jobs || [], {all: !!options?.all, urls: Array.isArray(options?.urls) ? options.urls : []});

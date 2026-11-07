@@ -3,16 +3,17 @@
 import path from 'node:path';
 import {NO_PLACE} from '../renderer/targets.js';
 import {flushPending, onChange, retryPrivate} from './private-file.js';
+import {t} from '../i18n/native.js';
 
 /** The pop-up for a file that could not be saved; `retrySave` is the file, the window turns it into the click action. */
 export function failedToast(file) {
   const name = path.basename(file);
-  return {title: `Could not save ${name} yet`, body: 'Windows is still using it, maybe a virus scan. Your latest change is kept and nothing is lost.', tone: 'warn', target: NO_PLACE.itself, retrySave: file};   // the click is Retry (renderer/pages/startup.js), nothing else to open
+  return {title: t('native.saveFailedFile', {file: name}), body: t('native.saveFailedBody'), tone: 'warn', target: NO_PLACE.itself, retrySave: file};   // the click is Retry (renderer/pages/startup.js), nothing else to open
 }
 
 /** The text of the last-chance message at quit for files still waiting. */
 export function quitMessage(files) {
-  return `These could not be saved because Windows is still using them:\n${files.map(file => path.basename(file)).join('\n')}\n\nYour latest changes are lost if you quit now.`;
+  return t('native.saveQuitDetail', {files: files.map(file => path.basename(file)).join('\n')});
 }
 
 /** The 'retrySave' IPC (registered in main.js): true when a waiting save was retried, false when none waits for `file`. */
@@ -25,6 +26,6 @@ export function watchSaves({app, dialog, toWindow}) {
   onChange(({file, state}) => { if (state !== 'failed') return; const toast = failedToast(file); toWindow('toast', toast); });
   app.on('will-quit', () => {
     const left = flushPending();
-    if (left.length) dialog.showMessageBoxSync({type: 'warning', message: 'Some changes were not saved', detail: quitMessage(left), buttons: ['OK']});
+    if (left.length) dialog.showMessageBoxSync({type: 'warning', message: t('native.saveFailedTitle'), detail: quitMessage(left), buttons: [t('native.ok')]});
   });
 }

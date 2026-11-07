@@ -1,33 +1,33 @@
 // What "Remove this session" asks when its job is still Applying in Notion: was it submitted?
+import {t} from '../i18n/native.js';
 export function submitted(company) {
   return {
-    message: `Did you submit the application to ${company || 'this company'}?`,
-    detail: 'Yes: it is marked Applied.\nNo: nothing is submitted.\n\nYou can change it later in Jobs.',
-    buttons: ['Yes, I submitted it', 'No, not submitted', 'Cancel'],
+    message: t('native.submittedQuestion', {company: company || t('native.thisCompany')}),
+    detail: t('native.submittedDetail'),
+    buttons: [t('native.submittedYes'), t('native.submittedNo'), t('native.cancel')],
   };
 }
 
 // "Cancel application": what goes, asked once (the form's answers are lost with its tab).
 export function cancel(company) {
   return {
-    message: `Cancel the ${company ? `${company} application` : 'application'}?`,
-    detail: 'Applying stops. Nothing is submitted.',
-    buttons: ['Cancel application', 'Keep it'],
+    message: company ? t('native.cancelCompanyQuestion', {company}) : t('native.cancelQuestion'),
+    detail: t('native.cancelDetail'),
+    buttons: [t('native.cancelApplication'), t('native.keepIt')],
   };
 }
 
 // "Cancel all applications" (owner, 5 Nov 2026: in place of the header's Stop): which ones go, asked once.
-export function cancelAll(sessions, label = session => session.company || 'An application') {
+export function cancelAll(sessions, label = session => session.company || t('native.application')) {
   return {
-    message: `Cancel ${sessions.length === 1 ? 'this application' : `all ${sessions.length} applications`}?`,
-    detail: `${sessionLines(sessions, label).join('\n')}\n\nApplying stops and their forms close. Nothing is submitted.`,
-    buttons: ['Cancel all applications', 'Keep them'],
+    message: sessions.length === 1 ? t('native.cancelOne') : t('native.cancelMany', {count: sessions.length}),
+    detail: `${sessionLines(sessions, label).join('\n')}\n\n${t('native.cancelAllDetail')}`,
+    buttons: [t('native.cancelAll'), t('native.keepThem')],
   };
 }
 
 // The words of the "you're quitting while something works" dialogs (native macOS/Windows dialogs: a title, a few
 // lines, buttons). Short, one line per thing that would stop, and what happens to it.
-const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
 const SHOWN = 4;
 
 // "• N26" per session (the company: the job title is long and the list only has to be recognised), then "+ 2 more".
@@ -36,39 +36,37 @@ export function sessionLines(sessions, label) {
   const names = sessions.map(label);
   const twice = name => names.filter(other => other === name).length > 1;
   const lines = sessions.slice(0, SHOWN).map((session, i) => `•  ${twice(names[i]) && session.title ? `${names[i]} · ${session.title}` : names[i]}`);
-  if (sessions.length > SHOWN) lines.push(`•  and ${sessions.length - SHOWN} more`);
+  if (sessions.length > SHOWN) lines.push(t('native.moreSessions', {count: sessions.length - SHOWN}));
   return lines;
 }
 
-const AFTER = 'Filled forms stay in Chrome. After restarting, open Application sessions to review them.';
-// Why (2026-10-28, owner: "Always close it"): the hidden browser closes with the app, so its forms do not stay anywhere.
-const afterOf = sessions => sessions.some(session => session.background) ? 'The hidden browser closes with the app. Applications it was filling start again next time.' : AFTER;
+// Why (2026-10-28, owner: "Always close it"; localization 7 Nov 2026): the hidden browser still closes with the app; translate this explanation without changing that behavior.
+const afterOf = sessions => t(sessions.some(session => session.background) ? 'native.afterHidden' : 'native.afterForms');
 
 // Only Claude sessions are working (the queue is empty): keep them, or stop them and quit.
 export function sessionsOnly(sessions, label) {
-  const one = sessions.length === 1, who = sessions.every(session => session.background) ? 'The hidden browser' : 'Claude';
+  const one = sessions.length === 1, who = sessions.every(session => session.background) ? t('native.hiddenBrowser') : 'Claude';
   return {
-    message: one ? `${who} is still filling an application` : `${who} is still filling ${sessions.length} applications`,
-    detail: `${sessionLines(sessions, label).join('\n')}\n\nQuitting stops ${one ? 'it' : 'them'} where ${one ? 'it is' : 'they are'}. ${afterOf(sessions)}`,
-    buttons: ['Keep working', 'Stop and quit'],
+    message: t(one ? 'native.sessionsOne' : 'native.sessionsMany', {who, count: sessions.length}),
+    detail: `${sessionLines(sessions, label).join('\n')}\n\n${t(one ? 'native.stoppingOne' : 'native.stoppingMany', {after: afterOf(sessions)})}`,
+    buttons: [t('native.keepWorking'), t('native.stopQuit')],
   };
 }
 
 // Searches, queued jobs and/or sessions: quit when they finish, quit now, or stay.
 export function working({busy = null, queue = [], sessions = [], important = [], taskName, label}) {
-  const lines = important.map(what => `•  ${what}: quitting now can leave it half done`);
-  if (busy) lines.push(`•  ${taskName(busy.kind)} is running`);
-  if (queue.length) lines.push(`•  ${plural(queue.length, 'task', 'tasks')} waiting: ${queue.map(job => taskName(job.kind)).join(', ')}`);
-  if (sessions.length) lines.push(`•  Claude is filling ${plural(sessions.length, 'application', 'applications')}: ${sessions.slice(0, SHOWN).map(label).join(', ')}${sessions.length > SHOWN ? '…' : ''}`);
+  const lines = important.map(what => t('native.importantQuit', {what}));
+  if (busy) lines.push(t('native.busyQuit', {task: taskName(busy.kind)}));
+  if (queue.length) lines.push(t(queue.length === 1 ? 'native.queueOne' : 'native.queueMany', {count: queue.length, tasks: queue.map(job => taskName(job.kind)).join(', ')}));
+  if (sessions.length) lines.push(t(sessions.length === 1 ? 'native.claudeOne' : 'native.claudeMany', {count: sessions.length, names: sessions.slice(0, SHOWN).map(label).join(', ') + (sessions.length > SHOWN ? '…' : '')}));
   if (important.length && !busy && !queue.length && !sessions.length) {   // only an export, a Notion setup…: no jobs to run again
-    return {message: 'Jobadabra is still working', detail: `${lines.join('\n')}\n\nQuit when done: closes by itself once it finishes.\n` +
-      'Quit now: it stops where it is; start it again after.', buttons: ['Quit when done', 'Quit now', 'Cancel']};
+    return {message: t('native.stillWorking'), detail: `${lines.join('\n')}\n\n${t('native.finishImportant')}`,
+      buttons: [t('native.quitDone'), t('native.quitNow'), t('native.cancel')]};
   }
   return {
-    message: 'Jobadabra is still working',
-    detail: `${lines.join('\n')}\n\nQuit when done: closes by itself once these finish.\n` +
-      `Quit now: stops them, and the jobs you started run again next time. What's saved stays saved.` +
+    message: t('native.stillWorking'),
+    detail: `${lines.join('\n')}\n\n${t('native.finishWork')}` +
       (sessions.length ? `\n\n${afterOf(sessions)}` : ''),
-    buttons: ['Quit when done', 'Quit now', 'Cancel'],
+    buttons: [t('native.quitDone'), t('native.quitNow'), t('native.cancel')],
   };
 }

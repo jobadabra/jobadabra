@@ -1,6 +1,7 @@
 // The Interviews page's IPC (moved out of main.js, 8 Oct 2026): drafts on this Mac (recording, transcribing, editing), saved interviews in
 // Notion 🎤 Interviews, their review and the recordings folder. Demo mode shows fictional ones and changes nothing. main.js passes in the
 // services it shares (registerInterviewHandlers). Guards: interviews tests in desktop/test and the interviews e2e suite.
+import {t} from '../i18n/native.js';
 import {afterWrite} from './shared-read.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,8 +47,8 @@ export function registerInterviewHandlers(ctx) {
     return result;
   });
   handleImportant('ivAdd', 'Saving an interview', async () => {
-    const picked = await dialog.showOpenDialog(getWindow(), {title: 'Choose an interview recording or transcript',
-      filters: [{name: 'Recording or transcript', extensions: [...interviews.AUDIO, ...interviews.TEXT]}], properties: ['openFile']});
+    const picked = await dialog.showOpenDialog(getWindow(), {title: t('native.chooseRecording'),
+      filters: [{name: t('native.recordingFilter'), extensions: [...interviews.AUDIO, ...interviews.TEXT]}], properties: ['openFile']});
     if (picked.canceled || !picked.filePaths[0]) return null;
     let draft;
     try { draft = interviews.add(storage, picked.filePaths[0]); } catch (error) { return {error: error.message}; }

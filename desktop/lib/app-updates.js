@@ -2,6 +2,7 @@
 // switches, and the setup-funnel tracking. The update offer and when it was last checked stay inside; main.js reaches them through accessors.
 // Guards: the updater, app-menu, setup-funnel and beta tests in desktop/test.
 import * as appMenu from './app-menu.js';
+import {t} from '../i18n/native.js';
 import * as setupFunnel from './setup-funnel.js';
 import * as updater from './updater.js';
 import {createUpdateChannel} from './update-channel.js';
@@ -36,7 +37,7 @@ export function createAppUpdates(ctx) {
       if (updateOffer) { appLog('update', `available: ${updateOffer.version}`); toWindow('update', updateOffer); }
       return {ok: true, offer: updateOffer, current: app.getVersion()};
     } catch (error) {
-      return {ok: false, text: `Couldn't check for updates: ${error.message}`, current: app.getVersion()};
+      return {ok: false, text: t('native.updateCheckError', {error: error.message}), current: app.getVersion()};
     }
   }
   // The last update this install started, and what became of it, read back at the next check: it runs after the app has quit,
@@ -65,7 +66,7 @@ export function createAppUpdates(ctx) {
   async function pickChannel(name) {
     const result = await channels.pick(name);
     buildMenu();   // a cancelled dialog puts the radio back where it was
-    if (result.ok === false && result.text) dialog.showMessageBox(parentWindow(), {type: 'warning', message: 'The update channel didn\'t change', detail: result.text, buttons: ['OK']});
+    if (result.ok === false && result.text) dialog.showMessageBox(parentWindow(), {type: 'warning', message: t('native.updateChannelUnchanged'), detail: result.text, buttons: [t('native.ok')]});
     if (result.check) await checkForUpdatesNow();
   }
   function buildMenu() {
@@ -85,13 +86,13 @@ export function createAppUpdates(ctx) {
   }
 
   async function installUpdate() {
-    if (FROM_SOURCE) return {ok: false, text: 'Running from source (npm start): update with git pull, then restart.'};
-    if (FROM_STORE) return {ok: false, text: 'This copy comes from the Microsoft Store: the Store installs its updates.'};
-    if (!updateOffer) return {ok: false, text: 'No update to install.'};
+    if (FROM_SOURCE) return {ok: false, text: t('native.updateFromSource')};
+    if (FROM_STORE) return {ok: false, text: t('native.updateFromStore')};
+    if (!updateOffer) return {ok: false, text: t('native.updateNone')};
     if (updateOffer.failedBefore) {
       appLog('update', `install ${updateOffer.version}: failed before, sending the person to the download page`);
       return {ok: false, manual: true, url: updateOffer.url,
-        text: `Updating to ${updateOffer.version} didn't work last time. The download page is opening: run the installer from there (your data stays).`};
+        text: t('native.updateManual', {version: updateOffer.version})};
     }
     try {
       storage.saveSettings({updateTried: {to: updateOffer.version, from: app.getVersion()}});
@@ -116,7 +117,7 @@ export function createAppUpdates(ctx) {
     if (!shown.install || response !== 0) return;
     const result = await installUpdate();
     if (result.manual && result.url) openExternal(result.url);
-    if (!result.ok) dialog.showMessageBox(parent, {type: 'warning', message: 'The update didn\'t install', detail: result.text, buttons: ['OK']});
+    if (!result.ok) dialog.showMessageBox(parent, {type: 'warning', message: t('native.updateInstallFailed'), detail: result.text, buttons: [t('native.ok')]});
   }
   return {getUpdateOffer: () => updateOffer, setUpdateOffer: value => { updateOffer = value; }, getUpdateCheckedAt: () => updateCheckedAt, FROM_SOURCE, FROM_STORE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, checkForUpdatesNow, channels};
 }
