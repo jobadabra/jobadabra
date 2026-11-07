@@ -63,12 +63,16 @@ export default {
   "notRead": "No leído: {error}.",
   "noAnswer": "la aplicación no respondió",
   "autoReading": "Jobadabra abrió la página y la extensión la lee automáticamente.",
-  "reading": "Leyendo {name}: página {pages}, {jobs} ofertas hasta ahora…",
-  "readStopped": "{jobs} ofertas leídas de {name} en {pages}: detenido, {reason}.",
+  "reading": "Leyendo {name}: página {pages}, {jobs} hasta ahora…",
+  "readStopped": "{jobs} leídas de {name} en {pages}: detenido, {reason}.",
   "filters": "Filtros: {filters}. ",
   "token": "Token",
   "pages": {
     "one": "{count} página",
     "other": "{count} páginas"
+  },
+  "jobs": {
+    "one": "{count} oferta",
+    "other": "{count} ofertas"
   }
 };

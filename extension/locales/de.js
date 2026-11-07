@@ -63,12 +63,16 @@ export default {
   "notRead": "Nicht gelesen: {error}.",
   "noAnswer": "die App hat nicht geantwortet",
   "autoReading": "Jobadabra hat diese Seite geöffnet und die Erweiterung liest sie automatisch.",
-  "reading": "Lese {name}: Seite {pages}, bisher {jobs} Jobs…",
-  "readStopped": "{jobs} Jobs von {name} auf {pages} gelesen: gestoppt, {reason}.",
+  "reading": "Lese {name}: Seite {pages}, bisher {jobs}…",
+  "readStopped": "{jobs} von {name} auf {pages} gelesen: gestoppt, {reason}.",
   "filters": "Filter: {filters}. ",
   "token": "Token",
   "pages": {
     "one": "{count} Seite",
     "other": "{count} Seiten"
+  },
+  "jobs": {
+    "one": "{count} Job",
+    "other": "{count} Jobs"
   }
 };

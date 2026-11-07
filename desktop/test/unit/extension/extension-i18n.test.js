@@ -36,7 +36,11 @@ test('interpolation is single-pass plain text and preserves external content; lo
   await i18n.preference('ru');
   assert.match(i18n.t('pages',{count:2}), /страницы/);
   assert.match(i18n.t('pages',{count:5}), /страниц/);
+  assert.equal(i18n.t('jobs',{count:1}), '1 вакансия');
+  assert.equal(i18n.t('jobs',{count:2}), '2 вакансии');
+  assert.equal(i18n.t('jobs',{count:5}), '5 вакансий');
   await i18n.preference('ro'); assert.match(i18n.t('pages',{count:2}), /pagini/);
+  assert.equal(i18n.t('jobs',{count:20}), '20 de joburi');
   assert.equal(i18n.number(1234.5), new Intl.NumberFormat('ro').format(1234.5));
   assert.equal(i18n.date(0,{timeZone:'UTC'}),new Intl.DateTimeFormat('ro',{timeZone:'UTC'}).format(0));
 });

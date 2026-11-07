@@ -63,8 +63,8 @@ export default {
   "notRead": "Не прочитано: {error}.",
   "noAnswer": "приложение не ответило",
   "autoReading": "Jobadabra открыл страницу, и расширение читает её автоматически.",
-  "reading": "Чтение {name}: страница {pages}, пока {jobs} вакансий…",
-  "readStopped": "Прочитано {jobs} вакансий с {name}, {pages}: остановлено, {reason}.",
+  "reading": "Чтение {name}: страница {pages}, пока {jobs}…",
+  "readStopped": "Прочитано {jobs} с {name}, {pages}: остановлено, {reason}.",
   "filters": "Фильтры: {filters}. ",
   "token": "Токен",
   "pages": {
@@ -72,5 +72,11 @@ export default {
     "few": "{count} страницы",
     "many": "{count} страниц",
     "other": "{count} страницы"
+  },
+  "jobs": {
+    "one": "{count} вакансия",
+    "few": "{count} вакансии",
+    "many": "{count} вакансий",
+    "other": "{count} вакансии"
   }
 };

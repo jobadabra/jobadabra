@@ -63,12 +63,16 @@ export default {
   "notRead": "Non letto: {error}.",
   "noAnswer": "l’app non ha risposto",
   "autoReading": "Jobadabra ha aperto la pagina e l’estensione la legge automaticamente.",
-  "reading": "Lettura di {name}: pagina {pages}, {jobs} offerte finora…",
-  "readStopped": "{jobs} offerte lette da {name} su {pages}: fermato, {reason}.",
+  "reading": "Lettura di {name}: pagina {pages}, {jobs} finora…",
+  "readStopped": "{jobs} lette da {name} su {pages}: fermato, {reason}.",
   "filters": "Filtri: {filters}. ",
   "token": "Token",
   "pages": {
     "one": "{count} pagina",
     "other": "{count} pagine"
+  },
+  "jobs": {
+    "one": "{count} offerta",
+    "other": "{count} offerte"
   }
 };

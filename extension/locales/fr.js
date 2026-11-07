@@ -63,12 +63,16 @@ export default {
   "notRead": "Non lu : {error}.",
   "noAnswer": "l’application n’a pas répondu",
   "autoReading": "Jobadabra a ouvert cette page et l’extension la lit automatiquement.",
-  "reading": "Lecture de {name} : page {pages}, {jobs} offres pour l’instant…",
-  "readStopped": "{jobs} offres lues sur {name}, {pages} : arrêté, {reason}.",
+  "reading": "Lecture de {name} : page {pages}, {jobs} pour l’instant…",
+  "readStopped": "{jobs} lues sur {name}, {pages} : arrêté, {reason}.",
   "filters": "Filtres : {filters}. ",
   "token": "Token",
   "pages": {
     "one": "{count} page",
     "other": "{count} pages"
+  },
+  "jobs": {
+    "one": "{count} offre",
+    "other": "{count} offres"
   }
 };

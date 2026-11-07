@@ -63,13 +63,18 @@ export default {
   "notRead": "Necitit: {error}.",
   "noAnswer": "aplicația nu a răspuns",
   "autoReading": "Jobadabra a deschis pagina și extensia o citește automat.",
-  "reading": "Se citește {name}: pagina {pages}, {jobs} joburi până acum…",
-  "readStopped": "{jobs} joburi citite de pe {name} pe {pages}: oprit, {reason}.",
+  "reading": "Se citește {name}: pagina {pages}, {jobs} până acum…",
+  "readStopped": "{jobs} citite de pe {name} pe {pages}: oprit, {reason}.",
   "filters": "Filtre: {filters}. ",
   "token": "Token",
   "pages": {
     "one": "{count} pagină",
     "few": "{count} pagini",
     "other": "{count} de pagini"
+  },
+  "jobs": {
+    "one": "{count} job",
+    "few": "{count} joburi",
+    "other": "{count} de joburi"
   }
 };

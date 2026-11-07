@@ -102,7 +102,7 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
   const progress = state => {
     if (!state) return;
     renderProgress = () => {
-      const values = {name:state.name || host, pages:i18n.number(state.pages), jobs:i18n.number(state.jobs)};
+      const values = {name:state.name || host, pages:i18n.number(state.pages), jobs:t('jobs', {count:state.jobs})};
       externalText('visit-progress', state.stopped
         ? (state.filters?.length ? t('filters', {filters:state.filters.join(', ')}) : '') + (state.note ? `${state.note}. ` : '') + t('readStopped', {...values, pages:t('pages', {count:state.pages}), reason:state.stopped})
         : t('reading', values));
