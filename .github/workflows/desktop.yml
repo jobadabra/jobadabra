@@ -409,7 +409,7 @@ jobs:
             || { echo "::error::The app isn't signed with the release certificate"; exit 1; }
           # Why (7 Nov 2026, owner: "I'd like to have the twin icon everywhere"; #3366): macOS 26 softens an icon read from icon.icns; the Icon Composer icon (desktop/assets/ICON.md) reaches the system only as Assets.car + CFBundleIconName, so a build that lost either ships the soft one again.
           app=$(ls -d dist/mac-arm64/*.app | head -1)
-          test -s "$app/Contents/Resources/Assets.car" && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app/Contents/Info.plist")" = "Icon" ] \
+          test -s "$app/Contents/Resources/Assets.car" && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$app/Contents/Info.plist" 2>/dev/null)" = "Icon" ] \
             || { echo "::error::The app has no Icon Composer icon (Assets.car + CFBundleIconName=Icon)"; exit 1; }
       # Smoke tests only in beta mode (the nightly, a beta by hand: owner, 10 Oct 2026); a "Build only" run is compile + unit tests.
       - name: Smoke test · the built app (bundled Python, Keychain, signature, the binary, the Jobs screen)
