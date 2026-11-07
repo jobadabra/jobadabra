@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {judgeNote, judgePrompt, judgeSchema} from './agent-judge.mjs';
 import {areaOfView, knowledgeFor} from './agent-knowledge.mjs';
+import {citedIds} from './agent-notes.mjs';
 
 export const RUNS = 3;
 
@@ -61,4 +62,56 @@ export function tableMarkdown(before, after) {
   const mark = row => `${row.right ? '✅' : '❌'} ${row.verdict}`;
   return ['| Judge | Real notes kept | False notes dropped | Per run (real kept / false dropped) |', '|---|---|---|---|', line('before', before), line('after', after), '',
     '| Note | Label | Before | After |', '|---|---|---|---|', ...after.rows.map((row, i) => `| ${row.n} | ${row.label} | ${mark(before.rows[i])} | ${mark(row)} |`)].join('\n');
+}
+
+// Why (7 Nov 2026, pz, owner via mac-50: "replay the 6 notes through the judge with the new knowledge; they drop, and the 3 real ones still file"): batch 1 of the persona lanes as a second exam set, so the
+// closed-verdict layer and the three new rules are numbers and not a belief. The replay tests RECURRENCE (the same false alarm again, with its closure in the knowledge), not whether a new one would be caught; the real notes show it does not over-drop.
+/** The rules written from batch 1's closures (docs/app-expectations): taken out of `before` and `closed`, so each mechanism is measured alone. */
+export const BATCH1_RULES = ['jobs-6', 'jobs-7', 'settings-5'];
+const without = (expectations, ids) => Object.fromEntries(Object.entries(expectations).map(([area, entries]) => [area, entries.filter(entry => !ids.includes(entry.id))]));
+
+/** What the judge is told for one batch note under a variant: 'before' (the rules as they were), 'rules' (plus the 3 new ones), 'closed' (the old rules plus the closed verdicts of `lessons`). */
+export const batchKnowledge = (note, {expectations, lessons}, variant) =>
+  knowledgeFor([areaOfView(note.view)], {expectations: variant === 'rules' ? expectations : without(expectations, BATCH1_RULES), closed: variant === 'closed' ? lessons : {}});
+
+/** Asks one variant about every batch-1 note, `runs` times each. -> [{n, label, verdicts, reasons, cites}] where `cites[i]` are the rule or closed-verdict ids run i's reason names (checked against the knowledge it got). */
+export async function askBatch({ask, notes, expectations, lessons, variant, runs = RUNS}) {
+  const rows = [];
+  for (const note of notes) {
+    const knowledge = batchKnowledge(note, {expectations, lessons}, variant), row = {n: note.n, label: note.label, verdicts: [], reasons: [], cites: []};
+    for (let i = 0; i < runs; i++) {
+      const opinion = await judgeNote({ask, note, image: note.image, knowledge});
+      if (opinion.verdict === 'unavailable') throw new Error(`batch-1 exam stopped at note ${note.n} (${variant}, run ${i + 1}): ${opinion.reason}`);
+      row.verdicts.push(opinion.verdict); row.reasons.push(opinion.reason); row.cites.push(citedIds(opinion.reason, knowledge));
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+/** A note is held by the production rule in a run when the judge disagrees AND names an id of its knowledge (lib/agent-notes.mjs rankNotes). */
+const heldIn = (row, i) => row.verdicts[i] === 'disagrees' && row.cites[i].length > 0;
+/** Scores a variant: false notes held / real notes filed by the production rule (a strict majority of runs), and what a judge-alone gate would have done (a strict majority of runs disagreeing). */
+export function scoreBatch(rows) {
+  const majority = test => rows.filter(row => row.verdicts.filter((_, i) => test(row, i)).length * 2 > row.verdicts.length);
+  const real = rows.filter(row => row.label === 'real'), fake = rows.filter(row => row.label === 'false');
+  const held = majority(heldIn), alone = majority((row, i) => row.verdicts[i] === 'disagrees');
+  return {realTotal: real.length, falseTotal: fake.length, realFiled: real.filter(row => !held.includes(row)).length, falseHeld: fake.filter(row => held.includes(row)).length,
+    realKeptByJudgeAlone: real.filter(row => !alone.includes(row)).length, falseDroppedByJudgeAlone: fake.filter(row => alone.includes(row)).length,
+    rows: rows.map(row => ({n: row.n, label: row.label, held: held.includes(row), droppedAlone: alone.includes(row), verdicts: row.verdicts, cites: [...new Set(row.cites.flat())]}))};
+}
+
+/** The batch-1 table as markdown: per variant the production rule's counts and the judge-alone counts, then every note's outcome per variant. */
+export function batchMarkdown(scores) {
+  const names = Object.keys(scores), first = scores[names[0]];
+  const line = name => `| ${name} | ${scores[name].falseHeld} of ${scores[name].falseTotal} | ${scores[name].realFiled} of ${scores[name].realTotal} | ${scores[name].falseDroppedByJudgeAlone} of ${scores[name].falseTotal} | ${scores[name].realKeptByJudgeAlone} of ${scores[name].realTotal} |`;
+  const cell = row => `${row.label === 'false' ? (row.held ? '✅ held' : '❌ filed') : (row.held ? '❌ held' : '✅ filed')}${row.cites.length ? ` (${row.cites.join(', ')})` : ''}`;
+  return ['| Knowledge | False notes held | Real notes filed | False dropped by the judge alone | Real kept by the judge alone |', '|---|---|---|---|---|', ...names.map(line), '',
+    `| Note | Label | ${names.join(' | ')} |`, `|---|---|${names.map(() => '---').join('|')}|`, ...first.rows.map((row, i) => `| ${row.n} | ${row.label} | ${names.map(name => cell(scores[name].rows[i])).join(' | ')} |`)].join('\n');
+}
+
+/** The batch-1 set: {notes (with image), lessons} read from `dir` (notes.json, lessons.json, shot-<n>.png). */
+export function loadBatch(dir) {
+  const set = JSON.parse(fs.readFileSync(path.join(dir, 'notes.json'), 'utf8')), lessons = JSON.parse(fs.readFileSync(path.join(dir, 'lessons.json'), 'utf8')).lessons;
+  return {notes: set.notes.map(note => ({...note, image: fs.readFileSync(path.join(dir, `shot-${note.n}.png`)).toString('base64')})), lessons};
 }

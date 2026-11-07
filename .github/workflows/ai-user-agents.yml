@@ -180,6 +180,16 @@ jobs:
         timeout-minutes: 10
         working-directory: desktop/e2e
         run: node agent-nightly.mjs prepare
+      - name: What the persona's closed false alarms taught (closed by-design verdicts, read from GitHub)
+        id: closed
+        if: steps.prepare.outputs.skip != 'true' && !env.IS_REPLAY
+        timeout-minutes: 3
+        working-directory: desktop/e2e
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Why (7 Nov 2026, pz, owner via mac-50: "are we treating the root cause?"): the actor and the judge read the area's closed by-design verdicts like rules (lib/agent-closed.mjs). A GitHub read that fails must not end a night: the run goes without them and says so here and in the suite's log.
+        run: |
+          if node lib/agent-closed.mjs "$RUNNER_TEMP/closed-verdicts.json"; then echo "file=$RUNNER_TEMP/closed-verdicts.json" >> "$GITHUB_OUTPUT"; else echo "::warning::closed verdicts could not be read: this run goes without them"; fi
       - name: The AI user agent works its session
         id: session
         if: steps.prepare.outputs.skip != 'true'
@@ -198,6 +208,7 @@ jobs:
           AGENT_VIDEO: ${{ inputs.video && !inputs.scheduled && '1' || '' }}   # Why (7 Nov 2026, owner): manual investigations record by default; scheduled nights retain their existing storage cost
           AGENT_MEMORY_DIR: ${{ !env.IS_REPLAY && inputs.lane == '' && steps.prepare.outputs.memory_dir || '' }}   # a replay or a lane knows no earlier night (a lane would otherwise plan against the night's coverage), so its runs compare
           AGENT_CHANGED_LOG: ${{ !env.IS_REPLAY && inputs.lane == '' && steps.prepare.outputs.changed_log || '' }}   # same replay-or-lane condition as the memory: no earlier night, no "changed since"
+          AGENT_CLOSED_FILE: ${{ !env.IS_REPLAY && steps.closed.outputs.file || '' }}   # lanes read it too: a lane has no memory, and the closed verdicts are what it can learn from
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
           E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
           E2E_AGENT_STEPS: ${{ steps.prepare.outputs.steps }}

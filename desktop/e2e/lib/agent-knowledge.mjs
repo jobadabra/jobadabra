@@ -96,20 +96,23 @@ export function mergeNotes(existing, observed, {today, commit = '', session = ''
 export const areaOfView = view => String(view).replace(/^./, first => first.toUpperCase());
 
 /**
- * The knowledge text for a session's areas: each area's rules first (a stale one says why), then its notes, capped at `maxTokens` (the oldest notes go first, rules never).
- * `expectations`: {area: [entry]}, `notes`: {area: [note]}.
+ * The knowledge text for a session's areas: each area's rules first (a stale one says why), then the closed verdicts of its false alarms, then its notes, capped at `maxTokens` (the oldest notes go first, then the oldest closed verdicts, rules never).
+ * `expectations`: {area: [entry]}, `notes`: {area: [note]}, `closed`: {area: [lesson]} (lib/agent-closed.mjs). A closed verdict reads `- closed-<n> Not a bug: <what was flagged>: <why>` so the judge can name it as it names a rule.
  */
-export function knowledgeFor(areas, {expectations = {}, notes = {}, maxTokens = 3000} = {}) {
+export function knowledgeFor(areas, {expectations = {}, notes = {}, closed = {}, maxTokens = 3000} = {}) {
   const parts = areas.map(area => {
     const rules = (expectations[area] || []).map(entry => `- ${entry.id} ${entry.rule}${entry.stale?.length ? ` (stale: re-verify, ${entry.stale.join(', ')} changed)` : ''}`);
-    return {area, rules, notes: [...(notes[area] || [])].sort((a, b) => String(b.last).localeCompare(String(a.last)))};
+    const byNewest = (list, key) => [...list].sort((a, b) => String(b[key]).localeCompare(String(a[key])));
+    return {area, rules, closed: byNewest(closed[area] || [], 'at'), notes: byNewest(notes[area] || [], 'last')};
   });
-  const render = () => parts.map(part => [`## ${part.area}`, ...part.rules, ...part.notes.map(note => `- note: ${note.text} (seen ${note.seen}×)`)].join('\n')).join('\n\n');
+  const render = () => parts.map(part => [`## ${part.area}`, ...part.rules, ...part.closed.map(item => `- ${item.id} Not a bug: ${item.text}: ${item.why}`), ...part.notes.map(note => `- note: ${note.text} (seen ${note.seen}×)`)].join('\n')).join('\n\n');
   let text = render();
-  while (tokens(text) > maxTokens && parts.some(part => part.notes.length)) {
-    const holder = parts.filter(part => part.notes.length).sort((a, b) => String(a.notes.at(-1).last).localeCompare(String(b.notes.at(-1).last)))[0];
-    holder.notes.pop();
-    text = render();
+  for (const [list, key] of [['notes', 'last'], ['closed', 'at']]) {
+    while (tokens(text) > maxTokens && parts.some(part => part[list].length)) {
+      const holder = parts.filter(part => part[list].length).sort((a, b) => String(a[list].at(-1)[key]).localeCompare(String(b[list].at(-1)[key])))[0];
+      holder[list].pop();
+      text = render();
+    }
   }
   return text;
 }

@@ -1,0 +1,167 @@
+{
+ "source": "batch 1 of the persona lanes (7 Nov 2026, runs 42401302994, 42401310481, 42401307856, app d9ecbf6), fictional test account; labels settled by the verdict pass and the code (#3529-#3539), 3 real, 6 false",
+ "notes": [
+  {
+   "n": 1,
+   "issue": 3529,
+   "view": "jobs",
+   "type": "data",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "Issue banner reports problems although there are no jobs",
+   "expected": "general UX: a summary of problems with jobs should match the jobs that exist on the screen",
+   "observed": "The banner reads \"Cover letter missing · 12 details missing · 2 to check · 1 search suggestion\", but the page shows \"0 jobs\", \"0 matches\" and every tile at 0.",
+   "why": "The person is told there are things to fix, but there is no job to fix them on. This makes them doubt the counts and wastes their time.",
+   "label": "false",
+   "cause": "by design (jobs-6): the Jobs bar lists the profile's open items",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "No rule (including jobs-5) explains this: the screenshot shows 0 jobs, 0 matches and the Inbound tile also at 0, yet the banner still lists \"Cover letter missing · 12 details missing · 2 to check\", so it flags problems with no jobs to fix."
+   }
+  },
+  {
+   "n": 2,
+   "issue": 3530,
+   "view": "settings",
+   "type": "ui",
+   "kind": "consistency",
+   "severity": "high",
+   "title": "Old password is visible without pressing Show",
+   "expected": "general UX: what the screen says about hiding secrets matches what it does; a password is shown only after the person presses Show",
+   "observed": "The page says \"one is shown only when you press Show\", yet the row reads \"Old job-site password: North-Flint-59\" in plain text, with a Show button still beside it.",
+   "why": "The page promises the password stays hidden until Show is pressed, but it is already on screen. The person cannot trust the page's privacy claim, and anyone looking at the screen can read the password.",
+   "label": "real",
+   "cause": "fixed (#3530)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The picture shows \"Old job-site password: North-Flint-59\" in plain text with Show still beside it, while the page says a password is shown only when you press Show; no rule makes this by design, and it leaks a secret."
+   }
+  },
+  {
+   "n": 3,
+   "issue": 3531,
+   "view": "settings",
+   "type": "data",
+   "kind": "consistency",
+   "severity": "high",
+   "title": "Text size description contradicts selected Large option",
+   "expected": "general UX: the description under a setting should match the option currently selected",
+   "observed": "The Text size control has Large selected, but the text below says \"100%. Bigger text, easier to read.\", which describes the Default size rather than Large.",
+   "why": "The person cannot tell which size is actually applied, so they may not trust the setting or may change it again.",
+   "label": "false",
+   "cause": "by design (settings-5): Large is 100% on a laptop display",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows Large selected with the description \"100%. Bigger text, easier to read.\" beneath it. 100% is the Default size, so the description contradicts the selected option. No listed rule makes this by design, and it leaves the u"
+   }
+  },
+  {
+   "n": 4,
+   "issue": 3532,
+   "view": "settings",
+   "type": "error",
+   "kind": "functionality",
+   "severity": "medium",
+   "title": "Showing the credential fails on the first attempt",
+   "expected": "general UX: Pressing Show should reveal the stored credential reliably.",
+   "observed": "The first press displayed “The password could not be made or read.” Pressing Show again revealed the password.",
+   "why": "The failure makes the credential appear unavailable and requires an unexplained retry.",
+   "label": "real",
+   "cause": "fixed (#3532)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "No rule makes a first-press failure by design, and the picture shows the Show button for the old password now displaying \"North-Flint-59\", which fits the report's retry succeeding. A transient error on the first Show press that needs a retr"
+   }
+  },
+  {
+   "n": 5,
+   "issue": 3533,
+   "view": "actions",
+   "type": "ui",
+   "kind": "text",
+   "severity": "medium",
+   "title": "Find jobs description is cut off mid-sentence",
+   "expected": "general UX: descriptive text should be complete and readable",
+   "observed": "The Find jobs card reads \"...removes gone ones, AI scores the new\" and stops without saying what is scored.",
+   "why": "The person cannot tell what the task does, because the sentence ends in the middle.",
+   "label": "real",
+   "cause": "confirmed (#3533)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The picture shows the Find jobs description ending with \"AI scores the new\" and the next line is just \"runs every 4 h\", so the sentence is truncated mid-phrase; no rule makes this by design, and it leaves the user unable to tell what is sco"
+   }
+  },
+  {
+   "n": 6,
+   "issue": 3534,
+   "view": "actions",
+   "type": "ux",
+   "kind": "text",
+   "severity": "medium",
+   "title": "Unavailable reason uses internal wording",
+   "expected": "general UX: status messages should say in plain language why something is unavailable and what to do",
+   "observed": "Next to the \"Not available\" badge the screen says \"Not in the end-to-end journey: it never reaches our server.\"",
+   "why": "This is internal jargon and gives no reason or next step, so the person does not know why Fill now is disabled or whether Try again will help.",
+   "label": "false",
+   "cause": "by design (actions-3): test build wording",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "Rule actions-3 says that in a test run the Ready to send card shows \"Not in the end-to-end journey: it never reaches our server\" with its fill controls disabled, and this is by design. The screenshot shows that state, so the report describe"
+   }
+  },
+  {
+   "n": 7,
+   "issue": 3537,
+   "view": "jobs",
+   "type": "data",
+   "kind": "text",
+   "severity": "medium",
+   "title": "Job row titled by a raw URL",
+   "expected": "general UX: each job row is titled by the job (role and company), as in jobs-3, not by a raw link",
+   "observed": "The second applied job's role is shown as \"https://example.com/jobs/software-engineer\", with company, location and fit all \"N/A\", and the detail panel is titled with the same URL.",
+   "why": "A web address is not a job title, so the person cannot tell which job this is and the list is hard to scan.",
+   "label": "false",
+   "cause": "by design (jobs-7): Add application asks for the title",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The screenshot shows the second applied row and the detail panel both titled \"https://example.com/jobs/software-engineer\" with N/A fit, company and location. Rule jobs-3 says rows are titled by the job, so a raw URL title makes the job unid"
+   }
+  },
+  {
+   "n": 8,
+   "issue": 3538,
+   "view": "settings",
+   "type": "ui",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "GitHub row is labelled \"Always on\" but is not connected",
+   "expected": "settings-3: a row names a setting and the value beside it is that setting's state; the label does not claim the setting is on.",
+   "observed": "The row reads \"GitHub · Always on\" with \"Runs your searches and checks while your Mac is off\", while the badge beside it says \"Not connected\" and the button says \"Set up\".",
+   "why": "The person is told the background runs are always on when nothing is set up, so they may believe searches run while the Mac is off.",
+   "label": "false",
+   "cause": "duplicate of #3539 (same row, one run); by design (settings-3)",
+   "recorded": {
+    "judge": "agrees",
+    "reason": "The picture confirms the row reads \"GitHub · Always on\" with \"Runs your searches and checks while your Mac is off\" beside a \"Not connected\" badge and a \"Set up\" button. settings-3 says the label must not claim the setting is on, and here it"
+   }
+  },
+  {
+   "n": 9,
+   "issue": 3539,
+   "view": "settings",
+   "type": "ui",
+   "kind": "consistency",
+   "severity": "medium",
+   "title": "GitHub row claims \"Always on\" but is not connected",
+   "expected": "settings-3: a row such as \"Always on: your GitHub\" names a setting, and the value beside it is that setting's state; the label does not claim the setting is on.",
+   "observed": "The row is titled \"GitHub · Always on\" with the text \"Runs your searches and checks while your Mac is off\", yet its status badge reads \"Not connected\" and its button is \"Set up\".",
+   "why": "The person is told the background runs are always on while the service is not connected, so they may think searches run when the Mac is off when they do not.",
+   "label": "false",
+   "cause": "by design (settings-3)",
+   "recorded": {
+    "judge": "disagrees",
+    "reason": "settings-3 says a row like \"Always on: your GitHub\" names a setting and does not claim it is on; the \"Not connected\" badge beside it is that setting's state, so the observed row matches the rule."
+   }
+  }
+ ]
+}
