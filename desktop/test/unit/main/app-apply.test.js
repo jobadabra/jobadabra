@@ -250,6 +250,16 @@ test('apply picks the best job that may start: a Recruiter lead with the top fit
   assert.deepEqual(apply.pick(jobs.slice(0, 1), 1), [], 'nothing eligible: nothing is picked');
 });
 
+// Why (7 Nov 2026, owner screenshot: after Cancel all, Apply took a job the kit had marked "Not eligible"): "not eligible" is two rules, the stage (canStart) and the kit's verdict (job.ineligible); the pick obeys both.
+test('the picker never takes a job the kit marked not eligible, however high its fit', () => {
+  const jobs = [
+    {url: 'cessna', status: 'saved', stage: 'Saved', fit: 95, kit: true, ineligible: 'needs a work permit'},
+    {url: 'fine', status: 'saved', stage: 'Saved', fit: 60, kit: true, ineligible: ''},
+  ];
+  assert.deepEqual(apply.pick(jobs, 2).map(j => j.url), ['fine']);
+  assert.deepEqual(apply.pickMissing([{url: 'x', status: 'saved', code: 'c', ineligible: 'no'}, {url: 'y', status: 'saved', code: 'd'}], 2).map(j => j.url), ['y']);
+});
+
 test('the picker and Background automation share one eligibility rule', async () => {
   const {canStart, STARTABLE_STAGES} = await import('../../../lib/apply-eligibility.js');
   for (const stage of ['', 'Saved', 'Kit ready', 'Applying', 'Recruiter lead', 'Screening', 'Applied', 'Closed', 'Dismissed']) {
