@@ -149,8 +149,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    */
   async function enqueue(jobs, mode, batch = null) {
     return serial(async () => {
-      // Why (7 Nov 2026, #3424): a preflight refusal has no queue row, but the selected jobs still need a reason in the dialog.
-      const refused = (error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'failed', reason: error}))});
+      // Why (7 Nov 2026, #3424, review): a preflight refusal has no queue row; distinguish it from a failed kit so the dialog says the selected job never started.
+      const refused = (error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: error}))});
       const {chosen, error} = batchSettings(config(), mode, batch);
       if (error) return refused(error);
       if (!browserOf().ready()) return refused("Download Jobadabra's browser first: about 200 MB, only once.", {code: 'BACKGROUND_BROWSER_MISSING'});   // before any store write, so nothing waits on a browser that is not there

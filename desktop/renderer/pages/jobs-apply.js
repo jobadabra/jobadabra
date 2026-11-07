@@ -6,7 +6,6 @@ import {t} from '../../i18n/index.js';
 import {offerBrowser} from './browser-progress.js';
 import {el, pill} from '../components.js';
 import {$, message} from './core.js';
-import {openJobPanel} from './job-panel.js';
 import {applyChosen, applyOf} from '../apply-settings-model.js';
 import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
 import {askFullAutomation, modeCards} from './apply-settings.js';
@@ -20,7 +19,7 @@ let batchFinished = false;
 // Why (7 Nov 2026, #3424): each attempted job needs a clear status and an inspection path in the batch dialog.
 const OUTCOMES = {
   started: ['Started', 'good'], prepared: ['Kit prepared', 'info'], ineligible: ['Not eligible', 'bad'],
-  failed: ['Could not prepare', 'bad'], busy: ['Already open', 'neutral'], 'already-queued': ['Already queued', 'warn'], skipped: ['Skipped', 'warn'],
+  failed: ['Could not prepare', 'bad'], 'not-started': ['Not started', 'bad'], busy: ['Already open', 'neutral'], 'already-queued': ['Already queued', 'warn'], skipped: ['Skipped', 'warn'],
 };
 
 // The cards and the button from the saved settings; while a batch starts, the cards are off and the button stays "Starting…" (typing in the count changes nothing).
@@ -32,7 +31,7 @@ function draw() {
   go.hidden = batchFinished;
 }
 
-function showOutcomes(outcomes = []) {
+function showOutcomes(outcomes = [], openJob) {
   const list = $('apply-outcomes');
   list.replaceChildren();
   list.hidden = !outcomes.length;
@@ -46,10 +45,10 @@ function showOutcomes(outcomes = []) {
     heading.append(pill(label, tone));
     row.append(heading);
     if (outcome.reason) row.append(el('p', 'muted small apply-outcome-reason', outcome.reason));
-    const inspect = Object.assign(el('button', 'link', 'Inspect job →'), {type: 'button'});
+    const inspect = Object.assign(el('button', 'secondary small-button', 'Inspect job →'), {type: 'button'});
     inspect.addEventListener('click', () => {
       $('apply-dialog').close();
-      openJobPanel({url: outcome.url, title: outcome.title || '', company: outcome.company || ''}, 'application');
+      openJob({url: outcome.url, title: outcome.title || '', company: outcome.company || ''}, 'application');
     });
     row.append(inspect);
     list.append(row);
@@ -69,14 +68,14 @@ async function pick(mode) {
   }
 }
 
-/** Wires the dialog once; startedApplying(): the Jobs list reads the jobs the batch marked. */
-export function wireApplyDialog({startedApplying}) {
+/** Wires the dialog once; startedApplying(): the Jobs list reads marked jobs; openJob: the Jobs page's drawer opener, injected to keep this dialog out of page dependency cycles. */
+export function wireApplyDialog({startedApplying, openJob}) {
   $('apply-open').addEventListener('click', async () => {
     message('apply-message', '');
     settings = (await window.pilot.state().catch(() => null))?.settings || {};
     picked = ''; confirmedAt = '';   // Why (7 Nov 2026, owner, #3363: "The preselected modal apply modal option should be the one in settings"): every open starts on Settings' mode. No click, no pick sent: the first-choice gate replays Start after the person chose in it, and that choice must win (27 Oct 2026)
     batchFinished = false;
-    showOutcomes();
+    showOutcomes([], openJob);
     draw();
     $('apply-dialog').showModal();
   });
@@ -92,7 +91,7 @@ export function wireApplyDialog({startedApplying}) {
       // first-Apply dialog opens over this one (lib/apply-choice-gate.js), and the batch goes on after it.
       Object.assign(go, {disabled: true, textContent: t('pagesCommon.starting')});
       go.classList.add('busy');
-      showOutcomes();
+      showOutcomes([], openJob);
       $('apply-start-banner').hidden = false;
       $('apply-start-status').textContent = t('pagesJobs.choosing');
       $('apply-progress').hidden = false;   // the banner's progress bar stays below the action buttons
@@ -106,8 +105,9 @@ export function wireApplyDialog({startedApplying}) {
         const outcome = applyDialogOutcome(result);
         if (!outcome.close) offerBrowser($('apply-browser'), outcome.browserOffer);
         if (outcome.outcomes?.length) {
-          message('apply-message', outcome.error);
-          showOutcomes(outcome.outcomes);
+          // Why (7 Nov 2026, #3424, review): showing job rows must not make a fully refused batch's error look neutral.
+          message('apply-message', outcome.error, result.ok ? undefined : 'error');
+          showOutcomes(outcome.outcomes, openJob);
           batchFinished = !!result.ok;   // Why (7 Nov 2026, #3424): keep partial success inspectable and block a duplicate batch from the finished dialog.
           return;
         }

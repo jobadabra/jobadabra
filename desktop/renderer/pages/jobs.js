@@ -376,7 +376,7 @@ export async function init() {
   wireProfileEmpty();
   wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
-  wireApplyDialog({startedApplying});
+  wireApplyDialog({startedApplying, openJob: openJobPanel});
   wireTriage({read: job => window.pilot.triageRead({url: job.url}), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
 }
 

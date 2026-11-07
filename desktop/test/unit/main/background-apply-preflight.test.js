@@ -20,6 +20,6 @@ test('a Background batch reports each selected job when mode, browser or capacit
     assert.equal(result.ok, false);
     assert.equal(result.error, item.error);
     if (item.code) assert.equal(result.code, item.code);
-    assert.deepEqual(result.outcomes, jobs.map(({url, title, company}) => ({url, title, company, status: 'failed', reason: item.error})));
+    assert.deepEqual(result.outcomes, jobs.map(({url, title, company}) => ({url, title, company, status: 'not-started', reason: item.error})));
   }
 });

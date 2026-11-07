@@ -97,6 +97,19 @@ test('a start whose call fails says so and gives the button back', () => {
   assert.match(page, /busy: saving \|\| gate\.isStarting\(\)/, 'the cards are off while a batch starts');
 });
 
+test('batch outcome inspection uses the solid button and the Jobs page drawer callback', () => {
+  const page = read('renderer/pages/jobs-apply.js');
+  assert.match(page, /el\('button', 'secondary small-button', 'Inspect job/);
+  assert.match(page, /openJob\(\{url: outcome\.url, title: outcome\.title \|\| '', company: outcome\.company \|\| ''\}, 'application'\)/);
+  assert.doesNotMatch(page, /from '\.\/job-panel\.js'/, 'Jobs injects the drawer opener to avoid a page dependency cycle');
+  assert.match(read('renderer/pages/jobs.js'), /wireApplyDialog\(\{startedApplying, openJob: openJobPanel\}\)/);
+});
+
+test('fully refused batches keep the error tone when they also have per-job outcomes', () => {
+  assert.match(read('renderer/pages/jobs-apply.js'), /message\('apply-message', outcome\.error, result\.ok \? undefined : 'error'\)/);
+  assert.match(read('renderer/pages/jobs-apply.js'), /'not-started': \['Not started', 'bad'\]/);
+});
+
 test('Start sends the validated count; the main process runs the saved mode\'s own runner', async () => {
   const registered = register('check');
   const result = await applyDialogStart({count: '3', start: args => registered.handles.get('apply')({}, args)});
