@@ -2,10 +2,10 @@
 // whatever step it was at, and the card offers Reopen form (the person's own Apply) to start it again; the person's start on a tab (startForm) takes its session out of "Stopped".
 // Pure over the terminals' own functions. Guard: desktop/test/unit/extension/stop-request.test.js.
 
-// -> how many sessions changed (0 when all already said it).
-export function stopLiveForms({list, noteStopped}) {
+/** Marks every live form stopped with its trigger's origin; returns how many changed (zero when already stopped). */
+export function stopLiveForms({list, noteStopped}, source = 'user') {
   let changed = 0;
-  for (const session of list()) if (session.kind === 'form' && !session.outcome && noteStopped(session.id)) changed++;
+  for (const session of list()) if (session.kind === 'form' && !session.outcome && noteStopped(session.id, source)) changed++;
   return changed;
 }
 

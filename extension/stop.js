@@ -84,13 +84,15 @@ export function startTab(tabId, who = '', wasStopped = false) {
 // debugger refusing a detach it does not own, the page's panel message and the app's report are best effort and never make the Stop fail.
 // Why (1 Nov 2026, #2812, a8's yes): the page's own mark counts only where a script of ours runs. A page Chrome guards (chrome://, the web store, an error page) refuses every
 // injection, and all of ours is injected (no content_scripts), so nothing of ours is there; it refused on every press and the Stop never read as done. Whether ours runs is the
-// page's answer to the 'stopped' message (review.js, panel-overlay.js reply), never the error's words or the page's address. Each failed step goes to the log, not the page.
-export async function stopAll(reason = 'the person pressed Stop') {
+// page's answer to the 'stopped' message (review.js, panel-overlay.js reply), never the error's words or the page's address. Each failed step goes to the log, not the page; the origin ('user' a Stop press, 'browser' Chrome's own cancel, else 'unknown') only words
+// the app's note, and every origin stops everything (#3410; owner 7 Nov 2026: "Yes, ship it (Recommended)").
+export async function stopAll(reason = 'the person pressed Stop', origin = 'unknown') {
+  const source = ['user', 'browser'].includes(origin) ? origin : 'unknown';
   const at = Date.now();
   const failed = [];
   const attempt = (what, work) => Promise.resolve(work).catch(error => { failed.push(`${what}: ${String(error?.message || error).slice(0, 80)}`); });
   markStopped(at);
-  await attempt('the Stop could not be kept for a restarted worker', chrome.storage.session.set({stopped: {at, reason: String(reason).slice(0, 80)}}));
+  await attempt('the Stop could not be kept for a restarted worker', chrome.storage.session.set({stopped: {at, source, reason: String(reason).slice(0, 80)}}));
   decide('stop', 'stopped: nothing more is done on any tab', {reason: String(reason).slice(0, 80)});
   const stored = await chrome.storage.session.get(null).catch(() => ({}));
   const ids = new Set(Object.keys(stored).filter(key => key.startsWith('armed:') && stored[key]).map(key => Number(key.slice(6))).filter(Number.isInteger));
@@ -110,14 +112,14 @@ export async function stopAll(reason = 'the person pressed Stop') {
     const ours = await Promise.resolve().then(() => chrome.tabs.sendMessage(tabId, {type: 'stopped', at})).then(answer => answer?.stopped === true, () => false);
     if (refused && !gone && ours) failed.push(`tab ${tabId}: the page was not marked stopped: ${String(refused?.message || refused).slice(0, 80)}`);
   }
-  for (const fn of told) await Promise.resolve(fn(reason, ids.size)).catch(() => {});
+  for (const fn of told) await Promise.resolve(fn(reason, ids.size, source)).catch(() => {});
   if (failed.length) decide('stop', 'the Stop did not finish', {failed: failed.join(' | ').slice(0, 400)});
   return {tabs: ids.size, ok: failed.length === 0, failed};
 }
 
-// Chrome's own "Cancel" on its "started debugging this browser" bar is the person's Stop too (a closed tab or DevTools taking over is not).
+// Chrome cancellation still stops everything; its browser origin is distinct from an app or extension Stop press (#3410).
 export function watchDebugger() {
-  chrome.debugger?.onDetach?.addListener((_, why) => { if (why === 'canceled_by_user') stopAll('Cancel on Chrome\'s debugging bar'); });
+  chrome.debugger?.onDetach?.addListener((_, why) => { if (why === 'canceled_by_user') stopAll('Cancel on Chrome\'s debugging bar', 'browser'); });
 }
 
 // The app's answer to a report carries `stop: <request id>` until it hears the extension stopped: each request stops once (a request answered before a restart is not asked again).
@@ -127,6 +129,6 @@ export async function stopFromApp(answer) {
   if (!request || request === lastRequest) return false;
   lastRequest = request;
   await chrome.storage.session.set({stopReq: request}).catch(() => {});
-  await stopAll('Stop pressed in the app');
+  await stopAll('Stop pressed in the app', 'user');
   return true;
 }

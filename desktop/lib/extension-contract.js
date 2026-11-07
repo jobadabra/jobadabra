@@ -92,7 +92,7 @@ export const events = {
   'take-over': {url: 'string', page: 'string?', host: 'string?', consent: 'boolean?'},
   'claude-auto': {on: 'boolean'},
   'page': {page: 'string', session: 'string?', tab: 'number'},
-  'stopped': {reason: 'string'},
+  'stopped': {reason: 'string', source: 'string?'},
   'started': {tab: 'number', who: 'string?'},
 };
 

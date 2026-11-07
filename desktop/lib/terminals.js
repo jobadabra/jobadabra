@@ -121,7 +121,7 @@ const publicView = s => assertSession({id: s.id, kind: asksHidden(s) ? 'form' : 
   // Came back from the last run (the app closed, or was killed) and you weren't asked yet what to do with it.
   askAtStart: !!s.restored && !s.asked && !isLive(s),
   startedAt: s.startedAt || '', endedAt: s.endedAt || null, exitCode: s.exitCode ?? null, needsYouSince: s.needsYouSince || null,
-  stuck: s.stuck || '', stage: s.stage || '', inChrome: !!s.inChrome, accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '', accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode, question: asksHidden(s) ? '' : s.question || '', brief: asksHidden(s) ? '' : briefly(s.question || s.note), location: s.location || '', workMode: s.workMode || ''});
+  stuck: s.stuck || '', stopSource: s.stopSource || '', stage: s.stage || '', inChrome: !!s.inChrome, accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '', accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode, question: asksHidden(s) ? '' : s.question || '', brief: asksHidden(s) ? '' : briefly(s.question || s.note), location: s.location || '', workMode: s.workMode || ''});
 /** Marks a session as being cancelled by Cancel all applications (on) or back to its own state (off) and tells the window; never saved, so a restart does not bring it back. */
 export function setCancelling(id, on = true) {
   const session = sessions.get(id);
@@ -221,7 +221,7 @@ export function noteStuck(id, why, host = '', needs = '', accountStep = '') {
   return applyJourney(id, {type: 'stuck', why, host, needs, accountStep});
 }
 // The person pressed Stop: the form session says so, whatever step it was at (lib/stop-all.js).
-export const noteStopped = id => applyJourney(id, {type: 'stop'});
+export const noteStopped = (id, source = 'user') => applyJourney(id, {type: 'stop', source});
 // Where the application is, from what the extension sees in its tab: 'account' (a sign-in or sign-up page, on `host`) or 'form'
 // (the application form, its fields reported). The account's site is kept, so the form step can say it is step 2 of 2.
 export function setStage(id, stage, host = '') {
@@ -277,7 +277,7 @@ export async function resume(id, launch) {
 export function persist(file) { saveFile = file; }
 const saved = s => ({
   background: s.background || null,
-  id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
+  id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', stopSource: s.stopSource || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
   stage: s.stage || '', accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '',
   accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode,
   claudeId: s.claudeId || '', asked: !!s.asked, transcript: s.transcript || '', events: s.events || [], outcome: s.outcome || '',

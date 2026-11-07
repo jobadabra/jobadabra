@@ -247,7 +247,7 @@ export function registerExtServerHandlers(ctx) {
     else toWindow('session', 'open', {id});
     return true;
   });
-  server.setStoppedHandler(event => appLog('extension', 'the extension stopped', {reason: String(event?.reason || '').slice(0, 80), marked: stopLiveForms(terminals)}));   // its Stop, the app's, or Chrome's Cancel: every live form says Stopped (lib/stop-all.js)
+  server.setStoppedHandler(event => appLog('extension', 'the extension stopped', {reason: String(event?.reason || '').slice(0, 80), marked: stopLiveForms(terminals, event?.source || 'unknown')}));   // stop still holds globally; only an explicit user trigger attributes it to the person (#3410)
   server.setStartedHandler(event => { const id = startForm(terminals, review.sessionOfTab, event?.tab); if (id) appLog('extension', 'started again on its tab: the session is no longer stopped', {id, who: String(event?.who || '').slice(0, 40)}); });
   server.setStuckHandler(event => { flow().stuck(event); });   // tier 3: the extension can't reach a form (lib/session-flow.js)
   review.onBind(({id, tab, before, by, host, newRun}) => appLog('review', `tab ${tab} is session ${id}'s now`, {before, by, host, ...(newRun ? {newRun} : {})}));   // which tab a session follows, and why

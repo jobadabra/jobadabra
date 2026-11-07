@@ -10,10 +10,10 @@ const REFUSED = ['claudeFill', 'panelReviewAnswer', 'armTab'];   // what acts or
 
 export function createStopMessages() {
   watchDebugger();
-  onStopped(async reason => {   // the app learns it at once: its session says "Stopped", the Stop button it asked for is answered (desktop/lib/server.js /extension/event)
+  onStopped(async (reason, _tabs, source) => {   // the app learns it at once: its session says "Stopped", the Stop button it asked for is answered (desktop/lib/server.js /extension/event)
     await stopBackgroundApply();
     const config = await settings();
-    if (!config.workerUrl || config.workerUrl.startsWith('http://127.0.0.1')) await api(config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'stopped', reason: String(reason).slice(0, 80)})});
+    if (!config.workerUrl || config.workerUrl.startsWith('http://127.0.0.1')) await api(config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'stopped', source, reason: String(reason).slice(0, 80)})});
   });
   onStarted(async (tab, who) => {   // ...and that the person started again on a tab: that tab's session leaves "Stopped" (desktop/lib/stop-all.js startForm)
     const config = await settings();
@@ -21,8 +21,8 @@ export function createStopMessages() {
   });
   return function messages_stop(message, sender, reply) {
     if (message?.type === 'stop') {
-      // Why (1 Nov 2026, #2812, Gitar on #2840): a page gets only whether the Stop held and on how many tabs; each failed step's reason (Chrome's own words) stays in the log (stop.js).
-      stopAll(String(message.reason || 'the person pressed Stop')).then(done => reply({ok: done.ok, tabs: done.tabs}), () => reply({ok: false}));
+      // Why (1 Nov 2026, #2812, Gitar on #2840): a page gets only whether the Stop held and on how many tabs; each failed step's reason (Chrome's own words) stays in the log (stop.js); a Stop asked by a page is the person's ('user'), so the app may say "by you" (#3410, 7 Nov 2026).
+      stopAll(String(message.reason || 'the person pressed Stop'), 'user').then(done => reply({ok: done.ok, tabs: done.tabs}), () => reply({ok: false}));
       return true;
     }
     if (PERSON_STARTS.includes(message?.type)) {   // the group that owns the message answers it
