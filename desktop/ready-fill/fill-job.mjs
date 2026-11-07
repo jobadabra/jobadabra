@@ -37,7 +37,7 @@ async function pressFill(page, standIn, address, seconds = 25, settleMs = 3000) 
   }, FILL_BUTTON.source).catch(() => false);
 }
 
-// Why (7 Nov 2026, ts 5/5, owner: "windows unit tests are still very slow"): settleMs is the two settle waits (the panel's buttons, the record at the fill's end), 3 s each; ready-fill-line.test.js spent 3 s per form (15 s a file) on them with a stand-in that has settled already, so a test passes 0. A night never does.
+// Why (7 Nov 2026, ts 5/7, owner: "windows unit tests are still very slow"): settleMs is the two settle waits (the panel's buttons, the record at the fill's end), 3 s each; ready-fill-line.test.js spent 3 s per form (15 s a file) on them with a stand-in that has settled already, so a test passes 0. A night never does.
 // context: the night's Playwright context; standIn: createStandIn(); job: {id, url}. -> the outcome plus the tab and the fill's video ({path, bytes, secs} or null).
 // record(page): starts the fill's video (Watch the fill, owner 18 Oct 2026: every form the night opens, 3 minutes at most); it stops once the outcome is read, before the tab is held.
 // onStep(step, n): the live line (site src/ready-line.js STEPS); it answers true when the owner stopped this form: the fill ends at once with {stopped}, its tab closed by the caller.
