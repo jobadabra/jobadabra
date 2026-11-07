@@ -55,6 +55,9 @@ export function rankNotes(notes, cap = MAX_FILED) {
   return {filed: ranked.slice(0, cap), over: ranked.slice(cap), low, held};
 }
 
+/** The Admin page of the AI persona's runs (jobadabra-web admin/ai-persona-page.js: `?run=<GitHub run id>`). Private: only the owner reads it. */
+export const ADMIN_PERSONA = 'https://www.jobadabra.top/admin/testing/ai-persona';
+
 /**
  * A note as the Finder's finding (what a suite pushes to ctx.findings; lib/triage-findings.mjs normalize reads it): the detail carries what was observed and the steps in words, `impact` is why it
  * matters, `expected` is the entry it relies on, and `agent` is what the labels and the replay line need. `steps`: the session's steps so far in words; `session`: {persona, seed, snapshot}.
@@ -63,6 +66,7 @@ export function toFinding(note, {steps = [], session = {}} = {}) {
   const trail = steps.slice(-12).map((step, i) => `${i + 1}. ${step}`).join('\n');
   return {view: note.view, severity: note.severity, kind: note.kind, title: note.title, source: 'ai-user-agent',
     detail: `${note.observed}${trail ? `\n\nSteps before it:\n${trail}` : ''}${session.chain ? `\n\n${session.chain}` : ''}`, impact: note.why, expected: note.expected,
+    ...(/^\d{6,15}$/.test(String(session.run || '')) ? {evidence: {id: session.run, url: `${ADMIN_PERSONA}?run=${session.run}`, line: `${note.goal ? `Goal ${note.goal}: the` : 'The'} run's path, the screen when this was noted and the video are on that page.`}} : {}),
     agent: {type: note.type, persona: session.persona || '', seed: session.seed ?? '', snapshot: session.snapshot || '', judge: note.judge || 'unknown', judgeReason: note.judgeReason || '', proved: !!note.proved, cites: note.cites || ''}};
 }
 

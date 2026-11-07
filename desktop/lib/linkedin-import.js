@@ -3,6 +3,8 @@
 // profile data never passes our server. Same consent shape as lib/linkedin-oauth.js. Settings: settings.linkedinImport = {connectedAt, expiresAt} (no value;
 // settings.linkedin is the identity connection). The key is a credential: Keychain only (lib/keychain.js: a test or the twin writes its own file), never a log,
 // the store, Notion or an upload; deleted by Disconnect, at expiry and on any 401/403. Nothing here is about LinkedIn jobs. Guard: test/unit/main/linkedin-import.test.js.
+import {hostPlatform, pick} from '../i18n/platform.js';
+import {linkedinText} from '../i18n/linkedin-notices.js';
 import * as realKeychain from './keychain.js';
 import {begin, cancel as cancelFlow, fail} from './oauth-handoff.js';
 import {toCv} from './linkedin-export.js';
@@ -26,17 +28,17 @@ export const cancel = () => cancelFlow(FLOW);
 
 /** Consent on LinkedIn's own page through the site. -> {ok: true, token, expiresIn} | {ok: false, error}. */
 export async function connect(openExternal, {site = SITE, timeout = 5 * 60 * 1000} = {}) {
-  const {state, result} = begin(FLOW, {timeout, timeoutError: 'LinkedIn didn\'t answer in 5 minutes. It works for LinkedIn members in the EU, EEA and Switzerland; otherwise use your LinkedIn data file.'});
-  try { await openExternal(`${site}/api/linkedin-import/start?state=${state}`); } catch { fail(FLOW, 'Your browser could not be opened.'); }
+  const {state, result} = begin(FLOW, {timeout, timeoutError: linkedinText('consentTimeout')});
+  try { await openExternal(`${site}/api/linkedin-import/start?state=${state}`); } catch { fail(FLOW, linkedinText('browserOpenFailed')); }
   const answer = await result;
   if (!answer.ok) return answer;
   const {access_token: token = '', expires_in: expiresIn = ''} = answer.fields;
-  return token ? {ok: true, token, expiresIn: Number(expiresIn) || 0} : {ok: false, error: 'LinkedIn did not send the key. Try again.'};
+  return token ? {ok: true, token, expiresIn: Number(expiresIn) || 0} : {ok: false, error: linkedinText('missingKey')};
 }
 
 /** Keep the key (Keychain) and when it was made and ends (settings). -> {ok} | {ok: false, error}; the value is never in the answer. */
 export function saveToken(storage, {token, expiresIn}, {keychain = realKeychain, now = new Date()} = {}) {
-  if (!keychain.write(SERVICE, token, {account: ACCOUNT, label: 'Jobadabra: LinkedIn import'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn key, so nothing was imported.'};
+  if (!keychain.write(SERVICE, token, {account: ACCOUNT, label: 'Jobadabra: LinkedIn import'})) return {ok: false, error: linkedinText(pick('keySaveFailed', 'keySaveFailedWindows', hostPlatform()))};
   const days60 = 60 * 24 * 3600;   // LinkedIn's documented lifetime, used when it says nothing
   storage.saveSettings({linkedinImport: {connectedAt: now.toISOString(), expiresAt: new Date(now.getTime() + (expiresIn || days60) * 1000).toISOString()}});
   return {ok: true};
@@ -69,12 +71,12 @@ const messageOf = async response => { const text = await response.text().catch((
 // What LinkedIn's non-OK answer means -> the {ok: false, kind, error} fetchDomain returns (or the rows so far when "No data found" comes after a page). 401/403/429 are never retried by the caller.
 async function refusal(response, rows) {
   const message = await messageOf(response);
-  if (/No data found/i.test(message)) return rows.length ? {ok: true, rows} : {ok: false, kind: 'pending', error: 'LinkedIn has not prepared this yet.'};
+  if (/No data found/i.test(message)) return rows.length ? {ok: true, rows} : {ok: false, kind: 'pending', error: linkedinText('pending')};
   const known = {
-    401: ['unauthorized', 'LinkedIn no longer accepts the saved sign-in. Import again.'], 403: ['unauthorized', 'LinkedIn no longer accepts the saved sign-in. Import again.'],
-    429: ['rate', 'LinkedIn asked us to slow down. Try again later.'], 426: ['version', 'LinkedIn changed its API. Use your LinkedIn data file for now.'],
+    401: ['unauthorized', linkedinText('unauthorized')], 403: ['unauthorized', linkedinText('unauthorized')],
+    429: ['rate', linkedinText('rate')], 426: ['version', linkedinText('version')],
   }[response.status];
-  return known ? {ok: false, kind: known[0], error: known[1]} : {ok: false, kind: 'error', error: `LinkedIn answered ${response.status}.`};
+  return known ? {ok: false, kind: known[0], error: known[1]} : {ok: false, kind: 'error', error: linkedinText('http', {status: response.status})};
 }
 
 // Only LinkedIn's own next page of this endpoint, else '' (the read ends).
@@ -93,7 +95,7 @@ export async function fetchDomain(token, domain, {fetcher = globalThis.fetch} = 
   for (let page = 0; page < MAX_PAGES && path; page++) {
     let response;
     try { response = await fetcher(API + path, {headers: {'Linkedin-Version': VERSION, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'}, signal: AbortSignal.timeout(30000)}); }
-    catch { return {ok: false, kind: 'error', error: 'LinkedIn could not be reached.'}; }
+    catch { return {ok: false, kind: 'error', error: linkedinText('network')}; }
     if (!response.ok) return refusal(response, rows);
     const body = await response.json().catch(() => ({}));
     for (const element of [].concat(body.elements || [])) if (element?.snapshotDomain === domain) rows.push(...(element.snapshotData || []));
@@ -126,6 +128,6 @@ export async function fetchAll(token, {fetcher = globalThis.fetch, sleep = ms =>
 
 /** The tables LinkedIn returned -> a CV in the app's schema (lib/linkedin-export.js, by structure). Throws what is missing, never guesses. */
 export function toProfileCv(tables) {
-  if (!tables['Positions.csv']?.length) throw new Error('LinkedIn returned no positions for this profile yet. Try Update in a few minutes, or use your LinkedIn data file.');
+  if (!tables['Positions.csv']?.length) throw new Error(linkedinText('noPositions'));
   return toCv(tables);
 }

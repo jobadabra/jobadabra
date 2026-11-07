@@ -13,6 +13,7 @@ maps (dependency files, config, unknown top-level paths, an unreadable source) s
 import argparse
 import ast
 import functools
+import importlib.util
 import json
 import re
 import shutil
@@ -26,6 +27,10 @@ JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
 # Why (4 Nov 2026, PR time 2/2): rename-guard runs tools/rename-inventory.mjs as a process; its reach and its text name nothing, and it was the only test the picker missed in 40 red PR runs.
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]|(?:execFile|exec|spawn)(?:Sync)?\([^\n]*['"]tools/''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
+# Why (7 Nov 2026, owner: "We should test only the touched parts"; ts 2/2): the one boolean above meant "reads the whole tree" for 219 unit tests that read one named folder through a helper (desktop/test/toast-scan.js
+# reads renderer/ by fs, which the import graph cannot see), so a 2-file change under desktop/e2e picked 341 desktop tests. Desktop tests now have two kinds of reader (docs/superpowers/specs/2026-11-07-pr-tests-touched-only.md).
+SAFETY_GUARD_RE = re.compile(r'Guard:\s*(?:safety|data|money|privacy|release)\b')   # a guard that says it keeps safety, data, money, privacy or the release verdict is picked for every desktop change
+TOOLING_EXTRA = ('desktop/test/tooling/',)   # what the repo's own tooling tests are about (tools/app-tests.py TOOLING, plus their own folder)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
 NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
 AREAS = ('python', 'desktop', 'worker', 'e2e', 'integration')
@@ -33,8 +38,8 @@ AREAS = ('python', 'desktop', 'worker', 'e2e', 'integration')
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
 PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
-# Why (4 Nov 2026, PR time 2/2; Windows workflow added 5 Nov 2026, owner "Yes: reached tests, every PR"): what runs the desktop tests themselves, on Linux and on Windows; a change here can break any test without reaching it.
-DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop(-windows)?\.yml)$')   # -windows: 5 Nov 2026, the Windows job runs the picked tests too
+# Why (4 Nov 2026, PR time 2/2; Windows workflow added 5 Nov 2026, owner "Yes: reached tests, every PR"): what runs the desktop tests themselves, on Linux and on Windows, and the picker's own two files (tools/affected-tests.py, tools/affected_readers.py since 7 Nov 2026, ts 3/3); a change here can break any test without reaching it.
+DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/affected_readers\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop(-windows)?\.yml)$')   # -windows: 5 Nov 2026, the Windows job runs the picked tests too
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python and worker whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
@@ -77,6 +82,26 @@ def read(p):
 
 def rel(p):
     return p.relative_to(ROOT).as_posix()
+
+
+def _load(name, file):
+    """A sibling tool by file path (tools/*.py are not a package; tools/check.py loads them the same way)."""
+    spec = importlib.util.spec_from_file_location(name, ROOT / file)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+readers = _load('affected_readers', 'tools/affected_readers.py')
+
+
+@functools.lru_cache(maxsize=None)
+def tooling_roots():
+    """What the repo's own tooling tests are about: tools/app-tests.py owns the list (Gitar on ts 3/3: one source of truth), plus the tooling tests' own folder. Loaded on first use, because app-tests loads this file."""
+    return (*_load('app_tests', 'tools/app-tests.py').TOOLING, *TOOLING_EXTRA)
+
+
+text_of = functools.lru_cache(maxsize=None)(read)   # a helper is read once per process, not once per importing test
 
 
 # --- Where tests live (TESTS.md is the same map for people) ---------------------------------------------------------------------------
@@ -292,6 +317,7 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         return 'all'
     scan_ok = any(f.startswith(E2E_SCAN_FOR) for f in relevant) if area == 'e2e' else area != 'integration'   # an integration test is never a whole-tree guard: only reach and mention pick it
     app_changed = area != 'e2e' and touches_app(relevant)   # e2e: its own reach parser decides
+    tooling_changed = any(f.startswith(tooling_roots()) for f in relevant)
     picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
     for t in tests:
         text = read(t)
@@ -299,8 +325,11 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
         via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
         scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
+        if area == 'desktop':   # two kinds of reader (ts 3/3): a tree walker is picked for any change (one of our own tooling tests only for a tooling change), a folder reader when a changed file sits under a folder its text (or a helper's) names
+            body = '\n'.join([text, *(text_of(f) for f in via)])
+            scanner = readers.desktop_reader(rel(t), text, body, relevant, tooling_changed)
         driven, launches = driven_reach(reach) if area != 'e2e' else (set(), False)
-        if (area == 'desktop' and '/guards/' in rel(t)) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+        if (area == 'desktop' and '/guards/' in rel(t) and SAFETY_GUARD_RE.search(text[:1500])) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, relevant, {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
                 or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine

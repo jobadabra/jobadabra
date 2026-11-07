@@ -2,6 +2,8 @@
 // random AES key that is itself wrapped with the owner's public key (lib/report-key.pem, the same key as e2e/net-record.pub.pem; only the owner's Keychain key opens it), and sent to the site with
 // the install's own token for purpose "report". The site stores two opaque objects and cannot read them. Never sent when this run is not a real install (recipes.js siteOffForUser: tests, the twin, CI).
 // The ids of what was sent are kept (settings.reportsSent) so Settings can delete them. Guard: test/unit/main/report-upload.test.js.
+import '../i18n/report-notices.js';
+import {withDisplay} from '../i18n/display-values.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
@@ -32,7 +34,7 @@ export function encryptBundle(bundle, pem = fs.readFileSync(KEY_FILE, 'utf8')) {
 export function createUploader({storage, fetcher = globalThis.fetch, base = SITE, pem, now = Date.now}) {
   const mint = async install => {
     const token = await installToken(storage, install, 'report', {base, fetcher});
-    if (!token) throw new Error('The site gave no token just now.');
+    if (!token) throw withDisplay(new Error('The site gave no token just now.'), 'reportNotices.noToken');
     return token;
   };
   const headers = async install => ({'X-Install': install, Authorization: `Bearer ${await mint(install)}`});
@@ -40,14 +42,14 @@ export function createUploader({storage, fetcher = globalThis.fetch, base = SITE
   return {
     // -> {ok, id} | {ok: false, error}. A record is sent only after the person pressed Send and the gate ran a last time (report-handlers.js).
     async send(record, {note = ''} = {}) {
-      if (siteOffForUser()) return {ok: false, error: 'This is not a regular install, so nothing is sent.'};
+      if (siteOffForUser()) return withDisplay({ok: false, error: 'This is not a regular install, so nothing is sent.'}, 'reportNotices.notRegular');
       const {body, wrapped} = encryptBundle(bundleOf(record, now(), note), pem);
-      if (body.length > MAX_BYTES) return {ok: false, error: 'This report is too large to send. Untick the biggest site and try again.'};
+      if (body.length > MAX_BYTES) return withDisplay({ok: false, error: 'This report is too large to send. Untick the biggest site and try again.'}, 'reportNotices.tooLarge');
       const install = installId(storage);
       const response = await fetcher(`${base}/api/report-form`, {method: 'POST', headers: {...(await headers(install)), 'X-Report-Key': wrapped, 'X-Report-Meta': JSON.stringify({requests: record.entries.length, cause: CAUSE}), 'Content-Type': 'application/octet-stream'}, body});
       const answer = await response.json().catch(() => ({}));
-      if (response.status === 429) return {ok: false, error: 'You have sent the most reports for today. Try again tomorrow.'};
-      if (!response.ok || !answer.id) return {ok: false, error: `The site did not take it (${response.status}). Nothing was kept there.`};
+      if (response.status === 429) return withDisplay({ok: false, error: 'You have sent the most reports for today. Try again tomorrow.'}, 'reportNotices.dailyLimit');
+      if (!response.ok || !answer.id) return withDisplay({ok: false, error: `The site did not take it (${response.status}). Nothing was kept there.`}, 'reportNotices.notAccepted', {status: response.status});
       storage.saveSettings({reportsSent: [...(storage.settings().reportsSent || []), {id: answer.id, at: now()}].slice(-50)});
       return {ok: true, id: answer.id};
     },

@@ -2,6 +2,7 @@
 // Notion 🎤 Interviews, their review and the recordings folder. Demo mode shows fictional ones and changes nothing. main.js passes in the
 // services it shares (registerInterviewHandlers). Guards: interviews tests in desktop/test and the interviews e2e suite.
 import {validationNotice} from '../i18n/validation-notices.js';
+import {activityText} from '../i18n/activity-notices.js';
 import {t} from '../i18n/native.js';
 import {afterWrite} from './shared-read.js';
 import fs from 'node:fs';
@@ -81,7 +82,7 @@ export function registerInterviewHandlers(ctx) {
   ipcMain.handle('ivPrefetch', () => (DEMO ? {ok: true} : prefetchForRun(() => interviews.prefetch(storage, step => toWindow('ivProgress', step)))));
   handleImportant('ivTranscribe', 'Transcribing an interview', async (_, id, options) => {
     const meta = await interviews.transcribe(storage, id, options, step => toWindow('ivProgress', step));
-    if (meta.status === 'ready') notify('Transcript ready', `${meta.title}: ${meta.pageId ? byStore(storage, 'already in your Notion; ', 'already saved; ') : ''}name the speakers, pick the job, then Save.`, {view: 'interviews'}, 'good');
+    if (meta.status === 'ready') notify(activityText('transcriptTitle'), meta.pageId ? byStore(storage, activityText('transcriptNotion', {title: meta.title}), activityText('transcriptSaved', {title: meta.title})) : activityText('transcriptBody', {title: meta.title}), {view: 'interviews'}, 'good');
     return meta;
   });
   ipcMain.handle('ivSaveDraft', (_, id, patch) => (DEMO ? true : interviews.saveDraft(storage, id, patch)));
