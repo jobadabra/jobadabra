@@ -10,7 +10,7 @@ import {clockTime} from './activity.js';
 import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
-import {cancellable, isSubmitted, stopShown, tabAddress} from '../session-state.js';
+import {cancellable, cancellingState, isSubmitted, stopShown, tabAddress} from '../session-state.js';
 import {backgroundStatus, sessionModeChip} from '../background-status.js';
 import {checkingTab, tabLost, tabStatus, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
@@ -45,7 +45,7 @@ function clearHeader() {
   $('ss-more').replaceChildren();
 }
 // A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
-const stateOf = item => backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
+const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
 // A session's mode at a glance (background-status.js sessionModeChip): the list row and the header show the same chip.
 const modeChip = item => { const {glyph, text, tone, title} = sessionModeChip(item), node = pill(text, tone, {title}); node.classList.add('mode-pill'); node.prepend(icon(glyph)); return node; };
 
@@ -67,7 +67,10 @@ export function renderSessionPage() {
   show($('ss-grid'), panels.grid);
   show($('ss-refreshing'), panels.refreshing);
   syncTips({active: panels.grid, url: item?.url});
-  $('ss-cancel-all').hidden = !cancellable(sessionList).length;   // the header's way out of every unfinished application at once (session-state.js cancellable)
+  // The header's way out of every unfinished application at once (session-state.js cancellable). While it works the button says how many are closing (owner, 7 Nov 2026: a greyed button and the old list showed nothing).
+  const closing = sessionList.filter(item => item.cancelling).length;
+  Object.assign($('ss-cancel-all'), {hidden: !cancellable(sessionList).length, textContent: closing ? `Cancelling ${closing} application${closing === 1 ? '' : 's'}…` : 'Cancel all applications'});
+  if (closing) $('ss-cancel-all').disabled = true;   // only ever switched on here: pages/session-cancel-all.js owns switching it back on when its call returns
   $('ss-stop').hidden = !stopShown(shared.stopPinnedUntil);   // shown for 30 s by its ⌘K entry only (nav.js)
   if (panels.loading) { clearHeader(); return; }  // nothing to describe yet
   $('ss-list').replaceChildren(...sessionList.slice().reverse().map(entry => {

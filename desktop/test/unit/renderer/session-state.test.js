@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
-import {CHECK_MS, SESSION_STATE, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
+import {CHECK_MS, SESSION_STATE, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
 
 test('a filled form waiting for you is "ready for review"; a message ending on your question is not', () => {
   const report = 'The N26 form is filled and open in Chrome. Nothing was submitted.\n\n**Left for you:**\n' +
@@ -420,4 +420,11 @@ test('the empty tray links open the Sessions page; with sessions they open the o
   assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], null), 'a');
   assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], 'b'), 'b');
   assert.doesNotMatch(fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="sessions-dock"[^>]*hidden/, 'the tray is in the page from the start, so the tour can reach it');
+});
+
+// Owner, 7 Nov 2026: Cancel all gave no sign of life for seconds. A row being cancelled says so in place of its own state.
+test('a row being cancelled reads "Cancelling…", whatever else it was doing', () => {
+  assert.deepEqual(cancellingState({cancelling: true, background: {state: 'queued'}, status: 'running'}), ['Cancelling…', 'neutral']);
+  assert.equal(cancellingState({cancelling: false, status: 'running'}), null);
+  assert.equal(cancellingState(undefined), null);
 });

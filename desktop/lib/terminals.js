@@ -116,12 +116,19 @@ let asksOff = false;   // set by main.js from the ONE flag of Claude's takeover 
 export const hideAsks = on => { asksOff = !!on; };
 const asksHidden = s => asksOff && (s.kind || 'claude') !== 'form' && !isLive(s);
 const publicView = s => assertSession({id: s.id, kind: asksHidden(s) ? 'form' : s.kind || 'claude', url: s.url, title: s.title || '', company: s.company || '', status: asksHidden(s) && ['input', 'ended', 'failed'].includes(s.status) ? 'done' : s.status, note: asksHidden(s) && s.status === 'input' ? '' : s.note || '',   // Claude Code's own "waiting for your input" note
-  outcome: s.outcome || '', background: s.background || null,
+  outcome: s.outcome || '', background: s.background || null, cancelling: !!s.cancelling,
   live: isLive(s), resumable: !!s.claudeId && !isLive(s) && s.outcome !== 'submitted',
   // Came back from the last run (the app closed, or was killed) and you weren't asked yet what to do with it.
   askAtStart: !!s.restored && !s.asked && !isLive(s),
   startedAt: s.startedAt || '', endedAt: s.endedAt || null, exitCode: s.exitCode ?? null, needsYouSince: s.needsYouSince || null,
   stuck: s.stuck || '', stage: s.stage || '', inChrome: !!s.inChrome, accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '', accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode, question: asksHidden(s) ? '' : s.question || '', brief: asksHidden(s) ? '' : briefly(s.question || s.note), location: s.location || '', workMode: s.workMode || ''});
+/** Marks a session as being cancelled by Cancel all applications (on) or back to its own state (off) and tells the window; never saved, so a restart does not bring it back. */
+export function setCancelling(id, on = true) {
+  const session = sessions.get(id);
+  if (!session || !!session.cancelling === !!on) return;
+  session.cancelling = !!on;
+  listener('update', publicView(session));
+}
 export const list = () => [...sessions.values()].map(publicView);
 export const get = id => (sessions.has(id) ? publicView(sessions.get(id)) : null);
 export const claudeIdOf = id => sessions.get(id)?.claudeId || '';

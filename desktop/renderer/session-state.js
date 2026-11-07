@@ -213,6 +213,8 @@ export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 
 export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.code === 'EADDRINUSE' ? `Another program is using the connection ${who} reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
   : `Jobadabra could not open the connection ${who} reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
 
+/** The state a row shows while Cancel all applications is closing it ([label, tone]), or null: it comes before the row's own state, so a queued or filling application does not look untouched. */
+export const cancellingState = item => (item?.cancelling ? ['Cancelling…', 'neutral'] : null);
 /** -> whether this application is being sent right now: Full automation pressed Submit and waits for the site's reply (lib/background-apply-store.js `submitting`). */
 export const beingSent = item => item?.background?.state === 'submitting';
 /**
