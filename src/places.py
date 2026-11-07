@@ -82,27 +82,65 @@ def clean_names(names):
     return out[:MAX_NAMES]
 
 
-def _spelling(part):
-    """One spelling of an alternation as a plain word, or None: the page's own reading when it is a word ("z[uü]rich" -> zürich), else the raw text without
-    whole-word marks when it is plain letters ("zürich", "Zurich", "st. gallen")."""
+MAX_SPELLINGS = 4   # a part's spellings once its letter choices are expanded: "krak[oó]w" is 2, never a product of many classes
+
+
+def _spellings(part):
+    """The plain spellings one part of an alternation stands for, or None: the page's own reading when it is a word ("z[uü]rich" -> zürich), else the raw text without whole-word
+    marks when it is plain letters ("zürich", "Zurich", "st. gallen"), else the part with each simple letter choice spelled out ("krak[oó]w" -> krakow, kraków)."""
     from .notion.search_settings import readable
     word = readable(part).strip('"')
     if not word.startswith('/'):
-        return word
+        return [word]
     raw = re.sub(r'^\\b|\\b$', '', part)
-    return raw if NAME_OK.fullmatch(raw) else None
+    if NAME_OK.fullmatch(raw):
+        return [raw]
+    spelled = ['']
+    for piece in re.split(r'(\[[^\]\[\\^-]{2,3}\])', raw):   # a simple letter choice: [oó], [eèé]; no range, no negation
+        letters = piece[1:-1] if re.fullmatch(r'\[[^\]\[\\^-]{2,3}\]', piece) else ''
+        options = list(letters) if any(ord(c) > 127 for c in letters) else [piece]   # only an accent choice is a spelling; "[li]" in "ber[li]n" is left as a pattern (the result then fails NAME_OK)
+        spelled = [done + option for done in spelled for option in options][:MAX_SPELLINGS * 2]
+    spelled = list(dict.fromkeys(spelled))[:MAX_SPELLINGS]
+    return spelled if raw != spelled[0] and all(NAME_OK.fullmatch(name) for name in spelled) else None
 
 
 def fragment_place_words(fragment):
-    """The plain place words one location fragment stands for: its own word, or each spelling of an alternation of plain words ("sofia|софия", "zürich|zurich");
-    [] for a real regex. Why (2 Nov 2026, owner: the Search check "still showing 0"; #2974 p1): the strategy draft wrote Sofia's two spellings as one fragment, readable()
-    shows any "|" as a regex and the places were skipped: never asked, no country, no board web search. A plain-word alternation is the places it names, in every language."""
+    """The plain place words one location fragment stands for: its own word, or each spelling of an alternation of plain words ("sofia|софия", "zürich|zurich") or of letter choices
+    ("krak[oó]w"), or a single plain name readable() marks as a pattern only for its accent ("Zürich", "Kraków"); [] for a real regex. Why (2 Nov 2026, owner: the Search check "still showing 0"; #2974 p1): the strategy draft wrote Sofia's two spellings as one fragment, readable()
+    shows any "|" as a regex and the places were skipped: never asked, no country, no board web search. A plain-word alternation is the places it names, in every language.
+    Why (7 Nov 2026, #2920, run 42386229424 p5 Krakow): the draft wrote the city as "krak[oó]w", readable() has no plain form for [oó] (search_settings.ACCENTS: u/o/a umlauts only), terms() dropped it,
+    EURES read the whole country (100 rows, place-right 22 -> 4). Every reader takes a search's place words from here (place_words), never from terms()."""
     from .notion.search_settings import readable
     word = readable(fragment).strip('"')
     if not word.startswith('/'):
         return [word]
-    parts = [_spelling(part) for part in fragment.split('|')]
-    return parts if len(parts) > 1 and None not in parts else []
+    parts = [_spellings(part) for part in fragment.split('|')]
+    if None in parts:   # a real regex in any part (_spellings gives only plain names): none
+        return []
+    return list(dict.fromkeys(name for spellings in parts for name in spellings))
+
+
+def plain_words(fragments):
+    """The plain place words of a list of location fragments, each once, in order: what `terms()` gave for places, plus the spellings of a letter choice or an alternation
+    and an accented name. Every reader that types a place into a site or a prompt takes it from here or from place_words, never from terms() (#2920)."""
+    return list(dict.fromkeys(word for fragment in fragments or [] for word in fragment_place_words(str(fragment))))
+
+
+def place_words(search, groups=('top_tier', 'country_wide', 'abroad'), per_group=None, first_only=False):
+    """The plain place words of a search, group by group in `groups` order, each once (at most `per_group` fragments that have a plain reading from each group; `first_only`: one word, the first spelling, of each fragment): the one reading every source uses
+    (EURES, Jooble, the employer-site reads): a fragment with no plain reading (a real regex) gives none."""
+    found = []
+    for group in groups:
+        read = 0
+        for fragment in (search.get('locations') or {}).get(group) or []:
+            words = fragment_place_words(str(fragment))
+            if not words:
+                continue   # a real regex has no place word and does not use one of the per_group slots (as terms() did)
+            found.extend(word for word in (words[:1] if first_only else words) if word not in found)
+            read += 1
+            if read == per_group:
+                break
+    return found
 
 
 def words_of(search):

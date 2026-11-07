@@ -104,9 +104,10 @@ def ideas(profile, search, titles, set_aside=(), client=None, today=None):
             return []
         from . import engine, cost
         from ..notion.search_settings import terms
+        from ..places import plain_words
         places = search.get('locations') or {}
         ask = {'profile': profile[:6000], 'role_words': terms(search.get('role_keywords'))[:30],
-               'places': terms((places.get('top_tier') or []) + (places.get('country_wide') or []))[:10],
+               'places': plain_words((places.get('top_tier') or []) + (places.get('country_wide') or []))[:10],
                'ruled_out': terms(search.get('title_exclude_keywords'))[:20], 'set_aside': sorted(aside)[:40]}
         client = client or engine.client(action='role_ideas')
         response = client.messages.create(model=MODEL, max_tokens=1200, system=[{'type': 'text', 'text': SYSTEM}],

@@ -54,10 +54,11 @@ countries where those work rights do not let them work without a visa or sponsor
 def places_words(search, preferences=None):
     """The places as the user wrote them (readable words, not patterns)."""
     from ..notion.search_settings import terms
+    from ..places import plain_words
     places = search.get('locations') or {}
     remote = [str(v).strip().lower() for v in search.get('remote_jobs') or []]
-    return {'best_places': terms(places.get('top_tier'))[:20], 'anywhere_in': terms(places.get('country_wide'))[:20],
-            'cities_abroad': terms(places.get('abroad'))[:20], 'remote_jobs': 'no' if 'no' in remote else 'yes',
+    return {'best_places': plain_words(places.get('top_tier'))[:20], 'anywhere_in': plain_words(places.get('country_wide'))[:20],
+            'cities_abroad': plain_words(places.get('abroad'))[:20], 'remote_jobs': 'no' if 'no' in remote else 'yes',
             'remote_limited_to_regions_they_cannot_work_from': terms(search.get('remote_excluded_regions'))[:20],
             'work_rights': [str(w) for w in (preferences or {}).get('work_rights') or []][:10]}
 

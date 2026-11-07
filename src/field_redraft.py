@@ -58,8 +58,9 @@ def ask(search, profile, client=None):
     from .ai import cost, engine
     from .ai.models import SMALL_MODEL
     from .notion.search_settings import terms
+    from .places import plain_words
     places = search.get('locations') or {}
-    given = {'roles': terms(search.get('role_keywords'))[:20], 'places': terms((places.get('top_tier') or []) + (places.get('country_wide') or []))[:10],
+    given = {'roles': terms(search.get('role_keywords'))[:20], 'places': plain_words((places.get('top_tier') or []) + (places.get('country_wide') or []))[:10],
              'profile': (profile or '')[:6000]}
     client = client or engine.client(action='field_redraft')
     response = client.messages.create(model=SMALL_MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],

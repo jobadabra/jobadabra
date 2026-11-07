@@ -130,11 +130,12 @@ MAX_ROLES, MAX_PLACES = 4, 6   # each role x place is one request to a site that
 
 def _strategy_terms():
     from ..notion.search_settings import terms
+    from ..places import plain_words
     from ..paths import load_search_config
     config = load_search_config()
     places = config.get('locations') or {}
     # Places abroad and whole countries first, a city only when there is nothing wider (a country's search covers its cities).
-    where = terms([*(places.get('abroad') or []), *(places.get('country_wide') or [])]) or terms(places.get('top_tier'))
+    where = plain_words([*(places.get('abroad') or []), *(places.get('country_wide') or [])]) or plain_words(places.get('top_tier'))
     return tuple(terms(config.get('role_keywords')))[:MAX_ROLES], tuple(p.title() for p in where)[:MAX_PLACES]
 
 

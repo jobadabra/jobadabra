@@ -22,10 +22,11 @@ invent a number, a source or a word that is not in the data."""
 def facts(verdict, search):
     """The counts Claude is given: nothing about the person beyond their role words and places."""
     from ..notion.search_settings import terms
+    from ..places import place_words
     verdict = verdict or {}
     places = search.get('locations') or {}
     pick = lambda items, keys: [{key: item.get(key) for key in keys} for item in items or []][:6]
-    return {'role_words': terms(search.get('role_keywords'))[:15], 'places': terms([p for group in places.values() for p in group])[:10],
+    return {'role_words': terms(search.get('role_keywords'))[:15], 'places': place_words(search)[:10],
             'postings_in_places': verdict.get('in_places'), 'matched_by_role_words': verdict.get('matched'),
             'missing_role_words': pick(verdict.get('suggestions'), ('term', 'count')),
             'filters_hiding_jobs': pick(verdict.get('excluded'), ('fragment', 'count')) + pick(verdict.get('languages'), ('language', 'count')),

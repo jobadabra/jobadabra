@@ -285,9 +285,9 @@ MAX_TERMS = 8
 def jobsch_places(search):
     """Every one of the user's places, as they wrote them (jobs.ch takes "geneva" as well as "Genève"), or [None] (all of Switzerland) when
     they want the whole country or name none. 7 Oct 2026: a list of ten known cities meant Nyon, Morges and Gland were never searched."""
-    from ..notion.search_settings import terms
+    from ..places import plain_words
     places = (search or {}).get('locations') or {}
-    words = terms([*places.get('top_tier', []), *places.get('country_wide', [])])
+    words = plain_words([*places.get('top_tier', []), *places.get('country_wide', [])])
     whole = [w for w in words if re.fullmatch(r'switzerland|schweiz|suisse|svizzera|swiss|ch', w.lower())]
     from .feeds import plain
     found = list({plain(w).lower(): w for w in reversed(words) if w not in whole}.values())[::-1]   # "zurich" and "zürich": one search

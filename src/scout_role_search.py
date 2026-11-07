@@ -29,9 +29,8 @@ def role_words(search):
 
 def place_words(search):
     """The user's places as plain words, best first: added to the search so the posts found are in reach."""
-    from .notion.search_settings import terms
-    places = (search or {}).get('locations') or {}
-    return [word for name in ('top_tier', 'country_wide') for word in terms(places.get(name))][:6]
+    from .places import place_words as search_place_words
+    return search_place_words(search or {}, ('top_tier', 'country_wide'))[:6]
 
 
 def pairs(roles):

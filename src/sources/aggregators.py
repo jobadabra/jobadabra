@@ -92,11 +92,11 @@ def _queries(search):
 def _countries(search):
     """The Adzuna countries of the user's places (at most four), from what places.countries() knows; [] before it knows any."""
     from .. import places
-    from ..notion.search_settings import readable
     names = places.countries(search, limit=10)
-    words = [readable(str(p)) for group in (search.get('locations') or {}).values() for p in group]
+    words = places.place_words(search, tuple(group for group in (search.get('locations') or {}) if group != 'relocation'))   # the one reading of place fragments (#2920); "relocation" is yes/no, not a place
     cache = places.load()
-    if any(places.in_switzerland(w, cache) for w in words) and 'Switzerland' not in names:
+    raw = [str(f) for group, items in (search.get('locations') or {}).items() if group != 'relocation' for f in items or []]   # a pattern with no plain reading ("(zurich|bern)") still names the Swiss market (in_switzerland reads it as text)
+    if any(places.in_switzerland(w, cache) for w in [*words, *raw]) and 'Switzerland' not in names:
         names = ['Switzerland', *names]   # the first market from its fixed table, before (or without) the AI's answer
     codes = [code for name in names for code, country in ADZUNA_COUNTRIES.items() if country == name]
     codes += list((place_countries(words) or {}).values())   # the AI's country for each place word (kept per word); its words only without AI
@@ -130,8 +130,8 @@ def adzuna(search, get=_get):
 
 def jooble(search, get=_get):
     key = os.getenv('JOOBLE_API_KEY')
-    from ..notion.search_settings import terms
-    places = terms((search.get('locations') or {}).get('top_tier'))[:2] or ['']
+    from ..places import place_words
+    places = place_words(search, ('top_tier',), 2, first_only=True) or ['']
     jobs = []
     for query in _queries(search):
         for place in places:

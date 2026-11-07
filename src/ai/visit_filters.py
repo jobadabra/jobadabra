@@ -34,9 +34,9 @@ applies to a job, signs in, saves, follows, messages, creates an alert or pays. 
 
 def facts(search, preferences=None):
     """What Claude is told: the places the user wrote, nothing else (no role words: they are never typed into a site, 7 Oct 2026)."""
-    from ..notion.search_settings import terms
+    from ..places import plain_words
     places = search.get('locations') or {}
-    return {'places_first': terms(places.get('top_tier'))[:6], 'places_also': terms((places.get('country_wide') or []) + (places.get('abroad') or []))[:6]}
+    return {'places_first': plain_words(places.get('top_tier'))[:6], 'places_also': plain_words((places.get('country_wide') or []) + (places.get('abroad') or []))[:6]}
 
 
 def clean_controls(controls):
