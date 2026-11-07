@@ -1,6 +1,7 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
 import {claudeConsentOptions, claudeOffText, stuckSessionNotice} from './lib/native-notices.js';
 import {initializeStartupLocale} from './lib/locale-startup.js';
+import {refreshDeliveryLanguage} from './lib/notification-refresh.js';
 import {ownSecretsPresent} from './lib/secrets.js'; import {registerLocaleHandlers} from './lib/locale-handlers.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
@@ -398,8 +399,8 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   // E2E on a Linux CI runner only (no keyring there): Electron's safeStorage refuses the basic store unless told to. A user's app never takes this path.
   if (process.platform === 'linux' && process.env.JOBADABRA_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
   storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(sealer));
-  registerLocaleHandlers({ipcMain, app, storage, onChange: () => buildMenu()});
-  buildMenu();   // again, now the saved update channel can be read (Update Channel's radio)
+  registerLocaleHandlers({ipcMain, app, storage, onChange: () => { buildMenu(); void refreshDeliveryLanguage(storage, {demo: DEMO}); }});
+  buildMenu(); void refreshDeliveryLanguage(storage, {demo: DEMO});   // saved appearance is ready; refresh derived delivery caches without blocking startup
   // An import on the Mac that made it: its sealed keys open here; an older export without them takes them from the same Profile's backup (lib/reset.js adoptBackupKeys).
   if (resetDone?.imported) {
     const kept = reset.adoptBackupKeys(storage);

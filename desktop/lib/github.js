@@ -16,6 +16,7 @@ import {cadence, crons, withSchedule} from './cadence.js';
 import {MODELS, REPO} from './pipeline.js';
 import {tar} from './tar.js';
 import {channelsOf} from './notify-channel.js';
+import {notificationLanguage} from './notification-language.js';
 import {pinned, resolveEngineRepo} from './engine-repo.js';
 import {STARTER_CANDIDATES} from './repos.js';
 export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from './engine-repo.js';
@@ -224,6 +225,7 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   // How the person wants to be told: the workflows' --send and src/notify.py follow it. Unset = Telegram only, so it is set for e-mail AND for Telegram turned off (26 Oct 2026: GitHub kept messaging the bot).
   const notify = channelsOf(storage), telegramOff = Array.isArray(storage.settings().notifyBy) && !notify.includes('telegram');
   if (notify.includes('email') || telegramOff) variables.JOBADABRA_NOTIFY = notify.join(','); else removed.push('JOBADABRA_NOTIFY');
+  variables.JOBADABRA_NOTIFICATION_LANGUAGE = notificationLanguage(storage);
   if (settings.firstRunAt) variables.JOBADABRA_FIRST_RUN = settings.firstRunAt; else removed.push('JOBADABRA_FIRST_RUN');
   // The engine GitHub runs use (never a CLI there): the chosen family's API engine, on its own key (lib/ai/index.js alwaysOnEngine).
   // 'api' is the workflows' default, so it is only set for OpenAI (and removed otherwise, so a switch back to Claude takes effect).

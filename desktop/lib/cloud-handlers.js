@@ -8,6 +8,7 @@ import * as telegram from './telegram.js';
 import * as telegramCloud from './telegram-cloud.js';
 import {cleanSecret} from './secrets.js';
 import {t} from '../i18n/native.js';
+import {notificationLanguage} from './notification-language.js';
 import {log as appLog} from './log.js';
 import {registerHostedHandlers} from './hosted-handlers.js';
 import * as mail from './mail-choices.js';
@@ -100,7 +101,7 @@ export function registerCloudHandlers(ctx) {
     try {
       const bot = await telegram.api(token, 'getMe');
       toWindow('telegramWaiting', bot.username);
-      const {chatId} = await telegram.pair(token);
+      const {chatId} = await telegram.pair(token, undefined, undefined, notificationLanguage(storage));
       storage.setSecret('TELEGRAM_BOT_TOKEN', token);
       storage.saveSettings({telegramChatId: chatId, telegramBot: bot.username, telegramOffset: null});
       restartTelegram();
