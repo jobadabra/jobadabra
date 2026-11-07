@@ -7,7 +7,9 @@ levels.fyi) and not one of the boards with their own reader (jobs.ch, SwissDevJo
 import hashlib
 import json
 import re
+import threading
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..role_kinds import KINDS as ROLE_KINDS
 from .models import MAIN_MODEL
@@ -72,6 +74,9 @@ def valid(board, listing=False):
     kinds = [k for k in board.get('kinds') or [] if k in KINDS] or ['any']
     source_kind = board.get('source_kind') if board.get('source_kind') in SOURCE_KINDS else 'general'
     return {'name': name, 'host': host, 'search_url': url, 'countries': countries, 'kinds': kinds, 'source_kind': source_kind}
+
+
+_STORE = threading.Lock()   # load-change-save of found_boards.json 'ideas' from the calls asked together (_together)
 
 
 def _store():
@@ -143,13 +148,29 @@ def ideas(search, client=None, field=True):
     if not asked:
         return []
     shared = ranked(served([country for part in asked for country in part[1]]), search)
-    own = list((_field(asked_for(search), client) if field else None) or [])   # the field's own boards first: the slices' general ones come after (MAX_BOARDS * 2 cap)
-    for part in asked:
-        found = _proposal(part, client)
-        if found is None:
-            return _merge(own, shared)   # no AI or it failed: what is known so far, and the shared boards
-        own.extend(board for board in found if board['host'] not in {b['host'] for b in own})
+    calls = ([lambda: _field(asked_for(search), client)] if field else []) + [lambda part=part: _proposal(part, client) for part in asked]
+    answers = _together(calls)
+    own = []   # the field's own boards first, then the slices in their order: the slices' general ones come after (MAX_BOARDS * 2 cap)
+    for found in answers:
+        own.extend(board for board in found or [] if board['host'] not in {b['host'] for b in own})   # a call that failed leaves the others
     return _merge(own, shared)
+
+
+def _together(calls):
+    """What each of `calls` returns, in the calls' order (None for one that raised), asked together on the engine's own number of AI slots.
+    Why (#2920, 7 Nov 2026): the field call and the slices' calls share no answer but were asked one after the other: on the Codex relay
+    the field ended at 87 s and the slice at 109-123 s, so the boards were read with 12-25 s left (19 of 20 runs of the 7 Nov search
+    check: "Time is up for job boards: 5-6 boards wait"). A call is a whole _field/_proposal (their cache write is under _STORE)."""
+    from . import engine, slots
+    out = [None] * len(calls)
+    with ThreadPoolExecutor(max_workers=max(1, min(len(calls), engine.PARALLEL))) as pool:
+        futures = {pool.submit(slots.carry(call)): n for n, call in enumerate(calls)}
+        for future in as_completed(futures):
+            try:
+                out[futures[future]] = future.result()
+            except Exception as error:  # noqa: BLE001 — one failed call leaves the others' boards
+                detail('job boards', error)
+    return out
 
 
 def _field(asked, client=None):
@@ -167,9 +188,10 @@ def _field(asked, client=None):
     if answer is None:
         return None
     found = list({b['host']: b for b in (valid({**item, 'source_kind': item.get('source_kind') or 'sector'}) for item in answer if isinstance(item, dict)) if b}.values())[:MAX_BOARDS]
-    data = load()
-    data.setdefault('ideas', {})[key] = found
-    save(data)
+    with _STORE:
+        data = load()
+        data.setdefault('ideas', {})[key] = found
+        save(data)
     print(f"Job boards of your field: {', '.join(b['name'] for b in found) or 'none'}", flush=True)
     return found
 
@@ -205,10 +227,11 @@ def _proposal(asked, client=None):
     answer = _ask(SYSTEM, {'countries': countries, 'places': place_words, 'roles': roles, 'kinds': kinds}, client)
     if answer is None:
         return None   # no AI: the boards other installs found for these countries
-    data = load()
     found = list({b['host']: b for b in (valid(item) for item in answer) if b}.values())[:MAX_BOARDS]
-    data.setdefault('ideas', {})[key] = found
-    save(data)
+    with _STORE:
+        data = load()
+        data.setdefault('ideas', {})[key] = found
+        save(data)
     print(f"Job boards proposed for {', '.join(countries)}: {', '.join(b['name'] for b in found) or 'none'}", flush=True)
     return found
 
