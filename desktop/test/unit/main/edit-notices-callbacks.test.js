@@ -10,18 +10,18 @@ const state = globalThis.__editNoticesTest = {trips: [], calls: [], record: null
 const trip = name => { state.trips.push(name); throw new Error(`Forbidden test service: ${name}`); };
 globalThis.__editNoticesTrip = trip;
 const sources = {
-  'claude-code.js': 'export const client=()=>globalThis.__editNoticesTrip("AI client");',
+  'claude-code.js': 'export const client=()=>globalThis.__editNoticesTest.allowRewrite ? {engine:"fictional"} : globalThis.__editNoticesTrip("AI client");',
   'contact.js': 'export const read=async()=>({full_name:"Original {name} Mac"});',
-  'cv.js': 'export const baseCv=()=>({name:"Original CV"}); export const load=()=>null; export const forUrl=()=>globalThis.__editNoticesTrip("CV lookup");',
+  'cv.js': 'export const baseCv=()=>({name:"Original CV"}); export const load=()=>globalThis.__editNoticesTest.tailored; export const forUrl=()=>globalThis.__editNoticesTrip("CV lookup");',
   'demo.js': 'export const jobLetter={text:"Fictional demo letter"};',
   'job-letter.js': `const s=globalThis.__editNoticesTest;
     export const load=()=>s.record; export const status=()=>s.saved||{text:s.record?.text};
     export const dir=()=>s.dir; export const html=(storage,text,contact,cv)=>{s.calls.push({kind:'html',text,contact,cv}); return '<p>Fictional letter</p>';};
     export const save=(storage,code,record,pdf)=>{s.saved={record,code,pdf};};
     export const pdfPath=()=>s.dir+'/fictional.pdf'; export const finalName=()=> 'Original letter.pdf';
-    export const draft=()=>globalThis.__editNoticesTrip('letter AI'); export const hasPdf=()=>false;`,
+    export const draft=async(storage,input)=>{if(!s.allowRewrite) return globalThis.__editNoticesTrip('letter AI'); s.calls.push({kind:'draft',input}); return {text:'Original generated text',source:'ai',usd:0,model:'fictional-model'};}; export const hasPdf=()=>false;`,
   'job-page-handlers.js': 'export const jobPage=()=>globalThis.__editNoticesTrip("job page");',
-  'pipeline.js': 'export const posting=()=>globalThis.__editNoticesTrip("pipeline");',
+  'pipeline.js': 'export const posting=async()=>globalThis.__editNoticesTest.allowRewrite ? {ok:true,description:"Original posting",location:"Original place"} : globalThis.__editNoticesTrip("pipeline");',
   'store/files.js': 'export const attachToJob=async(storage,url,file,options)=>{globalThis.__editNoticesTest.calls.push({kind:"attach",url,file,options});};',
   'log.js': 'export const log=(...args)=>globalThis.__editNoticesTest.calls.push({kind:"log",args});',
 };
@@ -35,12 +35,12 @@ const {registerJobLetterHandlers} = await import('../../../lib/job-letter-handle
 let handles, page;
 const invoke = (name, ...args) => handles.get(name)(null, ...args);
 beforeEach(() => {
-  Object.assign(state, {trips: [], calls: [], record: null, saved: null, raw: '', dir: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-edit-notices-'))});
+  Object.assign(state, {trips: [], calls: [], record: null, saved: null, raw: '', tailored: null, allowRewrite: false, dir: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-edit-notices-'))});
   handles = new Map(); setLocale('en');
   page = {outline: async () => [{id: 'L1', type: 'paragraph', text: 'Original {error} Mac'}],
     setText: async (block, text) => {state.calls.push({kind: 'text', block, text}); if (state.raw) throw new Error(state.raw);}};
   const ipcMain = {handle: (name, fn) => handles.set(name, fn)};
-  const storage = {path: name => path.join(state.dir, name), secret: () => trip('secret'), settings: () => ({})};
+  const storage = {path: name => path.join(state.dir, name), secret: () => state.allowRewrite ? '' : trip('secret'), settings: () => ({})};
   registerTextOutlineHandlers({ipcMain, storage, DEMO: false, log: (...args) => state.calls.push({kind: 'log', args}),
     open: () => ({page: () => page, label: 'Original store', textLink: () => 'https://example.test/original'})});
   registerDraftEditHandlers({ipcMain});
@@ -108,6 +108,7 @@ test('successful real callbacks preserve original outline payload and letter tex
   assert.equal(saved.record.source, 'you'); assert.deepEqual(saved.record.warnings, []);
   assert.deepEqual(state.calls.find(call => call.kind === 'attach').options, {name: 'Original letter.pdf'});
   assert.equal(state.calls.filter(call => call.kind === 'print').length, 1);
+  assert.ok(state.calls.some(call => call.kind === 'log' && call.args[1] === 'job letter edited; PDF remade'));
   assert.ok(state.calls.find(call => call.kind === 'print').file.startsWith(state.dir));
 });
 
@@ -141,4 +142,24 @@ test('draft failures wrap their raw error once without leaking into saved conten
   setLocale('de');
   assert.deepEqual(await invoke('draftTextEdit', 'Original document', [change]), {ok: false, error: `Nicht geändert: ${raw}`});
   assert.deepEqual(state.calls, []);
+});
+
+test('real rewrite callback keeps default and supplied AI feedback canonical in every locale', async () => {
+  state.record = {job: {code: 'job1', title: 'Original role', url: 'https://example.test/job'}, text: 'Original previous letter'};
+  state.tailored = {cv: {name: 'Original CV'}};
+  state.allowRewrite = true;
+  for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+    setLocale(locale);
+    const plain = await invoke('jobLetterAgain', 'job1');
+    assert.equal(plain.ok, true);
+    assert.equal(state.calls.find(call => call.kind === 'draft').input.feedback, 'Write it again, fresh.');
+    assert.equal(state.calls.find(call => call.kind === 'draft').input.previous, 'Original previous letter');
+    state.calls.length = 0;
+    const feedback = 'Original feedback {error} Mac ⌘K';
+    const supplied = await invoke('jobLetterAgain', 'job1', feedback);
+    assert.equal(supplied.ok, true);
+    assert.equal(state.calls.find(call => call.kind === 'draft').input.feedback, feedback);
+    assert.equal(supplied.record.text, 'Original generated text');
+    state.calls.length = 0;
+  }
 });

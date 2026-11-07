@@ -1,6 +1,5 @@
 // Editing catalogs keep locale parameters and count forms aligned while canonical control/document text stays original.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test, afterEach} from 'node:test';
 import {SUPPORTED_LOCALES, setLocale} from '../../../i18n/index.js';
 import {editNotice} from '../../../i18n/edit-notices.js';
@@ -34,13 +33,4 @@ test('standalone registration interpolates raw values exactly once and selects s
       assert.equal(editNotice('outlineChanged', {count}), catalogs[locale].outlineChanged[form].replace('{count}', String(count)));
     }
   }
-});
-
-test('control validation, model feedback and diagnostic labels stay canonical', () => {
-  const outline = fs.readFileSync(new URL('../../../lib/text-outline-handlers.js', import.meta.url), 'utf8');
-  const letter = fs.readFileSync(new URL('../../../lib/job-letter-handlers.js', import.meta.url), 'utf8');
-  assert.match(outline, /`No text called \$\{name\}`/);
-  assert.match(outline, /log\('store', 'text edited'/);
-  assert.match(letter, /feedback \|\| 'Write it again, fresh\.'/);
-  assert.match(letter, /appLog\('cover-letter', 'job letter edited; PDF remade'/);
 });
