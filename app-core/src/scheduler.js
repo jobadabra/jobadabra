@@ -8,6 +8,7 @@
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
 //   search-personas.yml           the Search check's night run (SEARCH_SLOT below)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
+//   pr-labels.yml                 sets every open PR's Gitar label from Gitar's latest comment every 10 minutes (7 Nov 2026, gl): Gitar closes a finding by editing its comment, which starts no event
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
 // One trigger for the night's four UTC hours (00-03): Cloudflare's free plan allows 5 cron triggers per ACCOUNT (other Workers hold 2), a sixth could not be registered
 // (5 Oct 2026), and a 4th trigger for this Worker was refused (14 Oct 2026): the hour that is 02:00 in Zurich starts the replay gate, the one that is 04:00 the nightly.
@@ -42,7 +43,7 @@ export function jobsFor(cron, now = new Date()) {
   }
   if (cron === '47 21,23,1 * * *') return [{workflow: 'e2e.yml', inputs: {scheduled: 'true'}}];   // the site replays run once a day (the 02:00 Zurich hour above), no longer beside each e2e run (owner, 17 Oct 2026)
   if (cron === '*/10 * * * *') {
-    const jobs = [{workflow: 'pr-verdict.yml'}];
+    const jobs = [{workflow: 'pr-verdict.yml'}, {workflow: 'pr-labels.yml'}];   // Why (7 Nov 2026, gl, owner: "Redrawn on a timer too"): the Gitar label is stale for at most this tick; with no open PR the run reads none and ends
     if (now.getUTCMinutes() === 40 && now.getUTCHours() % 3 === 0) jobs.push({workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}});
     const pass = nightPassAt(now);
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
@@ -65,7 +66,7 @@ export function jobsFor(cron, now = new Date()) {
 export const LEGACY_NAMES = {'site-replays.yml': 'replay-offline.yml'};
 const isNotFound = error => /\b404\b/.test(String(error?.message));
 
-export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'search-personas.yml': 'Search check · nightly (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)', 'msix-store-weekly.yml': 'Microsoft Store · weekly submission'};
+export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · on time (Worker cron)', 'self-heal-stats.yml': 'Self-heal stats · on time (Worker cron)', 'site-replays.yml': 'Replay check · on time (Worker cron)', 'search-personas.yml': 'Search check · nightly (Worker cron)', 'ai-user-agents.yml': 'AI user agent · nightly (Worker cron)', 'pr-verdict.yml': 'PR verdict sweep · on time (Worker cron)', 'pr-labels.yml': 'PR labels sweep · on time (Worker cron)', 'msix-store-weekly.yml': 'Microsoft Store · weekly submission'};
 
 // dispatch(env, inputs, workflow) starts a workflow on main (index.js); notify(text) tells the owner when it could not, on Telegram; report(text) on GitHub, in the
 // watchdog's issue (watchdog.js), where the owner looks. Neither can reach anyone when the token is the problem: the GitHub-side watchdog covers that.
@@ -85,7 +86,7 @@ export async function runScheduled(event, env, {dispatch, notify = async () => {
     } catch (error) {
       console.log(`scheduled start failed ${job.workflow} cron=${event.cron}: ${error.message}`);
       // Why (31 Oct 2026, review #2653; 5 Nov 2026, ms): a failed ten-minute sweep must not page Telegram and the watchdog issue 144 times a day, nor the hourly Store check 24 times a day; still log and fail the cron.
-      if (job.workflow !== 'pr-verdict.yml' && job.workflow !== 'msix-store-watch.yml') {
+      if (!['pr-verdict.yml', 'pr-labels.yml', 'msix-store-watch.yml'].includes(job.workflow)) {
         await notify(`⚠️ The scheduled start of ${job.workflow} failed (${event.cron}): ${error.message.slice(0, 200)}. GitHub's own schedule is the backup.`);
         await report(`The Worker's cron (${event.cron}) could not start ${job.workflow}: ${error.message.slice(0, 300)}`).catch(() => {});
       }
