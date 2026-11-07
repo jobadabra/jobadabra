@@ -1,134 +1,134 @@
 {
  "L01": {
   "gets": "the first 3 jobs of a search are scored whatever the clock says",
-  "hash": "47dab8a3304e06be"
+  "hash": "573f7b38a0150e78"
  },
  "L02": {
   "gets": "job titles in your own places are sorted past the clock",
-  "hash": "7c3fc203194d53fb"
+  "hash": "7212acdfa74f2c60"
  },
  "L03": {
   "gets": "every stage counts from the press, so a press ends in 3 minutes",
-  "hash": "2068132171d89b66"
+  "hash": "dc048976b9f7cb8b"
  },
  "L04": {
   "gets": "no AI call starts in the last seconds of the press",
-  "hash": "9d6d2281a7846bf7"
+  "hash": "7d6ecadd99184c50"
  },
  "L05": {
   "gets": "the job boards step ends at its share of the press",
-  "hash": "2b2c4f45798e364b"
+  "hash": "00ac012d17058c18"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
-  "hash": "28fdc337e3cb6e4d"
+  "hash": "0b3a95ef73d4ecf2"
  },
  "L07": {
   "gets": "a press that scores first still keeps time to read the jobs' facts",
-  "hash": "4ec13b9c4b49f567"
+  "hash": "cb73552e4c82362c"
  },
  "L08": {
   "gets": "EURES is read from the first second of the press",
-  "hash": "1cb6398f6d366d77"
+  "hash": "826c9c842c847857"
  },
  "L09": {
   "gets": "the first press asks for its job boards once the employers are named, not in front of them",
-  "hash": "732505cabf76c2cb"
+  "hash": "78bae36cdea2633c"
  },
  "L10": {
   "gets": "a press reads the job boards first; a first press reads its slice first and scores employer jobs without waiting for the boards",
-  "hash": "82ff3d7efd046b10"
+  "hash": "bb88135a2afa4511"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
-  "hash": "7a4ffe443422ec4f"
+  "hash": "4b1592eae4d90b36"
  },
  "L12": {
   "gets": "calls that failed do not shrink the next batch",
-  "hash": "1449c918060480d8"
+  "hash": "e89fe8de64c85eea"
  },
  "L13": {
   "gets": "jobs found earlier and never scored take scoring's time first",
-  "hash": "322e8057487984a1"
+  "hash": "70c82d7c1d0734af"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
-  "hash": "8a71c7865e247f01"
+  "hash": "f274ec322abff3c7"
  },
  "L15": {
   "gets": "EURES reads the regions near you first, the country last",
-  "hash": "fac5621b4b6fc48d"
+  "hash": "ee8969866f7154ea"
  },
  "L16": {
   "gets": "one job waiting for a score does not hold back the titles of your places",
-  "hash": "7479fa9dc62e5fac"
+  "hash": "6b4b2a3c0cbd1c97"
  },
  "L17": {
   "gets": "the nearest batch of titles, from any reader, is asked next and its jobs are scored as it lands",
-  "hash": "955e46b04ab4cc38"
+  "hash": "f3a7267396f579d9"
  },
  "L18": {
   "gets": "EU portal jobs reach title sorting and scoring while there is time",
-  "hash": "4d34b6fac5b29442"
+  "hash": "068f273c70c873f0"
  },
  "L19": {
   "gets": "waiting title batches move up once their places are learned",
-  "hash": "7b1de304e097eb74"
+  "hash": "7a28684d5631bee1"
  },
  "L20": {
   "gets": "readers whose distance is unknown take turns, none takes every call",
-  "hash": "8c0172371241450e"
+  "hash": "07eb66f257640508"
  },
  "L21": {
   "gets": "a slow place call does not hold the EURES titles",
-  "hash": "36a6476e33fe3cd9"
+  "hash": "915ca2a00fb1bff4"
  },
  "L22": {
   "gets": "a city written with accents stays in the places a search reads",
-  "hash": "921b2ae183259931"
+  "hash": "8e995bca4a0e56e2"
  },
  "L23": {
   "gets": "a round of title calls that fits before the stop is taken",
-  "hash": "534e463a5ce59f17"
+  "hash": "e25f413fd87ca665"
  },
  "L24": {
   "gets": "a reader's titles are sorted in one pass, your places first",
-  "hash": "453be2b1575928b7"
+  "hash": "0c1bd35b88cd1b8d"
  },
  "L25": {
   "gets": "employers seen hiring in your places are read first",
-  "hash": "56548e15d4c97b3d"
+  "hash": "563a9ee18ec1c582"
  },
  "L26": {
   "gets": "employers stay readable through an AI outage or a lost cache",
-  "hash": "94ee643cabca84dd"
+  "hash": "f7cc65658995f0cd"
  },
  "L27": {
   "gets": "a source whose AI step is refused fails alone, the press goes on",
-  "hash": "56fce4433b13833a"
+  "hash": "986de0f10a4359d9"
  },
  "L28": {
   "gets": "a press ended by time says Partial, never \"Completed\"",
-  "hash": "495adc96e34c9e9f"
+  "hash": "a308a35e67ab59f6"
  },
  "L29": {
   "gets": "big job boards are read whole and their open jobs stay open",
-  "hash": "265f9bec7c1bdb56"
+  "hash": "9592db017e6d5737"
  },
  "L30": {
   "gets": "the job boards are asked for together, not one after another",
-  "hash": "9a3b97d4aeb71e38"
+  "hash": "d2a71fad01834893"
  },
  "L31": {
   "gets": "the AI's judgment of a title wins over role and excluded words",
-  "hash": "60b40b656fd08d6b"
+  "hash": "f7a6e0aad23e5c7f"
  },
  "L32": {
   "gets": "a title gets a second look before a role-word hit leaves the list",
-  "hash": "10314ec85c24c650"
+  "hash": "aff7360452428064"
  },
  "L33": {
   "gets": "the first press keeps scoring until a 70+ job, up to 10",
-  "hash": "03373db07cbd4f45"
+  "hash": "a8b8bf55c97302a6"
  }
 }

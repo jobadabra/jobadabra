@@ -4,7 +4,8 @@ under the fix's name, so a change that undoes one goes red as "L13 · #3089 · j
 - a new fix to the press adds its row here (and its proof test), then `python3 -m tests.unit.press.ledger --write-lock`;
 - changing or removing a row, or the source of one of its proofs, changes ledger.lock.json, and the PR then needs the owner's words:
   a `Ledger-change: L<nn> "<owner's words>"` line in its body (tools/press-ledger-check.py, pr-gate.yml "Fix ledger kept").
-A proof is `<test file>::<test method>`; one under desktop/ is a node test, locked here and run by the desktop suite."""
+A proof is `<test file>::<test method>`; one under desktop/ is `<node test file>::<text in it>`: its whole test(...) block is locked here and the desktop suite runs it."""
+import ast
 import hashlib
 import importlib
 import inspect
@@ -153,17 +154,34 @@ def resolve(proof):
 
 
 def source(proof):
-    """The text a proof is: its method and its class's setUp, or the node test file's line naming it (the desktop suite runs it)."""
-    resolved = resolve(proof)
-    if resolved is None:
-        path, name = proof.split('::', 1)
-        text = (ROOT / path).read_text()
-        if name not in text:
+    """The text a proof stands on, so weakening it changes the lock. Python: its module minus the other tests' bodies (constants, fixtures, helpers,
+    every setUp and base class stay in), plus the source of anything it imports from another test module. Node: the whole test(...) block holding the
+    text (the desktop suite runs it).
+    Why (Gitar on #3561): the method and its setUp alone let `SLACK = 0.6` or a fixture's coordinates change without the owner's yes, and a node proof
+    locked only as its own words let its assertion be inverted."""
+    path, name = proof.split('::', 1)
+    if resolve(proof) is None:
+        lines = (ROOT / path).read_text().splitlines()
+        at = next((n for n, line in enumerate(lines) if name in line), None)
+        if at is None:
             raise LookupError(f'{proof}: no such test or assertion text in {path}')
-        return name
-    cls, name = resolved
-    setup = inspect.getsource(cls.setUp) if 'setUp' in vars(cls) else ''
-    return inspect.getsource(getattr(cls, name)) + setup
+        first = next((n for n in range(at, -1, -1) if lines[n].startswith('test(')), 0)
+        last = next((n for n in range(at + 1, len(lines)) if lines[n].startswith('test(')), len(lines))
+        return '\n'.join(lines[first:last])
+    text = (ROOT / path).read_text()
+    parts = []
+    for node in ast.parse(text).body:
+        if isinstance(node, ast.ClassDef):
+            parts.append(text.splitlines()[node.lineno - 1])
+            parts += [ast.get_source_segment(text, item) for item in node.body
+                      if not (isinstance(item, ast.FunctionDef) and item.name.startswith('test') and item.name != name)]
+        else:
+            parts.append(ast.get_source_segment(text, node))
+            if isinstance(node, ast.ImportFrom) and (node.module or '').startswith('tests.') and node.module != 'tests.unit.press.ledger':
+                module = importlib.import_module(node.module)
+                parts += [inspect.getsource(getattr(module, alias.name)) for alias in node.names
+                          if inspect.isfunction(getattr(module, alias.name, None)) or inspect.isclass(getattr(module, alias.name, None))]
+    return '\n'.join(part or '' for part in parts)
 
 
 def fingerprint(fix):
