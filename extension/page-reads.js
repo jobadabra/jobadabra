@@ -38,7 +38,9 @@ export function pageSketchOf(tabId) {
     // not our panel's state at that moment (speed-5x, 11 Oct 2026: "Tailor my CV", "77 left required fields" in the sketch). Guard: desktop/integration/extension/own-ui-not-read.test.mjs.
     const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');
     const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
-    const labelOf = el => text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || '';
+    // Why (7 Nov 2026, XING step 2 read as "Please select"): aria-labelledby names a box before its <label for> (the same order as page/fill-labels.js; not for a radio or checkbox, whose label names the option).
+    const byIds = el => (/^(radio|checkbox)$/.test(el.type) ? '' : String(el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(id => id && id !== el.id).map(id => text(document.getElementById(id))).join(' ').trim());
+    const labelOf = el => byIds(el) || text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || '';
     // Also inside open shadow roots: a page built of web components (SmartRecruiters, 9 Oct 2026) otherwise reads as empty.
     const all = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^jobadabra/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
     const controls = all('input, select, textarea')
