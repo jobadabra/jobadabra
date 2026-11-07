@@ -30,7 +30,7 @@ Ownership: extension display helpers/catalogs, visit.js/popup.js/messages-learni
 
 ### 5. Owner preview approval
 
-- [ ] Render and inspect light/dark before-after previews; obtain actual owner approval.
+- [x] Render and inspect light/dark before-after previews; owner replied “I approve” on 7 Nov 2026 (proof: none: explicit owner preview approval in session).
 
 ### 6. Shipping and exact-head review
 
@@ -45,4 +45,4 @@ Ownership: extension display helpers/catalogs, visit.js/popup.js/messages-learni
 
 All new keys/parameters/plural branches have seven-language parity. Real display callbacks show selected-locale authored copy and preserve external values including braces/HTML-like text. Canonical read reasons and diagnostics remain unchanged. Locale switches redraw selected tips without selecting another or resetting seen history. Pending/rejected storage retains current nonblocking fallback. Preview uses fictional stand-ins only.
 
-Verification evidence: original tellStep callback assertion fails (English/untyped rendering); patched actual callback preserves the protocol words and renders German. Named locale, callback, panel injection, permission/storage, report, read-board and plain-error regressions pass. Light/dark before-after previews opened; owner publishing decision pending.
+Verification evidence: original tellStep callback assertion fails (English/untyped rendering); patched actual callback preserves the protocol words and renders German. Named locale, callback, panel injection, permission/storage, report, read-board and plain-error regressions pass. Light/dark before-after previews opened; owner explicitly approved publishing: “I approve” (7 Nov 2026).
