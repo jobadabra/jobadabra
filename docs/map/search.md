@@ -1,7 +1,7 @@
 ---
 area: search
-paths: [src/scout.py, src/daily.py, src/first_jobs.py, src/employer_index.py, src/job_rank.py, src/places.py, src/regions.py, src/sources, tools/persona-search, .github/workflows/scout.yml, .github/workflows/search-personas.yml, docs/ARCHITECTURE.md]
-updated: 2026-11-03
+paths: [tests/unit/press, src/scout.py, src/daily.py, src/first_jobs.py, src/employer_index.py, src/job_rank.py, src/places.py, src/regions.py, src/sources, tools/persona-search, .github/workflows/scout.yml, .github/workflows/search-personas.yml, docs/ARCHITECTURE.md]
+updated: 2026-11-07
 ---
 # Search and scoring
 > Find jobs crawls employer feeds and boards that match the person's strategy, scores them with AI, and delivers the best first. A central scout grows the shared employer index; every install downloads it and nothing about the user goes up.
@@ -9,6 +9,7 @@ updated: 2026-11-03
 ## Rules
 - A job search is global across Europe, for every role, not a tech search: a tech-leaning default, seed list, prompt example or test persona is a bug. Measure non-tech personas too.
 - Sites a run reads or offers fit the current search (AI-judged for roles and places; a strategy change re-judges). Find jobs takes at most 3 minutes wall clock, every stage on one deadline from the press.
+- **The press's fix ledger** (owner, 7 Nov 2026: "we overwrite one another and we never get it right"): every past fix to Find jobs' order or clock is a named row in `tests/unit/press/ledger.py`, run by `tests/unit/press/test_ledger.py`. A red row names the fix you undid: read its PR first. A new fix adds its row; changing or removing one needs the owner's words in the PR (`Ledger-change: L<nn> "…"`). Design: [the press](../superpowers/specs/2026-11-07-the-press-design.md).
 - First jobs in seconds: a small slice of fast feeds is scored three at a time and saved as scored, so a new list has its first job while the full crawl runs (`src/first_jobs.py`). The free ranking spends AI on the best candidates first (`src/job_rank.py`).
 - Never past a login wall or captcha; no disguised browser; a 401, 403 or 429 is not retried (one slower retry of a 403 right after our own burst). LinkedIn jobs and refused public sites are the two opt-in exceptions, each with its gate (CLAUDE.md "Safety").
 - robots.txt and site terms are not consulted for public job listings; `Sitemap:` lines still help.
@@ -26,6 +27,7 @@ updated: 2026-11-03
 - More: `node desktop/scripts/codemap.mjs scout search sources`.
 
 ## Live specs
+- [The press](../superpowers/specs/2026-11-07-the-press-design.md): one pipeline, budget table, ranker and fix ledger for Find jobs (plan [ps](../superpowers/plans/2026-11-07-the-press.md)).
 - [First jobs fast](../superpowers/specs/2026-10-16-first-jobs-fast.md) and [search learns sources](../superpowers/specs/2026-10-18-search-learns-sources.md).
 - [Job board discovery](../superpowers/specs/2026-10-08-job-board-discovery.md) and [locations, one source](../superpowers/specs/2026-10-17-locations-one-source.md).
 - [LinkedIn headless](../superpowers/specs/2026-10-31-linkedin-headless-design.md): the opt-in LinkedIn read.

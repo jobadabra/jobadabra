@@ -146,6 +146,8 @@ def py_module_name(p):
 def py_graph():
     files = [p for p in walk({'.py'}) if p.relative_to(ROOT).parts[0] in ('src', 'tests', 'tools')]
     names = {py_module_name(p): p for p in files}
+    # Why (7 Nov 2026, ps 1/6): tests import each other as tests.unit.x (the press ledger, test_scout's SEEDS…), which only the bare name matched, so a src change never picked the test importing them.
+    names.update({'tests.' + name: p for name, p in list(names.items()) if p.relative_to(ROOT).parts[0] == 'tests'})
     edges = {}
     for p in files:
         deps = set()
