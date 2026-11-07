@@ -25,6 +25,10 @@ i18n.subscribe(renderLanguage);
 language.addEventListener('change', () => i18n.preference(language.value));
 const APP_URL = 'http://127.0.0.1';
 const usesApp = url => !url || url.startsWith(APP_URL);   // the same rule as flow.js: not our own Worker
+// Settings fields cannot be edited or persisted before their own read succeeds; locale IO is independent.
+const settingsFields = ['workerUrl','token','save','acceptConsents','clickDropdowns','testMode','checkEligibility'];
+let settingsReady = false;
+for (const id of settingsFields) $(id).disabled = true;
 const storedSettings = chrome.storage.local.get(['workerUrl', 'token', 'checkEligibility', 'testMode', 'clickDropdowns', 'acceptConsents']);
 // Every site: an optional permission, granted only by Chrome's own prompt from this click.
 const EVERY_SITE = {origins: ['https://*/*']};
@@ -42,11 +46,11 @@ $('carryLogins').addEventListener('change', async () => {
   const ok = await (on ? chrome.permissions.request(COOKIES) : chrome.permissions.remove(COOKIES)).catch(() => false);
   if (on && !ok) $('carryLogins').checked = false;
 });
-$('acceptConsents').addEventListener('change', () => chrome.storage.local.set({acceptConsents: $('acceptConsents').checked}));
+$('acceptConsents').addEventListener('change', () => { if (settingsReady) chrome.storage.local.set({acceptConsents: $('acceptConsents').checked}); });
 // Chrome grants debugger only at install (it can't be optional); this switch decides whether it's used.
-$('clickDropdowns').addEventListener('change', () => chrome.storage.local.set({clickDropdowns: $('clickDropdowns').checked}));
-$('testMode').addEventListener('change', () => chrome.storage.local.set({testMode: $('testMode').checked}));
-$('checkEligibility').addEventListener('change', () => chrome.storage.local.set({checkEligibility: $('checkEligibility').checked}));
+$('clickDropdowns').addEventListener('change', () => { if (settingsReady) chrome.storage.local.set({clickDropdowns: $('clickDropdowns').checked}); });
+$('testMode').addEventListener('change', () => { if (settingsReady) chrome.storage.local.set({testMode: $('testMode').checked}); });
+$('checkEligibility').addEventListener('change', () => { if (settingsReady) chrome.storage.local.set({checkEligibility: $('checkEligibility').checked}); });
 
 // The pair button is the escape hatch (a reinstalled app, another Mac, a new workspace), not a step: the extension
 // pairs itself whenever the app turns its token down. So it only looks like a call to action when there is one — with
@@ -84,6 +88,8 @@ storedSettings.then(stored => {
   $('checkEligibility').checked = stored.checkEligibility !== false;
   $('workerUrl').value = stored.workerUrl || '';
   $('token').value = stored.token || '';
+  settingsReady = true;
+  for (const id of settingsFields) $(id).disabled = false;
   if (usesApp(stored.workerUrl) || !stored.token) connectToApp();
   else pairWords('worker', 'worker');
 }).catch(() => pairWords('disconnected','connectError',{error:t('noAnswer')}));
@@ -95,6 +101,7 @@ window.addEventListener('focus', async () => {
 });
 
 $('save').addEventListener('click', async () => {
+  if (!settingsReady) return;
   await chrome.storage.local.set({workerUrl: $('workerUrl').value.trim(), token: $('token').value.trim()});
   $('saved').textContent = t('saved');
   setTimeout(() => { $('saved').textContent = ''; }, 2000);
