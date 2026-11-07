@@ -8,7 +8,7 @@
     "app.placeReading": "340c7f78ca09792ef61ace4cee393ce1f9017ce2cc29ec7a60d7f637e42c0340",
     "app.placeVague": "f744c1db22417ed29da19196f40353f63bd158cfc848de348f04eca4701dca65",
     "app.places": "c6eb62dc09db99ce1fb08e663e29c0a7888bf1625d892f9fd5b2480fffd2bfb5",
-    "app.score": "a8c7284da97ab320705148fbf9b595c6a5ed588848ebf2a23d733fbb7e2535ec",
+    "app.score": "44fa4b65a5e710a53f78e60322e9689cd095a01f9068f436c00cc7a2fae730f7",
     "app.title": "3e2689d058a3e371cfdf84f62b8c9f04eeec69982ce47ee100227199f9a777e1",
     "app.visa": "d8f184679928ae546ef469a61d76520b535e82722ef6d745075987af73d215b7",
     "app.visit": "8d58dca3bf4b79f7ec8437e4b783cef7530f2124a8c24f8ef47230c523ffe169",
@@ -258,7 +258,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":83,\"tier\":\"A\",\"components\":{\"role_fit\":89,\"location\":100,\"compensation\":100,\"growth\":88,\"risk\":22},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior SRE match in Zurich; Datadog and SLO experience are not named.\",\"strengths\":[\"Kubernetes on AWS, Terraform and OpenTelemetry\",\"Incident response and 8 years running Kubernetes on AWS\",\"Zurich hybrid and English fit; CHF 185,000 - 205,000 above your target\"],\"gaps\":[\"Datadog and SLO experience not stated in profile\",\"Workload and permanent contract not stated\",\"On-call expectations unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile.\"}}",
+              "text": "{\"score\":83,\"tier\":\"A\",\"components\":{\"role_fit\":89,\"location\":100,\"compensation\":100,\"growth\":88,\"risk\":22},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior SRE match in Zurich; Datadog and SLO experience are not named.\",\"strengths\":[\"Kubernetes on AWS, Terraform and OpenTelemetry\",\"Incident response and 8 years running Kubernetes on AWS\",\"Zurich hybrid and English fit; CHF 185,000 - 205,000 above your target\"],\"gaps\":[\"Datadog and SLO experience not stated in profile\",\"Workload and permanent contract not stated\",\"On-call expectations unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile.\"}}",
               "type": "text"
             }
           ],
@@ -278,7 +278,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong platform stack match; staff technical direction and programming are gaps.\",\"strengths\":[\"Kubernetes on AWS EKS and Terraform experience\",\"Argo CD experience relevant to GitOps\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Staff technical direction and Python or Go experience not stated in profile\",\"Salary not stated\",\"Workload, permanent contract and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":97,\"career_change\":false,\"cv_gap\":\"Staff technical direction and Python or Go experience not stated in profile\"}}",
+              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong platform stack match; staff technical direction and programming are gaps.\",\"strengths\":[\"Kubernetes on AWS EKS and Terraform experience\",\"Argo CD experience relevant to GitOps\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Staff technical direction and Python or Go experience not stated in profile\",\"Salary not stated\",\"Workload, permanent contract and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":97,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff technical direction and Python or Go experience not stated in profile\"}}",
               "type": "text"
             }
           ],
@@ -298,7 +298,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":70,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior AWS and Kubernetes work fits closely, with remote work from Zurich.\",\"strengths\":[\"AWS, Kubernetes and Terraform experience\",\"Prometheus and Grafana observability\",\"Senior SRE experience and incident response\"],\"gaps\":[\"EUR 95,000–120,000 stated; no conversion to CHF target\",\"CI/CD experience not explicitly stated in profile\",\"Permanent status and 100% workload not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not explicitly stated in the profile.\"}}",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":70,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior AWS and Kubernetes work fits closely, with remote work from Zurich.\",\"strengths\":[\"AWS, Kubernetes and Terraform experience\",\"Prometheus and Grafana observability\",\"Senior SRE experience and incident response\"],\"gaps\":[\"EUR 95,000–120,000 stated; no conversion to CHF target\",\"CI/CD experience not explicitly stated in profile\",\"Permanent status and 100% workload not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"CI/CD experience is not explicitly stated in the profile.\"}}",
               "type": "text"
             }
           ],
@@ -318,7 +318,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\n  \"score\": 35,\n  \"tier\": \"C\",\n  \"components\": {\n    \"role_fit\": 35,\n    \"location\": 55,\n    \"compensation\": null,\n    \"growth\": 15,\n    \"risk\": 65\n  },\n  \"basis\": {\n    \"salary_stated\": false,\n    \"level_stated\": true,\n    \"one_job\": true\n  },\n  \"reason\": \"DevOps work fits your search, but the junior scope falls below your senior minimum.\",\n  \"strengths\": [\n    \"Terraform changes match your Terraform experience\",\n    \"English working language matches your fluent English\"\n  ],\n  \"gaps\": [\n    \"Junior role for up to 2 years conflicts with your senior minimum and 8 years\",\n    \"Five days on-site in Basel requires a location compromise from Zurich\",\n    \"Salary, workload and permanent contract status not stated\"\n  ],\n  \"confidence\": \"high\",\n  \"search\": {\n    \"fit\": 90,\n    \"career_change\": false,\n    \"cv_gap\": \"CI pipelines and Docker image management are not named in your profile.\"\n  }\n}",
+              "text": "{\n  \"score\": 35,\n  \"tier\": \"C\",\n  \"components\": {\n    \"role_fit\": 35,\n    \"location\": 55,\n    \"compensation\": null,\n    \"growth\": 15,\n    \"risk\": 65\n  },\n  \"basis\": {\n    \"salary_stated\": false,\n    \"level_stated\": true,\n    \"one_job\": true\n  },\n  \"reason\": \"DevOps work fits your search, but the junior scope falls below your senior minimum.\",\n  \"strengths\": [\n    \"Terraform changes match your Terraform experience\",\n    \"English working language matches your fluent English\"\n  ],\n  \"gaps\": [\n    \"Junior role for up to 2 years conflicts with your senior minimum and 8 years\",\n    \"Five days on-site in Basel requires a location compromise from Zurich\",\n    \"Salary, workload and permanent contract status not stated\"\n  ],\n  \"confidence\": \"high\",\n  \"search\": {\n    \"fit\": 90,\n    \"career_change\": false,\n    \"needs_credential\": false,\n    \"cv_gap\": \"CI pipelines and Docker image management are not named in your profile.\"\n  }\n}",
               "type": "text"
             }
           ],
@@ -338,7 +338,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":45,\"tier\":\"C\",\"components\":{\"role_fit\":88,\"location\":60,\"compensation\":null,\"growth\":75,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong SRE skills, but required German C1 exceeds your B1.\",\"strengths\":[\"Kubernetes and Terraform experience\",\"Incident response experience\",\"Senior SRE experience matches the stated seniority\"],\"gaps\":[\"Required fluent German C1; profile states B1\",\"Bern office two days a week; home base Zurich\",\"Salary, workload, contract and on-call not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Required German C1 exceeds the profile's German B1.\"}}",
+              "text": "{\"score\":45,\"tier\":\"C\",\"components\":{\"role_fit\":88,\"location\":60,\"compensation\":null,\"growth\":75,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong SRE skills, but required German C1 exceeds your B1.\",\"strengths\":[\"Kubernetes and Terraform experience\",\"Incident response experience\",\"Senior SRE experience matches the stated seniority\"],\"gaps\":[\"Required fluent German C1; profile states B1\",\"Bern office two days a week; home base Zurich\",\"Salary, workload, contract and on-call not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Required German C1 exceeds the profile's German B1.\"}}",
               "type": "text"
             }
           ],
@@ -358,7 +358,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":20,\"tier\":\"C\",\"components\":{\"role_fit\":10,\"location\":100,\"compensation\":null,\"growth\":10,\"risk\":65},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Helpdesk duties do not match the SRE and platform engineering search.\",\"strengths\":[\"On-site in Zurich matches home base\",\"English working language matches fluent English\"],\"gaps\":[\"Customer helpdesk and CRM experience not stated in profile\",\"Salary not stated\",\"Workload and permanent contract not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":5,\"career_change\":false,\"cv_gap\":\"Customer care, phone and email helpdesk, and CRM experience are not stated.\"}}",
+              "text": "{\"score\":20,\"tier\":\"C\",\"components\":{\"role_fit\":10,\"location\":100,\"compensation\":null,\"growth\":10,\"risk\":65},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Helpdesk duties do not match the SRE and platform engineering search.\",\"strengths\":[\"On-site in Zurich matches home base\",\"English working language matches fluent English\"],\"gaps\":[\"Customer helpdesk and CRM experience not stated in profile\",\"Salary not stated\",\"Workload and permanent contract not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":5,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Customer care, phone and email helpdesk, and CRM experience are not stated.\"}}",
               "type": "text"
             }
           ],
@@ -378,7 +378,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":94,\"location\":55,\"compensation\":null,\"growth\":85,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior platform fit; five days on-site in Geneva requires relocation.\",\"strengths\":[\"Kubernetes on AWS with Terraform matches platform responsibilities\",\"Senior role matches Senior SRE experience\",\"Fluent English meets the working-language requirement\"],\"gaps\":[\"Five days on-site in Geneva; home base is Zurich\",\"Salary not stated\",\"Contract, workload and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"\"}}",
+              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":94,\"location\":55,\"compensation\":null,\"growth\":85,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior platform fit; five days on-site in Geneva requires relocation.\",\"strengths\":[\"Kubernetes on AWS with Terraform matches platform responsibilities\",\"Senior role matches Senior SRE experience\",\"Fluent English meets the working-language requirement\"],\"gaps\":[\"Five days on-site in Geneva; home base is Zurich\",\"Salary not stated\",\"Contract, workload and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}",
               "type": "text"
             }
           ],
@@ -398,7 +398,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":58,\"tier\":\"B\",\"components\":{\"role_fit\":70,\"location\":95,\"compensation\":20,\"growth\":30,\"risk\":30},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"AWS and Terraform match, but the mid-level role and pay fall below your requirements.\",\"strengths\":[\"AWS operations and Terraform experience\",\"Hybrid in Zurich fits your home base\",\"English working language matches fluent English\"],\"gaps\":[\"Mid-level role is below your Senior minimum\",\"CHF 110,000 - 130,000 is below your minimum\",\"Workload and permanent contract status unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":93,\"career_change\":false,\"cv_gap\":\"\"}}",
+              "text": "{\"score\":58,\"tier\":\"B\",\"components\":{\"role_fit\":70,\"location\":95,\"compensation\":20,\"growth\":30,\"risk\":30},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"AWS and Terraform match, but the mid-level role and pay fall below your requirements.\",\"strengths\":[\"AWS operations and Terraform experience\",\"Hybrid in Zurich fits your home base\",\"English working language matches fluent English\"],\"gaps\":[\"Mid-level role is below your Senior minimum\",\"CHF 110,000 - 130,000 is below your minimum\",\"Workload and permanent contract status unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":93,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}",
               "type": "text"
             }
           ],
@@ -418,7 +418,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":88,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior observability platform work matches closely; Datadog is the main skill gap.\",\"strengths\":[\"OpenTelemetry, Prometheus and Grafana experience\",\"Senior SRE experience aligns with senior platform work\",\"Remote within Switzerland; English working language\"],\"gaps\":[\"Datadog experience not stated in profile\",\"Salary not stated\",\"Permanent contract and 100% workload not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Datadog experience not stated in profile\"}}",
+              "text": "{\"score\":88,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior observability platform work matches closely; Datadog is the main skill gap.\",\"strengths\":[\"OpenTelemetry, Prometheus and Grafana experience\",\"Senior SRE experience aligns with senior platform work\",\"Remote within Switzerland; English working language\"],\"gaps\":[\"Datadog experience not stated in profile\",\"Salary not stated\",\"Permanent contract and 100% workload not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog experience not stated in profile\"}}",
               "type": "text"
             }
           ],
@@ -444,7 +444,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":43,\"tier\":\"C\",\"components\":{\"role_fit\":38,\"location\":100,\"compensation\":null,\"growth\":45,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Infrastructure context fits, but the core work is people management with little hands-on.\",\"strengths\":[\"Infrastructure experience as a Senior SRE\",\"Incident response experience relevant to on-call rota\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Hiring, people management and stakeholder management experience not stated\",\"Little hands-on work differs from SRE and platform preferences\",\"Salary not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":40,\"career_change\":false,\"cv_gap\":\"Profile does not state team leadership, hiring or roadmap ownership.\"}}"
+              "text": "{\"score\":43,\"tier\":\"C\",\"components\":{\"role_fit\":38,\"location\":100,\"compensation\":null,\"growth\":45,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Infrastructure context fits, but the core work is people management with little hands-on.\",\"strengths\":[\"Infrastructure experience as a Senior SRE\",\"Incident response experience relevant to on-call rota\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Hiring, people management and stakeholder management experience not stated\",\"Little hands-on work differs from SRE and platform preferences\",\"Salary not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":40,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Profile does not state team leadership, hiring or roadmap ownership.\"}}"
             }
           ],
           "stop_reason": "end_turn",
@@ -465,7 +465,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -482,7 +482,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -499,7 +499,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -516,7 +516,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -533,7 +533,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":76,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":95,\"compensation\":null,\"growth\":74,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Platform stack fits; leadership and explicit SLO experience are not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"People leadership and explicit SLO experience are not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":85,\"career_change\":false,\"cv_gap\":\"People leadership and explicit SLO experience are not stated in the profile.\"}}"
+              "text": "{\"score\":76,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":95,\"compensation\":null,\"growth\":74,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Platform stack fits; leadership and explicit SLO experience are not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"People leadership and explicit SLO experience are not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":85,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"People leadership and explicit SLO experience are not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -550,7 +550,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior platform stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior platform stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -567,7 +567,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -584,7 +584,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Terraform and AWS fit; CI/CD and Python depth need review.\",\"strengths\":[\"Terraform and AWS\"],\"gaps\":[\"Salary not stated\",\"CI/CD and Python depth need review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD and Python depth need review.\"}}"
+              "text": "{\"score\":84,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Terraform and AWS fit; CI/CD and Python depth need review.\",\"strengths\":[\"Terraform and AWS\"],\"gaps\":[\"Salary not stated\",\"CI/CD and Python depth need review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"CI/CD and Python depth need review.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -601,7 +601,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":80,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and AWS fit; staff leadership scope needs review.\",\"strengths\":[\"Kubernetes and AWS\"],\"gaps\":[\"Salary not stated\",\"Staff leadership scope needs review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff leadership scope needs review.\"}}"
+              "text": "{\"score\":80,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and AWS fit; staff leadership scope needs review.\",\"strengths\":[\"Kubernetes and AWS\"],\"gaps\":[\"Salary not stated\",\"Staff leadership scope needs review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff leadership scope needs review.\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -618,7 +618,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -635,7 +635,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -652,7 +652,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -669,7 +669,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -686,7 +686,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -703,7 +703,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -720,7 +720,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -737,7 +737,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -754,7 +754,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -771,7 +771,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -788,7 +788,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -805,7 +805,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Cloud and observability work fits; CI/CD experience is not stated.\",\"strengths\":[\"Kubernetes, AWS and Terraform match the named core skills\",\"Prometheus and Grafana match the observability experience\",\"Remote within Europe fits the location preferences\"],\"gaps\":[\"CI/CD experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call rotation is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not stated in the profile\"}}"
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Cloud and observability work fits; CI/CD experience is not stated.\",\"strengths\":[\"Kubernetes, AWS and Terraform match the named core skills\",\"Prometheus and Grafana match the observability experience\",\"Remote within Europe fits the location preferences\"],\"gaps\":[\"CI/CD experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call rotation is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"CI/CD experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -822,7 +822,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -839,7 +839,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -856,7 +856,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -873,7 +873,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -890,7 +890,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -907,7 +907,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -924,7 +924,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -941,7 +941,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -958,7 +958,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -975,7 +975,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -992,7 +992,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1009,7 +1009,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1026,7 +1026,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1043,7 +1043,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1060,7 +1060,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1077,7 +1077,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1094,7 +1094,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1111,7 +1111,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1128,7 +1128,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1145,7 +1145,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1162,7 +1162,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1179,7 +1179,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1196,7 +1196,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1213,7 +1213,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1230,7 +1230,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1247,7 +1247,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1264,7 +1264,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1281,7 +1281,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
@@ -1298,14 +1298,14 @@
           "content": [
             {
               "type": "text",
-              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
         }
       },
-      "feed/21bba1278f191841f319c3dc2be52dc9eb752d1f669c15cfa4c277406f029156": {"reply":{"id":"msg_codex","type":"message","role":"assistant","model":"gpt-6-luna","stop_sequence":null,"content":[{"type":"text","text":"{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":94,\"location\":96,\"compensation\":null,\"growth\":72,\"risk\":28},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong SRE match in Zurich; salary and contract details are unstated.\",\"strengths\":[\"Kubernetes and AWS production operations match 8 years’ experience\",\"Terraform and SLO work match the listed stack\",\"Senior level, hybrid Zurich, English working language\"],\"gaps\":[\"Salary not stated; cannot compare with your CHF 140,000–160,000 target\",\"Workload and permanent contract status are unknown\",\"On-call is required; your preference is unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"}],"stop_reason":"end_turn","usage":{"input_tokens":15401,"output_tokens":178}}},
-      "feed/e4a4c347d1d9c6dc8e8151f3acccd4b3e5f8858d9908cd83bd40c61c636915c1": {"reply":{"id":"msg_codex","type":"message","role":"assistant","model":"gpt-6-luna","stop_sequence":null,"content":[{"type":"text","text":"{\"score\":91,\"tier\":\"A\",\"components\":{\"role_fit\":96,\"location\":96,\"compensation\":null,\"growth\":87,\"risk\":16},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work matches the search; Zurich hybrid and English fit.\",\"strengths\":[\"Production Kubernetes and AWS match 8 years of experience\",\"Terraform matches named IaC skills\",\"SLOs and on-call align with SRE work and incident response\"],\"gaps\":[\"Salary not stated; compensation is unknown\",\"On-call workload details are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":98,\"career_change\":false,\"cv_gap\":\"\"}}"}],"stop_reason":"end_turn","usage":{"input_tokens":15173,"output_tokens":155}}}
+      "feed/21bba1278f191841f319c3dc2be52dc9eb752d1f669c15cfa4c277406f029156": {"reply":{"id":"msg_codex","type":"message","role":"assistant","model":"gpt-6-luna","stop_sequence":null,"content":[{"type":"text","text":"{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":94,\"location\":96,\"compensation\":null,\"growth\":72,\"risk\":28},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong SRE match in Zurich; salary and contract details are unstated.\",\"strengths\":[\"Kubernetes and AWS production operations match 8 years’ experience\",\"Terraform and SLO work match the listed stack\",\"Senior level, hybrid Zurich, English working language\"],\"gaps\":[\"Salary not stated; cannot compare with your CHF 140,000–160,000 target\",\"Workload and permanent contract status are unknown\",\"On-call is required; your preference is unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"}],"stop_reason":"end_turn","usage":{"input_tokens":15401,"output_tokens":178}}},
+      "feed/e4a4c347d1d9c6dc8e8151f3acccd4b3e5f8858d9908cd83bd40c61c636915c1": {"reply":{"id":"msg_codex","type":"message","role":"assistant","model":"gpt-6-luna","stop_sequence":null,"content":[{"type":"text","text":"{\"score\":91,\"tier\":\"A\",\"components\":{\"role_fit\":96,\"location\":96,\"compensation\":null,\"growth\":87,\"risk\":16},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work matches the search; Zurich hybrid and English fit.\",\"strengths\":[\"Production Kubernetes and AWS match 8 years of experience\",\"Terraform matches named IaC skills\",\"SLOs and on-call align with SRE work and incident response\"],\"gaps\":[\"Salary not stated; compensation is unknown\",\"On-call workload details are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":98,\"career_change\":false,\"needs_credential\":false,\"cv_gap\":\"\"}}"}],"stop_reason":"end_turn","usage":{"input_tokens":15173,"output_tokens":155}}}
     },
     "app.interview": {
       "recruiter-call-gamma": {

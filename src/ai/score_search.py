@@ -18,7 +18,7 @@ The AI judges all of it; no word lists. Tests: tests/unit/ai/test_score_career_c
 SEARCH_ROLE_FIT = 70   # the title check's yes on a career change: the searched role, with the CV's gap (tier B: shown, under a strong A)
 
 PART = {
-    'type': 'object', 'additionalProperties': False, 'required': ['fit', 'career_change', 'cv_gap'],
+    'type': 'object', 'additionalProperties': False, 'required': ['fit', 'career_change', 'cv_gap', 'needs_credential'],
     'properties': {
         'fit': {'type': 'integer', 'description': "0-100: how well the posting's role matches the roles the person searches for (their search, "
                                                   'given below the profile), whatever their experience; the same bands as the overall score. '
@@ -30,16 +30,21 @@ PART = {
                                                             '(a person changing careers); false when the profile is in the same field'},
         'cv_gap': {'type': 'string', 'description': 'One line, at most 90 characters: what the profile lacks for this role (a licence, hours, '
                                                     'years in the field); empty when the profile covers it'},
+        'needs_credential': {'type': 'boolean', 'description': 'True when the posting requires a regulated or examined credential (a licence, rating, '
+                                                               'professional registration) the applicant must hold already and the profile does not show: '
+                                                               'the same test as the cap on fit; false otherwise'},
     },
 }
 
+# Why (7 Nov 2026, owner: "Right after, as 1b (Recommended)"): `needs_credential` — the title check lifted a capped licence-gated job back to 70 next to its Not eligible card; it cannot
+# see the licence, the scorer's answer can, so apply() honours the AI's own boolean and skips the lift. No keyword rule, no code cap.
 # Why (7 Nov 2026, owner: "Change the prompt (Recommended)"): `not prefers, the applicant` — a Cessna captain job (type rating, licence, 1,500 hours) scored 85 for
 # a person with none of them while its card said Not eligible; search.fit ignored a licence the profile lacks. tools/score-cases.py (3 runs, title lift off): 95/85/55 before, 45/45/40 after.
 RULE = """
 - search: the person's search (their roles) is given after the profile. search.fit rates the posting's role against those roles alone, \
 in the same bands, whatever the profile shows, except that a regulated or examined credential (a licence, rating, professional registration) the posting requires, not prefers, the applicant \
 to hold already, which the profile does not show the person holds, caps it at 49 (a role the person cannot take up). Training the employer gives, \
-a health check or clearance done at entry, and a credential the posting only prefers, are not such a requirement. search.career_change is true when the searched roles are another field than the profile's \
+a health check or clearance done at entry, and a credential the posting only prefers, are not such a requirement. search.needs_credential is true exactly when that cap applies. search.career_change is true when the searched roles are another field than the profile's \
 experience. Then also name in search.cv_gap what the profile lacks for this role, and write reason about the fit to the search."""
 
 
@@ -118,7 +123,7 @@ def _search_role(job):
 
 def apply(data, job=None):
     """On a career change, the job is ranked by its fit to the search: 'score' becomes that fit and the CV's own is kept as 'cv_fit'.
-    That fit is at least SEARCH_ROLE_FIT when the AI's title check says the title is a role of the search (_search_role)."""
+    That fit is at least SEARCH_ROLE_FIT when the AI's title check says the title is a role of the search (_search_role), unless the scorer's own answer says the role needs a credential the profile lacks (needs_credential)."""
     part = data.get('search') or {}
     try:
         fit = max(0, min(100, int(part.get('fit'))))
@@ -126,7 +131,7 @@ def apply(data, job=None):
         data['search'] = {}
         return data
     asked = fit   # the AI's own fit, kept: ties rank by it (own_fit) and its presence marks a score made with the role check (_low)
-    if part.get('career_change') is True and fit < SEARCH_ROLE_FIT and _search_role(job):
+    if part.get('career_change') is True and fit < SEARCH_ROLE_FIT and part.get('needs_credential') is not True and _search_role(job):
         fit = SEARCH_ROLE_FIT
     data['search'] = {**part, 'fit': fit, 'asked': asked, 'cv_gap': str(part.get('cv_gap') or '')[:120]}
     if part.get('career_change') is True and fit > int(data.get('score') or 0):
