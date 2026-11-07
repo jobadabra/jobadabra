@@ -3,8 +3,7 @@
 // 'will-prevent-unload', and this asks Stay / Leave without saving. A hidden test window (e2e, screenshots) never waits on a dialog: it leaves.
 // Guarded by test/unit/main/unsaved-guard.test.js.
 import {t} from '../i18n/native.js';
-export const UNSAVED_DIALOG = {type: 'question', buttons: ['Stay', 'Leave without saving'], defaultId: 0, cancelId: 0,
-  message: 'You have unsaved changes', detail: 'Your edits on this page are not saved yet. Leave without saving them?'};
+export const UNSAVED_DIALOG = {type: 'question', defaultId: 0, cancelId: 0};
 
 // contents: the window's webContents; ask(options) → the pressed button's index (dialog.showMessageBoxSync bound to the window).
 // app: a quit (⌘Q, an update's restart) that met the held unload was cancelled by it; after "Leave without saving" it goes on, or only the window

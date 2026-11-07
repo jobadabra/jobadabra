@@ -4,13 +4,12 @@
 // Help → Send Feedback… on both platforms (lib/app-feedback.js). Edit → Find… (⌘F), Find Next (⌘G), Find Previous
 // (⇧⌘G): find(what) tells the window ('open' | 'next' | 'previous'; renderer/pages/find.js).
 import {t} from '../i18n/native.js';
-export const CHANNEL_LABELS = {stable: 'Stable', beta: 'Beta', test: 'Test Builds (unchecked)'};
 const channelKey = {stable: 'native.channelStable', beta: 'native.channelBeta', test: 'native.channelTest'};
 
 export function template({name, mac, checkForUpdates, sendFeedback = () => {}, find = () => {}, channel = 'stable', pickChannel = null, zoom = null}) {
   const feedback = {label: t('native.feedback'), click: sendFeedback};
-  const channels = pickChannel ? [{label: t('native.updateChannel'), submenu: Object.keys(CHANNEL_LABELS).map(id =>
-    ({label: t(channelKey[id]), type: 'radio', checked: id === channel, click: () => pickChannel(id)}))}] : [];
+  const channels = pickChannel ? [{label: t('native.updateChannel'), submenu: Object.entries(channelKey).map(([id, key]) =>
+    ({label: t(key), type: 'radio', checked: id === channel, click: () => pickChannel(id)}))}] : [];
   const check = [{label: t('native.checkUpdates'), click: checkForUpdates}, ...channels];
   return [
     ...(mac ? [{label: name, submenu: [{role: 'about'}, ...check, {type: 'separator'}, {role: 'services'}, {type: 'separator'},
