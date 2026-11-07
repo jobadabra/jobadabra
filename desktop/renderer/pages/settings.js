@@ -27,6 +27,7 @@ import {beforeOpen} from './open-hooks.js';
 let pageNow = '';
 export function settingsPage(name) {
   if (pageNow === 'profile' && name !== 'profile' && !profileBar().leave(() => { pageNow = ''; settingsPage(name); })) return;   // unsaved Profile edits: ask first
+  if (pageNow === 'credentials' && name !== 'credentials') hideCredentialSecrets();   // a revealed password does not wait behind the page you left (#3530)
   pageNow = name;
   remembered('settingsPage', name);
   if (name === 'connections' && lastStatus) setTimeout(() => autoConnect(lastStatus), 0);  // after the page is shown
@@ -344,8 +345,10 @@ export async function init() {
   // The job-site password is on Credentials too (and on Profile → Application assistant): the same two buttons.
   for (const [where, said] of [['credentials-shared', 'credentials-message']]) {
     $(`${where}-show`).addEventListener('click', async () => {
+      if ($(`${where}-show`).textContent === t('pagesCommon.hide')) { maskSharedPassword(); return; }   // Show / Hide, as every account row
       const result = await window.pilot.sitePassword('show');
-      if (result?.password) $(where).textContent = result.password;
+      // Why (7 Nov 2026, #3530): not after the person left Credentials; the answer would write the password into a page already masked.
+      if (result?.password && pageNow === 'credentials') { $(where).textContent = result.password; $(`${where}-show`).textContent = t('pagesCommon.hide'); }
       $(said).textContent = plainError(result?.ok ? (result.password ? '' : t('pagesSetup.pasteToRead')) : result?.error || '');
     });
     $(`${where}-copy`).addEventListener('click', async () => {
@@ -365,7 +368,20 @@ export async function init() {
 
 // Settings → Credentials: one row per site Claude made an account on, with the companies it serves (lib/site-accounts.js withCompanies). Passwords hidden until Show; Copy never shows them; Delete asks once.
 const when = iso => (iso ? displayDate(new Date(iso), {day: 'numeric', month: 'short', year: 'numeric'}) : '');
+// Every password revealed on Credentials goes back behind its mask: the account rows are drawn again without one, the old job-site password is dots and its button says Show.
+// Why (7 Nov 2026, #3530, AI persona run 42401302994): the old job-site password stayed in plain text after Show, on leaving Credentials and coming back, though the page says a password is shown only when you press Show.
+const MASK = '••••••••';
+function maskSharedPassword() {
+  $('credentials-shared').textContent = MASK;
+  $('credentials-shared-show').textContent = t('pagesCommon.show');
+}
+function hideCredentialSecrets() {
+  const table = $('credentials-table');
+  table.replaceChildren(table.firstElementChild);
+  maskSharedPassword();
+}
 async function openCredentials() {
+  maskSharedPassword();   // Why (7 Nov 2026, #3530): the old password is masked on every open; the account rows were emptied when the page was left and are drawn from the list below
   const result = await window.pilot.credentials();
   const rows = result?.rows || [];
   const table = $('credentials-table');
@@ -375,13 +391,13 @@ async function openCredentials() {
     const details = [row.email || t('pagesFinalLabels.emailNotRecorded'), when(row.accountAt || row.created), ({confirmed: t('pagesFinalLabels.accountReady'), pending: t('pagesFinalLabels.waitingConfirm')})[row.state] || '', row.job ? (() => { try { return new URL(row.job).hostname.replace(/^www\./, ''); } catch { return ''; } })() : '']
       .filter(Boolean).join(' · ');
     who.append(el('b', '', row.host), ...(row.test ? [el('small', 'cred-companies', t('pagesSetup.testAccount'))] : []), ...(row.unassigned ? [el('small', 'cred-companies', t('pagesSetup.unassigned'))] : []), ...(row.companies?.length ? [el('small', 'cred-companies', t('pagesSetup.forCompanies', {companies: row.companies.join(', ')}))] : []), el('small', '', details));
-    const secret = el('b', '', '••••••••');
+    const secret = el('b', '', MASK);
     const shown = el('span', '');
     shown.append(secret);
     const actions = el('span', 'inline');
     const reveal = el('button', 'secondary small-button', t('pagesCommon.show'));
     reveal.addEventListener('click', async () => {
-      if (reveal.textContent === t('pagesCommon.hide')) { secret.textContent = '••••••••'; reveal.textContent = t('pagesCommon.show'); return; }
+      if (reveal.textContent === t('pagesCommon.hide')) { secret.textContent = MASK; reveal.textContent = t('pagesCommon.show'); return; }
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'show');
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       secret.textContent = answer.password;
