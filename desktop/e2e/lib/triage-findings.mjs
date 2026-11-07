@@ -119,9 +119,16 @@ export function normalize({ui = [], ai = [], suite = [], dropped = []}) {
   return all.filter(item => item.severity !== 'low').filter(item => !seen.has(item.id) && seen.add(item.id));
 }
 
+// Why (7 Nov 2026, pz, mac-50: "the batch's titles repeat themselves, e.g. [AI persona] settings: consistency on settings: GitHub row claims…"): `normalize` builds `title` as "<kind> on <view>: <text>" (the fingerprint hashes it, so it stays), but the issue's title already has the view and the kind is a label, so the title said both twice.
+const textOnly = finding => {
+  const text = String(finding.shown || finding.title), lead = `${String(finding.kind || '').replace(/-/g, ' ')} on ${finding.view}: `;
+  return finding.kind && text.startsWith(lead) && text.length > lead.length ? text.slice(lead.length) : text;
+};
+
 /**
- * The issue title: `[<prefix>] <view>: <title>`, the prefix named by the finding's source (lib/finder-prefix.mjs PREFIXES: AI persona, AI code review, AI screenshot, Layout check, Test step, ...), `[auto-ui]` for a source the map does not know; at most 120 characters.
+ * The issue title: `[<prefix>] <view>: <text>`, the prefix named by the finding's source (lib/finder-prefix.mjs PREFIXES: AI persona, AI code review, AI screenshot, Layout check, Test step, ...), `[auto-ui]` for a source the map does not know; at most 120 characters.
  * Why (7 Nov 2026, pz, owner via mac-50: "One prefix per method (Recommended)"; first "'[AI persona]' prefix"): the issue list says at a glance which method found a bug; the `auto-ui` label and the fp: label stay, so counting and matching do not change. Every reader of a title goes through the same map.
+ * The text is the finding's title without its own "<kind> on <view>: " lead (`textOnly`).
  */
-export const issueTitle = finding => titleOf(finding.source, finding.view, finding.shown || finding.title);
+export const issueTitle = finding => titleOf(finding.source, finding.view, textOnly(finding));
 export const labelFor = id => `fp:${id}`.slice(0, 50);

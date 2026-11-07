@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import {LEGACY_TAG, PREFIXES, TAG, prefixOf, stripTag, textOfTitle, titleOf, viewOfTitle} from '../../lib/finder-prefix.mjs';
 import {DETECTORS} from '../../lib/selfheal-stats.mjs';
-import {issueTitle} from '../../lib/triage-findings.mjs';
+import {issueTitle, normalize} from '../../lib/triage-findings.mjs';
 import {regressionComment} from '../../lib/triage-match.mjs';
 
 test('every source the Finder files under has its own prefix, and the view and text are read back from each title', () => {
@@ -35,4 +35,16 @@ test('no reader keeps a tag regex or name list of its own: they all read the tit
   const own = files.filter(file => file !== 'lib/finder-prefix.mjs' && /\\\[\(\?:auto-ui|\\\[auto-ui\\\]|`\[auto-ui\]|'\[auto-ui\]/.test(fs.readFileSync(new URL(file, dir), 'utf8').split('\n').filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')));   // code lines only: a comment may name the legacy tag
   assert.deepEqual(own, [], 'a file holds its own [auto-ui] tag; use finder-prefix.mjs');
   assert.ok(new RegExp(`^${TAG}`).test('[Test step] jobs: x'));
+});
+
+// mac-50, 7 Nov 2026: "[AI persona] settings: consistency on settings: GitHub row claims…" said the view and the kind twice (the kind is a label; the view is already in the title).
+test('a title does not repeat its view or kind, and the fingerprint still hashes the full title', () => {
+  const note = {source: 'ai-user-agent', view: 'settings', kind: 'consistency', severity: 'medium', title: 'GitHub row claims "Always on" but is not connected', detail: 'The row says Always on while GitHub is not connected.'};
+  const [found] = normalize({ui: [note]});
+  assert.equal(found.title, 'consistency on settings: GitHub row claims "Always on" but is not connected', 'the fingerprinted title is unchanged');
+  assert.equal(issueTitle(found), '[AI persona] settings: GitHub row claims "Always on" but is not connected');
+  assert.equal(issueTitle({source: 'layout-check', view: 'jobs', kind: 'wrong-result', title: 'wrong result on jobs: "Applied 1"'}), '[Layout check] jobs: "Applied 1"');
+  assert.equal(issueTitle({source: 'ai-review', view: 'jobs', kind: 'spill', title: 'Tile on jobs: clipped'}), '[AI screenshot] jobs: Tile on jobs: clipped', 'only an exact lead is cut');
+  assert.equal(issueTitle({source: 'suite-failure', view: 'apply', kind: 'test-failure', title: 'step failed: x'}), '[Test step] apply: step failed: x');
+  assert.equal(viewOfTitle(issueTitle(found)), 'settings');
 });
