@@ -4,10 +4,12 @@
 // Words that carry no meaning in a request ("check FOR gmail", "open THE settings").
 const FILLER = new Set(['a', 'an', 'the', 'for', 'to', 'my', 'me', 'of', 'in', 'on', 'go', 'please', 'new', 'now']);
 const words = text => String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .split(/[^a-z0-9]+/).filter(Boolean);
+  .split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 
 /** The words that count as a command's LABEL when ranking: its label and its alias (a card's own words: "email" and "telegram" → Notifications). Why (31 Oct 2026, main red): the palette test's
  *  "hint-only row" check had its own copy that left the alias out, so it called the Notifications row weak for "telegram"; one definition, used by rank() and by test/unit/main/palette-one-row-per-card.test.js. */
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export const labelWords = command => words(`${command.label} ${command.alias || ''}`);
 
 // What a row shows: its path when it has one ("Settings → Connections → Chrome extension"), else its label.
@@ -58,12 +60,12 @@ export function rank(commands, query) {
 export function openPalette(commands) {
   document.getElementById('palette')?.remove();
   const dialog = Object.assign(document.createElement('dialog'), {id: 'palette', className: 'palette'});
-  const input = Object.assign(document.createElement('input'), {type: 'search', placeholder: 'Type a command, e.g. check gmail',
-    ariaLabel: 'Command'});
+  const input = Object.assign(document.createElement('input'), {type: 'search', placeholder: t('helperFlow.palettePlaceholder'),
+    ariaLabel: t('helperFlow.command')});
   input.setAttribute('aria-controls', 'palette-list');
   const list = Object.assign(document.createElement('ul'), {id: 'palette-list', role: 'listbox'});
-  const empty = Object.assign(document.createElement('p'), {className: 'palette-empty muted', textContent: 'No command matches.', hidden: true});
-  const foot = Object.assign(document.createElement('p'), {className: 'palette-foot muted', textContent: '↑↓ to move · Enter to run · Esc to close'});
+  const empty = Object.assign(document.createElement('p'), {className: 'palette-empty muted', textContent: t('helperFlow.paletteEmpty'), hidden: true});
+  const foot = Object.assign(document.createElement('p'), {className: 'palette-foot muted', textContent: t('helperFlow.paletteFoot', {action: t('helperFlow.paletteRun')})});
   dialog.append(input, list, empty, foot);
   document.body.append(dialog);
 
@@ -74,7 +76,7 @@ export function openPalette(commands) {
     active = Math.max(0, Math.min(index, shown.length - 1));
     [...list.children].forEach((item, i) => item.setAttribute('aria-selected', String(i === active)));
     list.children[active]?.scrollIntoView({block: 'nearest'});
-    foot.textContent = `↑↓ to move · Enter to ${shown[active]?.enter || (shown[active]?.path ? 'open' : 'run')} · Esc to close`;   // a row that only brings you to a card says "open"
+    foot.textContent = t('helperFlow.paletteFoot', {action: shown[active]?.enter || t(shown[active]?.path ? 'helperFlow.paletteOpen' : 'helperFlow.paletteRun')});   // a row that only brings you to a card says "open"
   };
   const render = () => {
     shown = rank(commands, input.value);
@@ -82,7 +84,7 @@ export function openPalette(commands) {
       const item = Object.assign(document.createElement('li'), {role: 'option'});
       const label = Object.assign(document.createElement('b'), {textContent: shownLabel(command)});
       // A task that is running now (palette-busy.js): the app's own small spinner after its name.
-      if (command.running) label.append(Object.assign(document.createElement('i'), {className: 'spinner small', role: 'img', ariaLabel: 'Running now'}));
+      if (command.running) label.append(Object.assign(document.createElement('i'), {className: 'spinner small', role: 'img', ariaLabel: t('helperFlow.runningNow')}));
       item.append(label);
       if (command.hint) item.append(Object.assign(document.createElement('span'), {className: 'muted', textContent: command.hint}));
       if (command.group && command.path?.[0] !== command.group) item.append(Object.assign(document.createElement('small'), {textContent: command.group}));   // a path says its place already

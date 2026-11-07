@@ -127,3 +127,30 @@ test('an asked value is not drawn as "Saved as"', () => {
   const node = answerControl(formatFor({marked: {kind: 'yes_no'}}), '❓ your citizenship and status', () => {});
   assert.doesNotMatch(node.textContent, /Saved as/);
 });
+
+test('translated yes/no labels preserve canonical answers and original form options', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    const changes = [];
+    const node = answerControl({control: 'yes_no', options: ['Yes', 'No']}, '', next => changes.push(next));
+    assert.deepEqual(texts(node), ['Ja', 'Nein']);
+    click(node.children[0]);
+    assert.equal(node.value, 'Yes');
+    assert.equal(node.children[0].getAttribute('aria-pressed'), 'true');
+    click(node.children[0]);
+    assert.deepEqual(changes, ['Yes', '']);
+    const supplied = answerControl({control: 'single', options: ['Yes', 'No']}, 'Yes', () => {});
+    assert.deepEqual(texts(supplied), ['Yes', 'No']);
+  } finally { setLocale('en'); }
+});
+
+test('native multi-select changes preserve all canonical picks without assigning its value', () => {
+  const options = ['First choice', 'Second choice', 'Third choice', 'Fourth choice', 'Fifth choice', 'Sixth choice', 'Seventh choice'];
+  const seen = [];
+  const node = answerControl({control: 'multi', options}, '', value => seen.push(value));
+  node.selectedOptions = [node.children[1], node.children[4]];
+  Object.defineProperty(node, 'value', {get: () => options[1], set: () => { throw new Error('assigning a multi-select value loses the other picks'); }, configurable: true});
+  fire(node, 'change');
+  assert.deepEqual(seen, ['Second choice, Fifth choice']);
+});

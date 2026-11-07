@@ -2,6 +2,7 @@
 // alert all read. Two facts decide it — what the browsers recorded, and when it last reported — and the only state
 // that waits is the moment before the browser's profile has been read (1 Oct 2026: it used to wait a minute and then
 // call an installed extension "not connected").
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {FRESH_MS, extensionState} from '../../../renderer/service-status.js';

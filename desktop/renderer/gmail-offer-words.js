@@ -1,17 +1,19 @@
 // Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the words of the two dialogs and the Suggestions card, free of the DOM so
 // test/unit/renderer/gmail-offer.test.js can check them. pages/gmail-offer.js draws the dialog and runs the one connect flow; lib/gmail-offer.js decides WHEN the window is told.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export const KEY = 'gmail:connect';
 
 /** The dialog's words. `why`: 'applied' (the first Submit) or 'code' (a page asks for a code mailed to the person). */
 export function offerWords({why, employer = '', host = ''} = {}) {
   if (why === 'code') {
     const site = String(host || '').replace(/^www\./, '');
-    return {title: 'Connect Gmail and I\'ll type the codes from the next job on', yes: 'Connect Gmail', no: 'Not now',
-      lead: `${site ? `${site} sent` : 'The site sent'} a code to your e-mail. Connect Gmail (read-only) and Jobadabra reads the codes and types them from the next job on. This job waits for you: type its code from your e-mail. The other jobs go on.`};
+    return {title: t('helperMore.gmailCodeTitle'), yes: t('helperMore.gmailConnect'), no: t('helperState.notNow'),
+      lead: t('helperMore.gmailCodeLead', {site: site || t('helperMore.theSite')})};
   }
   const from = String(employer || '').trim();
-  return {title: 'Your first application is in', yes: 'Connect Gmail', no: 'Not now',
-    lead: `Your confirmation${from ? ` from ${from}` : ''} will land in Gmail. Connect it, and Jobadabra moves this job to Interview or Rejected when they reply.`};
+  return {title: t('helperMore.gmailFirstTitle'), yes: t('helperMore.gmailConnect'), no: t('helperState.notNow'),
+    lead: t(from ? 'helperMore.gmailConfirmationFrom' : 'helperMore.gmailConfirmation', {employer: from})};
 }
 
 /**
@@ -20,6 +22,6 @@ export function offerWords({why, employer = '', host = ''} = {}) {
  */
 export function gmailEntries({view} = {}) {
   if (!view?.loaded || view.connected) return [];
-  return [{kind: 'gmail', home: 'focus', topic: 'applying', key: KEY, title: 'Connect Gmail so replies move your jobs', source: '',
-    detail: 'Confirmations and replies land on the right job, and the code an employer e-mails is typed for you.', evidence: [], answers: [], actions: [{label: 'Connect Gmail', do: 'connect_gmail'}]}];
+  return [{kind: 'gmail', home: 'focus', topic: 'applying', key: KEY, title: t('helperMore.gmailSuggestTitle'), source: '',
+    detail: t('helperMore.gmailSuggestDetail'), evidence: [], answers: [], actions: [{label: t('helperMore.gmailConnect'), do: 'connect_gmail'}]}];
 }

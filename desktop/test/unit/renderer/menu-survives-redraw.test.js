@@ -1,5 +1,6 @@
 // A list that redraws (Jobs on a sessions update, Interviews when a read finishes) must not close the ⋯ menu a person has open on one of its rows
 // (owner, 31 Oct 2026, nightly beta run 41162490590: the menu closed under the cursor while "Application sessions: 2 active" updated).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

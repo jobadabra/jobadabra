@@ -1,56 +1,52 @@
 // The AI engine chooser's words and states (the setup wizard's AI step and Settings → Connections → AI), kept free of
 // the DOM so the tests can check them. The user picks; nothing is chosen for them (lib/claude-code.js engine()).
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {costText, dollars} from './ai-cost.js';
 import {FREE_WEAKER, FREE_WEAKER_SHORT} from './ai-tier-words.js';
 import {plainError} from './run-warnings.js';
 const freeOn = settings => !!(settings?.aiFree || settings?.aiTrial);
 export const usingFree = settings => freeOn(settings) && (!settings.aiEngine || settings.aiEngine === 'api');   // Free is the engine in charge (a later pick of another engine wins)
 // The one-time hint after AI-written text on Free AI (renderer/own-key-hint.js): its words, and when it is wanted (Free, not shown yet).
-export const HINT = {text: `Free AI wrote this, and it is ${FREE_WEAKER_SHORT}. Want stronger letters? Connect your Claude account or ChatGPT.`, link: 'Open AI engine settings', dismiss: 'Dismiss'};
+export const HINT = {text: t('helperMore.ownKeyHint', {quality: FREE_WEAKER_SHORT}), link: t('helperMore.openEngineSettings'), dismiss: t('helperState.dismiss')};
 export const hintWanted = settings => usingFree(settings) && !settings?.ownKeyHintSeen;   // = lib/ai-free.js isOn (the renderer cannot import lib/)
 
 export const TEXT = {
-  title: 'Execution engine',
+  title: t('helperMore.executionEngine'),
   families: {claude: 'Claude (Anthropic)', openai: 'ChatGPT (OpenAI)'},   // the two small cards under Free (owner, 16 Oct 2026; 9 Oct: family first, then its two cards)
-  familyHint: {claude: 'Your Claude plan or API key', openai: 'Your ChatGPT plan or API key'},   // the company's logo on each card (owner, 16 Oct 2026)
-  ownAccount: 'Or use your own account',
-  ownQuality: 'Better letters and interview prep; uses your own subscription or key.',   // quality, never a number (owner, 16 Oct 2026)
-  subtitle: 'Where Jobadabra\'s AI tasks run: reading jobs, fit scores, applications, reviews.',
-  settingsSubtitle: 'Choose where AI tasks run.',  // Settings → Connections: the two cards under it say the rest
-  details: 'Installation details',                 // the Claude Code path, folded under its status line
-  api: {title: 'API key', text: 'Pay as you go with your own key. You control the cost.',
-    short: 'Pay as you go with your own key.'},  // Settings shows the short line; the wizard explains in full
-  cli: {title: 'Your Claude subscription', text: 'Use the Claude plan you already pay for, through Claude Code on this Mac. Nothing extra to pay.',
-    short: 'Use the plan you already pay for.'},
-  openai: {title: 'API key', text: 'Pay as you go with your own key. You control the cost.',
-    short: 'Pay as you go with your own key.'},
-  codex: {title: 'Your OpenAI plan', text: 'Use the plan you already pay for, through Codex on this Mac. Nothing extra to pay.',
-    short: 'Use the plan you already pay for.'},
-  free: {title: 'Free', text: 'Nothing to set up: no account, no key, no cost. Jobadabra\'s AI tasks just work. '
-    + `${FREE_WEAKER} Want the best results? Add your own key any time.`, short: `No account, no key, no cost. ${FREE_WEAKER_SHORT[0].toUpperCase()}${FREE_WEAKER_SHORT.slice(1)}.`},
-  // Why (2 Nov 2026, owner): Always on runs on our servers with Jobadabra's own AI; the old lines said it "uses an API key".
-  note: 'AI tasks run through your Claude Code and bill to your Claude subscription, not to API credits. Always on (on our servers) '
-    + 'uses Jobadabra\'s own AI, not your plan. Tasks are retried later when your Claude usage window is exhausted.',
-  codexNote: 'AI tasks run through your Codex and count against your ChatGPT plan, not API credits. Always on (on our servers) uses Jobadabra\'s own AI, not your plan. '
-    + 'Tasks are retried later when your plan\'s limit is reached.',
-  fallback: 'Use my API key if Claude Code reaches its limit',
-  codexFallback: 'Use my OpenAI API key if Codex reaches its limit',
-  fallbackHint: 'Otherwise, tasks retry when your usage window resets.',
-  notice: 'Jobadabra will run your own Claude Code on this computer. It uses your Claude plan\'s usage limits, not API credits. '
-    + 'Always on (on our servers) uses Jobadabra\'s own AI, not your plan. '
-    + 'You stay in control: switch back to an API key any time.',
-  codexNotice: 'Jobadabra will run your own Codex on this computer, signed in with your ChatGPT account. It uses your plan\'s limits, not API credits. '
-    + 'It runs read-only, in a fresh folder for each task, with its tools switched off. Always on (on our servers) uses Jobadabra\'s own AI, not your plan.',
-  offer: 'New: run these AI tasks on your own Claude Code (your Claude plan) instead of API credits. Your API key stays as it is until you switch.',
+  familyHint: {claude: t('helperMore.claudePlanKey'), openai: t('helperMore.chatgptPlanKey')},   // the company's logo on each card (owner, 16 Oct 2026)
+  ownAccount: t('helperMore.ownAccount'),
+  ownQuality: t('helperMore.ownQuality'),   // quality, never a number (owner, 16 Oct 2026)
+  subtitle: t('helperMore.engineSubtitle'),
+  settingsSubtitle: t('helperMore.chooseEngine'),  // Settings → Connections: the two cards under it say the rest
+  details: t('helperMore.installationDetails'),                 // the Claude Code path, folded under its status line
+  api: {title: t('helperMore.apiKey'), text: t('helperMore.payOwnKey'),
+    short: t('helperMore.payOwnKeyShort')},  // Settings shows the short line; the wizard explains in full
+  cli: {title: t('helperMore.yourClaudeSubscription'), text: t('helperMore.useClaudePlan'),
+    short: t('helperMore.usePaidPlan')},
+  openai: {title: t('helperMore.apiKey'), text: t('helperMore.payOwnKey'),
+    short: t('helperMore.payOwnKeyShort')},
+  codex: {title: t('helperMore.yourOpenAiPlan'), text: t('helperMore.useCodexPlan'),
+    short: t('helperMore.usePaidPlan')},
+  free: {title: t('helperMore.free'), text: t('helperMore.freeDescription', {quality: FREE_WEAKER}), short: t('helperMore.freeShort', {quality: FREE_WEAKER_SHORT[0].toUpperCase() + FREE_WEAKER_SHORT.slice(1)})},
+  // Why (2 Nov 2026, owner; localized 7 Nov 2026): Always on uses Jobadabra's AI on our servers, so translated plan notes never claim it "uses an API key".
+  note: t('helperMore.claudeNote'),
+  codexNote: t('helperMore.codexNote'),
+  fallback: t('helperMore.claudeFallback'),
+  codexFallback: t('helperMore.codexFallback'),
+  fallbackHint: t('helperMore.fallbackHint'),
+  notice: t('helperMore.claudeNotice'),
+  codexNotice: t('helperMore.codexNotice'),
+  offer: t('helperMore.cliOffer'),
 };
 
 // ⌘K: one entry per engine choice (the cards of pages/ai-engine.js, pressed by data-choice): [card, label, hint, search words, the family card to open first].
 export const ENGINE_CHOICES = [
-  ['free', 'Use Free AI', `No account, no key, no cost. ${FREE_WEAKER_SHORT[0].toUpperCase()}${FREE_WEAKER_SHORT.slice(1)}.`, 'free no key'],
-  ['family-claude', 'Use my own Claude account', 'Your Claude plan or API key', 'claude anthropic own key api'],
-  ['family-openai', 'Use my own OpenAI account', 'Your ChatGPT plan or API key', 'openai chatgpt codex own key api'],
-  ['cli', 'Use my Claude Code', 'Your Claude plan, for tasks on this Mac', 'claude code cli subscription', 'family-claude'],
-  ['codex', 'Use my Codex', 'Your ChatGPT plan, for tasks on this Mac', 'codex cli chatgpt subscription', 'family-openai'],
+  ['free', t('helpers.useFree'), t('helperMore.freeShort', {quality: FREE_WEAKER_SHORT[0].toUpperCase() + FREE_WEAKER_SHORT.slice(1)}), 'free no key'],
+  ['family-claude', t('helperMore.useOwnClaude'), t('helperMore.claudePlanKey'), 'claude anthropic own key api'],
+  ['family-openai', t('helperMore.useOwnOpenAi'), t('helperMore.chatgptPlanKey'), 'openai chatgpt codex own key api'],
+  ['cli', t('helperMore.useClaudeCode'), t('helperMore.claudeTasksMac'), 'claude code cli subscription', 'family-claude'],
+  ['codex', t('helperMore.useCodex'), t('helperMore.chatgptTasksMac'), 'codex cli chatgpt subscription', 'family-openai'],
 ];
 
 // Each engine's family, and the two cards of a family (API key first, then the user's own CLI).
@@ -87,12 +83,13 @@ export function selection({picked = null, family = null} = {}) {
 // Who pays for an AI action, one quiet line before it runs and after it ran (owner, 18 Oct 2026, the cover letter's Draft with AI): never a guessed amount
 // or time; after, the real cost only when one is known, an unknown one never "$0". The same three words as lib/cover-letter.js paidByOf.
 export const PAID_BY = {free: 'credits', api: 'api', openai: 'api', cli: 'plan', codex: 'plan'};
-export const USAGE = {credits: {before: 'Uses your AI credits.', after: 'Used your AI credits'}, api: {before: 'Billed to your API account.', after: 'Billed to your API account'},
-  plan: {before: 'Uses your plan allowance.', after: 'Used your plan allowance'}};
+export const USAGE = {credits: {before: t('helperMore.usesCredits'), after: t('helperMore.usedCredits')}, api: {before: t('helperMore.billedApiPeriod'), after: t('helperMore.billedApi')},
+  plan: {before: t('helperMore.usesAllowance'), after: t('helperMore.usedAllowance')}};
 export const usageBefore = (settings, hasKey = false) => USAGE[PAID_BY[chosen(settings, hasKey)]]?.before || '';
-export const usageAfter = ({paidBy = '', usd = 0} = {}) => (paidBy === 'api' && costText(usd) ? `Cost ${dollars(usd)}` : USAGE[paidBy]?.after || '');
+/** Describe the recorded payment route after a run; show measured API cost, a plan label, or an empty string when unknown. */
+export const usageAfter = ({paidBy = '', usd = 0} = {}) => (paidBy === 'api' && costText(usd) ? t('helperMore.cost', {amount: dollars(usd)}) : USAGE[paidBy]?.after || '');
 // The last run's real cost, labelled as the past (never an estimate for the next one): only a measured amount on an API account.
-export const lastCost = ({paidBy = '', usd = 0} = {}, what = 'draft') => (paidBy === 'api' && costText(usd) ? `Last ${what}: ${dollars(usd)}` : '');
+export const lastCost = ({paidBy = '', usd = 0} = {}, what = t('helperMore.draftNoun')) => (paidBy === 'api' && costText(usd) ? t('helperMore.lastCost', {what, amount: dollars(usd)}) : '');
 
 // The chosen engine: 'api', 'cli', 'openai', 'codex' or null. In Settings an install that had a key before the choice existed shows 'api'
 // (it keeps running on the key); the wizard shows nothing chosen until the user picks.
@@ -105,14 +102,14 @@ export function chosen(settings = {}, hasKey = false, context = 'settings') {
 
 // The Claude Code status block: dot lines (installed, signed in), the path, and whether it can be chosen.
 export function cliStatus(status = null, family = 'claude') {
-  const login = family === 'openai' ? 'run  codex login  in Terminal and sign in' : 'run claude in Terminal and sign in';
-  if (!status) return {lines: [{tone: 'neutral', text: 'Checking…'}], path: '', usable: false, checking: true};
-  const lines = [status.installed ? {tone: 'good', text: `Installed${status.version ? ` v${status.version}` : ''}`}
-    : {tone: 'bad', text: 'Not installed on this Mac'}];
+  const login = family === 'openai' ? t('helperMore.codexTerminalLogin') : t('helperMore.claudeTerminalLogin');
+  if (!status) return {lines: [{tone: 'neutral', text: t('helpers.checking')}], path: '', usable: false, checking: true};
+  const lines = [status.installed ? {tone: 'good', text: t('helperMore.installedVersion', {version: status.version ? ` v${status.version}` : ''})}
+    : {tone: 'bad', text: t('helperMore.notInstalledMac')}];
   if (status.installed) {
-    lines.push(status.authenticated ? {tone: 'good', text: 'Authenticated'}
-      : status.checkedAt ? {tone: 'bad', text: `Not signed in: ${login}, then Verify`}
-        : {tone: 'warn', text: 'Not verified yet: press Verify'});
+    lines.push(status.authenticated ? {tone: 'good', text: t('helperMore.authenticated')}
+      : status.checkedAt ? {tone: 'bad', text: t('helperMore.notSignedIn', {login})}
+        : {tone: 'warn', text: t('helperMore.notVerified')});
   }
   if (status.error && status.authenticated) lines.push({tone: 'warn', text: plainError(status.error)});  // e.g. the usage window
   return {lines, path: status.path || '', usable: !!(status.installed && status.authenticated), checking: false};
@@ -120,13 +117,13 @@ export function cliStatus(status = null, family = 'claude') {
 
 // The pills under the picked CLI card. While a check runs the last answer's words are old ("Not installed on this Mac"): only "Checking…" shows (review of [cc] 1/2).
 export function statusLines(cli, busy = false) {
-  if (cli.usable) return [{tone: 'good', text: 'Ready to use'}];
-  return busy ? [{tone: 'neutral', text: 'Checking…'}] : cli.lines.filter(each => each.tone !== 'good');
+  if (cli.usable) return [{tone: 'good', text: t('helperMore.readyUse')}];
+  return busy ? [{tone: 'neutral', text: t('helpers.checking')}] : cli.lines.filter(each => each.tone !== 'good');
 }
 // The states whose card is about getting the program, and what a finished Install / Sign in says (one plain sentence, never the process's text).
 export const INSTALL_STATES = ['nothing', 'app-only', 'broken', 'elsewhere', 'needs-git'];
-const SENTENCE = {failed: 'The install did not finish. Try again, or install it by hand with the steps below.', notFound: 'The install did not finish. Install it by hand with the steps below.',
-  openedGit: 'We opened the Git download page. Install it there, then come back: Jobadabra checks again by itself.', signIn: 'Sign-in did not finish. Press Sign in to try again.'};
+const SENTENCE = {failed: t('helperMore.installFailed'), notFound: t('helperMore.installNotFound'),
+  openedGit: t('helperMore.gitOpened'), signIn: t('helperMore.signInFailed')};
 /**
  * what ('install' | 'install-git' | 'sign-in'), the run's result {ok, reason}, the family's state after it -> {problem, manual, check}
  * problem: one sentence or ''; manual: show the numbered steps and the page buttons; check: verify the CLI now (it appeared, or Git was added).
@@ -167,8 +164,8 @@ export const needsNotice = (settings, engine = 'cli') => (engine === 'codex' ? !
 
 // Recent activity: how a run was paid for, instead of "$0.03".
 export function billingLabel(run = {}) {
-  if (run.billing === 'Claude subscription') return 'Claude Code · your plan';
-  if (run.billing === 'ChatGPT plan') return 'Codex · your plan';
-  if (run.billing === 'Both') return costText(run.usd, usd => `${dollars(usd)} + Claude Code`) || 'Claude Code · your plan';
+  if (run.billing === 'Claude subscription') return t('helperMore.claudeYourPlan');
+  if (run.billing === 'ChatGPT plan') return t('helperMore.codexYourPlan');
+  if (run.billing === 'Both') return costText(run.usd, usd => `${dollars(usd)} + Claude Code`) || t('helperMore.claudeYourPlan');
   return null;
 }

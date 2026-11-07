@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {messages as englishHelpers} from '../../../i18n/catalogs/helpers/en.js';
 import {isRawValue} from '../../../renderer/chip-text.js';
 
 const renderer = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
@@ -28,5 +29,6 @@ test('chip() marks raw text and names the value on its ×', () => {
   const source = fs.readFileSync(path.join(renderer, 'components.js'), 'utf8');
   const body = source.slice(source.indexOf('export function chip('), source.indexOf('// Tile:'));
   assert.match(body, /if \(isRawValue\(value\)\) node\.dataset\.raw = '1';/);
-  assert.match(body, /aria-label', `Remove \$\{value\}`/);
+  assert.match(body, /aria-label', t\('helpers\.removeValue', \{value\}\)/);
+  assert.equal(englishHelpers.removeValue, 'Remove {value}');
 });

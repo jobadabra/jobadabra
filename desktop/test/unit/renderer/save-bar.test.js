@@ -1,5 +1,6 @@
 // The one page save bar (renderer/save-bar.js; owner, 18 Oct 2026, UI redesign D2): counts drafts across tabs and names them, dots on those tabs, Discard all
 // asks when drafts sit on more than one tab, a failed check saves nothing and names tab + field, a part-way failure keeps the failed drafts, leaving asks.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
@@ -188,4 +189,25 @@ test('a card whose count() AND discard() throw keeps the bar up with the error (
   assert.equal(bar.count(), 1, 'still counted: nothing was discarded');
   assert.equal(bar.node.hidden, false, 'the bar stays up');
   assert.match(note(), /Couldn't discard: Experience · Education: discard broke/);
+});
+
+test('Romanian and Russian save bars pluralize drafts and keep their save/discard behavior', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('ro');
+    assert.equal(countText(1), '1 modificare nesalvată');
+    assert.equal(countText(2), '2 modificări nesalvate');
+    assert.equal(countText(20), '20 de modificări nesalvate');
+    setLocale('ru');
+    assert.equal(countText(1), '1 несохранённое изменение');
+    assert.equal(countText(2), '2 несохранённых изменения');
+    assert.equal(countText(5), '5 несохранённых изменений');
+    const {bar, card, title, note} = setup();
+    card('contact', 'details', 'Contact').edit('email', 'alex@example.test');
+    assert.match(title(), /^1 несохранённое изменение/);
+    assert.deepEqual(bar.node.querySelectorAll('button').map(node => node.textContent), ['Отменить всё', 'Сохранить все изменения']);
+    assert.equal((await bar.saveAll()).ok, true);
+    assert.equal(title(), '');
+    assert.equal(note(), 'Сохранено ✓');
+  } finally { setLocale('en'); }
 });

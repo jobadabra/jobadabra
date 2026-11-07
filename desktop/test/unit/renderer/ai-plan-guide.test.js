@@ -2,6 +2,7 @@
 // install states carry the numbered official steps, and no raw text (a path, an exit code, a stack, "Looked in", winget) is ever drawn.
 // Why (2 Nov 2026, owner): "We should never show a raw error."
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {STATES} from '../../../lib/plan-readiness.js';

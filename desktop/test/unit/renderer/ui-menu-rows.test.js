@@ -1,6 +1,7 @@
 // The shared ⋯ menu (components.js openMenu) grown into a list a navigator can use (owner, 18 Oct 2026: "I don't like this dropdown... make it
 // nice. Modern."): a row may carry an icon tile, a detail line, a state pill and a current mark; a heading names a group; a search box filters
 // long lists; ↑ / ↓ move between rows. Plain ⋯ items are unchanged.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

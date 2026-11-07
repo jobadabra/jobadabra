@@ -1,3 +1,4 @@
+import '../../../i18n/screens-helpers.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {filterOptions} from '../../../renderer/search-select.js';

@@ -2,6 +2,9 @@
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
 // Guarded by test/unit/renderer/run-result-card.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
+import {number} from '../i18n/format.js';
 import {addedWords, partialWords} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
 import {partialSearch, runPill, stepCount} from './run-status.js';
@@ -10,13 +13,12 @@ import {partialSearch, runPill, stepCount} from './run-status.js';
 // Kept as the list of kinds the top was built for: test/unit/renderer/run-result-card.test.js fails on a new kind until it is drawn and checked.
 export const CLEAN_TOP = new Set(['search', 'visits', 'mail', 'scout', 'today', 'insight', 'weekly', 'interview', 'interviewInsight', 'kits', 'tailor', 'prepare',
   'add', 'import', 'action', 'rejection', 'prep']);
-const plural = (n, word) => `${n.toLocaleString('en-US')} ${word}${n === 1 ? '' : 's'}`;
 // The one number a kind's result is about, as words: the jobs a search added (the Jobs card's words). Other kinds say theirs from their own card (WORDS).
 export const NUMBER = {search: added => addedWords(added), visits: added => addedWords(added)};
 // A kind's result line from the card its run drew (pages/activity-result-bottom.js), so the top and the card never say it twice.
 export const WORDS = {
-  scout: card => (card.fresh ? `${plural(card.fresh, 'employer')} added` : 'No new employers added'),
-  today: card => (card.fresh ? `${plural(card.fresh, 'new job')} in today's list` : 'No new jobs since your last list'),
+  scout: card => (card.fresh ? t('helperState.employersAdded', {count: card.fresh, amount: number(card.fresh)}) : t('helperState.noEmployers')),
+  today: card => (card.fresh ? t('helperState.todayNewJobs', {count: card.fresh, amount: number(card.fresh)}) : t('helperState.noNewList')),
 };
 // Any other run: its own one line (the Recent runs row's), without the task's name or a leading emoji ("🤝 Tracked…" → "Tracked…").
 export function resultWords(line, name = '') {
@@ -32,7 +34,7 @@ const ICONS = {good: 'check-circle', warn: 'alert', bad: 'alert', neutral: 'puls
 export function cleanTop(run, {kind, added = 0, asks = 0, title = ''} = {}) {
   if (!run || run.live || run.waiting || !CLEAN_TOP.has(kind)) return null;
   const [label, tone] = runPill({...run, kind}, {long: true});
-  if (label === 'No result') return null;
+  if (label === t('helperState.noResult')) return null;
   const step = NEXT[kind], counts = {added, asks};
   const next = run.ok !== false && step && (!step.when || step.when(counts)) ? {label: step.label(counts), view: step.view} : null;
   return {tone, icon: ICONS[tone] || 'pulse', title: partialSearch(run) && kind === 'search' ? partialWords(run, added) : NUMBER[kind]?.(added) || title || label, next};
@@ -45,6 +47,6 @@ export function liveTop(run, {words = '', count = null, started = false} = {}) {
   const step = String(words || run.step || '');
   const title = step.replace(/\s*[:·-]?\s*\d[\d,]* of \d[\d,]*.*$/, '').trim();
   // No step named: "Starting" until its log has a line, then "Working on it" (never "Starting" beside a log that is already working).
-  return {title: title ? title[0].toUpperCase() + title.slice(1) : started ? 'Working on it' : 'Starting', count: count || stepCount(run.step)};
+  return {title: title ? title[0].toUpperCase() + title.slice(1) : started ? t('helperState.working') : t('helperState.starting'), count: count || stepCount(run.step)};
 }
 export const titleWithNumber = (title, kind, added = 0) => (NUMBER[kind] ? `${title} · ${NUMBER[kind](added)}` : title);

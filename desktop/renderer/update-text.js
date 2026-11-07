@@ -1,26 +1,28 @@
 // Settings → Diagnostics → Updates: whether this is the latest version, from main's updateStatus.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {ago} from './jobs-view.js';
 
 export function updateText({offer, checkedAt, fromSource, fromStore} = {}, now = Date.now()) {
-  if (fromStore) return {latest: true, text: 'Updated by the Microsoft Store'};
-  if (fromSource) return {latest: true, text: 'Running from source: update with git pull'};
-  if (offer) return {latest: false, text: `Version ${offer.version} is available: use Update in the sidebar`};
-  if (!checkedAt) return {latest: false, text: 'Not checked yet'};
-  return {latest: true, text: `Up to date · checked ${ago(checkedAt, now)}`};
+  if (fromStore) return {latest: true, text: t('helperMore.storeUpdated')};
+  if (fromSource) return {latest: true, text: t('helperMore.sourceUpdate')};
+  if (offer) return {latest: false, text: t('helperMore.versionAvailable', {version: offer.version})};
+  if (!checkedAt) return {latest: false, text: t('helperMore.notCheckedYet')};
+  return {latest: true, text: t('helperMore.upToDate', {when: ago(checkedAt, now)})};
 }
 
 // Settings → Diagnostics → Test builds, from main's betaState: {test, on, fromSource, fromStore}. Builds made by hand (a "Build only" run of desktop.yml) with no test run on them.
 export function testText({test, fromSource, fromStore} = {}) {
-  if (fromStore) return {text: 'Not in the Microsoft Store copy: the Store sends its versions', toggle: ''};
-  if (fromSource) return {text: 'Not in a build run from source', toggle: ''};
-  return test ? {text: 'On · you are offered every new build, tested or not: it can be broken', toggle: 'Turn off'}
-    : {text: 'Off · for testing fixes before the beta: builds can be broken', toggle: 'Get test builds'};
+  if (fromStore) return {text: t('helperMore.storeVersions'), toggle: ''};
+  if (fromSource) return {text: t('helperMore.notSourceBuild'), toggle: ''};
+  return test ? {text: t('helperMore.testBuildsOn'), toggle: t('helperMore.turnOff')}
+    : {text: t('helperMore.testBuildsOff'), toggle: t('helperMore.getTestBuilds')};
 }
 
 // Settings → Diagnostics → Beta, from main's betaState: {on, current, stable, ahead, fromSource, fromStore}.
 export function betaText({on, current, stable, ahead, fromSource, fromStore} = {}) {
-  if (fromStore) return {text: 'Not in the Microsoft Store copy: the Store sends its versions', toggle: '', back: false};
-  if (fromSource) return {text: 'Not in a build run from source', toggle: '', back: false};
-  if (ahead) return {text: on ? `On · ahead of stable ${stable}` : `Off · still ahead of stable ${stable}`, toggle: on ? 'Turn off' : 'Join the beta', back: true};
-  return {text: on ? 'On · you are offered new versions before everyone else' : 'Off · you get stable versions only', toggle: on ? 'Turn off' : 'Get the beta version', back: false};
+  if (fromStore) return {text: t('helperMore.storeVersions'), toggle: '', back: false};
+  if (fromSource) return {text: t('helperMore.notSourceBuild'), toggle: '', back: false};
+  if (ahead) return {text: on ? t('helperMore.aheadStableOn', {version: stable}) : t('helperMore.aheadStableOff', {version: stable}), toggle: on ? t('helperMore.turnOff') : t('helperMore.joinBeta'), back: true};
+  return {text: on ? t('helperMore.betaOn') : t('helperMore.betaOff'), toggle: on ? t('helperMore.turnOff') : t('helperMore.getBeta'), back: false};
 }

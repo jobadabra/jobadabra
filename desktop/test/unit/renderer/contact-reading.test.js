@@ -1,6 +1,7 @@
 // Your details never shows empty boxes for "not read yet" (owner, 18 Oct 2026): the marked boxes are a skeleton until the read answers; the kept copy fills them at once.
 // A class test: every editable contact field of the page sits in a marked box or in the links form that stays hidden until Edit.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

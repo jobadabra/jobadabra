@@ -1,4 +1,5 @@
 // A window newer than the running app: every action's rejection reaches the screens as the one plain restart line (preload.cjs), the same words as renderer/errors.js.
+import '../../../i18n/screens-helpers.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

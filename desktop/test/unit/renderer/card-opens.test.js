@@ -1,6 +1,7 @@
 // The class "compact card with one main action": its empty area presses that action, an inner control does only its own thing (owner, 19 Oct 2026).
 // Loops over every listed card; a new compact card with one primary button that is not listed here (and not marked) fails the scan.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

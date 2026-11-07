@@ -1,4 +1,7 @@
 // The Jobs page's derived bits, kept free of the DOM so the tests can check them.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
+import {stageText} from './jobs-board-rules.js';
 import {isInbound} from './origin.js';
 import {foldToggleWord} from './fold-toggle.js';
 import {READY_LABEL} from './pages/ready-rows.js';
@@ -94,21 +97,21 @@ export const inConversation = jobs => jobs.filter(job => isInbound(job) ? !OVER.
 export const talkingStartsOpen = stored => stored === '1';
 export function talkingBar(talking, open) {
   const found = talking.filter(isInbound).length;
-  return open ? {title: 'In conversation', detail: `${talking.length} active · ${found} inbound · ${talking.length - found} outbound`, toggle: foldToggleWord(true)}
-    : {title: `${talking.length} in conversation`, detail: '', toggle: foldToggleWord(false)};
+  return open ? {title: t('helperFlow.inConversation'), detail: t('helperFlow.conversationCounts', {count: talking.length, inbound: found, outbound: talking.length - found}), toggle: foldToggleWord(true)}
+    : {title: t('helperFlow.conversationCount', {count: talking.length}), detail: '', toggle: foldToggleWord(false)};
 }
 // A job's status pill: its own status, except that an application shows where it stands in Notion (its Stage),
 // e.g. Rejected rather than Applied.
-const STATUS = {unreviewed: ['New', 'info'], saved: ['Saved', 'signal'], applied: ['Applied', 'good'], dismissed: ['Dismissed', 'neutral']};
+const STATUS = {unreviewed: [t('helperFlow.new'), 'info'], saved: [t('helpers.savedPlain'), 'signal'], applied: [t('helpers.stageApplied'), 'good'], dismissed: [t('helpers.stageDismissed'), 'neutral']};
 const STAGE_TONE = {Rejected: 'bad', Withdrawn: 'neutral', 'No response': 'neutral', Offer: 'good'};
 export function statusPill(job) {
   if (job.ready && job.status !== 'applied') return {label: READY_LABEL, tone: 'good'};   // filled on the server, waiting for your Submit (pages/jobs-ready.js)
   if (job.stage === 'Rejected' && ['Asked for feedback', 'Received feedback'].includes(job.feedback_status)) {
-    return {label: `Rejected · ${job.feedback_status}`, tone: job.feedback_status === 'Received feedback' ? 'info' : 'warn'};
+    return {label: `${stageText('Rejected')} · ${t(job.feedback_status === 'Received feedback' ? 'helperFlow.receivedFeedback' : 'helperFlow.askedFeedback')}`, tone: job.feedback_status === 'Received feedback' ? 'info' : 'warn'};
   }
-  if (job.stage === 'Recruiter lead') return {label: 'Recruiter lead', tone: 'signal'};
+  if (job.stage === 'Recruiter lead') return {label: stageText('Recruiter lead'), tone: 'signal'};
   if (job.status === 'applied' && job.stage && job.stage !== 'Applied') {
-    return {label: job.stage, tone: STAGE_TONE[job.stage] || (TALKING.has(job.stage) ? 'info' : 'good')};
+    return {label: stageText(job.stage), tone: STAGE_TONE[job.stage] || (TALKING.has(job.stage) ? 'info' : 'good')};
   }
   const [label, tone] = STATUS[job.status] || [job.status, 'neutral'];
   return {label, tone};
@@ -158,7 +161,7 @@ export function avatar(company) {
 }
 
 // The work-mode chip: one word for the mode the source names ("Remote (stated)" reads Remote), else its own wording.
-const MODES = [['remote', 'Remote', /remote/i], ['hybrid', 'Hybrid', /hybrid/i], ['onsite', 'On-site', /on.?site/i]];
+const MODES = [['remote', t('helperFlow.remote'), /remote/i], ['hybrid', t('helperFlow.hybrid'), /hybrid/i], ['onsite', t('helperFlow.onsite'), /on.?site/i]];
 export function workMode(text) {
   const [kind, label] = MODES.find(([, , pattern]) => pattern.test(text || '')) || ['', String(text || '')];
   return {kind, label};
@@ -176,11 +179,11 @@ export const jobOfApplication = (jobs, pageId) => (!pageId ? undefined : (jobs |
   || (job.notion_url && plainId(job.notion_url).includes(plainId(pageId)))));
 
 // links: the store has pages to open (Notion). Without, a linked job not in the list is said plainly and has no page link.
-export function interviewJob(row, job, {links = true, linked = 'Linked in Notion', elsewhere = 'Linked to a job'} = {}) {   // about Notion
+export function interviewJob(row, job, {links = true, linked = t('helperFlow.linkedNotion'), elsewhere = t('helperFlow.linkedJob')} = {}) {   // about Notion
   const page = row.application?.[0] || '';
   if (job) return {kind: 'job', name: job.company || job.title, role: job.company ? job.title : '', notion: job.notion_url || (links ? notionPageUrl(page) : '')};
   if (page) return {kind: links ? 'notion' : 'none', name: links ? linked : elsewhere, role: '', notion: links ? notionPageUrl(page) : ''};
-  return {kind: 'none', name: 'No job linked', role: '', notion: ''};
+  return {kind: 'none', name: t('helperFlow.noLinkedJob'), role: '', notion: ''};
 }
 
 // Place and mode on one line, without saying the mode twice ("Remote (Europe)" + Remote reads "Remote (Europe)").
@@ -202,24 +205,24 @@ export function shortPlace(location, max = 2) {
 export const band = fit => (fit == null ? 'none' : fit >= 70 ? 'high' : fit >= 50 ? 'mid' : 'low');
 
 // The match words in a ring's tooltip and a board card.
-export const matchLabel = fit => (fit == null ? 'Not scored' : fit >= 70 ? 'Strong match' : fit >= 50 ? 'Good match' : 'Weak match');
+export const matchLabel = fit => (fit == null ? t('helperFlow.notScored') : fit >= 70 ? t('helperFlow.strongMatch') : fit >= 50 ? t('helperFlow.goodMatch') : t('helperFlow.weakMatch'));
 
 // The fit score's bands, a few words each: the same bands the scoring prompt states (src/ai/score.py; Notion "Fit score - the scoring
 // rubric"). Shown as the tooltip of every place a fit score is drawn (the Jobs ring, a run card's score), with this job's own band first.
-export const FIT_BANDS = [[85, 'Everything matches'], [70, 'Small gaps only'], [50, 'Partial fit'], [30, 'Mostly another role'], [0, 'Unrelated']];
+export const FIT_BANDS = [[85, t('helperFlow.everythingMatches')], [70, t('helperFlow.smallGaps')], [50, t('helperFlow.partialFit')], [30, t('helperFlow.mostlyOtherRole')], [0, t('helperFlow.unrelated')]];
 export function fitTooltip(fit, extra = '') {
   const bands = FIT_BANDS.map(([from], i) => `${from}–${i ? FIT_BANDS[i - 1][0] - 1 : 100}  ${FIT_BANDS[i][1]}`);
-  const head = fit == null ? 'Not scored yet' : `Fit ${fit}: ${matchLabel(fit)}`;
+  const head = fit == null ? t('helperFlow.notScoredYet') : t('helperFlow.fitScore', {fit, match: matchLabel(fit)});
   return [head, ...bands, ...(extra ? ['', extra] : [])].join('\n');
 }
 
 // Why a job has no score, for the ring's tooltip and the row's badge. place_unclear (src/desktop_jobs.py): its location is only a country and its
 // posting could not be read, so no refresh can place or score it; it is listed for you to check, never hidden or closed (#323, 12 Oct 2026).
-export const PLACE_UNCLEAR = 'Place unclear';
+export const PLACE_UNCLEAR = t('helperFlow.placeUnclear');
 export function unscoredWhy(job) {
   if (job.fit != null) return '';
-  return job.place_unclear ? 'Not scored: its place is unclear (the location names only a country) and the posting could not be read. Open it to check where the job is.'
-    : 'Not scored yet: no description to read, or excluded by your filters';
+  return job.place_unclear ? t('helperFlow.unscoredPlace')
+    : t('helperFlow.unscoredDescription');
 }
 
 // When a job was first seen: "just now", "5h ago", "3d ago", "2w ago".
@@ -227,10 +230,10 @@ export function ago(iso, now = Date.now()) {
   const ms = now - Date.parse(iso);
   if (!Number.isFinite(ms) || ms < 0) return '';
   const hours = Math.floor(ms / 3600000);
-  if (hours < 1) return 'just now';
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 1) return t('helperFlow.justNow');
+  if (hours < 24) return t('helperFlow.hoursAgo', {count: hours});
   const days = Math.floor(hours / 24);
-  return days < 14 ? `${days}d ago` : `${Math.floor(days / 7)}w ago`;
+  return days < 14 ? t('helperFlow.daysAgo', {count: days}) : t('helperFlow.weeksAgo', {count: Math.floor(days / 7)});
 }
 
 // "Applying" that no open session explains: the session was closed without saying whether it was submitted.

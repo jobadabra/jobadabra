@@ -7,6 +7,7 @@
 // Fake applicant data only; the app runs on a free port, never the owner's 47111.
 import fs from 'node:fs';
 import path from 'node:path';
+import {messages as englishState} from '../../i18n/catalogs/helpers/en-state.js';
 import {FIXTURES} from './cvfixtures.mjs';
 import {DEFAULT_APP_PORT, freePort} from './extension.mjs';
 import {pollUntil, stepWait, waitForLogLine} from './wait-on-state.mjs';
@@ -72,7 +73,7 @@ export async function profileDetailStep(ctx) {
   await openProfile(ctx, 'Your details');
   await stepWait('Edit on the Contact card', timeout => ctx.page.getByRole('button', {name: 'Edit contact', exact: true}).click({timeout}));
   await stepWait('the Phone box', timeout => ctx.page.getByRole('textbox', {name: 'Phone', exact: true}).fill(NEW_PHONE, {timeout}));
-  await stepWait('Save all changes on the save bar', timeout => ctx.page.getByRole('region', {name: 'Unsaved changes'}).getByRole('button', {name: 'Save all changes'}).click({timeout}));
+  await stepWait('Save all changes on the save bar', timeout => ctx.page.getByRole('region', {name: englishState.unsavedLabel}).getByRole('button', {name: englishState.saveAll}).click({timeout}));
   const {value: saved} = await pollUntil(() => ctx.page.evaluate(() => window.pilot.contact()), contact => contact?.phone === NEW_PHONE, {log: () => {}});
   if (saved?.phone !== NEW_PHONE) throw new Error(`the save bar did not save the phone: the Profile holds ${JSON.stringify(saved?.phone)}`);
 

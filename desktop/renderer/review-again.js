@@ -2,27 +2,28 @@
 // The same review as the first one (window.pilot.interviews.review), re-run on the transcript saved in Notion: it
 // replaces the review and fills only the job's empty fields (src/ai/interviews.py review_again). One AI call, so the
 // menu press is the ask; it never runs by itself.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {ai} from './ai-name.js';
 import {humanError} from './run-warnings.js';
 import {byWhere} from './store-name.js';
 
-export const LABEL = 'Review again · updates the job';
-export const BUSY = 'Reviewing again…';
-export const TITLE = '{AI} reviews the saved transcript again (one {AI:big} call): the review is replaced and the '
-  + "call's facts (salary, contract, visa…) fill the job's empty fields. Stage and filled fields are left as they are.";
+export const LABEL = t('helperFlow.reviewAgainLabel');
+export const BUSY = t('helperFlow.reviewingAgain');
+export const TITLE = t('helperFlow.reviewAgainTip');
 
 // The menu entry for a row, or null (not reviewed yet: the row's own Review button does it).
 export function againItem(row, busy, run) {
   if (!row?.overall) return null;
-  return busy ? {label: BUSY, title: ai('{AI} is reviewing this interview again'), run: () => {}} : {label: LABEL, title: ai(TITLE), run};
+  return busy ? {label: BUSY, title: ai(t('helperFlow.reviewAgainBusy')), run: () => {}} : {label: LABEL, title: ai(TITLE), run};
 }
 
-export const START = '{AI} is reviewing the interview again (about a minute)…';   // shown through ai()
+export const START = t('helperFlow.reviewAgainStart');   // shown through ai()
 
 // [text, tone] for the page's message line after the call returns.
 export function doneMessage(result) {
-  if (!result?.ok) return [`Review again failed: ${result?.error ? humanError(result.error) : 'no answer'}. The job was not changed.`, 'error'];
+  if (!result?.ok) return [t('helperFlow.reviewAgainFailed', {error: result?.error ? humanError(result.error) : t('helperFlow.noAnswer')}), 'error'];
   if (result.already) return [result.summary, 'ok'];   // a second press inside the guard window runs nothing: say that, not "replaced"
-  if (result.cloud) return ['Reviewing again on GitHub: the new review replaces the old one on the Notion page in a few minutes.', 'ok'];   // about Notion: Always on runs only with Notion
-  return [`${result.summary}. ${byWhere('The review on the Notion page was replaced.', 'The review was replaced.')}`, 'ok'];
+  if (result.cloud) return [t('helperFlow.reviewAgainCloud'), 'ok'];   // about Notion: Always on runs only with Notion
+  return [`${result.summary}. ${byWhere(t('helperFlow.reviewReplacedNotion'), t('helperFlow.reviewReplaced'))}`, 'ok'];
 }

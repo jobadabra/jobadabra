@@ -1,3 +1,4 @@
+import {messages as englishFlow} from '../../../i18n/catalogs/helpers/en-flow.js';
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -97,8 +98,9 @@ test('every name of the tailor action says cover letter', () => {
   const places = {
     'lib/pipeline-lines.js': /name: 'Tailor CV \+ cover letter'/, 'lib/run-history.js': /tailor: 'Tailor CV \+ cover letter'/,
     'renderer/pages/activity-basics.js': /name: 'Tailor CV \+ cover letter'/, 'renderer/pages/runs-page.js': /Tailor CV \+ cover letter for top matches/,
-    'renderer/onboarding.js': /Tailor CV \+ cover letter for top matches/, 'renderer/index.html': /<b>Tailor CV \+ cover letter for top matches<\/b>/,
+    'renderer/onboarding.js': /label: t\('helperFlow\.onboardingTailor'\)/, 'renderer/index.html': /<b>Tailor CV \+ cover letter for top matches<\/b>/,
     'renderer/pages/jobs-render.js': /'Tailor CV \+ cover letter'/, 'renderer/pages/nav.js': /tailor: 'tailor cv cover letter/,
   };
+  assert.equal(englishFlow.onboardingTailor, 'Tailor CV + cover letter for top matches');
   for (const [file, pattern] of Object.entries(places)) assert.match(readScreenSource(path.join(here, '../../..', file), 'utf8'), pattern, file);
 });

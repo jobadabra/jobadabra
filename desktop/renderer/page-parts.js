@@ -2,6 +2,8 @@
 // a review list (pending first, done folded as "Reviewed · N"), an empty state ("Not created" + one line + two actions), summary tiles (icon, label, big
 // value), and a read-only reference row ("From Your details" + one link). Styles: page-parts.css. Rules: docs/rules/desktop-ui.md "Page blocks".
 // Living copy: npm run gallery → "Page blocks". Guarded by test/unit/renderer/page-parts.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el, pill, tile} from './components.js';
 import {icon} from './icons.js';
 import {wand} from './magic.js';
@@ -20,7 +22,7 @@ const button = (label, className, run, aria = '') => {
 // detail: the whole row opens it ("View details ›" at the row's right end, the detail under the row, in line with the title), mockup 08.
 // Options: statusAt 'end' (default) | 'first' (a priority, fixed width, mockup 08) | 'title' (beside the name, mockup 06); joined: one bordered list with
 // row dividers (mockup 06); doneSummary(doneItems): a muted line beside "Reviewed · N" ("OpenTelemetry confirmed · Vault dismissed"); doneOpen.
-export function reviewList(items = [], {doneLabel = 'Reviewed', empty = 'Nothing to review.', statusAt = 'end', joined = false, doneSummary = null, doneOpen = false} = {}) {
+export function reviewList(items = [], {doneLabel = t('helpers.reviewed'), empty = t('helpers.nothingReview'), statusAt = 'end', joined = false, doneSummary = null, doneOpen = false} = {}) {
   const box = el('div', `review-list status-${statusAt}${joined ? ' is-joined' : ''}`);
   let lead = false;   // the list's one orange button is drawn
   const row = item => {
@@ -44,7 +46,7 @@ export function reviewList(items = [], {doneLabel = 'Reviewed', empty = 'Nothing
     if (!item.detail) { node.append(...parts, actions); return node; }
     node.classList.add('has-detail');
     const fold = el('details', 'plain review-fold'), head = el('summary', 'review-row'), more = el('span', 'review-more muted small');
-    more.append(el('span', 'review-more-words', item.detailLabel || 'View details'), icon('chevron'));
+    more.append(el('span', 'review-more-words', item.detailLabel || t('helpers.viewDetails')), icon('chevron'));
     head.append(...parts, more, actions);
     const body = el('div', 'review-detail');
     body.append(item.detail);
@@ -72,7 +74,7 @@ export function reviewList(items = [], {doneLabel = 'Reviewed', empty = 'Nothing
 
 // Something not made yet (a base letter, a first CV): a neutral chip, an icon, a title, one line, then two actions (the first is the primary next step,
 // the second quiet) and an optional muted note under them. actions: [{label, run, ai}] (at most two; ai: true when the AI does the work: the wand cursor and burst, magic.js).
-export function emptyState({icon = 'file', chip = 'Not created', title = '', text = '', actions = [], note = ''} = {}) {
+export function emptyState({icon = 'file', chip = t('helpers.notCreated'), title = '', text = '', actions = [], note = ''} = {}) {
   const box = el('div', 'empty-state');
   box.append(tile(icon, 'neutral'));
   if (chip) box.append(pill(chip, 'neutral'));
@@ -108,7 +110,7 @@ export function summaryTiles(tiles = [], {divided = false} = {}) {
     if (title) cell.title = title;
     const set = String(value ?? '').trim();
     const words = el('div', 'summary-tile-words');
-    const big = el('b', `summary-tile-value${set ? '' : ' is-empty'}`, set || 'Not set');
+    const big = el('b', `summary-tile-value${set ? '' : ' is-empty'}`, set || t('helpers.notSet'));
     if (set && scored && given === undefined) big.append(el('span', 'summary-tile-of', ` / ${max}`));   // "82 / 100": the scale small and muted (mockup 08)
     if (set && more) big.append(el('span', 'summary-tile-of', ` ${more}`));   // "+2 more" inline, never a lone line under the value
     if (set && badge) big.append(pill(badge.text, badge.tone || 'warn', {title: badge.title || ''}));   // a status beside the value ("As written"), its words on hover
@@ -122,7 +124,7 @@ export function summaryTiles(tiles = [], {divided = false} = {}) {
 
 // A fact shown on one page but kept on another (Strategy's or Cover letter's view of Your details): where it comes from, the words, one quiet link there.
 // open(): opens the page and card that holds it (pages/settings.js openSetting(key)).
-export function referenceRow({text = '', from = 'From Your details', link = 'Edit in Your details', open = () => {}} = {}) {
+export function referenceRow({text = '', from = t('helpers.fromDetails'), link = t('helpers.editDetails'), open = () => {}} = {}) {
   const row = el('div', 'reference-row');
   row.append(el('span', 'muted small reference-from', from), el('span', 'reference-text', text), button(link, 'link small', () => open()));
   return row;

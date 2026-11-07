@@ -1,4 +1,6 @@
 // Always on's first-matches Suggestions entry and its inline activation controls.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {SUBTITLE, turnedOnLine} from './hosted-words.js';
 import {jobCounts} from './jobs-view.js';
@@ -14,13 +16,13 @@ export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held
   if (!hosted?.available || hosted.canRun === false || hosted.on || !finished || !jobCounts(jobs).total || hidden.has(KEY) || held.has(KEY)) return [];
   const email = hosted.email || hosted.shared || '';
   return [{kind: 'hosted', home: 'focus', topic: 'profile', key: KEY, title: SUBTITLE, source: '',
-    detail: email ? `A short list of what is new, by e-mail to ${email}.` : 'A short list of what is new, by e-mail.', email,
-    evidence: [], answers: ['Not now'], alsoJobs: true, actions: [{label: 'Turn on Always on', do: 'turn_on_hosted'}]}];
+    detail: email ? t('helperMore.hostedEmailSummaryTo', {email}) : t('helperMore.hostedEmailSummary'), email,
+    evidence: [], answers: ['Not now'], alsoJobs: true, actions: [{label: t('helperMore.hostedTurnOn'), do: 'turn_on_hosted'}]}];
 }
 
 /** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; it never sends a news answer; a shared draft paints replies into the latest row. */
 export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess, draft = {}, words = {}}) {
-  const busyNote = words.busy || 'Turning on…', failedNote = words.failed || 'Could not turn it on just now.';
+  const busyNote = words.busy || t('helperMore.hostedTurning'), failedNote = words.failed || t('helperMore.hostedFailed');
   let input = null;
   if (!email) {
     const field = emailField();

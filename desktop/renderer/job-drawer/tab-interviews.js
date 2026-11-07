@@ -1,6 +1,8 @@
 // Drawer → Interviews (owner's board 05): the job's interviews as cards that fold: what is scheduled (an invitation by email and the calendar
 // entry for the same time are one) and what was recorded or practised (result, round, next step, the transcript, and the way to its review).
 // None: a state card. Data: the page's events and its interview records (IPC jobPage); words: renderer/job-page-view.js interviewsOf.
+import '../../i18n/screens-helpers.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {shortDay} from '../date.js';
 import {callFacts, interviewsOf, lineOf} from '../job-page-view.js';
@@ -13,8 +15,8 @@ function slotCard(item, first, page) {
   if (item.source) body.push(el('p', 'muted small', item.source));
   if (item.note) body.push(el('p', '', item.note));
   const prep = page?.app?.interview_prep, calls = callFacts(page?.app);
-  if (item.upcoming && (prep || calls)) body.push(el('p', 'muted small', [prep && `Prep by ${shortDay(prep) || prep}`, calls && `From the calls: ${calls}`].filter(Boolean).join(' · ')));
-  if (!body.length) body.push(el('p', 'muted small', 'No details were kept for this interview.'));
+  if (item.upcoming && (prep || calls)) body.push(el('p', 'muted small', [prep && t('helpers.prepBy', {when: shortDay(prep) || prep}), calls && t('helpers.fromCalls', {text: calls})].filter(Boolean).join(' · ')));
+  if (!body.length) body.push(el('p', 'muted small', t('helpers.noInterviewDetails')));
   return foldCard({iconName: 'calendar', title: item.title, tag: item.status, when: item.when, open: first}, ...body);
 }
 
@@ -40,24 +42,24 @@ const turnRow = turn => {
 
 function recordCard(record, first, {job, pick}) {
   const body = [];
-  if (record.round || record.overall) body.push(el('p', 'muted small', [record.round && `Round: ${record.round}`, record.overall && `Result: ${record.overall[0]}`, record.input && `From ${record.input.toLowerCase()}`].filter(Boolean).join(' · ')));
-  if (record.nextStep) body.push(el('p', '', `Next step: ${record.nextStep}`));
+  if (record.round || record.overall) body.push(el('p', 'muted small', [record.round && t('helpers.round', {value: record.round}), record.overall && t('helpers.result', {value: record.overall[0]}), record.input && t('helpers.inputFrom', {value: record.input.toLowerCase()})].filter(Boolean).join(' · ')));
+  if (record.nextStep) body.push(el('p', '', t('helpers.nextStep', {text: record.nextStep})));
   const rows = turns(record.transcript.split('\n').map(lineOf).filter(line => line.text));
-  if (rows.length) body.push(group('Transcript', [...rows.slice(0, 3).map(turnRow), ...(rows.length > 3 ? [lineView({fold: `Show all ${rows.length} turns`, lines: rows.slice(3).map(turn => ({text: `${turn.who} ${turn.at}: ${turn.words.join(' ')}`, strong: false, todo: null, quote: false}))})] : [])]));
-  else body.push(el('p', 'muted small', 'No transcript was kept.'));
-  if (record.hasReview) body.push(button('View interview review →', () => { showReview(job.url, `iv-${record.key}`); pick('review'); }, 'soft-button'));
+  if (rows.length) body.push(group(t('helpers.transcript'), [...rows.slice(0, 3).map(turnRow), ...(rows.length > 3 ? [lineView({fold: t('helpers.showTurns', {count: rows.length}), lines: rows.slice(3).map(turn => ({text: `${turn.who} ${turn.at}: ${turn.words.join(' ')}`, strong: false, todo: null, quote: false}))})] : [])]));
+  else body.push(el('p', 'muted small', t('helpers.noTranscript')));
+  if (record.hasReview) body.push(button(t('helpers.viewInterviewReview'), () => { showReview(job.url, `iv-${record.key}`); pick('review'); }, 'soft-button'));
   return foldCard({iconName: 'mic', title: record.title, tag: record.overall?.[0] || '', when: record.when, open: first}, ...body);
 }
 
 export function interviewsTab({job, page, pick}) {
   const {upcoming, past, records} = interviewsOf(page);
   // Add interview: the Log box on this job (what you tell it about an interview becomes its event and record).
-  const add = button('Add interview', () => openLogFor(job.url, job.title), 'soft-button');
+  const add = button(t('helpers.addInterview'), () => openLogFor(job.url, job.title), 'soft-button');
   const cards = [...upcoming.map(item => ({item, slot: true})), ...records.map(item => ({item})), ...past.map(item => ({item, slot: true}))];
   if (!cards.length) {
-    return [stateCard({icon: 'calendar', title: 'No interviews yet', text: 'When an interview is scheduled or practised for this job, it shows here with its prep, recording and transcript.', actions: [add]})];
+    return [stateCard({icon: 'calendar', title: t('helpers.noInterviews'), text: t('helpers.interviewsEmpty'), actions: [add]})];
   }
   const head = el('div', 'jd-filter');
-  head.append(el('b', '', 'Interviews'), add);
+  head.append(el('b', '', t('helpers.interviews')), add);
   return [head, ...cards.map(({item, slot}, n) => (slot ? slotCard(item, n === 0, page) : recordCard(item, n === 0, {job, pick})))];
 }

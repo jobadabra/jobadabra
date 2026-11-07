@@ -1,6 +1,7 @@
 // An outline tab on the page's one save bar (owner, 18 Oct 2026: "one sticky Save/Discard bar for all Strategy drafts"; Strategy → Job preferences): given
 // {bar, tab, label}, outlineTab draws no bar of its own, counts its changes on the page bar, and the page bar's Save writes them (textEdit) and its Discard
 // drops them. Without a bar (a page whose bar is not made yet) it makes the shared page bar beside its card, never buttons of its own (D's swap, 18 Oct 2026).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

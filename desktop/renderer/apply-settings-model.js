@@ -7,13 +7,15 @@
 // rework): a mode not built is drawn disabled with "Coming soon" and can never be the saved mode, so no screen offers a choice that does nothing.
 // The PR that ships a mode's runner names it here.
 // Why (2026-10-29, owner: "go ahead" with the switch): Full automation's runner is 'background' in every build; it runs only after the person confirmed it (autoConfirmedAt, stamped by save() in pages/apply-settings.js and read by lib/background-apply-controller.js).
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 export const MODES = Object.freeze([
-  {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
-    text: 'Fills in a visible browser; you review and submit.'},
-  {id: 'fill', icon: 'layers', title: 'Background automation', runner: 'background',
-    text: 'Fills in a hidden browser; you review and submit when ready.'},
-  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'], runner: 'background',
-    text: 'Fills and submits in a hidden browser when your checks pass.'},
+  {id: 'check', icon: 'eye', title: t('helperMore.standardAutomation'), badge: [t('helperMore.bestQuality'), 'good'], runner: 'chrome',
+    text: t('helperMore.visibleFilling')},
+  {id: 'fill', icon: 'layers', title: t('helperMore.backgroundAutomation'), runner: 'background',
+    text: t('helperMore.hiddenFilling')},
+  {id: 'auto', icon: 'zap', title: t('helperMore.fullAutomation'), badge: [t('helperMore.moreLowerQuality'), 'warn'], runner: 'background',
+    text: t('helperMore.fillsSubmits')},
 ]);
 export const MODE_IDS = MODES.map(mode => mode.id);
 /** The batch runner of the mode with this id, or '' when it is not built in this version (or unknown). */
@@ -22,12 +24,12 @@ export const modeRunner = id => MODES.find(mode => mode.id === id)?.runner || ''
 export const modeBuilt = id => !!modeRunner(id);
 
 export const ANSWERS = Object.freeze([
-  {id: 'facts', label: 'Only from my saved facts'},
-  {id: 'ai', label: 'Let the AI guess the rest'},
+  {id: 'facts', label: t('helperMore.onlyFacts')},
+  {id: 'ai', label: t('helperMore.letGuess')},
 ]);
 export const ANSWERS_TEXT = {
-  facts: 'A question your Profile does not answer stays empty for you, with the AI\'s suggestion beside it.',
-  ai: 'The AI answers what your Profile does not cover. You see which answers it wrote.',
+  facts: t('helperMore.factsText'),
+  ai: t('helperMore.aiAnswersText'),
 };
 
 // Why (2026-10-29, owner: "remove all checks"; the wait is optional, default none): Full automation has no facts, fit or limit checks; the only setting is the optional wait before a submit (0 = none).

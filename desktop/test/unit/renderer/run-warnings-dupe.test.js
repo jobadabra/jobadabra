@@ -1,3 +1,4 @@
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {groupWarnings, humanError, newDetails, sentences, stepNote} from '../../../renderer/run-warnings.js';

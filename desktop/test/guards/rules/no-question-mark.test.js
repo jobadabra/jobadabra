@@ -1,4 +1,5 @@
 // No question-mark emoji on any screen of the desktop app or the website demo (owner, 18 Oct 2026): the store's "not answered yet" marker is read only by the parsers listed here and drawn only by renderer/no-mark.js as words.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

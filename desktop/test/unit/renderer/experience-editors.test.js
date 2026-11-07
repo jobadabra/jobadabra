@@ -1,6 +1,7 @@
 // Profile → Experience's editors on the Profile's one save bar (renderer/experience-editors.js, pages/experience-profile.js; owner, 18 Oct 2026): no card
 // saves on its own; opening an editor and saving with no change writes nothing; Strengths edit as chips; an Education line not in the app's shape stays
 // as written until Organize into fields; every open card's changes go out in ONE write (on this Mac a line's id is its place).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';

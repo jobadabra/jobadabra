@@ -1,6 +1,7 @@
 // One run view (owner, 25 Oct 2026): the drawer shows one run, Actions → Runs shows every run, and both show the same run panel. Which run shows
 // (renderer/run-pick.js), the list's filters (renderer/run-filters.js), every entry point, and the one panel shared by both places (no second design).
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {defaultRun, findRun, pickRun, queueWords} from '../../../renderer/run-pick.js';

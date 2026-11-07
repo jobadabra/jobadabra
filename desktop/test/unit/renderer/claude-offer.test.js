@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {messages} from '../../../i18n/catalogs/helpers/en-flow.js';
 import {cardOffer} from '../../../renderer/claude-offer-view.js';
 
 const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
@@ -20,7 +21,10 @@ test('the stuck card draws the offer (not a lone "Apply with Claude") and the pr
   assert.doesNotMatch(card.slice(card.indexOf('if (stuck) {'), card.indexOf('// Claude is the safety net')), /sessionButton\('Apply with Claude'/);
   assert.match(offer, /window\.pilot\.takeOverClaude\(/);
   assert.match(offer, /resumeOffered\(\)/);   // the takeover flag wraps claudeHelp (claude-help.js)
-  for (const words of ['Let Claude finish this page', 'I\'ll do it myself', 'Always let Claude finish when I\'m stuck', 'Claude works in this tab and stops before Submit']) assert.ok(offer.includes(words), words);
+  for (const [key, words] of Object.entries({claudeFinish: 'Let Claude finish this page', myself: "I'll do it myself", claudeAlways: "Always let Claude finish when I'm stuck", claudeStopsSubmit: 'Claude works in this tab and stops before Submit.'})) {
+    assert.ok(offer.includes(`t('helperFlow.${key}')`), key);
+    assert.equal(messages[key], words);
+  }
   assert.match(read('preload.cjs'), /takeOverClaude: call\('takeOverClaude'\)/);
   const handlers = read('lib/apply-handlers.js');
   assert.match(handlers, /ipcMain\.handle\('takeOverClaude', \(_, url, details, consent\) => takeOver\(/);
