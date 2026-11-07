@@ -1,4 +1,4 @@
-"""Guard: release — a PR's `Unit / desktop (Linux)` and `Unit / desktop (Windows)` jobs run only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
+"""Guard: release (tools/affected-tests.py and tools/affected_readers.py) — a PR's `Unit / desktop (Linux)` and `Unit / desktop (Windows)` jobs run only what tools/affected-tests.py picks, so a test it misses goes red on main instead of on the PR.
 Why (4 Nov 2026, owner: "run only the ones that make sense"): the cases below are what that job must never lose. Replay of 40 red PR runs: spec 2026-11-04-pr-time-design.md."""
 import importlib.util
 import re
@@ -105,7 +105,7 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertEqual(self.picker.select(['docs/rules/change-loop.md'])['desktop'], [])   # a doc no test reads still runs nothing
 
     def test_a_change_to_what_runs_the_tests_runs_everything(self):
-        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', '.github/workflows/tests-desktop.yml', '.github/workflows/tests-desktop-windows.yml', 'desktop/package.json', 'eslint.config.mjs'):
+        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', 'tools/affected_readers.py', '.github/workflows/tests-desktop.yml', '.github/workflows/tests-desktop-windows.yml', 'desktop/package.json', 'eslint.config.mjs'):
             self.assertEqual(self.picker.select([changed])['desktop'], 'all', changed)
 
     def test_a_picked_run_keeps_lint_and_the_no_live_site_import(self):
