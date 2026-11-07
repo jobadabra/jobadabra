@@ -24,11 +24,12 @@ test('a record without a safeLabel keeps judging its label, as before', () => {
 });
 
 // Why (7 Nov 2026, pz): lib/interact.mjs's unsafe words are English, so on a page in German "Löschen" and "Bewerben" would pass it; a page not in English offers only what presses nothing.
-test('a page not in English refuses its buttons and links, but not its dropdowns, fields, tabs or Settings sections', () => {
+test('a page not in English refuses its buttons, links and other dropdowns, but not its fields, tabs, Settings sections or the Language dropdown', () => {
   const foreign = {...tab, label: 'Löschen', safeLabel: 'Löschen', foreign: true};
   assert.equal(allowed(foreign), false);
   assert.equal(allowed({...foreign, kind: 'link', href: '#x'}), false);
-  assert.equal(allowed({...tab, label: 'Sprache', safeLabel: 'Sprache', kind: 'select'}), true);
+  assert.equal(allowed({...foreign, kind: 'select', label: 'Täglich suchen', safeLabel: 'Täglich suchen'}), false);   // a schedule select saves at once
+  assert.equal(allowed({...tab, label: 'Sprache', safeLabel: 'Sprache', kind: 'select'}), true);   // the Language dropdown carries no `foreign`
   assert.equal(allowed({...tab, label: 'Suche', safeLabel: 'Suche', kind: 'field'}), true);
   assert.equal(allowed({...tab, label: 'Profil', safeLabel: 'Profil'}), true);   // a tab or a Settings section carries no `foreign`
 });
