@@ -1,7 +1,10 @@
 // The update channel switch (lib/update-channel.js), shared by the menu's Update Channel and Settings → Diagnostics.
-import test from 'node:test';
+import test, {afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {channelOf, createUpdateChannel} from '../../../lib/update-channel.js';
+import {setLocale} from '../../../i18n/index.js';
+
+afterEach(() => setLocale('en'));
 
 function setup({answer = 0, ahead = false, locked = false, settings = {}} = {}) {
   const saved = {...settings}, asked = [], calls = {check: 0, install: 0, change: 0, offer: null};
@@ -54,4 +57,23 @@ test('demo mode or from source: no switch', async () => {
   assert.equal((await channel.set('test', true)).ok, false);
   assert.equal((await channel.pick('beta')).ok, false);
   assert.equal(channelOf(saved), 'stable');
+});
+
+test('channel dialogs resolve the current language when opened, not when the controller was created', async () => {
+  const {channel, asked, saved} = setup();
+  setLocale('de');
+  await channel.set('beta', true);
+  assert.match(asked[0], /Beta-Version/);
+  assert.equal(saved.betaChannel, true);
+});
+
+test('a translated stable rollback explanation does not decide channel-switch control flow', async () => {
+  const {channel, asked, saved} = setup({settings: {betaChannel: true}});
+  setLocale('fr');
+  const back = await channel.rollback();
+  assert.equal(back.reason, 'notAhead');
+  assert.notEqual(back.text, 'You are not ahead of the stable version.');
+  assert.deepEqual(await channel.pick('stable'), {ok: true});
+  assert.equal(saved.betaChannel, false);
+  assert.deepEqual(asked, []);
 });

@@ -3,27 +3,25 @@
 // Update Channel (lib/app-menu.js), so both ask the same question and save the same way. Only a click on the native dialog switches a channel on.
 // Guards: desktop/test/unit/main/update-channel.test.js, app-menu.test.js.
 import {log as appLog} from './log.js';
+import {t} from '../i18n/native.js';
 
 export const CHANNELS = ['stable', 'beta', 'test'];
 export const channelOf = settings => (settings.testChannel === true ? 'test' : settings.betaChannel === true ? 'beta' : 'stable');
 
-const ASK = {
-  beta: {type: 'question', message: 'Get the beta version?', buttons: ['Join the beta', 'Not now'],
-    detail: 'Be the first to test new features. Beta versions pass our automatic checks, but can still have bugs. Jobadabra will offer you each one; nothing installs without your click.\n\nYou can go back to the stable version any time: Settings → Diagnostics → Beta → Back to stable.'},
-  test: {type: 'warning', message: 'Get test builds?', buttons: ['Get test builds', 'Not now'],
-    detail: 'Test builds are made straight from the latest change, before the end-to-end checks have run on them, so they can be broken. Jobadabra will offer you each one; nothing installs without your click.\n\nYou can go back to the stable version at any time.'},
-};
+const ASK = name => name === 'beta'
+  ? {type: 'question', message: t('native.updateBetaQuestion'), buttons: [t('native.updateBetaJoin'), t('native.updateNotNow')], detail: t('native.updateBetaDetail')}
+  : {type: 'warning', message: t('native.updateTestQuestion'), buttons: [t('native.updateTestJoin'), t('native.updateNotNow')], detail: t('native.updateTestDetail')};
 
 // ctx: {app, dialog, storage, updater, isLocked() (demo or from source), checkForUpdate, installUpdate, setUpdateOffer, parentWindow(), onChange()}
 export function createUpdateChannel(ctx) {
   const {app, dialog, storage, updater, isLocked, checkForUpdate, installUpdate, setUpdateOffer, parentWindow, onChange = () => {}} = ctx;
-  const locked = {ok: false, text: 'Not in demo mode or when running from source.'};
+  const locked = () => ({ok: false, text: t('native.updateLocked')});
 
   // Beta or test builds on (asked first) or off. One channel at a time: turning one on turns the other off.
   async function set(name, want) {
-    if (isLocked()) return locked;
+    if (isLocked()) return locked();
     if (want) {
-      const ask = ASK[name];
+      const ask = ASK(name);
       const {response} = await dialog.showMessageBox(parentWindow(), {...ask, defaultId: 1, cancelId: 1});
       if (response !== 0) return {ok: false, cancelled: true};
     }
@@ -37,12 +35,12 @@ export function createUpdateChannel(ctx) {
 
   // Back to stable: installs the latest stable release even though it is older than this beta or test build.
   async function rollback() {
-    if (isLocked()) return locked;
+    if (isLocked()) return locked();
     const stable = await updater.stableRelease(app.getVersion()).catch(error => ({error}));
-    if (stable?.error) return {ok: false, text: `Couldn't reach GitHub: ${stable.error.message}`};
-    if (!stable?.ahead) return {ok: false, text: 'You are not ahead of the stable version.'};
-    const {response} = await dialog.showMessageBox(parentWindow(), {type: 'question', message: `Go back to stable ${stable.version}?`, buttons: ['Go back to stable', 'Cancel'], defaultId: 0, cancelId: 1,
-      detail: `You have ${app.getVersion()}. The app closes, installs the stable version and opens again. Your jobs and answers stay as they are. The beta is switched off; you can join again any time.`});
+    if (stable?.error) return {ok: false, text: t('native.updateGithubFailed', {error: stable.error.message})};
+    if (!stable?.ahead) return {ok: false, reason: 'notAhead', text: t('native.updateNotAhead')};
+    const {response} = await dialog.showMessageBox(parentWindow(), {type: 'question', message: t('native.updateStableQuestion', {version: stable.version}), buttons: [t('native.updateStableAction'), t('native.cancel')], defaultId: 0, cancelId: 1,
+      detail: t('native.updateStableDetail', {version: app.getVersion()})});
     if (response !== 0) return {ok: false, cancelled: true};
     storage.saveSettings({betaChannel: false, testChannel: false});
     onChange();
@@ -64,7 +62,7 @@ export function createUpdateChannel(ctx) {
     appLog('update', `channel ${was} -> stable`, {version: app.getVersion()});
     onChange();
     const back = await rollback();
-    if (back.ok === false && !back.cancelled && back.text !== 'You are not ahead of the stable version.') return back;
+    if (back.ok === false && !back.cancelled && back.reason !== 'notAhead') return back;
     return {ok: true};
   }
 

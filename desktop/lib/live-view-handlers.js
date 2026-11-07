@@ -1,6 +1,7 @@
 // The app screen's thin connection to a hidden-browser session's live view (spec 2026-10-27-background-apply-execution, step B): the core is
 // desktop/ready-fill/live.mjs attachLive (any channel, any CDP session); here the channel is the window's IPC, so a phone viewer later reuses the
 // core with its own channel. Guards: test/guards/rules/ipc.test.js (every call handled), test/unit/ready-fill/live-view-handlers.test.js.
+import {t} from '../i18n/native.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -41,7 +42,7 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
   const resolveFile = async choice => {
     if (choice === 'cv') { const file = storage.path('cv.pdf'); return fs.existsSync(file) ? file : null; }
     if (choice !== 'pick') return null;
-    const picked = await dialog.showOpenDialog(getWindow(), {properties: ['openFile'], filters: [{name: CV_FILES.label, extensions: CV_FILES.extensions}]});
+    const picked = await dialog.showOpenDialog(getWindow(), {properties: ['openFile'], filters: [{name: t('native.cvFilter'), extensions: CV_FILES.extensions}]});
     return picked.canceled ? null : picked.filePaths[0] || null;
   };
   // Whether the session's hidden page is open, without opening its picture: the card offers "Watch live" only then (spec 2026-11-05-applying-redesign, decision 4).

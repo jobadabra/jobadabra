@@ -4,6 +4,7 @@
 // that means unpacking the .zip and swapping this app (an install from before the rename moves to Jobadabra.app); on Windows, running the installer quietly once
 // this process has let go of Jobadabra.exe and its app.asar. Its Notion schema, pipeline and extension come with it
 // (the schema repair runs at the next start).
+import {t} from '../i18n/native.js';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -164,9 +165,9 @@ export const WINDOWS_INSTALLER_ARGS = ['--updated', '--force-run'];
 
 // Downloads and installs `update`; calls quit() when the app should close. onStep(text) for progress.
 // What a Windows person reads before the app closes for an update (lib/app-updates.js shows it as a dialog).
-export const windowsExplanation = update => ({type: 'info', buttons: ['Install now'], defaultId: 0, title: 'Jobadabra update',
-  message: `Installing Jobadabra ${update.version}`,
-  detail: 'Jobadabra closes now. A small installer window shows the progress (about a minute), then Jobadabra opens again by itself. Your data stays as it is.'});
+export const windowsExplanation = update => ({type: 'info', buttons: [t('native.updateWindowsAction')], defaultId: 0, title: t('native.updateWindowsTitle'),
+  message: t('native.updateWindowsInstalling', {version: update.version}),
+  detail: t('native.updateWindowsDetail')});
 // explain(update): Windows only, awaited after the download and before the installer starts: says what happens next (the app
 // closes, the installer shows its progress, the app opens again), so the closing window is never a surprise.
 export async function install(update, {exe, pid = process.pid, quit, onStep = () => {}, logFile = '', fetcher = globalThis.fetch,

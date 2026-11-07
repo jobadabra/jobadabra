@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CHANNEL_LABELS, answer, template} from '../../../lib/app-menu.js';
+import {answer, template} from '../../../lib/app-menu.js';
+import {t} from '../../../i18n/native.js';
 
 test('Mac: Check for Updates… right under About; standard menus kept', () => {
   const click = () => {};
@@ -29,7 +30,7 @@ test('Update Channel: three radio items under Check for Updates…, on Mac and W
     const channel = list[at + 1];
     assert.equal(channel.label, 'Update Channel');
     assert.deepEqual(channel.submenu.map(item => [item.type, item.checked]), [['radio', false], ['radio', true], ['radio', false]]);
-    assert.deepEqual(channel.submenu.map(item => item.label), Object.values(CHANNEL_LABELS));
+    assert.deepEqual(channel.submenu.map(item => item.label), ['native.channelStable', 'native.channelBeta', 'native.channelTest'].map(key => t(key)));
     channel.submenu[2].click();
   }
   assert.deepEqual(picked, ['test', 'test']);

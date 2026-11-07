@@ -1,5 +1,6 @@
 // The IPC of "Build a CV with the AI" (setup's CV step and Settings → Profile → CV): the draft from the form's answers, saving the edited draft as the
 // main CV (with its PDF), and saving that PDF where the person chooses. The AI and the checks are in lib/cv-build.js. Guard: test/unit/cv/cv-build.test.js.
+import {t} from '../i18n/native.js';
 import * as claudeCode from './claude-code.js';
 import * as cvlib from './cv.js';
 import {buildCv, saveBuilt} from './cv-build.js';
@@ -26,7 +27,7 @@ export function registerCvBuildHandlers(ctx) {
     } catch (error) { return {ok: false, error: error.message}; }
   });
   ipcMain.handle('buildCvDownload', async () => {
-    const picked = await dialog.showSaveDialog(getWindow(), {title: 'Save your CV', defaultPath: storage.settings().cvName || 'CV.pdf', filters: [{name: 'PDF', extensions: ['pdf']}]});
+    const picked = await dialog.showSaveDialog(getWindow(), {title: t('native.saveCv'), defaultPath: storage.settings().cvName || 'CV.pdf', filters: [{name: 'PDF', extensions: ['pdf']}]});
     if (picked.canceled || !picked.filePath) return {ok: false};
     fs.copyFileSync(storage.path('cv.pdf'), picked.filePath);
     shell.showItemInFolder(path.resolve(picked.filePath));

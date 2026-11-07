@@ -2,6 +2,7 @@
 // Moved out of setup-handlers.js (2 Nov 2026) so the states have one place. Guards: test/unit/main/plan-readiness.test.js, integration/app/ai-plan-states.test.js.
 // Invariants: the window never receives a raw message (the check's text stays in settings and in the support details); a file the person chose must be the real CLI (right name, starts, not the chat app);
 // one anonymous counted event per state reached (family, state, system only): it follows the "Technical reports" switch like every analytics event (lib/analytics.js).
+import {t} from '../i18n/native.js';
 import path from 'node:path';
 import * as claudeCode from './claude-code.js';
 import {SETTING, rememberLogin, setChosenFile} from './cli-files.js';
@@ -58,7 +59,7 @@ export function registerPlanHandlers({ipcMain, storage, dialog, getWindow, shell
   ipcMain.handle('planChooseFile', async (_, family) => {
     if (!FAMILY[family]) return {ok: false, reason: 'unknown'};
     const f = FAMILY[family], win = platform === 'win32';
-    const picked = await dialog.showOpenDialog(getWindow(), {title: `Choose ${f.file}${win ? '.exe' : ''}`, properties: ['openFile'], ...(win ? {filters: [{name: 'Program', extensions: ['exe', 'cmd']}]} : {})});
+    const picked = await dialog.showOpenDialog(getWindow(), {title: t('native.chooseProgram', {file: f.file + (win ? '.exe' : '')}), properties: ['openFile'], ...(win ? {filters: [{name: t('native.programFilter'), extensions: ['exe', 'cmd']}]} : {})});
     if (picked.canceled || !picked.filePaths?.[0]) return {ok: false, reason: 'cancelled'};
     const file = picked.filePaths[0];
     if (!FILE_NAME[family].test((platform === 'win32' ? path.win32 : path.posix).basename(file)) || CHAT_APP.test(file)) return {ok: false, reason: 'not-the-cli'};

@@ -2,8 +2,8 @@
 // closing the window with unsaved changes"): the page's save bar holds the unload (renderer/save-bar.js beforeunload), Electron then fires
 // 'will-prevent-unload', and this asks Stay / Leave without saving. A hidden test window (e2e, screenshots) never waits on a dialog: it leaves.
 // Guarded by test/unit/main/unsaved-guard.test.js.
-export const UNSAVED_DIALOG = {type: 'question', buttons: ['Stay', 'Leave without saving'], defaultId: 0, cancelId: 0,
-  message: 'You have unsaved changes', detail: 'Your edits on this page are not saved yet. Leave without saving them?'};
+import {t} from '../i18n/native.js';
+export const UNSAVED_DIALOG = {type: 'question', defaultId: 0, cancelId: 0};
 
 // contents: the window's webContents; ask(options) → the pressed button's index (dialog.showMessageBoxSync bound to the window).
 // app: a quit (⌘Q, an update's restart) that met the held unload was cancelled by it; after "Leave without saving" it goes on, or only the window
@@ -14,7 +14,8 @@ export function guardUnsaved(contents, {ask, hidden = false, log = () => {}, app
   app?.on('before-quit', asked);
   contents.once?.('destroyed', () => app?.removeListener('before-quit', asked));
   contents.on('will-prevent-unload', event => {
-    const leave = hidden || ask(UNSAVED_DIALOG) === 1;
+    const leave = hidden || ask({...UNSAVED_DIALOG, buttons: [t('native.unsavedStay'), t('native.unsavedLeave')],
+      message: t('native.unsavedTitle'), detail: t('native.unsavedDetail')}) === 1;
     log('window', `unsaved changes on ${quitAsked ? 'quit' : 'close'}: ${leave ? 'left' : 'stayed'}`);
     if (leave) event.preventDefault();   // preventDefault here lets the unload go on
     if (leave && quitAsked) later(() => app.quit());

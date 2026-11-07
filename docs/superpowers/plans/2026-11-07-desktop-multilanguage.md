@@ -9,7 +9,7 @@
 
 ## Global Constraints
 
-- Desktop only; no translation API, new dependencies, website/email/extension changes, or application-content translation.
+- Desktop first, then extension UI (owner scope update, 7 November). No translation API, new dependencies, website/email changes, or application-content translation.
 - Preserve user data, raw external errors/logs, internal status/IPC identifiers, unsaved drafts, native button behavior, and running main-process jobs.
 - Seven locales: en,de,fr,it,es,ro,ru. English fallback. Unsupported/invalid locale choices never break startup.
 - Worktrees, ship.sh, owner-only merges; named tests locally, heavy suites on CI; fictional demo data only.
@@ -76,3 +76,13 @@
 - [ ] Check catalog key/parameter/plural parity and coverage of the audited app surfaces; do not call the feature complete with known untranslated app-owned screens.
 - [ ] Perform focused final tests, inspect light/dark demo screenshots, update spec/Notion record with measured evidence and PR links.
 - [ ] Open/supervise PRs through ship.sh; fix red checks/review issues; owner merges.
+
+### Task 6: Extension follow-up (owner added scope)
+
+**Delivery:** separate follow-up PR after the original desktop sequence. Reuse a freed visible Sol-low pane, with an isolated extension worktree. Desktop workers retain their existing ownership.
+**Audit first:** extension/options.html/options.js, popup modules, app-authored panel UI and existing pairing/state response. Publish exact desktop transport file ownership before implementation; do not overlap the native desktop files.
+**Setting:** Language defaults to Follow desktop app; seven explicit overrides use native names and flags. Persist override through existing Chrome preference storage; cache only the last known effective locale for offline display, with English fallback. Desktop inheritance must work after desktop language changes and with older desktop responses that omit locale.
+- [ ] Inventory extension app-owned text and identify minimal authenticated locale transport.
+- [ ] Add focused failing tests for inherited locale, desktop changes, override, disconnected/invalid/older desktop fallback and preservation of applicant/employer content.
+- [ ] Implement bundled catalogs, explicit bindings and inherited Language option without changing filling or submission logic.
+- [ ] Run named tests and catalog parity checks, render fictional options/panel previews, then ship and supervise the follow-up PR.

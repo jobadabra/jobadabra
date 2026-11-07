@@ -1,0 +1,349 @@
+// Bundled application-cancellation and quit-dialog text; company/job names remain interpolation data.
+export default {
+  "en": {
+    "thisCompany": "this company",
+    "application": "An application",
+    "submittedQuestion": "Did you submit the application to {company}?",
+    "submittedDetail": "Yes: it is marked Applied.\nNo: nothing is submitted.\n\nYou can change it later in Jobs.",
+    "submittedYes": "Yes, I submitted it",
+    "submittedNo": "No, not submitted",
+    "cancelQuestion": "Cancel the application?",
+    "cancelCompanyQuestion": "Cancel the {company} application?",
+    "cancelDetail": "Applying stops. Nothing is submitted.",
+    "cancelApplication": "Cancel application",
+    "keepIt": "Keep it",
+    "cancelOne": "Cancel this application?",
+    "cancelMany": {
+      "other": "Cancel all {count} applications?"
+    },
+    "cancelAllDetail": "Applying stops and their forms close. Nothing is submitted.",
+    "cancelAll": "Cancel all applications",
+    "keepThem": "Keep them",
+    "moreSessions": "•  and {count} more",
+    "afterForms": "Filled forms stay in Chrome. After restarting, open Application sessions to review them.",
+    "afterHidden": "The hidden browser closes with the app. Applications it was filling start again next time.",
+    "hiddenBrowser": "The hidden browser",
+    "sessionsOne": "{who} is still filling an application",
+    "sessionsMany": {
+      "other": "{who} is still filling {count} applications"
+    },
+    "stoppingOne": "Quitting stops it where it is. {after}",
+    "stoppingMany": "Quitting stops them where they are. {after}",
+    "keepWorking": "Keep working",
+    "stopQuit": "Stop and quit",
+    "stillWorking": "Jobadabra is still working",
+    "importantQuit": "•  {what}: quitting now can leave it half done",
+    "busyQuit": "•  {task} is running",
+    "queueOne": "•  {count} task waiting: {tasks}",
+    "queueMany": {
+      "other": "•  {count} tasks waiting: {tasks}"
+    },
+    "claudeOne": "•  Claude is filling {count} application: {names}",
+    "claudeMany": {
+      "other": "•  Claude is filling {count} applications: {names}"
+    },
+    "quitDone": "Quit when done",
+    "quitNow": "Quit now",
+    "finishImportant": "Quit when done: closes by itself once it finishes.\nQuit now: it stops where it is; start it again after.",
+    "finishWork": "Quit when done: closes by itself once these finish.\nQuit now: stops them, and the jobs you started run again next time. What's saved stays saved."
+  },
+  "de": {
+    "thisCompany": "dieses Unternehmen",
+    "application": "Eine Bewerbung",
+    "submittedQuestion": "Hast du die Bewerbung bei {company} abgeschickt?",
+    "submittedDetail": "Ja: Sie wird als beworben markiert.\nNein: Nichts wird abgeschickt.\n\nDu kannst dies später unter Jobs ändern.",
+    "submittedYes": "Ja, ich habe sie abgeschickt",
+    "submittedNo": "Nein, nicht abgeschickt",
+    "cancelQuestion": "Die Bewerbung abbrechen?",
+    "cancelCompanyQuestion": "Die Bewerbung bei {company} abbrechen?",
+    "cancelDetail": "Die Bewerbung wird gestoppt. Nichts wird abgeschickt.",
+    "cancelApplication": "Bewerbung abbrechen",
+    "keepIt": "Behalten",
+    "cancelOne": "Diese Bewerbung abbrechen?",
+    "cancelMany": {
+      "other": "Alle {count} Bewerbungen abbrechen?"
+    },
+    "cancelAllDetail": "Die Bewerbungen werden gestoppt und ihre Formulare geschlossen. Nichts wird abgeschickt.",
+    "cancelAll": "Alle Bewerbungen abbrechen",
+    "keepThem": "Behalten",
+    "moreSessions": "•  und {count} weitere",
+    "afterForms": "Ausgefüllte Formulare bleiben in Chrome. Öffne nach dem Neustart die Bewerbungssitzungen, um sie zu prüfen.",
+    "afterHidden": "Der ausgeblendete Browser wird mit der App geschlossen. Die begonnenen Bewerbungen starten beim nächsten Mal erneut.",
+    "hiddenBrowser": "Der ausgeblendete Browser",
+    "sessionsOne": "{who} füllt noch eine Bewerbung aus",
+    "sessionsMany": {
+      "other": "{who} füllt noch {count} Bewerbungen aus"
+    },
+    "stoppingOne": "Beim Beenden wird sie an dieser Stelle gestoppt. {after}",
+    "stoppingMany": "Beim Beenden werden sie an dieser Stelle gestoppt. {after}",
+    "keepWorking": "Weiterarbeiten",
+    "stopQuit": "Stoppen und beenden",
+    "stillWorking": "Jobadabra arbeitet noch",
+    "importantQuit": "•  {what}: Beim Beenden kann dies unvollständig bleiben",
+    "busyQuit": "•  {task} läuft",
+    "queueOne": "•  {count} Aufgabe wartet: {tasks}",
+    "queueMany": {
+      "other": "•  {count} Aufgaben warten: {tasks}"
+    },
+    "claudeOne": "•  Claude füllt {count} Bewerbung aus: {names}",
+    "claudeMany": {
+      "other": "•  Claude füllt {count} Bewerbungen aus: {names}"
+    },
+    "quitDone": "Nach Abschluss beenden",
+    "quitNow": "Jetzt beenden",
+    "finishImportant": "Nach Abschluss beenden: Die App schließt sich nach Abschluss automatisch.\nJetzt beenden: Der Vorgang wird gestoppt und muss später neu gestartet werden.",
+    "finishWork": "Nach Abschluss beenden: Die App schließt sich, sobald alles fertig ist.\nJetzt beenden: Die Vorgänge stoppen und die gestarteten Aufgaben laufen beim nächsten Mal erneut. Gespeichertes bleibt erhalten."
+  },
+  "fr": {
+    "thisCompany": "cette entreprise",
+    "application": "Une candidature",
+    "submittedQuestion": "Avez-vous envoyé la candidature à {company} ?",
+    "submittedDetail": "Oui : elle sera marquée comme envoyée.\nNon : rien n’est envoyé.\n\nVous pourrez modifier cela dans Offres.",
+    "submittedYes": "Oui, je l’ai envoyée",
+    "submittedNo": "Non, pas envoyée",
+    "cancelQuestion": "Annuler la candidature ?",
+    "cancelCompanyQuestion": "Annuler la candidature à {company} ?",
+    "cancelDetail": "La candidature s’arrête. Rien n’est envoyé.",
+    "cancelApplication": "Annuler la candidature",
+    "keepIt": "Conserver",
+    "cancelOne": "Annuler cette candidature ?",
+    "cancelMany": {
+      "other": "Annuler les {count} candidatures ?"
+    },
+    "cancelAllDetail": "Les candidatures s’arrêtent et leurs formulaires se ferment. Rien n’est envoyé.",
+    "cancelAll": "Annuler toutes les candidatures",
+    "keepThem": "Conserver",
+    "moreSessions": "•  et {count} autres",
+    "afterForms": "Les formulaires remplis restent dans Chrome. Après le redémarrage, ouvrez les sessions de candidature pour les vérifier.",
+    "afterHidden": "Le navigateur masqué se ferme avec l’application. Les candidatures en cours reprendront la prochaine fois.",
+    "hiddenBrowser": "Le navigateur masqué",
+    "sessionsOne": "{who} remplit encore une candidature",
+    "sessionsMany": {
+      "other": "{who} remplit encore {count} candidatures"
+    },
+    "stoppingOne": "Quitter l’arrête là où elle en est. {after}",
+    "stoppingMany": "Quitter les arrête là où elles en sont. {after}",
+    "keepWorking": "Continuer",
+    "stopQuit": "Arrêter et quitter",
+    "stillWorking": "Jobadabra travaille encore",
+    "importantQuit": "•  {what} : quitter maintenant peut laisser l’opération inachevée",
+    "busyQuit": "•  {task} est en cours",
+    "queueOne": "•  {count} tâche en attente : {tasks}",
+    "queueMany": {
+      "other": "•  {count} tâches en attente : {tasks}"
+    },
+    "claudeOne": "•  Claude remplit {count} candidature : {names}",
+    "claudeMany": {
+      "other": "•  Claude remplit {count} candidatures : {names}"
+    },
+    "quitDone": "Quitter une fois terminé",
+    "quitNow": "Quitter maintenant",
+    "finishImportant": "Quitter une fois terminé : l’application se ferme automatiquement à la fin.\nQuitter maintenant : l’opération s’arrête ; relancez-la ensuite.",
+    "finishWork": "Quitter une fois terminé : l’application se ferme une fois les opérations terminées.\nQuitter maintenant : les opérations s’arrêtent et les tâches lancées reprendront la prochaine fois. Les données enregistrées sont conservées."
+  },
+  "it": {
+    "thisCompany": "questa azienda",
+    "application": "Una candidatura",
+    "submittedQuestion": "Hai inviato la candidatura a {company}?",
+    "submittedDetail": "Sì: viene contrassegnata come inviata.\nNo: non viene inviato nulla.\n\nPuoi modificarlo in seguito in Offerte.",
+    "submittedYes": "Sì, l’ho inviata",
+    "submittedNo": "No, non l’ho inviata",
+    "cancelQuestion": "Annullare la candidatura?",
+    "cancelCompanyQuestion": "Annullare la candidatura a {company}?",
+    "cancelDetail": "La candidatura si interrompe. Non viene inviato nulla.",
+    "cancelApplication": "Annulla candidatura",
+    "keepIt": "Mantieni",
+    "cancelOne": "Annullare questa candidatura?",
+    "cancelMany": {
+      "other": "Annullare tutte le {count} candidature?"
+    },
+    "cancelAllDetail": "Le candidature si interrompono e i moduli si chiudono. Non viene inviato nulla.",
+    "cancelAll": "Annulla tutte le candidature",
+    "keepThem": "Mantieni",
+    "moreSessions": "•  e altre {count}",
+    "afterForms": "I moduli compilati restano in Chrome. Dopo il riavvio, apri le sessioni di candidatura per controllarli.",
+    "afterHidden": "Il browser nascosto si chiude con l’app. Le candidature in corso ripartiranno la prossima volta.",
+    "hiddenBrowser": "Il browser nascosto",
+    "sessionsOne": "{who} sta ancora compilando una candidatura",
+    "sessionsMany": {
+      "other": "{who} sta ancora compilando {count} candidature"
+    },
+    "stoppingOne": "Uscendo, si interrompe al punto attuale. {after}",
+    "stoppingMany": "Uscendo, si interrompono al punto attuale. {after}",
+    "keepWorking": "Continua a lavorare",
+    "stopQuit": "Interrompi ed esci",
+    "stillWorking": "Jobadabra è ancora al lavoro",
+    "importantQuit": "•  {what}: uscendo ora, l’operazione potrebbe restare incompleta",
+    "busyQuit": "•  {task} è in corso",
+    "queueOne": "•  {count} attività in attesa: {tasks}",
+    "queueMany": {
+      "other": "•  {count} attività in attesa: {tasks}"
+    },
+    "claudeOne": "•  Claude sta compilando {count} candidatura: {names}",
+    "claudeMany": {
+      "other": "•  Claude sta compilando {count} candidature: {names}"
+    },
+    "quitDone": "Esci al termine",
+    "quitNow": "Esci ora",
+    "finishImportant": "Esci al termine: l’app si chiude da sola al termine.\nEsci ora: l’operazione si interrompe; riavviala in seguito.",
+    "finishWork": "Esci al termine: l’app si chiude quando tutto è completato.\nEsci ora: le attività si interrompono e quelle avviate ripartiranno la prossima volta. I dati salvati restano salvati."
+  },
+  "es": {
+    "thisCompany": "esta empresa",
+    "application": "Una solicitud",
+    "submittedQuestion": "¿Enviaste la solicitud a {company}?",
+    "submittedDetail": "Sí: se marca como enviada.\nNo: no se envía nada.\n\nPuedes cambiarlo después en Empleos.",
+    "submittedYes": "Sí, la envié",
+    "submittedNo": "No, no la envié",
+    "cancelQuestion": "¿Cancelar la solicitud?",
+    "cancelCompanyQuestion": "¿Cancelar la solicitud a {company}?",
+    "cancelDetail": "La solicitud se detiene. No se envía nada.",
+    "cancelApplication": "Cancelar solicitud",
+    "keepIt": "Conservar",
+    "cancelOne": "¿Cancelar esta solicitud?",
+    "cancelMany": {
+      "other": "¿Cancelar las {count} solicitudes?"
+    },
+    "cancelAllDetail": "Las solicitudes se detienen y sus formularios se cierran. No se envía nada.",
+    "cancelAll": "Cancelar todas las solicitudes",
+    "keepThem": "Conservar",
+    "moreSessions": "•  y {count} más",
+    "afterForms": "Los formularios rellenados permanecen en Chrome. Tras reiniciar, abre las sesiones de solicitud para revisarlos.",
+    "afterHidden": "El navegador oculto se cierra con la aplicación. Las solicitudes en curso volverán a iniciarse la próxima vez.",
+    "hiddenBrowser": "El navegador oculto",
+    "sessionsOne": "{who} sigue rellenando una solicitud",
+    "sessionsMany": {
+      "other": "{who} sigue rellenando {count} solicitudes"
+    },
+    "stoppingOne": "Al salir se detiene donde está. {after}",
+    "stoppingMany": "Al salir se detienen donde están. {after}",
+    "keepWorking": "Seguir trabajando",
+    "stopQuit": "Detener y salir",
+    "stillWorking": "Jobadabra sigue trabajando",
+    "importantQuit": "•  {what}: salir ahora puede dejar la operación incompleta",
+    "busyQuit": "•  {task} está en curso",
+    "queueOne": "•  {count} tarea en espera: {tasks}",
+    "queueMany": {
+      "other": "•  {count} tareas en espera: {tasks}"
+    },
+    "claudeOne": "•  Claude está rellenando {count} solicitud: {names}",
+    "claudeMany": {
+      "other": "•  Claude está rellenando {count} solicitudes: {names}"
+    },
+    "quitDone": "Salir al terminar",
+    "quitNow": "Salir ahora",
+    "finishImportant": "Salir al terminar: se cierra automáticamente al finalizar.\nSalir ahora: la operación se detiene; vuelve a iniciarla después.",
+    "finishWork": "Salir al terminar: se cierra al acabar las operaciones.\nSalir ahora: las operaciones se detienen y las tareas iniciadas se ejecutarán de nuevo la próxima vez. Lo guardado se conserva."
+  },
+  "ro": {
+    "thisCompany": "această companie",
+    "application": "O candidatură",
+    "submittedQuestion": "Ai trimis candidatura la {company}?",
+    "submittedDetail": "Da: este marcată ca trimisă.\nNu: nu se trimite nimic.\n\nPoți schimba acest lucru ulterior în Joburi.",
+    "submittedYes": "Da, am trimis-o",
+    "submittedNo": "Nu, nu am trimis-o",
+    "cancelQuestion": "Anulezi candidatura?",
+    "cancelCompanyQuestion": "Anulezi candidatura la {company}?",
+    "cancelDetail": "Candidatura se oprește. Nu se trimite nimic.",
+    "cancelApplication": "Anulează candidatura",
+    "keepIt": "Păstrează",
+    "cancelOne": "Anulezi această candidatură?",
+    "cancelMany": {
+      "one": "Anulezi candidatura?",
+      "few": "Anulezi toate cele {count} candidaturi?",
+      "other": "Anulezi toate cele {count} de candidaturi?"
+    },
+    "cancelAllDetail": "Candidaturile se opresc și formularele lor se închid. Nu se trimite nimic.",
+    "cancelAll": "Anulează toate candidaturile",
+    "keepThem": "Păstrează",
+    "moreSessions": "•  și încă {count}",
+    "afterForms": "Formularele completate rămân în Chrome. După repornire, deschide sesiunile de candidatură pentru a le verifica.",
+    "afterHidden": "Browserul ascuns se închide odată cu aplicația. Candidaturile în curs vor reporni data viitoare.",
+    "hiddenBrowser": "Browserul ascuns",
+    "sessionsOne": "{who} încă completează o candidatură",
+    "sessionsMany": {
+      "few": "{who} încă completează {count} candidaturi",
+      "other": "{who} încă completează {count} de candidaturi"
+    },
+    "stoppingOne": "Închiderea o oprește în starea actuală. {after}",
+    "stoppingMany": "Închiderea le oprește în starea actuală. {after}",
+    "keepWorking": "Continuă lucrul",
+    "stopQuit": "Oprește și închide",
+    "stillWorking": "Jobadabra încă lucrează",
+    "importantQuit": "•  {what}: închiderea acum poate lăsa operația neterminată",
+    "busyQuit": "•  {task} rulează",
+    "queueOne": "•  {count} activitate în așteptare: {tasks}",
+    "queueMany": {
+      "few": "•  {count} activități în așteptare: {tasks}",
+      "other": "•  {count} de activități în așteptare: {tasks}"
+    },
+    "claudeOne": "•  Claude completează {count} candidatură: {names}",
+    "claudeMany": {
+      "few": "•  Claude completează {count} candidaturi: {names}",
+      "other": "•  Claude completează {count} de candidaturi: {names}"
+    },
+    "quitDone": "Închide la final",
+    "quitNow": "Închide acum",
+    "finishImportant": "Închide la final: aplicația se închide singură după terminare.\nÎnchide acum: operația se oprește; repornește-o mai târziu.",
+    "finishWork": "Închide la final: aplicația se închide după terminarea operațiilor.\nÎnchide acum: operațiile se opresc, iar activitățile pornite vor rula din nou data viitoare. Datele salvate rămân salvate."
+  },
+  "ru": {
+    "thisCompany": "эту компанию",
+    "application": "Заявка",
+    "submittedQuestion": "Вы отправили заявку в {company}?",
+    "submittedDetail": "Да: заявка будет отмечена как отправленная.\nНет: ничего не отправляется.\n\nЭто можно изменить позже в разделе Вакансии.",
+    "submittedYes": "Да, я отправил заявку",
+    "submittedNo": "Нет, не отправлена",
+    "cancelQuestion": "Отменить заявку?",
+    "cancelCompanyQuestion": "Отменить заявку в {company}?",
+    "cancelDetail": "Заполнение заявки остановится. Ничего не будет отправлено.",
+    "cancelApplication": "Отменить заявку",
+    "keepIt": "Сохранить",
+    "cancelOne": "Отменить эту заявку?",
+    "cancelMany": {
+      "one": "Отменить {count} заявку?",
+      "few": "Отменить {count} заявки?",
+      "many": "Отменить {count} заявок?",
+      "other": "Отменить {count} заявки?"
+    },
+    "cancelAllDetail": "Заполнение заявок остановится, а формы закроются. Ничего не будет отправлено.",
+    "cancelAll": "Отменить все заявки",
+    "keepThem": "Сохранить",
+    "moreSessions": "•  и ещё {count}",
+    "afterForms": "Заполненные формы останутся в Chrome. После перезапуска откройте сеансы подачи заявок, чтобы проверить их.",
+    "afterHidden": "Скрытый браузер закроется вместе с приложением. Заполнение заявок начнётся заново при следующем запуске.",
+    "hiddenBrowser": "Скрытый браузер",
+    "sessionsOne": "{who} ещё заполняет заявку",
+    "sessionsMany": {
+      "one": "{who} ещё заполняет {count} заявку",
+      "few": "{who} ещё заполняет {count} заявки",
+      "many": "{who} ещё заполняет {count} заявок",
+      "other": "{who} ещё заполняет {count} заявки"
+    },
+    "stoppingOne": "При выходе заполнение остановится на текущем месте. {after}",
+    "stoppingMany": "При выходе заполнение остановится на текущем месте. {after}",
+    "keepWorking": "Продолжить работу",
+    "stopQuit": "Остановить и выйти",
+    "stillWorking": "Jobadabra ещё работает",
+    "importantQuit": "•  {what}: выход сейчас может оставить операцию незавершённой",
+    "busyQuit": "•  Выполняется: {task}",
+    "queueOne": "•  Ожидает {count} задача: {tasks}",
+    "queueMany": {
+      "one": "•  Ожидает {count} задача: {tasks}",
+      "few": "•  Ожидают {count} задачи: {tasks}",
+      "many": "•  Ожидают {count} задач: {tasks}",
+      "other": "•  Ожидают {count} задачи: {tasks}"
+    },
+    "claudeOne": "•  Claude заполняет {count} заявку: {names}",
+    "claudeMany": {
+      "one": "•  Claude заполняет {count} заявку: {names}",
+      "few": "•  Claude заполняет {count} заявки: {names}",
+      "many": "•  Claude заполняет {count} заявок: {names}",
+      "other": "•  Claude заполняет {count} заявки: {names}"
+    },
+    "quitDone": "Выйти по завершении",
+    "quitNow": "Выйти сейчас",
+    "finishImportant": "Выйти по завершении: приложение закроется после окончания операции.\nВыйти сейчас: операция остановится; запустите её снова позже.",
+    "finishWork": "Выйти по завершении: приложение закроется после окончания операций.\nВыйти сейчас: операции остановятся, а запущенные задачи начнутся заново в следующий раз. Сохранённые данные останутся."
+  }
+};

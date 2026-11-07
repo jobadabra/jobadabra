@@ -2,6 +2,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import nativeSystem from '../../../i18n/catalogs/native/system.js';
 
 const here = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
 
@@ -29,7 +30,8 @@ test('the card lists what is removed, kept and reconnected, each once, and says 
 
 test('the reset dialog says the accounts go and how they come back', () => {
   const handlers = here('../../../lib/system-handlers.js');
-  assert.match(handlers, /job-site accounts on this computer are deleted/);
-  assert.match(handlers, /import the export you saved first \(the accounts only if you ticked them\)/);
+  assert.match(handlers, /detail: t\('native\.resetDetail'\)/);
+  assert.match(nativeSystem.en.resetDetail, /job-site accounts on this computer are deleted/);
+  assert.match(nativeSystem.en.resetDetail, /import the export you saved first \(the accounts only if you ticked them\)/);
   assert.ok(!/backup/.test(handlers.slice(handlers.indexOf("handleImportant('resetProfile'"), handlers.indexOf("ipcMain.handle('lastReset'"))), 'the reset handler never mentions a backup');
 });
