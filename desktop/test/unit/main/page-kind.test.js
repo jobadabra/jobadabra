@@ -368,7 +368,7 @@ test('a digest "open" of a link becomes the Apply button exactly like a press: o
   for (const [number, kind] of [[2, 'third_party'], [3, 'sign_in'], [1, 'sign_up']]) assert.equal((await pageKind(open(number, kind), page, cacheIn(), {digest: true})).applyButton, '', `a ${kind} link is never pressed`);
   for (const kind of [undefined, '', 'other', 'APPLY']) assert.equal((await pageKind(open(1, kind), page, cacheIn(), {digest: true})).applyButton, '', `press_kind ${JSON.stringify(kind)} judges nothing`);
   assert.equal((await pageKind(open(2, 'apply'), page, cacheIn(), {digest: true})).applyButton, '', 'the AI saying apply does not lift the shared floor');
-  for (const number of [4, 5, 99]) assert.equal((await pageKind(open(number, 'apply'), page, cacheIn(), {digest: true})).applyButton || '', '', `open of candidate ${number} (a button, an address, none) names no link to press`);
+  for (const number of [5, 99]) assert.equal((await pageKind(open(number, 'apply'), page, cacheIn(), {digest: true})).applyButton || '', '', `open of candidate ${number} (an address, none) names no control to press`);
 });
 
 // An application form inside a frame of the page (Datadog, 10 Oct 2026: a Greenhouse form in an iframe the extension never entered). The sketch lists the frames WITHOUT their address (a form

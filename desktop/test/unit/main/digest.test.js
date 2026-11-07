@@ -33,10 +33,11 @@ test('tell_person: the chosen candidates are quoted back for the card; an email 
   assert.equal(ok({outcome: 'in_person', verb: 'tell_person', numbers: []}).dropped, 'tell_person needs a number');
 });
 
-test('press and open: one number, a button or link for press, a link with a host for open, and only with a form or link outcome', () => {
+test('press and open: one number, a button or link for press and for open, and only with a form or link outcome', () => {
   assert.deepEqual([ok({outcome: 'form', verb: 'press', numbers: [4]}).verb, ok({outcome: 'form', verb: 'press', numbers: [5]}).verb], ['press', 'press']);
   assert.equal(ok({outcome: 'link', verb: 'open', numbers: [5]}).verb, 'open');
-  assert.equal(ok({outcome: 'link', verb: 'open', numbers: [4]}).dropped, 'open needs a link');
+  assert.deepEqual([ok({outcome: 'link', verb: 'open', numbers: [4]}).verb, ok({outcome: 'link', verb: 'open', numbers: [4]}).dropped], ['open', undefined], 'a button named with open is the same press as press (#3425)');
+  assert.equal(ok({outcome: 'link', verb: 'open', numbers: [1]}).dropped, 'open needs a button or link');
   assert.equal(ok({outcome: 'form', verb: 'press', numbers: [1]}).dropped, 'press needs a button or link');
   assert.equal(ok({outcome: 'form', verb: 'press', numbers: [4, 5]}).dropped, 'press needs one number');
   assert.equal(ok({outcome: 'email', verb: 'press', numbers: [4]}).dropped, 'verb does not fit the outcome');

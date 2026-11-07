@@ -82,8 +82,9 @@ export function validateDigest(raw, candidates = [], frameCount = 0) {
   if (verb === 'tell_person' && !numbers.length) return none(answer, outcome, 'tell_person needs a number');
   if ((verb === 'press' || verb === 'open') && numbers.length !== 1) return none(answer, outcome, `${verb} needs one number`);
   if ((verb === 'press' || verb === 'open') && chosen[0].disabled) return none(answer, outcome, 'disabled candidate');   // the floor: a control that cannot be pressed is never the way on
-  if (verb === 'press' && !['button', 'link'].includes(chosen[0].kind)) return none(answer, outcome, 'press needs a button or link');
-  if (verb === 'open' && !(chosen[0].kind === 'link' && chosen[0].host)) return none(answer, outcome, 'open needs a link');
+  // Why (2026-11-07, #3425): open and press are one press downstream (rung2-sketch.js digestKind), so both take a button or a link; open used to demand a link with a host, which dropped a
+  // posting's only way on, a script button to the employer's site, as no form. What is pressed is still judged by press_kind and the shared floors; a sentence, address or phone is never pressed.
+  if ((verb === 'press' || verb === 'open') && !['button', 'link'].includes(chosen[0].kind)) return none(answer, outcome, `${verb} needs a button or link`);
   if ((verb === 'none' || verb === 'not_listed') && numbers.length) return none(answer, outcome, `${verb} takes no number`);
   // An address or a call outcome stands only on a candidate of that kind (the address is on the page by construction).
   if ((outcome === 'email' || outcome === 'phone') && !chosen.some(item => item.kind === outcome)) return none(answer, 'other', 'outcome without its candidate');

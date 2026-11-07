@@ -202,6 +202,18 @@ test('scenario: a digest request on the Anthropic API engine is answered, not re
   assert.equal(answer.digest?.outcome, 'phone');
 });
 
+// 7 Nov 2026 (#3425, a job posting whose only way on is a "Visit employer website" button): the digest named that button with `open`, the validator dropped it ("open needs a link") and the
+// page ended as "The extension can't reach this form". Through the app's own page-kind route: the button the digest opened becomes the Apply button, like a press (never submitted: the extension only presses it).
+test('scenario: a posting whose only way on is a script button to the employer site: the digest opens it and the page is answered with that Apply button (#3425)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-journey-digest-open-'));
+  const storage = {path: name => path.join(dir, name), settings: () => ({})};
+  const client = {messages: {create: async () => ({stop_reason: 'end_turn', usage: {input_tokens: 700, output_tokens: 30}, content: [{type: 'text', text: JSON.stringify({outcome: 'form', verb: 'open', numbers: [2], press_kind: 'apply', form_frame: -1, confidence: 0.9})}]})}};
+  const candidates = [{n: 1, kind: 'sentence', position: 'main', text: 'A321 First Officer'}, {n: 2, kind: 'button', position: 'main', text: 'Visit employer website'}, {n: 3, kind: 'button', position: 'main', text: 'Save job'}];
+  const body = {url: POSTING, title: 'A321 First Officer', headings: ['A321 First Officer'], controls: [], buttons: ['Visit employer website', 'Save job'], candidates, digest: true, fresh: true};
+  const answer = await decidePageKind(storage, body, {client});
+  assert.deepEqual([answer.by, answer.error, answer.applyButton], ['digest', undefined, 'visit employer website'], JSON.stringify(answer).slice(0, 300));
+});
+
 test('scenario: Notion chosen but not connected, a search starts: the engine runs as while trying, never on a Notion store with no token (#410)', async () => {
   const {pipelineEnv} = await import('../../../lib/pipeline.js');
   const storage = settings => ({settings: () => settings, secret: () => '', path: name => `/folder/${name}`, secretsPresent: () => ({}), saveSettings: () => {}});
