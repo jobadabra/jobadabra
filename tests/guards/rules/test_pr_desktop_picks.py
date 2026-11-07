@@ -164,7 +164,7 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertFalse(self.check.pick_gap('desktop', 'all', glob), 'main runs everything by glob: no pick, no gap')
 
     def test_the_windows_plan_counts_what_a_change_reaches(self):
-        # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file is all.
+        # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file with nothing to compare is all (a real scripts-only edit is not: the tests below).
         import contextlib, io, os
         def plan(changed):
             out = io.StringIO()
@@ -174,6 +174,50 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertEqual(plan('docs/rules/change-loop.md'), '0')
         self.assertGreater(int(plan('tools/fixer/loop.mjs')), 0)   # not 0: the fixer's tests reach it (it was "over 100" only while every guard ran for every change; 34 on 7 Nov 2026)
         self.assertEqual(plan('desktop/package.json'), 'all')
+
+    def test_a_package_json_runs_everything_only_when_more_than_its_scripts_changed(self):
+        # 7 Nov 2026, owner: "windows tests still takes a lot of time" (ts 4/4): #3475 added one script line to desktop/package.json and ran all 1068 desktop tests for 4m29s.
+        def change(*files, result):
+            with mock.patch.object(self.picker.readers, 'package_json_change', return_value=result):
+                return self.picker.select(list(files), 'origin/main')
+        scripts_only = change('desktop/package.json', 'desktop/scripts/design-check.mjs', result=(False, {'drawer-shots'}))
+        self.assertIsInstance(scripts_only['desktop'], list)   # not 'all'
+        self.assertLess(len(scripts_only['desktop']), 300)
+        self.assertIn('test/unit/main/e2e-hidden.test.js', scripts_only['desktop'])   # it names the script that changed
+        self.assertNotIn('test/unit/main/e2e-hidden.test.js', change('desktop/package.json', result=(False, set()))['desktop'])
+        for changed, area in (('desktop/package.json', 'desktop'), ('package.json', 'desktop'), ('desktop/e2e/package.json', 'e2e'), ('app-core/package.json', 'worker')):   # a dependency bump, in every manifest that counts
+            self.assertEqual(change(changed, result=(True, set()))[area], 'all', changed)
+        self.assertEqual(self.picker.select(['desktop/package-lock.json'], 'origin/main')['desktop'], 'all')   # the lock file stays 'all'
+        self.assertNotEqual(change('package.json', result=(False, {'lint'}))['desktop'], 'all')   # a root manifest follows the same rule
+
+    def test_package_json_change_reads_the_file_at_the_base_and_runs_everything_when_in_doubt(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = lambda *a: subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=root, capture_output=True, text=True, check=True)
+            write = lambda **fields: (root / 'package.json').write_text(json.dumps(fields))
+            run('init', '-q', '-b', 'main')
+            write(scripts={'keep': 'a', 'edit': 'b', 'gone': 'c'}, devDependencies={'x': '1'})
+            run('add', '.'), run('commit', '-q', '-m', 'base')
+            run('checkout', '-q', '-b', 'pr')
+            read = lambda: self.picker.readers.package_json_change('package.json', 'main', root)
+            self.assertEqual(read(), (True, set()))   # listed as changed but identical to the base: not understood, run it
+            write(scripts={'keep': 'a', 'edit': 'B', 'new': 'd'}, devDependencies={'x': '1'}, version='2')
+            self.assertEqual(read(), (False, {'edit', 'gone', 'new'}))   # scripts and version: the names that changed
+            write(scripts={'keep': 'a', 'edit': 'b', 'gone': 'c'}, devDependencies={'x': '2'})
+            self.assertEqual(read(), (True, set()))   # a dependency bump
+            write(scripts={'keep': 'a', 'edit': 'b', 'gone': 'c'}, devDependencies={'x': '1'}, description='new pitch')
+            self.assertEqual(read(), (True, set()))   # a Python guard reads the description
+            for name in ('test', 'pretest', 'postinstall'):   # the test run itself goes through these (tools/check.py reads `test`)
+                write(scripts={'keep': 'a', 'edit': 'b', 'gone': 'c', name: 'changed'}, devDependencies={'x': '1'})
+                self.assertEqual(read(), (True, set()), name)
+            write(scripts={'keep': 'a', 'edit': 'b', 'gone': 'c'}, devDependencies={'x': '1'}, type='module')
+            self.assertEqual(read(), (True, set()))   # any other field may change what every test loads
+            (root / 'package.json').write_text('{ not json')
+            self.assertEqual(read(), (True, set()))   # unreadable: run it
+            self.assertEqual(self.picker.readers.package_json_change('package.json', None, root), (True, set()))   # no base to compare with
+            self.assertEqual(self.picker.readers.package_json_change('missing/package.json', 'main', root), (True, set()))   # a new file
 
     def test_main_runs_every_windows_test_and_a_full_fallback_still_leaves_tooling_out(self):
         main = [command for _, command in self.check.commands('desktop', False, 'node', 'npm', 'all')]

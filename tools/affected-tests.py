@@ -303,7 +303,7 @@ def driven_reach(reach):
     return files, launches
 
 
-def pick_node_area(area, folder, relevant, graph, engine_changed):
+def pick_node_area(area, folder, relevant, graph, engine_changed, words=()):
     """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
     changed_js = {(ROOT / f).resolve() for f in relevant}
     # Why (R2, 1 Nov 2026, owner: "whatever e2e suite we'd feel to run on a PR, we should run the integrations counterpart"): the integration layer is the PR-time counterpart of the e2e journeys, in three
@@ -329,7 +329,7 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
             body = '\n'.join([text, *(text_of(f) for f in via)])
             scanner = readers.desktop_reader(rel(t), text, body, relevant, tooling_changed)
         driven, launches = driven_reach(reach) if area != 'e2e' else (set(), False)
-        if (area == 'desktop' and '/guards/' in rel(t) and SAFETY_GUARD_RE.search(text[:1500])) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+        if (area == 'desktop' and '/guards/' in rel(t) and SAFETY_GUARD_RE.search(text[:1500])) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, [*relevant, *words], {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
                 or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine
@@ -366,25 +366,29 @@ def select(changed, base_ref=None):
     if not changed:
         return result
     # A data file the app or the engine reads by path (docs, config, JSON) counts as its readers changed: their tests run (lib/data-reads.mjs).
-    readers = data_readers(changed)
-    if readers is None:
+    data_found = data_readers(changed)
+    if data_found is None:
         why['all'] = ['tools/data-readers.mjs failed']
         return {**{k: 'all' for k in AREAS}, 'reasons': why}
-    if readers:
-        why['data'] = readers
-        changed = sorted(set(changed) | {reader for found in readers.values() for reader in found})
+    if data_found:
+        why['data'] = data_found
+        changed = sorted(set(changed) | {reader for found in data_found.values() for reader in found})
     # A doc or fixture outside desktop/ on the job's `paths:` is there because a desktop test reads it, so it counts.
     relevant = [f for f in changed if not NO_TEST_EFFECT.search(f) or (starts_desktop_job(f) and not f.startswith(('desktop/', 'extension/')))]
     if not relevant:
         return result
-    scoped = [f for f in relevant if SCOPED_DEPS.match(f)]
-    everything = [f for f in relevant if (ALL_TRIGGERS.search(f) and f not in scoped) or f in ('tests/suite_ids.py', 'tests/suite_store_guard.py')]
+    # Why (7 Nov 2026, ts 4/4): a package.json whose dependencies did not change picks like any file, plus the tests that name a script it changed (6+ characters, as for file names); only a dependency change runs all.
+    manifests = {f: readers.package_json_change(f, base_ref, ROOT) for f in relevant if Path(f).name == 'package.json'}
+    plain = {f for f, (deps, _) in manifests.items() if not deps}
+    words = {name for f in plain for name in manifests[f][1] if len(name) >= 6}
+    scoped = [f for f in relevant if SCOPED_DEPS.match(f) and f not in plain]
+    everything = [f for f in relevant if f not in plain and ((ALL_TRIGGERS.search(f) and f not in scoped) or f in ('tests/suite_ids.py', 'tests/suite_store_guard.py'))]
     areas = {'python': (lambda f: f.startswith(('src/', 'tests/', 'tools/', 'config/', 'templates/', '.github/workflows/')) or f == '.gitattributes'),
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
              'worker': (lambda f: f.startswith(('app-core/', 'extension/'))),
              'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
              'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
-    unknown = [f for f in relevant if not f.startswith(KNOWN) and not starts_desktop_job(f)]
+    unknown = [f for f in relevant if f not in plain and not f.startswith(KNOWN) and not starts_desktop_job(f)]
     if everything or unknown:
         why['all'] = everything + unknown
         return {**{k: 'all' for k in AREAS}, 'reasons': why}
@@ -401,7 +405,7 @@ def select(changed, base_ref=None):
         if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed) and not (area == 'desktop' and any(starts_desktop_job(f) for f in relevant)):
             continue
         graph = graph or js_graph()
-        picked = pick_node_area(area, folder, relevant, graph, engine_changed)
+        picked = pick_node_area(area, folder, relevant, graph, engine_changed, words)
         result[area] = picked
         if picked == 'all':
             why[area] = 'tools/e2e-test-reach.mjs failed'
@@ -462,7 +466,7 @@ def main(argv=None):
     if changed is None:       # no way to know what changed: everything
         print(json.dumps(with_ci_only({**{k: 'all' for k in AREAS}, 'reasons': {'all': ['git diff failed']}})))
         return 0
-    picked = select(changed)
+    picked = select(changed, args.base or 'origin/main')
     picked = with_ci_only(picked)
     print(json.dumps({**picked, 'commands': commands(picked)}))
     return 0
