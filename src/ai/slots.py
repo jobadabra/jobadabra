@@ -48,10 +48,11 @@ def ranked(at):
 
 
 def waited(reset=False):
-    """The seconds this thread has waited for a slot since the last reset (src/ai/call_log.py reads it around one call); `reset=True` returns it and starts again from 0."""
-    seconds = getattr(_local, 'waited', 0.0)
+    """The seconds this thread has waited for a slot since the last reset, or None when it entered no slot (an engine that calls the SDK directly has none: its wait is unknown, never 0)
+    (src/ai/call_log.py reads it around one call); `reset=True` returns it and starts again."""
+    seconds = getattr(_local, 'waited', None)
     if reset:
-        _local.waited = 0.0
+        _local.waited = None
     return seconds
 
 
@@ -95,7 +96,7 @@ class Slots:
             self.free -= 1
             if self.free:   # the next in line may take another free slot
                 self._cond.notify_all()
-        _local.waited = getattr(_local, 'waited', 0.0) + time.monotonic() - asked
+        _local.waited = (getattr(_local, 'waited', None) or 0.0) + time.monotonic() - asked
         return self
 
     def __exit__(self, *exc):

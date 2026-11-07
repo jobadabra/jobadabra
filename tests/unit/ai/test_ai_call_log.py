@@ -45,6 +45,16 @@ class AiCallLog(unittest.TestCase):
         self.assertEqual(create([110.0, 110.0, 113.5, 125.0], env='')[1], '')
         self.assertEqual(create([110.0, 110.0, 113.5, 125.0], started=None)[1], '')
 
+    def test_an_engine_with_no_slot_queue_says_so_instead_of_a_zero_wait(self):
+        # Gitar on #3535: the API engine calls the SDK directly, so "waited 0.0 s for a slot" would read as a measurement that rules slot waits out
+        adapter = Fake()
+        adapter.complete = lambda request: 'answer'
+        adapter.action = 'title_triage'
+        out, ticks = io.StringIO(), itertools.chain([110.0, 125.0], itertools.repeat(125.0))
+        with mock.patch.dict(os.environ, {'JOBADABRA_AI_CALL_LOG': '1'}), mock.patch.object(time_budget, 'STARTED', 100.0), mock.patch('time.monotonic', lambda: next(ticks)), redirect_stdout(out):
+            adapter.messages.create(**PARAMS)
+        self.assertEqual(out.getvalue().strip(), 'AI call: title_triage (claude-haiku-5-5): asked at 10.0 s, no slot queue, answered at 25.0 s (15.0 s)')
+
     def test_an_unnamed_step_is_named_by_its_engine(self):
         self.assertIn('AI call: fake (', create([110.0, 110.0, 113.5, 125.0], action='')[1])
 

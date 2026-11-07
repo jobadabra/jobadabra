@@ -189,6 +189,12 @@ test('the persona search check\'s tape reaches the engine (src/search_tape.py)',
   assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_SEARCH_TAPE, undefined);
 });
 
+test('the Search check\'s per-AI-call log flag reaches the engine, and a person\'s run has none (src/ai/call_log.py)', () => {
+  // Why (#3535, Gitar, 7 Nov 2026): the flag was set on the workflow, dropped here, and the engine printed no `AI call:` line; the unit test of the engine never goes through this allowlist.
+  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', JOBADABRA_AI_CALL_LOG: '1'}).JOBADABRA_AI_CALL_LOG, '1');
+  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_AI_CALL_LOG, undefined);
+});
+
 test('with Notion connected, the Profile comes from Notion, not the local file', () => {
   const storage = tempStorage();
   storage.setSecret('NOTION_TOKEN', 'ntn_x');

@@ -15,12 +15,12 @@ def on():
 
 def say(step, model, asked, waited, now=None):
     """Prints `AI call: <step> (<model>): asked at A s, waited W s for a slot, answered at E s (D s)`, A and E in seconds since the press began. Takes the monotonic time the
-    call was asked and the seconds it waited for a slot; prints nothing when `on()` is false; never raises (a log line must not fail a call)."""
+    call was asked and the seconds it waited for a slot (None: the engine has no slot, said as `no slot queue`, never as 0); prints nothing when `on()` is false; never raises (a log line must not fail a call)."""
     try:
         if not on():
             return
         end = time.monotonic() if now is None else now
         began = time_budget.STARTED
-        print(f"AI call: {step or 'unnamed'} ({model}): asked at {asked - began:.1f} s, waited {waited:.1f} s for a slot, answered at {end - began:.1f} s ({end - asked:.1f} s)", flush=True)
+        print(f"AI call: {step or 'unnamed'} ({model}): asked at {asked - began:.1f} s, {'no slot queue' if waited is None else f'waited {waited:.1f} s for a slot'}, answered at {end - began:.1f} s ({end - asked:.1f} s)", flush=True)
     except Exception:   # noqa: BLE001 — a measurement line is never worth a failed AI call
         pass
