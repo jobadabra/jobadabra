@@ -176,6 +176,7 @@ function syncAll() {
   const repo = process.env.GITHUB_REPOSITORY;
   const open = JSON.parse(gh('pr', 'list', '--state', 'open', '--limit', '100', '--json', 'number', '-R', repo)).map(pr => pr.number);
   console.log(`gitar-label: ${open.length} open PR(s)`);
+  if (open.length === 100) console.log('::warning::gitar-label: 100 open PRs, the list stops there and older ones are not labelled');
   for (const pr of open) {
     try { main(pr); } catch (error) { console.error(`gitar-label: #${pr}: ${error.message}`); process.exitCode = 1; }
   }
@@ -186,7 +187,8 @@ function cli() {
   try {
     if (process.argv[2] === 'working') return markWorking(process.argv[3]);
     if (process.argv[2] === 'all') return syncAll();
-    if (!process.argv[2]) throw new Error('usage: gitar-label.mjs <pr-number> | all | working <pr-number>');
+    // Why (7 Nov 2026, gl, code review): jobadabra-web and -lab run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is synced to templates/org-repo/pr-labels.yml; that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once both repos carry the synced workflow (14 Nov 2026)
+    if (!process.argv[2]) return console.log('gitar-label: no PR number given (an event that no longer labels), nothing to do');
     main(process.argv[2]);
   } catch (error) {
     console.error(error.message);
