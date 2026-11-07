@@ -1,6 +1,6 @@
 // Shared desktop message catalogs: explicit keys, English fallback and language-specific plural selection.
 import {common} from './catalogs/common.js';
-import {osText} from './platform.js';
+import {hostPlatform, osText} from './platform.js';
 
 export const SUPPORTED_LOCALES = Object.freeze(['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']);
 export const LANGUAGE_NAMES = Object.freeze({en: 'English', de: 'Deutsch', fr: 'Français', it: 'Italiano', es: 'Español', ro: 'Română', ru: 'Русский'});
@@ -37,7 +37,7 @@ function message(locale, key, variables) {
 }
 
 /** Format trusted app copy once as plain text; an explicit platform overrides the host for platform-aware views. */
-export function t(key, variables = {}, platform = globalThis.window?.pilot?.platform ?? globalThis.process?.platform) {
+export function t(key, variables = {}, platform = hostPlatform()) {
   const template = message(active, key, variables) ?? message('en', key, variables);
   if (typeof template !== 'string') return String(key);
   // Adapt only the trusted template: interpolation values remain byte-for-byte personal content.

@@ -373,12 +373,12 @@ function renderSaved() {
       {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: t('pagesDynamicFocusInterviews.m210', {"storeName": storeName()})},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
-      {label: t('pagesCommon.delete'), danger: true, title: (byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal'))), run: async () => {
-        if (!confirm((byStore(t('pagesDynamicFocusInterviews.m211', {"title": row.title}),
-          t('pagesDynamicFocusInterviews.m212', {"title": row.title}))))) return;
+      {label: t('pagesCommon.delete'), danger: true, title: byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal')), run: async () => {
+        if (!confirm(byStore(t('pagesDynamicFocusInterviews.m211', {"title": row.title}),
+          t('pagesDynamicFocusInterviews.m212', {"title": row.title})))) return;
         const done = await iv.remove(row.id);
-        message('iv-message', done.ok ? (byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
-          t('pagesShortJobs.m163', {"title": row.title, "value2": done.removed ? t('pagesAuditSecond.a94') : ''})))
+        message('iv-message', done.ok ? byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
+          t('pagesShortJobs.m163', {"title": row.title, "value2": done.removed ? t('pagesAuditSecond.a94') : ''}))
           : done.error, done.ok ? 'ok' : 'error');
         readAgain();
       }},

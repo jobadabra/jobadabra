@@ -253,8 +253,8 @@ export function renderNextStep(item) {
       if (result?.went === 'none') { await reopenClosedTab(item, event.currentTarget); return; }   // no tab to bring forward: open the form again
       panelDead.add(item.id);
       renderSessionPage();
-      toastMessage(t('pagesSession.formTabMissing'), (t('pagesAuditPunct.a60')
-        + t('pagesAuditThird.a190')), sessionPlace(item), 'bad');
+      toastMessage(t('pagesSession.formTabMissing'), t('pagesAuditPunct.a60')
+        + t('pagesAuditThird.a190'), sessionPlace(item), 'bad');
     }, 'link'));
     // A form page whose panel died (the extension was uninstalled and installed again) can't answer the app: reload
     // that tab, which is what puts the extension back onto it — then the focus handshake works again. Offered only
@@ -276,13 +276,13 @@ export function renderNextStep(item) {
       const why = {permission: t('pagesAuditPunct.a61'),
         // Chrome running with no windows means an automation's headless Chrome holds the scripting connection, not
         // the window the user is working in: say so, rather than "no tab matches" about a tab that is right there.
-        'no-window': (t('pagesAuditThird.a191')),
-        'no-tab': (t('pagesAuditThird.a192')),
+        'no-window': t('pagesAuditThird.a191'),
+        'no-tab': t('pagesAuditThird.a192'),
         'no-chrome': t('pagesAuditThird.a193'),
         // Chrome's scripting is macOS-only. Saying "Chrome isn't running" on Windows would be untrue, and the
         // generic advice names ⌘R, which isn't a key there.
         manual: t('pagesAuditThird.a194')}[result?.result];
-      toastMessage(t('pagesSession.reloadFailed'), why || (t('pagesAuditThird.a195')), sessionPlace(item), 'bad');
+      toastMessage(t('pagesSession.reloadFailed'), why || t('pagesAuditThird.a195'), sessionPlace(item), 'bad');
     }, 'refresh'));
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
     if (live) actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));

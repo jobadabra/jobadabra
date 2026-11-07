@@ -24,7 +24,7 @@ function savedLine(id, words, file) {
   const line = $(id);
   line.className = 'message ok';
   const link = document.createElement('button');
-  link.className = 'arrow-link'; link.textContent = (t('pagesFieldsStatus.showFinder'));   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
+  link.className = 'arrow-link'; link.textContent = t('pagesFieldsStatus.showFinder');   // Why (#3444): t() adapts the trusted platform template ("Show in File Explorer") before interpolation.
   link.addEventListener('click', () => window.pilot.showFile(file));
   line.replaceChildren(`${words} ${file.split(/[\\/]/).pop()} `, link);
 }

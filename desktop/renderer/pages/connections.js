@@ -114,7 +114,7 @@ export function showCloud() {
   const cloud = shared.state.settings.cloud;
   showRunMode();
   $('cloud-status').textContent = cloud?.repo
-    ? (t('pagesDynamicSetup.m86', {"repo": cloud.repo})) : t('pagesConnections.githubDaily');
+    ? t('pagesDynamicSetup.m86', {"repo": cloud.repo}) : t('pagesConnections.githubDaily');
   $('cloud-connect').textContent = cloud?.repo ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   $('cloud-open').hidden = $('cloud-more').hidden = !cloud?.repo;
   $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut(t('pagesFinalLabels.turnOffAlways'), () => $('cloud-off').click())] : []));
@@ -163,7 +163,7 @@ function connectedTo(result) {
 function showTelegramCloud() {
   const on = shared.state.settings.telegramCloud;
   show($('tg-cloud'), !!shared.state.settings.cloud?.repo);
-  $('tg-cloud-status').textContent = on ? (t('pagesDynamicSetup.m90', {"value1": on.url.replace('https://', '')}))
+  $('tg-cloud-status').textContent = on ? t('pagesDynamicSetup.m90', {"value1": on.url.replace('https://', '')})
     : t('pagesConnections.botLocal');
   $('tg-cloud-pill').replaceChildren(on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
   // Off: "Set up" opens the steps and the token field (Turn on sits beside the field). On: Update in the row, Turn off in ⋯.

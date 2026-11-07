@@ -89,7 +89,7 @@ function renderNotionLinks() {
   show(box, links.length > 0);
   for (const [env, label, glyph] of links) {
     const link = Object.assign(document.createElement('button'), {className: 'notion-link', textContent: label,
-      title: (t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label}))});
+      title: t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label})});
     link.prepend(icon(glyph));
     link.addEventListener('click', event => window.pilot.openNotion(shared.state.notion[env], event.metaKey || event.ctrlKey));
     box.append(link);

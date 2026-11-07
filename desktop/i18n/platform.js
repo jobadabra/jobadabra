@@ -1,5 +1,8 @@
 // The window's words are written for the Mac; on Windows these swaps name the PC's equivalents. Order matters: the
 // two-key combinations are swapped before their second key alone (⌘⇧G before ⌘G), and the bare ⌘ last.
+/** Read the app platform from preload, falling back to Node only outside the renderer. */
+export const hostPlatform = () => globalThis.window?.pilot?.platform ?? globalThis.process?.platform;
+
 const WINDOWS = [
   [/your Mac[’']s Keychain/g, "Windows' built-in encryption"],   // the straight and the curly apostrophe: both are in the window's text
   [/\b(this|the) Mac[’']s Keychain\b/gi, 'Windows Credential Manager'],   // the PC's secret store (src/secret_store.py: keyring)

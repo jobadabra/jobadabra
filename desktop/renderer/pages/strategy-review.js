@@ -102,7 +102,7 @@ async function saveDraft(parts = null) {
   const result = await window.pilot.saveStrategy(shared.draft, parts);
   if (!result.ok) {
     $('save-title').textContent = byStore(t('pagesStrategy.notSavedNotion'), t('pagesStrategy.notSaved'));
-    message('save-message', (t('pagesDynamicStrategy.m388', {"error": result.error})), 'error');
+    message('save-message', t('pagesDynamicStrategy.m388', {"error": result.error}), 'error');
     show($('save-close')); show($('save-retry'));
     return;
   }

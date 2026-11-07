@@ -99,8 +99,8 @@ export function bindExtension() {
   $('ext-open-page').addEventListener('click', async () => {
     const result = await window.pilot.extensionPage().catch(() => null);
     message('ext-message', inBrowser(result?.opened
-      ? (t('pagesAuditSecond.a77'))
-      : (t('pagesAuditPunct.a20')), browserApp), result?.opened ? 'ok' : 'error');
+      ? t('pagesAuditSecond.a77')
+      : t('pagesAuditPunct.a20'), browserApp), result?.opened ? 'ok' : 'error');
   });
   // The folder in front of the user and its path on the clipboard. The Mac's dialog takes ⌘⇧G (Go to Folder), ⌘V,
   // Return; the PC's has no such shortcut, so it gets its own sentence. Bound by attribute, so the setup wizard's
