@@ -103,7 +103,7 @@ async function main() {
   const stored = await storeCall({profile: folder, store: 'sqlite'}, 'applications', 'list', {});
   await page.waitForSelector('.view:not([hidden])', {timeout: 30000});
   await held.app.shot('practice-start');   // the window as painted, kept in <folder>/artifacts: the evidence of what the person would see
-  say(`${Array.isArray(stored) ? stored.length : '?'} jobs read back from the store; ${jobs.length} practice jobs are in the Jobs list; nothing leaves this Mac (the hidden browser reaches only ${server.hosts.length} practice hosts)`);
+  say(`${Array.isArray(stored) ? stored.length : '?'} jobs read back from the store; ${jobs.length} practice jobs are in the Jobs list; the hidden browser reaches only ${server.hosts.length} practice hosts`);
   say(ai ? 'AI: your signed-in Claude Code answers' : 'AI: Claude Code is not signed in here; choose an AI in Settings before applying');
   say('Settings → Apply → Full automation (you confirm it), then press Apply on a practice job. Other Apply modes open nothing (the person\'s Chrome is off limits here). Every Submit is printed below. Ctrl-C ends it.');
   say(`ledger: ${ledger}`);

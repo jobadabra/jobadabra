@@ -20,7 +20,7 @@ Full automation is the one feature we cannot try end to end: the twin never Subm
 | Each queued item carries its own mode + confirmation; the Submit permit reads the item | CLAUDE.md Safety, `background-apply-controller.js:357` | Practice needs no change to the safety chain: it runs it for real |
 
 ## Observable behaviour
-1. `cd desktop && npm run practice` opens a **second app** (own window, own port, own folder `…/Jobadabra (practice)/home`, banner "Practice: nothing leaves this Mac"). Never the owner's app, Chrome, Keychain or sessions.
+1. `cd desktop && npm run practice` opens a **second app** (own window, own port, own folder `…/Jobadabra (practice)/home`, banner "Practice: no real application is sent" (Gitar, PR 2/4: the engine's page fetches and the AI do leave the machine, so the banner claims only the application)). Never the owner's app, Chrome, Keychain or sessions.
 2. Its Jobs list holds ~12 **Practice jobs** (title "Practice · <shape>", company "Practice Co"), one per recorded form shape (multi-step, upload, menus, account first, bot check…), with a fictional applicant and kit.
 3. The person turns on Full automation in its Settings (the real confirmation) and presses Apply; the hidden browser opens the page, the extension fills, Full automation presses Submit.
 4. The Submit lands in the **catcher**. Practice shows "What would have been sent": the fields and values of the form, the page address, the time, and "Left this Mac: 0 requests".
