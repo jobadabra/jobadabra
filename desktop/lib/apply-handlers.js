@@ -75,14 +75,14 @@ export function registerApplyHandlers(ctx) {
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
     const started = await applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
-      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which) => background.enqueue(jobs, which, batch)});
+      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => background.enqueue(jobs, which, batch, eligibility)});
     return hidden ? started : withNote(started);
   });
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');
     if (gate) return gate;
-    // Why (7 Nov 2026, owner: "Follow the saved mode"): one job starts as the batch does; the hidden browser carries its own copy of the extension, so only Standard automation needs one.
-    const applyMode = applyOf(storage.settings()).mode, hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which)} : null;
+    // Why (7 Nov 2026, owner): one job follows the saved mode and eligibility preference; its hidden queue item carries that captured setting.
+    const applySettings = applyOf(storage.settings()), applyMode = applySettings.mode, hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, null, {allowIneligible: applySettings.allowIneligible})} : null;
     const blocked = await allowanceBlock() || (hidden ? null : needExtension());
     if (blocked) return blocked;
     const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}, {...(hidden ? {hidden} : {})}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)

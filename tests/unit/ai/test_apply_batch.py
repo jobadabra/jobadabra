@@ -55,6 +55,8 @@ class ReadyJobsTests(unittest.TestCase):
         ])
         pairs = apply_batch.ready_jobs(stores, 5)
         self.assertEqual([record['url'] for record, _ in pairs], ['https://eligible'])
+        pairs = apply_batch.ready_jobs(stores, 5, allow_ineligible=True)
+        self.assertEqual({record['url'] for record, _ in pairs}, {'https://eligible', 'https://ineligible'})
 
 
 def run_main(stores, *argv):
@@ -126,6 +128,18 @@ class NextJobsTests(unittest.TestCase):
         ])
         with mock.patch.object(apply_batch, 'still_open', lambda s, url: True):
             self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1), ['https://eligible'])
+            self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1, allow_ineligible=True), ['https://ineligible'])
+            code, output = run_main(stores, '--next', '1', '--allow-ineligible')
+            self.assertEqual((code, output.strip()), (0, 'https://ineligible'))
+
+    def test_opt_in_includes_saved_row_with_actual_not_eligible_next_step_marker(self):
+        ineligible = {'eligible': False, 'eligibility_note': 'Needs a work permit'}
+        stores = stores_with([('https://saved-ineligible', 'Saved', None,
+                               {'next_step': kit_module.next_step(ineligible), 'fit': 95})])
+        with mock.patch.object(apply_batch, 'still_open', lambda s, url: True):
+            self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1), [], 'default still skips it')
+            self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1, allow_ineligible=True),
+                             ['https://saved-ineligible'], 'the explicit false marker proves a kit exists')
 
     def test_best_scored_open_jobs_with_a_kit_without_opening_kits(self):
         stores = stores_with([('https://a', 'Kit ready', None, {}), ('https://b', 'Saved', None, {'next_step': '📝 Kit ready: review it'}),

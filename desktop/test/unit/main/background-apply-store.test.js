@@ -28,7 +28,8 @@ function rig({now, realNow} = {}) {
     sections.set(`${job.id}:📝 Application kit`, '```json\n{"eligible":true,"answers":[]}\n```');
     return job;
   };
-  return {make, add, apps, events, advance: ms => { time += ms; }, fail: () => { failed = true; }, setSection: (id, state) => sections.set(`${id}:Background Apply`, JSON.stringify(state))};
+  return {make, add, apps, events, advance: ms => { time += ms; }, fail: () => { failed = true; }, setSection: (id, state) => sections.set(`${id}:Background Apply`, JSON.stringify(state)),
+    setKit: (id, kit) => sections.set(`${id}:📝 Application kit`, kit === null ? '' : `\`\`\`json\n${JSON.stringify(kit)}\n\`\`\``)};
 }
 async function prepared(r, job = r.add(), mode = 'auto', opts = config) {
   const store = r.make(), row = await store.queue(job.url, `session-${job.id}`, mode, {...opts, mode});
@@ -45,6 +46,30 @@ test('two launch claims and simultaneous reservations create exactly one owned s
   assert.equal(results.filter(x => x.submit).length, 1);
   assert.equal(r.events.length, 1);
   assert.equal((await r.make().reserve(...args)).submit, false, 'restart never repeats an uncertain attempt');
+});
+
+test('Full automation honors only the queued explicit ineligible opt-in and always keeps stage proof', async () => {
+  const explicit = rig(), explicitJob = explicit.add('explicit');
+  explicit.setKit(explicitJob.id, {eligible: false, answers: []});
+  const allowed = await prepared(explicit, explicitJob, 'auto', {...config, allowIneligible: true, auto: {waitMin: 0}});
+  assert.equal((await allowed.store.read(explicitJob.url)).allowIneligible, true);
+  assert.equal((await allowed.store.reserve(explicitJob.url, allowed.session, 'owned-browser', ready, {...config, auto: {waitMin: 0}})).submit, true,
+    'the item keeps the opt-in it was queued with');
+
+  const unknown = rig(), unknownJob = unknown.add('unknown');
+  unknown.setKit(unknownJob.id, {answers: []});
+  const unknownItem = await prepared(unknown, unknownJob, 'auto', {...config, allowIneligible: true, auto: {waitMin: 0}});
+  const refused = await unknownItem.store.reserve(unknownJob.url, unknownItem.session, 'owned-browser', ready, {...config, auto: {waitMin: 0}});
+  assert.equal(refused.submit, false, 'opt-in does not turn missing eligibility into eligible');
+  assert.equal(refused.reason, 'not_eligible');
+
+  const stage = rig(), stageJob = stage.add('stage');
+  stage.setKit(stageJob.id, {eligible: false, answers: []});
+  const stageItem = await prepared(stage, stageJob, 'auto', {...config, allowIneligible: true, auto: {waitMin: 0}});
+  stage.apps.set(stageJob.url, {...stageJob, stage: 'Recruiter lead'});
+  const stageRefused = await stageItem.store.reserve(stageJob.url, stageItem.session, 'owned-browser', ready, {...config, auto: {waitMin: 0}});
+  assert.equal(stageRefused.submit, false, 'the opt-in never overrides a moved stage');
+  assert.equal(stageRefused.reason, 'not_eligible');
 });
 
 test('the automatic press needs the judge to have said no bot check: a bot check, or no answer about it, never reserves', async () => {

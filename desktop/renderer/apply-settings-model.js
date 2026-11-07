@@ -40,7 +40,7 @@ const clamp = (key, value) => {
   return Number.isFinite(n) ? Math.min(high, Math.max(low, n)) : AUTO_DEFAULTS[key];
 };
 
-// settings -> {mode, answers, auto, chosenAt}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only.
+// settings -> {mode, answers, auto, chosenAt, allowIneligible}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only; the eligibility opt-in is false (owner, 7 Nov 2026).
 // Invariant: mode is always a built mode; an older save of one not built yet reads as Standard automation, the mode that runs and the cards show.
 export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
@@ -49,7 +49,7 @@ export function applyOf(settings) {
     auto[key] = clamp(key, saved.auto[key]);
   }
   const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
-  return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : ''};
+  return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : '', allowIneligible: saved.allowIneligible === true};
 }
 // Why (7 Nov 2026, owner: "Change the label (Recommended)" for the Apply button on a job, after it began to follow the saved mode): the button says where the application runs.
 // Same three modes, same order as MODES; `tip` is the button's tooltip.

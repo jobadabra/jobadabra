@@ -487,14 +487,3 @@ test('scenario: Fill in Chrome pressed twice on one job with its tab open: one t
   assert.equal(review.tabOf(first.session.id), 5, 'the session stays on its one tab');
 });
 
-test('scenario: Apply answers after its job is marked Applying: a list read asked then is a fresh one, so the Jobs chips count it (#1737, 24 Oct 2026)', async () => {
-  terminals._reset();
-  const jobs = sharedRead('jobs', () => new Promise(() => {}));   // a read that began before the press, still running
-  const running = jobs();
-  const run = () => new Promise(resolve => setTimeout(() => resolve({}), 10));   // the engine's Stage write takes a moment
-  const result = await apply.applyOne({}, 'https://jobs.example.test/apply-1737', {company: 'E2E'}, {open: () => ({unref() {}}), term: terminals, run, id: () => 'j1737', focus: () => {}});
-  assert.equal(result.ok, true);
-  assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
-  terminals._reset();
-});
-

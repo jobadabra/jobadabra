@@ -25,6 +25,20 @@ test('Background automation without the downloaded browser refuses before any st
   assert.deepEqual(touched, []);
 });
 
+test('enqueue applies the batch captured eligibility choice over a later Settings read', async () => {
+  const queued = [];
+  const controller = createBackgroundApplyController({}, {
+    store: {queue: async (...args) => { queued.push(args); return {ok: true, session: 'session1', mode: 'fill', state: 'queued'}; }},
+    browser: {ready: () => true, start: async () => ({owner: 'owner'})},
+    terminals: {list: () => [], byUrl: () => null, startForm: item => item, record: () => null},
+    config: () => ({mode: 'fill', chosenAt: 'chosen', allowIneligible: false}),
+    uuid: () => 'session1', token: () => 'fictional', port: 1,
+  });
+  const result = await controller.enqueue([{url: 'https://jobs.example.test/a'}], 'fill', null, {allowIneligible: true});
+  assert.equal(result.ok, true);
+  assert.equal(queued[0][3].allowIneligible, true, 'the item stores the batch choice, not a later Settings value');
+});
+
 test('registering the apply handlers creates the controller without touching storage paths', () => {
   assert.doesNotThrow(() => createBackgroundApplyController({}, {store: {}}));   // CI #2324: a storage with no path() crashed handler registration
 });

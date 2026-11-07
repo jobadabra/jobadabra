@@ -112,6 +112,20 @@ test('a background batch keeps mixed eligibility and preparation failures beside
   ]);
 });
 
+test('the opt-in stays consistent through missing-kit drafting, reread and background enqueue', async () => {
+  const storage = tempStorage();
+  storage.saveSettings({apply: {allowIneligible: true}});
+  const job = {code: 'not-eligible', url: 'https://jobs.example.test/ineligible', status: 'saved', stage: 'Kit ready', fit: 90, ineligible: 'needs a work permit'};
+  const queued = [], prepared = [], policies = [];
+  const result = await apply.start(storage, {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
+    async code => { prepared.push(code); job.kit = true; storage.saveSettings({apply: {allowIneligible: false}}); return {ok: true}; }, undefined,
+    {enqueue: async (chosen, mode, policy) => { queued.push(...chosen); policies.push([mode, policy]); return {ok: true}; }});
+  assert.equal(result.ok, true);
+  assert.deepEqual(prepared, ['not-eligible']);
+  assert.deepEqual(queued.map(item => item.url), [job.url]);
+  assert.deepEqual(policies, [['fill', {allowIneligible: true}]], 'enqueue uses the same normalized setting captured before drafting');
+});
+
 test('missing kits are picked saved first, then by fit, open jobs only', () => {
   const jobs = [{code: 'a', url: 'u', status: 'unreviewed', fit: 90}, {code: 'b', url: 'u', status: 'saved', fit: 50}, {code: 'c', url: 'u', status: 'applied', fit: 99},
     {code: 'd', url: 'u', status: 'unreviewed', fit: 95, kit: true}];
@@ -202,6 +216,11 @@ test('the next jobs with a kit come from apply_batch --next, links only', async 
   assert.deepEqual([...urls], ['https://a/1', 'https://b/2']);
   assert.deepEqual(urls.details['https://a/1'], {title: 'SRE', company: 'Acme'});  // for the session card and notification
   assert.deepEqual([...await apply.nextWithKits({}, 2, async () => ({code: 1, stdout: 'https://a/1'}))], []);
+  let args;
+  await apply.nextWithKits({settings: () => ({apply: {allowIneligible: true}})}, 2, async (_, seen) => { args = seen; return {code: 0, stdout: ''}; });
+  assert.deepEqual(args, ['src.ai.apply_batch', '--next', '2', '--details', '--allow-ineligible']);
+  await apply.nextWithKits({settings: () => ({apply: {allowIneligible: true}})}, 2, async (_, seen) => { args = seen; return {code: 0, stdout: ''}; }, {allowIneligible: false});
+  assert.deepEqual(args, ['src.ai.apply_batch', '--next', '2', '--details'], 'a batch uses its captured setting even if Settings changes before its next read');
 });
 
 test('the kit check asks Notion through apply_batch --has-kit and says how to draft one when there is none', async () => {
@@ -276,14 +295,33 @@ test('apply picks the best job that may start: a Recruiter lead with the top fit
   assert.deepEqual(apply.pick(jobs.slice(0, 1), 1), [], 'nothing eligible: nothing is picked');
 });
 
-// Why (7 Nov 2026, owner screenshot: after Cancel all, Apply took a job the kit had marked "Not eligible"): "not eligible" is two rules, the stage (canStart) and the kit's verdict (job.ineligible); the pick obeys both.
-test('the picker never takes a job the kit marked not eligible, however high its fit', () => {
+// Why (7 Nov 2026, owner screenshot: after Cancel all, Apply took a job the kit had marked "Not eligible"): default skips explicit kit ineligibility; the shared Settings opt-in can include it, while stage proof remains required.
+test('the picker defaults to skipping a kit marked not eligible; opt-in includes only that verdict, never a blocked stage', () => {
   const jobs = [
     {url: 'cessna', status: 'saved', stage: 'Saved', fit: 95, kit: true, ineligible: 'needs a work permit'},
-    {url: 'fine', status: 'saved', stage: 'Saved', fit: 60, kit: true, ineligible: ''},
+    {url: 'fine', status: 'saved', stage: 'Saved', fit: 60, kit: true},
+    {url: 'unknown', status: 'saved', stage: 'Saved', fit: 50, kit: true},
+    {url: 'started', status: 'saved', stage: 'Applying', fit: 40, kit: true, ineligible: 'needs a work permit'},
+    {url: 'blocked', status: 'saved', stage: 'Recruiter lead', fit: 30, kit: true, ineligible: 'needs a work permit'},
   ];
-  assert.deepEqual(apply.pick(jobs, 2).map(j => j.url), ['fine']);
-  assert.deepEqual(apply.pickMissing([{url: 'x', status: 'saved', code: 'c', ineligible: 'no'}, {url: 'y', status: 'saved', code: 'd'}], 2).map(j => j.url), ['y']);
+  assert.deepEqual(apply.pick(jobs, 5).map(j => j.url), ['fine', 'unknown']);
+  assert.deepEqual(apply.pick(jobs, 5, {allowIneligible: true}).map(j => j.url), ['cessna', 'fine', 'unknown', 'started']);
+  const missing = [{url: 'x', status: 'saved', stage: 'Saved', code: 'c', ineligible: 'no'}, {url: 'y', status: 'saved', stage: 'Saved', code: 'd'}];
+  assert.deepEqual(apply.pickMissing(missing, 2).map(j => j.url), ['y']);
+  assert.deepEqual(apply.pickMissing(missing, 2, {allowIneligible: true}).map(j => j.url), ['x', 'y']);
+});
+
+test('a saved opt-in is threaded through Chrome and Background batch picks', async () => {
+  for (const mode of ['chrome', 'background']) {
+    const storage = tempStorage();
+    storage.saveSettings({apply: {allowIneligible: true}});
+    const jobs = [{url: `https://jobs.example.test/${mode}`, status: 'saved', stage: 'Kit ready', fit: 90, kit: true, ineligible: 'needs a work permit'}];
+    const queued = [];
+    const result = await apply.start(storage, {n: 1, mode, applyMode: 'fill'}, () => ({unref() {}}), async () => ({jobs}), undefined, undefined, undefined, undefined,
+      {enqueue: async selected => { queued.push(...selected); return {ok: true}; }});
+    assert.equal(result.ok, true, mode);
+    if (mode === 'background') assert.deepEqual(queued.map(job => job.url), [jobs[0].url]);
+  }
 });
 
 test('the picker and Background automation share one eligibility rule', async () => {

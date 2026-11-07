@@ -143,16 +143,18 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   /**
    * Queues a batch in the hidden browser. `mode` is 'fill' or 'auto'. `batch` ({autoConfirmedAt}) is the call's own pick from Apply to jobs: the batch runs in `mode` with the Full-automation
    * confirmation given in THIS call; without it the batch follows the saved Apply mode and its saved confirmation. Invariant: a batch's mode and its confirmation come from the call, never from a past save;
-   * every queued item keeps them (store.queue), so a later batch or a Settings change never moves a running one.
+   * every queued item keeps them (store.queue), so a later batch or a Settings change never moves a running one. `eligibility` is the normalized setting snapshot captured before selection and drafting; queued items keep that choice even if Settings changes while kits are drafted.
    * Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs"; "The batch should continue with the setting it was set once the batch has been started"): a pick in the dialog
    * is that batch's mode only, never Settings'; the person's way to stop a running batch is Stop or Cancel all.
    */
-  async function enqueue(jobs, mode, batch = null) {
+  async function enqueue(jobs, mode, batch = null, eligibility = null) {
     return serial(async () => {
       // Why (7 Nov 2026, #3424, review): a preflight refusal has no queue row; distinguish it from a failed kit so the dialog says the selected job never started.
       const refused = (error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: error}))});
-      const {chosen, error} = batchSettings(config(), mode, batch);
+      const configured = batchSettings(config(), mode, batch);
+      const {error} = configured;
       if (error) return refused(error);
+      const chosen = eligibility ? {...configured.chosen, allowIneligible: eligibility.allowIneligible === true} : configured.chosen;
       if (!browserOf().ready()) return refused("Download Jobadabra's browser first: about 200 MB, only once.", {code: 'BACKGROUND_BROWSER_MISSING'});   // before any store write, so nothing waits on a browser that is not there
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return refused(`At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`);

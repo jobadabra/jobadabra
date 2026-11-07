@@ -87,7 +87,7 @@ test('a mode is built exactly when it names its batch runner; Standard\'s is the
   for (const mode of MODES) assert.equal(modeBuilt(mode.id), !!modeRunner(mode.id), mode.id);
   const handlers = read('lib/apply-handlers.js');
   assert.match(handlers, /applyMode = fromSettings \? picked \|\| applyOf\(settings\)\.mode/, 'main reads the dialog\'s pick, else the saved (built) mode');
-  assert.match(handlers, /background\.enqueue\(jobs, which, batch\)/, 'the batch\'s own mode and confirmation reach the queue');
+  assert.match(handlers, /background\.enqueue\(jobs, which, batch, eligibility\)/, 'the batch\'s mode, confirmation and captured eligibility reach the queue');
   assert.match(handlers, /fromSettings \? modeRunner\(applyMode\)/, 'main starts the runner that mode names');
 });
 
