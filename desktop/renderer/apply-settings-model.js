@@ -65,3 +65,17 @@ export function applyPatch(settings, change = {}, {chosen = false, now = new Dat
   const autoConfirmedAt = next.mode === 'auto' ? change.autoConfirmedAt || current.autoConfirmedAt : '';
   return {apply: applyOf({apply: {...next, autoConfirmedAt, chosenAt: chosen ? now.toISOString() : current.chosenAt}})};
 }
+
+/** How long a confirmation given in Apply to jobs counts for the batch it started: it is sent with Start, normally seconds after it was given; a dialog left open longer asks again (code review, 7 Nov 2026). */
+export const BATCH_CONFIRM_MS = 10 * 60000;
+/** True when picking `mode` in Apply to jobs must ask the Full-automation confirmation first: Full automation is not the confirmed saved mode. The pick never writes Settings (owner, 7 Nov 2026, #3363). */
+export const dialogNeedsConfirm = (mode, settings) => mode === 'auto' && !autoConfirmed(settings);
+/**
+ * The Full-automation confirmation a dialog batch runs under: the stamp this very Start call carries when it is recent, else Settings' own when Settings itself is the confirmed Full automation, else ''.
+ * Invariant: a batch's confirmation comes from its own call or from Settings' saved one, never from an earlier batch's dialog (nothing here is stored).
+ */
+export function batchConfirmation(stamp, settings, now = Date.now()) {
+  const given = Date.parse(stamp);
+  if (Number.isFinite(given) && given <= now + 60000 && now - given <= BATCH_CONFIRM_MS) return new Date(given).toISOString();
+  return applyOf(settings).autoConfirmedAt;
+}

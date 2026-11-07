@@ -33,6 +33,18 @@ const nothingStarted = (skipped, busy) => {
 };
 
 /**
+ * The mode and confirmation a batch is queued under, or the refusal. With `batch` ({autoConfirmedAt}) they are the call's own; without it, the saved Apply mode and its saved confirmation.
+ * Why (2026-10-29, owner: "go ahead" with the switch; 7 Nov 2026, #3363): Full automation runs only after the person confirmed it, in Settings → Apply or in this very call; the window's pick alone is not enough.
+ * The first-choice stamp (`chosenAt`) always comes from Settings: the gate in lib/apply-choice-gate.js stays in front of every batch.
+ */
+function batchSettings(saved, mode, batch) {
+  const chosen = batch ? {...saved, mode, autoConfirmedAt: mode === 'auto' ? batch.autoConfirmedAt || '' : ''} : saved;
+  if (mode === 'auto' && !chosen.autoConfirmedAt) return {error: batch ? 'Full automation is off until you confirm it: pick it again in Apply to jobs.' : 'Full automation is off until you confirm it in Settings → Apply.'};
+  if (chosen.mode !== mode || !chosen.chosenAt) return {error: 'Confirm the saved Apply mode first.'};
+  return {chosen};
+}
+
+/**
  * Runs `sweep` every `every` ms (default 30 s) and logs a failure instead of throwing; returns the function that stops it. `set` and `clear` are injectable so a test never waits for a clock.
  * Why (2026-10-29, owner): the stall sweep is the app's own timer; with the extension closed nothing else asks.
  */
@@ -121,13 +133,18 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     log('apply', 'an ended background run left the list: the job starts afresh', {session: old.id});
     return true;
   }
-  async function enqueue(jobs, mode) {
+  /**
+   * Queues a batch in the hidden browser. `mode` is 'fill' or 'auto'. `batch` ({autoConfirmedAt}) is the call's own pick from Apply to jobs: the batch runs in `mode` with the Full-automation
+   * confirmation given in THIS call; without it the batch follows the saved Apply mode and its saved confirmation. Invariant: a batch's mode and its confirmation come from the call, never from a past save;
+   * every queued item keeps them (store.queue), so a later batch or a Settings change never moves a running one.
+   * Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs"; "The batch should continue with the setting it was set once the batch has been started"): a pick in the dialog
+   * is that batch's mode only, never Settings'; the person's way to stop a running batch is Stop or Cancel all.
+   */
+  async function enqueue(jobs, mode, batch = null) {
     return serial(async () => {
-      // Why (2026-10-29, owner: "go ahead" with the switch): Full automation runs only after the person confirmed it in Settings → Apply; the window's pick is not enough.
-      if (mode === 'auto' && !config().autoConfirmedAt) return {ok: false, error: 'Full automation is off until you confirm it in Settings → Apply.'};
+      const {chosen, error} = batchSettings(config(), mode, batch);
+      if (error) return {ok: false, error};
       if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
-      const chosen = config();
-      if (chosen.mode !== mode || !chosen.chosenAt) return {ok: false, error: 'Confirm the saved Apply mode first.'};
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return {ok: false, error: `At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`};
       const enrolled = [];
@@ -165,8 +182,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!state || state.ok === false || state.session !== item.id) return null;   // a refusal or another run's state is never kept: the next poll reads again
     latest.set(item.id, state);
     if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
+    // Why (7 Nov 2026, owner, #3363: "The batch should continue with the setting it was set once the batch has been started"): a Settings change mid-batch no longer hands items over ('mode_changed' was here):
+    // each item keeps the mode and confirmation its batch started with (store.queue), and a change applies to the next batch. Stop and Cancel all still end a batch.
     const current = config();
-    if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
     return state.ok === false ? null : {state, current};
   }
   // Only an extension request can supply the e2e proof that it looked at this due job; app clock wakes are not evidence.

@@ -45,13 +45,17 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     return serial(async () => {
       if (!['fill', 'auto'].includes(mode)) throw new Error('Unknown background Apply mode');
       const app = await appOf(url), old = await load(app);
-      // Why (2026-10-27, owner; 5 Nov 2026, owner's screenshot): reapplying or changing modes never resets a job's CAPTCHA or unknown-submit handoff; any other finished
+      // Why (2026-10-27, owner; 5 Nov 2026, owner's screenshot): reapplying or changing modes never resets a job's CAPTCHA or unknown-submit handoff (7 Nov 2026, #3363: except a live Full automation item that could still press, refused for another mode below); any other finished
       // hand-off (Stop, Cancel, a quit or update before the press) starts a new run, or the job came back as "Needs you · Try again" in its old mode and never launched.
       // The test itself is `endedRun` above, shared with Apply in Chrome (7 Nov 2026), so both modes treat an ended run the same way.
-      if (old && !(await endedRun(app, old))) return old;
+      if (old && !(await endedRun(app, old))) {
+        // Why (7 Nov 2026, #3363, code review): a live Full automation item that can still press is not answered for a batch naming another mode: it would submit while the new batch says Fill. Refused, the person stops it first. One already handed over (CAPTCHA, Stop) or ended presses nothing, so it is returned as before.
+        if (old.mode === 'auto' && mode !== 'auto' && !old.manualOverride && !TERMINAL.has(old.state)) throw new Error('This job is already queued for Full automation. Stop or cancel it in Sessions first.');
+        return old;
+      }
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
-      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});
+      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, ...(mode === 'auto' ? {autoConfirmedAt: config.autoConfirmedAt || ''} : {}), state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});   // the batch's own confirmation stays on its item (#3363)
     });
   }
   async function claim(url, session, owner) {
@@ -97,7 +101,8 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       const deny = reason => ({submit: false, reason, state: state?.state || ''});
       if (!own(state, session, owner) || state.mode !== 'auto' || state.manualOverride || TERMINAL.has(state.state)) return deny('manual_or_already_attempted');
       const stop = async reason => { const next = await manual(app, state, reason); return {submit: false, reason, state: next.state}; };
-      if (config?.mode !== 'auto' || !config.chosenAt || config.chosenAt !== state.chosenAt) return stop('mode_changed_or_not_opted_in');
+      // Why (7 Nov 2026, owner, #3363): the item's own mode and confirmation decide, not what Settings says now; an item queued without a confirmation (an older build) is handed over, never pressed.
+      if (state.mode !== 'auto' || !state.chosenAt || !state.autoConfirmedAt) return stop('mode_changed_or_not_opted_in');
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay

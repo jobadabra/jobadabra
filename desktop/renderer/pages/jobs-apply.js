@@ -1,20 +1,21 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): how many jobs, how Jobadabra applies (Settings → Apply's own cards), "Apply to N jobs".
-// A card pick saves through Settings → Apply's writer; a mode not built yet is a disabled "Coming soon" card. Pure parts: renderer/apply-dialog-model.js.
+// A card pick is this batch's mode only (never saved; the dialog opens on Settings → Apply's mode each time); a mode not built yet is a disabled "Coming soon" card. Pure parts: renderer/apply-dialog-model.js.
 // Guard: test/unit/renderer/apply-dialog-mode.test.js.
 import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
-import {applyOf} from '../apply-settings-model.js';
-import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
-import {modeCards, save as saveApplySettings} from './apply-settings.js';
+import {applyChosen, applyOf} from '../apply-settings-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {askFullAutomation, modeCards} from './apply-settings.js';
 import {toastMessage} from './startup.js';
 
 const gate = createApplyStartGate();
-let settings = {};   // the saved settings the cards were last drawn from
-let saving = false;
+let settings = {};   // the saved settings the dialog opened on
+let picked = '', confirmedAt = '';   // the card the person clicked in THIS dialog (empty: none, the batch follows Settings) and, for Full automation, the confirmation given for it; both start over each time it opens
+let saving = false;   // a pick is being confirmed
 
 // The cards and the button from the saved settings; while a batch starts, the cards are off and the button stays "Starting…" (typing in the count changes nothing).
 function draw() {
-  $('apply-mode-cards').replaceChildren(modeCards(applyOf(settings).mode, pick, {busy: saving || gate.isStarting()}));
+  $('apply-mode-cards').replaceChildren(modeCards(picked || applyOf(settings).mode, pick, {busy: saving || gate.isStarting()}));
   if (gate.isStarting()) return;
   $('apply-go').textContent = applyButtonLabel($('apply-n').value);
 }
@@ -24,9 +25,8 @@ async function pick(mode) {
   saving = true;
   draw();
   try {
-    const picked = await applyDialogSelectMode({mode, save: saveApplySettings});
-    if (picked.ok) settings = picked.settings;
-    else if (picked.error) message('apply-message', picked.error, 'error');
+    const result = await applyDialogPick({mode, settings, confirm: askFullAutomation});
+    if (result.ok) ({mode: picked, autoConfirmedAt: confirmedAt} = result);
   } finally {
     saving = false;
     draw();
@@ -38,6 +38,7 @@ export function wireApplyDialog({startedApplying}) {
   $('apply-open').addEventListener('click', async () => {
     message('apply-message', '');
     settings = (await window.pilot.state().catch(() => null))?.settings || {};
+    picked = ''; confirmedAt = '';   // Why (7 Nov 2026, owner, #3363: "The preselected modal apply modal option should be the one in settings"): every open starts on Settings' mode. No click, no pick sent: the first-choice gate replays Start after the person chose in it, and that choice must win (27 Oct 2026)
     draw();
     $('apply-dialog').showModal();
   });
@@ -58,7 +59,7 @@ export function wireApplyDialog({startedApplying}) {
       $('apply-progress').hidden = false;   // the banner's progress bar stays below the action buttons
       draw();
       try {
-        const result = await applyDialogStart({count: n, start: options => window.pilot.apply(options)});
+        const result = await applyDialogStart({count: n, pick: picked, autoConfirmedAt: confirmedAt, chosen: applyChosen(settings), start: options => window.pilot.apply(options)});
         if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
         if (result.ok && result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, {view: 'settings'}, 'warn');
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog

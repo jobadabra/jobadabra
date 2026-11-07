@@ -1,11 +1,11 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): it applies to jobs. The same three cards as Settings → Apply, only a built mode
-// can be picked (the others say Coming soon), a pick saves through Settings → Apply's one writer, and the button says "Apply to N jobs".
+// can be picked (the others say Coming soon), a pick is that batch's mode only and never writes Settings (owner, 7 Nov 2026, #3363), and the button says "Apply to N jobs".
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../../../renderer/apply-dialog-model.js';
-import {MODES, applyOf, modeBuilt, modeRunner} from '../../../renderer/apply-settings-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate} from '../../../renderer/apply-dialog-model.js';
+import {MODES, batchConfirmation, modeBuilt, modeRunner} from '../../../renderer/apply-settings-model.js';
 import {registerApplyHandlers} from '../../../lib/apply-handlers.js';
 import {guard} from '../../../lib/apply-choice-gate.js';
 
@@ -13,15 +13,15 @@ const desktop = path.resolve(import.meta.dirname, '../../..');
 const read = file => fs.readFileSync(path.join(desktop, file), 'utf8');
 
 function register(mode, {chosen = true} = {}) {
-  const handles = new Map(), starts = [];
+  const handles = new Map(), starts = [], saves = [];
   let settings = {apply: {mode, chosenAt: chosen ? '2026-10-27T00:00:00.000Z' : ''}};
-  const storage = {settings: () => settings};
+  const storage = {settings: () => settings, saveSettings: patch => { saves.push(patch); }};
   const ipcMain = {handle: guard((name, handler) => handles.set(name, handler), () => storage)};
   registerApplyHandlers({DEMO: false, extensionGate: () => null, allowanceBlock: async () => null, needsNotion: () => null,
     claudeConsent: async () => true, ipcMain, log: () => {}, here: desktop, storage, toWindow: () => {}, track: () => {}, shell: {},
     prepareKitFor: async () => ({}), startClaude: async () => ({ok: true}), getRecipeReporter: () => null, cloud: {},
     applyRunner: {start: async (_storage, options) => { starts.push(options); return {ok: true}; }}});
-  return {handles, starts, setSettings: value => { settings = value; }};
+  return {handles, starts, saves, setSettings: value => { settings = value; }};
 }
 
 test('the primary button applies to jobs: "Apply to N jobs" from the count, never a settings action', () => {
@@ -34,41 +34,61 @@ test('the primary button applies to jobs: "Apply to N jobs" from the count, neve
   assert.doesNotMatch(page + read('renderer/apply-dialog-model.js'), /Confirm Apply mode|Unavailable|for review'|saved to Settings/);
 });
 
-test('an unbuilt mode cannot be picked in the dialog: nothing is written', async () => {
-  let writes = 0;
-  const save = async patch => { writes++; return {apply: {mode: patch.mode}}; };
-  for (const mode of MODES.filter(item => !modeBuilt(item.id)).map(item => item.id)) {
-    const picked = await applyDialogSelectMode({mode, save});
-    assert.equal(picked.ok, false, mode);
-  }
-  assert.equal((await applyDialogSelectMode({mode: 'other', save})).ok, false);
-  assert.equal(writes, 0);
+test('an unbuilt mode cannot be picked in the dialog: nothing is asked or written', async () => {
+  let asked = 0;
+  const confirm = async () => { asked++; return true; };
+  for (const mode of MODES.filter(item => !modeBuilt(item.id)).map(item => item.id)) assert.equal((await applyDialogPick({mode, settings: {}, confirm})).ok, false, mode);
+  assert.equal((await applyDialogPick({mode: 'other', settings: {}, confirm})).ok, false);
+  assert.equal(asked, 0);
 });
 
-test('a built mode is saved through Settings → Apply\'s writer, keeping the first-choice stamp', async () => {
-  let settings = {apply: {mode: 'check', chosenAt: '2026-10-27T00:00:00.000Z'}};
-  const picked = await applyDialogSelectMode({mode: 'check', save: async patch => (settings = {apply: {...settings.apply, ...patch}})});
-  assert.equal(picked.ok, true);
-  assert.equal(applyOf(picked.settings).mode, 'check');
-  assert.equal(picked.settings.apply.chosenAt, '2026-10-27T00:00:00.000Z');
+// Owner, 7 Nov 2026, #3363: "We don't want to change the settings from the Apply to jobs. We should let the user explicitly go and change that in the settings."
+// The old rule (28 Oct 2026: a card pick is saved through Settings → Apply's writer) is replaced for this dialog only; this test asserts the opposite of the one it replaces.
+test('a pick in the dialog is that batch\'s mode only: Start carries it, Settings is never written, the next dialog opens on Settings\' mode', async () => {
+  const registered = register('fill');
+  const pick = await applyDialogPick({mode: 'check', settings: {apply: {mode: 'fill'}}, confirm: async () => assert.fail('Standard automation asks nothing')});
+  assert.deepEqual(pick, {ok: true, mode: 'check', autoConfirmedAt: ''});
+  assert.equal((await applyDialogStart({count: '2', pick: pick.mode, autoConfirmedAt: pick.autoConfirmedAt, chosen: true, start: args => registered.handles.get('apply')({}, args)})).ok, true);
+  assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check', pick: 'check'}], 'the batch ran in the pick, not in Settings\' Background mode');
+  assert.deepEqual(registered.saves, [], 'nothing was written to Settings');
+  const next = await applyDialogStart({count: '1', start: args => registered.handles.get('apply')({}, args)});   // the next dialog: no click, no pick
+  assert.equal(next.ok, true);
+  assert.deepEqual(registered.starts[1], {n: 1, mode: 'background', applyMode: 'fill'}, 'with no pick the batch follows Settings, which never changed');
   const page = read('renderer/pages/jobs-apply.js');
-  assert.match(page, /import \{modeCards, save as saveApplySettings\} from '\.\/apply-settings\.js'/, 'one writer: the Settings → Apply save');
-  assert.doesNotMatch(page, /saveSettings\(/, 'no second writer of settings.apply');
+  assert.doesNotMatch(page, /saveSettings\(|save as saveApplySettings/, 'the dialog has no writer of settings.apply');
+  assert.match(page, /picked = ''; confirmedAt = '';/, 'every open starts on Settings\' mode');
+});
+
+// Owner, 7 Nov 2026: "we can choose a different apply mode every time, for every new batch": Fill, then Full automation, then Fill again, each in its own mode, each Full automation asked in its own call.
+test('Full automation is confirmed in the call that picks it: asked again for every batch, declined means no pick, Settings\' own confirmed Full automation is not asked again', async () => {
+  const settings = {apply: {mode: 'fill'}}, asks = [], now = () => new Date('2026-11-07T10:00:00.000Z');
+  const answer = yes => async () => { asks.push(yes); return yes; };
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings, confirm: answer(true), now}), {ok: true, mode: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z'});
+  assert.deepEqual(await applyDialogPick({mode: 'fill', settings, confirm: answer(true), now}), {ok: true, mode: 'fill', autoConfirmedAt: ''}, 'Background automation carries no confirmation');
+  assert.equal((await applyDialogPick({mode: 'auto', settings, confirm: answer(true), now})).ok, true);
+  assert.deepEqual(asks, [true, true], 'the second Full automation batch asked again, nothing was inherited from the first');
+  assert.equal((await applyDialogPick({mode: 'auto', settings, confirm: answer(false), now})).ok, false, 'declined: the pick stays where it was');
+  const confirmedInSettings = {apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z'}};
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings: confirmedInSettings, confirm: async () => assert.fail('Settings\' own confirmation stands'), now}), {ok: true, mode: 'auto', autoConfirmedAt: ''});
+});
+
+test('the confirmation a batch runs under is the one in its own call (recent) or Settings\' own, never another batch\'s', () => {
+  const now = Date.parse('2026-11-07T10:00:00.000Z'), fill = {apply: {mode: 'fill', autoConfirmedAt: '2026-10-01T00:00:00.000Z'}};
+  assert.equal(batchConfirmation('2026-11-07T09:59:00.000Z', fill, now), '2026-11-07T09:59:00.000Z', 'a stamp from this call');
+  assert.equal(batchConfirmation('2026-11-07T08:00:00.000Z', fill, now), '', 'a stamp two hours old is not this call\'s');
+  assert.equal(batchConfirmation('2026-11-07T09:45:00.000Z', fill, now), '', 'a dialog left open past ten minutes asks again');
+  assert.equal(batchConfirmation('2026-11-07T10:30:00.000Z', fill, now), '', 'a stamp from the future is no confirmation');
+  assert.equal(batchConfirmation('', fill, now), '', 'Settings on Background automation holds no Full automation confirmation');
+  assert.equal(batchConfirmation('nonsense', {apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z'}}, now), '2026-11-01T08:00:00.000Z', 'Settings\' own confirmed Full automation');
 });
 
 test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, Background\'s the hidden browser', () => {
   assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: 'background', auto: 'background'});
   for (const mode of MODES) assert.equal(modeBuilt(mode.id), !!modeRunner(mode.id), mode.id);
   const handlers = read('lib/apply-handlers.js');
-  assert.match(handlers, /applyMode = fromSettings \? applyOf\(storage\.settings\(\)\)\.mode/, 'main reads the saved (built) mode');
+  assert.match(handlers, /applyMode = fromSettings \? picked \|\| saved\.mode/, 'main reads the dialog\'s pick, else the saved (built) mode');
+  assert.match(handlers, /background\.enqueue\(jobs, which, batch\)/, 'the batch\'s own mode and confirmation reach the queue');
   assert.match(handlers, /fromSettings \? modeRunner\(applyMode\)/, 'main starts the runner that mode names');
-});
-
-test('a save that fails is said, never shown as picked', async () => {
-  const picked = await applyDialogSelectMode({mode: 'check', save: async () => null});
-  assert.equal(picked.ok, false);
-  assert.match(picked.error, /Could not save/);
-  assert.match(read('renderer/pages/apply-settings.js'), /return saved \? current : null;/, 'Settings → Apply\'s save answers null on a failed write');
 });
 
 test('a start whose call fails says so and gives the button back', () => {
@@ -137,7 +157,7 @@ test('the dialog: count, the shared mode cards, a native Close, one primary butt
   assert.equal((dialog.match(/class="primary"/g) || []).length, 1);
   assert.ok(dialog.indexOf('id="apply-n"') < dialog.indexOf('id="apply-mode-cards"'), 'how many jobs first: the dialog is about applying');
   assert.doesNotMatch(dialog + read('renderer/components.css'), /apply-mode-description|is-apply-saved-badge|apply-mode-summary/);
-  assert.match(read('renderer/pages/jobs-apply.js'), /modeCards\(applyOf\(/);
+  assert.match(read('renderer/pages/jobs-apply.js'), /modeCards\(picked \|\| applyOf\(settings\)\.mode/, 'the preselected card is this batch\'s pick, else Settings\' mode');
 });
 
 test('the window cannot start the hidden browser by naming its runner: only the saved mode reaches it', async () => {
@@ -173,4 +193,12 @@ test('drafting progress has its own wrapping status; it never becomes the primar
   assert.match(read('renderer/index.html'), /id="apply-start-status"[^>]*role="status"/);
   assert.match(read('renderer/pages/jobs-apply.js'), /onApplyProgress[^\n]*apply-start-status/);
   assert.doesNotMatch(read('renderer/pages/jobs-apply.js'), /onApplyProgress[^\n]*apply-go/);
+});
+
+// Code review (7 Nov 2026): the first-choice gate holds Start and replays it with the SAME arguments after the person's choice in the gate; a pick sent before it would override that choice.
+test('before Settings → Apply was ever chosen the pick is not sent: the batch follows what the person chooses in the first-choice gate', async () => {
+  const sent = [];
+  for (const chosen of [false, true]) await applyDialogStart({count: '1', pick: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z', chosen, start: async args => { sent.push(args); return {ok: true}; }});
+  assert.deepEqual(sent, [{n: 1, mode: 'settings'}, {n: 1, mode: 'settings', pick: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z'}]);
+  assert.match(read('renderer/pages/jobs-apply.js'), /chosen: applyChosen\(settings\)/, 'the page tells the model whether Settings was chosen');
 });
