@@ -67,7 +67,12 @@ const LINKED = /:\/\/|\bwww\./i;
 // a line is never sent as it was written. Each shape below BUILDS the sentence from what it names only: a count, an error class, an HTTP status, a few fixed words; the rest of the line (an exception's
 // message can quote a posting, a title, an employer, a page or a path) is dropped. A line of no shape, with a link or with a line break is only counted: `+N other warnings not sent`.
 const FIXED_WORDS = ['Anthropic API spending limit', 'Claude Code', 'Codex', 'OpenAI', 'key was refused', 'cannot go on', 'not signed in', 'not installed', 'did not answer'];   // the engine's own limit_reason and stopped words (src/ai/cost.py, src/ai/providers/cli_base.py)
-const facts = text => [...FIXED_WORDS.filter(word => text.includes(word)), ...[...text.matchAll(/\b(?:HTTP(?: Error)?|status|code)[ :]*(\d{3})\b/gi)].slice(0, 1).map(found => `HTTP ${found[1]}`)];
+const status = text => [...text.matchAll(/\b(?:HTTP(?: Error)?|status|code)[ :]*(\d{3})\b/gi)].slice(0, 1).map(found => `HTTP ${found[1]}`);
+const facts = text => [...FIXED_WORDS.filter(word => text.includes(word)), ...status(text)];
+// Notion's own reason arrives as data from the app (lib/feedback-run-warnings.js, renderer/notion-reason.js strict): this file imports nothing relative, because the AI-fixer copies it into its token-holding
+// snapshot before the AI step (tools/fixer, test/tooling/ci/feedback-ai.test.js); the sanity pattern keeps a stray string from passing as a reason.
+const SAFE_REASON = /^[\w .[\]≤≥<>=-]{1,160} \(HTTP \d{3}\)$/;
+const storeFacts = (text, reason) => [errorClass(text), reason || status(text)[0]].filter(Boolean);
 const errorClass = text => /\b([A-Z]\w*(?:Error|Exception))\b/.exec(text)?.[1];
 const withFacts = (head, list) => (list.length ? `${head}: ${list.join(', ')}` : head);
 const COUNT = /(\d+)\s+job\(s\)\s+(left for the next check|not read by AI|not scored|not enriched|not ranked|waiting, none scored this run)/i;
@@ -75,7 +80,7 @@ const SHAPES = [
   [/^AI (?:limit reached|stopped)\b/i, text => { const left = COUNT.exec(text); return `${withFacts(/^AI stopped/i.test(text) ? 'AI stopped' : 'AI limit reached', facts(text))}${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
   [/^AI unavailable \(/i, text => { const left = COUNT.exec(text); return `AI unavailable${left ? `, ${left[1]} job(s) ${left[2]}` : ''}`; }],
   [/^\d+\s+job\(s\)\s+(?:waiting|left for the next check|not read by AI|not scored|not enriched|not ranked)\b/i, text => { const left = COUNT.exec(text); return left ? `${left[1]} job(s) ${left[2]}` : ''; }],
-  [/^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i, text => { const where = /^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i.exec(text); return withFacts(`run not ${where[1].toLowerCase()} ${where[2]} ${where[3]}`, [errorClass(text), ...facts(text)].filter(Boolean)); }],
+  [/^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i, (text, reason) => { const where = /^(?:cronjob )?run not (opened|logged) (in|to) (the run history|Notion):/i.exec(text); return withFacts(`run not ${where[1].toLowerCase()} ${where[2]} ${where[3]}`, storeFacts(text, reason)); }],
   [/^Skipped job \S+:/i, text => withFacts('Skipped a job', [errorClass(text), ...facts(text)].filter(Boolean))],
 ];
 
@@ -84,10 +89,11 @@ function warningsOf(run) {
   const sent = [];
   let held = 0;
   for (const raw of Array.isArray(run.warningLines) ? run.warningLines : []) {
-    const text = String(raw).trim();
+    const text = String(raw && typeof raw === 'object' ? raw.text : raw).trim();
+    const reason = raw && typeof raw === 'object' && SAFE_REASON.test(String(raw.reason)) ? String(raw.reason) : '';
     if (!text) continue;
     const shape = /[\r\n]/.test(text) || LINKED.test(text) ? null : SHAPES.find(([pattern]) => pattern.test(text));
-    const line = shape ? shape[1](text).slice(0, WARN_CHARS) : '';
+    const line = shape ? shape[1](text, reason).slice(0, WARN_CHARS) : '';
     if (!line) { held++; continue; }
     if (!sent.includes(line)) sent.push(line);
   }

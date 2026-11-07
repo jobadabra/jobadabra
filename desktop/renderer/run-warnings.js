@@ -1,6 +1,7 @@
 // Lines of a run's log that are warnings (Notion busy, a step skipped or failed…), each once. A count of zero is not
 // one: "Enriched 1 of 1 job(s); 0 failed" is a normal report line, not a warning.
 import {where} from './store-name.js';
+import {notionReason} from './notion-reason.js';
 const WARNING = /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached|^AI stopped/i;
 const ZERO = /\b0 (?:failed|skipped)\b/gi;
 const CAP = 180;
@@ -96,21 +97,10 @@ const RAW_EXCEPTION = /^(.{3,80}?):\s*(?:[\w.]+\.)?\w+(?:Error|Exception)\b.*$/;
 // The run's own row in the run history (opened at the start, its result saved at the end), said by the engine without the store's name
 // ("run not opened in the run history", Notion's "cronjob run not logged to Notion"): the person is told which store and what was not saved (#342).
 const RUN_ROW = /^(?:cronjob )?run not (opened|logged) (?:in|to) (?:the run history|Notion):\s*(.*)$/i;   // about Notion: the engine's own wording
-// Notion's own reason behind a plain "HTTP 400". Why (5 Nov 2026, #3059): it says what was refused, but it can quote what was sent, so only its known shapes are shown, the words
-// before "instead was": they hold a column or a request path, ours, never a job's value. A list of what to refuse let an unquoted value through (review), as a prefix did in #3071.
-const NOTION_SAID = /\bHTTP Error (\d{3}): (.+)$/;
-const NOTION_SHAPES = [/^[\w .-]{1,40} is not a property that exists$/, /^[\w .-]{1,40} is expected to be [\w ]{1,30}$/,
-  /^(?:body failed validation: )?body\.[\w.[\]]{1,80} should (?:not )?be[\w ≤≥<>=.-]{0,40}$/];
-function notionReason(text) {
-  const [, code, said = ''] = NOTION_SAID.exec(text) || [];
-  const reason = said.split(/,?\s+instead was\b/i)[0].replace(/`(\d+)`/g, '$1').replace(/[.\s]+$/, '');
-  const plain = code && httpSentence(code) === `the service answered with an error (HTTP ${code})`;   // a busy or refused service keeps its sentence: it says what to do
-  return plain && NOTION_SHAPES.some(shape => shape.test(reason)) ? `${reason} (HTTP ${code})` : '';
-}
 function runRowWarning(raw) {
   const m = RUN_ROW.exec(raw);
   if (!m) return null;
-  const reason = notionReason(m[2]) || humanError(m[2]);
+  const reason = notionReason(m[2], {strict: false}) || humanError(m[2]);
   return `${m[1].toLowerCase() === 'opened' ? "The run's row could not be opened in" : "The run's result could not be saved to"} ${where()}${reason ? `: ${reason}` : ''}`;
 }
 export function plainWarning(raw) {
