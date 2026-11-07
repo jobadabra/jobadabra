@@ -228,7 +228,6 @@ test('Claude in Chrome: found in any Chrome profile, false when Chrome or the ex
 });
 
 test('Application sessions start collapsed: the pills say what needs you, and the head expands them', async () => {
-  const fs = await import('node:fs');
   const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const toggle = /id="sd-toggle"[^>]*aria-expanded="(\w+)"/.exec(html);
   assert.equal(toggle?.[1], 'false');  // what the window paints before any session exists (1 Oct 2026: the dock covered a third of the screen by default)

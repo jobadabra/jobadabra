@@ -194,7 +194,6 @@ test('the Inbound counter opens the Inbound list; again shows every match; the o
 });
 
 test('Jobs page: "New matches" (not "To review"), Inbound and Everything as options of the one Show menu', async () => {
-  const fs = await import('node:fs');
   const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const {FILTER_OPTIONS} = await import('../../../renderer/jobs-filters.js');
   const labels = FILTER_OPTIONS.map(option => option.label);

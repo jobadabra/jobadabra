@@ -70,7 +70,7 @@ test('the chooser: while a check runs only "Checking…" shows; only the person\
   assert.deepEqual(statusLines({usable: true, lines: []}, true), [{tone: 'good', text: 'Ready to use'}]);
   assert.equal(ownKeys({secrets: {ANTHROPIC_API_KEY: true}, ownSecrets: {ANTHROPIC_API_KEY: false}}).ANTHROPIC_API_KEY, false, 'Free AI\'s token is not a key');
   assert.equal(ownKeys({secrets: {ANTHROPIC_API_KEY: true}}).ANTHROPIC_API_KEY, true, 'a state without ownSecrets (older window) reads secrets');
-  const fs = await import('node:fs'), page = readScreenSource(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
   assert.match(page, /if \(aboutCli && copied\)/, 'the copied note belongs to the CLI card');
   assert.match(page, /async function pick\(id\) \{\n    problem = ''; copied = false;/);
 });
