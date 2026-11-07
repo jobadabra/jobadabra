@@ -85,7 +85,7 @@ test('read display builders preserve canonical branches and isolate authored suf
   const state={filters:[raw]};assert.equal(readFilterSummary(state,ui.t).raw,'filters set: '+raw);
   assert.equal(readEmptyReason(state,false,ui.t).raw,'no jobs on this list with your place filter ('+raw+')');
   assert.equal(readFailureReason(new Error(raw)).raw,raw);assert.equal(readFailureReason(new Error(raw)).key,null);
-  const message=readNoCards({knownList:false,seen:{cards:[{},{}]},asked:true,banner:raw});
+  const message=readNoCards({knownList:false,seen:{cards:[{},{}]},asked:true,banner:raw,aiDiagnostic:", none of them jobs by Claude's reading"});
   assert.equal(message.raw,'no job cards on this page (2 repeated items seen, none of them jobs by Claude\'s reading; a cookie banner was still open, closed with "'+raw+'")');
   assert.ok(renderRead(message,ui.t).includes(raw));assert.ok(!renderRead(message,ui.t).includes('repeated items'));
 });

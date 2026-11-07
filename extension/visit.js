@@ -12,6 +12,8 @@ import {closeConsentEverywhere} from './consent.js';
 import {mayAct} from './stop-state.js';
 import {moveTab} from './tabs.js';
 
+// Canonical diagnostic stays in its existing owner; display builders receive it without changing the protocol words.
+const NO_CARDS_AI = ", none of them jobs by Claude's reading";
 export const MAX_PAGES = 20;
 const PAUSE_MS = [1800, 3200];   // between pages, like a person reading: not to look like one, to be gentle with the site
 
@@ -209,7 +211,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       if (!cards?.length) {   // why nothing was read, said in the site's row: what the page showed, so "0 jobs" is never a mystery
         const banner = await closeConsentEverywhere(tabId);
         if (banner) state.consent = banner;
-        await tellStep(tabId, config, ticket, readNoCards({knownList,seen,asked,banner}));
+        await tellStep(tabId, config, ticket, readNoCards({knownList,seen,asked,banner,aiDiagnostic:NO_CARDS_AI}));
       }
       const answer = await api(config, '/extension/visit-read', {method: 'POST', body: JSON.stringify({session, ticket: state.ticket, url: seen.url, title: seen.title, html: seen.html, cards, knownList, place: state.place || ''})});
       if (!answer?.ok) { setReadReason(state,answer?.error || 'the app did not take the page',answer?.error ? null : 'read.notTaken'); break; }

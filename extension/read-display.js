@@ -28,10 +28,10 @@ export function readFilterSummary(state,t) {
   return readWords(`no filters set${state.note ? ` (${state.note})` : ''}: reading the page as it is`,'read.noFilters',{note:state.note ? ` (${renderRead(state.noteDisplay || state.note,t)})` : ''});
 }
 /** Build a no-cards explanation without translating the cookie button or changing its diagnostic text. */
-export function readNoCards({knownList,seen,asked,banner}) {
+export function readNoCards({knownList,seen,asked,banner,aiDiagnostic}) {
   if(knownList) return readWords('its job list shows no jobs here (filtered to your places, it may have none)','read.knownEmpty');
   const count=seen.cards?.length || 0;
-  const raw=`no job cards on this page (${count} repeated items seen${asked ? ', none of them jobs by Claude\'s reading' : ''}${banner ? `; a cookie banner was still open, closed with "${banner.slice(0,30)}"` : ''})`;
+  const raw=`no job cards on this page (${count} repeated items seen${asked ? aiDiagnostic : ''}${banner ? `; a cookie banner was still open, closed with "${banner.slice(0,30)}"` : ''})`;
   return readWords(raw,'read.noCards',{count,ai:asked ? readWords('','read.noCardsAI') : '',cookie:banner ? readWords('','read.noCardsCookie',{button:banner.slice(0,30)}) : ''});
 }
 /** Resolve the existing empty-list reason while keeping its canonical filter matching unchanged. */
