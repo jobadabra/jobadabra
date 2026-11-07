@@ -14,9 +14,15 @@ Tier 1: named affected unit/callback tests (at most about twelve files), fiction
 
 ## Progress
 
+### 1. Implement and verify audited copy
+
 - [x] Read prior scope/coverage specs and audit; establish fresh worktree and disjoint ownership. (proof: none: read-only audit and worktree preparation)
 - [x] Add failing actual-boundary regressions and establish narrow private presentation contracts. (proof: desktop/test/unit/main/settings-final-copy.test.js)
 - [x] Implement scoped producer/consumer projection and all seven catalogs. (proof: desktop/i18n/catalogs/settings-native/en.js)
 - [x] Pass named tests, catalog parity, lint and relevant source/Why gates. (proof: desktop/test/unit/main/settings-final-copy.test.js)
+### 2. Open previews and obtain owner approval
+
 - [ ] Prepare and open fictional before/after light/dark previews; obtain owner publication approval.
+### 3. Ship and supervise the PR
+
 - [ ] Ship own PR, resolve CI/review, report exact-head READY and retain merge watch.

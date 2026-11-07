@@ -34,9 +34,10 @@ export function registerStrategyDraftHandlers(ctx) {
       return demo;
     }
     const kb = Math.round(fs.statSync(storage.path('cv.pdf')).size / 1024);
-    const sent = `Sent your CV (${kb} KB)${answers.anything_else ? ' and your note' : ''} to ${aiNameOf(storage)} (${aiText(storage, '{AI:main}')})`;
+    const sentAI = aiNameOf(storage), sentModel = aiText(storage, '{AI:main}');
+    const sent = `Sent your CV (${kb} KB)${answers.anything_else ? ' and your note' : ''} to ${sentAI} (${sentModel})`;
     const sentNotes = [];
-    displayNote(sentNotes, sent, () => words(answers.anything_else ? 'draftSentNote' : 'draftSent', {kb, AI: aiNameOf(storage), model: aiText(storage, '{AI:main}')}));
+    displayNote(sentNotes, sent, () => words(answers.anything_else ? 'draftSentNote' : 'draftSent', {kb, AI: sentAI, model: sentModel}));
     // Before Claude writes anything it reads the CV (about 25 s): the bar moves by time, up to 10%.
     const started = Date.now();
     let writing = false;

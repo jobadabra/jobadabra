@@ -136,3 +136,17 @@ test('actual update-check callback translates known HTTP framing while preservin
   assert.ok(result.text.includes('418'));
   assert.ok(!result.text.includes('GitHub answered'));
 });
+
+test('resume-name deduplication stays canonical before display so translations cannot change the question shape', async () => {
+  const {createAppReminders} = await import('../../../lib/app-reminders.js');
+  const {t} = await import('../../../i18n/native.js');
+  setLocale('de');
+  const questions = [];
+  const reminders = createAppReminders({FOCUS_HOURS: [], Notification: {}, skippedLoops: new Set(),
+    getWindow: () => null, getStorage: () => {throw new Error('real storage forbidden');},
+    dialog: {showMessageBox: async options => {questions.push(options); return {response: 1};}},
+    log() {}, notify() {}, targets: {clean: value => value}, toWindow() {}});
+  // Existing taskName falls back to Find jobs for an unknown kind: the original Set therefore had one name.
+  await reminders.resumeQueue([{kind: 'search'}, {kind: 'unknown-fixture'}]);
+  assert.equal(questions[0].detail, t('native.resumeOne'));
+});

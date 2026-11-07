@@ -44,7 +44,13 @@ export function createAppReminders(ctx) {
   async function resumeQueue(jobs) {
     await closeQuietRows();
     if (!jobs.length) return;
-    const names = [...new Set(jobs.map(job => taskLabel(job.kind, pipeline.taskName)))];
+    // Why (7 Nov 2026): deduplicate canonical names first so translations cannot change the resume question’s single/multiple shape.
+    const canonical = new Map();
+    for (const job of jobs) {
+      const name = pipeline.taskName(job.kind);
+      if (!canonical.has(name)) canonical.set(name, job.kind);
+    }
+    const names = [...canonical].map(([name, kind]) => taskLabel(kind, () => name));
     const parent = getWindow() && !getWindow().isDestroyed() ? getWindow() : null;
     const {start, decidedBy} = await askResume(names, {ask: options => (parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options))})
       .catch(error => { appLog('run', 'resume question failed', {error: error.message}); return {start: false, decidedBy: 'question failed'}; });
