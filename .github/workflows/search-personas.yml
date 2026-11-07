@@ -18,7 +18,8 @@ on:
         type: boolean
         default: false
       # Why (7 Nov 2026, ps 2/6, gi's review): the repeat press is never measured (every night is one fresh press), so a by-hand run can take 2 presses for chosen
-      # personas; such a run is not a night: it is not sent to Admin (the night's history reads main's full one-press runs only).
+      # personas; such a run is not a night: it is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
+      # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565).
       presses:
         description: 'Presses per persona (1 = the night check; 2 also measures a repeat press)'
         type: choice
@@ -172,7 +173,7 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: search-personas-result, path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && inputs.presses != '2') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
         if: always() && inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run is not a night
@@ -187,6 +188,7 @@ jobs:
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
+        if: inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
         run: test "$CODE" = 0
