@@ -34,5 +34,12 @@ export default {
     "one": ", {count} are nevoie de tine",
     "few": ", {count} au nevoie de tine",
     "other": ", {count} au nevoie de tine"
-  }
+  },
+  "noReadyApplication": "Niciun post nu are încă pregătite candidatura, CV-ul și scrisoarea de intenție.",
+  "nothingToFill": "Nimic de completat: nu a rămas niciun post potrivit de completat.",
+  "jobMissing": "Acest post nu mai este în lista ta.",
+  "handoffPageMissing": "Serverul nu a furnizat nicio pagină pentru acest formular.",
+  "applicationNotPrepared": "{name}: candidatura nu este pregătită",
+  "noCv": "{name}: fără CV",
+  "nothingPrepared": "Nu s-a putut pregăti nimic: {error}"
 };

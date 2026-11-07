@@ -44,3 +44,41 @@ test('interrupted handoff translates only native copy; English control/email pay
     assert.equal(record.background.reason, 'app_closed'); assert.equal(record.background.state, 'needs_user_handoff');
   }
 });
+
+test('Ready callbacks localize display errors after registration without changing action flags or raw provider errors', async () => {
+  const {registerReadyHandlers} = await import('../../../lib/ready-handlers.js');
+  const {useKeychainReader} = await import('../../../lib/ready-site.js');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'activity-ready-'));
+  const handlers = {}, settings = {}, raw = 'Fictional {error} this Mac Keychain ⌘K';
+  let jobs = [], response = {ok: true, jobs: []}, failure = raw;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify(response), {status: 200});
+  useKeychainReader(() => null); // The fake routes never read the owner's Keychain.
+  try {
+    registerReadyHandlers({ipcMain: {handle: (name, fn) => {handlers[name] = fn;}},
+      storage: {settings: () => settings, saveSettings: patch => Object.assign(settings, patch),
+        secret: name => /TRIAL/.test(name) ? 'JPF1.fictional.token' : '', path: name => path.join(dir, name)},
+      deps: {jobs: async () => jobs, apply: {formUrl: value => value, applyOne: () => assert.fail('no page: no form opens')},
+        prepare: {kit: async () => ({ok: false, error: failure}), cv: async () => ({ok: false, error: failure})}}});
+    for (const locale of SUPPORTED_LOCALES) {
+      setLocale(locale);
+      assert.deepEqual(await handlers.readyOpen(null, 'missing'), {ok: false, error: activityText('jobMissing')});
+      assert.deepEqual(await handlers.readyRun(null), {ok: false, nothing: true, error: activityText('nothingToFill')});
+      jobs = [{code: 'fictional', url: 'https://fictional.example.test/job', title: raw, company: raw}];
+      response = {ok: false, error: raw};
+      assert.deepEqual(await handlers.readyOpen(null, 'fictional'), {...response, status: undefined}, 'provider error and upstream status field remain unchanged');
+      response = {ok: true, jobs: []};
+      assert.deepEqual(await handlers.readyOpen(null, 'fictional'), {ok: false, error: activityText('handoffPageMissing')});
+      assert.deepEqual(await handlers.readyRun(null, {top: ['fictional']}), {ok: false, nothing: true, error: activityText('nothingPrepared', {error: raw})});
+      failure = '';
+      const name = `${raw} · ${raw}`;
+      assert.deepEqual(await handlers.readyRun(null, {top: ['fictional']}), {ok: false, nothing: true,
+        error: activityText('nothingPrepared', {error: activityText('applicationNotPrepared', {name})})});
+      jobs[0].kit = true;
+      assert.deepEqual(await handlers.readyRun(null, {top: ['fictional']}), {ok: false, nothing: true,
+        error: activityText('nothingPrepared', {error: activityText('noCv', {name})})});
+      jobs = []; failure = raw;
+    }
+  } finally {globalThis.fetch = previousFetch; fs.rmSync(dir, {recursive: true, force: true});}
+});

@@ -31,5 +31,12 @@ export default {
   "overnightLeft": {
     "one": ", {count} braucht dich",
     "other": ", {count} brauchen dich"
-  }
+  },
+  "noReadyApplication": "Für keine Stelle sind Bewerbung, Lebenslauf und Anschreiben bereits fertig.",
+  "nothingToFill": "Nichts auszufüllen: Es ist keine passende Stelle zum Ausfüllen mehr übrig.",
+  "jobMissing": "Diese Stelle ist nicht mehr in deiner Liste.",
+  "handoffPageMissing": "Der Server hat keine Seite für dieses Formular bereitgestellt.",
+  "applicationNotPrepared": "{name}: Bewerbung nicht vorbereitet",
+  "noCv": "{name}: kein Lebenslauf",
+  "nothingPrepared": "Es konnte nichts vorbereitet werden: {error}"
 };

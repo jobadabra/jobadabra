@@ -34,5 +34,12 @@ export default {
     "one": ", {count} richiede il tuo intervento",
     "many": ", {count} richiedono il tuo intervento",
     "other": ", {count} richiedono il tuo intervento"
-  }
+  },
+  "noReadyApplication": "Nessuna offerta ha ancora candidatura, CV e lettera di presentazione pronti.",
+  "nothingToFill": "Nulla da compilare: non restano offerte adatte da compilare.",
+  "jobMissing": "Questa offerta non è più nel tuo elenco.",
+  "handoffPageMissing": "Il server non ha fornito una pagina per questo modulo.",
+  "applicationNotPrepared": "{name}: candidatura non preparata",
+  "noCv": "{name}: nessun CV",
+  "nothingPrepared": "Non è stato possibile preparare nulla: {error}"
 };

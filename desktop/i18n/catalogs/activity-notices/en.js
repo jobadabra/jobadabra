@@ -31,5 +31,12 @@ export default {
   "overnightLeft": {
     "one": ", {count} need you",
     "other": ", {count} need you"
-  }
+  },
+  "noReadyApplication": "No job has its application, CV and cover letter ready yet.",
+  "nothingToFill": "Nothing to fill: no good match is left to fill.",
+  "jobMissing": "This job is not in your list any more.",
+  "handoffPageMissing": "The server gave no page for this form.",
+  "applicationNotPrepared": "{name}: application not prepared",
+  "noCv": "{name}: no CV",
+  "nothingPrepared": "Nothing could be prepared: {error}"
 };

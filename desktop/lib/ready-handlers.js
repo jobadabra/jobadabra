@@ -74,7 +74,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   ipcMain.handle('readyTonight', async () => { try { return {ok: true, ...tonightOf(await jobs(), settings())}; } catch { return {ok: false}; } });
   const sendTonight = async (list = null) => {
     const mine = settings(), {batch, skipped} = await build(list || pickToSend(await jobs(), mine));
-    if (!batch.jobs.length) return {ok: false, error: 'No job has its application, CV and cover letter ready yet.', skipped};
+    if (!batch.jobs.length) return {ok: false, error: activityText('noReadyApplication'), skipped};
     const sent = await site.send(storage, withOwnAi(batch, ownKeyFor(storage.settings(), keysOf(storage))));
     return sent.ok ? {ok: true, queued: sent.queued, night: batch.night, skipped} : sent;
   };
@@ -90,7 +90,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     const plan = fillNowPlan({tonight: pickToSend(all, mine), opened: refill ? pickToRefill(all, mine) : [], waiting: waitingOn(rows, nightOf().night), again, confirmed});
     return plan.ask ? {ask: {...plan.ask, jobs: plan.ask.jobs.map(job => ({code: job.code, name: `${job.title} · ${job.company}`}))}} : plan;
   };
-  const NOTHING = 'Nothing to fill: no good match is left to fill.';
+  const NOTHING = () => activityText('nothingToFill');
   const sendPlanned = async plan => {
     const sent = await sendTonight(plan.send);
     autoSend.record(plan.send.map(job => job.code), sent);
@@ -98,7 +98,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   };
   ipcMain.handle('readySend', async (_, {confirmed = false} = {}) => {   // Fill tonight: never fills opened jobs again; asks before replacing forms still waiting
     const plan = await planFor({confirmed, refill: false});
-    if (plan.nothing) return {ok: false, nothing: true, error: NOTHING};
+    if (plan.nothing) return {ok: false, nothing: true, error: NOTHING()};
     if (plan.ask) return {ok: false, ask: plan.ask};
     return sendPlanned(plan);
   });
@@ -114,11 +114,11 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   // the night's values, and its normal fill takes over for what is left. Nothing is submitted.
   ipcMain.handle('readyOpen', async (_, code) => {
     const mine = each => each.code === String(code || ''), job = cached().find(mine) || (await jobs().catch(() => [])).find(mine);   // the kept list first: a job read takes ~13 s
-    if (!job?.url) return {ok: false, error: 'This job is not in your list any more.'};
+    if (!job?.url) return {ok: false, error: activityText('jobMissing')};
     const made = await site.handoff(storage, job.code);
     if (!made.ok) return made;
     const {applyOne, formUrl} = deps.apply || await import('./apply.js');
-    if (!handoffs.keep(made, [job.url, formUrl(job.url)])) return {ok: false, error: 'The server gave no page for this form.'};
+    if (!handoffs.keep(made, [job.url, formUrl(job.url)])) return {ok: false, error: activityText('handoffPageMissing')};
     const opened = await applyOne(storage, job.url, {title: job.title, company: job.company, location: job.location});
     appLog('ready', 'open in my browser', {job: job.code, ok: opened.ok, fields: made.snapshot?.fields?.length || 0});
     return opened.ok ? {ok: true} : opened;
@@ -143,11 +143,11 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     const failed = [];
     for (const job of chosen.filter(each => !complete(each))) {
       const name = `${job.title} · ${job.company}`;
-      if (!job.kit) { const made = await prepare.kit(job.code, name); if (!made.ok) { failed.push(made.error || `${name}: application not prepared`); continue; } }
-      if (!job.tailored || !job.letter) { const made = await prepare.cv(job.code, name); if (!made.ok) failed.push(made.error || `${name}: no CV`); }
+      if (!job.kit) { const made = await prepare.kit(job.code, name); if (!made.ok) { failed.push(made.error || activityText('applicationNotPrepared', {name})); continue; } }
+      if (!job.tailored || !job.letter) { const made = await prepare.cv(job.code, name); if (!made.ok) failed.push(made.error || activityText('noCv', {name})); }
     }
     const fresh = await jobs(), mine = new Set(codes), list = fresh.filter(job => mine.has(job.code) && complete(job));
-    if (!list.length) return {ok: false, nothing: true, error: failed.length ? `Nothing could be prepared: ${failed[0]}` : NOTHING};
+    if (!list.length) return {ok: false, nothing: true, error: failed.length ? activityText('nothingPrepared', {error: failed[0]}) : NOTHING()};
     const sent = await sendPlanned({send: list});
     if (!sent.ok) return sent;
     const started = await site.runNow(storage);
@@ -157,7 +157,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   ipcMain.handle('readyRun', async (_, {again = false, confirmed = false, top = null} = {}) => {
     if (Array.isArray(top) && top.length && prepare) return runTop(top.map(String), confirmed);
     const plan = await planFor({again, confirmed});
-    if (plan.nothing) return {ok: false, nothing: true, error: NOTHING};
+    if (plan.nothing) return {ok: false, nothing: true, error: NOTHING()};
     if (plan.ask) return {ok: false, ask: plan.ask};
     const sent = await sendPlanned(plan);
     if (!sent.ok) return sent;
