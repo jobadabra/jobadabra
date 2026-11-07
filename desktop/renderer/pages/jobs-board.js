@@ -29,7 +29,7 @@ export async function moveJob(job, stage) {
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
   jobsChanged(job, {stage: landed});
   if (landed === before) toastMessage(t('pagesJobs.kept'), t('pagesDynamicJobs.m216', {"value1": job.title || t('pagesJobs.thisJob'), "stageLabel": stageName(stageLabel(before)), "stageLabel3": stageName(stageLabel(stage))}), jobPlace(job), 'info');
-  else toastMessage(t('pagesJobs.moved'), `${job.title || t('pagesJobs.thisJob')}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
+  else toastMessage(t('pagesJobs.moved'), `${job.title || t('pagesJobs.thisJob')}: ${stageName(stageLabel(landed))}.`, jobPlace(job), 'good');
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 
@@ -42,7 +42,7 @@ function card(job) {
   if (nextStepOf(job)) body.append(el('div', 'muted small', t('pagesShortJobs.m172', {"nextStepOf": nextStepOf(job)})));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
-    .map(stage => ({label: stageLabel(stage), run: () => moveJob(job, stage)}));
+    .map(stage => ({label: stageName(stageLabel(stage)), run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: t('pagesJobs.moveTo'), disabled: true}, ...moves], t('pagesJobs.moveStage')));
   item.addEventListener('dragstart', event => { dragged = job; event.dataTransfer.setData('text/plain', job.url || ''); item.classList.add('is-dragging'); });
   item.addEventListener('dragend', () => { dragged = null; item.classList.remove('is-dragging'); });
@@ -59,7 +59,7 @@ export function renderBoard(jobs) {
     const box = el('section', `board-column${column.jobs.length ? '' : ' is-empty'}`);
     box.dataset.stage = column.stage;
     const head = el('header', 'board-column-head');
-    head.append(pill(stageLabel(column.stage), column.tone, {dot: true}), el('span', 'muted small', String(column.jobs.length)));
+    head.append(pill(stageName(stageLabel(column.stage)), column.tone, {dot: true}), el('span', 'muted small', String(column.jobs.length)));
     const list = el('ol', 'focus-list board-cards');
     list.append(...column.jobs.map(card));
     box.append(head, list);

@@ -1,6 +1,7 @@
 // Jobs page, In conversation (moved from pages/jobs-render.js, 26 Oct 2026): the opportunities that found you and are still open, above the
 // search box. In the page's first paint as last drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js, test/unit/renderer/notion-parity.test.js.
 import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -39,7 +40,7 @@ export function renderTalking(narrowed = false) {
     const round = el('span', 'focus-round');
     round.append(icon('chat'));
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), pill(stageLabel(job.stage) || t('pagesJobsFinal.recruiterLead'), 'info', {dot: true}));
+    top.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), pill(stageName(stageLabel(job.stage)) || t('pagesJobsFinal.recruiterLead'), 'info', {dot: true}));
     const meta = el('div', 'focus-meta muted small');
     const who = [job.company, job.via && job.via !== job.company ? t('pagesShortJobs.m200', {"via": job.via}) : ''].filter(Boolean).join(' ');
     [who, mixed ? (isInbound(job) ? t('pagesControlStatus.inbound') : t('pagesControlStatus.outbound')) : '', nextStepOf(job) ? t('pagesShortJobs.m201', {"nextStepOf": nextStepOf(job)}) : ''].filter(Boolean).forEach((part, i) => {

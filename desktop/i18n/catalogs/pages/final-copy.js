@@ -16,6 +16,7 @@ export const messages = {
     filling: "filling",
     stopped: "stopped",
     stuck: "stuck",
+    olderExtension: "Chrome has an older extension",
   },
   de: {
     thisMac: "dieser Mac",
@@ -33,6 +34,7 @@ export const messages = {
     filling: "wird ausgefüllt",
     stopped: "gestoppt",
     stuck: "steckt fest",
+    olderExtension: "Chrome hat eine ältere Erweiterung",
   },
   fr: {
     thisMac: "ce Mac",
@@ -50,6 +52,7 @@ export const messages = {
     filling: "remplissage",
     stopped: "arrêté",
     stuck: "bloqué",
+    olderExtension: "Chrome utilise une ancienne extension",
   },
   it: {
     thisMac: "questo Mac",
@@ -67,6 +70,7 @@ export const messages = {
     filling: "compilazione",
     stopped: "fermato",
     stuck: "bloccato",
+    olderExtension: "Chrome ha un’estensione precedente",
   },
   es: {
     thisMac: "este Mac",
@@ -84,6 +88,7 @@ export const messages = {
     filling: "rellenando",
     stopped: "detenido",
     stuck: "bloqueado",
+    olderExtension: "Chrome tiene una extensión antigua",
   },
   ro: {
     thisMac: "acest Mac",
@@ -101,6 +106,7 @@ export const messages = {
     filling: "se completează",
     stopped: "oprit",
     stuck: "blocat",
+    olderExtension: "Chrome are o extensie mai veche",
   },
   ru: {
     thisMac: "этот Mac",
@@ -118,5 +124,6 @@ export const messages = {
     filling: "заполнение",
     stopped: "остановлено",
     stuck: "застряло",
+    olderExtension: "В Chrome устаревшее расширение",
   },
 };

@@ -1,5 +1,6 @@
 // Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
 import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
 import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill, tile} from '../components.js';
@@ -229,7 +230,7 @@ function leadTargets() {
   const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
   const group = document.createElement('optgroup');
   group.label = t('pagesControlStatus.yourApplications');
-  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageLabel(job.stage)})`)));
+  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageName(stageLabel(job.stage))})`)));
   $('lead-target').replaceChildren(option('', t('pagesControlStatus.chooseJob')),
     option('new', t('pagesControlStatus.addFromDetails')), ...(tracked.length ? [group] : []));
 }
