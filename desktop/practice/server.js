@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {CAPTURE_SHIM} from './shim.js';
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+const here = import.meta.dirname;   // Why (7 Nov 2026, pj 1/4, Windows CI): new URL(import.meta.url).pathname is "/D:/a/..." on Windows and made "D:\D:\a\..."
 export const RECORDED = path.resolve(here, '..', 'e2e', 'recorded');
 const VENDOR = path.resolve(here, '..', 'e2e', 'vendor');
 const BODY_CAP = 1_000_000;
