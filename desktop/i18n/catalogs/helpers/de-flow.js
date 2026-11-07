@@ -367,7 +367,7 @@ export const messages = {
   "proCreditTip": "Pro ({promise}): keine Bewerbungsgrenze. Der Balken zeigt das KI-Restguthaben; Ihr eigener KI-Schlüssel ist unbegrenzt und schont es.",
   "trackingNotionWorks": "Verfolgung, Notion und Export funktionieren weiter.",
   "trackingWorks": "Verfolgung und Export funktionieren weiter.",
-  "applicationsUsed": "{used} von {limit} Bewerbungen genutzt",
+  "applicationsUsed": "{used}/{limit} Bewerbungen genutzt",
   "freeEndedTip": "Kostenloser Plan: {used} von {limit} Bewerbungen genutzt und kostenlose Tage vorbei. Neue Bewerbungen und Suchen sind pausiert. {tracking} Ein Lizenzschlüssel hebt die Grenze auf. Pro ist ein {promise}.",
   "freeActiveTip": "Kostenloser Plan: {used} von {limit} Bewerbungen genutzt · {days}. Kostenlos bis {limit} Bewerbungen und 60 Tage erreicht sind, je nachdem, was später eintritt; dann Pro, ein {promise} (bald). (Ihr Tagesziel unter Fokus ist separat.)",
   "interviewsCount": {
