@@ -297,17 +297,23 @@ function renderSaved() {
     const jobLines = el('div', '');
     const cellJob = interviewJob(row, job, {links: inNotion()});
     let openPicker = () => {};
+    // Why (7 Nov 2026, dv 4/5; owner: "Small buttons; names as links (Recommended)" — "The table's company names become plain dark text links (no border, so rows don't grow)"): a name in a table cell is an anchor, never a button.
+    const nameLink = (title, run) => {
+      // No href: a `#` link would let a middle or ⌘-click open the app's own page in a new window (review, 7 Nov 2026); role + tabindex + Enter keep it a keyboard link.
+      const link = Object.assign(el('a', 'iv-name-link', cellJob.name), {title, tabIndex: 0});
+      link.setAttribute('role', 'link');
+      link.addEventListener('click', run);
+      link.addEventListener('keydown', event => { if (event.key === 'Enter') link.click(); });
+      return link;
+    };
     if (cellJob.kind === 'job') {
       // The job's name opens it in the Jobs view (only that job listed).
-      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: t('pagesInterviews.openJobsList')});
-      open.addEventListener('click', () => { openView('jobs'); showJobsIn(cellJob.name, [job.url]); });
+      const open = nameLink(t('pagesInterviews.openJobsList'), () => { openView('jobs'); showJobsIn(cellJob.name, [job.url]); });
       jobLines.append(el('b', '', ''));
       jobLines.firstChild.append(open);
       if (cellJob.role) jobLines.append(el('div', 'muted small', cellJob.role));
     } else if (cellJob.kind === 'notion') {
-      const open = Object.assign(el('button', 'link', cellJob.name), {type: 'button', title: t('pagesInterviews.jobNotListed')});
-      open.addEventListener('click', event => window.pilot.openNotion(cellJob.notion, event.metaKey));
-      jobLines.append(open);
+      jobLines.append(nameLink(t('pagesInterviews.jobNotListed'), event => window.pilot.openNotion(cellJob.notion, event.metaKey)));
     } else {
       const link = Object.assign(el('button', 'link small', t('pagesJobs.linkJob')), {type: 'button', title: t('pagesDynamicFocusInterviews.m207', {"storeName": storeName()})});
       jobLines.append(el('span', 'muted', cellJob.name), el('div', '', ''));

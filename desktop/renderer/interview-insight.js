@@ -98,7 +98,7 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
   const head = el('div', 'iv-insight-head');
   const title = el('div', 'iv-insight-title');
   const h2 = el('h2', 'with-glyph');
-  const toggle = Object.assign(el('button', 'ghost iv-insight-toggle'), {type: 'button', title: collapsed ? t('helperFlow.showInsights') : t('helperFlow.hideInsights')});
+  const toggle = Object.assign(el('button', 'secondary small-button iv-insight-toggle'), {type: 'button', title: collapsed ? t('helperFlow.showInsights') : t('helperFlow.hideInsights')});
   toggle.setAttribute('aria-expanded', String(!collapsed));
   toggle.setAttribute('aria-label', collapsed ? t('helperFlow.showInsights') : t('helperFlow.hideInsights'));
   toggle.append(icon('chevron'));  // its click (or Enter) bubbles to the bar, which does the folding

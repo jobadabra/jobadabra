@@ -52,7 +52,8 @@ export const interviewsKit = base => {
     stats: () => $('#iv-lib-stats').textContent.trim(),
     /** The row's cells as text: [date.., job, .., outcome] by column. */
     cell: (id, column) => row(id).querySelectorAll('td')[column].innerText.replace(/\s+/g, ' ').trim(),
-    jobButton: (id, name) => [...row(id).querySelectorAll('td')[1].querySelectorAll('button')].find(one => one.textContent.includes(name)),
+    /** The job cell's control with that name: the company name is a link (an `a`), "Link a job" a button (owner, 7 Nov 2026, dv 4/5). */
+    jobButton: (id, name) => [...row(id).querySelectorAll('td')[1].querySelectorAll('button, a.iv-name-link')].find(one => one.textContent.includes(name)),
     /** Type into a box as a person does (the page listens to input) and wait for the number of rows. */
     type: async (selector, value, count) => { const box = $(selector); box.value = value; box.dispatchEvent(new window.Event('input', {bubbles: true})); await base.until(() => ids().length === count, `${count} rows after "${value}" in ${selector}`); },
     pick: async (selector, value, count) => { const box = $(selector); box.value = value; box.dispatchEvent(new window.Event('change', {bubbles: true})); await base.until(() => ids().length === count, `${count} rows after ${selector} = "${value}"`); },
