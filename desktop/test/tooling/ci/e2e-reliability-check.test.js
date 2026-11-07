@@ -366,6 +366,7 @@ test('a weight-only edit to the real apply suite requires rule F but changes no 
   assert.ok(harnessProblems([{file: suite, before: 'export const stepSeconds = {"slow":90,"fast":5};', after: 'export const stepSeconds = {"fast":90,"slow":5};'}], []).length);
 });
 
+// Guard: release — if readBlobs reads a missing path or a non-file as text, checkPush judges the wrong text and can pass a push it should block (it fails closed instead).
 // Why (7 Nov 2026, ts 6/7): checkPush reads every changed file from both sides in ONE git process; this is that read played on its own: a missing path is null, a multi-byte text keeps its bytes, a directory is refused.
 test('readBlobs reads many files at once: null for a path that is not there, exact text with multi-byte characters, and a directory refuses', () => {
   const {root: dir, base} = history({'a.txt': 'héllo wörld ✓\nline two\n', 'sub/b.txt': 'b\n'}, {'sub/b.txt': 'changed\n'});
