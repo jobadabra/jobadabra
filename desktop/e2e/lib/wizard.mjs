@@ -34,6 +34,8 @@ export async function runWizard(ctx) {
   try {
   await ctx.run('the app starts on the welcome screen', async () => {
     await ctx.expectStep('welcome');
+    // Welcome starts in English with a flagged language row below its card, never a separate step (owner, 7 Nov 2026).
+    await page.locator('.step[data-step="welcome"] #wizard-language-choice').waitFor();
     await page.getByRole('button', {name: 'Start'}).waitFor();
     // Start opens the AI step; its cards are checked by integration/app/screen-wizard.test.js (moved 1 Nov 2026).
     await page.locator('.step[data-step="welcome"] [data-next]').click();

@@ -1,6 +1,6 @@
 # Desktop multi-language
 
-Status: approved by the owner on 7 November 2026: open a spec PR, then proceed with implementation. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. This phase covers the desktop app only.
+Status: approved by the owner on 7 November 2026. Latest UX clarification: start in English; flagged dropdown in a full-row card directly below the Welcome card; no additional wizard step; later switch in Settings → Overview. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. This phase covers the desktop app only.
 
 ## Intent
 
@@ -24,8 +24,8 @@ The worker's design review identified packaging inclusion, HTML ownership, early
 
 ## Goals and completion criteria
 
-1. All seven languages are available at first launch and in Settings → Appearance, identified by their native names.
-2. The initial automatic choice follows the operating system's preferred supported language; unsupported languages fall back to English. A saved explicit choice wins. Regional tags such as de-CH resolve to a supported base language.
+1. All seven languages are available through a flagged dropdown in a full-row card directly below the existing Welcome card and in Settings → Overview, identified by their native names. No extra wizard step is added.
+2. A fresh install starts in English. The person can switch using the Welcome dropdown; an optional System default choice resolves the operating system’s supported preference with English fallback. A saved explicit choice wins. Regional tags such as de-CH resolve to a supported base language.
 3. The choice survives app restarts. Language switching respects the existing unsaved-change protection; it must not silently discard a Profile or Strategy draft.
 4. App-owned desktop chrome is translated: setup, navigation, every page and drawer, ordinary dialogs, command palette, labels, statuses, empty/loading/error messages, placeholders, tooltips, accessibility names, and app-authored native menu/dialog/notification text.
 5. Dates, numbers, relative times, and plural forms follow the selected display language. Currency amounts retain their original currency and meaning; time zones retain their existing semantics.
@@ -65,7 +65,7 @@ Use `desktop/i18n/` for a dependency-free module and catalog namespaces usable b
 
 Add a small renderer bootstrap module: resolve and set the display locale, then dynamically import app.js. This happens before importing page modules, so their module-level messages cannot capture an uninitialized default. Reload after a successful language change rather than maintaining a second runtime repaint lifecycle. Save a validated display preference using the existing local display-settings path. A narrow IPC handler exposes locale information and validates selection against the seven supported languages; no profile or Notion migration is needed.
 
-Add an existing-style select menu to Settings → Appearance and a compact selector to the welcome step. Include System default and the seven native language names. Expose the action through the existing command palette. Set the document's `lang` attribute.
+Add an existing-style select menu to Settings → Overview and a full-row language card directly below the existing Welcome card, with flags and native language names in its dropdown. Keep the four existing wizard steps and the current Start action. The language card is a sibling of the Welcome card, outside its full-card Start button overlay. Include System default and the seven native language names. Expose the action through the existing command palette. Set the document's `lang` attribute.
 
 A switch checks the existing save-bar anyUnsaved() registry first. When edits exist, keep both the saved and active language unchanged, restore the selector, and ask the person to save or discard their edits using the existing save bar. Do not auto-discard drafts. With no drafts, persist the validated choice; only on success update native locale and reload the renderer. Explain beside the selector that changing language reloads the view. A failed write retains the prior selection. The existing beforeunload guard stays in place. Running background jobs stay in the main process and are not restarted by a renderer reload.
 
@@ -83,12 +83,14 @@ Use the same catalog module for app-owned menu labels, notifications, native con
 
 Use one branch/worktree per pull request and the project's ship script. Only the owner merges.
 
-0. **[ml] 1/4 Desktop localization specification and plan** — coordinator: this design, audit evidence, implementation plan, and links to the requested Notion progress record.
-1. **[ml] 2/4 Desktop language foundation and selector** — coordinator: shared i18n runtime, startup/settings/IPC wiring, selectors, core formatting, packaging, and focused unit tests. Establish and publish the exact worker API and namespaces before screen migration.
-2. **[ml] 3/4 Translate desktop screens in seven languages** — worker: HTML annotations and page/drawer/component strings, with namespaces partitioned by screen. This PR depends on the foundation. It must not alter backbone code or behavior. The migration may be divided into explicit sequential commits within this PR, never declared finished with known untranslated app-owned screens.
-3. **[ml] 4/4 Translate native desktop text and verify coverage** — coordinator: app-authored menus/dialogs/notifications, remaining locale formatting, cross-screen coverage, and final integration checks. Can proceed in parallel with screen migration once the foundation is stable because file ownership is disjoint.
+0. **[ml] 1/6 Desktop localization specification and plan** — coordinator: this design, audit evidence, implementation plan, and links to the requested Notion progress record.
+1. **[ml] 2/6 Desktop language foundation and selector** — coordinator: shared i18n runtime, startup/settings/IPC wiring, selectors, core formatting, packaging, and focused unit tests. Establish and publish the exact worker API and namespaces before screen migration.
+2. **[ml] 3/6 Translate desktop static screens in seven languages** — first Sol-low worker: HTML annotations and static screen catalog namespaces. This PR depends on the foundation. It must not alter backbone code or behavior. The migration may be divided into explicit sequential commits within this PR, never declared finished with known untranslated app-owned screens.
+3. **[ml] 4/6 Translate dynamic desktop pages in seven languages** — second Sol-low worker: renderer/pages except coordinator-owned startup, core, shared, nav and language modules, plus page catalogs and their registration.
+4. **[ml] 5/6 Translate desktop helpers and drawers in seven languages** — third Sol-low worker: top-level renderer helpers and job-drawer modules, plus helper catalogs and their registration.
+5. **[ml] 6/6 Translate native desktop text and verify coverage** — coordinator: app-authored menus/dialogs/notifications, remaining locale formatting, cross-screen coverage, and final integration checks. Can proceed in parallel with screen migration once the foundation is stable because file ownership is disjoint.
 
-Ownership: the coordinator owns bootstrap/app.js, pages/shared.js, pages/core.js, os.js, i18n runtime and common/formatting/native namespaces, IPC, packaging, and native lib files. The coordinator alone adds the selector markup to index.html in foundation PR. After that foundation is available, the worker alone owns index.html and renderer page/drawer/component migration, including screen catalog namespaces; it does not edit the coordinator-owned files. Screen-specific date/number calls belong to the worker; shared formatter runtime belongs to the coordinator. Before worker implementation, publish exact exports and namespace conventions in the brief. Shared dependencies wait for foundation PR rather than colliding on a file. Do not ask workers to maintain conflicting copies of the runtime or catalogs. A worker owns and ships its own PR; the coordinator reviews and sends corrections back.
+Ownership: the coordinator owns bootstrap/app.js, pages/shared.js, pages/core.js, os.js, i18n runtime and common/formatting/native namespaces, IPC, packaging, and native lib files. The coordinator mounts selector markup in pages/language.js in the foundation PR; the only foundation edit to index.html is the bootstrap script entrypoint. After that foundation is available, the worker alone owns index.html and renderer page/drawer/component migration, including screen catalog namespaces; it does not edit the coordinator-owned files. Screen-specific date/number calls belong to the worker; shared formatter runtime belongs to the coordinator. Before worker implementation, publish exact exports and namespace conventions in the brief. Shared dependencies wait for foundation PR rather than colliding on a file. Do not ask workers to maintain conflicting copies of the runtime or catalogs. A worker owns and ships its own PR; the coordinator reviews and sends corrections back.
 
 ## Verification
 
@@ -109,7 +111,7 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 
 ### 2. Implementation and review
 
-- [ ] Implement and verify the translation backbone and selectors.
+- [x] Implement and verify the translation backbone and selectors (proof: desktop/test/unit/renderer/language.test.js).
 - [ ] Migrate all desktop screen text and seven catalogs.
 - [ ] Translate app-owned native desktop text and finish formatting.
 - [ ] Verify coverage, previews, and focused tests; open and supervise PRs.

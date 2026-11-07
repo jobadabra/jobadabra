@@ -14,7 +14,7 @@ let found;
 
 before(() => {
   if (needsElectron.skip) return;
-  found = probeWindow({settings: {setupDone: false, wizardStep: 'welcome'}, env: {JOBADABRA_SHOT_WIDTH: String(MIN_WIDTH)}, timeout: 120000, script: async kit => {
+  found = probeWindow({settings: {setupDone: false, displayLanguage: 'en', wizardStep: 'welcome'}, env: {JOBADABRA_SHOT_WIDTH: String(MIN_WIDTH)}, timeout: 120000, script: async kit => {
     await kit.until(() => document.querySelector('.step[data-step="welcome"]:not([hidden])'), 'the welcome step');
     document.getElementById('app').hidden = true;
     document.getElementById('wizard').hidden = false;

@@ -71,6 +71,7 @@
       "main.js",
       "preload.cjs",
       "lib/**",
+      "i18n/**",
       "cv/**",
       "renderer/**",
       "demo/**",
@@ -145,7 +146,13 @@
     "compression": "maximum",
     "electronLanguages": [
       "en",
-      "en-US"
+      "en-US",
+      "de",
+      "fr",
+      "it",
+      "es",
+      "ro",
+      "ru"
     ]
   }
 }

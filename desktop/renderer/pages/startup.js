@@ -20,6 +20,7 @@ import {icon} from '../icons.js';
 import {goStep} from './wizard.js';
 import {bindToast} from './linkedin-consent.js';
 import {plainError} from '../run-warnings.js';
+import {firstWizardStep} from '../language-change.js';
 
 // toastMessage(title, body, target, tone) or toastMessage({title, body, target, tone, action, hint}). target: where a click leads (renderer/targets.js),
 // or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/unit/renderer/toast-targets.test.js
@@ -88,8 +89,7 @@ export async function init() {
     if (panel) setTimeout(() => { shared.selectedRun = panel === 'live' ? null : Number(panel) || panel; openActivity(true); }, 0);
   } else {
     show($('wizard'));
-    const saved = shared.state.settings.wizardStep === 'goals' ? 'cv' : shared.state.settings.wizardStep;  // the old goals step: now part of the CV step
-    const resume = ['letter', 'hosted', 'extras'].includes(saved) ? 'draft' : saved === 'notion' ? 'cv' : saved || 'welcome';  // removed optional steps resume at strategy; the old Notion step resumes at CV
+    const resume = firstWizardStep(shared.state.settings); // Welcome keeps its optional language dropdown; no extra step (owner, 7 Nov 2026).
     if (resume === 'draft') toDraft(); else goStep(resume);
   }
 
