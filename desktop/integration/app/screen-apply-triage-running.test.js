@@ -3,6 +3,7 @@
 // The owner's scenario (7 Nov 2026, two screenshots): press Check 10 jobs -> an empty grey bar, no words, an inline Cancel AND Close AND a greyed Check, the number still an input.
 // Expected: at once "Checking 1 of N · <company>", a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
 // The read is the page's own `runTriage` fed a held read (the preload bridge is frozen, so a test cannot replace window.pilot.triageRead); Stop is the real wired button.
+// Every wait has a 15 s cap (hang guard, named by what it waited for): nine of them stay inside the window's 180 s timeout, so a stall is reported by stage, not by a killed launch.
 // Job: serve stored answers
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
@@ -18,9 +19,9 @@ let screen;
 before(() => {
   if (needsElectron.skip) return;
   screen = probeWindow({files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
-    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
+    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu', 15000);
     await kit.go('jobs');
-    await kit.until(() => (window.__jp.shared.allJobs || []).length >= 3, 'the three jobs to be listed');
+    await kit.until(() => (window.__jp.shared.allJobs || []).length >= 3, 'the three jobs to be listed', 15000);
     const {runTriage} = await import('./pages/jobs-triage.js');
     const shown = element => !!element && !element.hidden && element.offsetParent !== null;
     const look = () => {
@@ -36,22 +37,22 @@ before(() => {
       };
     };
     document.getElementById('triage-open').click();
-    await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
-    await kit.until(() => document.getElementById('triage-start').textContent.trim() === 'Check 3 jobs', 'the popup to offer Check 3 jobs');
+    await kit.until(() => document.getElementById('triage-dialog').open, 'the popup', 15000);
+    await kit.until(() => document.getElementById('triage-start').textContent.trim() === 'Check 3 jobs', 'the popup to offer Check 3 jobs', 15000);
     const idle = look();
     const jobs = (window.__jp.shared.allJobs || []).slice(0, 3), gates = new Map();
     const read = job => new Promise(release => gates.set(job.url, release));
     const run = runTriage(jobs, read);
-    const first = await kit.until(() => { const now = look(); return now.words ? now : ''; }, 'words on the progress while the first read is held');
+    const first = await kit.until(() => { const now = look(); return now.words ? now : ''; }, 'words on the progress while the first read is held', 15000);
     // The owner's case: the first read is still held and the dialog must still change by itself (the seconds), not only when a read ends.
-    const ticked = await kit.until(() => { const now = look(); return now.elapsed !== first.elapsed ? now : ''; }, 'the seconds to move while the first read is held');
+    const ticked = await kit.until(() => { const now = look(); return now.elapsed !== first.elapsed ? now : ''; }, 'the seconds to move while the first read is held', 15000);
     gates.get(jobs[0].url)({eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true});
-    const second = await kit.until(() => { const now = look(); return /2 of 3/.test(now.words) ? now : ''; }, 'the second job to be named while its read is held');
+    const second = await kit.until(() => { const now = look(); return /2 of 3/.test(now.words) ? now : ''; }, 'the second job to be named while its read is held', 15000);
     document.getElementById('triage-cancel').click();
-    const stopping = await kit.until(() => { const now = look(); return now.stopDisabled ? now : ''; }, 'Stop to say it is stopping');
+    const stopping = await kit.until(() => { const now = look(); return now.stopDisabled ? now : ''; }, 'Stop to say it is stopping', 15000);
     gates.get(jobs[1].url)(null);
     const done = await run;
-    const after = await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog to come back');
+    const after = await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog to come back', 15000);
     return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length};
   }});
 });
