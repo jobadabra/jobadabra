@@ -46,9 +46,9 @@ on:
         description: 'Set by a chain itself: the run id of the link before this one (its artifact holds the snapshot and the summary)'
         required: false
       video:
-        description: 'Record a video of the session (agent-video.webm in the artifact, 14 days): to size it before any upload'
+        description: 'Record this manual session (14 days; untick to disable). Scheduled sessions keep recording off.'
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write   # the agent-memory branch (the notes of the nights)
@@ -122,7 +122,7 @@ jobs:
         run: npm ci || npm install
       # Why (4 Nov 2026, filmed run 41860394127 kept no video): the recorder finds Playwright's own ffmpeg beside its browsers (ready-fill/fill-video.mjs findFfmpeg), and this job installs none, so a run with video on filmed nothing. Only a filmed run pays for it.
       - name: Playwright's ffmpeg, for a filmed run
-        if: inputs.video
+        if: inputs.video && !inputs.scheduled
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: npx playwright-core install ffmpeg
@@ -179,7 +179,7 @@ jobs:
           AGENT_CHAIN_LINKS: ${{ inputs.chain_links }}
           AGENT_RULES_OFF: ${{ inputs.rules_off }}
           AGENT_KIND: ${{ env.IS_REPLAY && 'replay' || 'night' }}   # Why (5 Nov 2026, AI user agents 9/12 part 2b, owner: "Nightly and replays, replays labelled"): the Admin tab lists both and marks a replay; a run that picks a shape or a tier is a measurement too, so it never counts as a night (code review of the tier input)
-          AGENT_VIDEO: ${{ inputs.video && '1' || '' }}   # Why (4 Nov 2026, AI user agents 9/12, owner): a video of each run, sized first; off at night until its size is known
+          AGENT_VIDEO: ${{ inputs.video && !inputs.scheduled && '1' || '' }}   # Why (7 Nov 2026, owner): manual investigations record by default; scheduled nights retain their existing storage cost
           AGENT_MEMORY_DIR: ${{ !env.IS_REPLAY && steps.prepare.outputs.memory_dir || '' }}   # a replay knows no earlier night, so its runs compare
           AGENT_CHANGED_LOG: ${{ !env.IS_REPLAY && steps.prepare.outputs.changed_log || '' }}   # same replay condition as the memory: no earlier night, no "changed since"
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
@@ -254,12 +254,14 @@ jobs:
           IN_SCREEN: ${{ inputs.screen }}
           IN_APP_REF: ${{ inputs.app_ref }}
           IN_ENGINE: ${{ inputs.engine }}
+          IN_VIDEO: ${{ inputs.video }}
+          IN_SCHEDULED: ${{ inputs.scheduled }}
         run: |
           STATE=e2e-artifacts/agent/agent-chain.json
           ENDED="$(jq -r .ended "$STATE")"
           if [ -n "$ENDED" ]; then echo "Chain $(jq -r .chain "$STATE") ended after link $(jq -r .link "$STATE"): $ENDED" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          # Why (5 Nov 2026, code review): every setting of link 1 goes on to the next link, or the chain would mix states (a different app, rules on, the screen reader on).
-          ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")")
+          # Why (7 Nov 2026, owner): carry every setting, including recording and scheduled status, so a later chain link cannot undo a manual video opt-out or start recording a scheduled run.
+          ARGS=(-f chain_from="$GITHUB_RUN_ID" -f tier="$(jq -r .tier "$STATE")" -f seed="$(jq -r .plan.seed "$STATE")" -f video="$IN_VIDEO" -f scheduled="$IN_SCHEDULED")
           add() { if [ -n "$2" ]; then ARGS+=(-f "$1=$2"); fi; }
           add plan "$IN_PLAN"; add shape "$IN_SHAPE"; add rules_off "$IN_RULES_OFF"; add screen "$IN_SCREEN"; add app_ref "$IN_APP_REF"; add engine "$IN_ENGINE";
           gh workflow run ai-user-agents.yml --ref "$GITHUB_REF_NAME" "${ARGS[@]}"

@@ -47,9 +47,10 @@ function publish() {
   if (!artifacts || !fs.existsSync(path.join(artifacts, 'agent-session.json'))) { console.log('No session summary: nothing is pushed to the memory branch.'); return; }
   let session = null;
   try { session = JSON.parse(fs.readFileSync(path.join(artifacts, 'agent-session.json'), 'utf8')); } catch (error) { console.log(`The session summary is unreadable (${error.message}): nothing is pushed.`); return; }
-  if (!nightWorked(session)) { console.log(`The night stopped early (${session.stopped}): the notes stay in the artifact, nothing is pushed to the memory branch.`); return; }
+  const complete = nightWorked(session);
+  if (!complete) console.log(`The night is partial (${session.stopped}): save notes and pending goals; preserve the completed-night checkpoint.`);
   checkoutMemory();
-  const files = memoryCommitFiles(path.join(artifacts, 'agent-memory-out'), {sha: git(['rev-parse', 'HEAD']).trim(), today: today()});
+  const files = memoryCommitFiles(path.join(artifacts, 'agent-memory-out'), {sha: git(['rev-parse', 'HEAD']).trim(), today: today(), complete});
   const result = pushMemory({dir: MEMORY_DIR, files, git: args => git(args, MEMORY_DIR), message: `Night ${today()}: notes and coverage`});
   console.log(result.pushed ? `Pushed ${Object.keys(files).length} files to ${BRANCH}.` : `Nothing changed: ${BRANCH} is as it was.`);
 }

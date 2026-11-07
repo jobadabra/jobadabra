@@ -29,7 +29,7 @@ Controls marked [not allowed] are refused (they delete, send, sign in, leave the
  */
 export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null, pressed = () => null}) {
   const text = {type: 'string'};
-  return {actions: ['note'], without: ['report_bug'], properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), expected: text, observed: text, why: text, verdict: choice(GOAL_VERDICTS)},
+  return {actions: ['note'], without: ['report_bug'], finalVerdict: true, properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), expected: text, observed: text, why: text, verdict: choice(GOAL_VERDICTS)},
     async take(input, row, {steps = []} = {}) {
       const checked = validateNote({...input, view: input.view || row.view}, {knowledgeIds, views});
       if (!checked.ok) { row.refused = checked.why; return `Refused: ${checked.why}. Note it again with an argument, or leave it.`; }
@@ -92,6 +92,9 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
   }
 }
 
+/** Prefer a shared-budget/broker stop; otherwise preserve the first goal interrupted before its final verdict. */
+const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== 'done')?.stopped || 'goals';
+
 /**
  * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
@@ -102,16 +105,16 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [], unfunded = [];
-  let stoppedByBroker = '', actorCalls = 0;
+  let stopped = '', actorCalls = 0;
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
-    if (callsLeft <= 0 || minutesLeft <= 0) break;
+    if (callsLeft <= 0 || minutesLeft <= 0) { stopped = callsLeft <= 0 ? `calls ${maxCalls}` : `minutes ${maxMinutes}`; break; }
     const mine = [];
     let steps = perGoal;
     if (meter) {   // Why (7 Nov 2026, #3378): the steps of a goal are what the token meter can pay for on this engine, so a night never plans goals its cap refuses
       const left = plan.goals.length - results.length - unfunded.length;
       const next = goalSteps({left: meter.usable(), cost: stepCost({used: meter.actorUsed(), calls: actorCalls, fallback: meter.stepTokens}), goalsLeft: left, maxPerGoal: perGoal});
-      if (!next.steps) { unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
+      if (!next.steps) { stopped = 'budget'; unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
       steps = next.steps;
       log(`  goal ${goal.n}: ${steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
     }
@@ -125,13 +128,14 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     results.push(goalResult(goal, result));
     ends.push({n: goal.n, stopped: result.stopped, steps: result.steps.map(stepWords)});   // Why (5 Nov 2026, SC 2/2): a chain hands on the goals that did not end on done, and the steps of the one that stopped
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
-    if (result.stopped.startsWith('api:')) { stoppedByBroker = result.stopped; break; }
+    if (result.stopped.startsWith('api:')) { stopped = result.stopped; break; }
   }
   await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
   const observations = {};
-  for (const row of summary.goals) if (row.verdict !== 'worked') (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
-  return {summary, findings, observations, trace, spent, notes, ends, unfunded, played: results.map(each => each.n), stopped: stoppedByBroker || 'goals'};
+  for (const row of summary.goals) if (!['worked', 'not-started'].includes(row.verdict)) (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
+  const completed = ends.filter(end => end.stopped === 'done').map(end => end.n);
+  return {summary, findings, observations, trace, spent, notes, ends, unfunded, completed, played: results.map(each => each.n), stopped: runStop(stopped, ends)};
 }

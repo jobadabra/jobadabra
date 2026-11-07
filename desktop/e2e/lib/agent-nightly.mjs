@@ -4,7 +4,6 @@
 // the night asks the broker once, in one tiny call, who answers; Codex answering = the full session, Claude answering because Codex ran out = half of it, a broker that refuses = no session and the reason in the summary.
 import fs from 'node:fs';
 import path from 'node:path';
-import {isCapStop} from './agent-tier.mjs';
 import {STEP_TOKENS} from './agent-steps.mjs';
 
 export const FULL = {minutes: 20, calls: 120, steps: 100};
@@ -46,8 +45,8 @@ export function lastSessionCommit(dir) {
   try { return String(JSON.parse(fs.readFileSync(path.join(dir, 'last.json'), 'utf8')).sha || ''); } catch { return ''; }   // Why (3 Nov 2026): a first night has no file; a damaged one only widens the changed-since list to the last 30 commits.
 }
 
-/** The files of tonight's memory commit: everything the suite left in `out` (notes/, coverage.json) plus last.json, {path: text}. */
-export function memoryCommitFiles(out, {sha, today}) {
+/** The files of tonight's memory commit. Partial runs keep notes/pending work but omit last.json, preserving the completed-night checkpoint already on the branch. */
+export function memoryCommitFiles(out, {sha, today, complete = true}) {
   const files = {};
   const walk = (folder, prefix) => {
     for (const entry of fs.readdirSync(folder, {withFileTypes: true})) {
@@ -56,10 +55,10 @@ export function memoryCommitFiles(out, {sha, today}) {
     }
   };
   if (fs.existsSync(out)) walk(out, '');
-  files['last.json'] = `${JSON.stringify({sha, at: today}, null, 1)}\n`;
+  if (complete) files['last.json'] = `${JSON.stringify({sha, at: today}, null, 1)}\n`;
   return files;
 }
 
-/** Whether a night was worked to its end: false for a summary whose session stopped on a broker error (`api: …`), which keeps what it found but must not move the changed-since window. */
-// Why (5 Nov 2026, Gitar on #3220): a night that stopped at the run's token cap ended before its later goals, exactly like a broker stop, so it keeps its notes but does not move the changed-since window or record the plan's pairs as seen; relabelling the cap stop for the report must not make it look worked.
-export const nightWorked = session => Boolean(session) && !String(session.stopped || '').startsWith('api:') && !isCapStop(session.stopped);
+/** Whether every planned goal returned a final verdict, allowing the completed-night checkpoint to advance. Legacy unfunded lists override the old misleading goals label. */
+// Why (7 Nov 2026, run 42327808352): budget sizing stopped before four goals without refusing a call; its old `goals` label advanced the checkpoint anyway. Only a plan with final verdicts may advance it.
+export const nightWorked = session => Boolean(session) && ['goals', 'done'].includes(session.stopped) && !session.unfunded?.length && !(session.goals || []).some(goal => goal.verdict === 'not-started');

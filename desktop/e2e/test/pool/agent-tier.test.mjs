@@ -42,11 +42,11 @@ test('a screenshot is a flat price, not its bytes: a request with a big picture 
 test('under the cap the report shows tokens against it with each part; at the cap it says the run stopped there', async () => {
   const under = runBudget();
   await under.actor(asks(60_000))(sized(60_000)); await under.reader(asks(18_000, 'mid'))(sized(18_000)); await under.judge(asks(6_000, 'mid'))(sized(6_000));
-  assert.equal(tokensLine(under.state, 'large'), 'Tokens: 84k / 250k (actor 60k, screen reader 18k, second opinion 6k). Actor tier: large.');
+  assert.equal(tokensLine(under.state, 'large'), 'Tokens counted toward the run cap: 84k / 250k (actor 60k, screen reader 18k, second opinion 6k). Actor tier: large.');
   const capped = runBudget({capTokens: 50_000, reserve: 5_000});
   await capped.actor(asks(30_000))(sized(30_000));
   await assert.rejects(capped.actor(asks(30_000))(sized(30_000)), /cap was reached/);
-  assert.equal(tokensLine(capped.state, 'small'), 'Stopped at the 50k cap: 30k / 50k tokens; the notes made so far are kept (actor 30k, screen reader 0k, second opinion 0k). Actor tier: small.');
+  assert.equal(tokensLine(capped.state, 'small'), 'Stopped at the 50k cap: 30k / 50k counted tokens; the notes made so far are kept (actor 30k, screen reader 0k, second opinion 0k). Actor tier: small.');
 });
 
 test('a refused broker call is not counted and its error reaches the loop, which stops the night as before', async () => {

@@ -30,7 +30,8 @@ export function runRecord(session, meta, video = null) {
       trail: (note.trail || []).map(step => wordsOf(step, 200)),
     })),
     trace: trace.map(row => ({goal: row.goal, n: row.n, action: wordsOf(row.action, 20), did: wordsOf(row.did, 160), view: wordsOf(row.view, 40), failed: Boolean(row.failed), title: wordsOf(row.title, 160)})),
-    cost: {calls: summary.cost.calls, tokens: summary.cost.tokensIn + summary.cost.tokensOut, minutes: Math.round(summary.cost.ms / 6000) / 10},
+    cost: {calls: summary.cost.calls, tokens: summary.cost.tokensIn + summary.cost.tokensOut, minutes: Math.round(summary.cost.ms / 6000) / 10,
+      ...(Number.isFinite(summary.cost.countedTokens) && Number.isFinite(summary.cost.capTokens) ? {countedTokens: summary.cost.countedTokens, capTokens: summary.cost.capTokens} : {})},
     video: video ? {secs: video.secs, bytes: video.bytes} : null,
   };
 }

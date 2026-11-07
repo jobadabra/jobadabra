@@ -85,7 +85,7 @@ const k = tokens => `${Math.round(tokens / 1000).toLocaleString('en-US')}k`;
 /** The tokens line of the run report: the total against the cap and each part's share, or that the run stopped at the cap; then the actor's tier. */
 export function tokensLine(state, tier) {
   const {actor, reader, judge} = state.used, parts = `actor ${k(actor)}, screen reader ${k(reader)}, second opinion ${k(judge)}`;
-  const head = state.stoppedAtCap ? `Stopped at the ${k(state.capTokens)} cap: ${k(state.total)} / ${k(state.capTokens)} tokens; the notes made so far are kept` : `Tokens: ${k(state.total)} / ${k(state.capTokens)}`;
+  const head = state.stoppedAtCap ? `Stopped at the ${k(state.capTokens)} cap: ${k(state.total)} / ${k(state.capTokens)} counted tokens; the notes made so far are kept` : `Tokens counted toward the run cap: ${k(state.total)} / ${k(state.capTokens)}`;
   return `${head} (${parts}). Actor tier: ${tier}.`;
 }
 

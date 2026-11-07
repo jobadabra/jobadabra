@@ -118,6 +118,17 @@ function spend(spent, answer) {
   for (const target of [spent, row]) { target.calls++; target.input += input; target.output += output; target.ms += ms; }
 }
 
+/** The final funded agent turn reads the current page and only permits a verdict. Other explorer turns retain their original action schema. No additional broker call is made. */
+function prepareTurn({seen, messages, views, extend, turn, maxSteps}) {
+  const schema = actionSchema(views, extend), actions = actionsOf(extend);
+  if (!extend?.finalVerdict || turn !== maxSteps - 1) return {seen, schema, actions};
+  // Why (7 Nov 2026, run 42327808352; Gitar on #3434): judge the post-action view within the allowance, preserving the action's failure/refusal in the same resumed-conversation delta.
+  const last = messages.at(-1), observation = formatObservation(seen);
+  last.content += `${last.content.includes(observation) ? '' : `\n\n${observation}`}\n\nThis is your final funded turn. Inspect the result above and answer with done, a verdict, and what you verified. No action can be taken on this turn. If the goal is incomplete, say could-not-finish.`;
+  schema.properties.action.enum = ['done'];
+  return {seen, schema, actions: ['done']};
+}
+
 // The loop. `act`: {observe(), click(i), type(i, text), press(key), go(view)}; `ask({system, messages, schema})` -> {text, usage, ms, tier, engine?} (the broker's answer; it throws when the broker refuses).
 // Stops on done, at its caps (steps, broker calls, minutes on the injected clock), or when the broker refuses (nothing is filed from a run that could not finish thinking).
 // Returns {steps, bugs, trace, spent, stopped, final}: `trace` has one row per turn (what it did and what that turn cost) for the session's step record; `final` is the answer that ended the run (done), or null.
@@ -133,13 +144,15 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
+    const prepared = prepareTurn({seen, messages, views, extend, turn, maxSteps});
+    seen = prepared.seen;
     let answer;
-    const args = {system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)};
+    const args = {system, messages, schema: prepared.schema, ...conversation(session, messages, turn, maxSteps)};
     // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): the reason is kept to 400 characters because 160 cut the broker's reason at "Selec". Why (5 Nov 2026, demo runs 42057090129 and 42058621304: the 5th call of a conversation got no answer in 180 s): a refused call says which call it was and how big, so the broker's side can find it.
     try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(refusedLine(args, turn)); break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
+    const input = parseAction(answer.text, prepared.actions), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     const repeat = watch(row, was, turn);
