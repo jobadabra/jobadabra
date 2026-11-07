@@ -11,7 +11,7 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   const displayStep = text => window.__jobadabraPanelI18n.step(text);
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
   window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
@@ -217,7 +217,7 @@
     endStep();
     if (result?.ineligible) note(t('panel.notFilled','Not filled: {reason}',{reason:result.note}), true);
     else if (!result?.ok && /^Stopped by you/.test(result?.error || '')) { stopped = true; stoppedCard(true); }   // the person's Stop: a calm state, not a failure (mockup 03)
-    else if (!result?.ok) note(t('panel.fillFailed', 'Couldn’t fill: {reason}', {reason:result?.error || t('panel.tryAgain','try again')}));
+    else if (!result?.ok) note(t('panel.fillFailed', 'Couldn’t fill: {reason}', {reason:result?.errorDisplay ? t(result.errorDisplay.key,result.errorDisplay.key,result.errorDisplay.values) : result?.error || t('panel.tryAgain','try again')}));
     else if (result.sharedNote) note(result.sharedNote);   // the service changed how a control was filled: say so
     render();
   }
@@ -241,14 +241,7 @@
   }
   $('.fill').onclick = () => fill();
   $('.anyway').onclick = () => fill(true);
-  let tipEvidence = null;
-  async function askTip() {
-    const answer = await send({type: 'panelTip', host: location.hostname, prefer: tipFor}).catch(() => null);
-    if (!answer?.ok) return;
-    tipEvidence = answer.evidence; view.renderTipLabel(tipEvidence);
-    $('.tip-text').textContent = answer.text;
-    $('.tip').hidden = false;
-  }
+  const askTip = window.__jobadabraPanelTips({send,host:location.hostname,prefer:()=>tipFor,text:$('.tip-text'),box:$('.tip'),label:evidence=>view.renderTipLabel(evidence)});
   $('.tip').onclick = askTip;
   // Every control that asks the app something goes through ask(): it says it is working on the panel, and says so on the panel when the app did not answer (a silent control looks dead).
   async function ask(button, busyText, message, failText) {
@@ -379,7 +372,7 @@
     // Invariant: locale redraw shares sync's first-state gate; unknown is never a verdict that lifts the early overlay.
     await stepFirst;
     if (!chrome.runtime?.id) return;
-    render(); view.renderTipLabel(tipEvidence); drawSteps(); stoppedCard(!$('.stopped').hidden);
+    render(); drawSteps(); stoppedCard(!$('.stopped').hidden);
     if (stepShowing()) { $('.fill .label').textContent = displayStep(steps.at(-1) || ''); $('.fill').title = $('.fill .label').textContent; }
     else $('.fill .label').textContent = filledOnce ? t('panel.fillAgain','Fill again') : t('panel.fill','Fill this form');
     for (const button of stopButtons) button.textContent = button.disabled ? t('panel.stopping','Stopping…') : t('panel.stop','Stop');

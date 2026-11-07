@@ -4,7 +4,7 @@ import {apiFor, answersOrDropped, clickCombos, debuggerTurn} from './flow.js';
 import {MENU_REASONS, OLD_MENU_REASON, applyCombos} from './menu-reason.js';
 import {HELD, layerOnTop} from './dialog-after-fill.js';
 import {decide} from './log.js';
-import {plainWhy} from './ai-reply.js';
+import {plainWhy,plainWhyDisplay} from './ai-reply.js';
 import {verdictFields} from './eligibility-verdict.js';
 import {typeNotTakenOnTab} from './fill-verify.js';
 import {climbFill} from './ladder/fill-climb.js';
@@ -92,7 +92,7 @@ export async function fillLaterAnswers(run) {
   if (extra.length) return await fillExtraAnswers(run, ai, extra);
   } catch (error) {
     if (error.dropped) debug.errors.push(`Claude (after the fill): ${error.message}`);   // not an AI failure: nothing to tell the person
-    else { aiError = plainWhy(error); debug.errors.push(`Claude (after the fill): ${error.message}`); }
+    else { aiError = plainWhy(error); run.aiErrorDisplay=plainWhyDisplay(error); debug.errors.push(`Claude (after the fill): ${error.message}`); }
   } finally { Object.assign(run, {ai, aiError}); }
 }
 

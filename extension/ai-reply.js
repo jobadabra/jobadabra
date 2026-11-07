@@ -15,3 +15,11 @@ export function plainWhy(message, fallback = 'something unexpected went wrong (d
   const text = String(message?.message ?? message ?? '').trim();
   return !text ? fallback : RAW.test(text) ? fallback : text;
 }
+
+/** Describe only extension-authored error copy; unknown external reasons are deliberately unclassified. */
+export function plainWhyDisplay(message) {
+  if(message?.displayKey) return {key:message.displayKey,values:message.displayValues || {}};
+  if(message?.unreadable) return {key:'error.unreadable',values:{}};
+  const text=String(message?.message ?? message ?? '').trim();
+  return !text || RAW.test(text) ? {key:'error.unexpected',values:{}} : null;
+}

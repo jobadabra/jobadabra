@@ -1,6 +1,6 @@
 // Settings: only the connection to the Jobadabra app — filled in by itself when this page opens, or by Connect.
 // The user's contact details and CV live in the app, which the extension asks for each time it fills a form (flow.js).
-import {plainWhy} from './ai-reply.js';
+import {displayError} from './display-errors.js';
 import {pair, api} from './flow.js';
 import {startDisplayPage} from './display-page.js';
 import {localize, locales, languageNames} from './i18n.js';
@@ -63,7 +63,7 @@ function pairWords(state, key = '', values = {}) {
   button.className = state === 'disconnected' ? '' : 'secondary small';
   button.disabled = state === 'checking';
   button.textContent = t(state === 'connected' ? 'reconnect' : state === 'checking' ? 'connecting' : 'connect');
-  $('pair-status').textContent = key ? t(key, values) + (state === 'connected' ? ' ✓' : '') : '';
+  $('pair-status').textContent = key ? t(key, key === 'connectError' ? {...values,error:displayError(values.error,t)} : values) + (state === 'connected' ? ' ✓' : '') : '';
   $('pair-status').className = state === 'connected' ? 'on' : '';
 }
 async function connectToApp() {
@@ -75,7 +75,7 @@ async function connectToApp() {
     pairWords('connected', 'connected');
     await api({workerUrl, token}, '/extension/review', {method:'POST', body:'{}'}).catch(() => {});
   } catch (error) {
-    pairWords('disconnected', 'connectError', {error:plainWhy(error)});
+    pairWords('disconnected', 'connectError', {error});
   }
 }
 $('pair').addEventListener('click', connectToApp);

@@ -1,5 +1,6 @@
 // The toolbar popup: whether the extension can reach the Jobadabra app and, on a tab the app opened and manages, what fits that tab (Apply on this page,
 // Allow, Read on a board it opened for you, Stop). On any other tab it only says where things happen: no control at all (popup-controls.js, owner 16 Oct 2026).
+import {readStateReason,readFilters,renderRead} from './read-display.js';
 import {startDisplayPage} from './display-page.js';
 import {localize} from './i18n.js';
 import {api, settings} from './flow.js';
@@ -94,7 +95,7 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
       text('visit-progress', filter ? 'filtering' : 'readingShort');
       chrome.runtime.sendMessage({type: 'visitRead', tabId: tab.id, filter}, state => {
         $('read-filter').disabled = $('read-as-is').disabled = false;
-        if (!state?.ok) text('visit-progress', 'notRead', {error:state?.error || t('noAnswer')});
+        if (!state?.ok) text('visit-progress', 'notRead', {error:state?.errorKey ? t(state.errorKey,state.errorValues) : state?.error || t('noAnswer')});
       });
     });
   } else {
@@ -105,7 +106,7 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
     renderProgress = () => {
       const values = {name:state.name || host, pages:i18n.number(state.pages), jobs:t('jobs', {count:state.jobs})};
       externalText('visit-progress', state.stopped
-        ? (state.filters?.length ? t('filters', {filters:state.filters.join(', ')}) : '') + (state.note ? `${state.note}. ` : '') + t('readStopped', {...values, pages:t('pages', {count:state.pages}), reason:state.stopped})
+        ? (state.filters?.length ? t('filters', {filters:readFilters(state,t)}) : '') + (state.note ? `${renderRead(state.noteDisplay || state.note,t)}. ` : '') + t('readStopped', {...values, pages:t('pages', {count:state.pages}), reason:readStateReason(state,t)})
         : t('reading', values));
     };
     renderProgress();
