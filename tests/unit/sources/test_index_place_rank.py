@@ -6,6 +6,17 @@ import unittest
 import unittest.mock
 
 from src import employer_index, first_jobs
+from src.sources import careers
+
+_READER = careers.READER
+
+
+def setUpModule():
+    careers.READER = None   # the page reader off: no test file that reaches first_jobs may start a real model call (tests/unit/sources/test_found_boards_ai.py guard)
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 
 def feed(name, places):
