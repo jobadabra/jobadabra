@@ -7,6 +7,7 @@ import childProcess from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {test} from 'node:test';
 import {probeWindow} from '../../../integration/app/window-probe.js';
+import {xServerNow} from '../../../integration/app/x-server-now.js';
 
 test('actual failed probe records presence and complete stderr, never environment values, with one launch',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'probe-evidence-')),authority=path.join(dir,'private-authority');fs.writeFileSync(authority,'fictional credential');
@@ -35,4 +36,18 @@ test('successful probe retains its result contract without failure diagnostics o
   let calls=0;t.mock.method(childProcess,'spawnSync',(_file,_args,options)=>{calls++;fs.writeFileSync(options.env.JOBADABRA_SMOKE+'.json',JSON.stringify({fictional:'unchanged'}));fs.mkdirSync(path.join(options.env.JOBADABRA_USER_DATA,'logs'));fs.writeFileSync(path.join(options.env.JOBADABRA_USER_DATA,'logs','app.log'),'fictional log');return{status:0,signal:null,stderr:'ignored on success',stdout:''};});syncBuiltinESMExports();
   t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});
   assert.deepEqual(probeWindow({script:()=>null,env:{DISPLAY:'private-display-value',XAUTHORITY:'private-authority-value'}}),{result:{fictional:'unchanged'},host:[],log:['fictional log']});assert.equal(calls,1);
+});
+test('the X server line counts processes and connected clients of the failed display only',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'x-now-')),proc=path.join(dir,'proc'),sockets=path.join(dir,'x11');
+  try{
+    fs.mkdirSync(path.join(proc,'net'),{recursive:true});fs.mkdirSync(path.join(proc,'self'));fs.mkdirSync(sockets);fs.writeFileSync(path.join(proc,'self','limits'),'Max open files            1024                 524288               files\n');
+    for(const [pid,comm] of [['11','Xvfb'],['12','electron'],['13','electron'],['14','bash']]){fs.mkdirSync(path.join(proc,pid));fs.writeFileSync(path.join(proc,pid,'comm'),comm+'\n');}
+    fs.mkdirSync(path.join(proc,'15'));   // a process that ended before its name was read
+    fs.writeFileSync(path.join(proc,'net','unix'),['Num RefCount Protocol Flags Type St Inode Path',
+      '0: 00000002 00000000 00010000 0001 01 1 /tmp/.X11-unix/X99','0: 00000003 00000000 00000000 0001 03 2 /tmp/.X11-unix/X99','0: 00000003 00000000 00000000 0001 03 3 /tmp/.X11-unix/X99',
+      '0: 00000003 00000000 00000000 0001 03 4 /tmp/.X11-unix/X100','0: 00000003 00000000 00000000 0001 03 5'].join('\n'));
+    assert.equal(xServerNow(':99',{proc,socketDir:sockets}),'X server now: socket file no, Xvfb 1, electron 2, xkbcomp 0, clients connected 2, open-files limit 1024');
+    fs.writeFileSync(path.join(sockets,'X99'),'');assert.match(xServerNow(':99.0',{proc,socketDir:sockets}),/socket file yes/);
+    assert.equal(xServerNow('private-display-value',{proc,socketDir:sockets}),'','a display with no number reports nothing');assert.equal(xServerNow(':99',{proc:path.join(dir,'none')}),'','no /proc (macOS, Windows) reports nothing');
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

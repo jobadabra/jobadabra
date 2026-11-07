@@ -11,6 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {appLogLines} from '../../e2e/lib/app-log.mjs';
 import {ZONE} from '../../e2e/lib/focus-data.mjs';
 import {LIMITS, inspect} from '../../e2e/lib/uicheck.mjs';
+import {xServerNow} from './x-server-now.js';
 
 const desktop = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -81,7 +82,9 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const answer = `${out}.json`;
     if (!fs.existsSync(answer)) {
       const authorityPresent = Boolean(launchEnv.XAUTHORITY && fs.existsSync(launchEnv.XAUTHORITY));
-      throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}): ${run.stderr || (run.stdout || '').slice(-600)}`);
+      let serverNow;
+      try { serverNow = xServerNow(launchEnv.DISPLAY); } catch (error) { serverNow = `X server now: unreadable (${error.code || error.message})`; }   // the evidence line never hides the launch's own failure
+      throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}${serverNow ? `; ${serverNow}` : ''}): ${run.stderr || (run.stdout || '').slice(-600)}`);
     }
     const value = JSON.parse(fs.readFileSync(answer, 'utf8'));
     if (value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.error === 'string') throw new Error(value.error);
