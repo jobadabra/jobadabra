@@ -40,7 +40,7 @@ test('a form that stops its own submit and a form that posts are both caught; a 
     await page.click('button[type=submit]');
     const second = await waitFor(() => server.caught().find(e => e.path === '/posts/apply' && e.posted));
     assert.deepEqual([second.postedTo, second.fields], ['/receive', [['email', 'p@q.test']]]);
-    assert.equal(server.caught().filter(e => e.path === '/posts/apply').length, 1, 'the script and the post are one submission');
+    assert.equal(server.caught().length, 2, 'the script and the post are one submission (the token ties them), and the token is not shown as a field');
     at('a recorded case with a real action');
     await page.goto(cases[2].pages.find(entry => entry.file === 'form.html').url, {timeout: capOf(8000)});
     await page.fill('#first', 'Test'); await page.fill('#last', 'Person'); await page.fill('#mail', 'a@b.test');

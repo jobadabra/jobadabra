@@ -46,8 +46,8 @@ test('a Submit is caught once whether the script, the form\'s own POST, or both 
   const ledger = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-ledger-')), 'caught.jsonl');
   const server = await startPractice({cases: [oneCase('<form></form>')], ledgerFile: ledger});
   try {
-    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({page: 'https://jobs.example.com/x/apply', how: 'submit', fields: [['email', 'a@b.test'], ['pw', '[hidden]']]})});
-    const reply = await askAt(server.port, 'jobs.example.com', '/envoyer', {method: 'POST', body: 'email=a%40b.test', type: 'application/x-www-form-urlencoded'});
+    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'aaa1', page: 'https://jobs.example.com/x/apply', how: 'submit', fields: [['email', 'a@b.test'], ['pw', '[hidden]']]})});
+    const reply = await askAt(server.port, 'jobs.example.com', '/envoyer', {method: 'POST', body: 'email=a%40b.test&__practice_id=aaa1', type: 'application/x-www-form-urlencoded'});
     assert.equal(reply.status, 200);
     const [entry, ...rest] = server.caught();
     assert.equal(rest.length, 0, 'the script and the post are one submission');
@@ -58,11 +58,15 @@ test('a Submit is caught once whether the script, the form\'s own POST, or both 
     assert.equal(fs.readFileSync(ledger, 'utf8').trim().split('\n').length, 2);
     assert.deepEqual(server.caught()[1].fields.map(([name]) => name), ['a', 'pw']);
     assert.equal(fs.readFileSync(ledger, 'utf8').includes('hunter2'), false, 'a value the script did not report is never written');
-    // the other order: the page's POST arrives first, the script's report completes the same entry
-    await askAt(server.port, 'jobs.example.com', '/late', {method: 'POST', body: 'e=1', type: 'application/x-www-form-urlencoded'});
-    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({page: 'https://jobs.example.com/y/apply', how: 'submit', fields: [['e', '1']]})});
+    // the other order: the page's POST arrives first, the script's report with the same token completes that entry
+    await askAt(server.port, 'jobs.example.com', '/late', {method: 'POST', body: 'e=1&__practice_id=bbb2', type: 'application/x-www-form-urlencoded'});
+    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'bbb2', page: 'https://jobs.example.com/y/apply', how: 'submit', fields: [['e', '1']]})});
     assert.equal(server.caught().length, 3);
     assert.deepEqual([server.caught()[2].path, server.caught()[2].how, server.caught()[2].fields], ['/y/apply', 'submit', [['e', '1']]]);
+    assert.deepEqual(server.caught()[1].fields.map(([name]) => name), ['a', 'pw'], 'the earlier POST with no report is not taken by another form\'s report');
+    // another form's report right after a report-less POST is its own entry (no host + time match)
+    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'ccc3', page: 'https://jobs.example.com/z/apply', how: 'submit', fields: [['z', '9']]})});
+    assert.equal(server.caught().length, 4);
   } finally { await server.close(); }
 });
 
