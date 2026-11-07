@@ -23,7 +23,7 @@ export async function refreshScheduledLanguage(storage, fetcher = globalThis.fet
 export function refreshDeliveryLanguage(storage, {demo = false, fetcher, service = refreshLanguage, scheduled = refreshScheduledLanguage} = {}) {
   if (demo) return Promise.resolve({ok: true, skipped: true});
   const next = (pending.get(storage) || Promise.resolve()).then(async () => {
-    const answers = await Promise.allSettled([service(storage, fetcher), scheduled(storage, fetcher)]);
+    const answers = await Promise.allSettled([service, scheduled].map(refresh => Promise.resolve().then(() => refresh(storage, fetcher))));
     const ok = answers.every(answer => answer.status === 'fulfilled' && (answer.value.ok || answer.value.skipped));
     if (!ok) log('notify', 'delivery language refresh not acknowledged');
     return {ok};

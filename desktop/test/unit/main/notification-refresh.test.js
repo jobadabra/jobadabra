@@ -16,7 +16,7 @@ test('scheduled refresh writes one resolved variable without touching secrets, w
 
 test('demo skips all transport work; a service failure never prevents the scheduled refresh or a later normal retry', async () => {
   const storage = {settings: () => ({})}, calls = [];
-  const service = async () => { calls.push('service'); return {ok: calls.length > 2}; };
+  const service = () => { calls.push('service'); if (calls.length <= 2) throw new Error('fictional cache failure'); return {ok: true}; };
   const scheduled = async () => { calls.push('scheduled'); return {ok: true}; };
   assert.deepEqual(await refreshDeliveryLanguage(storage, {demo: true, service, scheduled}), {ok: true, skipped: true});
   assert.deepEqual(calls, []);
