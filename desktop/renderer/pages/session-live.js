@@ -8,6 +8,7 @@ import {t} from '../../i18n/index.js';
 import {el, liveDot, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
+import {actionButton, drawActions} from './action-row.js';
 import {shared} from './shared.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
@@ -167,13 +168,7 @@ export function closeLive() {
   view = null;
 }
 onLeaveView('sessions', closeLive);   // Why (2026-10-28, B follow-up 1): going to another page closes the stream too, not only drawing another session
-const button = (text, kind, run, glyph) => {
-  const node = el('button', `${kind}${glyph ? ' with-icon' : ''}`);
-  if (glyph) node.append(icon(glyph));
-  node.append(el('span', '', text));
-  node.addEventListener('click', run);
-  return node;
-};
+const button = actionButton;
 // The header, picture marks, note and actions for the current state; `actions` are the session's own (Open in my browser, Skip, Stop).
 function drawCard(item) {
   const v = viewFor(item), card = liveCard(item.background || {}, v.facts, {note: item.note || '', linkOff: shared.formsOpen?.linkOff});
@@ -206,7 +201,7 @@ export function renderLive(item, on) {
   view.on = on;
   if (card.kind === 'waiting') {
     actions.push(button(t('pagesCommon.stop'), 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
-    $('ss-actions').replaceChildren(...actions);
+    drawActions($('ss-actions'), actions);
     return;
   }
   if (card.kind === 'filling' || card.stop) {
@@ -225,5 +220,5 @@ export function renderLive(item, on) {
   }
   actions.push(button(t('pagesSession.openBrowser'), 'secondary', on.open, 'external'));
   if (card.kind !== 'filling' && !card.stop) actions.push(button(t('pagesCommon.skipRole'), 'secondary', on.skip));
-  $('ss-actions').replaceChildren(...actions);
+  drawActions($('ss-actions'), actions);
 }
