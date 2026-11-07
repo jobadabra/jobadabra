@@ -16,13 +16,38 @@ import {createStorage} from '../../../lib/storage.js';
 const fakeCrypto = {encrypt: v => Buffer.from(v).reverse().toString('base64'), decrypt: s => Buffer.from(s, 'base64').reverse().toString()};
 const tempStorage = () => { const s = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-')), fakeCrypto); s.saveSettings({telemetry: false}); return s; };   // no request to the live site
 
+// Why (7 Nov 2026, ts 7/7, owner: "windows unit tests are still very slow"): this test started one `node --check` per file, 216 processes, ~59 ms each on a Windows runner (14.2 s of this file); one child now parses them all in-process (vm.SourceTextModule for the ES modules, vm.Script for the .cjs). It reports how many it parsed, so a child that checked nothing is red.
+const PARSE_ALL = `
+import vm from 'node:vm';
+import fs from 'node:fs';
+const bad = [];
+const files = process.argv.slice(1);
+for (const file of files) {
+  try {
+    const text = fs.readFileSync(file, 'utf8');
+    if (file.endsWith('.cjs')) new vm.Script('(function (exports, require, module, __filename, __dirname) {' + text + '\\n})', {filename: file});
+    else new vm.SourceTextModule(text, {identifier: file});
+  } catch (error) { bad.push(file + ': ' + error.message); }
+}
+if (bad.length) { console.error(bad.join('\\n')); process.exit(1); }
+console.log(files.length);
+`;
+
 test('the window scripts parse (a syntax error leaves the app window blank)', async () => {
   const {execFileSync} = await import('node:child_process');
   const {readdirSync} = await import('node:fs');
   const pages = readdirSync(new URL('../../../renderer/pages/', import.meta.url)).map(file => `renderer/pages/${file}`);
-  for (const file of ['renderer/app.js', ...pages, 'preload.cjs', 'main.js', 'start.js']) {
-    execFileSync(process.execPath, ['--check', fileURLToPath(new URL(`../../../${file}`, import.meta.url))]);
-  }
+  const files = ['renderer/app.js', ...pages, 'preload.cjs', 'main.js', 'start.js'].map(file => fileURLToPath(new URL(`../../../${file}`, import.meta.url)));
+  const out = execFileSync(process.execPath, ['--experimental-vm-modules', '--no-warnings', '--input-type=module', '-e', PARSE_ALL, '--', ...files], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+  assert.equal(Number(out.trim()), files.length, 'the checker parsed every file');
+});
+
+test('the parse check refuses a script with a syntax error (positive control)', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-'));
+  fs.writeFileSync(path.join(dir, 'broken.js'), 'const a = 1;\nconst a = 2;\n');
+  assert.throws(() => execFileSync(process.execPath, ['--experimental-vm-modules', '--no-warnings', '--input-type=module', '-e', PARSE_ALL, '--', path.join(dir, 'broken.js')], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}), /already been declared/);
+  fs.rmSync(dir, {recursive: true, force: true});
 });
 
 test('open questions are the ❓ lines of the Notion standard answers; answering fills the line in place', async () => {
