@@ -287,3 +287,12 @@ test('the list bar says "N new of M matches" only on the plain New matches list,
   assert.equal(newOfTotal(view(withSaved, {shown: 14})), null, 'never "14 new of 13"');
   assert.equal(newOfTotal(view(withSaved, {data: {jobs: withSaved, total: 1335}})), null, 'a cut list (200 of 1,335 loaded): the rows left out may be new too, so no split');
 });
+
+// jobs-5 (docs/app-expectations/jobs.md, corrected 7 Nov 2026, owner: "Keep the code, fix the rule", #3516): the AI persona's seeded lead (desktop/e2e/lib/agent-seed.mjs inboundRows: an inbound row, stage Applied, an Applied on date)
+// is an application the person sent, so Applied shows 1 while Total matches shows 0. The rule used to say the Applied tile leaves inbound jobs out, and the persona filed this screen as a bug.
+test('an inbound lead the person applied to counts in Applied while Total matches stays 0', () => {
+  const lead = {url: 'https://jobs.e2e.test/plover/lead', stage: 'Applied', applied_on: '2026-11-07', source: 'Email', origin: 'Inbound', company: 'Plover Partners'};
+  assert.equal(jobCounts({jobs: [lead]}).total, 0, 'no job match');
+  assert.deepEqual(applicationStats([lead]), {applied: 1, waiting: 1, interviews: 0, closed: 0}, 'one application sent, waiting for a reply');
+  assert.equal(applicationStats([{...lead, applied_on: undefined}]).applied, 0, 'control: the same lead before the person applied is not Applied');
+});
