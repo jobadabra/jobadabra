@@ -2,6 +2,7 @@
 // scripting; macOS asks once to let Jobadabra control Chrome). WHICH tab is the session's is decided in one place, lib/session-tab.js (its bound tab id,
 // else the session id in its address); this file only drives Chrome. No tab owned: 'none', and nothing is opened or taken instead.
 import {execFile} from 'node:child_process';
+import {guarded} from './real-world.js';
 import {isTwin} from './twin.js';
 import {tabOfSession} from './session-tab.js';
 
@@ -9,8 +10,9 @@ import {tabOfSession} from './session-tab.js';
 export const ATS = /greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|workday\.com|smartrecruiters\.com|workable\.com|recruitee\.com|personio\.|teamtailor\.com|bamboohr\.com|jobvite\.com|icims\.com|join\.com|rippling\.com/i;
 const bare = url => String(url || '').replace(/[?#].*$/, '').replace(/\/+$/, '');
 
+const guardedExecFile = guarded(execFile, 'drive the owner\'s Chrome (osascript)');   // lib/real-world.js
 const jxa = script => new Promise((resolve, reject) => (isTwin() ? reject(new Error('a twin never drives the owner\'s Chrome')) :   // lib/twin.js
-  execFile('osascript', ['-l', 'JavaScript', '-e', script], {timeout: 8000}, (error, stdout) => (error ? reject(error) : resolve(stdout.trim())))));
+  guardedExecFile('osascript', ['-l', 'JavaScript', '-e', script], {timeout: 8000}, (error, stdout) => (error ? reject(error) : resolve(stdout.trim())))));
 
 const LIST = `const chrome = Application('Google Chrome');
 JSON.stringify(chrome.running() ? chrome.windows().flatMap(w => w.tabs().map((t, i) => ({win: w.id(), index: i + 1, id: String(t.id()), url: t.url(), title: t.title()}))) : null)`;

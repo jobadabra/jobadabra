@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {spawn as spawnProcess} from 'node:child_process';
+import {guarded} from './real-world.js';
 import {randomUUID} from 'node:crypto';
 import {ROOT} from './root.js';
 import {writePrivate} from './private-file.js';
@@ -60,7 +61,7 @@ const notRunning = error => error?.code === 'ENOENT' || error?.cause?.code === '
 
 /** Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js). */
 export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
-   spawn = spawnProcess, reaper = startReaper, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
+   spawn = guarded(spawnProcess, 'start the background browser'), reaper = startReaper, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
   const folder = storage.path('background-browser'), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
   const portFile = path.join(profile, 'DevToolsActivePort'), ownerFile = path.join(folder, 'owner.json');
   let pending = null, ownChild = null;

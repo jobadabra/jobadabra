@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFile} from 'node:child_process';
+import {guarded} from './real-world.js';
 import {browserCommand, schemeOf} from './browser-launch.js';
 
 // The name in extension/manifest.json: how the extension is recognised whatever folder it was loaded from.
@@ -150,10 +151,13 @@ export function extensionId(folder, {read = fs.readFileSync} = {}) {
   return [...hex].map(nibble => String.fromCharCode(97 + parseInt(nibble, 16))).join('');
 }
 
+const openBrowserApp = guarded(execFile, 'open a page in Chrome');   // the default launcher; a test hands in its own (lib/real-world.js)
+
 // Open a URL in a Chromium browser itself (the default browser may not be one, and chrome:// / edge:// pages only exist in
 // their own browser). `browser` is the app name to use (the one the extension is in); otherwise Chrome, then Edge. The
 // launcher is the app's one: `open -a` on the Mac, the browser's exe on Windows.
-export function openInChrome(url, {exec = execFile, platform = process.platform, env = process.env, exists = fs.existsSync, browser = ''} = {}) {
+/** -> Promise<boolean>: whether the browser was started; false when none is installed or the launch failed. Under `node --test` the default launcher throws (lib/real-world.js). */
+export function openInChrome(url, {exec = openBrowserApp, platform = process.platform, env = process.env, exists = fs.existsSync, browser = ''} = {}) {
   const command = browserCommand([url], platform, env, exists, browser);
   if (!command) return Promise.resolve(false);  // no supported browser installed: nothing to open it with
   return new Promise(resolve => exec(command[0], command[1], error => resolve(!error)));
