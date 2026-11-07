@@ -1,5 +1,6 @@
 // Settings → Notifications over IPC: read and save "Tell me by" and the e-mail address (lib/notify-channel.js). Demo mode never reaches our site.
 // Guarded by test/unit/main/notify-channel.test.js and test/guards/rules/ipc.test.js.
+import {notificationReply, mailChoicesReply} from '../i18n/notification-notices.js';
 import * as channel from './notify-channel.js';
 import {followNotify} from './hosted-email.js';
 import {createNotifyMoments} from './notify-moments.js';
@@ -47,14 +48,14 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     if (DEMO) return {ok: true};
     const result = await channel.resend(storage);
     log('notify', result.ok ? 'confirm mail sent again' : 'confirm mail not sent again', {code: result.code || ''});
-    return result;
+    return notificationReply(result);
   });
   // The person's switch per e-mail (lib/mail-choices.js): both screens (Notifications, Automation) read and write the one value the website keeps. `hidden` only if MAIL_SWITCHES_SHOWN is turned off.
   // Demo mode shows fictional rows and never reaches our site.
   ipcMain.handle('mailChoices', async () => {
-    if (DEMO) return demoRows(storage);
+    if (DEMO) return mailChoicesReply(demoRows(storage));
     if (!mail.MAIL_SWITCHES_SHOWN) return {ok: true, hidden: true, rows: []};
-    return mail.read(storage);
+    return mailChoicesReply(await mail.read(storage));
   });
   // A press: off stores the choice; on, for a person whose e-mail is not on yet, is also the act that sends the address (the typed one, else the saved one, else the CV's) and turns the Email channel on (lib/mail-choices.js turnOn).
   ipcMain.handle('mailChoiceSet', async (_, row, on, {address = '', name = ''} = {}) => {
@@ -62,7 +63,7 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
     const result = typeof on !== 'boolean' ? {ok: false, error: 'That e-mail is not one of the switches.'}
       : await mail.choose(storage, row, on, {address: on ? String(address).trim().toLowerCase() || channel.emailOf(storage) || await cvAddress(storage) : '', name: String(name), save});
     log('notify', result.ok ? 'mail switch saved' : 'mail switch not saved', {row: String(row), on: !!on, addressSaved: !!result.addressSaved, error: result.error || ''});
-    return result;
+    return notificationReply(result);
   });
   // The e-mail consent line (lib/email-consent.js): the CV's address and where it is still asked; giving it saves the CV's address through the one way to the site (channel.save), which stores the consent.
   ipcMain.handle('emailConsentView', async () => DEMO ? {address: 'alex.example@example.com', consented: false, wording: LINE, askCv: true, askAlwaysOn: true} : consentView(storage));
@@ -93,6 +94,6 @@ export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
       if (moved.moved || !moved.ok) log('notify', moved.ok ? 'Always on follows the new address' : 'Always on did not follow the new address', {error: moved.error || ''});
       if (!moved.ok) return {...result, warning: 'Saved, but Always on still sends to your old address. Try again in a moment.'};
     }
-    return result;
+    return notificationReply(result);
   });
 }
