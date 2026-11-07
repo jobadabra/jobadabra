@@ -26,7 +26,7 @@ export function jobLetterView(job) {
       const done = await window.pilot.jobLetterSave(key, text.value);
       if (done.ok) draw(); else { message.textContent = plainError(done.error); edit.textContent = t('helpers.save'); }
     });
-    // Why (28 Oct 2026, owner: the letter's loading state): the button alone said "Writing…" while the old letter looked like the answer.
+    // Why (28 Oct 2026, owner: the letter's loading state): the button alone said "Writing…" while the old letter looked like the answer. Localized action labels keep the same writing-state transition.
     const again = docButton(t('helpers.writeAgain'), async () => {
       const locked = [copy, edit, again, ...open];
       locked.forEach(button => { button.disabled = true; });

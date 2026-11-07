@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import {messages as englishState} from '../../i18n/catalogs/helpers/en-state.js';
 import {MODES} from '../../renderer/apply-settings-model.js';
 import {FORMS} from './forms.mjs';
 import {appLogText} from './app-log.mjs';
@@ -92,7 +93,7 @@ async function hiddenStep(ctx, form, id, mode) {
     const pill = await rowPill(ctx.page, form);
     console.log(`  ${mode.title} with the link off: card "${card.title}" · "${card.question}" · pill "${pill}"`);
     if (/Chrome isn't reporting|Tab not found|Checking Chrome|Waiting for Chrome/i.test(`${card.title} ${pill}`)) throw new Error(`a hidden-browser job talks of the person's Chrome: "${card.title}" / "${pill}"`);
-    if (!/Connection off/i.test(pill)) throw new Error(`the list pill of a queued ${mode.title} job does not say "Connection off": "${pill}"`);
+    if (!pill.toLowerCase().includes(englishState.connectionOff.toLowerCase())) throw new Error(`the list pill of a queued ${mode.title} job does not say "${englishState.connectionOff}": "${pill}"`);
     if (/Chrome/.test(card.question)) throw new Error(`a hidden-browser card names the person's Chrome: "${card.question}"`);
     if (!/can't hear|connection|link/i.test(`${card.title} ${card.question} ${pill}`)) throw new Error(`a queued ${mode.title} job says nothing of why it waits while the app's link is off: card "${card.title}", "${card.question}", pill "${pill}"`);
     if ((ctx.forms?.fired?.length || 0) !== submitted) throw new Error('a form was submitted while the app\'s link was off');

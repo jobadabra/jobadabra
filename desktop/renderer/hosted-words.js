@@ -44,7 +44,7 @@ export function model(mine = {}, schedule = null, now = new Date(), shared = '',
 }
 function view(mine, schedule, now, shared, mail) {
   const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;
-  // Why (5 Nov 2026, owner: "What should a not-yet-turned-on servers card say?" -> "Off"): a green On for a service that is not running told a screen-reader user it was on. Same for 'ready' below.
+  // Why (5 Nov 2026, owner: "What should a not-yet-turned-on servers card say?" -> "Off"): a green On for a service that is not running told a screen-reader user it was on. Same for 'ready' below; the translated Off label preserves this service-state distinction.
   if (!email && (skipped || !mine.on)) return {state: 'needs-email', pill: [t('helperMore.off'), 'neutral'], line: t('helperMore.hostedNeedsEmail'), asksEmail: true, button: 'email', off: false, download: false};
   if (skipped) return {state: 'off', pill: [t('helperMore.off'), 'neutral'], line: t('helperMore.hostedOffLine', {email}), asksEmail: false, button: 'on', off: false, download: false};
   if (!mine.on) return {state: 'ready', pill: [t('helperMore.off'), 'neutral'], line: t('helperMore.hostedReady', {email}), asksEmail: false, button: 'on', off: false, download: false};

@@ -22,6 +22,7 @@ const groupsOf = select => [...select.children].reduce((out, node) => {
 }, []);
 
 let counter = 0;
+/** Enhance an existing select with a localized search prompt; ignore missing or previously enhanced controls. */
 export function searchSelect(select, {placeholder = t('helpers.searchCompany')} = {}) {
   if (!select || select.dataset.searchSelect) return;
   select.dataset.searchSelect = '1';

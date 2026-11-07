@@ -2,7 +2,9 @@
 // (pages/strategy-rescore.js draws them). Guarded by test/unit/renderer/strategy-rescore.test.js.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+/** Format a job count using the display locale plural rules. */
 export const jobs = count => t('helperFlow.jobsCount', {count});
+/** Describe the count of old scores without changing those scores or starting a re-score. */
 export const noticeTitle = count => t('helperFlow.scoresOld', {count, jobs: jobs(count)});
 /** The notice's "why" line from the engine's counts ({method, places, changed}): "4 jobs: an older way of scoring · 9 jobs: other places..."; '' when all are 0. */
 export const reasonsText = ({method = 0, places = 0, changed = 0} = {}) =>

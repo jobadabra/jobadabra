@@ -29,7 +29,7 @@ export const TEXT = {
   codex: {title: t('helperMore.yourOpenAiPlan'), text: t('helperMore.useCodexPlan'),
     short: t('helperMore.usePaidPlan')},
   free: {title: t('helperMore.free'), text: t('helperMore.freeDescription', {quality: FREE_WEAKER}), short: t('helperMore.freeShort', {quality: FREE_WEAKER_SHORT[0].toUpperCase() + FREE_WEAKER_SHORT.slice(1)})},
-  // Why (2 Nov 2026, owner): Always on runs on our servers with Jobadabra's own AI; the old lines said it "uses an API key".
+  // Why (2 Nov 2026, owner): Always on runs on our servers with Jobadabra's own AI; the old lines said it "uses an API key". Bundled translations preserve the same server AI routing.
   note: t('helperMore.claudeNote'),
   codexNote: t('helperMore.codexNote'),
   fallback: t('helperMore.claudeFallback'),
@@ -86,6 +86,7 @@ export const PAID_BY = {free: 'credits', api: 'api', openai: 'api', cli: 'plan',
 export const USAGE = {credits: {before: t('helperMore.usesCredits'), after: t('helperMore.usedCredits')}, api: {before: t('helperMore.billedApiPeriod'), after: t('helperMore.billedApi')},
   plan: {before: t('helperMore.usesAllowance'), after: t('helperMore.usedAllowance')}};
 export const usageBefore = (settings, hasKey = false) => USAGE[PAID_BY[chosen(settings, hasKey)]]?.before || '';
+/** Describe the recorded payment route after a run; show measured API cost, a plan label, or an empty string when unknown. */
 export const usageAfter = ({paidBy = '', usd = 0} = {}) => (paidBy === 'api' && costText(usd) ? t('helperMore.cost', {amount: dollars(usd)}) : USAGE[paidBy]?.after || '');
 // The last run's real cost, labelled as the past (never an estimate for the next one): only a measured amount on an API account.
 export const lastCost = ({paidBy = '', usd = 0} = {}, what = t('helperMore.draftNoun')) => (paidBy === 'api' && costText(usd) ? t('helperMore.lastCost', {what, amount: dollars(usd)}) : '');

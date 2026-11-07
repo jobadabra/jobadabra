@@ -12,6 +12,7 @@ export function button(label, run, className = 'soft-button') {
   return node;
 }
 
+/** Build a clipboard button for unchanged text; restore its localized label after a successful copy acknowledgement. */
 export function copyButton(text, label = t('helpers.copy')) {
   const node = Object.assign(el('button', 'link', label), {type: 'button', title: t('helpers.copyClipboard')});
   node.addEventListener('click', () => navigator.clipboard.writeText(text).then(() => {

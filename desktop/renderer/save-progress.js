@@ -5,6 +5,7 @@ import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {where} from './store-name.js';
 let listener = null;
+/** Describe the reported settings save stage; cap the displayed write percentage at99 until completion. */
 export const progressWords = ({stage, done, total} = {}) => stage === 'read' ? t('helpers.readSettings', {store: where()})
   : stage === 'write' && total ? t('helpers.savingPercent', {store: where(), percent: Math.min(99, Math.round(done / total * 100))}) : t('helpers.savingStore', {store: where()});
 export function startListening(pilot = globalThis.window?.pilot) {

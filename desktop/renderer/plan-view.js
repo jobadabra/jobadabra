@@ -17,7 +17,7 @@ export const PACKAGE_INCLUDES = {pro: [...EVERYTHING, ALWAYS_ON], 'pro-ai': [t('
 export const INCLUDED = EVERYTHING;   // the waitlist card's list (pages/plan-waitlist.js)
 export const TOPUP_NOTE = t('helperMore.topupNote');
 // The euro amount an offer adds, as the site says it (offers[].creditEur; 24 Oct 2026: €1 of credit = €1 at our AI prices, so a top-up adds what it costs). '' when the site did not send it (an older site).
-// Why (27 Oct 2026, owner): an amount always says what it buys (renderer/credit-buys.js), so "€10 of AI credit" reads "€10 of AI credit (about 70 applications)"; the bar itself stays a percent.
+// Why (27 Oct 2026, owner): an amount always says what it buys (renderer/credit-buys.js), so "€10 of AI credit" reads "€10 of AI credit (about 70 applications)"; the bar itself stays a percent. The desktop-only localized credit wrapper preserves that estimate and the shared calculation.
 export const creditWords = offer => (offer?.creditEur > 0 ? t('helperMore.creditWords', {amount: euro(offer.creditEur), buys: buysSuffix(offer.creditEur)}) : '');
 export const NOTES = {
   30: t('helperMore.creditUnder30'),
@@ -70,11 +70,13 @@ export function warnNow(warn, said = []) {
 const WORDS = {
   expired: t('helperMore.codeExpiredAsk'), locked: t('helperMore.codeTooManyAsk'), other: t('helperMore.otherProAccount'),
 };
+/** Describe the site sign-in result, including remaining tries; preserve an unknown provider error as received. */
 export const signinWords = answer => answer.error === 'wrong' ? t('helperMore.signinCodeWrong', {count: answer.left}) : WORDS[answer.error] || answer.error || t('helperMore.didNotWork');
 
 
 // A promo code: what to say for the site's answer (the site decides; the words are fixed here).
 const PROMO_WORDS = {wrong: t('helperMore.codeWrong'), expired: t('helperMore.codeExpired'), used_up: t('helperMore.codeUsedUp'), pro_only: t('helperMore.codeProOnly'), limit: t('helperMore.codeTooManyHour'), offline: t('helperMore.codeOffline')};
+/** Describe the site redemption result without changing it; unknown failures use the localized generic fallback. */
 export const redeemWords = answer => (!answer.ok ? PROMO_WORDS[answer.error] || t('helperMore.didNotWork')
   : answer.credit > 0 ? (answer.already ? t('helperMore.codeAlreadyAdded') : t('helperMore.creditAdded', {amount: euro(answer.credit), buys: buysSuffix(answer.credit)}))
   : answer.already ? t('helperMore.proAlreadyOn') : t('helperMore.proThankYou'));

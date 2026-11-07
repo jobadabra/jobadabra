@@ -7,6 +7,7 @@ const list = value => (Array.isArray(value) ? value : String(value || '').split(
 // Markdown the review is kept in → groups: a heading starts one, bullets and paragraphs are its lines. Text only, never HTML.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+/** Group stored Markdown by its original headings; only the fallback heading is app-owned display copy. */
 export function markdownGroups(text, first = t('helperFlow.review')) {
   const groups = [];
   let group = null;

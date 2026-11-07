@@ -216,6 +216,7 @@ export function postingFacts(job = {}, found = {}, text = '') {
     {key: 'found', label: t('helpers.firstFound'), value: pastDay(found.first_seen_at || job.first_seen_at) || t('helpers.notStated'), note: ''},
     {key: 'saved', label: t('helpers.savedPosting'), value: text ? t('helpers.savedPlain') : t('helpers.none'), note: text ? t('helpers.wordCount', {count: words}) : ''}];
 }
+/** Describe a posting source for display, retaining its original source name and using Search when none is known. */
 export const postingSource = (found = {}) => t('helpers.postingSource', {source: sourceKind(found.source_kind) || found.source || t('helpers.search'), detail: found.source && sourceKind(found.source_kind) ? ` (${found.source})` : ''});
 
 // The Messages tab: what was communicated about the job. Emails are the job's Gmail events (src/ai/mail_record.py: the subject and sender in `changes`, the

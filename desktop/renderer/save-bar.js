@@ -13,6 +13,7 @@ export function scopeText(labels) {
   const list = [...new Set(labels.filter(Boolean))];
   return list.length < 2 ? list[0] || '' : t('helperState.andList', {first: list.slice(0, -1).join(', '), last: list.at(-1)});
 }
+/** Format the unsaved-change count using locale plural rules; this never changes or saves the draft. */
 export const countText = n => t('helperState.unsaved', {count: n});
 
 const bars = new Set();

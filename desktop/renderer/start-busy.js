@@ -4,7 +4,9 @@
 // Guarded by: test/unit/renderer/start-busy.test.js.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+/** Describe the task already ahead in the queue; small selects the compact display wording. */
 export const queuedText = (afterName, small = false) => (small ? t('helpers.queuedAfter', {task: afterName}) : t('helpers.queuedStarts', {task: afterName}));
+/** Build the queued-task toast from its display names without changing task identifiers or queue order. */
 export const queuedToast = (kindName, afterName) => ({title: t('helpers.taskQueued', {task: kindName}), body: t('helpers.taskEnds', {task: afterName})});
 
 // The tasks the Mac runs, as the buttons see them: {running: kind|null, queued: [kind]}. -> 'running' | 'queued' | null for a button of `kind`.

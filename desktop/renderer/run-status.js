@@ -51,6 +51,7 @@ const LIMIT_KINDS = [
   {test: (line) => /specified API usage limits?|spending limit|spend limit/i.test(line), why: t('helperState.apiSpendReached'), hint: t('helperState.raiseLimit'),
     fix: {label: t('helperState.manageApiLimits'), url: 'https://console.anthropic.com/settings/limits'}},
 ];
+/** Describe a recorded spending or stop condition and its existing remedy; return null for active or unaffected runs. */
 export function aiLimitHead(run, name = t('helperState.runTask')) {
   if (!run || run.live || run.waiting || (run.ok && !run.off)) return null;
   const lines = [run.problem, run.result, ...(run.log || []), ...(run.report || [])].filter(Boolean).map(String);

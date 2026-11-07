@@ -13,6 +13,7 @@ export const withoutMark = text => String(text ?? '').replace(ANY, ' ').replace(
 
 // A value that is there but still to confirm, and one that is not given yet.
 export const checkPill = () => pill(t('helpers.checkThis'), 'warn');
+/** Build the neutral localized missing-answer pill; this does not create or modify an answer. */
 export const notAnsweredPill = () => pill(t('helpers.notAnswered'), 'neutral');
 
 // A line of text with each marker replaced by the "Not answered yet" pill: nodes to append.

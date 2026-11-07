@@ -28,6 +28,7 @@ export const refresh = (group, isOn) => group.querySelectorAll('button').forEach
 
 const NONE = 'No constraints', ADD = '+ Add constraints';
 const constraintsText = option => t(option === NONE ? 'helperMore.noConstraints' : 'helperMore.addConstraints');
+/** Show an unparsed saved answer as plain text under its control, preserving the original answer. */
 export const savedAs = text => el('p', 'muted small qa-saved-as', t('helperMore.savedAs', {text}));
 
 // A composite control: a div whose .value is the answer and .complete says whether it can be confirmed.

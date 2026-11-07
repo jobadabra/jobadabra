@@ -25,6 +25,7 @@ export function docButton(label, run, primary = false) {
   return node;
 }
 
+/** Build a copy action for the original document text; acknowledge only a successful clipboard write. */
 export function docCopy(text, label = t('helpers.copy'), primary = false) {
   const node = docButton(label, () => navigator.clipboard.writeText(text).then(() => { node.textContent = t('helpers.copied'); setTimeout(() => { node.textContent = label; }, 1500); }), primary);
   node.title = t('helpers.copyClipboard');

@@ -302,3 +302,10 @@ test('re-score wording localizes counts without changing its sixty-job batch pro
     assert.doesNotMatch(dialogLead(12), /pentru restul/);
   } finally { setLocale('en'); }
 });
+
+test('catalog-backed journey expectations keep their original English behavior contracts', async () => {
+  const {messages} = await import('../../../i18n/catalogs/helpers/en-state.js');
+  assert.equal(messages.connectionOff, 'Connection off');
+  assert.equal(messages.unsavedLabel, 'Unsaved changes');
+  assert.equal(messages.saveAll, 'Save all changes');
+});
