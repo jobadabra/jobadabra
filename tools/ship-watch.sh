@@ -43,7 +43,7 @@ notify_session() {
 }
 say() { echo "ship: $*" >> "$log"; notify_session; }
 finish_terminal() {
-  # Why (30 Oct 2026, owner; #2558): retry delivery locally, never keep polling GitHub after the PR merged or closed.
+  # Why (#2558; #3421, 7 Nov 2026): retry only each failed recipient locally and label its pending delivery accurately; never poll GitHub after merge or close.
   local attempt worker=1 coordinator=1
   for attempt in 1 2; do
     [ "$worker" = 0 ] || { notify_worker && worker=0; }
