@@ -4,6 +4,7 @@
 // says the app can fill a form right now). Free of the DOM, like renderer/ai-engine-view.js, so tests can check it.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+import {ownKeys} from './ai-engine-view.js';
 export const FRESH_MS = 90 * 1000;
 
 // known: false only until the app has read the browser's profile — a moment, not the old 60 s grace.
@@ -32,6 +33,16 @@ export const extensionFrom = (record, {justStarted: started = false} = {}) => ex
   seen: record?.seen || null, browserRunning: record?.browserUp ?? null, now: record?.at ?? Date.now(), justStarted: started});
 // The AI card of Settings → Connections: on only while the key works. keyBad = the provider refused the saved key (state().aiKeyBad, lib/ai-key-health.js).
 export const aiService = (ready, keyBad) => ({on: !!ready && !keyBad, words: ready && keyBad ? t('helpers.keyRefused') : ''});
+/**
+ * Which AI the person is using, for the words after "Connected ·" on the AI row: 'cli' | 'codex' | 'openai' | 'api' (a key they saved) | 'free' (Free AI's token in the Anthropic key slot).
+ * state: the window's state ({settings, secrets, ownSecrets}). Why (7 Nov 2026, #3459): the row named every engine that is not a plan "Anthropic API key", while the key slot (ownKeys, lib/secrets.js)
+ * said "Not set" for Free AI's token; both now read the person's own keys.
+ */
+export const aiSource = state => {
+  const engine = state?.settings?.aiEngine;
+  if (engine === 'cli' || engine === 'codex' || engine === 'openai') return engine;
+  return ownKeys(state).ANTHROPIC_API_KEY ? 'api' : 'free';
+};
 // One key row of Connections → AI ([data-secret]): "✓ Connected", "Not set", or, for the one key the provider refused (aiKeyBad = that key's name), "Key refused".
 export const keyRow = (secret, isSet, keyBad) => {
   const refused = !!isSet && !!keyBad && secret === keyBad;
