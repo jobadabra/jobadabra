@@ -67,7 +67,8 @@ test('the key goes to the Keychain only; settings hold when it ends, never the v
   assert.equal(kc.items.size, 0, 'expiry deletes the item');
   assert.equal(s.settings().linkedinImport, null);
   assert.equal(readToken(s, {keychain: kc, now: NOW}), null);
-  assert.match(saveToken(s, {token: TOKEN}, {keychain: {write: () => false}}).error, /Keychain would not keep/);
+  const credentialStore = process.platform === 'win32' ? 'Windows Credential Manager' : 'Keychain';
+  assert.equal(saveToken(s, {token: TOKEN}, {keychain: {write: () => false}}).error, `The ${credentialStore} would not keep the LinkedIn key, so nothing was imported.`);
 });
 
 test('fetchDomain follows LinkedIn\'s next pages of this endpoint, with the version header and the key', async () => {
