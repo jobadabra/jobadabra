@@ -29,7 +29,7 @@ test('the panel flag is off until the uploader exists and while the switch is of
   await on.handlers.reportFormSet(null, false); assert.equal((await on.route({action: 'state'})).enabled, false);
   assert.deepEqual(await on.route({action: 'submit', entries: []}), {ok: false, refused: 'off'});
   for (const file of ['desktop/renderer/index.html', 'desktop/renderer/pages/nav.js', 'desktop/renderer/pages/report-form.js']) assert.doesNotMatch(read(file), /ss-report/, `${file}: the flag lives only in the extension panel, no app button or ⌘K entry`);
-  assert.match(read('extension/panel-markup.js'), /<div class="foot">[^]*<button class="report-btn"[^>]*>[^]*Report<\/button><\/div>/, 'one Report entry, in the footer of every state');
+  assert.match(read('extension/panel-markup.js'), /<div class="foot">[^]*<button class="report-btn"[^>]*>[^]*data-jp-i18n="panel\.report">Report<\/span><\/button><\/div>/, 'one Report entry, in the footer of every state');
   assert.doesNotMatch(read('extension/panel-markup.js'), /report-flag|report-open/, 'no header flag, no body button');
   assert.match(read('extension/review.js'), /\$\('\.report-btn'\)\.onclick[^]*window\.__jobadabraReport\.open\(\)/, 'the footer\'s Report opens the popup on the panel');
   assert.doesNotMatch(code('extension/panel-report.js'), /class="flag"|bottom: 12px|left: 12px/, 'no bottom-left ⚑ chip (owner, 19 Oct 2026: Stop and the flag leave the corner)');

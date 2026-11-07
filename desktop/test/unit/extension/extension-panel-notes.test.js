@@ -30,7 +30,7 @@ test('class: every toast the worker draws asks the panel first, and the panel an
 test('a page mark of posting or opening is never Ready and never counts; the fill flow sets it from the AI\'s kind', async () => {
   const panel = readPanel();
   assert.match(panel, /ready = !moved && !pageMark && total > 0 && left === 0/);
-  assert.match(panel, /pageMark \? \(MARK_WORDS\[pageMark\] \|\| 'Apply button detected\. Redirecting…'\)/g);   // the owner's own words for a posting; a page not judged yet is only being read
+  assert.match(panel, /pageMark \? \(window\.__jobadabraPanelI18n\.step\(MARK_WORDS\[pageMark\]\) \|\| t\(["']panel\.redirect/g);   // the owner's own words for a posting; a page not judged yet is only being read
   assert.match(panel, /pageMark = \(m => \(\['form', 'account', 'sign-up'\]\.includes\(m\) \? '' : m \|\| 'reading'\)\)\(document\.documentElement\.getAttribute\('data-jobadabra-page'\) \|\| ''\)/, 'default-deny: Ready only on a page judged to be a form');
   assert.match(panel, /!account && !pageMark;/, 'no CV tip on a page that is not a form');
   assert.match(read('page/review-payload.js'), /page: \(mark => mark \|\| 'reading'\)/, 'the app hears the same: an unjudged page reports no counts');

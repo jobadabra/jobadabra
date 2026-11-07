@@ -4,6 +4,7 @@
 // a friend's Windows Chrome on jobs.ch). Now both open allow.html beside the site once, badge the tab "waiting for you", tell the app's
 // log, and start when Allow is pressed. Guard: desktop/test/unit/extension/extension-site-allow.test.js.
 export const ALL_SITES = {origins: ['https://*/*']};   // as declared in manifest.json (optional_host_permissions)
+import {displayText} from './display-cache.js';
 const WAIT = 'fillwait:';
 
 // The extension's page with the Allow button, opened once (Chrome asks for a site permission only from the extension's own page, on a click).
@@ -19,7 +20,7 @@ export async function fillWaitsForAllow(tabId, url, {chrome = globalThis.chrome,
   let host = '';
   try { host = new URL(url).hostname; } catch { return; }
   chrome.action.setBadgeText({tabId, text: '!'}).catch(() => {});   // the tab may already be closed
-  chrome.action.setTitle({tabId, title: 'Jobadabra: waiting for you: press Allow on the page it opened, then the form is filled'}).catch(() => {});
+  chrome.action.setTitle({tabId, title: displayText('allow.badge')}).catch(() => {});
   const known = (await chrome.storage.session.get(`${WAIT}${tabId}`))[`${WAIT}${tabId}`];
   await chrome.storage.session.set({[`${WAIT}${tabId}`]: url});
   await openAllowPage({chrome});

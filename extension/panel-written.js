@@ -3,6 +3,7 @@
 // Never types on its own: the improved version goes into the box only on the person's "Use this version" press, and only if the box still holds the text that was reviewed.
 // A small shadow-root host sits after the box; the panel (review.js) lists the same rows. Injected before review.js (panel-files.js). Guarded by desktop/test/unit/extension/written-draft.test.js.
 (() => {
+  const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   const STYLE = `<style>:host{all:initial}*{box-sizing:border-box}.w{font:12.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#182537;margin:4px 0 8px}
     button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:4px 10px;font-weight:600}.go{background:#132439;color:#fff}.go[disabled]{opacity:.6;cursor:wait}.alt{background:#eef2f7;color:#182537;margin-left:6px}
     .tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#fdf4e4;color:#9a6200;font-size:11.5px;font-weight:600;margin-right:8px}
@@ -22,32 +23,32 @@
       const {root, result} = slot, el = field.el, kind = kindOf(field);
       const box = root.querySelector('.w'), text = String(el.value || '').trim();
       const remind = (() => { try { return JSON.parse(el.dataset.jobadabraRemind || '[]'); } catch { return []; } })();   // what to add in your own words (page/categories.js): never typed (owner, 27 Oct 2026)
-      const sig = [kind, !!text, result.busy, result.error, result.rev, remind.length].join('|');   // drawn again only when something shown changed: a press never lands on a rebuilt button
+      const sig = [kind, !!text, result.busy, result.error, result.rev, remind.length, window.__jobadabraPanelI18n.locale()].join('|');   // drawn again only when something shown changed: a press never lands on a rebuilt button
       if (slot.sig === sig) return;
       slot.sig = sig;
       box.replaceChildren();
-      if (kind) box.append(Object.assign(line('span', kind === 'outline' ? 'Outline: add your own details' : 'Drafted for you: review'), {className: 'tag'}));
-      if (remind.length) { const ul = Object.assign(document.createElement('ul'), {className: 'add'}); for (const item of remind) ul.append(line('li', item)); box.append(line('div', text ? 'Add in your own words:' : 'Answer in your own words; mention:'), ul); }
-      const go = Object.assign(line('button', result.busy ? 'Reviewing…' : 'Review my answer'), {className: 'go', disabled: !!result.busy || !text});
+      if (kind) box.append(Object.assign(line('span', kind === 'outline' ? t("written.outline", 'Outline: add your own details') : t("panel.drafted", 'Drafted for you: review')), {className: 'tag'}));
+      if (remind.length) { const ul = Object.assign(document.createElement('ul'), {className: 'add'}); for (const item of remind) ul.append(line('li', item)); box.append(line('div', text ? t("written.add", 'Add in your own words:') : t("written.mention", 'Answer in your own words; mention:')), ul); }
+      const go = Object.assign(line('button', result.busy ? t("written.reviewing", 'Reviewing…') : t("panel.reviewAnswer", 'Review my answer')), {className: 'go', disabled: !!result.busy || !text});
       go.onclick = () => review(field);
       box.append(go);
-      if (kind === 'draft') { const ok = Object.assign(line('button', 'Keep as is'), {className: 'alt'}); ok.onclick = () => { keep(el); result.rev++; draw(field, slot); }; box.append(ok); }
+      if (kind === 'draft') { const ok = Object.assign(line('button', t("written.keep", 'Keep as is')), {className: 'alt'}); ok.onclick = () => { keep(el); result.rev++; draw(field, slot); }; box.append(ok); }
       if (result.error) box.append(Object.assign(line('div', result.error), {className: 'err'}));
       if (result.done) {
         const card = Object.assign(document.createElement('div'), {className: 'card'});
-        card.append(line('b', result.done.answers_it ? 'It answers the question.' : 'It does not fully answer the question.'));
+        card.append(line('b', result.done.answers_it ? t("written.answers", 'It answers the question.') : t("written.incomplete", 'It does not fully answer the question.')));
         if (result.done.verdict) card.append(line('div', result.done.verdict));
-        if (result.done.missing.length) { const ul = document.createElement('ul'); for (const item of result.done.missing) ul.append(line('li', item)); card.append(line('div', 'Missing:'), ul); }
+        if (result.done.missing.length) { const ul = document.createElement('ul'); for (const item of result.done.missing) ul.append(line('li', item)); card.append(line('div', t("written.missing", 'Missing:')), ul); }
         if (result.done.improved) {
-          card.append(line('div', 'An improved version:'), Object.assign(line('div', result.done.improved), {className: 'imp'}));
-          const use = Object.assign(line('button', 'Use this version'), {className: 'go'});
+          card.append(line('div', t("written.improved", 'An improved version:')), Object.assign(line('div', result.done.improved), {className: 'imp'}));
+          const use = Object.assign(line('button', t("written.use", 'Use this version')), {className: 'go'});
           use.onclick = () => {
-            if (String(el.value || '').trim() !== result.reviewed) { result.error = 'The text changed since this review: review it again.'; result.done = null; result.rev++; return draw(field, slot); }
+            if (String(el.value || '').trim() !== result.reviewed) { result.error = t("written.changed", 'The text changed since this review: review it again.'); result.done = null; result.rev++; return draw(field, slot); }
             setValue(el, result.done.improved); keep(el); result.done = null; result.rev++; draw(field, slot);
           };
           card.append(use);
         }
-        const close = Object.assign(line('button', 'Dismiss'), {className: 'alt'}); close.onclick = () => { result.done = null; result.rev++; draw(field, slot); };
+        const close = Object.assign(line('button', t("written.dismiss", 'Dismiss')), {className: 'alt'}); close.onclick = () => { result.done = null; result.rev++; draw(field, slot); };
         card.append(close);
         box.append(card);
       }
@@ -59,7 +60,7 @@
       const answer = await send({type: 'panelReviewAnswer', question: field.label, text}).catch(() => null);
       slot.result.busy = false; slot.result.rev = (slot.result.rev || 0) + 1;
       if (answer?.ok) { slot.result.done = answer; slot.result.reviewed = text; }
-      else slot.result.error = answer?.error ? String(answer.error).slice(0, 160) : 'Could not review it: try again.';
+      else slot.result.error = answer?.error ? String(answer.error).slice(0, 160) : t("written.failed", 'Could not review it: try again.');
       if (alive()) draw(field, slot);
     }
     // list: the panel's fields. A box gets its row when the AI read the question as an open written one (category written) or we drafted it.
@@ -76,10 +77,11 @@
           el.after(host);
           slot = {host, root, result: slot?.result || {rev: 0}}; hosts.set(el, slot);
         }
-        draw(field, slot);
+        slot.field = field; draw(field, slot);
       }
       for (const [el, slot] of hosts) if (!wanted.has(el)) { slot.host.remove(); hosts.delete(el); }
     }
+    window.__jobadabraPanelI18n.onChange(() => { if (alive()) update([...hosts.values()].map(slot => slot.field)); });
     return {update, review};
   }};
 })();

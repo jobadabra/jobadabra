@@ -1,25 +1,26 @@
 // Draw the form panel's review card, progress pill and actions without owning application state.
 (() => {
+  const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   // Create drawing helpers bound to this panel's root and existing field actions.
   window.__jobadabraPanelView = ({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send}) => {
     // Return the ready wording for the page's current account or person-needed state.
     function readyLabel(needsYou, account) {
-      return needsYou ? `Needs you: ${needsYou.replace(/^1$/, 'see what the page asks')}` : account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? 'Ready to create the account' : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? 'Ready to sign in' : 'Ready to continue') : 'Ready to submit';   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
+      return needsYou ? t('panel.needsYou', 'Needs you: {detail}', {detail:needsYou === '1' ? t('panel.seePage', 'see what the page asks') : needsYou}) : account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.createReady", 'Ready to create the account') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.signInReady", 'Ready to sign in') : t("panel.continueReady", 'Ready to continue')) : t("panel.submitReady", 'Ready to submit');   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
     }
 
     // Return the review instruction for a ready form or account step.
     function reviewWords(account) {
-      return (account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? 'Review, then create it' : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? 'Review, then sign in' : 'Review, then continue') : 'Review, then submit');
+      return (account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.reviewCreate", 'Review, then create it') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.reviewSignIn", 'Review, then sign in') : t("panel.reviewContinue", 'Review, then continue')) : t("panel.reviewSubmit", 'Review, then submit'));
     }
 
     // Return the pill's primary line, keeping moved and page-mark states ahead of counts.
     function pillTitle({moved, pageMark, ready, needsYou, readyWords, letterMissing, total, left}) {
-      return moved ? 'Continues in another tab' : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready || needsYou ? readyWords : letterMissing ? 'Cover letter needs setup' : total ? `${left} left` : 'Jobadabra';
+      return moved ? t("panel.moved", 'Continues in another tab') : pageMark ? (window.__jobadabraPanelI18n.step(MARK_WORDS[pageMark]) || t("panel.redirect", 'Apply button detected. Redirecting…')) : ready || needsYou ? readyWords : letterMissing ? t("panel.letterSetup", 'Cover letter needs setup') : total ? t('panel.left', '{count} left', {count:left}) : 'Jobadabra';
     }
 
     // Return the pill's company, restored-fill note or review instruction.
     function pillSubtitle({pageMark, moved, job, session, ready, account}) {
-      return night() && !pageMark && !moved ? `Last night\u2019s fill is back${(job?.company || session?.company) ? ` · ${job?.company || session?.company}` : ''}` : (job?.company || session?.company) ? (job?.company || session?.company) : ready ? reviewWords(account) : 'required fields';
+      return night() && !pageMark && !moved ? t('panel.night', 'Last night’s fill is back') + ((job?.company || session?.company) ? ` · ${job?.company || session?.company}` : '') : (job?.company || session?.company) ? (job?.company || session?.company) : ready ? reviewWords(account) : t("panel.required", 'required fields');
     }
 
     // Draw the collapsed progress state and return the ready wording used in the open card.
@@ -27,7 +28,7 @@
       const {moved, pageMark, ready, needsYou, total, left, done, account} = state;
       jp.classList.toggle('ready', ready && !needsYou);
       $('.ring').style.setProperty('--done', done);
-      $('.ring span').textContent = moved ? '↗' : pageMark ? '…' : ready && !needsYou ? '✓' : total ? String(left) : '–';
+      $('.ring span').textContent = moved ? '↗' : pageMark ? '…' : ready && !needsYou ? '✓' : total ? window.__jobadabraPanelI18n.number(left) : '–';
       const readyWords = readyLabel(needsYou, account);
       // A tab the application has moved on from (the app bound another tab of it) never says Ready or counts: only the tab with the form does.
       $('.pill b').textContent = pillTitle({...state, readyWords});
@@ -42,11 +43,11 @@
       $('.job').hidden = !title;
       $('.job-title').textContent = title || '';
       $('.job-meta').replaceChildren(...[company && Object.assign(document.createElement('span'), {textContent: company}),
-        Object.assign(document.createElement('span'), {className: `tag ${/applied/i.test(job?.stage || '') ? 'good' : ''}`, textContent: job?.stage || 'Not submitted'})].filter(Boolean));
+        Object.assign(document.createElement('span'), {className: `tag ${/applied/i.test(job?.stage || '') ? 'good' : ''}`, textContent: job?.stage || t("panel.notSubmitted", 'Not submitted')})].filter(Boolean));
       $('.go-there').hidden = !(moved && Number.isInteger(movedTab));
       const verify = $('.verify');
       verify.hidden = !needsYou || moved || filling;
-      if (!verify.hidden) { stoppedCard(false); $('.verify .v-title').textContent = needsYou === '1' ? 'Your action is needed' : needsYou; }   // the AI's own words for what the page waits on
+      if (!verify.hidden) { stoppedCard(false); $('.verify .v-title').textContent = needsYou === '1' ? t("panel.yourAction", 'Your action is needed') : needsYou; }   // the AI's own words for what the page waits on
       renderClaude({pageMark, moved, session});
       return {title, company};
     }
@@ -60,16 +61,16 @@
 
     // Return the AI session line after the moved-page and extension-only session checks.
     function claudeWords({pageMark, moved, session}) {
-      return pageMark ? '' : moved ? 'This application continues in another tab.'   // an older tab of the session: it no longer reports
+      return pageMark ? '' : moved ? t("panel.movedSentence", 'This application continues in another tab.')   // an older tab of the session: it no longer reports
         : session?.kind === 'form' ? ''   // the Apply button's session: the extension fills it, there is no Claude to name
         : liveClaudeWords(session);
     }
 
     // Return the running, input, done or empty wording for an AI session.
     function liveClaudeWords(session) {
-      return session?.live && session.status === 'running' ? `AI is filling this form · ${session.note || 'working'}`
-        : session?.live && session.status === 'input' ? 'AI is waiting for you in Jobadabra.'
-        : session?.status === 'done' ? 'AI filled this form. Review it, then submit it yourself.' : '';
+      return session?.live && session.status === 'running' ? t('panel.aiFilling', 'AI is filling this form · {note}', {note:session.note || t('panel.working', 'working')})
+        : session?.live && session.status === 'input' ? t("panel.aiWaiting", 'AI is waiting for you in Jobadabra.')
+        : session?.status === 'done' ? t("panel.aiDone", 'AI filled this form. Review it, then submit it yourself.') : '';
     }
 
     // Return whether a remaining field is flagged as a knockout question.
@@ -82,9 +83,9 @@
     function remainingRow(field) {
       const row = Object.assign(document.createElement('button'), {className: 'item'});
       row.append(Object.assign(document.createElement('i'), {textContent: knockout(field) ? '⛔' : AGREE.test(field.label) || field.category === 'legal' ? '⚖️' : field.draft ? '✍️' : '○'}),
-        Object.assign(document.createElement('span'), {textContent: field.label.slice(0, 120) || 'A required field'}),
-        ...(field.draft ? [Object.assign(document.createElement('span'), {className: 'tag warn', textContent: field.draft === 'outline' ? 'Outline: complete it' : 'Drafted for you: review'}),   // typed by us, never counted as done until read (owner, 16 Oct 2026)
-          Object.assign(document.createElement('span'), {className: 'tag', textContent: 'Review my answer', onclick: event => { event.stopPropagation(); flash(field.el); written.review(field); }})] : []),
+        Object.assign(document.createElement('span'), {textContent: field.label.slice(0, 120) || t("panel.requiredField", 'A required field')}),
+        ...(field.draft ? [Object.assign(document.createElement('span'), {className: 'tag warn', textContent: field.draft === 'outline' ? t("panel.outlineComplete", 'Outline: complete it') : t("panel.drafted", 'Drafted for you: review')}),   // typed by us, never counted as done until read (owner, 16 Oct 2026)
+          Object.assign(document.createElement('span'), {className: 'tag', textContent: t("panel.reviewAnswer", 'Review my answer'), onclick: event => { event.stopPropagation(); flash(field.el); written.review(field); }})] : []),
         Object.assign(document.createElement('span'), {className: 'go', textContent: '›'}));
       row.onclick = () => flash(field.el);
       return row;
@@ -97,14 +98,14 @@
 
     // Return the open card's heading for a moved, working, marked, ready or counted page.
     function progressTitle({pageMark, ready, readyWords, total, left, moved, markStepWords}, {title, company}) {
-      return moved ? 'Continues in another tab' : markStepWords ? (title || company || 'Jobadabra') : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready ? readyWords : total ? `${total - left} of ${total}` : 'No required fields';
+      return moved ? t("panel.moved", 'Continues in another tab') : markStepWords ? (title || company || 'Jobadabra') : pageMark ? (window.__jobadabraPanelI18n.step(MARK_WORDS[pageMark]) || t("panel.redirect", 'Apply button detected. Redirecting…')) : ready ? readyWords : total ? t('panel.of', '{done} of {total}', {done:total-left,total}) : t("panel.noRequired", 'No required fields');
     }
 
     // Draw the open card's progress line and completion bar.
     function renderProgress({pageMark, ready, readyWords, done, moved, markStepWords, state: {total, left}}, heading) {
       // progress
       $('.progress-line b').textContent = progressTitle({pageMark, ready, readyWords, total, left, moved, markStepWords}, heading);
-      $('.progress-line span').textContent = moved || pageMark ? '' : ready ? 'every required field is filled' : total ? 'required fields filled' : '';
+      $('.progress-line span').textContent = moved || pageMark ? '' : ready ? t("panel.allFilled", 'every required field is filled') : total ? t("panel.requiredFilled", 'required fields filled') : '';
       $('.bar i').style.width = `${moved || pageMark ? 0 : ready ? 100 : done}%`;
     }
 
@@ -123,18 +124,18 @@
     function renderRemaining({pageMark, moved, shown, state: {left, busy, over}}) {
       // What's left for you, once the filling is over: before and during it, nearly every field is still to be filled
       // by the extension or Claude, not by you (the ring and the bar show the progress meanwhile).
-      $('.left h4').textContent = left === 1 ? 'Remaining field' : 'Remaining fields';
+      $('.left h4').textContent = t('panel.remaining',left === 1 ? 'Remaining field' : 'Remaining fields',{count:left});
       $('.left').hidden = moved || !!pageMark || !left || busy || !over;
       const ranked = rank(shown), knockouts = ranked.filter(knockout).length;
       $('.knock').hidden = !knockouts;
-      $('.knock').textContent = 'Some of these can trigger automatic rejection if the employer has set a knockout rule (work permit, sponsorship, location, office days); others are only flagged for review. Answer them truthfully: they can decide more than the CV.';
+      $('.knock').textContent = t("panel.knockout", 'Some of these can trigger automatic rejection if the employer has set a knockout rule (work permit, sponsorship, location, office days); others are only flagged for review. Answer them truthfully: they can decide more than the CV.');
       drawRows(ranked);
       return knockouts;
     }
 
     // Return the existing connection tooltip prefix without the extension build suffix.
     function connectionWords(connection, session) {
-      return connection?.connected ? (connection.app ? (session ? 'In sync with Jobadabra' : 'Connected to Jobadabra') : 'Connected to your Worker') : (connection?.why || 'Not connected: the form still fills from your settings');
+      return connection?.connected ? (connection.app ? (session ? t("panel.inSync", 'In sync with Jobadabra') : t("panel.connected", 'Connected to Jobadabra')) : t("panel.worker", 'Connected to your Worker')) : (connection?.why || t("panel.notConnectedHint", 'Not connected: the form still fills from your settings'));
     }
 
     // Draw the shared connection footer and its reload action in every open state.
@@ -143,13 +144,13 @@
       const foot = $('.foot'), stateLine = $('.foot .state');
       foot.classList.toggle('on', !!connection?.connected);
       foot.classList.toggle('off', !!connection && !connection.connected);
-      const word = connection?.connected ? 'Connected' : connection ? 'Not connected' : 'Checking the connection…';   // the reason is in the tooltip
+      const word = connection?.connected ? t("panel.connectedShort", 'Connected') : connection ? t("panel.notConnected", 'Not connected') : t("panel.checking", 'Checking the connection…');   // the reason is in the tooltip
       const version = chrome.runtime.getManifest().version;
       stateLine.textContent = `${word} · v${version}${build?.label ? ` · ${build.label}` : ''}`;
-      foot.title = `${connectionWords(connection, session)} · Jobadabra extension v${version}${build?.label ? ` (${build.label})` : ''}`;
+      foot.title = t('panel.extensionVersion','{connection} · Jobadabra extension v{version}{build}',{connection:connectionWords(connection,session),version,build:build?.label ? ` (${build.label})` : ''});
       if (build && build.behind !== 0 && build.behind !== undefined) {
-        const reload = Object.assign(document.createElement('button'), {className: 'reload', textContent: build.reloadLabel || 'Reload the extension to get the latest fixes'});
-        reload.addEventListener('click', () => { reload.disabled = true; reload.textContent = 'Reloading…'; send({type: 'panelReload'}).catch(() => {}); });
+        const reload = Object.assign(document.createElement('button'), {className: 'reload', textContent: build.reloadLabel || t("panel.reload", 'Reload the extension to get the latest fixes')});
+        reload.addEventListener('click', () => { reload.disabled = true; reload.textContent = t("panel.reloading", 'Reloading…'); send({type: 'panelReload'}).catch(() => {}); });
         stateLine.append(reload);
       }
     }

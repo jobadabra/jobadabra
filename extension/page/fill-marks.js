@@ -38,7 +38,7 @@
     const before = {title: el.title};
     glowStyle();
     frame.classList.add('jobadabra-review');
-    el.title = 'Written by AI: read it before submitting';
+    el.title = window.__jobadabraDisplayWords?.writtenByAI || 'Written by AI: read it before submitting';
     el.setAttribute('data-jobadabra-ai', '');
     attention.set(field, clean(label).slice(0, 500));
     const clear = event => {

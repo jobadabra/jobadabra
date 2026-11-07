@@ -90,11 +90,12 @@
       what.className = 'what'; name.textContent = item.label; value.textContent = item.value; what.append(name, value);
       const label = document.createElement('label'), input = Object.assign(document.createElement('input'), {type: 'checkbox', checked: item.remember});
       input.addEventListener('change', () => { chosen.set(item.label.toLowerCase(), input.checked); });
-      label.append(input, 'Remember');
+      label.append(input, window.__jobadabraPanelI18n.t('panel.remember','Remember'));
       row.append(what, label);
       return row;
     }));
   };
+  window.__jobadabraPanelI18n?.onChange(() => { if (alive()) showMine(); });
   // A sign-in or sign-up page (a password box): said with every message, so the worker never takes it for the application.
   const accountNow = () => !!document.querySelector('input[type=password]');
   const noteLearned = () => { const items = learned(); if (items.length) send({type: 'learned', url: location.href, items, account: accountNow()}).catch(() => {}); };

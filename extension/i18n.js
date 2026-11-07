@@ -1,4 +1,5 @@
 // Bundled extension display messages and rebuildable desktop-locale cache; never translates applicant or employer text.
+import './i18n-format.js';
 import {catalogs} from './locales.js';
 export {catalogs};
 export const locales = Object.freeze(['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']);
@@ -21,9 +22,7 @@ export async function createI18n(storage) {
     async preference(value) { choice = valid(value) ? value : 'desktop'; await storage.set({extensionLanguage:choice}); changed(); },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     t(key, values = {}) {
-      let template = catalogs[locale()][key] ?? catalogs.en[key] ?? key;
-      if (typeof template === 'object') template = template[new Intl.PluralRules(locale()).select(Number(values.count))] ?? template.other;
-      return template.replace(/\{([a-zA-Z][\w]*)\}/g, (match, name) => Object.hasOwn(values, name) ? (typeof values[name] === 'number' ? new Intl.NumberFormat(locale()).format(values[name]) : String(values[name])) : match);
+      return globalThis.__jobadabraFormatDisplayMessage(catalogs[locale()],catalogs.en,locale(),key,values);
     },
     number(value) { return new Intl.NumberFormat(locale()).format(value); },
     date(value, options) { return new Intl.DateTimeFormat(locale(), options).format(value); },

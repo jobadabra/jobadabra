@@ -5,6 +5,7 @@
 // Who asks: the popup's and the panel's Stop button, the app (its answer to any report carries `stop`), Chrome's own "Cancel" on the debugging bar (watchDebugger).
 // Every way the extension acts checks it here: attachDebugger (the one place the debugger is attached, only to a tab the app opened), mayAct (before a press), isStopped (the
 // fill's entry, the worker's messages, a tab joining an application). Guard: desktop/test/guards/safety/extension-stop.test.js (it fails when a press or an attach skips these).
+import {displayText} from './display-cache.js';
 import {IDENTITY_KEYS} from './tab-identity.js';
 import {decide} from './log.js';
 import {setApply, workingTabs} from './apply-state.js';
@@ -33,7 +34,7 @@ export function restart(who) {
 // What a stopped tab shows: the page-side fill sees the flag between its stages (page/guard-gate.js) and at its start (page/fill.js); the mark goes off the address.
 // The panel stays and says "Stopped by you" with "Check form again" itself (review.js hears `stopped`; owner mockup 03): the note below is only for a page without the panel,
 // never a second box beside it saying something else (owner, 27 Oct 2026: the panel came back centred and working, undimmed, under "Jobadabra is stopped on this page").
-function stoppedPage() {
+function stoppedPage(message = 'Jobadabra is stopped on this page. Press Apply in the app to start again.') {
   window.__jobadabraStopped = true;
   try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
   for (const id of ['jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) document.getElementById(id)?.remove();
@@ -44,7 +45,7 @@ function stoppedPage() {
   box.id = 'jobadabra-note';
   box.dataset.stopped = '1';
   box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:320px;background:#132439;color:#fff;border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
-  box.textContent = 'Jobadabra is stopped on this page. Press Apply in the app to start again.';
+  box.textContent = message;
   box.onclick = () => box.remove();
   document.documentElement.append(box);
 }
@@ -104,7 +105,7 @@ export async function stopAll(reason = 'the person pressed Stop') {
     const step = (what, work) => (gone ? Promise.resolve(work).catch(() => {}) : attempt(`tab ${tabId}: ${what}`, work));
     await step('its marks were not cleared', chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]));
     await chrome.storage.session.set({[`stoppedTab:${tabId}`]: at}).catch(() => {});   // still the app's tab for the person's own start (the popup's Apply on this page): its mark and arming are gone
-    const refused = await Promise.resolve().then(() => chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage})).then(() => null, error => error);
+    const refused = await Promise.resolve().then(() => chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage, args:[displayText('stop.pageStopped')]})).then(() => null, error => error);
     // at: the panel ignores a Stop older than the person's start on it (review.js). The answer says a script of ours is on the page.
     const ours = await Promise.resolve().then(() => chrome.tabs.sendMessage(tabId, {type: 'stopped', at})).then(answer => answer?.stopped === true, () => false);
     if (refused && !gone && ours) failed.push(`tab ${tabId}: the page was not marked stopped: ${String(refused?.message || refused).slice(0, 80)}`);

@@ -1,5 +1,6 @@
 // Prepares one tab's page and answers for the fill, keeping each run's state in its supplied context.
 // Invariants: see extension/fill-flow.js.
+import {displayText} from './display-cache.js';
 import {apiFor, cachedAI, NO_APP, NOT_CONNECTED} from './flow.js';
 import {kitStance} from './tab-pages.js';
 import {takeEarly} from './early-answers.js';
@@ -19,7 +20,7 @@ export async function prepareFillPage({tab, config}) {
   if (gate.held) return {held: true, layer: gate.layer, note: HELD, usd: 0};
   await expandSections(tab);   // collapsed sections open first, so their fields are read (a no-op when consider already did: sections.js marks what it opened)
   // No Submit guard for the extension: it never submits, and the user presses Submit themselves.
-  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => { window.__jobadabraNoGuard = true; }});
+  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args:[displayText('tooltip.written')], func: writtenByAI => { window.__jobadabraNoGuard = true; window.__jobadabraDisplayWords = {writtenByAI}; }});
   await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', files: PAGE_FILES});
   await chrome.scripting.executeScript({target: {tabId: tab.id, allFrames: true}, files: ['guard-bridge.js']}).catch(() => {});   // the gate's isolated-world half (guard-bridge.js); without it the fill never waits
   await loadRecipes(tab, config);

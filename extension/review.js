@@ -8,8 +8,10 @@
 // This file owns the panel's state, drawing, fill button and the sync with the app. Its parts are injected before it (panel-files.js): panel-form.js reads the form,
 // panel-markup.js is the styles and markup, panel-learn.js reports what the person did. They share window.__jobadabraPanel* (a content script has no imports).
 (() => {
+  const t = (...args) => window.__jobadabraPanelI18n.t(...args);
+  const displayStep = text => window.__jobadabraPanelI18n.step(text);
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobadabraReviewAlive?.() || ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
   window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
@@ -51,7 +53,7 @@
   // Why (2026-10-27, owner, replacing #2221's end gap and its timers): the look ends on the worker's verdict only; it reaches the overlay (panel-overlay.js), which tells this panel here.
   let workerStep = '';
   overlay.onLift?.(() => { applyWorking = false; if (stepShowing()) endStep(); else look(false); });
-  const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: text})));
+  const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: displayStep(text)})));
   const written = window.__jobadabraPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
   window.__jobadabraClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
   const SHOW_TIPS = false;   // the tip line (Fact / Recruiters say / Tip / Worth trying) is off for now (owner, 15 Oct 2026: "hide, disable it, we'll get back to it"); true brings it back
@@ -62,8 +64,8 @@
   pill.onclick = () => { userMoved = true; setOpen(!open); };
   $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
   $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); if (applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {}); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
-  const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = 'Stop'; } };
-  for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else { stopsBack(); note('Stop did not finish. Press Stop again.'); } }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
+  const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = t("panel.stop", 'Stop'); } };
+  for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = t("panel.stopping", 'Stopping…'); const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else { stopsBack(); note(t("panel.stopFailed", 'Stop did not finish. Press Stop again.')); } }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
   // "Report", the one entry, in the footer of every state (owner, 16 Oct 2026): a popup on the panel (panel-report.js) that says what goes, takes a note and sends. A page script's click is ignored; a press that cannot open it says why.
   $('.report-btn').onclick = event => {
     if (!event.isTrusted) return;
@@ -148,7 +150,7 @@
     $('.letter-title').textContent = letterCopy.title;
     $('.letter-reason').textContent = letterMissing ? letterCopy.reason : '';
     $('.letter-action').textContent = letterCopy.action;
-    $('.letter-action').onclick = event => letterRejected ? flash(letterRejected.el) : ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: 'setup:cover-letter'}, APP_DOWN);
+    $('.letter-action').onclick = event => letterRejected ? flash(letterRejected.el) : ask(event.currentTarget, t("panel.opening", 'Opening…'), {type: 'panelOpenApp', session: 'setup:cover-letter'}, APP_DOWN());
     return letterMissing;
   }
 
@@ -182,15 +184,15 @@
   let filledOnce = false, stepped = false;
   function showStep(text) {
     stepped = true;
-    $('.step-hint').textContent = /^check/i.test(text) ? 'Checking whether any fields need your input.' : /^(reading this page|putting back)/i.test(text) ? 'Looking for the application on this page.' : /^(apply button|logging in|creating your)/i.test(text) ? 'Taking you to the application form.' : 'Counts update as new fields appear.';   // our own step words, each with its sub-line (mockups 01/02)
+    $('.step-hint').textContent = /^check/i.test(text) ? t("panel.checkHint", 'Checking whether any fields need your input.') : /^(reading this page|putting back)/i.test(text) ? t("panel.findHint", 'Looking for the application on this page.') : /^(apply button|logging in|creating your)/i.test(text) ? t("panel.routeHint", 'Taking you to the application form.') : t("panel.countsHint", 'Counts update as new fields appear.');   // our own step words, each with its sub-line (mockups 01/02)
     if (steps.at(-1) !== text) { if (steps.includes(text)) steps.splice(steps.indexOf(text), 1); steps.push(text); drawSteps(); }   // "Done so far" never repeats the step now on
     stepAt = Date.now();
     look(true);
     const button = $('.fill');
     button.classList.add('is-busy');
     button.setAttribute('aria-busy', 'true');
-    button.title = text;
-    $('.fill .label').textContent = text;
+    button.title = displayStep(text);
+    $('.fill .label').textContent = displayStep(text);
   }
   function endStep(redraw = true) {
     workerStep = '';
@@ -200,7 +202,7 @@
     button.removeAttribute('aria-busy');
     button.title = '';
     if (stepped) filledOnce = true;  // a fill ran here (this button, Claude's session or the popup) and is over
-    $('.fill .label').textContent = filledOnce ? 'Fill again' : 'Fill this form';
+    $('.fill .label').textContent = filledOnce ? t("panel.fillAgain", 'Fill again') : t("panel.fill", 'Fill this form');
     if (redraw) render();
   }
   async function fill(force = false) {
@@ -213,9 +215,9 @@
     filling = false;
     filledOnce = true;
     endStep();
-    if (result?.ineligible) note(`Not filled: ${result.note}`, true);
+    if (result?.ineligible) note(t('panel.notFilled','Not filled: {reason}',{reason:result.note}), true);
     else if (!result?.ok && /^Stopped by you/.test(result?.error || '')) { stopped = true; stoppedCard(true); }   // the person's Stop: a calm state, not a failure (mockup 03)
-    else if (!result?.ok) note(`Couldn't fill: ${result?.error || 'try again'}`);
+    else if (!result?.ok) note(t('panel.fillFailed', 'Couldn’t fill: {reason}', {reason:result?.error || t('panel.tryAgain','try again')}));
     else if (result.sharedNote) note(result.sharedNote);   // the service changed how a control was filled: say so
     render();
   }
@@ -223,7 +225,7 @@
   function stoppedCard(on) {
     $('.stopped').hidden = !on;
     $('.recheck').hidden = !on;
-    if (on) $('.stopped .s-text').textContent = `${Math.max(0, counts.total - counts.left)} required fields currently contain values.`;
+    if (on) $('.stopped .s-text').textContent = t('panel.stoppedCount','{count} required fields currently contain values.',{count:Math.max(0,counts.total-counts.left)});
   }
   $('.recheck').onclick = () => { stoppedCard(false); fill(); };
   // 04 Your action needed: the page waits for the person (the AI's word in data-jobadabra-needs): a warm card, Show on form (scrolls to the first thing left), Check again (reads the form now).
@@ -239,11 +241,11 @@
   }
   $('.fill').onclick = () => fill();
   $('.anyway').onclick = () => fill(true);
-  const LABEL = {research: 'Fact', recruiters: 'Recruiters say', advice: 'Tip', 'to-test': 'Worth trying'};
+  const LABEL = {research: t("panel.tipFact", 'Fact'), recruiters: t("panel.tipRecruiters", 'Recruiters say'), advice: t("panel.tip", 'Tip'), 'to-test': t("panel.tipTry", 'Worth trying')};
   async function askTip() {
     const answer = await send({type: 'panelTip', host: location.hostname, prefer: tipFor}).catch(() => null);
     if (!answer?.ok) return;
-    $('.tip-chip').textContent = LABEL[answer.evidence] || 'Tip';
+    $('.tip-chip').textContent = LABEL[answer.evidence] || t("panel.tip", 'Tip');
     $('.tip-text').textContent = answer.text;
     $('.tip').hidden = false;
   }
@@ -257,9 +259,9 @@
     if (!answer?.ok) note(failText);
     return answer;
   }
-  const APP_DOWN = 'Jobadabra is not answering: open the app, then try again.';
+  const APP_DOWN = () => t("panel.openFailed", 'Jobadabra is not answering: open the app, then try again.');
   $('.go-there').onclick = () => Number.isInteger(movedTab) && send({type: 'panelGoTab', tab: movedTab}).catch(() => {});
-  $('.open-app').onclick = event => session && ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: session.id}, APP_DOWN);
+  $('.open-app').onclick = event => session && ask(event.currentTarget, t("panel.opening", 'Opening…'), {type: 'panelOpenApp', session: session.id}, APP_DOWN());
   // The extension's fill reports its steps here (instead of a floating box).
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelStep') return false;
@@ -372,6 +374,13 @@
   document.addEventListener('input', soon, true);
   document.addEventListener('change', soon, true);
   if (document.documentElement) new MutationObserver(soon).observe(document.documentElement, {childList: true, subtree: true});
+  window.__jobadabraPanelI18n.bind(root);
+  window.__jobadabraPanelI18n.onChange(() => {
+    render(); drawSteps(); stoppedCard(!$('.stopped').hidden);
+    if (stepShowing()) { $('.fill .label').textContent = displayStep(steps.at(-1) || ''); $('.fill').title = $('.fill .label').textContent; }
+    else $('.fill .label').textContent = filledOnce ? t('panel.fillAgain','Fill again') : t('panel.fill','Fill this form');
+    for (const button of stopButtons) button.textContent = button.disabled ? t('panel.stopping','Stopping…') : t('panel.stop','Stop');
+  });
   const tick = setInterval(sync, 2000);
   sync();
   }

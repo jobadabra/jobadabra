@@ -4,6 +4,7 @@
 // reads the page they see, sends it to the app, goes to the next page of the same list, and stops after MAX_PAGES, when a page brings nothing
 // new, or at any login wall or "are you human" check (the person deals with it, then clicks again). It never logs in, never solves a check,
 // never hides that it is a script, and waits between pages. Filtering is the app's: every job read goes through the same filters and scores.
+import {displayText} from './display-cache.js';
 import {api, settings} from './flow.js';
 import {ALL_SITES, openAllowPage} from './site-allow.js';
 import {closeConsentEverywhere} from './consent.js';
@@ -53,7 +54,7 @@ async function setFilters(tabId, config, state) {
     // Said in the site's row (and so the run log): whether a suggest box's place was really picked, or only typed and so filtered nothing.
     state.filters.push(...plan.steps.map((step, i) => [step, done?.[i]]).filter(([, result]) => result?.ok).map(([step, result]) => `${step.label}${step.value ? `: ${step.value}` : ''}`
       + (result.suggests ? (result.picked ? ` (picked "${result.picked}")` : ' (typed, but no suggestion matched: not filtered)') : '')));
-    badge(tabId, 'F', `Jobadabra: filters for your search: ${state.filters.join(', ')}`);
+    badge(tabId, 'F', displayText('visit.filters',{filters:state.filters.join(', ')}));
     await chrome.storage.session.set({[`visit:${tabId}`]: {...state, at: Date.now()}});
     await pause();
     await waitForPage(tabId).catch(() => {});
@@ -211,7 +212,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       const answer = await api(config, '/extension/visit-read', {method: 'POST', body: JSON.stringify({session, ticket: state.ticket, url: seen.url, title: seen.title, html: seen.html, cards, knownList, place: state.place || ''})});
       if (!answer?.ok) { state.stopped = answer?.error || 'the app did not take the page'; break; }
       Object.assign(state, {pages: page + 1, jobs: answer.jobs, added: state.added + (answer.added || 0), name: answer.name});
-      badge(tabId, String(state.pages), `Jobadabra: reading ${answer.name}, page ${state.pages}: ${answer.jobs} jobs so far`);
+      badge(tabId, String(state.pages), displayText('visit.reading',{name:answer.name,page:state.pages,jobs:displayText('jobs',{count:answer.jobs})}));
       await say();
       if (page > 0 && !answer.added) { state.stopped = 'no new jobs on this page: the end of the list'; break; }
       // Two pages in a row whose jobs are all elsewhere (their places say so): the rest of a worldwide list is elsewhere too (7 Oct 2026: Chanel,
@@ -236,7 +237,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     state.stopped = /Cannot access|permission/i.test(error.message) ? 'the next page is on another site, or access was not given' : (error.message || 'stopped');
   }
   await run(tabId, pageBanner, ['']).catch(() => {});
-  badge(tabId, state.jobs ? '✓' : '!', `Jobadabra: ${state.jobs} jobs read from ${state.name || 'this site'} (${state.stopped})`);
+  badge(tabId, state.jobs ? '✓' : '!', displayText('visit.done',{jobs:displayText('jobs',{count:state.jobs}),name:state.name || displayText('visit.thisSite'),reason:state.stopped}));
   await say();
   return state;
 }
@@ -303,7 +304,7 @@ export async function autoRead(tabId, url, {board = false} = {}) {
     // Waiting on the person (owner, 7 Oct 2026: "if there is an action from my side and it's blocking, show it"): the extension's own
     // page with the Allow button opens beside the site (once), and the app is told, so its banner says "waiting for you", not "reading".
     await chrome.storage.session.set({[`waiting:${tabId}`]: url});
-    badge(tabId, '!', 'Jobadabra: waiting for you: press Allow on the page it opened');
+    badge(tabId, '!', displayText('visit.waitAllow'));
     await openAllowPage();   // site-allow.js: the same page an apply tab waits on
     await api(await settings(), '/extension/visit-waiting', {method: 'POST', body: JSON.stringify({url: url.slice(0, -mark.length), ticket, why: 'allow'})}).catch(() => {});
     return;
@@ -372,6 +373,6 @@ export async function startBoard(tabId, filter) {
 
 // A board tab loaded (#jp-board-<ticket>): said on the page and the toolbar icon that it waits for the person's Read (once a load: the banner stays).
 export async function holdBoard(tabId) {
-  badge(tabId, 'Read', 'Jobadabra: sign in here if the board asks, then press Read in the toolbar popup');
-  await run(tabId, pageBanner, ['Jobadabra: sign in here if the board asks, then press Read in the toolbar popup']).catch(() => {});
+  badge(tabId, displayText('visit.readBadge'), displayText('visit.signIn'));
+  await run(tabId, pageBanner, [displayText('visit.signIn')]).catch(() => {});
 }

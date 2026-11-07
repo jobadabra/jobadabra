@@ -1,18 +1,20 @@
 // The extension's own consent page for LinkedIn jobs (extension/linkedin-session.js): Chrome asks for a permission only from an extension page, on a click. The app opens it when the person
 // turns the switch on (desktop/lib/linkedin-handlers.js linkedinConnect). Nothing is asked or read before the button.
 import {api, settings} from './flow.js';
+import {displayLanguage,localize} from './i18n.js';
 import {connect} from './linkedin-session.js';
 
-const WORDS = {
-  denied: 'Not allowed: LinkedIn jobs stays off. You can turn it on again in Jobadabra → Settings → Connections.',
-  'signed-out': 'You are not signed in to LinkedIn in this Chrome. Sign in to LinkedIn there, then press the button again.',
-};
+const ui = await displayLanguage();
+const render = () => localize(document,ui);
+ui.subscribe(render); render();
 document.getElementById('allow').addEventListener('click', async () => {
   const said = document.getElementById('said');
   said.className = '';
-  said.textContent = 'Working…';
-  const done = await connect({call: api, settings}).catch(() => ({ok: false, error: 'The Jobadabra app did not answer. Is it open?'}));
+  said.dataset.i18n = 'linkedin.working'; said.textContent = ui.t('linkedin.working');
+  const done = await connect({call: api, settings}).catch(() => ({ok:false,why:'offline'}));
   said.className = done.ok ? 'done' : '';
-  said.textContent = done.ok ? 'LinkedIn jobs is on. This page closes by itself.' : (WORDS[done.why] || done.error || 'It did not work. Try again from the Jobadabra app.');
+  const key = done.ok ? 'linkedin.done' : ['denied','signed-out','offline'].includes(done.why) ? 'linkedin.'+done.why : done.error ? '' : 'linkedin.failed';
+  if (key) { said.dataset.i18n = key; said.textContent = ui.t(key); }
+  else { delete said.dataset.i18n; said.textContent = done.error; }
   if (done.ok) setTimeout(() => window.close(), 1500);
 });
