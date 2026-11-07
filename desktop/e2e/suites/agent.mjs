@@ -10,14 +10,14 @@ import {fileURLToPath} from 'node:url';
 import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
-import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
-import {STEP_TOKENS} from '../lib/agent-steps.mjs';
+import {actorAskOf, brokerAsk, MODELS} from '../lib/agent-ask.mjs';
+import {planLine, planSizing} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
-import {moveKey, pendingGoals, planSession, recordSession} from '../lib/agent-plan.mjs';
+import {moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
@@ -79,7 +79,10 @@ export async function run(ctx) {
     const changed = changedSince(planId ? '' : changedLog);
     const available = new Set(moves.map(moveKey));
     const pending = readPending(memoryDir).filter(goal => available.has(moveKey(goal)));
-    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending});
+    // Why (7 Nov 2026, pz, owner: "3–4 goals per run"): the plan is sized from the run's token meter before it is drawn (lib/agent-steps.mjs goalCountFor), so every planned goal is funded at the engine's step price (a heavier page than the default can still leave a later goal short); 43 of 122 goals in 31 runs were never started.
+    const budget = runBudget();
+    const {stepTokens, goalMax} = planSizing(budget.usable(), process.env);   // Why (7 Nov 2026, pz): see lib/agent-steps.mjs planSizing
+    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending, max: goalMax});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
@@ -87,14 +90,14 @@ export async function run(ctx) {
     // Why (5 Nov 2026, owner via mac-32: "Assuming the initial context/harness would be max 20k"): what every actor call carries before the page is measured now and the run fails here, before any call, when it is over 20k; the cap of 250k is spent on the app, not on the same words again.
     const harness = harnessTokens({system: AGENT_SYSTEM, schema: actionSchema(AGENT_VIEWS, agentExtend({knowledgeIds: [], views: AGENT_VIEWS, goal: {}, sink: []})), intros: plan.goals.map(goal => goalIntro(goal, knowledge))});
     console.log(`  harness: ${harness} tokens in every call before the page (limit 20000)`);
-    console.log(`  plan: ${plan.goals.length} goals, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
+    console.log(planLine({plan, goalMax, usable: budget.usable(), stepTokens, planId, changedAreas: changed.areas}));
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
-    const budget = runBudget();
-    const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens: Number(process.env.E2E_AGENT_STEP_TOKENS) || STEP_TOKENS.stateless};   // Why (7 Nov 2026, #3378): goals are sized by the token meter; an unset number is the dearer engine's, never the cheaper
+    const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens};   // Why (7 Nov 2026, #3378): goals are sized by the token meter
+    const actorAsk = actorAskOf(actorTier, engine);   // a night on one engine has none to fall back to
     try {
-      session = await runSession({act, ask: budget.actor(brokerAsk(actorTier, {only: engine})), judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
-        caps: CAPS, meter, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, chain: pointerOf(chainState)}});
+      session = await runSession({act, ask: budget.actor(actorAsk), failover: actorAsk.failover, judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+        caps: CAPS, meter, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, run: process.env.GITHUB_RUN_ID || '', chain: pointerOf(chainState)}});
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
     session.stopped = stoppedLabel(session.stopped, budget.state);
@@ -109,7 +112,7 @@ export async function run(ctx) {
     for (const [file, text] of Object.entries(memoryFiles({...notes, ...merged}))) { fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true}); fs.writeFileSync(path.join(out, file), text); }
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, {...plan, goals: plan.goals.filter(goal => session.completed.includes(goal.n))}), null, 1));
-    fs.writeFileSync(path.join(out, 'pending.json'), JSON.stringify(pendingGoals(session, pending), null, 1));
+    fs.writeFileSync(path.join(out, 'pending.json'), JSON.stringify(queueAfter(session, pending, plan), null, 1));   // Why (7 Nov 2026, pz): a changed area the budget had no slot for is queued, not forgotten
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, unfunded: session.unfunded, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n${conversationLine(session.trace)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');

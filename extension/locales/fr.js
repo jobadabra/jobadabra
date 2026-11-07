@@ -93,6 +93,7 @@ export default {
   "panel.working": "en cours",
   "panel.aiWaiting": "L’IA vous attend dans Jobadabra.",
   "panel.aiDone": "L’IA a rempli le formulaire. Vérifiez-le, puis envoyez-le vous-même.",
+  "panel.syntheticCaptcha": "Confirmez que vous n’êtes pas un robot",   // words-ok: bundled UI wording, never page classification
   "panel.requiredField": "Un champ obligatoire",
   "panel.outlineComplete": "Plan : à compléter",
   "panel.drafted": "Brouillon pour vous : à vérifier",

@@ -21,15 +21,12 @@ export function findingOf(file) {
   const steps = (report.steps || []).map((step, index) => `${index + 1}. ${step}`).join('\n');
   const finding = {view: 'app', severity: report.severity, kind: 'functionality', title: String(report.title || report.seen).slice(0, 80), source: 'desktop-tester',
     detail: `${report.seen}${steps ? `\n\nSteps:\n${steps}` : ''}`, expected: report.expected};
-  return {...finding, id: fingerprint(finding)};
+  const evidence = {id: file.bundleId, url: file.bundleUrl || 'see Admin → Testing → Bug bundles', line: `Journey: ${report.journey || 'none'}. Replay it: \`cd desktop && npm run twin -- --replay ${file.bundleId}\``};
+  return {...finding, id: fingerprint(finding), evidence};
 }
 
-/** The issue body: the Finder's layout, then the bundle's line (id, private link, the replay command) before the fingerprint comment. */
-export function bodyOf(file, finding = findingOf(file)) {
-  const body = issueBody(finding, file.bundleUrl || `bundle ${file.bundleId}`, {});
-  const evidence = ['### Evidence bundle', `\`${file.bundleId}\` (private, Admin only): ${file.bundleUrl || 'see Admin → Testing → Bug bundles'}`, `Journey: ${file.report.journey || 'none'}. Replay it: \`cd desktop && npm run twin -- --replay ${file.bundleId}\``, ''].join('\n');
-  return body.replace(/\n<!-- fingerprint:/, `\n${evidence}\n<!-- fingerprint:`);
-}
+/** The issue body: the Finder's layout, with the bundle's block (id, private link, the replay command) from the shared renderer (lib/triage-issues.mjs evidenceBundle). */
+export const bodyOf = (file, finding = findingOf(file)) => issueBody(finding, file.bundleUrl || `bundle ${file.bundleId}`, {});
 
 /**
  * Files one finding file. -> {action: 'filed' | 'seen-again' | 'skipped', issue?, why?}. `gh` runs a GitHub CLI command and returns its output; a failure throws (the caller says which file).

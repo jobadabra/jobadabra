@@ -22,7 +22,7 @@ export function runRecord(session, meta, video = null) {
   return {
     run: String(meta.run), at: meta.at, kind: meta.kind, commit: wordsOf(meta.commit, 12), plan: wordsOf(meta.plan, 40),
     persona: wordsOf(summary.persona, 80), seed: summary.seed, stopped: wordsOf(session.stopped, 200),
-    goals: summary.goals.map(goal => ({n: goal.n, group: wordsOf(goal.group, 60), label: wordsOf(goal.label, 160), verdict: goal.verdict, summary: wordsOf(goal.summary, 240), steps: goal.steps})),
+    goals: summary.goals.map(goal => ({n: goal.n, group: wordsOf(goal.group, 60), label: wordsOf(goal.label, 160), verdict: goal.verdict, summary: wordsOf(goal.summary, 240), steps: goal.steps, ...(goal.failover ? {failover: wordsOf(goal.failover, 160)} : {})})),
     notes: numbered(notes).map(({note, n}) => ({
       goal: note.goal, title: wordsOf(note.title, 160), type: note.type, kind: note.kind, severity: note.severity, view: wordsOf(note.view, 40),
       expected: wordsOf(note.expected, 600), observed: wordsOf(note.observed, 600), why: wordsOf(note.why, 600),

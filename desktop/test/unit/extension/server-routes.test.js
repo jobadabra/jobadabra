@@ -1,5 +1,6 @@
 // Characterize the local HTTP route order, access checks, replies and callback effects without live services.
 import {setLocale} from '../../../i18n/index.js';
+import {t as noticeText} from '../../../i18n/server-notices.js';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import http from 'node:http';
@@ -240,7 +241,7 @@ test('every local route preserves its access, malformed-body, method and preflig
       calls.length = 0;
       await request('/extension/event',{body:JSON.stringify({type,url:'https://jobs.test/1',filled:3,left})});
       assert.deepEqual(calls.at(-1),['notify',title,type === 'fill-started' ? 'Engineer · Fixture. Check every field before you submit.' :
-        `Engineer · Fixture: 3 field(s) filled${left ? ', 2 left (listed on the page)' : ''}. Review, then submit.`,{view:'sessions',session:'session-1'},tone]);
+        noticeText('serverNotice.fillDoneBody',{job:'Engineer · Fixture',count:3,remaining:left?noticeText('serverNotice.fillRemaining',{count:left}):''}),{view:'sessions',session:'session-1'},tone]);
     }
     state.cached = false;
     calls.length = 0;

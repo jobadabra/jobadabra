@@ -1,5 +1,6 @@
 // What "Remove this session" asks when its job is still Applying in Notion: was it submitted?
 import {t} from '../i18n/native.js';
+import {criticalLabel, taskLabel} from '../i18n/quit-labels.js';
 export function submitted(company) {
   return {
     message: t('native.submittedQuestion', {company: company || t('native.thisCompany')}),
@@ -55,9 +56,9 @@ export function sessionsOnly(sessions, label) {
 
 // Searches, queued jobs and/or sessions: quit when they finish, quit now, or stay.
 export function working({busy = null, queue = [], sessions = [], important = [], taskName, label}) {
-  const lines = important.map(what => t('native.importantQuit', {what}));
-  if (busy) lines.push(t('native.busyQuit', {task: taskName(busy.kind)}));
-  if (queue.length) lines.push(t(queue.length === 1 ? 'native.queueOne' : 'native.queueMany', {count: queue.length, tasks: queue.map(job => taskName(job.kind)).join(', ')}));
+  const lines = important.map(what => t('native.importantQuit', {what: criticalLabel(what)}));
+  if (busy) lines.push(t('native.busyQuit', {task: taskLabel(busy.kind, taskName)}));
+  if (queue.length) lines.push(t(queue.length === 1 ? 'native.queueOne' : 'native.queueMany', {count: queue.length, tasks: queue.map(job => taskLabel(job.kind, taskName)).join(', ')}));
   if (sessions.length) lines.push(t(sessions.length === 1 ? 'native.claudeOne' : 'native.claudeMany', {count: sessions.length, names: sessions.slice(0, SHOWN).map(label).join(', ') + (sessions.length > SHOWN ? '…' : '')}));
   if (important.length && !busy && !queue.length && !sessions.length) {   // only an export, a Notion setup…: no jobs to run again
     return {message: t('native.stillWorking'), detail: `${lines.join('\n')}\n\n${t('native.finishImportant')}`,
