@@ -47,6 +47,23 @@ test('pending goals lead the next fresh plan, without duplicates, stale controls
   assert.ok(!plan.goals.some(goal => goal.group === 'Removed'));
 });
 
+test('changed-area coverage chooses its pending move before drawing a different move from that same area', () => {
+  const changed = Array.from({length: 6}, (_, i) => `G${i}`);
+  const moves = changed.flatMap(group => [{group, label: 'first'}, {group, label: 'other'}]);
+  const plan = planSession({seed: 7, moves, changed, pending: [moves[0]], count: 6});
+  assert.equal(plan.goals[0].group, 'G0');
+  assert.equal(plan.goals[0].label, 'first', 'a full set of changed areas must not evict unfinished work');
+  assert.deepEqual(new Set(plan.goals.map(goal => goal.group)), new Set(changed));
+});
+
+test('a pending goal in another area is funded before fresh changed-area work, retaining changed coverage within the ten-goal ceiling', () => {
+  const moves = Array.from({length: 7}, (_, i) => ({group: `G${i}`, label: 'only'}));
+  const plan = planSession({seed: 7, moves, changed: moves.slice(0, 6).map(goal => goal.group), pending: [moves[6]], count: 6});
+  assert.equal(plan.goals[0].group, 'G6');
+  assert.deepEqual(new Set(plan.goals.map(goal => goal.group)), new Set(moves.map(goal => goal.group)));
+  assert.ok(plan.goals.length <= 10, 'adding pending coverage never creates an unbounded plan or another run');
+});
+
 test('interrupted work comes first, unvisited work next, and declared blockers cannot starve either', async () => {
   const {pendingGoals} = await import('../../lib/agent-plan.mjs');
   assert.equal(typeof pendingGoals, 'function');

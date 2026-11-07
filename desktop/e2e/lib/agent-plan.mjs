@@ -39,11 +39,12 @@ export function newShare(pairs, coverage = []) {
   return pairs.length ? pairs.filter(pair => !seen.has(pair)).length / pairs.length : 1;
 }
 
-/** One goal order: the changed areas first as a group (shuffled among themselves, then spread by a shuffle of everything), filled with other moves up to `count`. */
+/** One goal order: pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */
 function draw(moves, changed, count, next, pending = []) {
   const forced = shuffle(moves.filter(move => changed.includes(move.group)), next);
   const chosen = new Map();
-  for (const group of changed) { const one = forced.find(move => move.group === group); if (one) chosen.set(moveKey(one), one); }
+  const groups = [...new Set([...pending.map(move => move.group), ...changed])].slice(0, count);
+  for (const group of groups) { const one = pending.find(move => move.group === group) || forced.find(move => move.group === group); if (one) chosen.set(moveKey(one), one); }
   for (const move of pending) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
   for (const move of shuffle(moves, next)) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
   const order = shuffle([...chosen.values()], next), priority = pending.filter(move => chosen.has(moveKey(move)));
@@ -56,10 +57,14 @@ function draw(moves, changed, count, next, pending = []) {
  * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas}.
  */
 export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, minNew = MIN_NEW}) {
-  const next = rng(seed), goalCount = Math.min(count ?? 6 + Math.floor(next() * 5), moves.length);
-  const areas = [...new Set(changed)].filter(group => moves.some(move => move.group === group)).slice(0, goalCount);
+  const next = rng(seed), targetCount = Math.min(count ?? 6 + Math.floor(next() * 5), moves.length);
   const current = new Map(moves.map(move => [moveKey(move), move]));
   const priority = [...new Map(pending.filter(goal => current.has(moveKey(goal))).map(goal => [moveKey(goal), current.get(moveKey(goal))])).values()];
+  const changedAreas = [...new Set(changed)].filter(group => moves.some(move => move.group === group));
+  // Why (7 Nov 2026, independent review of #3434): reserving all changed slots first could evict the entire pending queue. One representative per required area fits within the existing ten-goal ceiling and the unchanged run budget.
+  const required = new Set([...priority.map(goal => goal.group), ...changedAreas]);
+  const goalCount = Math.min(moves.length, Math.max(targetCount, Math.min(10, required.size)));
+  const areas = changedAreas.slice(0, goalCount);
   let best = null;
   for (let attempt = 0; attempt < TRIES; attempt++) {
     const order = draw(moves, areas, goalCount, next, priority), pairs = pairsOf(order), share = newShare(pairs, coverage);
