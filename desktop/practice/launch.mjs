@@ -15,39 +15,80 @@ import {practiceJobs} from './jobs.js';
 import {loadCases, startPractice} from './server.js';
 
 const say = text => console.log(`practice: ${text}`);
+// What a stopped run has to give back: the app, the server (and its certificate folder), the lock, the stand-ins. Set as each is made, so a failure at any step closes what exists.
+const held = {app: null, server: null, lock: '', shim: null, stopping: false};
+// Why (7 Nov 2026, pj 2/4, code review): a failed start used to exit without closing the app or the server (a lingering Electron, a private key left in the temp folder), a second
+// Ctrl-C started a second close, and a second `npm run practice` wiped the first one's live folder. One stop for every way out, entered once, with a deadline.
+async function stop(code) {
+  if (held.stopping) return;
+  held.stopping = true;
+  setTimeout(() => process.exit(code), 20000).unref();
+  // The files and the server first: the first launch ended with the app's close and left the lock and a certificate folder behind (the process was gone before it got to them),
+  // so nothing that matters is left for after the app's own close.
+  if (held.lock) fs.rmSync(held.lock, {force: true});
+  if (held.shim) fs.rmSync(path.dirname(held.shim.bin), {recursive: true, force: true});
+  try { await held.server?.close(); } catch { /* already closed */ }
+  try { await held.app?.close(); } catch { /* already gone */ }
+  process.exit(code);
+}
+
+/** Take the lock that keeps two practice apps off one folder; -> why not, or ''. */
+function takeLock(lock) {
+  try { const pid = Number(fs.readFileSync(lock, 'utf8')); if (pid && pid !== process.pid) { process.kill(pid, 0); return `another practice app is running (process ${pid}); stop it first`; } } catch { /* no lock, or its process is gone */ }
+  fs.writeFileSync(lock, String(process.pid));
+  held.lock = lock;
+  return '';
+}
+
+/**
+ * The host-rule proof, with the arguments the app's hidden browser gets: a real public name must fail to RESOLVE (not just fail: a timeout or an offline Mac proves nothing),
+ * and a practice page must load with status 200. Each load gets its own page: a refused load leaves a page on Chrome's error page and the next load on it collides
+ * (Why, 7 Nov 2026, pj 2/4 first launch: "interrupted by another navigation to chrome-error://"; reproduced with a shared page, loads with two).
+ */
+async function proveHostRule(chromium, args, practiceUrl) {
+  const probe = await chromium.launch({headless: true, args});
+  try {
+    const real = await (await probe.newPage()).goto('https://example.org/', {timeout: 8000}).then(() => 'loaded', error => (/ERR_NAME_NOT_RESOLVED/.test(error.message) ? 'refused' : `failed another way: ${error.message.split('\n')[0]}`));
+    if (real !== 'refused') throw new Error(`practice refuses to start: a real public name was not refused by the host rule (${real})`);
+    const response = await (await probe.newPage()).goto(practiceUrl, {timeout: 8000});
+    if (response?.status() !== 200) throw new Error(`practice refuses to start: a practice page answered ${response?.status()}`);
+  } finally { await probe.close(); }
+}
 
 async function main() {
   const folder = path.join(os.tmpdir(), FOLDER);
   const refusal = practiceRefusal(folder);
   if (refusal) throw new Error(`practice refuses to start: ${refusal}`);
-  fs.rmSync(folder, {recursive: true, force: true});   // only the folder the gate just approved
+  const busy = takeLock(`${folder}.pid`);
+  if (busy) throw new Error(`practice refuses to start: ${busy}`);
+  fs.rmSync(folder, {recursive: true, force: true});   // only the folder the gate just approved, and no other practice app holds it
   fs.mkdirSync(folder, {recursive: true});
   // The harness reads these when it loads: a visible window, no trace, its files inside the practice folder.
   Object.assign(process.env, {E2E_TRACE: '0', E2E_HIDDEN: '0', E2E_ARTIFACTS: path.join(folder, 'artifacts')});
-  const [{launch, initialSettings}, {chromium}, {storeSettings}, {applicantDraft}, {seedLivePosting}] = await Promise.all([
-    import('../e2e/lib/app.mjs'), import('../e2e/lib/visit-page.mjs'), import('../e2e/lib/store.mjs'), import('../e2e/lib/applicant-seed.mjs'), import('../e2e/lib/seed-data.mjs'),
+  const [{launch, initialSettings}, {chromium}, {makeOpenShim}, {storeSettings}, {applicantDraft}, {seedLivePosting}, {storeCall}] = await Promise.all([
+    import('../e2e/lib/app.mjs'), import('../e2e/lib/visit-page.mjs'), import('../e2e/lib/extension.mjs'), import('../e2e/lib/store.mjs'), import('../e2e/lib/applicant-seed.mjs'),
+    import('../e2e/lib/seed-data.mjs'), import('../e2e/lib/store-call.mjs'),
   ]);
   const jobs = practiceJobs();
   const ledger = path.join(folder, 'practice-caught.jsonl');
-  const server = await startPractice({cases: loadCases(jobs.map(job => job.name)), ledgerFile: ledger});
+  held.server = await startPractice({cases: loadCases(jobs.map(job => job.name)), ledgerFile: ledger});
+  const server = held.server;
   const browserArguments = [`--host-resolver-rules=${server.hostRules()}`, '--ignore-certificate-errors', ...(process.platform === 'linux' ? ['--no-sandbox'] : [])];
-  let app;
-  const stop = async code => { try { await app?.close(); } catch { /* already gone */ } await server.close(); process.exit(code); };
-  process.on('SIGINT', () => stop(0)); process.on('SIGTERM', () => stop(0));
-  // The proof the host rule took effect: a real public name must not load, and a practice page must.
-  const probe = await chromium.launch({headless: true, args: browserArguments});
-  try {
-    const page = await probe.newPage();
-    const real = await page.goto('https://example.org/', {timeout: 8000}).then(() => 'loaded', () => 'refused');
-    if (real !== 'refused') throw new Error('practice refuses to start: a real public name loaded in the practice browser');
-    await page.goto(jobs[0].url, {timeout: 8000});
-  } finally { await probe.close(); }
-  say('host rule proven: a real name does not load, a practice page does');
+  await proveHostRule(chromium, browserArguments, jobs[0].url);
+  say('host rule proven: a real name does not resolve, a practice page loads');
+  // Why (7 Nov 2026, pj 2/4, code review): the app opens pages in the person's own Chrome (`open -a "Google Chrome"`, the non-background Apply modes) and asks it about its tabs
+  // (osascript). Only the harness's stand-ins keep it from doing either: `open` writes the URL to a folder instead, and `osascript` fails. Full automation uses the hidden browser.
+  held.shim = makeOpenShim();
+  fs.writeFileSync(path.join(held.shim.bin, 'osascript'), '#!/bin/sh\necho "practice: the app may not drive the person\'s Chrome" >&2\nexit 1\n', {mode: 0o755});
   fs.writeFileSync(path.join(folder, 'settings.json'), JSON.stringify(initialSettings(storeSettings('sqlite'))));
   fs.copyFileSync(path.join(import.meta.dirname, '..', 'e2e', 'fixtures', 'cv.pdf'), path.join(folder, 'cv.pdf'));
-  const opened = await launch({profile: folder, env: {JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(browserArguments)}});
-  app = opened;
-  const {page} = opened;
+  held.app = await launch({profile: folder, env: {
+    JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(browserArguments),
+    PATH: `${held.shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: held.shim.spool,
+    ...(process.platform === 'win32' ? {JOBADABRA_E2E_OPENER: held.shim.script} : {}),
+  }});
+  const {page} = held.app;
+  page.on('close', () => stop(0));
   const ai = await page.evaluate(async strategy => {   // the way the wizard leaves a set-up install; the person's own signed-in Claude Code answers, nothing is paid for per call
     const saved = await window.pilot.saveStrategy(strategy);
     if (!saved?.ok) throw new Error(`the strategy was not saved: ${saved?.error || 'unknown'}`);
@@ -56,16 +97,19 @@ async function main() {
     await window.pilot.saveSettings({setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', cvName: 'cv.pdf'});
     return !!status?.authenticated;
   }, applicantDraft());
-  const store = {profile: folder, store: 'sqlite'};
-  const ctx = {data: (entity, method, kwargs) => import('../e2e/lib/store-call.mjs').then(({storeCall}) => storeCall(store, entity, method, kwargs))};
+  const ctx = {data: (entity, method, kwargs) => storeCall({profile: folder, store: 'sqlite'}, entity, method, kwargs)};
   for (const job of jobs) await seedLivePosting(ctx, {url: job.url, title: job.title, company: job.company});
   await page.reload();
-  say(`${jobs.length} practice jobs are in the Jobs list; nothing leaves this Mac (the hidden browser reaches only ${server.hosts.length} practice hosts)`);
+  const stored = await storeCall({profile: folder, store: 'sqlite'}, 'applications', 'list', {});
+  await page.waitForSelector('.view:not([hidden])', {timeout: 30000});
+  await held.app.shot('practice-start');   // the window as painted, kept in <folder>/artifacts: the evidence of what the person would see
+  say(`${Array.isArray(stored) ? stored.length : '?'} jobs read back from the store; ${jobs.length} practice jobs are in the Jobs list; nothing leaves this Mac (the hidden browser reaches only ${server.hosts.length} practice hosts)`);
   say(ai ? 'AI: your signed-in Claude Code answers' : 'AI: Claude Code is not signed in here; choose an AI in Settings before applying');
-  say('Settings → Apply → Full automation (you confirm it), then press Apply on a practice job. Every Submit is printed below. Ctrl-C ends it.');
+  say('Settings → Apply → Full automation (you confirm it), then press Apply on a practice job. Other Apply modes open nothing (the person\'s Chrome is off limits here). Every Submit is printed below. Ctrl-C ends it.');
   say(`ledger: ${ledger}`);
   let shown = 0;
   setInterval(() => { const all = server.caught(); for (const entry of all.slice(shown)) say(`CAUGHT ${entry.host}${entry.path}: ${entry.fields.map(([name, value]) => `${name}=${value}`).join(', ')}`); shown = all.length; }, 1000).unref();
-  page.on('close', () => stop(0));
 }
-main().catch(error => { console.error(error.message); process.exit(1); });
+process.on('SIGINT', () => stop(0));
+process.on('SIGTERM', () => stop(0));
+main().catch(error => { console.error(error.message); return stop(1); });
