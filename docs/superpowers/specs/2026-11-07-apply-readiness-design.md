@@ -41,8 +41,8 @@ Verdict: **awaiting owner yes.** Today three separate paths draft a kit and a fo
 - No change to what Full automation may submit, to the Submit safety rules, or to L2a's statuses. No kits from Find jobs. No timer-based re-read. No new AI step beyond the existing page-kind and question-verdict calls. Radio-group questions stay parked (needs the page sketch to carry the group's question).
 
 ## Progress
-- [x] L1 light read (#3548), L2a three statuses (#3556), Practice of the sketch
-- [x] L2b match (#3563, merged 7 Nov 2026 as 30ff290)
-- [ ] Owner's yes on the sketch (decisions: Prepare top matches as a caller; Ready's night also checks; repost rule; 3 PRs)
+- [x] L1 light read (#3548) and L2a three statuses (#3556) (proof: desktop/lib/triage-reader.js @f0b711f)
+- [x] L2b match (#3563, merged 7 Nov 2026) (proof: desktop/lib/triage-match.js @30ff290)
+- [ ] Owner's yes on the sketch (decisions: Prepare top matches as a caller; Ready's night also checks; repost rule; 5 PRs)
 - [ ] R1 the step and the store · [ ] R2 the paths become callers + the guard · [ ] L2c · [ ] L2d
 - Plan: `docs/superpowers/plans/2026-11-07-apply-readiness.md`. `fa`'s Full automation hold (`2026-11-07-full-automation-check-first.md`) consumes `storedCheck(job)` from R1.
