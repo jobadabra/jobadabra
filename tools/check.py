@@ -97,7 +97,7 @@ def started_line(area, picked, reason):
     """The line a run starts with: every test (and why), or how many files the pick holds and what they are."""
     if picked == 'all':
         return f'check: {area} started' + (f' (every test: {reason})' if reason else '')
-    return f'check: {area} started ({len(picked)} test files: what this change reaches, its mentions, guards and tree scanners; main runs every test)'
+    return f'check: {area} started ({len(picked)} test files: what this change reaches, its mentions, readers of the folders it changed and the always-picked tests; main runs every test)'
 
 
 def pick_gap(area, picked, planned):

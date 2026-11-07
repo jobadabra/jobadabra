@@ -25,11 +25,51 @@ class PrDesktopPicks(unittest.TestCase):
         cls.picker, cls.check = load('affected_tests', 'tools/affected-tests.py'), load('check_py', 'tools/check.py')
         cls.picked = cls.picker.select(['desktop/lib/keychain.js'])['desktop']
 
-    def test_every_guard_runs_for_any_desktop_change(self):
+    def test_a_guard_that_keeps_safety_data_money_privacy_or_the_release_runs_for_any_desktop_change(self):
+        # 7 Nov 2026, owner: "We should test only the touched parts" (ts 2/2). Before, ALL 98 guards ran for any desktop change; now only the guards that say they guard these five things do.
         tracked = subprocess.run(['git', 'ls-files', 'desktop/test/guards'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
-        guards = [f.removeprefix('desktop/') for f in tracked if f.endswith('.test.js')]
-        self.assertTrue(guards)
-        self.assertEqual([g for g in guards if g not in self.picked], [])
+        kept = [f.removeprefix('desktop/') for f in tracked if f.endswith('.test.js') and self.picker.SAFETY_GUARD_RE.search((ROOT / f).read_text(encoding='utf-8')[:1500])]
+        self.assertGreaterEqual(len(kept), 4, 'positive control: the guards that name what they keep are found')
+        for changed in ('desktop/lib/keychain.js', 'desktop/e2e/lib/broker-client.mjs'):
+            self.assertEqual([g for g in kept if g not in self.picker.select([changed])['desktop']], [], changed)
+
+    def test_a_change_picks_the_readers_of_its_folder_and_not_the_readers_of_other_folders(self):
+        # 7 Nov 2026, ts 2/2. #3439 changed 2 files under desktop/e2e and picked 341 desktop tests: 219 unit tests imported a helper (toast-scan.js) that reads renderer/ with fs, which counted as "reads the whole tree".
+        reader = 'test/guards/rules/design.test.js'   # reads renderer files through toast-scan.js
+        e2e = self.picker.select(['desktop/e2e/lib/broker-client.mjs', 'desktop/e2e/test/ai/ai-provider.test.mjs'])['desktop']
+        self.assertLess(len(e2e), 120)
+        self.assertNotIn(reader, e2e)
+        for walker in ('test/unit/main/rename-guard.test.js', 'test/tooling/ci/file-size.test.js'):
+            self.assertIn(walker, e2e)   # a test that walks the whole tree still runs
+        for changed in ('desktop/renderer/style.css', 'desktop/test/toast-scan.js'):   # the folder it reads, and the helper itself
+            self.assertIn(reader, self.picker.select([changed])['desktop'], changed)
+
+    def test_a_test_the_folder_rule_alone_would_drop_is_still_picked(self):
+        # 7 Nov 2026, the fresh /code-review of ts 3/3 found five classes the folder rule dropped; one positive control each. A new walker whose root sits in a variable and is not recursive (a plain
+        # `readdirSync(dir)`) is a folder reader: it must name its folder, or the picker cannot know what it reads.
+        def picks(changed):
+            return self.picker.select([changed])['desktop']
+        # (1) walks all of desktop from a root held in a variable (readdirSync(dir) + isDirectory): no folder named
+        for changed in ('desktop/main.js', 'desktop/preload.cjs'):
+            for walker in ('test/guards/safety/owner-guard-wiring.test.js', 'test/guards/rules/legacy-name-literals.test.js'):
+                self.assertIn(walker, picks(changed), f'{walker} walks all of desktop: {changed}')
+        # (2) names a folder, but our tooling gate dropped it for a change outside the tooling roots
+        self.assertIn('test/tooling/ci/recorded-cases.test.js', picks('extension/page/zzz.js'))
+        # (3) ratchets that read git ls-files and that nothing else runs
+        for changed in ('extension/panel.js', 'desktop/lib/apply.js'):
+            for ratchet in ('test/tooling/ci/hardcoded-page-words.test.js', 'test/tooling/ci/unpinned-clock.test.js'):
+                self.assertIn(ratchet, picks(changed), f'{ratchet}: {changed}')
+        # (4) guards over the test files: a new test file picks them
+        new_test = picks('desktop/test/unit/main/zzz.test.js')
+        for guard in ('test/guards/rules/skips-name-a-capability.test.js', 'test/guards/rules/unit-tests-no-playwright.test.js'):
+            self.assertIn(guard, new_test, guard)
+        # (6) the 2nd review: main.js is read by name through a helper (toast-scan.js, main-source.js), and a fixture two folders below test/ is read by a test that never names `test`
+        for reader in ('test/unit/renderer/toast-targets.test.js', 'test/unit/main/critical.test.js', 'test/unit/main/run-kinds.test.js'):
+            self.assertIn(reader, picks('desktop/main.js'), reader)
+        self.assertIn('test/unit/cv/cv-inplace.test.js', picks('desktop/test/fixtures/cv-shapes/band.pdf'))
+        self.assertIn('test/tooling/ci/file-size.test.js', picks('extension/panel.js'))   # a ratchet over the real tree
+        # (5) and a change that touches no test file does not pick them (the saving stays)
+        self.assertNotIn('test/guards/rules/skips-name-a-capability.test.js', picks('desktop/lib/keychain.js'))
 
     def test_a_test_that_runs_a_tool_as_a_process_is_picked(self):
         self.assertIn('test/unit/main/rename-guard.test.js', self.picked)   # the one test missed in the replay: red on 2 PRs, 3 Nov 2026
@@ -132,7 +172,7 @@ class PrDesktopPicks(unittest.TestCase):
                 self.check.main(['--plan', '--area', 'desktop', '--app-only', '--affected-from', 'HEAD^1'])
             return out.getvalue().strip()
         self.assertEqual(plan('docs/rules/change-loop.md'), '0')
-        self.assertGreater(int(plan('tools/fixer/loop.mjs')), 100)
+        self.assertGreater(int(plan('tools/fixer/loop.mjs')), 0)   # not 0: the fixer's tests reach it (it was "over 100" only while every guard ran for every change; 34 on 7 Nov 2026)
         self.assertEqual(plan('desktop/package.json'), 'all')
 
     def test_main_runs_every_windows_test_and_a_full_fallback_still_leaves_tooling_out(self):
