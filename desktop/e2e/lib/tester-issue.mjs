@@ -52,33 +52,53 @@ export function fileFinding(file, {gh, repo = REPO} = {}) {
   return {action: 'filed', issue: Number(url.split('/').pop()) || 0, url};
 }
 
+const MINE = /^[0-9a-f]{16}\.json$/;
+/** Moves failed/ back next to the unfiled ones (one more try at the next start). */
+function takeBackFailed(dir, say) {
+  const failed = path.join(dir, 'failed');
+  if (!fs.existsSync(failed)) return;
+  for (const name of fs.readdirSync(failed).filter(entry => MINE.test(entry))) {
+    try { fs.renameSync(path.join(failed, name), path.join(dir, name)); } catch (error) { say(`tester bug ${name}: could not retry (${error.message})`); }
+  }
+}
+
+/** Files one finding file and moves it to done/ or, with its error beside it, failed/. Never throws: a file that cannot be moved aside is reported and left. -> {action, issue?, why?} */
+function settle(dir, name, {gh, repo}) {
+  const file = path.join(dir, name);
+  let result;
+  try { result = fileFinding(JSON.parse(fs.readFileSync(file, 'utf8')), {gh, repo}); } catch (error) { result = {action: 'failed', why: error.message}; }
+  const target = path.join(dir, result.action === 'failed' ? 'failed' : 'done');
+  try {
+    fs.mkdirSync(target, {recursive: true});
+    if (result.action === 'failed') fs.writeFileSync(path.join(target, `${name}.error.txt`), result.why);
+    fs.renameSync(file, path.join(target, name));
+  } catch (error) { result = {...result, why: `${result.why ? `${result.why}; ` : ''}could not move the file aside: ${error.message}`}; }
+  return result;
+}
+
 /**
- * Files every unfiled finding in `<home>/tester-findings`, moving each to `done/` (or `failed/` with the error beside it) so a restart never files one twice. `retryFailed` first moves failed/ back (one more try at the next start).
- * Never throws: a filing that cannot even be moved aside is reported and left, so one bad file cannot stop the launcher. -> [{file, ...result}]
+ * Files every unfiled finding in `<home>/tester-findings`, so a restart never files one twice. `retryFailed` first takes failed/ back. Never throws. -> [{file, ...result}]
  */
 export function fileAll(home, {gh, repo, say = () => {}, retryFailed = false} = {}) {
   const dir = path.join(home, FINDINGS);
   if (!fs.existsSync(dir)) return [];
-  const mine = /^[0-9a-f]{16}\.json$/, out = [];
-  if (retryFailed && fs.existsSync(path.join(dir, 'failed'))) for (const name of fs.readdirSync(path.join(dir, 'failed')).filter(entry => mine.test(entry))) { try { fs.renameSync(path.join(dir, 'failed', name), path.join(dir, name)); } catch (error) { say(`tester bug ${name}: could not retry (${error.message})`); } }
-  for (const name of fs.readdirSync(dir).filter(entry => mine.test(entry))) {
-    const file = path.join(dir, name);
-    let result;
-    try { result = fileFinding(JSON.parse(fs.readFileSync(file, 'utf8')), {gh, repo}); } catch (error) { result = {action: 'failed', why: error.message}; }
-    const target = path.join(dir, result.action === 'failed' ? 'failed' : 'done');
-    try {
-      fs.mkdirSync(target, {recursive: true});
-      if (result.action === 'failed') fs.writeFileSync(path.join(target, `${name}.error.txt`), result.why);
-      fs.renameSync(file, path.join(target, name));
-    } catch (error) { result = {...result, why: `${result.why ? `${result.why}; ` : ''}could not move the file aside: ${error.message}`}; }
+  if (retryFailed) takeBackFailed(dir, say);
+  return fs.readdirSync(dir).filter(entry => MINE.test(entry)).map(name => {
+    const result = settle(dir, name, {gh, repo});
     say(`tester bug ${name.replace('.json', '')}: ${result.action}${result.issue ? ` #${result.issue}` : ''}${result.why ? ` (${result.why})` : ''}`);
-    out.push({file: name, ...result});
-  }
-  return out;
+    return {file: name, ...result};
+  });
+}
+
+/** What the last twin run left (HOME is replaced at each start): one more try, never an error for the caller. `enabled` false does nothing (no Admin key, so no tester mode, so no findings). */
+export function flushLeftovers(home, {enabled = true, say = () => {}, ...options} = {}) {
+  if (!enabled) return;
+  try { fileAll(home, {...options, say, retryFailed: true}); } catch (error) { say(`tester bugs left from the last run were not filed: ${error.message}`); }
 }
 
 /** Files what is there now and everything the app writes later. -> stop(), which files whatever is left once more. Why: fs.watch fires on the rename of a finished write, so no polling interval. */
-export function watchFindings(home, options = {}) {
+export function watchFindings(home, {enabled = true, ...options} = {}) {
+  if (!enabled) return () => {};
   const run = () => { try { fileAll(home, options); } catch (error) { (options.say || (() => {}))(`tester bugs: ${error.message}`); } };
   fs.mkdirSync(path.join(home, FINDINGS), {recursive: true});
   run();
