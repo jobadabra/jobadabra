@@ -12,5 +12,14 @@
    "Profile: Build a CV with the AI → Settings: 🤝 Fixes from the community",
    "Settings: 🤝 Fixes from the community → Jobs: Jobs filter: Closed"
   ]
+ },
+ {
+  "seed": 20261107,
+  "pairs": [
+   "start → Focus: Up next",
+   "Focus: Up next → Settings: Your data",
+   "Settings: Your data → Actions: Actions: More · 2",
+   "Actions: Actions: More · 2 → Strategy: Job preferences"
+  ]
  }
 ]
