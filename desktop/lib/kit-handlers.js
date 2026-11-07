@@ -23,9 +23,9 @@ import {makeDocx} from './cv-docx-tailor.js';
 import {findOffice} from './office.js';
 
 const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
-// Quiet callers feed canonical pipeline text; UI-only fallback errors resolve the current locale at invocation.
+// Why (#3463): quiet errors feed Apply/pipeline output, so only UI calls resolve display wording while canonical flow values stay unchanged.
 const displayError = (quiet,key,canonical) => quiet ? canonical : t(key);
-// Choose trusted platform copy before interpolating any personal values.
+// Why (#3463): select trusted Mac/PC wording before interpolation so personal/provider values are never rewritten.
 const localCvNote = () => t(process.platform === 'win32' ? 'kitNotice.onlyPC' : 'kitNotice.onlyMac');
 
 /** Why the engine stopped a job, in words: a stopped run's last ⚠️ line (src/daily_modes.py prepare_mode); '' for a crash or a run that worked. */
