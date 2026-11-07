@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
-import {test} from 'node:test';
+import {after, test} from 'node:test';
 import {hostRulesFor, loadCases, startPractice, withShim} from '../../../practice/server.js';
 
 const askAt = (port, host, pathname, {method = 'GET', body = '', type = 'application/json'} = {}) => new Promise((resolve, reject) => {
@@ -14,8 +14,11 @@ const askAt = (port, host, pathname, {method = 'GET', body = '', type = 'applica
   });
   req.on('error', reject); req.end(body);
 });
+const made = [];
+after(() => { for (const dir of made) fs.rmSync(dir, {recursive: true, force: true}); });
 function oneCase(html) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-test-'));
+  made.push(dir);
   fs.writeFileSync(path.join(dir, 'form.html'), html);
   return {name: 'x', dir, pages: [{url: 'https://jobs.example.com/x/apply', file: 'form.html'}]};
 }
@@ -43,7 +46,9 @@ test('a host that is not a recorded one is refused and counted, never answered',
 });
 
 test('a Submit is caught once whether the script, the form\'s own POST, or both report it', async () => {
-  const ledger = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-ledger-')), 'caught.jsonl');
+  const ledgerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-ledger-'));
+  made.push(ledgerDir);
+  const ledger = path.join(ledgerDir, 'caught.jsonl');
   const server = await startPractice({cases: [oneCase('<form></form>')], ledgerFile: ledger});
   try {
     await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'aaa1', page: 'https://jobs.example.com/x/apply', how: 'submit', fields: [['email', 'a@b.test'], ['pw', '[hidden]']]})});

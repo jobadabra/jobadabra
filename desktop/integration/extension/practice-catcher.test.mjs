@@ -11,8 +11,10 @@ import {loadCases, startPractice} from '../../practice/server.js';
 
 const TEST_MS = 40000, TEST_CAP = {timeout: TEST_MS + CLOSE_MS + 5000};
 const waitFor = async (read, ms = 8000) => { const end = Date.now() + capOf(ms); while (Date.now() < end) { const got = read(); if (got) return got; await new Promise(resolve => setTimeout(resolve, 50)); } return read(); };
+const made = [];
 function ownCase(name, html) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-int-'));
+  made.push(dir);
   fs.writeFileSync(path.join(dir, 'form.html'), html);
   return {name, dir, pages: [{url: `https://jobs.example.com/${name}/apply`, file: 'form.html'}]};
 }
@@ -50,5 +52,5 @@ test('a form that stops its own submit and a form that posts are both caught; a 
     at('the positive control: a real public name does not resolve');
     const outside = await page.goto('https://example.org/', {timeout: capOf(8000)}).then(() => 'loaded', () => 'refused');
     assert.equal(outside, 'refused');
-  } finally { await browser.close(); await server.close(); }
+  } finally { await browser.close(); await server.close(); for (const dir of made) fs.rmSync(dir, {recursive: true, force: true}); }
 }));
