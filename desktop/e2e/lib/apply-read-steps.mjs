@@ -78,8 +78,8 @@ export async function readState(why, read, accepts, wait = {}) {
 export async function runReadSteps(ctx) {
   const {page, proxy, forms} = ctx;
   // Why (7 Nov 2026, owner, #3519: "we don't need to go through normal flow of applying… just to understand if it's a simple form and can be submitted automatically"): a read only looks at the form, so it makes no answer plan and the
-  // "answers not saved" variant ("You review and submit") has no producer any more; the one step left proves a simple form reads "Can apply automatically" without the form judge.
-  for (const [form, expected] of [[autoFormOf(FORMS.submitter), 'Can apply automatically']]) {
+  // "answers not saved" variant ("You review and submit") has no producer any more; the one step left proves a simple form reads "Simple form" (sub-status: can apply automatically) without the form judge.
+  for (const [form, expected] of [[autoFormOf(FORMS.submitter), 'Simple form']]) {
     await ctx.run('"See which jobs can apply automatically" reads a job\'s form in the hidden browser: ' + expected + ', the tab closes, and nothing is filled or sent', async () => {
       const unlinked = linkRuntime(ctx.profile);
       if (unlinked) throw new Error(unlinked);

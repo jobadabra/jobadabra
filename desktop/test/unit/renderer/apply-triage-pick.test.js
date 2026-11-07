@@ -29,8 +29,8 @@ test('the input is not changed, and a missing fit ranks last', () => {
 test('a job with no read is Not checked, and each read says its mode and reason', () => {
   assert.deepEqual(chipOf(null), {label: 'Not checked', tone: 'neutral', detail: ''});
   const clean = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true};
-  assert.equal(chipOf(clean).label, 'Can apply automatically');
-  assert.equal(chipOf({...clean, allFactsSaved: false}).label, 'You review and submit');
+  assert.equal(chipOf(clean).label, 'Simple form');
+  assert.equal(chipOf({...clean, allFactsSaved: false}).label, 'Simple form');
   assert.equal(chipOf({...clean, captcha: true}).detail, 'a check that you are human');   // was the raw id 'captcha' (#3548 review)
   assert.equal(chipOf({...clean, eligible: false}).label, 'Skipped');
 });
@@ -95,4 +95,15 @@ test('every reason the mode table gives is shown translated, never as its raw id
     assert.ok(detail && !['check', 'no form', 'captcha'].includes(detail), `raw reason shown for ${JSON.stringify(read)}: "${detail}"`);
   }
   assert.equal(chipOf({eligible: true, captcha: true, login: false, accountCreation: false, simple: false, why: 'check'}).detail, 'a check may be in the form');
+});
+
+// L2a (owner 7 Nov 2026, "3 general ones, and have substatus"): three statuses, the sub-status is the chip's detail.
+test('three statuses: Simple form, Needs you, Couldn\'t read, each with a sub-status in words', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null};
+  assert.deepEqual(chipOf({...look, simple: true, why: ''}), {label: 'Simple form', tone: 'good', detail: 'can apply automatically'});
+  assert.deepEqual(chipOf({...look, captcha: true, simple: false, why: 'captcha'}), {label: 'Needs you', tone: 'warn', detail: 'a check that you are human'});
+  assert.deepEqual(chipOf({unreadable: true, why: 'timeout'}), {label: "Couldn't read", tone: 'neutral', detail: 'took too long'});
+  assert.deepEqual(chipOf({unreadable: true, why: 'frame'}).detail, 'the form is in a frame');
+  assert.equal(chipOf({unreadable: true, why: 'something new'}).detail, "the page didn't load or couldn't be read", 'an unknown reason never shows its raw id');
+  assert.equal(chipOf(null).label, 'Not checked', 'positive control: no read is still Not checked');
 });

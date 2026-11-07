@@ -18,15 +18,15 @@ const live = {skip: needsElectron.skip};
 const plain = {botCheck: false, loginWall: false, accountCreation: false};
 const CASES = [
   // chip/reason: the words the person reads for that read, written out here (not derived from the renderer's table, which would pass with the table wrong).
-  {name: 'plain, every answer saved', judged: plain, allFactsSaved: true, chip: 'Can apply automatically', reason: 'every answer is a saved fact'},
-  {name: 'plain, an answer not saved', judged: plain, allFactsSaved: false, chip: 'You review and submit', reason: 'answers you have not saved'},
+  {name: 'plain, every answer saved', judged: plain, allFactsSaved: true, chip: 'Simple form', reason: 'every answer is a saved fact'},
+  {name: 'plain, an answer not saved', judged: plain, allFactsSaved: false, chip: 'Simple form', reason: 'answers you have not saved'},
   {name: 'bot check', judged: {...plain, botCheck: true}, chip: 'Needs you', reason: 'a check that you are human'},   // was the raw id 'captcha' (#3548 review)
   {name: 'login wall', judged: {...plain, loginWall: true}, chip: 'Needs you', reason: 'login wall'},
   {name: 'account to create', judged: {...plain, accountCreation: true}, chip: 'Needs you', reason: 'asks you to create an account'},
 ].map((item, index) => ({...item, url: `https://jobs.triage-chip.example/roles/${index + 1}`, read: readFromJudge(item.judged, {allFactsSaved: item.allFactsSaved})}));
 const JOBS = CASES.map((item, index) => ({id: index + 1, code: `c${index + 1}`, title: `Chip Engineer ${index + 1}`, company: 'Triage chip fixtures', stage: null, location: 'Zurich', work_mode: 'Hybrid',
   url: item.url, posted_at: '2099-01-01', first_seen_at: '2099-01-01', status: 'unreviewed', fit: 90 - index, reason: 'A fictional match.', rank: 100 - index, skills: []}));
-let screen;
+let screen, unread;
 
 before(() => {
   if (needsElectron.skip) return;
@@ -53,6 +53,35 @@ before(() => {
   }});
 });
 
+// Gitar on #3556: the toast of a run with a read that could not be made (words and warn tone) was never asserted. The same five jobs, one read unreadable, through the real Start button.
+before(() => {
+  if (needsElectron.skip) return;
+  const reads = Object.fromEntries(CASES.map((item, index) => [item.url, index === 4 ? {unreadable: true, why: 'timeout'} : item.read]));
+  unread = probeWindow({settings: {demoTriageReads: reads}, files: {'jobs.json': {jobs: JOBS, total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
+    await kit.go('jobs');
+    await kit.until(() => document.querySelectorAll('article.job-row').length >= 5, 'the five job rows');
+    document.getElementById('triage-open').click();
+    await kit.until(() => document.getElementById('triage-dialog').open, 'the popup');
+    const field = document.getElementById('triage-n');
+    field.value = '5'; field.dispatchEvent(new window.Event('input', {bubbles: true}));
+    await kit.until(() => document.getElementById('triage-start').textContent.trim() === 'Check 5 jobs', 'the popup to offer Check 5 jobs');
+    document.getElementById('triage-start').click();
+    const toast = await kit.until(() => document.querySelector('#toasts .toast'), 'the pop-up that says how the check ended');
+    await kit.until(() => document.getElementById('triage-progress')?.hidden === true && document.querySelectorAll('#triage-results li').length === 5, 'all five results');
+    const row = [...document.querySelectorAll('article.job-row')].find(one => one.dataset.url === 'https://jobs.triage-chip.example/roles/5');
+    const value = row.querySelector('.role > .chip-tag .chip-value');
+    return {toast: toast.textContent.replace(/\s+/g, ' ').trim(), warn: toast.classList.contains('tone-warn'), label: value?.textContent.trim(), reason: value?.closest('.chip-tag')?.getAttribute('title')};
+  }});
+});
+
+test('a check where one read could not be made says so in a warn pop-up, and that row says Couldn\'t read with its reason', live, () => {
+  assert.match(unread.result.toast, /Checked 4 of 5, 1 couldn't be read/);
+  assert.equal(unread.result.warn, true, 'the pop-up is the warn tone, not the plain one');
+  assert.equal(unread.result.label, 'Couldn\'t read');
+  assert.equal(unread.result.reason, 'took too long');
+});
+
 test('every combination of the reader\'s flags reaches a chip, and every chip is reachable by a verdict (the pure half of the old step)', () => {
   const flags = Object.keys(readFromJudge(plain));
   const reads = flags.reduce((rows, flag) => rows.flatMap(row => [true, false, null, undefined].map(value => ({...row, [flag]: value}))), [{}]);
@@ -72,7 +101,7 @@ test('before any Check every job says Not checked; after one Check each row show
     assert.equal(row.label, item.chip, `${item.name}: wrong chip`);
     assert.equal(row.reason, item.reason, `${item.name}: wrong verdict reason`);
   }
-  assert.equal(new Set(screen.result.finished.map(item => item.label)).size, 3, 'the five reads reach three chips (auto, fill, needs you)');
+  assert.equal(new Set(screen.result.finished.map(item => item.label)).size, 2, 'the five reads reach two chips (Simple form for auto and fill, Needs you); their sub-statuses differ');
 });
 
 test('a Check reads only: the app is asked for no apply, no kit and no reopen (the demo logs every blocked action)', live, () => {

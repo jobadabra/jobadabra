@@ -53,7 +53,15 @@ before(() => {
     gates.get(jobs[1].url)(null);
     const done = await run;
     const after = await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog to come back', 15000);
-    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length};
+    // L2a (owner 7 Nov 2026, three statuses): a read that could not be made is listed as "Couldn't read" with its reason, counted apart, and offered again; the others are unchanged.
+    const reads = {[jobs[1].url]: {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: ''}, [jobs[2].url]: {unreadable: true, why: 'timeout'}};
+    const mixed = await runTriage([jobs[1], jobs[2]], async job => reads[job.url]);
+    const rows = [...document.querySelectorAll('#triage-results li')].map(li => li.textContent.replace(/\s+/g, ' ').trim());
+    const again = (await import('./pages/jobs-triage.js')).readOf(jobs[2].url);
+    // Gitar on #3556: the re-offer and the reason were never asserted (the old `read !== null` would pass the line above too): the idle dialog must offer the unreadable job again, and the chip's tooltip is the reason.
+    const offered = (await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog after the mixed run', 15000)).footer;
+    const reason = document.querySelectorAll('#triage-results li')[1]?.querySelector('[title]')?.title;
+    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length, mixed, rows, again, offered, reason};
   }});
 });
 
@@ -96,9 +104,24 @@ test('Stop says it is stopping, reads nothing more, and the idle dialog comes ba
   const {stopping, done, after, gated} = screen.result;
   assert.match(stopping.words, /^Stopping/);
   assert.equal(stopping.stopDisabled, true);
-  assert.equal(done, 1, 'only the one finished read counts');
+  assert.deepEqual(done, {read: 1, failed: 0}, 'only the one finished read counts');
   assert.equal(gated, 2, 'the third job was never read');
   assert.deepEqual(after.footer, ['Close', 'Check 2 jobs'], 'the one job read is no longer offered');
   assert.equal(after.fieldLocked, false);
   assert.equal(after.inline, 0);
+});
+
+test('a read that could not be made is listed as Couldn\'t read with its reason, counted apart from the reads, and the others say Simple form', live, () => {
+  const {mixed, rows, again} = screen.result;
+  assert.deepEqual(mixed, {read: 1, failed: 1});
+  assert.equal(rows.length, 2);
+  assert.match(rows[0], /Birch Labs.*Simple form/);
+  assert.match(rows[1], /Cedar Group.*Couldn't read/);
+  assert.equal(again.unreadable, true, 'the unreadable read is kept, so the chip can say why');
+});
+
+test('the job that could not be read is offered again by the next Check, and its chip says why in words', live, () => {
+  const {offered, reason} = screen.result;
+  assert.deepEqual(offered, ['Close', 'Check 1 job'], 'only the unreadable job is left to offer (the two reads that worked are not)');
+  assert.equal(reason, 'took too long', 'the reason for a timeout, in words, never the raw id');
 });

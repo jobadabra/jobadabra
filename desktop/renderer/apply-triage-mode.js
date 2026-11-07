@@ -10,6 +10,7 @@
  */
 export function modeOfRead(read) {
   read = read || {};   // a failed read (null) is a missing read, so it takes the unsafe answer too
+  if (read.unreadable === true) return {mode: 'none', reason: 'unreadable'};   // a read that could not be made is never a mode a batch can take
   if (read.eligible !== true) return {mode: 'none', reason: 'not eligible'};
   if (read.captcha !== false) return {mode: 'check', reason: read.why === 'check' ? 'check' : 'captcha'}; // words-ok: the read's own flag, not a page word list
   if (read.login !== false) return {mode: 'check', reason: 'login wall'}; // words-ok: the read's own flag, not a page word list
