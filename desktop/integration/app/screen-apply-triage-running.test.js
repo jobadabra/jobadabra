@@ -58,7 +58,10 @@ before(() => {
     const mixed = await runTriage([jobs[1], jobs[2]], async job => reads[job.url]);
     const rows = [...document.querySelectorAll('#triage-results li')].map(li => li.textContent.replace(/\s+/g, ' ').trim());
     const again = (await import('./pages/jobs-triage.js')).readOf(jobs[2].url);
-    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length, mixed, rows, again};
+    // Gitar on #3556: the re-offer and the reason were never asserted (the old `read !== null` would pass the line above too): the idle dialog must offer the unreadable job again, and the chip's tooltip is the reason.
+    const offered = (await kit.until(() => { const now = look(); return now.words === '' ? now : ''; }, 'the idle dialog after the mixed run', 15000)).footer;
+    const reason = document.querySelectorAll('#triage-results li')[1]?.querySelector('[title]')?.title;
+    return {idle, first, ticked, second, stopping, done, after, order: jobs.map(job => job.company), gated: [...gates.keys()].length, mixed, rows, again, offered, reason};
   }});
 });
 
@@ -115,4 +118,10 @@ test('a read that could not be made is listed as Couldn\'t read with its reason,
   assert.match(rows[0], /Birch Labs.*Simple form/);
   assert.match(rows[1], /Cedar Group.*Couldn't read/);
   assert.equal(again.unreadable, true, 'the unreadable read is kept, so the chip can say why');
+});
+
+test('the job that could not be read is offered again by the next Check, and its chip says why in words', live, () => {
+  const {offered, reason} = screen.result;
+  assert.deepEqual(offered, ['Close', 'Check 1 job'], 'only the unreadable job is left to offer (the two reads that worked are not)');
+  assert.equal(reason, 'took too long', 'the reason for a timeout, in words, never the raw id');
 });
