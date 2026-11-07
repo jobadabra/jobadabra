@@ -1,5 +1,6 @@
 // The job's own cover letter's IPC and the step Tailor CV + cover letter runs after the CV: make the letter (kit's or drafted), print it as a PDF in the
 // CV's design, keep it, put it on the job beside the CV. Edit remakes the PDF at once; Write again drafts anew. Guards: desktop/test/unit/renderer/job-letter.test.js.
+import {editNotice} from '../i18n/edit-notices.js';
 import * as claudeCode from './claude-code.js';
 import * as contactDetails from './contact.js';
 import * as cvlib from './cv.js';
@@ -52,8 +53,8 @@ export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, stora
   ipcMain.handle('jobLetterSave', async (_, which, text) => {
     try {
       const code = codeOf(which), record = jobLetter.load(storage, code), clean = String(text || '').replace(/\r\n/g, '\n').trim();
-      if (!record) return {ok: false, error: 'This job has no letter yet: tailor it first.'};
-      if (!clean) return {ok: false, error: 'The letter is empty.'};
+      if (!record) return {ok: false, error: editNotice('noLetter')};
+      if (!clean) return {ok: false, error: editNotice('emptyLetter')};
       await keep(record.job, {...record, text: clean, source: 'you', warnings: []});
       appLog('cover-letter', 'job letter edited; PDF remade', {code});
       return {ok: true, ...jobLetter.status(storage, code)};
@@ -62,7 +63,7 @@ export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, stora
   // Write again: a new draft from the tailored CV (and the person's feedback, if any).
   ipcMain.handle('jobLetterAgain', async (_, which, feedback = '') => {
     const code = codeOf(which), record = jobLetter.load(storage, code), tailored = cvlib.load(storage, code);
-    if (!record || !tailored) return {ok: false, error: 'Tailor the CV for this job first.'};
+    if (!record || !tailored) return {ok: false, error: editNotice('tailorFirst')};
     const job = await pipeline.posting(storage, code);
     if (!job.ok) return {ok: false, error: job.error};
     const result = await makeFor({...record.job, description: job.description, location: job.location}, tailored.cv,
