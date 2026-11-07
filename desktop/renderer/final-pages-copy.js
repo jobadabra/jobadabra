@@ -28,6 +28,6 @@ export function reviewHeading(title) {
   return count ? finalText('weakCount', {label: reportHeading('Weak answers'), weak: count[1], total: count[2]}) : reportHeading(title);
 }
 
-const paletteGroups = new Set(["Settings", "Go to", "Sessions", "Actions", "Profile", "Strategy", "Reports", "Focus", "Jobs", "Interviews", "Employers", "Calendar", "Notion"]);
+const paletteGroups = new Set(["Settings", "Go to", "Sessions", "Actions", "Profile", "Strategy", "Reports", "Focus", "Jobs", "Interviews", "Employers", "Calendar", "Notion"]); // about Notion: this fixed group names the Notion service itself
 /** Name only fixed palette groups for display; canonical group identity and unknown labels stay unchanged. */
 export const paletteGroup = group => paletteGroups.has(group) ? finalText(`group_${group.replaceAll(' ','_')}`) : group;

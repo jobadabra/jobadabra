@@ -1,3 +1,4 @@
+import {readScreenSource} from '../../static-screen-source.js';
 // "Have a promo code?" in the app (lib/plan.js redeem, IPC planRedeem, renderer/pages/plan-promo.js, the Plan card link, the ⌘K entry): the typed code goes to the site with this install's key and
 // nothing else decides it; a code that worked refreshes the plan, and a promo-Pro status counts as licensed (so Export opens). The public app holds no code, no hash and no compare. Fake site only.
 import assert from 'node:assert/strict';
@@ -49,7 +50,7 @@ test('a promo-Pro status counts as licensed, so the Export gate opens for a rede
 });
 
 test('wired: IPC, preload, the Plan card link (Free only) and the ⌘K entry (plan on, Free only); the route is listed', () => {
-  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   assert.match(read('../../../preload.cjs'), /planRedeem: call\('planRedeem'\)/);
   assert.match(read('../../../lib/app-meta-handlers.js'), /ipcMain\.handle\('planRedeem'/);
   const plan = read('../../../renderer/pages/plan.js'), upgrade = plan.slice(plan.indexOf("view.kind === 'upgrade'"), plan.indexOf('if (view.hasCredit)'));
