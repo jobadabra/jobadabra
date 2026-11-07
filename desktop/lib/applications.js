@@ -2,17 +2,19 @@
 // a read-only copy) it can't update itself and loses its keychain access when the disk image is ejected.
 // At start it offers to move itself there; Electron copies it, quits and opens the moved copy.
 
+import {applicationsMoveOptions, applicationsReplaceOptions, applicationsFailureOptions} from './native-notices.js';
+
 // Whether to ask: packaged Mac builds outside Applications only.
 export function shouldOffer({platform, packaged, inApplications}) {
   return platform === 'darwin' && packaged && !inApplications;
 }
 
+// Keep the exported options contract while resolving each text property in the current locale.
 export const question = {
   type: 'question',
-  message: 'Move Jobadabra to Applications?',
-  detail: 'It is running from the disk image or Downloads. From Applications it can update itself and ' +
-    'keeps its access to your saved keys.\n\nIt moves itself and opens again.',
-  buttons: ['Move to Applications', 'Not now'],
+  get message() { return applicationsMoveOptions().message; },
+  get detail() { return applicationsMoveOptions().detail; },
+  get buttons() { return applicationsMoveOptions().buttons; },
   defaultId: 0,
   cancelId: 1,
 };
@@ -25,11 +27,9 @@ export function offerMove({app, dialog, platform = process.platform}) {
   if (dialog.showMessageBoxSync(question) !== 0) return false;
   try {
     return app.moveToApplicationsFolder({conflictHandler: kind => kind !== 'existsAndRunning' &&
-      dialog.showMessageBoxSync({type: 'question', message: 'Replace the Jobadabra in Applications?',
-        detail: 'Your data is kept: it lives outside the app.', buttons: ['Replace', 'Cancel'], defaultId: 0, cancelId: 1}) === 0});
+      dialog.showMessageBoxSync(applicationsReplaceOptions()) === 0});
   } catch (error) {
-    dialog.showMessageBoxSync({type: 'warning', message: 'Jobadabra couldn\'t move itself',
-      detail: `${error.message}\n\nDrag it from the disk image onto the Applications folder, then open it from there.`});
+    dialog.showMessageBoxSync(applicationsFailureOptions(error.message));
     return false;
   }
 }
