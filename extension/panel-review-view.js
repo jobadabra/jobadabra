@@ -135,7 +135,7 @@
 
     // Return the existing connection tooltip prefix without the extension build suffix.
     function connectionWords(connection, session) {
-      return connection?.connected ? (connection.app ? (session ? t("panel.inSync", 'In sync with Jobadabra') : t("panel.connected", 'Connected to Jobadabra')) : t("panel.worker", 'Connected to your Worker')) : (connection?.why || t("panel.notConnectedHint", 'Not connected: the form still fills from your settings'));
+      return connection?.connected ? (connection.app ? (session ? t("panel.inSync", 'In sync with Jobadabra') : t("panel.connected", 'Connected to Jobadabra')) : t("panel.worker", 'Connected to your Worker')) : (connection?.whyKey ? t(connection.whyKey,connection.why,connection.whyValues) : connection?.why || t("panel.notConnectedHint", 'Not connected: the form still fills from your settings'));
     }
 
     // Draw the shared connection footer and its reload action in every open state.
@@ -162,6 +162,14 @@
       window.__jobadabraClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobadabraReportOn, needs});   // offered, never automatic unless "always" (panel-claude.js)
     }
 
-    return {drawPill, renderHeader, renderProgress, renderFill, renderRemaining, renderActions, renderFooter};
+    // Resolve app-owned evidence labels at draw time; generated advice remains untouched.
+    function renderTipLabel(evidence) {
+      if (evidence === null) return;
+      const labels = {research:['panel.tipFact','Fact'],recruiters:['panel.tipRecruiters','Recruiters say'],advice:['panel.tip','Tip'],'to-test':['panel.tipTry','Worth trying']};
+      const [key,fallback] = labels[evidence] || labels.advice;
+      $('.tip-chip').textContent = t(key,fallback);
+    }
+
+    return {renderTipLabel, drawPill, renderHeader, renderProgress, renderFill, renderRemaining, renderActions, renderFooter};
   };
 })();

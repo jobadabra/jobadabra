@@ -1,10 +1,9 @@
 // Telling the app which tabs are open (moved out of background.js, 8 Oct 2026): the report of open job and form tabs (the app's "Opened in Chrome" and "form closed"), every 30 s
 // and when a tab changes, the badge that says whether the app is reachable, and looking at an armed page that finished loading before anything looked at it. A FLOW FILE
 // (docs/flows/applying.md). Guards: the tab-pages, forms-open and tab-memory tests in desktop/test and the matrix (npm run flows).
+import {displayText} from './display-cache.js';
 import {IDENTITY_KEYS} from './tab-identity.js';
 import {JOB_SITES} from './flow.js';
-import {NOT_CONNECTED} from './flow.js';
-import {NO_APP} from './flow.js';
 import {api} from './flow.js';
 import {autoRead} from './visit.js';
 import {consider, tabReloaded} from './fill-flow.js';
@@ -94,7 +93,7 @@ export function createTabReport(ctx) {
         chrome.runtime.reload();
       }
     } catch (error) {
-      connected(false, error.status ? NOT_CONNECTED : NO_APP);
+      connected(false, error.status ? 'error.notConnected' : 'error.noApp');
     }
   }
 
@@ -107,9 +106,9 @@ export function createTabReport(ctx) {
     return undefined;
   });
 
-  function connected(ok, why = '') {
+  function connected(ok, whyKey = '') {
     chrome.action.setBadgeText({text: ok ? '' : '!'}).catch(() => {});
-    chrome.action.setTitle({title: ok ? 'Jobadabra' : `Jobadabra: ${why}`}).catch(() => {});
+    chrome.action.setTitle({title: ok ? 'Jobadabra' : `Jobadabra: ${displayText(whyKey)}`}).catch(() => {});
   }
   // A closed tab's id comes back for another tab: forget everything kept for it, so no fill and no submitted-check is
   // ever carried over to whatever opens next (tab-pages.js).

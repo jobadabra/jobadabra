@@ -8,6 +8,7 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   if (window.__jobadabraClaude) return;
   const countdownText = count => t('claude.countdown','Claude takes over in {count} s',{count});
+  let countdownLeft = 0;
   const COUNT = 5;   // seconds the person sees before "always" starts Claude
 
   // The view for the facts (info: on = Claude ready, stuck, auto = countdown allowed [always + "Do it for me"], consent) and what the person pressed.
@@ -43,7 +44,7 @@
     if (!root.querySelector('style[data-claude-offer]')) root.append(Object.assign(document.createElement('style'), {textContent: STYLE}));
     root.querySelector('style:last-of-type').setAttribute('data-claude-offer', '');
     box = root.querySelector('.claude-offer');
-    window.__jobadabraPanelI18n.onChange(() => { if (shown && shown !== 'countdown') draw(shown); });
+    window.__jobadabraPanelI18n.onChange(() => { if (shown === 'countdown') paintCountdown(); else if (shown) draw(shown); });
   }
   const el = (tag, props = {}, ...kids) => { const node = Object.assign(document.createElement(tag), props); node.append(...kids); return node; };
   const button = (text, action, className = 'secondary') => el('button', {className, textContent: text, onclick: () => act(action)});
@@ -60,6 +61,13 @@
     }
     shown = result.view;
     draw(result.view);
+  }
+
+  // Repaint only owned countdown copy; the existing timer and remaining seconds stay intact.
+  function paintCountdown() {
+    box.replaceChildren(el('p', {className:'co-count'}, el('b', {textContent:countdownText(Math.max(countdownLeft,0))})),
+      el('div', {className:'co-row'}, button(t('common.cancel', 'Cancel'), 'cancel')),
+      el('p', {className:'co-muted'}, t('claude.stops', 'It works in this tab and stops before Submit.')));
   }
 
   function draw(view) {
@@ -80,11 +88,9 @@
       box.replaceChildren(el('p', {}, t("claude.consent", 'Claude will click and type in this tab without asking each step. It never presses Submit.')),
         el('div', {className: 'co-row'}, button(t("common.continue", 'Continue'), 'continue', 'primary'), button(t("common.cancel", 'Cancel'), 'myself')));
     } else if (view === 'countdown') {
-      const count = el('b', {textContent:countdownText(COUNT)});
-      box.replaceChildren(el('p', {className: 'co-count'}, count), el('div', {className: 'co-row'}, button(t("common.cancel", 'Cancel'), 'cancel')),
-        el('p', {className: 'co-muted'}, t("claude.stops", 'It works in this tab and stops before Submit.')));
-      let left = COUNT;
-      timer = setInterval(() => { left -= 1; count.textContent = countdownText(Math.max(left,0)); if (left <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
+      countdownLeft = COUNT;
+      paintCountdown();
+      timer = setInterval(() => { countdownLeft -= 1; box.querySelector('.co-count b').textContent = countdownText(Math.max(countdownLeft,0)); if (countdownLeft <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
     } else if (view === 'sent') {
       box.replaceChildren(el('p', {}, t("claude.starting", 'Claude is starting in Jobadabra. It works in this tab and stops before Submit.')));
     }

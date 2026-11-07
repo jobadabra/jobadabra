@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
+import {catalogs} from '../../../../extension/i18n.js';
 
 const tab = {id: 7, url: 'https://jobs.example.test/apply#jobpilotto-fill=s1'};
 const job = 'https://jobs.example.test/job/1#kit';
@@ -18,6 +19,7 @@ async function rig(t, options = {}) {
   const counts = [...(options.counts || [shape])], tabReads = [...(options.tabs || [tab])], answers = [...(options.answers || [form])];
   const result = options.result || {filled: 2, todo: [], trace: []};
   const deps = {
+    displayText:(key,values)=>globalThis.__jobadabraFormatDisplayMessage(catalogs.en,catalogs.en,'en',key,values),
     isStopped: (...args) => { calls.push(['stopped', ...args]); return !!options.stopped || !!options.stopDuringWatch && named(calls, 'stopped').length > 1; }, backgroundMayFill: asyncRecord('mayFill', options.mayFill !== false),
     backgroundPage: asyncRecord('backgroundPage', !!options.backgroundPage), restoreLostQuery: asyncRecord('restore', !!options.restored),
     pageKey: url => String(url).split('#')[0], openRead: record('openRead', options.moved ? 0 : 1), dropIfLate: (...args) => { calls.push(['late', ...args]); return options.late === true || named(calls, 'late').length === options.lateAt; },

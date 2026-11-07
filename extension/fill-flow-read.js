@@ -1,5 +1,6 @@
 // The fill flow's ordered page preparation, retry reads and page-kind decisions; state stays with fill-flow.js.
 // Invariants: the flow-core block in extension/fill-flow.js's header governs this file (read it before editing).
+import {displayText} from './display-cache.js';
 import {backgroundPage} from './background-apply.js';
 import {apiFor, askEarly, settings} from './flow.js';
 import {decide} from './log.js';
@@ -22,7 +23,7 @@ export async function preparePage(step) {
   const {tab, live} = step, {sayStep} = step.flow;
   // A popup over the page (a cookie banner: Deloitte, 9 Oct 2026; any other, in any flow) is closed the way a person would, before the page is read (consent.js).
   const banner = await closeConsentEverywhere(tab.id, {cookiesOnly: true}).catch(() => '');
-  if (banner) { decide('fill', 'closed a popup', {label: banner.slice(0, 40), tab: tab.id}); sayStep(tab.id, `Closed a popup ("${banner.slice(0, 30)}")`); await pageStill(tab.id, {maxMs: 800}); }
+  if (banner) { decide('fill', 'closed a popup', {label: banner.slice(0, 40), tab: tab.id}); sayStep(tab.id, displayText('step.closedPopup',{banner:banner.slice(0,30)})); await pageStill(tab.id, {maxMs: 800}); }
   await expandSections(live);   // a form drawn with collapsed sections (SuccessFactors) is read open, or it looks empty and is judged "no form" (sections.js)
 }
 

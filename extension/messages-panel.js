@@ -1,9 +1,8 @@
 // The extension worker's messages from the page's panel (moved out of background.js, 8 Oct 2026): the job it shows, Fill, bringing the tab forward or closing it, taking over with
 // Claude, the tip and opening the app. Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
 // (docs/flows/applying.md). Guards: the panel and review tests in desktop/test and the matrix (npm run flows).
+import {panelJobFailure} from './display-errors.js';
 import {withDisplayLocale} from './panel-locale-message.js';
-import {NO_APP} from './flow.js';
-import {plainWhy} from './ai-reply.js';
 import {TIPS} from './tips-pool.js';
 import {api} from './flow.js';
 import {decide} from './log.js';
@@ -35,7 +34,7 @@ function applicationPanelMessages(ctx) {
         } catch (error) {
           // The app answered (an error is still an answer): connected, and say what failed; only no answer is "not connected".
           return {connected: !!error.status, app, job: null, answers: 0, coverLetter: '', retry: !!error.status && error.status !== 404,
-            why: !error.status ? (app ? NO_APP : plainWhy(error)) : error.status === 404 ? '' : `Connected, but this job couldn't be loaded (${plainWhy(error, '') || error.status}): trying again`};
+            ...panelJobFailure(error,app)};
         }
       })().then(reply, () => reply({connected: false}));
       return true;
@@ -67,13 +66,13 @@ function applicationPanelMessages(ctx) {
         const tab = await chrome.tabs.get(message.tabId).catch(() => null);
         const kept = tab ? await chrome.storage.session.get([`armed:${tab.id}`, `stoppedTab:${tab.id}`]).catch(() => ({})) : {};
         const armed = tab && (kept[`armed:${tab.id}`] || kept[`stoppedTab:${tab.id}`]);   // a tab Stop cleared is still the app's: the person starts it again here (stop.js)
-        if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobpilotto-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.'};
+        if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobpilotto-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.', whyKey:'error.notManaged'};
         tabReloaded(tab.id);   // a page whose Apply press was tried once is pressed again: this is the person asking (a reload does the same, tab-report.js)
         decide('fill', 'Apply pressed in the extension popup', {host: new URL(tab.url).hostname});
         if (await readyHandoff.takeLate(tab.id, tab.url).catch(() => false)) return {ok: true};   // a load the worker missed: the night's page first (ready-handoff.js)
         consider(tab, await jobOf(tab)).catch(() => {});
         return {ok: true};
-      })().then(reply, () => reply({ok: false, why: 'Could not start here.'}));
+      })().then(reply, () => reply({ok: false, why: 'Could not start here.', whyKey:'error.start'}));
       return true;
     }
     // The app's reload command (review.js): Chrome reports that reload as a link, not a reload, so the panel says it first (the app asked on the person's word).

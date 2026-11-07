@@ -70,7 +70,7 @@
   $('.report-btn').onclick = event => {
     if (!event.isTrusted) return;
     if (window.__jobadabraReport) window.__jobadabraReport.open();
-    else note('Report could not open on this page. Reload the page and try again.');
+    else note(t('report.unavailable','Report could not open on this page. Reload the page and try again.'));
   };
 
   // Chrome's debugging bar is explained once, where a fill starts, the first time a trace is kept (the trace: trace.js; owner, 16 Oct 2026).
@@ -241,11 +241,11 @@
   }
   $('.fill').onclick = () => fill();
   $('.anyway').onclick = () => fill(true);
-  const LABEL = {research: t("panel.tipFact", 'Fact'), recruiters: t("panel.tipRecruiters", 'Recruiters say'), advice: t("panel.tip", 'Tip'), 'to-test': t("panel.tipTry", 'Worth trying')};
+  let tipEvidence = null;
   async function askTip() {
     const answer = await send({type: 'panelTip', host: location.hostname, prefer: tipFor}).catch(() => null);
     if (!answer?.ok) return;
-    $('.tip-chip').textContent = LABEL[answer.evidence] || t("panel.tip", 'Tip');
+    tipEvidence = answer.evidence; view.renderTipLabel(tipEvidence);
     $('.tip-text').textContent = answer.text;
     $('.tip').hidden = false;
   }
@@ -379,7 +379,7 @@
     // Invariant: locale redraw shares sync's first-state gate; unknown is never a verdict that lifts the early overlay.
     await stepFirst;
     if (!chrome.runtime?.id) return;
-    render(); drawSteps(); stoppedCard(!$('.stopped').hidden);
+    render(); view.renderTipLabel(tipEvidence); drawSteps(); stoppedCard(!$('.stopped').hidden);
     if (stepShowing()) { $('.fill .label').textContent = displayStep(steps.at(-1) || ''); $('.fill').title = $('.fill .label').textContent; }
     else $('.fill .label').textContent = filledOnce ? t('panel.fillAgain','Fill again') : t('panel.fill','Fill this form');
     for (const button of stopButtons) button.textContent = button.disabled ? t('panel.stopping','Stopping…') : t('panel.stop','Stop');

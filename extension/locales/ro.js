@@ -300,5 +300,13 @@ export default {
   "visit.waitAllow": "Jobadabra te așteaptă: apasă Permite pe pagina deschisă",
   "visit.readBadge": "Cit.",
   "visit.signIn": "Jobadabra: autentifică-te aici dacă site-ul cere, apoi apasă Citește în meniul extensiei",
-  "tooltip.written": "Scris de AI: citește înainte de trimitere"
+  "tooltip.written": "Scris de AI: citește înainte de trimitere",
+  "report.unavailable": "Raportul nu s-a putut deschide pe această pagină. Reîncarcă pagina și încearcă din nou.",
+  "menu.suggested": "✈️ Sugestie: {answer} (alege tu opțiunea)",
+  "step.closedPopup": "Fereastră pop-up închisă („{banner}”)",
+  "error.noApp": "Aplicația Jobadabra nu poate fi contactată: este deschisă?",
+  "error.notConnected": "Aplicația Jobadabra nu a acceptat această extensie, nici după reconectare.",
+  "error.notManaged": "Această pagină nu a fost deschisă de aplicația Jobadabra: apasă Aplică în aplicație.",
+  "error.start": "Nu s-a putut porni aici.",
+  "error.jobLoad": "Conectat, dar oferta nu a putut fi încărcată ({reason}): se încearcă din nou",
 };

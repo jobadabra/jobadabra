@@ -294,5 +294,13 @@ export default {
   "visit.waitAllow": "Jobadabra wartet auf dich: Drücke Erlauben auf der geöffneten Seite",
   "visit.readBadge": "Lies",
   "visit.signIn": "Jobadabra: Melde dich hier an, falls die Jobbörse es verlangt, und drücke dann Lesen im Erweiterungsmenü",
-  "tooltip.written": "Von der KI geschrieben: vor dem Absenden lesen"
+  "tooltip.written": "Von der KI geschrieben: vor dem Absenden lesen",
+  "report.unavailable": "Der Bericht konnte auf dieser Seite nicht geöffnet werden. Lade die Seite neu und versuche es erneut.",
+  "menu.suggested": "✈️ Vorschlag: {answer} (selbst auswählen)",
+  "step.closedPopup": "Popup geschlossen (\"{banner}\")",
+  "error.noApp": "Die Jobadabra-App ist nicht erreichbar. Ist sie geöffnet?",
+  "error.notConnected": "Die Jobadabra-App hat diese Erweiterung auch nach erneutem Verbinden nicht akzeptiert.",
+  "error.notManaged": "Diese Seite wurde nicht von der Jobadabra-App geöffnet. Drücke in der App auf Bewerben.",
+  "error.start": "Hier konnte nicht gestartet werden.",
+  "error.jobLoad": "Verbunden, aber diese Stelle konnte nicht geladen werden ({reason}): erneuter Versuch",
 };
