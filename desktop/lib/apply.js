@@ -29,7 +29,7 @@ export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.j
 // Saved jobs first, then by fit.
 const best = (a, b) => (b.status === 'saved') - (a.status === 'saved') || (b.fit ?? -1) - (a.fit ?? -1);
 const open = job => ['unreviewed', 'saved'].includes(job.status) && job.url;
-const startable = job => open(job) && canStart(job.stage);   // what an Apply batch may take: a job in process is never picked (lib/apply-eligibility.js)
+const startable = job => open(job) && !job.ineligible && canStart(job.stage);   // what an Apply batch may take: never a job in process (stage, lib/apply-eligibility.js) nor one the kit marked not eligible
 
 // Only jobs with a drafted kit (their form is already answered), best first.
 export function pick(jobs, n) {
