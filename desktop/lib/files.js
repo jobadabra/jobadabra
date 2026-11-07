@@ -2,6 +2,7 @@
 // on the Profile page under "📎 CV") and each tailored CV (on the job's Applications row, column "Tailored CV").
 // Notion's file uploads: create an upload, send the bytes, then attach it. The free plan takes files up to 5 MB;
 // anything bigger (call recordings) stays on the Mac and in the automatic backup (lib/backup.js).
+import {osText} from '../i18n/platform.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -56,7 +57,7 @@ export async function tailoredToApplication(token, applicationsDb, jobUrl, file,
 export async function syncCv(storage, fetcher) {
   const token = storage.secret('NOTION_TOKEN'), profile = storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID;
   const file = storage.path('cv.pdf');
-  if (!notionInUse(storage)) return {skipped: 'the data is on this Mac'};   // one copy: never into a Notion that is not the store
+  if (!notionInUse(storage)) return {skipped: osText('the data is on this Mac', process.platform)};   // one copy: never into a Notion that is not the store
   if (!token || !profile || !fs.existsSync(file)) return {skipped: 'nothing to upload'};
   const print = fingerprint(file);
   if (storage.settings().cvInNotion === print) return {skipped: 'already in Notion'};   // about Notion

@@ -26,7 +26,7 @@ import {shared} from './shared.js';
 import {keyRow} from '../service-status.js';
 import {byStore, storeName} from '../store-words.js';
 import {showCloud, showExtensionStatus, showGoogle, showSchedule, showTelegram} from './connections.js';
-import {$, message, osText, runWhen, show} from './core.js';
+import {$, message, runWhen, show} from './core.js';
 import {showCvChanged} from './cv-change.js';
 import {onCvReplaced} from './cv-replace.js';
 import {openSetting, renderOverview} from './settings.js';
@@ -89,7 +89,7 @@ function renderNotionLinks() {
   show(box, links.length > 0);
   for (const [env, label, glyph] of links) {
     const link = Object.assign(document.createElement('button'), {className: 'notion-link', textContent: label,
-      title: osText(t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label}))});
+      title: t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label})});
     link.prepend(icon(glyph));
     link.addEventListener('click', event => window.pilot.openNotion(shared.state.notion[env], event.metaKey || event.ctrlKey));
     box.append(link);

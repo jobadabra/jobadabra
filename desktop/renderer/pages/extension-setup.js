@@ -5,7 +5,7 @@
 // for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-import {$, message, osPick, osText, show} from './core.js';
+import {$, message, osPick, show} from './core.js';
 import {extensionFrom, extensionState, justStarted} from '../service-status.js';
 import {foldFollows} from '../fold-follows.js';
 import {lookedText} from '../extension-looked.js';
@@ -99,8 +99,8 @@ export function bindExtension() {
   $('ext-open-page').addEventListener('click', async () => {
     const result = await window.pilot.extensionPage().catch(() => null);
     message('ext-message', inBrowser(result?.opened
-      ? osText(t('pagesAuditSecond.a77'))
-      : osText(t('pagesAuditPunct.a20')), browserApp), result?.opened ? 'ok' : 'error');
+      ? t('pagesAuditSecond.a77')
+      : t('pagesAuditPunct.a20'), browserApp), result?.opened ? 'ok' : 'error');
   });
   // The folder in front of the user and its path on the clipboard. The Mac's dialog takes ⌘⇧G (Go to Folder), ⌘V,
   // Return; the PC's has no such shortcut, so it gets its own sentence. Bound by attribute, so the setup wizard's

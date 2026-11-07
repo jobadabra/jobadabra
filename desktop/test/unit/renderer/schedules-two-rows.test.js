@@ -56,11 +56,11 @@ test('Ready to send and Apply for me are visible rows with a Coming soon chip an
 });
 
 test('each job says where it really runs: Find jobs by Always on, Gmail always this Mac (owner, 5 Nov 2026: "say where")', () => {
-  assert.equal(whereRuns('search', {}), 'This Mac, while open');
-  assert.equal(whereRuns('search', {cloudRepo: 'me/jobs'}), 'GitHub, your Mac can be off');
-  assert.equal(whereRuns('search', {hostedOn: true}), 'Our servers, your Mac can be off');
-  assert.equal(whereRuns('search', {hostedOn: true, cloudRepo: 'me/jobs'}), 'Our servers, your Mac can be off');   // both on: ours is the one the person turned on in the app
-  for (const where of [{}, {cloudRepo: 'me/jobs'}, {hostedOn: true}]) assert.equal(whereRuns('mail', where), 'This Mac, while open');
+  assert.equal(whereRuns('search', {}), `This ${process.platform === 'win32' ? 'PC' : 'Mac'}, while open`);
+  assert.equal(whereRuns('search', {cloudRepo: 'me/jobs'}), `GitHub, your ${process.platform === 'win32' ? 'PC' : 'Mac'} can be off`);
+  assert.equal(whereRuns('search', {hostedOn: true}), `Our servers, your ${process.platform === 'win32' ? 'PC' : 'Mac'} can be off`);
+  assert.equal(whereRuns('search', {hostedOn: true, cloudRepo: 'me/jobs'}), `Our servers, your ${process.platform === 'win32' ? 'PC' : 'Mac'} can be off`);   // both on: ours is the one the person turned on in the app
+  for (const where of [{}, {cloudRepo: 'me/jobs'}, {hostedOn: true}]) assert.equal(whereRuns('mail', where), `This ${process.platform === 'win32' ? 'PC' : 'Mac'}, while open`);
 });
 
 test('Find jobs keeps its next run time under "On" wherever it runs: the server\'s on our servers, the app\'s on GitHub or this Mac (owner, 5 Nov 2026)', () => {

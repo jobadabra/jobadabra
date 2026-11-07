@@ -4,6 +4,7 @@
 // the app and written to that same row by Save. This Mac keeps the recordings (large files: <data
 // folder>/recordings after saving) and the draft being edited (<data folder>/interviews/<id>/: meta.json, the
 // audio, transcript.txt). Transcription is local and free (src/ai/transcribe.py).
+import {osText} from '../i18n/platform.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {log as appLog} from './log.js';
@@ -185,7 +186,7 @@ export function transcribe(storage, id, {speakers: count = 0} = {}, onProgress =
     }
     const reason = errors.filter(line => /Error|No module/.test(line)).pop() || errors.pop() || 'Transcription failed';
     return update(storage, id, {status: 'failed', error: /No module named '(sherpa_onnx|av|numpy)'/.test(reason)
-      ? 'The transcription add-on is missing: it installs itself on the next try, when this Mac is online' : reason});
+      ? osText('The transcription add-on is missing: it installs itself on the next try, when this Mac is online', process.platform) : reason});
   }).finally(() => running.delete(id));
   running.set(id, task);
   return task;

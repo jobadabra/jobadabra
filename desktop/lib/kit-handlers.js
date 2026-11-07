@@ -1,6 +1,7 @@
 // The application kit and tailored CVs' IPC (moved out of main.js, 8 Oct 2026): drafting a job's kit (questions, answers, cover letter) onto
 // its Notion row, tailoring a CV for a job or for the top matches. It hands back prepareKitFor and tailorCv for the groups that use them
 // (apply, the CV handlers). main.js passes in the services they share. Guards: the kit, tailor and apply tests in desktop/test.
+import {t} from '../i18n/kit-notices.js';
 import * as apply from './apply.js';
 import * as atUpload from './cv-import-at-upload.js';
 import * as claudeCode from './claude-code.js';
@@ -22,6 +23,10 @@ import {makeDocx} from './cv-docx-tailor.js';
 import {findOffice} from './office.js';
 
 const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
+// Why (#3463): quiet errors feed Apply/pipeline output, so only UI calls resolve display wording while canonical flow values stay unchanged.
+const displayError = (quiet,key,canonical) => quiet ? canonical : t(key);
+// Why (#3463): select trusted Mac/PC wording before interpolation so personal/provider values are never rewritten.
+const localCvNote = () => t(process.platform === 'win32' ? 'kitNotice.onlyPC' : 'kitNotice.onlyMac');
 
 /** Why the engine stopped a job, in words: a stopped run's last ⚠️ line (src/daily_modes.py prepare_mode); '' for a crash or a run that worked. */
 export function stoppedWith(exit, lines) {
@@ -40,8 +45,8 @@ export function registerKitHandlers(ctx) {
     if (gate) return gate;
     const blocked = await allowanceBlock();
     if (blocked) return blocked;
-    // Why (5 Nov 2026, owner: "Confirm during the build that the computer has the AI it needs"): without this check the engine fails on a missing key and the person sees no reason.
-    if (!aiReady()) return {ok: false, error: NEEDS_AI};
+    // Why (5 Nov 2026, owner: "Confirm during the build that the computer has the AI it needs"): stop before engine work when this computer has no AI ready; explain it in the current display locale for UI calls while quiet pipeline errors stay canonical.
+    if (!aiReady()) return {ok: false, error: displayError(quiet,'kitNotice.needsAI',NEEDS_AI)};
     // Why (5 Nov 2026, owner: "One press, on this computer"): Apply prepares here even with Always on, so the form opens from the same press. The AI key GitHub uses is copied from this computer.
     // Why (5 Nov 2026, #3297 follow-up): an Always on search fills GitHub's job database; the copy here can lag up to 5 minutes, and a job missing from it is drafted with no posting text.
     if (storage.settings().cloud?.repo) await syncJobs(storage).catch(error => log(`Cloud job list: ${error.message}`));
@@ -51,7 +56,7 @@ export function registerKitHandlers(ctx) {
       pipeline.triggerEnv('you'));
     const stopped = stoppedWith(exit, lines);
     if (stopped) {
-      if (quiet) notify('Application could not be prepared', `${name}: ${stopped}`, {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it
+      if (quiet) notify(t('kitNotice.prepareFailedTitle'), t('kitNotice.nameReason',{name,reason:stopped}), {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it
       return {ok: false, stopped: true, error: `${name}: ${stopped}`};
     }
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
@@ -59,8 +64,8 @@ export function registerKitHandlers(ctx) {
       if (exit === 0) track('kit_prepared', {});
       return {ok: exit === 0, ineligible: ineligible || '', ...(exit !== 0 ? {error: lines.filter(Boolean).slice(-1)[0] || 'Application kit could not be prepared.'} : {})};
     }  // Why (7 Nov 2026, #3424): Apply needs eligibility and preparation errors to report each drafted job accurately.
-    if (exit !== 0) notify('Application could not be prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');
-    else notify('Application prepared', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code}, 'good');
+    if (exit !== 0) notify(t('kitNotice.prepareFailedTitle'), t('kitNotice.nameReason',{name,reason:lines.filter(Boolean).slice(-1)[0] || t('kitNotice.unexpected')}), {view: 'jobs', job: code}, 'bad');
+    else notify(t('kitNotice.preparedTitle'), ineligible ? t('kitNotice.preparedIneligible',{name,reason:ineligible.trim()}) : t('kitNotice.preparedBody',{name}), {view: 'jobs', job: code}, 'good');
     if (exit === 0) track('kit_prepared', {});
     return {ok: exit === 0, ineligible: ineligible || ''};
   };
@@ -69,11 +74,11 @@ export function registerKitHandlers(ctx) {
   // checked -> PDF. A fixed-page design that overflows gets one second try with that feedback.
   const tailorCv = async (code, name = 'this job', {show = true, quiet = false} = {}) => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: NEEDS_AI};
+    if (!key && !ai) return {ok: false, error: displayError(quiet,'kitNotice.needsAI',NEEDS_AI)};
     try {
       let cost = 0;
       if (!cvlib.baseCv(storage)) {
-        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) in Settings first.'};
+        if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: displayError(quiet,'kitNotice.addCV','Add your CV (PDF or Word) in Settings first.')};
         cost += (await atUpload.ensure(storage, {client: ai, key, look: keepLook})).usd || 0;
       }
       const job = await pipeline.posting(storage, code);
@@ -128,12 +133,14 @@ export function registerKitHandlers(ctx) {
         kept = await storeFiles.attachToJob(storage, job.url, cvlib.pdfPath(storage, code), {name: fileName});
         appLog('cv', kept ? 'tailored CV kept on the job' : 'tailored CV not on a job yet', {code});
       } catch (error) { appLog('cv', 'tailored CV not kept on the job', {code, error: error.message}); }
-      if (!quiet) notify('Tailored CV + cover letter ready ✓', `${name}: ${result.changes.length} changes${applied.warnings.length ? `, ${applied.warnings.length} to check` : ''}${letter.ok ? ', cover letter made' : `. The cover letter was not made: ${String(letter.error || '').slice(0, 80)}`}.`
-        + (!notionStore ? '' : inNotion ? ' Saved in Notion too.' : ' On this Mac only: save the job (☆) to keep it in Notion.'), {view: 'jobs', job: code}, 'good');   // about Notion
+      if (!quiet) notify(t('kitNotice.cvReadyTitle'), t('kitNotice.cvReadyBody',{name,
+        changes:t('kitNotice.changesCount',{count:result.changes.length}),warnings:applied.warnings.length ? t('kitNotice.warningsSuffix',{count:applied.warnings.length}) : '',
+        letter:letter.ok ? t('kitNotice.letterMade') : t('kitNotice.letterFailed',{reason:String(letter.error || '').slice(0,80)}),
+        location:!notionStore ? '' : inNotion ? t('kitNotice.savedNotion') : localCvNote()}), {view: 'jobs', job: code}, 'good');   // about Notion
       if (show) openTailoredCv(code);   // from the form's panel the window stays behind: the person is on the form, the notification says it is ready
       return {ok: true, usd: Math.round(cost * 100) / 100, letter: letter.ok};
     } catch (error) {
-      if (!quiet) notify('CV not tailored', `${name}: ${error.message}`, {view: 'jobs', job: code}, 'bad');
+      if (!quiet) notify(t('kitNotice.cvFailedTitle'), t('kitNotice.nameReason',{name,reason:error.message}), {view: 'jobs', job: code}, 'bad');
       return {ok: false, error: error.message};
     }
   };

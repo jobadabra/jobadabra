@@ -2,6 +2,7 @@
 // "What came in" rows, and sends back which ones are ticked. The consent, the key and the reads are lib/linkedin-import.js; the rows lib/linkedin-import-review.js; the AI match
 // and the one LinkedIn source lib/experience.js. In demo mode no Keychain, browser or LinkedIn is touched. The key is never in an answer or a log line (counts only). Guard:
 // test/unit/main/linkedin-import-handlers.test.js.
+import {linkedinText} from '../i18n/linkedin-notices.js';
 import * as engine from './linkedin-import.js';
 import * as review from './linkedin-import-review.js';
 import * as experience from './experience.js';
@@ -49,7 +50,7 @@ export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, g
   async function matchRoles(main, cv) {
     if (!main) return {match: []};
     const ai = aiOf();
-    if (!ai.apiKey && !ai.client) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first: your LinkedIn roles are compared with your CV.'};
+    if (!ai.apiKey && !ai.client) return {ok: false, error: linkedinText('chooseAi')};
     try { return {match: (await experience.matchAgainst(main, cv, ai.apiKey, ai.client)).match}; } catch (error) { return {ok: false, error: error.message}; }
   }
 
@@ -96,7 +97,7 @@ export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, g
   // The ticked row ids -> saved. With a main CV: one LinkedIn source (never the main CV) + the ticked Your details values. No main CV: the CV step builds it (PR 3/3).
   ipcMain.handle('linkedinImportApply', async (_, ticked) => {
     if (DEMO) return {ok: true, added: 0};
-    if (!held) return {ok: false, error: 'Nothing to add: import from LinkedIn again.'};
+    if (!held) return {ok: false, error: linkedinText('nothingToAdd')};
     const ids = Array.isArray(ticked) ? ticked.filter(id => typeof id === 'string') : [];
     const picked = review.applyPicks(held, held.review, ids);
     const counts = {positions: picked.cv.jobs.reduce((n, j) => n + j.roles.length, 0), details: Object.keys(picked.details).length};
@@ -111,7 +112,7 @@ export function registerLinkedinImportHandlers({DEMO, ipcMain, storage, shell, g
         for (const row of held.review.details) if (row.chip === 'new' && picked.details[row.field] !== undefined && String(now[row.field] || '').trim()) delete picked.details[row.field];
         counts.details = Object.keys(picked.details).length;
         if (counts.details) await saveContact({...now, ...picked.details});
-      } catch (error) { return {ok: false, error: `Your details were not saved: ${error.message}`}; }
+      } catch (error) { return {ok: false, error: linkedinText('detailsSaveFailed', {error: error.message})}; }
     }
     const done = held; held = null;
     appLog('linkedin-import', 'added', {...counts, ticked: ids.length});

@@ -41,7 +41,7 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
     assert.match(words.lead, /background/);
     assert.match(words.lead, /in a Jobadabra window, on LinkedIn's own page/, 'the sign-in window (owner, 3 Nov 2026), not Chrome');
     assert.match(words.lead, /you type your password there and Jobadabra never sees it/);
-    assert.match(words.lead, /stays on this Mac/);
+    assert.ok(words.lead.includes(`stays on this ${process.platform === 'win32' ? 'PC' : 'Mac'}`));
     assert.match(words.lead, /Settings → Connections → LinkedIn/);
     assert.equal(words.yes, 'Sign in to LinkedIn');
     assert.equal(words.chrome, 'Use my Chrome sign-in', 'the shortcut, shown only while the extension is connected');

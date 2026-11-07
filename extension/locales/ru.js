@@ -97,6 +97,7 @@ export default {
   "panel.working": "в процессе",
   "panel.aiWaiting": "ИИ ждёт вас в Jobadabra.",
   "panel.aiDone": "ИИ заполнил форму. Проверьте её и отправьте самостоятельно.",
+  "panel.syntheticCaptcha": "Подтвердите, что вы не робот",   // words-ok: bundled UI wording, never page classification
   "panel.requiredField": "Обязательное поле",
   "panel.outlineComplete": "План: дополните",
   "panel.drafted": "Черновик для вас: проверьте",

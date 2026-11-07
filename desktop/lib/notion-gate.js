@@ -1,4 +1,5 @@
 // Notion later: what "Notion is connected" means, and the one answer a tracking action gives when it is not.
+import {osText} from '../i18n/platform.js';
 // Without Notion the app only tries (search, fit scores, Jobs list, Strategy); everything tracked asks to connect.
 export const connected = storage => !!storage.secret('NOTION_TOKEN') && !!storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID;
 // Store adapters (9 Oct 2026, lib/store): with the person's data on this Mac (settings.store = 'sqlite') everything is tracked
@@ -18,7 +19,7 @@ export const REASONS = {
   focus: 'to see what to do next', cloud: 'for Always on', telegram: 'for Telegram buttons',
   gmail: 'for Gmail checks', profile: 'to edit your details and answers',
   tune: 'to tune your strategy from your results', kits: 'to draft applications',
-  tailor: 'to tailor CVs for your top matches', telegramCloud: 'for Telegram buttons while your Mac is off',
+  tailor: 'to tailor CVs for your top matches', telegramCloud: osText('for Telegram buttons while your Mac is off', process.platform),
   move: 'to move your data there',
   employers: 'to keep your list of employers',
 };

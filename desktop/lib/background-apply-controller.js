@@ -1,4 +1,5 @@
 // Bridge canonical background state, the actual extension and its owned browser; every submit command is a persisted one-shot reservation.
+import {activityText, activityHandoff} from '../i18n/activity-notices.js';
 import {randomUUID, createHash} from 'node:crypto';
 import {backgroundWaitNow, onBackgroundWaitMove} from './background-apply-clock.js';
 import {createBackgroundApplyStore} from './background-apply-store.js';
@@ -114,7 +115,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     cache(item, state);
     log('apply', 'background application handed to the person', {session: item.id, mode: state.mode, reason});
     const note = NOTICES[reason] || 'Review and submit this application yourself.';
-    notify('Application needs you', note, {view: 'sessions', session: item.id}, 'warn');
+    notify(activityText('needsYou'), activityHandoff(reason), {view: 'sessions', session: item.id}, 'warn');
     tellAway(item, note);
     return state;
   }
@@ -276,7 +277,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!state) return null;
     cache(item, state);
     const note = NOTICES[state.reason] || NOTICES.submission_outcome_unknown;
-    notify('Application needs you', note, {view: 'sessions', session: item.id}, 'warn');
+    notify(activityText('needsYou'), activityHandoff(state.reason, 'outcomeUnknown'), {view: 'sessions', session: item.id}, 'warn');
     tellAway(item, note);
     log('apply', 'background application cut off handed to the person', {session: item.id, mode: state.mode, reason: state.reason, afterMs: options.afterMs || 0});
     return state;
@@ -349,7 +350,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       }
       const state = await store.ready(item.url, item.id, owner, proof); cache(item, state);
       if (state.mode === 'fill' && state.state === 'ready_for_review') {
-        notify('Application ready for review', 'Open the filled form in Sessions, review it and press Submit yourself.', {view: 'sessions', session: item.id}, 'good');
+        notify(activityText('readyTitle'), activityText('readyBody'), {view: 'sessions', session: item.id}, 'good');
         return {ok: true, review: true};
       }
       if (HANDOFF.has(state.state)) return {ok: true, manual: true, reason: state.reason};

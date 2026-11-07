@@ -12,7 +12,7 @@ const etas = new Map();
 const etaOf = started => { if (!etas.has(started)) etas.set(started, new Eta(0)); return etas.get(started); };
 const ORDER = ['download', 'check', 'unpack', 'ready'];
 /** The person's computer in words ("your PC" on Windows, else "your Mac"); shared with browser-progress.js so one file holds the platform branch. */
-export const computerOf = platform => (platform === 'win32' ? t('pagesDownloads.yourPc') : t('pagesDownloads.yourMac'));
+export const computerOf = platform => t(platform === 'win32' ? 'pagesDownloads.yourPc' : 'pagesDownloads.yourMac', {}, platform);
 
 // One event -> what the block shows: {hidden} or {title, right, share, steps: [{text, kind: done|now|next}], fine, action}
 export function officeView(event = {}, {platform = 'darwin', now = Date.now()} = {}) {

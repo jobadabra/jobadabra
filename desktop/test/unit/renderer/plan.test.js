@@ -89,7 +89,7 @@ test('the plan card: nothing when off; two packages for Free with the euro price
   const free = planView({mode: 'test', plan: 'free', offers: OFFERS});
   assert.deepEqual(free.packages.map(p => [p.kind, p.price, p.list, p.button]), [['pro', '€9', null, 'Pay securely with Stripe'], ['pro-ai', '€19', '€29', 'Pay securely with Stripe']]);
   assert.deepEqual([free.title, free.pill], ['Upgrade your plan', ''], 'the Free card above is the current plan; this card carries no second Free pill');
-  assert.ok(free.packages.every(p => p.included.includes('Always on: new matches every morning, even when your Mac is off')));
+  assert.ok(free.packages.every(p => p.included.includes(`Always on: new matches every morning, even when your ${process.platform === 'win32' ? 'PC' : 'Mac'} is off`)));
   assert.doesNotMatch(JSON.stringify([free, INCLUDED, PACKAGE_INCLUDES, TOPUP_NOTE, NOTES, OWN_KEY, NO_CREDIT]), /lifetime|\$\d|applications? left|neuron/i);
   const proAi = planView({mode: 'test', plan: 'pro', package: 'pro-ai', hasCredit: true, creditPercent: 25, warn: 30, offers: OFFERS});
   assert.deepEqual([proAi.pill, proAi.label, proAi.tone, proAi.note, proAi.upgrade], ['Pro + AI', 'AI credit: 25% left', 'info', NOTES[30], null]);

@@ -1,5 +1,6 @@
 // The IPC of "Build a CV with the AI" (setup's CV step and Settings → Profile → CV): the draft from the form's answers, saving the edited draft as the
 // main CV (with its PDF), and saving that PDF where the person chooses. The AI and the checks are in lib/cv-build.js. Guard: test/unit/cv/cv-build.test.js.
+import {cvNotice} from '../i18n/cv-notices.js';
 import {t} from '../i18n/native.js';
 import * as claudeCode from './claude-code.js';
 import * as cvlib from './cv.js';
@@ -13,12 +14,12 @@ export function registerCvBuildHandlers(ctx) {
   const {dialog, getWindow, ipcMain, printPdf, shell, storage, syncCv} = ctx;
   ipcMain.handle('buildCvDraft', async (_, answers) => {
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
-    if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
+    if (!key && !ai) return {ok: false, error: cvNotice('chooseAi')};
     try { return {ok: true, ...await buildCv(answers, key, ai)}; } catch (error) { return {ok: false, error: error.message}; }
   });
   // The draft as the person edited it: the CV's own page layout draws the PDF, then both become the main CV.
   ipcMain.handle('buildCvSave', async (_, cv) => {
-    if (!cv || !Array.isArray(cv.jobs) || !cv.jobs.length) return {ok: false, error: 'There is nothing to save yet.'};
+    if (!cv || !Array.isArray(cv.jobs) || !cv.jobs.length) return {ok: false, error: cvNotice('nothingSave')};
     try {
       const {pdf} = await printPdf(cvlib.writeHtml(storage, cv, 'built.html'));
       const {name} = saveBuilt(storage, cv, pdf, fileName(cv.name));

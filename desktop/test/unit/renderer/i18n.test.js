@@ -56,3 +56,21 @@ test('every language supplies real selector copy with the same interpolation par
     if (locale !== 'en') assert.notEqual(t('common.languageHelp'), 'Choose the language used in Jobadabra. The view reloads when you change it.');
   }
 });
+
+
+test('Windows wording changes trusted catalog templates before inserting personal content', () => {
+  const previous = globalThis.window;
+  globalThis.window = {pilot: {platform: 'win32'}};
+  try {
+    registerMessages('en', 'platformTest', {message: 'On this Mac press ⌘K for {company}', count: {one: '{count} file in Finder for {company}', other: '{count} files in Finder for {company}'}});
+    setLocale('en');
+    const company = 'This Mac’s Keychain ⌘K {count}';
+    assert.equal(t('platformTest.message', {company}), `On this PC press Ctrl+K for ${company}`);
+    assert.equal(t('platformTest.count', {count: 2, company}), `2 files in File Explorer for ${company}`);
+    assert.equal(t('missing.this Mac'), 'missing.this Mac');
+    assert.equal(t('platformTest.message', {company}, 'darwin'), `On this Mac press ⌘K for ${company}`, 'explicit platform helpers keep their contract on every host');
+  } finally {
+    if (previous === undefined) delete globalThis.window;
+    else globalThis.window = previous;
+  }
+});
