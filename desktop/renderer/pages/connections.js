@@ -1,4 +1,5 @@
 // Settings → connections: Apply with Claude, how often, Always on (the extension's card: extension-setup.js).
+import {settingsText} from '../../i18n/settings-native.js';
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
@@ -142,7 +143,7 @@ function showCloudNeeds() {
     if (row.button) go.textContent = row.button;
     go.onclick = () => openSetting(row.id === 'ai' ? 'ai' : 'notion');
   }
-  setReady([...rows.filter(row => row.pill[1] !== 'good').map(row => (row.id === 'ai' ? 'an API key' : row.title)), ...(on ? [] : ['GitHub'])]);   // the Test button needs all three
+  setReady([...rows.filter(row => row.pill[1] !== 'good').map(row => (row.id === 'ai' ? settingsText('apiKey') : row.title)), ...(on ? [] : ['GitHub'])]);   // the Test button needs all three
   $('aon-key-alt').dataset.need = rows[1].alt ? '1' : '';   // shown by always-on-choice.js draw(), which knows whether our servers can take it
   drawChoice();
   $('aon-key-alt').onclick = () => pickWay('ours');

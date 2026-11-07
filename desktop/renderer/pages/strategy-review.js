@@ -1,5 +1,6 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
 // owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/unit/renderer/setup-strategy.test.js.
+import {settingsText} from '../../i18n/settings-native.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
@@ -128,21 +129,26 @@ async function openRebuildReview() {
   const result = await window.pilot.rebuildImpact(current);
   if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', plainError(result.error))); return; }
   if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', t('pagesStrategy.draftNoChange'))); return; }
+  renderRebuildGroups(result.groups);
+}
+
+/** Paint the existing rebuild review from a window-only projection; canonical cost/group identities still own selection and linking. */
+export function renderRebuildGroups(groups) {
   const boxes = {};
   const update = () => {
-    const picked = result.groups.filter(group => boxes[group.id].checked);
+    const picked = groups.filter(group => boxes[group.id].checked);
     $('replace-go').disabled = !picked.length;
     const uses = picked.some(group => group.cost === 'Uses AI');
-    $('rebuild-total').textContent = picked.length ? t('pagesShortSettings.m348', {"length": picked.length, "length2": result.groups.length, "value3": uses ? t('pagesMisc.oldScores') : t('pagesMisc.noRescoring')}) : t('pagesProfile.nothingSelected');
+    $('rebuild-total').textContent = picked.length ? t('pagesShortSettings.m348', {"length": picked.length, "length2": groups.length, "value3": uses ? t('pagesMisc.oldScores') : t('pagesMisc.noRescoring')}) : t('pagesProfile.nothingSelected');
   };
-  $('rebuild-groups').replaceChildren(...result.groups.map(group => {
+  $('rebuild-groups').replaceChildren(...groups.map(group => {
     const box = el('label', 'review-group inline-label');
     box.dataset.group = group.id;
     const check = Object.assign(document.createElement('input'), {type: 'checkbox', checked: true});
     boxes[group.id] = check;
     const text = el('span', 'review-text');
     const head = el('span', 'review-head');
-    head.append(el('b', '', group.title), pill(group.cost === 'Uses AI' ? t('pagesFinalLabels.usesAi') : group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
+    head.append(el('b', '', group.title), pill(group.cost === 'Uses AI' ? t('pagesFinalLabels.usesAi') : group.cost === 'No AI cost' ? settingsText('noAiCost') : group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
     const list = el('ul', 'review-changes');
     list.append(...group.changes.slice(0, 8).map(change => el('li', '', change)), ...(group.changes.length > 8 ? [el('li', 'muted', t('pagesShortSettings.m349', {"value1": group.changes.length - 8}))] : []));
     text.append(head, list, el('span', 'muted small', group.impact));

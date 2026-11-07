@@ -3,6 +3,7 @@
 // and telemetry as getters). Guards: the focus-reminder, queue-resume and session-notice tests in desktop/test.
 import * as notionGate from './notion-gate.js';
 import * as pipeline from './pipeline.js';
+import {taskLabel} from '../i18n/quit-labels.js';
 import * as runHistory from './run-history.js';
 import * as terminals from './terminals.js';
 import {askResume} from './resume-queue.js';
@@ -43,7 +44,7 @@ export function createAppReminders(ctx) {
   async function resumeQueue(jobs) {
     await closeQuietRows();
     if (!jobs.length) return;
-    const names = [...new Set(jobs.map(job => pipeline.taskName(job.kind)))];
+    const names = [...new Set(jobs.map(job => taskLabel(job.kind, pipeline.taskName)))];
     const parent = getWindow() && !getWindow().isDestroyed() ? getWindow() : null;
     const {start, decidedBy} = await askResume(names, {ask: options => (parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options))})
       .catch(error => { appLog('run', 'resume question failed', {error: error.message}); return {start: false, decidedBy: 'question failed'}; });

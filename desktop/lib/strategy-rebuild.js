@@ -5,6 +5,8 @@
 // score (the scored jobs become old scores; Re-score updates them, AI cost); standard answers only change future kits and forms. Locations
 // and remote rules live in both the search settings (crawl) and the Profile (score): a change to them links the two
 // groups, so they're applied together and can't disagree.
+import {settingsText as words} from '../i18n/settings-native.js';
+import {rememberDisplay, displayNote, concatDisplay} from './settings-native-display.js';
 export const SCORE_USD = 0.015;       // one Sonnet 5 fit score, measured on the owner's runs (about 1.2 to 1.8 cents)
 export const SCORES_PER_SEARCH = 60;  // the app's --score-max
 const FORM_ONLY = /contact|\blinks?\b|application form answers|📎/i;
@@ -25,29 +27,31 @@ function sectionChanges(before, after, skipFormOnly) {
   const old = sections(before, skipFormOnly), next = sections(after, skipFormOnly);
   const changes = [];
   for (const [name, lines] of next) {
-    if (!old.has(name)) changes.push(`+ ${name || 'Intro'} (new section)`);
-    else if (old.get(name).join('\n') !== lines.join('\n')) changes.push(`~ ${name || 'Intro'}`);
+    if (!old.has(name)) displayNote(changes, `+ ${name || 'Intro'} (new section)`, () => words('sectionNew', {name: name || words('sectionIntro')}));
+    else if (old.get(name).join('\n') !== lines.join('\n')) displayNote(changes, `~ ${name || 'Intro'}`, () => words('sectionChanged', {name: name || words('sectionIntro')}));
   }
-  for (const name of old.keys()) if (!next.has(name)) changes.push(`− ${name || 'Intro'} (removed)`);
+  for (const name of old.keys()) if (!next.has(name)) displayNote(changes, `− ${name || 'Intro'} (removed)`, () => words('sectionRemoved', {name: name || words('sectionIntro')}));
   return changes;
 }
-function listChanges(label, before = [], after = []) {
+function listChanges(label, before = [], after = [], displayKey) {
   const old = new Set(before.map(wordsOf)), next = new Set(after.map(wordsOf));
   const added = [...next].filter(item => item && !old.has(item)), removed = [...old].filter(item => item && !next.has(item));
-  return added.length || removed.length ? [`${label}: ${[...added.map(item => `+${item}`), ...removed.map(item => `−${item}`)].join(', ')}`] : [];
+  const changes = [], values = [...added.map(item => `+${item}`), ...removed.map(item => `−${item}`)].join(', ');
+  if (added.length || removed.length) displayNote(changes, `${label}: ${values}`, () => words('changeList', {label: words(displayKey), values}));
+  return changes;
 }
 export function rebuildGroups({search = {}, preferences = {}, profile = '', answers = ''}, draft, {scored = 0, kits = 0} = {}) {
   const next = draft.search || {}, places = search.locations || {}, nextPlaces = next.locations || {};
-  const where = [...listChanges('Top cities', places.top_tier, nextPlaces.top_tier), ...listChanges('Country', places.country_wide, nextPlaces.country_wide),
-    ...listChanges('Abroad', places.abroad, nextPlaces.abroad), ...listChanges('Remote excluded for', search.remote_excluded_regions, next.remote_excluded_regions)];
-  const searchChanges = [...listChanges('Target roles', titlesOf(search), titlesOf(next)), ...listChanges('Level', search.level, next.level),
-    ...where,
-    ...listChanges('Excluded titles', search.title_exclude_keywords, next.title_exclude_keywords),
-    ...listChanges('Key skills and tools', search.quality_stack_keywords, next.quality_stack_keywords)];
+  const where = concatDisplay(listChanges('Top cities', places.top_tier, nextPlaces.top_tier, 'labelCities'), listChanges('Country', places.country_wide, nextPlaces.country_wide, 'labelCountry'),
+    listChanges('Abroad', places.abroad, nextPlaces.abroad, 'labelAbroad'), listChanges('Remote excluded for', search.remote_excluded_regions, next.remote_excluded_regions, 'labelRemoteExcluded'));
+  const searchChanges = concatDisplay(listChanges('Target roles', titlesOf(search), titlesOf(next), 'labelRoles'), listChanges('Level', search.level, next.level, 'labelLevel'),
+    where,
+    listChanges('Excluded titles', search.title_exclude_keywords, next.title_exclude_keywords, 'labelExcludedTitles'),
+    listChanges('Key skills and tools', search.quality_stack_keywords, next.quality_stack_keywords, 'labelSkills'));
   const prefs = draft.preferences || {};
-  const filterChanges = [...listChanges('Languages you don\'t work in', preferences.disqualifying_languages, prefs.disqualifying_languages),
-    ...listChanges('Excluded companies', preferences.excluded_companies, prefs.excluded_companies),
-    ...listChanges('Work without a visa in', preferences.work_rights, prefs.work_rights)];
+  const filterChanges = concatDisplay(listChanges('Languages you don\'t work in', preferences.disqualifying_languages, prefs.disqualifying_languages, 'labelLanguages'),
+    listChanges('Excluded companies', preferences.excluded_companies, prefs.excluded_companies, 'labelCompanies'),
+    listChanges('Work without a visa in', preferences.work_rights, prefs.work_rights, 'labelWorkRights'));
   const profileChanges = sectionChanges(profile, draft.profile_markdown, true);
   const answerChanges = sectionChanges(answers, draft.answers_markdown, false);
   const linked = where.length > 0 && profileChanges.length > 0;
@@ -60,5 +64,10 @@ export function rebuildGroups({search = {}, preferences = {}, profile = '', answ
         (kits ? `; ${kits} unsent application${kits === 1 ? '' : 's'} were prepared with the old Profile (prepare again the ones you still want)` : '') + '.',
       cost: scored ? 'Uses AI' : 'No AI cost'},
     {id: 'answers', title: 'Standard answers', changes: answerChanges, impact: 'Used by the next applications and form fills. Nothing is re-scored.', cost: 'No AI cost'},
-  ].filter(group => group.changes.length);
+  ].filter(group => group.changes.length).map(group => rememberDisplay(group, {
+    title: () => words(`group${group.id}`),
+    impact: () => group.id === 'profile'
+      ? words('impactProfile', {count: scored}) + (kits ? words('impactKits', {count: kits}) : '') + '.'
+      : words(`impact${group.id}`),
+  }));
 }

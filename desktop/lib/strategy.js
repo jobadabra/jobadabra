@@ -1,5 +1,7 @@
 // Strategy builder: CV (PDF) + an optional note from the user -> proposed goals, a draft Profile, standard answers
 // and search settings, in one Claude call. Nothing is saved until the user reviews (and corrects) the draft.
+import {settingsText as words} from '../i18n/settings-native.js';
+import {rememberDisplay, displayNote} from './settings-native-display.js';
 import {nameOfClient} from './ai/names.js';
 import {priceOf} from './ai/models.js';
 import {anthropicApi} from './ai/anthropic-api.js';
@@ -117,9 +119,9 @@ Use only the applicant details given here; never a name, e-mail address, phone n
 
 // The draft streams in, in schema order; progress is how much of it has arrived and which part is being
 // written. The expected length starts at a typical draft and then follows this user's last one.
-const PARTS = [['"summary"', 'Writing the summary'], ['"goals"', 'Proposing your goals'], ['"profile_markdown"', 'Writing your Profile'],
-  ['"answers_markdown"', 'Writing your standard answers'], ['"open_questions"', 'Listing what to check'],
-  ['"search"', 'Choosing search settings'], ['"preferences"', 'Setting filters']];
+const PARTS = [['"summary"', 'Writing the summary', 'draftSummary'], ['"goals"', 'Proposing your goals', 'draftGoals'], ['"profile_markdown"', 'Writing your Profile', 'draftProfile'],
+  ['"answers_markdown"', 'Writing your standard answers', 'draftAnswers'], ['"open_questions"', 'Listing what to check', 'draftQuestions'],
+  ['"search"', 'Choosing search settings', 'draftSearch'], ['"preferences"', 'Setting filters', 'draftFilters']];
 
 // The bar: 0-10% while Claude reads the CV (main.js ticks it by time), then each part of the answer has its
 // share, in the fixed order Claude writes them; inside a part, its length so far against its usual length
@@ -132,8 +134,8 @@ export function sectionLengths(text) {
   return Object.fromEntries(SECTIONS.map(([key], i) => [key, at[i] < 0 ? 0 : (at.slice(i + 1).find(n => n > at[i]) ?? text.length) - at[i]]));
 }
 export function progress(text, typical = {}) {
-  let part = 'Reading your CV';
-  for (const [key, label] of PARTS) if (text.includes(key)) part = label;
+  let part = 'Reading your CV', partKey = 'draftReading';
+  for (const [key, label, displayKey] of PARTS) if (text.includes(key)) { part = label; partKey = displayKey; }
   const lengths = sectionLengths(text);
   let percent = text.length ? READING : 0;
   const started = SECTIONS.filter(([key]) => lengths[key]);
@@ -141,7 +143,7 @@ export function progress(text, typical = {}) {
     // A finished part (the next one has started) counts in full; only the one being written is estimated.
     percent += i < started.length - 1 ? share : share * Math.min(0.95, lengths[key] / (typical[key] || usual));
   });
-  return {part, percent: Math.min(99, Math.round(percent)), chars: text.length, notes: notes(text)};
+  return rememberDisplay({part, percent: Math.min(99, Math.round(percent)), chars: text.length, notes: notes(text)}, {part: () => words(partKey)});
 }
 
 // What Claude has written so far, as short lines for the screen ("Profile: Hard constraints", "Roles: site
@@ -156,32 +158,32 @@ export function notes(text) {
     return {body: text.slice(start, end ?? text.length), done: end !== undefined};
   };
   const summary = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  if (summary) out.push(`Summary: ${unescape(summary[1]).slice(0, 140)}`);
+  if (summary) displayNote(out, `Summary: ${unescape(summary[1]).slice(0, 140)}`, () => words('noteSummary', {text: unescape(summary[1]).slice(0, 140)}));
   const goals = text.match(/"goals"\s*:\s*\{((?:[^}"]|"(?:[^"\\]|\\.)*")*)\}/);
   if (goals) {
     const values = Object.keys(GOALS).map(key => (goals[1].match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`)) || [])[1]).filter(Boolean);
-    out.push(`Proposed goals: ${values.map(unescape).join(' · ')}`);
+    displayNote(out, `Proposed goals: ${values.map(unescape).join(' · ')}`, () => words('noteGoals', {text: values.map(unescape).join(' · ')}));
   }
   for (const [key, label, next] of [['profile_markdown', 'Profile', ['answers_markdown']], ['answers_markdown', 'Standard answers', ['open_questions', 'search']]]) {
     const piece = region(key, next);
     if (!piece) continue;
     const headings = [...piece.body.matchAll(/(?:\\n|: ?")#{1,3} ([^\\"]{2,70})(?=\\n)/g)].map(m => m[1].trim());
-    for (const heading of headings) out.push(`${label}: ${heading}`);
-    if (piece.done) out.push(`${label} written`);
+    for (const heading of headings) displayNote(out, `${label}: ${heading}`, () => words('noteHeading', {label: words(key === 'profile_markdown' ? 'profileLabel' : 'answersLabel'), heading}));
+    if (piece.done) displayNote(out, `${label} written`, () => words(key === 'profile_markdown' ? 'noteProfileWritten' : 'noteAnswersWritten'));
   }
   const questions = text.match(/"open_questions"\s*:\s*\[((?:[^\]"]|"(?:[^"\\]|\\.)*")*)\]/);
-  if (questions) out.push(`Things for you to check: ${(questions[1].match(/"(?:[^"\\]|\\.)*"/g) || []).length}`);
+  if (questions) displayNote(out, `Things for you to check: ${(questions[1].match(/"(?:[^"\\]|\\.)*"/g) || []).length}`, () => words('noteQuestions', {count: (questions[1].match(/"(?:[^"\\]|\\.)*"/g) || []).length}));
   const list = key => {
     const m = text.match(new RegExp(`"${key}"\\s*:\\s*\\[((?:[^\\]"]|"(?:[^"\\\\]|\\\\.)*")*)\\]`));
     return m ? (m[1].match(/"((?:[^"\\]|\\.)*)"/g) || []).map(s => s.slice(1, -1).replace(/\\\\b/g, '').replace(/\\\\/g, '').replace(/\[[a-z]([^\]])\]/g, '$1')) : null;
   };
   const roles = list('target_roles');
-  if (roles) out.push(`Target roles: ${roles.slice(0, 6).join(', ')}${roles.length > 6 ? '…' : ''}`);
+  if (roles) displayNote(out, `Target roles: ${roles.slice(0, 6).join(', ')}${roles.length > 6 ? '…' : ''}`, () => words('noteRoles', {text: roles.slice(0, 6).join(', ') + (roles.length > 6 ? '…' : '')}));
   const places = list('top_tier');
-  if (places) out.push(`Best places: ${places.slice(0, 5).join(', ')}${places.length > 5 ? '…' : ''}`);
+  if (places) displayNote(out, `Best places: ${places.slice(0, 5).join(', ')}${places.length > 5 ? '…' : ''}`, () => words('notePlaces', {text: places.slice(0, 5).join(', ') + (places.length > 5 ? '…' : '')}));
   const languages = list('disqualifying_languages');
-  if (languages) out.push(languages.length ? `Jobs requiring ${languages.join(', ')} will be hidden` : 'No language filter');
-  if (/"contact"\s*:\s*\{[^}]*"email"\s*:\s*"[^"]+"/.test(text)) out.push('Contact details found in your CV');
+  if (languages) displayNote(out, languages.length ? `Jobs requiring ${languages.join(', ')} will be hidden` : 'No language filter', () => languages.length ? words('noteLanguages', {languages: languages.join(', ')}) : words('noteNoLanguages'));
+  if (/"contact"\s*:\s*\{[^}]*"email"\s*:\s*"[^"]+"/.test(text)) displayNote(out, 'Contact details found in your CV', () => words('noteContact'));
   return out;
 }
 

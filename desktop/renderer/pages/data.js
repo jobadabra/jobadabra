@@ -1,4 +1,6 @@
 // Your data: where it lives, export, import, backup, reset.
+import {settingsText} from '../../i18n/settings-native.js';
+import {storeLabel} from '../settings-final-words.js';
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
@@ -37,14 +39,14 @@ async function showStore() {
   const cloud = store.caps.includes('cloud'), links = store.caps.includes('links');
   const unconnected = !store.trying && store.tracking === false;   // Notion chosen, not connected (#410): it asks to connect, as while trying
   const pill = $('store-pill');
-  pill.textContent = store.trying ? t('pagesProfile.notChosen') : unconnected ? t('pagesCommon.notConnected') : store.label;
+  pill.textContent = store.trying ? t('pagesProfile.notChosen') : unconnected ? t('pagesCommon.notConnected') : storeLabel(store, shared.state.settings.store);
   pill.className = `ui-pill ${store.trying || unconnected ? 'tone-warn' : 'tone-good'}`;
   $('store-lead').textContent = store.trying
     ? t('pagesDynamicCvData.m119', {"value1": store.choice ? t('pagesDynamicCvData.macOrNotion') : t('pagesDynamicCvData.yourNotion')})   // about Notion
     : unconnected ? t('pagesLettersData.notionStoreConnect')   // about Notion
     : cloud ? t('pagesLettersData.notionStore')
       : t('pagesLettersData.localStore');   // about Notion
-  $('store-where').textContent = store.trying ? t('pagesProfile.notChosenYet') : store.label;
+  $('store-where').textContent = store.trying ? t('pagesProfile.notChosenYet') : storeLabel(store, shared.state.settings.store);
   $('store-cloud').textContent = cloud && !store.trying && !unconnected ? t('pagesProfile.available') : t('pagesProfile.needsNotion');
   show($('store-keep'), store.trying && store.choice);
   show($('store-connect'), store.trying || unconnected);
@@ -144,7 +146,7 @@ export async function init() {
     const typed = $('reset-confirm').value.trim(), unlocked = !$('reset-confirm').disabled;
     const left = WORD.length - typed.length;
     const ready = unlocked && typed === WORD;
-    const hint = !unlocked ? t('pagesAuditFirst.a54') : ready ? '✓ Ready' : !typed ? t('pagesDynamicCvData.m125', {"WORD": WORD})
+    const hint = !unlocked ? t('pagesAuditFirst.a54') : ready ? settingsText('resetReady') : !typed ? t('pagesDynamicCvData.m125', {"WORD": WORD})
       : WORD.startsWith(typed) ? t('pagesDynamicCvData.m126', {"left": left, count: left}) : t('pagesDynamicCvData.m127', {"WORD": WORD});
     $('reset-go').disabled = !ready;
     $('reset-go').title = ready ? '' : hint;
@@ -162,7 +164,7 @@ export async function init() {
     if (result?.ok) allowReset(t('pagesShortActivity.m107', {"value1": result.file.split(/[\\/]/).pop()}), 'tone-good');
     else if (result?.error) message('reset-message', t('pagesDynamicCvData.m129', {"error": result.error}), 'error');
   });
-  $('reset-skip-export').addEventListener('click', () => allowReset('✓ Skipped', ''));
+  $('reset-skip-export').addEventListener('click', () => allowReset(settingsText('resetSkipped'), ''));
   $('reset-confirm').addEventListener('input', syncReset);
   syncReset();
   $('reset-go').addEventListener('click', async () => {
