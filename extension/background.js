@@ -1,9 +1,9 @@
-// The background worker: tabs the app opens to fill (#jobpilotto-fill), the next page in that tab, a tab that tab
-// opens, Apply with Claude's hand-off, the ring's messages to the app, and the connection check. The result of a
-// fill shows in a panel on the page and in the icon badge.
+// The background worker owns app-opened fill tabs, their next pages/popups, Claude hand-off, panel messages and connection checks.
+// Fill results appear in the page panel and toolbar badge.
 import {displayText,displayStepText} from './display-cache.js';
 import {NO_APP, api, fillTab, settings} from './flow.js';
-import {plainWhy} from './ai-reply.js';
+import {displayError} from './display-errors.js';
+import {plainWhy,plainWhyDisplay} from './ai-reply.js';
 import {oneFillPerTab, retireFill} from './one-fill.js';
 import {decide, pushDecisions} from './log.js';
 import {PANEL_FILES} from './panel-files.js';
@@ -374,7 +374,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     if (result?.aiError) {
       const why = String(result.aiError).slice(0, 160);
       decide('fill', 'Claude did not answer the questions', {error: why});
-      await note(tab.id, displayText('notice.aiFailed',{reason:why}), page);
+      await note(tab.id, displayText('notice.aiFailed',{reason:result.aiErrorDisplay ? displayText(result.aiErrorDisplay.key,result.aiErrorDisplay.values) : why}), page);
       api(config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'ai-failed', url, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })(), why})}).catch(() => {});
     }
     await closeFillDialogs(tab, {close: closePopupOrLayer, look: layerOnTop, decide});   // dialog-after-fill.js
@@ -391,9 +391,9 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     await progress(tab.id, '', page, endsRun ? 'done' : '');
     decide('fill', `failed: ${error.message}`, {url: page});
     // An automatic fill (the page was not asked for by you, just reached in an armed tab) fails quietly: logged, never a popup.
-    if (!quiet) await note(tab.id, displayText('notice.fillFailed',{reason:plainWhy(error)}), page);
+    if (!quiet) await note(tab.id, displayText('notice.fillFailed',{reason:displayError(error,displayText)}), page);
     chrome.action.setBadgeText({tabId: tab.id, text: '!'}).catch(() => {});  // the tab may already be closed
-    return {error: plainWhy(error)};
+    return {error: plainWhy(error),errorDisplay:plainWhyDisplay(error)};
   }
 }
 

@@ -1,5 +1,6 @@
 // One fill run on a tab: read the form, get answers (AI and/or the drafted kit), fill, report.
 // Shared by the popup (the tab you're on) and the background worker (tabs the app opens to fill).
+import {authoredError} from './display-errors.js';
 import {cacheDesktopLocale} from './i18n.js';
 import {createBackgroundSession} from './background-session.mjs';
 import {prepareFillPage, resolveFillContact, resolveFillAnswers, recordFillForm, rememberedFillChoices, fillKnownFields} from './fill-tab-inputs.js';
@@ -133,7 +134,7 @@ const usesApp = config => !config.workerUrl || config.workerUrl.startsWith(APP);
 // Connect to the app (the Settings button, and by itself whenever the app turns the token down).
 export async function pair() {
   const response = await fetch(`${APP}/extension/pair`);
-  if (!response.ok) throw new Error(`the app answered ${response.status}`);
+  if (!response.ok) throw authoredError(`the app answered ${response.status}`,'error.appStatus',{status:response.status});
   const {url, token, displayLocale} = await response.json();
   await cacheDesktopLocale(chrome.storage.local, displayLocale).catch(() => {});
   await chrome.storage.local.set({workerUrl: url, token});
@@ -161,7 +162,7 @@ async function apiCall(config, path, init, retry, trace) {
   }
   const data = await trace('json', () => response.json()).catch(() => ({}));
   if (response.ok && usesApp(config) && path === '/extension/review') await cacheDesktopLocale(chrome.storage.local, data.displayLocale).catch(() => {});
-  if (!response.ok) throw Object.assign(new Error(response.status === 401 ? NOT_CONNECTED : data.error || `HTTP ${response.status}`), {status: response.status, data});
+  if (!response.ok) throw Object.assign(response.status === 401 ? authoredError(NOT_CONNECTED,'error.notConnected') : new Error(data.error || `HTTP ${response.status}`), {status: response.status, data});
   return data;
 }
 
@@ -298,5 +299,6 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   await settleFill(run);
   await reportFill(run);
   const {summary, ai, aiError, kitSkips} = run;
+  if (run.aiErrorDisplay) summary.aiErrorDisplay = run.aiErrorDisplay;
   return {...summary, usd: ai?.usd, aiError, coverLetter: ai?.cover_letter, ...verdictFields({ai, askedAnyway, kit: withKit || kitSkips, checkOff: config.checkEligibility === false})};
 }

@@ -163,7 +163,7 @@
       window.__jobadabraClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobadabraReportOn, needs});   // offered, never automatic unless "always" (panel-claude.js)
     }
 
-    // Resolve app-owned evidence labels at draw time; generated advice remains untouched.
+    // Resolve app-owned evidence labels at draw time; bundled tip bodies resolve separately by stable ID.
     function renderTipLabel(evidence) {
       if (evidence === null) return;
       const labels = {research:['panel.tipFact','Fact'],recruiters:['panel.tipRecruiters','Recruiters say'],advice:['panel.tip','Tip'],'to-test':['panel.tipTry','Worth trying']};

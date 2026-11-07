@@ -54,7 +54,7 @@ function applicationPanelMessages(ctx) {
         return result;
       };
       forgetAI(sender.tab).then(() => fillOpenedTab(sender.tab, url, !!message.force, {fast: true})).then(judge).then(result => reply({
-        ok: !result?.error, error: result?.error || '', ineligible: !!result?.ineligible, note: result?.note || '',
+        ok: !result?.error, error: result?.error || '', errorDisplay:result?.errorDisplay, ineligible: !!result?.ineligible, note: result?.note || '',
         filled: result?.filled || 0, todo: (result?.todo || []).slice(0, 20), coverLetter: result?.coverLetter || '',
         sharedNote: sharedFixNote(sharedFixes(result?.operated))}));
       return true;
@@ -130,7 +130,7 @@ function applicationPanelMessages(ctx) {
         const next = [...pool].sort((a, b) => tipsSeen.indexOf(a.id) - tipsSeen.indexOf(b.id) || (Math.random() - 0.5))[0];   // never shown first, then the oldest
         if (!next) return reply({ok: false});
         await chrome.storage.local.set({tipsSeen: [...tipsSeen.filter(id => id !== next.id), next.id].slice(-60)});
-        reply({ok: true, text: next.text, evidence: next.evidence});
+        reply({ok: true, id: next.id, text: next.text, evidence: next.evidence});
       })().catch(() => reply({ok: false}));
       return true;
     }
