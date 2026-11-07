@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -76,11 +77,53 @@ def desktop_app_only(folder, node, picked='all'):
         return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob()])]
     if not picked:
         return []
-    if sum(len(p) + 1 for p in picked) > WINDOWS_ARGS_BUDGET:
-        # Why (5 Nov 2026, Gitar on #3256): Windows' CreateProcess caps a command line at 32,767 characters (the full run uses globs for that reason, tools/app-tests.py); a long pick is every
-        # non-tooling test by glob plus the tooling tests it reached, a superset of the pick.
-        return [stage, (folder, [node, *desktop_test_flags(folder), *_app_tests().desktop_glob(), *[p for p in picked if p.startswith('test/tooling/')]])]
-    return [stage, (folder, [node, *desktop_test_flags(folder), *picked])]
+    # Why (7 Nov 2026, owner: "We should test only the touched parts"; ts 2/3): Windows' CreateProcess caps a command line at 32,767 characters. Since #3256 a long pick fell back to every non-tooling
+    # test by glob ("a superset of the pick"), so a PR whose check line said "598 test files" ran 1,069. A long pick is now several commands, each under the budget, that together name each picked file once.
+    chunks, chunk = [], []
+    for path in picked:
+        if chunk and sum(len(p) + 1 for p in chunk) + len(path) + 1 > WINDOWS_ARGS_BUDGET:
+            chunks.append(chunk)
+            chunk = []
+        chunk.append(path)
+    return [stage, *[(folder, [node, *desktop_test_flags(folder), *files]) for files in [*chunks, chunk]]]
+
+
+def files_named(commands_):
+    """How many test files these commands name: every `test/**.test.js` argument (a glob names none, so a picked run that falls back to one shows up as a gap)."""
+    return sum(1 for _, command in commands_ for argument in command if re.fullmatch(r'test/[^*?\[\]]+\.test\.js', argument))
+
+
+def started_line(area, picked, reason):
+    """The line a run starts with: every test (and why), or how many files the pick holds and what they are."""
+    if picked == 'all':
+        return f'check: {area} started' + (f' (every test: {reason})' if reason else '')
+    return f'check: {area} started ({len(picked)} test files: what this change reaches, its mentions, guards and tree scanners; main runs every test)'
+
+
+def pick_gap(area, picked, planned):
+    """True (after saying so on stderr) when a picked desktop run would name other files than the pick it printed.
+    Why (7 Nov 2026, mac-50; ts 2/3): a run that names other files than it printed is a bug, never a silent superset (598 printed, 1,069 run)."""
+    if area != 'desktop' or picked == 'all' or files_named(planned) == len(picked):
+        return False
+    print(f'check: desktop would run {files_named(planned)} test files but the pick is {len(picked)}: stopping', file=sys.stderr)
+    return True
+
+
+def run_commands(area, planned, env):
+    """Runs one area's commands in order (a pure move out of main, complexity gate, 7 Nov 2026); False if any failed or could not start.
+    Why (7 Nov 2026, ts 2/3 review): a failed stage or lint step stops the run, but a failed chunk of test files lets the next chunks run, so a long pick reports every red at once, as its one command did."""
+    failed = False
+    for folder, command in planned:
+        try:
+            result = subprocess.run(command, cwd=folder, env=env, check=False)
+        except OSError as error:
+            print(f'check: could not launch {area}: {error}', file=sys.stderr)
+            return False
+        if result.returncode:
+            failed = True
+            if '--test' not in command:
+                break
+    return not failed
 
 
 def commands(area, fast, node, npm, picked='all', app_only=False):
@@ -182,17 +225,10 @@ def main(argv=None):
         started = time.monotonic()
         picked = plan.get(area, 'all') if plan else 'all'
         reason = (plan or {}).get('reasons', {}).get(area) or (plan or {}).get('reasons', {}).get('all')
-        print(f'check: {area} started' + (f' (every test: {reason})' if picked == 'all' and reason else '' if picked == 'all' else f' ({len(picked)} test files: what this change reaches, its mentions, guards and tree scanners; main runs every test)'), flush=True)
-        for folder, command in commands(area, args.fast, node, npm, picked, args.app_only):
-            try:
-                result = subprocess.run(command, cwd=folder, env=env, check=False)
-            except OSError as error:
-                print(f'check: could not launch {area}: {error}', file=sys.stderr)
-                failed.append(area)
-                break
-            if result.returncode:
-                failed.append(area)
-                break
+        print(started_line(area, picked, reason), flush=True)
+        planned = commands(area, args.fast, node, npm, picked, args.app_only)
+        if pick_gap(area, picked, planned) or not run_commands(area, planned, env):
+            failed.append(area)
         print(f'check: {area} {"FAILED" if area in failed else "passed"} ({time.monotonic() - started:.1f}s)', flush=True)
     if failed:
         print('check: reproduce with tools/check.sh ' + ' '.join(f'--area {area}' for area in failed), file=sys.stderr)

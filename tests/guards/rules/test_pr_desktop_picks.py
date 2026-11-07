@@ -86,13 +86,42 @@ class PrDesktopPicks(unittest.TestCase):
             self.assertNotIn(['npm', 'run', 'lint'], plan, changed)   # lint runs on Linux on the PR and on main
         self.assertEqual(self.check.commands('desktop', False, 'node', 'npm', [], app_only=True), [])   # a change that reaches no test runs nothing on Windows (the job ends before its install)
 
-    def test_a_long_windows_pick_stays_under_the_command_line_limit(self):
-        # Gitar on #3256: a pick of ~800 files is ~33,000 characters, over Windows' 32,767; it becomes the glob plus the tooling tests it reached.
+    def test_a_long_windows_pick_is_several_commands_that_name_each_picked_file_once(self):
+        # Gitar on #3256: a pick of ~800 files is ~33,000 characters, over Windows' 32,767. 7 Nov 2026 (ts 2/3): it used to become every non-tooling test by glob (598 printed, 1,069 run); now it is split.
         picked = [f'test/unit/main/a-long-test-file-name-{n:04d}.test.js' for n in range(700)] + ['test/tooling/ci/fixer-loop.test.js']
-        command = self.check.commands('desktop', False, 'node', 'npm', picked, app_only=True)[-1][1]
-        self.assertLess(sum(len(arg) + 1 for arg in command), 32000)
-        self.assertEqual(command[-1], 'test/tooling/ci/fixer-loop.test.js')
-        self.assertTrue(any('**' in arg for arg in command), 'the non-tooling tests come by glob')
+        plan = self.check.commands('desktop', False, 'node', 'npm', picked, app_only=True)
+        runs = plan[1:]   # the first command is the stage step
+        self.assertGreater(len(runs), 1, 'a pick over the budget is more than one command')
+        for _, command in runs:
+            self.assertLess(sum(len(arg) + 1 for arg in command), 32000)
+        self.assertFalse(any('*' in arg for _, command in plan for arg in command), 'no glob: the files run are the files picked')
+        self.assertEqual([arg for _, command in runs for arg in command if arg.startswith('test/')], picked)
+        self.assertEqual(self.check.files_named(plan), len(picked))
+
+    def test_a_red_chunk_of_a_long_pick_does_not_hide_the_next_chunk_and_a_red_lint_stops_the_run(self):
+        # ts 2/3 review: a long pick is several commands; the first red chunk must not hide the reds of the others (one command listed them all before).
+        def run(plan, failing):
+            seen = []
+            def fake(command, **_):
+                seen.append(command[-1])
+                return mock.Mock(returncode=1 if command[-1] in failing else 0)
+            with mock.patch.object(self.check.subprocess, 'run', fake):
+                return self.check.run_commands('desktop', [(ROOT, c) for c in plan], {}), seen
+        chunks = [['node', '--test', 'test/a.test.js'], ['node', '--test', 'test/b.test.js']]
+        self.assertEqual(run(chunks, {'test/a.test.js'}), (False, ['test/a.test.js', 'test/b.test.js']))
+        self.assertEqual(run([['npm', 'run', 'lint'], *chunks], {'lint'}), (False, ['lint']))
+        self.assertEqual(run(chunks, set()), (True, ['test/a.test.js', 'test/b.test.js']))
+
+    def test_a_run_that_names_other_files_than_it_printed_is_counted_as_a_gap(self):
+        # 7 Nov 2026, mac-50: the runner fails when the files it runs differ from the files it printed; a glob names none, so a fallback to one shows up as a gap.
+        glob = [(ROOT, ['node', '--test', 'test/**/*.test.js'])]
+        self.assertEqual(self.check.files_named(glob), 0)
+        named = [(ROOT, ['node', '--import', './test/no-live-site.mjs', '--test', 'test/unit/main/a.test.js', 'test/guards/rules/b.test.js'])]
+        self.assertEqual(self.check.files_named(named), 2)
+        two = ['test/unit/main/a.test.js', 'test/guards/rules/b.test.js']
+        self.assertFalse(self.check.pick_gap('desktop', two, named), 'the files named are the files printed')
+        self.assertTrue(self.check.pick_gap('desktop', two + ['test/unit/main/c.test.js'], glob), 'a glob in place of the pick is a gap')
+        self.assertFalse(self.check.pick_gap('desktop', 'all', glob), 'main runs everything by glob: no pick, no gap')
 
     def test_the_windows_plan_counts_what_a_change_reaches(self):
         # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a package file is all.

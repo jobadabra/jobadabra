@@ -12,7 +12,7 @@ import traceback
 DUMP_EVERY_S = 15 * 60
 GRACE_S = 10 * 60   # the budget ends new checks; running ones normally finish well inside this
 LEAVE_GRACE_S = 2   # an idle pool worker ends in milliseconds; a check given up on does not
-_before = set()     # the threads alive when the run started (arm): not this run's checks
+_before = []        # the threads alive when the run started (arm): not this run's checks. Why (7 Nov 2026, #3449 python job): the thread objects, never their ids; the OS gives a finished thread's id to the next one, so a check that hung with a reused id counted as "alive before the run" and the run never left
 _armed = [False]    # arm() ran in this process: only then may leave_if_stuck leave
 
 
@@ -45,8 +45,7 @@ def arm(budget_s, grace_s=GRACE_S, file=None):
     Returns False when there is no budget to overrun. Also notes the threads alive now: leave_if_stuck counts only threads this run started.
     Why (1 Nov 2026, run 41347536341): faulthandler.dump_traceback_later reads other threads' frames without the GIL; with 24 check threads
     running, its 15-minute dump stopped at an unreadable frame and the scout process died by a signal, before it published the index."""
-    _before.clear()
-    _before.update(t.ident for t in threading.enumerate())
+    _before[:] = threading.enumerate()
     _armed[0] = True
     if not budget_s:
         return False
@@ -72,7 +71,7 @@ def leave_if_stuck(grace_s=LEAVE_GRACE_S, code=0):
     if not _armed[0]:   # no run began here (a test that stubs arm): never leave (26 Oct 2026: os._exit(0) ended a CI shard halfway on 4 PRs)
         return
     until = time.monotonic() + grace_s
-    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon and t.ident not in _before]
+    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon and not any(t is early for early in _before)]
     for thread in held:
         thread.join(max(0, until - time.monotonic()))
     stuck = [t for t in held if t.is_alive()]

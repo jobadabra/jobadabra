@@ -132,6 +132,22 @@ class PhaseAndDeadlineTest(unittest.TestCase):
                 raise ValueError('x')
         self.assertRegex(lines[0], r'^Scout: checking feeds took \d+ s$')
 
+    def test_a_stuck_check_that_got_a_finished_threads_id_still_counts(self):
+        # 7 Nov 2026, #3449 python job (unchanged code, green on main): a thread alive at arm() ended, the OS gave its id to the check that then hung, and the id list called it "alive before the run": no exit.
+        class Fake:   # a thread by id only: the second one has the first one's id
+            def __init__(self, ident, alive=True):
+                self.ident, self.daemon, self.alive = ident, False, alive
+            def join(self, timeout=None):
+                pass
+            def is_alive(self):
+                return self.alive
+        early, stuck = Fake(7), Fake(7)
+        with mock.patch.object(scout_overrun.threading, 'enumerate', return_value=[early]):
+            scout_overrun.arm(0)
+        with mock.patch.object(scout_overrun.threading, 'enumerate', return_value=[stuck]), mock.patch.object(scout_overrun.os, '_exit') as leave:
+            scout_overrun.leave_if_stuck(grace_s=0)
+        leave.assert_called_once_with(0)
+
     def test_the_publish_deadline_leaves_a_reserve_before_the_job_limit(self):
         self.assertEqual(scout_overrun.publish_deadline(100, job_s=600, reserve_s=60), 640)
 

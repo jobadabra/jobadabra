@@ -31,5 +31,6 @@ A fs-reading helper says what it reads once, on a `// Reaches:` line that `deskt
 The runner fails when the number of files it runs differs from the number it printed. A long Windows pick is split into several commands under the budget; there is no glob fallback.
 
 ## Progress
-- [x] 1/2 The slowest tooling test builds its git history in one process (59.9 s → 29.9 s on a Mac; same 30 assertions) (proof: desktop/test/tooling/ci/e2e-reliability-check.test.js)
-- [ ] 2/2 Selection: declared reads, guards, Windows chunking, count check; proof on #3439, #3431 and a renderer-only PR (files picked, estimated seconds), positive controls (renderer/lib change, docs only, the helper itself)
+- [x] 1/3 The slowest tooling test builds its git history in one process (59.9 s → 29.9 s on a Mac; same 30 assertions) (proof: desktop/test/tooling/ci/e2e-reliability-check.test.js @6cd86343)
+- [x] 2/3 Windows runs only the files it picked: a long pick is several commands under the budget, never the glob; the runner fails when the files it runs differ from the files it printed (proof: tests/guards/rules/test_pr_desktop_picks.py)
+- [ ] 3/3 Selection: folder readers and tree walkers told apart, tooling tests only for tooling changes; proof on #3439, #3431 and a renderer-only PR (files picked, estimated seconds), positive controls (renderer/lib change, docs only, the helper itself)
