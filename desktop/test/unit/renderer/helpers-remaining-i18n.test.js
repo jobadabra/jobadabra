@@ -84,3 +84,19 @@ test('lead guidance and search summaries translate around unchanged confirmed va
     assert.match(find.partialWords({log: ['Employers: read 3 of 10 sites in the time']}, 2), /^Частично:/);
   } finally { setLocale('en'); }
 });
+
+test('strategy and move summaries translate around original values, reasons and archive paths', async () => {
+  const strategy = await import('../../../renderer/strategy-parts.js');
+  const tune = await import('../../../renderer/tune-text.js');
+  const {movedText} = await import('../../../renderer/store-move-text.js');
+  try {
+    setLocale('de');
+    assert.equal(strategy.exclusionGroups({avoid: ['Title: Original phrase']}).hide[0].label, 'Titel: Original phrase');
+    assert.match(strategy.salaryWords('130000 CHF/year gross').text, /130\.000/);
+    assert.equal(tune.proposalCounts({why: 'Original engine reason'}), 'Original engine reason');
+    assert.equal(tune.applyLabel(2), '2 Änderungen anwenden');
+    const text = movedText({moved: {applications: 2}, kept: ['profile'], archive: '/Original Archive/backup'});
+    assert.match(text, /^Nach Notion verschoben ✓ 2 Bewerbungen/);
+    assert.ok(text.includes('/Original Archive/backup'));
+  } finally { setLocale('en'); }
+});

@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "terminata al limite di 3 minuti",
   "searchedSites": ", {done} di {total} siti cercati",
   "partial": "Parziale: {text}",
+  "software": "Software",
+  "businessSales": "Vendite B2B",
+  "retail": "Vendita al dettaglio",
+  "logistics": "Logistica",
+  "hospitality": "Ospitalità",
+  "healthcare": "Sanità",
+  "creativeMedia": "Creatività e media",
+  "officeFinance": "Ufficio e finanza",
+  "education": "Istruzione",
+  "trades": "Mestieri",
+  "engineering": "Ingegneria",
+  "businessOps": "Gestione e operazioni",
+  "manufacturing": "Produzione",
+  "scienceResearch": "Scienza e ricerca",
+  "customerService": "Servizio clienti",
+  "legal": "Legale",
+  "aviationTransport": "Aviazione e trasporti",
+  "publicSecurity": "Servizio pubblico e sicurezza",
+  "otherRoles": "Altri ruoli",
+  "excludedTitle": "Titolo: {word}",
+  "remoteFrom": "Remoto solo da {place}",
+  "niceLanguages": "{languages} solo “preferibili”",
+  "salaryAsWritten": "Come scritto: modifica per scegliere valuta e periodo",
+  "salaryPeriodMissing": "Periodo non impostato: modifica per aggiungerlo",
+  "worksIn": "Può lavorare in: {places}",
+  "needsSponsorship": "Serve sponsorizzazione: {places}",
+  "languagesLine": "Lingue: {languages}",
+  "moreListed": "{list} +altri {count}",
+  "topSuggestion": "Priorità: {title}{text}",
+  "stopRole": "Non cercare più",
+  "stopPlace": "Non cercare più in",
+  "skipTitle": "Salta titoli con",
+  "change": "Modifica",
+  "proposalCounts": "{dismissed} scartate · {engaged} salvate o candidate",
+  "noLearning": "Ancora nessun risultato da analizzare: prima salva, scarta o candidati ad alcune offerte.",
+  "nothingChange": " Nulla da cambiare: nessun ruolo, luogo o termine ha almeno {count} scarti senza offerte salvate.",
+  "applyChanges": "Applica modifiche",
+  "movedNotion": "Spostato su Notion ✓",
+  "keptNotion": "Notion conteneva già {text}, che è stato mantenuto; la versione del Mac è in {archive}.",
+  "aProfile": "un profilo",
+  "standardAnswers": "risposte standard",
+  "formKnowledge": "conoscenze sui moduli",
+  "moveEvents": "cronologia candidature",
+  "moveRuns": "cronologia esecuzioni",
+  "moveTexts": "i tuoi testi",
   "confirmDetails": {
     "one": "Conferma {count} dettaglio",
     "other": "Conferma {count} dettagli"
@@ -72,5 +117,49 @@ export const messages = {
   "addedJobs": {
     "one": "{count} offerta aggiunta all’elenco",
     "other": "{count} offerte aggiunte all’elenco"
+  },
+  "basisJobs": {
+    "one": "In base a {count} offerta su cui hai agito.",
+    "other": "In base a {count} offerte su cui hai agito."
+  },
+  "applyCount": {
+    "one": "Applica {count} modifica",
+    "other": "Applica {count} modifiche"
+  },
+  "moved_applications": {
+    "one": "{count} candidatura",
+    "other": "{count} candidature"
+  },
+  "moved_events": {
+    "one": "{count} evento di cronologia",
+    "other": "{count} eventi di cronologia"
+  },
+  "moved_matches": {
+    "one": "{count} risultato di ricerca",
+    "other": "{count} risultati di ricerca"
+  },
+  "moved_interviews": {
+    "one": "{count} colloquio",
+    "other": "{count} colloqui"
+  },
+  "moved_insights": {
+    "one": "{count} analisi",
+    "other": "{count} analisi"
+  },
+  "moved_employers": {
+    "one": "{count} datore",
+    "other": "{count} datori"
+  },
+  "moved_agent_runs": {
+    "one": "{count} compilazione",
+    "other": "{count} compilazioni"
+  },
+  "moved_cron_runs": {
+    "one": "{count} esecuzione",
+    "other": "{count} esecuzioni"
+  },
+  "moved_texts": {
+    "one": "{count} testo",
+    "other": "{count} testi"
   }
 };

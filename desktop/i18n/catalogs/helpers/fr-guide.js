@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "arrêtée à la limite de 3 minutes",
   "searchedSites": ", {done} sites sur {total} consultés",
   "partial": "Partiel : {text}",
+  "software": "Logiciel",
+  "businessSales": "Vente aux entreprises",
+  "retail": "Commerce de détail",
+  "logistics": "Logistique",
+  "hospitality": "Hôtellerie-restauration",
+  "healthcare": "Santé",
+  "creativeMedia": "Création et médias",
+  "officeFinance": "Bureau et finance",
+  "education": "Éducation",
+  "trades": "Métiers manuels",
+  "engineering": "Ingénierie",
+  "businessOps": "Gestion et opérations",
+  "manufacturing": "Industrie",
+  "scienceResearch": "Sciences et recherche",
+  "customerService": "Service client",
+  "legal": "Juridique",
+  "aviationTransport": "Aviation et transport",
+  "publicSecurity": "Service public et sécurité",
+  "otherRoles": "Autres postes",
+  "excludedTitle": "Titre : {word}",
+  "remoteFrom": "Télétravail uniquement depuis {place}",
+  "niceLanguages": "{languages} seulement « souhaitées »",
+  "salaryAsWritten": "Tel qu’écrit : modifiez pour choisir devise et période",
+  "salaryPeriodMissing": "Période non définie : modifiez pour l’ajouter",
+  "worksIn": "Droit de travailler : {places}",
+  "needsSponsorship": "Parrainage nécessaire : {places}",
+  "languagesLine": "Langues : {languages}",
+  "moreListed": "{list} +{count} autres",
+  "topSuggestion": "Priorité : {title}{text}",
+  "stopRole": "Ne plus rechercher",
+  "stopPlace": "Ne plus rechercher à",
+  "skipTitle": "Ignorer les titres contenant",
+  "change": "Modifier",
+  "proposalCounts": "{dismissed} écartées · {engaged} gardées ou postulées",
+  "noLearning": "Pas encore de résultats à analyser : gardez, écartez ou postulez d’abord à des offres.",
+  "nothingChange": " Rien à changer : aucun poste, lieu ou mot de titre n’a {count}+ rejets sans offre gardée.",
+  "applyChanges": "Appliquer les modifications",
+  "movedNotion": "Déplacé vers Notion ✓",
+  "keptNotion": "Votre Notion contenait déjà {text}, conservé ; la version de ce Mac est dans {archive}.",
+  "aProfile": "un profil",
+  "standardAnswers": "des réponses standard",
+  "formKnowledge": "des connaissances de formulaires",
+  "moveEvents": "historique des candidatures",
+  "moveRuns": "historique d’exécution",
+  "moveTexts": "vos textes",
   "confirmDetails": {
     "one": "Confirmer {count} détail",
     "other": "Confirmer {count} détails"
@@ -72,5 +117,49 @@ export const messages = {
   "addedJobs": {
     "one": "{count} offre ajoutée à votre liste",
     "other": "{count} offres ajoutées à votre liste"
+  },
+  "basisJobs": {
+    "one": "D’après {count} offre sur laquelle vous avez agi.",
+    "other": "D’après {count} offres sur lesquelles vous avez agi."
+  },
+  "applyCount": {
+    "one": "Appliquer {count} modification",
+    "other": "Appliquer {count} modifications"
+  },
+  "moved_applications": {
+    "one": "{count} candidature",
+    "other": "{count} candidatures"
+  },
+  "moved_events": {
+    "one": "{count} événement d’historique",
+    "other": "{count} événements d’historique"
+  },
+  "moved_matches": {
+    "one": "{count} résultat de recherche",
+    "other": "{count} résultats de recherche"
+  },
+  "moved_interviews": {
+    "one": "{count} entretien",
+    "other": "{count} entretiens"
+  },
+  "moved_insights": {
+    "one": "{count} analyse",
+    "other": "{count} analyses"
+  },
+  "moved_employers": {
+    "one": "{count} employeur",
+    "other": "{count} employeurs"
+  },
+  "moved_agent_runs": {
+    "one": "{count} remplissage",
+    "other": "{count} remplissages"
+  },
+  "moved_cron_runs": {
+    "one": "{count} exécution",
+    "other": "{count} exécutions"
+  },
+  "moved_texts": {
+    "one": "{count} texte",
+    "other": "{count} textes"
   }
 };

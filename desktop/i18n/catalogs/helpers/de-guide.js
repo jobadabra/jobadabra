@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "am 3-Minuten-Limit beendet",
   "searchedSites": ", {done} von {total} Websites durchsucht",
   "partial": "Teilweise: {text}",
+  "software": "Software",
+  "businessSales": "Geschäftskundenvertrieb",
+  "retail": "Einzelhandel",
+  "logistics": "Logistik",
+  "hospitality": "Gastgewerbe",
+  "healthcare": "Gesundheitswesen",
+  "creativeMedia": "Kreativ & Medien",
+  "officeFinance": "Büro & Finanzen",
+  "education": "Bildung",
+  "trades": "Handwerk",
+  "engineering": "Ingenieurwesen",
+  "businessOps": "Geschäft & Betrieb",
+  "manufacturing": "Produktion",
+  "scienceResearch": "Wissenschaft & Forschung",
+  "customerService": "Kundendienst",
+  "legal": "Recht",
+  "aviationTransport": "Luftfahrt & Verkehr",
+  "publicSecurity": "Öffentlicher Dienst & Sicherheit",
+  "otherRoles": "Andere Rollen",
+  "excludedTitle": "Titel: {word}",
+  "remoteFrom": "Remote nur aus {place}",
+  "niceLanguages": "{languages} nur „wünschenswert“",
+  "salaryAsWritten": "Wie eingegeben: Währung und Zeitraum durch Bearbeiten wählen",
+  "salaryPeriodMissing": "Zeitraum fehlt: zum Ergänzen bearbeiten",
+  "worksIn": "Arbeitsberechtigt in: {places}",
+  "needsSponsorship": "Benötigt Sponsoring: {places}",
+  "languagesLine": "Sprachen: {languages}",
+  "moreListed": "{list} +{count} weitere",
+  "topSuggestion": "Wichtigster Vorschlag: {title}{text}",
+  "stopRole": "Nicht mehr suchen nach",
+  "stopPlace": "Nicht mehr suchen in",
+  "skipTitle": "Stellentitel überspringen mit",
+  "change": "Ändern",
+  "proposalCounts": "{dismissed} verworfen · {engaged} behalten oder beworben",
+  "noLearning": "Noch keine Ergebnisse zum Lernen: erst Stellen speichern, verwerfen oder bewerben.",
+  "nothingChange": " Nichts zu ändern: keine Rolle, kein Ort und kein Titelwort hat {count}+ Ablehnungen ohne gespeicherte Stelle.",
+  "applyChanges": "Änderungen anwenden",
+  "movedNotion": "Nach Notion verschoben ✓",
+  "keptNotion": "Ihr Notion enthielt bereits {text}; es wurde behalten. Die Version dieses Macs liegt in {archive}.",
+  "aProfile": "ein Profil",
+  "standardAnswers": "Standardantworten",
+  "formKnowledge": "Formularwissen",
+  "moveEvents": "Bewerbungsverlauf",
+  "moveRuns": "Ausführungsverlauf",
+  "moveTexts": "Ihre Texte",
   "confirmDetails": {
     "one": "{count} Angabe bestätigen",
     "other": "{count} Angaben bestätigen"
@@ -72,5 +117,49 @@ export const messages = {
   "addedJobs": {
     "one": "{count} Stelle zur Liste hinzugefügt",
     "other": "{count} Stellen zur Liste hinzugefügt"
+  },
+  "basisJobs": {
+    "one": "Auf Grundlage von {count} Stelle, auf die Sie reagiert haben.",
+    "other": "Auf Grundlage von {count} Stellen, auf die Sie reagiert haben."
+  },
+  "applyCount": {
+    "one": "{count} Änderung anwenden",
+    "other": "{count} Änderungen anwenden"
+  },
+  "moved_applications": {
+    "one": "{count} Bewerbung",
+    "other": "{count} Bewerbungen"
+  },
+  "moved_events": {
+    "one": "{count} Verlaufsereignis",
+    "other": "{count} Verlaufsereignisse"
+  },
+  "moved_matches": {
+    "one": "{count} Suchergebnis",
+    "other": "{count} Suchergebnisse"
+  },
+  "moved_interviews": {
+    "one": "{count} Gespräch",
+    "other": "{count} Gespräche"
+  },
+  "moved_insights": {
+    "one": "{count} Erkenntnis",
+    "other": "{count} Erkenntnisse"
+  },
+  "moved_employers": {
+    "one": "{count} Arbeitgeber",
+    "other": "{count} Arbeitgeber"
+  },
+  "moved_agent_runs": {
+    "one": "{count} Formularausfüllung",
+    "other": "{count} Formularausfüllungen"
+  },
+  "moved_cron_runs": {
+    "one": "{count} Lauf",
+    "other": "{count} Läufe"
+  },
+  "moved_texts": {
+    "one": "{count} Text",
+    "other": "{count} Texte"
   }
 };

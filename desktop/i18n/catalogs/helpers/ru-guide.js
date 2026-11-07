@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "завершён по лимиту в 3 минуты",
   "searchedSites": ", просмотрено сайтов: {done} из {total}",
   "partial": "Частично: {text}",
+  "software": "Разработка ПО",
+  "businessSales": "Корпоративные продажи",
+  "retail": "Розничная торговля",
+  "logistics": "Логистика",
+  "hospitality": "Гостиничный бизнес",
+  "healthcare": "Здравоохранение",
+  "creativeMedia": "Творчество и медиа",
+  "officeFinance": "Офис и финансы",
+  "education": "Образование",
+  "trades": "Рабочие профессии",
+  "engineering": "Инженерия",
+  "businessOps": "Бизнес и операции",
+  "manufacturing": "Производство",
+  "scienceResearch": "Наука и исследования",
+  "customerService": "Обслуживание клиентов",
+  "legal": "Право",
+  "aviationTransport": "Авиация и транспорт",
+  "publicSecurity": "Госслужба и безопасность",
+  "otherRoles": "Другие роли",
+  "excludedTitle": "Заголовок: {word}",
+  "remoteFrom": "Удалённо только из {place}",
+  "niceLanguages": "{languages} только как желательное требование",
+  "salaryAsWritten": "Как записано: измените, чтобы выбрать валюту и период",
+  "salaryPeriodMissing": "Период не задан: измените, чтобы добавить",
+  "worksIn": "Может работать: {places}",
+  "needsSponsorship": "Нужна поддержка визы: {places}",
+  "languagesLine": "Языки: {languages}",
+  "moreListed": "{list} +ещё {count}",
+  "topSuggestion": "Главное: {title}{text}",
+  "stopRole": "Не искать больше",
+  "stopPlace": "Не искать в",
+  "skipTitle": "Пропускать заголовки со словами",
+  "change": "Изменить",
+  "proposalCounts": "Отклонено: {dismissed} · Сохранено или подано: {engaged}",
+  "noLearning": "Пока нет результатов для анализа: сначала сохраните, отклоните вакансии или подайте заявки.",
+  "nothingChange": " Менять нечего: нет роли, места или слова с {count}+ отклонениями без сохранённых вакансий.",
+  "applyChanges": "Применить изменения",
+  "movedNotion": "Перенесено в Notion ✓",
+  "keptNotion": "В Notion уже было {text}, поэтому это сохранено; версия с этого Mac находится в {archive}.",
+  "aProfile": "профиль",
+  "standardAnswers": "стандартные ответы",
+  "formKnowledge": "знания о формах",
+  "moveEvents": "история заявок",
+  "moveRuns": "история запусков",
+  "moveTexts": "ваши тексты",
   "confirmDetails": {
     "one": "Подтвердить {count} деталь",
     "other": "Подтвердить {count} деталей",
@@ -78,5 +123,71 @@ export const messages = {
     "other": "В список добавлено {count} вакансий",
     "few": "В список добавлены {count} вакансии",
     "many": "В список добавлено {count} вакансий"
+  },
+  "basisJobs": {
+    "one": "На основе {count} вакансии, по которой вы действовали.",
+    "other": "На основе {count} вакансий, по которым вы действовали.",
+    "few": "На основе {count} вакансий, по которым вы действовали.",
+    "many": "На основе {count} вакансий, по которым вы действовали."
+  },
+  "applyCount": {
+    "one": "Применить {count} изменение",
+    "other": "Применить {count} изменений",
+    "few": "Применить {count} изменения",
+    "many": "Применить {count} изменений"
+  },
+  "moved_applications": {
+    "one": "{count} заявка",
+    "other": "{count} заявок",
+    "few": "{count} заявки",
+    "many": "{count} заявок"
+  },
+  "moved_events": {
+    "one": "{count} событие истории",
+    "other": "{count} событий истории",
+    "few": "{count} события истории",
+    "many": "{count} событий истории"
+  },
+  "moved_matches": {
+    "one": "{count} результат поиска",
+    "other": "{count} результатов поиска",
+    "few": "{count} результата поиска",
+    "many": "{count} результатов поиска"
+  },
+  "moved_interviews": {
+    "one": "{count} собеседование",
+    "other": "{count} собеседований",
+    "few": "{count} собеседования",
+    "many": "{count} собеседований"
+  },
+  "moved_insights": {
+    "one": "{count} вывод",
+    "other": "{count} выводов",
+    "few": "{count} вывода",
+    "many": "{count} выводов"
+  },
+  "moved_employers": {
+    "one": "{count} работодатель",
+    "other": "{count} работодателей",
+    "few": "{count} работодателя",
+    "many": "{count} работодателей"
+  },
+  "moved_agent_runs": {
+    "one": "{count} заполнение формы",
+    "other": "{count} заполнений форм",
+    "few": "{count} заполнения форм",
+    "many": "{count} заполнений форм"
+  },
+  "moved_cron_runs": {
+    "one": "{count} запуск",
+    "other": "{count} запусков",
+    "few": "{count} запуска",
+    "many": "{count} запусков"
+  },
+  "moved_texts": {
+    "one": "{count} текст",
+    "other": "{count} текстов",
+    "few": "{count} текста",
+    "many": "{count} текстов"
   }
 };

@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "oprită la limita de 3 minute",
   "searchedSites": ", {done} din {total} site-uri căutate",
   "partial": "Parțial: {text}",
+  "software": "Software",
+  "businessSales": "Vânzări B2B",
+  "retail": "Comerț cu amănuntul",
+  "logistics": "Logistică",
+  "hospitality": "Ospitalitate",
+  "healthcare": "Sănătate",
+  "creativeMedia": "Creație și media",
+  "officeFinance": "Birou și finanțe",
+  "education": "Educație",
+  "trades": "Meserii",
+  "engineering": "Inginerie",
+  "businessOps": "Afaceri și operațiuni",
+  "manufacturing": "Producție",
+  "scienceResearch": "Știință și cercetare",
+  "customerService": "Serviciu clienți",
+  "legal": "Juridic",
+  "aviationTransport": "Aviație și transport",
+  "publicSecurity": "Serviciu public și securitate",
+  "otherRoles": "Alte roluri",
+  "excludedTitle": "Titlu: {word}",
+  "remoteFrom": "Remote doar din {place}",
+  "niceLanguages": "{languages} doar „de dorit”",
+  "salaryAsWritten": "Cum e scris: editează pentru monedă și perioadă",
+  "salaryPeriodMissing": "Perioadă nesetată: editează pentru a o adăuga",
+  "worksIn": "Poate lucra în: {places}",
+  "needsSponsorship": "Necesită sponsorizare: {places}",
+  "languagesLine": "Limbi: {languages}",
+  "moreListed": "{list} +încă {count}",
+  "topSuggestion": "Principal: {title}{text}",
+  "stopRole": "Nu mai căuta",
+  "stopPlace": "Nu mai căuta în",
+  "skipTitle": "Sari titlurile cu",
+  "change": "Schimbă",
+  "proposalCounts": "{dismissed} respinse · {engaged} păstrate sau aplicate",
+  "noLearning": "Încă nu există rezultate: salvează, respinge sau aplică mai întâi la oferte.",
+  "nothingChange": " Nimic de schimbat: niciun rol, loc sau termen nu are {count}+ respingeri fără oferte păstrate.",
+  "applyChanges": "Aplică modificările",
+  "movedNotion": "Mutat în Notion ✓",
+  "keptNotion": "Notion avea deja {text}, deci a fost păstrat; versiunea Macului este în {archive}.",
+  "aProfile": "un profil",
+  "standardAnswers": "răspunsuri standard",
+  "formKnowledge": "cunoștințe despre formulare",
+  "moveEvents": "istoricul candidaturilor",
+  "moveRuns": "istoricul rulărilor",
+  "moveTexts": "textele tale",
   "confirmDetails": {
     "one": "Confirmă {count} detaliu",
     "other": "Confirmă {count} de detalii",
@@ -75,5 +120,60 @@ export const messages = {
     "one": "{count} ofertă adăugată în listă",
     "other": "{count} de oferte adăugate în listă",
     "few": "{count} oferte adăugate în listă"
+  },
+  "basisJobs": {
+    "one": "Pe baza unei oferte la care ai acționat.",
+    "other": "Pe baza a {count} de oferte la care ai acționat.",
+    "few": "Pe baza a {count} oferte la care ai acționat."
+  },
+  "applyCount": {
+    "one": "Aplică {count} modificare",
+    "other": "Aplică {count} de modificări",
+    "few": "Aplică {count} modificări"
+  },
+  "moved_applications": {
+    "one": "{count} candidatură",
+    "other": "{count} de candidaturi",
+    "few": "{count} candidaturi"
+  },
+  "moved_events": {
+    "one": "{count} eveniment de istoric",
+    "other": "{count} de evenimente de istoric",
+    "few": "{count} evenimente de istoric"
+  },
+  "moved_matches": {
+    "one": "{count} rezultat de căutare",
+    "other": "{count} de rezultate de căutare",
+    "few": "{count} rezultate de căutare"
+  },
+  "moved_interviews": {
+    "one": "{count} interviu",
+    "other": "{count} de interviuri",
+    "few": "{count} interviuri"
+  },
+  "moved_insights": {
+    "one": "{count} analiză",
+    "other": "{count} de analize",
+    "few": "{count} analize"
+  },
+  "moved_employers": {
+    "one": "{count} angajator",
+    "other": "{count} de angajatori",
+    "few": "{count} angajatori"
+  },
+  "moved_agent_runs": {
+    "one": "{count} completare",
+    "other": "{count} de completări",
+    "few": "{count} completări"
+  },
+  "moved_cron_runs": {
+    "one": "{count} rulare",
+    "other": "{count} de rulări",
+    "few": "{count} rulări"
+  },
+  "moved_texts": {
+    "one": "{count} text",
+    "other": "{count} de texte",
+    "few": "{count} texte"
   }
 };

@@ -61,6 +61,51 @@ export const messages = {
   "endedLimit": "ended at the 3-minute limit",
   "searchedSites": ", {done} of {total} sites searched",
   "partial": "Partial: {text}",
+  "software": "Software",
+  "businessSales": "Business sales",
+  "retail": "Retail",
+  "logistics": "Logistics",
+  "hospitality": "Hospitality",
+  "healthcare": "Healthcare",
+  "creativeMedia": "Creative & media",
+  "officeFinance": "Office & finance",
+  "education": "Education",
+  "trades": "Trades",
+  "engineering": "Engineering",
+  "businessOps": "Business & operations",
+  "manufacturing": "Manufacturing",
+  "scienceResearch": "Science & research",
+  "customerService": "Customer service",
+  "legal": "Legal",
+  "aviationTransport": "Aviation & transport",
+  "publicSecurity": "Public service & security",
+  "otherRoles": "Other roles",
+  "excludedTitle": "Title: {word}",
+  "remoteFrom": "Remote only from {place}",
+  "niceLanguages": "{languages} only \"nice to have\"",
+  "salaryAsWritten": "As written: Edit to pick its currency and period",
+  "salaryPeriodMissing": "Period not set: Edit to add it",
+  "worksIn": "Works in: {places}",
+  "needsSponsorship": "Needs sponsorship: {places}",
+  "languagesLine": "Languages: {languages}",
+  "moreListed": "{list} +{count} more",
+  "topSuggestion": "Top: {title}{text}",
+  "stopRole": "Stop searching for",
+  "stopPlace": "Stop searching in",
+  "skipTitle": "Skip job titles with",
+  "change": "Change",
+  "proposalCounts": "{dismissed} dismissed · {engaged} kept or applied",
+  "noLearning": "No results to learn from yet: save, dismiss or apply to some jobs first.",
+  "nothingChange": " Nothing to change: no role, place or title word has {count}+ dismissals and none kept.",
+  "applyChanges": "Apply changes",
+  "movedNotion": "Moved to Notion ✓",
+  "keptNotion": "Your Notion already had {text}, so it was kept; this Mac's version is in {archive}.",
+  "aProfile": "a Profile",
+  "standardAnswers": "standard answers",
+  "formKnowledge": "form knowledge",
+  "moveEvents": "application history",
+  "moveRuns": "run history",
+  "moveTexts": "your texts",
   "confirmDetails": {
     "one": "Confirm {count} detail",
     "other": "Confirm {count} details"
@@ -72,5 +117,49 @@ export const messages = {
   "addedJobs": {
     "one": "{count} job added to your list",
     "other": "{count} jobs added to your list"
+  },
+  "basisJobs": {
+    "one": "Based on {count} job you acted on.",
+    "other": "Based on {count} jobs you acted on."
+  },
+  "applyCount": {
+    "one": "Apply {count} change",
+    "other": "Apply {count} changes"
+  },
+  "moved_applications": {
+    "one": "{count} application",
+    "other": "{count} applications"
+  },
+  "moved_events": {
+    "one": "{count} history event",
+    "other": "{count} history events"
+  },
+  "moved_matches": {
+    "one": "{count} search result",
+    "other": "{count} search results"
+  },
+  "moved_interviews": {
+    "one": "{count} interview",
+    "other": "{count} interviews"
+  },
+  "moved_insights": {
+    "one": "{count} insight",
+    "other": "{count} insights"
+  },
+  "moved_employers": {
+    "one": "{count} employer",
+    "other": "{count} employers"
+  },
+  "moved_agent_runs": {
+    "one": "{count} form fill",
+    "other": "{count} form fills"
+  },
+  "moved_cron_runs": {
+    "one": "{count} run",
+    "other": "{count} runs"
+  },
+  "moved_texts": {
+    "one": "{count} text",
+    "other": "{count} texts"
   }
 };
