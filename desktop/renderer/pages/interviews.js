@@ -85,7 +85,7 @@ async function openDraft(id) {
     // A job matched by time to a calendar interview: shown as a suggestion; saving confirms it, changing the job replaces it.
     const suggested = !draft.jobUrl && draft.suggestedJobUrl;
     show($('iv-suggest'), !!suggested);
-    if (suggested) $('iv-suggest').textContent = `Suggested from your calendar: ${draft.suggestedJob}. Change it below if this was a different interview.`;
+    if (suggested) $('iv-suggest').textContent = t('pagesDynamicFocusInterviews.m199', {"suggestedJob": draft.suggestedJob});
     show($('iv-job-url'), false);
     $('iv-job-url').value = '';
     renderSpeakers();
@@ -106,14 +106,14 @@ function saveOpenDraft() {
 // No page to open (the data on this Mac): the review in the app (renderer/interview-review-view.js).
 async function openReview(id) {
   const record = await window.pilot.ivRecord(id);
-  if (!record || record.error) { message('iv-message', `Review not read: ${record?.error || 'not found'}`, 'error'); return; }
+  if (!record || record.error) { message('iv-message', t('pagesDynamicFocusInterviews.m200', {"value1": record?.error || 'not found'}), 'error'); return; }
   showReview(record, {$, el, pill});
 }
 async function saveToNotion(andReview) {
   await saveOpenDraft();
   const id = ivOpen;
   for (const button of ['iv-save', 'iv-save-review']) $(button).disabled = true;
-  message('iv-message', `Saving to ${storeName()}…`);
+  message('iv-message', t('pagesDynamicFocusInterviews.m201', {"storeName": storeName()}));
   try {
     const result = await iv.save(id);
     if (!result.ok) { message('iv-message', result.error, 'error'); return; }
@@ -140,7 +140,7 @@ const savedTo = () => byStore(t('pagesControlStatus.savedNotionInterviews'), t('
 // skeleton rows in the table (the boxes are there, shimmering) until Notion answers.
 async function showSavedLoading() {
   show($('iv-empty'), false);
-  if (ivSavedRows.length) { $('iv-lib-stats').textContent = `Refreshing from ${storeName()}…`; return shownAt; }
+  if (ivSavedRows.length) { $('iv-lib-stats').textContent = t('pagesDynamicFocusInterviews.m202', {"storeName": storeName()}); return shownAt; }
   const saved = await window.pilot.cached('interviews').catch(() => null);
   if (saved?.result?.interviews?.length && !ivSavedRows.length) {
     ivSavedRows = saved.result.interviews;
@@ -153,7 +153,7 @@ async function showSavedLoading() {
   $('iv-saved').replaceChildren(...skeletonRows());
   $('iv-insight').replaceChildren(...insightSkeleton());
   show($('iv-insight'));
-  $('iv-lib-stats').textContent = `Loading from ${storeName()}…`;
+  $('iv-lib-stats').textContent = t('pagesDynamicFocusInterviews.m203', {"storeName": storeName()});
   return null;
 }
 // One read at a time: coming back to the page while one runs waits for it (they piled up: each a Python run and a
@@ -213,7 +213,7 @@ function renderAll() {
   try { renderSaved(); } catch (error) {
     failed('library', error);
     show($('iv-empty'));
-    $('iv-empty').textContent = plainError(`Couldn't show your interviews (${error?.message || error}). The details are in the app log.`);
+    $('iv-empty').textContent = plainError(t('pagesDynamicFocusInterviews.m204', {"value1": error?.message || error}));
   }
   try { renderInsight(); } catch (error) { failed('insights', error); show($('iv-insight'), false); }
 }
@@ -244,7 +244,7 @@ async function tickStep(step, done) {
   const mark = value => { const item = steps.find(s => s.text === step.text); if (item) item.done = value; };
   mark(done);
   const result = await iv.insightStep(step.text, done).catch(error => ({ok: false, error: String(error?.message || error)}));
-  if (!result.ok) { mark(!done); message('iv-message', `Not saved: ${result.error || `${storeName()} refused it`}`, 'error'); }
+  if (!result.ok) { mark(!done); message('iv-message', t('pagesDynamicFocusInterviews.m205', {"value1": result.error || t('pagesDynamicFocusInterviews.m206', {"storeName": storeName()})}), 'error'); }
   renderInsight();
 }
 // An interview named in the insights: its row in the library, scrolled to and lit up briefly.
@@ -309,7 +309,7 @@ function renderSaved() {
       open.addEventListener('click', event => window.pilot.openNotion(cellJob.notion, event.metaKey));
       jobLines.append(open);
     } else {
-      const link = Object.assign(el('button', 'link small', t('pagesJobs.linkJob')), {type: 'button', title: `Choose the job this interview belongs to (updates ${storeName()})`});
+      const link = Object.assign(el('button', 'link small', t('pagesJobs.linkJob')), {type: 'button', title: t('pagesDynamicFocusInterviews.m207', {"storeName": storeName()})});
       jobLines.append(el('span', 'muted', cellJob.name), el('div', '', ''));
       jobLines.lastChild.append(link);
       link.addEventListener('click', () => openPicker());
@@ -328,10 +328,10 @@ function renderSaved() {
     const pasted = Object.assign(document.createElement('input'), {type: 'url', placeholder: 'https://… then Enter', hidden: true});
     const relink = async url => {
       select.disabled = pasted.disabled = true;
-      message('iv-message', `Linking in ${storeName()}…`);
+      message('iv-message', t('pagesDynamicFocusInterviews.m208', {"storeName": storeName()}));
       const done = await iv.link(row.id, url);
       select.disabled = pasted.disabled = false;
-      message('iv-message', done.ok ? `"${row.title}" is now ${url ? t('pagesInterviews.linkedJob') : t('pagesInterviews.notLinkedJob')} in ${storeName()}.` : done.error, done.ok ? 'ok' : 'error');
+      message('iv-message', done.ok ? t('pagesDynamicFocusInterviews.m209', {"title": row.title, "value2": url ? t('pagesInterviews.linkedJob') : t('pagesInterviews.notLinkedJob'), "storeName": storeName()}) : done.error, done.ok ? 'ok' : 'error');
       if (done.ok) {
         if (url && !jobList().some(j => j.url === url && j.notion_url)) {  // just added to Applications
           try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {}
@@ -370,14 +370,14 @@ function renderSaved() {
     const menu = [
       ...(row.url ? [{label: t('pagesInterviews.openInterviewNotion'), run: event => window.pilot.openNotion(row.url, event.metaKey)}] : []),
       ...(cellJob.notion ? [{label: t('pagesInterviews.openJobNotion'), run: event => window.pilot.openNotion(cellJob.notion, event.metaKey)}] : []),
-      {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
+      {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: t('pagesDynamicFocusInterviews.m210', {"storeName": storeName()})},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
       {label: t('pagesCommon.delete'), danger: true, title: osText(byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal'))), run: async () => {
-        if (!confirm(osText(byStore(`Delete "${row.title}"? It goes to Notion's trash (30 days) and its recording is removed from this Mac.`,
-          `Delete "${row.title}" and its recording on this Mac?`)))) return;
+        if (!confirm(osText(byStore(t('pagesDynamicFocusInterviews.m211', {"title": row.title}),
+          t('pagesDynamicFocusInterviews.m212', {"title": row.title}))))) return;
         const done = await iv.remove(row.id);
-        message('iv-message', done.ok ? osText(byStore(`Deleted "${row.title}": in Notion's trash for 30 days${done.removed ? ', its recording removed from this Mac' : ''}.`,
+        message('iv-message', done.ok ? osText(byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
           `Deleted "${row.title}"${done.removed ? ' and its recording' : ''}.`))
           : done.error, done.ok ? 'ok' : 'error');
         readAgain();

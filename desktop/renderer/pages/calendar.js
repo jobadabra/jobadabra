@@ -48,7 +48,7 @@ function open(m) {
 function cross(m) {
   if (m.held || !m.job || !cal.page(m.job)) return null;
   const button = Object.assign(el('button', 'cal-cross', '×'), {type: 'button', title: t('pagesMisc.dismissInterview')});
-  button.setAttribute('aria-label', `Dismiss the ${name(m)} interview`);
+  button.setAttribute('aria-label', t('pagesDynamicSetup.m73', {"name": name(m)}));
   button.onclick = event => {
     event.stopPropagation();
     const before = m.job.next_interview;
@@ -97,7 +97,7 @@ const skeletons = () => [0, 1, 2].map(() => { const box = el('div', 'cal-row'); 
 function status() {
   const text = phase === 'loading' ? byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))
     : phase === 'updating' ? byStore(t('pagesExtraCommon.updatingNotion'), t('pagesExtraCommon.updating'))
-    : phase === 'failed' ? `Couldn't refresh from ${storeName()}${savedAt ? ` · showing the copy saved ${savedAt}` : ''}. ${failure}`.trim() : '';
+    : phase === 'failed' ? t('pagesDynamicSetup.m76', {"storeName": storeName(), "value2": savedAt ? t('pagesDynamicSetup.m77', {savedAt}) : '', "failure": failure}).trim() : '';
   const node = $('cal-status');
   node.replaceChildren(...(phase === 'failed' || !text ? [] : [el('span', 'spinner')]), text);
   node.className = `muted small cal-status${phase === 'failed' ? ' bad' : ''}`;

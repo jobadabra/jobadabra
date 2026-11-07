@@ -1,5 +1,7 @@
 // Focus, Today's progress: applications per day over the last 14 days (moved from pages/focus.js, 26 Oct 2026). In the page's first paint as last
 // drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {date as displayDate} from '../../i18n/format.js';
 import {el} from '../components.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
@@ -30,7 +32,7 @@ export function progressChart(days, target) {
   plot.append(goal, ...bars);
   chart.replaceChildren(plot);
   const total = days.reduce((sum, day) => sum + day.applied, 0);
-  $('focus-chart-sum').textContent = `${total} applied · ${days.filter(day => day.applied >= target).length} day${days.filter(day => day.applied >= target).length === 1 ? '' : 's'} on target`;
+  $('focus-chart-sum').textContent = t('pagesDynamicFocusInterviews.m164', {"total": total, "length": days.filter(day => day.applied >= target).length, count: days.filter(day => day.applied >= target).length});
   keepBlock('focus-chart-block', {days, target});
 }
 

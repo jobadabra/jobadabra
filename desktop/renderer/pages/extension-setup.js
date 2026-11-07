@@ -17,7 +17,7 @@ function showStray(entry) {
   const box = $('ext-stray');
   show(box, !!entry);
   if (!entry) return;
-  $('ext-stray-text').textContent = `A windowless Chrome from an earlier automation (started ${entry.since}) holds Chrome's scripting connection, so this app can't reach your own Chrome window.`;
+  $('ext-stray-text').textContent = t('pagesDynamicExperience.m160', {"since": entry.since});
   $('ext-stray-quit').dataset.pid = String(entry.pid);
 }
 

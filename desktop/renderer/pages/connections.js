@@ -78,8 +78,8 @@ function updateRepo() {
     saveState(`Updating ${shared.state.settings.cloud.repo}…`);
     const result = await window.pilot.cloudConnect();
     saveState('');
-    if (result.ok) savedToast(t('pagesConnections.githubUpdated'), `${result.repo} follows the new settings.`);
-    else toastMessage(t('pagesConnections.githubNotUpdated'), `${result.error} Your change is saved on this Mac; change a setting again to retry.`, {card: 'cloud'}, 'bad');
+    if (result.ok) savedToast(t('pagesConnections.githubUpdated'), t('pagesDynamicSetup.m81', {"repo": result.repo}));
+    else toastMessage(t('pagesConnections.githubNotUpdated'), t('pagesDynamicSetup.m82', {"error": result.error}), {card: 'cloud'}, 'bad');
   }, REPO_DELAY);
 }
 async function saveSchedule(select) {
@@ -94,18 +94,18 @@ async function saveReminders() {
   await window.pilot.saveSettings({focusReminders: $('set-remind').checked});
   $('focus-remind').checked = $('set-remind').checked;
   shared.state = await window.pilot.state();
-  savedToast(t('pagesCommon.saved'), `Focus reminders ${$('set-remind').checked ? 'on' : 'off'}`);
+  savedToast(t('pagesCommon.saved'), t('pagesDynamicSetup.m83', {"value1": $('set-remind').checked ? t('pagesDynamicSetup.on') : t('pagesDynamicSetup.off')}));
 }
 // The target lives in Notion's ⚙️ Search settings: written only when it really changed (it's a slow round trip).
 async function saveTarget() {
   const input = $('set-target');
   if (!input.value || input.value === input.dataset.saved) return;
-  saveState(`Saving the daily target to ${storeName()}…`);
+  saveState(t('pagesDynamicSetup.m84', {"storeName": storeName()}));
   const ok = await saveDailyTarget(input);
   saveState('');
   if (!ok) { input.value = input.dataset.saved || ''; return; }
   input.dataset.saved = input.value;
-  savedToast(t('pagesCommon.saved'), `Daily application target: ${input.value}`);
+  savedToast(t('pagesCommon.saved'), t('pagesDynamicSetup.m85', {"value": input.value}));
   updateRepo();
 }
 
@@ -114,7 +114,7 @@ export function showCloud() {
   const cloud = shared.state.settings.cloud;
   showRunMode();
   $('cloud-status').textContent = cloud?.repo
-    ? osText(`${cloud.repo} · runs the schedule above, even with the Mac off`) : t('pagesConnections.githubDaily');
+    ? osText(t('pagesDynamicSetup.m86', {"repo": cloud.repo})) : t('pagesConnections.githubDaily');
   $('cloud-connect').textContent = cloud?.repo ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   $('cloud-open').hidden = $('cloud-more').hidden = !cloud?.repo;
   $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut(t('pagesFinalLabels.turnOffAlways'), () => $('cloud-off').click())] : []));
@@ -132,7 +132,7 @@ const aiKey = () => (aiFamily() === 'openai' ? {name: 'OPENAI_API_KEY', provider
 const cloudMissing = () => alwaysOnNeeds(shared.state, aiKey());   // renderer/always-on-needs.js
 function showCloudNeeds() {
   const on = !!shared.state.settings.cloud?.repo, {rows, done} = requirementRows(shared.state, aiKey(), {githubOn: on});
-  $('aon-own-count').textContent = done === 3 ? t('pagesConnections.allThree') : `All three are needed for Always on to run: Notion, an API key and GitHub (${done} of 3 set up).`; // about Notion
+  $('aon-own-count').textContent = done === 3 ? t('pagesConnections.allThree') : t('pagesDynamicSetup.m87', {"done": done}); // about Notion
   for (const row of rows) {
     const id = row.id === 'ai' ? 'key' : 'notion', go = $(`aon-${id}-go`);
     $(`aon-${id}-pill`).replaceChildren(pill(row.pill[0], row.pill[1], {dot: true}));
@@ -154,16 +154,16 @@ function showCloudPill() {
 
 // "Connected to …", or, when the setup found a repository from an earlier setup, which one and since when.
 function connectedTo(result) {
-  if (!result.existing) return `Connected to ${result.repo}`;
+  if (!result.existing) return t('pagesDynamicSetup.m88', {"repo": result.repo});
   const since = displayDate(new Date(result.existing.createdAt), {day: 'numeric', month: 'short', year: 'numeric'});
-  return `Using your existing private repository ${result.repo} (created ${since})`;
+  return t('pagesDynamicSetup.m89', {"repo": result.repo, "since": since});
 }
 
 // Telegram buttons, always on (the user's own Cloudflare Worker; lib/telegram-cloud.js).
 function showTelegramCloud() {
   const on = shared.state.settings.telegramCloud;
   show($('tg-cloud'), !!shared.state.settings.cloud?.repo);
-  $('tg-cloud-status').textContent = on ? osText(`${on.url.replace('https://', '')} · your bot answers from Cloudflare, even with the Mac off`)
+  $('tg-cloud-status').textContent = on ? osText(t('pagesDynamicSetup.m90', {"value1": on.url.replace('https://', '')}))
     : t('pagesConnections.botLocal');
   $('tg-cloud-pill').replaceChildren(on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
   // Off: "Set up" opens the steps and the token field (Turn on sits beside the field). On: Update in the row, Turn off in ⋯.
@@ -204,14 +204,14 @@ async function disconnectTelegram() {
   const result = await window.pilot.telegramDisconnect().catch(error => ({ok: false, error: error.message}));
   if (!result.ok) { message('telegram-message', result.error, 'error'); return; }
   await loadSettings();
-  message('telegram-message', `Disconnected: no more messages${result.github === true ? ', from this Mac or Always on' : ''}. ` +
-    `The bot${result.bot ? ` @${result.bot}` : ''} is still yours in Telegram (@BotFather → /deletebot removes it).`, 'ok');
+  message('telegram-message', t('pagesDynamicSetup.m91', {"value1": result.github === true ? t('pagesDynamicSetup.fromMacAlways') : ''}) +
+    t('pagesDynamicSetup.m92', {"value1": result.bot ? ` @${result.bot}` : ''}), 'ok');
 }
 async function disconnectGoogle() {
   message('google-message', t('pagesConnections.disconnecting'), 'waiting');
   const result = await window.pilot.googleDisconnect().catch(error => ({ok: false, error: error.message}));
   message('google-message', result.ok
-    ? `Disconnected: Gmail and Calendar are no longer read${result.github === true ? ', here or by Always on' : ''}.${result.revoked ? '' : ' Google could not be reached: remove Jobadabra under myaccount.google.com → Security → Third-party access.'}`
+    ? t('pagesDynamicSetup.m93', {"value1": result.github === true ? t('pagesDynamicSetup.hereAlways') : '', "value2": result.revoked ? '' : t('pagesDynamicSetup.googleRevokeHelp')})
     : result.error, result.ok ? 'ok' : 'error');
   showGoogle();
 }
@@ -301,7 +301,7 @@ export async function init() {
     shared.state = await window.pilot.state();
     showCloud();
     message('cloud-message', `${connectedTo(result)} ✓ ` +
-      `${result.secrets.length} keys stored as encrypted secrets. The first run follows your schedule; press Search now to start one right away.`, 'ok');
+      t('pagesDynamicSetup.m94', {"length": result.secrets.length}), 'ok');
   });
   window.pilot.onCloudStep(step => {
     if (step.code) {
@@ -324,7 +324,7 @@ export async function init() {
     show($('cloud-choose'), false);
     shared.state = await window.pilot.state();
     showCloud();
-    message('cloud-message', `${connectedTo(result)} ✓ ${result.secrets.length} keys stored as encrypted secrets.`, 'ok');
+    message('cloud-message', t('pagesDynamicSetup.m95', {"connectedTo": connectedTo(result), "length": result.secrets.length}), 'ok');
   });
   $('cloud-create').addEventListener('click', () => window.pilot.openExternal(cloudUrls.createUrl));
   $('cloud-install').addEventListener('click', () => window.pilot.openExternal(cloudUrls.installUrl));
@@ -336,7 +336,7 @@ export async function init() {
     message('cloud-message', t('pagesConnections.githubOff'));
   });
   window.pilot.onTelegramWaiting(username => {
-    message('telegram-message', `Now open t.me/${username} in Telegram and press Start (waiting up to 2 minutes)…`);
+    message('telegram-message', t('pagesDynamicSetup.m96', {"username": username}));
     window.pilot.openExternal(`https://t.me/${username}`);
   });
   $('auto-search').addEventListener('change', () => window.pilot.setAutomation({autoSearch: $('auto-search').checked}));
@@ -370,7 +370,7 @@ export async function init() {
     const value = $('set-notion').value.trim();
     if (!value) return;
     const result = await window.pilot.notionConnect(value);
-    if (!result.ok) { alertLine('NOTION_TOKEN', result.error || `Not found: ${(result.missing || []).join(', ') || 'columns missing'}`); return; }
+    if (!result.ok) { alertLine('NOTION_TOKEN', result.error || t('pagesDynamicSetup.m97', {"value1": (result.missing || []).join(', ') || t('pagesDynamicSetup.columnsMissing')})); return; }
     $('set-notion').value = '';
     loadSettings();
     // Connected with the data still on this Mac: the move, in the same prompt as every connect (pages/notion-connect.js "Move to Notion").

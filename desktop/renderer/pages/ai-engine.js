@@ -101,7 +101,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     render(); onChange(picked);
     if (outcome.check && family === which) check();   // it appeared (or Git was added): one real check decides signed in or not
   }
-  const REFUSED = {'not-the-cli': file => `That is not ${file}. Choose the ${file} file.`, 'did-not-start': () => 'That file did not start. Choose another one.'};
+  const REFUSED = {'not-the-cli': file => t('pagesDynamicSetup.m56', {"file": file, "file2": file}), 'did-not-start': () => 'That file did not start. Choose another one.'};
   async function act(id) {
     const which = family;
     problem = ''; copied = false;

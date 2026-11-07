@@ -32,7 +32,7 @@ export async function saveFeedbackAction(item, action, text = '') {
     if (!result.ok) return result;
     await Promise.all([loadFocus(), loadJobs()]);
     return result;
-  } catch (error) { return {ok: false, error: error.message || `Could not save to ${storeName()}.`}; }
+  } catch (error) { return {ok: false, error: error.message || t('pagesDynamicExperience.m162', {"storeName": storeName()})}; }
 }
 export function init() {
   $('feedback-copy').addEventListener('click', async () => {
@@ -49,6 +49,6 @@ export function init() {
     const result = await saveFeedbackAction(current, action, text);
     $('feedback-save').disabled = false;
     if (result.ok) $('feedback-dialog').close();
-    else message('feedback-message', result.error || `${storeName()} could not save it. Try again.`, 'warn');
+    else message('feedback-message', result.error || t('pagesDynamicExperience.m163', {"storeName": storeName()}), 'warn');
   });
 }

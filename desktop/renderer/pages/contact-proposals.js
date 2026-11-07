@@ -27,12 +27,12 @@ function syncBadge() {
   title?.querySelector(`.${BADGE}`)?.remove();
   if (!title || !(left || offer.length)) return;
   if (!left) {
-    const review = Object.assign(el('button', `secondary small ${BADGE}`, `Review ${offer.length} from your CV`), {type: 'button', title: t('pagesLettersData.cvEmptyGuidance')});
+    const review = Object.assign(el('button', `secondary small ${BADGE}`, t('pagesDynamicCvData.m99', {"length": offer.length})), {type: 'button', title: t('pagesLettersData.cvEmptyGuidance')});
     review.addEventListener('click', () => askToFill(waiting.filter(each => emptyBox(each.field))));
     title.append(review);
     return;
   }
-  const badge = pill(`${left} from CV · check`, 'warn');
+  const badge = pill(t('pagesDynamicCvData.m100', {"left": left}), 'warn');
   badge.classList.add(BADGE);
   badge.title = t('pagesLettersData.filledReviewSave');
   title.append(badge);
@@ -111,7 +111,7 @@ function sayApplied(applied = []) {
     contactSavedAs(field, value);
     done.push(`${nameOf(field)}: ${value}`);
   }
-  if (done.length) toastMessage({title: t('pagesProfile.filledCv'), body: `${done.join(' · ')}. Check them in Your details.`, target: {view: 'settings', section: 'profile'}, tone: 'good'});
+  if (done.length) toastMessage({title: t('pagesProfile.filledCv'), body: t('pagesDynamicCvData.m101', {"value1": done.join(' · ')}), target: {view: 'settings', section: 'profile'}, tone: 'good'});
 }
 // On opening Profile: what the CV states plainly is saved and said; the rest is only offered, never put in the boxes (no draft without the person's own yes).
 function offerProposals(proposals = [], applied = []) {
@@ -129,7 +129,7 @@ export async function loadProposals({again = false} = {}) {
   const result = await window.pilot.contactProposals({again, settle: !again}).catch(error => ({proposals: [], error: error.message}));
   const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {
-    message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === t('pagesMisc.noAi') ? t('pagesMisc.chooseAiFirst') : result.error}.`
+    message('contact-panel-message', result?.error && result.error !== 'notion' ? t('pagesDynamicCvData.m102', {"value1": result.error === 'no AI' ? t('pagesMisc.chooseAiFirst') : result.error})
       : t('pagesLettersData.cvNoDetails'), result?.error ? 'error' : '');
   }
   return shown;
@@ -147,6 +147,6 @@ export async function nudgeMissingDetails() {
   nudged = true;
   const fromCv = (result?.proposals || []).filter(item => missing.includes(item.field)).length;
   toastMessage({title: t('pagesLettersData.formsAskDetails'),
-    body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? ` ${fromCv} found in your CV: open your Profile, review them, fill them in and save.` : ' Add them once in your Profile.'}`,
+    body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? t('pagesDynamicCvData.m103', {"fromCv": fromCv}) : ' Add them once in your Profile.'}`,
     target: {view: 'settings', section: 'profile'}, tone: 'warn'});
 }

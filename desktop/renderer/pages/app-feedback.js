@@ -122,7 +122,7 @@ export async function init() {
     drawCount();
     prepared = {...EMPTY};
     $('app-feedback-dialog').close();
-    const left = result.skipped?.length ? ` (without the ${result.skipped.join(' and the ')}: too big)` : '';
-    toastMessage(t('pagesCommon.thanks'), `Your feedback went straight to the maker${left}. If you left a contact, expect a reply.`, NO_PLACE.done, 'good');
+    const left = result.skipped?.length ? t('pagesDynamicSetup.m61', {"value1": result.skipped.join(' and the ')}) : '';
+    toastMessage(t('pagesCommon.thanks'), t('pagesDynamicSetup.m62', {"left": left}), NO_PLACE.done, 'good');
   });
 }

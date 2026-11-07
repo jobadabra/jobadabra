@@ -21,7 +21,7 @@ async function show() {
   strip?.remove();
   strip = el('section', 'card ready-focus');
   const open = el('button', 'secondary', t('pagesCommon.open')); open.addEventListener('click', () => openView('actions'));
-  strip.append(el('b', '', `Ready to send: ${waiting.ready} form${waiting.ready === 1 ? '' : 's'} filled overnight${waiting.left ? `, ${waiting.left} need you` : ''}`), open);
+  strip.append(el('b', '', t('pagesDynamicFocusInterviews.m167', {"ready": waiting.ready, "value3": waiting.left ? t('pagesDynamicFocusInterviews.m168', {"left": waiting.left}) : '', count: waiting.ready})), open);
   anchor.before(strip);
 }
 export function initFocusReady() { paint(); window.addEventListener('activity-updated', paint); }

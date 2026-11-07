@@ -191,7 +191,7 @@ function renderConfirm() {
   if ($('lead-started').value !== (v.started || '')) $('lead-started').value = v.started || '';  // a year picked fills the date
   $('lead-years').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', (v.started || '').startsWith(b.textContent)));
   const said = fields.interview?.as_written ? `The message says "${fields.interview.as_written}". ` : '';
-  $('lead-interview-hint').textContent = said + (v.kind === t('pagesJobs.interviewScheduled') ? t('pagesJobsHelp.bookedTime')
+  $('lead-interview-hint').textContent = said + (v.kind === 'Interview scheduled' ? t('pagesJobsHelp.bookedTime')
     : t('pagesJobsHelp.noFixedTime'));
   if (fields.last) $('lead-last-hint').textContent = confirmStep.lastHint(fields.last, v.last);
   if (fields.origin) {

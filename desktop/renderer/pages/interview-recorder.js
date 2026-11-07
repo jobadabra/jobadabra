@@ -104,7 +104,7 @@ export async function startRecording(micOnly, openDraft) {
       context.close();
       await iv.recordStop(id, 0);
       await iv.discard(id);
-      message('iv-message', `Not recording: the call's audio couldn't start (${tapped.error}). Try again, or choose Mic only.`, 'error');
+      message('iv-message', t('pagesDynamicFocusInterviews.m198', {"error": tapped.error}), 'error');
       $('iv-record').disabled = !$('iv-consent').checked;
       return;
     }

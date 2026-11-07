@@ -107,7 +107,7 @@ function detailView(run) {
 function draw() {
   if (!host) return;
   if (!state.runs) {
-    host.replaceChildren(el('p', 'muted', `Loading your form fills from ${storeName()}…`));
+    host.replaceChildren(el('p', 'muted', t('pagesDynamicFocusInterviews.m184', {"storeName": storeName()})));
     return;
   }
   const run = state.open && state.runs.find(item => item.id === state.open);
@@ -126,7 +126,7 @@ export async function renderFormFills(container) {
   if (answer?.error) {
     const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderFormFills(container));
-    host.replaceChildren(el('p', 'message error', `Could not read your form fills from ${storeName()}: ${plainError(answer.error)}`),
+    host.replaceChildren(el('p', 'message error', t('pagesDynamicFocusInterviews.m185', {"storeName": storeName(), "plainError": plainError(answer.error)})),
       el('p', 'muted small', byStore(t('pagesReadyReports.fillsNotion'), t('pagesReadyReports.fillsLocal'))), retry);
     return;
   }

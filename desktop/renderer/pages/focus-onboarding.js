@@ -57,7 +57,7 @@ export function renderOnboarding({funnel} = {}) {
     const actions = el('div', 'focus-actions');
     // Only the next step can be started: a later one waits for it ("After step 1"), so a search never runs before the employers are found.
     if (isNext) actions.append(focusButton(step.button, 'primary', ONBOARDING_GO[step.key]));
-    else if (!step.done) actions.append(el('span', 'muted small', `After step ${nextAt}`));
+    else if (!step.done) actions.append(el('span', 'muted small', t('pagesDynamicFocusInterviews.m166', {"nextAt": nextAt})));
     li.append(round, body, actions);
     return li;
   }));

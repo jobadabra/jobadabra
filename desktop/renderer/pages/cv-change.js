@@ -30,7 +30,7 @@ function setVerdict(tone, title, text) {
 function setPill(id, text, tone) { $(id).replaceChildren(pill(text, tone)); }
 export async function showCvChanged() {
   const change = await window.pilot.cvChange();
-  $('cv-changed-text').textContent = `Your CV changed${change.at ? ` on ${displayDate(new Date(change.at))}` : ''}: review what it changes.`;
+  $('cv-changed-text').textContent = t('pagesDynamicCvData.m105', {"value1": change.at ? t('pagesDynamicCvData.onDate', {when: displayDate(new Date(change.at))}) : ''});
   showOnTab($('cv-changed'), !!change.at);
   show($('strategy-cv-changed'), !!change.at);
 }
@@ -41,11 +41,11 @@ export async function openCvChange() {
   show($('cv-impact'), false);
   window.pilot.strategyData().then(data => {
     if (!data?.ok || !data.scored) return;
-    $('cv-impact').textContent = `Applying Profile edits marks ${data.scored} scored jobs as old scores; Re-score updates them, up to 60 at a time ` +
-      `${data.counts?.kits ? `; ${data.counts.kits} unsent applications were prepared with the old Profile` : ''}.`;
+    $('cv-impact').textContent = t('pagesDynamicCvData.m106', {"scored": data.scored}) +
+      `${data.counts?.kits ? t('pagesDynamicCvData.m107', {"kits": data.counts.kits}) : ''}.`;
   }).catch(() => {});
   $('cv-dialog-name').textContent = change.name || 'your CV';
-  $('cv-dialog-sub').textContent = change.previous === change.name ? t('pagesLettersData.newSameName') : `New upload${change.previous ? ` · replaces ${change.previous}` : ''}`;
+  $('cv-dialog-sub').textContent = change.previous === change.name ? t('pagesLettersData.newSameName') : t('pagesDynamicCvData.m108', {"value1": change.previous ? t('pagesDynamicCvData.replaces', {name: change.previous}) : ''});
   show($('cv-verdict'), false);
   show($('cv-profile-text'), true);
   $('cv-profile-status').textContent = t('pagesProfile.notCompared');
@@ -58,7 +58,7 @@ export async function openCvChange() {
   message('cv-review-message', '');
   $('cv-compare').disabled = !change.comparable;
   if (!change.comparable) {
-    $('cv-profile-text').textContent = `The previous CV is not on this computer, so there is nothing to compare. ${byStore(t('pagesProfile.editNotion'), t('pagesProfile.editProfile'))}`;
+    $('cv-profile-text').textContent = t('pagesDynamicCvData.m109', {"byStore": byStore(t('pagesProfile.editNotion'), t('pagesProfile.editProfile'))});
     show($('cv-profile-status').parentElement, false);
     setPill('cv-profile-pill', t('pagesFieldsStatus.editNotion'), 'neutral');
   }
@@ -88,7 +88,7 @@ export async function openCvChange() {
     }));
     const more = $('cv-kits-more');
     show(more, kits.length > KITS_SHOWN);
-    more.textContent = showAll ? t('pagesProfile.showFewer') : `Show all ${kits.length} applications`;
+    more.textContent = showAll ? t('pagesProfile.showFewer') : t('pagesDynamicCvData.m110', {"length": kits.length});
   };
   $('cv-kits-more').onclick = () => { showAll = !showAll; draw(); };
   $('cv-kits-count').textContent = String(kits.length);
@@ -111,12 +111,12 @@ export async function init() {
     if (!result.ok) return message('cv-review-message', result.error, 'error');
     cvSuggestions = result.suggestions;
     message('cv-review-message', '');
-    $('cv-profile-status').textContent = `Comparison complete${costText(result.usd, usd => ` · Actual cost ${dollars(usd)}`)}`;
+    $('cv-profile-status').textContent = t('pagesDynamicCvData.m111', {"costText": costText(result.usd, usd => t('pagesDynamicCvData.m112', {"dollars": dollars(usd)}))});
     $('cv-compare').textContent = t('pagesProfile.compareAgain');
     show($('cv-impact'), cvSuggestions.length > 0);   // what applying costs matters only when there is something to apply
     if (cvSuggestions.length) {
-      setVerdict('info', `${cvSuggestions.length} Profile edit${cvSuggestions.length === 1 ? '' : 's'} suggested`, `${result.summary}\nPick the ones you want below; nothing is written until you apply.`);
-      setPill('cv-profile-pill', `${cvSuggestions.length} to review`, 'warn');
+      setVerdict('info', t('pagesDynamicCvData.m113', {"length": cvSuggestions.length, count: cvSuggestions.length}), t('pagesDynamicCvData.m114', {"summary": result.summary}));
+      setPill('cv-profile-pill', t('pagesDynamicCvData.m115', {"length": cvSuggestions.length}), 'warn');
     } else {
       setVerdict('good', t('pagesFieldsStatus.noProfileEdits'), 'Your new CV matches the previous one in substance.\nRoles, dates, titles, skills, achievements and contact details are unchanged.');
       setPill('cv-profile-pill', t('pagesFieldsStatus.unchanged'), 'neutral');
@@ -147,8 +147,8 @@ export async function init() {
     const result = await window.pilot.cvApply(accepted);
     $('cv-apply').disabled = false;
     if (!result.ok) return message('cv-review-message', result.error, 'error');
-    message('cv-review-message', result.failed.length ? `${result.applied} applied; not applied: ${result.failed.join('; ')}`
-      : `✓ ${result.applied} change${result.applied === 1 ? '' : 's'} saved to your Profile${byStore(' in Notion', '')}.`, result.failed.length ? 'error' : 'ok');
+    message('cv-review-message', result.failed.length ? t('pagesDynamicCvData.m116', {"applied": result.applied, "value2": result.failed.join('; ')})
+      : t('pagesDynamicCvData.m117', {"applied": result.applied, "byStore": byStore(t('pagesDynamicCvData.inNotion'), ''), count: result.applied}), result.failed.length ? 'error' : 'ok');
     if (!result.failed.length) { $('cv-suggestions').replaceChildren(); show($('cv-apply-row'), false); setPill('cv-profile-pill', '✓ Updated', 'good'); setVerdict('good', t('pagesFieldsStatus.profileUpdated'), byStore('Your selected changes are saved in Notion.', 'Your selected changes are saved.')); }
   });
   $('cv-base-read').addEventListener('click', async () => {

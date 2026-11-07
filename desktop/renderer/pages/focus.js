@@ -112,7 +112,7 @@ async function finishItem(item, save) {
     settled.delete(itemKey(item));
     keepHolds();
     if (lastFocus) renderFocus(lastFocus);
-    toastMessage(t('pagesCommon.notSaved'), done?.error || `${storeName()} could not save it. Try again.`, {view: 'focus'}, 'bad');
+    toastMessage(t('pagesCommon.notSaved'), done?.error || t('pagesDynamicFocusInterviews.m174', {"storeName": storeName()}), {view: 'focus'}, 'bad');
     return;
   }
   if (focusLoading) await focusLoading.catch(() => {});
@@ -126,7 +126,7 @@ export function loadFocus() {
     // Never a blank page: say what went wrong where the list goes.
     focusStatus(t('pagesFieldsStatus.loadFailed'));
     const li = el('li', 'focus-item muted');
-    li.textContent = plainError(isOutdated(error) ? OUTDATED_LINE : `Focus could not load: ${error?.message || error}. Try Refresh.`);
+    li.textContent = plainError(isOutdated(error) ? OUTDATED_LINE : t('pagesDynamicFocusInterviews.m175', {"value1": error?.message || error}));
     if (isOutdated(error)) li.append(' ', restartButton());
     $('focus-list').replaceChildren(li);
   }).finally(() => { focusLoading = null; $('focus-refresh').disabled = false; });
@@ -138,7 +138,7 @@ async function loadFocusOnce() {
   const setting = await window.pilot.dailyTarget();
   showTarget(setting.target);
   $('focus-remind').checked = setting.reminders;
-  $('focus-of').textContent = `/ ${setting.target} applications today`;
+  $('focus-of').textContent = t('pagesDynamicFocusInterviews.m176', {"target": setting.target});
   if (!focusShown) {  // the last good Focus at once (lib/view-cache.js), else the skeleton; the fresh one follows
     const saved = await window.pilot.cached('focus');
     if (saved?.result?.focus) { renderFocus(saved.result.focus); focusStatus(`Saved ${savedAgo(saved.at)} · updating…`, true); }
@@ -223,7 +223,7 @@ function focusCard(item) {
   if (item.notion_url) more.push({icon: 'layers', label: t('pagesCommon.openNotion'), run: event => openLink(item.notion_url, event)});
   if (item.job_url && item.job_url !== item.link && !/jobadabra|mail\.google/.test(item.job_url)) more.push({icon: 'external', label: t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(item.job_url)});
   if (['follow_up', 'nudge', 'waiting'].includes(item.kind) && item.job_url && item.page_id) more.push({icon: 'close', label: t('pagesFocusReports.withdraw'),
-    title: `You no longer want this job: it is marked Withdrawn in ${storeName()} and leaves Focus`,
+    title: t('pagesDynamicFocusInterviews.m178', {"storeName": storeName()}),
     run: () => finishItem(item, () => window.pilot.markOutcome({url: item.job_url, outcome: 'withdrawn'}).then(result => { if (result?.ok) jobsChanged(); return result; }))});
   if (item.kind === 'which_job') more.push({icon: 'close', label: t('pagesCommon.dismiss'), run: () => moveEmail(item.event_id, 'none', item)});
   if (item.kind === 'prepare' && item.page_id) more.push({icon: 'close', label: t('pagesFocusReports.dismissInterview'),
@@ -257,7 +257,7 @@ async function loadHistory() {
   list.replaceChildren(el('li', 'muted small', byStore(t('pagesFocusReports.loadingNotion'), t('pagesCommon.loading'))));
   const {ok, items = [], error} = await window.pilot.focusHistory().catch(failure => ({ok: false, error: failure.message}));
   if (!historyShown) return;
-  if (!ok) { list.replaceChildren(el('li', 'message error', `Couldn't read your history from Notion: ${error || 'try again'}`)); return; }
+  if (!ok) { list.replaceChildren(el('li', 'message error', t('pagesDynamicFocusInterviews.m179', {"value1": error || 'try again'}))); return; }
   if (!items.length) { list.replaceChildren(el('li', 'muted', t('pagesFocusReports.noResolved'))); return; }
   const rows = [];
   let day = '';
@@ -328,7 +328,7 @@ function renderFocus(data) {
   renderFocusSuggestions({entries: data.suggestions, hidden: data.suggestions_hidden, items: all, card: focusCard});
   const pct = Math.min(100, Math.round(100 * today.applied / Math.max(today.target, 1)));
   $('focus-count').textContent = String(today.applied);
-  $('focus-of').textContent = `/ ${today.target} applications today`;
+  $('focus-of').textContent = t('pagesDynamicFocusInterviews.m180', {"target": today.target});
   showTarget(today.target);
   $('focus-bar').style.width = `${pct}%`;
   progressChart(today.history || [], today.target);
@@ -359,10 +359,10 @@ function renderFunnel(funnel) {
     const share = Math.round(100 * step.reached / first);
     const name = step.step.replace(/^\S+\s/, '');
     // How many ever reached this step (it only grows: a later rejection doesn't take one back) and their share.
-    return {name, reached: step.reached, share, urls: step.urls, label: `Ever reached ${name}`, weak: funnel.improve?.step === step.step,
-      title: `${step.reached} ever reached this step (${share}% of all prepared), whatever happened after`};
+    return {name, reached: step.reached, share, urls: step.urls, label: t('pagesDynamicFocusInterviews.m181', {"name": name}), weak: funnel.improve?.step === step.step,
+      title: t('pagesDynamicFocusInterviews.m182', {"reached": step.reached, "share": share})};
   }), showInJobs));
-  $('funnel-improve').textContent = funnel.improve ? `To improve: ${funnel.improve.step.replace(/^\S+\s/, '')}. ${funnel.improve.advice}` : '';
+  $('funnel-improve').textContent = funnel.improve ? t('pagesDynamicFocusInterviews.m183', {"value1": funnel.improve.step.replace(/^\S+\s/, ''), "advice": funnel.improve.advice}) : '';
   show($('funnel-improve'), !!funnel.improve);
   // The full funnel: its Notion page when there is one (index.html's label), else Reports → Funnel here.
   const full = $('focus-funnel-notion');

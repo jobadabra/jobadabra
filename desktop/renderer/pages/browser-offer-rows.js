@@ -17,14 +17,14 @@ export function browserOffer(run, {runs = [], settings = {}} = {}) {
   const newest = newestSearch(runs);
   if (newest && String(newest.id) !== String(run.id)) return null;
   const names = (offer.names || []).slice(0, 3), more = count - names.length;
-  const which = names.length ? ` (${names.join(', ')}${more > 0 ? ` and ${more} more` : ''})` : '';
+  const which = names.length ? ` (${names.join(', ')}${more > 0 ? t('pagesDynamicSetup.andMore', {count: more}) : ''})` : '';
   return {count, at: offer.at, allow: settings.refusedNeedsAllow === true,
-    text: `${plural(count, 'site')}${which} refused Jobadabra. Your browser can read ${count === 1 ? 'it' : 'them'}: one at a time, in a private window, without your logins.`};
+    text: t('pagesDynamicSetup.m68', {"plural": plural(count, 'site'), "which": which, count: count})};
 }
 
 // ⌘K: brings you to the button on that run's card (it does not press it), or null when nothing is offered. Named apart from the Actions card
 // "Find jobs using your browser" (which picks any sites to read): two rows with one label in Actions read as a duplicate (owner, 27 Oct 2026).
 export function paletteEntry({runs = [], settings = {}} = {}) {
   const run = newestSearch(runs), offer = browserOffer(run, {runs, settings});
-  return offer ? {label: `Read the ${plural(offer.count, 'site')} that refused Jobadabra`, hint: `${LABEL}, from the last Find jobs run`, runId: run.id} : null;
+  return offer ? {label: t('pagesDynamicSetup.m69', {"plural": plural(offer.count, 'site')}), hint: t('pagesDynamicSetup.m70', {"LABEL": LABEL}), runId: run.id} : null;
 }

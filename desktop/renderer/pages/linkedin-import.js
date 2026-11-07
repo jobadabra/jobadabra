@@ -121,7 +121,7 @@ function row(item) {
   }
   const [text, tone] = CHIPS[item.chip] || ['new', 'info'];
   const label = el('label', 'li-row');
-  label.append(box, words, pill(item.chip === t('pagesLinkedinServices.differs') ? t('pagesLinkedinServices.differsUnticked') : text, tone));
+  label.append(box, words, pill(item.chip === 'differs' ? t('pagesLinkedinServices.differsUnticked') : text, tone));
   return label;
 }
 function sheet(answer) {

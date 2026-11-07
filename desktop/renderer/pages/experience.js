@@ -19,7 +19,7 @@ export function sourceRow(source) {
   const name = el('b', '', source.name);
   name.append(' ', source.reference ? pill(t('pagesEmployers.reference'), 'info') : source.stale ? pill(t('pagesEmployers.needsMatching'), 'warn', {title: t('pagesEmployers.mainChanged')}) : pill(source.added ? `+${plural(source.added, 'detail')}` : t('pagesProfile.nothingNew'), source.added ? 'good' : 'neutral'));
   words.append(name);
-  const meta = source.reference ? `${plural(source.roles, 'job role')}: tailored CVs keep its jobs, titles and dates` : `${plural(source.roles, 'job role')} · added ${runWhen(source.addedAt)}`;
+  const meta = source.reference ? t('pagesDynamicExperience.m141', {"plural": plural(source.roles, 'job role')}) : `${plural(source.roles, 'job role')} · added ${runWhen(source.addedAt)}`;
   words.append(el('span', 'muted', meta));
   row.append(tile(source.reference ? 'file' : source.kind === 'linkedin' ? 'link' : 'layers', source.reference ? 'info' : 'signal'), words);
   return row;
@@ -34,9 +34,9 @@ export function roleBlock(role) {
   const who = el('div', 'job-who'), when = el('span', 'muted small job-when', [role.period, role.place].filter(Boolean).join(' · '));
   who.append(el('b', '', role.company || role.title), el('span', 'small', role.company ? role.title : ''));
   head.append(el('span', 'job-initial', String(role.company || role.title || '?').trim().charAt(0).toUpperCase()), who, when);
-  if (extras) head.append(pill(`+${plural(extras, 'detail')}`, 'good', {title: `${plural(extras, 'detail')} from other CV versions: tailoring may use them for this job`}));
+  if (extras) head.append(pill(`+${plural(extras, 'detail')}`, 'good', {title: t('pagesDynamicExperience.m142', {"plural": plural(extras, 'detail')})}));
   const left = role.dropped || [];   // Why (3 Nov 2026, #3057, Windows tester): a job takes at most `maxExtra` extra details and the rest were dropped without a word
-  if (left.length) head.append(pill(`${left.length} not used`, 'warn', {title: t('pagesEmployers.moreDetails')}));
+  if (left.length) head.append(pill(t('pagesDynamicExperience.m143', {"length": left.length}), 'warn', {title: t('pagesEmployers.moreDetails')}));
   head.append(icon('chevron', 'icon job-chevron'));
   const list = el('ul');
   for (const bullet of role.bullets) {
@@ -45,8 +45,8 @@ export function roleBlock(role) {
     list.append(item);
   }
   if (left.length) {
-    const cap = role.maxExtra ? `at most ${role.maxExtra} extra details per job` : 'a limited number of extra details per job';   // the cap comes from lib/experience.js with the view; no second copy of the number here
-    list.append(el('li', 'muted', `Not used: a tailored CV takes ${cap}, so ${left.length === 1 ? 'this one is' : `these ${left.length} are`} left out:`));
+    const cap = role.maxExtra ? t('pagesDynamicExperience.m144', {"maxExtra": role.maxExtra}) : t('pagesDynamicExperience.limitedExtras');   // the cap comes from lib/experience.js with the view; no second copy of the number here
+    list.append(el('li', 'muted', t('pagesDynamicExperience.m145', {"cap": cap, "value2": left.length === 1 ? t('pagesDynamicExperience.oneIs') : t('pagesDynamicExperience.theseAre', {count: left.length})})));
     for (const bullet of left) { const item = el('li', 'muted', bullet.text.replace(/\*\*/g, '')); item.append(' ', pill(bullet.from, 'warn')); list.append(item); }
   }
   box.append(head, list);   // the "+N details" pill says where they come from (its title); each extra bullet names its version
@@ -57,7 +57,7 @@ export function roleBlock(role) {
 export function sourcesSummary(view) {
   if (!view?.main) return t('pagesFieldsStatus.mainNotRead');
   const cvs = view.sources.filter(source => source.kind !== 'linkedin').length;
-  return ['Main CV', ...(view.sources.some(source => source.kind === 'linkedin') ? ['LinkedIn'] : []), ...(cvs ? [`${cvs} other CV version${cvs === 1 ? '' : 's'}`] : [])].join(' + ');
+  return ['Main CV', ...(view.sources.some(source => source.kind === 'linkedin') ? ['LinkedIn'] : []), ...(cvs ? [t('pagesDynamicExperience.m146', {"cvs": cvs, count: cvs})] : [])].join(' + ');
 }
 
 // Roles another version has and the main CV does not: listed, never added (a tailored CV keeps the main CV's jobs). Stale matches are left out.
@@ -97,14 +97,14 @@ export function changeLines(answer) {
   const c = answer.changes || {}, lines = [], list = items => items.slice(0, 8).join(', ') + (items.length > 8 ? `, +${items.length - 8} more` : '');
   const done = (answer.results || []).filter(r => r.ok).map(r => r.name), failed = (answer.results || []).filter(r => !r.ok);
   if (done.length) lines.push([`Added ${done.length === 1 ? `“${done[0]}”` : plural(done.length, 'version')}`, 'good']);
-  for (const r of failed) lines.push([`Could not add “${r.name}”: ${plainError(r.error)}`, 'bad']);
+  for (const r of failed) lines.push([t('pagesDynamicExperience.m147', {"name": r.name, "plainError": plainError(r.error)}), 'bad']);
   if (answer.removed) lines.push([`Removed “${answer.removed}”`, 'neutral']);
-  if (c.details > 0) lines.push([`Tailoring has ${plural(c.details, 'more detail')} to choose from`, 'good']);
-  if (c.details < 0) lines.push([`Tailoring has ${plural(-c.details, 'detail')} fewer to choose from`, 'neutral']);
-  if (c.skillsAdded?.length) lines.push([`New technologies and skills: ${list(c.skillsAdded)}`, 'good']);
-  if (c.skillsRemoved?.length) lines.push([`No longer offered: ${list(c.skillsRemoved)}`, 'neutral']);
-  if (c.newRoles?.length) lines.push([`Jobs not in your main CV (listed, not used): ${list(c.newRoles)}`, 'warn']);
-  if (c.goneRoles?.length) lines.push([`No longer listed as missing from your main CV: ${list(c.goneRoles)}`, 'neutral']);
+  if (c.details > 0) lines.push([t('pagesDynamicExperience.m148', {"plural": plural(c.details, 'more detail')}), 'good']);
+  if (c.details < 0) lines.push([t('pagesDynamicExperience.m149', {"plural": plural(-c.details, 'detail')}), 'neutral']);
+  if (c.skillsAdded?.length) lines.push([t('pagesDynamicExperience.m150', {"list": list(c.skillsAdded)}), 'good']);
+  if (c.skillsRemoved?.length) lines.push([t('pagesDynamicExperience.m151', {"list": list(c.skillsRemoved)}), 'neutral']);
+  if (c.newRoles?.length) lines.push([t('pagesDynamicExperience.m152', {"list": list(c.newRoles)}), 'warn']);
+  if (c.goneRoles?.length) lines.push([t('pagesDynamicExperience.m153', {"list": list(c.goneRoles)}), 'neutral']);
   const changed = c.details || c.skillsAdded?.length || c.skillsRemoved?.length || c.newRoles?.length || c.goneRoles?.length;
   if (!changed && (done.length || answer.removed)) lines.push([done.length ? t('pagesFieldsStatus.sameMain') : t('pagesFieldsStatus.noUnique'), 'neutral']);
   if (answer.removed) lines.push([t('pagesFieldsStatus.mainUnchanged'), 'neutral']);
@@ -136,7 +136,7 @@ export function showExperience(view) {
     const button = Object.assign(el('button', 'link item-action', t('pagesCommon.remove')), {type: 'button', title: t('pagesEmployers.stopDrawing')});
     button.addEventListener('click', async () => {
       // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
-      if (!confirm(`Remove “${source.name}”? Tailored CVs stop drawing on this version. Your main CV is not changed.`)) return;
+      if (!confirm(t('pagesDynamicExperience.m154', {"name": source.name}))) return;
       button.disabled = true;
       const answer = await window.pilot.experienceRemove(source.id).catch(error => ({ok: false, error: error.message}));
       if (answer.ok) { showExperience(answer); showChanges(answer); } else message('exp-message', answer.error || t('pagesEmployers.removeFailed'), 'error');
@@ -150,7 +150,7 @@ export function showExperience(view) {
   };
   $('exp-versions').replaceChildren(...(view.sources.length ? [versionsBlock(rows, view.sources.length)] : []), ...addedBlock(view.added, removeAdded));
   const extras = view.roles.reduce((n, r) => n + r.bullets.filter(b => b.from !== 'Main CV').length, 0);
-  $('exp-count').textContent = view.roles.length ? `${plural(view.roles.length, 'role')}${extras ? ` · ${plural(extras, 'detail')} from other versions` : ''}` : '';
+  $('exp-count').textContent = view.roles.length ? `${plural(view.roles.length, 'role')}${extras ? t('pagesDynamicExperience.m155', {"plural": plural(extras, 'detail')}) : ''}` : '';
   $('setting-experience-sources').dataset.summary = sourcesSummary(view);   // the folded card's one line (profile-fold.js)
   const notInMain = onlyHereBlock(view.sources);
   $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(role => roleBlock({...role, maxExtra: view.maxExtra})) : [el('p', 'muted', t('pagesEmployers.noMainRead'))]), ...(notInMain ? [notInMain] : []));
@@ -170,7 +170,7 @@ export function addedBlock(items, remove) {
     words.append(name, el('span', 'muted', t('pagesEmployers.mayUse')));
     const button = Object.assign(el('button', 'secondary item-action', t('pagesCommon.remove')), {type: 'button'});
     button.addEventListener('click', () => {
-      if (!confirm(`Remove “${item.text}”? Tailored CVs stop using it. Your main CV is not changed.`)) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
+      if (!confirm(t('pagesDynamicExperience.m156', {"text": item.text}))) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
       button.disabled = true; remove(item.id);
     });
     row.append(tile('user', 'signal'), words, button);
@@ -181,11 +181,11 @@ export function addedBlock(items, remove) {
 
 // The words for one live step from the app (experienceStep): which file of how many, and what it is doing now.
 export function stepText({what, name, index, total}) {
-  const of = total > 1 ? ` (${index} of ${total})` : '';
+  const of = total > 1 ? t('pagesDynamicExperience.position', {index, total}) : '';
   if (what === 'reading') return `Reading “${name}”${of}…`;
-  if (what === 'comparing') return `Comparing “${name}” with your main CV${of}…`;
+  if (what === 'comparing') return t('pagesDynamicExperience.m157', {"name": name, "of": of});
   if (what === 'done') return `Finished “${name}”${of}`;
-  return `Could not use “${name}”${of}`;
+  return t('pagesDynamicExperience.m158', {"name": name, "of": of});
 }
 
 async function run(button, action) {
@@ -229,7 +229,7 @@ export function showLinkedin(status) {
         if (saved?.ok) filled.push(key.replace('_', ' '));
       }
       node.disabled = false;
-      message('exp-message', filled.length ? `Filled in your details: ${filled.join(', ')}. Check them under Your details.` : t('pagesProfile.detailsHave'), filled.length ? 'ok' : '');
+      message('exp-message', filled.length ? t('pagesDynamicExperience.m159', {"value1": filled.join(', ')}) : t('pagesProfile.detailsHave'), filled.length ? 'ok' : '');
     }),
     button(t('pagesProfile.disconnect'), 'link', async node => { node.disabled = true; await window.pilot.linkedinDisconnect(); showLinkedin(null); }));
 }

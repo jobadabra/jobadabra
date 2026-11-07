@@ -48,7 +48,7 @@ function activeSwitch(row) {
     input.disabled = true;
     const done = await window.pilot.employerActive(row.name, input.checked);
     input.disabled = false;
-    if (!done?.ok) { input.checked = !!row.active; message('emp-message', done?.error || `Could not save it in ${storeName()}.`, 'error'); return; }
+    if (!done?.ok) { input.checked = !!row.active; message('emp-message', done?.error || t('pagesDynamicCvData.m135', {"storeName": storeName()}), 'error'); return; }
     row.active = input.checked;
     message('emp-message', `${row.name} is ${row.active ? t('pagesEmployers.activeNext') : t('pagesEmployers.pausedSkip')}.`, 'ok');
     render();
@@ -124,12 +124,12 @@ export function render() {
 export async function loadEmployers() {
   if (gatedOut('employers')) return;   // behind the Notion gate: nothing reads it (#410)
   if (!rows) $('emp-rows').replaceChildren(...skeletonRows(4));
-  $('emp-stats').textContent = rows ? t('pagesCommon.refreshing') : `Loading from ${storeName()}…`;
+  $('emp-stats').textContent = rows ? t('pagesCommon.refreshing') : t('pagesDynamicCvData.m136', {"storeName": storeName()});
   const answer = await window.pilot.employers();
   if (answer?.error) {
     rows = rows || [];
     $('emp-stats').textContent = '';
-    message('emp-message', `Could not read your employers from ${storeName()}: ${answer.error}`, 'error');
+    message('emp-message', t('pagesDynamicCvData.m137', {"storeName": storeName(), "error": answer.error}), 'error');
     $('emp-rows').replaceChildren();
     show($('emp-empty'), false);
     return;

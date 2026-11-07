@@ -26,7 +26,7 @@ export function noteRow({words, detail = '', button = null, id = ''}) {
 export function tidiedRow(tidied, onUndo) {
   if (!tidied) return null;
   const eligibility = tidied.eligibility || 0, rest = tidied.changed - eligibility;
-  const words = [rest ? `${rest} of your details were tidied: a typed control, or the rules folded as a note for the AI.` : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
+  const words = [rest ? t('pagesDynamicCvData.m134', {"rest": rest}) : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
   const undo = Object.assign(el('button', 'secondary small-btn with-icon', ''), {type: 'button'});
   undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
   undo.setAttribute('aria-label', t('pagesProfile.undoChange'));

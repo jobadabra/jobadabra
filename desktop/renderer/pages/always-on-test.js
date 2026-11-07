@@ -1,5 +1,7 @@
 // Settings → Always on: the Test button row, for both ways. Own accounts: the engine's `test` run in the person's own GitHub repository (lib/always-on-test.js reads it). Our servers: one real run on the site
 // (lib/hosted-search.js testStart/testRead). One owner of each way's state: its `phase`, changed only by press, poll and setReady. Guard: test/unit/renderer/always-on-test-words.test.js (words); the page is checked in the demo.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill, liveDot} from '../components.js';
 import {$, show} from './core.js';
 import {openNotifyCheck, bindNotifyCheck} from './aon-notify-popup.js';
@@ -58,7 +60,7 @@ async function poll(w) {
   st.runId = read.runId || st.runId;
   st.search = read.search || st.search;
   const next = advance({phase: st.phase, read, elapsedMs: Date.now() - st.startedAt});
-  st.phase = next.phase; st.message = next.message || (next.phase === 'failed' && read.error ? `${read.error} Press Test again.` : '');   // a lasting refusal names its reason
+  st.phase = next.phase; st.message = next.message || (next.phase === 'failed' && read.error ? t('pagesDynamicSetup.m58', {"error": read.error}) : '');   // a lasting refusal names its reason
   proposeNotifications(w, next);
   if (next.again) st.timer = setTimeout(() => poll(w), POLL_MS);
   else if (w === 'ours') watchSearch(w);

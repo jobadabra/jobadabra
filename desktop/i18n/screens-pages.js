@@ -1,4 +1,5 @@
 // Register dynamic page catalogs before importing renderer page modules.
+import {messages as stages} from './catalogs/pages/stages.js';
 import {registerMessages} from './index.js';
 import {messages as details} from './catalogs/pages/details.js';
 import {messages as status} from './catalogs/pages/status.js';
@@ -34,6 +35,10 @@ import {messages as finalLabels} from './catalogs/pages/final-labels.js';
 import {messages as countNouns} from './catalogs/pages/count-nouns.js';
 import {messages as dynamicActivity} from './catalogs/pages/dynamic-activity.js';
 import {messages as sessionOutcomes} from './catalogs/pages/session-outcomes.js';
+import {messages as dynamicSetup} from './catalogs/pages/dynamic-setup.js';
+import {messages as dynamicCvData} from './catalogs/pages/dynamic-cv-data.js';
+import {messages as dynamicExperience} from './catalogs/pages/dynamic-experience.js';
+import {messages as dynamicFocusInterviews} from './catalogs/pages/dynamic-focus-interviews.js';
 import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
@@ -71,3 +76,8 @@ for (const [locale, messages] of Object.entries(finalLabels)) registerMessages(l
 for (const [locale, messages] of Object.entries(countNouns)) registerMessages(locale, 'pagesCountNouns', messages);
 for (const [locale, messages] of Object.entries(dynamicActivity)) registerMessages(locale, 'pagesDynamicActivity', messages);
 for (const [locale, messages] of Object.entries(sessionOutcomes)) registerMessages(locale, 'pagesSessionOutcomes', messages);
+for (const [locale, messages] of Object.entries(dynamicSetup)) registerMessages(locale, 'pagesDynamicSetup', messages);
+for (const [locale, messages] of Object.entries(dynamicCvData)) registerMessages(locale, 'pagesDynamicCvData', messages);
+for (const [locale, messages] of Object.entries(dynamicExperience)) registerMessages(locale, 'pagesDynamicExperience', messages);
+for (const [locale, messages] of Object.entries(dynamicFocusInterviews)) registerMessages(locale, 'pagesDynamicFocusInterviews', messages);
+for (const [locale, messages] of Object.entries(stages)) registerMessages(locale, 'pagesStages', messages);

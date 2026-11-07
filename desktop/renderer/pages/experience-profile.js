@@ -39,7 +39,7 @@ export async function loadExperienceProfile(tab = 'experience') {
   await swr('profile-parts', () => window.pilot.textOutline('profile'), {
     loading: () => box.replaceChildren(loadingCard(t('pagesCommon.readingProfile'))),
     paint: (result, kept) => { if (kept || !editing.size) { setParts(tab, result.items); draw(tab); if (tab === 'experience') splitGaps(tab); } },   // a refresh never redraws a card under edit
-    fail: result => message(messageId, `Couldn't read your Profile: ${result?.error || 'try again'}`, 'error'),
+    fail: result => message(messageId, t('pagesDynamicExperience.m138', {"value1": result?.error || 'try again'}), 'error'),
   });
 }
 
@@ -100,7 +100,7 @@ function card(tab, each) {
   const count = key === 'strengths' ? part?.lines.length : 0, toReview = key === 'gaps' ? pendingCount(part) : 0;
   // The CV gaps are decided row by row (Confirm skill / Dismiss), never edited as lines: no Edit on that card (owner review fix 6, 18 Oct 2026).
   head.append(icon('file-text'), el('h4', '', title), ...(part?.note ? [el('span', 'muted small', part.note)] : []), ...(count ? [el('span', 'muted small', String(count))] : []),
-    ...(toReview ? [pill(`${toReview} to review`, 'warn')] : []), el('span', 'exp-part-gap'), ...(key === 'gaps' ? gapsTeaser(toReview) : [editButton(tab, each)]));
+    ...(toReview ? [pill(t('pagesDynamicExperience.m139', {"toReview": toReview}), 'warn')] : []), el('span', 'exp-part-gap'), ...(key === 'gaps' ? gapsTeaser(toReview) : [editButton(tab, each)]));
   setEditing(box, editing.has(key));
   box.append(head, editing.has(key) ? editorOf(key, box) : key === 'gaps' ? gapsBody(part, (item, state) => pressGap(tab, part, item, state), {tidied: gapsTidied, onUndo: () => undoGaps(tab)}) : body(key, part));
   return box;
@@ -109,7 +109,7 @@ function card(tab, each) {
 // The CV gaps card's header (mockups 09 + 06): folded beside Education it says what waits and "Review →"; open (the full-width list) only its lead stays.
 function gapsTeaser(toReview) {
   const words = el('div', 'gaps-teaser');
-  words.append(el('b', '', toReview ? `${toReview} suggestion${toReview === 1 ? '' : 's'} to review` : t('pagesProfile.nothingReview')),
+  words.append(el('b', '', toReview ? t('pagesDynamicExperience.m140', {"toReview": toReview, count: toReview}) : t('pagesProfile.nothingReview')),
     el('span', 'muted small gaps-lead', GAPS_LEAD));
   return [el('span', 'link small gaps-review', t('pagesEmployers.reviewArrow')), words];
 }

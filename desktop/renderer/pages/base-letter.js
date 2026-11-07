@@ -129,7 +129,7 @@ async function draft(button) {
     const result = await act(button, '', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {drafts: true});
     if (result.ok) $('letter-feedback').value = '';
     const used = result.ok ? usageAfter(result) : '';
-    message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');
+    message('letter-message', result.ok ? t('pagesDynamicSetup.m67', {"value1": used ? ` · ${used}` : ''}) : result.error, result.ok ? 'ok' : 'error');
     if (result.ok) hintAfter($('letter-message'), shared.state, openAi);   // Free AI wrote it: stronger writing with an own key
   })();
   try { return await draftPending; } finally { draftPending = null; }

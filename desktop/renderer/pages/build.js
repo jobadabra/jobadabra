@@ -24,10 +24,10 @@ function paint(next) {
   state = next || state;
   $('build-text').textContent = state.label ? `${state.label}${state.whatsNew ? ' · ' : ''}` : '';
   show($('build-news'), !!state.whatsNew);   // a package: "v0.7.0 · What's new" opens the website's changelog
-  $('build-line').title = state.label ? `This window runs the build ${state.label}` : '';
+  $('build-line').title = state.label ? t('pagesDynamicSetup.m71', {"label": state.label}) : '';
   show($('build-line'), !!state.label);
   $('nav-restart-text').textContent = state.restart;
-  $('nav-restart').title = state.ahead ? `The app on this Mac was updated: ${state.ahead} change${state.ahead === 1 ? '' : 's'} to the app or the extension are not running yet` : '';
+  $('nav-restart').title = state.ahead ? t('pagesDynamicSetup.m72', {"ahead": state.ahead, count: state.ahead}) : '';
   show($('nav-restart'), state.ahead > 0);
 }
 

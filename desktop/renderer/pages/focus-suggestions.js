@@ -44,7 +44,7 @@ const held = new Set();     // keys answered here: gone at once, before Focus is
 let hiddenKeys = new Set(); // Strategy's rows answered anywhere (Focus's `suggestions_hidden`)
 
 // A task that did not start says why where you pressed (a refusal, no AI credit), as Find jobs does.
-const started = (what, result) => { if (result?.started) openActivity(true); else if (result?.text) toastMessage(`${what} did not start`, result.text.replace(/^⚠️\s*/, ''), NO_PLACE.itself, 'warn'); };
+const started = (what, result) => { if (result?.started) openActivity(true); else if (result?.text) toastMessage(t('pagesDynamicFocusInterviews.m169', {"what": what}), result.text.replace(/^⚠️\s*/, ''), NO_PLACE.itself, 'warn'); };
 
 // One handler per actions[].do (suggestions.js DOES): what the button names, done in one press.
 export const RUN = {
@@ -122,7 +122,7 @@ const button = (label, className, run) => {
 function bindNotifyEmail(body, node) {
   return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', t('pagesFieldsStatus.notifyWhere'), FIELD_HINT), draft: notifyDraft, words: {busy: t('pagesFieldsStatus.sendingLink'), failed: t('pagesPlans.saveFailed')},
     turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
-      toastMessage(t('pagesFocusReports.inboxCheck'), `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
+      toastMessage(t('pagesFocusReports.inboxCheck'), t('pagesDynamicFocusInterviews.m170', {"sentTo": sentTo}), NO_PLACE.itself, 'good');
       window.dispatchEvent(new Event('notify-changed'));
     }});
 }
@@ -223,7 +223,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   $('focus-suggestions-list').replaceChildren(...shown.map(row => (row.entry ? entryRow(row.entry) : card(row.item))));
   $('focus-suggestions-count').textContent = countWords(shown.length, rows.length);
   const all = $('focus-suggestions-all');
-  all.textContent = showAll ? t('pagesProfile.showFewer') : `Show all ${rows.length}`;
+  all.textContent = showAll ? t('pagesProfile.showFewer') : t('pagesDynamicFocusInterviews.m172', {"length": rows.length});
   show(all, rows.length > SHOWN);
   renderJobsSuggestions();
   window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row, and its rows answered here

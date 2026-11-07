@@ -22,7 +22,7 @@ export function skeletonRows(n = 3) {
 }
 export function agoText(at) {
   const minutes = Math.max(0, Math.round((Date.now() - Date.parse(at)) / 60000));
-  return minutes < 1 ? t('pagesControlStatus.justNow') : minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} h ago`;
+  return minutes < 1 ? t('pagesControlStatus.justNow') : minutes < 60 ? t('pagesDynamicFocusInterviews.m196', {"minutes": minutes}) : `${Math.round(minutes / 60)} h ago`;
 }
 // View supporting moments: the quotes behind each pattern; a name opens that interview in the library.
 export function showMoments(view, showRow, title = '') {
@@ -68,7 +68,7 @@ function drawPractice() {
   if (!step) {
     const {done, skipped, total} = practice.summary(session);
     body.replaceChildren(el('h3', '', done === total ? t('pagesJobs.allDone') : `${done} of ${total} practised`),
-      el('p', 'muted', skipped ? `${skipped} skipped: they stay in Practice next.` : t('pagesInterviews.practiceTicked')));
+      el('p', 'muted', skipped ? t('pagesDynamicFocusInterviews.m197', {"skipped": skipped}) : t('pagesInterviews.practiceTicked')));
     foot.replaceChildren(button(t('pagesCommon.close'), 'primary', () => $('practice-dialog').close()));
     return;
   }

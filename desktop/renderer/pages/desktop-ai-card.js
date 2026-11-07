@@ -2,6 +2,8 @@
 // connection exists. The words are renderer/desktop-ai-words.js, the state and presses pages/desktop-ai-connect.js (one view for the banner, this card and ⌘K).
 // Invariant: the card reads the same view as the banner; "Connected" appears only when the main process says the helper reached the app.
 // Why (3 Nov 2026, 4/6): the state pill is drawn here, not by settings.js stateLine, because settings.js leads back to connections.js (an import cycle the architecture check counts).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 import {connectWords, whenText} from '../desktop-ai-words.js';
 import {canConnect, pressConnect, pressDisconnect, refreshConnection, view} from './desktop-ai-connect.js';
@@ -18,7 +20,7 @@ export function drawDesktopAiCard() {
   if (!here) return;
   $('dai-title').textContent = say.cardTitle;
   $('dai-line').textContent = say.cardLine[view.state];
-  const text = view.state === 'connected' && view.lastUsedAt ? `Connected · Last used ${whenText(view.lastUsedAt)}` : say.states[view.state];
+  const text = view.state === 'connected' && view.lastUsedAt ? t('pagesDynamicCvData.m132', {"when": whenText(view.lastUsedAt)}) : say.states[view.state];
   const pill = document.createElement('span');
   pill.id = 'dai-status';
   pill.className = `service-state${view.state === 'connected' ? ' is-on' : ''}`;

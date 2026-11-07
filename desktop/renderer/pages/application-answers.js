@@ -136,12 +136,12 @@ const openDrawer = start => import('./question-review.js').then(review => review
 // A section's notes (an instruction for the AI, not an answer: owner, 17 Oct 2026) folded in one row; still on the page and still sent to the AI.
 function noteFold(notes) {
   const fold = el('details', 'plain qa-note-fold');
-  fold.append(el('summary', 'muted small', `Note for the AI · ${notes.length === 1 ? '1 paragraph' : `${notes.length} paragraphs`}`),
+  fold.append(el('summary', 'muted small', t('pagesDynamicSetup.m63', {"value1": t('pagesDynamicSetup.paragraphs', {count: notes.length})})),
     ...notes.map(note => el('p', 'muted small qa-note', shown(note.value || note.text))));
   return fold;
 }
 const answerRow = (view, item, chip = null) => row(view, {key: item.id, button: false, chip, title: item.kind === 'note' ? t('pagesCommon.note') : titleOf(item.question),
-  under: [item.asked ? `Asked by ${item.asked}` : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? t('pagesExtraCommon.unconfirmedGuess') : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
+  under: [item.asked ? t('pagesDynamicSetup.m64', {"asked": item.asked}) : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? t('pagesExtraCommon.unconfirmedGuess') : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
   field: () => (item.kind === 'note' ? input(valueOf(item), text => setAnswer(view, item, text), {placeholder: t('pagesCommon.yourAnswer'), ariaLabel: t('pagesCommon.note')}) : answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.yourAnswer'))),
   kind: item.kind === 'note' ? null : () => kindField(view, item)});
 
@@ -219,7 +219,7 @@ function draw(view, into) {
     }
   }
   if (filters.view !== 'new') {
-    if (fromDetails) box.append(el('p', 'muted small qa-from-details', `${fromDetailsLine(fromDetails)}: edit them in Your details`));
+    if (fromDetails) box.append(el('p', 'muted small qa-from-details', t('pagesDynamicSetup.m65', {"fromDetailsLine": fromDetailsLine(fromDetails)})));
     if (intro && !filters.query) for (const item of intro.items) box.append(el('p', 'muted small qa-intro', shown(item.question ? `${item.question}: ${item.value}` : item.value || item.text)));
     for (const {section, items} of confirmed) {
       const notes = filters.query ? [] : section.items.filter(item => item.kind === 'note');

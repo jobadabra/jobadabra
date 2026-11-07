@@ -51,7 +51,7 @@ export function renderDrafts(drafts, env) {
     const state = pill(label, tone, {dot: true});
     // The next step for this draft: transcribe it, or review the transcript and save it.
     const needsTranscript = draft.kind === 'audio' && ['new', 'stopped', 'failed'].includes(draft.status);
-    const main = Object.assign(el('button', 'primary iv-main', draft.status === t('pagesDetails.readyLower') ? t('pagesJobs.reviewSave') : needsTranscript ? t('pagesJobs.transcribe') : t('pagesCommon.open')),
+    const main = Object.assign(el('button', 'primary iv-main', draft.status === 'ready' ? t('pagesJobs.reviewSave') : needsTranscript ? t('pagesJobs.transcribe') : t('pagesCommon.open')),
       {disabled: busy && draft.id !== env.openId()});
     main.addEventListener('click', () => env.openDraft(draft.id));
     const menu = [{label: t('pagesCommon.open'), run: () => env.openDraft(draft.id)}];
@@ -61,7 +61,7 @@ export function renderDrafts(drafts, env) {
     menu.push({label: osText(t('pagesFieldsStatus.showFinder')), run: () => iv.recordings(), title: t('pagesInterviews.recordingsLocal')});
     if (!busy) {
       menu.push('-', {label: draft.pageId ? byStore(t('pagesInterviews.deleteBoth'), t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
-        if (!confirm(draft.pageId ? `Delete "${draft.title}"${byStore(' on this Mac and in Notion', '')}?` : `Delete "${draft.title}" and its recording?`)) return;
+        if (!confirm(draft.pageId ? `Delete "${draft.title}"${byStore(' on this Mac and in Notion', '')}?` : t('pagesDynamicFocusInterviews.m195', {"title": draft.title}))) return;
         await iv.discard(draft.id);
         if (env.openId() === draft.id) env.closeEditor();
         renderDrafts(await iv.drafts(), env);

@@ -24,7 +24,7 @@ const CONTACT_KEYS = CONTACT_ROWS.flatMap(([, keys]) => keys);
 export const CONTACT_LINES = [[['mail', t('pagesCommon.email'), ['email']], ['phone', t('pagesStatus.phone'), ['phone']]],
   [['home', t('pagesFieldsStatus.address'), ['street', 'postal_code']], ['calendar', t('pagesFieldsStatus.birthDate'), ['birth_date']], ['flag', t('pagesFieldsStatus.origin'), ['place_of_origin']]]];
 
-const notSet = label => el('span', 'muted', `${label} not set`);
+const notSet = label => el('span', 'muted', t('pagesDynamicCvData.m133', {"label": label}));
 export function contactView(read = value, visible = shown) {
   const joined = keys => keys.map(read).filter(Boolean).join(', ');
   const who = el('div', 'contact-who'), name = el('b', 'contact-name');

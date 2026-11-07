@@ -8,6 +8,8 @@ import {install} from '../../tiny-dom.js';
 
 const root = new URL('../../../', import.meta.url);
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
+// These small phrases have the same correct spelling in English and the named language.
+const sameSpelling = new Set(['status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
 const parameters = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
 test('page catalogs provide seven real translations with matching interpolation', async () => {
@@ -27,7 +29,7 @@ test('page catalogs provide seven real translations with matching interpolation'
         for (const form of forms) {
           assert.equal(typeof form, 'string');
           assert.deepEqual(parameters(form), parameters(english), `${locale}.${key}`);
-          if (locale !== 'en' && !['no', 'question'].includes(key) && !(file === 'count-nouns.js' && locale === 'fr' && ['site', 'version'].includes(key))) assert.notEqual(form, english, `${locale}.${key}: real translation`);
+          if (locale !== 'en' && !sameSpelling.has(`${file}/${locale}/${key}`)) assert.notEqual(form, english, `${locale}.${key}: real translation`);
         }
         if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
           assert.ok(value[category] || value.other, `${locale}.${key}.${category}`);
@@ -108,5 +110,43 @@ test('stored completion receipts keep their identifiers and user answers while t
     assert.equal(outcomeLabel('Checked'), 'Проверено');
     assert.equal(outcomeLabel('To send: <em>Original answer</em>'), 'К отправке: <em>Original answer</em>');
     assert.equal(outcomeLabel('user-written content'), 'user-written content');
+  } finally { setLocale('en'); }
+});
+
+test('a ready interview transcript keeps its Review & save action in Russian', async () => {
+  const body = install();
+  globalThis.window.pilot = {state: async () => ({settings: {}}), interviews: {}};
+  for (const id of ['iv-drafts-block', 'iv-unsaved', 'iv-drafts']) {
+    const node = globalThis.document.createElement('div'); node.id = id; body.append(node);
+  }
+  const {renderDrafts} = await import('../../../renderer/pages/interview-lists.js');
+  let opened = '';
+  try {
+    setLocale('ru');
+    renderDrafts([{id: 'fictional-draft', status: 'ready', kind: 'audio', createdAt: '2026-11-01T12:00:00Z', title: 'Fictional interview'}],
+      {openId: () => '', openDraft: id => { opened = id; }});
+    const button = body.querySelector('.iv-main');
+    assert.equal(button.textContent, t('pagesJobs.reviewSave'));
+    button.click();
+    assert.equal(opened, 'fictional-draft');
+  } finally { setLocale('en'); }
+});
+
+test('stored status, kind and error identifiers are never translated in comparisons', () => {
+  for (const file of ['interview-lists', 'jobs-lead', 'linkedin-import', 'contact-proposals']) {
+    const source = fs.readFileSync(new URL(`renderer/pages/${file}.js`, root), 'utf8');
+    assert.doesNotMatch(source, /(?:draft\.status|v\.kind|item\.chip|result\.error)\s*[!=]==\s*t\(/, file);
+  }
+});
+
+test('stage display labels preserve stored and unknown stages', async () => {
+  const {stageName} = await import('../../../renderer/pages/page-labels.js');
+  try {
+    setLocale('ru');
+    assert.equal(stageName('Applied'), 'Отклик отправлен');
+    assert.equal(stageName('Withdrawn'), 'Отозвано');
+    assert.equal(stageName('Custom stage <text>'), 'Custom stage <text>');
+    setLocale('en');
+    assert.equal(stageName('Kit ready'), 'Saved');
   } finally { setLocale('en'); }
 });

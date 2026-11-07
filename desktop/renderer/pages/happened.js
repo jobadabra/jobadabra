@@ -3,6 +3,7 @@
 // GitHub when Always on). No: moved to a new date (Next interview) or cancelled (an event; the stage stays).
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
 import {t} from '../../i18n/index.js';
 import {aiName} from '../ai-name.js';
 import {$, aiReady, message, show} from './core.js';
@@ -35,7 +36,7 @@ async function review(pageId, item) {
     toastMessage(t('pagesCommon.saved'), t('pagesInterviews.chooseAiNotes'), {card: 'ai'}, 'good');
     return;
   }
-  toastMessage(t('pagesCommon.saved'), `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'}, 'good');
+  toastMessage(t('pagesCommon.saved'), t('pagesDynamicFocusInterviews.m186', {"aiName": aiName(), "who": who(item)}), {view: 'interviews'}, 'good');
   const result = await window.pilot.interviews.review(pageId).catch(error => ({ok: false, error: error.message}));
   toastMessage(result.ok ? t('pagesInterviews.reviewed') : t('pagesInterviews.reviewFailed'), result.ok ? result.summary : result.error || t('pagesInterviews.tryInterviews'), {view: 'interviews'}, result.ok ? 'good' : 'bad');
   loadFocus();
@@ -58,11 +59,11 @@ async function save() {
   $('happened-save').disabled = true;
   const result = await window.pilot.interviewHappened(item.page_id, kind, detail).catch(error => ({ok: false, error: error.message}));
   $('happened-save').disabled = false;
-  if (!result.ok) { message('happened-message', result.error || `${storeName()} could not save it. Try again.`, 'warn'); return false; }
+  if (!result.ok) { message('happened-message', result.error || t('pagesDynamicFocusInterviews.m187', {"storeName": storeName()}), 'warn'); return false; }
   $('happened-dialog').close();
   if (kind === 'held' && result.review && result.id) review(result.id, item);
-  else toastMessage(t('pagesCommon.saved'), {held: `${who(item)}: marked as held${result.stage ? `, now ${result.stage}` : ''}.`,
-    moved: `${who(item)}: the interview is on the new date.`, cancelled: `${who(item)}: logged as cancelled.`}[kind], {view: 'interviews'}, 'good');
+  else toastMessage(t('pagesCommon.saved'), {held: t('pagesDynamicFocusInterviews.m188', {"who": who(item), "value2": result.stage ? t('pagesDynamicFocusInterviews.nowStage', {stage: stageName(result.stage)}) : ''}),
+    moved: t('pagesDynamicFocusInterviews.m189', {"who": who(item)}), cancelled: t('pagesDynamicFocusInterviews.m190', {"who": who(item)})}[kind], {view: 'interviews'}, 'good');
   loadFocus();
   loadJobs();
   return true;
@@ -72,11 +73,11 @@ async function save() {
 // in Notion and the Next interview cleared; the job's stage stays. onConfirmed runs as soon as the user says yes, onDone once Notion has it, onFail if it refused.
 export async function dismissInterview({page_id, company, via}, {onConfirmed = () => {}, onDone = () => {}, onFail = () => {}} = {}) {
   const name = company || via || 'this recruiter';
-  if (!confirm(`Dismiss the interview with ${name}?\n\nIt leaves Up next and the calendar and is logged as cancelled in ${storeName()}. The job itself stays as it is.`)) return false;
+  if (!confirm(t('pagesDynamicFocusInterviews.m191', {"name": name, "storeName": storeName()}))) return false;
   onConfirmed();   // the row leaves the list at once; Notion takes seconds
   const result = await window.pilot.interviewHappened(page_id, 'cancelled', {}).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { onFail(); toastMessage(t('pagesCommon.notSaved'), result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}, 'bad'); return false; }
-  toastMessage(t('pagesInterviews.dismissed'), `${name}: the interview is logged as cancelled.`, {view: 'interviews'}, 'good');
+  if (!result.ok) { onFail(); toastMessage(t('pagesCommon.notSaved'), result.error || t('pagesDynamicFocusInterviews.m192', {"storeName": storeName()}), {view: 'interviews'}, 'bad'); return false; }
+  toastMessage(t('pagesInterviews.dismissed'), t('pagesDynamicFocusInterviews.m193', {"name": name}), {view: 'interviews'}, 'good');
   onDone();
   loadFocus();
   loadJobs();
