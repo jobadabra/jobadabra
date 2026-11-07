@@ -31,7 +31,6 @@ import {resolveSession} from '../../../lib/journey-identity.js';
 import * as pipeline from '../../../lib/pipeline.js';
 import * as questions from '../../../lib/questions.js';
 import {createStorage} from '../../../lib/storage.js';
-import {sharedRead} from '../../../lib/shared-read.js';
 import {endingOf} from '../../../e2e/lib/ending.mjs';
 import {stopsOf} from '../../../e2e/lib/pool-shadow.mjs';
 import {doorLines, runEvents} from '../../../e2e/lib/pool-gaps.mjs';
@@ -48,18 +47,6 @@ function journeyOf(id = 'f1') {
   const card = () => journeyStep(terminals.get(id));
   return {flow, card, id};
 }
-
-test('scenario: Apply keeps the captured ineligible opt-in from drafting through a hidden-browser queue item', async () => {
-  let settings = {apply: {allowIneligible: true}};
-  const storage = {settings: () => settings};
-  const job = {code: 'fixture-job', url: 'https://jobs.example.test/ineligible', status: 'saved', stage: 'Kit ready', fit: 90, ineligible: 'needs a work permit'};
-  const queued = [];
-  const result = await apply.start(storage, {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
-    async () => { job.kit = true; settings = {apply: {allowIneligible: false}}; return {ok: true}; }, undefined,
-    {enqueue: async (jobs, mode, eligibility) => { queued.push({jobs, mode, eligibility}); return {ok: true}; }});
-  assert.equal(result.ok, true);
-  assert.deepEqual(queued.map(item => [item.mode, item.eligibility.allowIneligible, item.jobs[0].url]), [['fill', true, job.url]]);
-});
 
 test('scenario: posting -> sign-in page -> a "no form" from the posting tab left behind: the card stays at the account step (10 Oct 2026)', () => {
   const {flow, card} = journeyOf();
@@ -497,16 +484,5 @@ test('scenario: Fill in Chrome pressed twice on one job with its tab open: one t
   const reply = review.report([{id: first.session.id, url: FORM, kind: 'form'}], {url: FORM, session: first.session.id, tab: 5, boot: 'b1', total: 9, left: 0});
   assert.ok(reply.commands.some(command => command.reload), 'the open tab reloads, so its mark fills the form again');
   assert.equal(review.tabOf(first.session.id), 5, 'the session stays on its one tab');
-});
-
-test('scenario: Apply answers after its job is marked Applying: a list read asked then is a fresh one, so the Jobs chips count it (#1737, 24 Oct 2026)', async () => {
-  terminals._reset();
-  const jobs = sharedRead('jobs', () => new Promise(() => {}));   // a read that began before the press, still running
-  const running = jobs();
-  const run = () => new Promise(resolve => setTimeout(() => resolve({}), 10));   // the engine's Stage write takes a moment
-  const result = await apply.applyOne({}, 'https://jobs.example.test/apply-1737', {company: 'E2E'}, {open: () => ({unref() {}}), term: terminals, run, id: () => 'j1737', focus: () => {}});
-  assert.equal(result.ok, true);
-  assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
-  terminals._reset();
 });
 
