@@ -13,7 +13,7 @@ const SKETCH = 'a page sketch (lib/page-kind.js sketchBody): controls, headings,
 export const routes = {
   '/extension/pair': {auth: 'origin', method: 'GET', handles: [L('server-routes.js')], response: {url: 'string', token: 'string'}},
   '/extension/tabs': {auth: 'token', handles: [L('server.js'), L('ext-server-handlers.js'), L('review.js'), L('visits.js')],
-    request: {urls: 'array', ids: 'array?', boot: 'string?', browser: 'string?', worker: 'string?', reading: 'array?', sessions: 'array?', version: 'string?', owned: 'boolean?'},
+    request: {urls: 'array', ids: 'array?', boot: 'string?', browser: 'string?', worker: 'string?', reading: 'array?', sessions: 'array?', version: 'string?', reloadedFor: 'string?', owned: 'boolean?'},
     response: {ok: 'boolean', latest: 'string?', build: 'object?', reread: 'array?'}},
   '/extension/event': {auth: 'token', handles: [L('server.js'), L('ext-server-handlers.js'), L('apply-handlers.js')], request: {type: 'string'}, open: 'per type: see `events`', response: {ok: 'boolean'}},
   '/extension/ticket': {auth: 'token', handles: [L('server-routes.js'), L('server-env.js')], request: {ticket: 'string', job: 'string'}, response: {ok: 'boolean', error: 'string?'}},

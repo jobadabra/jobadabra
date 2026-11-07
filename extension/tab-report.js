@@ -35,9 +35,11 @@ export function createTabReport(ctx) {
   const {WORKER, armedLogged, bootId, fillsNow, jobOf, keepMemory, newer, readyHandoff, reportCorrections, started} = ctx;
   // The version this copy runs: the manifest's, or the one it last reloaded itself for when that is higher. A development copy (Chrome loads the checkout's extension/) keeps the manifest's
   // base version ("0.9") while the app reports a stamped one (desktop/lib/server-env.js latestExtension); after the reload it must not look stale (15 Oct 2026: a pulled change never reached it).
+  // Why (7 Nov 2026, owner's 0.9.13 retest): this value was also the version the app was TOLD, so a reload that left the manifest old kept reporting the new one and nothing said the extension was old;
+  // the app is now told the manifest's version and `reloadedFor` apart, and only a development copy counts the reload (desktop/lib/extension-version.js).
   const runningVersion = async () => {
     const manifest = chrome.runtime.getManifest().version, {reloadedFor} = await chrome.storage.local.get('reloadedFor');
-    return reloadedFor && newer(reloadedFor, manifest) ? reloadedFor : manifest;
+    return {manifest, reloadedFor: reloadedFor || '', running: reloadedFor && newer(reloadedFor, manifest) ? reloadedFor : manifest};   // `running` only decides when to reload again; the app is told the manifest's (desktop/lib/extension-version.js)
   };
   // Tell the Jobadabra app which job pages are open, so its Jobs list shows "Opened in Chrome" only while they are.
   async function reportTabs() {
@@ -63,13 +65,13 @@ export function createTabReport(ctx) {
       const alive = new Set(every.map(tab => tab.id));
       const sessions = Object.fromEntries(Object.entries(stored).filter(([key, id]) => /^session:\d+$/.test(key) && id && alive.has(Number(key.slice(8))))
         .map(([key, id]) => [key.slice(8), String(id)]));
-      const running = await runningVersion();
+      const {manifest, reloadedFor: reloaded, running} = await runningVersion();
       // Why (#2536; names renamed 1 Nov 2026): the launcher sets this marker on its owned copy; the app's Chrome version notes must never use that copy's check-in.
       const owned = globalThis.__jobadabraBackgroundOwned === true;
-      const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: running, owned})});
+      const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: manifest, reloadedFor: reloaded, owned})});
       connected(true);
       await pollBackgroundApply(config);
-      await chrome.storage.local.set({appBuild: answer?.build ? {...answer.build, version: running} : null}).catch(() => {});   // what the panel shows: the commit this copy runs, and the fixes it lacks (desktop/lib/build-state.js)
+      await chrome.storage.local.set({appBuild: answer?.build ? {...answer.build, version: manifest} : null}).catch(() => {});   // what the panel shows: the commit this copy runs, and the fixes it lacks (desktop/lib/build-state.js)
       await stopFromApp(answer);   // the app's Stop button reaches a tab with no panel too (stop.js)
       // Sites this extension was reading before it started again (a reload, an update, Chrome stopping its worker): read again from where each
       // tab is, under the mark it was opened with (desktop/lib/visits.js noteTabs; 7 Oct 2026: a reload left 3 of 5 sites "stopped answering").

@@ -167,7 +167,7 @@ export function renderJobs() {
     // Chrome opens the job's form and the extension fills it at once from the kit.
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
-      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
+      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); if (result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, jobPlace(job), 'warn'); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
       else if (sayRefused('Apply did not start', result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.', jobPlace(job), 'bad');
     };

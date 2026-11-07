@@ -14,6 +14,7 @@ import {timed, noteConnection} from './ext-http-timing.js';
 import {listen, portFrom, DEFAULT_PORT, testWithoutOwnPort} from './server-listen.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
+import {reportedVersion} from './extension-version.js';
 import {localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile, noteExtensionId} from './server-env.js';
 import {extensionBuild} from './build-state.js';
 import {packagedBuild} from './build-handlers.js';
@@ -84,11 +85,12 @@ function recordTabs(req, report) {
   const run = String(report.browser || report.boot || report.worker || '');   // one entry per browser; an older extension: per run
   if (!tabRuns.has(run) && tabRuns.size) appLog('extension', 'another browser run reports its tabs', {runs: tabRuns.size + 1, tabs: (report.urls || []).length});
   tabRuns.set(run, {urls: new Set((report.urls || []).map(pageKey)), at: Date.now()});
-  const at = Date.now(), version = report.version || '', previous = seenByBrowser.get(run), owned = report.owned === true;
+  const at = Date.now(), version = reportedVersion({version: report.version, reloadedFor: report.reloadedFor}, developmentCopy()), previous = seenByBrowser.get(run), owned = report.owned === true;
   heard = {at};   // Why (#2536): any reporter proves the pooled tab knowledge is alive; Chrome version identity remains separate.
   const why = checkInReason(previous?.seen, at, version);
-  if (why) appLog('extension', `checked in: ${why}`, {browser: run, owned, version, tabs: (report.urls || []).length});
-  seenByBrowser.set(run, {seen: {at, version, id: ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || previous?.seen.id || ''},
+  const id = ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || previous?.seen.id || '';
+  if (why) appLog('extension', `checked in: ${why}`, {browser: run, owned, version, id, tabs: (report.urls || []).length});   // the id names which copy (store or folder) is the old one
+  seenByBrowser.set(run, {seen: {at, version, id},
     devCopy: owned ? null : noteDevelopmentCopy(report, version, at, previous?.devCopy)});
   if (!owned) {
     personBrowser = run;
