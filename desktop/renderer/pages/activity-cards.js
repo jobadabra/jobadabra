@@ -1,3 +1,4 @@
+import {reviewHeading} from '../final-pages-copy.js';
 // Recent activity: the insight, interview-review, kits and weekly cards.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import '../../i18n/screens-pages.js';
@@ -72,7 +73,7 @@ export function renderInterviewCard(review, target = $('activity-card')) {
   box.append(cardHead(t('pagesShortActivity.m11', {"round": review.round}), review.title || t('pagesActivity.interviewReview'), {subtitles: [review.summary]}));
   for (const section of review.sections) {
     const node = el('section', 'insight-section');
-    node.append(el('h4', '', `${section.icon} ${section.label}`.trim()));
+    node.append(el('h4', '', `${section.icon} ${reviewHeading(section.label)}`.trim()));
     if (section.items.length) {
       const list = el('ul', 'insight-evidence');
       section.items.forEach(item => list.append(el('li', '', item)));

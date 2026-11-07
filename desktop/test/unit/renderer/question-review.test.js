@@ -1,3 +1,4 @@
+import {readScreenSource} from '../../static-screen-source.js';
 // The review drawer (owner's mockup, 17 Oct 2026: "THIS IS TOO CROWDED/OVERWHELMING... Move the questionnaire out of the Jobs page"), here What we learned's
 // (owner, 28 Oct 2026: two drawers; test/unit/renderer/question-drawers.test.js holds the two side by side): Jobs shows a compact card whose count is the drawer's (never the
 // set-aside ones), and the questions are answered one at a time in a drawer (pages/question-review.js) that shares the job drawer's overlay slot. Every way in
@@ -153,7 +154,7 @@ test('it shares the job drawer\'s overlay slot: opening it closes a job or Recen
 });
 
 test('every way in opens the same drawer: Jobs\' card, Profile → What we learned, ⌘K', () => {
-  const read = file => fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
   assert.match(read('question-review.js'), /\$\('learned-review'\)\?\.addEventListener\('click', \(\) => openQuestionReview\(\{queue: 'learned'\}\)\)/);
   assert.match(read('application-answers.js'), /const openDrawer = start => [^\n]*openQuestionReview\(\{queue: 'learned', start\}\)/);
   assert.match(read('application-answers.js'), /answers-review-go[\s\S]{0,200}openDrawer\(\)/);

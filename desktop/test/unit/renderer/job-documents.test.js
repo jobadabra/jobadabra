@@ -1,12 +1,12 @@
+import {readScreenSource} from '../../static-screen-source.js';
 // The Documents tab (job-drawer/tab-documents.js): the tailored CV and the cover letter moved out of Application → Preparation, each fact one
 // label → value row, and every way in lands on it. One loop over the entry points; a new tab alias or entry without a test fails here.
 import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {TABS, tabKey} from '../../../renderer/job-page-view.js';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 
 test('Documents is the tab right after Application, and the Application tab no longer draws the letter or the files', () => {
   const keys = TABS.map(([key]) => key);

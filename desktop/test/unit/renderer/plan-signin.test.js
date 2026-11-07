@@ -1,7 +1,7 @@
+import {readScreenSource} from '../../static-screen-source.js';
 // "I have Pro" in the app (lib/plan.js signin, renderer/pages/plan-signin.js, IPC planSignin, the ⌘K entry): the code steps reach the site with this install's key, a verified code refreshes
 // the plan, a full account lists its computers, and nothing is available while the plan is off. Fake site only.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {createPlan} from '../../../lib/plan.js';
 import {SHOW_I_HAVE_PRO, signinWords} from '../../../renderer/plan-view.js';
@@ -39,7 +39,7 @@ test('a wrong code, a full account and a site that cannot be reached are told, n
 });
 
 test('wired: the IPC pair, the preload entry and the ⌘K entry (only with the plan on, only for Free)', () => {
-  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   assert.match(read('../../../preload.cjs'), /planSignin: call\('planSignin'\)/);
   assert.match(read('../../../lib/app-meta-handlers.js'), /ipcMain\.handle\('planSignin'/);
   assert.ok(read('../../../renderer/pages/nav.js').includes("'I have Pro'"));
@@ -47,7 +47,7 @@ test('wired: the IPC pair, the preload entry and the ⌘K entry (only with the p
 });
 
 test('hidden for now: with the flag off, no "I have Pro" in the Plan card nor in ⌘K', () => {
-  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   assert.equal(SHOW_I_HAVE_PRO, false);
   assert.match(read('../../../renderer/pages/plan.js'), /if \(SHOW_I_HAVE_PRO\) body\.append\(signinPart/);
   assert.match(read('../../../renderer/pages/nav.js'), /if \(SHOW_I_HAVE_PRO\) add\('Settings', 'I have Pro'/);

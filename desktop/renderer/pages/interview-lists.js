@@ -1,3 +1,4 @@
+import {finalText} from '../final-pages-copy.js';
 // Interviews page, the job list helpers (names, the picker's options, the pasted link), the unsaved-recordings list and
 // the speaker-name fields. Moved out of interviews.js, which passes in the open draft and what to do with it.
 // Guarded by test/unit/main/interviews.test.js, test/unit/renderer/interview-library.test.js and test/unit/renderer/review-again.test.js.
@@ -13,7 +14,8 @@ import {jobOfApplication} from '../jobs-view.js';
 const iv = window.pilot.interviews;
 export const plainId = id => String(id || '').replace(/-/g, '');
 export const jobList = () => (Array.isArray(shared.allJobs) ? shared.allJobs : []);  // unset while the job list loads
-export const jobName = job => `${job.company} — ${job.title}${job.status === 'applied' ? ' (applied)' : ''}`;
+/** Show a supplied job name with a localized applied marker, preserving the employer, title and status value. */
+export const jobName = job => job.status === 'applied' ? finalText('appliedSuffix', {job: `${job.company} — ${job.title}`}) : `${job.company} — ${job.title}`;
 // An interview's job: by the store's id (job.page_id, every store) or its Notion page (renderer/jobs-view.js jobOfApplication).
 export const jobForPage = pageId => jobOfApplication(jobList(), pageId);
 

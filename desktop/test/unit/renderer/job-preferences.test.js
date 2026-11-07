@@ -112,11 +112,28 @@ test('⌘K reaches the card and its Review (in the card\'s editor) on Strategy',
   const fs = await import('node:fs');
   const nav = fs.readFileSync(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8');
   const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
-  assert.match(nav, /add\('Strategy', 'Job preferences'[\s\S]{0,300}\$\('strategy-job-prefs'\)/);
+  assert.match(nav, /add\('Strategy', finalText\('nav44'\)[\s\S]{0,300}\$\('strategy-job-prefs'\)/);
   // Review lives in the card's editor (owner, 18 Oct 2026, mockup 03): ⌘K opens the editor, then reviews.
-  assert.match(nav, /add\('Strategy', 'Review your preferences'[\s\S]{0,300}openCard\('prefs'\); reviewPreferences\(\)/);
+  assert.match(nav, /add\('Strategy', finalText\('nav56'\)[\s\S]{0,300}openCard\('prefs'\); reviewPreferences\(\)/);
   const strategy = html.slice(html.indexOf('id="strategy-yours"'), html.indexOf('id="strategy-suggestions"'));
   for (const id of ['strategy-job-prefs', 'preferences-body']) assert.match(strategy, new RegExp(`id="${id}"`), id);
   const page = fs.readFileSync(new URL('../../../renderer/pages/job-preferences.js', import.meta.url), 'utf8');
   assert.match(page, /id: 'preferences-review'/, 'the editor draws the Review button');
+});
+
+test('German preference read/editor uses display labels and preserves canonical model fields and write values', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    const node = await open([...TEMPLATE, ...DEAL_BREAKERS]);
+    assert.ok(node.textContent.includes('Muss-Kriterien und Ausschlüsse'));
+    assert.ok(node.textContent.includes('Wohnort'));
+    const home = node.querySelectorAll('input').find(input => input.ariaLabel === 'Wohnort');
+    assert.ok(home); assert.equal(home.placeholder, 'Stadt oder Region');
+    const employment = node.querySelectorAll('select').find(select => select.ariaLabel === 'Beschäftigungsart');
+    assert.ok(employment);
+    assert.ok(employment.children.some(option => option.value === 'Permanent only' && option.textContent === 'Nur Festanstellung'));
+    assert.equal(FIELDS.find(field => field.key === 'home').label, 'Home base');
+    assert.equal(SIDES.must.title, 'Must-haves & deal-breakers');
+  } finally {setLocale('en');}
 });

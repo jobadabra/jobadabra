@@ -101,11 +101,11 @@ export function readProfile(items) {
 }
 
 // What a folded side says (owner, 17 Oct 2026: "No on-call · Exclude recruitment agencies · 2 more"): its set rules, the first two in full.
-export function summaryOf(items, shown = 2) {
+export function summaryOf(items, shown = 2, {empty = 'None set', more = count => `${count} more`} = {}) {
   const set = items.filter(item => !item.open && String(item.value || '').trim())
     .map(item => (item.label && !OWN_LABELS.test(item.label) ? `${item.label}: ${item.value}` : item.value).replace(/\*\*/g, '').trim());
-  if (!set.length) return 'None set';
-  return [...set.slice(0, shown), ...(set.length > shown ? [`${set.length - shown} more`] : [])].join(' · ');
+  if (!set.length) return empty;
+  return [...set.slice(0, shown), ...(set.length > shown ? [more(set.length - shown)] : [])].join(' · ');
 }
 
 // The change that writes a field: its own cell or line, or a new "Label: value" line after the known sections (or at the end of the page).

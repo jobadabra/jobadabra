@@ -1,3 +1,4 @@
+import {preferenceField} from '../final-pages-copy.js';
 // Settings → Profile → Preferences, the "Review your preferences" card (owner, 17 Oct 2026): where the AI read a field's text differently from how it
 // is stored (lib/preferences-parse.js), each field shows what you have now → what it proposes, with Accept / Keep mine and Accept all. Accepting only
 // drafts the change into the tab's one save bar (the phrases the clean values lose are kept in ONE collapsed "Original wording" note under Other preferences); nothing is written until Save.
@@ -42,16 +43,16 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
   for (const row of rows) {
     const field = FIELDS.find(each => each.key === row.key), line = el('div', 'pref-review-row span-all');
     line.dataset.field = row.key;
-    const yes = Object.assign(el('button', 'primary small', t('pagesProfileMore.accept')), {type: 'button', ariaLabel: t('pagesShortReady.m264', {"label": field.label})});
+    const yes = Object.assign(el('button', 'primary small', t('pagesProfileMore.accept')), {type: 'button', ariaLabel: t('pagesShortReady.m264', {"label": preferenceField(field).label})});
     yes.addEventListener('click', () => { accept(row); redraw(); });
-    const no = Object.assign(el('button', 'secondary small', t('pagesProfileMore.keepMine')), {type: 'button', ariaLabel: t('pagesDynamicProfileReady.m295', {"label": field.label})});
+    const no = Object.assign(el('button', 'secondary small', t('pagesProfileMore.keepMine')), {type: 'button', ariaLabel: t('pagesDynamicProfileReady.m295', {"label": preferenceField(field).label})});
     no.addEventListener('click', () => { skipped.add(`${state.key}:${row.key}`); remember(skipped); redraw(); });
     const was = el('div', 'pref-review-was muted');
     was.append(el('b', '', t('pagesProfileMore.now')), row.old || t('pagesCommon.notSet'));
     const will = el('div', 'pref-review-will');
     will.append(el('b', '', t('pagesProfileMore.proposed')), row.proposed);
     const text = el('div', 'pref-review-text');
-    text.append(el('h5', '', field.label), was, will);
+    text.append(el('h5', '', preferenceField(field).label), was, will);
     const buttons = el('div', 'pref-review-buttons');
     buttons.append(yes, no);
     line.append(text, buttons);

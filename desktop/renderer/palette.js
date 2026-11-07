@@ -1,3 +1,4 @@
+import {paletteGroup} from './final-pages-copy.js';
 // ⌘K (Ctrl+K on Windows): a command palette. Type a few words ("check gmail", "record", "settings"), then
 // Enter. Every command is a button the app already has (clicked as if by hand) or a page to open.
 
@@ -87,7 +88,7 @@ export function openPalette(commands) {
       if (command.running) label.append(Object.assign(document.createElement('i'), {className: 'spinner small', role: 'img', ariaLabel: t('helperFlow.runningNow')}));
       item.append(label);
       if (command.hint) item.append(Object.assign(document.createElement('span'), {className: 'muted', textContent: command.hint}));
-      if (command.group && command.path?.[0] !== command.group) item.append(Object.assign(document.createElement('small'), {textContent: command.group}));   // a path says its place already
+      if (command.group && command.path?.[0] !== paletteGroup(command.group)) item.append(Object.assign(document.createElement('small'), {textContent: paletteGroup(command.group)}));   // a path says its place already
       item.addEventListener('mousemove', () => { if (active !== i) highlight(i); });
       item.addEventListener('click', () => run(command));
       return item;
