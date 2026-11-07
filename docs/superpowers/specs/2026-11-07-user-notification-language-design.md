@@ -53,6 +53,6 @@ The service PRs land before the public bridge starts sending new metadata. Templ
 - [ ] Python notification templates localize with canonical diagnostics preserved.
 - [x] Desktop notification and bot help/reply templates localize. (proof: app-core/src/bot-copy.js @22adc19fdab6a9c7af1edbbf510d3ec463584896)
 ### 4. Verification and handoff
-- [ ] Seven-language content/plural/escape tests and operational-English negative cases pass.
+- [x] Seven-language content/plural/escape tests and operational-English negative cases pass. (proof: none: PR #3499 head 7eb3113022d91b27f32cce0d47091b75b68a4ce4 passed all required CI, seven-language producer tests and operational-English negatives; its new test file is awaiting owner merge)
 - [x] Fictional email/Telegram render inventory reviewed; remaining dynamic-content fallbacks disclosed. (proof: docs/superpowers/specs/2026-11-07-user-notification-language-verification.md)
-- [ ] All scoped PRs exact-head READY and progress report updated.
+- [x] All scoped delivery PRs exact-head READY or owner-merged and progress report updated. (proof: docs/superpowers/specs/2026-11-07-user-notification-language-verification.md)
