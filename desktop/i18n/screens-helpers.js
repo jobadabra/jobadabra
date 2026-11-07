@@ -49,3 +49,13 @@ import {messages as esProfile} from './catalogs/helpers/es-profile.js';
 import {messages as roProfile} from './catalogs/helpers/ro-profile.js';
 import {messages as ruProfile} from './catalogs/helpers/ru-profile.js';
 for (const [locale, messages] of Object.entries({en: enProfile, de: deProfile, fr: frProfile, it: itProfile, es: esProfile, ro: roProfile, ru: ruProfile})) registerMessages(locale, 'helperProfile', messages);
+
+// Remaining helper copy uses bounded catalogs.
+import {messages as enRest} from './catalogs/helpers/en-rest.js';
+import {messages as deRest} from './catalogs/helpers/de-rest.js';
+import {messages as frRest} from './catalogs/helpers/fr-rest.js';
+import {messages as itRest} from './catalogs/helpers/it-rest.js';
+import {messages as esRest} from './catalogs/helpers/es-rest.js';
+import {messages as roRest} from './catalogs/helpers/ro-rest.js';
+import {messages as ruRest} from './catalogs/helpers/ru-rest.js';
+for (const [locale, messages] of Object.entries({en: enRest, de: deRest, fr: frRest, it: itRest, es: esRest, ro: roRest, ru: ruRest})) registerMessages(locale, 'helperRest', messages);
