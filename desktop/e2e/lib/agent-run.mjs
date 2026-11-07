@@ -94,6 +94,14 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
   return made;
 }
 
+/** Joins the twins among `notes` in place (lib/agent-notes.mjs joinSameElement) and says so; -> the joined notes. */
+function joinTwins(notes, log) {
+  const {kept, joined} = joinSameElement(notes);
+  notes.splice(0, notes.length, ...kept);
+  if (joined.length) log(`  ${joined.length} note(s) joined an earlier note of this run on the same element: ${joined.map(note => `"${note.title}"`).join(', ')}`);
+  return joined;
+}
+
 /** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
 async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
   // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
@@ -151,9 +159,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stopped = result.stopped; break; }
   }
-  const {kept, joined} = joinSameElement(notes);   // Why (7 Nov 2026, pz): one note per element per run, before the judge is asked (a twin costs a call and a second issue)
-  notes.splice(0, notes.length, ...kept);
-  if (joined.length) log(`  ${joined.length} note(s) joined an earlier note of this run on the same element: ${joined.map(note => `"${note.title}"`).join(', ')}`);
+  const joined = joinTwins(notes, log);   // Why (7 Nov 2026, pz): one note per element per run, before the judge is asked (a twin costs a call and a second issue)
   await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes, joined,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});

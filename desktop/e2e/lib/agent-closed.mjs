@@ -56,6 +56,16 @@ export function readClosed(file = process.env.AGENT_CLOSED_FILE) {
   return file && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
 }
 
+/**
+ * The closed verdicts one run is told, logged once: none for a replay (`planId`) or an unprompted run (`off` lists the rules taken out), because they measure one app state; otherwise what `file` holds.
+ * Why (7 Nov 2026, pz): the suite's run() and runSession() were at the cognitive-complexity limit; this keeps the branches out of them.
+ */
+export function closedForRun({planId = '', off = [], file = process.env.AGENT_CLOSED_FILE, log = () => {}}) {
+  const closed = planId || off.length ? {} : readClosed(file);
+  log(`  closed verdicts told to the agent and the judge: ${Object.values(closed).flat().length}${file ? '' : ' (none: no file; a replay, an unprompted run or a local run)'}`);
+  return closed;
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const out = process.argv[2];
   if (!out) throw new Error('usage: node lib/agent-closed.mjs <out.json>');

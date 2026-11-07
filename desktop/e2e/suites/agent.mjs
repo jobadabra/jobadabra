@@ -14,8 +14,8 @@ import {actorAskOf, brokerAsk, MODELS} from '../lib/agent-ask.mjs';
 import {planLine, planSizing} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
-import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
-import {readClosed} from '../lib/agent-closed.mjs';
+import {areaOfView, areasWith, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
+import {closedForRun} from '../lib/agent-closed.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette, withLanguage} from '../lib/agent-moves.mjs';
 import {laneOf, laneSeed, moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
@@ -88,9 +88,8 @@ export async function run(ctx) {
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     // Why (7 Nov 2026, pz, owner via mac-50: "are we treating the root cause?"): the closed by-design verdicts of the persona's issues are knowledge for the actor and the judge (lib/agent-closed.mjs); a replay or an unprompted run measures one app state, so it is told none.
-    const closed = planId || rulesOff(process.env.AGENT_RULES_OFF).length ? {} : readClosed();
-    console.log(`  closed verdicts told to the agent and the judge: ${Object.values(closed).flat().length}${process.env.AGENT_CLOSED_FILE ? '' : ' (none: no file; a replay, an unprompted run or a local run)'}`);
-    const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area] || closed[area]);
+    const closed = closedForRun({planId, off: rulesOff(process.env.AGENT_RULES_OFF), log: console.log});
+    const areas = areasWith([...plan.goals.map(goal => goal.group), ...changed.areas], expectations, notes, closed);
     const knowledge = [knowledgeFor(areas, {expectations, notes, closed}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
     // Why (5 Nov 2026, owner via mac-32: "Assuming the initial context/harness would be max 20k"): what every actor call carries before the page is measured now and the run fails here, before any call, when it is over 20k; the cap of 250k is spent on the app, not on the same words again.
     const harness = harnessTokens({system: AGENT_SYSTEM, schema: actionSchema(AGENT_VIEWS, agentExtend({knowledgeIds: [], views: AGENT_VIEWS, goal: {}, sink: []})), intros: plan.goals.map(goal => goalIntro(goal, knowledge))});

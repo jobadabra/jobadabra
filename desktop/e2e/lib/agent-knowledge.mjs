@@ -92,6 +92,9 @@ export function mergeNotes(existing, observed, {today, commit = '', session = ''
   return [...byKey.values()].filter(note => !(age(note) > keepDays));
 }
 
+/** The areas of `areas` (each once) that any of the knowledge maps (rules, notes, closed verdicts) has something for. */
+export const areasWith = (areas, ...maps) => [...new Set(areas)].filter(area => maps.some(map => map[area]));
+
 /** The expectation area of a note's screen (view `jobs` -> `Jobs`): the one mapping the agent's second opinion and its exam share (Gitar on #3240). */
 export const areaOfView = view => String(view).replace(/^./, first => first.toUpperCase());
 
