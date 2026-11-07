@@ -11,8 +11,8 @@
    "expected": "jobs-5: The Applied tile excludes inbound jobs from its count.",
    "observed": "The Applied tile shows 1 while Total matches is 0, and the conversation strip shows an inbound Registered nurse (team lead) job marked Applied.",
    "why": "The tile misrepresents how many job matches have been applied to.",
-   "label": "real",
-   "cause": "jobs-5: the Applied tile counted an inbound job (the planted shape of the tour app b6014b04)",
+   "label": "false",
+   "cause": "by design (jobs-5 corrected 7 Nov 2026, owner: \"Keep the code, fix the rule\", #3516): the Applied tile counts an inbound job once the person applied to it (an Applied on date); the seeded Plover Partners lead has one",
    "recorded": {
     "judge": "agrees",
     "reason": "The screenshot shows Applied = 1 while Total matches = 0 and 0 jobs listed, with 3 inbound jobs in conversation, so the Applied count plausibly includes an inbound job, contradicting the expected exclusion and misleading the user."
