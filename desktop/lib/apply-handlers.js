@@ -81,11 +81,13 @@ export function registerApplyHandlers(ctx) {
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');
     if (gate) return gate;
-    const blocked = await allowanceBlock() || needExtension();
+    // Why (7 Nov 2026, owner: "Follow the saved mode"): one job starts as the batch does; the hidden browser carries its own copy of the extension, so only Standard automation needs one.
+    const applyMode = applyOf(storage.settings()).mode, hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which)} : null;
+    const blocked = await allowanceBlock() || (hidden ? null : needExtension());
     if (blocked) return blocked;
-    const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)
-    if (result?.ok) track('apply_started', {how: 'extension'});
-    return withNote(result);
+    const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}, {...(hidden ? {hidden} : {})}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)
+    if (result?.ok) track('apply_started', {how: hidden ? 'background' : 'extension'});
+    return hidden ? {...result, background: true} : withNote(result);   // `background`: the window says it queued (Sessions), never "Opened in Chrome"
   });
   // Checked session workflows share the production registration with the offline app scenario tests.
   ipcMain.handle('applyWithClaude', (_, url, details = null) => startClaude(url, details));
