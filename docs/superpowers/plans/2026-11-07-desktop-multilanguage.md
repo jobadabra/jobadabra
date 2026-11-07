@@ -25,7 +25,7 @@
 
 ## PR sequence
 
-1/4 Specification and plan; 2/4 language foundation and selectors; 3/4 screen catalogs/migration; 4/4 native text and final coverage. The worker's PR depends on the foundation. Each PR uses the repo PR template and is merged only by the owner.
+1/6 Specification and plan; 2/6 language foundation and selectors; 3/6 static screens; 4/6 dynamic pages; 5/6 helpers/drawers; 6/6 native text and coverage. The worker's PR depends on the foundation. Each PR uses the repo PR template and is merged only by the owner.
 
 ### Task 1: Publish spec and persistent progress
 
@@ -40,9 +40,9 @@
 **Create:** desktop/i18n/index.js, desktop/i18n/format.js, desktop/i18n/catalogs/common.js, desktop/renderer/i18n-dom.js.
 **Test:** desktop/test/unit/renderer/i18n.test.js, desktop/test/unit/renderer/i18n-dom.test.js.
 **Interfaces:** `SUPPORTED_LOCALES`, `resolveLocale(choice, preferred)`, `setLocale(locale)`, `getLocale()`, `registerMessages(locale, namespace, messages)`, `t(key, vars={})`; `number(value, options)`, `date(value, options)`, `relative(value, unit, options)`. Messages are strings or plural-category maps; count is `vars.count`. Keys use `namespace.message`. `translate(root)` touches only explicit data-i18n/data-i18n-title/data-i18n-placeholder/data-i18n-aria-label bindings and preserves nested icons and controls.
-- [ ] Write runtime tests for fallback, regional preferences, interpolation, plural categories, and Intl formatting; run to see missing module fail.
-- [ ] Implement the shared runtime with English fallback and all seven common catalogs.
-- [ ] Write DOM binding tests for mixed nested markup, attributes, and preservation of unmarked user content; watch fail, implement, rerun.
+- [x] Write runtime tests for fallback, regional preferences, interpolation, plural categories, and Intl formatting; run to see missing module fail.
+- [x] Implement the shared runtime with English fallback and all seven common catalogs.
+- [x] Write DOM binding tests for mixed nested markup, attributes, and preservation of unmarked user content; watch fail, implement, rerun.
 
 ### Task 3: Startup, saved language and selectors
 
@@ -50,9 +50,9 @@
 **Modify:** desktop/renderer/index.html, desktop/renderer/app.js, desktop/preload.cjs, desktop/main.js, desktop/package.json, desktop/renderer/os.js, desktop/renderer/pages/core.js.
 **Test:** desktop/test/unit/main/locale-handlers.test.js and relevant existing preload/IPC/OS tests.
 **Interfaces:** `pilot.locale()` returns `{choice, locale, supported}`; `pilot.setLocale(choice)` accepts `system` or a supported locale and returns the persisted resolved state. `bootstrap` loads locale, sets runtime locale, translates annotated HTML and only then imports app.js. `language.init()` binds both selectors, checks existing `anyUnsaved()`, persists then reloads only when allowed. The coordinator publishes the exact final API before worker code begins.
-- [ ] Write failing handler tests for validation, OS resolution, persistence, and failed persistence; implement and pass.
-- [ ] Write failing selector tests proving a draft prevents both save and reload; implement with the existing save-bar registry.
-- [ ] Wire bootstrap, settings and first-run selectors, palette entry, document lang, and packaging i18n/** plus locale packs.
+- [x] Write failing handler tests for validation, OS resolution, persistence, and failed persistence; implement and pass.
+- [x] Write failing selector tests proving a draft prevents both save and reload; implement with the existing save-bar registry.
+- [x] Wire bootstrap, settings and first-run selectors, palette entry, document lang, and packaging i18n/** plus locale packs.
 - [ ] Restrict/remove arbitrary platform observer text rewriting; keep existing English app behavior through explicit translation boundaries and tests.
 - [ ] Render welcome/Appearance using fictional demo data in light/dark, inspect and prepare owner preview before shipping the UI PR.
 
