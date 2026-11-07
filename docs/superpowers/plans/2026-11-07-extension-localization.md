@@ -6,7 +6,7 @@
 **Tier:** 1, named unit files and fictional options/popup preview. No dependencies, live accounts, live app, paid calls, manifest version, consent or submit changes.
 
 ## Ownership and inventory
-First milestone: 4 existing UI files (`extension/options.html`, `options.js`, `popup.html`, `popup.js`); 1 connection module (`extension/flow.js`, display transport only); 2 desktop transport files (`desktop/lib/server-routes.js`, `extension-contract.js`); new `extension/i18n.js`, `extension/locales.js`, seven locale catalogs; named i18n/UI and route tests. Existing route characterization assertions follow additive locale fields. Plan and preview assets are also owned here.
+First milestone: 4 existing UI files (`extension/options.html`, `options.js`, `popup.html`, `popup.js`); 1 connection module (`extension/flow.js`, display transport only); 2 desktop transport files (`desktop/lib/server-routes.js`, `extension-contract.js`); new `extension/i18n.js`, `extension/locales.js`, seven locale catalogs; named i18n/UI and route tests. Existing route characterization assertions follow additive locale fields. Plan and four fictional PNGs in `docs/previews/ml-extension/` are also owned here. Total milestone inventory: 26 files (22 implementation/plan files + four preview images).
 Remaining app-authored UI inventory: 18 modules: `extension/account-act.js`, `extension/account-fill.js`, `extension/allow.js`, `extension/background-submit.js`, `extension/background.js`, `extension/linkedin.js`, `extension/next-step.js`, `extension/on-top.js`, `extension/panel-claude.js`, `extension/panel-form.js`, `extension/panel-learn.js`, `extension/panel-markup.js`, `extension/panel-report.js`, `extension/panel-review-view.js`, `extension/panel-written.js`, `extension/review.js`, `extension/stop.js`, `extension/visit-page.js`. Page-control modules that manipulate employer DOM are excluded; only app-authored badges/overlays will be audited for milestone 2. No whole-DOM replacement.
 
 ## PR sequence
@@ -19,7 +19,7 @@ No stacked PR before parent merges. Work on disjoint remaining inventory while w
 - [x] Add failing locale inheritance and catalog parity tests. (proof: desktop/test/unit/extension/extension-i18n.test.js; desktop/test/unit/extension/extension-localized-ui.test.js; desktop/test/unit/extension/extension-locale-transport.test.js).
 - [x] Implement locale transport/cache, seven catalogs and explicit UI keys. (proof: desktop/test/unit/extension/extension-i18n.test.js; desktop/test/unit/extension/extension-localized-ui.test.js; desktop/test/unit/extension/extension-locale-transport.test.js).
 - [x] Verify fallback, overrides, later desktop changes, locale formatting and untouched external text. (proof: desktop/test/unit/extension/extension-i18n.test.js; desktop/test/unit/extension/extension-localized-ui.test.js; desktop/test/unit/extension/extension-locale-transport.test.js).
-- [ ] Show fictional options/popup preview to coordinator.
+- [x] Send fictional options/popup preview to coordinator (proof: docs/previews/ml-extension/options-ru.png; docs/previews/ml-extension/popup-ru.png).
 - [ ] Commit and ship milestone 1; fix required checks/review through exact-head READY.
 - [ ] Milestone 2: audit and translate remaining app-owned panels after milestone 1.
 
@@ -29,3 +29,5 @@ Run `node --test desktop/test/unit/extension/extension-i18n.test.js`, `extension
 Ruling: reuse review responses plus options focus refresh, with no new endpoint or timer. Existing managed-tab review polling refreshes the cache, and reopening popup or returning to options refreshes it as well.
 
 Verification: 56 JS assertions across six named files and 19 workflow-path tests passed. The workflow test moved to `tests.tooling.ci.test_workflow_paths`; two newly loaded desktop i18n paths added to `page-cases.yml`. Existing e2e suites/lib do not consume the changed visible copy (checked explicit text consumers); static fallback HTML stays English. No files moved.
+
+Preview delivery: coordinator acknowledged ownership; preview paths and before/after pairs sent via cmux agent inbox. Inbox messages remained queued while the coordinator had a draft prompt; never submitted or overwrote that draft. To avoid out-of-worktree image publishing, four fictional previews are bundled and hosted by the ordinary branch push through ship.sh.
