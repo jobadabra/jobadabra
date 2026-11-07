@@ -9,7 +9,7 @@ import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
 import {pointerLine} from './agent-chain.mjs';
-import {goalSteps, MIN_STEPS, stepCost} from './agent-steps.mjs';
+import {goalSteps, MIN_STEPS, STEP_TOKENS, stepCost} from './agent-steps.mjs';
 
 const choice = values => ({type: 'string', enum: ['', ...values]});
 
@@ -37,6 +37,17 @@ export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, wher
       row.title = checked.note.title;
       return 'Noted. Carry on with your goal.';
     }};
+}
+
+/** The tokens one actor step costs now: the measured average (or the engine's default), never under Claude's price once the night moved to Claude (a step there re-sends the whole prompt, whatever the Codex calls before it averaged; pz 2/5). */
+const stepPrice = ({meter, actorCalls, onClaude}) => Math.max(stepCost({used: meter.actorUsed(), calls: actorCalls, fallback: meter.stepTokens}), onClaude ? STEP_TOKENS.stateless : 0);
+
+/** The first time `reason` (a failover's) is non-empty and Claude then answered (the goal's loop did not end on an `api:` stop), it is put on the goal's result as `failover` and logged; -> the reason now on record. Never in `summary`: that text is cut at 240 characters and feeds the field notes of the area. */
+function noteFailover({failedOver, reason, goalResult: row, stopped, goal, log}) {
+  if (!reason || failedOver || stopped.startsWith('api:')) return failedOver;
+  row.failover = reason.slice(0, 160);
+  log(`  goal ${goal.n}: the broker failed, the night goes on on Claude: ${reason}`);
+  return reason;
 }
 
 /** What one goal's loop leaves: the verdict the agent gave, or why it did not give one. */
@@ -98,14 +109,15 @@ const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== '
 /**
  * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
+ * `failover()` (optional; lib/agent-ask.mjs withFailover's): once it names a reason, a step is sized at Claude's price and the goal it happened on carries the reason as `failover` (never in its summary).
  * `meter` (optional): {usable(), actorUsed(), stepTokens}, the run's token meter: each goal's steps come from what `usable()` leaves and what a step costs (lib/agent-steps.mjs), and a goal the budget cannot fund is not started (`unfunded`). Without it every goal gets its share of `maxSteps`.
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null}) {
+export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null, failover = () => ''}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [], unfunded = [];
-  let stopped = '', actorCalls = 0;
+  let stopped = '', actorCalls = 0, failedOver = '';
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
     if (callsLeft <= 0 || minutesLeft <= 0) { stopped = callsLeft <= 0 ? `calls ${maxCalls}` : `minutes ${maxMinutes}`; break; }
@@ -113,7 +125,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     let steps = perGoal;
     if (meter) {   // Why (7 Nov 2026, #3378): the steps of a goal are what the token meter can pay for on this engine, so a night never plans goals its cap refuses
       const left = plan.goals.length - results.length - unfunded.length;
-      const next = goalSteps({left: meter.usable(), cost: stepCost({used: meter.actorUsed(), calls: actorCalls, fallback: meter.stepTokens}), goalsLeft: left, maxPerGoal: perGoal});
+      const next = goalSteps({left: meter.usable(), cost: stepPrice({meter, actorCalls, onClaude: Boolean(failover())}), goalsLeft: left, maxPerGoal: perGoal});
       if (!next.steps) { stopped = 'budget'; unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
       steps = next.steps;
       log(`  goal ${goal.n}: ${steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
@@ -126,6 +138,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
     results.push(goalResult(goal, result));
+    failedOver = noteFailover({failedOver, reason: failover(), goalResult: results.at(-1), stopped: result.stopped, goal, log});   // Why (7 Nov 2026, pz): the record keeps the reason a goal moved to Claude (the Admin page shows each goal's summary); named once, on the goal during which the first call failed.
     ends.push({n: goal.n, stopped: result.stopped, steps: result.steps.map(stepWords)});   // Why (5 Nov 2026, SC 2/2): a chain hands on the goals that did not end on done, and the steps of the one that stopped
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
     if (result.stopped.startsWith('api:')) { stopped = result.stopped; break; }
