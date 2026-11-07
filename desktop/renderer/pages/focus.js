@@ -156,22 +156,7 @@ async function loadFocusOnce() {
   focusUpdatedAt = Date.now();
   focusStatus(t('pagesFocusReports.updatedNow'));
 }
-/** Draw one canonical Focus item; display text may localize while action callbacks retain the original item. */
-export function focusCard(item) {
-  const li = el('li', `focus-item tone-${item.tone || 'neutral'}`);
-  const round = el('span', 'focus-round');
-  round.append(icon(item.icon || 'check'));
-  const body = el('div', 'focus-body');
-  const meta = el('div', 'focus-meta muted small');
-  // A prep row says where its kit is: being built, ready (when), from an earlier call (why), or what it will cover.
-  const prep = item.kind === 'prepare' ? prepCard(item) : null;
-  const parts = (prep ? prep.meta : copyField(item, 'meta') || []).filter(Boolean);
-  parts.forEach((part, i) => { if (i) meta.append(el('span', 'sep', '·')); meta.append(el('span', part.startsWith('✓') ? 'is-done' : '', part)); });
-  const top = el('div', 'focus-top');  // the headline and its badge on one line: a compact row
-  top.append(el('span', 'focus-headline', copyField(item, 'headline') || copyField(item, 'title')), pill(copyField(item, 'badge') || '', item.tone || 'neutral', {dot: true}));
-  body.append(top, meta);
-  body.title = copyField(item, 'detail') || '';
-  const actions = el('div', 'focus-actions');
+function focusPrimaryActions(actions, item) {
   if (item.kind === 'feedback') actions.append(focusButton(t('pagesProfile.askFeedback'), 'primary', () => openFeedback(item, 'request')));
   if (item.kind === 'feedback_wait') actions.append(focusButton(t('pagesFocusReports.addFeedback'), 'primary', () => openFeedback(item, 'receive')));
   if (item.kind === 'feedback_review') actions.append(focusButton(t('pagesFocusReports.readFeedback'), 'primary', () => openFeedback(item, 'review')));
@@ -197,6 +182,9 @@ export function focusCard(item) {
     no.title = t('pagesFocusReports.cancelledMoved');  // a short label: the row keeps room for the company's name
     actions.append(focusButton(t('pagesFocusReports.yesHappened'), 'primary', () => openHappened(item, 'yes')), no);
   }
+}
+
+function focusPrepActions(actions, item, prep) {
   // The prep kit: built on the job's page (a button press: it costs about $0.04), then opened there. A kit from an
   // earlier call offers the new one first; the earlier kit stays on the page, in the ⋯ menu.
   // A ready kit: its Notion page, else the job's page here on its Prep tab (the 'open' state had no target on a store without pages).
@@ -216,6 +204,10 @@ export function focusCard(item) {
   }
   if (item.done && item.page_id) actions.append(focusButton(t('pagesCommon.done'), 'secondary', () => finishItem(item,
     () => window.pilot.focusDone(item.page_id, item.kind === 'follow_up' ? 'followed_up' : 'replied'))));
+  return prepRun;
+}
+
+function focusMoreActions(item) {
   const more = [];
   if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: t('pagesProfile.addFeedback'), run: () => openFeedback(item, 'receive')});
   if (item.kind === 'feedback') more.push({label: t('pagesFocusReports.skipRequest'), run: async () => {
@@ -231,6 +223,28 @@ export function focusCard(item) {
   if (item.kind === 'which_job') more.push({icon: 'close', label: t('pagesCommon.dismiss'), run: () => moveEmail(item.event_id, 'none', item)});
   if (item.kind === 'prepare' && item.page_id) more.push({icon: 'close', label: t('pagesFocusReports.dismissInterview'),
     run: () => dismissInterview(item, {onConfirmed: () => holdItem(item), onFail: () => releaseItem(item)})});
+  return more;
+}
+
+/** Draw one canonical Focus item; display text may localize while action callbacks retain the original item. */
+export function focusCard(item) {
+  const li = el('li', `focus-item tone-${item.tone || 'neutral'}`);
+  const round = el('span', 'focus-round');
+  round.append(icon(item.icon || 'check'));
+  const body = el('div', 'focus-body');
+  const meta = el('div', 'focus-meta muted small');
+  // A prep row says where its kit is: being built, ready (when), from an earlier call (why), or what it will cover.
+  const prep = item.kind === 'prepare' ? prepCard(item) : null;
+  const parts = (prep ? prep.meta : copyField(item, 'meta') || []).filter(Boolean);
+  parts.forEach((part, i) => { if (i) meta.append(el('span', 'sep', '·')); meta.append(el('span', part.startsWith('✓') ? 'is-done' : '', part)); });
+  const top = el('div', 'focus-top');  // the headline and its badge on one line: a compact row
+  top.append(el('span', 'focus-headline', copyField(item, 'headline') || copyField(item, 'title')), pill(copyField(item, 'badge') || '', item.tone || 'neutral', {dot: true}));
+  body.append(top, meta);
+  body.title = copyField(item, 'detail') || '';
+  const actions = el('div', 'focus-actions');
+  focusPrimaryActions(actions, item);
+  const prepRun = focusPrepActions(actions, item, prep);
+  const more = focusMoreActions(item);
   if (prep && item.page_id) prep.more.forEach(entry => more.push({icon: entry.icon, label: entry.label, run: prepRun(entry.run)}));
   if (item.kind === 'apply') more.push({icon: 'target', label: t('pagesFocusReports.changeTarget'), run: () => editTarget()});
   if (item.detail) more.push({icon: 'info', label: t('pagesFocusReports.details'), run: () => toastMessage(copyField(item, 'headline') || copyField(item, 'title'), copyField(item, 'detail'), NO_PLACE.itself, 'info')});
