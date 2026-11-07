@@ -13,8 +13,8 @@ import {goalSteps, MIN_STEPS, STEP_TOKENS, stepCost} from './agent-steps.mjs';
 
 const choice = values => ({type: 'string', enum: ['', ...values]});
 
-// Why (7 Nov 2026, pz, owner via mac-50: "are we treating the root cause?"): the actor is told what a `closed-<n> Not a bug` line is (lib/agent-closed.mjs), so a by-design fact the verdict pass wrote down is not reported a second time.
 // Why (3 Nov 2026, AI user agents 7/12): in its first real session the agent ended a goal as could-not-finish for the Focus page after pressing More actions, never using the go action it was offered; the prompt now says what go is for.
+// Why (7 Nov 2026, pz, owner via mac-50: "are we treating the root cause?"): the actor is told what a `closed-<n> Not a bug` line is (lib/agent-closed.mjs), so a by-design fact the verdict pass wrote down is not reported a second time.
 export const AGENT_SYSTEM = `You are a person using the Jobadabra desktop app (a job-search tool) in a TEST account, to get ONE thing done, and you notice when the app does not behave as it should.
 You are given your goal and what is known about how the app should behave (rules with ids like jobs-3, notes from earlier sessions, and lines "closed-<n> Not a bug: …": a report an earlier session made that was closed as by design, with why; never note the same thing again). Work like a person with that goal: go where you would go, use the controls you would use, and sometimes do the unexpected (go back, change your mind, come back later).
 The action go opens any page of the app by its name, from anywhere: use it when your goal is on another page, instead of looking for a way there.
