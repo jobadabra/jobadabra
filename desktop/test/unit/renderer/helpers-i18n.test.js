@@ -242,3 +242,18 @@ test('LinkedIn consent translates its warning and keeps action keys and raw fail
   assert.match(value.note, /Original provider note$/);
   assert.equal(value.error, 'Original provider error');
 });
+
+test('job displays translate while stage identifiers, filters and unknown posting words stay original', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {statusPill,workMode,ago}=await import('./renderer/jobs-view.js'); const {columnOf,STAGES,inView}=await import('./renderer/jobs-board-rules.js'); const {FILTER_OPTIONS,inFilters}=await import('./renderer/jobs-filters.js'); const job={status:'applied',stage:'Rejected'}; console.log(JSON.stringify({pill:statusPill(job),column:columnOf(job),stage:STAGES[9],view:inView(job,'rejected'),filter:inFilters(job,['applied']),label:FILTER_OPTIONS.find(x=>x.id==='open').label,mode:workMode('Remote (stated)'),unknown:workMode('Employer wording'),ago:ago('2026-11-07T07:00:00Z',Date.parse('2026-11-07T12:00:00Z'))}));"], {cwd: root, encoding: 'utf8'});
+  const value = JSON.parse(output);
+  assert.deepEqual(value.pill, {label: 'Abgelehnt', tone: 'bad'});
+  assert.equal(value.column, 'Rejected');
+  assert.equal(value.stage, 'Rejected');
+  assert.equal(value.view, true);
+  assert.equal(value.filter, true);
+  assert.equal(value.label, 'Neue Treffer');
+  assert.deepEqual(value.mode, {kind: 'remote', label: 'Remote'});
+  assert.deepEqual(value.unknown, {kind: '', label: 'Employer wording'});
+  assert.equal(value.ago, 'vor 5 Std.');
+});

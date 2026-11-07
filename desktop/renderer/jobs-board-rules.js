@@ -46,18 +46,18 @@ export const columnOf = job => stageLabel(job?.stage) || STATUS_STAGE[job?.statu
 const hasStage = job => !!columnOf(job);
 const among = stages => job => stages.includes(columnOf(job));
 export const VIEWS = [
-  {id: 'all-applications', label: 'All applications', title: 'Every job you applied to or are applying to, whatever became of it', test: among(['Applying', ...SENT, ...CLOSED_OUT])},
-  {id: 'active', label: 'Active', title: 'Sent and still open: waiting for a reply, screening, interviews, an offer', test: among(SENT)},
+  {id: 'all-applications', label: t('helperFlow.allApplications'), title: t('helperFlow.allApplicationsHint'), test: among(['Applying', ...SENT, ...CLOSED_OUT])},
+  {id: 'active', label: t('helperFlow.active'), title: t('helperFlow.activeHint'), test: among(SENT)},
   // Named by its stage, as every row's pill and the stuck banner say it (Notion's view is "In progress"; owner, 12 Oct 2026: "I don't have a way to
   // filter for Applying" beside a chip that did it under another word). A chip of one stage carries that stage's name (test/unit/renderer/jobs-board-rules.test.js).
-  {id: 'applying', label: 'Applying', title: 'A form under way, its session open or not', test: among(['Applying'])},
-  {id: 'ready-to-submit', label: READY_LABEL, title: 'Filled on the server: open the form, check it and press Submit yourself', test: job => !!job.ready && job.status !== 'applied'},
-  {id: 'saved', label: 'Saved', title: 'Jobs you saved for later', test: among(['Saved'])},
-  {id: 'closed', label: 'Closed', title: 'Postings that closed before you applied', test: among(['Closed'])},
-  {id: 'dismissed', label: 'Dismissed', title: 'Jobs you set aside', test: among(['Dismissed'])},
-  {id: 'all', label: 'All', title: 'Every job in your applications, at any stage', test: hasStage},
-  {id: 'rejected', label: 'Rejected', title: 'Rejected, no response or withdrawn', test: among(CLOSED_OUT)},
-  {id: 'this-week', label: 'This week', title: 'Applied in the last 7 days', test: (job, now) => fresh(job, now)},
+  {id: 'applying', label: t('helpers.stageApplying'), title: t('helperFlow.applyingHint'), test: among(['Applying'])},
+  {id: 'ready-to-submit', label: READY_LABEL, title: t('helperFlow.readyHint'), test: job => !!job.ready && job.status !== 'applied'},
+  {id: 'saved', label: t('helpers.savedPlain'), title: t('helperFlow.savedJobs'), test: among(['Saved'])},
+  {id: 'closed', label: t('helpers.stageClosed'), title: t('helperFlow.closedPostingHint'), test: among(['Closed'])},
+  {id: 'dismissed', label: t('helpers.stageDismissed'), title: t('helperFlow.setAsideJobs'), test: among(['Dismissed'])},
+  {id: 'all', label: t('helperFlow.all'), title: t('helperFlow.allStageHint'), test: hasStage},
+  {id: 'rejected', label: t('helpers.stageRejected'), title: t('helperFlow.rejectedHint'), test: among(CLOSED_OUT)},
+  {id: 'this-week', label: t('helperFlow.thisWeek'), title: t('helperFlow.last7Applied'), test: (job, now) => fresh(job, now)},
 ];
 export const viewOf = id => VIEWS.find(view => view.id === id) || null;
 export const inView = (job, id, now = Date.now()) => !!viewOf(id)?.test(job, now);
@@ -75,12 +75,12 @@ export function boardColumns(jobs) {
 // Dismissed never replace a real stage; the ledger logs an outcome as an event). Stages the app sets itself take no drop.
 const STATUS = {Saved: 'saved', Applied: 'applied', Dismissed: 'dismissed'};
 export const OUTCOME_STAGES = ['Confirmation received', 'Screening', 'Interview scheduled', 'Interviewing', 'Offer', 'Rejected', 'No response', 'Withdrawn'];
-const SET_BY_APP = {Applying: 'starting an application', Closed: 'the search, when a posting closes',
-  'Recruiter lead': 'logging a recruiter\'s message'};
+const SET_BY_APP = {Applying: t('helperFlow.startingApplication'), Closed: t('helperFlow.postingCloses'),
+  'Recruiter lead': t('helperFlow.loggingRecruiter')};
 export function dropFor(job, stage) {
   if (!job || columnOf(job) === stage) return {none: true};
   if (STATUS[stage]) return {call: 'setStatus', arg: STATUS[stage]};
   if (OUTCOME_STAGES.includes(stage)) return {call: 'setStage', arg: stage};
-  return {refused: `${stageLabel(stage)} is set by Jobadabra (${SET_BY_APP[stage] || 'the app'}), not by moving a card.`};
+  return {refused: t('helperFlow.stageDropRefused', {stage: stageText(stage), reason: SET_BY_APP[stage] || t('helperFlow.app')})};
 }
 export const takesDrop = stage => !!STATUS[stage] || OUTCOME_STAGES.includes(stage);
