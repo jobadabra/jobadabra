@@ -45,7 +45,7 @@ test('the tab strip scrolls sideways, the header and tabs stay, the body scrolls
 
 test('Application: Preparation and Submitted through the shared choice, each with its own empty state; Submitted never edits', () => {
   const tab = read('job-drawer/tab-application.js');
-  assert.match(tab, /choice\(OPTIONS, active/);
+  assert.match(tab, /choice\(options, active/);
   assert.match(tab, /ctx\.parts\.submitted \? 'submitted' : 'preparation'/, 'opens on what was sent when there is a snapshot');
   assert.match(read('job-drawer/application-preparation.js'), /helpers\.notPrepared/);
   const submitted = read('job-drawer/application-submitted.js');

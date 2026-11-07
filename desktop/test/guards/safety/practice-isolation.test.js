@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {everyRealDataFolder} from '../../../lib/app-identity.js';
+import {caughtFor, practiceLedger} from '../../../lib/practice-mode.js';
 import {FOLDER, practiceRefusal} from '../../../practice/gate.js';
 import {PRACTICE_CASES, practiceJobs, reservedHost} from '../../../practice/jobs.js';
 
@@ -48,4 +49,25 @@ test('every practice job is a recorded form with a submit control on a name only
   assert.equal(new Set(jobs.map(job => job.name)).size, jobs.length);
   assert.equal(new Set(jobs.map(job => job.url)).size, jobs.length);
   for (const job of jobs) assert.equal(reservedHost(new URL(job.url).host), true, job.url);
+});
+
+test('the practice banner and caught-submission view exist only in the launcher-started dev app: no variable, a packaged app, or a non-e2e app is not a practice run', () => {
+  const ledger = path.join(os.tmpdir(), 'x.jsonl');
+  assert.equal(practiceLedger({JOBADABRA_E2E: '1', JOBADABRA_PRACTICE_LEDGER: ledger}, false), ledger);
+  assert.equal(practiceLedger({JOBADABRA_E2E: '1', JOBADABRA_PRACTICE_LEDGER: ledger}, true), '', 'a packaged app ignores the variable');
+  assert.equal(practiceLedger({JOBADABRA_PRACTICE_LEDGER: ledger}, false), '', 'not the e2e-mode app the launcher starts');
+  assert.equal(practiceLedger({JOBADABRA_E2E: '1'}, false), '');
+  assert.deepEqual(caughtFor('', 'https://jobs.example.com/a'), []);
+});
+
+test('caughtFor returns only the job\'s own submissions, newest first, and survives a half-written ledger', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-ledger-read-'));
+  try {
+    const file = path.join(dir, 'caught.jsonl');
+    const row = (host, pathname, name) => JSON.stringify({at: name, host, path: pathname, how: 'submit', fields: [['name', name]], posted: false});
+    fs.writeFileSync(file, [row('jobs.example.com', '/a', 'first'), row('jobs.example.com', '/b', 'other job'), row('jobs.example.com', '/a', 'second'), '{"half'].join('\n'));
+    assert.deepEqual(caughtFor(file, 'https://jobs.example.com/a').map(entry => entry.at), ['second', 'first']);
+    assert.deepEqual(caughtFor(file, 'https://other.example.com/a'), []);
+    assert.deepEqual(caughtFor(path.join(dir, 'missing.jsonl'), 'https://jobs.example.com/a'), []);
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

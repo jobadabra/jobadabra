@@ -16,9 +16,13 @@ import {registerReplies} from './app-feedback-replies.js';
 import {registerDesktopAi} from './desktop-ai-handlers.js';
 import {log as appLog} from './log.js';
 import {joinProWaitlist} from './pro-waitlist.js';
+import {caughtFor, practiceLedger} from './practice-mode.js';
 
 export function registerAppMetaHandlers(ctx) {
   const {DEMO, FROM_SOURCE, FROM_STORE = false, restartAfterQuitGuard, app, betaOn, checkForUpdate, cloud, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track, getLicense, getPlan, aiCaps = null, shell, getTelemetry, getUpdateOffer, getUpdateCheckedAt, channels} = ctx;
+  // Practice run (lib/practice-mode.js): whether this is one, and what the catcher caught for a job. Nothing here when the launcher did not start the app.
+  ipcMain.handle('practiceInfo', () => ({on: !!practiceLedger(process.env, app.isPackaged)}));
+  ipcMain.handle('practiceCaught', (_, url) => caughtFor(practiceLedger(process.env, app.isPackaged), String(url || '')));
   // App updates (lib/updater.js): the latest stable release, offered in the menu; one click installs it.
   // Technical reports: the window's own errors come here; Settings shows the last ones sent and the switch.
   // Settings → Plan: where the user stands; a key from before 17 Oct 2026 is still checked offline and can be removed (no screen enters one any more).

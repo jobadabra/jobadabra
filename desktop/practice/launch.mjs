@@ -84,6 +84,7 @@ async function main() {
   fs.copyFileSync(path.join(import.meta.dirname, '..', 'e2e', 'fixtures', 'cv.pdf'), path.join(folder, 'cv.pdf'));
   held.app = await launch({profile: folder, env: {
     JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(browserArguments),
+    JOBADABRA_PRACTICE_LEDGER: ledger,   // the window's banner and each job's Practice view read it (lib/practice-mode.js)
     PATH: `${held.shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: held.shim.spool,
     ...(process.platform === 'win32' ? {JOBADABRA_E2E_OPENER: held.shim.script} : {}),
   }});
@@ -105,7 +106,7 @@ async function main() {
   await held.app.shot('practice-start');   // the window as painted, kept in <folder>/artifacts: the evidence of what the person would see
   say(`${Array.isArray(stored) ? stored.length : '?'} jobs read back from the store; ${jobs.length} practice jobs are in the Jobs list; the hidden browser reaches only ${server.hosts.length} practice hosts`);
   say(ai ? 'AI: your signed-in Claude Code answers' : 'AI: Claude Code is not signed in here; choose an AI in Settings before applying');
-  say('Settings → Apply → Full automation (you confirm it), then press Apply on a practice job. Other Apply modes open nothing (the person\'s Chrome is off limits here). Every Submit is printed below. Ctrl-C ends it.');
+  say('The practice jobs are under Jobs → filter "Saved" (the default New matches list is for jobs a search found). Settings → Apply → Full automation (you confirm it), then press Apply on a practice job. Other Apply modes open nothing (the person\'s Chrome is off limits here). Every Submit is printed below. Ctrl-C ends it.');
   say(`ledger: ${ledger}`);
   let shown = 0;
   setInterval(() => { const all = server.caught(); for (const entry of all.slice(shown)) say(`CAUGHT ${entry.host}${entry.path}: ${entry.fields.map(([name, value]) => `${name}=${value}`).join(', ')}`); shown = all.length; }, 1000).unref();
