@@ -375,7 +375,10 @@
   document.addEventListener('change', soon, true);
   if (document.documentElement) new MutationObserver(soon).observe(document.documentElement, {childList: true, subtree: true});
   window.__jobadabraPanelI18n.bind(root);
-  window.__jobadabraPanelI18n.onChange(() => {
+  window.__jobadabraPanelI18n.onChange(async () => {
+    // Invariant: locale redraw shares sync's first-state gate; unknown is never a verdict that lifts the early overlay.
+    await stepFirst;
+    if (!chrome.runtime?.id) return;
     render(); drawSteps(); stoppedCard(!$('.stopped').hidden);
     if (stepShowing()) { $('.fill .label').textContent = displayStep(steps.at(-1) || ''); $('.fill').title = $('.fill .label').textContent; }
     else $('.fill .label').textContent = filledOnce ? t('panel.fillAgain','Fill again') : t('panel.fill','Fill this form');
