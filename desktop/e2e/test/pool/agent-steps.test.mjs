@@ -38,10 +38,14 @@ test('on Claude (8k a step) a 250k cap funds the goals it can and does not start
   const budget = runBudget();
   const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens: STEP_TOKENS.stateless};
   const result = await session(budget.actor(endless(8_000)), meter);
-  assert.equal(result.stopped, 'goals', 'a plan that fits is not a refused call');
+  assert.equal(result.stopped, 'budget', 'unfunded goals are an incomplete night, even without a refused call');
   assert.equal(budget.state.stoppedAtCap, false);
   assert.deepEqual(result.played, [1, 2]);
   assert.deepEqual(result.unfunded, [3, 4, 5, 6]);
+  assert.deepEqual(result.completed, [], 'spending a goal allowance does not prove its outcome');
+  assert.deepEqual(result.summary.goals.map(goal => goal.verdict), ['could-not-finish', 'could-not-finish', 'not-started', 'not-started', 'not-started', 'not-started']);
+  assert.equal(result.summary.counts['not-started'], 4);
+  assert.equal(Object.values(result.observations).flat().length, 2, 'unvisited pages are not observations about the app');
   assert.ok(budget.state.total <= 250_000 - 40_000);
 });
 
@@ -51,4 +55,14 @@ test('on a resumed Codex conversation (1k a step) every goal gets its steps', as
   assert.deepEqual(result.played, [1, 2, 3, 4, 5, 6]);
   assert.deepEqual(result.unfunded, []);
   assert.equal(result.trace.length, 6 * 16);
+  assert.equal(result.stopped, 'steps', 'trying every goal is different from completing it');
+});
+
+test('the run preserves the actual shared call limit and never calls the next goal', async () => {
+  let calls = 0;
+  const result = await runSession({act: act(), ask: async () => { calls++; return {text: JSON.stringify({...BLANK, action: 'done', verdict: 'worked', summary: 'Verified saved value'}), usage: {input_tokens: 1, output_tokens: 1}}; }, judgeAsk: async () => { throw new Error('no notes to judge'); }, views: ['profile'], plan: {goals, persona: {name: 'Alex'}}, caps: {maxCalls: 1}});
+  assert.equal(calls, 1);
+  assert.equal(result.stopped, 'calls 1');
+  assert.deepEqual(result.completed, [1]);
+  assert.equal(result.summary.goals[1].verdict, 'not-started');
 });

@@ -22,6 +22,14 @@ export function readNotes(dir) {
   return Object.fromEntries(fs.readdirSync(folder).filter(name => name.endsWith('.md')).map(name => [area(name), parseNotes(fs.readFileSync(path.join(folder, name), 'utf8'))]));
 }
 
+/** Pending goal identities from the preceding night, never its data or assumed screen state. A missing/damaged queue simply leaves the seeded plan unchanged. */
+export function readPending(dir) {
+  try {
+    const goals = JSON.parse(fs.readFileSync(path.join(dir, 'pending.json'), 'utf8'));
+    return Array.isArray(goals) ? goals.filter(goal => typeof goal?.group === 'string' && typeof goal?.label === 'string') : [];
+  } catch { return []; }
+}
+
 /** The files to write for a night's notes: {'notes/jobs.md': text}. An area with no notes left writes no file (and its old file is removed by pushMemory). */
 export const memoryFiles = notesByArea => Object.fromEntries(Object.entries(notesByArea).filter(([, notes]) => notes.length).map(([name, notes]) => [`notes/${name.toLowerCase()}.md`, renderNotes(name, notes)]));
 

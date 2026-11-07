@@ -93,11 +93,11 @@ test('a second opinion that gets no answer holds the notes, asks once not once p
   assert.match(text, /\*\*Held, not filed \(the second opinion could not answer: 503 broker: only-claude: ran-out\):\*\*\n- Phone saved as its label \(profile\): The phone number now reads "Phone number"\.\n- Phone shown twice \(profile\)/);
 });
 
-test('when the broker refuses mid-night the goals not reached are "could not finish" and what was found is kept', async () => {
+test('when the broker refuses mid-night the attempted goal is incomplete, later goals are not started, and findings stay', async () => {
   const ask = script([turn('note', NOTE), done('bug', 'saved as label'), new Error('AI limit reached')]);
   const result = await runSession({act: fakeAct(), ask, judgeAsk: judge('unknown'), views: ['profile'], plan, knowledgeIds: ['profile-4']});
   assert.equal(result.stopped.startsWith('api:'), true);
-  assert.deepEqual(result.summary.goals.map(goal => goal.verdict), ['bug', 'could-not-finish', 'could-not-finish']);
+  assert.deepEqual(result.summary.goals.map(goal => goal.verdict), ['bug', 'could-not-finish', 'not-started']);
   assert.equal(result.findings.length, 1);
 });
 

@@ -133,13 +133,21 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
   for (let turn = 0; turn < maxSteps; turn++) {
     if (spent.calls >= maxCalls) { stopped = `calls ${maxCalls}`; break; }
     if ((now() - started) / 60000 >= maxMinutes) { stopped = `minutes ${maxMinutes}`; break; }
+    // Why (7 Nov 2026, run 42327808352): Save and Done consumed the final funded actions, leaving no verdict. The last agent turn observes and judges only, within the same caps.
+    const finalTurn = Boolean(extend?.finalVerdict && turn === maxSteps - 1);
+    if (finalTurn) {
+      seen = await act.observe();
+      messages.push({role: 'user', content: `This is your final funded turn. Observe the result below and answer with done, a verdict, and what you verified. No action can be taken on this turn. If the goal is incomplete, say could-not-finish.\n\n${formatObservation(seen)}`});
+    }
     let answer;
-    const args = {system, messages, schema: actionSchema(views, extend), ...conversation(session, messages, turn, maxSteps)};
+    const schema = actionSchema(views, extend);
+    if (finalTurn) schema.properties.action.enum = ['done'];
+    const args = {system, messages, schema, ...conversation(session, messages, turn, maxSteps)};
     // Why (5 Nov 2026, run 42040707448; the call also carries the goal's conversation fields, #409): the reason is kept to 400 characters because 160 cut the broker's reason at "Selec". Why (5 Nov 2026, demo runs 42057090129 and 42058621304: the 5th call of a conversation got no answer in 180 s): a refused call says which call it was and how big, so the broker's side can find it.
     try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(refusedLine(args, turn)); break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
+    const input = parseAction(answer.text, finalTurn ? ['done'] : actionsOf(extend)), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     const repeat = watch(row, was, turn);

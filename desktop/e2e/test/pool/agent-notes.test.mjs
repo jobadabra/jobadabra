@@ -100,14 +100,14 @@ test('a note whose second opinion was unavailable is held, not filed, and the re
   assert.match(summaryMarkdown(summary), /Filed 3, 1 low \(never filed\), 1 held \(the second opinion was unavailable\)\./);
 });
 
-test('a session always accounts for every goal: a missing result is "could not finish", an unknown verdict is "doubts", and a quiet night reads as a result', () => {
+test('a session accounts for every goal: a missing result is not started, an unknown verdict is doubts, and a quiet night has a result', () => {
   const goals = [{n: 1, group: 'Profile', label: 'Edit your phone number'}, {n: 2, group: 'Jobs', label: 'Open a job'}, {n: 3, group: 'Focus', label: 'Run the quick check'}];
   const summary = summarizeSession({session: 'night-1', persona: 'ines-lisbon', seed: 42, goals, results: [{n: 1, verdict: 'worked', summary: 'The value stayed after reopening.', steps: 7}, {n: 2, verdict: 'great', summary: 'odd', steps: 3}],
     notes: [], cost: {calls: 20, tokensIn: 90000, tokensOut: 18000, ms: 240000}});
-  assert.deepEqual(summary.goals.map(goal => goal.verdict), ['worked', 'doubts', 'could-not-finish']);
-  assert.ok(summary.goals.every(goal => GOAL_VERDICTS.includes(goal.verdict)));
+  assert.deepEqual(summary.goals.map(goal => goal.verdict), ['worked', 'doubts', 'not-started']);
+  assert.ok(summary.goals.every(goal => [...GOAL_VERDICTS, 'not-started'].includes(goal.verdict)));
   assert.equal(summary.steps, 10);
   const text = summaryMarkdown(summary);
-  assert.match(text, /\*\*ines-lisbon\*\* \(seed `42`\): 1 worked, 1 doubts, 1 could not finish, 0 bugs\. Filed 0\. 20 AI calls, 108k tokens, 4 min\./);
-  assert.match(text, /\| 3 \| Run the quick check \| ⛔ could-not-finish \| the session ended before this goal \|/);
+  assert.match(text, /\*\*ines-lisbon\*\* \(seed `42`\): 1 worked, 1 doubts, 0 could not finish, 1 not started, 0 bugs\. Filed 0\. 20 AI calls, 108k gross tokens \(input \+ output\), 4 min\./);
+  assert.match(text, /\| 3 \| Run the quick check \| ⏸ not-started \| the session ended before this goal \|/);
 });

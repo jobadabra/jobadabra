@@ -40,12 +40,14 @@ export function newShare(pairs, coverage = []) {
 }
 
 /** One goal order: the changed areas first as a group (shuffled among themselves, then spread by a shuffle of everything), filled with other moves up to `count`. */
-function draw(moves, changed, count, next) {
+function draw(moves, changed, count, next, pending = []) {
   const forced = shuffle(moves.filter(move => changed.includes(move.group)), next);
   const chosen = new Map();
   for (const group of changed) { const one = forced.find(move => move.group === group); if (one) chosen.set(moveKey(one), one); }
+  for (const move of pending) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
   for (const move of shuffle(moves, next)) { if (chosen.size >= count) break; chosen.set(moveKey(move), move); }
-  return shuffle([...chosen.values()], next);
+  const order = shuffle([...chosen.values()], next), priority = pending.filter(move => chosen.has(moveKey(move)));
+  return [...priority, ...order.filter(move => !priority.some(first => moveKey(first) === moveKey(move)))];
 }
 
 /**
@@ -53,17 +55,29 @@ function draw(moves, changed, count, next) {
  * Draws up to TRIES orders from the seed and keeps the one with the most new pairs (the first to reach MIN_NEW wins), so it is replayable and honest: `newShare` is reported even when the
  * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas}.
  */
-export function planSession({seed, moves, coverage = [], changed = [], count, minNew = MIN_NEW}) {
+export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, minNew = MIN_NEW}) {
   const next = rng(seed), goalCount = Math.min(count ?? 6 + Math.floor(next() * 5), moves.length);
   const areas = [...new Set(changed)].filter(group => moves.some(move => move.group === group)).slice(0, goalCount);
+  const current = new Map(moves.map(move => [moveKey(move), move]));
+  const priority = [...new Map(pending.filter(goal => current.has(moveKey(goal))).map(goal => [moveKey(goal), current.get(moveKey(goal))])).values()];
   let best = null;
   for (let attempt = 0; attempt < TRIES; attempt++) {
-    const order = draw(moves, areas, goalCount, next), pairs = pairsOf(order), share = newShare(pairs, coverage);
+    const order = draw(moves, areas, goalCount, next, priority), pairs = pairsOf(order), share = newShare(pairs, coverage);
     if (!best || share > best.share) best = {order, pairs, share};
     if (share >= minNew) break;
   }
   const goals = best.order.map((move, i) => ({n: i + 1, group: move.group, label: move.label, pair: best.pairs[i]}));
   return {seed, persona: makePersona(seed), goals, newShare: Number(best.share.toFixed(3)), changedAreas: areas};
+}
+
+/** The next night's queue: interrupted goals, unstarted goals, older deferred goals, then actor-declared blockers. Fresh fictional state is used next night; only identities carry over. */
+export function pendingGoals(session, previous = []) {
+  const rows = session.summary.goals, completed = new Set(session.completed), planned = new Set(rows.map(moveKey));
+  const interrupted = rows.filter(goal => goal.verdict === 'could-not-finish' && !completed.has(goal.n));
+  const unstarted = rows.filter(goal => goal.verdict === 'not-started');
+  const deferred = previous.filter(goal => !planned.has(moveKey(goal)));
+  const blockers = rows.filter(goal => goal.verdict === 'could-not-finish' && completed.has(goal.n));
+  return [...new Map([...interrupted, ...unstarted, ...deferred, ...blockers].map(({group, label}) => [moveKey({group, label}), {group, label}])).values()];
 }
 
 /** What a finished session adds to the coverage record: the pairs it walked, keeping the last WINDOW sessions. */

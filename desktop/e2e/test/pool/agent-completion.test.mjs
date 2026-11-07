@@ -1,0 +1,75 @@
+// Guard: data — partial persona runs must preserve the tested-since checkpoint and the work they never verified.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {test} from 'node:test';
+import {memoryCommitFiles, nightWorked} from '../../lib/agent-nightly.mjs';
+import {pushMemory} from '../../lib/agent-memory.mjs';
+import {planSession} from '../../lib/agent-plan.mjs';
+import {runSession} from '../../lib/agent-run.mjs';
+
+test('a partially funded night publishes pending work without moving the completed-night checkpoint', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-persona-memory-'));
+  try {
+    const remote = path.join(root, 'remote.git'), work = path.join(root, 'work'), out = path.join(root, 'out');
+    const git = (args, cwd = work) => execFileSync('git', args, {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+    git(['init', '--bare', '--quiet', '--initial-branch=main', remote], root);
+    git(['clone', '--quiet', remote, work], root);
+    fs.mkdirSync(out);
+    fs.writeFileSync(path.join(out, 'pending.json'), '[]');
+    pushMemory({dir: work, files: memoryCommitFiles(out, {sha: 'verified', today: '2026-11-06'}), git, message: 'completed'});
+    const partial = {stopped: 'goals', unfunded: [5, 6, 7, 8]};
+    assert.equal(nightWorked(partial), false, 'the actual run exported goals despite its unfunded list');
+    for (const stopped of ['budget', 'steps', 'calls 1', 'minutes 20']) assert.equal(nightWorked({stopped}), false);
+    fs.writeFileSync(path.join(out, 'pending.json'), '[{"group":"Settings","label":"Your data"}]');
+    pushMemory({dir: work, files: memoryCommitFiles(out, {sha: 'partial', today: '2026-11-07', complete: false}), git, message: 'partial'});
+    assert.equal(JSON.parse(git(['show', 'agent-memory:last.json'], remote)).sha, 'verified');
+    assert.equal(JSON.parse(git(['show', 'agent-memory:pending.json'], remote))[0].label, 'Your data');
+    fs.writeFileSync(path.join(out, 'pending.json'), '[]');
+    pushMemory({dir: work, files: memoryCommitFiles(out, {sha: 'finished', today: '2026-11-08', complete: true}), git, message: 'finished'});
+    assert.equal(JSON.parse(git(['show', 'agent-memory:last.json'], remote)).sha, 'finished');
+    assert.deepEqual(JSON.parse(git(['show', 'agent-memory:pending.json'], remote)), []);
+  } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
+
+test('pending goals lead the next fresh plan, without duplicates, stale controls, or losing changed areas', () => {
+  const moves = ['Settings', 'Jobs', 'Strategy', 'Profile'].flatMap(group => Array.from({length: 3}, (_, i) => ({group, label: `${group} ${i}`})));
+  const pending = [moves[4], moves[1], moves[4], {group: 'Removed', label: 'Old control'}];
+  const plan = planSession({seed: 7, moves, pending, changed: ['Strategy'], count: 6});
+  assert.deepEqual(plan.goals.slice(0, 2).map(({group, label}) => ({group, label})), [moves[4], moves[1]]);
+  assert.equal(plan.goals.length, 6);
+  assert.equal(new Set(plan.goals.map(goal => `${goal.group}: ${goal.label}`)).size, 6);
+  assert.ok(plan.goals.some(goal => goal.group === 'Strategy'));
+  assert.ok(!plan.goals.some(goal => goal.group === 'Removed'));
+});
+
+test('interrupted work comes first, unvisited work next, and declared blockers cannot starve either', async () => {
+  const {pendingGoals} = await import('../../lib/agent-plan.mjs');
+  assert.equal(typeof pendingGoals, 'function');
+  const goal = (n, verdict) => ({n, group: 'Settings', label: `goal ${n}`, verdict});
+  const session = {summary: {goals: [goal(1, 'could-not-finish'), goal(2, 'worked'), goal(3, 'could-not-finish'), goal(4, 'not-started')]}, completed: [1, 2]};
+  const previous = [{group: 'Jobs', label: 'deferred'}, {group: 'Settings', label: 'goal 2'}];
+  assert.deepEqual(pendingGoals(session, previous).map(goal => goal.label), ['goal 3', 'goal 4', 'deferred', 'goal 1']);
+});
+
+test('the last funded turn verifies the saved page and cannot mutate it or exceed its call allowance', async () => {
+  for (const attemptsMutation of [false, true]) {
+    let value = 'old', calls = 0, clicks = 0, finalArgs;
+    const act = {observe: async () => ({view: 'profile', text: `Saved value: ${value}`, overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false}]}), click: async () => { clicks++; value = 'new'; }};
+    const ask = async args => {
+      calls++;
+      if (calls < 6) return {text: JSON.stringify({action: 'click', control: 0}), usage: {input_tokens: 10, output_tokens: 1}};
+      finalArgs = structuredClone(args);
+      return {text: JSON.stringify(attemptsMutation ? {action: 'click', control: 0} : {action: 'done', verdict: 'worked', summary: 'The saved value is new'}), usage: {input_tokens: 10, output_tokens: 1}};
+    };
+    const result = await runSession({act, ask, views: ['profile'], plan: {goals: [{n: 1, group: 'Profile', label: 'Save value'}], persona: {name: 'Fictional'}}, caps: {maxSteps: 6, maxCalls: 6}, judgeAsk: async () => { throw new Error('no notes'); }});
+    assert.deepEqual(finalArgs.schema.properties.action.enum, ['done'], 'the reserved final turn only gives a verdict');
+    assert.match(finalArgs.messages.at(-1).content, /Saved value: new/);
+    assert.equal(calls, 6, 'verification fits inside the funded allowance');
+    assert.equal(clicks, 5, 'even an actor ignoring the final restriction cannot make a sixth mutation');
+    assert.equal(result.summary.goals[0].verdict, attemptsMutation ? 'could-not-finish' : 'worked');
+    assert.deepEqual(result.completed, attemptsMutation ? [] : [1]);
+  }
+});

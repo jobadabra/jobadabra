@@ -15,9 +15,9 @@ import {STEP_TOKENS} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
-import {memoryFiles, readExpectations, readNotes} from '../lib/agent-memory.mjs';
+import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
-import {planSession, recordSession} from '../lib/agent-plan.mjs';
+import {moveKey, pendingGoals, planSession, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
@@ -77,7 +77,9 @@ export async function run(ctx) {
     // Why (3 Nov 2026, AI user agents 8/12): a replay run (AGENT_PLAN: one named plan of the proof, lib/agent-plans.mjs) is a measurement of one app state, so what changed since the last night does not steer it; AGENT_RULES_OFF takes rules out of what the agent knows (the unprompted run).
     const planId = process.env.AGENT_PLAN || '';
     const changed = changedSince(planId ? '' : changedLog);
-    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas});
+    const available = new Set(moves.map(moveKey));
+    const pending = memoryDir ? readPending(memoryDir).filter(goal => available.has(moveKey(goal))) : [];
+    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
@@ -96,6 +98,8 @@ export async function run(ctx) {
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.
     session.stopped = stoppedLabel(session.stopped, budget.state);
+    session.summary.stopped = session.stopped;
+    Object.assign(session.summary.cost, {countedTokens: budget.state.total, capTokens: budget.state.capTokens});
     if (session.unfunded.length) console.log(`  ${session.unfunded.length} goal(s) not started: the token budget could not fund them (goals ${session.unfunded.join(', ')})`);
     console.log(`  ${session.stopped}; ${session.summary.counts.worked} worked, ${session.summary.counts.bug} bug(s), ${session.findings.length} filed, ${((Date.now() - started) / 60000).toFixed(1)} min`);
     ctx.findings.push(...session.findings);
@@ -104,7 +108,8 @@ export async function run(ctx) {
     for (const [area, texts] of Object.entries(session.observations)) merged[area] = mergeNotes(notes[area] || [], texts, {today, commit: (process.env.GITHUB_SHA || '').slice(0, 7), session: `${today}-${seed}`});
     for (const [file, text] of Object.entries(memoryFiles({...notes, ...merged}))) { fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true}); fs.writeFileSync(path.join(out, file), text); }
     fs.mkdirSync(out, {recursive: true});
-    fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, {...plan, goals: plan.goals.filter(goal => session.played.includes(goal.n))}), null, 1));
+    fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, {...plan, goals: plan.goals.filter(goal => session.completed.includes(goal.n))}), null, 1));
+    fs.writeFileSync(path.join(out, 'pending.json'), JSON.stringify(pendingGoals(session, pending), null, 1));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, unfunded: session.unfunded, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n${conversationLine(session.trace)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');
