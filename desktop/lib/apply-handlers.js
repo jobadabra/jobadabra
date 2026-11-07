@@ -62,10 +62,10 @@ export function registerApplyHandlers(ctx) {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
     // Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs"; "we can choose a different apply mode every time, for every new batch"): a call with a `pick` (the dialog's card) runs
     // THIS batch in that mode and writes nothing to Settings; its Full-automation confirmation is the one this call carries (batchConfirmation). A call without a pick follows the saved mode, as before.
-    const saved = applyOf(storage.settings());
+    const settings = fromSettings ? storage.settings() : null;   // read only for a Settings-driven call: a gate's call with no settings (extension-gate.test.js) never reaches it
     const picked = fromSettings && modeBuilt(options?.pick) ? options.pick : '';
-    const batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(options.autoConfirmedAt, storage.settings()) : ''};
-    const applyMode = fromSettings ? picked || saved.mode : '';
+    const batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(options.autoConfirmedAt, settings) : ''};
+    const applyMode = fromSettings ? picked || applyOf(settings).mode : '';
     const mode = fromSettings ? modeRunner(applyMode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
     // Why (2026-10-28, Background apply B): the hidden browser runs only the person's saved mode, never a runner name the window sends.
     if (mode === 'background' && !fromSettings) return {ok: false, error: 'Choose Background automation in Settings → Apply first.'};

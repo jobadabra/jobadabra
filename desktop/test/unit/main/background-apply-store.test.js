@@ -108,7 +108,7 @@ test('a queued Full automation item reserves its press whatever Settings says no
 // Code review (7 Nov 2026, #3363): queue() answers a live item with the old one; an old Full automation item that can still press must not be answered for a batch naming Fill.
 test('a new batch in Fill for a job still queued for Full automation is refused; after Stop it starts afresh; the other direction is safe', async () => {
   const r = rig(), full = await prepared(r, r.add(), 'auto');
-  await assert.rejects(() => full.store.queue(full.job.url, 'again', 'fill', {...config, mode: 'fill'}), /already queued for Full automation/);
+  await assert.rejects(() => full.store.queue(full.job.url, 'again', 'fill', {...config, mode: 'fill'}), error => error.code === 'LIVE_AUTO' && /already queued for Full automation/.test(error.message));
   await full.store.handoff(full.job.url, full.session, 'owned-browser', 'stopped');
   assert.equal((await full.store.queue(full.job.url, 'later', 'fill', {...config, mode: 'fill'})).mode, 'fill', 'stopped: the run ended, a new one starts in the batch\'s own mode');
   const fill = await prepared(r, r.add('fill'), 'fill', {...config, mode: 'fill'});

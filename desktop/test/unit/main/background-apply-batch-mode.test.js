@@ -76,3 +76,23 @@ test('a pick still needs a chosen Settings mode: the first-choice gate stays in 
   assert.match((await enqueue('a', 'fill', {autoConfirmedAt: ''})).error, /Confirm the saved Apply mode first/);
   assert.deepEqual(queued, []);
 });
+
+// Gitar on #3409: a live Full automation job in a Fill batch is skipped and said, never a refusal after the batch's other jobs were queued.
+test('a Fill batch holding a job that is still queued for Full automation queues the others and says the skipped one', async () => {
+  const queued = [];
+  const controller = createBackgroundApplyController({}, {
+    store: {queue: async (url, id, mode, config) => {
+      if (url.endsWith('/a')) throw Object.assign(new Error('This job is already queued for Full automation.'), {code: 'LIVE_AUTO'});
+      queued.push(url); return {session: id, mode, state: 'queued'};
+    }},
+    browser: {ready: () => true, start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [], byUrl: () => null, startForm: ({id}) => ({id}), record: () => null, report: () => {}},
+    config: () => ({mode: 'fill', chosenAt: 'c1'}), now: () => now, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const result = await controller.enqueue([{url: 'https://jobs.example.test/b'}, {url: 'https://jobs.example.test/a'}], 'fill', {autoConfirmedAt: ''});
+  assert.equal(result.ok, true);
+  assert.deepEqual(queued, ['https://jobs.example.test/b']);
+  assert.match(result.message, /1 job was skipped: it is already queued for Full automation/);
+  const only = await controller.enqueue([{url: 'https://jobs.example.test/a'}], 'fill', {autoConfirmedAt: ''});
+  assert.equal(only.ok, false);
+  assert.match(only.error, /already queued for Full automation/);
+});

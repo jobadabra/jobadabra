@@ -50,7 +50,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       // The test itself is `endedRun` above, shared with Apply in Chrome (7 Nov 2026), so both modes treat an ended run the same way.
       if (old && !(await endedRun(app, old))) {
         // Why (7 Nov 2026, #3363, code review): a live Full automation item that can still press is not answered for a batch naming another mode: it would submit while the new batch says Fill. Refused, the person stops it first. One already handed over (CAPTCHA, Stop) or ended presses nothing, so it is returned as before.
-        if (old.mode === 'auto' && mode !== 'auto' && !old.manualOverride && !TERMINAL.has(old.state)) throw new Error('This job is already queued for Full automation. Stop or cancel it in Sessions first.');
+        if (old.mode === 'auto' && mode !== 'auto' && !old.manualOverride && !TERMINAL.has(old.state)) throw Object.assign(new Error('This job is already queued for Full automation. Stop or cancel it in Sessions first.'), {code: 'LIVE_AUTO'});
         return old;
       }
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues

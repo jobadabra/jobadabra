@@ -22,14 +22,20 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
-// What an Apply batch says about the jobs it did not start: not eligible (the store refused) and busy (the person already has a session open).
+// What an Apply batch says about the jobs it did not start: not eligible (the store refused), busy (the person already has the job open in Chrome) and live (still queued for Full automation, Gitar on #3409: skipped and said, never a refusal after earlier jobs of the batch were queued).
+const SKIPS = {NOT_ELIGIBLE: 'skipped', LIVE_AUTO: 'live'};   // the store's error codes that skip one job and keep the batch going
 const plural = (n, why) => `${n} job${n === 1 ? ' was' : 's were'} skipped: ${why}`;
-const skippedWords = (skipped, busy) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
-  + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '');
-const nothingStarted = (skipped, busy) => {
-  if (busy && !skipped) return busy === 1 ? 'This job already has an application session. Continue that session first.' : 'These jobs already have an application session. Continue those sessions first.';
-  if (skipped && !busy) return `${skipped === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`;
-  return `Nothing was started.${skippedWords(skipped, busy)}`;   // both kinds: say each count
+const skippedWords = ({skipped, busy, live}) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
+  + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '')
+  + (live ? ` ${plural(live, live === 1 ? 'it is already queued for Full automation (stop or cancel it in Sessions first).' : 'they are already queued for Full automation (stop or cancel them in Sessions first).')}` : '');
+const ONLY = {
+  busy: n => (n === 1 ? 'This job already has an application session. Continue that session first.' : 'These jobs already have an application session. Continue those sessions first.'),
+  skipped: n => `${n === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`,
+  live: n => `${n === 1 ? 'This job is' : 'These jobs are'} already queued for Full automation. Stop or cancel ${n === 1 ? 'it' : 'them'} in Sessions first.`,
+};
+const nothingStarted = tally => {
+  const kinds = Object.keys(ONLY).filter(kind => tally[kind]);
+  return kinds.length === 1 ? ONLY[kinds[0]](tally[kinds[0]]) : `Nothing was started.${skippedWords(tally)}`;   // several kinds: say each count
 };
 
 /**
@@ -148,28 +154,28 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return {ok: false, error: `At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`};
       const enrolled = [];
-      let skipped = 0, busy = 0;
+      const tally = {skipped: 0, busy: 0, live: 0};
       for (const job of jobs) {
         const old = terminals.byUrl(job.url);
-        // Why (7 Nov 2026, owner screenshot: one open session blocked the whole batch): a job the person already has open in Chrome is skipped and said; the others still start.
-        if (old && !old.background) { busy++; continue; }
+        // Why (7 Nov 2026, owner screenshot: one open session blocked the whole batch): a job the person already has open in Chrome is skipped and said (counted as busy, next to skipped and live, #3363); the others still start.
+        if (old && !old.background) { tally.busy++; continue; }
         // Why (2026-10-28, owner screenshot): a job the store refuses as not eligible (its stage moved on since the list was read) is skipped and said, not a thrown error that reaches the window
         // as an IPC string; the other jobs still start. Any other failure (a write, a wrong mode) stops the batch with its own words.
         let state;
         // A new id each time: the store keeps an old run (its state and session) when that run still holds something for the person, and starts a new run under this id otherwise.
         try { state = await store.queue(job.url, uuid().slice(0, 8), mode, chosen); } catch (error) {
-          if (error?.code !== 'NOT_ELIGIBLE') return {ok: false, error: String(error?.message || error)};
-          skipped++; continue;
+          const kind = SKIPS[error?.code];   // Gitar on #3409: a live Full automation job is skipped and said like a not-eligible one, never a refusal after earlier jobs of the batch were queued
+          if (!kind) return {ok: false, error: String(error?.message || error)};
+          tally[kind]++; continue;
         }
         await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         begin(item, state); enrolled.push(item.id);
       }
-      if (!enrolled.length) return {ok: false, error: nothingStarted(skipped, busy)};   // nothing queued: no browser starts
+      if (!enrolled.length) return {ok: false, error: nothingStarted(tally)};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));
-      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, skipped, busy});
-      const skippedNote = skippedWords(skipped, busy);
-      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
+      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, ...tally});
+      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
     });
   }
   // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
