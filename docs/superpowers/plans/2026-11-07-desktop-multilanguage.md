@@ -77,6 +77,8 @@
 - [ ] Perform focused final tests, inspect light/dark demo screenshots, update spec/Notion record with measured evidence and PR links.
 - [ ] Open/supervise PRs through ship.sh; fix red checks/review issues; owner merges.
 
+Native milestones: #3431 merged native menus, common dialogs, pickers and shared date formatting. The Windows follow-up moves platform adaptation to trusted catalog templates before interpolation and removes arbitrary DOM rewriting; explicit Mac-only tip hiding remains. Focused regressions cover personal text, shortcuts and plural interpolation. Remaining installation/duplicate-copy prompts, consent/notification copy and final coverage are still open.
+
 ### Task 6: Extension follow-up (owner added scope)
 
 **Delivery:** separate follow-up PR after the original desktop sequence. Reuse a freed visible Sol-low pane, with an isolated extension worktree. Desktop workers retain their existing ownership.
