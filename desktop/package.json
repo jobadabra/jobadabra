@@ -26,6 +26,7 @@
     "shot": "node scripts/stage.mjs && node scripts/shot.mjs",
     "design-system": "node ../tools/design-system/serve.mjs",
     "side-by-side": "node scripts/side-by-side.mjs",
+    "design-check": "node scripts/design-check.mjs",
     "drawer-shots": "node scripts/drawer-shots.mjs",
     "find-card-shots": "node scripts/find-card-shots.mjs",
     "ladder-score": "node e2e/ladder-score.mjs",
