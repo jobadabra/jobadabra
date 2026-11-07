@@ -1,5 +1,5 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
-import {ownSecretsPresent} from './lib/secrets.js';
+import {ownSecretsPresent} from './lib/secrets.js'; import {registerLocaleHandlers} from './lib/locale-handlers.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
 import {aiNameOf, claudeFamily} from './lib/ai/names.js';
@@ -386,7 +386,6 @@ function mediaAccess(type) {
 // the recorder falls back to the microphone alone.
 app.commandLine.appendSwitch('enable-features', 'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride');
 installCrashMonitors({getTelemetry: () => telemetry, getStorage: () => storage});   // lib/crash-monitors.js
-
 startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(), createWindow, start: () => {
   // Why (31 Oct 2026, #2729 red on sonarjs: start() may not grow): one check for both quits; moving to Applications (Electron quits and opens the moved copy), or a Store copy's private data going to the real folder first (lib/store-data-copy.js)
   if (quitBeforeStart({app, dialog, offerMove, appLog})) return false;
@@ -401,6 +400,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   // E2E on a Linux CI runner only (no keyring there): Electron's safeStorage refuses the basic store unless told to. A user's app never takes this path.
   if (process.platform === 'linux' && process.env.JOBADABRA_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
   storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(sealer));
+  registerLocaleHandlers({ipcMain, app, storage, onChange: () => buildMenu()});
   buildMenu();   // again, now the saved update channel can be read (Update Channel's radio)
   // An import on the Mac that made it: its sealed keys open here; an older export without them takes them from the same Profile's backup (lib/reset.js adoptBackupKeys).
   if (resetDone?.imported) {

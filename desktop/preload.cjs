@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('pilot', {
   formFills: call('formFills'), reportsSearches: call('reportsSearches'), reportsSearch: call('reportsSearch'),
   formFill: call('formFill'),
   storeState: call('storeState'), keepOnThisMac: call('keepOnThisMac'), moveToNotion: call('moveToNotion'),
+  locale: call('locale'), setLocale: call('setLocale'),
   textSize: call('textSize'), setTextSize: call('setTextSize'), onZoomChanged: callback => ipcRenderer.on('zoomChanged', (_, value) => callback(value)),
   notionConnect: call('notionConnect'), telegramConnect: call('telegramConnect'), telegramDisconnect: call('telegramDisconnect'), setAutomation: call('setAutomation'), setTheme: call('setTheme'),
   onExperienceStep: callback => ipcRenderer.on('experienceStep', (_, step) => callback(step)),

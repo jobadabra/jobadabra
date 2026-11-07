@@ -33,6 +33,12 @@ export async function runWizard(ctx) {
   ctx.proxy.setCanned(body => setupBackgroundAnswer(body, previous));
   try {
   await ctx.run('the app starts on the welcome screen', async () => {
+    // First launch confirms a display language before the existing welcome/key/CV journey (owner, 7 Nov 2026).
+    await page.waitForFunction(() => document.querySelector('#wizard-language:not([hidden]), .step[data-step="welcome"]:not([hidden])'));
+    if (await page.locator('#wizard-language').isVisible()) {
+      await page.locator('#wizard-language-choice').selectOption('en');
+      await page.locator('#wizard-language-continue').click();
+    }
     await ctx.expectStep('welcome');
     await page.getByRole('button', {name: 'Start'}).waitFor();
     // Start opens the AI step; its cards are checked by integration/app/screen-wizard.test.js (moved 1 Nov 2026).

@@ -9,12 +9,17 @@ import {needsElectron} from '../../test/needs-electron.js';
 import {probeWindow} from './window-probe.js';
 
 const live = {skip: needsElectron.skip};
-const NEW_INSTALL = {files: {'secrets.json': {}}, settings: {setupDone: false, wizardStep: 'welcome', notionIds: {}}};
+const NEW_INSTALL = {files: {'secrets.json': {}}, settings: {setupDone: false, displayLanguage: 'en', wizardStep: 'welcome', notionIds: {}}};
 const NO_NOTION = store => ({files: {'secrets.json': {}}, settings: {store, notionIds: {}}});
-let ai, sqlite, notion;
+let ai, sqlite, notion, language;
 
 before(() => {
   if (needsElectron.skip) return;
+  language = probeWindow({...NEW_INSTALL, settings: {...NEW_INSTALL.settings, displayLanguage: null}, script: async kit => {
+    await kit.until(() => document.querySelector('#wizard-language:not([hidden])'), 'the first language question');
+    return {first: document.querySelector('#step-list li').dataset.step, choices: [...document.getElementById('wizard-language-choice').options].map(option => option.value),
+      continue: document.getElementById('wizard-language-continue').textContent, saved: (await window.pilot.state()).settings.displayLanguage};
+  }});
   ai = probeWindow({...NEW_INSTALL, timeout: 180000, script: async kit => {
     const step = () => [...document.querySelectorAll('.step')].find(node => !node.hidden)?.dataset.step;
     const card = id => document.querySelector(`[data-choice="${id}"]`);
@@ -85,6 +90,13 @@ before(() => {
   }});
   sqlite = focusAndInterviews('sqlite');
   notion = focusAndInterviews('notion');
+});
+
+test('a new install asks for language before any setup choice and waits for confirmation', live, () => {
+  assert.equal(language.result.first, 'language');
+  assert.deepEqual(language.result.choices, ['system', 'en', 'de', 'fr', 'it', 'es', 'ro', 'ru']);
+  assert.equal(language.result.continue, 'Continue');
+  assert.equal(language.result.saved, null);
 });
 
 test('Start opens the AI step with both engines to choose from', live, () => {

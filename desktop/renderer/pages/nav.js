@@ -1,4 +1,5 @@
 // Navigation: pages, ⌘R memory, the ⌘K palette.
+import {t} from '../../i18n/index.js';
 import {linkedinCommand} from './linkedin-consent.js';
 import {addGmailCommand} from './gmail-offer.js';
 import {addNotifyCommands} from './notify-commands.js';
@@ -141,6 +142,9 @@ export function paletteCommands() {
   // A row is a place (a page, card, section, Actions task) or a part of one (kind 'part': a button, a sub-heading); a part folds under its card in ⌘K
   // (palette.js rank). A Settings row also carries its path ("Settings → Connections → Chrome extension"), shown instead of its label.
   const add = (group, label, hint, keywords, run, more = {}) => { if (!label) return null; const command = {group, label, hint, keywords, run, ...more}; commands.push(command); return command; };
+  add('Settings', t('common.languageCommand'), 'Settings → Overview', 'language Sprache langue lingua idioma limbă язык', () => {
+    openView('settings'); settingsPage('overview'); document.getElementById('settings-language')?.focus();
+  });
   // A button's ⌘K entry brings you to it and does not press it (owner, 18 Oct 2026: "I don't want necessarily to trigger the action, I just want you to focus
   // on it"): `open` shows its page, then the card scrolls into view, takes focus and pulses (palette-busy.js). A button off only because its task runs is listed too.
   // Every button entry goes through addNode.
