@@ -12,6 +12,10 @@ test('scheduled refresh writes one resolved variable without touching secrets, w
   assert.equal((await refreshScheduledLanguage(storage, fetcher)).ok, true);
   assert.deepEqual(calls, [{url: 'https://api.github.com/repos/fictional/always-on/actions/variables', method: 'POST', body: {name: 'JOBADABRA_NOTIFICATION_LANGUAGE', value: 'ro'}}]);
   assert.equal(settings.cloud.enabled, false);
+  settings.cloud.repo = 'fictional/another';
+  await refreshScheduledLanguage(storage, fetcher);
+  assert.equal(calls.length, 2, 'another repo requires its own acknowledgement');
+  assert.ok(calls[1].url.includes('/repos/fictional/another/'));
 });
 
 test('demo skips all transport work; a service failure never prevents the scheduled refresh or a later normal retry', async () => {

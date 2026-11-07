@@ -20,10 +20,11 @@ export async function refreshScheduledLanguage(storage, fetcher = globalThis.fet
   const token = storage.secret('GITHUB_TOKEN');
   if (!token) return {ok: false, skipped: true};
   const language = notificationLanguage(storage);
-  if (scheduledLanguages.get(storage) === language) return {ok: true, language};
+  const target = JSON.stringify([repo, language]);
+  if (scheduledLanguages.get(storage) === target) return {ok: true, language};
   const signal = AbortSignal.timeout(SLOW_MS);
   await setVariables(client(token, (url, init) => fetcher(url, {...init, signal})), repo, {JOBADABRA_NOTIFICATION_LANGUAGE: language});
-  scheduledLanguages.set(storage, language);
+  scheduledLanguages.set(storage, target);
   return {ok: true, language};
 }
 

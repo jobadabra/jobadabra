@@ -42,9 +42,10 @@ export function refreshLanguage(storage, fetcher = globalThis.fetch) {
   if (!state) { state = {pending: Promise.resolve(), acknowledged: null}; languageRefreshes.set(storage, state); }
   const next = state.pending.then(async () => {
     const language = notificationLanguage(storage);
-    if (state.acknowledged === language) return {ok: true, language};
+    const target = JSON.stringify([emailOf(storage), language]);
+    if (state.acknowledged === target) return {ok: true, language};
     const answer = await call(storage, 'PUT', '/api/account/language', {language}, fetcher);
-    if (answer.ok && answer.language === language) { state.acknowledged = language; return answer; }
+    if (answer.ok && answer.language === language) { state.acknowledged = target; return answer; }
     appLog('notify', 'language refresh not acknowledged', {language});
     return {...answer, ok: false};
   }).catch(() => ({ok: false, error: 'language_not_saved'}));

@@ -55,6 +55,9 @@ test('only acknowledged language refreshes are cached; a later normal event retr
   storage.settings().displayLanguage = 'fr';
   await refreshLanguage(storage, fetcher);
   assert.equal(requests.at(-1).language, 'fr');
+  storage.settings().notifyEmail = 'other@example.test';
+  await refreshLanguage(storage, fetcher);
+  assert.equal(requests.length, 4, 'another address requires its own acknowledgement');
 });
 
 test('refresh ordering preserves the latest choice when an earlier request is still in flight', async () => {
