@@ -8,7 +8,7 @@ import unittest
 import urllib.parse
 from unittest import mock
 from html import escape
-from src import daily_search_reporting, digest, notification_language, notify, store, telegram
+from src import daily_search_reporting, digest, digest_render, notification_language, notify, store, telegram
 
 
 class DigestNotificationLanguageTests(unittest.TestCase):
@@ -101,7 +101,7 @@ class DigestNotificationLanguageTests(unittest.TestCase):
         ai['languages'].clear()
         job['fit']['reason'] = 'mutated'
         for locale in notification_language.LOCALES:
-            shown = digest._render_job(facts, locale)
+            shown = digest_render.render_job(facts, locale)
             self.assertIn(escape(reason), shown)
             self.assertNotIn('&amp;lt;', shown)
             self.assertIn('EUR 70-90k', shown)
