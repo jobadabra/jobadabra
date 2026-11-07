@@ -24,10 +24,9 @@ Usage:
 """
 import argparse
 from datetime import datetime, timezone
-from html import escape
 import sys
 
-from .. import run_log, telegram, tgcard
+from .. import run_log, telegram, notification_cards as cards
 from ..sources.google import Google
 from ..sources.google_scopes import CALENDAR, GMAIL, PART_NAMES, WHAT_IT_LOSES, MissingScope
 from ..stores import open_stores
@@ -121,10 +120,10 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
         save_state(state, state_path)
         lines += review_rejections(stores, client, rejected, stats)
     if send and lines:
-        send(tgcard.card('Job emails & calendar', f"{len(lines)} update{'s' if len(lines) != 1 else ''}", lines, emoji='📧'))
+        send(cards.card(cards.words('mail.title'), cards.words('mail.updates', count=len(lines)), lines, emoji='📧'))
     elif send and always_report and not notes:
-        send(tgcard.card('Gmail checked', f'{count} new email{"s" if count != 1 else ""}' if count else 'No new job emails',
-                         ['Nothing that changes your applications.'] if count else [], emoji='📧'))
+        send(cards.card(cards.words('mail.checked'), cards.words('mail.newEmails', count=count) if count else cards.words('mail.none'),
+                         [cards.words('mail.noChanges')] if count else [], emoji='📧'))
     for note in notes:
         if send:
             send(note)
@@ -169,7 +168,7 @@ def main(argv=None):
     from ..features import disabled
     if args.send and not disabled('telegram'):
         token, chat_id = telegram.credentials()
-        sender = lambda text: telegram.deliver(text, token, chat_id)
+        sender = lambda text: telegram.deliver(text, token, chat_id, **cards.delivery(text))
     stats = {}
     logged = (args.send or args.log_run) and not args.dry_run
     if logged:
@@ -209,7 +208,7 @@ def main(argv=None):
                        '(add --client-json <file> if you use your own Google app)')
             print(message)
             if sender:
-                sender(escape(message))
+                sender(cards.safe(cards.canonical(message, cards.words('mail.expired'))))
             return 0
         line = skipped_line(error)
         if line:

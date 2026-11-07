@@ -26,7 +26,7 @@ import os
 import re
 from statistics import mean
 
-from .. import digest, store, tgcard
+from .. import digest, store, notification_cards as cards
 from ..notion.ledger import REPLY
 from . import cost, engine, enrich, score
 from . import insights_data as data_of
@@ -244,17 +244,22 @@ def weekly(db, stores=None, model=DEFAULT_MODEL, *, send=None, now=None, client=
         **door_field(report.get('next_action'))}})
     learning.publish(stores, report['issues'], now, model)
     if send:
-        send(weekly_message(report, stores.link(row['id']) or ''), keyboard(row['id']))
+        send(cards.with_buttons(weekly_message(report, stores.link(row['id']) or ''), keyboard(row['id']),
+                                [['insight.useful', 'insight.notUseful', 'insight.act']]), keyboard(row['id']))
     return f"Weekly report sent: {report['headline']} ({usd:.3f} USD)"
 
 
 def message(insight):
+    """Canonical insight card with immutable authored labels; generated headline, evidence and action remain raw."""
     basis = 'application' if insight['basis'] == 'Applications' else 'job'
-    blocks = [tgcard.block(escape(insight['headline']), *[f'• {escape(line)}' for line in insight['evidence']]),
-              tgcard.block('Next step', escape(insight['action'])),
-              tgcard.block(f"Confidence: {escape(insight['confidence'].lower())}",
-                           escape(f"Based on {insight['basis'].lower()} data, {plural(insight['sample_size'], basis)}."))]
-    return tgcard.card('Insight', insight['category'], blocks, emoji='💡')
+    count = insight['sample_size']
+    based = (cards.words('insight.basedApplications' if basis == 'application' else 'insight.basedJobs', count=count)
+             if insight['basis'] in ('Applications', 'Jobs') else
+             f"Based on {insight['basis'].lower()} data, {plural(count, basis)}.")
+    blocks = [cards.block(escape(insight['headline']), *[f'• {escape(line)}' for line in insight['evidence']]),
+              cards.block(cards.words('notice.nextStep'), escape(insight['action'])),
+              cards.block(cards.safe(cards.words('insight.confidence', {'confidence': insight['confidence'].lower()})), cards.safe(based))]
+    return cards.card(cards.words('insight.title'), insight['category'], blocks, emoji='💡')
 
 
 def keyboard(insight_id):
@@ -317,5 +322,6 @@ def run(db, stores=None, model=DEFAULT_MODEL, *, send=None, now=None, force=Fals
     row = stores.insights.add(record(insight, now.date(), model, usd))
     learning.publish(stores, insight['issues'], now, model)
     if send:
-        send(message(insight), keyboard(row['id']))
+        send(cards.with_buttons(message(insight), keyboard(row['id']),
+                                [['insight.useful', 'insight.notUseful', 'insight.act']]), keyboard(row['id']))
     return f"{SENT}{insight['category']} — {insight['headline']} ({usd:.3f} USD)"

@@ -8,7 +8,7 @@ import json
 import os
 from html import escape
 from pathlib import Path
-from . import features, import_url, store, telegram
+from . import features, import_url, store, telegram, notification_cards as cards
 from .app_source import APP_SOURCE
 from .ai import added, cost, inbox, insights, interview_insights, interviews, kit
 from .notion import client as notion, cron_runs, ledger
@@ -341,7 +341,7 @@ def insight_mode(args, stores=None):
         return 0
     stores = _run_store(stores, f'--mode {args.mode} requires NOTION_TOKEN')
     kind = 'weekly' if args.mode == 'weekly' else 'activity'   # the weekly report is its own mail under the person's "Weekly summary" switch (src/notify.py ROW_OF)
-    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup, kind=kind)) if args.send else telegram.to_app
+    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup, kind=kind, **cards.delivery(text, markup))) if args.send else telegram.to_app
     with store.connect(args.db) as db:
         make = insights.run if args.mode == 'insight' else insights.weekly
         run = new_cron_run(args.mode)

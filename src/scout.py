@@ -26,7 +26,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, wait  # noqa: F401 -- scout_run and tests reach scout.ThreadPoolExecutor / scout.wait
 from html import escape
 from pathlib import Path
-from . import budget_tape, read_methods, run_exit, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam
+from . import budget_tape, read_methods, run_exit, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, notification_cards as cards  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam
 from .notion import client as notion, cron_runs  # noqa: F401 -- notion: tests patch scout.notion (its Tracker)
 from .paths import CONFIG, JOBS_DB, load_search_config
 from .sources import ats, careers, feeds  # noqa: F401 -- `feeds` is also reached as scout.feeds by tests
@@ -113,36 +113,35 @@ def telegram_summary(summary, results):
         s = o['stats']
         tier = ' · Tier 1' if c['tier'] == 'Tier 1' else ''
         places = s['places'][:3]
-        blocks.append(tgcard.block(
-            f"{i}. {escape(c['name'])} · Source quality {o['quality']}{tier}",
-            escape(tgcard.dot(f"{s['relevant']} matching roles", f"{s['preferred']} in preferred locations")),
-            tgcard.fact('Location' if len(places) == 1 else 'Locations', ', '.join(places)),
-            tgcard.fact('Platform', o['ats'].capitalize())))
+        blocks.append(cards.block(
+            cards.join('', [cards.words('scout.quality', {'index': i, 'name': escape(c['name']), 'quality': o['quality']}), cards.words('scout.tier') if tier else '']),
+            cards.safe(cards.dot(cards.words('scout.matching', count=s['relevant']), cards.words('scout.preferred', count=s['preferred']))),
+            cards.fact(cards.words('scout.location' if len(places) == 1 else 'scout.locations'), ', '.join(places)),
+            cards.fact(cards.words('scout.platform'), o['ats'].capitalize())))
     if not found:
-        blocks.append('No new useful feeds in this batch.')
-    detail = [f"{counts['none']} without a job feed we can read (their own job site, or jobs.ch)", f"{counts['low']} low relevance"]
+        blocks.append(cards.words('scout.noFeeds'))
+    detail = [cards.words('scout.unread', count=counts['none']), cards.words('scout.low', count=counts['low'])]
     left = summary.get('left') or 0
     if left:   # not checked here: other installs found no job site there lately (7 Oct 2026: 52 of 92 went unsaid)
-        detail.append(f"{left} set aside for 30 days (other installs found no job site we can read there)")
+        detail.append(cards.words('scout.held', count=left))
     if counts['watch']:
-        detail.append(f"{counts['watch']} careers page{'s' if counts['watch'] != 1 else ''} with no open jobs today (watched weekly)")
+        detail.append(cards.words('scout.watched', count=counts['watch']))
     if counts['manual']:
-        detail.append(f"{counts['manual']} Tier 1 on manual watch")
+        detail.append(cards.words('scout.manual', count=counts['manual']))
     if summary.get('ideas'):
         ideas = summary['ideas']
-        blocks.append(tgcard.block('New ideas', escape(f"{ideas['companies']} companies and {ideas['directories']} from company lists queued"),
+        blocks.append(cards.block(cards.words('scout.ideas'), cards.safe(cards.words('scout.ideasQueued', {'companies': ideas['companies'], 'directories': ideas['directories']})),
                                    escape(ideas['note'])))
-    rest = tgcard.dot(*detail, f"{summary['total_feeds']} feeds crawled", f"{summary['queued']} candidates queued",
-                      f"{summary['harvested']} new candidates found" if summary['harvested'] else '')
-    blocks.append(tgcard.block('Not added', escape(rest)))
-    plural = 's' if len(found) != 1 else ''
+    rest = cards.dot(*detail, cards.words('scout.crawled', count=summary['total_feeds']), cards.words('scout.queued', count=summary['queued']),
+                      cards.words('scout.harvested', count=summary['harvested']) if summary['harvested'] else '')
+    blocks.append(cards.block(cards.words('scout.notAdded'), cards.safe(rest)))
     first = summary.get('first_time')
     again = summary['checked'] - first if first is not None else 0
     # Checked again only once every new name was tried (next_batch): said, so it is not read as effort spent instead of new names (7 Oct 2026).
-    return tgcard.card('New employer sources', tgcard.dot(f"{summary['checked']} checked", f"{first} new to the search" if first is not None else '',
-                                                         f"{again} checked again (no new names left)" if again else '',
-                                                         f"{left} set aside" if left else '', f"{len(found)} new source{plural}"), blocks,
-                       emoji='🔎', footer='Source quality measures the source, not your job fit.')
+    return cards.card(cards.words('scout.title'), cards.dot(cards.words('scout.checked', count=summary['checked']), cards.words('scout.first', count=first) if first is not None else '',
+                                                         cards.words('scout.again', count=again) if again else '',
+                                                         cards.words('scout.setAside', count=left) if left else '', cards.words('scout.found', count=len(found))), blocks,
+                       emoji='🔎', footer=cards.words('scout.footer'))
 
 
 def ai_cost_line(what, usd, api_calls, plan_calls, calls):
@@ -295,7 +294,7 @@ def main():
     log['subject'] = cron_runs.counted(sum(1 for _, outcome in results if outcome['status'] == 'found'), 'new feed')
     if args.send and not disabled('telegram'):
         print(message)
-        telegram.deliver(message, *telegram.credentials())
+        telegram.deliver(message, *telegram.credentials(), **cards.delivery(message))
     else:
         telegram.to_app(message)  # no Telegram: the desktop app shows the summary
     if logged:

@@ -1,10 +1,10 @@
 """Your own sent emails to a recruiter (Replied events) and the review of new rejections.
 Guarded by tests/test_mail_sent.py and tests/unit/stores/test_rejection.py."""
-from html import escape
 import re
 import sys
 
 from ..stores import rules
+from .. import notification_cards as cards
 from .mail_config import YOU_REPLIED
 from .mail_lines import _label, _short
 from .mail_match import ENDED
@@ -92,7 +92,7 @@ def review_rejections(stores, client, rejected, stats, backfill=2):
         except Exception as error:  # noqa: BLE001 — the Gmail check's own updates are already saved
             print(f'Warning: rejection review failed for {_label(row)}: {type(error).__name__}: {error}', file=sys.stderr)
             continue
-        lines.append(escape(summary))
+        lines.append(cards.safe(summary))
         if stats is not None:
             stats.setdefault('updates', []).append(summary)  # whole: the app wraps it
     return lines

@@ -89,6 +89,12 @@ def with_buttons(message, markup, keys):
     return _message(_spec(message), rows)
 
 
+
+def canonical(text, presentation):
+    """Attach a known authored presentation tree to an existing canonical string without changing any serialized bytes."""
+    return language.projected_text(text, presentation._snapshot, _render)
+
+
 def delivery(message, markup=None, *, locale=None):
     """Explicit end-user producer boundary: project a tagged message; ordinary operational text yields no sender overrides."""
     locale = language.language() if locale is None else locale

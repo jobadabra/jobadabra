@@ -17,7 +17,6 @@ Only the core (crawl + digest) is required. An optional feature that isn't set u
 (ℹ️), never as a failure; the Features line lists what's on, off and switched off (src/features.py).
 """
 import argparse
-import html
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -28,7 +27,7 @@ import shutil
 import subprocess
 import sys
 
-from . import features, secret_store
+from . import features, secret_store, notification_cards as cards, notification_notices as notices
 from .ai import apply_batch
 from .notion import client as notion
 from .paths import CONFIG
@@ -355,10 +354,7 @@ def alert(stores, send, now=None):
     problems = [c for c in health_checks(stores, now) if c.state in (WARN, FAIL)]
     if not problems:
         return 'Health: all good'
-    blocks = [f"<b>{html.escape(c.name)} · {'Failed' if c.state == FAIL else 'Warning'}</b>\n{html.escape(c.detail)}"
-              + (f"\n<b>Next step:</b> {html.escape(c.fix)}" if c.fix else '') for c in problems]
-    count = f"{len(problems)} problem{'s' if len(problems) != 1 else ''}"
-    text = f"🩺 <b>Jobadabra health</b>\n{count}\n\n" + '\n\n'.join(blocks)
+    text = notices.health_message(tuple((c.name, c.state == FAIL, c.detail, c.fix) for c in problems))
     if send:
         send(text)
     return text
@@ -474,7 +470,7 @@ def main():
         from . import telegram
         try:
             token, chat_id = telegram.credentials()
-            send = lambda text: telegram.deliver(text, token, chat_id)
+            send = lambda text: telegram.deliver(text, token, chat_id, **cards.delivery(text))
         except SystemExit:
             send = None
         print(alert(active_store(tracker), send))

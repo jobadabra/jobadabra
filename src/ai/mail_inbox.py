@@ -4,7 +4,7 @@ from html import escape
 import re
 import sys
 
-from .. import tgcard, tz
+from .. import notification_cards as cards, tz
 from ..notion import ledger
 from ..notion.ledger import REPLY
 from . import cost, mail_triage
@@ -97,8 +97,8 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
         if row:
             note(email, 'reviewed', _job_name(row), link='')  # an outcome below replaces this: it says what was done
         if row and result.get('relevant') and re.search(r'transcript|recording', email['subject'], re.I):
-            lines.append(tgcard.block(_head(row, 'Transcript'), escape(email['subject'][:90]),
-                                      tgcard.fact('Next step', 'download it and send it to me for an interview review')))
+            lines.append(cards.block(_head(row, 'Transcript'), escape(email['subject'][:90]),
+                                      cards.fact(cards.words('notice.nextStep'), cards.words('mail.downloadTranscript'))))
         if result.get('kind') == 'Other':
             note(email, 'reviewed', _job_name(row) if row else (result.get('company') or ''), 'nothing to record')
             continue
@@ -121,8 +121,8 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             # email and let Focus ask for the missing details, rather than drop it or name the job after the agency.
             row = interview_lead(stores, client, model, email, apps, result, stats)
             if row is not None:
-                lines.append(tgcard.block('Which job is this for?', f"{_label(row)}: the interview was detected, but the role could not be identified.",
-                                          tgcard.fact('Next step', 'In Jobadabra: Focus → Add details. Paste the job link or LinkedIn conversation.')))
+                lines.append(cards.block(cards.words('mail.whichJob'), cards.words('mail.unknownRole', {'job': _label(row)}),
+                                          cards.fact(cards.words('notice.nextStep'), cards.words('mail.addDetails'))))
         if not row and named:
             # The email names a role: the job it is on (tracked, or on your list and applied to without marking it). None found: asked below.
             row = _from_email(stores, apps, result, email, stats, lines, on_new)
@@ -150,7 +150,7 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             continue
         when = _when(result['interview_at'] or '')
         extra = f" · {when.astimezone(TZ):%a %d %b %H:%M}" if when else ''
-        lines.append(tgcard.block(_head(row, result['kind']), escape(result['summary']) + escape(extra)))
+        lines.append(cards.block(_head(row, result['kind']), escape(result['summary']) + escape(extra)))
         _short(stats, result['kind'], row, extra, changes=changes_readable(fields))
         note(email, 'recorded', _job_name(row), changes_readable(fields))
         if changed == 'Rejected' and rejected is not None:

@@ -238,15 +238,17 @@ jobs:
         run: |
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
           case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          # Why (7 Nov 2026): copy formatting must never prevent the original failure notice after partial setup.
+          message=$(python -m src.notification_notices run "$MODE" "$RUN_URL") || message="❌ Jobadabra ${MODE} run failed: ${RUN_URL}"
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ Jobadabra ${MODE} run failed: ${RUN_URL}" > /dev/null
+            --data-urlencode "text=${message}" > /dev/null
       - name: Report failure by e-mail
         if: failure()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python -m src.notify "Jobadabra ${MODE} run failed: ${RUN_URL}" || true
+          python -m src.notify --failure run "$MODE" "$RUN_URL" || true
       - name: Save job database
         if: always() && env.MODE != 'apply' && env.MODE != 'more' && env.MODE != 'prepare' && env.MODE != 'insight' && env.MODE != 'weekly' && env.MODE != 'interview' && env.MODE != 'add'
         uses: actions/cache/save@v5

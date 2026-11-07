@@ -3,7 +3,7 @@ Guarded by tests/test_mail_ask.py."""
 from html import escape
 import re
 
-from .. import tgcard
+from .. import notification_cards as cards
 from ..notion.ledger import REPLY
 from . import opportunity
 from .. import feedback as employer_feedback
@@ -28,9 +28,9 @@ def ask(stores, email, result, suggested, index, lines, stats):
                       changes=changes_of({}, email, result.get('feedback') or '', read=result))
     index[0].add(email['id'])
     guess = f" (maybe {_label(suggested)})" if suggested is not None else ''
-    lines.append(tgcard.block('Which job is this for?', escape(result.get('company') or email['subject'][:60]) + ': '
-                              + escape(result.get('summary') or kind) + (f' Maybe {_label(suggested)}.' if suggested is not None else ''),
-                              tgcard.fact('Next step', 'answer in Jobadabra: Focus')))
+    lines.append(cards.block(cards.words('mail.whichJob'), cards.join('', [escape(result.get('company') or email['subject'][:60]), ': ',
+                              escape(result.get('summary') or kind), cards.words('mail.maybe', {'job': _label(suggested)}) if suggested is not None else '']),
+                              cards.fact(cards.words('notice.nextStep'), cards.words('mail.answerFocus'))))
     if stats is not None:
         stats.setdefault('updates', []).append(f"{kind} · {result.get('company') or subject[:60]} — which job?"[:140])
 
@@ -64,7 +64,12 @@ def _who(row):
 
 def _head(row, kind=''):
     """Bold heading of a Telegram block: 'Company · Role · Kind'."""
-    return tgcard.dot(escape(_who(row)), escape(_role(row))[:60], escape(SHORT_KIND.get(kind, kind)))
+    keys = {'Confirmation received': 'mail.kind.confirmation', YOU_REPLIED: 'mail.kind.youReplied', REPLY: 'mail.kind.reply',
+            OUTREACH: 'mail.kind.outreach', 'Interview scheduled': 'mail.kind.scheduled', 'Rejected': 'mail.kind.rejected',
+            'Offer': 'mail.kind.offer', 'Other': 'mail.kind.other', employer_feedback.RECEIVED: 'mail.kind.feedback',
+            'Interview': 'mail.kind.interview', 'Applied': 'mail.kind.applied', 'Transcript': 'mail.kind.transcript'}
+    caption = cards.safe(cards.words(keys[kind])) if kind in keys else escape(SHORT_KIND.get(kind, kind))
+    return cards.dot(escape(_who(row)), escape(_role(row))[:60], caption)
 
 
 def _label(row):

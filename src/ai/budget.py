@@ -12,6 +12,8 @@ Levels, against JOBADABRA_MONTHLY_BUDGET_USD (your console limit, default 15):
          beyond the top jobs) so mail, insights and interview reviews keep working until the reset.
 """
 from datetime import datetime, timezone
+from html import escape
+from .. import notification_cards as cards
 import json
 import os
 import sys
@@ -108,6 +110,8 @@ def alert_once(db, info, send, now=None):
     else:
         text = (f"💸 <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What happens next</b>\n"
                 "At 90% the optional AI steps pause so the essentials keep running.")
+    text = cards.canonical(text, cards.words('budget.pause' if info['level'] == 'pause' else 'budget.warn',
+        {'pct': f"{info['pct']:.0%}", 'spent': f"{info['spent']:.2f}", 'budget': f"{info['budget']:.0f}", 'source': escape(info['source'])}))
     if send(text) is False:   # Why (1 Nov 2026, #2908): a caller whose send was refused answers False (daily_search_reporting turns telegram.deliver's None into False); the alert then stays unsent and the next run tries again
         return False
     db.execute('INSERT OR IGNORE INTO budget_alerts VALUES (?, ?)', (month, info['level']))

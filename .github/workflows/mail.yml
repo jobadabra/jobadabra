@@ -150,12 +150,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python -m src.notify "Jobadabra Gmail check failed: ${RUN_URL}" || true   # e-mail, when chosen (src/notify.py)
+          python -m src.notify --failure mail "" "$RUN_URL" || true   # e-mail, when chosen (src/notify.py)
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
           case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          # Why (7 Nov 2026): copy formatting must never prevent the original failure notice after partial setup.
+          message=$(python -m src.notification_notices mail "" "$RUN_URL") || message="❌ Jobadabra Gmail check failed: ${RUN_URL}"
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ Jobadabra Gmail check failed: ${RUN_URL}" > /dev/null
+            --data-urlencode "text=${message}" > /dev/null
       - name: Save mail state
         if: always() && env.GOOGLE_REFRESH_TOKEN != '' && env.NOTION_APPLICATIONS_DB != ''
         uses: actions/cache/save@v5

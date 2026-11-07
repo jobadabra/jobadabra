@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 
 from .sources.ats import USER_AGENT
-from . import notification_language
+from . import notification_language, notification_cards as cards, notification_notices as notices
 
 SITE = 'https://www.jobadabra.top'
 MAX_HTML = 18000   # the site keeps 20000 characters
@@ -154,10 +154,11 @@ def main(argv=None):
     """python -m src.notify "text": a plain line to the person's chosen e-mail (the workflows' own notices: a failed run, Gmail not connected). Telegram stays their curl. It is the row "Always on stopped working" (app-stopped)."""
     import html
     import sys
-    text = ' '.join(sys.argv[1:] if argv is None else argv).strip()
+    args = list(sys.argv[1:] if argv is None else argv)
+    text = notices.failure_message(*args[1:]) if args and args[0] == '--failure' else ' '.join(args).strip()
     if not text or not wants_email():
         return 0
-    queue(html.escape(text), urgent=True, mail='app-stopped')
+    queue(html.escape(cards.delivery(text).get('display_text', text)), urgent=True, mail='app-stopped')
     return 0
 
 

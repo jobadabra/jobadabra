@@ -2,7 +2,7 @@
 Guarded by tests/unit/ai/test_insights.py."""
 from html import escape
 
-from .. import tgcard
+from .. import notification_cards as cards
 from . import learning
 from .writing_rules import RULES as WRITING_RULES
 from ..suggestions import DOOR_LABEL_MAX, DOORS
@@ -66,13 +66,13 @@ WEEKLY_SYSTEM = WRITING_RULES + '\n\n' + learning.RULES + '\n' + HONEST + '\n' +
 
 
 def weekly_message(report, page_url=''):
-    blocks = [tgcard.block(escape(report['headline']), tgcard.fact('Finding', report.get('finding')), escape(report['summary']))]
+    blocks = [cards.block(escape(report['headline']), cards.fact(cards.words('weekly.finding'), report.get('finding')), escape(report['summary']))]
     if report['worked']:
-        blocks.append(tgcard.block('Worked', *[f'• {escape(item)}' for item in report['worked']]))
-    blocks.append(tgcard.block('Change next week', *[f'• {escape(item)}' for item in report['change']]))
-    blocks.append(tgcard.block('Focus', escape(report['focus'])))
-    footer = f'<a href="{escape(page_url, quote=True)}">Full report in Notion</a>' if page_url else ''
-    return tgcard.card('Search analysis', 'Last 7 days', blocks, emoji='📊', footer=footer)
+        blocks.append(cards.block(cards.words('weekly.worked'), *[f'• {escape(item)}' for item in report['worked']]))
+    blocks.append(cards.block(cards.words('weekly.change'), *[f'• {escape(item)}' for item in report['change']]))
+    blocks.append(cards.block(cards.words('weekly.focus'), escape(report['focus'])))
+    footer = cards.join('', [f'<a href="{escape(page_url, quote=True)}">', cards.words('weekly.fullReport'), '</a>']) if page_url else ''
+    return cards.card(cards.words('weekly.title'), cards.words('weekly.period'), blocks, emoji='📊', footer=footer)
 
 
 def weekly_blocks(report, stats):
