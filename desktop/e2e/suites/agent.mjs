@@ -11,19 +11,18 @@ import {finish} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {AGENT_VIEWS, agentAct, shootPage} from '../lib/agent-act.mjs';
 import {brokerAsk, MODELS} from '../lib/agent-ask.mjs';
-import {goalCountFor, STEP_TOKENS} from '../lib/agent-steps.mjs';
+import {planLine, planSizing} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
-import {moveKey, pendingGoals, planSession, recordSession} from '../lib/agent-plan.mjs';
+import {moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
 import {seedPlanData, waitCvRead} from '../lib/agent-seed.mjs';
 import {summaryMarkdown} from '../lib/agent-session.mjs';
-import {linksAsked} from '../lib/agent-chain.mjs';
 import {chainFor, endBeforeRun, endLink, pointerOf, previousLink, restoreLink} from '../lib/agent-chain-run.mjs';
 import {startAgentVideo} from '../lib/agent-video.mjs';
 
@@ -82,8 +81,7 @@ export async function run(ctx) {
     const pending = readPending(memoryDir).filter(goal => available.has(moveKey(goal)));
     // Why (7 Nov 2026, pz, owner: "3–4 goals per run"): the plan is sized from the run's token meter before it is drawn (lib/agent-steps.mjs goalCountFor), so every planned goal is funded at the engine's step price (a heavier page than the default can still leave a later goal short); 43 of 122 goals in 31 runs were never started.
     const budget = runBudget();
-    const stepTokens = Number(process.env.E2E_AGENT_STEP_TOKENS) || STEP_TOKENS.stateless;   // Why (7 Nov 2026, #3378): an unset number is the dearer engine's, never the cheaper
-    const goalMax = goalCountFor({usable: budget.usable(), cost: stepTokens}) * linksAsked(process.env.AGENT_CHAIN_LINKS);   // a chain's links each have their own budget and share one plan (code review on #pz 1/5): the plan is one link's goals times its links
+    const {stepTokens, goalMax} = planSizing(budget.usable(), process.env);   // Why (7 Nov 2026, pz): see lib/agent-steps.mjs planSizing
     const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending, max: goalMax});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
@@ -92,7 +90,7 @@ export async function run(ctx) {
     // Why (5 Nov 2026, owner via mac-32: "Assuming the initial context/harness would be max 20k"): what every actor call carries before the page is measured now and the run fails here, before any call, when it is over 20k; the cap of 250k is spent on the app, not on the same words again.
     const harness = harnessTokens({system: AGENT_SYSTEM, schema: actionSchema(AGENT_VIEWS, agentExtend({knowledgeIds: [], views: AGENT_VIEWS, goal: {}, sink: []})), intros: plan.goals.map(goal => goalIntro(goal, knowledge))});
     console.log(`  harness: ${harness} tokens in every call before the page (limit 20000)`);
-    console.log(`  plan: ${plan.goals.length} goals ${planId ? '' : `(the budget pays for ${goalMax}: ${Math.round(budget.usable() / 1000)}k tokens at ${stepTokens} a step)`}, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changed.areas.join(', ') || 'none'}`);
+    console.log(planLine({plan, goalMax, usable: budget.usable(), stepTokens, planId, changedAreas: changed.areas}));
     const started = Date.now(), video = await startAgentVideo(page, {dir: ctx.ARTIFACTS, minutes: CAPS.maxMinutes}), act = agentAct(page);
     let kept = null;
     const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens};   // Why (7 Nov 2026, #3378): goals are sized by the token meter
@@ -113,7 +111,7 @@ export async function run(ctx) {
     for (const [file, text] of Object.entries(memoryFiles({...notes, ...merged}))) { fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true}); fs.writeFileSync(path.join(out, file), text); }
     fs.mkdirSync(out, {recursive: true});
     fs.writeFileSync(path.join(out, 'coverage.json'), JSON.stringify(recordSession(coverage, {...plan, goals: plan.goals.filter(goal => session.completed.includes(goal.n))}), null, 1));
-    fs.writeFileSync(path.join(out, 'pending.json'), JSON.stringify(pendingGoals(session, [...pending, ...(plan.deferred || [])]), null, 1));   // Why (7 Nov 2026, pz): a changed area the budget had no slot for is queued, not forgotten
+    fs.writeFileSync(path.join(out, 'pending.json'), JSON.stringify(queueAfter(session, pending, plan), null, 1));   // Why (7 Nov 2026, pz): a changed area the budget had no slot for is queued, not forgotten
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-session.json'), JSON.stringify({...session.summary, stopped: session.stopped, unfunded: session.unfunded, persona: plan.persona.name, newShare: plan.newShare, actor: budget.state, engine: engine || 'broker order'}, null, 2));
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-summary.md'), `${summaryMarkdown(session.summary)}\n\n${tokensLine(budget.state, actorTier)}\n${engineLine({engine, steps: session.trace.length, actorTokens: budget.state.used.actor})}\n${conversationLine(session.trace)}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'agent-trace.jsonl'), session.trace.map(row => JSON.stringify(row)).join('\n') + '\n');

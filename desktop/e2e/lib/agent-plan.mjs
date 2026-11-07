@@ -89,6 +89,9 @@ export function pendingGoals(session, previous = []) {
   return [...new Map([...interrupted, ...unstarted, ...deferred, ...blockers].map(({group, label}) => [moveKey({group, label}), {group, label}])).values()];
 }
 
+/** The queue to write after a session: `pending` (what tonight started with) and the changed areas the plan had no slot for, then what pendingGoals keeps of them. A named or chained plan has no `deferred`. */
+export const queueAfter = (session, pending, plan) => pendingGoals(session, [...pending, ...(plan.deferred || [])]);
+
 /** What a finished session adds to the coverage record: the pairs it walked, keeping the last WINDOW sessions. */
 export function recordSession(coverage, {seed, goals}) {
   return [...coverage, {seed, pairs: goals.map(goal => goal.pair)}].slice(-WINDOW);

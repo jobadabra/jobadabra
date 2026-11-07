@@ -2,6 +2,7 @@
 // Job: report health
 // Why (7 Nov 2026, #3378; run 42163935942): the night planned 6 goals x 16 steps (~770k tokens on Claude) against a 250k token cap, so goal 3 was refused and 0 goals were worked. A step costs 1k on a resumed Codex conversation (#3264)
 // but 7-9k on Claude, which re-sends the harness, the goal and the page every call; the plan has to be sized by the meter, and the cap stays what the owner set.
+import {linksAsked} from './agent-chain.mjs';
 
 /** Tokens one actor step costs, by how the engine answers: a Codex conversation adds only the newest turn (0.6-1.0k measured, #3264); any other engine sends the whole prompt (6.6-9.2k measured on Claude, run 42163935942). */
 export const STEP_TOKENS = {resumed: 1_000, stateless: 9_000};
@@ -35,3 +36,15 @@ export function goalSteps({left, cost, goalsLeft, maxPerGoal, target = TARGET_ST
  * Why (7 Nov 2026, pz, Design: the plan's size has one owner, this function; the planner takes it as a ceiling, the run loop's goalSteps shares what is left): before, the planner drew 6-10 goals and goalSteps then left the rest "not started" (43 of 122 goals, 31 runs).
  */
 export const goalCountFor = ({usable, cost, target = TARGET_STEPS, max = MAX_GOALS}) => (usable > 0 && cost > 0 ? Math.max(1, Math.min(max, Math.floor(usable / ((target + 1) * cost)))) : 1);
+
+/** The plan line of the run's log: how many goals, what the budget pays for (not said for a named plan, which ignores it), the share of new move pairs and the changed areas. */
+export const planLine = ({plan, goalMax, usable, stepTokens, planId = '', changedAreas = []}) => `  plan: ${plan.goals.length} goals${planId ? '' : ` (the budget pays for ${goalMax}: ${Math.round(usable / 1000)}k tokens at ${stepTokens} a step)`}, ${(plan.newShare * 100).toFixed(0)}% new move pairs; changed areas: ${changedAreas.join(', ') || 'none'}`;
+
+/**
+ * What tonight's plan is sized by: `stepTokens` (the workflow's measured number, else the dearer engine's, never the cheaper; #3378) and `goalMax`, the goals the budget pays for times the links of a chain (each link has its own budget and they share one plan; code review on pz 1/5).
+ * `usable`: runBudget().usable(); `env`: process.env.
+ */
+export function planSizing(usable, env) {
+  const stepTokens = Number(env.E2E_AGENT_STEP_TOKENS) || STEP_TOKENS.stateless;
+  return {stepTokens, goalMax: goalCountFor({usable, cost: stepTokens}) * linksAsked(env.AGENT_CHAIN_LINKS)};
+}
