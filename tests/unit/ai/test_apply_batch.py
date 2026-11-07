@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from src.ai import apply_batch
+from src.ai import apply_batch, kit as kit_module
 from src.stores import base, memory
 
 KIT = {'url': 'https://example.test/job/1', 'cover_letter': 'Dear team...',
@@ -46,6 +46,15 @@ class ReadyJobsTests(unittest.TestCase):
         self.assertEqual([(record['title'], kit_data['check_before_sending']) for record, kit_data in pairs],
                          [('SRE', KIT['check_before_sending'])])
         self.assertEqual(stores.applications.get(KIT['url'])['stage'], 'Kit ready')  # listing never marks Applying
+
+    def test_does_not_return_a_kit_marked_not_eligible(self):
+        ineligible_kit = {**KIT, 'eligible': False, 'eligibility_note': 'Needs a work permit'}
+        stores = stores_with([
+            ('https://ineligible', 'Kit ready', ineligible_kit, {}),
+            ('https://eligible', 'Kit ready', KIT, {}),
+        ])
+        pairs = apply_batch.ready_jobs(stores, 5)
+        self.assertEqual([record['url'] for record, _ in pairs], ['https://eligible'])
 
 
 def run_main(stores, *argv):
@@ -109,6 +118,14 @@ class NothingReadyTests(unittest.TestCase):
 
 class NextJobsTests(unittest.TestCase):
     """Apply to N with Claude: the best N jobs with a kit, picked from the records (no kit is opened), fast."""
+
+    def test_does_not_pick_a_kit_ready_row_marked_not_eligible(self):
+        stores = stores_with([
+            ('https://ineligible', 'Kit ready', None, {'next_step': kit_module.next_step({'eligible': False, 'eligibility_note': 'Needs a work permit'}), 'fit': 95}),
+            ('https://eligible', 'Kit ready', None, {'next_step': kit_module.next_step({'eligible': True}), 'fit': 80}),
+        ])
+        with mock.patch.object(apply_batch, 'still_open', lambda s, url: True):
+            self.assertEqual(apply_batch.unstarted_urls_by_score(stores, 1), ['https://eligible'])
 
     def test_best_scored_open_jobs_with_a_kit_without_opening_kits(self):
         stores = stores_with([('https://a', 'Kit ready', None, {}), ('https://b', 'Saved', None, {'next_step': '📝 Kit ready: review it'}),

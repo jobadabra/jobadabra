@@ -6,11 +6,13 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 
 from . import digest, store
-from .ai import enrich, provenance, score
+from .ai import enrich, kit, provenance, score
 from .desktop_job_copies import merge_copies
 from .notion.client import job_code
 from .stores.base import url_key
 from .sources.posting_text import label
+
+NOT_ELIGIBLE = kit.NOT_ELIGIBLE
 
 # Notion Applications Stage -> the app's status. With Notion connected the Stage is the only source of truth;
 # the local applications.status column is a cache refreshed from it on every list.
@@ -25,7 +27,6 @@ def stage_status(stage):
     return 'applied'  # Applying, Applied and everything after it (replies, interviews, rejection, offer)
 
 
-NOT_ELIGIBLE = '⛔ Not eligible: '
 GONE = ('Not seen', 'Closed')  # Job Matches statuses of postings no longer listed
 # Applications stages that don't keep a gone posting in the list: not applied yet (owner, 7 Oct 2026: a refresh removes jobs that are at most
 # saved or have a prepared kit; applied, interviewing and the rest stay).
@@ -49,7 +50,7 @@ def blank_profile(profile, local=None, readable=True):
 
 def has_kit(stage, step):
     """True when an application's answers are drafted: its stage, or the Next step a draft writes (src/ai/kit.py next_step). Apply and Focus read this one rule."""
-    return stage == 'Kit ready' or step.startswith(('📝 Kit ready', NOT_ELIGIBLE))
+    return stage == 'Kit ready' or step.startswith(('📝 Kit ready', kit.NOT_ELIGIBLE))
 
 
 _place_unclear = digest.place_unclear   # one rule for the Jobs list and the digest
