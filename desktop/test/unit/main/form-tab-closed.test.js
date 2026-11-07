@@ -9,7 +9,7 @@ import {registerSessionHandlers} from '../../../lib/session-handlers.js';
 const URL = 'https://jobs.example.test/engineer';
 const here = path.resolve(import.meta.dirname, '../../..');
 
-function setup({choice = null, tab = 'eventual', ackAfter = 0, priorTab = '', launchError = ''} = {}) {
+function setup({choice = null, tab = 'eventual', ackAfter = 0, priorTab = '', launchError = '', reused = false} = {}) {
   terminals._reset();
   terminals.usePty(async () => ({spawn: () => ({onData: () => {}, onExit: () => {}, write: () => {}, resize: () => {}, kill: () => {}})}));
   const handles = new Map(), calls = [], logs = [], dialogs = [];
@@ -22,7 +22,7 @@ function setup({choice = null, tab = 'eventual', ackAfter = 0, priorTab = '', la
       calls.push(`open ${url}`); openedCount++;
       if (launchError) return {ok: false, error: launchError};
       if (tab === 'eventual' && ackAfter === 0) boundTab = 'tab-5';
-      return {ok: true};
+      return {ok: true, reused};
     },
       applyOne: async (_storage, url) => { calls.push(`chrome ${url}`); return {ok: true}; },
       claudeOne: async (_storage, url) => { calls.push(`claude ${url}`); return {ok: true}; }},
@@ -94,6 +94,13 @@ test('Reopen form reports an error when Chrome never exposes the newly opened ta
   s.setTab('eventual');
   assert.deepEqual(await s.reopen(id, false), {ok: true, reset: false}, 'a failed launch can be retried immediately');
   assert.equal(s.calls.filter(call => call.startsWith('open ')).length, 2);
+});
+
+test('an extension-confirmed reused tab needs no new tab id acknowledgement', async () => {
+  const s = setup({tab: 'none', priorTab: 'live-tab', reused: true});
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  assert.deepEqual(await s.reopen(id, false), {ok: true, reset: false});
+  assert.equal(s.elapsed(), 0, 'reuse is returned only for a tab the extension reports as open');
 });
 
 test('Reopen form does not accept a stale extension binding as acknowledgement', async () => {
