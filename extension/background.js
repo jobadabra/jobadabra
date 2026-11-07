@@ -1,6 +1,5 @@
-// The background worker: tabs the app opens to fill (#jobpilotto-fill), the next page in that tab, a tab that tab
-// opens, Apply with Claude's hand-off, the ring's messages to the app, and the connection check. The result of a
-// fill shows in a panel on the page and in the icon badge.
+// The background worker owns app-opened fill tabs, their next pages/popups, Claude hand-off, panel messages and connection checks.
+// Fill results appear in the page panel and toolbar badge.
 import {displayText,displayStepText} from './display-cache.js';
 import {NO_APP, api, fillTab, settings} from './flow.js';
 import {displayError} from './display-errors.js';
