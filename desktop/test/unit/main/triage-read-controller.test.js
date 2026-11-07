@@ -109,3 +109,26 @@ test('an application waits for a read that is out, and is claimed on the next po
   assert.deepEqual((await poll(controller)).jobs.map(job => job.session), ['s2'], 'the application starts once the read ended');
   assert.equal(claims, 1);
 });
+
+// #3519: the extension tells the app which step a read is on; the app tells the Jobs window and writes where the read's time went to app.log.
+test('a step report reaches the window, and the finished read writes one app.log line with where its time went', async () => {
+  const lines = [], windowEvents = [];
+  const {setWindowSignal} = await import('../../../lib/server-hooks.js');
+  setWindowSignal((channel, payload) => windowEvents.push([channel, payload]));
+  try {
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async () => null}, browser: {ready: () => true, start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [], byUrl: () => null, record: () => null, report: () => {}}, config: () => ({}), log: (...line) => lines.push(line), token: () => 'fictional', port: 1});
+  const pending = controller.triageRead({url: 'https://jobs.example.test/steps'});
+  const {jobs} = await poll(controller);
+  assert.deepEqual(await controller.handle({action: 'triage-step', owner: 'o1', session: jobs[0].session, step: 'judging'}), {ok: true});
+  assert.deepEqual(await controller.handle({action: 'triage-step', owner: 'o1', session: jobs[0].session, step: 'bogus'}), {ok: false});
+  await controller.handle({action: 'triage-read', owner: 'o1', session: jobs[0].session, botCheck: false, loginWall: false, accountCreation: false});
+  await pending;
+  assert.deepEqual(windowEvents.map(([channel, payload]) => [channel, payload.step]), [['triageStep', 'opening'], ['triageStep', 'judging']]);
+  const summary = lines.find(line => line[1] === 'triage: read finished')?.[2];
+  assert.equal(summary?.url, 'https://jobs.example.test/steps');
+  assert.equal(summary?.outcome, 'read');
+  for (const key of ['totalMs', 'queueMs', 'openMs', 'judgeMs', 'planMs']) assert.equal(typeof summary[key], 'number', key);
+  } finally { setWindowSignal(() => {}); }
+});
