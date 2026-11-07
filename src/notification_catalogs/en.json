@@ -1,0 +1,52 @@
+{
+  "digest.title": "Job digest",
+  "digest.new": {
+    "one": "{count} new",
+    "other": "{count} new"
+  },
+  "digest.page": "Jobs {first}–{last} of {total}",
+  "digest.noMore": "No more jobs in this list. Send /today for a fresh one.",
+  "digest.section.new": "New since your last run",
+  "digest.section.best": "Best matches",
+  "digest.section.older": "More to explore",
+  "digest.preferred": "In your preferred locations",
+  "digest.outside": "Outside your preferred locations",
+  "digest.jobs": {
+    "one": "{count} job",
+    "other": "{count} jobs"
+  },
+  "digest.tap": "Tap a job number to mark it applied, save or dismiss it.",
+  "digest.more": "{count} more with ➕.",
+  "digest.next": "➕ Next {count}",
+  "job.locationMissing": "location not stated",
+  "job.saved": "Saved",
+  "job.fit": "Fit",
+  "job.check": "Check",
+  "job.mode.onsite": "On-site",
+  "job.mode.hybrid": "Hybrid",
+  "job.mode.remote": "Remote",
+  "job.mode.remoteMaybe": "Remote?",
+  "job.seniority.junior": "Junior",
+  "job.seniority.mid": "Mid",
+  "job.seniority.senior": "Senior",
+  "job.seniority.staff_principal": "Staff/Principal",
+  "job.seniority.lead_manager": "Lead/Manager",
+  "job.language.English": "English",
+  "job.language.German": "German",
+  "job.language.French": "French",
+  "job.language.Italian": "Italian",
+  "job.language.Spanish": "Spanish",
+  "job.language.Portuguese": "Portuguese",
+  "job.language.Dutch": "Dutch",
+  "job.language.required": "{language} required",
+  "job.language.extra": "{language} +",
+  "job.language.otherRequired": "other language required",
+  "job.signal.salary": "salary info",
+  "job.signal.recruiter": "Recruiter",
+  "job.signal.sponsorshipOffered": "sponsorship offered",
+  "job.signal.sponsorshipNeeded": "visa sponsorship needed",
+  "notification.subjectMore": {
+    "one": "{title} and {count} more",
+    "other": "{title} and {count} more"
+  }
+}
