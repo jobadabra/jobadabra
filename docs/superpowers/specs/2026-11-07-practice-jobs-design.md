@@ -79,6 +79,6 @@ Owner, 7 Nov 2026: "Person's own AI (Recommended)". The person's own AI setup an
 ## Progress
 - [x] Spec + sketch approved by the owner (7 Nov 2026: own AI, about 12 jobs, result on each job's card) (proof: none: the owner's answers, relayed by the coordinator)
 - [x] 1/4 server + catcher + shim (proof: desktop/practice/server.js @e3fbc289)
-- [x] 2/4 dev launch + isolation + host-rule proof + release guard (proof: desktop/practice/launch.mjs @452ce7b; two real launches, the second opened 12 jobs on its own port)
+- [x] 2/4 dev launch + isolation + host-rule proof + release guard (proof: desktop/practice/launch.mjs @452ce7b) (two real launches; the second opened 12 jobs on its own port)
 - [ ] 3/4 UI: banner, "What would have been sent" on each job's Application tab (this PR; the practice jobs are Saved, under Jobs → Saved, by design)
 - [ ] 4/4 docs + skill paragraph
