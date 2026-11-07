@@ -40,7 +40,6 @@ export const messages = {
     "one": "{count} Frage von {company} hatte keine Standardantwort. Antworte unter Jobadabra → Jobs.",
     "other": "{count} Fragen von {company} hatten keine Standardantwort. Antworte unter Jobadabra → Jobs."
   },
-  "extensionChanged": "Erweiterung geändert: Lade sie neu (chrome://extensions → ↻ bei Jobadabra); eine Entwicklungskopie lädt sich nicht selbst neu.",
   "versionStore": "Chrome verwendet die Jobadabra-Erweiterung {version} aus dem Chrome Web Store; diese App enthält {latest}. Chrome aktualisiert sie automatisch, sobald die neue Version im Store verfügbar ist, meist innerhalb eines Tages.",
   "versionFolder": "Chrome verwendet die Jobadabra-Erweiterung {version}, älter als {latest} in dieser App: Lade sie einmal neu (chrome://extensions → ↻ bei Jobadabra); danach aktualisiert sie sich selbst."
 };

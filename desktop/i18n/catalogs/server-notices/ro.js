@@ -45,7 +45,6 @@ export const messages = {
     "few": "{count} întrebări din {company} nu aveau răspuns standard. Răspunde în Jobadabra → Joburi.",
     "other": "{count} de întrebări din {company} nu aveau răspuns standard. Răspunde în Jobadabra → Joburi."
   },
-  "extensionChanged": "Extensia s-a schimbat: reîncarc-o (chrome://extensions → ↻ la Jobadabra); o copie de dezvoltare nu se reîncarcă singură.",
   "versionStore": "Chrome folosește extensia Jobadabra {version} din Chrome Web Store; această aplicație include {latest}. Chrome o actualizează automat când noua versiune apare în magazin, de obicei într-o zi.",
   "versionFolder": "Chrome folosește extensia Jobadabra {version}, mai veche decât {latest} inclusă în aplicație: reîncarc-o o dată (chrome://extensions → ↻ la Jobadabra); apoi se va actualiza automat."
 };

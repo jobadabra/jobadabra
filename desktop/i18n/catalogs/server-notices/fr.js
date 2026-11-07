@@ -40,7 +40,6 @@ export const messages = {
     "one": "{count} question de {company} n’avait pas de réponse standard. Répondez dans Jobadabra → Offres.",
     "other": "{count} questions de {company} n’avaient pas de réponse standard. Répondez dans Jobadabra → Offres."
   },
-  "extensionChanged": "Extension modifiée : rechargez-la (chrome://extensions → ↻ sur Jobadabra) ; une copie de développement ne se recharge pas automatiquement.",
   "versionStore": "Chrome utilise l’extension Jobadabra {version} du Chrome Web Store ; cette application fournit {latest}. Chrome la met à jour automatiquement dès que la nouvelle version est disponible dans le Store, généralement sous un jour.",
   "versionFolder": "Chrome utilise l’extension Jobadabra {version}, plus ancienne que {latest} fournie avec cette application : rechargez-la une fois (chrome://extensions → ↻ sur Jobadabra) ; elle se mettra ensuite à jour automatiquement."
 };

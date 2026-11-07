@@ -97,16 +97,27 @@ test('version notices preserve store/folder decisions, exact versions and canoni
   const canonical=new Function('return '+token)();
   assert.equal(canonical,'extension changed: reload it (chrome://extensions → ↻ on Jobadabra); a development copy does not reload itself');
   const changedSource=source.match(/export function extensionChangedNote\([\s\S]*?\n}/)[0].replace('export ','');
-  const changed=new Function('t',changedSource+';return extensionChangedNote;')(t);
+  const changed=new Function('EXTENSION_CHANGED',changedSource+';return extensionChangedNote;')(canonical);
   const staleSource=source.match(/export function staleExtension\([\s\S]*?\n}/)[0].replace('export ','');
   const stale=new Function('t','STORE_EXTENSION_ID','checkedInId',staleSource+';return staleExtension;')(t,'same-store','folder');
+  const version='0.9.{count}',latest='0.9.<keep>';
+  setLocale('en');const storeDiagnostic=stale(version,latest,'same-store'),folderDiagnostic=stale(version,latest,'folder');
   for(const locale of SUPPORTED_LOCALES) {
-    setLocale(locale);const version='0.9.{count}',latest='0.9.<keep>';
+    setLocale(locale);
     assert.equal(stale(version,version),'');assert.equal(stale('',latest),'');
-    assert.equal(stale(version,latest,'same-store'),t('serverNotice.versionStore',{version,latest}));
-    assert.equal(stale(version,latest,'folder'),t('serverNotice.versionFolder',{version,latest}));
+    assert.equal(stale(version,latest,'same-store'),storeDiagnostic);
+    assert.equal(stale(version,latest,'folder'),folderDiagnostic);
+    for(const key of ['versionStore','versionFolder']) { const display=t('serverNotice.'+key,{version,latest});assert.ok(display.includes(version));assert.ok(display.includes(latest)); }
+    if(locale==='en') {assert.equal(t('serverNotice.versionStore',{version,latest}),storeDiagnostic);assert.equal(t('serverNotice.versionFolder',{version,latest}),folderDiagnostic);}
     const first=changed({boot:'same-boot',version:'0.9',at:100},null,{latest:'0.9',newest:()=>200});
-    assert.deepEqual(first,{state:{boot:'same-boot',at:100,told:true},note:t('serverNotice.extensionChanged')});
+    assert.deepEqual(first,{state:{boot:'same-boot',at:100,told:true},note:canonical});
     assert.equal(changed({boot:'same-boot',version:'0.9',at:100},first.state,{latest:'0.9',newest:()=>200}).note,'');
   }
+});
+
+test('Russian remembered-answer fallback agrees with the passive employer phrase',()=>{
+  setLocale('ru');const company=t('serverNotice.secondEmployer');
+  assert.equal(company,'другим работодателем');
+  assert.match(t('serverNotice.rememberedBody',{count:2,company}),/запрошенных другим работодателем: сохранены как стандартные/);
+  assert.match(t('serverNotice.rememberedBody',{count:1.5,company}),/Прежние ответы .* сохранены как стандартные/);
 });

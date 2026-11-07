@@ -40,7 +40,6 @@ export const messages = {
     "one": "{count} question from {company} had no standard answer. Answer in Jobadabra → Jobs.",
     "other": "{count} questions from {company} had no standard answer. Answer in Jobadabra → Jobs."
   },
-  "extensionChanged": "extension changed: reload it (chrome://extensions → ↻ on Jobadabra); a development copy does not reload itself",
   "versionStore": "Chrome runs Jobadabra extension {version} from the Chrome Web Store; this app ships {latest}. Chrome updates it by itself once the store has the new version, usually within a day.",
   "versionFolder": "Chrome runs Jobadabra extension {version}, older than this app's {latest}: reload it once (chrome://extensions → ↻ on Jobadabra); from then on it updates itself."
 };

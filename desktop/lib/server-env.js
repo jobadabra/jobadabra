@@ -240,7 +240,7 @@ export const EXTENSION_CHANGED = 'extension changed: reload it (chrome://extensi
 export function extensionChangedNote({boot, version, at}, state, {latest, newest}) {
   const next = state && state.boot === boot ? state : {boot, at, told: false};
   if (next.told || !version || version !== latest || !(newest() > next.at)) return {state: next, note: ''};
-  return {state: {...next, told: true}, note: t('serverNotice.extensionChanged')};
+  return {state: {...next, told: true}, note: EXTENSION_CHANGED};
 }
 
 // The sentence a stale copy deserves, or '' when the two agree (or either is unknown). One wording for the two
@@ -251,8 +251,10 @@ let checkedInId = '';   // the ID of the copy that last checked in (server.js, /
 export const noteExtensionId = id => { if (id) checkedInId = id; };
 export function staleExtension(version, latest, id = checkedInId) {
   if (!version || !latest || version === latest) return '';
-  if (id === STORE_EXTENSION_ID) return t('serverNotice.versionStore',{version,latest});
-  return t('serverNotice.versionFolder',{version,latest});
+  if (id === STORE_EXTENSION_ID) return `Chrome runs Jobadabra extension ${version} from the Chrome Web Store; this app ships ${latest}. `
+    + 'Chrome updates it by itself once the store has the new version, usually within a day.';
+  return `Chrome runs Jobadabra extension ${version}, older than this app's ${latest}: reload it once `
+    + '(chrome://extensions → ↻ on Jobadabra); from then on it updates itself.';
 }
 // Apply with Claude → extension hand-off (extension/hook.js). The launcher (tools/apply-batch-claude.sh) asks
 // for a ticket per job (POST /claude/ticket, from this computer, with a header web pages can't send without a
