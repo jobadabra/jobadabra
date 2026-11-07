@@ -4,7 +4,7 @@
 // reads the page they see, sends it to the app, goes to the next page of the same list, and stops after MAX_PAGES, when a page brings nothing
 // new, or at any login wall or "are you human" check (the person deals with it, then clicks again). It never logs in, never solves a check,
 // never hides that it is a script, and waits between pages. Filtering is the app's: every job read goes through the same filters and scores.
-import {readWords,renderRead,setReadReason,readStateReason,readFilters,readProtocolState} from './read-display.js';
+import {readWords,renderRead,setReadReason,readStateReason,readFilters,readProtocolState,readFilterSummary,readNoCards,readAIWay,readBlockedReason,readEmptyReason,readFailureReason,applyReadReason} from './read-display.js';
 import {displayText} from './display-cache.js';
 import {api, settings} from './flow.js';
 import {ALL_SITES, openAllowPage} from './site-allow.js';
@@ -112,7 +112,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     // A sign-in or a check first: nothing is filtered, typed or read here (a filter step types into the page's boxes). Said, so the person deals with it.
     if (first?.login || first?.challenge) {
       state.blocked = first.login ? 'login' : 'check';
-      setReadReason(state,first.login ? 'the site asks you to sign in: do it, then click again' : 'the site shows a check: answer it yourself, then click again',first.login ? 'read.login' : 'read.check');
+      applyReadReason(state,readBlockedReason(first.login));
       pages = 0;   // the read loop below has nothing to do
     }
     if (first && !first.login && !first.challenge && !plausible(first.cards)) {
@@ -130,7 +130,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     if (filter && !state.blocked) {
       await tellStep(tabId, config, ticket, readWords('AI is choosing the filters for your search…','read.filters'));
       await thinking(() => setFilters(tabId, config, state).catch(() => { /* filters are a help: the page is read as it is */ }));
-      await tellStep(tabId, config, ticket, state.filters.length ? readWords(`filters set: ${state.filters.join(', ').slice(0, 100)}`,'read.filtersSet',{filters:readFilters(state,displayText).slice(0,100)}) : readWords(`no filters set${state.note ? ` (${state.note})` : ''}: reading the page as it is`,'read.noFilters',{note:state.note ? ` (${renderRead(state.noteDisplay || state.note,displayText)})` : ''}));
+      await tellStep(tabId, config, ticket, readFilterSummary(state,displayText));
     }
     // How to read this site: its saved recipe (no AI), else the quick guess, else Claude from the page's outline (once per visit).
     const start = (await chrome.tabs.get(tabId)).url;
@@ -154,7 +154,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       await tellStep(tabId, config, ticket, readWords(`reading page ${page + 1}…`,'read.page',{page:page+1}));
       const seen = await run(tabId, extractPage);
       if (!seen) { setReadReason(state,'the page could not be read','read.unread'); break; }
-      if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; setReadReason(state,seen.login ? 'the site asks you to sign in: do it, then click again' : 'the site shows a check: answer it yourself, then click again',seen.login ? 'read.login' : 'read.check'); break; }
+      if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; applyReadReason(state,readBlockedReason(seen.login)); break; }
       let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : seen.cards;
       if (recipe && !cards.length && page === 0) {
         if (plausible(seen.cards)) {   // the quick guess reads a list the recipe misses: it no longer fits this site, forgotten and read afresh
@@ -197,7 +197,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
             if (step.action === 'open') { if (/^https:\/\//.test(step.href || '') && !TEMPLATE.test(step.href)) await moveTab(tabId, step.href); }
             else await run(tabId, applyFilters, [[step]]).catch(() => null);
           }
-          await tellStep(tabId, config, ticket, readWords(`AI: ${String(way.why || 'trying a way to the jobs').slice(0, 120)}`,'read.ai',{reason:way.why ? String(way.why).slice(0,120) : readWords('trying a way to the jobs','read.tryJobs')}));
+          await tellStep(tabId, config, ticket, readAIWay(way.why));
           await pause();
           await waitForPage(tabId).catch(() => {});
           await consent();
@@ -209,8 +209,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       if (!cards?.length) {   // why nothing was read, said in the site's row: what the page showed, so "0 jobs" is never a mystery
         const banner = await closeConsentEverywhere(tabId);
         if (banner) state.consent = banner;
-        await tellStep(tabId, config, ticket, knownList ? readWords('its job list shows no jobs here (filtered to your places, it may have none)','read.knownEmpty')
-          : readWords(`no job cards on this page (${seen.cards?.length || 0} repeated items seen${asked ? ', none of them jobs by Claude\'s reading' : ''}${banner ? `; a cookie banner was still open, closed with "${banner.slice(0, 30)}"` : ''})`,'read.noCards',{count:seen.cards?.length || 0,ai:asked ? readWords('','read.noCardsAI') : '',cookie:banner ? readWords('','read.noCardsCookie',{button:banner.slice(0,30)}) : ''}));
+        await tellStep(tabId, config, ticket, readNoCards({knownList,seen,asked,banner}));
       }
       const answer = await api(config, '/extension/visit-read', {method: 'POST', body: JSON.stringify({session, ticket: state.ticket, url: seen.url, title: seen.title, html: seen.html, cards, knownList, place: state.place || ''})});
       if (!answer?.ok) { setReadReason(state,answer?.error || 'the app did not take the page',answer?.error ? null : 'read.notTaken'); break; }
@@ -234,14 +233,10 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     // A list that has none in your places today is read, not failed (owner, 8 Oct 2026: Jaeger-LeCoultre's Geneva list was a red ✗ with "Read with Claude").
     if (!state.jobs && /end of the list|no next page/.test(state.stopped) && (knownList || state.place)) state.empty = true;
     if (!state.jobs && /end of the list|no next page/.test(state.stopped)) {
-      const filtered=state.filters.some(filter => !/not filtered/.test(filter));
-      setReadReason(state,knownList ? 'its job list has no jobs here today (filtered to your places)'
-        : filtered ? `no jobs on this list with your place filter (${state.filters.join(', ').slice(0, 80)})`
-        : 'no job list found on this page: try Read with Claude, or Open it myself',
-        knownList ? 'read.empty' : filtered ? 'read.filteredEmpty' : 'read.noList',{filters:readFilters(state,displayText).slice(0,80)});
+      applyReadReason(state,readEmptyReason(state,knownList,displayText));
     }
   } catch (error) {
-    setReadReason(state,/Cannot access|permission/i.test(error.message) ? 'the next page is on another site, or access was not given' : (error.message || 'stopped'), /Cannot access|permission/i.test(error.message) ? 'read.access' : error.displayKey || (!error.message ? 'read.stoppedShort' : null),error.displayValues);
+    applyReadReason(state,readFailureReason(error));
   }
   await run(tabId, pageBanner, ['']).catch(() => {});
   badge(tabId, state.jobs ? '✓' : '!', displayText('visit.done',{jobs:displayText('jobs',{count:state.jobs}),name:state.name || displayText('visit.thisSite'),reason:readStateReason(state,displayText)}));

@@ -5,6 +5,6 @@
     let current=null;
     const draw=()=>{if(!current)return;label(current.evidence);text.textContent=window.__jobadabraPanelI18n.t('tip.'+current.id,current.text);box.hidden=false;};
     window.__jobadabraPanelI18n.onChange(draw);
-    return async()=>{const answer=await send({type:'panelTip',host,prefer:prefer()}).catch(()=>null);if(!answer?.ok)return;current=answer;draw();};
+    return async()=>{const answer=await send({type: 'panelTip',host,prefer:prefer()}).catch(()=>null);if(!answer?.ok)return;current=answer;draw();};
   };
 })();

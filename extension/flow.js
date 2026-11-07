@@ -299,5 +299,6 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   await settleFill(run);
   await reportFill(run);
   const {summary, ai, aiError, kitSkips} = run;
-  return {...summary, usd: ai?.usd, aiError, aiErrorDisplay:run.aiErrorDisplay, coverLetter: ai?.cover_letter, ...verdictFields({ai, askedAnyway, kit: withKit || kitSkips, checkOff: config.checkEligibility === false})};
+  if (run.aiErrorDisplay) summary.aiErrorDisplay = run.aiErrorDisplay;
+  return {...summary, usd: ai?.usd, aiError, coverLetter: ai?.cover_letter, ...verdictFields({ai, askedAnyway, kit: withKit || kitSkips, checkOff: config.checkEligibility === false})};
 }

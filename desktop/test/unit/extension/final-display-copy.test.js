@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {createI18n,catalogs,locales} from '../../../../extension/i18n.js';
-import {readWords,renderRead,setReadReason,readStateReason,readProtocolState} from '../../../../extension/read-display.js';
+import {readWords,renderRead,setReadReason,readStateReason,readProtocolState,readFilterSummary,readNoCards,readAIWay,readBlockedReason,readEmptyReason,readFailureReason} from '../../../../extension/read-display.js';
 import {authoredError,displayError} from '../../../../extension/display-errors.js';
 import {plainWhy} from '../../../../extension/ai-reply.js';
 import {TIPS} from '../../../../extension/tips-pool.js';
@@ -74,4 +74,18 @@ test('actual pair failure retains canonical status text and supplies typed local
     const {pair}=await import('../../../../extension/flow.js');
     await assert.rejects(pair(),error=>{assert.equal(error.message,'the app answered 503');assert.equal(error.displayKey,'error.appStatus');assert.deepEqual(error.displayValues,{status:503});return true;});
   }finally{globalThis.fetch=originalFetch;}
+});
+
+
+test('read display builders preserve canonical branches and isolate authored suffixes from external text',async()=>{
+  const ui=await uiFor('de'),raw='<site> {count}';
+  assert.equal(readBlockedReason(true).raw,'the site asks you to sign in: do it, then click again');
+  assert.equal(readBlockedReason(false).key,'read.check');
+  assert.equal(readAIWay(raw).raw,'AI: '+raw);assert.ok(renderRead(readAIWay(raw),ui.t).includes(raw));
+  const state={filters:[raw]};assert.equal(readFilterSummary(state,ui.t).raw,'filters set: '+raw);
+  assert.equal(readEmptyReason(state,false,ui.t).raw,'no jobs on this list with your place filter ('+raw+')');
+  assert.equal(readFailureReason(new Error(raw)).raw,raw);assert.equal(readFailureReason(new Error(raw)).key,null);
+  const message=readNoCards({knownList:false,seen:{cards:[{},{}]},asked:true,banner:raw});
+  assert.equal(message.raw,'no job cards on this page (2 repeated items seen, none of them jobs by Claude\'s reading; a cookie banner was still open, closed with "'+raw+'")');
+  assert.ok(renderRead(message,ui.t).includes(raw));assert.ok(!renderRead(message,ui.t).includes('repeated items'));
 });
