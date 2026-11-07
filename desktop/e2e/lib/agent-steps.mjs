@@ -7,6 +7,8 @@
 export const STEP_TOKENS = {resumed: 1_000, stateless: 9_000};
 export const TARGET_STEPS = 10;   // a goal that is funded gets about this many steps before the next goal is funded; fewer funded goals with room beat many goals of one or two steps
 export const MIN_STEPS = 6;       // the least a goal can show anything in; the one owner, lib/agent-run.mjs imports it for the floor of a goal's share and its log (Gitar on #3398)
+export const MIN_GOALS = 3;       // the fewest goals a night is drawn with when its budget pays for that many (the seeded draw is MIN_GOALS to MAX_GOALS)
+export const MAX_GOALS = 4;       // Why (7 Nov 2026, pz, owner: "3–4 goals per run"): 43 of 122 goals in 31 runs were never started because the plan drew 6-10 goals for a budget that pays for 2-4
 export const MIN_CALIBRATION_CALLS = 3;   // the measured cost per step replaces the engine's default after this many actor calls
 
 /**
@@ -26,3 +28,10 @@ export function goalSteps({left, cost, goalsLeft, maxPerGoal, target = TARGET_ST
   const steps = Math.min(maxPerGoal, Math.floor(left / funded / cost) - 1);
   return steps >= min ? {steps, funded} : {steps: 0, funded: 0};
 }
+
+/**
+ * How many goals tonight's plan may have: the goals the budget pays for at TARGET_STEPS each, which is the number goalSteps funds for the first goal, so a planned goal is a started goal. At most MAX_GOALS, at least 1.
+ * `usable`: tokens the actor and reader may spend (runBudget().usable()); `cost`: tokens per step on the engine that answers (STEP_TOKENS or the workflow's measured number).
+ * Why (7 Nov 2026, pz, Design: the plan's size has one owner, this function; the planner takes it as a ceiling, the run loop's goalSteps shares what is left): before, the planner drew 6-10 goals and goalSteps then left the rest "not started" (43 of 122 goals, 31 runs).
+ */
+export const goalCountFor = ({usable, cost, target = TARGET_STEPS, max = MAX_GOALS}) => (usable > 0 && cost > 0 ? Math.max(1, Math.min(max, Math.floor(usable / ((target + 1) * cost)))) : 1);

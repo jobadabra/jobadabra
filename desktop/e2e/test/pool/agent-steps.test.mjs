@@ -2,8 +2,9 @@
 // Guard: money — a night that plans past its token cap wastes the whole run's AI spend (run 42163935942: 208k spent, 0 goals worked).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {goalSteps, MIN_STEPS, STEP_TOKENS, stepCost} from '../../lib/agent-steps.mjs';
+import {goalCountFor, goalSteps, MAX_GOALS, MIN_STEPS, STEP_TOKENS, stepCost} from '../../lib/agent-steps.mjs';
 import {runSession} from '../../lib/agent-run.mjs';
+import {planSession} from '../../lib/agent-plan.mjs';
 import {CAP_REACHED, runBudget} from '../../lib/agent-tier.mjs';
 
 test('a goal is funded from what is left: the 6 Nov numbers on Claude give 2 goals of about 10 steps, not 6 goals of 16', () => {
@@ -65,4 +66,35 @@ test('the run preserves the actual shared call limit and never calls the next go
   assert.equal(result.stopped, 'calls 1');
   assert.deepEqual(result.completed, [1]);
   assert.equal(result.summary.goals[1].verdict, 'not-started');
+});
+
+test('the plan is as long as the budget pays for: every planned goal is started, none is left "not started"', async () => {
+  const usable = runBudget().usable();
+  assert.equal(goalCountFor({usable, cost: STEP_TOKENS.stateless}), 2, 'Claude at 9k a step pays for 2 goals of 10 steps');
+  assert.equal(goalCountFor({usable, cost: STEP_TOKENS.resumed}), MAX_GOALS, 'a resumed Codex conversation is capped at MAX_GOALS, not 19');
+  assert.equal(goalCountFor({usable: 0, cost: 1000}), 1, 'never an empty plan');
+  // The planner takes it as a ceiling, and goalSteps funds exactly that many goals for the first goal: the two agree, so the loop never reaches an unfunded goal on defaults.
+  const moves = ['Jobs', 'Profile', 'Strategy', 'Settings', 'Focus'].flatMap(group => [1, 2].map(i => ({group, label: `${group} ${i}`})));
+  for (const cost of [STEP_TOKENS.stateless, STEP_TOKENS.resumed]) for (const seed of [20261105, 20261106, 20261107]) {
+    const max = goalCountFor({usable, cost}), plan = planSession({seed, moves, changed: ['Jobs', 'Profile', 'Strategy', 'Settings', 'Focus'], max});
+    assert.ok(plan.goals.length <= max, `seed ${seed} at ${cost}: ${plan.goals.length} goals for ${max}`);
+    assert.equal(goalSteps({left: usable, cost, goalsLeft: plan.goals.length, maxPerGoal: 25}).funded, plan.goals.length, `seed ${seed} at ${cost}: a planned goal must be a funded goal`);
+  }
+});
+
+test('changed areas past the budget are deferred to the next night, not planned and not lost', () => {
+  const groups = ['Jobs', 'Profile', 'Strategy', 'Settings', 'Focus'], moves = groups.flatMap(group => [1, 2].map(i => ({group, label: `${group} ${i}`})));
+  const plan = planSession({seed: 7, moves, changed: groups, max: 2});
+  assert.equal(plan.goals.length, 2);
+  assert.deepEqual([...new Set([...plan.goals.map(goal => goal.group), ...plan.deferred.map(goal => goal.group)])].sort(), [...groups].sort(), 'every changed area is a goal tonight or in the queue');
+  assert.equal(plan.deferred.length, 3);
+  assert.deepEqual(planSession({seed: 7, moves, changed: groups}).deferred, [], 'no ceiling given: the old behaviour, nothing deferred');
+});
+
+test('pending goals and changed areas together at a small ceiling: pending first, the rest of the changed areas queued, none planned past it', () => {
+  const groups = ['Jobs', 'Profile', 'Strategy', 'Settings', 'Focus'], moves = groups.flatMap(group => [1, 2, 3].map(i => ({group, label: `${group} ${i}`})));
+  const pending = [moves[1], moves[10]];   // Jobs 2, Settings 2
+  const plan = planSession({seed: 11, moves, pending, changed: groups, max: 2});
+  assert.deepEqual(new Set(plan.goals.map(goal => goal.label)), new Set(['Jobs 2', 'Settings 2']));
+  assert.deepEqual(plan.deferred.map(goal => goal.group).sort(), ['Focus', 'Profile', 'Strategy']);
 });
