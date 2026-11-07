@@ -53,6 +53,7 @@ export function draw(settings = current) {
     const value = apply.auto[box.dataset.applyCheck];
     box.value = String(value);
   });
+  if ($('allow-ineligible')) $('allow-ineligible').checked = apply.allowIneligible;
 }
 
 // change: part of settings.apply; chosen: stamps the person's confirmation (the gate in lib/apply-choice-gate.js then lets every Apply through).
@@ -105,6 +106,7 @@ export async function init() {
   await ready;
   const box = $('apply-auto-checks');
   box.replaceChildren(...CHECKS.map(checkRow));
+  $('allow-ineligible')?.addEventListener('change', event => save({allowIneligible: event.currentTarget.checked}));
   document.querySelectorAll('[data-apply-answers]').forEach(button => button.addEventListener('click', () => save({answers: button.dataset.applyAnswers})));
   $('apply-confirm-go').addEventListener('click', async () => { await save({}, {chosen: true}); closeBar(true); });
   $('apply-confirm-cancel').addEventListener('click', () => closeBar(false));

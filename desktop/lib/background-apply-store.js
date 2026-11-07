@@ -55,7 +55,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       }
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
-      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, ...(mode === 'auto' ? {autoConfirmedAt: config.autoConfirmedAt || ''} : {}), state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});   // the batch's own confirmation stays on its item (#3363)
+      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, allowIneligible: config.allowIneligible === true, ...(mode === 'auto' ? {autoConfirmedAt: config.autoConfirmedAt || ''} : {}), state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});   // Why (7 Nov 2026, owner, #3363): a batch keeps its confirmation and eligibility choice on its item.
     });
   }
   async function claim(url, session, owner) {
@@ -107,7 +107,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));
-      if (!STARTABLE_STAGES.includes(app.stage) || kit?.eligible !== true) return stop('not_eligible');
+      if (!STARTABLE_STAGES.includes(app.stage) || (kit?.eligible !== true && !(state.allowIneligible === true && kit?.eligible === false))) return stop('not_eligible');   // Why (2026-11-07, owner): stage proof always applies; only explicit false is overridden by this item's saved opt-in.
       const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
       const reservations = await ask('events', 'list', {kind: RESERVED});

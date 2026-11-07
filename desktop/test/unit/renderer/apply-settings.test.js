@@ -11,7 +11,7 @@ const html = readScreenSource(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
 test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
-  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {waitMin: 0}, chosenAt: '', autoConfirmedAt: ''});
+  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {waitMin: 0}, chosenAt: '', autoConfirmedAt: '', allowIneligible: false});
   assert.deepEqual(AUTO_DEFAULTS, applyOf(undefined).auto);
   assert.equal(applyChosen({}), false);
   assert.equal(applyChosen({apply: {mode: 'check'}}), false, 'a mode saved from Settings without Confirm is not the choice');
@@ -27,8 +27,18 @@ test('a change keeps the rest; numbers stay in range; Confirm stamps the choice'
   assert.equal(two.apply.mode, 'check');
   assert.equal(two.apply.auto.waitMin, 0, 'not a number: the default (no wait)');
   assert.equal(two.apply.chosenAt, now.toISOString());
+  assert.equal(two.apply.allowIneligible, false, 'unrelated saves preserve the safe default');
   assert.equal(applyChosen(two), true);
   assert.equal(applyOf({apply: {mode: 'nonsense', answers: 'nonsense'}}).mode, 'check');
+});
+
+test('marked-ineligible opt-in is explicit, default-off, and preserved by unrelated settings changes', () => {
+  assert.equal(applyOf({apply: {allowIneligible: true}}).allowIneligible, true);
+  assert.equal(applyOf({apply: {allowIneligible: 'true'}}).allowIneligible, false, 'only boolean true opts in');
+  const enabled = applyPatch({}, {allowIneligible: true});
+  assert.equal(enabled.apply.allowIneligible, true);
+  assert.equal(applyPatch({apply: enabled.apply}, {answers: 'ai'}).apply.allowIneligible, true);
+  assert.equal(applyPatch({apply: enabled.apply}, {allowIneligible: false}).apply.allowIneligible, false);
 });
 
 test('three modes; only a built one can be the saved mode, the others are Coming soon', () => {
@@ -50,7 +60,10 @@ test('three modes; only a built one can be the saved mode, the others are Coming
 
 test('every applying setting is on the Apply tab, and nowhere else', () => {
   const apply = page('apply');
-  for (const id of ['setting-apply-mode', 'setting-apply-answers', 'setting-consent', 'setting-claude', 'setting-apply-auto', 'apply-confirm-bar']) assert.ok(apply.includes(`id="${id}"`), id);
+  for (const id of ['setting-apply-mode', 'setting-apply-answers', 'setting-apply-ineligible', 'setting-consent', 'setting-claude', 'setting-apply-auto', 'apply-confirm-bar']) assert.ok(apply.includes(`id="${id}"`), id);
+  assert.match(apply, /id="allow-ineligible"[^>]*aria-describedby="allow-ineligible-note"/);
+  assert.match(apply, /Apply to jobs marked not eligible/);
+  assert.match(apply, /Include jobs even when the application kit says you are not eligible\./);
   assert.ok(!page('automation').includes('setting-claude'));
   assert.ok(!page('advanced').includes('setting-consent'));
   const settings = html.slice(html.indexOf('data-view="settings"'), html.indexOf('data-settings-page="logs"'));

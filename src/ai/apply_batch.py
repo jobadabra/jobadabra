@@ -57,13 +57,14 @@ def _kit(stores, record):
     return base.kit_from(stores.applications.section(record['id'], base.KIT_SECTION) or '')
 
 
-def ready_jobs(stores, max_jobs):
+def ready_jobs(stores, max_jobs, allow_ineligible=False):
     """(record, kit) pairs for Kit ready / Saved jobs that have a kit, newest first."""
     records = sorted(stores.applications.list(stages=['Kit ready', 'Saved']), key=lambda r: r.get('created_at') or '', reverse=True)
     pairs = []
     for record in records:
         kit_data = _kit(stores, record)
-        if kit_data and kit_data.get('eligible') is not False:
+        # Why (2026-11-07, owner): skip an explicit false verdict by default; only the shared opt-in includes it. Unknown stays as before.
+        if kit_data and (kit_data.get('eligible') is not False or allow_ineligible is True):
             pairs.append((record, kit_data))
         if len(pairs) >= max_jobs:
             break
@@ -90,7 +91,7 @@ def still_open(stores, url):
 KIT_STEP = '📝 Kit ready'  # the Next step a drafted kit writes (src/ai/kit.py)
 
 
-def unstarted_urls_by_score(stores, max_jobs):
+def unstarted_urls_by_score(stores, max_jobs, allow_ineligible=False):
     """Job URLs with a kit (not yet Applying/Applied/...), ranked by AI fit score descending.
 
     Fast: whether a job has a kit is on its record (Stage Kit ready, or Next step "📝 Kit ready" on a Saved job), so
@@ -103,9 +104,11 @@ def unstarted_urls_by_score(stores, max_jobs):
     for record in records:  # a job you added has no match: its own fit score counts instead
         if record.get('url') and record.get('fit') not in (None, ''):
             url_score.setdefault(record['url'], record['fit'])
+    # Why (2026-11-07, owner): the false-verdict marker is also proof of a drafted Saved-row kit, so opt-in admits it while default skips it.
     candidates = [record['url'] for record in records
-                  if record.get('url') and not (record.get('next_step') or '').startswith(kit_module.NOT_ELIGIBLE)
-                  and (record.get('stage') == 'Kit ready' or (record.get('next_step') or '').startswith(KIT_STEP))]
+                  if record.get('url') and (allow_ineligible is True or not (record.get('next_step') or '').startswith(kit_module.NOT_ELIGIBLE))
+                  and (record.get('stage') == 'Kit ready' or (record.get('next_step') or '').startswith(KIT_STEP)
+                       or (allow_ineligible is True and (record.get('next_step') or '').startswith(kit_module.NOT_ELIGIBLE)))]
     unstarted_urls_by_score.rows = {record['url']: record for record in records if record.get('url')}  # for job_details()
     candidates = sorted(dict.fromkeys(candidates), key=lambda url: url_score.get(url, -1), reverse=True)
     urls, batch = [], max(max_jobs * 2, 4)
@@ -190,6 +193,8 @@ def main():
     parser.add_argument('--next', type=int, metavar='N',
                         help='print the N highest-scored not-yet-started job URLs with a kit, '
                              'one per line, and exit — for apply-batch-claude.sh --max; touches nothing')
+    parser.add_argument('--allow-ineligible', action='store_true',
+                        help='include jobs whose application kit explicitly marks them not eligible')
     parser.add_argument('--details', action='store_true', help='with --next: one JSON line per job (url, title, company)')
     parser.add_argument('--top-unprepared', type=int, metavar='N',
                         help='print the N highest-scored open jobs with no kit yet, one per line, and '
@@ -254,7 +259,7 @@ def main():
         return 0
 
     if args.next is not None:
-        for url in unstarted_urls_by_score(stores, args.next):
+        for url in unstarted_urls_by_score(stores, args.next, args.allow_ineligible):
             # --details (the app): one JSON line per job with its title and company; else the plain URL (the scripts).
             print(json.dumps(job_details(url), ensure_ascii=False) if args.details else url)
         return 0
@@ -265,7 +270,7 @@ def main():
     if args.urls:
         pairs = pairs_for_urls(stores, args.urls)
     else:
-        pairs = ready_jobs(stores, args.max)
+        pairs = ready_jobs(stores, args.max, args.allow_ineligible)
         if not pairs:
             print('No job has a kit ready. Prepare one first: 📝 Prepare in Telegram, or '
                   '`gh workflow run daily.yml -f mode=prepare -f job=<job URL>`.')

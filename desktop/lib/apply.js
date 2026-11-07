@@ -29,16 +29,16 @@ export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.j
 // Saved jobs first, then by fit.
 const best = (a, b) => (b.status === 'saved') - (a.status === 'saved') || (b.fit ?? -1) - (a.fit ?? -1);
 const open = job => ['unreviewed', 'saved'].includes(job.status) && job.url;
-const startable = job => open(job) && !job.ineligible && canStart(job.stage);   // what an Apply batch may take: never a job in process (stage, lib/apply-eligibility.js) nor one the kit marked not eligible
+const startable = (job, {allowIneligible = false} = {}) => open(job) && (!job.ineligible || allowIneligible) && canStart(job.stage);   // Why (2026-11-07, owner): the shared setting may include a kit's explicit ineligible verdict; stage proof still applies and unknown eligibility stays distinct.
 
 // Only jobs with a drafted kit (their form is already answered), best first.
-export function pick(jobs, n) {
-  return jobs.filter(job => startable(job) && job.kit).sort(best).slice(0, n);
+export function pick(jobs, n, options = {}) {
+  return jobs.filter(job => startable(job, options) && job.kit).sort(best).slice(0, n);
 }
 
 // The best open jobs that still have no kit: what an Apply batch drafts first when fewer than N are ready.
-export function pickMissing(jobs, n) {
-  return jobs.filter(job => startable(job) && job.code && !job.kit).sort(best).slice(0, n);
+export function pickMissing(jobs, n, options = {}) {
+  return jobs.filter(job => startable(job, options) && job.code && !job.kit).sort(best).slice(0, n);
 }
 
 // What to say when "Tailor CVs for top matches" finds nothing to do: every open job has its CV, or there is no open job at all (then no CV is "ready").
@@ -58,10 +58,10 @@ const SPARE_TRIES = 3;
 
 // Draft missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
 // A job the engine stopped uses no try, up to SPARE_TRIES. Returns the prepared count, the first preparation error and one outcome per attempted job.
-export async function draftMissing(jobs, shortfall, prepare, report = () => {}) {
+export async function draftMissing(jobs, shortfall, prepare, report = () => {}, options = {}) {
   let done = 0, why = '', tries = 0;
   const outcomes = [];
-  const missing = pickMissing(jobs, shortfall + SPARE_TRIES);
+  const missing = pickMissing(jobs, shortfall + SPARE_TRIES, options);
   const wanted = Math.min(shortfall, missing.length);
   for (const job of missing) {
     if (tries >= shortfall) break;
@@ -79,7 +79,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}) 
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
 const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
-const nothingStarted = jobs => (jobs.some(startable) ? NO_KITS : NO_JOBS);
+const nothingStarted = (jobs, options) => (jobs.some(job => startable(job, options)) ? NO_KITS : NO_JOBS);
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -241,7 +241,9 @@ export async function hasKit(storage, url, run = pipeline.run) {
 // The N best jobs with a kit that aren't started yet (Kit ready, or Saved with a kit), from Notion.
 // The best n jobs with a kit: their URLs, with the title and company of each (details) for its session card.
 export async function nextWithKits(storage, n, run = pipeline.run) {
-  const {code, stdout} = await run(storage, ['src.ai.apply_batch', '--next', String(n), '--details']);
+  const allowIneligible = storage.settings?.().apply?.allowIneligible === true;
+  // Why (2026-11-07, owner): the Claude batch uses the same saved opt-in as the JS pickers; Python receives it explicitly.
+  const {code, stdout} = await run(storage, ['src.ai.apply_batch', '--next', String(n), '--details', ...(allowIneligible ? ['--allow-ineligible'] : [])]);
   // One JSON line per job (--details); a plain link line (an older pipeline) is read as a job without details.
   const jobs = code === 0 ? stdout.split(/\r?\n/).map(line => line.trim()).map(line => { try { return JSON.parse(line); } catch { return {url: line}; } })
     .filter(job => /^https?:\/\//.test(job?.url || '')) : [];
@@ -287,18 +289,20 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 // mode 'background' (Background or Full automation, applyMode 'fill'/'auto'): the chosen jobs go to `enqueue` (the hidden browser's queue, lib/background-apply-controller.js).
 export async function start(storage, {n, mode, applyMode}, open = openBrowser, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
-  if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report});
+  // Why (2026-11-07, owner): one batch uses one saved eligibility choice across selection, drafting, and the reread after drafting.
+  const eligibility = {allowIneligible: storage.settings?.().apply?.allowIneligible === true};
+  if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report, eligibility});
   let {jobs} = await list(storage);
-  let chosen = pick(jobs, n);
+  let chosen = pick(jobs, n, eligibility);
   let drafted = 0, why = '', outcomes = [];
   if (chosen.length < n && prepare) {
-    const result = await draftMissing(jobs, n - chosen.length, prepare, report);
+    const result = await draftMissing(jobs, n - chosen.length, prepare, report, eligibility);
     drafted = result.done;
     why = result.why;
     outcomes = result.outcomes;
-    if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
+    if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n, eligibility); }
   }
-  if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs)), ...(outcomes.length ? {outcomes} : {})};
+  if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs, eligibility)), ...(outcomes.length ? {outcomes} : {})};
   // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue outcomes join kit-preparation results for the dialog.
   if (mode === 'background') {
     const result = enqueue ? await enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
@@ -329,13 +333,13 @@ function openBatchInChrome(chosen, drafted, {open, focus}) {
 
 
 /** The Apply-to-N batch with Claude sessions: drafts missing kits first, then starts one session per job in the app or a window. -> the start() answer. */
-async function startAgents(storage, n, {list, launch, next, prepare, report}) {
+async function startAgents(storage, n, {list, launch, next, prepare, report, eligibility}) {
   const ready = claudeReady(storage);
   if (!ready.ok) return ready;
   let urls = await next(storage, n);
   let drafted = 0, why = '';
   if (urls.length < n && prepare) {
-    const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report);
+    const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report, eligibility);
     drafted = result.done;
     why = result.why;
     if (drafted) urls = await next(storage, n);
